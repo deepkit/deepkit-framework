@@ -34,6 +34,10 @@ export class SQLFilterBuilder {
         return 'IS NULL';
     }
 
+    regexpComparator() {
+        return 'REGEXP';
+    }
+
     convert(filter: Filter): string {
         return this.conditions(filter, 'AND').trim();
     }
@@ -44,6 +48,7 @@ export class SQLFilterBuilder {
      */
     protected bindValue(value: any): any {
         if (value === undefined) return null; //no SQL driver supports undefined
+        if (value instanceof RegExp) return value.source;
         return value;
     }
 
@@ -83,7 +88,7 @@ export class SQLFilterBuilder {
         else if (comparison === 'ne') cmpSign = '!=';
         else if (comparison === 'in') cmpSign = 'IN';
         else if (comparison === 'nin') cmpSign = 'NOT IN';
-        else if (comparison === 'regex') cmpSign = 'REGEXP';
+        else if (comparison === 'regex') cmpSign = this.regexpComparator();
         else throw new Error(`Comparator ${comparison} not supported.`);
 
         const isReference = 'string' === typeof value && value[0] === '$';
@@ -108,7 +113,7 @@ export class SQLFilterBuilder {
                             }
                             this.params.push(this.bindValue(item));
                         }
-                        rvalue = `(${params.join(', ')})`;
+                        rvalue = params.length ? `(${params.join(', ')})` : '(null)';
                     }
                 } else {
                     rvalue = this.createPlaceholder();

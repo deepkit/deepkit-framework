@@ -8,12 +8,21 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AfterViewInit, ChangeDetectorRef, Component, ContentChildren, ElementRef, Input, OnChanges, QueryList, SimpleChanges, TemplateRef, ViewChild } from '@angular/core';
+import {
+    AfterViewInit,
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    Input,
+    OnChanges,
+    SimpleChanges,
+    ViewChild
+} from '@angular/core';
 import { DatabaseInfo } from '@deepkit/orm-browser-api';
 import { ClassSchema, PropertySchema } from '@deepkit/type';
-import { graphlib, layout, Node } from 'dagre';
-import { default as createPanZoom, PanZoom } from "panzoom";
-import { BrowserText } from "./browser-text";
+import { graphlib, layout } from 'dagre';
+import { default as createPanZoom, PanZoom } from 'panzoom';
+import { BrowserText } from './browser-text';
 
 // @Component({
 //   selector: 'app-workflow-card',
@@ -230,7 +239,7 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
     }
 
     const extractEdges = (i: number, node: DKNode, rootProperty: PropertySchema, property: PropertySchema) => {
-      if (property.type === 'array' || property.type === 'map' || property.type === 'partial') { 
+      if (property.type === 'array' || property.type === 'map' || property.type === 'partial') {
         extractEdges(i, node, rootProperty, property.getSubType());
       }
       if (property.type === 'class') {

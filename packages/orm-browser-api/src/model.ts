@@ -8,4 +8,3 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { entity, t } from '@deepkit/type';

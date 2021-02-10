@@ -8,7 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import type { QueryDatabaseDeleteEvent, QueryDatabasePatchEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event';
+import type {
+    QueryDatabaseDeleteEvent,
+    QueryDatabasePatchEvent,
+    UnitOfWorkEvent,
+    UnitOfWorkUpdateEvent
+} from './event';
 import type { ClassSchema, PropertySchema } from '@deepkit/type';
 import type { Database } from './database';
 

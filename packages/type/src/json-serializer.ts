@@ -10,7 +10,13 @@
 
 import { ClassType, getEnumLabels, getEnumValues, getValidEnumValue, isObject, isValidEnumValue } from '@deepkit/core';
 import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64 } from './core';
-import { getClassToXFunction, getPartialClassToXFunction, getPartialXToClassFunction, getXToClassFunction, JitConverterOptions } from './jit';
+import {
+    getClassToXFunction,
+    getPartialClassToXFunction,
+    getPartialXToClassFunction,
+    getXToClassFunction,
+    JitConverterOptions
+} from './jit';
 import { jsonTypeGuards } from './json-typeguards';
 import { ClassSchema, getClassSchema, getClassTypeFromInstance, PropertySchema } from './model';
 import { Serializer } from './serializer';

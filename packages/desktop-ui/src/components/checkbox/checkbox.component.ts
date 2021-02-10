@@ -14,9 +14,10 @@ import {
     Component,
     HostBinding,
     HostListener,
-    Injector, SkipSelf
-} from "@angular/core";
-import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
+    Injector,
+    SkipSelf
+} from '@angular/core';
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 
 @Component({
     selector: 'dui-checkbox',

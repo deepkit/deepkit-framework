@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { v4, stringify } from 'uuid';
+import { stringify, v4 } from 'uuid';
 import { ClassType } from '@deepkit/core';
 import { ClassSchema } from './model';
 import { ExtractPrimaryKeyOrReferenceType, TypedArrays } from './types';

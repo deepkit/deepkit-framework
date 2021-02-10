@@ -13,7 +13,8 @@ import {
     ChangeDetectorRef,
     Component,
     ContentChild,
-    ContentChildren, Directive,
+    ContentChildren,
+    Directive,
     ElementRef,
     HostBinding,
     HostListener,
@@ -23,14 +24,15 @@ import {
     OnDestroy,
     QueryList,
     SimpleChanges,
-    SkipSelf, TemplateRef,
+    SkipSelf,
+    TemplateRef,
     ViewChild
-} from "@angular/core";
-import { Subscription } from "rxjs";
-import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
-import { Overlay } from "@angular/cdk/overlay";
-import { DropdownComponent } from "../button/dropdown.component";
-import { ButtonComponent } from "../button/button.component";
+} from '@angular/core';
+import { Subscription } from 'rxjs';
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { Overlay } from '@angular/cdk/overlay';
+import { DropdownComponent } from '../button/dropdown.component';
+import { ButtonComponent } from '../button/button.component';
 
 /**
  * Necessary directive to get a dynamic rendered option.
@@ -105,7 +107,6 @@ class NotSelected { }
 
         <dui-dropdown #dropdown [host]="element.nativeElement">
             <ng-container *ngIf="options">
-
                 <ng-container *ngFor="let option of options.toArray()">
                     <dui-dropdown-separator *ngIf="isSeparator(option)"></dui-dropdown-separator>
                     <dui-dropdown-item

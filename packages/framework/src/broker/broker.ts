@@ -8,13 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BrokerChannel, BrokerClient, BrokerKernel } from "@deepkit/broker";
-import { ClassType } from "@deepkit/core";
-import { IdInterface, RpcDirectClientAdapter } from "@deepkit/rpc";
-import { ClassSchema, FieldDecoratorResult, getClassSchema, t } from "@deepkit/type";
-import { inject, injectable } from "../injector/injector";
-import { brokerConfig } from "./broker.config";
-import {TcpRpcClientAdapter, TcpRpcServer, NetTcpRpcServer, NetTcpRpcClientAdapter} from "@deepkit/rpc-tcp";
+import { BrokerChannel, BrokerClient, BrokerKernel } from '@deepkit/broker';
+import { ClassType } from '@deepkit/core';
+import { IdInterface, RpcDirectClientAdapter } from '@deepkit/rpc';
+import { ClassSchema, FieldDecoratorResult, getClassSchema, t } from '@deepkit/type';
+import { inject, injectable } from '../injector/injector';
+import { brokerConfig } from './broker.config';
+import { NetTcpRpcClientAdapter, NetTcpRpcServer, TcpRpcClientAdapter, TcpRpcServer } from '@deepkit/rpc-tcp';
 
 
 export enum EntityChannelMessageType {

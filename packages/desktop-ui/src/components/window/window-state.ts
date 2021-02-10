@@ -8,14 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ChangeDetectorRef, Injectable, TemplateRef, ViewContainerRef } from "@angular/core";
-import { ButtonGroupComponent } from "../button/button.component";
-import { WindowHeaderComponent, WindowToolbarContainerComponent } from "./window-header.component";
-import { arrayRemoveItem } from "@deepkit/core";
-import { WindowComponent } from "./window.component";
-import { WindowMenuState } from "./window-menu";
-import { BehaviorSubject } from "rxjs";
-import { detectChangesNextFrame } from "../app/utils";
+import { ChangeDetectorRef, Injectable, TemplateRef, ViewContainerRef } from '@angular/core';
+import { ButtonGroupComponent } from '../button/button.component';
+import { WindowHeaderComponent, WindowToolbarContainerComponent } from './window-header.component';
+import { arrayRemoveItem } from '@deepkit/core';
+import { WindowComponent } from './window.component';
+import { WindowMenuState } from './window-menu';
+import { BehaviorSubject } from 'rxjs';
+import { detectChangesNextFrame } from '../app/utils';
 
 @Injectable()
 export class WindowRegistry {

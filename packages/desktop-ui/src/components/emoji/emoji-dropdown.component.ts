@@ -9,19 +9,26 @@
  */
 
 import {
-    AfterViewInit, ChangeDetectorRef,
-    Component, ComponentFactoryResolver, ComponentRef,
+    AfterViewInit,
+    ChangeDetectorRef,
+    Component,
+    ComponentFactoryResolver,
+    ComponentRef,
     Directive,
     ElementRef,
     EventEmitter,
-    HostListener, Input, OnChanges, OnDestroy,
-    Output, SimpleChanges,
+    HostListener,
+    Input,
+    OnChanges,
+    OnDestroy,
+    Output,
+    SimpleChanges,
     ViewChild,
     ViewContainerRef
-} from "@angular/core";
+} from '@angular/core';
 import * as emojis from './emojis';
 import { EmojiCategory } from './emojis';
-import { DropdownComponent } from "../button";
+import { DropdownComponent } from '../button';
 
 @Component({
     selector: 'dui-emoji-dropdown',

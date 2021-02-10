@@ -8,11 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Entity } from "./type";
-import { ClassType } from "@deepkit/core";
-import { ClassSchema, ItemChanges, PrimaryKeyFields } from "@deepkit/type";
-import { Query } from "./query";
-import { DatabaseSession } from "./database-session";
+import { Entity } from './type';
+import { ClassType } from '@deepkit/core';
+import { ClassSchema, ItemChanges, PrimaryKeyFields } from '@deepkit/type';
+import { Query } from './query';
+import { DatabaseSession } from './database-session';
 
 export abstract class DatabaseAdapterQueryFactory {
     abstract createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): Query<T>;

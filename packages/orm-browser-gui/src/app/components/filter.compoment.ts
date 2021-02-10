@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
-import { ClassSchema, PropertySchema, Types } from '@deepkit/type';
+import { ClassSchema, PropertySchema } from '@deepkit/type';
 import { trackByIndex } from '../utils';
 import { arrayRemoveItem } from '@deepkit/core';
 import { FilterItem } from '../browser-state';
@@ -82,11 +82,12 @@ export class FilterItemComponent implements OnChanges, OnInit {
         }
 
         this.model.comparator = this.comparator;
+        this.model.value = this.value;
+
         if (this.model.comparator === '$regex') {
             this.model.value = new RegExp(this.model.value);
         }
 
-        this.model.value = this.value;
         this.modelChange.emit(this.model);
 
         this.loadProperty();

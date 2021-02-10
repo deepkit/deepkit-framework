@@ -12,11 +12,17 @@ import { arrayRemoveItem, ClassType, getClassName, isClass } from '@deepkit/core
 import { httpClass } from './decorator';
 import { EventDispatcher } from './event';
 import { Module, ModuleOptions } from './module';
-import { ConfiguredProviderRegistry, Injector, tokenLabel } from './injector/injector';
+import {
+    ConfiguredProviderRegistry,
+    Context,
+    ContextRegistry,
+    Injector,
+    InjectorContext,
+    tokenLabel
+} from './injector/injector';
 import { ProviderWithScope, Tag } from './injector/provider';
 import { rpcClass } from '@deepkit/rpc';
 import { cli } from './command';
-import { InjectorContext, Context, ContextRegistry } from './injector/injector';
 import { WorkflowDefinition } from './workflow';
 
 export interface OnInit {

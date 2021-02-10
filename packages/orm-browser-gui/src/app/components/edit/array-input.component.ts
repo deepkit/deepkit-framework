@@ -46,10 +46,12 @@ export class ArrayInputComponent implements OnInit, OnChanges {
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
 
     ngOnChanges(): void {
+        if (!isArray(this.model)) this.model = [];
         this.subType = this.property.getSubType();
     }
 
     ngOnInit(): void {
+        if (!isArray(this.model)) this.model = [];
         this.subType = this.property.getSubType();
     }
 
@@ -62,7 +64,7 @@ export class ArrayInputComponent implements OnInit, OnChanges {
 
     add() {
         if (!this.subType) return;
-        if (!this.model) this.model = [];
+        if (!isArray(this.model)) this.model = [];
         this.model.push(jsonSerializer.deserializeProperty(this.subType, undefined));
         this.modelChange.emit(this.model);
     }

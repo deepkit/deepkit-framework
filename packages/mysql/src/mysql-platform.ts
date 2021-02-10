@@ -11,7 +11,7 @@
 import { Pool } from 'mariadb';
 import { mySqlSerializer } from './mysql-serializer';
 import { MySQLOptions, PropertySchema } from '@deepkit/type';
-import { DefaultPlatform, Column, parseType } from '@deepkit/sql';
+import { Column, DefaultPlatform, parseType } from '@deepkit/sql';
 import { MysqlSchemaParser } from './mysql-schema-parser';
 
 export class MySQLPlatform extends DefaultPlatform {

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AfterViewInit, Component, ElementRef, EventEmitter, Input, NgZone, Output } from "@angular/core";
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, NgZone, Output } from '@angular/core';
 import Hammer from 'hammerjs';
 
 @Component({

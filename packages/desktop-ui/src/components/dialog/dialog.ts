@@ -22,12 +22,12 @@ import {
     OnDestroy,
     Type,
     ViewContainerRef
-} from "@angular/core";
-import { DialogComponent } from "./dialog.component";
-import { isTargetChildOf } from "../../core/utils";
-import { DuiDialogProgress, ProgressDialogState } from "./progress-dialog.component";
-import { DOCUMENT } from "@angular/common";
-import { WindowRegistry } from "../window/window-state";
+} from '@angular/core';
+import { DialogComponent } from './dialog.component';
+import { isTargetChildOf } from '../../core/utils';
+import { DuiDialogProgress, ProgressDialogState } from './progress-dialog.component';
+import { DOCUMENT } from '@angular/common';
+import { WindowRegistry } from '../window/window-state';
 
 
 @Component({

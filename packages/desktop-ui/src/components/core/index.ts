@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { NgModule } from "@angular/core";
-import { RenderComponentDirective } from "./render-component.directive";
+import { NgModule } from '@angular/core';
+import { RenderComponentDirective } from './render-component.directive';
 
 export * from './render-component.directive'
 

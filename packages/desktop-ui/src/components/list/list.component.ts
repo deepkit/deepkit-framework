@@ -11,10 +11,8 @@
 import {
     ChangeDetectorRef,
     Component,
-    ContentChildren,
     ElementRef,
     EventEmitter,
-    forwardRef,
     HostBinding,
     HostListener,
     Injectable,
@@ -24,13 +22,12 @@ import {
     OnDestroy,
     Optional,
     Output,
-    QueryList,
     SimpleChanges,
     SkipSelf
 } from '@angular/core';
 import { NavigationEnd, Router, UrlTree } from '@angular/router';
-import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
-import { Subscription } from "rxjs";
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { Subscription } from 'rxjs';
 import { arrayRemoveItem } from '@deepkit/core';
 
 @Component({

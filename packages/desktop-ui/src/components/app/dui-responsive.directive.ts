@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Directive, ElementRef, HostListener, Input, OnInit } from "@angular/core";
+import { Directive, ElementRef, HostListener, Input, OnInit } from '@angular/core';
 
 @Directive({
     selector: '[duiClassMin]',

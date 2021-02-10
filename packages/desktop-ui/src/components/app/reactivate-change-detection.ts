@@ -8,9 +8,17 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AfterViewInit, ApplicationRef, NgModule, OnDestroy, Type, ɵComponentDef as ComponentDef, ɵNG_COMP_DEF as NG_COMP_DEF } from "@angular/core";
-import { getClassName, throttleTime } from "@deepkit/core";
-import { Subscription } from "rxjs";
+import {
+    AfterViewInit,
+    ApplicationRef,
+    NgModule,
+    OnDestroy,
+    Type,
+    ɵComponentDef as ComponentDef,
+    ɵNG_COMP_DEF as NG_COMP_DEF
+} from '@angular/core';
+import { getClassName, throttleTime } from '@deepkit/core';
+import { Subscription } from 'rxjs';
 
 export function observeAction() {
     return function (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<any>): TypedPropertyDescriptor<any> | void {

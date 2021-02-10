@@ -8,14 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Host } from "./host";
-import { ConnectionOptions } from "./options";
-import { parse as parseUrl } from "url";
-import { ClassSchema, getClassSchema, jsonSerializer } from "@deepkit/type";
-import { parse as parseQueryString } from "querystring";
-import { MongoError } from "./error";
-import { arrayRemoveItem, ClassType, eachPair, singleStack } from "@deepkit/core";
-import { resolveSrvHosts } from "./dns";
+import { Host } from './host';
+import { ConnectionOptions } from './options';
+import { parse as parseUrl } from 'url';
+import { ClassSchema, getClassSchema, jsonSerializer } from '@deepkit/type';
+import { parse as parseQueryString } from 'querystring';
+import { MongoError } from './error';
+import { arrayRemoveItem, ClassType, eachPair, singleStack } from '@deepkit/core';
+import { resolveSrvHosts } from './dns';
 
 /**
  * Default URL:

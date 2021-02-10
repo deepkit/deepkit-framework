@@ -9,7 +9,15 @@
  */
 
 import { ClassType, isPlainObject } from '@deepkit/core';
-import { ClassSchema, getClassSchema, getGlobalStore, PropertySchema, PropertyValidator, UnpopulatedCheck, unpopulatedSymbol } from './model';
+import {
+    ClassSchema,
+    getClassSchema,
+    getGlobalStore,
+    PropertySchema,
+    PropertyValidator,
+    UnpopulatedCheck,
+    unpopulatedSymbol
+} from './model';
 import { executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry } from './jit-validation-registry';
 import { reserveVariable } from './serializer-compiler';
 import { JitStack, resolvePropertySchema } from './jit';

@@ -10,7 +10,13 @@
 
 import { SQLQueryModel } from './sql-adapter';
 import { DefaultPlatform } from './platform/default-platform';
-import { ClassSchema, getClassSchema, getPrimaryKeyHashGenerator, PropertySchema, resolveClassTypeOrForward } from '@deepkit/type';
+import {
+    ClassSchema,
+    getClassSchema,
+    getPrimaryKeyHashGenerator,
+    PropertySchema,
+    resolveClassTypeOrForward
+} from '@deepkit/type';
 import { DatabaseJoinModel, DatabaseQueryModel } from '@deepkit/orm';
 import { getSqlFilter } from './filter';
 

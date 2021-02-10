@@ -8,7 +8,16 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { createReferenceClass, ClassSchema, getGlobalStore, getPrimaryKeyHashGenerator, PropertySchema, Serializer, UnpopulatedCheck, unpopulatedSymbol } from '@deepkit/type';
+import {
+    ClassSchema,
+    createReferenceClass,
+    getGlobalStore,
+    getPrimaryKeyHashGenerator,
+    PropertySchema,
+    Serializer,
+    UnpopulatedCheck,
+    unpopulatedSymbol
+} from '@deepkit/type';
 import { DatabaseQueryModel } from './query';
 import { capitalize, ClassType } from '@deepkit/core';
 import { getInstanceState, IdentityMap, PKHash } from './identity-map';

@@ -8,7 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Changes, ClassSchema, getClassSchema, getClassTypeFromInstance, getConverterForSnapshot, getChangeDetector } from '@deepkit/type';
+import {
+    Changes,
+    ClassSchema,
+    getChangeDetector,
+    getClassSchema,
+    getClassTypeFromInstance,
+    getConverterForSnapshot
+} from '@deepkit/type';
 import { Entity } from './type';
 import sift from 'sift';
 import { FilterQuery } from './query';

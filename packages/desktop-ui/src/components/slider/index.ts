@@ -8,12 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { NgModule } from "@angular/core";
-import { FormsModule } from "@angular/forms";
-import { CommonModule } from "@angular/common";
-import { DuiIconModule } from "../icon";
-import { DuiButtonModule } from "../button";
-import { SliderComponent } from "./slider.component";
+import { NgModule } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { DuiIconModule } from '../icon';
+import { DuiButtonModule } from '../button';
+import { SliderComponent } from './slider.component';
 
 export * from './slider.component';
 

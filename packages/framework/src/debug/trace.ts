@@ -1,5 +1,3 @@
-
-
 /*
  * Deepkit Framework
  * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt

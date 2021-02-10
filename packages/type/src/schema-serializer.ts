@@ -1,7 +1,7 @@
-import { ClassType } from "@deepkit/core";
-import { t } from "./decorators";
-import { ClassSchema, createClassSchema, getGlobalStore, PropertySchema, PropertySchemaSerialized } from "./model";
-import { propertyDefinition } from "./model-schema";
+import { ClassType } from '@deepkit/core';
+import { t } from './decorators';
+import { ClassSchema, createClassSchema, getGlobalStore, PropertySchema, PropertySchemaSerialized } from './model';
+import { propertyDefinition } from './model-schema';
 
 
 export interface SerializedSchema {

@@ -8,8 +8,16 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {ApplicationRef, ChangeDetectorRef, Directive, ElementRef, HostListener, Input, OnChanges} from '@angular/core';
-import {Electron} from '../../core/utils';
+import {
+    ApplicationRef,
+    ChangeDetectorRef,
+    Directive,
+    ElementRef,
+    HostListener,
+    Input,
+    OnChanges
+} from '@angular/core';
+import { Electron } from '../../core/utils';
 
 
 @Directive({

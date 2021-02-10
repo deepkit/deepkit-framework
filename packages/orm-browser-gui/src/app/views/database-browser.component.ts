@@ -19,11 +19,7 @@ import {
     validate
 } from '@deepkit/type';
 import { Subscription } from 'rxjs';
-import {
-    BrowserEntityState,
-    BrowserState,
-    ValidationErrors,
-} from '../browser-state';
+import { BrowserEntityState, BrowserState, ValidationErrors, } from '../browser-state';
 import { DatabaseInfo } from '@deepkit/orm-browser-api';
 import { getInstanceState } from '@deepkit/orm';
 import { ControllerClient } from '../client';
@@ -168,8 +164,10 @@ import { trackByIndex } from '../utils';
                     </dui-table>
                 </ng-container>
                 <div class="error" *ngIf="error">
-                    <h3>An error occured</h3>
-                    <div class="text">{{error}}</div>
+                    <div class="box">
+                        <h3>An error occurred</h3>
+                        <div class="error-message">{{error}}</div>
+                    </div>
                 </div>
             </div>
         </ng-container>

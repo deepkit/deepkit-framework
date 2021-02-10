@@ -164,20 +164,27 @@ export function focusWatcher(target: HTMLElement, allowedFocuses: HTMLElement[] 
 
         function onFocusOut() {
             currentlyFocused = null;
-            requestAnimationFrame(check);
+            check();
         }
 
         function onFocusIn(event: FocusEvent) {
             currentlyFocused = event.target as any;
-            requestAnimationFrame(check);
+            check();
         }
 
-        target.ownerDocument!.addEventListener('focusin', onFocusIn as any);
-        target.ownerDocument!.addEventListener('focusout', onFocusOut as any);
+        function onMouseDown(event: FocusEvent) {
+            currentlyFocused = event.target as any;
+            check();
+        }
+
+        target.ownerDocument!.addEventListener('mousedown', onMouseDown, true);
+        target.ownerDocument!.addEventListener('focusin', onFocusIn);
+        target.ownerDocument!.addEventListener('focusout', onFocusOut);
 
         function unsubscribe(): void {
-            target.ownerDocument!.removeEventListener('focusin', onFocusIn as any);
-            target.ownerDocument!.removeEventListener('focusout', onFocusOut as any);
+            target.ownerDocument!.removeEventListener('mousedown', onMouseDown);
+            target.ownerDocument!.removeEventListener('focusin', onFocusIn);
+            target.ownerDocument!.removeEventListener('focusout', onFocusOut);
         }
 
         return { unsubscribe: unsubscribe };

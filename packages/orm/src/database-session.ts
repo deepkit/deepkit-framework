@@ -11,13 +11,32 @@
 import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
 import { DatabaseValidationError, Entity } from './type';
 import { ClassType, CustomError, isArray } from '@deepkit/core';
-import { isReference, ClassSchema, getChangeDetector, getClassSchema, getClassTypeFromInstance, getConverterForSnapshot, getGlobalStore, getPrimaryKeyExtractor, GlobalStore, PrimaryKeyFields, UnpopulatedCheck, validate } from '@deepkit/type';
+import {
+    ClassSchema,
+    getChangeDetector,
+    getClassSchema,
+    getClassTypeFromInstance,
+    getConverterForSnapshot,
+    getGlobalStore,
+    getPrimaryKeyExtractor,
+    GlobalStore,
+    isReference,
+    PrimaryKeyFields,
+    UnpopulatedCheck,
+    validate
+} from '@deepkit/type';
 import { GroupArraySort } from '@deepkit/topsort';
 import { getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map';
 import { getClassSchemaInstancePairs } from './utils';
 import { HydratorFn, markAsHydrated } from './formatter';
 import { getReference } from './reference';
-import { QueryDatabaseEmitter, UnitOfWorkCommitEvent, UnitOfWorkDatabaseEmitter, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event';
+import {
+    QueryDatabaseEmitter,
+    UnitOfWorkCommitEvent,
+    UnitOfWorkDatabaseEmitter,
+    UnitOfWorkEvent,
+    UnitOfWorkUpdateEvent
+} from './event';
 import { DatabaseLogger } from './logger';
 
 let SESSION_IDS = 0;

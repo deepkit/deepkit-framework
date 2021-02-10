@@ -9,19 +9,22 @@
  */
 
 import {
-    AfterViewInit, ChangeDetectorRef,
+    AfterViewInit,
+    ChangeDetectorRef,
     Component,
     ContentChild,
-    ElementRef, EventEmitter,
+    ElementRef,
+    EventEmitter,
     Input,
-    OnChanges, Output,
+    OnChanges,
+    Output,
     SimpleChanges,
     ViewChild
-} from "@angular/core";
-import { WindowSidebarComponent } from "./window-sidebar.component";
-import { Subject } from "rxjs";
-import { WindowState } from "./window-state";
-import { triggerResize } from "../../core/utils";
+} from '@angular/core';
+import { WindowSidebarComponent } from './window-sidebar.component';
+import { Subject } from 'rxjs';
+import { WindowState } from './window-state';
+import { triggerResize } from '../../core/utils';
 
 @Component({
     selector: 'dui-window-content',

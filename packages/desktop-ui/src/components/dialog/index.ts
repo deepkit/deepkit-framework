@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { NgModule } from "@angular/core";
-import { DuiWindowModule } from "../window";
+import { NgModule } from '@angular/core';
+import { DuiWindowModule } from '../window';
 import {
     CloseDialogDirective,
     DialogActionsComponent,
@@ -17,15 +17,15 @@ import {
     DialogDirective,
     DialogErrorComponent,
     DialogWrapperComponent,
-} from "./dialog.component";
-import { OverlayModule } from "@angular/cdk/overlay";
-import { CommonModule } from "@angular/common";
-import { DuiDialog, DuiDialogAlert, DuiDialogConfirm, DuiDialogConfirmDirective, DuiDialogPrompt } from "./dialog";
-import { DuiButtonModule } from "../button";
-import { DuiCoreModule } from "../core";
-import { DuiInputModule } from "../input";
-import { FormsModule } from "@angular/forms";
-import { DuiDialogProgress } from "./progress-dialog.component";
+} from './dialog.component';
+import { OverlayModule } from '@angular/cdk/overlay';
+import { CommonModule } from '@angular/common';
+import { DuiDialog, DuiDialogAlert, DuiDialogConfirm, DuiDialogConfirmDirective, DuiDialogPrompt } from './dialog';
+import { DuiButtonModule } from '../button';
+import { DuiCoreModule } from '../core';
+import { DuiInputModule } from '../input';
+import { FormsModule } from '@angular/forms';
+import { DuiDialogProgress } from './progress-dialog.component';
 
 export * from "./dialog.component";
 export * from "./dialog";

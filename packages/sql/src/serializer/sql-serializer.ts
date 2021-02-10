@@ -16,7 +16,8 @@ import {
     jsonSerializer,
     nodeBufferToArrayBuffer,
     nodeBufferToTypedArray,
-    PropertySchema, Serializer,
+    PropertySchema,
+    Serializer,
     typedArrayNamesMap,
     typedArrayToBuffer
 } from '@deepkit/type';

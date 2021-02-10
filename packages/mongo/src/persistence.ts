@@ -8,7 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabasePersistence, DatabasePersistenceChangeSet, DatabaseSession, Entity, getInstanceState } from '@deepkit/orm';
+import {
+    DatabasePersistence,
+    DatabasePersistenceChangeSet,
+    DatabaseSession,
+    Entity,
+    getInstanceState
+} from '@deepkit/orm';
 import { ClassSchema } from '@deepkit/type';
 import { convertClassQueryToMongo } from './mapping';
 import { FilterQuery } from './query.model';

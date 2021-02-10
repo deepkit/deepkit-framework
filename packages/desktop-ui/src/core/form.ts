@@ -21,10 +21,10 @@ import {
     Output,
     SkipSelf,
     Type
-} from "@angular/core";
-import { ControlValueAccessor, NgControl, NG_VALUE_ACCESSOR } from "@angular/forms";
-import { detectChangesNextFrame } from "../components/app/utils";
-import { FormComponent } from "../components/form/form.component";
+} from '@angular/core';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR, NgControl } from '@angular/forms';
+import { detectChangesNextFrame } from '../components/app/utils';
+import { FormComponent } from '../components/form/form.component';
 
 export function ngValueAccessor<T>(clazz: Type<T>) {
     return {

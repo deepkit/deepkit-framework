@@ -8,11 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { MenuDirective } from "../app/menu.component";
-import { arrayRemoveItem } from "@deepkit/core";
-import { Subscription } from "rxjs";
-import { Injectable } from "@angular/core";
-import { Electron } from "../../core/utils";
+import { MenuDirective } from '../app/menu.component';
+import { arrayRemoveItem } from '@deepkit/core';
+import { Subscription } from 'rxjs';
+import { Injectable } from '@angular/core';
+import { Electron } from '../../core/utils';
 
 @Injectable()
 export class WindowMenuState {

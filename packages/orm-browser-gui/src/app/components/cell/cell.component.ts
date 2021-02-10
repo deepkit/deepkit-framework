@@ -2,15 +2,13 @@ import {
     Component,
     ComponentFactoryResolver,
     ComponentRef,
-    EventEmitter,
     Input,
     OnChanges,
     OnDestroy,
-    Output,
     ViewContainerRef
 } from '@angular/core';
-import {PropertySchema} from '@deepkit/type';
-import {Registry} from 'src/app/registry';
+import { PropertySchema } from '@deepkit/type';
+import { Registry } from 'src/app/registry';
 
 @Component({
     selector: 'cell',

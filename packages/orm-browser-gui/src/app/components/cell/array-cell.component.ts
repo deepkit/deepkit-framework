@@ -1,15 +1,14 @@
 import {
-    ChangeDetectorRef,
     Component,
-    ComponentFactoryResolver, ComponentRef,
+    ComponentFactoryResolver,
+    ComponentRef,
     Input,
     OnChanges,
     OnInit,
     ViewContainerRef
 } from '@angular/core';
-import { ClassSchema, PropertySchema } from '@deepkit/type';
+import { PropertySchema } from '@deepkit/type';
 import { isArray } from '../../../../../core';
-import { BrowserState } from '../../browser-state';
 import { Registry } from '../../registry';
 
 @Component({

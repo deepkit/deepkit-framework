@@ -9,7 +9,14 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { ClassSchema, createReferenceClass, getGlobalStore, getPrimaryKeyHashGenerator, jsonSerializer, UnpopulatedCheck } from '@deepkit/type';
+import {
+    ClassSchema,
+    createReferenceClass,
+    getGlobalStore,
+    getPrimaryKeyHashGenerator,
+    jsonSerializer,
+    UnpopulatedCheck
+} from '@deepkit/type';
 import { IdentityMap } from './identity-map';
 
 export function getReference<T>(

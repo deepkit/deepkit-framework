@@ -7,7 +7,8 @@ import {
     OnChanges,
     OnDestroy,
     Optional,
-    Output, SimpleChanges,
+    Output,
+    SimpleChanges,
     ViewContainerRef
 } from '@angular/core';
 import { TableComponent, unsubscribe } from '@deepkit/desktop-ui';

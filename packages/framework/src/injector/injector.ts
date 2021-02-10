@@ -8,12 +8,28 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, ExtractClassDefinition, FieldDecoratorWrapper, getClassSchema, jsonSerializer, PlainSchemaProps, PropertySchema, t } from '@deepkit/type';
-import { getProviders, Provider, ProviderWithScope } from './provider';
+import {
+    ClassSchema,
+    ExtractClassDefinition,
+    FieldDecoratorWrapper,
+    getClassSchema,
+    jsonSerializer,
+    PlainSchemaProps,
+    PropertySchema,
+    t
+} from '@deepkit/type';
+import {
+    getProviders,
+    isClassProvider,
+    isExistingProvider,
+    isFactoryProvider,
+    isValueProvider,
+    Provider,
+    ProviderWithScope
+} from './provider';
 import { ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction } from '@deepkit/core';
 import { Module, ModuleOptions } from '../module';
 import { inspect } from 'util';
-import { isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider } from './provider';
 
 
 export class ConfigToken<T extends {}> {

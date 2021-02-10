@@ -19,9 +19,9 @@ import {
     SkipSelf,
     TemplateRef,
     ViewChild
-} from "@angular/core";
-import { WindowState } from "./window-state";
-import { Electron } from "../../core/utils";
+} from '@angular/core';
+import { WindowState } from './window-state';
+import { Electron } from '../../core/utils';
 
 @Component({
     selector: 'dui-window-header',

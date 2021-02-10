@@ -1,6 +1,5 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
 import { PropertySchema } from '@deepkit/type';
-import { fromBuffer } from 'file-type/browser';
 import { FilePickerItem } from '@deepkit/desktop-ui';
 import { isArray } from '@deepkit/core';
 

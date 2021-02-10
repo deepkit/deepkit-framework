@@ -37,12 +37,18 @@ dui-table {
     bottom: 0;
     background-color: var(--dui-window-content-bg-trans);
     display: flex;
-    flex-direction: column;
     justify-content: center;
-    align-items: center;
+    text-align: center;
+    padding-top: 30px;
     overflow: auto;
+    z-index: 100;
 
-    .text {
+    .box {
+        margin: auto;
+        text-align: left;
+    }
+
+    .error-message {
         margin-top: 30px;
         color: var(--color-red);
         white-space: pre;

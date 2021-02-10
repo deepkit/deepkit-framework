@@ -12,14 +12,16 @@ import {
     ChangeDetectorRef,
     Component,
     ContentChild,
-    EventEmitter, HostListener,
+    EventEmitter,
+    HostListener,
     Input,
     OnChanges,
-    Output, SimpleChanges,
+    Output,
+    SimpleChanges,
     SkipSelf
 } from '@angular/core';
-import {FormGroup, NgControl} from '@angular/forms';
-import {detectChangesNextFrame} from '../app';
+import { FormGroup, NgControl } from '@angular/forms';
+import { detectChangesNextFrame } from '../app';
 
 @Component({
     selector: 'dui-form-row',

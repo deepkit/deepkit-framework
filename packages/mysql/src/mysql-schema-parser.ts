@@ -8,13 +8,17 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseModel, ForeignKey, Index, Table } from '@deepkit/sql';
-import { parseType, SchemaParser } from '@deepkit/sql';
+import { DatabaseModel, ForeignKey, Index, parseType, SchemaParser, Table } from '@deepkit/sql';
 
 export class MysqlSchemaParser extends SchemaParser {
-    public defaultSchema = 'default';
+    public defaultSchema = '';
 
     async parse(database: DatabaseModel, limitTableNames?: string[]) {
+        if (!database.schemaName) {
+            const row = await this.connection.execAndReturnSingle('SELECT DATABASE() as db');
+            this.defaultSchema = row['db'];
+        }
+
         await this.parseTables(database, limitTableNames);
 
         for (const table of database.tables) {

@@ -9,14 +9,12 @@ import {
     OnDestroy,
     Optional,
     Output,
-    SkipSelf,
-    ViewChild
+    SkipSelf
 } from '@angular/core';
 import { arrayRemoveItem } from '@deepkit/core';
 import { DuiDialog, ReactiveChangeDetectionModule } from '@deepkit/desktop-ui';
-import { ClassSchema, getForeignKeyHash, jsonSerializer, PropertySchema } from '@deepkit/type';
+import { ClassSchema, getPrimaryKeyHashGenerator, jsonSerializer, PropertySchema } from '@deepkit/type';
 import { BrowserState } from 'src/app/browser-state';
-import { getPrimaryKeyHashGenerator } from '@deepkit/type';
 
 @Component({
     template: `

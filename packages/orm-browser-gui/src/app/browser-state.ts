@@ -6,7 +6,6 @@ import {
     Changes,
     changeSetSymbol,
     ClassSchema,
-    classToPlain,
     getChangeDetector,
     getConverterForSnapshot,
     PropertySchema,

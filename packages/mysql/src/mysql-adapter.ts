@@ -10,6 +10,8 @@
 
 import { createPool, Pool, PoolConfig, PoolConnection, UpsertResult } from 'mariadb';
 import {
+    DefaultPlatform,
+    SqlBuilder,
     SQLConnection,
     SQLConnectionPool,
     SQLDatabaseAdapter,
@@ -18,9 +20,7 @@ import {
     SQLPersistence,
     SQLQueryModel,
     SQLQueryResolver,
-    SQLStatement,
-    DefaultPlatform,
-    SqlBuilder
+    SQLStatement
 } from '@deepkit/sql';
 import { DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
 import { MySQLPlatform } from './mysql-platform';

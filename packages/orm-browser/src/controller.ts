@@ -3,7 +3,7 @@ import { Database, DatabaseAdapter } from '@deepkit/orm';
 import { BrowserControllerInterface, DatabaseCommit, DatabaseInfo } from '@deepkit/orm-browser-api';
 import { rpc } from '@deepkit/rpc';
 import { ClassSchema, plainToClass, serializeSchemas, t } from '@deepkit/type';
-import { inspect } from 'util';
+// import { inspect } from 'util';
 import { SQLDatabaseAdapter } from '@deepkit/sql';
 
 export class BrowserController implements BrowserControllerInterface {
@@ -120,7 +120,7 @@ export class BrowserController implements BrowserControllerInterface {
     @rpc.action()
     @t.any
     async commit(@t.any commit: DatabaseCommit) {
-        console.log(inspect(commit, false, 2133));
+        // console.log(inspect(commit, false, 2133));
 
         function isNewIdWrapper(value: any): value is { $___newId: number } {
             return isObject(value) && '$___newId' in value;
@@ -206,7 +206,6 @@ export class BrowserController implements BrowserControllerInterface {
                                 $set[reference.name] = db.getReference(reference.getResolvedClassSchema(), $set[reference.name]);
                             }
                         }
-                        console.log('change', change);
                         updates.push(query.filter(db.getReference(entity, change.pk)).patchOne(change.changes));
                     }
                 }

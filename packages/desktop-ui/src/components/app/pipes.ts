@@ -8,11 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ChangeDetectorRef, OnDestroy, Pipe, PipeTransform } from "@angular/core";
-import { Observable, Subscription } from "rxjs";
-import { detectChangesNextFrame } from "./utils";
+import { ChangeDetectorRef, OnDestroy, Pipe, PipeTransform } from '@angular/core';
+import { Observable, Subscription } from 'rxjs';
+import { detectChangesNextFrame } from './utils';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
-import { humanBytes } from "@deepkit/core";
+import { humanBytes } from '@deepkit/core';
 
 /**
  * Almost the same as |async pipe, but renders directly (detectChanges() instead of marking it only(markForCheck())

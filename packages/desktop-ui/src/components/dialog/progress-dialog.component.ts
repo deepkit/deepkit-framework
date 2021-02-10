@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BehaviorSubject } from "rxjs";
-import { Component, Input, OnInit } from "@angular/core";
-import { DialogComponent } from "./dialog.component";
+import { BehaviorSubject } from 'rxjs';
+import { Component, Input, OnInit } from '@angular/core';
+import { DialogComponent } from './dialog.component';
 
 class State {
     title: string = '';

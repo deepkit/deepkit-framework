@@ -12,8 +12,8 @@ import { PropertyValidatorError } from './jit-validation';
 import {
     ClassType,
     eachPair,
-    getClassName,
     extractParameters,
+    getClassName,
     isFunction,
     isNumber,
     isPlainObject,

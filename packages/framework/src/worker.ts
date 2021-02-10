@@ -8,7 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection } from '@deepkit/rpc';
+import {
+    ConnectionWriter,
+    RpcConnectionWriter,
+    RpcKernel,
+    RpcKernelBaseConnection,
+    RpcKernelConnection
+} from '@deepkit/rpc';
 import http, { Server } from 'http';
 import https from 'https';
 import WebSocket from 'ws';

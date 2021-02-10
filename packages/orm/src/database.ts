@@ -9,7 +9,6 @@
  */
 
 import { ClassType, CustomError, getClassName } from '@deepkit/core';
-import { ConsoleTransport, Logger, LoggerInterface } from '@deepkit/logger';
 import { ClassSchema, getClassSchema, PrimaryKeyFields } from '@deepkit/type';
 import { DatabaseAdapter } from './database-adapter';
 import { DatabaseSession } from './database-session';

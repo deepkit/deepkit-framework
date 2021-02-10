@@ -1,4 +1,4 @@
-import { ConsoleTransport, Logger, LoggerInterface, TimestampFormatter } from "@deepkit/logger";
+import { ConsoleTransport, Logger, LoggerInterface, TimestampFormatter } from '@deepkit/logger';
 
 export class DatabaseLogger {
     protected logger?: LoggerInterface;

@@ -1,6 +1,5 @@
 import { ChangeDetectorRef, Component, Input, OnChanges, OnInit } from '@angular/core';
-import { isArray } from '@deepkit/core';
-import { ClassSchema, PropertySchema } from '@deepkit/type';
+import { PropertySchema } from '@deepkit/type';
 import { BrowserState } from 'src/app/browser-state';
 
 @Component({

@@ -10,24 +10,23 @@
 
 import {
     arrayRemoveItem,
+    capitalize,
     ClassType,
     eachKey,
     eachPair,
     ExtractClassType,
     extractMethodBody,
-    getClassName,
     extractParameters,
+    getClassName,
     isClass,
     isConstructable,
     isFunction,
     isObject,
     isPlainObject,
-    toFastProperties,
-    capitalize
+    toFastProperties
 } from '@deepkit/core';
 import { ExtractClassDefinition, PlainSchemaProps, t } from './decorators';
 import { FieldDecoratorResult } from './field-decorator';
-import { propertyDefinition } from './model-schema';
 import { typedArrayMap, typedArrayNamesMap, Types } from './types';
 import { isArray } from './utils';
 

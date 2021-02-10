@@ -11,7 +11,7 @@
 import { isValidEnumValue } from '@deepkit/core';
 import { PropertySchema } from './model';
 import { typedArrayNamesMap } from './types';
-import { UnionGuardsTypes } from "./union";
+import { UnionGuardsTypes } from './union';
 
 export type JSONTypeGuard = (v: any) => boolean;
 export type JSONTypeGuardFactory = (property: PropertySchema) => JSONTypeGuard;

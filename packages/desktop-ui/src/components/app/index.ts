@@ -11,14 +11,14 @@
 import {
     ApplicationRef,
     Component,
+    Directive,
     HostBinding,
     Inject,
     Injectable,
     Input,
     ModuleWithProviders,
     NgModule,
-    Optional,
-    Directive
+    Optional
 } from '@angular/core';
 import {
     MenuCheckboxDirective,

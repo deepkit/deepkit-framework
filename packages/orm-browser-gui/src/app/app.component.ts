@@ -9,10 +9,8 @@
  */
 
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { DatabaseInfo } from '@deepkit/orm-browser-api';
 import { ControllerClient } from './client';
 import { BrowserState } from './browser-state';
-import { ClassSchema } from '@deepkit/type';
 
 @Component({
   selector: 'app-root',

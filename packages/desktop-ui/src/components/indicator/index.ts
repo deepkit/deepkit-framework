@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { NgModule } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { IndicatorComponent } from "./indicator.component";
+import { NgModule } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { IndicatorComponent } from './indicator.component';
 
 export * from './indicator.component';
 

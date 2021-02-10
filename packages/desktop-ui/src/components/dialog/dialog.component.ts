@@ -29,13 +29,13 @@ import {
     Type,
     ViewChild,
     ViewContainerRef
-} from "@angular/core";
-import { Overlay, OverlayRef } from "@angular/cdk/overlay";
-import { ComponentPortal } from "@angular/cdk/portal";
-import { WindowRegistry } from "../window/window-state";
-import { WindowComponent } from "../window/window.component";
-import { RenderComponentDirective } from "../core/render-component.directive";
-import { IN_DIALOG } from "../app/token";
+} from '@angular/core';
+import { Overlay, OverlayRef } from '@angular/cdk/overlay';
+import { ComponentPortal } from '@angular/cdk/portal';
+import { WindowRegistry } from '../window/window-state';
+import { WindowComponent } from '../window/window.component';
+import { RenderComponentDirective } from '../core/render-component.directive';
+import { IN_DIALOG } from '../app/token';
 import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule } from '../app';
 
 @Component({

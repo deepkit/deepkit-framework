@@ -20,9 +20,9 @@ import {
     Output,
     SkipSelf,
     ViewChild
-} from "@angular/core";
-import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
-import { detectChangesNextFrame } from "../app";
+} from '@angular/core';
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { detectChangesNextFrame } from '../app';
 import { DatePipe } from '@angular/common';
 
 const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];

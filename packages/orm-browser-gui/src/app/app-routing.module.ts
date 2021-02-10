@@ -9,8 +9,7 @@
  */
 
 import { NgModule } from '@angular/core';
-import { Routes, RouterModule } from '@angular/router';
-import { DatabaseComponent } from './views/database.component';
+import { RouterModule, Routes } from '@angular/router';
 
 const routes: Routes = [
 ];

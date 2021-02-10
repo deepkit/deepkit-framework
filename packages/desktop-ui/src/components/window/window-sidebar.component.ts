@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Component, TemplateRef, ViewChild } from "@angular/core";
+import { Component, TemplateRef, ViewChild } from '@angular/core';
 
 @Component({
     selector: 'dui-window-sidebar',

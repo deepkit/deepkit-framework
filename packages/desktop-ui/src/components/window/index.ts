@@ -8,28 +8,28 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ModuleWithProviders, NgModule } from "@angular/core";
-import { WindowContentComponent } from "./window-content.component";
-import { WindowComponent, WindowFrameComponent } from "./window.component";
-import { WindowFooterComponent } from "./window-footer.component";
+import { ModuleWithProviders, NgModule } from '@angular/core';
+import { WindowContentComponent } from './window-content.component';
+import { WindowComponent, WindowFrameComponent } from './window.component';
+import { WindowFooterComponent } from './window-footer.component';
 import {
     WindowHeaderComponent,
     WindowToolbarComponent,
     WindowToolbarContainerComponent
-} from "./window-header.component";
-import { CommonModule } from "@angular/common";
-import { WindowSidebarComponent } from "./window-sidebar.component";
-import { DuiSplitterModule } from "../splitter";
-import { DuiIconModule } from "../icon";
-import { WindowRegistry } from "./window-state";
+} from './window-header.component';
+import { CommonModule } from '@angular/common';
+import { WindowSidebarComponent } from './window-sidebar.component';
+import { DuiSplitterModule } from '../splitter';
+import { DuiIconModule } from '../icon';
+import { WindowRegistry } from './window-state';
 
 import {
     ExternalDialogDirective,
     ExternalDialogWrapperComponent,
     ExternalWindowComponent
-} from "./external-window.component";
-import { DuiExternalWindow } from "./external-window";
-import { DuiCoreModule } from "../core";
+} from './external-window.component';
+import { DuiExternalWindow } from './external-window';
+import { DuiCoreModule } from '../core';
 
 export * from "./window.component";
 export * from "./external-window";

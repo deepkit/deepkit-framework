@@ -1,9 +1,9 @@
-import { Component, EventEmitter, Output } from "@angular/core";
-import { empty, size } from "@deepkit/core";
-import { DialogComponent, DuiDialog } from "@deepkit/desktop-ui";
-import { Changes } from "../../../../rpc/node_modules/@deepkit/type";
-import { BrowserState } from "../browser-state";
-import { ControllerClient } from "../client";
+import { Component, EventEmitter, Output } from '@angular/core';
+import { empty, size } from '@deepkit/core';
+import { DialogComponent, DuiDialog } from '@deepkit/desktop-ui';
+import { Changes } from '../../../../rpc/node_modules/@deepkit/type';
+import { BrowserState } from '../browser-state';
+import { ControllerClient } from '../client';
 
 @Component({
     template: `
@@ -28,7 +28,7 @@ import { ControllerClient } from "../client";
         <table>
             <tr *ngFor="let kv of state.addedItems|keyvalue">
                 <td>{{getEntityName(kv.key)}}</td>
-                
+
                 <td>
                     {{kv.value.length}} new record/s
                 </td>
@@ -38,7 +38,7 @@ import { ControllerClient } from "../client";
         <table>
             <tr *ngFor="let kv of state.deletions|keyvalue">
                 <td>{{getEntityName(kv.key)}}</td>
-                
+
                 <td>
                     delete {{size(kv.value)}} record/s
                 </td>

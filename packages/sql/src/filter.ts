@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { convertQueryFilter, FilterQuery } from "@deepkit/orm";
-import { ClassSchema, Serializer } from "@deepkit/type";
+import { convertQueryFilter, FilterQuery } from '@deepkit/orm';
+import { ClassSchema, Serializer } from '@deepkit/type';
 
 export function getSqlFilter<T>(classSchema: ClassSchema<T>, filter: FilterQuery<T>, parameters: {[name: string]: any} = {}, serializer: Serializer): any {
     const scope = serializer.for(classSchema);

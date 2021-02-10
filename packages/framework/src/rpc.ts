@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType } from "@deepkit/core";
-import { RpcKernelSecurity, Session } from "@deepkit/rpc";
-import { InjectorContext } from "./injector/injector";
+import { ClassType } from '@deepkit/core';
+import { RpcKernelSecurity, Session } from '@deepkit/rpc';
+import { InjectorContext } from './injector/injector';
 
 export class RpcInjectorContext extends InjectorContext { }
 

@@ -12,16 +12,17 @@ import {
     Database,
     DatabaseAdapter,
     DatabaseAdapterQueryFactory,
+    DatabaseError,
     DatabasePersistence,
     DatabasePersistenceChangeSet,
     DatabaseQueryModel,
-    DatabaseSession, DeleteResult,
+    DatabaseSession,
+    DeleteResult,
     Entity,
-    Query,
     GenericQueryResolver,
     PatchResult,
-    SORT_ORDER,
-    DatabaseError
+    Query,
+    SORT_ORDER
 } from '@deepkit/orm';
 import { ClassType } from '@deepkit/core';
 import { Changes, ClassSchema, getClassSchema, plainToClass, t } from '@deepkit/type';

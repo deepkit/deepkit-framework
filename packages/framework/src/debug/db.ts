@@ -15,6 +15,7 @@ import { dirname, join } from 'path';
 import { inject } from '../injector/injector';
 import { kernelConfig } from '../kernel.config';
 import fsExtra from 'fs-extra';
+
 const { ensureDirSync } = fsExtra;
 
 export class DebugDatabase extends Database {

@@ -8,7 +8,19 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { changeSetSymbol, ClassSchema, getClassSchema, getConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator, getSimplePrimaryKeyHashGenerator, ItemChanges, JSONPartial, jsonSerializer, PartialEntity } from '@deepkit/type';
+import {
+    changeSetSymbol,
+    ClassSchema,
+    getClassSchema,
+    getConverterForSnapshot,
+    getPrimaryKeyExtractor,
+    getPrimaryKeyHashGenerator,
+    getSimplePrimaryKeyHashGenerator,
+    ItemChanges,
+    JSONPartial,
+    jsonSerializer,
+    PartialEntity
+} from '@deepkit/type';
 import { Entity } from './type';
 import { isObject, toFastProperties } from '@deepkit/core';
 import { inspect } from 'util';

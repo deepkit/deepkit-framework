@@ -31,7 +31,6 @@ import { WindowComponent } from '../window/window.component';
 import { WindowState } from '../window/window-state';
 import { FormComponent } from '../form/form.component';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
-import { detectChangesNextFrame } from '../app';
 
 @Component({
     selector: 'dui-button',
