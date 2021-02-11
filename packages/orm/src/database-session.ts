@@ -359,7 +359,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
 
         const itemDB = await this.query(classType).filter(pk).findOne();
 
-        for (const property of classSchema.getClassProperties().values()) {
+        for (const property of classSchema.getProperties()) {
             if (property.isId) continue;
             if (property.isReference || property.backReference) continue;
 

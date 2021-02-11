@@ -29,231 +29,7 @@ import { ClientProgress } from '@deepkit/rpc';
 
 @Component({
     selector: 'orm-browser-database-browser',
-    template: `
-        <ng-container *ngIf="database && entity && entityState">
-            <dui-window-toolbar *ngIf="!dialog" for="browser">
-                <dui-button-group padding="none">
-                    <dui-button textured [disabled]="!state.hasChanges()" (click)="resetAll()" title="Reset all changes"
-                                icon="clear"></dui-button>
-                    <dui-button textured [disabled]="!state.hasChanges()" (click)="commit()">Commit</dui-button>
-                </dui-button-group>
-                <dui-button-group padding="none">
-                    <dui-button textured icon="add" (click)="entityState.addQuery()">Query</dui-button>
-                </dui-button-group>
-            </dui-window-toolbar>
-
-            <dui-tabs *ngIf="!dialog && entityState.queries.length">
-                <dui-tab [removable]="false"
-                         (click)="entityState.activeQuery = -1"
-                         [active]="entityState.activeQuery === -1">Browser
-                </dui-tab>
-
-                <dui-tab
-                    *ngFor="let query of entityState.queries; let i = index; trackBy: trackByIndex"
-                    (click)="entityState.activeQuery = i"
-                    (close)="entityState.removeQuery(query); cd.detectChanges()"
-                    [active]="entityState.activeQuery === i">Query {{query.id}}
-                </dui-tab>
-            </dui-tabs>
-
-            <ng-container *ngIf="entityState.queries[entityState.activeQuery] as query">
-                <div class="query">
-                    <div class="input" [style.flexBasis.px]="query.inputHeight">
-                        <dui-input semiTransparent lightFocus
-                                   [(ngModel)]="query.javascript" [placeholder]="query.placeholder"
-                                   (ngModelChange)="query.eval()"
-                                   (keyDown)="($event.metaKey || $event.ctrlKey) && $event.key.toLowerCase() === 'enter' && [executeQuery(query), $event.preventDefault()]"
-                                   type="textarea"></dui-input>
-                        <dui-splitter (modelChange)="query.inputHeight = $event; cd.detectChanges()"
-                                      position="bottom"></dui-splitter>
-                    </div>
-
-                    <div class="result">
-                        <div class="results-header">
-                            <ng-container *ngIf="query.executed && !query.javascriptError">
-                                <span *ngIf="query.progress">Executing
-                                    <dui-indicator [step]="(query.progress|async) || 0"></dui-indicator>
-                                </span>
-                                <span *ngIf="!query.progress">
-                                    Query time {{query.executionTime|number:'0.3-6'}} ms,
-                                    receiving {{query.downloadBytes|fileSize}}
-                                    took {{query.downloadTime|number:'0.3-6'}} ms
-                                </span>
-                            </ng-container>
-                            <ng-container *ngIf="!query.executed">
-                                Press CMD+Enter to execute the query.
-                            </ng-container>
-                            <span class="error-message" *ngIf="query.javascriptError">{{query.javascriptError}}</span>
-                        </div>
-
-                        <div class="results-header-actions">
-                            <dui-button-group padding="none">
-                                <dui-button textured  icon="play" (click)="executeQuery(query)"></dui-button>
-                                <dui-button textured  (click)="openQueryJson(query)">JSON</dui-button>
-                            </dui-button-group>
-                        </div>
-
-                        <ng-container *ngIf="query.executed">
-                            <div class="result-tabs">
-                                <dui-button-group>
-                                    <dui-tab-button (click)="query.tab = 'result'" [active]="query.tab === 'result'">
-                                        Result
-                                    </dui-tab-button>
-                                    <dui-tab-button (click)="query.tab = 'log'" [active]="query.tab === 'log'">Log
-                                    </dui-tab-button>
-                                </dui-button-group>
-                            </div>
-                            <ng-container *ngIf="query.tab === 'log'">
-                                <div class="log overlay-scrollbar-small">
-                                    <div class="log-entry text-selection"
-                                         *ngFor="let log of query.log; trackBy: trackByIndex">{{log}}</div>
-                                </div>
-                            </ng-container>
-                            <ng-container *ngIf="query.tab === 'result'">
-                                <div class="plain-result text-selection" *ngIf="!query.error && !isArray(query.result)">
-                                    <orm-browser-json-cell
-                                        [model]="query.result"></orm-browser-json-cell>
-                                </div>
-                                <div class="query-failed" *ngIf="query.error">
-                                    <div class="error-message">{{query.error}}</div>
-                                </div>
-                                <div class="plain-result" *ngIf="!query.error && isArray(query.result) && query.result.length === 0">
-                                    []
-                                </div>
-                                <ng-container *ngIf="!query.error && isArray(query.result) && query.result.length > 0">
-                                    <dui-table class="raw-table" noFocusOutline borderless [items]="query.result" style="height: 100%"
-                                               [preferenceKey]="'query/' + entity.getName()"
-                                    >
-                                        <dui-table-column *ngFor="let kv of query.result[0]|keyvalue"
-                                                          [name]="kv.key">
-                                            <ng-container *duiTableCell="let row">
-                                                <div class="cell-body text-selection">
-                                                    <orm-browser-json-cell
-                                                        [model]="row[kv.key]"></orm-browser-json-cell>
-                                                </div>
-                                            </ng-container>
-                                        </dui-table-column>
-                                    </dui-table>
-                                </ng-container>
-                            </ng-container>
-                        </ng-container>
-                    </div>
-                </div>
-            </ng-container>
-            <ng-container *ngIf="entityState.activeQuery === -1">
-                <div class="actions">
-                    <dui-button-group padding="none" *ngIf="withBack">
-                        <dui-button textured icon="arrow-small-left" (click)="back.emit()"></dui-button>
-                    </dui-button-group>
-                    <dui-button-group padding="none">
-                        <dui-button textured [disabled]="!entityState.selection.length" icon="garbage"
-                                    (click)="remove()"></dui-button>
-                        <dui-button textured icon="add" (click)="add()"></dui-button>
-                    </dui-button-group>
-
-                    <dui-button-group padding="none">
-                        <dui-button textured icon="search" [openDropdown]="filterDropdown">
-                            <ng-container *ngIf="entityState.filter.length">
-                                {{entityState.filter.length}} filter
-                            </ng-container>
-                            <ng-container *ngIf="!entityState.filter.length">
-                                No filter
-                            </ng-container>
-                        </dui-button>
-                    </dui-button-group>
-
-                    <dui-button-group padding="none">
-                        <dui-button textured tight [disabled]="entityState.loading" icon="reload"
-                                    (click)="loadEntity(true)"></dui-button>
-                        <dui-button textured tight [disabled]="entityState.loading"
-                                    (click)="goPage(entityState.page - 1)"
-                                    icon="arrow_left"></dui-button>
-                        <dui-input textured noControls [disabled]="entityState.loading" lightFocus type="number"
-                                   (ngModelChange)="goPage($event)" [(ngModel)]="entityState.page"
-                                   style="width: 50px;"></dui-input>
-                        <dui-button textured tight [disabled]="entityState.loading"
-                                    (click)="goPage(entityState.page + 1)"
-                                    icon="arrow_right"></dui-button>
-                        <dui-button textured tight [openDropdown]="paginationDropdown" [disabled]="entityState.loading"
-                                    icon="arrow_down"></dui-button>
-                    </dui-button-group>
-
-                    <dui-dropdown #paginationDropdown [width]="230">
-                        <div style="padding: 12px;">
-                            <dui-form-row left label="Records per page" [labelWidth]="120">
-                                <dui-input textured type="number" (ngModelChange)="loadEntity(true)"
-                                           [(ngModel)]="entityState.itemsPerPage"></dui-input>
-                            </dui-form-row>
-                        </div>
-                    </dui-dropdown>
-                    <dui-dropdown #filterDropdown [width]="450">
-                        <div class="search">
-                            <orm-browser-filter [entity]="entity" [(items)]="entityState.filter"
-                                                (itemsChange)="loadEntity(true)"></orm-browser-filter>
-                        </div>
-                    </dui-dropdown>
-                    <span style="color: var(--text-light); line-height: 19px; font-size: 12px;">
-                        <span>
-                            of {{entityState.totalPages}} page{{entityState.totalPages === 1 ? '' : 's'}}
-                            ({{entityState.count}} records).
-                        </span>
-                        <span *ngIf="entityState.progress">
-                            Executing <dui-indicator [step]="(entityState.progress|async) || 0"></dui-indicator>
-                        </span>
-                        <span *ngIf="!entityState.progress">
-                            Query time {{entityState.executionTime|number:'0.3-6'}} ms,
-                            receiving {{entityState.downloadBytes|fileSize}}
-                            took {{entityState.downloadTime|number:'0.3-6'}} ms
-                        </span>
-                    </span>
-                </div>
-                <div class="table">
-                    <ng-container *ngIf="entity">
-                        <dui-table noFocusOutline borderless [items]="entityState.items" [rowClass]="rowClass"
-                                   [preferenceKey]="'browser/' + entity.getName()"
-                                   (customSort)="onSort($event)" (cellClick)="cellClick($event)">
-
-                            <dui-table-column name="__select" header="✓" [width]="40" [hideable]="false"
-                                              [sortable]="false">
-                                <ng-container *duiTableHeader>
-                                    <dui-checkbox [ngModel]="selectedAll" (ngModelChange)="toggleAll()"></dui-checkbox>
-                                </ng-container>
-                                <ng-container *duiTableCell="let row">
-                                    <div class="cell-body">
-                                        <dui-checkbox [ngModel]="entityState.selection.includes(row)"
-                                                      (ngModelChange)="changeSelection(row)"></dui-checkbox>
-                                    </div>
-                                </ng-container>
-                            </dui-table-column>
-                            <dui-table-column *ngFor="let property of entityState.properties; trackBy: trackByIndex"
-                                              [name]="property.name"
-                                              [width]="150">
-                                <ng-container *duiTableHeader>
-                                    {{property.name}} <span
-                                    style="color: var(--text-light)">{{property.toString()}}</span>
-                                </ng-container>
-
-                                <ng-container *duiTableCell="let row">
-                                    <orm-browser-cell
-                                        [state]="state" [entityState]="entityState"
-                                        [reset]="reset" [unset]="unset" [changed]="changed"
-                                        [row]="row"
-                                        [actions]="true"
-                                        [property]="property"></orm-browser-cell>
-                                </ng-container>
-                            </dui-table-column>
-                        </dui-table>
-                    </ng-container>
-                    <div class="error" *ngIf="error">
-                        <div class="box">
-                            <h3>An error occurred</h3>
-                            <div class="error-message text-selection">{{error}}</div>
-                        </div>
-                    </div>
-                </div>
-            </ng-container>
-        </ng-container>
-    `,
+    templateUrl: './database-browser.component.html',
     styleUrls: ['./database-browser.component.scss']
 })
 export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
@@ -282,8 +58,6 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
 
     selectedAll: boolean = false;
 
-    error?: any;
-
     protected ignoreNextCellClick = false;
 
     protected pkHasher: (value: any) => string = () => '';
@@ -292,10 +66,18 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
         return this.state.isNew(item) ? 'new' : '';
     };
 
+    trackByProperty(index: number, property: PropertySchema) {
+        return property.name;
+    }
+
     async openQueryJson(query: BrowserQuery) {
         window.open('//' + ControllerClient.getServerHost() + '/_orm-browser/query?dbName=' + encodeURIComponent(this.database.name)
             + '&entityName=' + encodeURIComponent(this.entity.getName())
             + '&query=' + encodeURIComponent(query.javascript), '_blank');
+    }
+
+    firstRowItem(query: BrowserQuery): ReadonlyMap<string, any> {
+        return query.result[0] || {};
     }
 
     async executeQuery(query: BrowserQuery): Promise<void> {
@@ -334,7 +116,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
         this.paramsSub?.unsubscribe();
     }
 
-    async ngOnChanges() {
+    async ngOnChanges(changes: any) {
         await this.loadEntity();
     }
 
@@ -434,8 +216,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
             console.log(error);
         }
 
-        this.cd.detectChanges();
-        this.loadEntity(true);
+        await this.loadEntity(true);
     }
 
     changed = (row: any) => {
@@ -518,7 +299,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
         this.entityState.validationStore = this.state.getValidationStore(this.database.name, this.entity.getName());
         this.pkHasher = getPrimaryKeyHashGenerator(this.entity);
 
-        this.entityState.properties = [...this.entity.getClassProperties().values()].filter(v => !v.backReference);
+        this.entityState.properties = [...this.entity.getProperties()].filter(v => !v.backReference);
         this.entityState.properties.sort((a, b) => {
             if (a.isId && !b.isId) return -1;
             if (!a.isId && b.isId) return +1;
@@ -585,7 +366,6 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
     async loadEntity(reload: boolean = false) {
         if (!this.entity) return;
         if (!this.database) return;
-        this.error = undefined;
 
         this.entityState = this.state.getBrowserEntityState(this.database.name, this.entity.getName());
         if (this.dialog) {
@@ -593,7 +373,8 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
             this.entityState.selection = [];
         }
 
-        this.softReload(!reload);
+        this.entityState.error = undefined;
+        this.softReload(reload === true ? false : true);
 
         if (!reload && this.entityState.items.length) {
             this.cd.detectChanges();
@@ -624,7 +405,6 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
             this.entityState.downloadTime = performance.now() - start;
             this.entityState.downloadBytes = this.entityState.progress.download.total;
             this.entityState.progress = undefined;
-
 
             this.entityState.loading = false;
 
@@ -676,7 +456,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
             this.selectedAll = this.entityState.selection.length === this.entityState.items.length && this.entityState.items.length > 0;
         } catch (error) {
             this.entityState.loading = false;
-            this.error = error instanceof Error ? error.stack : error;
+            this.entityState.error = error instanceof Error ? error.stack : error;
             console.log(error);
         }
 

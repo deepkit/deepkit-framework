@@ -98,7 +98,7 @@ export class ConfigDefinition<T extends {}> {
         const self = this;
         return class extends ConfigSlice<T> {
             constructor() {
-                super(self, [...self.schema.getClassProperties().values()].map(v => v.name) as any);
+                super(self, [...self.schema.getProperties()].map(v => v.name) as any);
             }
         } as any;
     }
@@ -327,7 +327,7 @@ export class Injector {
             args.push(this.createFactoryProperty(property, compiler, classTypeVar, args.length, 'constructorParameterNotFound'));
         }
 
-        for (const property of schema.getClassProperties().values()) {
+        for (const property of schema.getProperties()) {
             if (!('deepkit/inject' in property.data)) continue;
             if (property.methodName === 'constructor') continue;
             propertyAssignment.push(`v.${property.name} = ${this.createFactoryProperty(property, compiler, classTypeVar, args.length, 'propertyParameterNotFound')};`);

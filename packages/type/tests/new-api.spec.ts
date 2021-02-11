@@ -148,7 +148,7 @@ test('custom serialization formats', async () => {
     expect(jsonSerializer.toClass.get('number')).toBeInstanceOf(Function);
     expect(mySerializer.toClass.get('number')).toBeInstanceOf(Function);
 
-    expect(getClassSchema(Test).getClassProperties().get('id')!.type).toBe('string');
+    expect(getClassSchema(Test).getPropertiesMap().get('id')!.type).toBe('string');
 
     const test = new Test;
     const myFormat = getClassToXFunction(getClassSchema(Test), mySerializer)(test);

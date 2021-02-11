@@ -21,11 +21,11 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
-    "@deepkit/rpc": "^1.0.1-alpha.13"
+    "@deepkit/rpc": "^1.0.1-alpha.13",
+    "@deepkit/core": "^1.0.1-alpha.13"
   },
   "dependencies": {
-    "turbo-net": "deepkit/turbo-net#1.5.0",
-    "@deepkit/core": "^1.0.1-alpha.13"
+    "turbo-net": "deepkit/turbo-net#1.5.0"
   },
   "devDependencies": {
     "@deepkit/rpc": "^1.0.1-alpha.13"

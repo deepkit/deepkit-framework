@@ -288,7 +288,7 @@ export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>, jitStack: 
 
     const checks: string[] = [];
 
-    for (let property of schema.getClassProperties().values()) {
+    for (let property of schema.getProperties()) {
         const originProperty = property;
         let isDecorated = false;
         if (property.type === 'class') {
@@ -358,7 +358,7 @@ export function jitValidatePartial<T, K extends keyof T>(
         if (!partial.hasOwnProperty(i)) continue;
         const thisPath = path ? path + '.' + i : i;
         jitValidateProperty(
-            schema.getClassProperties().get(i) || resolvePropertySchema(schema, i),
+            schema.getPropertiesMap().get(i) || resolvePropertySchema(schema, i),
             classType,
         )(partial[i],
             '',

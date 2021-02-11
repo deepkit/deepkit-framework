@@ -36,7 +36,7 @@ const resolvedReflectionCaches = new Map<ClassType, { [path: string]: PropertySc
  * correct PropertySchema so that a correct compiler can be built to convert this type.
  */
 export function resolvePropertySchema<T>(schema: ClassSchema<T>, propertyPath: string): PropertySchema {
-    if (schema.getClassProperties().has(propertyPath)) return schema.getClassProperties().get(propertyPath)!;
+    if (schema.getPropertiesMap().has(propertyPath)) return schema.getPropertiesMap().get(propertyPath)!;
 
     let cache = resolvedReflectionCaches.get(schema.classType);
     if (!cache) {
@@ -276,7 +276,7 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
     } else {
         const convertProperties: string[] = [];
 
-        for (const property of schema.getClassProperties().values()) {
+        for (const property of schema.getProperties()) {
             if (property.isParentReference) continue; //we do not export parent references, as this would lead to an circular reference
             if (isExcluded(schema, property.name, serializer.name)) continue;
 
@@ -457,7 +457,7 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Se
         constructorArgumentNames.push(`c_${property.name}`);
     }
 
-    for (const property of schema.getClassProperties().values()) {
+    for (const property of schema.getProperties()) {
         if (assignedViaConstructor[property.name]) continue;
 
         if (isExcluded(schema, property.name, serializer.name)) continue;
@@ -590,7 +590,7 @@ export function createPartialXToClassFunction<T>(schema: ClassSchema<T>, seriali
 
     const props: string[] = [];
 
-    for (const property of schema.getClassProperties().values()) {
+    for (const property of schema.getProperties()) {
         if (property.isParentReference) continue;
 
         props.push(`
@@ -627,7 +627,7 @@ export function createPartialClassToXFunction<T>(schema: ClassSchema<T>, seriali
 
     const props: string[] = [];
 
-    for (const property of schema.getClassProperties().values()) {
+    for (const property of schema.getProperties()) {
         if (property.isParentReference) continue;
 
         props.push(`

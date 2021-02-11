@@ -198,7 +198,7 @@ export class Formatter {
                     for (const propName of classSchema.propertyNames) {
                         if (classSchema.getProperty(propName).isId) continue;
 
-                        const prop = classSchema.getClassProperties().get(propName)!;
+                        const prop = classSchema.getPropertiesMap().get(propName)!;
                         if (propName in item) continue;
 
                         if (prop.isReference || prop.backReference) {

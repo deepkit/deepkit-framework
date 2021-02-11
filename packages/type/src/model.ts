@@ -382,7 +382,7 @@ export class PropertySchema {
     getDefaultValue(): any {
         if (this.defaultValue) {
             this.lastGeneratedDefaultValue = this.defaultValue();
-            return this.lastGeneratedDefaultValue
+            return this.lastGeneratedDefaultValue;
         }
         return undefined;
     }
@@ -567,7 +567,7 @@ export class PropertySchema {
             && type !== 'any'
             && type !== Array
             && type !== Object
-            ;
+        ;
 
         if (isCustomObject) {
             this.type = 'class';
@@ -718,7 +718,8 @@ export class ClassSchema<T = any> {
      */
     protected initializedMethods = new Set<string>();
 
-    protected classProperties = new Map<string, PropertySchema>();
+    protected propertiesMap = new Map<string, PropertySchema>();
+    protected properties: PropertySchema[] = [];
 
     propertyNames: string[] = [];
 
@@ -762,7 +763,7 @@ export class ClassSchema<T = any> {
     }
 
     toString() {
-        return `<ClassSchema ${this.getClassName()}>\n` + [...this.getClassProperties().values()].map(v => '   ' + v.name + '=' + v.toString()).join('\n') + '\n</ClassSchema>';
+        return `<ClassSchema ${this.getClassName()}>\n` + this.properties.map(v => '   ' + v.name + '=' + v.toString()).join('\n') + '\n</ClassSchema>';
     }
 
     /**
@@ -827,7 +828,7 @@ export class ClassSchema<T = any> {
     hasFullLoadHooks(): boolean {
         if (this.hasFullLoadHooksCheck) return false;
         this.hasFullLoadHooksCheck = true;
-        for (const prop of this.classProperties.values()) {
+        for (const prop of this.properties) {
             if (prop.type === 'class' && prop.getResolvedClassSchema().hasFullLoadHooks()) {
                 return true;
             }
@@ -847,7 +848,7 @@ export class ClassSchema<T = any> {
         if (stack.includes(this)) return true;
         stack.push(this);
 
-        for (const property of this.getClassProperties().values()) {
+        for (const property of this.properties) {
             if (property.isParentReference) continue;
             if (property.hasCircularDependency(lookingFor, stack)) return true;
         }
@@ -873,16 +874,19 @@ export class ClassSchema<T = any> {
         s.discriminant = this.discriminant;
         s.fromClass = this.fromClass;
 
-        s.classProperties = new Map();
-        for (const [i, v] of this.classProperties.entries()) {
-            s.classProperties.set(i, v.clone());
+        s.propertiesMap = new Map();
+        s.properties = [];
+        for (const [i, v] of this.propertiesMap) {
+            const p = v.clone();
+            s.propertiesMap.set(i, p);
+            s.properties.push(p);
         }
 
         s.methodProperties = new Map();
         for (const [i, properties] of this.methodProperties.entries()) {
             const obj: PropertySchema[] = [];
             for (const v of properties) {
-                obj.push(s.classProperties.get(v.name) || v.clone());
+                obj.push(s.propertiesMap.get(v.name) || v.clone());
             }
             s.methodProperties.set(i, obj);
         }
@@ -929,13 +933,16 @@ export class ClassSchema<T = any> {
     }
 
     public removeProperty(name: string) {
-        this.classProperties.delete(name);
+        const property = this.propertiesMap.get(name);
+        if (!property) return;
+        this.propertiesMap.delete(name);
+        arrayRemoveItem(this.properties, property);
         arrayRemoveItem(this.propertyNames, name);
     }
 
     public registerProperty(property: PropertySchema) {
         if (this.fromClass && !property.methodName) {
-            property.hasDefaultValue = this.detectedDefaultValueProperties.includes(property.name)
+            property.hasDefaultValue = this.detectedDefaultValueProperties.includes(property.name);
 
             if (!property.manuallySetToRequired && !property.hasDefaultValue && !this.assignedInConstructor.includes(property.name)) {
                 //when we have no default value AND the property was never seen in the constructor, its
@@ -956,12 +963,12 @@ export class ClassSchema<T = any> {
         }
 
         this.propertyNames.push(property.name);
-        this.classProperties.set(property.name, property);
+        this.propertiesMap.set(property.name, property);
+        this.properties.push(property);
     }
 
     protected resetCache() {
         this.jit = {};
-        this.getClassProperties();
         this.primaryKeys = undefined;
         this.autoIncrements = undefined;
         this.buildId++;
@@ -1054,7 +1061,7 @@ export class ClassSchema<T = any> {
         if (stack.includes(this)) return true;
         stack.push(this);
 
-        for (const property of this.getClassProperties().values()) {
+        for (const property of this.properties) {
             if (property.type === 'partial' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
             if (property.type === 'map' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
             if (property.type === 'array' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
@@ -1070,7 +1077,7 @@ export class ClassSchema<T = any> {
     }
 
     public getAutoIncrementField(): PropertySchema | undefined {
-        for (const property of this.getClassProperties().values()) {
+        for (const property of this.properties) {
             if (property.isAutoIncrement) return property;
         }
         return;
@@ -1085,7 +1092,7 @@ export class ClassSchema<T = any> {
         if (this.primaryKeys) return this.primaryKeys;
 
         this.primaryKeys = [];
-        for (const property of this.getClassProperties().values()) {
+        for (const property of this.properties) {
             if (property.isId) this.primaryKeys.push(property);
         }
 
@@ -1119,15 +1126,15 @@ export class ClassSchema<T = any> {
 
     public exclude<K extends (keyof T & string)[]>(...properties: K): ClassSchema<Omit<T, K[number]>> {
         const cloned = this.clone();
-        for (const name of properties) cloned.classProperties.delete(name);
+        for (const name of properties) cloned.removeProperty(name);
         return cloned as any;
     }
 
     public include<K extends (keyof T & string)[]>(...properties: K): ClassSchema<Pick<T, K[number]>> {
         const cloned = this.clone();
-        for (const name of this.classProperties.keys()) {
+        for (const name of this.propertiesMap.keys()) {
             if (properties.includes(name as keyof T & string)) continue;
-            cloned.classProperties.delete(name);
+            cloned.removeProperty(name);
         }
         return cloned as any;
     }
@@ -1135,7 +1142,7 @@ export class ClassSchema<T = any> {
     public extend<E extends PlainSchemaProps>(props: E, options?: { name?: string, classType?: ClassType }): ClassSchema<T & ExtractClassDefinition<E>> {
         const cloned = this.clone();
         const schema = t.schema(props);
-        for (const property of schema.getClassProperties().values()) {
+        for (const property of schema.properties) {
             cloned.registerProperty(property);
         }
         return cloned as any;
@@ -1184,12 +1191,12 @@ export class ClassSchema<T = any> {
         return this.methodProperties.get(name)!;
     }
 
-    public initializeProperties() {
+    public getProperties(): PropertySchema[] {
+        return this.properties;
     }
 
-    public getClassProperties(initialize: boolean = true): Map<string, PropertySchema> {
-        if (initialize) this.initializeProperties();
-        return this.classProperties;
+    public getPropertiesMap(): Map<string, PropertySchema> {
+        return this.propertiesMap;
     }
 
     /**
@@ -1231,12 +1238,11 @@ export class ClassSchema<T = any> {
     }
 
     public getPropertyOrUndefined(name: string): PropertySchema | undefined {
-        this.initializeProperties();
-        return this.classProperties.get(name);
+        return this.propertiesMap.get(name);
     }
 
     public hasProperty(name: string): boolean {
-        return this.classProperties.has(name);
+        return this.propertiesMap.has(name);
     }
 
     // public isOneToOne(propertyName: string): boolean {
@@ -1335,8 +1341,7 @@ export class ClassSchema<T = any> {
 
     public getPropertiesByGroup(...groupNames: string[]): PropertySchema[] {
         const result: PropertySchema[] = [];
-        this.initializeProperties();
-        for (const property of this.classProperties.values()) {
+        for (const property of this.properties) {
             for (const groupName of property.groupNames) {
                 if (groupNames.includes(groupName)) {
                     result.push(property);
@@ -1349,12 +1354,12 @@ export class ClassSchema<T = any> {
     }
 
     public getProperty(name: string): PropertySchema {
-        this.initializeProperties();
-        if (!this.classProperties.has(name)) {
+        const property = this.propertiesMap.get(name);
+        if (!property) {
             throw new Error(`Property ${this.getClassName()}.${name} not found`);
         }
 
-        return this.classProperties.get(name)!;
+        return property;
     }
 }
 
@@ -1373,18 +1378,17 @@ export class ClassSlicer<T> {
     }
 
     public include<K extends (keyof T & string)[]>(...properties: K): ClassType<Pick<T, K[number]>> {
-        for (const name of this.schema.getClassProperties().keys()) {
-            if (properties.includes(name as keyof T & string)) continue;
-            this.schema.removeProperty(name);
+        for (const property of this.schema.getProperties()) {
+            if (properties.includes(property.name as keyof T & string)) continue;
+            this.schema.removeProperty(property.name);
         }
         return this.schema.classType as any;
     }
 
     public extend<E extends PlainSchemaProps>(props: E): ClassType<T & ExtractClassDefinition<E>> {
-        const schema = t.schema(props, { classType: this.schema.classType });
-        for (const property of schema.getClassProperties().values()) {
-            this.schema.registerProperty(property);
-        }
+        //this changes this.schema.classType directly
+        t.schema(props, { classType: this.schema.classType });
+
         return this.schema.classType as any;
     }
 }
@@ -1448,14 +1452,14 @@ export function mixin<T extends (ClassSchema | ClassType)[]>(...classTypes: T): 
             schema.classType.prototype[i] = foreignSchema.classType.prototype[i];
         }
 
-        for (const prop of foreignSchema.getClassProperties().values()) {
+        for (const prop of foreignSchema.getProperties()) {
             schema.registerProperty(prop.clone());
         }
 
         constructors.push(function (this: any, ...args: any[]) {
             const item = new foreignSchema.classType(...args);
-            for (const prop of foreignSchema.getClassProperties().keys()) {
-                this[prop] = item[prop];
+            for (const prop of foreignSchema.getProperties()) {
+                this[prop.name] = item[prop.name];
             }
         });
     }

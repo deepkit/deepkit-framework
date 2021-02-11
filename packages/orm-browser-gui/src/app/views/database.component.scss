@@ -19,12 +19,19 @@
 .layout {
     display: flex;
     height: 100%;
-    overflow: hidden;
+    overflow: auto;
 }
 
 .migration-container {
+    display: block;
     padding: 20px;
-    overflow: auto;
+    padding-top: 0;
+}
+
+.seed-container {
+    display: block;
+    padding: 20px;
+    padding-top: 0;
 }
 
 .migrations {

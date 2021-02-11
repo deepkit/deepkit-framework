@@ -22,16 +22,22 @@
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
-  "dependencies": {
+  "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/orm": "^1.0.1-alpha.13",
     "@deepkit/sql": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13"
+  },
+  "dependencies": {
     "pg": "^8.5.1",
     "pg-native": "^3.0.0",
     "sqlstring": "^2.3.2"
   },
   "devDependencies": {
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/orm": "^1.0.1-alpha.13",
+    "@deepkit/sql": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13",
     "@types/pg": "^7.14.7",
     "@types/sqlstring": "^2.2.1",
     "@deepkit/orm-integration": "^1.0.1-alpha.13",

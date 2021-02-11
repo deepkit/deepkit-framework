@@ -244,7 +244,7 @@ export class Module<T extends ModuleOptions<any>> {
         this.resolvedConfig = {};
         if (!this.options.config) return this.resolvedConfig;
 
-        for (const option of this.options.config.schema.getClassProperties().values()) {
+        for (const option of this.options.config.schema.getProperties()) {
             const path = this.options.name ? this.options.name + '.' + option.name : option.name;
             config[option.name] = this.getConfigOption(path);
         }
@@ -316,7 +316,7 @@ export class Module<T extends ModuleOptions<any>> {
         }
 
         if (this.options.config) {
-            for (const option of this.options.config.schema.getClassProperties().values()) {
+            for (const option of this.options.config.schema.getProperties()) {
                 if (!(option.name in config)) continue;
                 const path = this.options.name ? this.options.name + '.' + option.name : option.name;
                 configValues[path] = (config as any)[option.name];
@@ -334,7 +334,7 @@ export class Module<T extends ModuleOptions<any>> {
         const resolvedConfig = this.getConfig();
         if (this.options.config) {
             const configNormalized = jsonSerializer.for(this.options.config.schema).partialDeserialize(config);
-            for (const option of this.options.config.schema.getClassProperties().values()) {
+            for (const option of this.options.config.schema.getProperties()) {
                 if (!(option.name in config)) continue;
                 resolvedConfig[option.name] = (configNormalized as any)[option.name];
             }

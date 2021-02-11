@@ -22,12 +22,15 @@
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
-  "dependencies": {
+  "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/crypto": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13"
   },
   "devDependencies": {
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/crypto": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13",
     "@types/bson": "^4.0.3",
     "bson": "^4.0.4",
     "bson-ext": "^2.0.5",

@@ -1,9 +1,15 @@
 import { isObject } from '@deepkit/core';
 import { Database, DatabaseAdapter } from '@deepkit/orm';
-import { BrowserControllerInterface, DatabaseCommit, DatabaseInfo, QueryResult } from '@deepkit/orm-browser-api';
+import {
+    BrowserControllerInterface,
+    DatabaseCommit,
+    DatabaseInfo,
+    fakerFunctions, FakerTypes, getType,
+    QueryResult
+} from '@deepkit/orm-browser-api';
 import { rpc } from '@deepkit/rpc';
 import { ClassSchema, plainToClass, serializeSchemas, t } from '@deepkit/type';
-// import { inspect } from 'util';
+import * as faker from 'faker';
 import { SQLDatabaseAdapter } from '@deepkit/sql';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { performance } from 'perf_hooks';
@@ -79,6 +85,23 @@ export class BrowserController implements BrowserControllerInterface {
         if (db.adapter instanceof SQLDatabaseAdapter) {
             await db.adapter.createTables([...db.entities.values()]);
         }
+    }
+
+    @rpc.action()
+    @t.any
+    async getFakerTypes(): Promise<FakerTypes> {
+        const res: FakerTypes = {};
+
+        for (const fn of fakerFunctions) {
+            const [p1, p2] = fn.split('.');
+            try {
+                const example = p2 ? (faker as any)[p1][p2]() : (faker as any)[p1]();
+                res[fn] = { example: example, type: getType(example) };
+            } catch (error) {
+                console.log(`warning: faker function not available ${fn}: ${error}`);
+            }
+        }
+        return res;
     }
 
     @rpc.action()

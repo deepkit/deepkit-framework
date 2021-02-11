@@ -90,7 +90,7 @@ export function serializeSchemas(schemas: ClassSchema[]): SerializedSchema[] {
     }
 
     function registerClassSchema(schema: ClassSchema, embeddedName?: string) {
-        const properties = [...schema.getClassProperties().values()].map(v => serializeProperty(v));
+        const properties = [...schema.getProperties()].map(v => serializeProperty(v));
 
         const serializedSchema: SerializedSchema = {
             name: schema.name,

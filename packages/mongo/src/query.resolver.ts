@@ -467,7 +467,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             }
             return res;
         } else {
-            // for (const v of classSchema.getClassProperties().keys()) {
+            // for (const v of classSchema.getPropertiesMap().keys()) {
             //     (res as any)[v] = 1;
             // }
             return undefined;

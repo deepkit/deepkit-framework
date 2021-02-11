@@ -1,13 +1,3 @@
-/*
- * Deepkit Framework
- * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the MIT License.
- *
- * You should have received a copy of the MIT License along with this program.
- */
-
 /**
  * This file includes polyfills needed by Angular and is loaded before the app.
  * You can add your own extra polyfills to this file.
@@ -28,7 +18,9 @@
  * BROWSER POLYFILLS
  */
 
-/** IE10 and IE11 requires the following for NgClass support on SVG elements */
+/**
+ * IE11 requires the following for NgClass support on SVG elements
+ */
 // import 'classlist.js';  // Run `npm install --save classlist.js`.
 
 /**
@@ -68,13 +60,13 @@
 // import 'zone.js/dist/zone';  // Included with Angular CLI.
 (window as any)['Zone'] = {
   current: {
-    get(): void { }
+    get() {}
   }
 };
 
-(window as any).global = window;
 import {Buffer} from 'buffer';
 (window as any).Buffer = Buffer;
+
 /***************************************************************************************************
  * APPLICATION IMPORTS
  */

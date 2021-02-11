@@ -25,14 +25,8 @@ import { FilterItem } from '../browser-state';
             <dui-option value="$in">IN</dui-option>
             <dui-option value="$nin">NOT IN</dui-option>
         </dui-select>
-        <div *ngIf="property && propertyToShow" >
-            <div class="cell" (click)="editing=true" [class.editing]="editing" [class.inactive]="!editing" >
-                <cell *ngIf="!editing" [model]="value" [property]="propertyToShow"></cell>
-                <field-editing *ngIf="editing" (modelChange)="value = $event; changed()"
-                               (done)="editing=false"
-                               [property]="propertyToShow" [model]="value"
-                ></field-editing>
-            </div>
+        <div *ngIf="property && propertyToShow">
+            <orm-browser-property [model]="value" (modelChange)="value = $event; changed()" [property]="propertyToShow"></orm-browser-property>
         </div>
     `,
     styles: [`
@@ -43,21 +37,6 @@ import { FilterItem } from '../browser-state';
         :host > * {
             margin-right: 4px;
         }
-
-        .cell {
-            width: 200px;
-            min-height: 21px;
-            padding: 0 4px;
-        }
-
-        .cell.editing {
-            padding: 0;
-        }
-
-        .cell.inactive {
-            border: 1px solid var(--line-color-light);
-            border-radius: 2px;
-        }
     `]
 })
 export class FilterItemComponent implements OnChanges, OnInit {
@@ -67,8 +46,6 @@ export class FilterItemComponent implements OnChanges, OnInit {
     @Input() entity!: ClassSchema;
     @Input() properties: PropertySchema[] = [];
     trackByIndex = trackByIndex;
-
-    editing: boolean = false;
 
     value: string = '';
     comparator: string = '$eq';
@@ -182,7 +159,7 @@ export class FilterComponent implements OnChanges {
 
     ngOnChanges(changes: any) {
         this.properties = [];
-        for (const property of this.entity.getClassProperties().values()) {
+        for (const property of this.entity.getProperties()) {
             if (property.backReference) continue;
             this.properties.push(property);
         }

@@ -4,6 +4,7 @@
     "codelyzer"
   ],
   "rules": {
+    "object-literal-shorthand": false,
     "comment-format": false,
     "align": {
       "options": [
@@ -17,6 +18,7 @@
     "deprecation": {
       "severity": "warning"
     },
+    "no-eval": false,
     "eofline": true,
     "import-blacklist": [
       true,
@@ -31,7 +33,7 @@
     "max-classes-per-file": false,
     "max-line-length": [
       true,
-      240
+      440
     ],
     "member-ordering": [
       true,

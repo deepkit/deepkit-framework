@@ -342,7 +342,7 @@ export class TypedFormGroup<T extends object> extends FormGroup {
         t.classType = classType;
         const validNames = Object.keys(limitControls);
 
-        for (const [name, prop] of entitySchema.getClassProperties().entries()) {
+        for (const [name, prop] of entitySchema.getPropertiesMap().entries()) {
 
             if (validNames.length && !validNames.includes(name as keyof T & string)) {
                 continue;

@@ -16,8 +16,8 @@ import * as FileSaver from 'file-saver';
                 </div>
             </dui-dropdown>
         </ng-container>
-        <dui-icon name="download" *ngIf="model.byteLength > 0" (click)="download(); $event.preventDefault(); $event.stopPropagation()" clickable></dui-icon>
-        <div class="bytes">
+        <dui-icon name="download" *ngIf="model && model.byteLength > 0" (click)="download(); $event.preventDefault(); $event.stopPropagation()" clickable></dui-icon>
+        <div class="bytes" *ngIf="model">
             {{model.byteLength|fileSize}}
         </div>
     `,
@@ -48,8 +48,10 @@ export class BinaryCellComponent implements OnInit, OnChanges {
     }
 
     async display() {
-        const type = await fromBuffer(this.model);
         this.image = undefined;
+        if (!this.model) return;
+
+        const type = await fromBuffer(this.model);
         if (type?.mime?.startsWith('image/')) {
             this.image = this.model;
             this.ext = type?.ext;

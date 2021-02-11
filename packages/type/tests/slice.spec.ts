@@ -102,6 +102,12 @@ test('classSlicer overwrite', () => {
     class UserFrontend extends sliceClass(User).extend({ owner: t.string }) { };
 
     {
+        //should not modify the parent
+        const plain = plainToClass(User, { owner: 'Peter' });
+        expect(plain.owner).toBe(undefined);
+    }
+
+    {
         const plain = plainToClass(UserFrontend, { owner: 'Peter' });
         expect(plain.owner).toBe('Peter');
     }

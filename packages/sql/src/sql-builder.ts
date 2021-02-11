@@ -81,7 +81,7 @@ export class SqlBuilder {
     }
     protected selectColumns(schema: ClassSchema, model: SQLQueryModel<any>) {
         const tableName = this.platform.getTableIdentifier(schema);
-        const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getClassProperties().values();
+        const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getProperties();
 
         if (model.aggregate.size || model.groupBy.size) {
             //we select only whats aggregated
@@ -105,7 +105,7 @@ export class SqlBuilder {
     protected selectColumnsWithJoins(schema: ClassSchema, model: SQLQueryModel<any>, refName: string = '') {
         const result: { startIndex: number, fields: PropertySchema[] } = { startIndex: this.sqlSelect.length, fields: [] };
 
-        const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getClassProperties().values();
+        const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getProperties();
         const tableName = this.platform.getTableIdentifier(schema);
 
         for (const property of properties) {

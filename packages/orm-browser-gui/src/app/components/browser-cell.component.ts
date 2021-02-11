@@ -13,9 +13,9 @@ import { getInstanceState } from '@deepkit/orm';
                 </ng-container> -->
                 <ng-container
                     *ngSwitchCase="row.$__activeColumn === property.name && !property.isAutoIncrement">
-                    <field-editing [property]="property" [row]="row"
-                                   [(model)]="row[property.name]"
-                                   (done)="changed(row)"></field-editing>
+                    <orm-browser-property-editing [property]="property" [row]="row"
+                                                  [(model)]="row[property.name]"
+                                                  (done)="changed(row)"></orm-browser-property-editing>
                 </ng-container>
                 <ng-container *ngSwitchDefault>
                     <ng-container *ngIf="row[property.name] === undefined">
@@ -30,7 +30,8 @@ import { getInstanceState } from '@deepkit/orm';
                     </ng-container>
                     <ng-container
                         *ngIf="!property.isAutoIncrement && row[property.name] !== undefined && row[property.name] !== null">
-                        <cell [property]="property" [model]="row[property.name]"></cell>
+                        <orm-browser-property-view [property]="property"
+                                                   [model]="row[property.name]"></orm-browser-property-view>
                     </ng-container>
                 </ng-container>
 

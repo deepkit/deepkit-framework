@@ -21,7 +21,8 @@ import { BrowserState } from 'src/app/browser-state';
         <ng-container *ngIf="!open">
             Undefined
         </ng-container>
-        <dui-dialog *ngIf="jsonEditor" class="class-field-dialog" noPadding [visible]="true" (closed)="done.emit()" [backDropCloses]="true"
+        <dui-dialog *ngIf="jsonEditor" class="class-field-dialog" noPadding [visible]="true" (closed)="done.emit()"
+                    [backDropCloses]="true"
                     [minWidth]="450" [minHeight]="350">
             <div class="json-editor">
                 <h3>JSON</h3>
@@ -37,19 +38,10 @@ import { BrowserState } from 'src/app/browser-state';
                     minHeight="60%">
             <div class="layout">
                 <div class="header" *ngIf="state.database && foreignSchema">
-            <span *ngFor="let browser of browserStack">
-                 &raquo; {{browser.foreignSchema?.getClassName()}}
-            </span>
+                    <span *ngFor="let browser of browserStack">
+                         &raquo; {{browser.foreignSchema?.getClassName()}}
+                    </span>
                 </div>
-
-                <!-- <ng-container *ngIf="state.database && entity && browserStack.length === 0">
-                    <orm-browser-database-browser
-                    [dialog]="true"
-                    [selectedPkHashes]="selectedPkHashes"
-                    [multiSelect]="property.isArray"
-                    (select)="onSelect($event)"
-                    [database]="state.database" [entity]="entity"></orm-browser-database-browser>
-                </ng-container> -->
 
                 <ng-container *ngFor="let browser of browserStack">
                     <orm-browser-database-browser *ngIf="state.database && browser.foreignSchema"

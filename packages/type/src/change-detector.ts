@@ -180,7 +180,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
         }
     }
 
-    for (const property of schema.getClassProperties().values()) {
+    for (const property of schema.getProperties()) {
         if (property.isParentReference) continue;
         if (property.backReference) continue;
 

@@ -18,6 +18,7 @@ import {
     serializedSchemaDefinition,
     t
 } from '@deepkit/type';
+import { FakerTypes } from './faker';
 
 export type DatabaseCommit = {
     [dbName: string]: {
@@ -36,10 +37,11 @@ export type DatabaseCommit = {
 @entity.name('orm-browser/database')
 export class DatabaseInfo {
     constructor(
-        @t public name: string,
-        @t public adapter: string,
-        @t.array(serializedSchemaDefinition) public serializedSchemas: SerializedSchema[] = []
-    ) { }
+        @t.name('name') public name: string,
+        @t.name('adapter') public adapter: string,
+        @t.array(serializedSchemaDefinition).name('serializedSchemas') public serializedSchemas: SerializedSchema[] = []
+    ) {
+    }
 
     protected classSchemas?: ClassSchema[];
 
@@ -62,8 +64,9 @@ export class DatabaseInfo {
 @entity.name('orm-broser/migration/entity')
 export class MigrationEntityInfo {
     constructor(
-        @t public name: string,
-    ) { }
+        @t.name('name') public name: string,
+    ) {
+    }
 }
 
 @entity.name('orm-broser/migration')
@@ -71,18 +74,38 @@ export class MigrationInfo {
     @t.map(MigrationEntityInfo) entites: { [name: string]: MigrationEntityInfo } = {};
 }
 
-export type QueryResult = {error?: string, log: string[], executionTime: number, result: any};
+export type SeedResult = { function: string, example: any }[];
+export type EntitySeed = {
+    truncate: boolean,
+    active: boolean,
+    amount: number,
+    properties: {name: string, fake: boolean, value?: any, faker: string }[],
+};
+
+export type QueryResult = { error?: string, log: string[], executionTime: number, result: any };
 
 export const BrowserControllerInterface = ControllerSymbol<BrowserControllerInterface>('orm-browser/controller', [DatabaseInfo]);
+
 export interface BrowserControllerInterface {
     getDatabases(): DatabaseInfo[];
+
     resetAllTables(name: string): Promise<void>;
+
     migrate(name: string): Promise<void>;
-    getMigrations(name: string): Promise<{ [name: string]: {sql: string[], diff: string} }>;
+
+    getMigrations(name: string): Promise<{ [name: string]: { sql: string[], diff: string } }>;
+
+    getFakerTypes(): Promise<FakerTypes>;
+
     getDatabase(name: string): DatabaseInfo;
+
     query(dbName: string, entityName: string, query: string): Promise<QueryResult>;
-    getItems(dbName: string, entityName: string, filter: { [name: string]: any }, sort: { [name: string]: any }, limit: number, skip: number): Promise<{items: any[], executionTime: number}>;
+
+    getItems(dbName: string, entityName: string, filter: { [name: string]: any }, sort: { [name: string]: any }, limit: number, skip: number): Promise<{ items: any[], executionTime: number }>;
+
     getCount(dbName: string, entityName: string, filter: { [name: string]: any }): Promise<number>;
+
     create(dbName: string, entityName: string): Promise<any>;
+
     commit(commit: DatabaseCommit): Promise<any>;
 }

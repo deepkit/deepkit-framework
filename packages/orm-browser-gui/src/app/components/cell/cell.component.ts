@@ -11,7 +11,7 @@ import { PropertySchema } from '@deepkit/type';
 import { Registry } from 'src/app/registry';
 
 @Component({
-    selector: 'cell',
+    selector: 'orm-browser-property-view',
     template: ``,
     styles: [`
         :host {

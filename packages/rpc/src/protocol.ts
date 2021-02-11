@@ -581,7 +581,7 @@ export function rpcEncodeError(error: Error | string): EncodedError {
         stack = error.stack || '';
         if (schema.name) {
             classType = schema.name;
-            if (schema.getClassProperties().size) {
+            if (schema.getPropertiesMap().size) {
                 properties = jsonSerializer.for(schema).serialize(error);
             }
         }

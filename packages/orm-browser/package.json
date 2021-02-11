@@ -8,6 +8,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "bin": {
+    "deepkit-orm-browser": "./main.ts"
+  },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
@@ -19,11 +22,12 @@
     "@deepkit/rpc": "^1.0.1-alpha.13",
     "@deepkit/logger": "^1.0.1-alpha.13",
     "@deepkit/orm-browser-api": "^1.0.1-alpha.13",
+    "@deepkit/orm-browser-gui": "^1.0.1-alpha.13",
     "@deepkit/orm": "^1.0.1-alpha.13",
-    "ws": "^7.4.2"
+    "faker": "5.4.0"
   },
   "devDependencies": {
-    "@types/ws": "7.4.0",
+    "@types/faker": "5.1.6",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {

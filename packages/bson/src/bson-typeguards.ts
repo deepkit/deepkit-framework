@@ -46,7 +46,7 @@ registerBSONTypeGuard('class', (property: PropertySchema) => {
     }
 
     //we need to figure out what could be the discriminant
-    for (const property of schema.getClassProperties().values()) {
+    for (const property of schema.getProperties()) {
         if (property.type !== 'literal') continue;
 
         const checker = (elementType: BSONType, name: string) => {

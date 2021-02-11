@@ -293,10 +293,10 @@ export class JSONResponse {
     }
 }
 
-export function serveStaticListener(path: string): ClassType {
+export function serveStaticListener(path: string, localPath: string = path): ClassType {
     @injectable()
     class HttpRequestStaticServingListener {
-        protected serveStatic = serveStatic(path, { index: false });
+        protected serveStatic = serveStatic(localPath, { index: false });
 
         serve(path: string, request: HttpRequest, response: HttpResponse) {
             return new Promise(resolve => {
@@ -314,17 +314,19 @@ export function serveStaticListener(path: string): ClassType {
             if (event.sent) return;
             if (event.route) return;
 
-            const localPath = join(path, join('/', event.url));
+            if (!event.request.url?.startsWith(path)) return;
+
+            const finalLocalPath = join(localPath, join('/', event.url));
 
             return new Promise(resolve => {
-                stat(localPath, (err, stat) => {
+                stat(finalLocalPath, (err, stat) => {
                     if (stat && stat.isFile()) {
                         event.routeFound(
                             new RouteConfig('static', 'GET', event.url, {
                                 controller: HttpRequestStaticServingListener,
                                 methodName: 'serve'
                             }),
-                            () => [path, event.request, event.response]
+                            () => [finalLocalPath, event.request, event.response]
                         );
                     }
                     resolve(undefined);

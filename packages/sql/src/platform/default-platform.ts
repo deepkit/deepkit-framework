@@ -124,7 +124,7 @@ export abstract class DefaultPlatform {
 
     getEntityFields(schema: ClassSchema): PropertySchema[] {
         const fields: PropertySchema[] = [];
-        for (const property of schema.getClassProperties().values()) {
+        for (const property of schema.getProperties()) {
             if (property.isParentReference) continue;
             if (property.backReference) continue;
             fields.push(property);
@@ -206,7 +206,7 @@ export abstract class DefaultPlatform {
 
             const table = database.schemaMap.get(schema)!;
 
-            for (const property of schema.getClassProperties().values()) {
+            for (const property of schema.getProperties()) {
                 if (!property.isReference) continue;
 
                 const foreignSchema = property.getResolvedClassSchema();
@@ -251,7 +251,7 @@ export abstract class DefaultPlatform {
             }
 
             //manual composite indices
-            for (const property of schema.getClassProperties().values()) {
+            for (const property of schema.getProperties()) {
                 if (!property.index) continue;
 
                 const column = table.getColumnForProperty(property);

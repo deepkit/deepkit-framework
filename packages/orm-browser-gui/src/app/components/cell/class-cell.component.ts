@@ -30,6 +30,8 @@ export class ClassCellComponent implements OnChanges, OnInit {
         if (!this.foreignSchema) this.foreignSchema = this.property.getResolvedClassSchema();
 
         this.label = '';
+        if (this.model === undefined || this.model === null) return;
+
         const value = this.model;
 
         if (this.property.isReference) {
@@ -41,7 +43,7 @@ export class ClassCellComponent implements OnChanges, OnInit {
             }
         } else {
             const fields: string[] = [];
-            for (const property of this.foreignSchema.getClassProperties().values()) {
+            for (const property of this.foreignSchema.getProperties()) {
                 if (!(property.name in value)) continue;
                 const v = value[property.name];
 

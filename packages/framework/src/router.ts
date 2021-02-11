@@ -425,7 +425,7 @@ export class Router {
                 const queryPath = parameter.typePath === undefined ? parameter.property.name : parameter.typePath;
 
                 if (parameter.property.type === 'class') {
-                    for (const property of parameter.property.getResolvedClassSchema().getClassProperties().values()) {
+                    for (const property of parameter.property.getResolvedClassSchema().getProperties()) {
                         const accessor = `parameters.${parameter.getName()}?.${property.name}`;
                         const thisPath = queryPath ? queryPath + '.' + property.name : property.name;
                         modify.push(`${accessor} !== undefined && query.push(${JSON.stringify(dotToUrlPath(thisPath))} + '=' + encodeURIComponent(${accessor}))`);

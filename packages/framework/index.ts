@@ -22,6 +22,7 @@ export * from './src/database/migration';
 export * from './src/database/migration-provider';
 export * from './src/database/live-database';
 export * from './src/module';
+export * from './src/http/static-serving';
 export * from './src/http';
 export * from './src/rpc';
 export * from './src/http-model';

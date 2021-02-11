@@ -1,0 +1,42 @@
+:host {
+    margin: 15px 0;
+}
+
+:host-context(body) dui-table ::ng-deep .cell-value {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    white-space: nowrap;
+
+    dui-checkbox {
+        margin-right: 5px;
+    }
+
+    .value {
+        margin-left: 5px;
+        flex: 1;
+    }
+}
+
+.seed-entity {
+    margin-bottom: 15px;
+
+    .settings {
+        margin-top: 5px;
+    }
+}
+
+.choose-type {
+    display: flex;
+    align-items: center;
+    flex: 1;
+
+    div {
+        flex: 1;
+        padding: 1px 4px;
+    }
+
+    dui-button {
+        margin-left: auto;
+    }
+}

@@ -488,7 +488,8 @@ test('missing public in constructor', () => {
 
     const schema = getClassSchema(User);
     expect(schema.getMethodProperties('constructor').length).toBe(2);
-    expect(schema.getClassProperties().size).toBe(5);
+    expect(schema.getPropertiesMap().size).toBe(5);
+    expect(schema.getProperties().length).toBe(5);
     expect(schema.getProperty('id').methodName).toBe('constructor');
     expect(schema.getProperty('name').methodName).toBe('constructor');
 

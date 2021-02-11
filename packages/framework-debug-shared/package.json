@@ -19,7 +19,19 @@
     "access": "public"
   },
   "scripts": {},
-  "dependencies": {
+  "peerDependencies": {
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.13",
+    "@deepkit/bson": "^1.0.1-alpha.13",
+    "@deepkit/crypto": "^1.0.1-alpha.13",
+    "@deepkit/rpc": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13"
+  },
+  "devDependencies": {
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.13",
+    "@deepkit/bson": "^1.0.1-alpha.13",
+    "@deepkit/crypto": "^1.0.1-alpha.13",
     "@deepkit/rpc": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13"
   },

@@ -36,7 +36,7 @@ export function createReferenceClass<T>(
         value: classSchema.getClassName() + 'Reference'
     });
 
-    for (const property of classSchema.getClassProperties().values()) {
+    for (const property of classSchema.getProperties()) {
         if (property.isId) continue;
 
         const message = property.isReference || property.backReference ?

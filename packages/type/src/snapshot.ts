@@ -18,7 +18,7 @@ import { getDataConverterJS } from './serializer-compiler';
 
 function createJITConverterForSnapshot(
     schema: ClassSchema,
-    properties: Iterable<PropertySchema>,
+    properties: PropertySchema[],
     serializerCompilers: SerializerCompilers,
 ) {
     const context = new Map<any, any>();
@@ -113,7 +113,7 @@ export function getConverterForSnapshot(
     const jit = classSchema.jit;
     if (jit.snapshotConverter) return jit.snapshotConverter;
 
-    jit.snapshotConverter = createJITConverterForSnapshot(classSchema, classSchema.getClassProperties().values(), jsonSerializer.fromClass);
+    jit.snapshotConverter = createJITConverterForSnapshot(classSchema, classSchema.getProperties(), jsonSerializer.fromClass);
     toFastProperties(jit);
     return jit.snapshotConverter;
 }

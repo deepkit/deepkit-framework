@@ -17,7 +17,7 @@ import { Subscription } from 'rxjs';
 import { Registry } from 'src/app/registry';
 
 @Component({
-    selector: 'field-editing',
+    selector: 'orm-browser-property-editing',
     template: ``,
     styles: [`
         :host {

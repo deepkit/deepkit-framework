@@ -1,3 +1,4 @@
+/* To learn more about this file see: https://angular.io/config/tsconfig. */
 {
   "compileOnSave": false,
   "compilerOptions": {
@@ -7,15 +8,14 @@
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "noFallthroughCasesInSwitch": true,
-    "noImplicitReturns": false,
     "sourceMap": true,
     "declaration": false,
+    "downlevelIteration": true,
     "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "moduleResolution": "node",
     "importHelpers": true,
-    "preserveSymlinks": true,
-    "esModuleInterop": true,
-    "target": "es2015",
+    "target": "es2018",
     "module": "es2020",
     "lib": [
       "es2018",
@@ -23,13 +23,9 @@
     ]
   },
   "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
     "strictInputAccessModifiers": true,
     "strictTemplates": true
-  },
-  "references": [
-    {
-      "path": "../orm-browser-api/tsconfig.json"
-    }
-  ]
+  }
 }

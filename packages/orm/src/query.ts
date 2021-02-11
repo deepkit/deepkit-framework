@@ -631,7 +631,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
             $unset: (patch as Changes<T>).$unset,
         });
 
-        for (const property of this.classSchema.getClassProperties().values()) {
+        for (const property of this.classSchema.getProperties()) {
             if (property.name in patch) {
                 changes.set(property.name as any, (patch as any)[property.name]);
             }

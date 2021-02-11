@@ -1,7 +1,7 @@
 import { EventEmitter, Injectable } from '@angular/core';
 import { arrayRemoveItem, empty, isObject } from '@deepkit/core';
 import { getInstanceState } from '@deepkit/orm';
-import { DatabaseCommit, DatabaseInfo } from '@deepkit/orm-browser-api';
+import { DatabaseCommit, DatabaseInfo, FakerTypes } from '@deepkit/orm-browser-api';
 import {
     Changes,
     changeSetSymbol,
@@ -13,6 +13,8 @@ import {
 } from '@deepkit/type';
 import { ControllerClient } from './client';
 import { Progress } from '@deepkit/rpc';
+import { EntitySeed } from '../../../orm-browser-api/src/api';
+import { findFaker } from '../../../orm-browser-api/src/faker';
 
 export type ChangesStore = { [pkHash: string]: { pk: { [name: string]: any }, changes: Changes<any> } };
 export type ValidationErrors = { [fieldName: string]: PropertyValidatorError };
@@ -58,7 +60,7 @@ export class BrowserQuery {
             //new Function does not return helpful error message on syntax errors, but eval does.
             //we can not use eval at the beginning since it tries to actually execute the code.
             try {
-                eval(this.javascript)
+                eval(this.javascript);
             } catch (error) {
                 this.javascriptError = error;
             }
@@ -69,6 +71,8 @@ export class BrowserQuery {
 export class BrowserEntityState {
     properties: PropertySchema[] = [];
     queryId: number = 0;
+
+    error?: string;
 
     loading: boolean = false;
 
@@ -121,6 +125,8 @@ export class BrowserEntityState {
 @Injectable()
 export class BrowserState {
     databases: DatabaseInfo[] = [];
+    seedSettings: { [storeKey: string]: EntitySeed } = {};
+
     database?: DatabaseInfo;
     entity?: ClassSchema;
 
@@ -143,6 +149,41 @@ export class BrowserState {
 
     constructor(protected controllerClient: ControllerClient) {
         (window as any).state = this;
+    }
+
+    getSeedSettings(fakerTypes: FakerTypes, db: string, entity: string): EntitySeed {
+        const key = this.getStoreKey(db, entity);
+        let settings = this.seedSettings[key];
+        if (!settings) {
+            const storage = localStorage.getItem('orm-browser/seed-properties/' + db + '/' + entity);
+            const predefined: { [name: string]: { fake: boolean, faker: string } } = storage ? JSON.parse(storage) : { properties: {} };
+
+            const properties: EntitySeed['properties'] = [];
+            for (const property of this.getEntity(db, entity).getProperties()) {
+                if (property.backReference) continue;
+
+                const propertyPredefined = predefined[property.name];
+                properties.push({
+                    name: property.name,
+                    fake: propertyPredefined?.fake || false,
+                    faker: propertyPredefined?.faker || findFaker(fakerTypes, property)
+                });
+            }
+            settings = this.seedSettings[key] = { truncate: true, active: false, amount: 1000, properties: properties };
+        }
+        return settings;
+    }
+
+    storeSeedSettings(db: string, entity: string) {
+        const key = this.getStoreKey(db, entity);
+        const seedSettings = this.seedSettings[key];
+        if (!seedSettings) return;
+
+        const properties: { [name: string]: { fake: boolean, faker: string } } = {};
+        for (const property of seedSettings.properties) {
+            properties[property.name] = { fake: property.fake, faker: property.faker };
+        }
+        localStorage.setItem('orm-browser/seed-properties/' + db + '/' + entity, JSON.stringify(properties));
     }
 
     async resetAll() {
@@ -244,9 +285,6 @@ export class BrowserState {
 
         await this.controllerClient.browser.commit(commit);
         this.onDataChange.emit();
-        for (const entityState of Object.values(this.browserEntityState)) {
-            entityState.items = [];
-        }
     }
 
     getEntityFromCacheKey(key: string): ClassSchema {

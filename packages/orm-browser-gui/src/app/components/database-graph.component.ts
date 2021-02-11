@@ -162,7 +162,7 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
     // }
 
     for (const entity of this.database.getClassSchemas()) {
-      const properties = [...entity.getClassProperties().values()];
+      const properties = [...entity.getProperties()];
 
       let maxWidth = this.browserText.getDimensions(entity.getClassName()).width + 25;
       for (const property of properties) {
@@ -170,7 +170,7 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
         if (w > maxWidth) maxWidth = w;
       }
 
-      g.setNode(entity.getName(), { entity: entity, properties, width: maxWidth, height: propertyListOffset + (entity.getClassProperties().size * propertyHeight), });
+      g.setNode(entity.getName(), { entity: entity, properties, width: maxWidth, height: propertyListOffset + (entity.getPropertiesMap().size * propertyHeight), });
     }
 
     function addEdge(entity: ClassSchema, rootProperty: PropertySchema, property: PropertySchema) {
@@ -183,7 +183,7 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
     }
 
     for (const entity of this.database.getClassSchemas()) {
-      for (const property of entity.getClassProperties().values()) {
+      for (const property of entity.getProperties()) {
         addEdge(entity, property, property);
       }
     }

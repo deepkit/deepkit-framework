@@ -8,8 +8,8 @@ import { isArray } from '@deepkit/core';
         <dui-dialog *ngIf="subType" [visible]="true" (closed)="done.emit()" [backDropCloses]="true">
             <ng-container *ngIf="model">
                 <div class="item" *ngFor="let item of model; trackBy: trackByIndex; let i = index">
-                    <field-editing [property]="subType" [(model)]="model[i]"
-                                   (modelChange)="modelChange.emit(this.model)"></field-editing>
+                    <orm-browser-property-editing [property]="subType" [(model)]="model[i]"
+                                                  (modelChange)="modelChange.emit(this.model)"></orm-browser-property-editing>
                     <dui-button icon="garbage" tight (click)="remove(i)"></dui-button>
                 </div>
             </ng-container>

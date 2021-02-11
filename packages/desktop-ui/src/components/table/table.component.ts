@@ -404,6 +404,11 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
      */
     @Input() public sortFunction?: (sort: { [name: string]: 'asc' | 'desc' }) => (((a: T, b: T) => number) | undefined);
 
+    /**
+     * Whether sorting is enabled (clicking headers trigger sort).
+     */
+    @Input() public sorting: boolean = true;
+
     @Input() noFocusOutline: boolean | '' = false;
 
     public sort: { [column: string]: 'asc' | 'desc' } = {};
@@ -553,6 +558,8 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
      * Toggles the sort by the given column name.
      */
     public sortBy(name: string, $event?: MouseEvent) {
+        if (!this.sorting) return;
+
         if (this.ignoreThisSort) {
             this.ignoreThisSort = false;
             return;
