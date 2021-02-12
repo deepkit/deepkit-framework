@@ -14,7 +14,7 @@ import {
     ChangeDetectorRef,
     Component,
     ComponentRef,
-    Directive,
+    Directive, ElementRef,
     EventEmitter,
     HostListener,
     Injector,
@@ -36,7 +36,9 @@ import { WindowRegistry } from '../window/window-state';
 import { WindowComponent } from '../window/window.component';
 import { RenderComponentDirective } from '../core/render-component.directive';
 import { IN_DIALOG } from '../app/token';
-import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule } from '../app';
+import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule, unsubscribe } from '../app';
+import { Subscription } from 'rxjs';
+import { ButtonComponent } from '../button';
 
 @Component({
     template: `
@@ -161,8 +163,8 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         return new Promise((resolve) => {
             this.closed.subscribe((v: any) => {
                 resolve(v);
-            })
-        })
+            });
+        });
     }
 
     public setDialogContainer(container: TemplateRef<any> | undefined) {
@@ -193,7 +195,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         }
 
         const window = this.window ? this.window.getClosestNonDialogWindow() : this.registry.getOuterActiveWindow();
-        const offsetTop = window && window.header ? window.header.getBottomPosition() - 1 : 0;
+        const offsetTop = window && window.header ? window.header.getBottomPosition() : 0;
 
         // const document = this.registry.getCurrentViewContainerRef().element.nativeElement.ownerDocument;
 
@@ -364,5 +366,54 @@ export class CloseDialogDirective {
     @HostListener('click')
     onClick() {
         this.dialog.close(this.closeDialog);
+    }
+}
+
+/**
+ * A directive to open the given dialog on regular left click.
+ */
+@Directive({
+    'selector': '[openDialog]',
+})
+export class OpenDialogDirective implements AfterViewInit, OnChanges, OnDestroy {
+    @Input() openDialog?: DialogComponent;
+
+    @unsubscribe()
+    openSub?: Subscription;
+
+    @unsubscribe()
+    hiddenSub?: Subscription;
+
+    constructor(
+        protected elementRef: ElementRef,
+        @Optional() protected button?: ButtonComponent,
+    ) {
+    }
+
+    ngOnDestroy() {
+    }
+
+    ngOnChanges() {
+        this.link();
+    }
+
+    ngAfterViewInit() {
+        this.link();
+    }
+
+    protected link() {
+        if (this.button && this.openDialog) {
+            this.openSub = this.openDialog.open.subscribe(() => {
+                if (this.button) this.button.active = true;
+            });
+            this.hiddenSub = this.openDialog.closed.subscribe(() => {
+                if (this.button) this.button.active = false;
+            });
+        }
+    }
+
+    @HostListener('click')
+    onClick() {
+        if (this.openDialog) this.openDialog.show();
     }
 }

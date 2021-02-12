@@ -11,6 +11,7 @@
     "build:esm": "tsc --build tsconfig.esm.json",
     "tsc": "tsc --build",
     "tsc-watch": "tsc --build --watch",
+    "tsc-watch:esm": "tsc --build --watch tsconfig.esm.json",
     "clean": "rm -rf packages/*/dist",
     "clean-modules": "rm -rf packages/*/node_modules; rm -rf node_modules;",
     "docs": "rm -rf docs && typedoc",

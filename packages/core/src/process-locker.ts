@@ -150,8 +150,6 @@ export class ProcessLocker {
     }
 }
 
-export type MutexUnlock = () => void;
-
 export class Mutex {
     protected promise?: Promise<void>;
     protected resolver?: Function;

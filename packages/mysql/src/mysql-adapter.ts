@@ -22,7 +22,7 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from '@deepkit/sql';
-import { DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
+import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
 import { MySQLPlatform } from './mysql-platform';
 import {
     Changes,
@@ -35,28 +35,41 @@ import {
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
 
 export class MySQLStatement extends SQLStatement {
-    constructor(protected sql: string, protected connection: PoolConnection) {
+    constructor(protected logger: DatabaseLogger, protected sql: string, protected connection: PoolConnection) {
         super();
     }
 
     async get(params: any[] = []) {
-        return asyncOperation<any[]>((resolve, reject) => {
-            this.connection.query(this.sql, params).then((rows) => {
-                resolve(rows[0]);
-            }).catch(reject);
-        });
+        try {
+            //mysql/mariadb driver does not maintain error.stack when they throw errors, so
+            //we have to manually convert it using asyncOperation.
+            const rows = await asyncOperation<any[]>((resolve, reject) => {
+                this.connection.query(this.sql, params).then(resolve).catch(reject);
+            });
+            this.logger.logQuery(this.sql, params);
+            return rows[0];
+        } catch (error) {
+            this.logger.failedQuery(error, this.sql, params);
+            throw error;
+        }
     }
 
     async all(params: any[] = []) {
-        //mysql/mariadb driver does not maintain error.stack when they throw errors, so
-        //we have to manually convert it using asyncOperation.
-        return asyncOperation<any[]>((resolve, reject) => {
-            this.connection.query(this.sql, params).then(resolve).catch(reject);
-        });
+        try {
+            //mysql/mariadb driver does not maintain error.stack when they throw errors, so
+            //we have to manually convert it using asyncOperation.
+            const rows = await asyncOperation<any[]>((resolve, reject) => {
+                this.connection.query(this.sql, params).then(resolve).catch(reject);
+            });
+            this.logger.logQuery(this.sql, params);
+            return rows;
+        } catch (error) {
+            this.logger.failedQuery(error, this.sql, params);
+            throw error;
+        }
     }
 
     release() {
-        this.connection.release();
     }
 }
 
@@ -64,50 +77,29 @@ export class MySQLConnection extends SQLConnection {
     protected changes: number = 0;
     public lastExecResult?: UpsertResult[];
     protected connector?: Promise<PoolConnection>;
-    protected connection?: PoolConnection;
 
     constructor(
         connectionPool: SQLConnectionPool,
-        protected getConnection: () => Promise<PoolConnection>
+        public connection: PoolConnection,
+        logger?: DatabaseLogger
     ) {
-        super(connectionPool);
-    }
-
-    release() {
-        super.release();
-        if (this.connector && !this.connection) throw new Error('Could not release while in connecting');
-        this.connector = undefined;
-        if (this.connection) {
-            this.connection.release();
-            this.connection = undefined;
-        }
-    }
-
-    protected connect(): Promise<PoolConnection> {
-        if (this.connection) return Promise.resolve(this.connection);
-
-        return asyncOperation<PoolConnection>((resolve, reject) => {
-            if (!this.connector) {
-                this.connector = this.getConnection();
-            }
-            this.connector.then((connection) => {
-                this.connection = connection;
-                resolve(connection);
-            }, (err) => {
-                this.connector = undefined;
-                reject(err);
-            });
-        });
+        super(connectionPool, logger);
     }
 
     async prepare(sql: string) {
-        return new MySQLStatement(sql, await this.connect());
+        return new MySQLStatement(this.logger, sql, this.connection);
     }
 
     async run(sql: string, params: any[] = []) {
         //batch returns in reality a single UpsertResult if only one query is given
-        const res = (await (await this.connect()).query(sql, params)) as UpsertResult[] | UpsertResult;
-        this.lastExecResult = isArray(res) ? res : [res];
+        try {
+            const res = (await this.connection.query(sql, params)) as UpsertResult[] | UpsertResult;
+            this.logger.logQuery(sql, params);
+            this.lastExecResult = isArray(res) ? res : [res];
+        } catch (error) {
+            this.logger.failedQuery(error, sql, params);
+            throw error;
+        }
     }
 
     async getChanges(): Promise<number> {
@@ -120,15 +112,23 @@ export class MySQLConnectionPool extends SQLConnectionPool {
         super();
     }
 
-    getConnection(): MySQLConnection {
+    async getConnection(logger?: DatabaseLogger, transaction?: DatabaseTransaction): Promise<MySQLConnection> {
+        //todo: handle transaction, when given we make sure we return a sticky connection to the transaction
+        // and release the stickiness when transaction finished.
+
         this.activeConnections++;
-        return new MySQLConnection(this, this.pool.getConnection.bind(this.pool));
+        return new MySQLConnection(this, await this.pool.getConnection(), logger);
+    }
+
+    release(connection: MySQLConnection) {
+        connection.connection.release();
+        super.release(connection);
     }
 }
 
 export class MySQLPersistence extends SQLPersistence {
-    constructor(protected platform: DefaultPlatform, protected connection: MySQLConnection, session: DatabaseSession<any>) {
-        super(platform, connection, session);
+    constructor(protected platform: DefaultPlatform, public connectionPool: MySQLConnectionPool, session: DatabaseSession<any>) {
+        super(platform, connectionPool, session);
     }
 
     async batchUpdate<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
@@ -262,9 +262,8 @@ export class MySQLPersistence extends SQLPersistence {
               ${endSelect}
         `;
 
-        // console.log(sql);
-        const result = await this.connection.execAndReturnAll(sql);
-        // console.log('result', result);
+        const connection = await this.getConnection(); //will automatically be released in SQLPersistence
+        const result = await connection.execAndReturnAll(sql);
 
         if (!empty(setReturning)) {
             const returning = result[1][0];
@@ -289,13 +288,14 @@ export class MySQLPersistence extends SQLPersistence {
     protected async populateAutoIncrementFields<T>(classSchema: ClassSchema<T>, items: T[]) {
         const autoIncrement = classSchema.getAutoIncrementField();
         if (!autoIncrement) return;
+        const connection = await this.getConnection(); //will automatically be released in SQLPersistence
 
-        if (!this.connection.lastExecResult || !this.connection.lastExecResult.length) throw new Error('No lastBatchResult found');
+        if (!connection.lastExecResult || !connection.lastExecResult.length) throw new Error('No lastBatchResult found');
 
         //MySQL returns the _first_ auto-incremented value for a batch insert.
         //It's guaranteed to increment always by one (expect if the user provides a manual auto-increment value in between, which should be forbidden).
         //So since we know how many items were inserted, we can simply calculate for each item the auto-incremented value.
-        const result = this.connection.lastExecResult[0];
+        const result = connection.lastExecResult[0];
         let start = result.insertId;
 
         for (const item of items) {
@@ -314,7 +314,7 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
         const tableName = this.platform.getTableIdentifier(this.classSchema);
 
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
             const sql = `
                 WITH _ AS (${select.sql})
@@ -415,7 +415,7 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
             ${selectVarsSQL}
         `;
 
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
             const result = await connection.execAndReturnAll(sql, params);
             const packet = result[0];
@@ -465,7 +465,7 @@ export class MySQLDatabaseAdapter extends SQLDatabaseAdapter {
     }
 
     createPersistence(session: DatabaseSession<any>): SQLPersistence {
-        return new MySQLPersistence(this.platform, this.connectionPool.getConnection(), session);
+        return new MySQLPersistence(this.platform, this.connectionPool, session);
     }
 
     queryFactory(databaseSession: DatabaseSession<any>): MySQLDatabaseQueryFactory {

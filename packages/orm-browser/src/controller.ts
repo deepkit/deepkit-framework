@@ -4,16 +4,19 @@ import {
     BrowserControllerInterface,
     DatabaseCommit,
     DatabaseInfo,
+    EntityPropertySeed,
     fakerFunctions, FakerTypes, getType,
     QueryResult, SeedDatabase
 } from '@deepkit/orm-browser-api';
 import { rpc } from '@deepkit/rpc';
-import { ClassSchema, jsonSerializer, plainToClass, serializeSchemas, t } from '@deepkit/type';
+import { ClassSchema, jsonSerializer, plainToClass, PropertySchema, serializeSchemas, t } from '@deepkit/type';
 import * as faker from 'faker';
 import { SQLDatabaseAdapter } from '@deepkit/sql';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { performance } from 'perf_hooks';
 import { http } from '@deepkit/framework';
+import { EntityPropertySeedReference } from '@deepkit/orm-browser-api';
+import { inspect } from 'util';
 
 @rpc.controller(BrowserControllerInterface)
 export class BrowserController implements BrowserControllerInterface {
@@ -118,31 +121,72 @@ export class BrowserController implements BrowserControllerInterface {
     async seed(dbName: string, seed: SeedDatabase): Promise<void> {
         const db = this.getDb(dbName);
         db.logger.active = false;
-        console.log('seed', seed);
+        console.log(inspect(seed, false, 2133));
+
         try {
             const session = db.createSession();
             const added: { [entityName: string]: any[] } = {};
+            const assignReference: { path: string, entity: string, reference: EntityPropertySeedReference, callback: (v: any) => any }[] = [];
 
-            function create(entity: ClassSchema, seed: SeedDatabase['entities'][keyof SeedDatabase['entities']]) {
-                const obj: { [name: string]: any } = {};
-                if (!added[entity.getName()]) added[entity.getName()] = [];
+            function fakerValue(path: string, fakerName: string): any {
+                const [p1, p2] = fakerName.split('.');
+                try {
+                    return p2 ? (faker as any)[p1][p2]() : (faker as any)[p1]();
+                } catch (error) {
+                    console.warn(`Could not fake ${path} via faker's ${fakerName}: ${error}`);
+                }
+            }
 
-                for (const propSeed of seed.properties) {
-                    const property = entity.getProperty(propSeed.name);
-
-                    if (propSeed.fake && !property.isReference) {
-                        const [p1, p2] = propSeed.faker.split('.');
-                        try {
-                            obj[propSeed.name] = p2 ? (faker as any)[p1][p2]() : (faker as any)[p1]();
-                        } catch (error) {
-                            console.warn(`Could not fake ${entity.getClassName()}.${propSeed.name} via faker's ${propSeed.faker}: ${error}`);
-                        }
-                    } else if (propSeed.value !== undefined) {
-                        obj[propSeed.name] = propSeed.value;
-                    }
+            function fake(path: string, property: PropertySchema, propSeed: EntityPropertySeed, callback: (v: any) => any): any {
+                if (!propSeed.fake) {
+                    if (propSeed.value !== undefined) callback(propSeed.value);
+                    return;
                 }
 
-                const item = plainToClass(entity, obj);
+                if (property.isReference) {
+                    if (property.type !== 'class') throw new Error(`${path}: only class properties can be references`);
+                    assignReference.push({ path, entity: property.getResolvedClassSchema().getName(), reference: propSeed.reference, callback });
+                    return;
+                } else if (property.isArray) {
+                    const res: any[] = [];
+                    if (!propSeed.array) return res;
+                    const range = propSeed.array.max - propSeed.array.min;
+                    const subPath = path + '.' + property.getSubType().name;
+                    for (let i = 0; i < Math.ceil(Math.random() * range); i++) {
+                        fake(subPath, property.getSubType(), propSeed.array.seed, (v) => {
+                            res.push(v);
+                        });
+                    }
+
+                    return callback(res);
+                } else if (property.isMap) {
+                    const res: { [name: string]: any } = {};
+                    if (!propSeed.map) return res;
+                    const map = propSeed.map;
+                    const range = propSeed.map.max - propSeed.map.min;
+                    const subPath = path + '.' + property.getSubType().name;
+                    for (let i = 0; i < Math.ceil(Math.random() * range); i++) {
+                        fake(subPath, property.getSubType(), propSeed.map.seed, (v) => {
+                            res[fakerValue(subPath, map.key.faker)] = v;
+                        });
+                    }
+                    return callback(res);
+                } else {
+                    return callback(fakerValue(path, propSeed.faker));
+                }
+            }
+
+            function create(entity: ClassSchema, seed: SeedDatabase['entities'][keyof SeedDatabase['entities']]) {
+                if (!added[entity.getName()]) added[entity.getName()] = [];
+
+                const item = plainToClass(entity, { });
+
+                for (const [propName, propSeed] of Object.entries(seed.properties)) {
+                    const property = entity.getProperty(propName);
+                    fake(entity.getClassName() + '.' + propName, property, propSeed, (v) => {
+                        item[property.name] = v;
+                    });
+                }
 
                 for (const reference of entity.references) {
                     if (reference.isArray) continue;
@@ -169,45 +213,36 @@ export class BrowserController implements BrowserControllerInterface {
             }
 
             //assign references
-            for (const [entityName, items] of Object.entries(added)) {
-                const entity = db.getEntity(entityName);
-                const entitySeed = seed.entities[entityName];
-                if (!entitySeed) continue;
+            const dbCandidates: { [entityName: string]: any[] } = {};
+            for (const ref of assignReference) {
+                const entity = db.getEntity(ref.entity);
 
-                for (const propSeed of entitySeed.properties) {
-                    const property = entity.getProperty(propSeed.name);
-                    if (!property.isReference) continue;
-                    if (!propSeed.fake) continue;
+                if (!seed.entities[ref.entity]) {
+                    throw new Error(
+                        `Entity ${ref.entity} seed config needs to be set. Use amount = 0 if you dont want to create one. ` +
+                        `Used in ${ref.path}.`
+                    );
+                }
 
-                    const foreignSchema = property.getResolvedClassSchema();
-                    if (!seed.entities[foreignSchema.getName()]) {
-                        throw new Error(
-                            `Entity ${foreignSchema.getClassName()} seed config needs to be set. Use amount = 0 if you dont want to create one. ` +
-                            `Used in ${entity.getClassName()}.${property.name}.`
-                        );
-                    }
+                let candidates = added[ref.entity] ||= [];
+                if (ref.reference === 'random') {
+                    //note: I know there are faster ways, but this gets the job done for now
+                    candidates = dbCandidates[ref.entity] ||= await db.query(entity).limit(1000).find();
+                }
 
-                    let candidates = added[foreignSchema.getName()] ||= [];
-                    if (propSeed.reference === 'random') {
-                        //note: I know there are faster ways, but this gets the job done for now
-                        candidates = await db.query(foreignSchema).limit(1000).find();
+                if (!candidates.length) {
+                    if (ref.reference === 'random') {
+                        throw new Error(`Entity ${ref.entity} has no items in the database. Used in ${ref.path}.`);
                     }
-                    if (!candidates.length) {
-                        if (propSeed.reference === 'random') {
-                            throw new Error(`Entity ${foreignSchema.getClassName()} has no items in the database. Used in ${entity.getClassName()}.${property.name}.`);
-                        }
-                        if (propSeed.reference === 'random-seed') {
-                            throw new Error(`Entity ${foreignSchema.getClassName()} has no seeded items. Used in ${entity.getClassName()}.${property.name}.`);
-                        }
+                    if (ref.reference === 'random-seed') {
+                        throw new Error(`Entity ${ref.entity} has no seeded items. Used in ${ref.path}.`);
                     }
+                }
 
-                    for (const item of items) {
-                        if (propSeed.reference === 'create') {
-                            item[property.name] = create(foreignSchema, seed.entities[foreignSchema.getName()]);
-                        } else {
-                            item[property.name] = candidates[candidates.length * Math.random() | 0];
-                        }
-                    }
+                if (ref.reference === 'create') {
+                    ref.callback(create(entity, seed.entities[ref.entity]));
+                } else {
+                    ref.callback(candidates[candidates.length * Math.random() | 0]);
                 }
             }
 

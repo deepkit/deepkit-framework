@@ -36,7 +36,7 @@ import { PropertySchema } from '@deepkit/type';
         .actions {
             position: absolute;
             right: 2px;
-            top: calc(50% - 8.5px);
+            top: 0;
             display: none;
         }
 

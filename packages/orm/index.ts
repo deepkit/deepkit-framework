@@ -18,6 +18,7 @@ export * from './src/query-filter';
 export * from './src/utils';
 export * from './src/memory-db';
 export * from './src/type';
+export * from './src/logger';
 export * from './src/event';
 export * from './src/reference';
 export * from './src/plugin/soft-delete';

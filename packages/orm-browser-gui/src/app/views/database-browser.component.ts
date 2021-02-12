@@ -81,8 +81,11 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
     }
 
     async executeQuery(query: BrowserQuery): Promise<void> {
+        if (query.loading) return;
+
         query.progress = ClientProgress.track();
         query.executed = true;
+        query.loading = true;
         this.cd.detectChanges();
         try {
             query.log.push('Query: ' + query.javascript);
@@ -95,11 +98,10 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
             query.executionTime = res.executionTime;
             query.downloadBytes = query.progress.download.total;
             query.downloadTime = performance.now() - start;
-
         } catch (error) {
             this.duiDialog.alert('Error', error);
         }
-        query.progress = undefined;
+        query.loading = false;
         this.cd.detectChanges();
     }
 
@@ -381,6 +383,8 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
             return;
         }
 
+        // if (this.entityState.progress) return;
+
         const entityName = this.entity.getName();
         const changeStore = this.entityState.changes;
         const oldChangedPkHashes = new Set(changeStore ? Object.keys(changeStore) : []);
@@ -404,8 +408,6 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
             this.entityState.executionTime = executionTime;
             this.entityState.downloadTime = performance.now() - start;
             this.entityState.downloadBytes = this.entityState.progress.download.total;
-            this.entityState.progress = undefined;
-
             this.entityState.loading = false;
 
             this.entityState.dbItems = [];

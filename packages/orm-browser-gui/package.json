@@ -1,16 +1,20 @@
 {
-  "name": "orm-browser-gui2",
-  "version": "0.0.0",
+  "name": "@deepkit/orm-browser-gui",
+  "version": "1.0.1-alpha.13",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
-    "build:prod": "ng build --prod",
+    "build": "ng build --prod",
+    "build:dev": "ng build",
     "test": "ng test",
     "lint": "ng lint",
     "e2e": "ng e2e"
   },
   "private": true,
+  "browser": {
+    "fs": false,
+    "@deepkit/logger": false
+  },
   "peerDependencies": {
     "@deepkit/desktop-ui": "^1.0.1-alpha.13",
     "@deepkit/orm-browser-api": "^1.0.1-alpha.13",

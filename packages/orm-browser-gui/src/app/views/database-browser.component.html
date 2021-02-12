@@ -1,4 +1,3 @@
-
 <ng-container *ngIf="database && entity && entityState">
     <dui-window-toolbar *ngIf="!dialog" for="browser">
         <dui-button-group padding="none">
@@ -38,14 +37,17 @@
             <div class="result">
                 <div class="results-header">
                     <ng-container *ngIf="query.executed && !query.javascriptError">
-                                <span *ngIf="query.progress">Executing
-                                    <dui-indicator [step]="(query.progress|async) || 0"></dui-indicator>
-                                </span>
-                        <span *ngIf="!query.progress">
-                                    Query time {{query.executionTime|number:'0.3-6'}} ms,
-                                    receiving {{query.downloadBytes|fileSize}}
-                            took {{query.downloadTime|number:'0.3-6'}} ms
-                                </span>
+                        <span class="executing-progress" *ngIf="query.progress" [class.visible]="query.loading">
+                            <dui-indicator [step]="(query.progress?.download|asyncRender)  || 0"></dui-indicator>
+                        </span>
+                        <span *ngIf="!query.loading">
+                            Query time {{query.executionTime|number:'0.3-6'}} ms,
+                            receiving {{query.downloadBytes|fileSize}}
+                            took {{query.downloadTime|number:'0.3-6'}} ms.
+                        </span>
+                        <span *ngIf="isArray(query.result)">
+                            {{query.result.length}} records.
+                        </span>
                     </ng-container>
                     <ng-container *ngIf="!query.executed">
                         Press CMD+Enter to execute the query.
@@ -55,7 +57,7 @@
 
                 <div class="results-header-actions">
                     <dui-button-group padding="none">
-                        <dui-button textured icon="play" (click)="executeQuery(query)"></dui-button>
+                        <dui-button textured icon="play" [disabled]="query.loading" (click)="executeQuery(query)"></dui-button>
                         <dui-button textured (click)="openQueryJson(query)">JSON</dui-button>
                     </dui-button-group>
                 </div>
@@ -166,10 +168,10 @@
                             of {{entityState.totalPages}} page{{entityState.totalPages === 1 ? '' : 's'}}
                             ({{entityState.count}} records).
                         </span>
-                        <span *ngIf="entityState.progress">
-                            Executing <dui-indicator [step]="(entityState.progress|async) || 0"></dui-indicator>
+                        <span class="executing-progress" *ngIf="entityState.progress" [class.visible]="entityState.loading">
+                            <dui-indicator [step]="(entityState.progress?.download|asyncRender)  || 0"></dui-indicator>
                         </span>
-                        <span *ngIf="!entityState.progress">
+                        <span *ngIf="!entityState.loading">
                             Query time {{entityState.executionTime|number:'0.3-6'}} ms,
                             receiving {{entityState.downloadBytes|fileSize}}
                             took {{entityState.downloadTime|number:'0.3-6'}} ms

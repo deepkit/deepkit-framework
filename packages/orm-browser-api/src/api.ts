@@ -19,6 +19,7 @@ import {
     t
 } from '@deepkit/type';
 import { FakerTypes } from './faker';
+import { Forward } from '@deepkit/core';
 
 export type DatabaseCommit = {
     [dbName: string]: {
@@ -75,15 +76,63 @@ export class MigrationInfo {
 }
 
 export type SeedResult = { function: string, example: any }[];
-export type EntitySeed = {
-    truncate: boolean,
-    active: boolean,
-    amount: number,
-    properties: {name: string, fake: boolean, reference: 'random' | 'random-seed' | 'create', value?: any, faker: string }[],
-};
 
-export type SeedDatabase = {
-    entities: {[name: string]: EntitySeed};
+
+export type EntityPropertySeedReference = 'random' | 'random-seed' | 'create';
+
+@entity.name('orm-browser/seed/property')
+export class EntityPropertySeed {
+    @t fake: boolean = false;
+    @t.string reference: EntityPropertySeedReference = 'create';
+    @t.any value?: any;
+    @t.type(() => EntityPropertyArraySeed).optional array?: Forward<EntityPropertyArraySeed>;
+    @t.type(() => EntityPropertyMapSeed).optional map?: Forward<EntityPropertyMapSeed>;
+    @t.any faker: string = '';
+    @t.map(EntityPropertySeed) properties: { [name: string]: EntityPropertySeed } = {};
+
+    constructor(public name: string = '') {
+    }
+
+    getArray(): EntityPropertyArraySeed {
+        if (!this.array) this.array = new EntityPropertyArraySeed();
+        return this.array;
+    }
+
+    getMap(): EntityPropertyMapSeed {
+        if (!this.map) this.map = new EntityPropertyMapSeed();
+        return this.map;
+    }
+}
+
+@entity.name('orm-browser/seed/property/array')
+export class EntityPropertyArraySeed {
+    @t min: number = 1;
+    @t max: number = 5;
+    @t.type(EntityPropertySeed) seed: EntityPropertySeed = new EntityPropertySeed;
+}
+
+@entity.name('orm-browser/seed/property/map')
+export class EntityPropertyMapSeed {
+    @t.any key: { fake: boolean, faker: string } = { fake: true, faker: 'random.word' };
+    @t min: number = 1;
+    @t max: number = 5;
+    @t.type(EntityPropertySeed) seed: EntityPropertySeed = new EntityPropertySeed();
+}
+
+@entity.name('orm-browser/seed/entity')
+export class EntitySeed {
+    @t truncate: boolean = true;
+    @t active: boolean = false;
+    @t amount: number = 1000;
+
+    @t.map(EntityPropertySeed)
+    properties: { [name: string]: EntityPropertySeed } = {};
+}
+
+@entity.name('orm-browser/seed/database')
+export class SeedDatabase {
+    @t.map(EntitySeed)
+    entities: { [name: string]: EntitySeed } = {};
 }
 
 export type QueryResult = { error?: string, log: string[], executionTime: number, result: any };

@@ -21,7 +21,7 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from '@deepkit/sql';
-import { DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
+import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
 import { PostgresPlatform } from './postgres-platform';
 import {
     Changes,
@@ -38,24 +38,36 @@ import { asyncOperation, ClassType, empty } from '@deepkit/core';
 export class PostgresStatement extends SQLStatement {
     protected released = false;
 
-    constructor(protected sql: string, protected client: PoolClient) {
+    constructor(protected logger: DatabaseLogger, protected sql: string, protected client: PoolClient) {
         super();
     }
 
     async get(params: any[] = []) {
-        return asyncOperation<any>((resolve, reject) => {
-            this.client.query(this.sql, params).then((res) => {
-                resolve(res.rows[0]);
-            }).catch(reject);
-        });
+        try {
+            //postgres driver does not maintain error.stack when they throw errors, so
+            //we have to manually convert it using asyncOperation.
+            const res = await asyncOperation<any>((resolve, reject) => {
+                this.client.query(this.sql, params).then(resolve).catch(reject);
+            });
+            return res.rows[0];
+        } catch (error) {
+            this.logger.failedQuery(error, this.sql, params);
+            throw error;
+        }
     }
 
     async all(params: any[] = []) {
-        return asyncOperation<any>((resolve, reject) => {
-            this.client.query(this.sql, params).then((res) => {
-                resolve(res.rows);
-            }).catch(reject);
-        });
+        try {
+            //postgres driver does not maintain error.stack when they throw errors, so
+            //we have to manually convert it using asyncOperation.
+            const res = await asyncOperation<any>((resolve, reject) => {
+                this.client.query(this.sql, params).then(resolve).catch(reject);
+            });
+            return res.rows;
+        } catch (error) {
+            this.logger.failedQuery(error, this.sql, params);
+            throw error;
+        }
     }
 
     release() {
@@ -65,55 +77,33 @@ export class PostgresStatement extends SQLStatement {
 export class PostgresConnection extends SQLConnection {
     protected changes: number = 0;
     public lastReturningRows: any[] = [];
-    protected connector?: Promise<PoolClient>;
-    protected connection?: PoolClient;
 
     constructor(
         connectionPool: PostgresConnectionPool,
-        protected getConnection: () => Promise<PoolClient>
+        public connection: PoolClient,
+        logger?: DatabaseLogger,
     ) {
-        super(connectionPool);
-    }
-
-    release() {
-        super.release();
-        if (this.connector && !this.connection) throw new Error('Could not release while in connecting');
-        this.connector = undefined;
-        if (this.connection) {
-            this.connection.release();
-            this.connection = undefined;
-        }
-    }
-
-    protected connect(): Promise<PoolClient> {
-        if (this.connection) return Promise.resolve(this.connection);
-
-        return asyncOperation<PoolClient>((resolve, reject) => {
-            if (!this.connector) {
-                this.connector = this.getConnection();
-            }
-            this.connector.then((connection) => {
-                this.connection = connection;
-                resolve(connection);
-            }, (err) => {
-                this.connector = undefined;
-                reject(err);
-            });
-        });
+        super(connectionPool, logger);
     }
 
     async prepare(sql: string) {
-        return new PostgresStatement(sql, await this.connect());
+        return new PostgresStatement(this.logger, sql, this.connection);
     }
 
     async run(sql: string, params: any[] = []) {
-        await asyncOperation(async (resolve, reject) => {
-            (await this.connect()).query(sql, params).then((res) => {
-                this.lastReturningRows = res.rows;
-                this.changes = res.rowCount;
-                resolve(undefined);
-            }, reject);
-        });
+        try {
+            //postgres driver does not maintain error.stack when they throw errors, so
+            //we have to manually convert it using asyncOperation.
+            const res = await asyncOperation<any>((resolve, reject) => {
+                this.connection.query(sql, params).then(resolve).catch(reject);
+            });
+            this.logger.logQuery(sql, params);
+            this.lastReturningRows = res.rows;
+            this.changes = res.rowCount;
+        } catch (error) {
+            this.logger.failedQuery(error, sql, params);
+            throw error;
+        }
     }
 
     async getChanges(): Promise<number> {
@@ -126,13 +116,23 @@ export class PostgresConnectionPool extends SQLConnectionPool {
         super();
     }
 
-    getConnection(): PostgresConnection {
+    async getConnection(logger?: DatabaseLogger, transaction?: DatabaseTransaction): Promise<PostgresConnection> {
+        //todo: handle transaction, when given we make sure we return a sticky connection to the transaction
+        // and release the stickiness when transaction finished.
+
+        const connection = await this.pool.connect();
         this.activeConnections++;
-        return new PostgresConnection(this, () => this.pool.connect());
+        return new PostgresConnection(this, connection, logger);
+    }
+
+    release(connection: PostgresConnection) {
+        super.release(connection);
+        connection.connection.release();
     }
 }
 
 function typeSafeDefaultValue(property: PropertySchema): any {
+    if (property.type === 'string') return '';
     if (property.type === 'number') return 0;
     if (property.type === 'boolean') return false;
     if (property.type === 'date') return new Date;
@@ -141,8 +141,8 @@ function typeSafeDefaultValue(property: PropertySchema): any {
 }
 
 export class PostgresPersistence extends SQLPersistence {
-    constructor(protected platform: DefaultPlatform, protected connection: PostgresConnection, session: DatabaseSession<any>) {
-        super(platform, connection, session);
+    constructor(protected platform: DefaultPlatform, public connectionPool: PostgresConnectionPool, session: DatabaseSession<any>) {
+        super(platform, connectionPool, session);
     }
 
     async batchUpdate<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
@@ -276,7 +276,8 @@ export class PostgresPersistence extends SQLPersistence {
               RETURNING ${returningSelect.join(', ')};
         `;
 
-        const result = await this.connection.execAndReturnAll(sql);
+        const connection = await this.getConnection(); //will automatically be released in SQLPersistence
+        const result = await connection.execAndReturnAll(sql);
         for (const returning of result) {
             const r = assignReturning[returning[pkName]];
             if (!r) continue;
@@ -290,11 +291,12 @@ export class PostgresPersistence extends SQLPersistence {
     protected async populateAutoIncrementFields<T>(classSchema: ClassSchema<T>, items: T[]) {
         const autoIncrement = classSchema.getAutoIncrementField();
         if (!autoIncrement) return;
+        const connection = await this.getConnection(); //will automatically be released in SQLPersistence
 
         //We adjusted the INSERT SQL with additional RETURNING which returns all generated
         //auto-increment values. We read the result and simply assign the value.
         const name = autoIncrement.name;
-        const insertedRows = this.connection.lastReturningRows;
+        const insertedRows = connection.lastReturningRows;
         if (!insertedRows.length) return;
 
         for (let i = 0; i < items.length; i++) {
@@ -332,7 +334,7 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
         const tableName = this.platform.getTableIdentifier(this.classSchema);
 
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
             const sql = `
                 WITH _ AS (${select.sql})
@@ -431,7 +433,7 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
             RETURNING ${returningSelect.join(', ')}
         `;
 
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
             const result = await connection.execAndReturnAll(sql, selectSQL.params);
 
@@ -487,12 +489,12 @@ export class PostgresDatabaseAdapter extends SQLDatabaseAdapter {
         return '';
     }
 
-    createPersistence(databaseSession: DatabaseSession<this>): SQLPersistence {
-        return new PostgresPersistence(this.platform, this.connectionPool.getConnection(), databaseSession);
+    createPersistence(session: DatabaseSession<this>): SQLPersistence {
+        return new PostgresPersistence(this.platform, this.connectionPool, session);
     }
 
-    queryFactory(databaseSession: DatabaseSession<any>): SQLDatabaseQueryFactory {
-        return new PostgresSQLDatabaseQueryFactory(this.connectionPool, this.platform, databaseSession);
+    queryFactory(session: DatabaseSession<any>): SQLDatabaseQueryFactory {
+        return new PostgresSQLDatabaseQueryFactory(this.connectionPool, this.platform, session);
     }
 
     disconnect(force?: boolean): void {

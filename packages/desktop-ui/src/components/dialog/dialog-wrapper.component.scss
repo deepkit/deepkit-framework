@@ -34,6 +34,13 @@
 
     }
 
+    .cdk-overlay-pane dui-window-content {
+        padding-top: 0;
+        > .top-line {
+            display: none;
+        }
+    }
+
     .cdk-overlay-pane:not(.dialog-overlay-no-padding) dui-window-content > .content {
         padding-left: 20px !important;
         padding-right: 20px !important;

@@ -16,7 +16,7 @@ import {
     DialogComponent,
     DialogDirective,
     DialogErrorComponent,
-    DialogWrapperComponent,
+    DialogWrapperComponent, OpenDialogDirective,
 } from './dialog.component';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { CommonModule } from '@angular/common';
@@ -44,6 +44,7 @@ export * from "./progress-dialog.component";
         DuiDialogProgress,
         DialogWrapperComponent,
         DialogErrorComponent,
+        OpenDialogDirective,
     ],
     exports: [
         DialogDirective,
@@ -56,6 +57,7 @@ export * from "./progress-dialog.component";
         DuiDialogPrompt,
         DuiDialogProgress,
         DialogErrorComponent,
+        OpenDialogDirective,
     ],
     entryComponents: [
         DialogComponent,

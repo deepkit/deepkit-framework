@@ -1,8 +1,8 @@
 import { ChangeDetectorRef, Component, Input, OnChanges } from '@angular/core';
-import { DatabaseInfo, FakerTypes, findFaker, SeedDatabase } from '@deepkit/orm-browser-api';
+import { DatabaseInfo, EntityPropertySeed, FakerTypes, findFaker, SeedDatabase } from '@deepkit/orm-browser-api';
 import { filterEntitiesToList, trackByIndex, trackBySchema } from '../utils';
 import { ControllerClient } from '../client';
-import { ClassSchema } from '@deepkit/type';
+import { ClassSchema, PropertySchema } from '@deepkit/type';
 import { BrowserState } from '../browser-state';
 import { DuiDialog } from '@deepkit/desktop-ui';
 import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
@@ -32,7 +32,7 @@ import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
                             <dui-button textured (click)="autoTypes(entity)">Auto</dui-button>
                         </dui-button-group>
 
-                        <dui-table [autoHeight]="true" [preferenceKey]="'orm-browser/seed/' + entity.getName()" [sorting]="false" noFocusOutline [items]="settings.properties">
+                        <dui-table [autoHeight]="true" [preferenceKey]="'orm-browser/seed/' + entity.getName()" [sorting]="false" noFocusOutline [items]="getProperties(settings.properties)">
                             <dui-table-column name="name" [width]="200"></dui-table-column>
                             <dui-table-column name="type" [width]="100">
                                 <ng-container *duiTableCell="let row">
@@ -45,41 +45,10 @@ import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
                             <dui-table-column name="value" [width]="320" class="cell-value">
                                 <ng-container *duiTableCell="let row">
                                     <ng-container *ngIf="entity.getProperty(row.name) as property">
-                                        <ng-container *ngIf="property.isAutoIncrement" style="color: var(--text-grey)">
-                                            Auto-Increment
-                                        </ng-container>
-
-                                        <ng-container *ngIf="!property.isAutoIncrement">
-                                            <dui-checkbox [(ngModel)]="row.fake" (ngModelChange)="typeChanged(entity)">Fake</dui-checkbox>
-
-                                            <div class="property-seed-value select" *ngIf="row.fake && property.isReference">
-                                                <dui-select textured small [(ngModel)]="row.reference">
-                                                    <dui-option value="random">Random from database</dui-option>
-                                                    <dui-option value="random-seed">Random from seed</dui-option>
-                                                    <dui-option value="create">Create new</dui-option>
-                                                </dui-select>
-                                            </div>
-
-                                            <div class="property-seed-value" *ngIf="row.fake && !property.isReference">
-                                                <ng-container *ngIf="!row.faker">
-                                                    <dui-button small (click)="chooseType(entity, property.name)">Choose</dui-button>
-                                                </ng-container>
-
-                                                <div class="choose-type" *ngIf="row.faker">
-                                                    <div>
-                                                        {{row.faker}}
-                                                        <span style="color: var(--text-grey)">
-                                                        {{fakerTypes[row.faker]?.type}}
-                                                    </span>
-                                                    </div>
-                                                    <dui-button (click)="chooseType(entity, property.name)" small>Change</dui-button>
-                                                </div>
-                                            </div>
-
-                                            <div class="property-seed-value" *ngIf="!row.fake">
-                                                <orm-browser-property [(model)]="row.value" [property]="property"></orm-browser-property>
-                                            </div>
-                                        </ng-container>
+                                        <orm-browser-seed-property [fakerTypes]="fakerTypes"
+                                                                   [model]="row"
+                                                                   (modelChange)="typeChanged(entity)"
+                                                                   [property]="property"></orm-browser-seed-property>
                                     </ng-container>
                                 </ng-container>
                             </dui-table-column>
@@ -135,11 +104,14 @@ export class DatabaseSeedComponent implements OnChanges {
         this.cd.detectChanges();
     }
 
+    getProperties(properties: { [name: string]: EntityPropertySeed }): EntityPropertySeed[] {
+        return Object.values(properties);
+    }
+
     chooseType(entity: ClassSchema, propertyName: string) {
         if (!this.fakerTypes) return;
         const settings = this.state.getSeedSettings(this.fakerTypes, this.database.name, entity.getName());
-        const property = settings.properties.find(v => v.name === propertyName);
-        if (!property) return;
+        const property = settings.properties[propertyName] ||= new EntityPropertySeed(propertyName);
 
         const { component } = this.duiDialog.open(FakerTypeDialogComponent, {
             fakerTypes: this.fakerTypes,
@@ -184,18 +156,45 @@ export class DatabaseSeedComponent implements OnChanges {
     autoTypes(entity: ClassSchema) {
         if (!this.fakerTypes) return;
         const settings = this.state.getSeedSettings(this.fakerTypes, this.database.name, entity.getName());
-        for (const property of settings.properties) {
-            property.faker = findFaker(this.fakerTypes, entity.getProperty(property.name));
-            property.fake = !!property.faker;
+        const fakerTypes = this.fakerTypes;
+
+        const visited: Set<ClassSchema> = new Set();
+
+        const autoProperty = (property: PropertySchema, seed: EntityPropertySeed) => {
+            if (property.isArray) {
+                autoProperty(property.getSubType(), seed.getArray().seed);
+            } else if (property.isMap) {
+                autoProperty(property.getSubType(), seed.getMap().seed);
+            } else if (property.type === 'class' && !property.isReference) {
+                if (visited.has(property.getResolvedClassSchema())) return;
+                visited.add(property.getResolvedClassSchema());
+
+                for (const prop of property.getResolvedClassSchema().getProperties()) {
+                    seed.properties[prop.name] = new EntityPropertySeed(prop.name);
+                    autoProperty(prop, seed.properties[prop.name]);
+                }
+            } else if (!property.isReference) {
+                seed.faker = findFaker(fakerTypes, property);
+                seed.fake = !!seed.faker;
+            }
+        };
+        visited.add(entity);
+
+        for (const [propName, seed] of Object.entries(settings.properties)) {
+            autoProperty(entity.getProperty(propName), seed);
         }
+
         this.typeChanged(entity);
     }
 
     resetTypes(entity: ClassSchema) {
         if (!this.fakerTypes) return;
         const settings = this.state.getSeedSettings(this.fakerTypes, this.database.name, entity.getName());
-        for (const property of settings.properties) {
+        for (const property of Object.values(settings.properties)) {
             property.faker = '';
+            property.array = undefined;
+            property.map = undefined;
+            property.value = undefined;
             property.fake = false;
         }
         this.typeChanged(entity);

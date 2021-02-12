@@ -45,7 +45,7 @@ export class MigrationUpCommand {
                         return;
                     }
 
-                    const connection = database.adapter.connectionPool.getConnection();
+                    const connection = await database.adapter.connectionPool.getConnection();
                     try {
                         this.logger.log(`    Migration up <yellow>${migration.name}</yellow>`);
                         if (fake) {

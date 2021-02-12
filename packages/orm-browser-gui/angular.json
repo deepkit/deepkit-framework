@@ -6,7 +6,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "orm-browser-gui2": {
+    "orm-browser-gui": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -23,7 +23,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
-            "outputPath": "dist/orm-browser-gui2",
+            "outputPath": "dist/orm-browser-gui",
             "index": "src/index.html",
             "main": "src/main.ts",
             "polyfills": "src/polyfills.ts",
@@ -59,13 +59,13 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kb",
-                  "maximumError": "1mb"
+                  "maximumWarning": "2500kb",
+                  "maximumError": "5mb"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "2kb",
-                  "maximumError": "4kb"
+                  "maximumWarning": "20kb",
+                  "maximumError": "40kb"
                 }
               ]
             }
@@ -74,18 +74,18 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "browserTarget": "orm-browser-gui2:build"
+            "browserTarget": "orm-browser-gui:build"
           },
           "configurations": {
             "production": {
-              "browserTarget": "orm-browser-gui2:build:production"
+              "browserTarget": "orm-browser-gui:build:production"
             }
           }
         },
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "orm-browser-gui2:build"
+            "browserTarget": "orm-browser-gui:build"
           }
         },
         "test": {
@@ -122,16 +122,16 @@
           "builder": "@angular-devkit/build-angular:protractor",
           "options": {
             "protractorConfig": "e2e/protractor.conf.js",
-            "devServerTarget": "orm-browser-gui2:serve"
+            "devServerTarget": "orm-browser-gui:serve"
           },
           "configurations": {
             "production": {
-              "devServerTarget": "orm-browser-gui2:serve:production"
+              "devServerTarget": "orm-browser-gui:serve:production"
             }
           }
         }
       }
     }
   },
-  "defaultProject": "orm-browser-gui2"
+  "defaultProject": "orm-browser-gui"
 }

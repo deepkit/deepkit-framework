@@ -1,20 +1,10 @@
 import { EventEmitter, Injectable } from '@angular/core';
 import { arrayRemoveItem, empty, isObject } from '@deepkit/core';
 import { getInstanceState } from '@deepkit/orm';
-import { DatabaseCommit, DatabaseInfo, FakerTypes } from '@deepkit/orm-browser-api';
-import {
-    Changes,
-    changeSetSymbol,
-    ClassSchema,
-    getChangeDetector,
-    getConverterForSnapshot,
-    PropertySchema,
-    PropertyValidatorError
-} from '@deepkit/type';
+import { DatabaseCommit, DatabaseInfo, EntityPropertySeed, EntitySeed, FakerTypes, findFaker } from '@deepkit/orm-browser-api';
+import { Changes, changeSetSymbol, ClassSchema, getChangeDetector, getConverterForSnapshot, PropertySchema, PropertyValidatorError } from '@deepkit/type';
 import { ControllerClient } from './client';
 import { Progress } from '@deepkit/rpc';
-import { EntitySeed } from '../../../orm-browser-api/src/api';
-import { findFaker } from '../../../orm-browser-api/src/faker';
 
 export type ChangesStore = { [pkHash: string]: { pk: { [name: string]: any }, changes: Changes<any> } };
 export type ValidationErrors = { [fieldName: string]: PropertyValidatorError };
@@ -33,6 +23,7 @@ export class BrowserQuery {
 
     tab: string = 'result';
 
+    loading: boolean = false;
     progress?: Progress;
     executionTime: number = 0;
     downloadTime: number = 0;
@@ -116,9 +107,10 @@ export class BrowserEntityState {
     }
 
     removeQuery(query: BrowserQuery) {
+        const index = this.queries.indexOf(query);
+        if (this.activeQuery >= index) this.activeQuery--;
         arrayRemoveItem(this.queries, query);
         this.queries = this.queries.slice(0);
-        this.activeQuery--;
     }
 }
 
@@ -158,19 +150,17 @@ export class BrowserState {
             const storage = localStorage.getItem('orm-browser/seed-properties/' + db + '/' + entity);
             const predefined: { [name: string]: { fake: boolean, faker: string } } = storage ? JSON.parse(storage) : { properties: {} };
 
-            const properties: EntitySeed['properties'] = [];
+            const properties: EntitySeed['properties'] = {};
             for (const property of this.getEntity(db, entity).getProperties()) {
                 if (property.backReference) continue;
 
                 const propertyPredefined = predefined[property.name];
-                properties.push({
-                    name: property.name,
-                    fake: propertyPredefined?.fake || false,
-                    reference: 'random',
-                    faker: propertyPredefined?.faker || findFaker(fakerTypes, property)
-                });
+                const seed = properties[property.name] = new EntityPropertySeed(property.name);
+                seed.fake = propertyPredefined?.fake || false;
+                seed.faker = propertyPredefined?.faker || findFaker(fakerTypes, property);
             }
-            settings = this.seedSettings[key] = { truncate: true, active: false, amount: 1000, properties: properties };
+            settings = this.seedSettings[key] = new EntitySeed();
+            settings.properties = properties;
         }
         return settings;
     }
@@ -181,8 +171,8 @@ export class BrowserState {
         if (!seedSettings) return;
 
         const properties: { [name: string]: { fake: boolean, faker: string } } = {};
-        for (const property of seedSettings.properties) {
-            properties[property.name] = { fake: property.fake, faker: property.faker };
+        for (const [name, seed] of Object.entries(seedSettings.properties)) {
+            properties[name] = { fake: seed.fake, faker: seed.faker };
         }
         localStorage.setItem('orm-browser/seed-properties/' + db + '/' + entity, JSON.stringify(properties));
     }

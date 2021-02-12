@@ -49,7 +49,6 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
     protected committed: boolean = false;
     protected global: GlobalStore = getGlobalStore();
 
-    
     constructor(
         protected session: DatabaseSession<any>,
         protected identityMap: IdentityMap,
@@ -247,15 +246,29 @@ export class SessionClosedException extends CustomError {
 }
 
 export interface DatabaseSessionHookConstructor<C> {
-    new <T extends DatabaseSession<DatabaseAdapter>>(session: T): C;
+    new<T extends DatabaseSession<DatabaseAdapter>>(session: T): C;
 }
 
 export interface DatabaseSessionHook<T extends DatabaseSession<DatabaseAdapter>> {
 }
 
+export class DatabaseTransaction {
+    constructor(public id: number) {
+    }
+}
+
 export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     public readonly id = SESSION_IDS++;
     public withIdentityMap = true;
+
+    /**
+     * When this session belongs to a transaction, then this is set.
+     * All connection handlers should make sure that when a query/persistence object
+     * requests a connection, it should always be the same for a given transaction.
+     * (that's how transaction work). The connection between a transaction
+     * and connection should be unlinked when the transaction commits/rollbacks.
+     */
+    public transaction?: DatabaseTransaction;
 
     public readonly identityMap = new IdentityMap();
 

@@ -10,6 +10,7 @@
 }
 
 .actions {
+    position: relative;
     margin-bottom: 12px;
     padding: 12px;
     padding-bottom: 0;
@@ -31,6 +32,25 @@ dui-table ::ng-deep .table-row.new > div {
 
 dui-table {
     height: 100%;
+}
+
+.executing-progress {
+    position: absolute;
+    right: 5px;
+    top: calc(50% - 7 / 2);
+    opacity: 0;
+    transition: opacity 0.5s ease-in;
+
+    &.visible {
+        opacity: 1;
+    }
+}
+
+.query {
+    .executing-progress {
+        top: 33px;
+        right: 14px;
+    }
 }
 
 .info {
@@ -74,6 +94,7 @@ dui-table {
     position: absolute;
     right: 8px;
     top: 8px;
+    height: 20px;
 }
 
 .query {
@@ -100,9 +121,11 @@ dui-table {
 
         .log-entry {
             padding: 2px 15px;
+
             &:first-child {
                 border-top: 1px solid var(--line-color-light);
             }
+
             border-bottom: 1px solid var(--line-color-light);
         }
     }
@@ -115,7 +138,7 @@ dui-table {
 
     .result-tabs {
         padding: 0 15px;
-        margin-bottom :15px;
+        margin-bottom: 15px;
     }
 
     .input {
@@ -140,7 +163,7 @@ dui-table {
 
 .cell-body {
     border: 1px solid transparent;
-    padding: 2px 5px;
+    padding: 3px 5px;
     height: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -148,6 +171,7 @@ dui-table {
 
 .plain-result {
     padding: 0 15px;
+    overflow: auto;
 }
 
 dui-table ::ng-deep .table-row > div:hover dui-icon.active {

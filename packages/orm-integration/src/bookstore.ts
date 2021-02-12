@@ -81,6 +81,25 @@ export const bookstoreTests = {
         expect(user.getProperty('birthdate').isOptional).toBe(true);
     },
 
+    async deleteManyParallel(databaseFactory: DatabaseFactory) {
+        const database = await databaseFactory(entities);
+        const session = database.createSession();
+
+        const count = 500;
+        for (let i = 0; i < count; i++) session.add(new User('User' + i));
+        await session.commit();
+        expect(await database.query(User).count()).toBe(count);
+
+        //we delete in parallel to check if the connection handling is correctly implemented
+        const promises: Promise<any>[] = [];
+        for (let i = 0; i < count; i++) {
+            promises.push(session.query(User).filter({ name: 'User' + i }).deleteOne());
+        }
+
+        await Promise.all(promises);
+        expect(await database.query(User).count()).toBe(0);
+    },
+
     async filterIn(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
 
@@ -90,33 +109,33 @@ export const bookstoreTests = {
         await database.persist(groupA, groupB, groupC);
 
         {
-            const items = await database.query(Group).filter({id: groupA.id}).find();
+            const items = await database.query(Group).filter({ id: groupA.id }).find();
             expect(items.length).toBe(1);
             expect(items[0].name).toBe('a');
         }
 
         {
-            const items = await database.query(Group).filter({id: {$in: [groupA.id]}}).find();
+            const items = await database.query(Group).filter({ id: { $in: [groupA.id] } }).find();
             expect(items.length).toBe(1);
             expect(items[0].name).toBe('a');
         }
 
         {
-            const items = await database.query(Group).filter({id: {$in: [groupA.id, groupB.id]}}).find();
+            const items = await database.query(Group).filter({ id: { $in: [groupA.id, groupB.id] } }).find();
             expect(items.length).toBe(2);
             expect(items[0].name).toBe('a');
             expect(items[1].name).toBe('b');
         }
 
         {
-            const items = await database.query(Group).filter({$and: [{id: {$in: [groupA.id, groupB.id]}}]}).find();
+            const items = await database.query(Group).filter({ $and: [{ id: { $in: [groupA.id, groupB.id] } }] }).find();
             expect(items.length).toBe(2);
             expect(items[0].name).toBe('a');
             expect(items[1].name).toBe('b');
         }
 
         {
-            const items = await database.query(Group).filter({id: {$nin: [groupA.id, groupB.id]}}).find();
+            const items = await database.query(Group).filter({ id: { $nin: [groupA.id, groupB.id] } }).find();
             expect(items.length).toBe(1);
             expect(items[0].name).toBe('c');
         }
@@ -137,7 +156,7 @@ export const bookstoreTests = {
             expect(imageDB.image).toEqual(new Uint8Array(['t'.charCodeAt(0)]));
         }
 
-        await database.query(Image).filter({ id: image.id }).patchOne({image: Buffer.from('s')});
+        await database.query(Image).filter({ id: image.id }).patchOne({ image: Buffer.from('s') });
 
         {
             const imageDB = await database.query(Image).filter({ id: image.id }).findOne();

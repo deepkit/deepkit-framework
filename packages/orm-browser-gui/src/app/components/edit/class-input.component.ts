@@ -19,7 +19,7 @@ import { BrowserState } from 'src/app/browser-state';
 @Component({
     template: `
         <ng-container *ngIf="!open">
-            Undefined
+
         </ng-container>
         <dui-dialog *ngIf="jsonEditor" class="class-field-dialog" noPadding [visible]="true" (closed)="done.emit()"
                     [backDropCloses]="true"
@@ -35,7 +35,7 @@ import { BrowserState } from 'src/app/browser-state';
         </dui-dialog>
         <dui-dialog *ngIf="!parent && open" class="class-field-dialog" noPadding [backDropCloses]="true"
                     [visible]="browserStack.length > 0" (closed)="done.emit(); open = false" minWidth="80%"
-                    minHeight="60%">
+                    minHeight="75%">
             <div class="layout">
                 <div class="header" *ngIf="state.database && foreignSchema">
                     <span *ngFor="let browser of browserStack">

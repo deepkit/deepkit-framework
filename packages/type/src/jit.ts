@@ -340,8 +340,8 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
 
     context.set('_classType', schema.classType);
     context.set('_global', getGlobalStore());
-    context.set('isGroupAllowed', isGroupAllowed);
     context.set('UnpopulatedCheckNone', UnpopulatedCheck.None);
+    context.set('isGroupAllowed', isGroupAllowed);
 
     try {
         const compiled = new Function(...context.keys(), functionCode);
@@ -639,12 +639,20 @@ export function createPartialClassToXFunction<T>(schema: ClassSchema<T>, seriali
         `);
     }
 
+    context.set('_global', getGlobalStore());
+    context.set('UnpopulatedCheckNone', UnpopulatedCheck.None);
+
     const functionCode = `
         return function(_data, _options, _stack, _depth) {
             var _result = {};
             _depth = !_depth ? 1 : _depth + 1;
 
+            var _oldUnpopulatedCheck = _global.unpopulatedCheck;
+            _global.unpopulatedCheck = UnpopulatedCheckNone;
+    
             ${props.join('\n')}
+            
+            _global.unpopulatedCheck = _oldUnpopulatedCheck;
             return _result;
         }
     `;

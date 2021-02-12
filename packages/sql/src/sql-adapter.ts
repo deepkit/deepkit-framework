@@ -13,10 +13,12 @@ import {
     DatabaseAdapter,
     DatabaseAdapterQueryFactory,
     DatabaseError,
+    DatabaseLogger,
     DatabasePersistence,
     DatabasePersistenceChangeSet,
     DatabaseQueryModel,
     DatabaseSession,
+    DatabaseTransaction,
     DeleteResult,
     Entity,
     GenericQueryResolver,
@@ -51,7 +53,7 @@ export abstract class SQLStatement {
 export abstract class SQLConnection {
     released: boolean = false;
 
-    constructor(protected connectionPool: SQLConnectionPool) {
+    constructor(protected connectionPool: SQLConnectionPool, protected logger: DatabaseLogger = new DatabaseLogger) {
     }
 
     release() {
@@ -89,7 +91,7 @@ export abstract class SQLConnectionPool {
      * Reserves an existing or new connection. It's important to call `.release()` on it when
      * done. When release is not called a resource leak occurs and server crashes.
      */
-    abstract getConnection(): SQLConnection;
+    abstract getConnection(logger?: DatabaseLogger, transaction?: DatabaseTransaction): Promise<SQLConnection>;
 
     public getActiveConnections() {
         return this.activeConnections;
@@ -160,9 +162,8 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     async count(model: SQLQueryModel<T>): Promise<number> {
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.build(this.classSchema, model, 'SELECT COUNT(*) as count');
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
-            this.session.logger.logQuery(sql.sql, sql.params);
             const row = await connection.execAndReturnSingle(sql.sql, sql.params);
             //postgres has bigint as return type of COUNT, so we need to convert always
             return Number(row.count);
@@ -175,9 +176,8 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.build(this.classSchema, model, 'DELETE');
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
-            this.session.logger.logQuery(sql.sql, sql.params);
             await connection.run(sql.sql, sql.params);
             deleteResult.modified = await connection.getChanges();
             //todo, implement deleteResult.primaryKeys
@@ -189,9 +189,8 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     async find(model: SQLQueryModel<T>): Promise<T[]> {
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.select(this.classSchema, model);
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
-            this.session.logger.logQuery(sql.sql, sql.params);
             const rows = await connection.execAndReturnAll(sql.sql, sql.params);
             const results: T[] = [];
             if (model.isAggregate()) {
@@ -218,9 +217,8 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.select(this.classSchema, model);
 
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
-            this.session.logger.logQuery(sql.sql, sql.params);
             const row = await connection.execAndReturnSingle(sql.sql, sql.params);
             if (!row) return;
 
@@ -252,7 +250,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         const set = buildSetFromChanges(this.platform, this.classSchema, changes);
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.update(this.classSchema, model, set);
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
             await connection.run(sql.sql, sql.params);
             patchResult.modified = await connection.getChanges();
@@ -449,16 +447,25 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
 }
 
 export class SQLPersistence extends DatabasePersistence {
+    protected connection?: SQLConnection;
+
     constructor(
         protected platform: DefaultPlatform,
-        protected connection: SQLConnection,
+        public connectionPool: SQLConnectionPool,
         protected session: DatabaseSession<SQLDatabaseAdapter>,
     ) {
         super();
     }
 
+    async getConnection(): Promise<ReturnType<this['connectionPool']['getConnection']>> {
+        if (!this.connection) {
+            this.connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        }
+        return this.connection;
+    }
+
     release() {
-        this.connection.release();
+        this.connection?.release();
     }
 
     protected prepareAutoIncrement(classSchema: ClassSchema, count: number) {
@@ -525,8 +532,7 @@ export class SQLPersistence extends DatabasePersistence {
         }
 
         const sql = updates.join(';\n');
-        this.session.logger.logQuery(sql, []);
-        await this.connection.run(sql);
+        await (await this.getConnection()).run(sql);
     }
 
     protected async batchInsert<T>(classSchema: ClassSchema<T>, items: T[]) {
@@ -562,8 +568,7 @@ export class SQLPersistence extends DatabasePersistence {
 
         const sql = this.getInsertSQL(classSchema, names, insert);
         try {
-            this.session.logger.logQuery(sql, params);
-            await this.connection.run(sql, params);
+            await (await this.getConnection()).run(sql, params);
         } catch (error) {
             console.warn('Insert failed', sql, params.length, params, error);
             throw error;
@@ -590,7 +595,6 @@ export class SQLPersistence extends DatabasePersistence {
 
         const inValues = pks.map(v => this.platform.quoteValue(v)).join(', ');
         const sql = `DELETE FROM ${this.platform.getTableIdentifier(classSchema)} WHERE ${this.platform.quoteIdentifier(pk.name)} IN (${inValues})`;
-        this.session.logger.logQuery(sql, []);
-        await this.connection.run(sql);
+        await (await this.getConnection()).run(sql);
     }
 }

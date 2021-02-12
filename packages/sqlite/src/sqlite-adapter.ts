@@ -12,7 +12,7 @@ import { ClassType, empty, Mutex } from '@deepkit/core';
 import {
     DatabaseAdapter,
     DatabasePersistenceChangeSet,
-    DatabaseSession,
+    DatabaseSession, DatabaseTransaction,
     DeleteResult,
     Entity,
     PatchResult
@@ -38,18 +38,33 @@ import {
 } from '@deepkit/type';
 import sqlite3 from 'better-sqlite3';
 import { SQLitePlatform } from './sqlite-platform';
+import { DatabaseLogger } from '@deepkit/orm';
 
 export class SQLiteStatement extends SQLStatement {
-    constructor(protected stmt: sqlite3.Statement) {
+    constructor(protected logger: DatabaseLogger, protected sql: string, protected stmt: sqlite3.Statement) {
         super();
     }
 
     async get(params: any[] = []): Promise<any> {
-        return this.stmt.get(...params);
+        try {
+            const res = this.stmt.get(...params);
+            this.logger.logQuery(this.sql, params);
+            return res;
+        } catch (error) {
+            this.logger.failedQuery(error, this.sql, params);
+            throw error;
+        }
     }
 
     async all(params: any[] = []): Promise<any[]> {
-        return this.stmt.all(...params);
+        try {
+            const res = this.stmt.all(...params);
+            this.logger.logQuery(this.sql, params);
+            return res;
+        } catch (error) {
+            this.logger.failedQuery(error, this.sql, params);
+            throw error;
+        }
     }
 
     release() {
@@ -60,30 +75,32 @@ export class SQLiteConnection extends SQLConnection {
     public platform = new SQLitePlatform();
     protected changes: number = 0;
 
-    constructor(connectionPool: SQLConnectionPool, public readonly db: () => Promise<sqlite3.Database>) {
-        super(connectionPool);
+    constructor(connectionPool: SQLConnectionPool, protected db:sqlite3.Database, logger?: DatabaseLogger) {
+        super(connectionPool, logger);
     }
 
     async prepare(sql: string) {
-        return new SQLiteStatement((await this.db()).prepare(sql));
+        return new SQLiteStatement(this.logger, sql, this.db.prepare(sql));
     }
 
     async run(sql: string, params: any[] = []) {
         try {
-            const stmt = (await this.db()).prepare(sql);
+            const stmt = this.db.prepare(sql);
+            this.logger.logQuery(sql, params);
             const result = stmt.run(...params);
             this.changes = result.changes;
         } catch (error) {
-            console.warn('sql', sql);
+            this.logger.failedQuery(error, sql, params);
             throw error;
         }
     }
 
     async exec(sql: string) {
         try {
-            (await this.db()).exec(sql);
+            this.db.exec(sql);
+            this.logger.logQuery(sql, []);
         } catch (error) {
-            console.warn('sql', sql);
+            this.logger.failedQuery(error, sql, []);
             throw error;
         }
     }
@@ -100,32 +117,29 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
         super();
     }
 
-    getConnection(): SQLiteConnection {
+    async getConnection(logger?: DatabaseLogger, transaction?: DatabaseTransaction): Promise<SQLiteConnection> {
+        //todo: handle transaction, when given we make sure we return a sticky connection to the transaction
+        // and release the stickiness when transaction finished.
+
+        await this.connectionMutex.lock();
         this.activeConnections++;
-        let locked = false;
-        return new SQLiteConnection(this, async () => {
-            //only one connection at a time can use the database
-            if (!locked) {
-                await this.connectionMutex.lock();
-                locked = true;
-            }
-            return this.db;
-        });
+
+        return new SQLiteConnection(this, this.db, logger);
     }
 
     release(connection: SQLConnection) {
-        this.connectionMutex.unlock();
         super.release(connection);
+        this.connectionMutex.unlock();
     }
 }
 
 export class SQLitePersistence extends SQLPersistence {
     constructor(
         protected platform: DefaultPlatform,
-        protected connection: SQLiteConnection,
+        public connectionPool: SQLiteConnectionPool,
         database: DatabaseSession<any>,
     ) {
-        super(platform, connection, database);
+        super(platform, connectionPool, database);
     }
 
     async batchUpdate<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
@@ -248,11 +262,11 @@ export class SQLitePersistence extends SQLPersistence {
               WHERE ${tableName}.${pkField} = _b.${pkField};
         `;
 
-        this.session.logger.logQuery(sql, []);
-        await this.connection.exec(sql);
+        const connection = await this.getConnection(); //will automatically be released in SQLPersistence
+        await connection.exec(sql);
 
         if (!empty(setReturning)) {
-            const returnings = await this.connection.execAndReturnAll('SELECT * FROM _b');
+            const returnings = await connection.execAndReturnAll('SELECT * FROM _b');
             for (const returning of returnings) {
                 const r = assignReturning[returning[pkName]];
 
@@ -269,7 +283,8 @@ export class SQLitePersistence extends SQLPersistence {
 
         //SQLite returns the _last_ auto-incremented value for a batch insert as last_insert_rowid().
         //Since we know how many items were inserted, we can simply calculate for each item the auto-incremented value.
-        const row = await this.connection.execAndReturnSingle(`SELECT last_insert_rowid() as rowid`);
+        const connection = await this.getConnection(); //will automatically be released in SQLPersistence
+        const row = await connection.execAndReturnSingle(`SELECT last_insert_rowid() as rowid`);
         const lastInserted = row.rowid;
         let start = lastInserted - items.length + 1;
 
@@ -297,15 +312,12 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
         const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
 
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
-            await connection.exec(`DROP TABLE IF EXISTS _tmp_d;`);
-            const tempSql = `CREATE TEMPORARY TABLE _tmp_d as ${select.sql};`;
-            await connection.run(tempSql, select.params);
-            this.session.logger.logQuery(tempSql, select.params);
+            await connection.exec(`DROP TABLE IF EXISTS _tmp_d`);
+            await connection.run(`CREATE TEMPORARY TABLE _tmp_d as ${select.sql};`, select.params);
 
             const sql = `DELETE FROM ${this.platform.getTableIdentifier(this.classSchema)} WHERE ${pkField} IN (SELECT * FROM _tmp_d)`;
-            this.session.logger.logQuery(sql, []);
             await connection.run(sql);
             const rows = await connection.execAndReturnAll('SELECT * FROM _tmp_d');
             deleteResult.modified = await connection.getChanges();
@@ -382,15 +394,13 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
               WHERE ${tableName}.${this.platform.quoteIdentifier(primaryKey.name)} = _b.${this.platform.quoteIdentifier(bPrimaryKey)};
         `;
 
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
             await connection.exec(`DROP TABLE IF EXISTS _b;`);
 
             const createBSQL = `CREATE TEMPORARY TABLE _b AS ${selectSQL.sql};`;
-            this.session.logger.logQuery(createBSQL, selectSQL.params);
             await connection.run(createBSQL, selectSQL.params);
 
-            this.session.logger.logQuery(sql, []);
             await connection.run(sql);
             patchResult.modified = await connection.getChanges();
 
@@ -454,7 +464,7 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
     }
 
     createPersistence(session: DatabaseSession<any>): SQLPersistence {
-        return new SQLitePersistence(this.platform, this.connectionPool.getConnection(), session);
+        return new SQLitePersistence(this.platform, this.connectionPool, session);
     }
 
     queryFactory(databaseSession: DatabaseSession<any>): SQLDatabaseQueryFactory {

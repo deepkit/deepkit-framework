@@ -311,7 +311,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
      * Since dui-table has virtual-scroll active per default, it's required to define the itemHeight to
      * make scrolling actually workable correctly.
      */
-    @Input() public itemHeight: number = 23;
+    @Input() public itemHeight: number = 25;
 
     /**
      * Whether the table height is calculated based on current item count and [itemHeight].
@@ -566,6 +566,9 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
         }
 
         if ($event && $event.button === 2) return;
+
+        //only when shift is pressed do we activate multi-column sort
+        if (!$event?.shiftKey) this.sort = {};
 
         if (this.columnMap[name]) {
             const headerDef = this.columnMap[name];

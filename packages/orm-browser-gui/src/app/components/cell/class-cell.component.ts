@@ -2,6 +2,7 @@ import { ChangeDetectorRef, Component, Input, OnChanges, OnInit } from '@angular
 import { isArray } from '@deepkit/core';
 import { ClassSchema, PropertySchema } from '@deepkit/type';
 import { BrowserState } from 'src/app/browser-state';
+import { objToString } from './utils';
 
 @Component({
     template: `{{label}}`
@@ -42,16 +43,7 @@ export class ClassCellComponent implements OnChanges, OnInit {
                 this.label = this.foreignSchema.getClassName() + '#' + value[this.foreignSchema.getPrimaryFields()[0].name];
             }
         } else {
-            const fields: string[] = [];
-            for (const property of this.foreignSchema.getProperties()) {
-                if (!(property.name in value)) continue;
-                const v = value[property.name];
-
-                fields.push(property.name + ': ' + (
-                    property.isArray && isArray(v) ? '[' + v.join(',') + ']' : v
-                ));
-            }
-            this.label = fields.join(', ');
+            this.label = objToString(value);
         }
     }
 }

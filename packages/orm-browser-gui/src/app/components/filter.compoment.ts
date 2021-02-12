@@ -25,17 +25,22 @@ import { FilterItem } from '../browser-state';
             <dui-option value="$in">IN</dui-option>
             <dui-option value="$nin">NOT IN</dui-option>
         </dui-select>
-        <div *ngIf="property && propertyToShow">
+        <div class="value" *ngIf="property && propertyToShow">
             <orm-browser-property [model]="value" (modelChange)="value = $event; changed()" [property]="propertyToShow"></orm-browser-property>
         </div>
     `,
     styles: [`
         :host {
             display: flex;
+            width: 100%;
         }
 
         :host > * {
             margin-right: 4px;
+        }
+
+        .value {
+            flex: 1;
         }
     `]
 })

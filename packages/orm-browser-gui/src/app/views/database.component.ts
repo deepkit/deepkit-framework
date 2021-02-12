@@ -5,8 +5,6 @@ import { empty } from '@deepkit/core';
 import { BrowserState } from '../browser-state';
 import { ControllerClient } from '../client';
 import { filterEntitiesToList, trackByIndex, trackByProperty, trackBySchema } from '../utils';
-import { ClassSchema } from '@deepkit/type';
-import { findFaker } from '../../../../orm-browser-api/src/faker';
 
 @Component({
     selector: 'orm-browser-database',
@@ -20,7 +18,7 @@ import { findFaker } from '../../../../orm-browser-api/src/faker';
             </dui-button-group>
         </div>
 
-        <div class="layout seed-container" [hidden]="tab !== 'seed'">
+        <div class="layout" [hidden]="tab !== 'seed'">
             <orm-browser-seed [database]="database"></orm-browser-seed>
         </div>
 

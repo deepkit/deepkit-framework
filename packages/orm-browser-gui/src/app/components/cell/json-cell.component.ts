@@ -1,6 +1,7 @@
 import { ChangeDetectorRef, Component, Input, OnChanges, OnInit } from '@angular/core';
 import { BrowserState } from 'src/app/browser-state';
 import { eachPair, isArray, isObject } from '@deepkit/core';
+import { objToString } from './utils';
 
 @Component({
     selector: 'orm-browser-json-cell',
@@ -54,38 +55,9 @@ export class JsonCellComponent implements OnChanges, OnInit {
         this.setLabel();
     }
 
-    protected toString(obj: { [s: string]: any } | ArrayLike<any>): string {
-        const strings: string[] = [];
-        const array = isArray(obj);
-
-        for (let [i, v] of eachPair(obj)) {
-            if (isArray(v)) {
-                v = this.toString(v);
-            } else if (v === null) {
-                v = 'null';
-            } else if (v === undefined) {
-                v = 'undefined';
-            } else if (v instanceof Date) {
-                v = v.toString();
-            } else if (isObject(v)) {
-                v = this.toString(v);
-            }
-            if (array) {
-                strings.push(v);
-            } else {
-                strings.push(i + ': ' + v);
-            }
-        }
-
-        if (array) {
-            return '[' + strings.join(', ') + ']';
-        }
-        return '{' + strings.join(', ') + '}';
-    }
-
     setLabel(): void {
         if (isObject(this.model) || isArray(this.model)) {
-            this.label = this.toString(this.model);
+            this.label = objToString(this.model);
         } else {
             this.label = this.model;
         }
