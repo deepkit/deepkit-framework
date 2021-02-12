@@ -125,8 +125,8 @@ export abstract class DefaultPlatform {
     getEntityFields(schema: ClassSchema): PropertySchema[] {
         const fields: PropertySchema[] = [];
         for (const property of schema.getProperties()) {
-            if (property.isParentReference) continue;
-            if (property.backReference) continue;
+                if (property.isParentReference) continue;
+                if (property.backReference) continue;
             fields.push(property);
         }
         return fields;

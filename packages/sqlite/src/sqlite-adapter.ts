@@ -128,7 +128,7 @@ export class SQLitePersistence extends SQLPersistence {
         super(platform, connection, database);
     }
 
-    async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+    async batchUpdate<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         const scopeSerializer = this.platform.serializer.for(classSchema);
         const tableName = this.platform.getTableIdentifier(classSchema);
         const pkName = classSchema.getPrimaryField().name;
@@ -439,6 +439,10 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
         this.db.exec('PRAGMA foreign_keys=ON');
 
         this.connectionPool = new SQLiteConnectionPool(this.db);
+    }
+
+    async getInsertBatchSize(schema: ClassSchema): Promise<number> {
+        return Math.floor(32000 / schema.getProperties().length);
     }
 
     getName(): string {

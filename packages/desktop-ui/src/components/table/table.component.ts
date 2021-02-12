@@ -925,7 +925,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
         }
 
         this.sortedChange.emit(this.sorted);
-        this.height = (this.sorted.length * this.itemHeight) + (this.showHeader ? 23 : 0);
+        this.height = (this.sorted.length * this.itemHeight) + (this.showHeader ? 23 : 0) + 10; //10 is scrollbar padding
 
         this.sorted = this.sorted.slice(0);
         detectChangesNextFrame(this.parentCd);

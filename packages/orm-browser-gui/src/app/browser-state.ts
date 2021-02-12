@@ -166,6 +166,7 @@ export class BrowserState {
                 properties.push({
                     name: property.name,
                     fake: propertyPredefined?.fake || false,
+                    reference: 'random',
                     faker: propertyPredefined?.faker || findFaker(fakerTypes, property)
                 });
             }

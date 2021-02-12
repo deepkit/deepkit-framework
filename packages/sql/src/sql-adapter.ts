@@ -342,6 +342,14 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
 
     abstract getSchemaName(): string;
 
+    async getInsertBatchSize(schema: ClassSchema): Promise<number> {
+        return Math.floor(30000 / schema.getProperties().length);
+    }
+
+    async getUpdateBatchSize(schema: ClassSchema): Promise<number> {
+        return Math.floor(30000 / schema.getProperties().length);
+    }
+
     isNativeForeignKeyConstraintSupported() {
         return true;
     }
@@ -367,8 +375,8 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
         }
     }
 
-    public async getMigrations(classSchemas: ClassSchema[]): Promise<{ [name: string]: {sql: string[], diff: string} }> {
-        const migrations: { [name: string]: {sql: string[], diff: string} } = {};
+    public async getMigrations(classSchemas: ClassSchema[]): Promise<{ [name: string]: { sql: string[], diff: string } }> {
+        const migrations: { [name: string]: { sql: string[], diff: string } } = {};
 
         const connection = await this.connectionPool.getConnection();
 
@@ -392,7 +400,7 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
 
                     const upSql = this.platform.getModifyDatabaseDDL(databaseDiff);
                     if (upSql.length) {
-                        migrations[entity.getName()] = {sql: upSql, diff: diff ? diff.toString() : ''};
+                        migrations[entity.getName()] = { sql: upSql, diff: diff ? diff.toString() : '' };
                     }
                 }
             }
@@ -444,7 +452,7 @@ export class SQLPersistence extends DatabasePersistence {
     constructor(
         protected platform: DefaultPlatform,
         protected connection: SQLConnection,
-        protected session: DatabaseSession<any>,
+        protected session: DatabaseSession<SQLDatabaseAdapter>,
     ) {
         super();
     }
@@ -466,6 +474,33 @@ export class SQLPersistence extends DatabasePersistence {
     }
 
     async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+        const batchSize = await this.session.adapter.getUpdateBatchSize(classSchema);
+
+        if (batchSize > changeSets.length) {
+            await this.batchUpdate(classSchema, changeSets);
+        } else {
+            const promises: Promise<void>[] = [];
+            for (let i = 0; i < changeSets.length; i += batchSize) {
+                promises.push(this.batchUpdate(classSchema, changeSets.slice(i, i + batchSize)));
+            }
+
+            await Promise.all(promises);
+        }
+    }
+
+    protected async doInsert<T>(classSchema: ClassSchema<T>, items: T[]) {
+        const batchSize = await this.session.adapter.getInsertBatchSize(classSchema);
+
+        if (batchSize > items.length) {
+            await this.batchInsert(classSchema, items);
+        } else {
+            for (let i = 0; i < items.length; i += batchSize) {
+                await this.batchInsert(classSchema, items.slice(i, i + batchSize));
+            }
+        }
+    }
+
+    async batchUpdate<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         //simple update implementation that is not particular performant nor does it support atomic updates (like $inc)
 
         const scopeSerializer = this.platform.serializer.for(classSchema);
@@ -489,35 +524,48 @@ export class SQLPersistence extends DatabasePersistence {
             updates.push(`UPDATE ${this.platform.getTableIdentifier(classSchema)} SET ${set.join(', ')} WHERE ${where.join(' AND ')}`);
         }
 
-        //try bulk update via https://stackoverflow.com/questions/11563869/update-multiple-rows-with-different-values-in-a-single-sql-query
         const sql = updates.join(';\n');
         this.session.logger.logQuery(sql, []);
         await this.connection.run(sql);
     }
 
-    protected async doInsert<T>(classSchema: ClassSchema<T>, items: T[]) {
+    protected async batchInsert<T>(classSchema: ClassSchema<T>, items: T[]) {
         const scopeSerializer = this.platform.serializer.for(classSchema);
-        const fields = this.platform.getEntityFields(classSchema).filter(v => !v.isAutoIncrement).map(v => v.name);
         const insert: string[] = [];
         const params: any[] = [];
         this.resetPlaceholderSymbol();
+        const names: string[] = [];
+
+        for (const property of classSchema.getProperties()) {
+            if (property.isParentReference) continue;
+            if (property.backReference) continue;
+            if (property.isAutoIncrement) continue;
+            names.push(this.platform.quoteIdentifier(property.name));
+        }
 
         for (const item of items) {
             const converted = scopeSerializer.serialize(item);
 
-            insert.push(fields.map(v => {
-                v = converted[v];
+            const row: string[] = [];
+            for (const property of classSchema.getProperties()) {
+                if (property.isParentReference) continue;
+                if (property.backReference) continue;
+                if (property.isAutoIncrement) continue;
+
+                const v = converted[property.name];
                 params.push(v === undefined ? null : v);
-                return this.getPlaceholderSymbol();
-            }).join(', '));
+                row.push(this.getPlaceholderSymbol());
+            }
+
+            insert.push(row.join(', '));
         }
 
-        const sql = this.getInsertSQL(classSchema, fields.map(v => this.platform.quoteIdentifier(v)), insert);
+        const sql = this.getInsertSQL(classSchema, names, insert);
         try {
             this.session.logger.logQuery(sql, params);
             await this.connection.run(sql, params);
         } catch (error) {
-            console.warn('Insert failed', sql, params, error);
+            console.warn('Insert failed', sql, params.length, params, error);
             throw error;
         }
     }

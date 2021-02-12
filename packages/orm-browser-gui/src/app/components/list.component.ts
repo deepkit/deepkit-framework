@@ -59,6 +59,7 @@ export class DatabaseBrowserListComponent implements OnInit {
 
     async ngOnInit() {
         this.state.databases = await this.controllerClient.browser.getDatabases();
+        console.log('databases', this.state.databases);
         this.state.onDataChange.subscribe(this.loadCounts.bind(this));
         this.loadCounts();
     }

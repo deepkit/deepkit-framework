@@ -1,14 +1,14 @@
-import { isObject } from '@deepkit/core';
+import { isArray, isObject } from '@deepkit/core';
 import { Database, DatabaseAdapter } from '@deepkit/orm';
 import {
     BrowserControllerInterface,
     DatabaseCommit,
     DatabaseInfo,
     fakerFunctions, FakerTypes, getType,
-    QueryResult
+    QueryResult, SeedDatabase
 } from '@deepkit/orm-browser-api';
 import { rpc } from '@deepkit/rpc';
-import { ClassSchema, plainToClass, serializeSchemas, t } from '@deepkit/type';
+import { ClassSchema, jsonSerializer, plainToClass, serializeSchemas, t } from '@deepkit/type';
 import * as faker from 'faker';
 import { SQLDatabaseAdapter } from '@deepkit/sql';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
@@ -114,10 +114,118 @@ export class BrowserController implements BrowserControllerInterface {
         return {};
     }
 
+    @rpc.action()
+    async seed(dbName: string, seed: SeedDatabase): Promise<void> {
+        const db = this.getDb(dbName);
+        db.logger.active = false;
+        console.log('seed', seed);
+        try {
+            const session = db.createSession();
+            const added: { [entityName: string]: any[] } = {};
+
+            function create(entity: ClassSchema, seed: SeedDatabase['entities'][keyof SeedDatabase['entities']]) {
+                const obj: { [name: string]: any } = {};
+                if (!added[entity.getName()]) added[entity.getName()] = [];
+
+                for (const propSeed of seed.properties) {
+                    const property = entity.getProperty(propSeed.name);
+
+                    if (propSeed.fake && !property.isReference) {
+                        const [p1, p2] = propSeed.faker.split('.');
+                        try {
+                            obj[propSeed.name] = p2 ? (faker as any)[p1][p2]() : (faker as any)[p1]();
+                        } catch (error) {
+                            console.warn(`Could not fake ${entity.getClassName()}.${propSeed.name} via faker's ${propSeed.faker}: ${error}`);
+                        }
+                    } else if (propSeed.value !== undefined) {
+                        obj[propSeed.name] = propSeed.value;
+                    }
+                }
+
+                const item = plainToClass(entity, obj);
+
+                for (const reference of entity.references) {
+                    if (reference.isArray) continue;
+                    if (reference.backReference) continue;
+                    item[reference.name] = db.getReference(reference.getResolvedClassSchema(), item[reference.name]);
+                }
+
+                session.add(item);
+                added[entity.getName()].push(item);
+                return item;
+            }
+
+            for (const [entityName, entitySeed] of Object.entries(seed.entities)) {
+                if (!entitySeed || !entitySeed.active || !entitySeed.amount) continue;
+                const entity = db.getEntity(entityName);
+
+                if (entitySeed.truncate) {
+                    await db.query(entity).deleteMany();
+                }
+
+                for (let i = 0; i < entitySeed.amount; i++) {
+                    create(entity, entitySeed);
+                }
+            }
+
+            //assign references
+            for (const [entityName, items] of Object.entries(added)) {
+                const entity = db.getEntity(entityName);
+                const entitySeed = seed.entities[entityName];
+                if (!entitySeed) continue;
+
+                for (const propSeed of entitySeed.properties) {
+                    const property = entity.getProperty(propSeed.name);
+                    if (!property.isReference) continue;
+                    if (!propSeed.fake) continue;
+
+                    const foreignSchema = property.getResolvedClassSchema();
+                    if (!seed.entities[foreignSchema.getName()]) {
+                        throw new Error(
+                            `Entity ${foreignSchema.getClassName()} seed config needs to be set. Use amount = 0 if you dont want to create one. ` +
+                            `Used in ${entity.getClassName()}.${property.name}.`
+                        );
+                    }
+
+                    let candidates = added[foreignSchema.getName()] ||= [];
+                    if (propSeed.reference === 'random') {
+                        //note: I know there are faster ways, but this gets the job done for now
+                        candidates = await db.query(foreignSchema).limit(1000).find();
+                    }
+                    if (!candidates.length) {
+                        if (propSeed.reference === 'random') {
+                            throw new Error(`Entity ${foreignSchema.getClassName()} has no items in the database. Used in ${entity.getClassName()}.${property.name}.`);
+                        }
+                        if (propSeed.reference === 'random-seed') {
+                            throw new Error(`Entity ${foreignSchema.getClassName()} has no seeded items. Used in ${entity.getClassName()}.${property.name}.`);
+                        }
+                    }
+
+                    for (const item of items) {
+                        if (propSeed.reference === 'create') {
+                            item[property.name] = create(foreignSchema, seed.entities[foreignSchema.getName()]);
+                        } else {
+                            item[property.name] = candidates[candidates.length * Math.random() | 0];
+                        }
+                    }
+                }
+            }
+
+            await session.commit();
+        } finally {
+            db.logger.active = true;
+        }
+    }
+
     @http.GET('_orm-browser/query')
     @t.any
     async httpQuery(@http.query() dbName: string, @http.query() entityName: string, @http.query() query: string): Promise<QueryResult> {
+        const [, entity] = this.getDbEntity(dbName, entityName);
         const res = await this.query(dbName, entityName, query);
+        if (isArray(res.result)) {
+            const serialize = jsonSerializer.for(entity);
+            res.result = res.result.map(v => serialize.partialSerialize(v));
+        }
         return res;
     }
 

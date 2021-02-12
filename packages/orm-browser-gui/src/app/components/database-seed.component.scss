@@ -1,5 +1,15 @@
 :host {
     margin: 15px 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.actions {
+    margin-bottom: 15px;
+}
+
+.entities {
+    flex: 1;
 }
 
 :host-context(body) dui-table ::ng-deep .cell-value {
@@ -12,13 +22,22 @@
         margin-right: 5px;
     }
 
-    .value {
+    .property-seed-value {
         margin-left: 5px;
         flex: 1;
+        height: 21px;
+
+        &.select {
+            display: flex;
+            align-items: center;
+            dui-select {
+                width: 100%;
+            }
+        }
     }
 }
 
-.seed-entity {
+.entity {
     margin-bottom: 15px;
 
     .settings {
@@ -34,6 +53,7 @@
     div {
         flex: 1;
         padding: 1px 4px;
+        padding-left: 0;
     }
 
     dui-button {

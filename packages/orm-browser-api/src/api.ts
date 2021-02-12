@@ -79,8 +79,12 @@ export type EntitySeed = {
     truncate: boolean,
     active: boolean,
     amount: number,
-    properties: {name: string, fake: boolean, value?: any, faker: string }[],
+    properties: {name: string, fake: boolean, reference: 'random' | 'random-seed' | 'create', value?: any, faker: string }[],
 };
+
+export type SeedDatabase = {
+    entities: {[name: string]: EntitySeed};
+}
 
 export type QueryResult = { error?: string, log: string[], executionTime: number, result: any };
 
@@ -90,6 +94,8 @@ export interface BrowserControllerInterface {
     getDatabases(): DatabaseInfo[];
 
     resetAllTables(name: string): Promise<void>;
+
+    seed(dbName: string, seed: SeedDatabase): Promise<void>;
 
     migrate(name: string): Promise<void>;
 

@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, Input, OnChanges } from '@angular/core';
-import { DatabaseInfo, FakerTypes, findFaker } from '@deepkit/orm-browser-api';
+import { DatabaseInfo, FakerTypes, findFaker, SeedDatabase } from '@deepkit/orm-browser-api';
 import { filterEntitiesToList, trackByIndex, trackBySchema } from '../utils';
 import { ControllerClient } from '../client';
 import { ClassSchema } from '@deepkit/type';
@@ -7,12 +7,14 @@ import { BrowserState } from '../browser-state';
 import { DuiDialog } from '@deepkit/desktop-ui';
 import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
 
-
 @Component({
     selector: 'orm-browser-seed',
     template: `
-        <div *ngIf="database && fakerTypes">
-            <div class="seed-entity" *ngFor="let entity of filterEntitiesToList(database.getClassSchemas()); trackBy: trackBySchema">
+        <div class="actions">
+            <dui-button [disabled]="seeding" (click)="seed()">Seed</dui-button>
+        </div>
+        <div class="entities" *ngIf="database && fakerTypes">
+            <div class="entity" *ngFor="let entity of filterEntitiesToList(database.getClassSchemas()); trackBy: trackBySchema">
                 <ng-container
                     *ngIf="state.getSeedSettings(fakerTypes, database.name, entity.getName()) as settings">
                     <h3>
@@ -40,7 +42,7 @@ import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
                                 </ng-container>
                             </dui-table-column>
 
-                            <dui-table-column name="value" [width]="240" class="cell-value">
+                            <dui-table-column name="value" [width]="320" class="cell-value">
                                 <ng-container *duiTableCell="let row">
                                     <ng-container *ngIf="entity.getProperty(row.name) as property">
                                         <ng-container *ngIf="property.isAutoIncrement" style="color: var(--text-grey)">
@@ -50,9 +52,17 @@ import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
                                         <ng-container *ngIf="!property.isAutoIncrement">
                                             <dui-checkbox [(ngModel)]="row.fake" (ngModelChange)="typeChanged(entity)">Fake</dui-checkbox>
 
-                                            <div class="value" *ngIf="row.fake">
+                                            <div class="property-seed-value select" *ngIf="row.fake && property.isReference">
+                                                <dui-select textured small [(ngModel)]="row.reference">
+                                                    <dui-option value="random">Random from database</dui-option>
+                                                    <dui-option value="random-seed">Random from seed</dui-option>
+                                                    <dui-option value="create">Create new</dui-option>
+                                                </dui-select>
+                                            </div>
+
+                                            <div class="property-seed-value" *ngIf="row.fake && !property.isReference">
                                                 <ng-container *ngIf="!row.faker">
-                                                    <dui-button (click)="chooseType(entity, property.name)">Choose</dui-button>
+                                                    <dui-button small (click)="chooseType(entity, property.name)">Choose</dui-button>
                                                 </ng-container>
 
                                                 <div class="choose-type" *ngIf="row.faker">
@@ -62,11 +72,11 @@ import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
                                                         {{fakerTypes[row.faker]?.type}}
                                                     </span>
                                                     </div>
-                                                    <dui-button (click)="chooseType(entity, property.name)">Change</dui-button>
+                                                    <dui-button (click)="chooseType(entity, property.name)" small>Change</dui-button>
                                                 </div>
                                             </div>
 
-                                            <div class="value" *ngIf="!row.fake">
+                                            <div class="property-seed-value" *ngIf="!row.fake">
                                                 <orm-browser-property [(model)]="row.value" [property]="property"></orm-browser-property>
                                             </div>
                                         </ng-container>
@@ -77,7 +87,7 @@ import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
                             <dui-table-column name="example" [width]="350">
                                 <ng-container *duiTableCell="let row">
                                     <ng-container *ngIf="entity.getProperty(row.name) as property">
-                                        <ng-container *ngIf="row.fake && !property.isAutoIncrement">
+                                        <ng-container *ngIf="row.fake && !property.isAutoIncrement && !property.isReference">
                                             {{fakerTypes[row.faker]?.example}}
                                         </ng-container>
                                     </ng-container>
@@ -98,6 +108,8 @@ export class DatabaseSeedComponent implements OnChanges {
     trackBySchema = trackBySchema;
     trackByIndex = trackByIndex;
     filterEntitiesToList = filterEntitiesToList;
+
+    seeding: boolean = false;
 
     constructor(
         protected controllerClient: ControllerClient,
@@ -142,6 +154,31 @@ export class DatabaseSeedComponent implements OnChanges {
 
     typeChanged(entity: ClassSchema) {
         this.state.storeSeedSettings(this.database.name, entity.getName());
+    }
+
+    async seed() {
+        if (!await this.duiDialog.confirm('Seed now?', 'You are about to seed your database. All content may be lost.')) return;
+
+        this.seeding = true;
+        this.cd.detectChanges();
+
+        try {
+            const dbSeeding: SeedDatabase = { entities: {} };
+            for (const entity of filterEntitiesToList(this.database.getClassSchemas())) {
+                const key = this.state.getStoreKey(this.database.name, entity.getName());
+                const settings = this.state.seedSettings[key];
+                if (!settings || !settings.active) continue;
+
+                dbSeeding.entities[entity.getName()] = settings;
+            }
+            await this.controllerClient.browser.seed(this.database.name, dbSeeding);
+        } catch (error) {
+            await this.duiDialog.alert('Error seeding', error);
+        }
+
+        this.state.onDataChange.emit();
+        this.seeding = false;
+        this.cd.detectChanges();
     }
 
     autoTypes(entity: ClassSchema) {

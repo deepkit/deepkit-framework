@@ -131,7 +131,7 @@ export class MySQLPersistence extends SQLPersistence {
         super(platform, connection, session);
     }
 
-    async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+    async batchUpdate<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         const scopeSerializer = this.platform.serializer.for(classSchema);
         const tableName = this.platform.getTableIdentifier(classSchema);
         const pkName = classSchema.getPrimaryField().name;

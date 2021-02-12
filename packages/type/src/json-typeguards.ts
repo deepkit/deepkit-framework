@@ -74,13 +74,13 @@ registerJSONTypeGuard('uuid', (property: PropertySchema) => {
 
 registerJSONTypeGuard('arrayBuffer', (property: PropertySchema) => {
     return (v: any) => {
-        return v instanceof ArrayBuffer || (v && v['∏type'] === 'binary');
+        return v instanceof ArrayBuffer || (v && v['$type'] === 'binary');
     };
 });
 
 function typedArrayGuard(property: PropertySchema) {
     return (v: any) => {
-        return ArrayBuffer.isView(v) || (v && v['∏type'] === 'binary');
+        return ArrayBuffer.isView(v) || (v && v['$type'] === 'binary');
     };
 }
 

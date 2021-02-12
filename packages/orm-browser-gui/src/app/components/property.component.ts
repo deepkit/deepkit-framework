@@ -30,12 +30,13 @@ import { PropertySchema } from '@deepkit/type';
         :host {
             display: block;
             position: relative;
+            height: 100%;
         }
 
         .actions {
             position: absolute;
             right: 2px;
-            top: 0;
+            top: calc(50% - 8.5px);
             display: none;
         }
 
@@ -48,13 +49,17 @@ import { PropertySchema } from '@deepkit/type';
             color: var(--text-light);
         }
 
-        :host {
-            display: block;
-        }
-
         .cell {
             min-height: 21px;
             padding: 0 4px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+        .cell ::ng-deep > ng-component {
+            display: block;
+            width: 100%;
         }
 
         .cell.editing {
