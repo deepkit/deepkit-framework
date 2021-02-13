@@ -1,8 +1,8 @@
 import { ChangeDetectorRef, Component, Input, OnChanges } from '@angular/core';
-import { DatabaseInfo, EntityPropertySeed, FakerTypes, findFaker, SeedDatabase } from '@deepkit/orm-browser-api';
+import { DatabaseInfo, EntityPropertySeed, FakerTypes, SeedDatabase } from '@deepkit/orm-browser-api';
 import { filterEntitiesToList, trackByIndex, trackBySchema } from '../utils';
 import { ControllerClient } from '../client';
-import { ClassSchema, PropertySchema } from '@deepkit/type';
+import { ClassSchema } from '@deepkit/type';
 import { BrowserState } from '../browser-state';
 import { DuiDialog } from '@deepkit/desktop-ui';
 import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
@@ -27,42 +27,7 @@ import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
                             <dui-checkbox style="margin-left: 5px;" [(ngModel)]="settings.truncate">Delete all before seeding</dui-checkbox>
                         </div>
 
-                        <dui-button-group padding="none" style="margin: 5px 0;">
-                            <dui-button textured (click)="resetTypes(entity)">Reset</dui-button>
-                            <dui-button textured (click)="autoTypes(entity)">Auto</dui-button>
-                        </dui-button-group>
-
-                        <dui-table [autoHeight]="true" [preferenceKey]="'orm-browser/seed/' + entity.getName()" [sorting]="false" noFocusOutline [items]="getProperties(settings.properties)">
-                            <dui-table-column name="name" [width]="200"></dui-table-column>
-                            <dui-table-column name="type" [width]="100">
-                                <ng-container *duiTableCell="let row">
-                                    <ng-container *ngIf="entity.getProperty(row.name) as property">
-                                        <span style="color: var(--text-grey)">{{property.toString()}}</span>
-                                    </ng-container>
-                                </ng-container>
-                            </dui-table-column>
-
-                            <dui-table-column name="value" [width]="320" class="cell-value">
-                                <ng-container *duiTableCell="let row">
-                                    <ng-container *ngIf="entity.getProperty(row.name) as property">
-                                        <orm-browser-seed-property [fakerTypes]="fakerTypes"
-                                                                   [model]="row"
-                                                                   (modelChange)="typeChanged(entity)"
-                                                                   [property]="property"></orm-browser-seed-property>
-                                    </ng-container>
-                                </ng-container>
-                            </dui-table-column>
-
-                            <dui-table-column name="example" [width]="350">
-                                <ng-container *duiTableCell="let row">
-                                    <ng-container *ngIf="entity.getProperty(row.name) as property">
-                                        <ng-container *ngIf="row.fake && !property.isAutoIncrement && !property.isReference">
-                                            {{fakerTypes[row.faker]?.example}}
-                                        </ng-container>
-                                    </ng-container>
-                                </ng-container>
-                            </dui-table-column>
-                        </dui-table>
+                        <orm-browser-seed-properties [fakerTypes]="fakerTypes" [entity]="entity" [properties]="settings.properties" (changed)="typeChanged(entity)"></orm-browser-seed-properties>
                     </ng-container>
                 </ng-container>
             </div>
@@ -102,10 +67,6 @@ export class DatabaseSeedComponent implements OnChanges {
         } finally {
         }
         this.cd.detectChanges();
-    }
-
-    getProperties(properties: { [name: string]: EntityPropertySeed }): EntityPropertySeed[] {
-        return Object.values(properties);
     }
 
     chooseType(entity: ClassSchema, propertyName: string) {
@@ -151,53 +112,6 @@ export class DatabaseSeedComponent implements OnChanges {
         this.state.onDataChange.emit();
         this.seeding = false;
         this.cd.detectChanges();
-    }
-
-    autoTypes(entity: ClassSchema) {
-        if (!this.fakerTypes) return;
-        const settings = this.state.getSeedSettings(this.fakerTypes, this.database.name, entity.getName());
-        const fakerTypes = this.fakerTypes;
-
-        const visited: Set<ClassSchema> = new Set();
-
-        const autoProperty = (property: PropertySchema, seed: EntityPropertySeed) => {
-            if (property.isArray) {
-                autoProperty(property.getSubType(), seed.getArray().seed);
-            } else if (property.isMap) {
-                autoProperty(property.getSubType(), seed.getMap().seed);
-            } else if (property.type === 'class' && !property.isReference) {
-                if (visited.has(property.getResolvedClassSchema())) return;
-                visited.add(property.getResolvedClassSchema());
-
-                for (const prop of property.getResolvedClassSchema().getProperties()) {
-                    seed.properties[prop.name] = new EntityPropertySeed(prop.name);
-                    autoProperty(prop, seed.properties[prop.name]);
-                }
-            } else if (!property.isReference) {
-                seed.faker = findFaker(fakerTypes, property);
-                seed.fake = !!seed.faker;
-            }
-        };
-        visited.add(entity);
-
-        for (const [propName, seed] of Object.entries(settings.properties)) {
-            autoProperty(entity.getProperty(propName), seed);
-        }
-
-        this.typeChanged(entity);
-    }
-
-    resetTypes(entity: ClassSchema) {
-        if (!this.fakerTypes) return;
-        const settings = this.state.getSeedSettings(this.fakerTypes, this.database.name, entity.getName());
-        for (const property of Object.values(settings.properties)) {
-            property.faker = '';
-            property.array = undefined;
-            property.map = undefined;
-            property.value = undefined;
-            property.fake = false;
-        }
-        this.typeChanged(entity);
     }
 
 }

@@ -568,7 +568,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
         if ($event && $event.button === 2) return;
 
         //only when shift is pressed do we activate multi-column sort
-        if (!$event?.shiftKey) this.sort = {};
+        if (!$event?.shiftKey) this.sort = {[name]: this.sort[name]};
 
         if (this.columnMap[name]) {
             const headerDef = this.columnMap[name];

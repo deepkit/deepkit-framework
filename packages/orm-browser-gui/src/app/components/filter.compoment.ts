@@ -166,6 +166,7 @@ export class FilterComponent implements OnChanges {
         this.properties = [];
         for (const property of this.entity.getProperties()) {
             if (property.backReference) continue;
+            if (property.isParentReference) continue;
             this.properties.push(property);
         }
     }

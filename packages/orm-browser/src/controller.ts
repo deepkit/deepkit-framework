@@ -1,4 +1,4 @@
-import { isArray, isObject } from '@deepkit/core';
+import { getEnumValues, isArray, isObject } from '@deepkit/core';
 import { Database, DatabaseAdapter } from '@deepkit/orm';
 import {
     BrowserControllerInterface,
@@ -126,7 +126,13 @@ export class BrowserController implements BrowserControllerInterface {
         try {
             const session = db.createSession();
             const added: { [entityName: string]: any[] } = {};
-            const assignReference: { path: string, entity: string, reference: EntityPropertySeedReference, callback: (v: any) => any }[] = [];
+            const assignReference: {
+                path: string,
+                entity: string,
+                properties: { [name: string]: EntityPropertySeed },
+                reference: EntityPropertySeedReference,
+                callback: (v: any) => any
+            }[] = [];
 
             function fakerValue(path: string, fakerName: string): any {
                 const [p1, p2] = fakerName.split('.');
@@ -145,7 +151,7 @@ export class BrowserController implements BrowserControllerInterface {
 
                 if (property.isReference) {
                     if (property.type !== 'class') throw new Error(`${path}: only class properties can be references`);
-                    assignReference.push({ path, entity: property.getResolvedClassSchema().getName(), reference: propSeed.reference, callback });
+                    assignReference.push({ path, entity: property.getResolvedClassSchema().getName(), reference: propSeed.reference, properties: propSeed.properties, callback });
                     return;
                 } else if (property.isArray) {
                     const res: any[] = [];
@@ -171,17 +177,33 @@ export class BrowserController implements BrowserControllerInterface {
                         });
                     }
                     return callback(res);
+                } else if (property.type === 'class' || property.type === 'partial') {
+                    const foreignSchema = property.getResolvedClassSchema();
+                    const item = plainToClass(foreignSchema, {});
+                    for (const prop of foreignSchema.getProperties()) {
+                        if (!propSeed.properties[prop.name]) continue;
+
+                        fake(path + '.' + prop.name, prop, propSeed.properties[prop.name], (v) => {
+                            item[prop.name] = v;
+                        });
+                    }
+                    return callback(item);
+                } else if (property.type === 'boolean') {
+                    callback(Math.random() > 0.5);
+                } else if (property.type === 'enum') {
+                    const keys = getEnumValues(property.getResolvedClassType());
+                    callback(keys[keys.length * Math.random() | 0]);
                 } else {
                     return callback(fakerValue(path, propSeed.faker));
                 }
             }
 
-            function create(entity: ClassSchema, seed: SeedDatabase['entities'][keyof SeedDatabase['entities']]) {
+            function create(entity: ClassSchema, properties: { [name: string]: EntityPropertySeed }) {
                 if (!added[entity.getName()]) added[entity.getName()] = [];
 
-                const item = plainToClass(entity, { });
+                const item = plainToClass(entity, {});
 
-                for (const [propName, propSeed] of Object.entries(seed.properties)) {
+                for (const [propName, propSeed] of Object.entries(properties)) {
                     const property = entity.getProperty(propName);
                     fake(entity.getClassName() + '.' + propName, property, propSeed, (v) => {
                         item[property.name] = v;
@@ -200,7 +222,7 @@ export class BrowserController implements BrowserControllerInterface {
             }
 
             for (const [entityName, entitySeed] of Object.entries(seed.entities)) {
-                if (!entitySeed || !entitySeed.active || !entitySeed.amount) continue;
+                if (!entitySeed || !entitySeed.active) continue;
                 const entity = db.getEntity(entityName);
 
                 if (entitySeed.truncate) {
@@ -208,7 +230,7 @@ export class BrowserController implements BrowserControllerInterface {
                 }
 
                 for (let i = 0; i < entitySeed.amount; i++) {
-                    create(entity, entitySeed);
+                    create(entity, entitySeed.properties);
                 }
             }
 
@@ -216,13 +238,6 @@ export class BrowserController implements BrowserControllerInterface {
             const dbCandidates: { [entityName: string]: any[] } = {};
             for (const ref of assignReference) {
                 const entity = db.getEntity(ref.entity);
-
-                if (!seed.entities[ref.entity]) {
-                    throw new Error(
-                        `Entity ${ref.entity} seed config needs to be set. Use amount = 0 if you dont want to create one. ` +
-                        `Used in ${ref.path}.`
-                    );
-                }
 
                 let candidates = added[ref.entity] ||= [];
                 if (ref.reference === 'random') {
@@ -240,7 +255,7 @@ export class BrowserController implements BrowserControllerInterface {
                 }
 
                 if (ref.reference === 'create') {
-                    ref.callback(create(entity, seed.entities[ref.entity]));
+                    ref.callback(create(entity, ref.properties));
                 } else {
                     ref.callback(candidates[candidates.length * Math.random() | 0]);
                 }

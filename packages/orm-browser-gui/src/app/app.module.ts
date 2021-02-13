@@ -53,6 +53,7 @@ import { PropertyComponent } from './components/property.component';
 import { DatabaseSeedComponent } from './components/database-seed.component';
 import { FakerTypeDialogComponent } from './components/dialog/faker-type-dialog.component';
 import { DatabaseSeedPropertyComponent } from './components/database-seed-property.component';
+import { DatabaseSeedPropertiesComponent } from './components/database-seed-properties.component';
 
 @NgModule({
     declarations: [
@@ -86,6 +87,7 @@ import { DatabaseSeedPropertyComponent } from './components/database-seed-proper
         DatabaseSeedComponent,
         FakerTypeDialogComponent,
         DatabaseSeedPropertyComponent,
+        DatabaseSeedPropertiesComponent,
     ],
     imports: [
         BrowserModule,

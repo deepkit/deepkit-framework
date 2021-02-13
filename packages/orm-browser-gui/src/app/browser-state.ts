@@ -153,6 +153,7 @@ export class BrowserState {
             const properties: EntitySeed['properties'] = {};
             for (const property of this.getEntity(db, entity).getProperties()) {
                 if (property.backReference) continue;
+                if (property.isParentReference) continue;
 
                 const propertyPredefined = predefined[property.name];
                 const seed = properties[property.name] = new EntityPropertySeed(property.name);
