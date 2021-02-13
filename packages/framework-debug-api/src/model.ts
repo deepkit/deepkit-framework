@@ -10,7 +10,7 @@
 
 import { entity, t } from '@deepkit/type';
 
-@entity.name('debugRequest')
+@entity.name('deepkit/debugger/request')
 export class DebugRequest {
     @t.primary.autoIncrement id: number = 0;
     @t version: number = 0;
@@ -21,10 +21,10 @@ export class DebugRequest {
     @t.map(t.number) times: { [name: string]: number } = {};
 
     constructor(
-        @t public method: string,
+        @t.name('method') public method: string,
 
-        @t public url: string,
-        @t public clientIp: string,
+        @t.name('url') public url: string,
+        @t.name('clientIp') public clientIp: string,
     ) {
     }
 }

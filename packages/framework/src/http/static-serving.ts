@@ -10,10 +10,57 @@
 
 import { http } from '../decorator';
 import { join } from 'path';
-import { readFileSync } from 'fs';
-import { HtmlResponse, serveStaticListener } from '../http';
+import { readFileSync, stat } from 'fs';
+import { HtmlResponse, httpWorkflow } from '../http';
 import { Module } from '../module';
 import { normalizeDirectory } from '../utils';
+import { ClassType } from '@deepkit/core';
+import { injectable } from '../injector/injector';
+import { HttpRequest, HttpResponse } from '../http-model';
+import send from 'send';
+import { eventDispatcher } from '../event';
+import { RouteConfig } from '../router';
+
+export function serveStaticListener(path: string, localPath: string = path): ClassType {
+    @injectable()
+    class HttpRequestStaticServingListener {
+        serve(path: string, request: HttpRequest, response: HttpResponse) {
+            return new Promise(resolve => {
+                const res = send(request, path, { root: localPath })
+                res.once('finished', resolve);
+                res.pipe(response);
+            });
+        }
+
+        @eventDispatcher.listen(httpWorkflow.onRoute, 101) //after default route listener at 100
+        onRoute(event: typeof httpWorkflow.onRoute.event) {
+            if (event.sent) return;
+            if (event.route) return;
+
+            if (!event.request.url?.startsWith(path)) return;
+
+            const relativePath = join('/', event.url.substr(path.length));
+            const finalLocalPath = join(localPath, relativePath);
+
+            return new Promise(resolve => {
+                stat(finalLocalPath, (err, stat) => {
+                    if (stat && stat.isFile()) {
+                        event.routeFound(
+                            new RouteConfig('static', 'GET', event.url, {
+                                controller: HttpRequestStaticServingListener,
+                                methodName: 'serve'
+                            }),
+                            () => [relativePath, event.request, event.response]
+                        );
+                    }
+                    resolve(undefined);
+                });
+            });
+        }
+    }
+
+    return HttpRequestStaticServingListener;
+}
 
 function loadHtml(localPath: string, path: string): string {
     try {
@@ -43,5 +90,5 @@ export function registerStaticHttpController(module: Module<any>, path: string, 
     }
 
     module.addController(HttpDebugController);
-    module.addListener(serveStaticListener('/', localPath));
+    module.addListener(serveStaticListener(path, localPath));
 }

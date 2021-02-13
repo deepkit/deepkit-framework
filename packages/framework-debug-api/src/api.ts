@@ -57,14 +57,14 @@ export class Route {
     public bodyPropertySchema?: PropertySchema;
 
     constructor(
-        @t public path: string,
-        @t public httpMethod: string,
-        @t public controller: string,
-        @t public description: string,
-        @t.array(RouteParameter) public parameters: RouteParameter[],
-        @t.array(t.string) public groups: string[],
-        @t.string public category: string,
-        @t.any public bodySchema?: PropertySchemaSerialized,
+        @t.name('path') public path: string,
+        @t.name('httpMethod') public httpMethod: string,
+        @t.name('controller') public controller: string,
+        @t.name('description') public description: string,
+        @t.array(RouteParameter).name('parameters') public parameters: RouteParameter[],
+        @t.array(t.string).name('groups') public groups: string[],
+        @t.string.name('category') public category: string,
+        @t.any.name('bodySchema') public bodySchema?: PropertySchemaSerialized,
     ) {
         if (bodySchema) {
             if (bodySchema.classType) {
@@ -83,8 +83,8 @@ export class RpcActionParameter {
     public propertySchema: PropertySchema;
 
     constructor(
-        @t public name: string,
-        @t.any public schema: any,
+        @t.name('name') public name: string,
+        @t.any.name('schema') public schema: any,
     ) {
         this.propertySchema = PropertySchema.fromJSON(schema);
     }
@@ -106,7 +106,7 @@ export class Event {
     @t priority!: number;
 }
 
-export const DebugControllerInterface = ControllerSymbol<DebugControllerInterface>('debug/controller');
+export const DebugControllerInterface = ControllerSymbol<DebugControllerInterface>('deepkit/debug/controller', [Config, Database, Route, RpcAction, Workflow, Event, DebugRequest]);
 export interface DebugControllerInterface {
     configuration(): Config;
 

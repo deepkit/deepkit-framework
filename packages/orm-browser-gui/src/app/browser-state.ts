@@ -199,6 +199,11 @@ export class BrowserState {
         return this.deletions[storeKey] ||= {};
     }
 
+    getDatabase(name: string): DatabaseInfo {
+        for (const db of this.databases) if (db.name === name) return db;
+        throw new Error(`Database ${name} not loaded`);
+    }
+
     scheduleForDeletion(dbName: string, entityName: string, item: any) {
         const deletions = this.getDeletions(dbName, entityName);
 

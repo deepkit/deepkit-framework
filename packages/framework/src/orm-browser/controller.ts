@@ -6,7 +6,7 @@ import {
     DatabaseInfo,
     EntityPropertySeed,
     fakerFunctions, FakerTypes, getType,
-    QueryResult, SeedDatabase
+    QueryResult, SeedDatabase, EntityPropertySeedReference
 } from '@deepkit/orm-browser-api';
 import { rpc } from '@deepkit/rpc';
 import { ClassSchema, jsonSerializer, plainToClass, PropertySchema, serializeSchemas, t } from '@deepkit/type';
@@ -14,13 +14,16 @@ import * as faker from 'faker';
 import { SQLDatabaseAdapter } from '@deepkit/sql';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { performance } from 'perf_hooks';
-import { http } from '@deepkit/framework';
-import { EntityPropertySeedReference } from '@deepkit/orm-browser-api';
 import { inspect } from 'util';
+import { http } from '../decorator';
 
 @rpc.controller(BrowserControllerInterface)
-export class BrowserController implements BrowserControllerInterface {
+export class OrmBrowserController implements BrowserControllerInterface {
     constructor(protected databases: Database[]) {
+    }
+
+    public registerDatabase(...databases: Database[]) {
+        this.databases.push(...databases);
     }
 
     protected extractDatabaseInfo(db: Database): DatabaseInfo {

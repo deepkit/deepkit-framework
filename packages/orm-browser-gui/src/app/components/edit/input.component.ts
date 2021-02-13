@@ -14,7 +14,7 @@ import {
 import { TableComponent, unsubscribe } from '@deepkit/desktop-ui';
 import { PropertySchema, Types } from '@deepkit/type';
 import { Subscription } from 'rxjs';
-import { Registry } from 'src/app/registry';
+import { Registry } from '../../registry';
 
 @Component({
     selector: 'orm-browser-property-editing',

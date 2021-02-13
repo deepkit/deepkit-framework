@@ -19,6 +19,7 @@ import { kernelConfig } from './kernel.config';
  */
 export class DatabaseRegistry {
     protected databaseNameMap = new Map<string, Database<any>>();
+    protected databases: Database<any>[] = [];
     protected databaseMap = new Map<ClassType, Database<any>>();
     protected databaseOptions = new Map<ClassType, { migrateOnStartup?: boolean }>();
     protected initialized = false;
@@ -67,6 +68,7 @@ export class DatabaseRegistry {
 
             this.databaseNameMap.set(database.name, database);
             this.databaseMap.set(databaseType, database);
+            this.databases.push(database);
         }
 
         this.initialized = true;
@@ -79,9 +81,9 @@ export class DatabaseRegistry {
         return database;
     }
 
-    getDatabases() {
+    getDatabases(): Database<any>[] {
         this.init();
-        return this.databaseMap.values();
+        return this.databases;
     }
 
     getDatabase(classType: ClassType): Database<any> | undefined {

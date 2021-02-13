@@ -48,7 +48,10 @@
       "path": "../rpc-tcp/tsconfig.json"
     },
     {
-      "path": "../framework-debug-shared/tsconfig.json"
+      "path": "../framework-debug-api/tsconfig.json"
+    },
+    {
+      "path": "../orm-browser-api/tsconfig.json"
     },
     {
       "path": "../orm/tsconfig.json"

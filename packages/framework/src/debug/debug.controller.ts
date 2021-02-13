@@ -19,18 +19,17 @@ import {
     RpcAction,
     RpcActionParameter,
     Workflow
-} from '@deepkit/framework-debug-shared';
+} from '@deepkit/framework-debug-api';
 import { Collection, rpc, rpcClass } from '@deepkit/rpc';
 import { getClassSchema, t } from '@deepkit/type';
 import { ServiceContainer } from '../service-container';
 import { parseRouteControllerAction, Router } from '../router';
-import { getClassName } from '@deepkit/core';
+import { changeClass, getClassName } from '@deepkit/core';
 import { EventDispatcher, isEventListenerContainerEntryService } from '../event';
 import { DatabaseRegistry } from '../database-registry';
 import { inject } from '../injector/injector';
 import { DatabaseAdapter } from '@deepkit/orm';
 import { LiveDatabase } from '../database/live-database';
-
 
 @rpc.controller(DebugControllerInterface)
 export class DebugController implements DebugControllerInterface {
@@ -166,9 +165,9 @@ export class DebugController implements DebugControllerInterface {
             }
         }
 
-        return {
+        return changeClass({
             appConfig, modulesConfig,
-        } as Config;
+        }, Config);
     }
 
     @rpc.action()
@@ -203,10 +202,10 @@ export class DebugController implements DebugControllerInterface {
     getWorkflow(name: string): Workflow {
         const w = this.serviceContainer.workflowRegistry.get(name);
 
-        return {
+        return changeClass({
             places: Object.keys(w.places),
             transitions: w.transitions,
-        };
+        }, Workflow);
     }
 
     @rpc.action()

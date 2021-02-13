@@ -1,10 +1,12 @@
-import { ChangeDetectorRef, Component, Input, OnDestroy } from '@angular/core';
-import { DuiDialog } from '@deepkit/desktop-ui';
-import { DatabaseInfo, FakerTypes } from '@deepkit/orm-browser-api';
+import { ChangeDetectorRef, Component, Input, OnDestroy, Optional } from '@angular/core';
+import { DuiDialog, unsubscribe } from '@deepkit/desktop-ui';
+import { DatabaseInfo } from '@deepkit/orm-browser-api';
 import { empty } from '@deepkit/core';
 import { BrowserState } from '../browser-state';
 import { ControllerClient } from '../client';
-import { filterEntitiesToList, trackByIndex, trackByProperty, trackBySchema } from '../utils';
+import { trackByIndex, trackByProperty } from '../utils';
+import { ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 @Component({
     selector: 'orm-browser-database',
@@ -56,7 +58,6 @@ import { filterEntitiesToList, trackByIndex, trackByProperty, trackBySchema } fr
     styleUrls: ['./database.component.scss']
 })
 export class DatabaseComponent implements OnDestroy {
-    filterEntitiesToList = filterEntitiesToList;
     trackByIndex = trackByIndex;
     trackByProperty = trackByProperty;
 
@@ -69,12 +70,23 @@ export class DatabaseComponent implements OnDestroy {
 
     @Input() database!: DatabaseInfo;
 
+    @unsubscribe()
+    routeSub?: Subscription;
+
     constructor(
         protected controllerClient: ControllerClient,
         protected cd: ChangeDetectorRef,
         protected duiDialog: DuiDialog,
         public state: BrowserState,
+        @Optional() protected activatedRoute?: ActivatedRoute,
     ) {
+        if (activatedRoute) {
+            this.routeSub = activatedRoute.params.subscribe(async (params) => {
+                this.state.databases = await this.controllerClient.getDatabases();
+                this.database = this.state.getDatabase(params.database);
+                this.cd.detectChanges();
+            });
+        }
     }
 
     ngOnDestroy(): void {

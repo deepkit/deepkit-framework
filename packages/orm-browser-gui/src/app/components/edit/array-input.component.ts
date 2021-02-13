@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
 import { jsonSerializer, PropertySchema } from '@deepkit/type';
-import { trackByIndex } from 'src/app/utils';
 import { isArray } from '@deepkit/core';
+import { trackByIndex } from '../../utils';
 
 @Component({
     template: `

@@ -21,6 +21,7 @@ export * from './src/database/database-listener';
 export * from './src/database/migration';
 export * from './src/database/migration-provider';
 export * from './src/database/live-database';
+export * from './src/orm-browser/controller';
 export * from './src/module';
 export * from './src/http/static-serving';
 export * from './src/http';

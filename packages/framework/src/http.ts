@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, CustomError } from '@deepkit/core';
+import { CustomError } from '@deepkit/core';
 import {
     getClassTypeFromInstance,
     isClassInstance,
@@ -16,11 +16,8 @@ import {
     jsonSerializer,
     ValidationFailed
 } from '@deepkit/type';
-import { stat } from 'fs';
 import { ServerResponse } from 'http';
 import { Socket } from 'net';
-import { join } from 'path';
-import serveStatic from 'serve-static';
 import { HttpRequestDebugCollector } from './debug/debugger';
 import { EventDispatcher, eventDispatcher } from './event';
 import { HttpRequest, HttpResponse } from './http-model';
@@ -267,8 +264,8 @@ export const httpWorkflow = createWorkflow('http', {
     resolveParameters: HttpResolveParametersEvent,
     accessDenied: HttpAccessDeniedEvent,
     controller: HttpControllerEvent,
-    parametersFailed: HttpControllerErrorEvent,
     controllerError: HttpControllerErrorEvent,
+    parametersFailed: HttpControllerErrorEvent,
     response: HttpResponseEvent,
 }, {
     start: 'request',
@@ -276,10 +273,10 @@ export const httpWorkflow = createWorkflow('http', {
     route: ['auth', 'routeNotFound'],
     auth: ['resolveParameters', 'accessDenied'],
     resolveParameters: ['controller', 'parametersFailed'],
-    parametersFailed: 'response',
-    controller: ['accessDenied', 'controllerError', 'response'],
     accessDenied: 'response',
+    controller: ['accessDenied', 'controllerError', 'response'],
     controllerError: 'response',
+    parametersFailed: 'response',
     routeNotFound: 'response',
 });
 
@@ -291,51 +288,6 @@ export class HtmlResponse {
 export class JSONResponse {
     constructor(public json: any, public statusCode?: number) {
     }
-}
-
-export function serveStaticListener(path: string, localPath: string = path): ClassType {
-    @injectable()
-    class HttpRequestStaticServingListener {
-        protected serveStatic = serveStatic(localPath, { index: false });
-
-        serve(path: string, request: HttpRequest, response: HttpResponse) {
-            return new Promise(resolve => {
-                response.once('finish', () => {
-                    resolve(undefined);
-                });
-                this.serveStatic(request, response, () => {
-                    resolve(response);
-                });
-            });
-        }
-
-        @eventDispatcher.listen(httpWorkflow.onRoute, 101) //after default route listener at 100
-        onRoute(event: typeof httpWorkflow.onRoute.event) {
-            if (event.sent) return;
-            if (event.route) return;
-
-            if (!event.request.url?.startsWith(path)) return;
-
-            const finalLocalPath = join(localPath, join('/', event.url));
-
-            return new Promise(resolve => {
-                stat(finalLocalPath, (err, stat) => {
-                    if (stat && stat.isFile()) {
-                        event.routeFound(
-                            new RouteConfig('static', 'GET', event.url, {
-                                controller: HttpRequestStaticServingListener,
-                                methodName: 'serve'
-                            }),
-                            () => [finalLocalPath, event.request, event.response]
-                        );
-                    }
-                    resolve(undefined);
-                });
-            });
-        }
-    }
-
-    return HttpRequestStaticServingListener;
 }
 
 
@@ -477,7 +429,7 @@ export class HttpListener {
                 });
             }
             event.response.end();
-        } else if (response instanceof ServerResponse) {
+        } else if (response instanceof ServerResponse || response instanceof HttpResponse) {
         } else if (response instanceof HtmlResponse) {
             event.response.setHeader('Content-Type', 'text/html; charset=utf-8');
             if (response.statusCode) event.response.writeHead(response.statusCode);

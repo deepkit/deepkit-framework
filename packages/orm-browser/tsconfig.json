@@ -35,6 +35,9 @@
       "path": "../orm/tsconfig.json"
     },
     {
+      "path": "../framework/tsconfig.json"
+    },
+    {
       "path": "../orm-browser-api/tsconfig.json"
     }
   ]

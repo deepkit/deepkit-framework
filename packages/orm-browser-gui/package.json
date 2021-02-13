@@ -16,6 +16,15 @@
     "@deepkit/logger": false
   },
   "peerDependencies": {
+    "@angular/animations": "~11.1.2",
+    "@angular/common": "~11.1.2",
+    "@angular/compiler": "~11.1.2",
+    "@angular/core": "~11.1.2",
+    "@angular/forms": "~11.1.2",
+    "@angular/cdk": "~11.2.0",
+    "@angular/platform-browser": "~11.1.2",
+    "@angular/platform-browser-dynamic": "~11.1.2",
+    "@angular/router": "~11.1.2",
     "@deepkit/desktop-ui": "^1.0.1-alpha.13",
     "@deepkit/orm-browser-api": "^1.0.1-alpha.13",
     "@deepkit/core": "^1.0.1-alpha.13",
@@ -29,15 +38,6 @@
     "@deepkit/topsort": "^1.0.1-alpha.13"
   },
   "dependencies": {
-    "@angular/animations": "~11.1.2",
-    "@angular/common": "~11.1.2",
-    "@angular/compiler": "~11.1.2",
-    "@angular/core": "~11.1.2",
-    "@angular/forms": "~11.1.2",
-    "@angular/cdk": "~11.2.0",
-    "@angular/platform-browser": "~11.1.2",
-    "@angular/platform-browser-dynamic": "~11.1.2",
-    "@angular/router": "~11.1.2",
     "file-saver": "^2.0.5",
     "buffer": "^6.0.3",
     "dagre": "^0.8.5",
@@ -48,6 +48,15 @@
     "zone.js": "~0.11.3"
   },
   "devDependencies": {
+    "@angular/animations": "~11.1.2",
+    "@angular/common": "~11.1.2",
+    "@angular/compiler": "~11.1.2",
+    "@angular/core": "~11.1.2",
+    "@angular/forms": "~11.1.2",
+    "@angular/cdk": "~11.2.0",
+    "@angular/platform-browser": "~11.1.2",
+    "@angular/platform-browser-dynamic": "~11.1.2",
+    "@angular/router": "~11.1.2",
     "@deepkit/desktop-ui": "^1.0.1-alpha.13",
     "@deepkit/orm-browser-api": "^1.0.1-alpha.13",
     "@deepkit/core": "^1.0.1-alpha.13",

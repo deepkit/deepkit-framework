@@ -5,12 +5,11 @@ import {
     EventEmitter,
     Input,
     OnChanges,
-    OnDestroy,
+    OnDestroy, Optional,
     Output
 } from '@angular/core';
-import { DuiDialog } from '@deepkit/desktop-ui';
+import { DuiDialog, unsubscribe } from '@deepkit/desktop-ui';
 import {
-    Changes,
     ClassSchema,
     getPrimaryKeyHashGenerator,
     jsonSerializer,
@@ -26,6 +25,7 @@ import { ControllerClient } from '../client';
 import { arrayRemoveItem, isArray } from '@deepkit/core';
 import { trackByIndex } from '../utils';
 import { ClientProgress } from '@deepkit/rpc';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
     selector: 'orm-browser-database-browser',
@@ -59,6 +59,9 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
     selectedAll: boolean = false;
 
     protected ignoreNextCellClick = false;
+
+    @unsubscribe()
+    routeSub?: Subscription;
 
     protected pkHasher: (value: any) => string = () => '';
 
@@ -111,7 +114,16 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
         protected duiDialog: DuiDialog,
         protected host: ElementRef<HTMLElement>,
         public state: BrowserState,
+        @Optional() protected activatedRoute?: ActivatedRoute,
     ) {
+        if (activatedRoute) {
+            this.routeSub = activatedRoute.params.subscribe(async (params) => {
+                this.state.databases = await this.controllerClient.getDatabases();
+                this.database = this.state.getDatabase(params.database);
+                this.entity = this.database.getEntity(params.entity);
+                await this.loadEntity(true);
+            });
+        }
     }
 
     ngOnDestroy(): void {

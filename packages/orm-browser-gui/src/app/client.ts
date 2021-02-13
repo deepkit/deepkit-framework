@@ -10,17 +10,27 @@
 
 import { Injectable } from '@angular/core';
 import { DeepkitClient } from '@deepkit/rpc';
-import { BrowserControllerInterface } from '@deepkit/orm-browser-api';
+import { BrowserControllerInterface, DatabaseInfo } from '@deepkit/orm-browser-api';
+import { asyncOperation } from '@deepkit/core';
 
 @Injectable()
 export class ControllerClient {
+    protected loadDatabases?: Promise<DatabaseInfo[]>;
 
-  public browser = this.client.controller(BrowserControllerInterface);
+    public browser = this.client.controller(BrowserControllerInterface);
 
-  constructor(protected client: DeepkitClient) {
-  }
+    constructor(protected client: DeepkitClient) {
+    }
 
-  static getServerHost(): string {
-      return (location.port === '4200' ? location.hostname + ':9090' : location.host);
-  }
+    static getServerHost(): string {
+        return (location.port === '4200' ? location.hostname + ':9090' : location.host);
+    }
+
+    getDatabases(): Promise<DatabaseInfo[]> {
+        if (this.loadDatabases) return this.loadDatabases;
+        this.loadDatabases = asyncOperation(async (resolve) => {
+            resolve(await this.browser.getDatabases());
+        });
+        return this.loadDatabases;
+    }
 }

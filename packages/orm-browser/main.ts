@@ -1,7 +1,7 @@
 #!/usr/bin/env ts-node-script
 
 import 'reflect-metadata';
-import { BrowserController } from './src/controller';
+import { OrmBrowserController } from '@deepkit/framework';
 import { isAbsolute, join } from 'path';
 import { Database } from '@deepkit/orm';
 import { Application, createModule, KernelModule, registerStaticHttpController } from '@deepkit/framework';
@@ -18,10 +18,10 @@ for (const db of Database.registry) {
 
 Application.create(createModule({
     providers: [
-        {provide: BrowserController, useValue: new BrowserController(Database.registry)},
+        {provide: OrmBrowserController, useValue: new OrmBrowserController(Database.registry)},
     ],
     controllers: [
-        BrowserController
+        OrmBrowserController
     ],
     imports: [
         KernelModule.configure({

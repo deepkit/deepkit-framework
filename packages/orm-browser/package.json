@@ -3,7 +3,6 @@
   "version": "1.0.1-alpha.13",
   "description": "Deepkit ORM Data Browser",
   "type": "commonjs",
-  "main": "./dist/cjs/main.js",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
@@ -21,10 +20,7 @@
     "@deepkit/sql": "^1.0.1-alpha.13",
     "@deepkit/rpc": "^1.0.1-alpha.13",
     "@deepkit/logger": "^1.0.1-alpha.13",
-    "@deepkit/orm-browser-api": "^1.0.1-alpha.13",
-    "@deepkit/orm-browser-gui": "^1.0.1-alpha.13",
-    "@deepkit/orm": "^1.0.1-alpha.13",
-    "faker": "5.4.0"
+    "@deepkit/orm": "^1.0.1-alpha.13"
   },
   "devDependencies": {
     "@types/faker": "5.1.6",

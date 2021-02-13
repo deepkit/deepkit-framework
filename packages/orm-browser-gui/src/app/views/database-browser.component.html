@@ -1,5 +1,5 @@
 <ng-container *ngIf="database && entity && entityState">
-    <dui-window-toolbar *ngIf="!dialog" for="browser">
+    <dui-window-toolbar *ngIf="!dialog" for="orm-browser">
         <dui-button-group padding="none">
             <dui-button textured [disabled]="!state.hasChanges()" (click)="resetAll()" title="Reset all changes"
                         icon="clear"></dui-button>

@@ -9,12 +9,14 @@
  */
 
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { DatabaseInfo } from '@deepkit/orm-browser-api';
+import { ClassSchema } from '@deepkit/type';
 import { BrowserState } from './browser-state';
 import { ControllerClient } from './client';
 
 @Component({
-  selector: 'app-root',
-  template: `
+    selector: 'app-root',
+    template: `
         <dui-window>
             <dui-window-header size="small">
                 <dui-window-toolbar>
@@ -33,41 +35,50 @@ import { ControllerClient } from './client';
                                     icon="toggle_sidebar"></dui-button>
                     </dui-button-group>
 
-                    <dui-window-toolbar-container name="browser"></dui-window-toolbar-container>
+                    <dui-window-toolbar-container name="orm-browser"></dui-window-toolbar-container>
                 </dui-window-toolbar>
             </dui-window-header>
             <dui-window-content [sidebarVisible]="sidebarVisible">
                 <dui-window-sidebar>
-                    <dui-list>
+                    <dui-list [ngModel]="getListModel()" (ngModelChange)="setListModel($event)">
                         <dui-list-title>Database</dui-list-title>
                         <orm-browser-list></orm-browser-list>
 
                     </dui-list>
                 </dui-window-sidebar>
-                <orm-browser-database *ngIf="state.database && !state.entity"
-                                      [database]="state.database"></orm-browser-database>
-                <orm-browser-database-browser *ngIf="state.database && state.entity" [database]="state.database"
-                                              [entity]="state.entity"></orm-browser-database-browser>
+                <router-outlet></router-outlet>
             </dui-window-content>
         </dui-window>
     `,
-  styleUrls: ['./app.component.scss']
+    styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit, OnDestroy {
+    sidebarVisible: boolean = true;
 
-  sidebarVisible: boolean = true;
+    constructor(
+        protected controllerClient: ControllerClient,
+        protected cd: ChangeDetectorRef,
+        public state: BrowserState,
+    ) {
+    }
 
-  constructor(
-    protected controllerClient: ControllerClient,
-    protected cd: ChangeDetectorRef,
-    public state: BrowserState,
-  ) {
-  }
+    getListModel() {
+        return this.state.database && !this.state.entity ? this.state.database : this.state.entity;
+    }
 
-  ngOnDestroy(): void {
-  }
+    setListModel(item: any) {
+        if (item instanceof DatabaseInfo) {
+            this.state.database = item;
+            this.state.entity = undefined;
+        } else if (item instanceof ClassSchema) {
+            this.state.entity = item;
+        }
+    }
 
-  async ngOnInit() {
-    this.cd.detectChanges();
-  }
+    ngOnDestroy(): void {
+    }
+
+    async ngOnInit() {
+        this.cd.detectChanges();
+    }
 }

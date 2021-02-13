@@ -14,7 +14,7 @@ import {
 import { arrayRemoveItem } from '@deepkit/core';
 import { DuiDialog, ReactiveChangeDetectionModule } from '@deepkit/desktop-ui';
 import { ClassSchema, getPrimaryKeyHashGenerator, jsonSerializer, PropertySchema } from '@deepkit/type';
-import { BrowserState } from 'src/app/browser-state';
+import { BrowserState } from '../../browser-state';
 
 @Component({
     template: `

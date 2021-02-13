@@ -79,7 +79,7 @@ export class DatabaseSeedComponent implements OnChanges {
             selected: property.faker
         });
 
-        component.chosen.subscribe((value) => {
+        component.chosen.subscribe((value: string) => {
             property.faker = value;
             this.cd.detectChanges();
         });

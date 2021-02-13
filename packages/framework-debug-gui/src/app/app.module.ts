@@ -14,17 +14,17 @@ import { NgModule } from '@angular/core';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import {
-  DuiButtonModule,
-  DuiCheckboxModule,
-  DuiFormComponent,
-  DuiInputModule,
-  DuiRadioboxModule,
-  DuiSelectModule,
-  DuiWindowModule,
-  DuiIconModule,
-  DuiListModule,
-  DuiTableModule,
-  DuiAppModule,
+    DuiButtonModule,
+    DuiCheckboxModule,
+    DuiFormComponent,
+    DuiInputModule,
+    DuiRadioboxModule,
+    DuiSelectModule,
+    DuiWindowModule,
+    DuiIconModule,
+    DuiListModule,
+    DuiTableModule,
+    DuiAppModule,
 } from '@deepkit/desktop-ui';
 import { ConfigurationComponent } from './views/configuration/configuration.component';
 import { HttpComponent } from './views/http/http.component';
@@ -36,42 +36,47 @@ import { EventsComponent } from './views/events/events.component';
 import { DeepkitClient } from '@deepkit/rpc';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { HttpRequestComponent } from './views/http/request/http-request.component';
+import { OrmBrowserModule } from '@deepkit/orm-browser-gui';
+import { RouterModule } from '@angular/router';
 
 @NgModule({
-  declarations: [
-    AppComponent,
-    ConfigurationComponent,
-    HttpComponent,
-    RpcComponent,
-    WorkflowComponent,
-    WorkflowCardComponent,
-    EventsComponent,
-    HttpRequestComponent,
-  ],
-  imports: [
-    BrowserModule,
-    AppRoutingModule,
-    FormsModule,
+    declarations: [
+        AppComponent,
+        ConfigurationComponent,
+        HttpComponent,
+        RpcComponent,
+        WorkflowComponent,
+        WorkflowCardComponent,
+        EventsComponent,
+        HttpRequestComponent,
+    ],
+    imports: [
+        BrowserModule,
+        AppRoutingModule,
+        FormsModule,
+        RouterModule.forRoot([
+        ]),
 
-    DuiAppModule.forRoot(),
-    DuiWindowModule.forRoot(),
-    OverlayModule,
+        OrmBrowserModule,
+        DuiAppModule.forRoot(),
+        DuiWindowModule.forRoot(),
+        OverlayModule,
 
-    DuiCheckboxModule,
-    DuiButtonModule,
-    DuiInputModule,
-    DuiFormComponent,
-    DuiRadioboxModule,
-    DuiSelectModule,
-    DuiIconModule,
-    DuiListModule,
-    DuiTableModule,
-  ],
-  providers: [
-    ControllerClient,
-    { provide: DeepkitClient, useFactory: () => new DeepkitClient('ws://' + location.host) },
-  ],
-  bootstrap: [AppComponent]
+        DuiCheckboxModule,
+        DuiButtonModule,
+        DuiInputModule,
+        DuiFormComponent,
+        DuiRadioboxModule,
+        DuiSelectModule,
+        DuiIconModule,
+        DuiListModule,
+        DuiTableModule,
+    ],
+    providers: [
+        ControllerClient,
+        { provide: DeepkitClient, useFactory: () => new DeepkitClient('ws://' + ControllerClient.getServerHost()) },
+    ],
+    bootstrap: [AppComponent]
 })
 export class AppModule {
 }

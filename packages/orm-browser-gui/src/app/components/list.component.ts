@@ -1,21 +1,16 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
-import { ClassSchema } from '@deepkit/type';
+import { ChangeDetectorRef, Component, Input, OnInit } from '@angular/core';
 import { BrowserState } from '../browser-state';
 import { ControllerClient } from '../client';
-import { DatabaseInfo } from '@deepkit/orm-browser-api';
 import { filterEntitiesToList, trackByDatabase, trackBySchema } from '../utils';
+import { detectChangesNextFrame } from '@deepkit/desktop-ui';
 
 @Component({
     selector: 'orm-browser-list',
     template: `
-        <ng-container *ngFor="let db of state.databases; trackBy: trackByDatabase">
-            <dui-list-item [active]="state.database === db && !state.entity"
-                           (onSelect)="state.database = db; state.entity = undefined;"
-            >{{db.name}} ({{db.adapter}})
-            </dui-list-item>
+        <ng-container *ngFor="let db of state.databases; trackBy: trackByDatabase; let i = index">
+            <dui-list-item routerLink="/database/{{db.name}}" [routerLinkExact]="true">{{db.name}} ({{db.adapter}})</dui-list-item>
 
-            <dui-list-item [active]="state.entity === entity"
-                           (onSelect)="state.database = db; state.entity = entity;"
+            <dui-list-item routerLink="/database/{{db.name}}/{{entity.name}}" [routerLinkExact]="true"
                            *ngFor="let entity of filterEntitiesToList(db.getClassSchemas()); trackBy: trackBySchema">
                 <div class="item">
                     <div>{{entity.getClassName()}}</div>
@@ -58,10 +53,12 @@ export class DatabaseBrowserListComponent implements OnInit {
     }
 
     async ngOnInit() {
-        this.state.databases = await this.controllerClient.browser.getDatabases();
+        this.state.databases = await this.controllerClient.getDatabases();
+        detectChangesNextFrame(this.cd);
+
         console.log('databases', this.state.databases);
         this.state.onDataChange.subscribe(this.loadCounts.bind(this));
-        this.loadCounts();
+        await this.loadCounts();
     }
 
     protected async loadCounts() {

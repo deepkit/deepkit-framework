@@ -10,7 +10,7 @@
 
 import { Injectable } from '@angular/core';
 import { DeepkitClient } from '@deepkit/rpc';
-import { Workflow, DebugControllerInterface, DebugRequest } from '@deepkit/framework-debug-shared';
+import { Workflow, DebugControllerInterface, DebugRequest } from '@deepkit/framework-debug-api';
 import { Collection } from '@deepkit/rpc';
 
 @Injectable()
@@ -23,6 +23,9 @@ export class ControllerClient {
 
   public readonly debug = this.client.controller(DebugControllerInterface);
 
+  static getServerHost(): string {
+    return (location.port === '4200' ? location.hostname + ':8080' : location.host);
+  }
 
   public getWorkflow(name: string): Promise<Workflow> {
     if (this.workflows[name]) return this.workflows[name];

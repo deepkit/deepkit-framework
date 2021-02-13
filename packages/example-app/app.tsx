@@ -1,4 +1,4 @@
-#!/usr/bin/env ts-node
+#!/usr/bin/env ts-node-script
 import 'reflect-metadata';
 import {
     Application,
@@ -13,7 +13,6 @@ import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { entity, sliceClass, t } from '@deepkit/type';
 import { Website } from './views/website';
-
 
 @entity.name('user')
 class User {

@@ -9,7 +9,7 @@
  */
 
 import { ProcessLocker } from '@deepkit/core';
-import { DebugRequest } from '@deepkit/framework-debug-shared';
+import { DebugRequest } from '@deepkit/framework-debug-api';
 import fs from 'fs-extra';
 import { dirname } from 'path';
 import { ApplicationServer, ApplicationServerListener } from './application-server';
@@ -31,7 +31,7 @@ import { DebugController } from './debug/debug.controller';
 import { Debugger, HttpRequestDebugCollector } from './debug/debugger';
 import { registerDebugHttpController } from './debug/http-debug.controller';
 import { eventDispatcher } from './event';
-import { HttpKernel, HttpListener, httpWorkflow, serveStaticListener } from './http';
+import { HttpKernel, HttpListener, httpWorkflow } from './http';
 import { injectable, injectorReference } from './injector/injector';
 import { kernelConfig } from './kernel.config';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
@@ -41,6 +41,8 @@ import { DeepkitRpcSecurity } from './rpc';
 import { SessionHandler } from './session';
 import { WebWorkerFactory } from './worker';
 import { Zone } from './zone';
+import { OrmBrowserController } from './orm-browser/controller';
+import { serveStaticListener } from './http/static-serving';
 
 @injectable()
 class HttpLogger {
@@ -112,7 +114,7 @@ export const KernelModule = createModule({
     }
 
     if (config.publicDir) {
-        module.addListener(serveStaticListener(config.publicDir));
+        module.addListener(serveStaticListener('/', config.publicDir));
     }
 
     module.setupProvider(Logger).addTransport(injectorReference(ConsoleTransport));
@@ -123,10 +125,11 @@ export const KernelModule = createModule({
 
         Zone.enable();
         module.addProvider(Debugger);
+        module.addProvider({provide: OrmBrowserController, deps: [DatabaseRegistry], useFactory: (registry: DatabaseRegistry) =>  new OrmBrowserController(registry.getDatabases())});
         module.addController(DebugController);
+        module.addController(OrmBrowserController);
         registerDebugHttpController(module, config.debugUrl);
 
-        //this works currently only for one worker. We should move that call to onServerMainBootstrap
         module.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
 
         module.addProvider(DebugDatabase);

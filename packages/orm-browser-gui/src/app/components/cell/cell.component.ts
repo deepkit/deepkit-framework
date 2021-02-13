@@ -8,7 +8,7 @@ import {
     ViewContainerRef
 } from '@angular/core';
 import { PropertySchema } from '@deepkit/type';
-import { Registry } from 'src/app/registry';
+import { Registry } from '../../registry';
 
 @Component({
     selector: 'orm-browser-property-view',

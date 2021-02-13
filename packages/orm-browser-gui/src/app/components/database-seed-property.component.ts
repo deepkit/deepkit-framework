@@ -172,7 +172,7 @@ export class DatabaseSeedPropertyComponent implements OnInit {
             selected: this.model.faker
         });
 
-        component.chosen.subscribe((value) => {
+        component.chosen.subscribe((value: string) => {
             this.model.faker = value;
             this.cd.detectChanges();
         });
