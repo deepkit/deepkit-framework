@@ -27,7 +27,7 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-all-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install
+        run: npm install -g npm@latest && npm install
       - name: Lerna bootstrap
         run: |
           npm run bootstrap -- \
@@ -220,10 +220,7 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-benchmark-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: |
-          npm install -g npm@latest
-          npm -v
-          npm install
+        run: npm install
       - name: Lerna bootstrap
         run: |
           npm run bootstrap -- \
