@@ -9,13 +9,11 @@ export async function schemaMigrationRoundTrip(types: (ClassType | ClassSchema)[
     adapter.platform.createTables(types, originDatabaseModel);
 
     const db = new Database(adapter, types);
+    await adapter.createTables([...db.entities]);
+
     const connection = await adapter.connectionPool.getConnection();
-
     try {
-        await adapter.createTables([...db.entities]);
         const schemaParser = new adapter.platform.schemaParserType(connection, adapter.platform);
-
-        // console.log(adapter.platform.getAddTablesDDL(originDatabaseModel));
 
         const readDatabaseModel = new DatabaseModel();
         await schemaParser.parse(readDatabaseModel, originDatabaseModel.getTableNames());

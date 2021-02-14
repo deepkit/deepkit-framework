@@ -10,7 +10,7 @@
 
 import { arrayRemoveItem, asyncOperation, ClassType, sleep } from '@deepkit/core';
 import { Host } from './host';
-import { Socket } from 'net';
+import { createConnection, Socket } from 'net';
 import { connect as createTLSConnection, TLSSocket } from 'tls';
 import { Command } from './command/command';
 import { ClassSchema, getClassSchema } from '@deepkit/type';
@@ -98,15 +98,15 @@ export class MongoConnectionPool {
         throw new MongoError(`Could not find host for connection request. (writable=${request.writable}, hosts=${hosts.length})`);
     }
 
-    protected async createAdditionalConnectionForRequest(request: ConnectionRequest) {
-        const hosts = await this.config.getHosts();
+    protected createAdditionalConnectionForRequest(request: ConnectionRequest): MongoConnection {
+        const hosts = this.config.hosts;
         const host = this.findHostForRequest(hosts, request);
         if (!host) throw new MongoError(`Could not find host for connection request. (writable=${request.writable}, hosts=${hosts.length})`);
 
         return this.newConnection(host);
     }
 
-    protected newConnection(host: Host) {
+    protected newConnection(host: Host): MongoConnection {
         const connection = new MongoConnection(this.connectionId++, host, this.config, (connection) => {
             arrayRemoveItem(host.connections, connection);
             arrayRemoveItem(this.connections, connection);
@@ -227,29 +227,29 @@ export class MongoConnection {
             this.socket = createTLSConnection(options);
             this.socket.on('data', (data) => this.responseParser.feed(data));
         } else {
-            // this.socket = createConnection({
-            //     host: host.hostname,
-            //     port: host.port,
-            //     timeout: config.options.connectTimeoutMS
-            // });
+            this.socket = createConnection({
+                host: host.hostname,
+                port: host.port,
+                timeout: config.options.connectTimeoutMS
+            });
+
+            this.socket.on('data', (data) => this.responseParser.feed(data));
+
+            // const socket = this.socket = turbo.connect(host.port, host.hostname);
+            // // this.socket.setNoDelay(true);
+            // const buffer = Buffer.allocUnsafe(this.bufferSize);
             //
-            // this.socket.on('data', (data) => this.responseParser.feed(data));
-
-            const socket = this.socket = turbo.connect(host.port, host.hostname);
-            // this.socket.setNoDelay(true);
-            const buffer = Buffer.allocUnsafe(this.bufferSize);
-
-            function read() {
-                socket.read(buffer, onRead);
-            }
-
-            function onRead(err: any, buf: Buffer, bytes: number) {
-                if (!bytes) return;
-                responseParser.feed(buf, bytes);
-                read();
-            }
-
-            read();
+            // function read() {
+            //     socket.read(buffer, onRead);
+            // }
+            //
+            // function onRead(err: any, buf: Buffer, bytes: number) {
+            //     if (!bytes) return;
+            //     responseParser.feed(buf, bytes);
+            //     read();
+            // }
+            //
+            // read();
         }
 
         this.socket.on('close', () => {

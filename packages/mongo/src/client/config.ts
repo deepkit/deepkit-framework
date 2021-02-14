@@ -145,6 +145,8 @@ export class MongoClientConfig {
     async getHosts(): Promise<Host[]> {
         if (this.isSrv) {
             if (this.srvDomain === 'example.com') return [];
+
+            //todo: refactor this to do it in the background
             if (this.hostsFetchedMS) {
                 const diff = (Date.now() - this.hostsFetchedMS) / 1000;
                 if (diff < this.srvCacheTimeout) return this.hosts;
