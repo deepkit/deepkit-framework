@@ -112,7 +112,7 @@ jobs:
           npm run bootstrap -- \
             --scope @deepkit/postgres --scope @deepkit/orm --scope @deepkit/sql \
             --scope @deepkit/orm-integration --scope @deepkit/topsort \
-            --scope @deepkit/type --scope @deepkit/core
+            --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger
       - name: Build
         run: ./node_modules/.bin/tsc --build packages/postgres/tsconfig.json
       - name: Test
@@ -155,7 +155,7 @@ jobs:
           npm run bootstrap -- \
             --scope @deepkit/mysql --scope @deepkit/orm --scope @deepkit/sql \
             --scope @deepkit/orm-integration --scope @deepkit/topsort \
-            --scope @deepkit/type --scope @deepkit/core
+            --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger
       - name: Build
         run: ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
       - name: Test
@@ -188,7 +188,7 @@ jobs:
           npm run bootstrap -- \
             --scope @deepkit/sqlite --scope @deepkit/orm --scope @deepkit/sql \
             --scope @deepkit/orm-integration --scope @deepkit/topsort \
-            --scope @deepkit/type --scope @deepkit/core
+            --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger
       - name: Build
         run: ./node_modules/.bin/tsc --build packages/sqlite/tsconfig.json
       - name: Test
@@ -228,7 +228,7 @@ jobs:
             --scope @deepkit/mongo --scope @deepkit/bson \
             --scope @deepkit/orm --scope @deepkit/sql \
             --scope @deepkit/orm-integration --scope @deepkit/topsort \
-            --scope @deepkit/type --scope @deepkit/core
+            --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger
       - name: Build
         run: ./node_modules/.bin/tsc --build packages/mongo/tsconfig.json
       - name: Test
