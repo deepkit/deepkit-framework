@@ -17,9 +17,8 @@ import { Application } from './application';
 import { ApplicationServer } from './application-server';
 import { Broker, BrokerServer, DirectBroker } from './broker/broker';
 import { DatabaseRegistry } from './database-registry';
-import { injectorReference } from './injector/injector';
-import { Provider } from './injector/provider';
-import { createModule, Module, ModuleOptions } from './module';
+import { injectorReference, Provider } from '@deepkit/injector';
+import { createModule, Module, ModuleOptions } from '@deepkit/command';
 import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker';
 
 
@@ -53,7 +52,7 @@ export class BrokerMemoryServer extends BrokerServer {
     }
 }
 
-/** 
+/**
  * Creates a new Application instance, but with kernel services in place that work in memory.
  * For example RPC/Broker/HTTP communication without TCP stack. Logger uses MemoryLogger.
 */

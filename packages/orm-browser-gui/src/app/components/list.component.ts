@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, Input, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { BrowserState } from '../browser-state';
 import { ControllerClient } from '../client';
 import { filterEntitiesToList, trackByDatabase, trackBySchema } from '../utils';
@@ -8,9 +8,8 @@ import { detectChangesNextFrame } from '@deepkit/desktop-ui';
     selector: 'orm-browser-list',
     template: `
         <ng-container *ngFor="let db of state.databases; trackBy: trackByDatabase; let i = index">
-            <dui-list-item routerLink="/database/{{db.name}}" [routerLinkExact]="true">{{db.name}} ({{db.adapter}})</dui-list-item>
-
-            <dui-list-item routerLink="/database/{{db.name}}/{{entity.name}}" [routerLinkExact]="true"
+            <dui-list-item [routerLink]="['/database', encodeURIComponent(db.name)]" [routerLinkExact]="true">{{db.name}} ({{db.adapter}})</dui-list-item>
+            <dui-list-item [routerLink]="['/database', encodeURIComponent(db.name), encodeURIComponent(entity.getName())]"
                            *ngFor="let entity of filterEntitiesToList(db.getClassSchemas()); trackBy: trackBySchema">
                 <div class="item">
                     <div>{{entity.getClassName()}}</div>
@@ -40,6 +39,7 @@ import { detectChangesNextFrame } from '@deepkit/desktop-ui';
     `]
 })
 export class DatabaseBrowserListComponent implements OnInit {
+    encodeURIComponent = encodeURIComponent;
     public counts: { [storeKey: string]: number } = {};
     filterEntitiesToList = filterEntitiesToList;
     trackBySchema = trackBySchema;

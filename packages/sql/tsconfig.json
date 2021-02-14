@@ -12,7 +12,6 @@
     "target": "es2020",
     "module": "CommonJS",
     "esModuleInterop": true,
-
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true
@@ -28,10 +27,10 @@
       "path": "../core/tsconfig.json"
     },
     {
-      "path": "../type/tsconfig.json"
+      "path": "../orm/tsconfig.json"
     },
     {
-      "path": "../orm/tsconfig.json"
+      "path": "../type/tsconfig.json"
     }
   ]
 }

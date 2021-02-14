@@ -1,0 +1,42 @@
+{
+  "name": "@deepkit/stopwatch",
+  "version": "1.0.1-alpha.13",
+  "description": "Deepkit Stopwatch",
+  "private": true,
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    }
+  },
+  "repository": "https://github.com/deepkit/deepkit-framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+  },
+  "peerDependencies": {
+    "@deepkit/core": "^1.0.1-alpha.13"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "reflect-metadata": "^0.1.13"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/tests/**/*.spec.ts"
+    ]
+  }
+}

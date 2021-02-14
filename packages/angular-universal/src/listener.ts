@@ -8,12 +8,16 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { eventDispatcher, HtmlResponse, httpWorkflow, inject, injectable, Logger, RouteConfig } from '@deepkit/framework';
+import { HtmlResponse, httpWorkflow, RouteConfig } from '@deepkit/framework';
+import { eventDispatcher } from '@deepkit/event';
+import { Logger } from '@deepkit/logger';
+import { inject, injectable } from '@deepkit/injector';
 import { config } from './config';
 import { join } from 'path';
 import { readFileSync } from 'fs';
 import { Router } from '@angular/router';
 import domino from 'domino';
+
 (global as any).window = global;
 Object.assign(global, domino.createWindow());
 

@@ -11,7 +11,6 @@
     "target": "es2018",
     "module": "CommonJS",
     "esModuleInterop": true,
-
     "baseUrl": ".",
     "outDir": "./dist/cjs",
     "declaration": true,
@@ -40,10 +39,10 @@
       "path": "../crypto/tsconfig.json"
     },
     {
-      "path": "../type/tsconfig.json"
+      "path": "../rpc/tsconfig.json"
     },
     {
-      "path": "../rpc/tsconfig.json"
+      "path": "../type/tsconfig.json"
     }
   ]
 }

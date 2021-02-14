@@ -12,13 +12,13 @@ import { http } from '../decorator';
 import { join } from 'path';
 import { readFileSync, stat } from 'fs';
 import { HtmlResponse, httpWorkflow } from '../http';
-import { Module } from '../module';
+import { Module } from '@deepkit/command';
 import { normalizeDirectory } from '../utils';
 import { ClassType } from '@deepkit/core';
-import { injectable } from '../injector/injector';
+import { injectable } from '@deepkit/injector';
 import { HttpRequest, HttpResponse } from '../http-model';
 import send from 'send';
-import { eventDispatcher } from '../event';
+import { eventDispatcher } from '@deepkit/event';
 import { RouteConfig } from '../router';
 
 export function serveStaticListener(path: string, localPath: string = path): ClassType {
@@ -27,7 +27,7 @@ export function serveStaticListener(path: string, localPath: string = path): Cla
         serve(path: string, request: HttpRequest, response: HttpResponse) {
             return new Promise(resolve => {
                 const res = send(request, path, { root: localPath })
-                res.once('finished', resolve);
+                response.once('finish', resolve);
                 res.pipe(response);
             });
         }

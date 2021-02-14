@@ -11,7 +11,6 @@
     "target": "es2018",
     "module": "CommonJS",
     "esModuleInterop": true,
-
     "outDir": "./dist",
     "declaration": true,
     "composite": true
@@ -35,6 +34,9 @@
       "path": "../framework/tsconfig.json"
     },
     {
+      "path": "../type/tsconfig.json"
+    },
+    {
       "path": "../orm/tsconfig.json"
     },
     {
@@ -42,9 +44,6 @@
     },
     {
       "path": "../sqlite/tsconfig.json"
-    },
-    {
-      "path": "../type/tsconfig.json"
     }
   ]
 }

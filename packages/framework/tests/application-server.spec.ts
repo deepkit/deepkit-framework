@@ -1,9 +1,9 @@
 import { rpc } from '@deepkit/rpc';
-import { test, expect } from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { Application } from '../src/application';
-import { createModule } from '../src/module';
-import { InjectorContext } from '../src/injector/injector';
+import { createModule } from '@deepkit/command';
+import { InjectorContext } from '@deepkit/injector';
 import { createTestingApp } from '../src/testing';
 import { ApplicationServer } from '../src/application-server';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';

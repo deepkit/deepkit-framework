@@ -11,7 +11,7 @@
 import { ClassType } from '@deepkit/core';
 import { Database } from '@deepkit/orm';
 import { ClassSchema, getClassSchema } from '@deepkit/type';
-import { inject, InjectorContext } from './injector/injector';
+import { inject, InjectorContext } from '@deepkit/injector';
 import { kernelConfig } from './kernel.config';
 
 /**

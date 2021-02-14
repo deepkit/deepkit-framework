@@ -14,6 +14,21 @@
       "path": "packages/bson/tsconfig.esm.json"
     },
     {
+      "path": "packages/command/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/event/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/workflow/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/stopwatch/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/injector/tsconfig.esm.json"
+    },
+    {
       "path": "packages/framework/tsconfig.esm.json"
     },
     {

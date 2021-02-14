@@ -12,7 +12,7 @@ import 'reflect-metadata';
 import { ClassType, isClass } from '@deepkit/core';
 import { isArray } from '@deepkit/type';
 import './optimize-tsx';
-import { BasicInjector } from '../injector/injector';
+import { BasicInjector } from '@deepkit/injector';
 
 export type Attributes<T = any> = {
     [P in keyof T]: T[P];

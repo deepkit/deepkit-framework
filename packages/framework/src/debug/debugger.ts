@@ -13,12 +13,12 @@ import { DatabaseAdapter, DatabaseSession } from '@deepkit/orm';
 import { appendFileSync, mkdirSync, openSync } from 'fs';
 import { join } from 'path';
 import { HttpRequest, HttpResponse } from '../http-model';
-import { injectable } from '../injector/injector';
+import { injectable } from '@deepkit/injector';
 import { kernelConfig } from '../kernel.config';
 import { normalizeDirectory } from '../utils';
 import { Zone } from '../zone';
 import { DebugDatabase } from './db';
-import { Stopwatch } from './stopwatch';
+import { Stopwatch } from '@deepkit/stopwatch';
 
 export class Debugger {
     protected getCollector(): HttpRequestDebugCollector | undefined {
@@ -34,7 +34,8 @@ export class Debugger {
     }
 }
 
-class Config extends kernelConfig.slice(['varPath', 'debugSqlitePath', 'debugStorePath', 'debugUrl']) { }
+class Config extends kernelConfig.slice(['varPath', 'debugSqlitePath', 'debugStorePath', 'debugUrl']) {
+}
 
 @injectable()
 export class HttpRequestDebugCollector {

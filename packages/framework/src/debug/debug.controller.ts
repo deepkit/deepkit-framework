@@ -7,34 +7,22 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import {
-    Config,
-    ConfigOption,
-    Database,
-    DatabaseEntity,
-    DebugControllerInterface,
-    DebugRequest,
-    Event,
-    Route,
-    RpcAction,
-    RpcActionParameter,
-    Workflow
-} from '@deepkit/framework-debug-api';
+import { Config, ConfigOption, Database, DatabaseEntity, DebugControllerInterface, DebugRequest, Event, Route, RpcAction, RpcActionParameter, Workflow } from '@deepkit/framework-debug-api';
 import { Collection, rpc, rpcClass } from '@deepkit/rpc';
 import { getClassSchema, t } from '@deepkit/type';
-import { ServiceContainer } from '../service-container';
+import { ApplicationServiceContainer } from '../application-service-container';
 import { parseRouteControllerAction, Router } from '../router';
 import { changeClass, getClassName } from '@deepkit/core';
-import { EventDispatcher, isEventListenerContainerEntryService } from '../event';
+import { EventDispatcher, isEventListenerContainerEntryService } from '@deepkit/event';
 import { DatabaseRegistry } from '../database-registry';
-import { inject } from '../injector/injector';
+import { inject } from '@deepkit/injector';
 import { DatabaseAdapter } from '@deepkit/orm';
 import { LiveDatabase } from '../database/live-database';
 
 @rpc.controller(DebugControllerInterface)
 export class DebugController implements DebugControllerInterface {
     constructor(
-        protected serviceContainer: ServiceContainer,
+        protected serviceContainer: ApplicationServiceContainer,
         protected eventDispatcher: EventDispatcher,
         protected router: Router,
         protected liveDatabase: LiveDatabase,

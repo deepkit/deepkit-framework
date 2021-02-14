@@ -13,7 +13,7 @@ import { Database } from '@deepkit/orm';
 import glob from 'fast-glob';
 import { basename, join } from 'path';
 import { DatabaseRegistry } from '../database-registry';
-import { inject } from '../injector/injector';
+import { inject } from '@deepkit/injector';
 import { kernelConfig } from '../kernel.config';
 import { Migration } from './migration';
 

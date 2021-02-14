@@ -28,21 +28,26 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
-    "rxjs": "~6.6.0"
-  },
-  "dependencies": {
     "@deepkit/broker": "^1.0.1-alpha.13",
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/core-rxjs": "^1.0.1-alpha.13",
-    "@deepkit/framework-debug-gui": "^1.0.1-alpha.13",
-    "@deepkit/framework-debug-api": "^1.0.1-alpha.13",
     "@deepkit/orm": "^1.0.1-alpha.13",
     "@deepkit/rpc": "^1.0.1-alpha.13",
+    "@deepkit/injector": "^1.0.1-alpha.13",
+    "@deepkit/command": "^1.0.1-alpha.13",
+    "@deepkit/event": "^1.0.1-alpha.13",
+    "@deepkit/stopwatch": "^1.0.1-alpha.13",
+    "@deepkit/workflow": "^1.0.1-alpha.13",
     "@deepkit/rpc-tcp": "^1.0.1-alpha.13",
     "@deepkit/sql": "^1.0.1-alpha.13",
     "@deepkit/sqlite": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13",
     "@deepkit/logger": "^1.0.1-alpha.13",
+    "rxjs": "~6.6.0"
+  },
+  "dependencies": {
+    "@deepkit/framework-debug-gui": "^1.0.1-alpha.13",
+    "@deepkit/framework-debug-api": "^1.0.1-alpha.13",
     "@deepkit/orm-browser-api": "^1.0.1-alpha.13",
     "@deepkit/orm-browser-gui": "^1.0.1-alpha.13",
     "faker": "5.4.0",
@@ -64,6 +69,21 @@
     "ws": "^7.4.2"
   },
   "devDependencies": {
+    "@deepkit/broker": "^1.0.1-alpha.13",
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.13",
+    "@deepkit/orm": "^1.0.1-alpha.13",
+    "@deepkit/rpc": "^1.0.1-alpha.13",
+    "@deepkit/injector": "^1.0.1-alpha.13",
+    "@deepkit/command": "^1.0.1-alpha.13",
+    "@deepkit/event": "^1.0.1-alpha.13",
+    "@deepkit/workflow": "^1.0.1-alpha.13",
+    "@deepkit/stopwatch": "^1.0.1-alpha.13",
+    "@deepkit/rpc-tcp": "^1.0.1-alpha.13",
+    "@deepkit/sql": "^1.0.1-alpha.13",
+    "@deepkit/sqlite": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13",
+    "@deepkit/logger": "^1.0.1-alpha.13",
     "@types/clone": "^0.1.30",
     "@types/estree": "^0.0.45",
     "@types/fs-extra": "^9.0.1",

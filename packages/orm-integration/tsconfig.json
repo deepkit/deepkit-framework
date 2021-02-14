@@ -12,7 +12,6 @@
     "target": "es2018",
     "module": "CommonJS",
     "esModuleInterop": true,
-
     "outDir": "./dist",
     "declaration": true,
     "composite": true

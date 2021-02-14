@@ -9,7 +9,7 @@
  */
 
 import { SqlMigrationHandler } from '@deepkit/sql';
-import { cli, flag } from '../../command';
+import { cli, flag } from '@deepkit/command';
 import { Logger } from '@deepkit/logger';
 import { MigrationProvider } from '../migration-provider';
 

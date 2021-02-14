@@ -9,24 +9,17 @@
  */
 
 import { asyncOperation, ClassType, CompilerContext } from '@deepkit/core';
-import { ValidationFailed, ValidationFailedItem } from '@deepkit/type';
-import {
-    getClassSchema,
-    getPropertyXtoClassFunction,
-    jitValidateProperty,
-    jsonSerializer,
-    PropertySchema
-} from '@deepkit/type';
+import { getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, jsonSerializer, PropertySchema, ValidationFailed, ValidationFailedItem } from '@deepkit/type';
 import formidable from 'formidable';
 import { IncomingMessage } from 'http';
 import { join } from 'path';
 import querystring from 'querystring';
 import { httpClass } from './decorator';
 import { HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters } from './http-model';
-import { BasicInjector, injectable } from './injector/injector';
-import { NormalizedProvider, Tag } from './injector/provider';
+import { BasicInjector, injectable, NormalizedProvider, Tag } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
-import { HttpControllers, TagProviders } from './service-container';
+import { HttpControllers } from './application-service-container';
+import { TagProviders } from '@deepkit/command';
 
 export type RouteParameterResolverForInjector = ((injector: BasicInjector) => any[] | Promise<any[]>);
 type ResolvedController = { parameters: RouteParameterResolverForInjector, routeConfig: RouteConfig };
@@ -489,7 +482,7 @@ export class Router {
             const _method = request.getMethod().toLowerCase();
             const _url = request.getUrl();
             const _qPosition = _url.indexOf('?');
-            const _path = _qPosition === -1 ? _url : _url.substr(0, _qPosition); 
+            const _path = _qPosition === -1 ? _url : _url.substr(0, _qPosition);
             const _query = _qPosition === -1 ? {} : parseQueryString(_url.substr(_qPosition + 1));
             ${code.join('\n')}
         `, 'request') as any;

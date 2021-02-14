@@ -39,31 +39,43 @@
   ],
   "references": [
     {
-      "path": "../core/tsconfig.json"
-    },
-    {
-      "path": "../core-rxjs/tsconfig.json"
-    },
-    {
-      "path": "../logger/tsconfig.json"
-    },
-    {
-      "path": "../broker/tsconfig.json"
-    },
-    {
-      "path": "../rpc/tsconfig.json"
-    },
-    {
-      "path": "../rpc-tcp/tsconfig.json"
-    },
-    {
       "path": "../framework-debug-api/tsconfig.json"
     },
     {
       "path": "../orm-browser-api/tsconfig.json"
     },
     {
+      "path": "../broker/tsconfig.json"
+    },
+    {
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../core-rxjs/tsconfig.json"
+    },
+    {
       "path": "../orm/tsconfig.json"
+    },
+    {
+      "path": "../rpc/tsconfig.json"
+    },
+    {
+      "path": "../injector/tsconfig.json"
+    },
+    {
+      "path": "../command/tsconfig.json"
+    },
+    {
+      "path": "../event/tsconfig.json"
+    },
+    {
+      "path": "../workflow/tsconfig.json"
+    },
+    {
+      "path": "../stopwatch/tsconfig.json"
+    },
+    {
+      "path": "../rpc-tcp/tsconfig.json"
     },
     {
       "path": "../sql/tsconfig.json"
@@ -73,6 +85,9 @@
     },
     {
       "path": "../type/tsconfig.json"
+    },
+    {
+      "path": "../logger/tsconfig.json"
     }
   ]
 }

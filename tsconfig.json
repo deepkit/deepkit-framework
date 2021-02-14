@@ -11,6 +11,18 @@
       "path": "packages/crypto/tsconfig.json"
     },
     {
+      "path": "packages/command/tsconfig.json"
+    },
+    {
+      "path": "packages/event/tsconfig.json"
+    },
+    {
+      "path": "packages/workflow/tsconfig.json"
+    },
+    {
+      "path": "packages/stopwatch/tsconfig.json"
+    },
+    {
       "path": "packages/framework-debug-api/tsconfig.json"
     },
     {
@@ -21,6 +33,9 @@
     },
     {
       "path": "packages/bson/tsconfig.json"
+    },
+    {
+      "path": "packages/injector/tsconfig.json"
     },
     {
       "path": "packages/mongo/tsconfig.json"

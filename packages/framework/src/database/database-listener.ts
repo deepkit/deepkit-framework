@@ -10,8 +10,8 @@
 
 import { onServerMainBootstrap, onServerMainShutdown } from '../application-server';
 import { DatabaseRegistry } from '../database-registry';
-import { eventDispatcher } from '../event';
-import { injectable } from '../injector/injector';
+import { eventDispatcher } from '@deepkit/event';
+import { injectable } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 
 @injectable()

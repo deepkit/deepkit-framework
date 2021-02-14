@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { createConfig } from './injector/injector';
+import { createConfig } from '@deepkit/injector';
 import { t } from '@deepkit/type';
 import { Session } from './session';
 

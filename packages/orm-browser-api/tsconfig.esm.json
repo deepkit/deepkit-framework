@@ -6,10 +6,10 @@
   },
   "references": [
     {
-      "path": "../type/tsconfig.esm.json"
+      "path": "../rpc/tsconfig.esm.json"
     },
     {
-      "path": "../rpc/tsconfig.esm.json"
+      "path": "../type/tsconfig.esm.json"
     }
   ]
 }

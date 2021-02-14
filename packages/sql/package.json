@@ -39,21 +39,12 @@
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
-    "globals": {
-      "ts-jest": {
-        "useESM": true
-      }
-    },
     "runner": "../../jest-serial-runner.js",
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "testTimeout": 50000,
-    "extensionsToTreatAsEsm": [
-      ".ts",
-      ".tsx"
-    ],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

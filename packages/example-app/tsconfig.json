@@ -21,5 +21,40 @@
   "include": [
     "*.tsx",
     "*.ts"
+  ],
+  "references": [
+    {
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../core-rxjs/tsconfig.json"
+    },
+    {
+      "path": "../framework/tsconfig.json"
+    },
+    {
+      "path": "../rpc/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.json"
+    },
+    {
+      "path": "../injector/tsconfig.json"
+    },
+    {
+      "path": "../logger/tsconfig.json"
+    },
+    {
+      "path": "../mongo/tsconfig.json"
+    },
+    {
+      "path": "../orm/tsconfig.json"
+    },
+    {
+      "path": "../sql/tsconfig.json"
+    },
+    {
+      "path": "../sqlite/tsconfig.json"
+    }
   ]
 }

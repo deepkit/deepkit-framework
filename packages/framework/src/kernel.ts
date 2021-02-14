@@ -18,7 +18,6 @@ import { LiveDatabase } from './database/live-database';
 import { DebugRouterController } from './cli/router-debug';
 import { DebugDIController } from './cli/router-di';
 import { ServerListenController } from './cli/server-listen';
-import { EnvConfiguration } from './configuration';
 import { DatabaseRegistry } from './database-registry';
 import { MigrationCreateController } from './database/cli/migration-create-command';
 import { MigrationDownCommand } from './database/cli/migration-down-command';
@@ -30,12 +29,12 @@ import { DebugDatabase } from './debug/db';
 import { DebugController } from './debug/debug.controller';
 import { Debugger, HttpRequestDebugCollector } from './debug/debugger';
 import { registerDebugHttpController } from './debug/http-debug.controller';
-import { eventDispatcher } from './event';
+import { eventDispatcher } from '@deepkit/event';
 import { HttpKernel, HttpListener, httpWorkflow } from './http';
-import { injectable, injectorReference } from './injector/injector';
+import { injectable, injectorReference } from '@deepkit/injector';
 import { kernelConfig } from './kernel.config';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
-import { createModule } from './module';
+import { createModule } from '@deepkit/command';
 import { Router } from './router';
 import { DeepkitRpcSecurity } from './rpc';
 import { SessionHandler } from './session';
@@ -70,7 +69,6 @@ export const KernelModule = createModule({
         ApplicationServer,
         Router,
         HttpKernel,
-        EnvConfiguration,
         WebWorkerFactory,
         ConsoleTransport,
         Logger,

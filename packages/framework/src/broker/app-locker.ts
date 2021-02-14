@@ -9,7 +9,7 @@
  */
 
 import { AsyncSubscription } from '@deepkit/core-rxjs';
-import { injectable } from '../injector/injector';
+import { injectable } from '@deepkit/injector';
 import { Broker } from './broker';
 
 export class AppLock {
@@ -21,9 +21,9 @@ export class AppLock {
     }
 }
 
-/** 
- * An global application lock (across workers, processes, and nodes). 
- * It provides a way to aquire locks on the central broker process atomically.
+/**
+ * An global application lock (across workers, processes, and nodes).
+ * It provides a way to acquire locks on the central broker process atomically.
 */
 @injectable()
 export class AppLocker {
@@ -32,20 +32,20 @@ export class AppLocker {
 
     /**
      * Locks the given id. If the lock is already aquired by someone else, it waits max `timeout` seconds.
-     * 
-     * Make sure the call `release` on the result AppLock to get a dead-lock. 
-     * 
+     *
+     * Make sure the call `release` on the result AppLock to get a dead-lock.
+     *
      * @param id
      * @param ttl time to live in seconds. The lock automatically releases when ttl is reached. 0 for no limit.
      * @param timeout in seconds. When the lock is already aquired the times defines when to give up aquisiting the lock. 0 for no limit.
-     * 
+     *
      * @example
      * ```typescript
-     * 
+     *
      * class MyController {
      *   constructor(protected appLocker: AppLocker) {
      *   }
-     * 
+     *
      *   async doSomething() {
      *     const lock = this.appLocker.acquireLock('myId);
      *     try {
@@ -56,7 +56,7 @@ export class AppLocker {
      *     }
      *   }
      * }
-     * 
+     *
      * ```
      */
     public async acquireLock(id: string, ttl: number = 0, timeout: number = 0): Promise<AppLock> {
@@ -64,8 +64,8 @@ export class AppLocker {
     }
 
     /**
-     * Tries to aquire the lock and give immeditaly up when already locked by someone else.
-     * 
+     * Tries to acquire the lock and give immediately up when already locked by someone else.
+     *
      * @param id
      * @param ttl time to live in seconds. The lock automatically releases when ttl is reached. 0 for no limit.
      */
@@ -76,7 +76,7 @@ export class AppLocker {
         return new AppLock(subscription);
     }
 
-    /** 
+    /**
      * Returns true if the lock is already aquired by someone.
     */
     public async isLocked(id: string): Promise<boolean> {

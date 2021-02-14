@@ -36,7 +36,7 @@ import { ClassSchema, getClassSchema, resolveClassTypeOrForward } from '@deepkit
 import { Observable } from 'rxjs';
 import { Broker, EntityChannelMessageType, EntityPatches } from '../broker/broker';
 import { DatabaseRegistry } from '../database-registry';
-import { injectable } from '../injector/injector';
+import { injectable } from '@deepkit/injector';
 import { findQuerySatisfied } from '../utils';
 
 interface SentState {

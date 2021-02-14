@@ -23,18 +23,9 @@
     "rxjs": "~6.6.0"
   },
   "jest": {
-    "globals": {
-      "ts-jest": {
-        "useESM": true
-      }
-    },
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
-    "extensionsToTreatAsEsm": [
-      ".ts",
-      ".tsx"
-    ],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

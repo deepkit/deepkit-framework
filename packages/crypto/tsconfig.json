@@ -11,7 +11,6 @@
     "target": "es2018",
     "module": "CommonJS",
     "esModuleInterop": true,
-
     "baseUrl": ".",
     "outDir": "./dist",
     "declaration": true,
@@ -21,5 +20,6 @@
     "src",
     "index.ts",
     "tests"
-  ]
+  ],
+  "references": []
 }

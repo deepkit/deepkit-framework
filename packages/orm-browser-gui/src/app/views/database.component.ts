@@ -83,7 +83,7 @@ export class DatabaseComponent implements OnDestroy {
         if (activatedRoute) {
             this.routeSub = activatedRoute.params.subscribe(async (params) => {
                 this.state.databases = await this.controllerClient.getDatabases();
-                this.database = this.state.getDatabase(params.database);
+                this.database = this.state.getDatabase(decodeURIComponent(params.database));
                 this.cd.detectChanges();
             });
         }

@@ -37,19 +37,10 @@
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
-    "globals": {
-      "ts-jest": {
-        "useESM": true
-      }
-    },
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
-    "extensionsToTreatAsEsm": [
-      ".ts",
-      ".tsx"
-    ],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

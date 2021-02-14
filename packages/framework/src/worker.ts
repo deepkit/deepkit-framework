@@ -8,22 +8,15 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ConnectionWriter,
-    RpcConnectionWriter,
-    RpcKernel,
-    RpcKernelBaseConnection,
-    RpcKernelConnection
-} from '@deepkit/rpc';
+import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection } from '@deepkit/rpc';
 import http, { Server } from 'http';
 import https from 'https';
 import WebSocket from 'ws';
 import { HttpKernel } from './http';
 import { HttpRequest, HttpResponse } from './http-model';
-import { injectable, Injector, InjectorContext } from './injector/injector';
-import { Provider } from './injector/provider';
+import { injectable, Injector, InjectorContext, Provider } from '@deepkit/injector';
 import { DeepkitRpcSecurity, RpcInjectorContext } from './rpc';
-import { RpcControllers } from './service-container';
+import { RpcControllers } from './application-service-container';
 import { SecureContextOptions, TlsOptions } from 'tls';
 import selfsigned from 'selfsigned';
 import { join } from 'path';
@@ -34,7 +27,7 @@ import { ClassType } from '@deepkit/core';
 export interface WebServerOptions {
     host: string;
 
-    /** 
+    /**
      * Defins the port of the http server.
      * If ssl is defined, this port is used for the https server. If you want to have http and https
      * at the same time, use `httpsPort` accordingly.
@@ -45,8 +38,8 @@ export interface WebServerOptions {
 
     /**
      * If httpsPort and ssl is defined, then the https server is started additional to the http-server.
-     * 
-     * In a production deployment, you usually want both, http and https server. 
+     *
+     * In a production deployment, you usually want both, http and https server.
      * Set `port: 80` and `httpsPort: 443` to have both.
      */
     httpsPort?: number;
@@ -61,7 +54,7 @@ export interface WebServerOptions {
      */
     server?: Server;
 
-    /** 
+    /**
      * Enables HTTPS.
      * Make sure to pass `sslKey` and `sslCertificate` as well (or use sslOptions).
     */

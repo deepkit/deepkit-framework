@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { createModule } from '@deepkit/framework';
+import { createModule } from '@deepkit/command';
 import { AngularUniversalListener } from './listener';
 import { config } from './config';
 

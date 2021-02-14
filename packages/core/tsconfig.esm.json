@@ -3,5 +3,6 @@
   "compilerOptions": {
     "outDir": "./dist/esm",
     "module": "es2020"
-  }
+  },
+  "references": []
 }

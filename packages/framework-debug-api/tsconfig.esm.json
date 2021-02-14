@@ -15,13 +15,13 @@
       "path": "../bson/tsconfig.esm.json"
     },
     {
-      "path": "../crypto/tsconfig.esm.json"
-    },
-    {
-      "path": "../type/tsconfig.esm.json"
+      "path": "../crypto/tsconfig.json"
     },
     {
       "path": "../rpc/tsconfig.esm.json"
+    },
+    {
+      "path": "../type/tsconfig.esm.json"
     }
   ]
 }

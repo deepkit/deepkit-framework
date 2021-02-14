@@ -10,7 +10,7 @@
 
 import { SQLDatabaseAdapter, SqlMigrationHandler } from '@deepkit/sql';
 import { indent } from '@deepkit/core';
-import { cli, flag } from '../../command';
+import { cli, flag } from '@deepkit/command';
 import { Logger } from '@deepkit/logger';
 import { MigrationProvider } from '../migration-provider';
 

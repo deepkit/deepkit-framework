@@ -12,7 +12,7 @@ import { BrokerChannel, BrokerClient, BrokerKernel } from '@deepkit/broker';
 import { ClassType } from '@deepkit/core';
 import { IdInterface, RpcDirectClientAdapter } from '@deepkit/rpc';
 import { ClassSchema, FieldDecoratorResult, getClassSchema, t } from '@deepkit/type';
-import { inject, injectable } from '../injector/injector';
+import { inject, injectable } from '@deepkit/injector';
 import { brokerConfig } from './broker.config';
 import { NetTcpRpcClientAdapter, NetTcpRpcServer, TcpRpcClientAdapter, TcpRpcServer } from '@deepkit/rpc-tcp';
 

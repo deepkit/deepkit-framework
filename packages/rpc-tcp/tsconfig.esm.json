@@ -7,6 +7,9 @@
   "references": [
     {
       "path": "../rpc/tsconfig.esm.json"
+    },
+    {
+      "path": "../core/tsconfig.esm.json"
     }
   ]
 }

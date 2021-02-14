@@ -2,7 +2,7 @@ import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import '../src/template/optimize-tsx';
 import { html, render } from '../src/template/template';
-import { Injector } from '../src/injector/injector';
+import { Injector } from '@deepkit/injector';
 import { simple1, simple2, simple3, simple4, simpleHtmlInjected, simpleHtmlInjectedValid } from './simple';
 import { convertJsxCodeToCreateElement, optimizeJSX } from '../src/template/optimize-tsx';
 

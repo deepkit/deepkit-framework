@@ -4,11 +4,11 @@ import {
     Application,
     BodyValidation,
     http,
-    injectable,
     KernelModule,
-    Logger,
     Redirect,
 } from '@deepkit/framework';
+import { injectable } from '@deepkit/injector';
+import { Logger } from '@deepkit/logger';
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { entity, sliceClass, t } from '@deepkit/type';

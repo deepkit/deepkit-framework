@@ -23,19 +23,10 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "jest": {
-    "globals": {
-      "ts-jest": {
-        "useESM": true
-      }
-    },
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
-    "extensionsToTreatAsEsm": [
-      ".ts",
-      ".tsx"
-    ],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

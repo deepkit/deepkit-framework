@@ -1,5 +1,6 @@
 import { arrayRemoveItem, ClassType, sleep } from '@deepkit/core';
-import { KernelModule, Application, ApplicationServer, createModule, Module, Broker, BrokerServer, NetBroker, NetBrokerServer } from '@deepkit/framework';
+import { Application, ApplicationServer, Broker, BrokerServer, createModule, KernelModule, NetBroker, NetBrokerServer } from '@deepkit/framework';
+import { Module } from '@deepkit/command';
 import { Observable } from 'rxjs';
 import { createServer } from 'http';
 import { DeepkitClient, RemoteController } from '@deepkit/rpc';

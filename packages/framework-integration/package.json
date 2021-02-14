@@ -15,6 +15,7 @@
     "@deepkit/core-rxjs": "^1.0.1-alpha.0",
     "@deepkit/rpc": "^1.0.1-alpha.0",
     "@deepkit/framework": "^1.0.1-alpha.0",
+    "@deepkit/command": "^1.0.1-alpha.0",
     "@deepkit/type": "^1.0.1-alpha.0",
     "@deepkit/orm": "^1.0.1-alpha.0",
     "@deepkit/sql": "^1.0.1-alpha.0",
@@ -34,17 +35,11 @@
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
-    "globals": {
-      "ts-jest": {
-        "useESM": true
-      }
-    },
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "coverageDirectory": "<rootDir>/coverage/",
-    "extensionsToTreatAsEsm": [".ts", ".tsx"],
     "testMatch": [
       "**/tests/**/controller-basic.spec.ts",
       "**/tests/**/live-database.spec.ts"

@@ -12,7 +12,6 @@
     "target": "es2020",
     "module": "CommonJS",
     "esModuleInterop": true,
-
     "outDir": "./dist",
     "declaration": true,
     "composite": true,
@@ -26,16 +25,43 @@
   ],
   "references": [
     {
-      "path": "../core/tsconfig.json"
-    },
-    {
-      "path": "../type/tsconfig.json"
+      "path": "../broker/tsconfig.json"
     },
     {
       "path": "../bson/tsconfig.json"
     },
     {
-      "path": "../topsort/tsconfig.json"
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../framework/tsconfig.json"
+    },
+    {
+      "path": "../mongo/tsconfig.json"
+    },
+    {
+      "path": "../orm/tsconfig.json"
+    },
+    {
+      "path": "../sql/tsconfig.json"
+    },
+    {
+      "path": "../sqlite/tsconfig.json"
+    },
+    {
+      "path": "../mysql/tsconfig.json"
+    },
+    {
+      "path": "../postgres/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.json"
+    },
+    {
+      "path": "../rpc/tsconfig.json"
+    },
+    {
+      "path": "../rpc-tcp/tsconfig.json"
     }
   ]
 }

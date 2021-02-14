@@ -8,14 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { cli, Command, flag } from '../command';
-import { ServiceContainer } from '../service-container';
+import { cli, Command, flag } from '@deepkit/command';
+import { ApplicationServiceContainer } from '../application-service-container';
 
 @cli.controller('debug:di', {
 })
 export class DebugDIController implements Command {
     constructor(
-        protected serviceContainer: ServiceContainer,
+        protected serviceContainer: ApplicationServiceContainer,
     ) {
     }
 
@@ -24,7 +24,7 @@ export class DebugDIController implements Command {
     ): Promise<void> {
         const modules = [this.serviceContainer.appModule, ...this.serviceContainer.appModule.getImports()];
 
-        let injectorContext = this.serviceContainer.rootInjectorContext;
+        let injectorContext = this.serviceContainer.getRootInjectorContext();
 
         if (scope) {
             console.log('For scope', scope);

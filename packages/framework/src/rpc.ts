@@ -10,7 +10,7 @@
 
 import { ClassType } from '@deepkit/core';
 import { RpcKernelSecurity, Session } from '@deepkit/rpc';
-import { InjectorContext } from './injector/injector';
+import { InjectorContext } from '@deepkit/injector';
 
 export class RpcInjectorContext extends InjectorContext { }
 

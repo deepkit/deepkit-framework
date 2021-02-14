@@ -14,9 +14,9 @@ import { DatabaseComparator, DatabaseModel, SQLDatabaseAdapter } from '@deepkit/
 import { format } from 'date-fns';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
-import { cli, Command, flag } from '../../command';
+import { cli, Command, flag } from '@deepkit/command';
 import { DatabaseRegistry } from '../../database-registry';
-import { inject } from '../../injector/injector';
+import { inject } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { MigrationProvider } from '../migration-provider';
 
@@ -102,7 +102,7 @@ import {Migration} from '@deepkit/framework';
 
 /**
  * Schema migration created automatically. You should commit this into your Git repository.
- * 
+ *
  * You can rename and modify this file as you like, but make sure that 'databaseName' and 'created' are not modified.
 */
 export class SchemaMigration implements Migration {
@@ -112,22 +112,22 @@ export class SchemaMigration implements Migration {
     name = \`\`;
 
     /**
-     * Database name used for this migration. Should usually not be changed. 
+     * Database name used for this migration. Should usually not be changed.
      * If you change your database names later, you can adjust those here as well to make sure
      * migration files are correctly assigned to the right database connection.
      *
      * Used adapter: ${JSON.stringify(db.adapter.getName())}
      */
     databaseName = ${JSON.stringify(db.name)};
-    
+
     /**
-     * This version should not be changed since it is used to detect if this migration 
+     * This version should not be changed since it is used to detect if this migration
      * has been already executed against the database.
      *
-     * This version was created at ${date.toISOString()}. 
+     * This version was created at ${date.toISOString()}.
      */
     version = ${Math.floor(date.getTime() / 1000)};
-    
+
     /**
      * SQL queries executed one by one, to apply a migration.
      */

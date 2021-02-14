@@ -12,7 +12,7 @@ import { DebugRequest } from '@deepkit/framework-debug-api';
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { dirname, join } from 'path';
-import { inject } from '../injector/injector';
+import { inject } from '@deepkit/injector';
 import { kernelConfig } from '../kernel.config';
 import fsExtra from 'fs-extra';
 

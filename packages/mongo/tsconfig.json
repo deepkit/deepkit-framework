@@ -12,7 +12,6 @@
     "target": "es2020",
     "module": "CommonJS",
     "esModuleInterop": true,
-
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
@@ -30,19 +29,19 @@
   ],
   "references": [
     {
-      "path": "../core/tsconfig.json"
+      "path": "../crypto/tsconfig.json"
     },
     {
       "path": "../bson/tsconfig.json"
     },
     {
-      "path": "../type/tsconfig.json"
-    },
-    {
-      "path": "../crypto/tsconfig.json"
+      "path": "../core/tsconfig.json"
     },
     {
       "path": "../orm/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.json"
     },
     {
       "path": "../orm-integration/tsconfig.json"

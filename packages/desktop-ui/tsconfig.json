@@ -22,7 +22,8 @@
       "angular-desktop-ui": [
         "dist/"
       ]
-    }
+    },
+    "composite": true
   },
   "include": [
     "./src",
@@ -31,5 +32,13 @@
   "angularCompilerOptions": {
     "fullTemplateTypeCheck": true,
     "strictInjectionParameters": true
-  }
+  },
+  "references": [
+    {
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../core-rxjs/tsconfig.json"
+    }
+  ]
 }

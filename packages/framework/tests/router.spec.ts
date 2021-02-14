@@ -1,12 +1,11 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { dotToUrlPath, RouteConfig, RouteParameterResolverContext, RouteParameterResolverTag, Router } from '../src/router';
+import { dotToUrlPath, RouteParameterResolverContext, RouteParameterResolverTag, Router } from '../src/router';
 import { HttpKernel, JSONResponse } from '../src/http';
 import { http, httpClass } from '../src/decorator';
 import { Application } from '../src/application';
 import { t } from '@deepkit/type';
-import { HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters } from '../src/http-model';
-import { ClassType } from '@deepkit/core';
+import { HttpRequest } from '../src/http-model';
 
 test('router', async () => {
     class Controller {
@@ -112,7 +111,7 @@ test('router parameterResolver', async () => {
             return [user.username];
         }
     }
-    
+
     class MyRouteParameterResolver {
         resolve(context: RouteParameterResolverContext): any | Promise<any> {
             if (!context.parameters.username) throw new Error('No :username specified');

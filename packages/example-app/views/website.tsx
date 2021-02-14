@@ -1,4 +1,4 @@
-import { injectable } from '@deepkit/framework';
+import { injectable } from "@deepkit/injector";
 
 @injectable()
 export class Website {

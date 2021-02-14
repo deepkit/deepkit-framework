@@ -9,24 +9,18 @@
  */
 
 import { CustomError } from '@deepkit/core';
-import {
-    getClassTypeFromInstance,
-    isClassInstance,
-    isRegisteredEntity,
-    jsonSerializer,
-    ValidationFailed
-} from '@deepkit/type';
+import { getClassTypeFromInstance, isClassInstance, isRegisteredEntity, jsonSerializer, ValidationFailed } from '@deepkit/type';
 import { ServerResponse } from 'http';
 import { Socket } from 'net';
 import { HttpRequestDebugCollector } from './debug/debugger';
-import { EventDispatcher, eventDispatcher } from './event';
+import { EventDispatcher, eventDispatcher } from '@deepkit/event';
 import { HttpRequest, HttpResponse } from './http-model';
-import { inject, injectable, InjectorContext, MemoryInjector } from './injector/injector';
+import { inject, injectable, InjectorContext, MemoryInjector } from '@deepkit/injector';
 import { kernelConfig } from './kernel.config';
 import { Logger } from '@deepkit/logger';
 import { RouteConfig, RouteParameterResolverForInjector, Router } from './router';
 import { isElementStruct, render } from './template/template';
-import { createWorkflow, WorkflowEvent } from './workflow';
+import { createWorkflow, WorkflowEvent } from '@deepkit/workflow';
 import { Zone } from './zone';
 
 
@@ -519,7 +513,7 @@ export class HttpKernel {
 
         const collector = this.debug ? httpInjectorContext.get(HttpRequestDebugCollector) : undefined;
 
-        const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext, collector);
+        const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext, collector?.stopwatch);
         try {
             if (collector) {
                 await collector.init();

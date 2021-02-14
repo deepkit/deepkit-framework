@@ -9,7 +9,7 @@
  */
 
 import { t } from '@deepkit/type';
-import { createConfig } from '../injector/injector';
+import { createConfig } from '@deepkit/injector';
 
 export const brokerConfig = createConfig({
     listen: t.string.default('localhost:8811').description('Unix socket path or host:port combination'),
