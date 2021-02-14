@@ -15,7 +15,13 @@
       "path": "../type/tsconfig.esm.json"
     },
     {
+      "path": "../crypto/tsconfig.esm.json"
+    },
+    {
       "path": "../orm/tsconfig.esm.json"
+    },
+    {
+      "path": "../orm-integration/tsconfig.esm.json"
     }
   ]
 }

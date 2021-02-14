@@ -39,6 +39,15 @@
   ],
   "references": [
     {
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../core-rxjs/tsconfig.json"
+    },
+    {
+      "path": "../logger/tsconfig.json"
+    },
+    {
       "path": "../broker/tsconfig.json"
     },
     {
@@ -61,12 +70,6 @@
     },
     {
       "path": "../sqlite/tsconfig.json"
-    },
-    {
-      "path": "../core/tsconfig.json"
-    },
-    {
-      "path": "../core-rxjs/tsconfig.json"
     },
     {
       "path": "../type/tsconfig.json"

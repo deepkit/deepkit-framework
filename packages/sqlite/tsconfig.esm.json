@@ -16,6 +16,9 @@
     },
     {
       "path": "../orm/tsconfig.esm.json"
+    },
+    {
+      "path": "../orm-integration/tsconfig.esm.json"
     }
   ]
 }

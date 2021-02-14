@@ -6,13 +6,28 @@
   },
   "references": [
     {
+      "path": "../core/tsconfig.esm.json"
+    },
+    {
+      "path": "../core-rxjs/tsconfig.esm.json"
+    },
+    {
+      "path": "../logger/tsconfig.esm.json"
+    },
+    {
       "path": "../broker/tsconfig.esm.json"
     },
     {
       "path": "../rpc/tsconfig.esm.json"
     },
     {
+      "path": "../rpc-tcp/tsconfig.esm.json"
+    },
+    {
       "path": "../framework-debug-api/tsconfig.esm.json"
+    },
+    {
+      "path": "../orm-browser-api/tsconfig.esm.json"
     },
     {
       "path": "../orm/tsconfig.esm.json"
@@ -24,16 +39,7 @@
       "path": "../sqlite/tsconfig.esm.json"
     },
     {
-      "path": "../core/tsconfig.esm.json"
-    },
-    {
-      "path": "../core-rxjs/tsconfig.esm.json"
-    },
-    {
       "path": "../type/tsconfig.esm.json"
-    },
-    {
-      "path": "../mongo/tsconfig.esm.json"
     }
   ]
 }

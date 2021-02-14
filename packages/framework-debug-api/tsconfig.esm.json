@@ -6,6 +6,18 @@
   },
   "references": [
     {
+      "path": "../core/tsconfig.esm.json"
+    },
+    {
+      "path": "../core-rxjs/tsconfig.esm.json"
+    },
+    {
+      "path": "../bson/tsconfig.esm.json"
+    },
+    {
+      "path": "../crypto/tsconfig.esm.json"
+    },
+    {
       "path": "../type/tsconfig.esm.json"
     },
     {

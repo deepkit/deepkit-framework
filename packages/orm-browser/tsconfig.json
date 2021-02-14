@@ -35,6 +35,15 @@
       "path": "../orm/tsconfig.json"
     },
     {
+      "path": "../sql/tsconfig.json"
+    },
+    {
+      "path": "../rpc/tsconfig.json"
+    },
+    {
+      "path": "../logger/tsconfig.json"
+    },
+    {
       "path": "../framework/tsconfig.json"
     },
     {

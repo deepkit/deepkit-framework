@@ -12,7 +12,7 @@
       "path": "../type/tsconfig.esm.json"
     },
     {
-      "path": "../crypto/tsconfig.json"
+      "path": "../crypto/tsconfig.esm.json"
     }
   ]
 }

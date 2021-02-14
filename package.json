@@ -13,7 +13,8 @@
     "tsc-watch": "tsc --build --watch",
     "tsc-watch:esm": "tsc --build --watch tsconfig.esm.json",
     "clean": "rm -rf packages/*/dist",
-    "clean-modules": "rm -rf packages/*/node_modules; rm -rf node_modules;",
+    "clean:modules": "rm -rf packages/*/node_modules; rm -rf node_modules",
+    "clean:lock": "rm -rf packages/*/package-lock.json",
     "docs": "rm -rf docs && typedoc",
     "publish-force": "npm run build && lerna publish --no-private --force-publish",
     "publish-website": "heroku container:push web && heroku container:release web"
