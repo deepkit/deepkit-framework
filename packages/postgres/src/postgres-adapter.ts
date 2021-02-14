@@ -21,9 +21,16 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from '@deepkit/sql';
-import { Changes, DatabasePersistenceChangeSet, DatabaseSession, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
+import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
 import { PostgresPlatform } from './postgres-platform';
-import { ClassSchema, getClassSchema, getPropertyXtoClassFunction, PropertySchema, resolvePropertySchema } from '@deepkit/type';
+import {
+    Changes,
+    ClassSchema,
+    getClassSchema,
+    getPropertyXtoClassFunction,
+    PropertySchema,
+    resolvePropertySchema
+} from '@deepkit/type';
 import type { Pool, PoolClient, PoolConfig } from 'pg';
 import pg from 'pg';
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
@@ -31,24 +38,36 @@ import { asyncOperation, ClassType, empty } from '@deepkit/core';
 export class PostgresStatement extends SQLStatement {
     protected released = false;
 
-    constructor(protected sql: string, protected client: PoolClient) {
+    constructor(protected logger: DatabaseLogger, protected sql: string, protected client: PoolClient) {
         super();
     }
 
     async get(params: any[] = []) {
-        return asyncOperation<any>((resolve, reject) => {
-            this.client.query(this.sql, params).then((res) => {
-                resolve(res.rows[0]);
-            }).catch(reject);
-        });
+        try {
+            //postgres driver does not maintain error.stack when they throw errors, so
+            //we have to manually convert it using asyncOperation.
+            const res = await asyncOperation<any>((resolve, reject) => {
+                this.client.query(this.sql, params).then(resolve).catch(reject);
+            });
+            return res.rows[0];
+        } catch (error) {
+            this.logger.failedQuery(error, this.sql, params);
+            throw error;
+        }
     }
 
     async all(params: any[] = []) {
-        return asyncOperation<any>((resolve, reject) => {
-            this.client.query(this.sql, params).then((res) => {
-                resolve(res.rows);
-            }).catch(reject);
-        });
+        try {
+            //postgres driver does not maintain error.stack when they throw errors, so
+            //we have to manually convert it using asyncOperation.
+            const res = await asyncOperation<any>((resolve, reject) => {
+                this.client.query(this.sql, params).then(resolve).catch(reject);
+            });
+            return res.rows;
+        } catch (error) {
+            this.logger.failedQuery(error, this.sql, params);
+            throw error;
+        }
     }
 
     release() {
@@ -58,37 +77,33 @@ export class PostgresStatement extends SQLStatement {
 export class PostgresConnection extends SQLConnection {
     protected changes: number = 0;
     public lastReturningRows: any[] = [];
-    protected connection?: PoolClient = undefined;
 
     constructor(
         connectionPool: PostgresConnectionPool,
-        protected getConnection: () => Promise<PoolClient>
+        public connection: PoolClient,
+        logger?: DatabaseLogger,
     ) {
-        super(connectionPool);
-    }
-
-    release() {
-        super.release();
-        if (this.connection) {
-            this.connection.release();
-            this.connection = undefined;
-        }
+        super(connectionPool, logger);
     }
 
     async prepare(sql: string) {
-        if (!this.connection) this.connection = await this.getConnection();
-        return new PostgresStatement(sql, this.connection);
+        return new PostgresStatement(this.logger, sql, this.connection);
     }
 
     async run(sql: string, params: any[] = []) {
-        await asyncOperation(async (resolve, reject) => {
-            if (!this.connection) this.connection = await this.getConnection();
-            this.connection.query(sql, params).then((res) => {
-                this.lastReturningRows = res.rows;
-                this.changes = res.rowCount;
-                resolve(undefined);
-            }, reject);
-        });
+        try {
+            //postgres driver does not maintain error.stack when they throw errors, so
+            //we have to manually convert it using asyncOperation.
+            const res = await asyncOperation<any>((resolve, reject) => {
+                this.connection.query(sql, params).then(resolve).catch(reject);
+            });
+            this.logger.logQuery(sql, params);
+            this.lastReturningRows = res.rows;
+            this.changes = res.rowCount;
+        } catch (error) {
+            this.logger.failedQuery(error, sql, params);
+            throw error;
+        }
     }
 
     async getChanges(): Promise<number> {
@@ -101,13 +116,23 @@ export class PostgresConnectionPool extends SQLConnectionPool {
         super();
     }
 
-    getConnection(): PostgresConnection {
+    async getConnection(logger?: DatabaseLogger, transaction?: DatabaseTransaction): Promise<PostgresConnection> {
+        //todo: handle transaction, when given we make sure we return a sticky connection to the transaction
+        // and release the stickiness when transaction finished.
+
+        const connection = await this.pool.connect();
         this.activeConnections++;
-        return new PostgresConnection(this, () => this.pool.connect());
+        return new PostgresConnection(this, connection, logger);
+    }
+
+    release(connection: PostgresConnection) {
+        super.release(connection);
+        connection.connection.release();
     }
 }
 
 function typeSafeDefaultValue(property: PropertySchema): any {
+    if (property.type === 'string') return '';
     if (property.type === 'number') return 0;
     if (property.type === 'boolean') return false;
     if (property.type === 'date') return new Date;
@@ -116,11 +141,11 @@ function typeSafeDefaultValue(property: PropertySchema): any {
 }
 
 export class PostgresPersistence extends SQLPersistence {
-    constructor(protected platform: DefaultPlatform, protected connection: PostgresConnection) {
-        super(platform, connection);
+    constructor(protected platform: DefaultPlatform, public connectionPool: PostgresConnectionPool, session: DatabaseSession<any>) {
+        super(platform, connectionPool, session);
     }
 
-    async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+    async batchUpdate<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         const scopeSerializer = this.platform.serializer.for(classSchema);
         const tableName = this.platform.getTableIdentifier(classSchema);
         const pkName = classSchema.getPrimaryField().name;
@@ -165,11 +190,7 @@ export class PostgresPersistence extends SQLPersistence {
                     //special postgres check to avoid an error like:
                     /// column "deletedAt" is of type timestamp without time zone but expression is of type text
                     if (v === undefined || v === null) {
-                        if (classSchema.getProperty(i).type === 'date') {
-                            values[i].push('null::timestamp');
-                        } else {
-                            values[i].push('null');
-                        }
+                        values[i].push('null' + this.platform.typeCast(classSchema, i));
                     } else {
                         values[i].push(this.platform.quoteValue(v));
                     }
@@ -194,7 +215,10 @@ export class PostgresPersistence extends SQLPersistence {
                     assignReturning[id].names.push(i);
                     setReturning[i] = 1;
 
-                    aggregateSelects[i].push({ id: changeSet.primaryKey[pkName], sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}` });
+                    aggregateSelects[i].push({
+                        id: changeSet.primaryKey[pkName],
+                        sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}`
+                    });
                     requiredFields[i] = 1;
                     if (!fieldAddedToValues[i]) {
                         fieldAddedToValues[i] = 1;
@@ -252,7 +276,8 @@ export class PostgresPersistence extends SQLPersistence {
               RETURNING ${returningSelect.join(', ')};
         `;
 
-        const result = await this.connection.execAndReturnAll(sql);
+        const connection = await this.getConnection(); //will automatically be released in SQLPersistence
+        const result = await connection.execAndReturnAll(sql);
         for (const returning of result) {
             const r = assignReturning[returning[pkName]];
             if (!r) continue;
@@ -266,11 +291,12 @@ export class PostgresPersistence extends SQLPersistence {
     protected async populateAutoIncrementFields<T>(classSchema: ClassSchema<T>, items: T[]) {
         const autoIncrement = classSchema.getAutoIncrementField();
         if (!autoIncrement) return;
+        const connection = await this.getConnection(); //will automatically be released in SQLPersistence
 
         //We adjusted the INSERT SQL with additional RETURNING which returns all generated
         //auto-increment values. We read the result and simply assign the value.
         const name = autoIncrement.name;
-        const insertedRows = this.connection.lastReturningRows;
+        const insertedRows = connection.lastReturningRows;
         if (!insertedRows.length) return;
 
         for (let i = 0; i < items.length; i++) {
@@ -308,7 +334,7 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
         const tableName = this.platform.getTableIdentifier(this.classSchema);
 
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
             const sql = `
                 WITH _ AS (${select.sql})
@@ -328,14 +354,12 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         }
     }
 
-
     async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
         const select: string[] = [];
+        const selectParams: any[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const primaryKey = this.classSchema.getPrimaryField();
-        const pkField = this.platform.quoteIdentifier(primaryKey.name);
         const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
-        select.push(pkField);
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
@@ -350,7 +374,9 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
                 set.push(`${this.platform.quoteIdentifier(i)} = NULL`);
             } else {
                 fieldsSet[i] = 1;
-                select.push(`${this.platform.quoteValue($set[i])} as ${this.platform.quoteIdentifier(i)}`);
+
+                select.push(`$${selectParams.length + 1}${this.platform.typeCast(this.classSchema, i)} as ${this.platform.quoteIdentifier(i)}`);
+                selectParams.push($set[i]);
             }
         }
 
@@ -375,9 +401,18 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         for (const i in fieldsSet) {
             set.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
         }
+        let bPrimaryKey = primaryKey.name;
+        //we need a different name because primaryKeys could be updated as well
+        if (fieldsSet[primaryKey.name]) {
+            select.unshift(this.platform.quoteIdentifier(primaryKey.name) + ' as __' + primaryKey.name);
+            bPrimaryKey = '__' + primaryKey.name;
+        } else {
+            select.unshift(this.platform.quoteIdentifier(primaryKey.name));
+        }
 
         const returningSelect: string[] = [];
-        returningSelect.push(tableName + '.' + pkField);
+        returningSelect.push(tableName + '.' + this.platform.quoteIdentifier(primaryKey.name));
+
         if (!empty(aggregateFields)) {
             for (const i in aggregateFields) {
                 returningSelect.push(tableName + '.' + this.platform.quoteIdentifier(i));
@@ -385,7 +420,8 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         }
 
         const sqlBuilder = new SqlBuilder(this.platform);
-        const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
+        const selectSQL = sqlBuilder.select(this.classSchema, model, { select }, selectParams);
+
         const sql = `
             WITH _b AS (${selectSQL.sql})
             UPDATE
@@ -393,11 +429,11 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
             SET
                 ${set.join(', ')}
             FROM _b
-            WHERE ${tableName}.${pkField} = _b.${pkField}
+            WHERE ${tableName}.${this.platform.quoteIdentifier(primaryKey.name)} = _b.${this.platform.quoteIdentifier(bPrimaryKey)}
             RETURNING ${returningSelect.join(', ')}
         `;
 
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
             const result = await connection.execAndReturnAll(sql, selectSQL.params);
 
@@ -412,6 +448,9 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
                     patchResult.returning[i].push(aggregateFields[i].converted(returning[i]));
                 }
             }
+        } catch (error) {
+            console.log('changes', changes);
+            throw new Error(`Could not patch ${this.classSchema.getName()}: ${error.message}\nSQL: ${sql}\nParams: ${JSON.stringify(selectSQL.params)}`);
         } finally {
             connection.release();
         }
@@ -450,12 +489,12 @@ export class PostgresDatabaseAdapter extends SQLDatabaseAdapter {
         return '';
     }
 
-    createPersistence(): SQLPersistence {
-        return new PostgresPersistence(this.platform, this.connectionPool.getConnection());
+    createPersistence(session: DatabaseSession<this>): SQLPersistence {
+        return new PostgresPersistence(this.platform, this.connectionPool, session);
     }
 
-    queryFactory(databaseSession: DatabaseSession<any>): SQLDatabaseQueryFactory {
-        return new PostgresSQLDatabaseQueryFactory(this.connectionPool, this.platform, databaseSession);
+    queryFactory(session: DatabaseSession<any>): SQLDatabaseQueryFactory {
+        return new PostgresSQLDatabaseQueryFactory(this.connectionPool, this.platform, session);
     }
 
     disconnect(force?: boolean): void {

@@ -15,7 +15,7 @@ import { httpClass } from './decorator';
 import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from './event';
 import { injectable, InjectorContext } from './injector/injector';
 import { kernelConfig } from './kernel.config';
-import { Logger } from './logger';
+import { Logger } from '@deepkit/logger';
 import { HttpControllers, RpcControllers } from './service-container';
 import { createRpcConnection, WebWorker, WebWorkerFactory } from './worker';
 

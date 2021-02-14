@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Observable, Subscription } from "rxjs";
-import { ChangeDetectorRef, EventEmitter } from "@angular/core";
+import { Observable, Subscription } from 'rxjs';
+import { ChangeDetectorRef, EventEmitter } from '@angular/core';
 
 const electron = (window as any).electron || ((window as any).require ? (window as any).require('electron') : undefined);
 
@@ -107,13 +107,28 @@ export function isTargetChildOf(target: HTMLElement | EventTarget | null, parent
     return false;
 }
 
+/**
+ * Checks if `target` is children of `parent` or if `target` is `parent`.
+ */
+export function findParentWithClass(start: HTMLElement, className: string): HTMLElement | undefined {
+    let current: HTMLElement | null = start;
+    do {
+        if (current.classList.contains(className)) return current;
+        current = current.parentElement;
+    } while (current);
+
+    return undefined;
+}
+
 export function triggerResize() {
     requestAnimationFrame(() => {
         window.dispatchEvent(new Event('resize'));
     });
 }
 
-export function focusWatcher(target: HTMLElement, allowedFocuses: HTMLElement[] = []): Observable<void> {
+export function focusWatcher(target: HTMLElement, allowedFocuses: HTMLElement[] = [], customChecker?: (currentlyFocused: HTMLElement | null) => boolean): Observable<void> {
+    if (target.ownerDocument.body.tabIndex === -1) target.ownerDocument.body.tabIndex = 1;
+
     return new Observable<void>((observer) => {
         let currentlyFocused: HTMLElement | null = target;
 
@@ -132,10 +147,15 @@ export function focusWatcher(target: HTMLElement, allowedFocuses: HTMLElement[] 
                 }
             }
 
-            return false;
+            return customChecker ? customChecker(currentlyFocused) : false;
         }
 
         function check() {
+            if (!currentlyFocused) {
+                //shouldn't be possible to have no element at all with focus.
+                //this means usually that the item that had previously focus was deleted.
+                currentlyFocused = target;
+            }
             if (!isFocusAllowed()) {
                 observer.next();
                 observer.complete();
@@ -144,20 +164,27 @@ export function focusWatcher(target: HTMLElement, allowedFocuses: HTMLElement[] 
 
         function onFocusOut() {
             currentlyFocused = null;
-            requestAnimationFrame(check);
+            check();
         }
 
         function onFocusIn(event: FocusEvent) {
             currentlyFocused = event.target as any;
-            requestAnimationFrame(check);
+            check();
         }
 
-        target.ownerDocument!.addEventListener('focusin', onFocusIn as any);
-        target.ownerDocument!.addEventListener('focusout', onFocusOut as any);
+        function onMouseDown(event: FocusEvent) {
+            currentlyFocused = event.target as any;
+            check();
+        }
+
+        target.ownerDocument!.addEventListener('mousedown', onMouseDown, true);
+        target.ownerDocument!.addEventListener('focusin', onFocusIn);
+        target.ownerDocument!.addEventListener('focusout', onFocusOut);
 
         function unsubscribe(): void {
-            target.ownerDocument!.removeEventListener('focusin', onFocusIn as any);
-            target.ownerDocument!.removeEventListener('focusout', onFocusOut as any);
+            target.ownerDocument!.removeEventListener('mousedown', onMouseDown);
+            target.ownerDocument!.removeEventListener('focusin', onFocusIn);
+            target.ownerDocument!.removeEventListener('focusout', onFocusOut);
         }
 
         return { unsubscribe: unsubscribe };

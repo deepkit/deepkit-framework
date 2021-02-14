@@ -1,0 +1,108 @@
+:host {
+  position: relative;
+  display: block;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.svg-container {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 50px;
+}
+
+.actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50px;
+  bottom: 0;
+}
+
+:host ::ng-deep svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  // background-color: white;
+
+  path {
+    fill: none;
+    stroke: var(--line-color-prominent);
+    opacity: 0.6;
+    stroke-width: 1px;
+
+    &.back-reference {
+      stroke-dasharray: 5, 5;
+    }
+
+    &.embedded {
+      stroke: var(--color-orange);
+    }
+  }
+
+  rect {
+    fill: white;
+  }
+
+  .node rect,
+  .node circle,
+  .node ellipse {
+      stroke: #333;
+      opacity: 0.8;
+      fill-opacity: 0;
+  }
+
+  .edgePath path {
+      stroke: #333;
+      fill: #333;
+      fill-opacity: 1;
+      stroke-opacity: 1;
+  }
+
+  .cluster {
+      stroke: #999;
+      /*fill: #222;*/
+      fill-opacity: 0;
+      stroke-opacity: 0.6;
+  }
+
+  .entity-name rect {
+
+      fill: #222;
+      fill-opacity: 0.3;
+  }
+}
+
+.node {
+  position: absolute;
+  background-color: rgba(72, 72, 72, 0.9);
+  border: 1px solid var(--line-color-light);
+  font-size: 12px;
+  line-height: 16px;
+  padding: 5px;
+  text-align: left;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  .header {
+    margin-bottom: 5px;
+    font-weight: 600;
+  }
+
+  .property {
+    line-height: 16px;
+    padding: 1px 0px;
+  }
+}
+
+:host-context(.dui-theme-light) {
+    .node {
+        background-color: rgba(189, 189, 189, 0.75);
+        border: 1px solid var(--line-color);
+    }
+}

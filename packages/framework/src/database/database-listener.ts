@@ -12,7 +12,7 @@ import { onServerMainBootstrap, onServerMainShutdown } from '../application-serv
 import { DatabaseRegistry } from '../database-registry';
 import { eventDispatcher } from '../event';
 import { injectable } from '../injector/injector';
-import { Logger } from '../logger';
+import { Logger } from '@deepkit/logger';
 
 @injectable()
 export class DatabaseListener {

@@ -307,7 +307,7 @@ export class ScopedSerializer<T extends ClassSchema> {
      * Property name is either a property name or a deep path (e.g. config.value)
      */
     serializeProperty(name: (keyof ExtractClassType<T> & string) | string, value: any): any {
-        const property = this.schema.getClassProperties().get(name) ?? resolvePropertySchema(this.schema, name);
+        const property = this.schema.getPropertiesMap().get(name) ?? resolvePropertySchema(this.schema, name);
         return getPropertyClassToXFunction(property, this.serializer)(value);
     }
 
@@ -317,7 +317,7 @@ export class ScopedSerializer<T extends ClassSchema> {
      * Property name is either a property name or a deep path (e.g. config.value)
      */
     deserializeProperty(name: (keyof ExtractClassType<T> & string) | string, value: any) {
-        const property = this.schema.getClassProperties().get(name) ?? resolvePropertySchema(this.schema, name);
+        const property = this.schema.getPropertiesMap().get(name) ?? resolvePropertySchema(this.schema, name);
         return getPropertyXtoClassFunction(property, this.serializer)(value);
     }
 
@@ -366,7 +366,7 @@ export class ScopedSerializer<T extends ClassSchema> {
         const result: Partial<{ [F in keyof R]: any }> = {};
         for (const i in partial) {
             if (!partial.hasOwnProperty(i)) continue;
-            const property = this.schema.getClassProperties().get(i) ?? resolvePropertySchema(this.schema, i);
+            const property = this.schema.getPropertiesMap().get(i) ?? resolvePropertySchema(this.schema, i);
             result[i] = getPropertyXtoClassFunction(property, this.serializer)(partial[i], options?.parents ?? [], options);
         }
 
@@ -380,7 +380,7 @@ export class ScopedSerializer<T extends ClassSchema> {
         const result: Partial<{ [F in keyof R]: any }> = {};
         for (const i in partial) {
             if (!partial.hasOwnProperty(i)) continue;
-            const property = this.schema.getClassProperties().get(i) ?? resolvePropertySchema(this.schema, i);
+            const property = this.schema.getPropertiesMap().get(i) ?? resolvePropertySchema(this.schema, i);
             result[i] = getPropertyClassToXFunction(property, this.serializer)(partial[i], options);
         }
 

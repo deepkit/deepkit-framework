@@ -11,41 +11,42 @@
 import {
     ApplicationRef,
     Component,
+    Directive,
     HostBinding,
     Inject,
     Injectable,
     Input,
     ModuleWithProviders,
     NgModule,
-    Optional,
-    Directive
-} from "@angular/core";
+    Optional
+} from '@angular/core';
 import {
     MenuCheckboxDirective,
     MenuDirective,
     MenuItemDirective,
     MenuRadioDirective,
     MenuSeparatorDirective
-} from "./menu.component";
-import { detectChangesNextFrame, OpenExternalDirective, ZonelessChangeDetector } from "./utils";
-import { ViewDirective } from "./dui-view.directive";
-import { CdCounterComponent } from "./cd-counter.component";
-import { DuiResponsiveDirective } from "./dui-responsive.directive";
-import { CommonModule, DOCUMENT } from "@angular/common";
-import { Electron } from "../../core/utils";
-import { ActivationEnd, Event as RouterEvent, NavigationEnd, Router } from "@angular/router";
-import { WindowRegistry } from "../window/window-state";
-import { ELECTRON_WINDOW, IN_DIALOG } from "./token";
-import { AsyncRenderPipe } from "./pipes";
-import { ReactiveChangeDetectionModule } from "./reactivate-change-detection";
+} from './menu.component';
+import { detectChangesNextFrame, OpenExternalDirective, ZonelessChangeDetector } from './utils';
+import { ViewDirective } from './dui-view.directive';
+import { CdCounterComponent } from './cd-counter.component';
+import { DuiResponsiveDirective } from './dui-responsive.directive';
+import { CommonModule, DOCUMENT } from '@angular/common';
+import { Electron } from '../../core/utils';
+import { ActivationEnd, Event as RouterEvent, NavigationEnd, Router } from '@angular/router';
+import { WindowRegistry } from '../window/window-state';
+import { ELECTRON_WINDOW, IN_DIALOG } from './token';
+import { AsyncRenderPipe, HumanFileSizePipe, ObjectURLPipe } from './pipes';
+import { ReactiveChangeDetectionModule } from './reactivate-change-detection';
+import { arrayRemoveItem } from '@deepkit/core';
 
-export * from "./reactivate-change-detection";
-export * from "./cd-counter.component";
-export * from "./dui-view.directive";
-export * from "./dui-responsive.directive";
-export * from "./utils";
-export * from "./menu.component";
-export * from "./pipes";
+export * from './reactivate-change-detection';
+export * from './cd-counter.component';
+export * from './dui-view.directive';
+export * from './dui-responsive.directive';
+export * from './utils';
+export * from './menu.component';
+export * from './pipes';
 
 if ('undefined' !== typeof window && 'undefined' === typeof (window as any)['global']) {
     (window as any).global = window;
@@ -81,6 +82,55 @@ export class BaseComponent {
 })
 export class UiComponentComponent extends BaseComponent {
     @Input() name: string = '';
+}
+
+export class OverlayStackItem {
+    constructor(public host: HTMLElement, protected stack: OverlayStackItem[], public release: () => void) {
+    }
+
+    getAllAfter(): OverlayStackItem[] {
+        const result: OverlayStackItem[] = [];
+
+        let flip = false;
+        for (let i = 0; i < this.stack.length; i++) {
+            if (flip) result.push(this.stack[i]);
+            if (this.stack[i] === this) flip = true;
+        }
+        return result;
+    }
+
+    getPrevious(): OverlayStackItem | undefined {
+        const before = this.getAllBefore();
+        return before.length ? before[before.length - 1] : undefined;
+    }
+
+    isLast(): boolean {
+        return this.getAllAfter().length === 0;
+    }
+
+    getAllBefore(): OverlayStackItem[] {
+        const result: OverlayStackItem[] = [];
+
+        for (let i = 0; i < this.stack.length; i++) {
+            if (this.stack[i] === this) return result;
+            result.push(this.stack[i]);
+        }
+        return result;
+    }
+}
+
+export class OverlayStack {
+    public stack: OverlayStackItem[] = [];
+
+    public register(host: HTMLElement): OverlayStackItem {
+        const item = new OverlayStackItem(host, this.stack, () => {
+            const before = item.getPrevious();
+            if (before) before.host.focus();
+            arrayRemoveItem(this.stack, item);
+        });
+        this.stack.push(item);
+        return item;
+    }
 }
 
 @Injectable()
@@ -154,16 +204,26 @@ export class DuiApp {
 
     setPlatform(platform: 'web' | 'darwin' | 'linux' | 'win32') {
         this.platform = platform;
+        //deprecate these
         document.body.classList.remove('platform-linux');
         document.body.classList.remove('platform-darwin');
         document.body.classList.remove('platform-win32');
         document.body.classList.remove('platform-native');
         document.body.classList.remove('platform-web');
 
+        document.body.classList.remove('dui-platform-linux');
+        document.body.classList.remove('dui-platform-darwin');
+        document.body.classList.remove('dui-platform-win32');
+        document.body.classList.remove('dui-platform-native');
+        document.body.classList.remove('dui-platform-web');
+
         if (this.platform !== 'web') {
-            document.body.classList.add('platform-native');
+            document.body.classList.add('platform-native'); //todo: deprecate
+            document.body.classList.add('dui-platform-native');
+
         }
-        document.body.classList.add('platform-' + platform);
+        document.body.classList.add('platform-' + platform);//todo: deprecate
+        document.body.classList.add('dui-platform-' + platform);
     }
 
     getPlatform(): string {
@@ -225,9 +285,15 @@ export class DuiApp {
             win.setVibrancy(this.getVibrancy());
         }
 
+        //todo: deprecate these
         document.body.classList.remove('dark');
         document.body.classList.remove('light');
         document.body.classList.add(this.darkMode ? 'dark' : 'light');
+
+        document.body.classList.remove('dui-theme-dark');
+        document.body.classList.remove('dui-theme-light');
+        document.body.classList.add(this.darkMode ? 'dui-theme-dark' : 'dui-theme-light');
+
         window.dispatchEvent(new Event('theme-changed'));
     }
 
@@ -249,6 +315,8 @@ export class DuiApp {
         CdCounterComponent,
         DuiResponsiveDirective,
         AsyncRenderPipe,
+        ObjectURLPipe,
+        HumanFileSizePipe,
     ],
     exports: [
         UiComponentComponent,
@@ -262,7 +330,10 @@ export class DuiApp {
         CdCounterComponent,
         DuiResponsiveDirective,
         AsyncRenderPipe,
+        ObjectURLPipe,
+        HumanFileSizePipe,
     ],
+    providers: [OverlayStack],
     imports: [
         CommonModule,
         ReactiveChangeDetectionModule,
@@ -296,6 +367,6 @@ export class DuiAppModule {
                     useValue: Electron.isAvailable() ? Electron.getRemote().BrowserWindow.getAllWindows()[0] : undefined
                 },
             ]
-        }
+        };
     }
 }

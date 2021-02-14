@@ -1,0 +1,39 @@
+:host {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.header {
+    flex: 0 0 50px;
+    display: flex;
+    padding: 0 12px;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+.layout {
+    display: flex;
+    height: 100%;
+    overflow: auto;
+}
+
+.migration-container {
+    display: block;
+    padding: 20px;
+    padding-top: 0;
+}
+
+.migrations {
+    margin: 15px 0;
+}
+
+.sql, .diff {
+    white-space: pre;
+    margin-bottom: 5px;
+    margin-left: 15px;
+}

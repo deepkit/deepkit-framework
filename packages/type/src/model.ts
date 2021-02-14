@@ -10,13 +10,14 @@
 
 import {
     arrayRemoveItem,
+    capitalize,
     ClassType,
     eachKey,
     eachPair,
     ExtractClassType,
     extractMethodBody,
-    getClassName,
     extractParameters,
+    getClassName,
     isClass,
     isConstructable,
     isFunction,
@@ -109,6 +110,10 @@ export interface PropertySchemaSerialized {
     classType?: string;
     classTypeName?: string; //the getClassName() when the given classType is not registered using a @entity.name
     noValidation?: boolean;
+    isReference?: true;
+    enum?: { [name: string]: any };
+    backReference?: { via?: string, mappedBy?: string };
+    autoIncrement?: true;
 }
 
 export interface PropertyValidator {
@@ -248,6 +253,10 @@ export class PropertySchema {
         return typedArrayNamesMap.has(this.type);
     }
 
+    get isBinary(): boolean {
+        return this.type === 'arrayBuffer' || this.isTypedArray;
+    }
+
     groupNames: string[] = [];
 
     /**
@@ -373,17 +382,18 @@ export class PropertySchema {
     getDefaultValue(): any {
         if (this.defaultValue) {
             this.lastGeneratedDefaultValue = this.defaultValue();
-            return this.lastGeneratedDefaultValue
+            return this.lastGeneratedDefaultValue;
         }
         return undefined;
     }
 
-    toString(): string {
-        let affix = this.isOptional ? '?' : '';
+    toString(optionalAffix = true): string {
+        let affix = this.isOptional && optionalAffix ? '?' : '';
+
         if (this.isNullable) affix += '|null';
 
         if (this.type === 'array') {
-            return `Array<${this.templateArgs[0]}>${affix}`;
+            return `${this.templateArgs[0]}[]${affix}`;
         }
         if (this.type === 'map') {
             return `Map<${this.templateArgs[0]}, ${this.templateArgs[1]}>${affix}`;
@@ -394,6 +404,9 @@ export class PropertySchema {
         if (this.type === 'union') {
             return this.templateArgs.map(v => v.toString()).join(' | ') + affix;
         }
+        if (this.type === 'enum') {
+            return 'enum' + affix;
+        }
         if (this.type === 'class') {
             if (this.classTypeName) return this.classTypeName + affix;
             if (this.classTypeForwardRef) {
@@ -401,7 +414,7 @@ export class PropertySchema {
                 if (resolved) return getClassName(resolved) + affix;
                 return 'ForwardedRef' + affix;
             } else {
-                return getClassName(this.getResolvedClassType()) + affix;
+                return this.classType ? getClassName(this.classType) + affix : '[not-loaded]' + affix;
             }
         }
         return `${this.type}${affix}`;
@@ -424,70 +437,99 @@ export class PropertySchema {
             type: this.type
         };
 
-        if (this.literalValue !== undefined) props['literalValue'] = this.literalValue;
-        if (this.isDecorated) props['isDecorated'] = true;
-        if (this.isDiscriminant) props['isDiscriminant'] = true;
-        if (this.isParentReference) props['isParentReference'] = true;
-        if (this.isOptional) props['isOptional'] = true;
-        if (this.isId) props['isId'] = true;
-        if (this.allowLabelsAsValue) props['allowLabelsAsValue'] = true;
-        if (this.typeSet) props['typeSet'] = true;
-        if (this.methodName) props['methodName'] = this.methodName;
-        if (this.groupNames.length) props['groupNames'] = this.groupNames;
-        if (this.defaultValue) props['defaultValue'] = this.defaultValue();
-        props['noValidation'] = this.noValidation;
+        if (this.literalValue !== undefined) props.literalValue = this.literalValue;
+        if (this.isDecorated) props.isDecorated = true;
+        if (this.isDiscriminant) props.isDiscriminant = true;
+        if (this.isParentReference) props.isParentReference = true;
+        if (this.isOptional) props.isOptional = true;
+        if (this.isId) props.isId = true;
+        if (this.allowLabelsAsValue) props.allowLabelsAsValue = true;
+        if (this.typeSet) props.typeSet = true;
+        if (this.methodName) props.methodName = this.methodName;
+        if (this.groupNames.length) props.groupNames = this.groupNames;
+        if (this.defaultValue) props.defaultValue = this.defaultValue();
+        if (this.isReference) props.isReference = this.isReference;
+        if (this.type === 'enum') props.enum = this.getResolvedClassType();
 
-        if (this.templateArgs.length) {
-            props['templateArgs'] = this.templateArgs.map(v => v.toJSON());
+        if (this.isAutoIncrement) props.autoIncrement = true;
+        props.noValidation = this.noValidation;
+
+        if (this.templateArgs.length) props.templateArgs = this.templateArgs.map(v => v.toJSON());
+
+        if (this.backReference) {
+            let via = '';
+
+            if (this.backReference.via) {
+                const classType = resolveClassTypeOrForward(this.backReference.via);
+                via = getClassSchema(classType).getName();
+            }
+
+            props.backReference = { mappedBy: this.backReference.mappedBy, via };
         }
 
         const resolved = this.getResolvedClassTypeForValidType();
         if (resolved) {
             const name = getClassSchema(resolved).name;
             if (!name) {
-                props['classTypeName'] = getClassName(resolved);
+                props.classTypeName = getClassName(resolved);
             } else {
-                props['classType'] = name;
-
+                props.classType = name;
             }
         }
 
         return props;
     }
 
-    static fromJSON(props: PropertySchemaSerialized, parent?: PropertySchema): PropertySchema {
+    static fromJSON(props: PropertySchemaSerialized, parent?: PropertySchema, throwForInvalidClassType: boolean = true): PropertySchema {
         const p = new PropertySchema(props['name']);
         p.type = props['type'];
         p.literalValue = props['literalValue'];
 
-        if (props['isDecorated']) p.isDecorated = true;
-        if (props['isParentReference']) p.isParentReference = true;
-        if (props['isDiscriminant']) p.isDiscriminant = true;
-        if (props['isOptional']) p.isOptional = true;
-        if (props['isId']) p.isId = true;
-        if (props['allowLabelsAsValue']) p.allowLabelsAsValue = true;
-        if (props['typeSet']) p.typeSet = true;
-        if (props['methodName']) p.methodName = props['methodName'];
-        if (props['groupNames']) p.groupNames = props['groupNames'];
-        if (props['noValidation']) p.noValidation = props['noValidation'];
-        if (props['defaultValue']) p.defaultValue = () => props['defaultValue'];
+        if (props.isDecorated) p.isDecorated = true;
+        if (props.isParentReference) p.isParentReference = true;
+        if (props.isDiscriminant) p.isDiscriminant = true;
+        if (props.isOptional) p.isOptional = true;
+        if (props.isId) p.isId = true;
+        if (props.allowLabelsAsValue) p.allowLabelsAsValue = true;
+        if (props.typeSet) p.typeSet = true;
+        if (props.methodName) p.methodName = props.methodName;
+        if (props.groupNames) p.groupNames = props.groupNames;
+        if (props.noValidation) p.noValidation = props.noValidation;
+        if (props.isReference) p.isReference = props.isReference;
+        if (props.autoIncrement) p.isAutoIncrement = props.autoIncrement;
+        if (props.enum) p.classType = props.enum as ClassType;
 
-        if (props['templateArgs']) {
-            p.templateArgs = props['templateArgs'].map(v => PropertySchema.fromJSON(v, p));
+        if (props.defaultValue) p.defaultValue = () => props.defaultValue;
+
+        if (props.templateArgs) {
+            p.templateArgs = props.templateArgs.map(v => PropertySchema.fromJSON(v, p, throwForInvalidClassType));
         }
 
-        if (props['classType']) {
-            const entity = getGlobalStore().RegisteredEntities[props['classType']];
-            if (!entity) {
-                throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got entity name ${props['classType']} . ` +
-                    `Make sure given entity is loaded (imported at least once globally) and correctly annoated using @entity.name()`);
+        if (props.backReference) {
+            p.backReference = { mappedBy: props.backReference.mappedBy };
+            if (props.backReference.via) {
+                const entity = getGlobalStore().RegisteredEntities[props.backReference.via];
+                if (entity) {
+                    p.backReference.via = getClassSchema(entity).classType;
+                } else if (throwForInvalidClassType) {
+                    throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got entity name ${props.backReference.via} . ` +
+                        `Make sure given entity is loaded (imported at least once globally) and correctly annoated using @entity.name('${props.backReference.via}')`);
+                }
             }
-            p.classType = getClassSchema(entity).classType;
-        // } else if (p.type === 'class' && !props['classType']) {
-        //     throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got class name ${props['classTypeName']}. ` +
-        //         `Make sure this class has a @entity.name(name) decorator with a unique name assigned and given entity is loaded (imported at least once globally)`);
         }
-        p.classTypeName = props['classTypeName'];
+        if (props.classType) {
+            const entity = getGlobalStore().RegisteredEntities[props.classType];
+            if (entity) {
+                p.classType = getClassSchema(entity).classType;
+            } else if (throwForInvalidClassType) {
+                throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got entity name ${props.classType} . ` +
+                    `Make sure given entity is loaded (imported at least once globally) and correctly annoated using @entity.name('${props.classType}')`);
+            }
+            // } else if (p.type === 'class' && !props['classType']) {
+            //     throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got class name ${props['classTypeName']}. ` +
+            //         `Make sure this class has a @entity.name(name) decorator with a unique name assigned and given entity is loaded (imported at least once globally)`);
+        }
+        p.classTypeName = props.classTypeName;
 
         return p;
     }
@@ -676,9 +718,8 @@ export class ClassSchema<T = any> {
      */
     protected initializedMethods = new Set<string>();
 
-    protected classProperties = new Map<string, PropertySchema>();
-
-    idField?: keyof T & string;
+    protected propertiesMap = new Map<string, PropertySchema>();
+    protected properties: PropertySchema[] = [];
 
     propertyNames: string[] = [];
 
@@ -722,7 +763,7 @@ export class ClassSchema<T = any> {
     }
 
     toString() {
-        return `<ClassSchema ${this.getClassName()}>\n` + [...this.getClassProperties().values()].map(v => '   ' + v.name + '=' + v.toString()).join('\n') + '\n</ClassSchema>';
+        return `<ClassSchema ${this.getClassName()}>\n` + this.properties.map(v => '   ' + v.name + '=' + v.toString()).join('\n') + '\n</ClassSchema>';
     }
 
     /**
@@ -787,7 +828,7 @@ export class ClassSchema<T = any> {
     hasFullLoadHooks(): boolean {
         if (this.hasFullLoadHooksCheck) return false;
         this.hasFullLoadHooksCheck = true;
-        for (const prop of this.classProperties.values()) {
+        for (const prop of this.properties) {
             if (prop.type === 'class' && prop.getResolvedClassSchema().hasFullLoadHooks()) {
                 return true;
             }
@@ -807,7 +848,7 @@ export class ClassSchema<T = any> {
         if (stack.includes(this)) return true;
         stack.push(this);
 
-        for (const property of this.getClassProperties().values()) {
+        for (const property of this.properties) {
             if (property.isParentReference) continue;
             if (property.hasCircularDependency(lookingFor, stack)) return true;
         }
@@ -833,21 +874,23 @@ export class ClassSchema<T = any> {
         s.discriminant = this.discriminant;
         s.fromClass = this.fromClass;
 
-        s.classProperties = new Map();
-        for (const [i, v] of this.classProperties.entries()) {
-            s.classProperties.set(i, v.clone());
+        s.propertiesMap = new Map();
+        s.properties = [];
+        for (const [i, v] of this.propertiesMap) {
+            const p = v.clone();
+            s.propertiesMap.set(i, p);
+            s.properties.push(p);
         }
 
         s.methodProperties = new Map();
         for (const [i, properties] of this.methodProperties.entries()) {
             const obj: PropertySchema[] = [];
             for (const v of properties) {
-                obj.push(s.classProperties.get(v.name) || v.clone());
+                obj.push(s.propertiesMap.get(v.name) || v.clone());
             }
             s.methodProperties.set(i, obj);
         }
 
-        s.idField = this.idField;
         s.propertyNames = this.propertyNames.slice(0);
         s.methodsParamNames = new Map<string, string[]>();
         s.methodsParamNamesAutoResolved = new Map<string, string[]>();
@@ -890,13 +933,16 @@ export class ClassSchema<T = any> {
     }
 
     public removeProperty(name: string) {
-        this.classProperties.delete(name);
+        const property = this.propertiesMap.get(name);
+        if (!property) return;
+        this.propertiesMap.delete(name);
+        arrayRemoveItem(this.properties, property);
         arrayRemoveItem(this.propertyNames, name);
     }
 
     public registerProperty(property: PropertySchema) {
         if (this.fromClass && !property.methodName) {
-            property.hasDefaultValue = this.detectedDefaultValueProperties.includes(property.name)
+            property.hasDefaultValue = this.detectedDefaultValueProperties.includes(property.name);
 
             if (!property.manuallySetToRequired && !property.hasDefaultValue && !this.assignedInConstructor.includes(property.name)) {
                 //when we have no default value AND the property was never seen in the constructor, its
@@ -917,12 +963,12 @@ export class ClassSchema<T = any> {
         }
 
         this.propertyNames.push(property.name);
-        this.classProperties.set(property.name, property);
+        this.propertiesMap.set(property.name, property);
+        this.properties.push(property);
     }
 
     protected resetCache() {
         this.jit = {};
-        this.getClassProperties();
         this.primaryKeys = undefined;
         this.autoIncrements = undefined;
         this.buildId++;
@@ -972,28 +1018,56 @@ export class ClassSchema<T = any> {
         return this.methods[name];
     }
 
-    /**
-     * Internal note: for multi pk support, this will return a PropertySchema[] in the future.
-     */
-    public getPrimaryField(): PropertySchema {
-        if (!this.idField) {
-            throw new Error(`Class ${getClassName(this.classType)} has no primary field. Use @t.primary to define one.`);
+    public extractForeignKeyToPrimaryKey(property: PropertySchema, item: object): Partial<T> {
+        const primaryKey: Partial<T> = {};
+        const pks = this.getPrimaryFields();
+
+        if (pks.length === 1) {
+            (primaryKey as any)[pks[0].name] = (item as any)[property.name];
+        } else {
+            for (const pk of pks) {
+                (primaryKey as any)[pk.name] = (item as any)[property.name + capitalize(pk.name)];
+            }
         }
 
-        return this.getProperty(this.idField);
+        return primaryKey;
+    }
+
+    public extractPrimaryKey(item: object): Partial<T> {
+        const primaryKey: Partial<T> = {};
+        for (const pk of this.getPrimaryFields()) {
+            (primaryKey as any)[pk.name] = (item as any)[pk.name];
+        }
+
+        return primaryKey;
+    }
+
+    /**
+     * Internal note: for multi pk support, this will be removed.
+     */
+    public getPrimaryField(): PropertySchema {
+        const pks = this.getPrimaryFields();
+        if (pks.length === 0) {
+            throw new Error(`Class ${getClassName(this.classType)} has no primary field. Use @t.primary to define one.`);
+        }
+        if (pks.length > 1) {
+            throw new Error(`Class ${getClassName(this.classType)} has multiple primary fields. This is not supported.`);
+        }
+
+        return pks[0];
     }
 
     public hasCircularReference(stack: ClassSchema[] = []): boolean {
         if (stack.includes(this)) return true;
         stack.push(this);
-        
-        for (const property of this.getClassProperties().values()) {
+
+        for (const property of this.properties) {
             if (property.type === 'partial' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
             if (property.type === 'map' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
             if (property.type === 'array' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
             if (property.type === 'class' && property.getResolvedClassSchema().hasCircularReference(stack)) return true;
         }
-        
+
         stack.pop();
         return false;
     }
@@ -1003,7 +1077,7 @@ export class ClassSchema<T = any> {
     }
 
     public getAutoIncrementField(): PropertySchema | undefined {
-        for (const property of this.getClassProperties().values()) {
+        for (const property of this.properties) {
             if (property.isAutoIncrement) return property;
         }
         return;
@@ -1018,7 +1092,7 @@ export class ClassSchema<T = any> {
         if (this.primaryKeys) return this.primaryKeys;
 
         this.primaryKeys = [];
-        for (const property of this.getClassProperties().values()) {
+        for (const property of this.properties) {
             if (property.isId) this.primaryKeys.push(property);
         }
 
@@ -1052,15 +1126,15 @@ export class ClassSchema<T = any> {
 
     public exclude<K extends (keyof T & string)[]>(...properties: K): ClassSchema<Omit<T, K[number]>> {
         const cloned = this.clone();
-        for (const name of properties) cloned.classProperties.delete(name);
+        for (const name of properties) cloned.removeProperty(name);
         return cloned as any;
     }
 
     public include<K extends (keyof T & string)[]>(...properties: K): ClassSchema<Pick<T, K[number]>> {
         const cloned = this.clone();
-        for (const name of this.classProperties.keys()) {
+        for (const name of this.propertiesMap.keys()) {
             if (properties.includes(name as keyof T & string)) continue;
-            cloned.classProperties.delete(name);
+            cloned.removeProperty(name);
         }
         return cloned as any;
     }
@@ -1068,7 +1142,7 @@ export class ClassSchema<T = any> {
     public extend<E extends PlainSchemaProps>(props: E, options?: { name?: string, classType?: ClassType }): ClassSchema<T & ExtractClassDefinition<E>> {
         const cloned = this.clone();
         const schema = t.schema(props);
-        for (const property of schema.getClassProperties().values()) {
+        for (const property of schema.properties) {
             cloned.registerProperty(property);
         }
         return cloned as any;
@@ -1117,12 +1191,12 @@ export class ClassSchema<T = any> {
         return this.methodProperties.get(name)!;
     }
 
-    public initializeProperties() {
+    public getProperties(): PropertySchema[] {
+        return this.properties;
     }
 
-    public getClassProperties(initialize: boolean = true): Map<string, PropertySchema> {
-        if (initialize) this.initializeProperties();
-        return this.classProperties;
+    public getPropertiesMap(): Map<string, PropertySchema> {
+        return this.propertiesMap;
     }
 
     /**
@@ -1164,12 +1238,11 @@ export class ClassSchema<T = any> {
     }
 
     public getPropertyOrUndefined(name: string): PropertySchema | undefined {
-        this.initializeProperties();
-        return this.classProperties.get(name);
+        return this.propertiesMap.get(name);
     }
 
     public hasProperty(name: string): boolean {
-        return this.classProperties.has(name);
+        return this.propertiesMap.has(name);
     }
 
     // public isOneToOne(propertyName: string): boolean {
@@ -1268,8 +1341,7 @@ export class ClassSchema<T = any> {
 
     public getPropertiesByGroup(...groupNames: string[]): PropertySchema[] {
         const result: PropertySchema[] = [];
-        this.initializeProperties();
-        for (const property of this.classProperties.values()) {
+        for (const property of this.properties) {
             for (const groupName of property.groupNames) {
                 if (groupNames.includes(groupName)) {
                     result.push(property);
@@ -1282,12 +1354,12 @@ export class ClassSchema<T = any> {
     }
 
     public getProperty(name: string): PropertySchema {
-        this.initializeProperties();
-        if (!this.classProperties.has(name)) {
+        const property = this.propertiesMap.get(name);
+        if (!property) {
             throw new Error(`Property ${this.getClassName()}.${name} not found`);
         }
 
-        return this.classProperties.get(name)!;
+        return property;
     }
 }
 
@@ -1306,18 +1378,17 @@ export class ClassSlicer<T> {
     }
 
     public include<K extends (keyof T & string)[]>(...properties: K): ClassType<Pick<T, K[number]>> {
-        for (const name of this.schema.getClassProperties().keys()) {
-            if (properties.includes(name as keyof T & string)) continue;
-            this.schema.removeProperty(name);
+        for (const property of this.schema.getProperties()) {
+            if (properties.includes(property.name as keyof T & string)) continue;
+            this.schema.removeProperty(property.name);
         }
         return this.schema.classType as any;
     }
 
     public extend<E extends PlainSchemaProps>(props: E): ClassType<T & ExtractClassDefinition<E>> {
-        const schema = t.schema(props, { classType: this.schema.classType });
-        for (const property of schema.getClassProperties().values()) {
-            this.schema.registerProperty(property);
-        }
+        //this changes this.schema.classType directly
+        t.schema(props, { classType: this.schema.classType });
+
         return this.schema.classType as any;
     }
 }
@@ -1381,14 +1452,14 @@ export function mixin<T extends (ClassSchema | ClassType)[]>(...classTypes: T): 
             schema.classType.prototype[i] = foreignSchema.classType.prototype[i];
         }
 
-        for (const prop of foreignSchema.getClassProperties().values()) {
+        for (const prop of foreignSchema.getProperties()) {
             schema.registerProperty(prop.clone());
         }
 
         constructors.push(function (this: any, ...args: any[]) {
             const item = new foreignSchema.classType(...args);
-            for (const prop of foreignSchema.getClassProperties().keys()) {
-                this[prop] = item[prop];
+            for (const prop of foreignSchema.getProperties()) {
+                this[prop.name] = item[prop.name];
             }
         });
     }
@@ -1524,6 +1595,8 @@ export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = 
 
     const c = clazz || class {
     };
+
+
     if (name) {
         Object.defineProperty(c, 'name', { value: name });
     }

@@ -17,7 +17,7 @@ import {
     Input,
     OnDestroy,
     ViewContainerRef
-} from "@angular/core";
+} from '@angular/core';
 
 @Directive({
     selector: '[renderComponent]',

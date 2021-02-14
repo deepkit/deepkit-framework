@@ -9,12 +9,15 @@
   "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "dependencies": {
+  "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.0",
     "@deepkit/type": "^1.0.1-alpha.0",
     "@deepkit/orm": "^1.0.1-alpha.0"
   },
   "devDependencies": {
+    "@deepkit/core": "^1.0.1-alpha.0",
+    "@deepkit/type": "^1.0.1-alpha.0",
+    "@deepkit/orm": "^1.0.1-alpha.0",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {

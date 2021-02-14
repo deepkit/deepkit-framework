@@ -17,7 +17,7 @@ import { dirname, join } from 'path';
 import { cli, Command, flag } from '../../command';
 import { DatabaseRegistry } from '../../database-registry';
 import { inject } from '../../injector/injector';
-import { Logger } from '../../logger';
+import { Logger } from '@deepkit/logger';
 import { MigrationProvider } from '../migration-provider';
 
 

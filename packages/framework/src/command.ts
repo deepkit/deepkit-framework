@@ -15,7 +15,6 @@ import {
     createPropertyDecoratorContext,
     FreeFluidDecorator,
     getClassSchema,
-
     getPropertyXtoClassFunction,
     jsonSerializer,
     PropertyApiTypeInterface,

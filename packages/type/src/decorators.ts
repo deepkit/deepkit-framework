@@ -12,8 +12,8 @@ import { PropertyValidatorError } from './jit-validation';
 import {
     ClassType,
     eachPair,
-    getClassName,
     extractParameters,
+    getClassName,
     isFunction,
     isNumber,
     isPlainObject,
@@ -271,13 +271,13 @@ function createFieldDecoratorResult<T>(
             if (isNumber(parameterIndexOrDescriptor)) {
                 //decorator is used on a method argument. Might be on constructor or any other method.
                 if (methodName === 'constructor') {
-                    if (!schema.getClassProperties(false).has(givenPropertyName)) {
+                    if (!schema.getPropertiesMap().has(givenPropertyName)) {
                         const property = new PropertySchema(givenPropertyName);
                         property.methodName = 'constructor';
                         schema.registerProperty(property);
                     }
 
-                    propertySchema = schema.getClassProperties(false).get(givenPropertyName)!;
+                    propertySchema = schema.getPropertiesMap().get(givenPropertyName)!;
                     argumentsProperties[parameterIndexOrDescriptor] = propertySchema;
                 } else {
                     if (!argumentsProperties[parameterIndexOrDescriptor]) {
@@ -294,11 +294,11 @@ function createFieldDecoratorResult<T>(
                     throw new Error(`Could not resolve property name for class property on ${getClassName(target)}`);
                 }
 
-                if (!schema.getClassProperties(false).has(givenPropertyName)) {
+                if (!schema.getPropertiesMap().has(givenPropertyName)) {
                     schema.registerProperty(new PropertySchema(givenPropertyName));
                 }
 
-                propertySchema = schema.getClassProperties(false).get(givenPropertyName)!;
+                propertySchema = schema.getPropertiesMap().get(givenPropertyName)!;
             }
         }
 
@@ -411,7 +411,7 @@ function createFieldDecoratorResult<T>(
             resetIfNecessary();
             return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
                 property.isAutoIncrement = true;
-                property.isOptional = true;
+                property.defaultValue = () => 0;
             }]);
         }
     });
@@ -643,7 +643,6 @@ function Decorated() {
 function IDField() {
     return (target: object, property: PropertySchema) => {
         const schema = getOrCreateEntitySchema(target);
-        schema.idField = property.name;
         property.isId = true;
         // Index({unique: true}, '_pk')(target, property);
     };
@@ -968,7 +967,7 @@ fRaw['partial'] = function <T extends ClassType | ForwardRefFn<any> | ClassSchem
         schema = getClassSchema(type).clone();
     }
 
-    for (const property of schema.getClassProperties().values()) {
+    for (const property of schema.getProperties()) {
         property.isOptional = true; //a Partial<T> is defined in a way that makes all its properties optional
     }
 

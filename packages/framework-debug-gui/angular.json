@@ -1,5 +1,8 @@
 {
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "cli": {
+    "analytics": "16737174-159b-4e26-844d-16d50c641a5d"
+  },
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
@@ -7,8 +10,6 @@
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
-          "inlineTemplate": true,
-          "inlineStyle": true,
           "style": "scss"
         },
         "@schematics/angular:application": {
@@ -58,13 +59,13 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kb",
-                  "maximumError": "1mb"
+                  "maximumWarning": "3mb",
+                  "maximumError": "5mb"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "2kb",
-                  "maximumError": "4kb"
+                  "maximumWarning": "20kb",
+                  "maximumError": "40kb"
                 }
               ]
             }
@@ -132,8 +133,5 @@
       }
     }
   },
-  "defaultProject": "framework-debug-gui",
-  "cli": {
-    "analytics": "aeadcaa4-36e6-4089-9ac4-f82b806a90da"
-  }
+  "defaultProject": "framework-debug-gui"
 }

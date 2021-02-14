@@ -11,9 +11,8 @@
 import {
     ChangeDetectorRef,
     Component,
-    ContentChildren,
     ElementRef,
-    forwardRef,
+    EventEmitter,
     HostBinding,
     HostListener,
     Injectable,
@@ -22,13 +21,14 @@ import {
     OnChanges,
     OnDestroy,
     Optional,
-    QueryList,
+    Output,
     SimpleChanges,
     SkipSelf
 } from '@angular/core';
 import { NavigationEnd, Router, UrlTree } from '@angular/router';
-import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
-import { Subscription } from "rxjs";
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { Subscription } from 'rxjs';
+import { arrayRemoveItem } from '@deepkit/core';
 
 @Component({
     selector: 'dui-list-title',
@@ -40,7 +40,6 @@ export class ListTitleComponent {
     constructor() {
     }
 }
-
 
 @Component({
     selector: 'dui-list',
@@ -58,21 +57,43 @@ export class ListTitleComponent {
 })
 @Injectable()
 export class ListComponent extends ValueAccessorBase<any> {
+    static ids: number = 0;
+
     @Input() white: boolean | '' = false;
+
+    id = ++ListComponent.ids;
 
     @Input() focusable: boolean = true;
     @Input() delimiterLine: boolean | '' = false;
 
     @HostBinding('tabindex') tabIndex: number = 1;
 
-    @ContentChildren(forwardRef(() => ListItemComponent), { descendants: true }) list!: QueryList<ListItemComponent>;
+    items: ListItemComponent[] = [];
+
+    protected itemMap = new Map<string, ListItemComponent>();
 
     constructor(
         protected injector: Injector,
         public readonly cd: ChangeDetectorRef,
+        public host: ElementRef<HTMLElement>,
         @SkipSelf() public readonly cdParent: ChangeDetectorRef,
     ) {
         super(injector, cd, cdParent);
+    }
+
+    public deregister(item: ListItemComponent) {
+        arrayRemoveItem(this.items, item);
+        this.itemMap.delete(item.id + '');
+    }
+
+    public register(item: ListItemComponent) {
+        this.items.push(item);
+        this.itemMap.set(item.id + '', item);
+    }
+
+    protected getSortedList(): ListItemComponent[] {
+        const list = Array.from(this.host.nativeElement.querySelectorAll(`dui-list-item[list-id="${this.id}"]`));
+        return list.map(v => this.itemMap.get(v.getAttribute('list-item-id')!)!);
     }
 
     @HostListener('keydown', ['$event'])
@@ -81,29 +102,31 @@ export class ListComponent extends ValueAccessorBase<any> {
             event.preventDefault();
             const selectedItem = this.getSelectedItem();
             if (selectedItem) {
-                const position = this.list.toArray().indexOf(selectedItem);
+                const items = this.getSortedList();
+                const position = items.indexOf(selectedItem);
 
-                if (this.list.toArray()[position + 1]) {
-                    await this.list.toArray()[position + 1].select();
+                if (items[position + 1]) {
+                    await items[position + 1].select();
                 }
             }
         }
 
         if (event.key === 'ArrowUp') {
             event.preventDefault();
-            const selectedItem = this.getSelectedItem();
+            const selectedItem = this.getSelectedItem()
             if (selectedItem) {
-                const position = this.list.toArray().indexOf(selectedItem);
+                const items = this.getSortedList();
+                const position = items.indexOf(selectedItem);
 
-                if (this.list.toArray()[position - 1]) {
-                    await this.list.toArray()[position - 1].select();
+                if (items[position - 1]) {
+                    await items[position - 1].select();
                 }
             }
         }
     }
 
     public getSelectedItem(): ListItemComponent | undefined {
-        for (const item of this.list.toArray()) {
+        for (const item of this.items) {
             if (item.isSelected()) {
                 return item;
             }
@@ -113,7 +136,6 @@ export class ListComponent extends ValueAccessorBase<any> {
     }
 }
 
-
 @Component({
     selector: 'dui-list-item',
     template: `
@@ -121,13 +143,27 @@ export class ListComponent extends ValueAccessorBase<any> {
     `,
     host: {
         '[class.selected]': 'isSelected()',
+        '[attr.list-id]': 'list.id',
+        '[attr.list-item-id]': 'id',
     },
     styleUrls: ['./list-item.component.scss']
 })
 export class ListItemComponent implements OnChanges, OnDestroy {
+    static ids: number = 0;
+    id = ++ListItemComponent.ids;
+
     @Input() value: any;
     @Input() routerLink?: string | UrlTree | any[];
     @Input() routerLinkExact?: boolean;
+    @Input() active?: boolean;
+
+    /**
+     * When position is dynamic, it might be handy to define the position
+     * explicitly to make arrow-up/arrow-down navigation possible.
+     */
+    @Input() position: number = 0;
+
+    @Output() onSelect = new EventEmitter<any>();
 
     protected routerSub?: Subscription;
 
@@ -138,6 +174,7 @@ export class ListItemComponent implements OnChanges, OnDestroy {
         @Optional() public router?: Router,
     ) {
         this.element.nativeElement.removeAttribute('tabindex');
+        list.register(this);
         this.list.registerOnChange(() => {
             this.cd.detectChanges();
         });
@@ -146,11 +183,12 @@ export class ListItemComponent implements OnChanges, OnDestroy {
                 if (event instanceof NavigationEnd) {
                     this.cd.detectChanges();
                 }
-            })
+            });
         }
     }
 
     ngOnDestroy(): void {
+        this.list.deregister(this);
         if (this.routerSub) {
             this.routerSub.unsubscribe();
         }
@@ -172,9 +210,12 @@ export class ListItemComponent implements OnChanges, OnDestroy {
         } else {
             this.list.innerValue = this.value;
         }
+        this.onSelect.emit(this.value);
     }
 
     public isSelected(): boolean {
+        if (this.active !== undefined) return this.active;
+
         if (this.value !== undefined) {
             return this.list.innerValue === this.value;
         }
@@ -195,5 +236,6 @@ export class ListItemComponent implements OnChanges, OnDestroy {
     @HostListener('mousedown')
     public onClick() {
         this.list.innerValue = this.value;
+        this.onSelect.emit(this.value);
     }
 }

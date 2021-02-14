@@ -8,8 +8,16 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ApplicationRef, ChangeDetectorRef, Directive, ElementRef, HostListener, Input, OnChanges } from "@angular/core";
-import { Electron } from "../../core/utils";
+import {
+    ApplicationRef,
+    ChangeDetectorRef,
+    Directive,
+    ElementRef,
+    HostListener,
+    Input,
+    OnChanges
+} from '@angular/core';
+import { Electron } from '../../core/utils';
 
 
 @Directive({
@@ -52,12 +60,13 @@ export function scheduleWindowResizeEvent() {
     lastScheduleResize = requestAnimationFrame(() => {
         window.dispatchEvent(new Event('resize'));
         lastScheduleResize = undefined;
-    })
+    });
 }
 
 
 let lastFrameRequest: any;
 let lastFrameRequestStack = new Set<ChangeDetectorRef>();
+let lastFrameRequestStackDoneCb: (() => void)[] = [];
 
 export class ZonelessChangeDetector {
     static app: ApplicationRef | undefined = undefined;
@@ -75,9 +84,11 @@ export class ZonelessChangeDetector {
  * This handy function makes sure that in the next animation frame the given ChangeDetectorRef is called.
  * It makes automatically sure that it is only called once per frame.
  */
-export function detectChangesNextFrame(cd?: ChangeDetectorRef) {
+export function detectChangesNextFrame(cd?: ChangeDetectorRef, done?: () => any) {
     if (cd) {
+        if (lastFrameRequestStack.has(cd)) return;
         lastFrameRequestStack.add(cd);
+        if (done) lastFrameRequestStackDoneCb.push(done);
     }
 
     if (lastFrameRequest) {
@@ -87,10 +98,14 @@ export function detectChangesNextFrame(cd?: ChangeDetectorRef) {
     lastFrameRequest = requestAnimationFrame(() => {
         lastFrameRequest = undefined;
         for (const i of lastFrameRequestStack) {
-            i.markForCheck();
+            i.detectChanges();
         }
-        //since ivy we have to use tick() instead of and can not use i.detectChanges().
-        ZonelessChangeDetector.getApp().tick();
+        for (const i of lastFrameRequestStackDoneCb) {
+            i();
+        }
+        //since ivy we have to use tick() and can not use i.detectChanges().
+        lastFrameRequestStackDoneCb = [];
         lastFrameRequestStack.clear();
+        ZonelessChangeDetector.getApp().tick();
     });
 }

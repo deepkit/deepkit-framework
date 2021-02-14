@@ -8,10 +8,18 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, getClassSchema, getClassTypeFromInstance } from '@deepkit/type';
+import {
+    Changes,
+    ClassSchema,
+    getChangeDetector,
+    getClassSchema,
+    getClassTypeFromInstance,
+    getConverterForSnapshot
+} from '@deepkit/type';
 import { Entity } from './type';
 import sift from 'sift';
 import { FilterQuery } from './query';
+import { getInstanceState } from './identity-map';
 
 export type FlattenIfArray<T> = T extends Array<any> ? T[0] : T;
 export type FieldName<T> = keyof T & string;
@@ -46,3 +54,12 @@ export function findQueryList<T extends { [index: string]: any }>(items: T[], qu
 export type Placeholder<T> = () => T;
 export type Resolve<T extends {_: Placeholder<any>}> = ReturnType<T['_']>;
 export type Replace<T, R> = T & { _: Placeholder<R> };
+
+
+
+export function buildChangesFromInstance<T>(item: T): Changes<T> {
+    const state = getInstanceState(item);
+    const lastSnapshot = state.getSnapshot();
+    const currentSnapshot = getConverterForSnapshot(state.classSchema)(item);
+    return getChangeDetector(state.classSchema)(lastSnapshot, currentSnapshot, item) || new Changes;
+}

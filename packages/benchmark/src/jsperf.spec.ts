@@ -73,7 +73,7 @@ test('object keys', () => {
 //
 //     function simple(last: any, current: any) {
 //         const changed: any = {};
-//         for (const property of schema.getClassProperties().values()) {
+//         for (const property of schema.getProperties()) {
 //             if (last[property.name] !== current[property.name]) changed[property.name] = true;
 //         }
 //         return changed;
@@ -82,7 +82,7 @@ test('object keys', () => {
 //     function jit() {
 //         const props: string[] = [];
 //
-//         for (const property of schema.getClassProperties().values()) {
+//         for (const property of schema.getProperties()) {
 //             props.push(`if (last.${property.name} !== current.${property.name}) changed.${property.name} = true;`)
 //         }
 //
@@ -321,7 +321,7 @@ test('classToPlain vs copy-on-write hooks', () => {
     });
 
     const properties: PropertyDescriptorMap = {};
-    for (const property of classSchema.getClassProperties().values()) {
+    for (const property of classSchema.getProperties()) {
         properties[property.name] = {
             get() {
 

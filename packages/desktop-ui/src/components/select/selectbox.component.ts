@@ -13,7 +13,8 @@ import {
     ChangeDetectorRef,
     Component,
     ContentChild,
-    ContentChildren, Directive,
+    ContentChildren,
+    Directive,
     ElementRef,
     HostBinding,
     HostListener,
@@ -23,14 +24,15 @@ import {
     OnDestroy,
     QueryList,
     SimpleChanges,
-    SkipSelf, TemplateRef,
+    SkipSelf,
+    TemplateRef,
     ViewChild
-} from "@angular/core";
-import { Subscription } from "rxjs";
-import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
-import { Overlay } from "@angular/cdk/overlay";
-import { DropdownComponent } from "../button/dropdown.component";
-import { ButtonComponent } from "../button/button.component";
+} from '@angular/core';
+import { Subscription } from 'rxjs';
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { Overlay } from '@angular/cdk/overlay';
+import { DropdownComponent } from '../button/dropdown.component';
+import { ButtonComponent } from '../button/button.component';
 
 /**
  * Necessary directive to get a dynamic rendered option.
@@ -55,9 +57,7 @@ export class DynamicOptionDirective {
 
 @Component({
     selector: 'dui-option',
-    template: `
-        <ng-content></ng-content>
-    `
+    template: `<ng-content></ng-content>`
 })
 export class OptionDirective {
     @Input() value: any;
@@ -65,6 +65,14 @@ export class OptionDirective {
 
     constructor(public readonly element: ElementRef) {
     }
+}
+
+@Directive({
+    selector: 'dui-option-separator',
+    providers: [{ provide: OptionDirective, useExisting: OptionSeparatorDirective }],
+})
+export class OptionSeparatorDirective {
+    constructor() { }
 }
 
 class NotSelected { }
@@ -99,16 +107,19 @@ class NotSelected { }
 
         <dui-dropdown #dropdown [host]="element.nativeElement">
             <ng-container *ngIf="options">
-                <dui-dropdown-item
-                     *ngFor="let option of options.toArray()"
-                     (click)="select(option.value)"
-                     [selected]="innerValue === option.value"
-                >
-                    <ng-container *ngIf="option.dynamic" [ngTemplateOutlet]="option.dynamic.template"></ng-container>
-                    <div *ngIf="!option.dynamic">
-                        <div [innerHTML]="option.element.nativeElement.innerHTML"></div>
-                    </div>
-                </dui-dropdown-item>
+                <ng-container *ngFor="let option of options.toArray()">
+                    <dui-dropdown-separator *ngIf="isSeparator(option)"></dui-dropdown-separator>
+                    <dui-dropdown-item
+                        *ngIf="!isSeparator(option)"
+                        (click)="select(option.value)"
+                        [selected]="innerValue === option.value"
+                    >
+                        <ng-container *ngIf="option.dynamic" [ngTemplateOutlet]="option.dynamic.template"></ng-container>
+                        <div *ngIf="!option.dynamic">
+                            <div [innerHTML]="option.element.nativeElement.innerHTML"></div>
+                        </div>
+                    </dui-dropdown-item>
+                </ng-container>
             </ng-container>
         </dui-dropdown>
     `,
@@ -155,6 +166,10 @@ export class SelectboxComponent<T> extends ValueAccessorBase<T | NotSelected> im
         this.innerValue = new NotSelected;
     }
 
+    isSeparator(item: any): boolean {
+        return item instanceof OptionSeparatorDirective;
+    }
+
     ngAfterViewInit(): void {
         if (this.options) {
             this.changeSubscription = this.options.changes.subscribe(() => this.updateMap());
@@ -182,6 +197,9 @@ export class SelectboxComponent<T> extends ValueAccessorBase<T | NotSelected> im
     ngOnChanges(changes: SimpleChanges) {
     }
 
+    open() {
+        this.dropdown?.open();
+    }
 
     async writeValue(value?: T | NotSelected): Promise<void> {
         super.writeValue(value);

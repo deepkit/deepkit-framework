@@ -8,19 +8,22 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, CustomError } from '@deepkit/core';
-import { getClassTypeFromInstance, isClassInstance, isRegisteredEntity, jsonSerializer } from '@deepkit/type';
-import { stat } from 'fs';
+import { CustomError } from '@deepkit/core';
+import {
+    getClassTypeFromInstance,
+    isClassInstance,
+    isRegisteredEntity,
+    jsonSerializer,
+    ValidationFailed
+} from '@deepkit/type';
 import { ServerResponse } from 'http';
 import { Socket } from 'net';
-import { join } from 'path';
-import serveStatic from 'serve-static';
 import { HttpRequestDebugCollector } from './debug/debugger';
 import { EventDispatcher, eventDispatcher } from './event';
 import { HttpRequest, HttpResponse } from './http-model';
 import { inject, injectable, InjectorContext, MemoryInjector } from './injector/injector';
 import { kernelConfig } from './kernel.config';
-import { Logger } from './logger';
+import { Logger } from '@deepkit/logger';
 import { RouteConfig, RouteParameterResolverForInjector, Router } from './router';
 import { isElementStruct, render } from './template/template';
 import { createWorkflow, WorkflowEvent } from './workflow';
@@ -262,16 +265,18 @@ export const httpWorkflow = createWorkflow('http', {
     accessDenied: HttpAccessDeniedEvent,
     controller: HttpControllerEvent,
     controllerError: HttpControllerErrorEvent,
+    parametersFailed: HttpControllerErrorEvent,
     response: HttpResponseEvent,
 }, {
     start: 'request',
     request: 'route',
     route: ['auth', 'routeNotFound'],
     auth: ['resolveParameters', 'accessDenied'],
-    resolveParameters: 'controller',
-    controller: ['accessDenied', 'controllerError', 'response'],
+    resolveParameters: ['controller', 'parametersFailed'],
     accessDenied: 'response',
+    controller: ['accessDenied', 'controllerError', 'response'],
     controllerError: 'response',
+    parametersFailed: 'response',
     routeNotFound: 'response',
 });
 
@@ -283,46 +288,6 @@ export class HtmlResponse {
 export class JSONResponse {
     constructor(public json: any, public statusCode?: number) {
     }
-}
-
-export function serveStaticListener(path: string): ClassType {
-    @injectable()
-    class HttpRequestStaticServingListener {
-        protected serveStatic = serveStatic(path, { index: false });
-
-        serve(path: string, request: HttpRequest, response: HttpResponse) {
-            return new Promise(resolve => {
-                response.once('finish', () => {
-                    resolve(undefined);
-                });
-                this.serveStatic(request, response, () => {
-                    resolve(response);
-                });
-            });
-        }
-
-        @eventDispatcher.listen(httpWorkflow.onRoute, 101) //after default route listener at 100
-        onRoute(event: typeof httpWorkflow.onRoute.event) {
-            if (event.sent) return;
-            if (event.route) return;
-
-            const localPath = join(path, join('/', event.url));
-
-            return new Promise(resolve => {
-                stat(localPath, (err, stat) => {
-                    if (stat && stat.isFile()) {
-                        event.routeFound(
-                            new RouteConfig('static', 'GET', event.url, { controller: HttpRequestStaticServingListener, methodName: 'serve' }),
-                            () => [path, event.request, event.response]
-                        );
-                    }
-                    resolve(undefined);
-                });
-            });
-        }
-    }
-
-    return HttpRequestStaticServingListener;
 }
 
 
@@ -382,11 +347,14 @@ export class HttpListener {
     @eventDispatcher.listen(httpWorkflow.onResolveParameters, 100)
     async onResolveParameters(event: typeof httpWorkflow.onResolveParameters.event) {
         if (event.response.finished) return;
-        // if (event.hasNext()) return;
+        if (event.hasNext()) return;
 
-        event.parameters = await event.parameterResolver(event.injectorContext);
-
-        event.next('controller', new HttpControllerEvent(event.injectorContext, event.request, event.response, event.parameters, event.route));
+        try {
+            event.parameters = await event.parameterResolver(event.injectorContext);
+            event.next('controller', new HttpControllerEvent(event.injectorContext, event.request, event.response, event.parameters, event.route));
+        } catch (error) {
+            event.next('parametersFailed', new HttpControllerErrorEvent(event.injectorContext, event.request, event.response, event.route, error));
+        }
     }
 
     @eventDispatcher.listen(httpWorkflow.onAccessDenied, 100)
@@ -412,6 +380,23 @@ export class HttpListener {
             } else {
                 event.next('controllerError', new HttpControllerErrorEvent(event.injectorContext, event.request, event.response, event.route, error));
             }
+        }
+    }
+
+    @eventDispatcher.listen(httpWorkflow.onParametersFailed, 100)
+    onParametersFailed(event: typeof httpWorkflow.onParametersFailed.event): void {
+        if (event.response.finished) return;
+        if (event.sent) return;
+
+        this.logger.error('Controller parameter resolving error:', event.error);
+
+        if (event.error instanceof ValidationFailed) {
+            event.send(new JSONResponse({
+                message: event.error.message,
+                errors: event.error.errors
+            }, 500));
+        } else {
+            event.send(new HtmlResponse('Internal error', 500));
         }
     }
 
@@ -444,7 +429,7 @@ export class HttpListener {
                 });
             }
             event.response.end();
-        } else if (response instanceof ServerResponse) {
+        } else if (response instanceof ServerResponse || response instanceof HttpResponse) {
         } else if (response instanceof HtmlResponse) {
             event.response.setHeader('Content-Type', 'text/html; charset=utf-8');
             if (response.statusCode) event.response.writeHead(response.statusCode);
@@ -522,8 +507,7 @@ export class HttpKernel {
         try {
             return JSON.parse(result);
         } catch (error) {
-            console.error('Could not parse JSON:' + result);
-            return undefined;
+            return result;
         }
     }
 

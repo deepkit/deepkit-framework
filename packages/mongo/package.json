@@ -22,16 +22,24 @@
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
-  "dependencies": {
+  "peerDependencies": {
+    "@deepkit/crypto": "^1.0.1-alpha.13",
     "@deepkit/bson": "^1.0.1-alpha.13",
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/orm": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13"
+  },
+  "dependencies": {
     "turbo-net": "deepkit/turbo-net#1.5.0",
     "mongo-uuid": "^1.0.0",
     "saslprep": "^1.0.3"
   },
   "devDependencies": {
+    "@deepkit/crypto": "^1.0.1-alpha.13",
+    "@deepkit/bson": "^1.0.1-alpha.13",
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/orm": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13",
     "@types/mongodb": "^3.5.25",
     "@deepkit/orm-integration": "^1.0.1-alpha.13",
     "mongodb": "^3.6.0",

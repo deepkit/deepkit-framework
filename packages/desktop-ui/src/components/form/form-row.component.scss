@@ -1,8 +1,11 @@
 :host {
     display: flex;
-    margin-bottom: 12px;
 
-    > div:first-child {
+    &:not(:last-child) {
+        margin-bottom: 12px;
+    }
+
+    .label {
         width: 30%;
         margin-right: 8px;
         line-height: 20px;
@@ -15,6 +18,12 @@
         ::ng-deep > * {
             width: 100%;
         }
+    }
+}
+
+:host.left-aligned {
+    .label {
+        text-align: left;
     }
 }
 

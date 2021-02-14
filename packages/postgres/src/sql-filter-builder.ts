@@ -18,4 +18,8 @@ export class PostgreSQLFilterBuilder extends SQLFilterBuilder {
     createPlaceholder() {
         return '$' + (++this.placeholderPosition);
     }
+
+    regexpComparator() {
+        return '~';
+    }
 }

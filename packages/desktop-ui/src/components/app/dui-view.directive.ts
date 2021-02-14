@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Directive, EmbeddedViewRef, Injectable, Input, OnDestroy, TemplateRef, ViewContainerRef } from "@angular/core";
-import { detectChangesNextFrame, scheduleWindowResizeEvent } from "./utils";
+import { Directive, EmbeddedViewRef, Injectable, Input, OnDestroy, TemplateRef, ViewContainerRef } from '@angular/core';
+import { detectChangesNextFrame, scheduleWindowResizeEvent } from './utils';
 
 let i = 0;
 

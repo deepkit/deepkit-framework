@@ -8,19 +8,19 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BrokerKernel } from "@deepkit/broker";
-import { ClassType } from "@deepkit/core";
-import { Database, MemoryDatabaseAdapter } from "@deepkit/orm";
-import { ClassSchema, entity } from "@deepkit/type";
-import { Application } from "./application";
-import { ApplicationServer } from "./application-server";
-import { Broker, BrokerServer, DirectBroker } from "./broker/broker";
-import { DatabaseRegistry } from "./database-registry";
-import { injectorReference } from "./injector/injector";
-import { Provider } from "./injector/provider";
-import { ConsoleTransport, Logger, LoggerLevel, LoggerTransport } from "./logger";
-import { createModule, Module, ModuleOptions } from "./module";
-import { WebMemoryWorkerFactory, WebWorkerFactory } from "./worker";
+import { BrokerKernel } from '@deepkit/broker';
+import { ClassType } from '@deepkit/core';
+import { ConsoleTransport, Logger, MemoryLoggerTransport } from '@deepkit/logger';
+import { Database, MemoryDatabaseAdapter } from '@deepkit/orm';
+import { ClassSchema } from '@deepkit/type';
+import { Application } from './application';
+import { ApplicationServer } from './application-server';
+import { Broker, BrokerServer, DirectBroker } from './broker/broker';
+import { DatabaseRegistry } from './database-registry';
+import { injectorReference } from './injector/injector';
+import { Provider } from './injector/provider';
+import { createModule, Module, ModuleOptions } from './module';
+import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker';
 
 
 export class TestingFascade<A extends Application<any>> {
@@ -50,20 +50,6 @@ export class BrokerMemoryServer extends BrokerServer {
     }
 
     async stop() {
-    }
-}
-
-export class MemoryLoggerTransport implements LoggerTransport {
-    public messages: { level: LoggerLevel, message: string }[] = [];
-    public messageStrings: string[] = [];
-
-    write(message: string, level: LoggerLevel) {
-        this.messages.push({ level, message });
-        this.messageStrings.push(message);
-    }
-
-    supportsColor() {
-        return false;
     }
 }
 

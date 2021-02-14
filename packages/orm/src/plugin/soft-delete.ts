@@ -8,13 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AsyncEventSubscription, ClassType } from "@deepkit/core";
-import { ClassSchema, getClassSchema } from "@deepkit/type";
-import { DatabaseSession } from "../database-session";
-import { Database } from "../database";
-import { DatabaseAdapter } from "../database-adapter";
-import { Query } from "../query";
-import { Entity } from "../type";
+import { AsyncEventSubscription, ClassType } from '@deepkit/core';
+import { ClassSchema, getClassSchema } from '@deepkit/type';
+import { DatabaseSession } from '../database-session';
+import { Database } from '../database';
+import { DatabaseAdapter } from '../database-adapter';
+import { Query } from '../query';
+import { Entity } from '../type';
 
 interface SoftDeleteEntity extends Entity {
     deletedAt?: Date;

@@ -17,9 +17,9 @@ import {
     Input,
     SkipSelf,
     ViewChild
-} from "@angular/core";
-import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
-import Hammer from "hammerjs";
+} from '@angular/core';
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import Hammer from 'hammerjs';
 
 @Component({
     selector: 'dui-slider',

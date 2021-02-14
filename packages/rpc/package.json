@@ -21,17 +21,22 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
-    "@deepkit/type": "^1.0.1-alpha.0",
+    "@deepkit/type": "^1.0.1-alpha.13",
+    "@deepkit/bson": "^1.0.1-alpha.13",
+    "@deepkit/crypto": "^1.0.1-alpha.13",
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.13",
     "rxjs": "~6.6.0"
   },
   "dependencies": {
-    "@deepkit/bson": "^1.0.1-alpha.13",
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
     "dot-prop": "^5.1.1"
   },
   "devDependencies": {
+    "@deepkit/type": "^1.0.1-alpha.13",
+    "@deepkit/bson": "^1.0.1-alpha.13",
+    "@deepkit/crypto": "^1.0.1-alpha.13",
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.13",
     "@types/dot-prop": "^5.0.1",
     "@types/fs-extra": "^9.0.1",
     "reflect-metadata": "^0.1.13",

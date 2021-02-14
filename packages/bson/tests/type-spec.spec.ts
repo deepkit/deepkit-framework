@@ -202,6 +202,11 @@ test('any invalid structure', () => {
     expect(serializeToJson(t.any, SQLiteDatabase)).toEqual(undefined);
 });
 
+test('any keys', () => {
+    const o = {$___newId: 5};
+    expect(serializeToJson(t.any, o)).toEqual(o);
+});
+
 test('map removes undefined when not allowed', () => {
     expect(roundTrip(t.map(t.string), {})).toEqual({});
     expect(roundTrip(t.map(t.string), { foo: 'bar' })).toEqual({ foo: 'bar' });

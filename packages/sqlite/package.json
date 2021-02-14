@@ -22,16 +22,22 @@
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
-  "dependencies": {
+  "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/orm": "^1.0.1-alpha.13",
     "@deepkit/sql": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13"
+  },
+  "dependencies": {
     "@types/better-sqlite3": "^5.4.1",
     "better-sqlite3": "^7.1.1",
     "sqlstring-sqlite": "^0.1.1"
   },
   "devDependencies": {
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/orm": "^1.0.1-alpha.13",
+    "@deepkit/sql": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13",
     "reflect-metadata": "^0.1.13",
     "@deepkit/orm-integration": "^1.0.1-alpha.13"
   },

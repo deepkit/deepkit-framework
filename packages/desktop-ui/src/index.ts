@@ -9,6 +9,7 @@
  */
 
 export { ValueAccessorBase, ngValueAccessor } from './core/form';
+export * from './browser-text';
 export * from './core/form';
 export * from './core/utils';
 export * from './components/app';
@@ -28,3 +29,4 @@ export * from './components/core';
 export * from './components/emoji';
 export * from './components/slider';
 export * from './components/indicator';
+export * from './components/tabs';

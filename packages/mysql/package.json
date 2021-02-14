@@ -22,14 +22,20 @@
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
+  "peerDependencies": {
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/orm": "^1.0.1-alpha.13",
+    "@deepkit/sql": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13"
+  },
   "dependencies": {
+    "mariadb": "^2.5.2"
+  },
+  "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/orm": "^1.0.1-alpha.13",
     "@deepkit/sql": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13",
-    "mariadb": "^2.4.2"
-  },
-  "devDependencies": {
     "@deepkit/orm-integration": "^1.0.1-alpha.13",
     "reflect-metadata": "^0.1.13"
   },

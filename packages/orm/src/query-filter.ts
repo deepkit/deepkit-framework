@@ -83,7 +83,11 @@ function convertProperty(
                     }
                 } else if (key === '$in' || key === '$nin') {
                     fieldNamesMap[name] = true;
-                    (fieldValue as any)[key] = (value as any[]).map(v => converter(schema, name, v));
+                    if (isArray(value)) {
+                        (fieldValue as any)[key] = value.map(v => converter(schema, name, v));
+                    } else {
+                        (fieldValue as any)[key] = [];
+                    }
                 } else if (key === '$text' || key === '$exists' || key === '$mod' || key === '$size' || key === '$type'
                     || key === '$regex' || key === '$where' || key === '$elemMatch') {
                     fieldNamesMap[name] = true;

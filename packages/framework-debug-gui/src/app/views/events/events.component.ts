@@ -10,7 +10,7 @@
 
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { ControllerClient } from '../../client';
-import { Event } from '@deepkit/framework-debug-shared';
+import { Event } from '@deepkit/framework-debug-api';
 
 @Component({
   template: `

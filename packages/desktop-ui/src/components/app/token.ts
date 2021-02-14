@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { InjectionToken } from "@angular/core";
+import { InjectionToken } from '@angular/core';
 
 export const ELECTRON_WINDOW = new InjectionToken('Electron window');
 

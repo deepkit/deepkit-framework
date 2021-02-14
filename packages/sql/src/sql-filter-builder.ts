@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { isPlainObject } from '@deepkit/core';
+import { isArray, isPlainObject } from '@deepkit/core';
 import { ClassSchema, resolvePropertySchema, Serializer } from '@deepkit/type';
 
 type Filter = { [name: string]: any };
@@ -27,23 +27,28 @@ export class SQLFilterBuilder {
     }
 
     createPlaceholder(): string {
-        return '?'
+        return '?';
     }
 
     isNull() {
         return 'IS NULL';
     }
 
+    regexpComparator() {
+        return 'REGEXP';
+    }
+
     convert(filter: Filter): string {
         return this.conditions(filter, 'AND').trim();
     }
 
-    /** 
+    /**
      * Normalizes values necessary for the conection driver to bind parameters for prepared statements.
      * E.g. SQLite does not support boolean, so we convert boolean to number.
-    */
+     */
     protected bindValue(value: any): any {
         if (value === undefined) return null; //no SQL driver supports undefined
+        if (value instanceof RegExp) return value.source;
         return value;
     }
 
@@ -59,8 +64,8 @@ export class SQLFilterBuilder {
     }
 
     protected quoteIdWithTable(id: string): string {
-        if (this.tableName) return `${this.tableName}.${this.quoteId(id)}`; 
-        return `${this.quoteId(id)}`; 
+        if (this.tableName) return `${this.tableName}.${this.quoteId(id)}`;
+        return `${this.quoteId(id)}`;
     }
 
     protected condition(fieldName: string | undefined, value: any, comparison: 'eq' | 'gt' | 'gte' | 'in' | 'lt' | 'lte' | 'ne' | 'nin' | string): string {
@@ -75,6 +80,7 @@ export class SQLFilterBuilder {
         let cmpSign: string;
 
         if (comparison === 'eq') cmpSign = '=';
+        else if (comparison === 'neq') cmpSign = '!=';
         else if (comparison === 'gt') cmpSign = '>';
         else if (comparison === 'gte') cmpSign = '>=';
         else if (comparison === 'lt') cmpSign = '<';
@@ -82,6 +88,7 @@ export class SQLFilterBuilder {
         else if (comparison === 'ne') cmpSign = '!=';
         else if (comparison === 'in') cmpSign = 'IN';
         else if (comparison === 'nin') cmpSign = 'NOT IN';
+        else if (comparison === 'regex') cmpSign = this.regexpComparator();
         else throw new Error(`Comparator ${comparison} not supported.`);
 
         const isReference = 'string' === typeof value && value[0] === '$';
@@ -93,14 +100,29 @@ export class SQLFilterBuilder {
                 cmpSign = this.isNull();
                 rvalue = '';
             } else {
-                rvalue = this.createPlaceholder();
                 const property = resolvePropertySchema(this.schema, fieldName);
 
-                if (!property.isReference && !property.backReference && (property.type === 'class' || property.type === 'map' || property.type === 'array')) {
-                    value = JSON.stringify(value);
-                }
+                if (comparison === 'in' || comparison === 'nin') {
+                    if (isArray(value)) {
+                        const params: string[] = [];
+                        for (let item of value) {
+                            params.push(this.createPlaceholder());
 
-                this.params.push(this.bindValue(value));
+                            if (!property.isReference && !property.backReference && (property.type === 'class' || property.type === 'map' || property.type === 'array')) {
+                                item = JSON.stringify(item);
+                            }
+                            this.params.push(this.bindValue(item));
+                        }
+                        rvalue = params.length ? `(${params.join(', ')})` : '(null)';
+                    }
+                } else {
+                    rvalue = this.createPlaceholder();
+
+                    if (!property.isReference && !property.backReference && (property.type === 'class' || property.type === 'map' || property.type === 'array')) {
+                        value = JSON.stringify(value);
+                    }
+                    this.params.push(this.bindValue(value));
+                }
             }
         }
 

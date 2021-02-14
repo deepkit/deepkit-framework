@@ -312,7 +312,7 @@ export function createBSONSizer(schema: ClassSchema, jitStack: JitStack = new Ji
     const prepared = jitStack.prepare(schema);
 
 
-    for (const property of schema.getClassProperties().values()) {
+    for (const property of schema.getProperties()) {
         //todo, support non-ascii names
 
         let setDefault = '';
@@ -971,7 +971,7 @@ function createBSONSerialize(schema: ClassSchema, jitStack: JitStack = new JitSt
     let functionCode = '';
 
     let getPropertyCode: string[] = [];
-    for (const property of schema.getClassProperties().values()) {
+    for (const property of schema.getProperties()) {
 
         let setDefault = '';
         if (property.hasManualDefaultValue() || property.type === 'literal') {

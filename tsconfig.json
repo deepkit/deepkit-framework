@@ -11,7 +11,7 @@
       "path": "packages/crypto/tsconfig.json"
     },
     {
-      "path": "packages/framework-debug-shared/tsconfig.json"
+      "path": "packages/framework-debug-api/tsconfig.json"
     },
     {
       "path": "packages/framework/tsconfig.json"
@@ -45,6 +45,18 @@
     },
     {
       "path": "packages/rpc-tcp/tsconfig.json"
+    },
+    {
+      "path": "packages/logger/tsconfig.json"
+    },
+    {
+      "path": "packages/orm/tsconfig.json"
+    },
+    {
+      "path": "packages/orm-browser/tsconfig.json"
+    },
+    {
+      "path": "packages/orm-browser-api/tsconfig.json"
     },
     {
       "path": "packages/orm-integration/tsconfig.json"

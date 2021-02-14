@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseModel, ForeignKey, Table, parseType, SchemaParser } from '@deepkit/sql';
+import { DatabaseModel, ForeignKey, parseType, SchemaParser, Table } from '@deepkit/sql';
 
 export class PostgresSchemaParser extends SchemaParser {
     protected defaultPrecisions = {

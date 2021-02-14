@@ -19,9 +19,9 @@ import {
     SkipSelf,
     TemplateRef,
     ViewChild
-} from "@angular/core";
-import { WindowState } from "./window-state";
-import { Electron } from "../../core/utils";
+} from '@angular/core';
+import { WindowState } from './window-state';
+import { Electron } from '../../core/utils';
 
 @Component({
     selector: 'dui-window-header',
@@ -59,7 +59,7 @@ export class WindowHeaderComponent implements OnDestroy {
         return this.windowState.toolbars['default'] && this.windowState.toolbars['default'].length;
     }
 
-    protected focusSub = this.windowState.focus.subscribe((v) => {
+    protected focusSub: any = this.windowState.focus.subscribe((v) => {
         this.cdParent.markForCheck();
     });
 

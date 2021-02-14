@@ -70,7 +70,6 @@ export class TcpRpcServer {
             throw new Error('Turbo doesnt support unix sockets. Use NetTcpRpcServer instead.');
         } else {
             this.turbo.listen(this.host.port || 8811, this.host.host, () => {
-                console.log('server listen', this.host.host, this.host.port || 8811);
             });
         }
     }

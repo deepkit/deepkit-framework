@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { atomicChange, Changes } from '../src/changes';
+import { atomicChange, Changes } from '@deepkit/type';
 
 
 test('atomic', () => {
@@ -34,5 +34,8 @@ test('changes', () => {
 
         changes.replaceSet({});
         expect(changes.empty).toBe(true);
+
+        changes.mergeSet({b: true});
+        expect(changes.empty).toBe(false);
     }
 });

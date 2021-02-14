@@ -8,9 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ChangeDetectorRef, OnDestroy, Pipe, PipeTransform } from "@angular/core";
-import { Observable, Subscription } from "rxjs";
-import { detectChangesNextFrame } from "./utils";
+import { ChangeDetectorRef, OnDestroy, Pipe, PipeTransform } from '@angular/core';
+import { Observable, Subscription } from 'rxjs';
+import { detectChangesNextFrame } from './utils';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { humanBytes } from '@deepkit/core';
 
 /**
  * Almost the same as |async pipe, but renders directly (detectChanges() instead of marking it only(markForCheck())
@@ -45,5 +47,32 @@ export class AsyncRenderPipe implements OnDestroy, PipeTransform {
         }
 
         return this.lastReturnedValue;
+    }
+}
+
+@Pipe({name: 'objectURL'})
+export class ObjectURLPipe implements PipeTransform, OnDestroy {
+    protected lastUrl?: string;
+
+    constructor(private sanitizer: DomSanitizer) {
+    }
+
+    ngOnDestroy(): void {
+        if (this.lastUrl) URL.revokeObjectURL(this.lastUrl);
+    }
+
+    transform(buffer?: ArrayBuffer | ArrayBufferView): SafeUrl | undefined {
+        if (buffer) {
+            if (this.lastUrl) URL.revokeObjectURL(this.lastUrl);
+            this.lastUrl = URL.createObjectURL(new Blob([buffer]));
+            return this.sanitizer.bypassSecurityTrustResourceUrl(this.lastUrl);
+        }
+    }
+}
+
+@Pipe({name: 'fileSize'})
+export class HumanFileSizePipe implements PipeTransform {
+    transform(bytes: number, si: boolean = false): string {
+        return humanBytes(bytes, si);
     }
 }

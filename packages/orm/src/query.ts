@@ -9,10 +9,17 @@
  */
 
 import { ClassType, empty } from '@deepkit/core';
-import { ClassSchema, ExtractPrimaryKeyType, ExtractReferences, PrimaryKeyFields, PropertySchema } from '@deepkit/type';
+import {
+    Changes,
+    ChangesInterface,
+    ClassSchema,
+    ExtractPrimaryKeyType,
+    ExtractReferences,
+    getSimplePrimaryKeyHashGenerator,
+    PrimaryKeyFields,
+    PropertySchema
+} from '@deepkit/type';
 import { Subject } from 'rxjs';
-import { Changes, ChangesInterface } from './changes';
-import { getSimplePrimaryKeyHashGenerator } from './converter';
 import { DatabaseAdapter } from './database-adapter';
 import { DatabaseSession } from './database-session';
 import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event';
@@ -442,7 +449,7 @@ export class BaseQuery<T extends Entity> {
 export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = DatabaseAdapter, MODEL extends DatabaseQueryModel<T> = DatabaseQueryModel<T>> {
     constructor(
         protected classSchema: ClassSchema<T>,
-        protected databaseSession: DatabaseSession<ADAPTER>,
+        protected session: DatabaseSession<ADAPTER>,
     ) {
     }
 
@@ -624,17 +631,20 @@ export class Query<T extends Entity> extends BaseQuery<T> {
             $unset: (patch as Changes<T>).$unset,
         });
 
-        for (const property of this.classSchema.getClassProperties().values()) {
+        for (const property of this.classSchema.getProperties()) {
             if (property.name in patch) {
                 changes.set(property.name as any, (patch as any)[property.name]);
             }
         }
 
+        
         const patchResult: PatchResult<T> = {
             modified: 0,
             returning: {},
             primaryKeys: []
         };
+
+        if (changes.empty) return patchResult;
 
         const hasEvents = this.databaseSession.queryEmitter.onPatchPre.hasSubscriptions() || this.databaseSession.queryEmitter.onPatchPost.hasSubscriptions();
         if (!hasEvents) {

@@ -9,7 +9,8 @@
  */
 
 import { AfterViewInit, ChangeDetectorRef, Component, ContentChildren, Input, OnChanges, QueryList, SimpleChanges, TemplateRef, ViewChild } from '@angular/core';
-import { Workflow } from '@deepkit/framework-debug-shared';
+import { BrowserText } from '@deepkit/desktop-ui';
+import { Workflow } from '@deepkit/framework-debug-api';
 import { graphlib, layout, Node } from 'dagre';
 
 @Component({
@@ -20,9 +21,9 @@ export class WorkflowCardComponent {
   /**
    * The name of the field of T.
    */
-  @Input('name') name!: string;
+  @Input() name!: string;
 
-  @Input('class') class!: string;
+  @Input() class!: string;
 
   @ViewChild('templateRef', { static: false }) template!: TemplateRef<any>;
 }
@@ -67,16 +68,15 @@ export class WorkflowComponent implements OnChanges, AfterViewInit {
   public edges: string[] = [];
   public graphWidth = 0;
   public graphHeight = 0;
-  public nodeWidth = 130;
-  public nodeHeight = 40;
 
   public cardMap: { [name: string]: WorkflowCardComponent } = {};
+
+  protected browserText = new BrowserText();
 
   @ContentChildren(WorkflowCardComponent) cards?: QueryList<WorkflowCardComponent>;
 
   constructor(protected cd: ChangeDetectorRef) {
   }
-
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes.workflow) this.loadGraph();
@@ -111,11 +111,9 @@ export class WorkflowComponent implements OnChanges, AfterViewInit {
       return { labelpos: 'c', labeloffset: 0 };
     });
 
-    const width = this.nodeWidth;
-    const height = this.nodeHeight;
-
     for (const node of this.workflow.places) {
-      g.setNode(node, { label: node, width, height });
+      const dim = this.browserText.getDimensions(node);
+      g.setNode(node, { label: node, width: Math.max(90, dim.width + 30), height: Math.max(40, dim.height) });
     }
 
     for (const transition of this.workflow.transitions) {

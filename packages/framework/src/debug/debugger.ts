@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DebugRequest } from '@deepkit/framework-debug-shared';
+import { DebugRequest } from '@deepkit/framework-debug-api';
 import { DatabaseAdapter, DatabaseSession } from '@deepkit/orm';
 import { appendFileSync, mkdirSync, openSync } from 'fs';
 import { join } from 'path';

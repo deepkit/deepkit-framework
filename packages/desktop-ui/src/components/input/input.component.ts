@@ -20,9 +20,9 @@ import {
     Output,
     SkipSelf,
     ViewChild
-} from "@angular/core";
-import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
-import { detectChangesNextFrame } from "../app";
+} from '@angular/core';
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { detectChangesNextFrame } from '../app';
 import { DatePipe } from '@angular/common';
 
 const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
@@ -61,6 +61,7 @@ const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
         '[class.is-textarea]': 'type === "textarea"',
         '[class.light-focus]': 'lightFocus !== false',
         '[class.semi-transparent]': 'semiTransparent !== false',
+        '[class.no-controls]': 'noControls !== false',
     },
     providers: [ngValueAccessor(InputComponent)]
 })
@@ -91,12 +92,19 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
     @Input() lightFocus: boolean | '' = false;
 
     /**
+     * Disables input controls (like for type=number the arrow buttons)
+     */
+    @Input() noControls: boolean | '' = false;
+
+    /**
      * Appears a little bit transparent. Perfect for blurry background.
      */
     @Input() semiTransparent: boolean | '' = false;
 
     @Output() esc = new EventEmitter<KeyboardEvent>();
     @Output() enter = new EventEmitter<KeyboardEvent>();
+    @Output() keyDown = new EventEmitter<KeyboardEvent>();
+    @Output() keyUp = new EventEmitter<KeyboardEvent>();
 
     @ViewChild('input', { static: false }) input?: ElementRef<HTMLInputElement | HTMLTextAreaElement>;
 
@@ -178,7 +186,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
         } else if (this.type === 'number') {
         } else if (dateTimeTypes.includes(this.type)) {
             if (super.innerValue instanceof Date) {
-                return this.datePipe.transform(super.innerValue, 'yyyy-MM-dd');
+                return this.datePipe.transform(super.innerValue, 'yyyy-MM-ddThh:mm:ss.SSS');
             }
         }
 
@@ -211,6 +219,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
 
     onKeyDown(event: KeyboardEvent) {
         this.touch();
+        this.keyDown.emit(event);
     }
 
     onKeyUp(event: KeyboardEvent) {
@@ -221,6 +230,8 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
         if (event.key.toLowerCase() === 'esc' || event.key.toLowerCase() === 'escape') {
             this.esc.emit(event);
         }
+
+        this.keyUp.emit(event);
     }
 
     focusInput() {

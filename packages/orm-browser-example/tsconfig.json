@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "moduleResolution": "node",
+    "target": "es2018",
+    "module": "CommonJS",
+    "esModuleInterop": true,
+
+    "outDir": "./dist/cjs",
+    "declaration": true,
+    "composite": true
+  },
+  "include": [
+    "database.ts",
+    "./bookstore/*ts"
+  ],
+  "references": [
+    {
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.json"
+    },
+    {
+      "path": "../orm/tsconfig.json"
+    },
+    {
+      "path": "../sqlite/tsconfig.json"
+    }
+  ]
+}

@@ -9,11 +9,15 @@
  */
 
 import { DatabaseSession } from './database-session';
-import { DatabaseQueryModel, Query, GenericQueryResolver } from './query';
-import { ClassSchema, CompilerState, getClassSchema, jsonSerializer, PropertySchema } from '@deepkit/type';
+import { DatabaseQueryModel, GenericQueryResolver, Query } from './query';
+import { Changes, ClassSchema, CompilerState, getClassSchema, jsonSerializer, PropertySchema } from '@deepkit/type';
 import { ClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
-import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
-import { Changes } from './changes';
+import {
+    DatabaseAdapter,
+    DatabaseAdapterQueryFactory,
+    DatabasePersistence,
+    DatabasePersistenceChangeSet
+} from './database-adapter';
 import { DeleteResult, Entity, PatchResult } from './type';
 import { findQueryList } from './utils';
 import { convertQueryFilter } from './query-filter';
@@ -139,8 +143,8 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
                 return new Formatter(
                     this.classSchema,
                     memorySerializer,
-                    this.databaseSession.getHydrator(),
-                    withIdentityMap ? this.databaseSession.identityMap : undefined
+                    this.session.getHydrator(),
+                    withIdentityMap ? this.session.identityMap : undefined
                 );
             }
 

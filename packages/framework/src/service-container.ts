@@ -8,15 +8,21 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { arrayRemoveItem, ClassType, getClassName, isClass } from '@deepkit/core';
+import { arrayRemoveItem, ClassType, isClass } from '@deepkit/core';
 import { httpClass } from './decorator';
 import { EventDispatcher } from './event';
 import { Module, ModuleOptions } from './module';
-import { ConfiguredProviderRegistry, Injector, tokenLabel } from './injector/injector';
+import {
+    ConfiguredProviderRegistry,
+    Context,
+    ContextRegistry,
+    Injector,
+    InjectorContext,
+    tokenLabel
+} from './injector/injector';
 import { ProviderWithScope, Tag } from './injector/provider';
 import { rpcClass } from '@deepkit/rpc';
 import { cli } from './command';
-import { InjectorContext, Context, ContextRegistry } from './injector/injector';
 import { WorkflowDefinition } from './workflow';
 
 export interface OnInit {
@@ -76,11 +82,16 @@ export class WorkflowRegistry {
 export class TagProviders {
     constructor(
         public tags: Tag<any>[] = []
-    ) { }
+    ) {
+    }
 
     getProviders<T extends ClassType<Tag<any>>>(tag: T): InstanceType<T>[] {
         return this.tags.filter(v => v instanceof tag) as any;
     }
+}
+
+function isProvided(providers: ProviderWithScope[], token: any): boolean {
+    return providers.find(v => !(v instanceof Tag) ? token === (isClass(v) ? v : v.provide) : false) !== undefined;
 }
 
 export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>> {
@@ -255,29 +266,24 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         for (const controller of controllers) {
             const rpcConfig = rpcClass._fetch(controller);
             if (rpcConfig) {
-                providers.unshift({ provide: controller, scope: 'rpc' });
+                if (!isProvided(providers, controller)) providers.unshift({ provide: controller, scope: 'rpc' });
                 (controller as any)[InjectorContext.contextSymbol] = context;
                 this.rpcControllers.controllers.set(rpcConfig.getPath(), controller);
-                continue;
             }
 
             const httpConfig = httpClass._fetch(controller);
             if (httpConfig) {
-                providers.unshift({ provide: controller, scope: 'http' });
+                if (!isProvided(providers, controller)) providers.unshift({ provide: controller, scope: 'http' });
                 (controller as any)[InjectorContext.contextSymbol] = context;
                 this.httpControllers.add(controller);
-                continue;
             }
 
             const cliConfig = cli._fetch(controller);
             if (cliConfig) {
-                providers.unshift({ provide: controller, scope: 'cli' });
+                if (!isProvided(providers, controller)) providers.unshift({ provide: controller, scope: 'cli' });
                 (controller as any)[InjectorContext.contextSymbol] = context;
                 this.cliControllers.controllers.set(cliConfig.name, controller);
-                continue;
             }
-
-            throw new Error(`Controller ${getClassName(controller)} has no @http.controller() or @rpc.controller() decorator`);
         }
 
         //if there are exported tokens, their providers will be added to the parent or root context

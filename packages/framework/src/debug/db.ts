@@ -8,13 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DebugRequest } from '@deepkit/framework-debug-shared';
+import { DebugRequest } from '@deepkit/framework-debug-api';
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { dirname, join } from 'path';
 import { inject } from '../injector/injector';
 import { kernelConfig } from '../kernel.config';
 import fsExtra from 'fs-extra';
+
 const { ensureDirSync } = fsExtra;
 
 export class DebugDatabase extends Database {

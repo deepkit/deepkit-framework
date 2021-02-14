@@ -8,7 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection } from '@deepkit/rpc';
+import {
+    ConnectionWriter,
+    RpcConnectionWriter,
+    RpcKernel,
+    RpcKernelBaseConnection,
+    RpcKernelConnection
+} from '@deepkit/rpc';
 import http, { Server } from 'http';
 import https from 'https';
 import WebSocket from 'ws';
@@ -22,7 +28,7 @@ import { SecureContextOptions, TlsOptions } from 'tls';
 import selfsigned from 'selfsigned';
 import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { Logger } from './logger';
+import { Logger } from '@deepkit/logger';
 import { ClassType } from '@deepkit/core';
 
 export interface WebServerOptions {

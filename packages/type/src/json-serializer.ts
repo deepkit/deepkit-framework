@@ -10,7 +10,13 @@
 
 import { ClassType, getEnumLabels, getEnumValues, getValidEnumValue, isObject, isValidEnumValue } from '@deepkit/core';
 import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64 } from './core';
-import { getClassToXFunction, getPartialClassToXFunction, getPartialXToClassFunction, getXToClassFunction, JitConverterOptions } from './jit';
+import {
+    getClassToXFunction,
+    getPartialClassToXFunction,
+    getPartialXToClassFunction,
+    getXToClassFunction,
+    JitConverterOptions
+} from './jit';
 import { jsonTypeGuards } from './json-typeguards';
 import { ClassSchema, getClassSchema, getClassTypeFromInstance, PropertySchema } from './model';
 import { Serializer } from './serializer';
@@ -87,7 +93,7 @@ export function validatedPlainToClass<T extends ClassType | ClassSchema>(
 }
 
 export function isBinaryJSON(v: any): boolean {
-    return v && v['∏type'] === 'binary' && typeof v.data === 'string';
+    return v && v['$type'] === 'binary' && typeof v.data === 'string';
 }
 
 /**
@@ -206,15 +212,15 @@ jsonSerializer.toClass.register('arrayBuffer', (property: PropertySchema, state:
     state.addSetter(`${state.accessor} instanceof ArrayBuffer ? ${state.accessor} : (isBinaryJSON(${state.accessor}) ? base64ToArrayBuffer(${state.accessor}.data): new ArrayBuffer())`);
 });
 
-//we need to add '∏type' to make union with auto-detection work
+//we need to add '$type' to make union with auto-detection work
 jsonSerializer.fromClass.registerForBinary((property: PropertySchema, state: CompilerState) => {
     state.setContext({ typedArrayToBase64 });
-    state.addSetter(`{'∏type': 'binary', data: typedArrayToBase64(${state.accessor})}`);
+    state.addSetter(`{'$type': 'binary', data: typedArrayToBase64(${state.accessor})}`);
 });
 
 jsonSerializer.fromClass.register('arrayBuffer', (property: PropertySchema, state: CompilerState) => {
     state.setContext({ arrayBufferToBase64 });
-    state.addSetter(`{'∏type': 'binary', data: arrayBufferToBase64(${state.accessor})}`);
+    state.addSetter(`{'$type': 'binary', data: arrayBufferToBase64(${state.accessor})}`);
 });
 
 const convertToPlainUsingToJson = (property: PropertySchema, state: CompilerState) => {

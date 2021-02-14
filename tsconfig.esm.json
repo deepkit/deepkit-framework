@@ -32,6 +32,9 @@
       "path": "packages/sqlite/tsconfig.esm.json"
     },
     {
+      "path": "packages/logger/tsconfig.esm.json"
+    },
+    {
       "path": "packages/rpc/tsconfig.esm.json"
     },
     {

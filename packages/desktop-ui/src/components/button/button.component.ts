@@ -26,11 +26,11 @@ import {
     Optional,
     Output,
     SkipSelf
-} from "@angular/core";
-import { WindowComponent } from "../window/window.component";
-import { WindowState } from "../window/window-state";
-import { FormComponent } from "../form/form.component";
-import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
+} from '@angular/core';
+import { WindowComponent } from '../window/window.component';
+import { WindowState } from '../window/window-state';
+import { FormComponent } from '../form/form.component';
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 
 @Component({
     selector: 'dui-button',
@@ -49,10 +49,11 @@ import { ngValueAccessor, ValueAccessorBase } from "../../core/form";
         '[class.primary]': 'primary !== false',
         '[class.icon-left]': 'iconRight === false',
         '[class.icon-right]': 'iconRight !== false',
+        '[class.with-text]': 'hasText()',
     },
     styleUrls: ['./button.component.scss'],
 })
-export class ButtonComponent implements OnInit {
+export class ButtonComponent implements OnInit, AfterViewInit {
 
     /**
      * The icon for this button. Either a icon name same as for dui-icon, or an image path.
@@ -103,6 +104,13 @@ export class ButtonComponent implements OnInit {
      */
     @Input() submitForm?: FormComponent;
 
+    /**
+     * Auto-detected but could be set manually as well.
+     * Necessary for correct icon placement.
+     */
+    withText?: boolean;
+    protected detectedText: boolean = false;
+
     constructor(
         public element: ElementRef,
         @SkipSelf() public cdParent: ChangeDetectorRef,
@@ -111,7 +119,11 @@ export class ButtonComponent implements OnInit {
         this.element.nativeElement.removeAttribute('tabindex');
     }
 
-    @Input() disabled: boolean = false;
+    hasText() {
+        return this.withText === undefined ? this.detectedText : this.withText;
+    }
+
+    @Input() disabled: boolean | '' = false;
 
     @HostBinding('class.disabled')
     get isDisabled() {
@@ -145,6 +157,17 @@ export class ButtonComponent implements OnInit {
         }
     }
 
+    ngAfterViewInit() {
+        if (this.icon) {
+            const content = this.element.nativeElement.innerText.trim();
+            const hasText = content !== this.icon && content.length > 0;
+            if (hasText) {
+                this.detectedText = true;
+                this.cdParent.detectChanges();
+            }
+        }
+    }
+
     @HostListener('click')
     async onClick() {
         if (this.isDisabled) return;
@@ -162,7 +185,7 @@ export class ButtonComponent implements OnInit {
     selector: 'dui-button-group',
     template: '<ng-content></ng-content>',
     host: {
-        '[class.float-right]': "float==='right'",
+        '[class.float-right]': 'float===\'right\'',
         '(transitionend)': 'transitionEnded()'
     },
     styleUrls: ['./button-group.component.scss']
@@ -291,7 +314,7 @@ export class FileChooserDirective extends ValueAccessorBase<any> implements OnDe
                 this.duiFileChooserChange.emit(this.innerValue);
                 this.app.tick();
             }
-        })
+        });
     }
 
     ngOnDestroy() {
@@ -338,8 +361,9 @@ function readFile(file: File): Promise<Uint8Array | undefined> {
     selector: '[duiFilePicker]',
     providers: [ngValueAccessor(FileChooserDirective)]
 })
-export class FilePickerDirective extends ValueAccessorBase<any> implements OnDestroy {
+export class FilePickerDirective extends ValueAccessorBase<any> implements OnDestroy, AfterViewInit {
     @Input() duiFileMultiple?: boolean | '' = false;
+    @Input() duiFileAutoOpen: boolean = false;
 
     @Output() duiFilePickerChange = new EventEmitter<FilePickerItem | FilePickerItem[]>();
 
@@ -380,10 +404,14 @@ export class FilePickerDirective extends ValueAccessorBase<any> implements OnDes
                 this.duiFilePickerChange.emit(this.innerValue);
                 this.app.tick();
             }
-        })
+        });
     }
 
     ngOnDestroy() {
+    }
+
+    ngAfterViewInit() {
+        if (this.duiFileAutoOpen) this.onClick();
     }
 
     @HostListener('click')

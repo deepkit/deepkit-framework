@@ -9,8 +9,7 @@
  */
 
 import { AsyncEmitterEvent, AsyncEventEmitter, ClassType } from '@deepkit/core';
-import type { ClassSchema, ExtractPrimaryKeyType } from '@deepkit/type';
-import type { Changes } from './changes';
+import type { Changes, ClassSchema, ExtractPrimaryKeyType } from '@deepkit/type';
 import type { DatabasePersistenceChangeSet } from './database-adapter';
 import type { DatabaseSession } from './database-session';
 import type { Query } from './query';

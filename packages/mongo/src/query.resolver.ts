@@ -9,7 +9,6 @@
  */
 
 import {
-    Changes,
     DatabaseAdapter,
     DatabaseSession,
     DeleteResult,
@@ -18,7 +17,7 @@ import {
     GenericQueryResolver,
     PatchResult
 } from '@deepkit/orm';
-import { ClassSchema, createClassSchema, getClassSchema, resolveClassTypeOrForward, t } from '@deepkit/type';
+import { Changes, ClassSchema, createClassSchema, getClassSchema, resolveClassTypeOrForward, t } from '@deepkit/type';
 import { MongoClient } from './client/client';
 import { AggregateCommand } from './client/command/aggregate';
 import { CountCommand } from './client/command/count';
@@ -468,7 +467,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             }
             return res;
         } else {
-            // for (const v of classSchema.getClassProperties().keys()) {
+            // for (const v of classSchema.getPropertiesMap().keys()) {
             //     (res as any)[v] = 1;
             // }
             return undefined;
@@ -479,8 +478,8 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         return new Formatter(
             this.classSchema,
             mongoSerializer,
-            this.databaseSession.getHydrator(),
-            withIdentityMap ? this.databaseSession.identityMap : undefined
+            this.session.getHydrator(),
+            withIdentityMap ? this.session.identityMap : undefined
         );
     }
 

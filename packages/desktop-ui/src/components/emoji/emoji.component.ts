@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Component, Input } from "@angular/core";
-import { Emoji, emojis } from "./emojis";
+import { Component, Input } from '@angular/core';
+import { Emoji, emojis } from './emojis';
 
 @Component({
     selector: 'dui-emoji',

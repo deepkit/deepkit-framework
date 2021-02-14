@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DefaultPlatform, isSet, Column, Index, Table, parseType } from '@deepkit/sql';
+import { Column, DefaultPlatform, Index, isSet, parseType, Table } from '@deepkit/sql';
 import { postgresSerializer } from './postgres-serializer';
 import { ClassSchema, isArray, PostgresOptions, PropertySchema } from '@deepkit/type';
 import { PostgresSchemaParser } from './postgres-schema-parser';

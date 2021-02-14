@@ -74,14 +74,13 @@ test('router parameters', async () => {
 
     expect(await httpHandler.handleRequestFor('GET', '/user/peter')).toBe('peter');
     expect(await httpHandler.handleRequestFor('GET', '/user-id/123')).toBe(123);
-    await expect(httpHandler.handleRequestFor('GET', '/user-id/asd')).rejects.toThrow('No number given');
+    expect(await httpHandler.handleRequestFor('GET', '/user-id/asd')).toMatchObject({ message: 'Validation failed: id(No number given): invalid_number' });
     expect(await httpHandler.handleRequestFor('GET', '/boolean/1')).toBe(true);
     expect(await httpHandler.handleRequestFor('GET', '/boolean/false')).toBe(false);
 
     expect(await httpHandler.handleRequestFor('GET', '/any')).toBe('any');
     expect(await httpHandler.handleRequestFor('GET', '/any/path')).toBe('any/path');
 });
-
 
 test('router HttpRequest', async () => {
     class Controller {
@@ -128,9 +127,8 @@ test('router parameterResolver', async () => {
     const httpHandler = app.get(HttpKernel);
 
     expect(await httpHandler.handleRequestFor('GET', '/user/peter')).toEqual(['peter']);
-    await expect(httpHandler.handleRequestFor('GET', '/group')).rejects.toThrow('No :username specified');
+    expect(await httpHandler.handleRequestFor('GET', '/group')).toEqual('Internal error');
 });
-
 
 test('router body', async () => {
     class Body {

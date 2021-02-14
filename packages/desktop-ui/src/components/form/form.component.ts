@@ -12,19 +12,21 @@ import {
     ChangeDetectorRef,
     Component,
     ContentChild,
-    EventEmitter, HostListener,
+    EventEmitter,
+    HostListener,
     Input,
     OnChanges,
-    Output, SimpleChanges,
+    Output,
+    SimpleChanges,
     SkipSelf
-} from "@angular/core";
-import { FormGroup, NgControl } from "@angular/forms";
-import { detectChangesNextFrame } from "../app";
+} from '@angular/core';
+import { FormGroup, NgControl } from '@angular/forms';
+import { detectChangesNextFrame } from '../app';
 
 @Component({
     selector: 'dui-form-row',
     template: `
-        <div>{{label}}</div>
+        <div class="label" [style.width.px]="labelWidth">{{label}}</div>
         <div class="field">
             <ng-content></ng-content>
 
@@ -34,12 +36,18 @@ import { detectChangesNextFrame } from "../app";
                 </div>
             </div>
         </div>`,
+    host: {
+        '[class.left-aligned]': 'left !== false'
+    },
     styleUrls: ['./form-row.component.scss']
 })
 export class FormRowComponent {
     @Input() label: string = '';
 
-    @ContentChild(NgControl, { static: false }) ngControl?: NgControl;
+    @Input() labelWidth?: number;
+    @Input() left?: boolean | '' = false;
+
+    @ContentChild(NgControl, {static: false}) ngControl?: NgControl;
 
     isString(v: any) {
         return 'string' === typeof v;

@@ -14,7 +14,7 @@ import {
     ChangeDetectorRef,
     Component,
     ComponentRef,
-    Directive,
+    Directive, ElementRef,
     EventEmitter,
     HostListener,
     Injector,
@@ -29,18 +29,21 @@ import {
     Type,
     ViewChild,
     ViewContainerRef
-} from "@angular/core";
-import { Overlay, OverlayRef } from "@angular/cdk/overlay";
-import { ComponentPortal } from "@angular/cdk/portal";
-import { WindowRegistry } from "../window/window-state";
-import { WindowComponent } from "../window/window.component";
-import { RenderComponentDirective } from "../core/render-component.directive";
-import { IN_DIALOG } from "../app/token";
+} from '@angular/core';
+import { Overlay, OverlayRef } from '@angular/cdk/overlay';
+import { ComponentPortal } from '@angular/cdk/portal';
+import { WindowRegistry } from '../window/window-state';
+import { WindowComponent } from '../window/window.component';
+import { RenderComponentDirective } from '../core/render-component.directive';
+import { IN_DIALOG } from '../app/token';
+import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule, unsubscribe } from '../app';
+import { Subscription } from 'rxjs';
+import { ButtonComponent } from '../button';
 
 @Component({
     template: `
         <dui-window>
-            <dui-window-content>
+            <dui-window-content class="{{class}}">
                 <ng-container *ngIf="component"
                               #renderComponentDirective
                               [renderComponent]="component" [renderComponentInputs]="componentInputs">
@@ -74,6 +77,7 @@ export class DialogWrapperComponent {
     actions?: TemplateRef<any> | undefined;
     container?: TemplateRef<any> | undefined;
     content?: TemplateRef<any> | undefined;
+    class: string = '';
 
     @ViewChild(RenderComponentDirective, { static: false }) renderComponentDirective?: RenderComponentDirective;
 
@@ -109,6 +113,10 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     @Input() visible: boolean = false;
     @Output() visibleChange = new EventEmitter<boolean>();
 
+    @Input() class: string = '';
+
+    @Input() noPadding: boolean | '' = false;
+
     @Input() minWidth?: number | string;
     @Input() minHeight?: number | string;
 
@@ -136,8 +144,11 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     public overlayRef?: OverlayRef;
     public wrapperComponentRef?: ComponentRef<DialogWrapperComponent>;
 
+    protected lastOverlayStackItem?: OverlayStackItem;
+
     constructor(
         protected applicationRef: ApplicationRef,
+        protected overlayStack: OverlayStack,
         protected viewContainerRef: ViewContainerRef,
         protected cd: ChangeDetectorRef,
         protected overlay: Overlay,
@@ -152,8 +163,8 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         return new Promise((resolve) => {
             this.closed.subscribe((v: any) => {
                 resolve(v);
-            })
-        })
+            });
+        });
     }
 
     public setDialogContainer(container: TemplateRef<any> | undefined) {
@@ -184,7 +195,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         }
 
         const window = this.window ? this.window.getClosestNonDialogWindow() : this.registry.getOuterActiveWindow();
-        const offsetTop = window && window.header ? window.header.getBottomPosition() - 1 : 0;
+        const offsetTop = window && window.header ? window.header.getBottomPosition() : 0;
 
         // const document = this.registry.getCurrentViewContainerRef().element.nativeElement.ownerDocument;
 
@@ -222,7 +233,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
             maxWidth: this.maxWidth || '90%',
             maxHeight: this.maxHeight || '90%',
             hasBackdrop: true,
-            panelClass: (this.center ? 'dialog-overlay' : 'dialog-overlay-with-animation'),
+            panelClass: [this.class, (this.center ? 'dialog-overlay' : 'dialog-overlay-with-animation'), this.noPadding !== false ? 'dialog-overlay-no-padding' : ''],
             scrollStrategy: overlay.scrollStrategies.reposition(),
             positionStrategy: positionStrategy,
         });
@@ -248,6 +259,10 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         this.wrapperComponentRef.instance.component = this.component!;
         this.wrapperComponentRef.instance.componentInputs = this.componentInputs;
         this.wrapperComponentRef.instance.content = this.template!;
+        this.wrapperComponentRef.instance.class = this.class!;
+
+        if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
+        this.lastOverlayStackItem = this.overlayStack.register(this.overlayRef.hostElement);
 
         if (this.actions) {
             this.wrapperComponentRef!.instance.setActions(this.actions);
@@ -270,9 +285,11 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     }
 
     protected beforeUnload() {
+        if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
+
         if (this.overlayRef) {
             this.overlayRef.dispose();
-            delete this.overlayRef;
+            this.overlayRef = undefined;
         }
     }
 
@@ -280,14 +297,12 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     }
 
     public close(v?: any) {
+        this.beforeUnload();
         this.visible = false;
         this.visibleChange.emit(false);
-        this.beforeUnload();
 
         this.closed.emit(v);
-        requestAnimationFrame(() => {
-            this.applicationRef.tick();
-        });
+        ReactiveChangeDetectionModule.tick();
     }
 
     ngOnDestroy(): void {
@@ -351,5 +366,54 @@ export class CloseDialogDirective {
     @HostListener('click')
     onClick() {
         this.dialog.close(this.closeDialog);
+    }
+}
+
+/**
+ * A directive to open the given dialog on regular left click.
+ */
+@Directive({
+    'selector': '[openDialog]',
+})
+export class OpenDialogDirective implements AfterViewInit, OnChanges, OnDestroy {
+    @Input() openDialog?: DialogComponent;
+
+    @unsubscribe()
+    openSub?: Subscription;
+
+    @unsubscribe()
+    hiddenSub?: Subscription;
+
+    constructor(
+        protected elementRef: ElementRef,
+        @Optional() protected button?: ButtonComponent,
+    ) {
+    }
+
+    ngOnDestroy() {
+    }
+
+    ngOnChanges() {
+        this.link();
+    }
+
+    ngAfterViewInit() {
+        this.link();
+    }
+
+    protected link() {
+        if (this.button && this.openDialog) {
+            this.openSub = this.openDialog.open.subscribe(() => {
+                if (this.button) this.button.active = true;
+            });
+            this.hiddenSub = this.openDialog.closed.subscribe(() => {
+                if (this.button) this.button.active = false;
+            });
+        }
+    }
+
+    @HostListener('click')
+    onClick() {
+        if (this.openDialog) this.openDialog.show();
     }
 }

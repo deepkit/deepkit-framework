@@ -22,12 +22,12 @@ import {
     OnDestroy,
     Type,
     ViewContainerRef
-} from "@angular/core";
-import { DialogComponent } from "./dialog.component";
-import { isTargetChildOf } from "../../core/utils";
-import { DuiDialogProgress, ProgressDialogState } from "./progress-dialog.component";
-import { DOCUMENT } from "@angular/common";
-import { WindowRegistry } from "../window/window-state";
+} from '@angular/core';
+import { DialogComponent } from './dialog.component';
+import { isTargetChildOf } from '../../core/utils';
+import { DuiDialogProgress, ProgressDialogState } from './progress-dialog.component';
+import { DOCUMENT } from '@angular/common';
+import { WindowRegistry } from '../window/window-state';
 
 
 @Component({
@@ -53,7 +53,7 @@ export class DuiDialogConfirm {
 @Component({
     template: `
         <h3>{{title || 'No title'}}</h3>
-        <div *ngIf="content" class="text-selection" style="white-space: pre">{{content}}</div>
+        <div *ngIf="content" class="text-selection" style="white-space: pre-line;">{{content}}</div>
 
         <dui-dialog-actions>
             <dui-button focus [closeDialog]="true">OK</dui-button>
@@ -72,7 +72,7 @@ export class DuiDialogAlert {
 @Component({
     template: `
         <h3>{{title || 'No title'}}</h3>
-        <div *ngIf="content" class="text-selection" style="white-space: pre">{{content}}</div>
+        <div *ngIf="content" class="text-selection" style="white-space: pre-line;">{{content}}</div>
         <div style="padding-top: 5px;">
             <dui-input style="width: 100%" (enter)="dialog.close(value)" focus [(ngModel)]="value"></dui-input>
         </div>

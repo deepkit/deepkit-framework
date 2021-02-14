@@ -1,5 +1,4 @@
-    import { expect, test } from '@jest/globals';
-import { domainToASCII } from 'url';
+import { expect, test } from '@jest/globals';
 import {
     asyncOperation,
     changeClass,

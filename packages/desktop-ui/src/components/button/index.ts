@@ -8,24 +8,27 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { NgModule } from "@angular/core";
+import { NgModule } from '@angular/core';
 import {
     ButtonComponent,
     ButtonGroupComponent,
     ButtonGroupsComponent,
-    FileChooserDirective, FileDropDirective, FilePickerDirective
-} from "./button.component";
-import { CommonModule } from "@angular/common";
-import { DuiIconModule } from "../icon";
+    FileChooserDirective,
+    FileDropDirective,
+    FilePickerDirective
+} from './button.component';
+import { CommonModule } from '@angular/common';
+import { DuiIconModule } from '../icon';
 import {
+    ContextDropdownDirective,
     DropdownComponent,
     DropdownItemComponent,
     DropdownSplitterComponent,
     OpenDropdownDirective,
-    ContextDropdownDirective,
-} from "./dropdown.component";
-import { FormsModule } from "@angular/forms";
-import { TabButtonComponent } from './tab-button.component'
+    OpenDropdownHoverDirective,
+} from './dropdown.component';
+import { FormsModule } from '@angular/forms';
+import { TabButtonComponent } from './tab-button.component';
 
 export * from "./dropdown.component";
 export * from './button.component'
@@ -40,6 +43,7 @@ export * from './tab-button.component'
         DropdownItemComponent,
         DropdownSplitterComponent,
         OpenDropdownDirective,
+        OpenDropdownHoverDirective,
         ContextDropdownDirective,
         FileChooserDirective,
         TabButtonComponent,
@@ -54,6 +58,7 @@ export * from './tab-button.component'
         DropdownItemComponent,
         DropdownSplitterComponent,
         OpenDropdownDirective,
+        OpenDropdownHoverDirective,
         ContextDropdownDirective,
         FileChooserDirective,
         TabButtonComponent,

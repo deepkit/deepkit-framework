@@ -36,7 +36,8 @@ jobs:
             --ignore @deepkit/fs \
             --ignore @deepkit/framework-examples \
             --ignore @deepkit/benchmark \
-            --ignore @deepkit/mysql --ignore @deepkit/postgres
+            --ignore @deepkit/mysql --ignore @deepkit/postgres \
+            --ignore @deepkit/orm-browser --ignore @deepkit/orm-browser-gui
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build \
@@ -280,6 +281,8 @@ jobs:
 #          --ignore @deepkit/example-app \
 #          --ignore @deepkit/fs \
 #          --ignore @deepkit/framework-examples
+#          --ignore @deepkit/orm-browser
+#          --ignore @deepkit/orm-browser-gui
 #      - name: Build
 #        run: |
 #          ./node_modules/.bin/tsc --build \

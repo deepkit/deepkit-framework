@@ -129,7 +129,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
         const propertyCode: string[] = [];
         const schema = property.getResolvedClassSchema();
 
-        for (let subProperty of schema.getClassProperties().values()) {
+        for (let subProperty of schema.getProperties()) {
             //todo, support non-ascii names
             const bufferCompare: string[] = [];
             for (let i = 0; i < subProperty.name.length; i++) {
@@ -313,7 +313,7 @@ function createSchemaDecoder(schema: ClassSchema): DecoderFn {
     const setDefaults: string[] = [];
 
     const propertyCode: string[] = [];
-    for (const property of schema.getClassProperties().values()) {
+    for (const property of schema.getProperties()) {
         //todo, support non-ascii names
         const bufferCompare: string[] = [];
         for (let i = 0; i < property.name.length; i++) {

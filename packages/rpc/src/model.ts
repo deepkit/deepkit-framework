@@ -227,6 +227,10 @@ export interface RpcInjector {
 export class SimpleInjector implements RpcInjector {
     protected instances = new Map<any, any>();
 
+    set<T>(token: ClassType<T>, instance: T) {
+        this.instances.set(token, instance);
+    }
+
     get(token: ClassType) {
         let instance = this.instances.get(token);
         if (instance) return instance;

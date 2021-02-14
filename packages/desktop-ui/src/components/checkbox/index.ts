@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { NgModule } from "@angular/core";
-import { CheckboxComponent } from "./checkbox.component";
-import { DuiIconModule } from "../icon";
+import { NgModule } from '@angular/core';
+import { CheckboxComponent } from './checkbox.component';
+import { DuiIconModule } from '../icon';
 
 export * from './checkbox.component'
 

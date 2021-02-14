@@ -28,6 +28,7 @@ test('new api', async () => {
 
     const schema = getClassSchema(Test);
     expect(schema.getProperty('id').type).toBe('uuid');
+    expect(schema.getProperty('id').isOptional).toBe(false);
 
     expect(schema.getProperty('names').type).toBe('array');
     expect(schema.getProperty('names').isArray).toBe(true);
@@ -37,6 +38,25 @@ test('new api', async () => {
     expect(schema.getProperty('nameMap').isMap).toBe(true);
     expect(schema.getProperty('nameMap').templateArgs[0]!.type).toBe('any');
     expect(schema.getProperty('nameMap').templateArgs[1]!.type).toBe('number');
+});
+
+test('default value is not optional', () => {
+    class Book {
+        @t.primary.autoIncrement id: number = 0;
+        @t type: number = 0;
+
+        constructor(
+            @t public title: string,
+        ) {
+        }
+    }
+
+    const schema = getClassSchema(Book);
+    expect(schema.getProperty('id').type).toBe('number');
+    expect(schema.getProperty('id').isOptional).toBe(false);
+
+    expect(schema.getProperty('type').type).toBe('number');
+    expect(schema.getProperty('type').isOptional).toBe(false);
 });
 
 test('nested types correctly converted', async () => {
@@ -128,7 +148,7 @@ test('custom serialization formats', async () => {
     expect(jsonSerializer.toClass.get('number')).toBeInstanceOf(Function);
     expect(mySerializer.toClass.get('number')).toBeInstanceOf(Function);
 
-    expect(getClassSchema(Test).getClassProperties().get('id')!.type).toBe('string');
+    expect(getClassSchema(Test).getPropertiesMap().get('id')!.type).toBe('string');
 
     const test = new Test;
     const myFormat = getClassToXFunction(getClassSchema(Test), mySerializer)(test);

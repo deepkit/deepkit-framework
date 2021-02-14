@@ -8,7 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/logger';
 export * from './src/session';
 export * from './src/application';
 export * from './src/worker';
@@ -22,7 +21,9 @@ export * from './src/database/database-listener';
 export * from './src/database/migration';
 export * from './src/database/migration-provider';
 export * from './src/database/live-database';
+export * from './src/orm-browser/controller';
 export * from './src/module';
+export * from './src/http/static-serving';
 export * from './src/http';
 export * from './src/rpc';
 export * from './src/http-model';
@@ -37,3 +38,5 @@ export * from './src/template/template';
 export * from './src/application-server';
 export * from './src/broker/broker';
 export * from './src/broker/broker.config';
+
+export * from '@deepkit/logger';

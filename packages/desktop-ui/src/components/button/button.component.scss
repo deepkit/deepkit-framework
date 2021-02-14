@@ -44,6 +44,11 @@ In macOS we have 4 types of buttons:
             background-image: linear-gradient(180deg, #c1c1c1 0%, #b5b5b5 100%);
         }
     }
+
+    &:not(.square):not(.tight).with-text > dui-icon {
+        position: relative;
+        left: -4px;
+    }
 }
 
 :host-context(.light) {

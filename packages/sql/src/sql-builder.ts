@@ -10,8 +10,14 @@
 
 import { SQLQueryModel } from './sql-adapter';
 import { DefaultPlatform } from './platform/default-platform';
-import { ClassSchema, getClassSchema, PropertySchema, resolveClassTypeOrForward } from '@deepkit/type';
-import { DatabaseJoinModel, DatabaseQueryModel, getPrimaryKeyHashGenerator } from '@deepkit/orm';
+import {
+    ClassSchema,
+    getClassSchema,
+    getPrimaryKeyHashGenerator,
+    PropertySchema,
+    resolveClassTypeOrForward
+} from '@deepkit/type';
+import { DatabaseJoinModel, DatabaseQueryModel } from '@deepkit/orm';
 import { getSqlFilter } from './filter';
 
 type ConvertDataToDict = (row: any) => { [name: string]: any };
@@ -75,7 +81,7 @@ export class SqlBuilder {
     }
     protected selectColumns(schema: ClassSchema, model: SQLQueryModel<any>) {
         const tableName = this.platform.getTableIdentifier(schema);
-        const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getClassProperties().values();
+        const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getProperties();
 
         if (model.aggregate.size || model.groupBy.size) {
             //we select only whats aggregated
@@ -99,7 +105,7 @@ export class SqlBuilder {
     protected selectColumnsWithJoins(schema: ClassSchema, model: SQLQueryModel<any>, refName: string = '') {
         const result: { startIndex: number, fields: PropertySchema[] } = { startIndex: this.sqlSelect.length, fields: [] };
 
-        const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getClassProperties().values();
+        const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getProperties();
         const tableName = this.platform.getTableIdentifier(schema);
 
         for (const property of properties) {
@@ -282,14 +288,16 @@ export class SqlBuilder {
         }
     }
 
-    public build<T>(schema: ClassSchema, model: SQLQueryModel<T>, head: string): Sql {
+    public build<T>(schema: ClassSchema, model: SQLQueryModel<T>, head: string, withRange: boolean = true, params: string[] = []): Sql {
         const tableName = this.platform.getTableIdentifier(schema);
-        const sql = new Sql(`${head} FROM ${tableName}`);
+        const sql = new Sql(`${head} FROM ${tableName}`, params);
         this.appendJoinSQL(sql, model, tableName);
         this.appendWhereSQL(sql, schema, model);
 
-        if (model.limit !== undefined) sql.append('LIMIT ' + this.platform.quoteValue(model.limit));
-        if (model.skip !== undefined) sql.append('SKIP ' + this.platform.quoteValue(model.skip));
+        if (withRange) {
+            if (model.limit !== undefined) sql.append('LIMIT ' + this.platform.quoteValue(model.limit));
+            if (model.skip !== undefined) sql.append('OFFSET ' + this.platform.quoteValue(model.skip));
+        }
 
         return sql;
     }
@@ -305,7 +313,8 @@ export class SqlBuilder {
     public select(
         schema: ClassSchema,
         model: SQLQueryModel<any>,
-        options: { select?: string[] } = {}
+        options: { select?: string[] } = {},
+        params: any[] = [],
     ): Sql {
         const manualSelect = options.select && options.select.length ? options.select : undefined;
 
@@ -325,7 +334,7 @@ export class SqlBuilder {
             }
         }
 
-        const sql = this.build(schema, model, 'SELECT ' + (manualSelect || this.sqlSelect).join(', '));
+        const sql = this.build(schema, model, 'SELECT ' + (manualSelect || this.sqlSelect).join(', '), false, params);
 
         if (model.groupBy.size) {
             const groupBy: string[] = [];
@@ -341,6 +350,9 @@ export class SqlBuilder {
         if (order.length) {
             sql.append(' ORDER BY ' + (order.join(', ')));
         }
+
+        if (model.limit !== undefined) sql.append('LIMIT ' + this.platform.quoteValue(model.limit));
+        if (model.skip !== undefined) sql.append('OFFSET ' + this.platform.quoteValue(model.skip));
 
         return sql;
     }

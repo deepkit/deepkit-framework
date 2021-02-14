@@ -10,7 +10,7 @@
 
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { ControllerClient } from '../../client';
-import { RpcAction, Workflow } from '@deepkit/framework-debug-shared';
+import { RpcAction, Workflow } from '@deepkit/framework-debug-api';
 
 @Component({
   template: `

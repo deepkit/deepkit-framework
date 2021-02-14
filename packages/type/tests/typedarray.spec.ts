@@ -29,7 +29,7 @@ test('mapping', async () => {
     }
 
     const classSchema = getClassSchema(Clazz);
-    for (const [i, v] of classSchema.getClassProperties().entries()) {
+    for (const [i, v] of classSchema.getPropertiesMap().entries()) {
         expect(v.type).toBe(i);
         expect(typedArrayNamesMap.has(i as any)).toBe(true);
         expect(typedArrayMap.has(typedArrayNamesMap.get(i as any))).toBe(true);

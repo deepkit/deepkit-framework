@@ -712,7 +712,7 @@ test('model 1, missing `public`', () => {
 
     const schema = getClassSchema(User);
     expect(schema.getMethodProperties('constructor').length).toBe(2);
-    expect(schema.getClassProperties().size).toBe(5);
+    expect(schema.getPropertiesMap().size).toBe(5);
 
     {
         const user = new User(1, 'Peter ' + 1);

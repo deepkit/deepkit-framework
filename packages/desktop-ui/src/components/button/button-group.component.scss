@@ -12,6 +12,15 @@
 :host ::ng-deep > * {
     margin-right: 6px;
 }
+
+:host ::ng-deep > dui-input {
+    height: 19px;
+}
+
+:host-context(.dui-theme-light) ::ng-deep > dui-input {
+    height: 21px;
+}
+
 :host:last-child ::ng-deep > *:last-child {
     margin-right: 0;
 }
@@ -30,6 +39,7 @@
 
 :host-context(.dark).padding-none {
     ::ng-deep dui-select:not(:first-child),
+    ::ng-deep dui-input:not(:first-child),
     ::ng-deep dui-button:not(.square):not(:first-child) {
         border-left: 1px solid #484c50 !important;
     }

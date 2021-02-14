@@ -9,7 +9,15 @@
  */
 
 import { ClassType, isPlainObject } from '@deepkit/core';
-import { ClassSchema, getClassSchema, getGlobalStore, PropertySchema, PropertyValidator, UnpopulatedCheck, unpopulatedSymbol } from './model';
+import {
+    ClassSchema,
+    getClassSchema,
+    getGlobalStore,
+    PropertySchema,
+    PropertyValidator,
+    UnpopulatedCheck,
+    unpopulatedSymbol
+} from './model';
 import { executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry } from './jit-validation-registry';
 import { reserveVariable } from './serializer-compiler';
 import { JitStack, resolvePropertySchema } from './jit';
@@ -280,7 +288,7 @@ export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>, jitStack: 
 
     const checks: string[] = [];
 
-    for (let property of schema.getClassProperties().values()) {
+    for (let property of schema.getProperties()) {
         const originProperty = property;
         let isDecorated = false;
         if (property.type === 'class') {
@@ -350,7 +358,7 @@ export function jitValidatePartial<T, K extends keyof T>(
         if (!partial.hasOwnProperty(i)) continue;
         const thisPath = path ? path + '.' + i : i;
         jitValidateProperty(
-            schema.getClassProperties().get(i) || resolvePropertySchema(schema, i),
+            schema.getPropertiesMap().get(i) || resolvePropertySchema(schema, i),
             classType,
         )(partial[i],
             '',

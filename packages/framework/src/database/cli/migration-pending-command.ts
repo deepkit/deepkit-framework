@@ -10,7 +10,7 @@
 
 import { SqlMigrationHandler } from '@deepkit/sql';
 import { cli, flag } from '../../command';
-import { Logger } from '../../logger';
+import { Logger } from '@deepkit/logger';
 import { MigrationProvider } from '../migration-provider';
 
 @cli.controller('migration:pending', {

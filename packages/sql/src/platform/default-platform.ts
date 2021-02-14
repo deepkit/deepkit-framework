@@ -51,6 +51,18 @@ export abstract class DefaultPlatform {
     public serializer: Serializer = sqlSerializer;
     public namingStrategy: NamingStrategy = new DefaultNamingStrategy();
 
+    typeCast(schema: ClassSchema, name: string): string {
+        let property = schema.getProperty(name);
+        if (property.type === 'string') return '';
+
+        if (property.isReference) property = property.getResolvedClassSchema().getPrimaryField();
+
+        const type = this.typeMapping.get(property.type);
+        if (!type) return '';
+
+        return '::' + type.sqlType;
+    }
+
     createSqlFilterBuilder(schema: ClassSchema, tableName: string): SQLFilterBuilder {
         return new SQLFilterBuilder(schema, tableName, this.serializer, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
     }
@@ -112,9 +124,9 @@ export abstract class DefaultPlatform {
 
     getEntityFields(schema: ClassSchema): PropertySchema[] {
         const fields: PropertySchema[] = [];
-        for (const property of schema.getClassProperties().values()) {
-            if (property.isParentReference) continue;
-            if (property.backReference) continue;
+        for (const property of schema.getProperties()) {
+                if (property.isParentReference) continue;
+                if (property.backReference) continue;
             fields.push(property);
         }
         return fields;
@@ -156,15 +168,13 @@ export abstract class DefaultPlatform {
     }
 
     createTables(schemas: (ClassSchema | ClassType)[], database: DatabaseModel = new DatabaseModel()): Table[] {
-        const generatedTables = new Map<ClassSchema, Table>();
-
         for (let schema of schemas) {
             schema = getClassSchema(schema);
 
             if (!schema.name) throw new Error(`No entity name for schema for class ${schema.getClassName()} given`);
 
             const table = new Table(this.namingStrategy.getTableName(schema));
-            generatedTables.set(schema, table);
+            database.schemaMap.set(schema, table);
 
             table.schemaName = schema.databaseSchemaName || database.schemaName;
 
@@ -173,7 +183,9 @@ export abstract class DefaultPlatform {
 
                 const column = table.addColumn(this.namingStrategy.getColumnName(property), property);
 
-                column.defaultValue = property.getDefaultValue();
+                if (!property.isAutoIncrement) {
+                    column.defaultValue = property.getDefaultValue();
+                }
 
                 const isNullable = property.isNullable || property.isOptional;
                 column.isNotNull = !isNullable;
@@ -192,12 +204,16 @@ export abstract class DefaultPlatform {
         for (let schema of schemas) {
             schema = getClassSchema(schema);
 
-            const table = generatedTables.get(schema)!;
+            const table = database.schemaMap.get(schema)!;
 
-            for (const property of schema.getClassProperties().values()) {
+            for (const property of schema.getProperties()) {
                 if (!property.isReference) continue;
 
-                const foreignTable = generatedTables.get(property.getResolvedClassSchema())!;
+                const foreignSchema = property.getResolvedClassSchema();
+                const foreignTable = database.schemaMap.get(foreignSchema);
+                if (!foreignTable) {
+                    throw new Error(`References entity ${foreignSchema.getName()} from ${schema.getName()}.${property.name} is not is not available`);
+                }
                 const foreignKey = table.addForeignKey('', foreignTable);
                 foreignKey.localColumns = [table.getColumn(property.name)];
                 foreignKey.foreignColumns = foreignTable.getPrimaryKeys();
@@ -209,7 +225,7 @@ export abstract class DefaultPlatform {
         //create index
         for (let schema of schemas) {
             schema = getClassSchema(schema);
-            const table = generatedTables.get(schema)!;
+            const table = database.schemaMap.get(schema)!;
 
             for (const [name, index] of schema.indices.entries()) {
                 if (table.hasIndexByName(name)) continue;
@@ -221,13 +237,21 @@ export abstract class DefaultPlatform {
                 addedIndex.spatial = index.options.spatial || false;
             }
 
+            //sqlite and postgres do not create a index for foreign keys. But this
+            //is rather important for back referencing joins.
             for (const foreignKeys of table.foreignKeys) {
                 if (table.hasIndex(foreignKeys.localColumns)) continue;
+
+                //there's no need to add an index to a foreign key that is a primary key
+                const allPrimaryKey = foreignKeys.localColumns.every(v => v.isPrimaryKey);
+                if (allPrimaryKey) continue;
+
                 const index = table.addIndex(foreignKeys.getName(), false);
                 index.columns = foreignKeys.localColumns;
             }
 
-            for (const property of schema.getClassProperties().values()) {
+            //manual composite indices
+            for (const property of schema.getProperties()) {
                 if (!property.index) continue;
 
                 const column = table.getColumnForProperty(property);
@@ -238,7 +262,7 @@ export abstract class DefaultPlatform {
             }
         }
 
-        const tables = [...generatedTables.values()];
+        const tables = [...database.schemaMap.values()];
         this.normalizeTables(tables);
         database.tables = tables;
         return tables;

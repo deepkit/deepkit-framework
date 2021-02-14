@@ -9,23 +9,25 @@
  */
 
 import {
-    Changes,
     Database,
     DatabaseAdapter,
     DatabaseAdapterQueryFactory,
+    DatabaseError,
+    DatabaseLogger,
     DatabasePersistence,
     DatabasePersistenceChangeSet,
     DatabaseQueryModel,
-    DatabaseSession, DeleteResult,
+    DatabaseSession,
+    DatabaseTransaction,
+    DeleteResult,
     Entity,
-    Query,
     GenericQueryResolver,
     PatchResult,
-    SORT_ORDER,
-    DatabaseError
+    Query,
+    SORT_ORDER
 } from '@deepkit/orm';
 import { ClassType } from '@deepkit/core';
-import { ClassSchema, getClassSchema, plainToClass, t } from '@deepkit/type';
+import { Changes, ClassSchema, getClassSchema, plainToClass, t } from '@deepkit/type';
 import { DefaultPlatform } from './platform/default-platform';
 import { SqlBuilder } from './sql-builder';
 import { SqlFormatter } from './sql-formatter';
@@ -51,7 +53,7 @@ export abstract class SQLStatement {
 export abstract class SQLConnection {
     released: boolean = false;
 
-    constructor(protected connectionPool: SQLConnectionPool) {
+    constructor(protected connectionPool: SQLConnectionPool, protected logger: DatabaseLogger = new DatabaseLogger) {
     }
 
     release() {
@@ -89,7 +91,7 @@ export abstract class SQLConnectionPool {
      * Reserves an existing or new connection. It's important to call `.release()` on it when
      * done. When release is not called a resource leak occurs and server crashes.
      */
-    abstract getConnection(): SQLConnection;
+    abstract getConnection(logger?: DatabaseLogger, transaction?: DatabaseTransaction): Promise<SQLConnection>;
 
     public getActiveConnections() {
         return this.activeConnections;
@@ -139,17 +141,17 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         protected connectionPool: SQLConnectionPool,
         protected platform: DefaultPlatform,
         classSchema: ClassSchema<T>,
-        databaseSession: DatabaseSession<DatabaseAdapter>
+        session: DatabaseSession<DatabaseAdapter>
     ) {
-        super(classSchema, databaseSession);
+        super(classSchema, session);
     }
 
     protected createFormatter(withIdentityMap: boolean = false) {
         return new SqlFormatter(
             this.classSchema,
             sqlSerializer,
-            this.databaseSession.getHydrator(),
-            withIdentityMap ? this.databaseSession.identityMap : undefined
+            this.session.getHydrator(),
+            withIdentityMap ? this.session.identityMap : undefined
         );
     }
 
@@ -160,7 +162,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     async count(model: SQLQueryModel<T>): Promise<number> {
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.build(this.classSchema, model, 'SELECT COUNT(*) as count');
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
             const row = await connection.execAndReturnSingle(sql.sql, sql.params);
             //postgres has bigint as return type of COUNT, so we need to convert always
@@ -174,7 +176,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.build(this.classSchema, model, 'DELETE');
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
             await connection.run(sql.sql, sql.params);
             deleteResult.modified = await connection.getChanges();
@@ -187,7 +189,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     async find(model: SQLQueryModel<T>): Promise<T[]> {
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.select(this.classSchema, model);
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
             const rows = await connection.execAndReturnAll(sql.sql, sql.params);
             const results: T[] = [];
@@ -215,7 +217,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.select(this.classSchema, model);
 
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
             const row = await connection.execAndReturnSingle(sql.sql, sql.params);
             if (!row) return;
@@ -248,7 +250,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         const set = buildSetFromChanges(this.platform, this.classSchema, changes);
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.update(this.classSchema, model, set);
-        const connection = this.connectionPool.getConnection();
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
         try {
             await connection.run(sql.sql, sql.params);
             patchResult.modified = await connection.getChanges();
@@ -334,9 +336,17 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
 
     abstract queryFactory(databaseSession: DatabaseSession<this>): SQLDatabaseQueryFactory;
 
-    abstract createPersistence(): SQLPersistence;
+    abstract createPersistence(databaseSession: DatabaseSession<this>): SQLPersistence;
 
     abstract getSchemaName(): string;
+
+    async getInsertBatchSize(schema: ClassSchema): Promise<number> {
+        return Math.floor(30000 / schema.getProperties().length);
+    }
+
+    async getUpdateBatchSize(schema: ClassSchema): Promise<number> {
+        return Math.floor(30000 / schema.getProperties().length);
+    }
 
     isNativeForeignKeyConstraintSupported() {
         return true;
@@ -361,6 +371,43 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
         } finally {
             connection.release();
         }
+    }
+
+    public async getMigrations(classSchemas: ClassSchema[]): Promise<{ [name: string]: { sql: string[], diff: string } }> {
+        const migrations: { [name: string]: { sql: string[], diff: string } } = {};
+
+        const connection = await this.connectionPool.getConnection();
+
+        try {
+            for (const entity of classSchemas) {
+                const databaseModel = new DatabaseModel();
+                databaseModel.schemaName = this.getSchemaName();
+                this.platform.createTables(classSchemas, databaseModel);
+
+                const schemaParser = new this.platform.schemaParserType(connection, this.platform);
+
+                const parsedDatabaseModel = new DatabaseModel();
+                parsedDatabaseModel.schemaName = this.getSchemaName();
+                await schemaParser.parse(parsedDatabaseModel);
+
+                const databaseDiff = DatabaseComparator.computeDiff(parsedDatabaseModel, databaseModel);
+                if (databaseDiff) {
+                    const table = databaseModel.getTableForSchema(entity);
+                    databaseDiff.forTable(table);
+                    const diff = databaseDiff.getDiff(table);
+
+                    const upSql = this.platform.getModifyDatabaseDDL(databaseDiff);
+                    if (upSql.length) {
+                        migrations[entity.getName()] = { sql: upSql, diff: diff ? diff.toString() : '' };
+                    }
+                }
+            }
+        } finally {
+            connection.release();
+        }
+
+
+        return migrations;
     }
 
     public async migrate(classSchemas: ClassSchema[]): Promise<void> {
@@ -389,7 +436,7 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
                 try {
                     await connection.run(sql);
                 } catch (error) {
-                    console.error('Could not execute migration SQL', sql);
+                    console.error('Could not execute migration SQL', sql, error);
                     throw error;
                 }
             }
@@ -400,15 +447,25 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
 }
 
 export class SQLPersistence extends DatabasePersistence {
+    protected connection?: SQLConnection;
+
     constructor(
         protected platform: DefaultPlatform,
-        protected connection: SQLConnection,
+        public connectionPool: SQLConnectionPool,
+        protected session: DatabaseSession<SQLDatabaseAdapter>,
     ) {
         super();
     }
 
+    async getConnection(): Promise<ReturnType<this['connectionPool']['getConnection']>> {
+        if (!this.connection) {
+            this.connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        }
+        return this.connection;
+    }
+
     release() {
-        this.connection.release();
+        this.connection?.release();
     }
 
     protected prepareAutoIncrement(classSchema: ClassSchema, count: number) {
@@ -424,6 +481,33 @@ export class SQLPersistence extends DatabasePersistence {
     }
 
     async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+        const batchSize = await this.session.adapter.getUpdateBatchSize(classSchema);
+
+        if (batchSize > changeSets.length) {
+            await this.batchUpdate(classSchema, changeSets);
+        } else {
+            const promises: Promise<void>[] = [];
+            for (let i = 0; i < changeSets.length; i += batchSize) {
+                promises.push(this.batchUpdate(classSchema, changeSets.slice(i, i + batchSize)));
+            }
+
+            await Promise.all(promises);
+        }
+    }
+
+    protected async doInsert<T>(classSchema: ClassSchema<T>, items: T[]) {
+        const batchSize = await this.session.adapter.getInsertBatchSize(classSchema);
+
+        if (batchSize > items.length) {
+            await this.batchInsert(classSchema, items);
+        } else {
+            for (let i = 0; i < items.length; i += batchSize) {
+                await this.batchInsert(classSchema, items.slice(i, i + batchSize));
+            }
+        }
+    }
+
+    async batchUpdate<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         //simple update implementation that is not particular performant nor does it support atomic updates (like $inc)
 
         const scopeSerializer = this.platform.serializer.for(classSchema);
@@ -447,32 +531,46 @@ export class SQLPersistence extends DatabasePersistence {
             updates.push(`UPDATE ${this.platform.getTableIdentifier(classSchema)} SET ${set.join(', ')} WHERE ${where.join(' AND ')}`);
         }
 
-        //try bulk update via https://stackoverflow.com/questions/11563869/update-multiple-rows-with-different-values-in-a-single-sql-query
-        await this.connection.run(updates.join(';\n'));
+        const sql = updates.join(';\n');
+        await (await this.getConnection()).run(sql);
     }
 
-    protected async doInsert<T>(classSchema: ClassSchema<T>, items: T[]) {
+    protected async batchInsert<T>(classSchema: ClassSchema<T>, items: T[]) {
         const scopeSerializer = this.platform.serializer.for(classSchema);
-        const fields = this.platform.getEntityFields(classSchema).filter(v => !v.isAutoIncrement).map(v => v.name);
         const insert: string[] = [];
         const params: any[] = [];
         this.resetPlaceholderSymbol();
+        const names: string[] = [];
+
+        for (const property of classSchema.getProperties()) {
+            if (property.isParentReference) continue;
+            if (property.backReference) continue;
+            if (property.isAutoIncrement) continue;
+            names.push(this.platform.quoteIdentifier(property.name));
+        }
 
         for (const item of items) {
             const converted = scopeSerializer.serialize(item);
 
-            insert.push(fields.map(v => {
-                v = converted[v];
+            const row: string[] = [];
+            for (const property of classSchema.getProperties()) {
+                if (property.isParentReference) continue;
+                if (property.backReference) continue;
+                if (property.isAutoIncrement) continue;
+
+                const v = converted[property.name];
                 params.push(v === undefined ? null : v);
-                return this.getPlaceholderSymbol();
-            }).join(', '));
+                row.push(this.getPlaceholderSymbol());
+            }
+
+            insert.push(row.join(', '));
         }
 
-        const sql = this.getInsertSQL(classSchema, fields.map(v => this.platform.quoteIdentifier(v)), insert);
+        const sql = this.getInsertSQL(classSchema, names, insert);
         try {
-            await this.connection.run(sql, params);
+            await (await this.getConnection()).run(sql, params);
         } catch (error) {
-            console.warn('Insert failed', sql, params, error);
+            console.warn('Insert failed', sql, params.length, params, error);
             throw error;
         }
     }
@@ -496,6 +594,7 @@ export class SQLPersistence extends DatabasePersistence {
         }
 
         const inValues = pks.map(v => this.platform.quoteValue(v)).join(', ');
-        await this.connection.run(`DELETE FROM ${this.platform.getTableIdentifier(classSchema)} WHERE ${this.platform.quoteIdentifier(pk.name)} IN (${inValues})`);
+        const sql = `DELETE FROM ${this.platform.getTableIdentifier(classSchema)} WHERE ${this.platform.quoteIdentifier(pk.name)} IN (${inValues})`;
+        await (await this.getConnection()).run(sql);
     }
 }

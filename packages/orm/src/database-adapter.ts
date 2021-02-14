@@ -8,12 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Entity } from "./type";
-import { ClassType } from "@deepkit/core";
-import { ClassSchema, PrimaryKeyFields } from "@deepkit/type";
-import { Query } from "./query";
-import { ItemChanges } from "./changes";
-import { DatabaseSession } from "./database-session";
+import { Entity } from './type';
+import { ClassType } from '@deepkit/core';
+import { ClassSchema, ItemChanges, PrimaryKeyFields } from '@deepkit/type';
+import { Query } from './query';
+import { DatabaseSession } from './database-session';
 
 export abstract class DatabaseAdapterQueryFactory {
     abstract createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): Query<T>;
@@ -45,9 +44,9 @@ export abstract class DatabasePersistence {
  * You can specify a more specialized adapter like MysqlDatabaseAdapter/MongoDatabaseAdapter with special API for MySQL/Mongo.
  */
 export abstract class DatabaseAdapter {
-    abstract queryFactory(databaseSession: DatabaseSession<this>): DatabaseAdapterQueryFactory;
+    abstract queryFactory(session: DatabaseSession<this>): DatabaseAdapterQueryFactory;
 
-    abstract createPersistence(): DatabasePersistence;
+    abstract createPersistence(session: DatabaseSession<this>): DatabasePersistence;
 
     abstract disconnect(force?: boolean): void;
 

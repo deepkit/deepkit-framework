@@ -1,0 +1,85 @@
+:host {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  height: 28px;
+  flex: 1;
+  min-width: 80px;
+  font-size: 12px;
+  position: relative;
+  border-top: 1px solid var(--line-sidebar);
+}
+
+:host-context(.dui-theme-light) {
+  border-top: 1px solid #cfcfcf;
+}
+
+.content {
+  margin: 0 25px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+:host {
+  background-color: #1D1E1D;
+
+  &:not(:last-of-type) {
+    border-right: 1px solid #4b4b4c;
+  }
+
+  &:hover {
+    background-color: #2a2a2b;
+    transition: background-color 0.15s ease-in;
+
+    dui-icon.closer {
+      opacity: 1;
+    }
+  }
+
+  &.active {
+    border-top: 1px solid transparent;
+    transition: background-color 0s;
+    background-color: var(--dui-window-header-bg);
+  }
+}
+
+:host-context(.dui-theme-dark) {
+  dui-icon.closer {
+    color: #8c8d8d;
+  }
+}
+
+:host-context(.dui-theme-light) {
+  background-color: #e3e3e3;
+
+  &:not(:last-of-type) {
+    border-right: 1px solid #cfd0d0;
+  }
+
+  &:not(.active) {
+    box-shadow: inset 0 1px 0 #dddddd;
+  }
+
+  &:not(.active):hover {
+    box-shadow: inset 0 1px 0 #d3d3d3;
+    background-color: #e1e1e1;
+  }
+
+  &.active {
+    background-color: var(--dui-window-header-bg);
+  }
+
+  dui-icon.closer {
+    color: #8c8d8d;
+  }
+}
+
+dui-icon.closer {
+  opacity: 0;
+  position: absolute;
+  left: 5px;
+  top: 6px;
+  transition: opacity 0.15s ease-in;
+}

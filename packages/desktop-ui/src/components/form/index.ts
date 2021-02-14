@@ -8,10 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { NgModule } from "@angular/core";
-import { FormComponent, FormRowComponent } from "./form.component";
-import { FormsModule, ReactiveFormsModule } from "@angular/forms";
-import { CommonModule } from "@angular/common";
+import { NgModule } from '@angular/core';
+import { FormComponent, FormRowComponent } from './form.component';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 
 export * from "./form.component";
 

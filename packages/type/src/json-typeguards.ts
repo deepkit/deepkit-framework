@@ -11,7 +11,7 @@
 import { isValidEnumValue } from '@deepkit/core';
 import { PropertySchema } from './model';
 import { typedArrayNamesMap } from './types';
-import { UnionGuardsTypes } from "./union";
+import { UnionGuardsTypes } from './union';
 
 export type JSONTypeGuard = (v: any) => boolean;
 export type JSONTypeGuardFactory = (property: PropertySchema) => JSONTypeGuard;
@@ -37,7 +37,7 @@ registerJSONTypeGuard('class', (property: PropertySchema) => {
     }
 
     //we need to figure out what could be the discriminant
-    for (const property of schema.getClassProperties().values()) {
+    for (const property of schema.getProperties()) {
         if (property.type !== 'literal') continue;
 
         return (v: any) => {
@@ -74,13 +74,13 @@ registerJSONTypeGuard('uuid', (property: PropertySchema) => {
 
 registerJSONTypeGuard('arrayBuffer', (property: PropertySchema) => {
     return (v: any) => {
-        return v instanceof ArrayBuffer || (v && v['∏type'] === 'binary');
+        return v instanceof ArrayBuffer || (v && v['$type'] === 'binary');
     };
 });
 
 function typedArrayGuard(property: PropertySchema) {
     return (v: any) => {
-        return ArrayBuffer.isView(v) || (v && v['∏type'] === 'binary');
+        return ArrayBuffer.isView(v) || (v && v['$type'] === 'binary');
     };
 }
 

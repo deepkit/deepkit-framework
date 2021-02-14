@@ -8,12 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { NgModule } from "@angular/core";
-import { InputComponent } from "./input.component";
-import { FormsModule } from "@angular/forms";
-import { CommonModule } from "@angular/common";
-import { DuiIconModule } from "../icon";
-import { DatePipe } from '@angular/common';
+import { NgModule } from '@angular/core';
+import { InputComponent } from './input.component';
+import { FormsModule } from '@angular/forms';
+import { CommonModule, DatePipe } from '@angular/common';
+import { DuiIconModule } from '../icon';
 
 export * from './input.component';
 

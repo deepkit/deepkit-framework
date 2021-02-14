@@ -55,8 +55,8 @@ export class MongoDatabaseAdapter implements DatabaseAdapter {
         return '';
     }
 
-    createPersistence(): MongoPersistence {
-        return new MongoPersistence(this.client, this.ormSequences);
+    createPersistence(session: DatabaseSession<this>): MongoPersistence {
+        return new MongoPersistence(this.client, this.ormSequences, session);
     }
 
     isNativeForeignKeyConstraintSupported() {

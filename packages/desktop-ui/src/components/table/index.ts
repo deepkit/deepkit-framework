@@ -16,12 +16,12 @@ import {
     TableCustomHeaderContextMenuDirective,
     TableCustomRowContextMenuDirective,
     TableHeaderDirective
-} from "./table.component";
-import { CommonModule } from "@angular/common";
-import { DuiIconModule } from "../icon";
-import { DuiSplitterModule } from "../splitter";
-import { ScrollingModule } from "@angular/cdk/scrolling";
-import { DuiButtonModule } from "../button";
+} from './table.component';
+import { CommonModule } from '@angular/common';
+import { DuiIconModule } from '../icon';
+import { DuiSplitterModule } from '../splitter';
+import { ScrollingModule } from '@angular/cdk/scrolling';
+import { DuiButtonModule } from '../button';
 
 export * from "./table.component";
 

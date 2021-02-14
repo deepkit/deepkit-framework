@@ -12,7 +12,7 @@
       "path": "../rpc/tsconfig.esm.json"
     },
     {
-      "path": "../framework-debug-shared/tsconfig.esm.json"
+      "path": "../framework-debug-api/tsconfig.esm.json"
     },
     {
       "path": "../orm/tsconfig.esm.json"

@@ -17,8 +17,8 @@ test('chunks', async () => {
         }
 
         @rpc.action()
-        downloadBig(): Buffer {
-            return Buffer.alloc(650_000);
+        downloadBig(size: number): Buffer {
+            return Buffer.alloc(size);
         }
     }
 
@@ -27,6 +27,16 @@ test('chunks', async () => {
 
     const client = new DirectClient(kernel);
     const controller = client.controller<TestController>('test');
+
+    {
+        //small payloads trigger progress as well
+        const progress = ClientProgress.track();
+        expect(progress.download.progress).toBe(0);
+        const file = await controller.downloadBig(100);
+        expect(progress.download.progress).toBe(1);
+        expect(progress.download.total).toBe(125);
+        expect(file.length).toBe(100);
+    }
 
     {
         const progress = ClientProgress.track();
@@ -38,9 +48,10 @@ test('chunks', async () => {
             expect(progress.download.progress).toBeLessThanOrEqual(1);
             stats.push(progress.download.current);
         });
-        const file = await controller.downloadBig();
+        const file = await controller.downloadBig(650_000);
         expect(file.length).toBe(650_000);
         expect(progress.download.done).toBe(true);
+        expect(progress.download.total).toBe(650025);
         expect(stats).toEqual([
             100_000,
             200_000,
@@ -51,6 +62,15 @@ test('chunks', async () => {
             650_025,
         ]);
         expect(progress.download.progress).toBe(1);
+    }
+
+    {
+        //small payloads trigger progress as well
+        const uploadFile = Buffer.alloc(100);
+        const progress = ClientProgress.track();
+        const size = await controller.uploadBig(uploadFile);
+        expect(progress.upload.total).toBe(182);
+        expect(progress.upload.progress).toBe(1);
     }
 
     {

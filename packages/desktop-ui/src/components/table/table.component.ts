@@ -24,9 +24,11 @@ import {
     NgZone,
     OnChanges,
     OnDestroy,
+    OnInit,
     Output,
     QueryList,
-    SimpleChanges, SkipSelf,
+    SimpleChanges,
+    SkipSelf,
     TemplateRef,
     ViewChild,
     ViewChildren,
@@ -41,12 +43,13 @@ import {
     indexOf,
     isArray,
     isNumber
-} from "@deepkit/core";
-import Hammer from "hammerjs";
-import { isObservable, Observable } from "rxjs";
-import { CdkVirtualScrollViewport } from "@angular/cdk/scrolling";
-import { DropdownComponent } from "../button";
-import { detectChangesNextFrame } from "../app/utils";
+} from '@deepkit/core';
+import Hammer from 'hammerjs';
+import { isObservable, Observable } from 'rxjs';
+import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
+import { DropdownComponent } from '../button';
+import { detectChangesNextFrame } from '../app/utils';
+import { findParentWithClass } from '../../core/utils';
 
 /**
  * Necessary directive to get information about the row item T in dui-table-column.
@@ -91,6 +94,24 @@ export class TableCustomRowContextMenuDirective {
 }
 
 /**
+ *
+ * ```html
+ * <dui-table-column name="fieldName">
+ *     <ng-container *duiTableHead>
+ *          <strong>Header</strong>
+ *     </ng-container>
+ * </dui-table-column>
+ * ```
+ */
+@Directive({
+    selector: '[duiTableHeader]',
+})
+export class TableHeaderDirective {
+    constructor(public template: TemplateRef<any>) {
+    }
+}
+
+/**
  * Defines a new column.
  */
 @Directive({
@@ -101,7 +122,7 @@ export class TableColumnDirective {
      * The name of the column. Needs to be unique. If no renderer (*duiTableCell) is specified, this
      * name is used to render the content T[name].
      */
-    @Input('name') name?: string;
+    @Input('name') name: string = '';
 
     /**
      * A different header name. Use dui-table-header to render HTML there.
@@ -123,20 +144,23 @@ export class TableColumnDirective {
      */
     @Input('hidden') hidden: boolean | '' = false;
 
+    @Input('sortable') sortable: boolean = true;
+
+    @Input('hideable') hideable: boolean = true;
+
     /**
      * At which position this column will be placed.
      */
     @Input('position') position?: number;
 
-    //todo, write/read from localStorage
-
     /**
      * This is the new position when the user moved it manually.
      * @hidden
      */
-    ovewrittenPosition?: number;
+    overwrittenPosition?: number;
 
     @ContentChild(TableCellDirective, { static: false }) cell?: TableCellDirective;
+    @ContentChild(TableHeaderDirective, { static: false }) headerDirective?: TableHeaderDirective;
 
     isHidden() {
         return this.hidden !== false;
@@ -163,36 +187,12 @@ export class TableColumnDirective {
      * @hidden
      */
     public getPosition() {
-        if (this.ovewrittenPosition !== undefined) {
-            return this.ovewrittenPosition
+        if (this.overwrittenPosition !== undefined) {
+            return this.overwrittenPosition;
         }
 
         return this.position;
     }
-}
-
-/**
- * Used to render a different column header.
- *
- * ```html
- * <dui-table>
- *     <dui-table-header name="fieldName" [sortable]="false">Different Header</dui-table-header>
- * </dui-table
- * ```
- */
-@Component({
-    selector: 'dui-table-header',
-    template: '<ng-template #templateRef><ng-content></ng-content></ng-template>'
-
-})
-export class TableHeaderDirective {
-    /**
-     * The name of the field of T.
-     */
-    @Input('name') name!: string;
-    @Input('sortable') sortable: boolean = true;
-
-    @ViewChild('templateRef', { static: false }) template!: TemplateRef<any>;
 }
 
 @Component({
@@ -201,18 +201,22 @@ export class TableHeaderDirective {
     template: `
         <dui-dropdown #headerDropdown>
             <dui-dropdown-item
-                *ngFor="let column of sortedColumnDefs; trackBy: trackByColumn"
-                [selected]="!column.isHidden()"
-                (mousedown)="column.toggleHidden(); sortColumnDefs(); headerDropdown.close()"
+                    *ngFor="let column of sortedColumnDefs; trackBy: trackByColumn"
+                    [selected]="!column.isHidden()"
+                    (mousedown)="column.toggleHidden(); storePreference(); sortColumnDefs(); headerDropdown.close()"
             >
-                <ng-container *ngIf="column.name !== undefined && !headerMapDef[column.name]">
-                    {{column.header || column.name}}
-                </ng-container>
-                <ng-container
-                    *ngIf="column.name !== undefined && headerMapDef[column.name]"
-                    [ngTemplateOutlet]="headerMapDef[column.name].template"
-                    [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
+                <div *ngIf="column.hideable">
+                    <ng-container *ngIf="column.name !== undefined && !column.headerDirective">
+                        {{column.header || column.name}}
+                    </ng-container>
+                    <ng-container
+                            *ngIf="column.name !== undefined && column.headerDirective"
+                            [ngTemplateOutlet]="column.headerDirective.template"
+                            [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
+                </div>
             </dui-dropdown-item>
+            <dui-dropdown-separator></dui-dropdown-separator>
+            <dui-dropdown-item (click)="resetAll()">Reset all</dui-dropdown-item>
         </dui-dropdown>
 
         <div [style.height]="autoHeight !== false ? height + 'px' : '100%'" [style.minHeight.px]="itemHeight">
@@ -226,17 +230,17 @@ export class TableHeaderDirective {
                      [style.top]="scrollTop + 'px'"
                      #th>
                     <ng-container
-                        *ngIf="column.name !== undefined && headerMapDef[column.name]"
-                        [ngTemplateOutlet]="headerMapDef[column.name].template"
-                        [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
+                            *ngIf="column.headerDirective"
+                            [ngTemplateOutlet]="column.headerDirective.template"
+                            [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
 
-                    <ng-container *ngIf="column.name !== undefined && !headerMapDef[column.name]">
+                    <ng-container *ngIf="column.name !== undefined && !column.headerDirective">
                         {{column.header || column.name}}
                     </ng-container>
 
-                    <ng-container *ngIf="(currentSort || defaultSort) === column.name">
-                        <dui-icon *ngIf="!isAsc()" [size]="12" name="arrow_down"></dui-icon>
-                        <dui-icon *ngIf="isAsc()" [size]="12" name="arrow_up"></dui-icon>
+                    <ng-container *ngIf="sort[column.name]">
+                        <dui-icon *ngIf="sort[column.name] === 'desc'" [size]="12" name="arrow_down"></dui-icon>
+                        <dui-icon *ngIf="sort[column.name] === 'asc'" [size]="12" name="arrow_up"></dui-icon>
                     </ng-container>
 
                     <dui-splitter (modelChange)="setColumnWidth(column, $event)"
@@ -244,14 +248,15 @@ export class TableHeaderDirective {
                 </div>
             </div>
 
-            <div class="body" [class.with-header]="showHeader">
+            <div class="body" [class.with-header]="showHeader" (click)="clickCell($event)"
+                 (dblclick)="dblClickCell($event)">
                 <cdk-virtual-scroll-viewport #viewportElement
                                              class="overlay-scrollbar-small"
                                              [itemSize]="itemHeight"
                 >
                     <ng-container
-                        *cdkVirtualFor="let row of filterSorted(sorted); trackBy: trackByFn.bind(this); odd as isOdd">
-                        <div class="table-row"
+                            *cdkVirtualFor="let row of filterSorted(sorted); trackBy: trackByFn; let i = index; odd as isOdd">
+                        <div class="table-row {{rowClass ? rowClass(row) : ''}}"
                              [contextDropdown]="customRowDropdown ? customRowDropdown.dropdown : undefined"
                              [class.selected]="selectedMap.has(row)"
                              [class.odd]="isOdd"
@@ -260,9 +265,11 @@ export class TableHeaderDirective {
                              (contextmenu)="select(row, $event)"
                              (dblclick)="dbclick.emit(row)"
                         >
-                            <div *ngFor="let column of visibleColumns(sortedColumnDefs); trackBy: trackByColumn"
-                                 [class]="column.class"
+                            <div class="table-cell"
+                                 *ngFor="let column of visibleColumns(sortedColumnDefs); trackBy: trackByColumn"
+                                 [class]="column.class + (cellClass ?  ' ' + cellClass(row, column.name) : '')"
                                  [attr.row-column]="column.name"
+                                 [attr.row-i]="i"
                                  [style.width]="column.getWidth()"
                             >
                                 <ng-container *ngIf="column.cell">
@@ -287,7 +294,7 @@ export class TableHeaderDirective {
         '[class.auto-height]': 'autoHeight !== false',
     },
 })
-export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
+export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDestroy {
     /**
      * @hidden
      */
@@ -304,7 +311,7 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
      * Since dui-table has virtual-scroll active per default, it's required to define the itemHeight to
      * make scrolling actually workable correctly.
      */
-    @Input() public itemHeight: number = 23;
+    @Input() public itemHeight: number = 25;
 
     /**
      * Whether the table height is calculated based on current item count and [itemHeight].
@@ -361,6 +368,16 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
      */
     @Input() public filter?: (item: T) => boolean;
 
+    @Input() public rowClass?: (item: T) => string | undefined;
+
+    @Input() public cellClass?: (item: T, column: string) => string | undefined;
+
+    /**
+     * When the user changes the order or width of the columns, the information is stored
+     * in localStorage using this key, prefixed with `@dui/table/`.
+     */
+    @Input() public preferenceKey: string = 'root';
+
     /**
      * Filter query.
      */
@@ -385,14 +402,18 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
     /**
      * A hook to provide custom sorting behavior for certain columns.
      */
-    @Input() public sortFunction?: (path: string, dir: 'asc' | 'desc') => (((a: T, b: T) => number) | undefined);
+    @Input() public sortFunction?: (sort: { [name: string]: 'asc' | 'desc' }) => (((a: T, b: T) => number) | undefined);
+
+    /**
+     * Whether sorting is enabled (clicking headers trigger sort).
+     */
+    @Input() public sorting: boolean = true;
 
     @Input() noFocusOutline: boolean | '' = false;
 
-    public currentSort: string = '';
+    public sort: { [column: string]: 'asc' | 'desc' } = {};
 
-    public currentSortDirection: 'asc' | 'desc' | '' = '';
-
+    public rawItems: T[] = [];
     public sorted: T[] = [];
 
     public selectedMap = new Map<T, boolean>();
@@ -416,11 +437,15 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
      */
     @Output() public dbclick: EventEmitter<T> = new EventEmitter();
 
+    @Output() public customSort: EventEmitter<{ [column: string]: 'asc' | 'desc' }> = new EventEmitter();
+
+    @Output() public cellDblClick: EventEmitter<{ item: T, column: string }> = new EventEmitter();
+    @Output() public cellClick: EventEmitter<{ item: T, column: string }> = new EventEmitter();
+
     @ViewChild('header', { static: false }) header?: ElementRef;
     @ViewChildren('th') ths?: QueryList<ElementRef<HTMLElement>>;
 
     @ContentChildren(TableColumnDirective, { descendants: true }) columnDefs?: QueryList<TableColumnDirective>;
-    @ContentChildren(TableHeaderDirective, { descendants: true }) headerDefs?: QueryList<TableHeaderDirective>;
 
     @ContentChild(TableCustomHeaderContextMenuDirective, { static: false }) customHeaderDropdown?: TableCustomHeaderContextMenuDirective;
     @ContentChild(TableCustomRowContextMenuDirective, { static: false }) customRowDropdown?: TableCustomRowContextMenuDirective;
@@ -428,9 +453,9 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
     @ViewChild(CdkVirtualScrollViewport, { static: true }) viewport!: CdkVirtualScrollViewport;
     @ViewChild('viewportElement', { static: true, read: ElementRef }) viewportElement!: ElementRef;
 
-    sortedColumnDefs: TableColumnDirective[] = [];
+    public sortedColumnDefs: TableColumnDirective[] = [];
 
-    headerMapDef: { [name: string]: TableHeaderDirective } = {};
+    columnMap: { [name: string]: TableColumnDirective } = {};
 
     public displayedColumns?: string[] = [];
 
@@ -447,10 +472,19 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
 
     public setColumnWidth(column: TableColumnDirective, width: number) {
         column.width = width;
-        detectChangesNextFrame(this.cd);
+        detectChangesNextFrame(this.cd, () => {
+            this.storePreference();
+        });
+    }
+
+    ngOnInit() {
+        if (this.defaultSort) {
+            this.sort[this.defaultSort] = this.defaultSortDirection;
+        }
     }
 
     ngOnDestroy(): void {
+
     }
 
     @HostListener('window:resize')
@@ -460,17 +494,72 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
         });
     }
 
-    /**
-     * @hidden
-     */
-    public isAsc(): boolean {
-        return (this.currentSortDirection || this.defaultSortDirection) === 'asc';
+    resetAll() {
+        localStorage.removeItem('@dui/table/preferences-' + this.preferenceKey);
+        if (!this.columnDefs) return;
+        for (const column of this.columnDefs.toArray()) {
+            column.width = 100;
+            column.hidden = false;
+            column.overwrittenPosition = undefined;
+        }
+    }
+
+    storePreference() {
+        const preferences: { [name: string]: { hidden: boolean | '', width?: number | string, order?: number } } = {};
+        if (!this.columnDefs) return;
+
+        for (const column of this.columnDefs.toArray()) {
+            preferences[column.name] = {
+                width: column.width,
+                order: column.overwrittenPosition,
+                hidden: column.hidden
+            };
+        }
+        localStorage.setItem('@dui/table/preferences-' + this.preferenceKey, JSON.stringify(preferences));
+    }
+
+    loadPreference() {
+        const preferencesJSON = localStorage.getItem('@dui/table/preferences-' + this.preferenceKey);
+        if (!preferencesJSON) return;
+        const preferences = JSON.parse(preferencesJSON);
+        for (const i in preferences) {
+            if (!preferences.hasOwnProperty(i)) continue;
+            if (!this.columnMap[i]) continue;
+            if (preferences[i].width !== undefined) this.columnMap[i].width = preferences[i].width;
+            if (preferences[i].order !== undefined) this.columnMap[i].overwrittenPosition = preferences[i].order;
+            if (preferences[i].hidden !== undefined) this.columnMap[i].hidden = preferences[i].hidden;
+        }
+    }
+
+    dblClickCell(event: MouseEvent) {
+        if (!this.cellDblClick.observers.length) return;
+
+        if (!event.target) return;
+        const cell = findParentWithClass(event.target as HTMLElement, 'table-cell');
+        if (!cell) return;
+        const i = parseInt(cell.getAttribute('row-i') || '', 10);
+        const column = cell.getAttribute('row-column') || '';
+
+        this.cellDblClick.emit({ item: this.sorted[i], column });
+    }
+
+    clickCell(event: MouseEvent) {
+        if (!this.cellClick.observers.length) return;
+        if (!event.target) return;
+        const cell = findParentWithClass(event.target as HTMLElement, 'table-cell');
+        if (!cell) return;
+        const i = parseInt(cell.getAttribute('row-i') || '', 10);
+        const column = cell.getAttribute('row-column') || '';
+
+        this.cellClick.emit({ item: this.sorted[i], column });
     }
 
     /**
      * Toggles the sort by the given column name.
      */
     public sortBy(name: string, $event?: MouseEvent) {
+        if (!this.sorting) return;
+
         if (this.ignoreThisSort) {
             this.ignoreThisSort = false;
             return;
@@ -478,43 +567,36 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
 
         if ($event && $event.button === 2) return;
 
-        if (this.headerMapDef[name]) {
-            const headerDef = this.headerMapDef[name];
+        //only when shift is pressed do we activate multi-column sort
+        if (!$event?.shiftKey) this.sort = {[name]: this.sort[name]};
+
+        if (this.columnMap[name]) {
+            const headerDef = this.columnMap[name];
             if (!headerDef.sortable) {
                 return;
             }
         }
 
-        if (!this.currentSort && this.defaultSort === name) {
-            this.currentSort = this.defaultSort;
-            this.currentSortDirection = this.defaultSortDirection;
-
-            if (this.currentSortDirection === 'asc') {
-                this.currentSortDirection = 'desc';
-            } else {
-                this.currentSortDirection = 'asc';
-            }
-        } else if (this.currentSort === name) {
-            if (this.currentSortDirection === 'asc') {
-                this.currentSortDirection = 'desc';
-            } else {
-                this.currentSortDirection = 'asc';
-            }
-        } else if (!this.currentSort && this.defaultSort !== name) {
-            this.currentSort = this.defaultSort;
-            this.currentSortDirection = this.defaultSortDirection;
+        if (!this.sort[name]) {
+            this.sort[name] = 'asc';
+        } else {
+            if (this.sort[name] === 'asc') this.sort[name] = 'desc';
+            else if (this.sort[name] === 'desc') delete this.sort[name];
         }
 
-        this.currentSort = name;
-        this.doSort();
+        if (this.customSort.observers.length) {
+            this.customSort.emit(this.sort);
+        } else {
+            this.doSort();
+        }
     }
 
     /**
      * @hidden
      */
-    trackByFn(index: number, item: any) {
+    trackByFn = (index: number, item: any) => {
         return this.trackFn ? this.trackFn(index, item) : index;
-    }
+    };
 
     /**
      * @hidden
@@ -638,13 +720,14 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
                             this.sortedColumnDefs.splice(newPosition, 0, directive);
 
                             for (let [i, v] of eachPair(this.sortedColumnDefs)) {
-                                v.ovewrittenPosition = i;
+                                v.overwrittenPosition = i;
                             }
 
                             this.sortColumnDefs();
                         }
                     }
 
+                    this.storePreference();
                     element = undefined;
                 }
             });
@@ -720,18 +803,16 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
         this.initHeaderMovement();
 
         if (this.columnDefs) {
-            if (this.headerDefs) {
-                for (const header of this.headerDefs.toArray()) {
-                    this.headerMapDef[header.name] = header;
-                }
-            }
-
-            this.columnDefs!.changes.subscribe(() => {
+            setTimeout(() => {
+                this.columnDefs!.changes.subscribe(() => {
+                    this.updateDisplayColumns();
+                    this.loadPreference();
+                    this.sortColumnDefs();
+                });
                 this.updateDisplayColumns();
+                this.loadPreference();
                 this.sortColumnDefs();
             });
-            this.updateDisplayColumns();
-            this.sortColumnDefs();
         }
     }
 
@@ -779,18 +860,25 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     ngOnChanges(changes: SimpleChanges): void {
+        if (changes.preferenceKey) {
+            this.loadPreference();
+        }
+
         if (changes.items) {
             if (isObservable(this.items)) {
                 this.items.subscribe((items: T[]) => {
+                    this.rawItems = items;
                     this.sorted = items;
                     this.doSort();
                     this.viewport.checkViewportSize();
-                })
+                });
             } else if (isArray(this.items)) {
+                this.rawItems = this.items;
                 this.sorted = this.items;
                 this.doSort();
                 this.viewport.checkViewportSize();
             } else {
+                this.rawItems = [];
                 this.sorted = [];
                 this.doSort();
                 this.viewport.checkViewportSize();
@@ -809,10 +897,12 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
 
     private updateDisplayColumns() {
         this.displayedColumns = [];
+        this.columnMap = {};
 
         if (this.columnDefs) {
             for (const column of this.columnDefs.toArray()) {
                 this.displayedColumns.push(column.name!);
+                this.columnMap[column.name!] = column;
             }
 
             this.doSort();
@@ -820,42 +910,49 @@ export class TableComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     private doSort() {
-        if (!this.sorted) {
-            return;
+        if (this.customSort.observers.length) return;
+        if (empty(this.sorted)) {
+            this.sorted = this.rawItems;
         }
 
-        const sortField = this.currentSort || this.defaultSort;
-        const dir = this.currentSortDirection || this.defaultSortDirection;
-        const customSortFunction = this.sortFunction ? this.sortFunction(sortField, dir) : undefined;
-
-        if (customSortFunction) {
-            this.sorted.sort(customSortFunction);
+        if (this.sortFunction) {
+            this.sorted.sort(this.sortFunction(this.sort));
         } else {
-            this.sorted.sort((a: T, b: T) => {
-                const aV = this.valueFetcher(a, sortField);
-                const bV = this.valueFetcher(b, sortField);
-
-                if (aV === undefined && bV === undefined) return 0;
-                if (aV === undefined && bV !== undefined) return +1;
-                if (aV !== undefined && bV === undefined) return -1;
-
-                if (dir === 'asc') {
-                    if (aV > bV) return 1;
-                    if (aV < bV) return -1;
-                } else {
-                    if (aV > bV) return -1;
-                    if (aV < bV) return 1;
-                }
-
-                return 0;
-            });
+            const sort = Object.entries(this.sort);
+            sort.reverse(); //we start from bottom
+            let sortRoot = (a: any, b: any) => 0;
+            for (const [name, dir] of sort) {
+                sortRoot = this.createSortFunction(name, dir, sortRoot);
+            }
+            this.sorted.sort(sortRoot);
         }
 
         this.sortedChange.emit(this.sorted);
-        this.height = (this.sorted.length * this.itemHeight) + (this.showHeader ? 23 : 0);
+        this.height = (this.sorted.length * this.itemHeight) + (this.showHeader ? 23 : 0) + 10; //10 is scrollbar padding
 
         this.sorted = this.sorted.slice(0);
         detectChangesNextFrame(this.parentCd);
+    }
+
+    protected createSortFunction(sortField: string, dir: 'asc' | 'desc', next?: (a: any, b: any) => number) {
+        return (a: T, b: T) => {
+            const aV = this.valueFetcher(a, sortField);
+            const bV = this.valueFetcher(b, sortField);
+
+            if (aV === undefined && bV === undefined) return next ? next(a, b) : 0;
+            if (aV === undefined && bV !== undefined) return +1;
+            if (aV !== undefined && bV === undefined) return -1;
+
+            if (dir === 'asc') {
+                if (aV > bV) return 1;
+                if (aV < bV) return -1;
+            } else {
+                if (aV > bV) return -1;
+                if (aV < bV) return 1;
+            }
+
+            return next ? next(a, b) : 0;
+        };
     }
 
     /**

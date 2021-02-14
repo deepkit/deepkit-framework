@@ -8,6 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+import { isObject } from '@deepkit/core';
 import {
     CompilerState,
     getClassSchema,
@@ -15,7 +16,8 @@ import {
     jsonSerializer,
     nodeBufferToArrayBuffer,
     nodeBufferToTypedArray,
-    PropertySchema, Serializer,
+    PropertySchema,
+    Serializer,
     typedArrayNamesMap,
     typedArrayToBuffer
 } from '@deepkit/type';
@@ -28,8 +30,8 @@ for (let i = 0; i < 256; i++) {
 export const sqlSerializer: Serializer = new class extends jsonSerializer.fork('sql') {
 };
 
-export function uuid4Binary(u: string): Buffer {
-    return Buffer.from(u.replace(/-/g, ''), 'hex');
+export function uuid4Binary(u: any): Buffer {
+    return 'string' === typeof u ? Buffer.from(u.replace(/-/g, ''), 'hex') : Buffer.alloc(0);
 }
 
 export function uuid4Stringify(buffer: Buffer): string {
@@ -98,12 +100,6 @@ sqlSerializer.fromClass.register('uuid', (property: PropertySchema, state: Compi
     );
 });
 
-sqlSerializer.toClass.prepend('map', (property: PropertySchema, state: CompilerState) => {
-    if (property.parent) return;
-
-    state.addSetter(`'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor}`);
-});
-
 sqlSerializer.toClass.prepend('class', (property: PropertySchema, state: CompilerState) => {
     //when property is a reference, then we stored in the database the actual primary key and used this
     //field as foreignKey. This makes it necessary to convert it differently (concretely we treat it as the primary)
@@ -127,10 +123,11 @@ sqlSerializer.fromClass.prepend('class', (property: PropertySchema, state: Compi
 
     if (property.isReference) {
         const classType = state.setVariable('classType', property.resolveClassType);
+        state.rootContext.set('isObject', isObject);
         const primary = classSchema.getPrimaryField();
 
         state.addCodeForSetter(`
-            if (${state.accessor} instanceof ${classType}) {
+            if (isObject(${state.accessor})) {
                 ${getDataConverterJS(state.setter, `${state.accessor}.${primary.name}`, primary, state.serializerCompilers, state.rootContext, state.jitStack)}
             } else {
                 //we treat the input as if the user gave the primary key directly
@@ -154,6 +151,40 @@ sqlSerializer.fromClass.append('class', (property: PropertySchema, state: Compil
     state.addSetter(`_depth === 1 ? stringify(${state.accessor}) : ${state.accessor}`);
 });
 
+sqlSerializer.toClass.prepend('class', (property: PropertySchema, state: CompilerState) => {
+    //when property is a reference, then we stored in the database the actual primary key and used this
+    //field as foreignKey. This makes it necessary to convert it differently (concretely we treat it as the primary)
+    const classSchema = getClassSchema(property.resolveClassType!);
+
+    //note: jsonSerializer already calls JSON.parse if data is a string
+
+    if (property.isReference) {
+        const primary = classSchema.getPrimaryField();
+        state.addCodeForSetter(getDataConverterJS(state.setter, state.accessor, primary, state.serializerCompilers, state.rootContext, state.jitStack));
+        state.forceEnd();
+    }
+
+    return;
+});
+
+sqlSerializer.fromClass.register('array', (property: PropertySchema, state: CompilerState) => {
+    if (property.isReference) return;
+
+    //we don't stringify non-root properties
+    if (property.parent) return;
+
+    //we need to convert the structure to JSON-string after it has been converted to JSON values from the previous compiler
+    //but only on root properties.
+    state.setContext({ stringify: JSON.stringify });
+    state.addSetter(`_depth === 1 ? stringify(${state.accessor}) : ${state.accessor}`);
+});
+
+sqlSerializer.toClass.prepend('array', (property: PropertySchema, state: CompilerState) => {
+    if (property.parent) return;
+
+    state.addSetter(`'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor}`);
+});
+
 sqlSerializer.fromClass.append('map', (property: PropertySchema, state: CompilerState) => {
     //we don't stringify non-root properties
     if (property.parent) return;
@@ -162,6 +193,12 @@ sqlSerializer.fromClass.append('map', (property: PropertySchema, state: Compiler
     //but only on root properties.
     state.setContext({ stringify: JSON.stringify });
     state.addSetter(`_depth === 1 ? stringify(${state.accessor}) : ${state.accessor}`);
+});
+
+sqlSerializer.toClass.prepend('map', (property: PropertySchema, state: CompilerState) => {
+    if (property.parent) return;
+
+    state.addSetter(`'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor}`);
 });
 
 sqlSerializer.fromClass.registerForBinary((property: PropertySchema, state: CompilerState) => {
@@ -178,8 +215,8 @@ sqlSerializer.toClass.register('arrayBuffer', (property: PropertySchema, state: 
     state.setContext({ nodeBufferToArrayBuffer });
     state.addSetter(`nodeBufferToArrayBuffer(${state.accessor})`);
 });
-
-sqlSerializer.fromClass.register('arrayBuffer', (property: PropertySchema, state: CompilerState) => {
-    state.setContext({ Buffer });
-    state.addSetter(`Buffer.from(${state.accessor})`);
-});
+//
+// sqlSerializer.fromClass.register('arrayBuffer', (property: PropertySchema, state: CompilerState) => {
+//     state.setContext({ Buffer });
+//     state.addSetter(`Buffer.from(${state.accessor})`);
+// });

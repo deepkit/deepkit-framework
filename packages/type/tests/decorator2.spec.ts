@@ -81,6 +81,8 @@ test('test propertySchema serialization', () => {
         @t created: Date = new Date;
     }
 
+    class User {}
+
     class Page {
         @t.primary.uuid
         id: string = uuid();
@@ -93,6 +95,9 @@ test('test propertySchema serialization', () => {
 
         @t.map(Config).template(t.string, Config)
         map2: { [name: string]: Config } = {};
+
+        @t.reference()
+        user!: User;
     }
 
     function compare(p1: PropertySchema, p2: PropertySchema) {
@@ -104,6 +109,8 @@ test('test propertySchema serialization', () => {
             'isOptional',
             'isDecorated',
             'isParentReference',
+            'isReference',
+            'isAutoIncrement',
             'isId',
             'isPartial',
             'methodName',
@@ -124,6 +131,11 @@ test('test propertySchema serialization', () => {
         expect(p1.type).toBe('uuid');
         expect(p1.isResolvedClassTypeIsDecorated()).toBe(false);
         compare(p1, p2);
+    }
+
+    {
+        const p1 = schema.getProperty('user');
+        expect(p1.toJSON().isReference).toBe(true);
     }
 
     {
@@ -296,7 +308,7 @@ test('test invalid @f', () => {
             @t.array(Config).required
             config!: Config;
         }
-    }).toThrowError('User5::config type mismatch. Given Array<Config>, but declared is Config.');
+    }).toThrowError('User5::config type mismatch. Given Config[], but declared is Config.');
 
     expect(() => {
         class Model {
@@ -304,7 +316,7 @@ test('test invalid @f', () => {
             sub!: Config;
         }
 
-    }).toThrowError('Model::sub type mismatch. Given Array<Config>, but declared is Config.');
+    }).toThrowError('Model::sub type mismatch. Given Config[], but declared is Config.');
 
     expect(() => {
         class Model {
@@ -312,7 +324,7 @@ test('test invalid @f', () => {
             sub?: Config;
         }
 
-    }).toThrowError('Model::sub type mismatch. Given Array<ForwardedRef>?, but declared is Config.');
+    }).toThrowError('Model::sub type mismatch. Given ForwardedRef[]?, but declared is Config.');
 
     expect(() => {
         class Model {
@@ -476,7 +488,8 @@ test('missing public in constructor', () => {
 
     const schema = getClassSchema(User);
     expect(schema.getMethodProperties('constructor').length).toBe(2);
-    expect(schema.getClassProperties().size).toBe(5);
+    expect(schema.getPropertiesMap().size).toBe(5);
+    expect(schema.getProperties().length).toBe(5);
     expect(schema.getProperty('id').methodName).toBe('constructor');
     expect(schema.getProperty('name').methodName).toBe('constructor');
 
