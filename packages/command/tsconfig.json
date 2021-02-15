@@ -34,6 +34,9 @@
       "path": "../workflow/tsconfig.json"
     },
     {
+      "path": "../stopwatch/tsconfig.json"
+    },
+    {
       "path": "../injector/tsconfig.json"
     }
   ]

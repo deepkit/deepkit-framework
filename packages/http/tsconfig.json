@@ -52,6 +52,9 @@
       "path": "../template/tsconfig.json"
     },
     {
+      "path": "../stopwatch/tsconfig.json"
+    },
+    {
       "path": "../core/tsconfig.json"
     }
   ]

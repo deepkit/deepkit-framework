@@ -59,6 +59,9 @@
       "path": "../http/tsconfig.json"
     },
     {
+      "path": "../bson/tsconfig.json"
+    },
+    {
       "path": "../rpc/tsconfig.json"
     },
     {

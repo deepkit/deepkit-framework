@@ -36,6 +36,12 @@
       "path": "../command/tsconfig.json"
     },
     {
+      "path": "../template/tsconfig.json"
+    },
+    {
+      "path": "../http/tsconfig.json"
+    },
+    {
       "path": "../rpc/tsconfig.json"
     },
     {

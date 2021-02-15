@@ -27,7 +27,7 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-all-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm@6 && npm install && ./node_modules/.bin/npm-local-development --no-watcher
+        run: npm install -g npm@6 && npm install
       - name: Lerna bootstrap
         run: |
           npm run bootstrap -- \
@@ -37,7 +37,8 @@ jobs:
             --ignore @deepkit/framework-examples \
             --ignore @deepkit/benchmark \
             --ignore @deepkit/mysql --ignore @deepkit/postgres \
-            --ignore @deepkit/orm-browser
+            --ignore @deepkit/orm-browser;
+          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build \
@@ -78,6 +79,13 @@ jobs:
             packages/framework-integration/ \
             packages/rpc/ \
             packages/topsort/ \
+            packages/event/ \
+            packages/http/ \
+            packages/injector/ \
+            packages/logger/ \
+            packages/template/ \
+            packages/stopwatch/ \
+            packages/workflow/ \
             packages/type/ \
             packages/type-angular/
       - name: Send coverage
@@ -112,13 +120,14 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-postgres-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm@6 && npm install && ./node_modules/.bin/npm-local-development --no-watcher
+        run: npm install -g npm@6 && npm install
       - name: Lerna bootstrap
         run: |
           npm run bootstrap -- \
             --scope @deepkit/postgres --scope @deepkit/orm --scope @deepkit/sql \
             --scope @deepkit/orm-integration --scope @deepkit/topsort \
-            --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger
+            --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger;
+          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Build
         run: ./node_modules/.bin/tsc --build packages/postgres/tsconfig.json
       - name: Test
@@ -155,13 +164,14 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-mysql-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm@6 && npm install && ./node_modules/.bin/npm-local-development --no-watcher
+        run: npm install -g npm@6 && npm install
       - name: Lerna bootstrap
         run: |
           npm run bootstrap -- \
             --scope @deepkit/mysql --scope @deepkit/orm --scope @deepkit/sql \
             --scope @deepkit/orm-integration --scope @deepkit/topsort \
-            --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger
+            --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger;
+          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Build
         run: ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
       - name: Test
@@ -188,13 +198,14 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-sqlite-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm@6 && npm install && ./node_modules/.bin/npm-local-development --no-watcher
+        run: npm install -g npm@6 && npm install
       - name: Lerna bootstrap
         run: |
           npm run bootstrap -- \
             --scope @deepkit/sqlite --scope @deepkit/orm --scope @deepkit/sql \
             --scope @deepkit/orm-integration --scope @deepkit/topsort \
-            --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger
+            --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger;
+          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Build
         run: ./node_modules/.bin/tsc --build packages/sqlite/tsconfig.json
       - name: Test
@@ -227,14 +238,15 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-benchmark-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm@6 && npm install && ./node_modules/.bin/npm-local-development --no-watcher
+        run: npm install -g npm@6 && npm install
       - name: Lerna bootstrap
         run: |
           npm run bootstrap -- \
             --scope @deepkit/mongo --scope @deepkit/bson \
             --scope @deepkit/orm --scope @deepkit/sql \
             --scope @deepkit/orm-integration --scope @deepkit/topsort \
-            --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger
+            --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger;
+          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Build
         run: ./node_modules/.bin/tsc --build packages/mongo/tsconfig.json
       - name: Test
