@@ -517,12 +517,12 @@ export class SQLPersistence extends DatabasePersistence {
             const set: string[] = [];
             const where: string[] = [];
 
-            const pk = scopeSerializer.partialSerialize(changeSet.primaryKey);
+            const pk = scopeSerializer.partialSerialize(changeSet.primaryKey) as { [name: string]: any };
             for (const i in pk) {
                 if (!pk.hasOwnProperty(i)) continue;
                 where.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(pk[i])}`);
             }
-            const value = scopeSerializer.partialSerialize(changeSet.changes.$set || {});
+            const value = scopeSerializer.partialSerialize(changeSet.changes.$set || {}) as { [name: string]: any };
             for (const i in value) {
                 if (!value.hasOwnProperty(i)) continue;
                 set.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(value[i])}`);
@@ -590,7 +590,7 @@ export class SQLPersistence extends DatabasePersistence {
         const pks: any[] = [];
         const pk = classSchema.getPrimaryField();
         for (const item of items) {
-            pks.push(item[pk.name]);
+            pks.push(item[pk.name as keyof T]);
         }
 
         const inValues = pks.map(v => this.platform.quoteValue(v)).join(', ');
