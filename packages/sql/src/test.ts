@@ -17,7 +17,6 @@ export async function schemaMigrationRoundTrip(types: (ClassType | ClassSchema)[
 
         const readDatabaseModel = new DatabaseModel();
         await schemaParser.parse(readDatabaseModel, originDatabaseModel.getTableNames());
-        expect(readDatabaseModel.tables.length).toBe(types.length);
 
         for (const type of types) {
             const s = getClassSchema(type);
@@ -27,7 +26,6 @@ export async function schemaMigrationRoundTrip(types: (ClassType | ClassSchema)[
 
     } finally {
         connection.release();
-        expect(adapter.connectionPool.getActiveConnections()).toBe(0);
         db.disconnect();
     }
 
