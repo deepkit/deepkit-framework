@@ -1,3 +1,4 @@
+// @ts-ignore
 import * as tsNode from 'ts-node/esm';
 import { optimizeJSX } from '@deepkit/template';
 import { inDebugMode } from '@deepkit/core';

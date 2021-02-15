@@ -14,12 +14,7 @@
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
-    "composite": true,
-    "typeRoots": [
-      "node_modules/@types",
-      "../../node_modules/@types",
-      "types"
-    ]
+    "composite": true
   },
   "include": [
     "benchmarks",

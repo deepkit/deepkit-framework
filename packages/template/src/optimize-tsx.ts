@@ -10,6 +10,7 @@
 
 import { addHook } from 'pirates';
 import { CallExpression, Expression, Literal, MemberExpression, ObjectExpression, Property, SpreadElement, UnaryExpression } from 'estree';
+// @ts-ignore
 import abstractSyntaxTree from 'abstract-syntax-tree';
 import { inDebugMode } from '@deepkit/core';
 
@@ -19,8 +20,7 @@ export function transform(code: string, filename: string) {
     if (inDebugMode()) return code;
     //for CommonJs its jsx_runtime_1.jsx, for ESM its _jsx. ESM is handled in loader.ts#transformSource
     if (code.indexOf('.jsx(') === -1 && code.indexOf('.jsxs(') === -1) return code;
-    const optimized = optimizeJSX(code);
-    return optimized;
+    return optimizeJSX(code);
 }
 
 addHook(transform, { exts: ['.js', '.tsx'] });

@@ -14,6 +14,7 @@ import { t } from '@deepkit/type';
 import { MongoClientConfig } from '../../config';
 import { BaseResponse, Command } from '../command';
 import { MongoError } from '../../error';
+// @ts-ignore
 import saslprep from 'saslprep';
 
 class SaslStartCommand extends t.class({

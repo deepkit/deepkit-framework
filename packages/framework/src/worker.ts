@@ -17,6 +17,8 @@ import { injectable, Injector, InjectorContext, Provider } from '@deepkit/inject
 import { DeepkitRpcSecurity, RpcInjectorContext } from './rpc';
 import { RpcControllers } from './application-service-container';
 import { SecureContextOptions, TlsOptions } from 'tls';
+
+// @ts-ignore
 import selfsigned from 'selfsigned';
 import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';

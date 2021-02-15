@@ -31,7 +31,6 @@
   },
   "dependencies": {
     "turbo-net": "deepkit/turbo-net#1.5.0",
-    "mongo-uuid": "^1.0.0",
     "saslprep": "^1.0.3"
   },
   "devDependencies": {

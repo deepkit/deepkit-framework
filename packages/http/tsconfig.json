@@ -13,16 +13,7 @@
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
-    "composite": true,
-    "typeRoots": [
-      "node_modules/@types",
-      "types"
-    ],
-    "types": [
-      "formidable",
-      "abstract-syntax-tree",
-      "selfsigned"
-    ]
+    "composite": true
   },
   "include": [
     "src",
