@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "test": "node --max_old_space_size=2048 node_modules/jest/bin/jest.js --coverage --forceExit",
-    "bootstrap": "lerna bootstrap --no-ci && npm-local-development --no-watcher",
+    "bootstrap": "lerna bootstrap --no-ci",
     "build": "tsc --build tsconfig.json && tsc --build tsconfig.esm.json && lerna run build",
     "build:esm": "tsc --build tsconfig.esm.json",
     "tsc": "tsc --build",
