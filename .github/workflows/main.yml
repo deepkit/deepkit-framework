@@ -27,7 +27,7 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-all-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm@6 && npm install
+        run: npm install -g npm@6 && npm install && ./node_modules/.bin/npm-local-development --no-watcher
       - name: Lerna bootstrap
         run: |
           npm run bootstrap -- \
@@ -112,7 +112,7 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-postgres-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm@6 && npm install
+        run: npm install -g npm@6 && npm install && ./node_modules/.bin/npm-local-development --no-watcher
       - name: Lerna bootstrap
         run: |
           npm run bootstrap -- \
@@ -155,7 +155,7 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-mysql-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm@6 && npm install
+        run: npm install -g npm@6 && npm install && ./node_modules/.bin/npm-local-development --no-watcher
       - name: Lerna bootstrap
         run: |
           npm run bootstrap -- \
@@ -188,7 +188,7 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-sqlite-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm@6 && npm install
+        run: npm install -g npm@6 && npm install && ./node_modules/.bin/npm-local-development --no-watcher
       - name: Lerna bootstrap
         run: |
           npm run bootstrap -- \
@@ -227,7 +227,7 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-benchmark-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm@6 && npm install
+        run: npm install -g npm@6 && npm install && ./node_modules/.bin/npm-local-development --no-watcher
       - name: Lerna bootstrap
         run: |
           npm run bootstrap -- \
