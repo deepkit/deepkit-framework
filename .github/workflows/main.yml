@@ -64,7 +64,8 @@ jobs:
             packages/sqlite/tsconfig.json \
             packages/topsort/tsconfig.json \
             packages/type/tsconfig.json \
-            packages/type-angular/tsconfig.json
+            packages/type-angular/tsconfig.json;
+          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
         run: |
           npm run test \
@@ -129,7 +130,10 @@ jobs:
             --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger;
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Build
-        run: ./node_modules/.bin/tsc --build packages/postgres/tsconfig.json
+        run: |
+          ./node_modules/.bin/tsc --build packages/postgres/tsconfig.json;
+          ./node_modules/.bin/npm-local-development --no-watcher
+
       - name: Test
         run: npm run test packages/postgres/
       - name: Send coverage
@@ -173,7 +177,9 @@ jobs:
             --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger;
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Build
-        run: ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
+        run: |
+          ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
+          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
         run: npm run test packages/mysql/
       - name: Send coverage
@@ -207,7 +213,9 @@ jobs:
             --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger;
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Build
-        run: ./node_modules/.bin/tsc --build packages/sqlite/tsconfig.json
+        run: |
+          ./node_modules/.bin/tsc --build packages/sqlite/tsconfig.json
+          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
         run: npm run test packages/sqlite/
       - name: Send coverage
@@ -248,7 +256,9 @@ jobs:
             --scope @deepkit/type --scope @deepkit/core --scope @deepkit/logger;
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Build
-        run: ./node_modules/.bin/tsc --build packages/mongo/tsconfig.json
+        run: |
+          ./node_modules/.bin/tsc --build packages/mongo/tsconfig.json
+          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
         run: npm run test packages/mongo/
       - name: Send coverage
