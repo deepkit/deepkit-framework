@@ -1,0 +1,58 @@
+{
+  "compilerOptions": {
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "moduleResolution": "node",
+    "target": "es2018",
+    "module": "CommonJS",
+    "esModuleInterop": true,
+    "outDir": "./dist/cjs",
+    "declaration": true,
+    "composite": true,
+    "typeRoots": [
+      "node_modules/@types",
+      "types"
+    ],
+    "types": [
+      "formidable",
+      "abstract-syntax-tree",
+      "selfsigned"
+    ]
+  },
+  "include": [
+    "src",
+    "tests",
+    "index.ts"
+  ],
+  "references": [
+    {
+      "path": "../type/tsconfig.json"
+    },
+    {
+      "path": "../event/tsconfig.json"
+    },
+    {
+      "path": "../command/tsconfig.json"
+    },
+    {
+      "path": "../injector/tsconfig.json"
+    },
+    {
+      "path": "../workflow/tsconfig.json"
+    },
+    {
+      "path": "../logger/tsconfig.json"
+    },
+    {
+      "path": "../template/tsconfig.json"
+    },
+    {
+      "path": "../core/tsconfig.json"
+    }
+  ]
+}

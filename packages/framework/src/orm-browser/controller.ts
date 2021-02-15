@@ -1,13 +1,6 @@
 import { getEnumValues, isArray, isObject } from '@deepkit/core';
 import { Database, DatabaseAdapter } from '@deepkit/orm';
-import {
-    BrowserControllerInterface,
-    DatabaseCommit,
-    DatabaseInfo,
-    EntityPropertySeed,
-    fakerFunctions, FakerTypes, getType,
-    QueryResult, SeedDatabase, EntityPropertySeedReference
-} from '@deepkit/orm-browser-api';
+import { BrowserControllerInterface, DatabaseCommit, DatabaseInfo, EntityPropertySeed, EntityPropertySeedReference, fakerFunctions, FakerTypes, getType, QueryResult, SeedDatabase } from '@deepkit/orm-browser-api';
 import { rpc } from '@deepkit/rpc';
 import { ClassSchema, jsonSerializer, plainToClass, PropertySchema, serializeSchemas, t } from '@deepkit/type';
 import * as faker from 'faker';
@@ -15,7 +8,7 @@ import { SQLDatabaseAdapter } from '@deepkit/sql';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { performance } from 'perf_hooks';
 import { inspect } from 'util';
-import { http } from '../decorator';
+import { http } from '@deepkit/http';
 
 @rpc.controller(BrowserControllerInterface)
 export class OrmBrowserController implements BrowserControllerInterface {

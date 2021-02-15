@@ -15,11 +15,11 @@ import { IncomingMessage } from 'http';
 import { join } from 'path';
 import querystring from 'querystring';
 import { httpClass } from './decorator';
-import { HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters } from './http-model';
+import { HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters } from './model';
 import { BasicInjector, injectable, NormalizedProvider, Tag } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
-import { HttpControllers } from './application-service-container';
 import { TagProviders } from '@deepkit/command';
+import { HttpControllers } from './controllers';
 
 export type RouteParameterResolverForInjector = ((injector: BasicInjector) => any[] | Promise<any[]>);
 type ResolvedController = { parameters: RouteParameterResolverForInjector, routeConfig: RouteConfig };
@@ -237,7 +237,7 @@ export class RouteParameterResolverTag extends Tag<RouteParameterResolver> {
     constructor(
         public provider: NormalizedProvider,
     ) {
-        super(provider)
+        super(provider);
         if (!this.provider.scope) provider.scope = 'http';
     }
 
@@ -277,8 +277,8 @@ export class Router {
         return this.routes;
     }
 
-    static forControllers(controllers: ClassType[]): Router {
-        return new this(new HttpControllers(controllers), new Logger([], []), new TagProviders);
+    static forControllers(controllers: ClassType[], tagProviders: TagProviders = new TagProviders()): Router {
+        return new this(new HttpControllers(controllers), new Logger([], []), tagProviders);
     }
 
     protected getRouteCode(compiler: CompilerContext, routeConfig: RouteConfig): string {
@@ -299,73 +299,73 @@ export class Router {
         let setParametersFromPath = '';
 
         params:
-        for (const parameter of parsedRoute.getParameters()) {
-            if (parameter.isPartOfPath()) {
-                const converted = parameter.property.type === 'any' ? (v: any) => v : getPropertyXtoClassFunction(parameter.property, jsonSerializer);
-                const validator = parameter.property.type === 'any' ? (v: any) => undefined : jitValidateProperty(parameter.property);
-                const converterVar = compiler.reserveVariable('argumentConverter', converted);
-                const validatorVar = compiler.reserveVariable('argumentValidator', validator);
-
-                setParameters.push(`parameters.${parameter.property.name} = ${converterVar}(_match[${1 + (parameter.regexPosition || 0)}]);`);
-                parameterValidator.push(`${validatorVar}(_match[1 + ${parameter.regexPosition}], ${JSON.stringify(parameter.getName())}, validationErrors);`);
-                parameterNames.push(`parameters.${parameter.property.name}`);
-            } else {
-                if (parsedRoute.customValidationErrorHandling === parameter) {
-                    compiler.context.set('BodyValidation', BodyValidation);
-                    bodyValidationErrorHandling = '';
-                    setParameters.push(`parameters.${parameter.property.name} = new BodyValidation(bodyErrors);`);
-                    parameterNames.push(`parameters.${parameter.property.name}`);
-                } else if (parameter.body) {
-                    const bodyVar = compiler.reserveVariable('body');
-
-                    const validatorVar = compiler.reserveVariable('argumentValidator', jitValidateProperty(parameter.property));
-                    const converterVar = compiler.reserveVariable('argumentConverter', getPropertyXtoClassFunction(parameter.property, jsonSerializer));
-
-                    enableParseBody = true;
-                    parameterValidator.push(`
-                        ${bodyVar} = ${converterVar}(bodyFields);
-                        ${validatorVar}(${bodyVar}, ${JSON.stringify(parameter.typePath || '')}, bodyErrors);
-                `);
-                    setParameters.push(`parameters.${parameter.property.name} = ${bodyVar};`);
-                    parameterNames.push(`parameters.${parameter.property.name}`);
-                } else if (parameter.query) {
+            for (const parameter of parsedRoute.getParameters()) {
+                if (parameter.isPartOfPath()) {
                     const converted = parameter.property.type === 'any' ? (v: any) => v : getPropertyXtoClassFunction(parameter.property, jsonSerializer);
                     const validator = parameter.property.type === 'any' ? (v: any) => undefined : jitValidateProperty(parameter.property);
                     const converterVar = compiler.reserveVariable('argumentConverter', converted);
                     const validatorVar = compiler.reserveVariable('argumentValidator', validator);
 
-                    const queryPath = parameter.typePath === undefined ? parameter.property.name : parameter.typePath;
-                    const accessor = queryPath ? `['` + (queryPath.replace(/\./g, `']['`)) + `']` : '';
-                    const queryAccessor = queryPath ? `_query${accessor}` : '_query';
-                    setParameters.push(`parameters.${parameter.property.name} = ${converterVar}(${queryAccessor});`);
+                    setParameters.push(`parameters.${parameter.property.name} = ${converterVar}(_match[${1 + (parameter.regexPosition || 0)}]);`);
+                    parameterValidator.push(`${validatorVar}(_match[1 + ${parameter.regexPosition}], ${JSON.stringify(parameter.getName())}, validationErrors);`);
                     parameterNames.push(`parameters.${parameter.property.name}`);
-                    parameterValidator.push(`${validatorVar}(${queryAccessor}, ${JSON.stringify(parameter.typePath)}, validationErrors);`);
                 } else {
-                    const classType = parameter.property.getResolvedClassType();
-                    const classTypeVar = compiler.reserveVariable('classType', classType);
+                    if (parsedRoute.customValidationErrorHandling === parameter) {
+                        compiler.context.set('BodyValidation', BodyValidation);
+                        bodyValidationErrorHandling = '';
+                        setParameters.push(`parameters.${parameter.property.name} = new BodyValidation(bodyErrors);`);
+                        parameterNames.push(`parameters.${parameter.property.name}`);
+                    } else if (parameter.body) {
+                        const bodyVar = compiler.reserveVariable('body');
 
-                    for (const resolverTag of this.parameterResolverTags) {
-                        if (resolverTag.classTypes.includes(classType)) {
-                            const resolverProvideTokenVar = compiler.reserveVariable('resolverProvideToken', resolverTag.provider.provide);
-                            requiresAsyncParameters = true;
-                            if (!setParametersFromPath) {
-                                for (const i in parsedRoute.pathParameterNames) {
-                                    setParametersFromPath += `parameters.${i} = _match[${1 + parsedRoute.pathParameterNames[i]}];`;
+                        const validatorVar = compiler.reserveVariable('argumentValidator', jitValidateProperty(parameter.property));
+                        const converterVar = compiler.reserveVariable('argumentConverter', getPropertyXtoClassFunction(parameter.property, jsonSerializer));
+
+                        enableParseBody = true;
+                        parameterValidator.push(`
+                        ${bodyVar} = ${converterVar}(bodyFields);
+                        ${validatorVar}(${bodyVar}, ${JSON.stringify(parameter.typePath || '')}, bodyErrors);
+                `);
+                        setParameters.push(`parameters.${parameter.property.name} = ${bodyVar};`);
+                        parameterNames.push(`parameters.${parameter.property.name}`);
+                    } else if (parameter.query) {
+                        const converted = parameter.property.type === 'any' ? (v: any) => v : getPropertyXtoClassFunction(parameter.property, jsonSerializer);
+                        const validator = parameter.property.type === 'any' ? (v: any) => undefined : jitValidateProperty(parameter.property);
+                        const converterVar = compiler.reserveVariable('argumentConverter', converted);
+                        const validatorVar = compiler.reserveVariable('argumentValidator', validator);
+
+                        const queryPath = parameter.typePath === undefined ? parameter.property.name : parameter.typePath;
+                        const accessor = queryPath ? `['` + (queryPath.replace(/\./g, `']['`)) + `']` : '';
+                        const queryAccessor = queryPath ? `_query${accessor}` : '_query';
+                        setParameters.push(`parameters.${parameter.property.name} = ${converterVar}(${queryAccessor});`);
+                        parameterNames.push(`parameters.${parameter.property.name}`);
+                        parameterValidator.push(`${validatorVar}(${queryAccessor}, ${JSON.stringify(parameter.typePath)}, validationErrors);`);
+                    } else {
+                        const classType = parameter.property.getResolvedClassType();
+                        const classTypeVar = compiler.reserveVariable('classType', classType);
+
+                        for (const resolverTag of this.parameterResolverTags) {
+                            if (resolverTag.classTypes.includes(classType)) {
+                                const resolverProvideTokenVar = compiler.reserveVariable('resolverProvideToken', resolverTag.provider.provide);
+                                requiresAsyncParameters = true;
+                                if (!setParametersFromPath) {
+                                    for (const i in parsedRoute.pathParameterNames) {
+                                        setParametersFromPath += `parameters.${i} = _match[${1 + parsedRoute.pathParameterNames[i]}];`;
+                                    }
                                 }
-                            }
-                            setParameters.push(`parameters.${parameter.property.name} = await _injector.get(${resolverProvideTokenVar}).resolve(
+                                setParameters.push(`parameters.${parameter.property.name} = await _injector.get(${resolverProvideTokenVar}).resolve(
                                 {classType: ${classTypeVar}, routeConfig: ${routeConfigVar}, request: request, query: _query, parameters: parameters}
                             );`);
-                            parameterNames.push(`parameters.${parameter.property.name}`);
-                            continue params;
+                                parameterNames.push(`parameters.${parameter.property.name}`);
+                                continue params;
+                            }
                         }
-                    }
 
-                    setParameters.push(`parameters.${parameter.property.name} = _injector.get(${classTypeVar});`);
-                    parameterNames.push(`parameters.${parameter.property.name}`);
+                        setParameters.push(`parameters.${parameter.property.name} = _injector.get(${classTypeVar});`);
+                        parameterNames.push(`parameters.${parameter.property.name}`);
+                    }
                 }
             }
-        }
 
         let parseBodyLoading = '';
         if (enableParseBody) {
@@ -523,10 +523,10 @@ export class Router {
     public resolve(method: string, url: string): ResolvedController | undefined {
         return this.resolveRequest({
             getUrl() {
-                return url
+                return url;
             },
             getMethod() {
-                return method
+                return method;
             },
         } as any);
     }

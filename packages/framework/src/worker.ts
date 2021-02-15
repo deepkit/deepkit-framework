@@ -12,8 +12,7 @@ import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnecti
 import http, { Server } from 'http';
 import https from 'https';
 import WebSocket from 'ws';
-import { HttpKernel } from './http';
-import { HttpRequest, HttpResponse } from './http-model';
+import { HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
 import { injectable, Injector, InjectorContext, Provider } from '@deepkit/injector';
 import { DeepkitRpcSecurity, RpcInjectorContext } from './rpc';
 import { RpcControllers } from './application-service-container';

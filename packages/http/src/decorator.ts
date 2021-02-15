@@ -9,14 +9,7 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import {
-    ClassDecoratorResult,
-    createClassDecoratorContext,
-    createPropertyDecoratorContext,
-    getClassSchema,
-    mergeDecorator,
-    PropertyDecoratorResult
-} from '@deepkit/type';
+import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, getClassSchema, mergeDecorator, PropertyDecoratorResult } from '@deepkit/type';
 import { join } from 'path';
 
 export interface ControllerOptions {
@@ -129,17 +122,17 @@ export class HttpActionDecorator {
 
     /**
      * Allows to change the HttpAction object and composite multiple properties into one function.
-     * 
+     *
      * @example
      * ```typescript
      * const authGroup = Symbol('authGroup');
-     * 
+     *
      * function authGroup(group: 'admin' | 'user') {
      *    return (action: HttpAction) => {
      *        action.data.set(authGroup, group);
      *    };
      * }
-     * 
+     *
      * class My Controller {
      *    @http.GET('/assets').use(authGroup('admin'))
      *    assets() {}
@@ -150,10 +143,10 @@ export class HttpActionDecorator {
         use(this.t);
     }
 
-    /** 
-     * Arbitrary value container that can be read in RouterParameterResolver and all 
+    /**
+     * Arbitrary value container that can be read in RouterParameterResolver and all
      * HTTP workflow events (like authentication).
-     * 
+     *
      * @example
      * ```typescript
      * class My Controller {

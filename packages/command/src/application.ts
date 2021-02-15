@@ -165,6 +165,7 @@ export class CommandApplication<T extends ModuleOptions<any>, C extends ServiceC
     }
 
     public async execute(argv: string[]) {
+        this.serviceContainer.process();
         let result: any;
 
         class MyConfig extends Config {

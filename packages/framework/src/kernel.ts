@@ -29,37 +29,16 @@ import { DebugDatabase } from './debug/db';
 import { DebugController } from './debug/debug.controller';
 import { Debugger, HttpRequestDebugCollector } from './debug/debugger';
 import { registerDebugHttpController } from './debug/http-debug.controller';
-import { eventDispatcher } from '@deepkit/event';
-import { HttpKernel, HttpListener, httpWorkflow } from './http';
-import { injectable, injectorReference } from '@deepkit/injector';
+import { HttpKernel, HttpListener, HttpLogger, HttpModule, Router, serveStaticListener } from '@deepkit/http';
+import { injectorReference } from '@deepkit/injector';
 import { kernelConfig } from './kernel.config';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { createModule } from '@deepkit/command';
-import { Router } from './router';
 import { DeepkitRpcSecurity } from './rpc';
 import { SessionHandler } from './session';
 import { WebWorkerFactory } from './worker';
 import { Zone } from './zone';
 import { OrmBrowserController } from './orm-browser/controller';
-import { serveStaticListener } from './http/static-serving';
-
-@injectable()
-class HttpLogger {
-    constructor(private logger: Logger) {
-    }
-
-    @eventDispatcher.listen(httpWorkflow.onResponse, 101) //101 is right after 100 default listener
-    onHttpRequest(event: typeof httpWorkflow.onResponse.event) {
-        this.logger.log(
-            event.request.connection.remoteAddress, '-',
-            event.request.method,
-            `"${event.request.url}"`,
-            event.response.statusCode,
-            `"${event.request.headers.referer || ''}"`,
-            // `"${event.request.headers['user-agent']}"`,
-        );
-    }
-}
 
 export const KernelModule = createModule({
     name: 'kernel',
@@ -81,7 +60,7 @@ export const KernelModule = createModule({
         { provide: HttpRequestDebugCollector, scope: 'http' },
     ],
     workflows: [
-        httpWorkflow,
+        // httpWorkflow
         // rpcWorkflow,
     ],
     listeners: [
@@ -101,10 +80,11 @@ export const KernelModule = createModule({
     ],
     imports: [
         BrokerModule,
+        HttpModule,
     ],
 }).setup((module, config) => {
     if (config.databases) {
-        module.addProvider(...config.databases)
+        module.addProvider(...config.databases);
     }
 
     if (config.httpLog) {
@@ -123,7 +103,7 @@ export const KernelModule = createModule({
 
         Zone.enable();
         module.addProvider(Debugger);
-        module.addProvider({provide: OrmBrowserController, deps: [DatabaseRegistry], useFactory: (registry: DatabaseRegistry) =>  new OrmBrowserController(registry.getDatabases())});
+        module.addProvider({ provide: OrmBrowserController, deps: [DatabaseRegistry], useFactory: (registry: DatabaseRegistry) => new OrmBrowserController(registry.getDatabases()) });
         module.addController(DebugController);
         module.addController(OrmBrowserController);
         registerDebugHttpController(module, config.debugUrl);

@@ -1,0 +1,53 @@
+{
+  "name": "@deepkit/template",
+  "version": "1.0.1-alpha.13",
+  "description": "Deepkit template engine based on TSX",
+  "private": true,
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    },
+    "./jsx-runtime": {
+      "require": "./dist/cjs/jsx-runtime.js",
+      "default": "./dist/esm/jsx-runtime.js"
+    }
+  },
+  "repository": "https://github.com/deepkit/deepkit-framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+  },
+  "peerDependencies": {
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13",
+    "@deepkit/injector": "^1.0.1-alpha.13"
+  },
+  "dependencies": {
+    "@types/estree": "^0.0.45",
+    "abstract-syntax-tree": "^2.9.4"
+  },
+  "devDependencies": {
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13",
+    "@deepkit/injector": "^1.0.1-alpha.13",
+    "reflect-metadata": "^0.1.13"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/tests/**/*.spec.ts",
+      "**/tests/**/*.spec.tsx"
+    ]
+  }
+}

@@ -8,18 +8,18 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { http } from '../decorator';
+import { http } from './decorator';
 import { join } from 'path';
 import { readFileSync, stat } from 'fs';
-import { HtmlResponse, httpWorkflow } from '../http';
+import { HtmlResponse, httpWorkflow } from './http';
 import { Module } from '@deepkit/command';
-import { normalizeDirectory } from '../utils';
+import { normalizeDirectory } from './utils';
 import { ClassType } from '@deepkit/core';
 import { injectable } from '@deepkit/injector';
-import { HttpRequest, HttpResponse } from '../http-model';
+import { HttpRequest, HttpResponse } from './model';
 import send from 'send';
 import { eventDispatcher } from '@deepkit/event';
-import { RouteConfig } from '../router';
+import { RouteConfig } from './router';
 
 export function serveStaticListener(path: string, localPath: string = path): ClassType {
     @injectable()

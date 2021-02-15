@@ -11,12 +11,12 @@
 import { each, getClassName } from '@deepkit/core';
 import { RpcClient } from '@deepkit/rpc';
 import cluster from 'cluster';
-import { httpClass } from './decorator';
+import { httpClass, HttpControllers } from '@deepkit/http';
 import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
 import { injectable, InjectorContext } from '@deepkit/injector';
 import { kernelConfig } from './kernel.config';
 import { Logger } from '@deepkit/logger';
-import { HttpControllers, RpcControllers } from './application-service-container';
+import { RpcControllers } from './application-service-container';
 import { createRpcConnection, WebWorker, WebWorkerFactory } from './worker';
 
 export class ServerBootstrapEvent extends BaseEvent { }

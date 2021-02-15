@@ -292,6 +292,7 @@ export class Injector {
                 return compiler.reserveVariable('configSlice', value);
             }
         } else {
+            if (token === undefined) throw new Error(`Argument type ${property.name} at position ${argPosition} is undefined. Imported reflect-metadata correctly?`);
             const tokenVar = compiler.reserveVariable('token', token);
             const orThrow = isOptional ? '' : `|| ${notFoundFunction}(${classTypeVar}, ${JSON.stringify(property.name)}, ${argPosition}, ${tokenVar})`;
 

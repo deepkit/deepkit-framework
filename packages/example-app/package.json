@@ -11,6 +11,8 @@
     "@deepkit/core-rxjs": "^1.0.1-alpha.0",
     "@deepkit/framework": "^1.0.1-alpha.0",
     "@deepkit/command": "^1.0.1-alpha.0",
+    "@deepkit/template": "^1.0.1-alpha.0",
+    "@deepkit/http": "^1.0.1-alpha.0",
     "@deepkit/rpc": "^1.0.1-alpha.0",
     "@deepkit/type": "^1.0.1-alpha.0",
     "@deepkit/injector": "^1.0.1-alpha.0",

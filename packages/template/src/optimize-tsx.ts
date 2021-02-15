@@ -9,18 +9,9 @@
  */
 
 import { addHook } from 'pirates';
-import {
-    CallExpression,
-    Expression,
-    Literal,
-    MemberExpression,
-    ObjectExpression,
-    Property,
-    SpreadElement,
-    UnaryExpression
-} from 'estree';
+import { CallExpression, Expression, Literal, MemberExpression, ObjectExpression, Property, SpreadElement, UnaryExpression } from 'estree';
 import abstractSyntaxTree from 'abstract-syntax-tree';
-import { inDebugMode } from '../utils';
+import { inDebugMode } from '@deepkit/core';
 
 const { parse, generate, replace } = abstractSyntaxTree;
 

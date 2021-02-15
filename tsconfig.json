@@ -23,6 +23,12 @@
       "path": "packages/stopwatch/tsconfig.json"
     },
     {
+      "path": "packages/http/tsconfig.json"
+    },
+    {
+      "path": "packages/template/tsconfig.json"
+    },
+    {
       "path": "packages/framework-debug-api/tsconfig.json"
     },
     {

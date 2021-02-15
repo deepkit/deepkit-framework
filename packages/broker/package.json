@@ -22,6 +22,7 @@
   },
   "peerDependencies": {
     "@deepkit/type": "^1.0.1-alpha.0",
+    "reflect-metadata": "^0.1.13",
     "rxjs": "~6.6.0"
   },
   "dependencies": {

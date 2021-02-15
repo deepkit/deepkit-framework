@@ -23,19 +23,21 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.13"
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "reflect-metadata": "^0.1.13"
   },
   "dependencies": {
     "@types/validator": "^13.1.0",
     "buffer": "^5.2.1",
     "clone": "^2.1.1",
+    "@types/uuid": "^8.3.0",
     "uuid": "^8.3.2",
     "validator": "^13.1.17"
   },
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
-    "@types/clone": "^0.1.30",
-    "reflect-metadata": "^0.1.13"
+    "reflect-metadata": "^0.1.13",
+    "@types/clone": "^0.1.30"
   },
   "jest": {
     "testEnvironment": "node",

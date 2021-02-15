@@ -9,7 +9,7 @@
  */
 
 import { InjectionToken } from '@angular/core';
-import type { HttpRequest, HttpResponse } from '@deepkit/framework';
+import type { HttpRequest, HttpResponse } from '@deepkit/http';
 
 export const REQUEST = new InjectionToken<HttpRequest>('REQUEST');
 export const RESPONSE = new InjectionToken<HttpResponse>('RESPONSE');

@@ -1,8 +1,9 @@
-/// <reference path="./src/template/elements.d.ts" />
+/// <reference path="./src/elements.d.ts" />
 
-import {Attributes, createElement, Element, html} from './src/template/template';
-export {createElement, html} from './src/template/template';
-import './src/template/optimize-tsx';
+import { Attributes, createElement, Element, html } from './src/template';
+import './src/optimize-tsx';
+
+export {createElement, html} from './src/template';
 
 export function jsx(element: Element, attributes?: Attributes | string | null) {
     return {render: element, attributes};

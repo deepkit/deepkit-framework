@@ -12,7 +12,7 @@ import { isProvided, ModuleOptions, ServiceContainer } from '@deepkit/command';
 import { Context, InjectorContext, ProviderWithScope } from '@deepkit/injector';
 import { ClassType } from '@deepkit/core';
 import { rpcClass } from '@deepkit/rpc';
-import { httpClass } from './decorator';
+import { httpClass, HttpControllers } from '@deepkit/http';
 
 export type RpcController = {
     onDestroy?: () => Promise<void>;
@@ -27,15 +27,6 @@ export class RpcControllers {
         if (!classType) throw new Error(`Controller not found for ${name}`);
 
         return classType;
-    }
-}
-
-export class HttpControllers {
-    constructor(public readonly controllers: ClassType[]) {
-    }
-
-    public add(controller: ClassType) {
-        this.controllers.push(controller);
     }
 }
 

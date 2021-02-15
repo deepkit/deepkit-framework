@@ -23,6 +23,12 @@
       "path": "packages/workflow/tsconfig.esm.json"
     },
     {
+      "path": "packages/http/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/template/tsconfig.esm.json"
+    },
+    {
       "path": "packages/stopwatch/tsconfig.esm.json"
     },
     {

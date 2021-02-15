@@ -52,6 +52,12 @@ jobs:
             packages/framework-integration/tsconfig.json \
             packages/orm-browser-api/tsconfig.json \
             packages/rpc/tsconfig.json \
+            packages/event/tsconfig.json \
+            packages/workflow/tsconfig.json \
+            packages/stopwatch/tsconfig.json \
+            packages/injector/tsconfig.json \
+            packages/command/tsconfig.json \
+            packages/http/tsconfig.json \
             packages/orm/tsconfig.json \
             packages/sql/tsconfig.json \
             packages/sqlite/tsconfig.json \

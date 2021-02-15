@@ -9,6 +9,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
+    "preserveSymlinks": true,
     "target": "es2018",
     "module": "CommonJS",
     "esModuleInterop": true,
@@ -20,10 +21,8 @@
       "types"
     ],
     "types": [
-      "formidable",
-      "abstract-syntax-tree",
-      "ts-node/esm",
-      "selfsigned"
+      "selfsigned",
+      "ts-node/esm"
     ],
     "jsx": "react-jsx",
     "jsxImportSource": ".."
@@ -57,6 +56,9 @@
       "path": "../orm/tsconfig.json"
     },
     {
+      "path": "../http/tsconfig.json"
+    },
+    {
       "path": "../rpc/tsconfig.json"
     },
     {
@@ -70,6 +72,9 @@
     },
     {
       "path": "../workflow/tsconfig.json"
+    },
+    {
+      "path": "../template/tsconfig.json"
     },
     {
       "path": "../stopwatch/tsconfig.json"

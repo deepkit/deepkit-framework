@@ -16,7 +16,7 @@
     ],
     "outDir": "./dist",
     "jsx": "react-jsx",
-    "jsxImportSource": "@deepkit/framework"
+    "jsxImportSource": "@deepkit/template"
   },
   "include": [
     "*.tsx",
@@ -31,6 +31,9 @@
     },
     {
       "path": "../framework/tsconfig.json"
+    },
+    {
+      "path": "../command/tsconfig.json"
     },
     {
       "path": "../rpc/tsconfig.json"

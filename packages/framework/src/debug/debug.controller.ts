@@ -11,7 +11,7 @@ import { Config, ConfigOption, Database, DatabaseEntity, DebugControllerInterfac
 import { Collection, rpc, rpcClass } from '@deepkit/rpc';
 import { getClassSchema, t } from '@deepkit/type';
 import { ApplicationServiceContainer } from '../application-service-container';
-import { parseRouteControllerAction, Router } from '../router';
+import { parseRouteControllerAction, Router } from '@deepkit/http';
 import { changeClass, getClassName } from '@deepkit/core';
 import { EventDispatcher, isEventListenerContainerEntryService } from '@deepkit/event';
 import { DatabaseRegistry } from '../database-registry';

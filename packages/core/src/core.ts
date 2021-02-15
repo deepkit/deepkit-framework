@@ -135,7 +135,7 @@ export function isClassInstance(target: any): boolean {
         && isObject(target);
 }
 
-/** 
+/**
  * Returns a human readable string representation from the given value.
 */
 export function stringifyValueWithType(value: any): string {
@@ -151,18 +151,18 @@ export function stringifyValueWithType(value: any): string {
 
 /**
  * Changes the class of a given instance and returns the new object.
- * 
+ *
  * @example
  * ```typescript
- * 
+ *
  *  class Model1 {
  *    id: number = 0;
  *  }
- * 
+ *
  *  class Model2 {
  *    id: number = 0;
  *  }
- * 
+ *
  *  const model1 = new Model1();
  *  const model2 = changeClass(model1, Model2);
  *  model2 instanceof Model2; //true
@@ -656,4 +656,10 @@ export function isPrototypeOfBase(prototype: ClassType | undefined, base: ClassT
         currentProto = Object.getPrototypeOf(currentProto);
     }
     return false;
+}
+
+declare var v8debug: any;
+
+export function inDebugMode() {
+    return typeof v8debug === 'object' || /--debug|--inspect/.test(process.execArgv.join(' '));
 }

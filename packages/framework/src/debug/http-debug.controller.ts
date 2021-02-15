@@ -9,7 +9,7 @@
  */
 
 import { join } from 'path';
-import { registerStaticHttpController } from '../http/static-serving';
+import { registerStaticHttpController } from '@deepkit/http';
 import { Module } from '@deepkit/command';
 
 export function registerDebugHttpController(module: Module<any>, path: string): void {

@@ -12,7 +12,7 @@ import { DebugRequest } from '@deepkit/framework-debug-api';
 import { DatabaseAdapter, DatabaseSession } from '@deepkit/orm';
 import { appendFileSync, mkdirSync, openSync } from 'fs';
 import { join } from 'path';
-import { HttpRequest, HttpResponse } from '../http-model';
+import { HttpRequest, HttpResponse } from '@deepkit/http';
 import { injectable } from '@deepkit/injector';
 import { kernelConfig } from '../kernel.config';
 import { normalizeDirectory } from '../utils';

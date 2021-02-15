@@ -1,10 +1,10 @@
 #!/usr/bin/env ts-node-script
 
 import 'reflect-metadata';
-import { OrmBrowserController } from '@deepkit/framework';
+import { Application, createModule, KernelModule, OrmBrowserController } from '@deepkit/framework';
 import { isAbsolute, join } from 'path';
 import { Database } from '@deepkit/orm';
-import { Application, createModule, KernelModule, registerStaticHttpController } from '@deepkit/framework';
+import { registerStaticHttpController } from '@deepkit/http';
 
 Database.registry = [];
 

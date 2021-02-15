@@ -12,7 +12,7 @@ import { JSONPartial, jsonSerializer, ValidationFailed } from '@deepkit/type';
 import { ConfigDefinition, InjectorModule, InjectToken, ProviderWithScope } from '@deepkit/injector';
 import { ClassType, CustomError } from '@deepkit/core';
 import { EventListener } from '@deepkit/event';
-import { WorkflowDefinition } from '@deepkit/workflow';
+import type { WorkflowDefinition } from '@deepkit/workflow';
 
 export type DefaultObject<T> = T extends undefined ? {} : T;
 export type ExtractImportConfigs<T extends Array<Module<any>> | undefined> = T extends Array<any> ? { [M in T[number]as (ExtractModuleOptions<M>['name'] & string)]?: ExtractPartialConfigOfDefinition<DefaultObject<ExtractModuleOptions<M>['config']>> } : {};

@@ -1,10 +1,10 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import '../src/template/optimize-tsx';
-import { html, render } from '../src/template/template';
+import '../src/optimize-tsx';
+import { html, render } from '../src/template';
 import { Injector } from '@deepkit/injector';
 import { simple1, simple2, simple3, simple4, simpleHtmlInjected, simpleHtmlInjectedValid } from './simple';
-import { convertJsxCodeToCreateElement, optimizeJSX } from '../src/template/optimize-tsx';
+import { convertJsxCodeToCreateElement, optimizeJSX } from '../src/optimize-tsx';
 
 test('template simple', async () => {
     expect(await render(new Injector(), <div></div>)).toBe('<div></div>');

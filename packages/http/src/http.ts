@@ -11,18 +11,13 @@
 import { CustomError } from '@deepkit/core';
 import { getClassTypeFromInstance, isClassInstance, isRegisteredEntity, jsonSerializer, ValidationFailed } from '@deepkit/type';
 import { ServerResponse } from 'http';
-import { Socket } from 'net';
-import { HttpRequestDebugCollector } from './debug/debugger';
-import { EventDispatcher, eventDispatcher } from '@deepkit/event';
-import { HttpRequest, HttpResponse } from './http-model';
-import { inject, injectable, InjectorContext, MemoryInjector } from '@deepkit/injector';
-import { kernelConfig } from './kernel.config';
+import { eventDispatcher } from '@deepkit/event';
+import { HttpRequest, HttpResponse } from './model';
+import { injectable, InjectorContext } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { RouteConfig, RouteParameterResolverForInjector, Router } from './router';
-import { isElementStruct, render } from './template/template';
 import { createWorkflow, WorkflowEvent } from '@deepkit/workflow';
-import { Zone } from './zone';
-
+import { isElementStruct, render } from '@deepkit/template';
 
 export class Redirect {
     public routeName?: string;
@@ -443,95 +438,6 @@ export class HttpListener {
         } else {
             event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
             event.response.end(JSON.stringify(response));
-        }
-    }
-}
-
-@injectable()
-export class HttpKernel {
-    constructor(
-        protected router: Router,
-        protected eventDispatcher: EventDispatcher,
-        protected injectorContext: InjectorContext,
-        protected logger: Logger,
-        @inject(kernelConfig.token('debug')) protected debug: boolean = false,
-    ) {
-
-    }
-
-    async handleRequestFor(method: string, url: string, jsonBody?: any): Promise<any> {
-        const body = Buffer.from(jsonBody ? JSON.stringify(jsonBody) : '');
-
-        const request = new (class extends HttpRequest {
-            url = url;
-            method = method;
-            position = 0;
-
-            headers = {
-                'content-type': 'application/json',
-                'content-length': String(body.byteLength),
-            };
-
-            done = false;
-
-            _read(size: number) {
-                if (this.done) {
-                    this.push(null);
-                } else {
-                    this.push(body);
-                    this.done = true;
-                }
-            }
-        })(new Socket());
-
-        let result: any = 'nothing';
-        const response = new (class extends HttpResponse {
-            end(chunk: any) {
-                result = chunk ? chunk.toString() : chunk;
-            }
-
-            write(chunk: any): boolean {
-                result = chunk ? chunk.toString() : chunk;
-                return true;
-            }
-        })(request);
-
-        await this.handleRequest(request, response);
-        if (result === '' || result === undefined || result === null) return result;
-        try {
-            return JSON.parse(result);
-        } catch (error) {
-            return result;
-        }
-    }
-
-    async handleRequest(req: HttpRequest, res: HttpResponse) {
-        const httpInjectorContext = this.injectorContext.createChildScope('http', new MemoryInjector([
-            { provide: HttpRequest, useValue: req },
-            { provide: HttpResponse, useValue: res },
-        ]));
-
-        const collector = this.debug ? httpInjectorContext.get(HttpRequestDebugCollector) : undefined;
-
-        const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext, collector?.stopwatch);
-        try {
-            if (collector) {
-                await collector.init();
-                try {
-                    collector.stopwatch.start('http');
-                    await Zone.run({ collector: collector }, async () => {
-                        await workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res));
-                    });
-                    collector.stopwatch.end('http');
-                } finally {
-                    await collector.save();
-                }
-            } else {
-                await workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res));
-            }
-        } catch (error) {
-            this.logger.log('HTTP kernel request failed', error);
-            throw error;
         }
     }
 }

@@ -1,7 +1,7 @@
 import * as tsNode from 'ts-node/esm';
-import {optimizeJSX} from './src/template/optimize-tsx';
-import {inDebugMode} from './src/utils';
-import {importedFiles} from './src/watch';
+import { optimizeJSX } from '@deepkit/template';
+import { inDebugMode } from '@deepkit/core';
+import { importedFiles } from './src/watch';
 
 export async function resolve(specifier: string, context: { parentURL: string }, defaultResolve: typeof resolve): Promise<{ url: string }> {
     const res = await tsNode.resolve(specifier, context, defaultResolve);

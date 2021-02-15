@@ -24,6 +24,9 @@
       "path": "../orm/tsconfig.esm.json"
     },
     {
+      "path": "../http/tsconfig.esm.json"
+    },
+    {
       "path": "../rpc/tsconfig.esm.json"
     },
     {
@@ -37,6 +40,9 @@
     },
     {
       "path": "../workflow/tsconfig.esm.json"
+    },
+    {
+      "path": "../template/tsconfig.esm.json"
     },
     {
       "path": "../stopwatch/tsconfig.esm.json"

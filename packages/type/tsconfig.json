@@ -19,9 +19,7 @@
       "types"
     ],
     "types": [
-      "reflect-metadata",
-      "get-parameter-names",
-      "uuid"
+      "get-parameter-names"
     ]
   },
   "include": [

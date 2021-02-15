@@ -1,12 +1,7 @@
 #!/usr/bin/env ts-node-script
 import 'reflect-metadata';
-import {
-    Application,
-    BodyValidation,
-    http,
-    KernelModule,
-    Redirect,
-} from '@deepkit/framework';
+import { Application, KernelModule } from '@deepkit/framework';
+import { BodyValidation, http, Redirect } from '@deepkit/http';
 import { injectable } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { Database } from '@deepkit/orm';
@@ -21,7 +16,8 @@ class User {
 
     constructor(
         @t.minLength(3) public username: string
-    ) { }
+    ) {
+    }
 }
 
 class SQLiteDatabase extends Database {
@@ -30,7 +26,8 @@ class SQLiteDatabase extends Database {
     }
 }
 
-class AddUserDto extends sliceClass(User).exclude('id', 'created') { }
+class AddUserDto extends sliceClass(User).exclude('id', 'created') {
+}
 
 @injectable()
 class UserList {
@@ -38,20 +35,21 @@ class UserList {
         protected props: { error?: string } = {},
         protected children: any[],
         protected database: SQLiteDatabase
-    ) { }
+    ) {
+    }
 
     async render() {
         const users = await this.database.query(User).find();
         return <Website title="Users">
             <h1>Users</h1>
 
-            <img src="/lara.jpeg" style="max-width: 100%" />
+            <img src="/lara.jpeg" style="max-width: 100%"/>
             <div style="margin: 25px 0;">
                 {users.map(user => <div>#{user.id} <strong>{user.username}</strong>, created {user.created}</div>)}
             </div>
 
             <form action="/add" method="post">
-                <input type="text" name="username" /><br />
+                <input type="text" name="username"/><br/>
                 {this.props.error ? <div style="color: red">Error: {this.props.error}</div> : ''}
                 <button>Send</button>
             </form>
@@ -67,7 +65,7 @@ class HelloWorldController {
     @http.GET('/').name('startPage').description('List all users')
     startPage() {
         this.logger.log('Hi!');
-        return <UserList />;
+        return <UserList/>;
     }
 
     @http.GET('/api/users')
@@ -82,7 +80,7 @@ class HelloWorldController {
 
     @http.POST('/add').description('Adds a new user')
     async add(@http.body() body: AddUserDto, bodyValidation: BodyValidation) {
-        if (bodyValidation.hasErrors()) return <UserList error={bodyValidation.getErrorMessageForPath('username')} />;
+        if (bodyValidation.hasErrors()) return <UserList error={bodyValidation.getErrorMessageForPath('username')}/>;
 
         const user = new User(body.username);
         await this.database.persist(user);

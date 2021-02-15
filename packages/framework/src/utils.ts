@@ -22,9 +22,3 @@ export function normalizeDirectory(path: string): string {
     if (path[path.length - 1] !== '/') path = path + '/';
     return path;
 }
-
-declare var v8debug: any;
-
-export function inDebugMode() {
-    return typeof v8debug === 'object' || /--debug|--inspect/.test(process.execArgv.join(' '));
-}

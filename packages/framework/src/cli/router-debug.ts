@@ -9,7 +9,7 @@
  */
 
 import { cli, Command } from '@deepkit/command';
-import { Router } from '../router';
+import { Router } from '@deepkit/http';
 
 @cli.controller('debug:router', {
 })

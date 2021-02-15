@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { HtmlResponse, httpWorkflow, RouteConfig } from '@deepkit/framework';
+import { HtmlResponse, httpWorkflow, RouteConfig } from '@deepkit/http';
 import { eventDispatcher } from '@deepkit/event';
 import { Logger } from '@deepkit/logger';
 import { inject, injectable } from '@deepkit/injector';
