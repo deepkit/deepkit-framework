@@ -10,6 +10,7 @@
 
 import { asyncOperation, ClassType, CompilerContext } from '@deepkit/core';
 import { getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, jsonSerializer, PropertySchema, ValidationFailed, ValidationFailedItem } from '@deepkit/type';
+// @ts-ignore
 import formidable from 'formidable';
 import { IncomingMessage } from 'http';
 import { join } from 'path';

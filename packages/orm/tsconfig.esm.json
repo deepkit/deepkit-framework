@@ -6,6 +6,9 @@
   },
   "references": [
     {
+      "path": "../topsort/tsconfig.esm.json"
+    },
+    {
       "path": "../core/tsconfig.esm.json"
     },
     {
@@ -13,9 +16,6 @@
     },
     {
       "path": "../type/tsconfig.esm.json"
-    },
-    {
-      "path": "../topsort/tsconfig.esm.json"
     }
   ]
 }

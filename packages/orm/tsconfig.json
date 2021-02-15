@@ -22,6 +22,9 @@
   ],
   "references": [
     {
+      "path": "../topsort/tsconfig.json"
+    },
+    {
       "path": "../core/tsconfig.json"
     },
     {
@@ -29,9 +32,6 @@
     },
     {
       "path": "../type/tsconfig.json"
-    },
-    {
-      "path": "../topsort/tsconfig.json"
     }
   ]
 }
