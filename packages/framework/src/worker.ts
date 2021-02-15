@@ -152,7 +152,7 @@ export class WebWorker {
             this.server = this.options.server as Server;
             this.server.on('request', this.httpKernel.handleRequest.bind(this.httpKernel));
             this.wsServer = new WebSocket.Server({ server: this.server });
-            this.wsServer.on('connection', this.onWsConnecton.bind(this));
+            this.wsServer.on('connection', this.onWsConnection.bind(this));
         } else {
             if (this.options.ssl) {
                 const options = this.options.sslOptions || {};
@@ -188,7 +188,7 @@ export class WebWorker {
                 if (this.options.keepAliveTimeout) this.servers.keepAliveTimeout = this.options.keepAliveTimeout;
 
                 this.wssServer = new WebSocket.Server({ server: this.servers });
-                this.wssServer.on('connection', this.onWsConnecton.bind(this));
+                this.wssServer.on('connection', this.onWsConnection.bind(this));
             }
 
             const startHttpServer = !this.servers || (this.servers && this.options.httpsPort);
@@ -200,12 +200,12 @@ export class WebWorker {
                 if (this.options.keepAliveTimeout) this.server.keepAliveTimeout = this.options.keepAliveTimeout;
                 this.server.listen(this.options.port, this.options.host);
                 this.wsServer = new WebSocket.Server({ server: this.server });
-                this.wsServer.on('connection', this.onWsConnecton.bind(this));
+                this.wsServer.on('connection', this.onWsConnection.bind(this));
             }
         }
     }
 
-    onWsConnecton(ws, req: HttpRequest) {
+    onWsConnection(ws: any, req: HttpRequest) {
         const connection = createRpcConnection(this.rootScopedContext, this.rpcKernel, {
             write(b) {
                 ws.send(b);
