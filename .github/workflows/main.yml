@@ -57,7 +57,7 @@ jobs:
             packages/workflow/tsconfig.json \
             packages/stopwatch/tsconfig.json \
             packages/injector/tsconfig.json \
-            packages/command/tsconfig.json \
+            packages/app/tsconfig.json \
             packages/http/tsconfig.json \
             packages/orm/tsconfig.json \
             packages/sql/tsconfig.json \
