@@ -9,6 +9,7 @@
  */
 
 import { cli, flag } from '@deepkit/app';
+import { empty } from '@deepkit/core';
 import { Logger } from '@deepkit/logger';
 import { MigrationProvider } from '../migration/migration-provider';
 import { SqlMigrationHandler } from '../sql-adapter';
@@ -33,6 +34,8 @@ export class MigrationPendingCommand extends BaseCommand {
         if (this.migrationDir) this.provider.setMigrationDir(this.migrationDir);
 
         const migrationsPerDatabase = await this.provider.getMigrationsPerDatabase(database);
+
+        if (empty(migrationsPerDatabase)) this.logger.log(`No migrations in ${this.provider.getMigrationDir()} found.`);
 
         for (const [database, migrations] of migrationsPerDatabase.entries()) {
             const migrationHandler = new SqlMigrationHandler(database);

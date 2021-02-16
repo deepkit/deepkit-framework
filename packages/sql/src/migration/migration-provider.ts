@@ -25,6 +25,10 @@ export class MigrationProvider {
     ) {
     }
 
+    getMigrationDir(): string {
+        return this.migrationDir;
+    }
+
     setMigrationDir(dir: string) {
         this.migrationDir = dir;
     }
@@ -53,6 +57,11 @@ export class MigrationProvider {
         let migrations: Migration[] = [];
 
         const files = await glob('**/*.ts', { cwd: migrationDir });
+        require('ts-node').register({
+            compilerOptions: {
+                experimentalDecorators: true
+            }
+        });
 
         for (const file of files) {
             const path = join(process.cwd(), migrationDir, file);

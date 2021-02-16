@@ -42,6 +42,10 @@ export class MigrationCreateController extends BaseCommand implements Command {
         if (this.path.length) this.provider.databases.readDatabase(this.path);
         if (this.migrationDir) this.provider.setMigrationDir(this.migrationDir);
 
+        if (!this.provider.databases.getDatabases().length) {
+            this.logger.error('No databases detected. Use --path path/to/database.ts');
+        }
+
         for (const db of this.provider.databases.getDatabases()) {
             if (database && db.name !== database) continue;
             if (db.name === 'debug') continue;
@@ -87,11 +91,11 @@ export class MigrationCreateController extends BaseCommand implements Command {
                 migrationName = format(date, 'yyyyMMdd-HHmm');
                 if (i > 1) migrationName += '_' + i;
 
-                if (!existsSync(join(this.migrationDir, migrationName + '.ts'))) {
+                if (!existsSync(join(this.provider.getMigrationDir(), migrationName + '.ts'))) {
                     break;
                 }
             }
-            const migrationFile = join(this.migrationDir, migrationName + '.ts');
+            const migrationFile = join(this.provider.getMigrationDir(), migrationName + '.ts');
 
             if (databaseDiff) {
                 const reverseDatabaseDiff = DatabaseComparator.computeDiff(databaseModel, parsedDatabaseModel);
