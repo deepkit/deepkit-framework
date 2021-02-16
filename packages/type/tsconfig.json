@@ -13,7 +13,10 @@
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
-    "composite": true
+    "composite": true,
+    "types": [
+      "reflect-metadata"
+    ]
   },
   "include": [
     "src",
