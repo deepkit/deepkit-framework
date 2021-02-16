@@ -15,6 +15,9 @@
       "path": "../logger/tsconfig.esm.json"
     },
     {
+      "path": "../injector/tsconfig.esm.json"
+    },
+    {
       "path": "../type/tsconfig.esm.json"
     }
   ]

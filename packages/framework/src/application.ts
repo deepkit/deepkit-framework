@@ -10,26 +10,26 @@
 
 import { KernelModule } from './kernel';
 import { ApplicationServiceContainer } from './application-service-container';
-import { CommandApplication, createModule, Module, ModuleOptions } from '@deepkit/command';
+import { AppModule, CommandApplication, ModuleOptions } from '@deepkit/app';
 import { ProviderWithScope } from '@deepkit/injector';
 
-export class Application<T extends ModuleOptions<any>> extends CommandApplication<T> {
+export class Application<T extends ModuleOptions> extends CommandApplication<T> {
     constructor(
-        appModule: Module<T>,
+        appModule: AppModule<T, any>,
         providers: ProviderWithScope<any>[] = [],
-        imports: Module<any>[] = [],
+        imports: AppModule<any, any>[] = [],
     ) {
         if (!appModule.hasImport(KernelModule)) appModule.addImport(KernelModule);
         super(appModule, providers, imports, new ApplicationServiceContainer(appModule, providers, imports.slice(0)));
     }
 
-    static create<T extends Module<any> | ModuleOptions<any>>(module: T): Application<T extends Module<infer K> ? K : T> {
-        if (module instanceof Module) {
+    static create<T extends AppModule<any, any> | ModuleOptions>(module: T): Application<T extends AppModule<infer K> ? K : T> {
+        if (module instanceof AppModule) {
             return new Application(module as any);
         } else {
             //see: https://github.com/microsoft/TypeScript/issues/13995
-            const mod = module as any as ModuleOptions<any>;
-            return new Application(createModule(mod) as any);
+            const mod = module as any as ModuleOptions;
+            return new Application(new AppModule(mod) as any);
         }
     }
 }

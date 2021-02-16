@@ -2,7 +2,7 @@ import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { ApplicationServiceContainer } from '../src/application-service-container';
 import { rpc } from '@deepkit/rpc';
-import { createModule } from '@deepkit/command';
+import { AppModule } from '@deepkit/app';
 
 test('controller', () => {
     class MyService {
@@ -25,12 +25,12 @@ test('controller', () => {
     }
 
     {
-        const MyModule = createModule({
+        const myModule = new AppModule({
             providers: [MyService],
             controllers: [MyController],
         });
 
-        const serviceContainer = new ApplicationServiceContainer(MyModule);
+        const serviceContainer = new ApplicationServiceContainer(myModule);
         const rpcScopedContext = serviceContainer.getRootInjectorContext().createChildScope('rpc');
         const controller = rpcScopedContext.getInjector(0).get(MyController);
         expect(controller).toBeInstanceOf(MyController);
@@ -58,7 +58,7 @@ test('controller in module and overwrite service', () => {
         }
     }
 
-    const ControllerModule = createModule({
+    const controllerModule = new AppModule({
         providers: [MyService],
         controllers: [MyController],
         exports: [
@@ -67,11 +67,11 @@ test('controller in module and overwrite service', () => {
     });
 
     {
-        const MyModule = createModule({
-            imports: [ControllerModule],
+        const myModule = new AppModule({
+            imports: [controllerModule],
         });
 
-        const serviceContainer = new ApplicationServiceContainer(MyModule);
+        const serviceContainer = new ApplicationServiceContainer(myModule);
         const rpcScopedContext = serviceContainer.getRootInjectorContext().createChildScope('rpc');
         const controller = rpcScopedContext.get(MyController);
         expect(controller).toBeInstanceOf(MyController);
@@ -79,14 +79,14 @@ test('controller in module and overwrite service', () => {
     }
 
     {
-        const MyModule = createModule({
+        const myModule = new AppModule({
             providers: [
                 { provide: MyService, useValue: new MyService('different') }
             ],
-            imports: [ControllerModule],
+            imports: [controllerModule],
         });
 
-        const serviceContainer = new ApplicationServiceContainer(MyModule);
+        const serviceContainer = new ApplicationServiceContainer(myModule);
         const rpcScopedContext = serviceContainer.getRootInjectorContext().createChildScope('rpc');
         const controller = rpcScopedContext.get(MyController);
         expect(controller).toBeInstanceOf(MyController);

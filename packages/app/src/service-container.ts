@@ -10,7 +10,7 @@
 
 import { arrayRemoveItem, ClassType, isClass } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
-import { Module, ModuleOptions } from './module';
+import { AppModule, ModuleOptions } from './module';
 import { ConfiguredProviderRegistry, Context, ContextRegistry, Injector, InjectorContext, ProviderWithScope, Tag, tokenLabel } from '@deepkit/injector';
 import { cli } from './command';
 import { WorkflowDefinition } from '@deepkit/workflow';
@@ -60,7 +60,7 @@ export function isProvided(providers: ProviderWithScope[], token: any): boolean 
     return providers.find(v => !(v instanceof Tag) ? token === (isClass(v) ? v : v.provide) : false) !== undefined;
 }
 
-export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>> {
+export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
     public readonly cliControllers = new CliControllers;
     public readonly workflowRegistry = new WorkflowRegistry([]);
 
@@ -71,14 +71,14 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
     protected eventListenerContainer = new EventDispatcher(this.rootInjectorContext);
 
     protected rootContext?: Context;
-    protected moduleContexts = new Map<Module<ModuleOptions<any>>, Context[]>();
+    protected moduleContexts = new Map<AppModule<ModuleOptions>, Context[]>();
     protected moduleIdContexts = new Map<number, Context[]>();
     protected tagProviders = new TagProviders([]);
 
     constructor(
-        public readonly appModule: Module<any>,
+        public readonly appModule: AppModule<any, any>,
         protected providers: ProviderWithScope[] = [],
-        protected imports: Module<any>[] = [],
+        protected imports: AppModule<any, any>[] = [],
     ) {
     }
 
@@ -102,7 +102,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         return this.rootInjectorContext;
     }
 
-    private setupHook(module: Module<any>) {
+    private setupHook(module: AppModule<any, any>) {
         const config = module.getConfig();
         for (const setup of module.setups) setup(module, config);
 
@@ -120,14 +120,14 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         }
     }
 
-    public getContextFor(module: Module<any>): Context {
+    public getContextFor(module: AppModule<any, any>): Context {
         this.process();
         const contexts = this.moduleIdContexts.get(module.id) || [];
         if (!contexts.length) throw new Error('Module not registered.');
         return contexts[0];
     }
 
-    public getInjectorFor(module: Module<any>): Injector {
+    public getInjectorFor(module: AppModule<any, any>): Injector {
         this.process();
         const context = this.getContextFor(module);
         return this.rootInjectorContext.getInjector(context.id);
@@ -146,7 +146,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         return context;
     }
 
-    protected getNewContext(module: Module<any>, parent?: Context): Context {
+    protected getNewContext(module: AppModule<any, any>, parent?: Context): Context {
         const newId = this.currentIndexId++;
         const context = new Context(module, newId, parent);
         this.contextManager.set(newId, context);
@@ -163,10 +163,10 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
     }
 
     protected processModule(
-        module: Module<ModuleOptions<any>>,
+        module: AppModule<ModuleOptions>,
         parentContext?: Context,
         additionalProviders: ProviderWithScope[] = [],
-        additionalImports: Module<any>[] = []
+        additionalImports: AppModule<any, any>[] = []
     ): Context {
         this.rootInjectorContext.modules[module.getName()] = module;
         const exports = module.options.exports ? module.options.exports.slice(0) : [];
@@ -196,7 +196,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
 
         for (const token of exports.slice(0)) {
             // if (isModuleToken(token)) {
-            if (token instanceof Module) {
+            if (token instanceof AppModule) {
                 //exported modules will be removed from `imports`, so that
                 //the target context (root or parent) imports it
                 arrayRemoveItem(exports, token);
@@ -235,7 +235,7 @@ export class ServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>>
         //and removed from module providers.
         const exportedProviders = forRootContext ? this.getContext(0).providers : (parentContext ? parentContext.providers : []);
         for (const token of exports) {
-            if (token instanceof Module) throw new Error('Should already be handled');
+            if (token instanceof AppModule) throw new Error('Should already be handled');
 
             const provider = providers.findIndex(v => !(v instanceof Tag) ? token === (isClass(v) ? v : v.provide) : false);
             if (provider === -1) {

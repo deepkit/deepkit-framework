@@ -14,7 +14,7 @@
       "path": "packages/bson/tsconfig.esm.json"
     },
     {
-      "path": "packages/command/tsconfig.esm.json"
+      "path": "packages/app/tsconfig.esm.json"
     },
     {
       "path": "packages/event/tsconfig.esm.json"

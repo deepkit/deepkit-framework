@@ -24,7 +24,7 @@
   ],
   "references": [
     {
-      "path": "../command/tsconfig.json"
+      "path": "../app/tsconfig.json"
     },
     {
       "path": "../injector/tsconfig.json"

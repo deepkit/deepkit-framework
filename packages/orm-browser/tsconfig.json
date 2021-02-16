@@ -28,6 +28,9 @@
       "path": "../type/tsconfig.json"
     },
     {
+      "path": "../app/tsconfig.json"
+    },
+    {
       "path": "../framework/tsconfig.json"
     },
     {

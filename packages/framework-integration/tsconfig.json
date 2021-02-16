@@ -34,10 +34,13 @@
       "path": "../framework/tsconfig.json"
     },
     {
-      "path": "../command/tsconfig.json"
+      "path": "../app/tsconfig.json"
     },
     {
       "path": "../type/tsconfig.json"
+    },
+    {
+      "path": "../injector/tsconfig.json"
     },
     {
       "path": "../orm/tsconfig.json"

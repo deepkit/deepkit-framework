@@ -9,28 +9,11 @@
  */
 
 import 'reflect-metadata';
-import {
-    BaseEvent,
-    createModule,
-    EventDispatcher,
-    http,
-    HttpControllers,
-    HttpKernel,
-    HttpListener,
-    HttpRequest,
-    HttpRequestEvent,
-    HttpResponse,
-    HttpWorkflowEventWithRoute,
-    InjectorContext,
-    KernelModule,
-    Logger,
-    Router,
-    ServiceContainer,
-    WorkflowEvent
-} from '@deepkit/framework';
+import { KernelModule, } from '@deepkit/framework';
 import { BenchSuite } from '../bench';
-import { IncomingMessage, ServerResponse } from 'http';
 import { Socket } from 'net';
+import { AppModule, ServiceContainer } from '@deepkit/app';
+import { http, HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
 
 export async function main() {
     const bench = new BenchSuite('http');
@@ -44,7 +27,7 @@ export async function main() {
         }
     }
 
-    const app = createModule({
+    const app = new AppModule({
         controllers: [Controller],
         imports: [
             KernelModule.configure({ httpLog: false })

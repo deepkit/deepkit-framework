@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { cli, Command } from '@deepkit/command';
+import { cli, Command } from '@deepkit/app';
 import { Router } from '@deepkit/http';
 
 @cli.controller('debug:router', {

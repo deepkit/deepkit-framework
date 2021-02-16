@@ -1,22 +1,22 @@
 import 'reflect-metadata';
 import { ClassType } from '@deepkit/core';
-import { Application, createModule, createTestingApp as createTestingAppOriginal, LiveDatabase, TestingFascade } from '@deepkit/framework';
-import { Module, ModuleOptions } from '@deepkit/command';
+import { Application, createTestingApp as createTestingAppOriginal, LiveDatabase, TestingFascade } from '@deepkit/framework';
+import { AppModule, ModuleOptions } from '@deepkit/app';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { Collection, IdInterface, rpc } from '@deepkit/rpc';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { ClassSchema, Entity, t, uuid } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 
-export function createTestingApp<O extends ModuleOptions<NAME>, NAME extends string>(optionsOrModule: (O & { name?: NAME } | Module<O>), entities?: (ClassType | ClassSchema)[]): TestingFascade<Application<O>> {
-    const module = optionsOrModule instanceof Module ? optionsOrModule : createModule(optionsOrModule);
+export function createTestingApp<O extends ModuleOptions>(optionsOrModule: O, entities?: (ClassType | ClassSchema)[]) {
+    const module = optionsOrModule instanceof AppModule ? optionsOrModule : new AppModule(optionsOrModule);
 
     if (entities) {
         module.addProvider({ provide: Database, useValue: new Database(new SQLiteDatabaseAdapter('/tmp/live-database.sqlite'), entities) })
         module.setupProvider(DatabaseRegistry).addDatabase(Database, { migrateOnStartup: true });
     }
 
-    return createTestingAppOriginal(module);
+    return createTestingAppOriginal(module) as TestingFascade<Application<O>>;
 }
 
 (global as any)['createTestingApp'] ||= createTestingApp;

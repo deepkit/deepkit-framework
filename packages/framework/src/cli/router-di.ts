@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { cli, Command, flag } from '@deepkit/command';
+import { cli, Command, flag } from '@deepkit/app';
 import { ApplicationServiceContainer } from '../application-service-container';
 
 @cli.controller('debug:di', {

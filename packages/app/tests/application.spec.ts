@@ -2,19 +2,19 @@ import { t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { CommandApplication } from '../src/application';
-import { createConfig, inject } from '@deepkit/injector';
-import { createModule } from '../src/module';
+import { inject } from '@deepkit/injector';
+import { AppModule, AppModuleConfig } from '../src/module';
 
-const baseConfig = createConfig({
+const baseConfig = new AppModuleConfig({
     db: t.string.default('notSet'),
 });
 
 class BaseService {
     constructor(@inject(baseConfig.token('db')) public db: string) { }
 }
-const baseModule = createModule({ name: 'base', config: baseConfig, providers: [BaseService] }).forRoot();
+const baseModule = new AppModule({ config: baseConfig, providers: [BaseService] }, 'base').forRoot();
 
-const config = createConfig({
+const config = new AppModuleConfig({
     token: t.string.default('notSet'),
 });
 
@@ -25,7 +25,7 @@ class Service {
 test('loadConfigFromEnvVariables', async () => {
     process.env.APP_token = 'changed1';
     process.env.APP_base_db = 'changed2';
-    const app = new CommandApplication(createModule({ config, providers: [Service], imports: [baseModule] }));
+    const app = new CommandApplication(new AppModule({ config, providers: [Service], imports: [baseModule] }, 'app'));
     app.loadConfigFromEnvVariables('APP_');
 
     const service = app.get(Service);
@@ -42,7 +42,7 @@ test('loadConfigFromEnvVariable', async () => {
             db: 'changed4'
         }
     });
-    const app = new CommandApplication(createModule({ config, providers: [Service], imports: [baseModule] }));
+    const app = new CommandApplication(new AppModule({ config, providers: [Service], imports: [baseModule] }, 'app'));
     app.loadConfigFromEnvVariable('APP_CONFIG');
 
     const service = app.get(Service);
@@ -53,7 +53,7 @@ test('loadConfigFromEnvVariable', async () => {
 });
 
 test('loadConfigFromEnvFile', async () => {
-    const app = new CommandApplication(createModule({ config, providers: [Service], imports: [baseModule] }));
+    const app = new CommandApplication(new AppModule({ config, providers: [Service], imports: [baseModule] }, 'app'));
     app.loadConfigFromEnvFile(__dirname + '/test.env');
 
     const service = app.get(Service);
@@ -64,15 +64,15 @@ test('loadConfigFromEnvFile', async () => {
 });
 
 test('loadConfigFromEnvVariables non-root import', async () => {
-    const baseConfig = createConfig({
+    const baseConfig = new AppModuleConfig({
         db: t.string.default('notSet'),
     });
 
     class BaseService {
         constructor(@inject(baseConfig.token('db')) public db: string) { }
     }
-    const baseModule = createModule({ name: 'base', config: baseConfig, providers: [BaseService] });
-    const app = new CommandApplication(createModule({ imports: [baseModule] }));
+    const baseModule = new AppModule({config: baseConfig, providers: [BaseService] }, 'base');
+    const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
     process.env.APP_base_db = 'changed2';
     app.loadConfigFromEnvVariables('APP_');
 

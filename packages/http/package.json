@@ -25,7 +25,7 @@
   "peerDependencies": {
     "@deepkit/type": "^1.0.1-alpha.13",
     "@deepkit/event": "^1.0.1-alpha.13",
-    "@deepkit/command": "^1.0.1-alpha.13",
+    "@deepkit/app": "^1.0.1-alpha.13",
     "@deepkit/injector": "^1.0.1-alpha.13",
     "@deepkit/workflow": "^1.0.1-alpha.13",
     "@deepkit/logger": "^1.0.1-alpha.13",
@@ -42,7 +42,7 @@
     "@types/node": "14.14.28",
     "@deepkit/type": "^1.0.1-alpha.13",
     "@deepkit/event": "^1.0.1-alpha.13",
-    "@deepkit/command": "^1.0.1-alpha.13",
+    "@deepkit/app": "^1.0.1-alpha.13",
     "@deepkit/injector": "^1.0.1-alpha.13",
     "@deepkit/workflow": "^1.0.1-alpha.13",
     "@deepkit/logger": "^1.0.1-alpha.13",

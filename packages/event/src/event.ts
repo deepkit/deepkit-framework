@@ -24,7 +24,7 @@ export type EventOfEventToken<T> = T extends EventToken<infer E> ? E : unknown;
 
 export class EventToken<T extends BaseEvent> {
     /**
-     * This is only for easy event-type retrievable.
+     * This is only to get easy the event-type. In reality this property is undefined.
      * e.g. `onHttpRequest(event: typeof onHttpRequest.event) {`
      */
     public readonly event!: T;

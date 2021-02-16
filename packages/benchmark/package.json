@@ -16,6 +16,8 @@
     "@deepkit/broker": "^1.0.1-alpha.0",
     "@deepkit/bson": "^1.0.1-alpha.0",
     "@deepkit/core": "^1.0.1-alpha.0",
+    "@deepkit/app": "^1.0.1-alpha.0",
+    "@deepkit/http": "^1.0.1-alpha.0",
     "@deepkit/framework": "^1.0.1-alpha.0",
     "@deepkit/mongo": "^1.0.1-alpha.0",
     "@deepkit/orm": "^1.0.1-alpha.0",

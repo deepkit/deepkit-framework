@@ -31,6 +31,15 @@
       "path": "../orm/tsconfig.json"
     },
     {
+      "path": "../logger/tsconfig.json"
+    },
+    {
+      "path": "../injector/tsconfig.json"
+    },
+    {
+      "path": "../app/tsconfig.json"
+    },
+    {
       "path": "../type/tsconfig.json"
     }
   ]

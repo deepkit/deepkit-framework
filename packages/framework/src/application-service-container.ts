@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { isProvided, ModuleOptions, ServiceContainer } from '@deepkit/command';
+import { isProvided, ModuleOptions, ServiceContainer } from '@deepkit/app';
 import { Context, InjectorContext, ProviderWithScope } from '@deepkit/injector';
 import { ClassType } from '@deepkit/core';
 import { rpcClass } from '@deepkit/rpc';
@@ -30,7 +30,7 @@ export class RpcControllers {
     }
 }
 
-export class ApplicationServiceContainer<C extends ModuleOptions<any> = ModuleOptions<any>> extends ServiceContainer<C> {
+export class ApplicationServiceContainer<C extends ModuleOptions = ModuleOptions> extends ServiceContainer<C> {
     public readonly rpcControllers = new RpcControllers;
     public readonly httpControllers = new HttpControllers([]);
 

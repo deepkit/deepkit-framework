@@ -9,7 +9,7 @@
  */
 
 import { AppLocker } from './app-locker';
-import { createModule } from '@deepkit/command';
+import { AppModule } from '@deepkit/app';
 import { inject, injectable } from '@deepkit/injector';
 import { eventDispatcher } from '@deepkit/event';
 import { onServerMainBootstrap, onServerMainShutdown } from '../application-server';
@@ -41,8 +41,7 @@ export class BrokerListener {
     }
 }
 
-export const BrokerModule = createModule({
-    name: 'broker',
+export const BrokerModule = new AppModule({
     listeners: [
         BrokerListener
     ],
@@ -57,4 +56,4 @@ export const BrokerModule = createModule({
         AppLocker,
         BrokerServer,
     ]
-}).forRoot();
+}, 'broker').forRoot();

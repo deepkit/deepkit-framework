@@ -34,6 +34,12 @@
       "path": "../core/tsconfig.json"
     },
     {
+      "path": "../app/tsconfig.json"
+    },
+    {
+      "path": "../http/tsconfig.json"
+    },
+    {
       "path": "../framework/tsconfig.json"
     },
     {

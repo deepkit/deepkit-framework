@@ -11,7 +11,7 @@
       "path": "packages/crypto/tsconfig.json"
     },
     {
-      "path": "packages/command/tsconfig.json"
+      "path": "packages/app/tsconfig.json"
     },
     {
       "path": "packages/event/tsconfig.json"

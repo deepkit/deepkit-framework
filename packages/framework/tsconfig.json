@@ -63,7 +63,7 @@
       "path": "../injector/tsconfig.json"
     },
     {
-      "path": "../command/tsconfig.json"
+      "path": "../app/tsconfig.json"
     },
     {
       "path": "../event/tsconfig.json"

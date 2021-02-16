@@ -6,7 +6,7 @@
   },
   "references": [
     {
-      "path": "../command/tsconfig.esm.json"
+      "path": "../app/tsconfig.esm.json"
     },
     {
       "path": "../injector/tsconfig.esm.json"

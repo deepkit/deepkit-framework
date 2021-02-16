@@ -19,7 +19,7 @@ import { httpClass } from './decorator';
 import { HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters } from './model';
 import { BasicInjector, injectable, NormalizedProvider, Tag } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
-import { TagProviders } from '@deepkit/command';
+import { TagProviders } from '@deepkit/app';
 import { HttpControllers } from './controllers';
 
 export type RouteParameterResolverForInjector = ((injector: BasicInjector) => any[] | Promise<any[]>);

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { cli, flag } from '@deepkit/command';
+import { cli, flag } from '@deepkit/app';
 import { Logger } from '@deepkit/logger';
 import { MigrationProvider } from '../migration/migration-provider';
 import { SqlMigrationHandler } from '../sql-adapter';

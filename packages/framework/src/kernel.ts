@@ -26,7 +26,6 @@ import { HttpKernel, HttpListener, HttpLogger, HttpModule, Router, serveStaticLi
 import { InjectorContext, injectorReference } from '@deepkit/injector';
 import { kernelConfig } from './kernel.config';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
-import { createModule } from '@deepkit/command';
 import { DeepkitRpcSecurity } from './rpc';
 import { SessionHandler } from './session';
 import { WebWorkerFactory } from './worker';
@@ -35,9 +34,9 @@ import { OrmBrowserController } from './orm-browser/controller';
 import { DatabaseListener } from './database/database-listener';
 import { DatabaseRegistry } from '@deepkit/orm';
 import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql';
+import { AppModule } from '@deepkit/app';
 
-export const KernelModule = createModule({
-    name: 'kernel',
+export const KernelModule = new AppModule({
     config: kernelConfig,
     providers: [
         ProcessLocker,
@@ -78,7 +77,7 @@ export const KernelModule = createModule({
         BrokerModule,
         HttpModule,
     ],
-}).setup((module, config) => {
+}, 'kernel').setup((module, config) => {
     if (config.databases) {
         module.addProvider(...config.databases);
         module.setupProvider(MigrationProvider).setMigrationDir(config.migrationDir);

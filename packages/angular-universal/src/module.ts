@@ -8,11 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { createModule } from '@deepkit/command';
+import { AppModule } from '@deepkit/app';
 import { AngularUniversalListener } from './listener';
 import { config } from './config';
 
-export const AngularUniversalModule = createModule({
+export const angularUniversalModule = new AppModule({
     name: 'angular-universal',
     config: config,
     listeners: [

@@ -22,5 +22,3 @@ export * from './src/kernel';
 export * from './src/testing';
 export * from './src/broker/broker';
 export * from './src/broker/broker.config';
-
-export { createModule } from '@deepkit/command';

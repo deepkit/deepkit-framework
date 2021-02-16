@@ -31,6 +31,9 @@
       "path": "../logger/tsconfig.json"
     },
     {
+      "path": "../injector/tsconfig.json"
+    },
+    {
       "path": "../type/tsconfig.json"
     }
   ]

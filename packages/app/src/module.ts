@@ -8,26 +8,21 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { JSONPartial, jsonSerializer, ValidationFailed } from '@deepkit/type';
+import { ExtractClassDefinition, JSONPartial, jsonSerializer, PlainSchemaProps, t, ValidationFailed } from '@deepkit/type';
 import { ConfigDefinition, InjectorModule, InjectToken, ProviderWithScope } from '@deepkit/injector';
 import { ClassType, CustomError } from '@deepkit/core';
 import { EventListener } from '@deepkit/event';
 import type { WorkflowDefinition } from '@deepkit/workflow';
 
 export type DefaultObject<T> = T extends undefined ? {} : T;
-export type ExtractImportConfigs<T extends Array<Module<any>> | undefined> = T extends Array<any> ? { [M in T[number]as (ExtractModuleOptions<M>['name'] & string)]?: ExtractPartialConfigOfDefinition<DefaultObject<ExtractModuleOptions<M>['config']>> } : {};
+export type ExtractAppModuleName<T extends AppModule<any, any>> = T extends AppModule<any, infer NAME> ? NAME : never;
+export type ExtractImportConfigs<T extends Array<AppModule<any, any>> | undefined> = T extends Array<any> ? { [M in T[number] as (ExtractAppModuleName<M> & string)]?: ExtractPartialConfigOfDefinition<DefaultObject<ExtractModuleOptions<M>['config']>> } : {};
 export type ExtractConfigOfDefinition<T> = T extends ConfigDefinition<infer C> ? C : {};
 export type ExtractPartialConfigOfDefinition<T> = T extends ConfigDefinition<infer C> ? JSONPartial<C> : {};
-export type ExtractModuleOptions<T extends Module<any>> = T extends Module<infer O> ? O : never;
-export type ModuleConfigOfOptions<O extends ModuleOptions<any>> = ExtractImportConfigs<O['imports']> & ExtractPartialConfigOfDefinition<DefaultObject<O['config']>>;
+export type ExtractModuleOptions<T extends AppModule<any, any>> = T extends AppModule<infer O, any> ? O : never;
+export type ModuleConfigOfOptions<O extends ModuleOptions> = ExtractImportConfigs<O['imports']> & ExtractPartialConfigOfDefinition<DefaultObject<O['config']>>;
 
-export interface ModuleOptions<NAME extends string | undefined> {
-    /**
-     * The lowercase alphanumeric module name. This is used in the configuration system for example.
-     * Choose a short unique name for best usability.
-     */
-    readonly name?: NAME;
-
+export interface ModuleOptions {
     /**
      * Providers.
      */
@@ -36,12 +31,12 @@ export interface ModuleOptions<NAME extends string | undefined> {
     /**
      * Export providers (its token `provide` value) or modules you imported first.
      */
-    exports?: (ClassType | InjectToken | string | Module<any>)[];
+    exports?: (ClassType | InjectToken | string | AppModule<any, any>)[];
 
     /**
      * Module bootstrap class.
      */
-    bootstrap?: ClassType<any>;
+    bootstrap?: ClassType;
 
     /**
      * Configuration definition.
@@ -50,7 +45,7 @@ export interface ModuleOptions<NAME extends string | undefined> {
      * ```typescript
      * import {t} from '@deepkit/type';
      *
-     * const MyModule = createModule({
+     * const myModule = new AppModule({
      *     config: {
      *         debug: t.boolean.default(false),
      *     }
@@ -104,10 +99,10 @@ export interface ModuleOptions<NAME extends string | undefined> {
     /**
      * Import another module.
      */
-    imports?: Module<any>[];
+    imports?: AppModule<any, any>[];
 }
 
-function cloneOptions<T extends ModuleOptions<any>>(options: T): T {
+function cloneOptions<T extends ModuleOptions>(options: T): T {
     const copied = { ...options };
     copied.imports = copied.imports?.slice(0);
     copied.exports = copied.exports?.slice(0);
@@ -122,20 +117,32 @@ export class ConfigurationInvalidError extends CustomError { }
 
 let moduleId = 0;
 
-export class Module<T extends ModuleOptions<any>> extends InjectorModule<T['name'], ExtractConfigOfDefinition<DefaultObject<T['config']>>> {
+
+export class AppModuleConfig<T extends PlainSchemaProps> extends ConfigDefinition<ExtractClassDefinition<T>> {
+    constructor(public config: T) {
+        super(t.schema(config));
+    }
+}
+
+export class AppModule<T extends ModuleOptions, NAME extends string = ''> extends InjectorModule<NAME, ExtractConfigOfDefinition<DefaultObject<T['config']>>> {
     public root: boolean = false;
-    public parent?: Module<any>;
+    public parent?: AppModule<any, any>;
     protected configLoaded: boolean = false;
 
     constructor(
         public options: T,
+        /**
+         * The lowercase alphanumeric module name. This is used in the configuration system for example.
+         * Choose a short unique name for best usability.
+         */
+        public name: NAME = '' as NAME,
         public configValues: { [path: string]: any } = {},
-        public setups: ((module: Module<T>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void)[] = [],
+        public setups: ((module: AppModule<T, NAME>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void)[] = [],
         public readonly id: number = moduleId++,
     ) {
-        super(options.name, {} as any);
+        super(name, {} as any);
         if (options.config instanceof ConfigDefinition) {
-            options.config.setModule(this);
+            options.config.setModule(this as InjectorModule);
         }
         if (this.options.imports) {
             for (const module of this.options.imports) {
@@ -144,7 +151,7 @@ export class Module<T extends ModuleOptions<any>> extends InjectorModule<T['name
         }
     }
 
-    getImports(): Module<ModuleOptions<any>>[] {
+    getImports(): AppModule<ModuleOptions, any>[] {
         return this.options.imports || [];
     }
 
@@ -152,7 +159,7 @@ export class Module<T extends ModuleOptions<any>> extends InjectorModule<T['name
         return this.options.exports || [];
     }
 
-    hasImport(module: Module<any>): boolean {
+    hasImport(module: AppModule<any, any>): boolean {
         for (const importModule of this.getImports()) {
             if (importModule.id === module.id) return true;
         }
@@ -162,7 +169,7 @@ export class Module<T extends ModuleOptions<any>> extends InjectorModule<T['name
     /**
      * Modifies this module and adds a new import, returning the same module.
      */
-    addImport(...modules: Module<any>[]): this {
+    addImport(...modules: AppModule<any, any>[]): this {
         for (const module of modules) {
             module.setParent(this);
             if (!this.options.imports) this.options.imports = [];
@@ -212,7 +219,7 @@ export class Module<T extends ModuleOptions<any>> extends InjectorModule<T['name
         this.configLoaded = true;
 
         for (const option of this.options.config.schema.getProperties()) {
-            const path = this.options.name ? this.options.name + '.' + option.name : option.name;
+            const path = this.name ? this.name + '.' + option.name : option.name;
             config[option.name] = this.getConfigOption(path);
         }
 
@@ -228,12 +235,12 @@ export class Module<T extends ModuleOptions<any>> extends InjectorModule<T['name
         }
     }
 
-    setParent(module: Module<any>) {
+    setParent(module: AppModule<any, any>) {
         this.parent = module;
     }
 
-    clone(): Module<T> {
-        const m = new Module(cloneOptions(this.options), { ...this.configValues }, this.setups.slice(0), this.id);
+    clone(): AppModule<T, NAME> {
+        const m = new AppModule(cloneOptions(this.options), this.name, { ...this.configValues }, this.setups.slice(0), this.id);
         m.root = this.root;
         m.parent = this.parent;
         m.setupProviderRegistry = this.setupProviderRegistry.clone();
@@ -249,8 +256,8 @@ export class Module<T extends ModuleOptions<any>> extends InjectorModule<T['name
         return m;
     }
 
-    getName(): string {
-        return this.options.name || '';
+    getName(): NAME {
+        return this.name;
     }
 
     /**
@@ -258,7 +265,7 @@ export class Module<T extends ModuleOptions<any>> extends InjectorModule<T['name
      *
      * Returns a new forked module of this with the changes applied.
      */
-    setup(callback: (module: Module<T>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void): Module<T> {
+    setup(callback: (module: AppModule<T, any>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void): AppModule<T, NAME> {
         const m = this.clone();
         m.setups.push(callback);
         return m;
@@ -268,7 +275,7 @@ export class Module<T extends ModuleOptions<any>> extends InjectorModule<T['name
      * Sets configured values that no longer are inherited from the parent.
      * Returns a new forked module of this with the changes applied.
      */
-    configure(config: ModuleConfigOfOptions<T>): Module<T> {
+    configure(config: ModuleConfigOfOptions<T>): AppModule<T, NAME> {
         const configValues: { [path: string]: any } = { ...this.configValues };
 
         if (this.options.imports) {
@@ -286,7 +293,7 @@ export class Module<T extends ModuleOptions<any>> extends InjectorModule<T['name
         if (this.options.config) {
             for (const option of this.options.config.schema.getProperties()) {
                 if (!(option.name in config)) continue;
-                const path = this.options.name ? this.options.name + '.' + option.name : option.name;
+                const path = this.name ? this.name + '.' + option.name : option.name;
                 configValues[path] = (config as any)[option.name];
             }
         }
@@ -313,13 +320,9 @@ export class Module<T extends ModuleOptions<any>> extends InjectorModule<T['name
      * Makes all the providers, controllers, etc available at the root module, basically exporting everything.
      * Returns a new forked module of this with root enabled.
      */
-    forRoot(): Module<T> {
+    forRoot(): AppModule<T, NAME> {
         const m = this.clone();
         m.root = true;
         return m;
     }
-}
-
-export function createModule<O extends ModuleOptions<NAME>, NAME extends string>(options: O & { name?: NAME }): Module<O> {
-    return new Module(options);
 }

@@ -39,7 +39,7 @@
       "path": "../injector/tsconfig.esm.json"
     },
     {
-      "path": "../command/tsconfig.esm.json"
+      "path": "../app/tsconfig.esm.json"
     },
     {
       "path": "../event/tsconfig.esm.json"

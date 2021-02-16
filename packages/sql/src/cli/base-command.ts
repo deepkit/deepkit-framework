@@ -1,4 +1,4 @@
-import { flag } from '@deepkit/command';
+import { flag } from '@deepkit/app';
 import { t } from '@deepkit/type';
 
 export class BaseCommand {

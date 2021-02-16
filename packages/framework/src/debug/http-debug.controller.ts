@@ -10,9 +10,9 @@
 
 import { join } from 'path';
 import { registerStaticHttpController } from '@deepkit/http';
-import { Module } from '@deepkit/command';
+import { AppModule } from '@deepkit/app';
 
-export function registerDebugHttpController(module: Module<any>, path: string): void {
+export function registerDebugHttpController(module: AppModule<any, any>, path: string): void {
     const localPathPrefix = __dirname.includes('framework/dist') ? '../../../../' : '../../../';
     const localPath = join(__dirname, localPathPrefix, 'node_modules/@deepkit/framework-debug-gui/dist/framework-debug-gui');
     registerStaticHttpController(module, path, localPath);

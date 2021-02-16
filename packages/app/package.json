@@ -1,7 +1,7 @@
 {
-  "name": "@deepkit/command",
+  "name": "@deepkit/app",
   "version": "1.0.1-alpha.13",
-  "description": "Deepkit command line tool",
+  "description": "Deepkit App, CLI framework and service container",
   "private": true,
   "type": "commonjs",
   "main": "./dist/cjs/index.js",

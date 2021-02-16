@@ -12,7 +12,7 @@ import { http } from './decorator';
 import { join } from 'path';
 import { readFileSync, stat } from 'fs';
 import { HtmlResponse, httpWorkflow } from './http';
-import { Module } from '@deepkit/command';
+import { AppModule } from '@deepkit/app';
 import { normalizeDirectory } from './utils';
 import { ClassType } from '@deepkit/core';
 import { injectable } from '@deepkit/injector';
@@ -76,7 +76,7 @@ function loadHtml(localPath: string, path: string): string {
  * Serves files from a local directory at `path`. All paths without . are redirected to
  * ${localPath}/index.html.
  */
-export function registerStaticHttpController(module: Module<any>, path: string, localPath: string): void {
+export function registerStaticHttpController(module: AppModule<any, any>, path: string, localPath: string): void {
     path = normalizeDirectory(path);
     let indexHtml = '';
 

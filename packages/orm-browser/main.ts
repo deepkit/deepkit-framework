@@ -1,7 +1,8 @@
 #!/usr/bin/env ts-node-script
 
 import 'reflect-metadata';
-import { Application, createModule, KernelModule, OrmBrowserController } from '@deepkit/framework';
+import { Application, KernelModule, OrmBrowserController } from '@deepkit/framework';
+import { AppModule } from '@deepkit/app';
 import { isAbsolute, join } from 'path';
 import { Database } from '@deepkit/orm';
 import { registerStaticHttpController } from '@deepkit/http';
@@ -16,13 +17,14 @@ for (const db of Database.registry) {
     console.log(`Found database ${db.name} with adapter ${db.adapter.getName()}`);
 }
 
-Application.create(createModule({
+const appModule = new AppModule({
     providers: [
         {provide: OrmBrowserController, useValue: new OrmBrowserController(Database.registry)},
     ],
     controllers: [
         OrmBrowserController
     ],
+
     imports: [
         KernelModule.configure({
             port: 9090,
@@ -35,4 +37,6 @@ Application.create(createModule({
     const localPathPrefix = __dirname.includes('orm-browser/dist') ? '../../' : './';
     const localPath = join(__dirname, localPathPrefix, 'node_modules/@deepkit/orm-browser-gui/dist/orm-browser-gui');
     registerStaticHttpController(module, '/', localPath);
-})).run(['server:listen']);
+});
+
+new Application(appModule).run(['server:listen']);

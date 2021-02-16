@@ -1,13 +1,12 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { t } from '@deepkit/type';
-import { ConfigSlice, createConfig, inject, injectable, injectorReference } from '@deepkit/injector';
+import { ConfigSlice, inject, injectable, injectorReference } from '@deepkit/injector';
 import { ServiceContainer } from '../src/service-container';
 import { ClassType } from '@deepkit/core';
-import { createModule, Module } from '../src/module';
+import { AppModule, AppModuleConfig } from '../src/module';
 
-
-const myModuleConfig = createConfig({
+const myModuleConfig = new AppModuleConfig({
     param1: t.string.minLength(5),
     param2: t.number.minimum(100)
 });
@@ -20,23 +19,21 @@ class ModuleService {
     }
 }
 
-const MyModule = createModule({
-    name: 'myModule',
+const MyModule = new AppModule({
     config: myModuleConfig,
     providers: [
         ModuleService
     ],
     exports: [ModuleService]
-});
+}, 'myModule');
 
-
-const AppModuleConfig = createConfig({
+const appModuleConfig = new AppModuleConfig({
     database: t.string.default('mongodb://localhost/my-app'),
     debug: t.boolean.default(false),
 });
 
-class MyServiceConfig extends AppModuleConfig.slice(['debug']) { }
-const debugConfigToken = AppModuleConfig.token('debug');
+class MyServiceConfig extends appModuleConfig.slice(['debug']) { }
+const debugConfigToken = appModuleConfig.token('debug');
 
 expect(Object.getPrototypeOf(Object.getPrototypeOf(MyServiceConfig)) === ConfigSlice).toBe(true);
 
@@ -56,7 +53,7 @@ class MyService2 {
     }
 }
 
-const AppModule = createModule({
+const myAppModule = new AppModule({
     providers: [
         MyService,
         MyService2,
@@ -64,10 +61,10 @@ const AppModule = createModule({
     imports: [
         MyModule,
     ],
-    config: AppModuleConfig,
+    config: appModuleConfig,
 });
 
-function getMyServiceFor<T>(module: Module<any>, service: ClassType<T>): T {
+function getMyServiceFor<T>(module: AppModule<any>, service: ClassType<T>): T {
     const serviceContainer = new ServiceContainer(module);
     return serviceContainer.getRootInjectorContext().get(service);
 }
@@ -86,37 +83,37 @@ test('import', () => {
     // }
 
     {
-        expect(() => getMyServiceFor(AppModule.configure({ myModule: { param1: '23' } }), ModuleService)).toThrow(
+        expect(() => getMyServiceFor(myAppModule.configure({ myModule: { param1: '23' } }), ModuleService)).toThrow(
             'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(minLength): Min length is 5, myModule.param2(required): Required value is undefined'
         );
     }
 
     {
-        expect(() => getMyServiceFor(AppModule.configure({ myModule: { param1: '12345' } }), ModuleService)).toThrow(
+        expect(() => getMyServiceFor(myAppModule.configure({ myModule: { param1: '12345' } }), ModuleService)).toThrow(
             'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(required): Required value is undefined'
         );
     }
 
     {
-        expect(() => getMyServiceFor(AppModule.configure({ myModule: { param1: '12345', param2: 55 } }), ModuleService)).toThrow(
+        expect(() => getMyServiceFor(myAppModule.configure({ myModule: { param1: '12345', param2: 55 } }), ModuleService)).toThrow(
             'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(minimum): Number needs to be greater than or equal to 100'
         );
     }
 
     {
-        expect(() => getMyServiceFor(AppModule.configure({ myModule: { param1: '12345', param2: '55' } }), ModuleService)).toThrow(
+        expect(() => getMyServiceFor(myAppModule.configure({ myModule: { param1: '12345', param2: '55' } }), ModuleService)).toThrow(
             'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(minimum): Number needs to be greater than or equal to 100'
         );
     }
 
     {
-        const myService = getMyServiceFor(AppModule.configure({ myModule: { param1: '12345', param2: 100 } }), ModuleService);
+        const myService = getMyServiceFor(myAppModule.configure({ myModule: { param1: '12345', param2: 100 } }), ModuleService);
         expect(myService.config).toEqual({ param1: '12345', param2: 100 });
     }
 
     {
         //@deepkit/type does automatically soft-type casting
-        const myService = getMyServiceFor(AppModule.configure({ myModule: { param1: '12345', param2: '100' } }), ModuleService);
+        const myService = getMyServiceFor(myAppModule.configure({ myModule: { param1: '12345', param2: '100' } }), ModuleService);
         expect(myService.config).toEqual({ param1: '12345', param2: 100 });
     }
 });
@@ -125,7 +122,7 @@ test('basic configured', () => {
     expect(new MyService({ debug: true }).isDebug()).toBe(true);
     expect(new MyService({ debug: false }).isDebug()).toBe(false);
 
-    const myConfiguredApp = AppModule.configure({ myModule: { param1: '12345', param2: '100' } });
+    const myConfiguredApp = myAppModule.configure({ myModule: { param1: '12345', param2: '100' } });
 
     {
         const myService = getMyServiceFor(myConfiguredApp, MyService);
@@ -162,7 +159,7 @@ test('basic configured', () => {
 });
 
 test('config inheritance', () => {
-    const AppModule = createModule({
+    const appModule = new AppModule({
         providers: [
             MyService,
             MyService2,
@@ -170,20 +167,20 @@ test('config inheritance', () => {
         imports: [
             MyModule.configure({ param1: '12345' }),
         ],
-        config: AppModuleConfig,
+        config: appModuleConfig,
     });
 
-    expect(() => AppModule.getImports()[0].getConfig()).toThrow(
+    expect(() => appModule.getImports()[0].getConfig()).toThrow(
         'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(required): Required value is undefined'
     );
 
-    expect(AppModule.configure({ myModule: { param2: 555 } }).getImports()[0].getConfig()).toEqual({ param1: '12345', param2: 555 });
+    expect(appModule.configure({ myModule: { param2: 555 } }).getImports()[0].getConfig()).toEqual({ param1: '12345', param2: 555 });
 
 });
 
 
 test('config inheritance', () => {
-    const AppModule = createModule({
+    const appModule = new AppModule({
         providers: [
             MyService,
             MyService2,
@@ -191,14 +188,14 @@ test('config inheritance', () => {
         imports: [
             MyModule.configure({ param1: '12345' }),
         ],
-        config: AppModuleConfig,
+        config: appModuleConfig,
     });
 
-    expect(() => AppModule.getImports()[0].getConfig()).toThrow(
+    expect(() => appModule.getImports()[0].getConfig()).toThrow(
         'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(required): Required value is undefined'
     );
 
-    expect(AppModule.configure({ myModule: { param2: 555 } }).getImports()[0].getConfig()).toEqual({ param1: '12345', param2: 555 });
+    expect(appModule.configure({ myModule: { param2: 555 } }).getImports()[0].getConfig()).toEqual({ param1: '12345', param2: 555 });
 
 });
 
@@ -216,7 +213,7 @@ test('configured provider', () => {
         }
     }
 
-    const AppModule = createModule({
+    const appModule = new AppModule({
         providers: [
             Transporter,
             Logger,
@@ -224,10 +221,10 @@ test('configured provider', () => {
     });
 
     {
-        const fork = AppModule.clone();
+        const fork = appModule.clone();
         fork.setupProvider(Logger).addTransport('first').addTransport('second');
 
-        expect(AppModule.getConfiguredProviderRegistry().get(Logger).length).toBe(0);
+        expect(appModule.getConfiguredProviderRegistry().get(Logger).length).toBe(0);
         expect(fork.getConfiguredProviderRegistry().get(Logger).length).toBe(2);
 
         const clone = fork.clone();
@@ -235,35 +232,35 @@ test('configured provider', () => {
     }
 
     {
-        const logger = new ServiceContainer(AppModule.setup((module) => {
+        const logger = new ServiceContainer(appModule.setup((module) => {
             module.setupProvider(Logger).addTransport('first').addTransport('second');
-        })).getInjectorFor(AppModule).get(Logger);
+        })).getInjectorFor(appModule).get(Logger);
         expect(logger.transporter).toEqual(['first', 'second']);
     }
 
     {
-        const logger = new ServiceContainer(AppModule.setup((module) => {
+        const logger = new ServiceContainer(appModule.setup((module) => {
             module.setupProvider(Logger).transporter = ['first', 'second', 'third'];
-        })).getInjectorFor(AppModule).get(Logger);
+        })).getInjectorFor(appModule).get(Logger);
         expect(logger.transporter).toEqual(['first', 'second', 'third']);
     }
 
     {
-        const logger = new ServiceContainer(AppModule.setup((module) => {
+        const logger = new ServiceContainer(appModule.setup((module) => {
             module.setupProvider(Logger).addTransport(new Transporter);
-        })).getInjectorFor(AppModule).get(Logger);
+        })).getInjectorFor(appModule).get(Logger);
         expect(logger.transporter[0] instanceof Transporter).toBe(true);
     }
 
     {
-        const logger = new ServiceContainer(AppModule.setup((module) => {
+        const logger = new ServiceContainer(appModule.setup((module) => {
             module.setupProvider(Logger).addTransport(injectorReference(Transporter));
-        })).getInjectorFor(AppModule).get(Logger);
+        })).getInjectorFor(appModule).get(Logger);
         expect(logger.transporter[0] instanceof Transporter).toBe(true);
     }
 
     {
-        const logger = new ServiceContainer(AppModule).getInjectorFor(AppModule).get(Logger);
+        const logger = new ServiceContainer(appModule).getInjectorFor(appModule).get(Logger);
         expect(logger.transporter).toEqual([]);
     }
 });

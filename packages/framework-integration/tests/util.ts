@@ -1,6 +1,6 @@
 import { arrayRemoveItem, ClassType, sleep } from '@deepkit/core';
-import { Application, ApplicationServer, Broker, BrokerServer, createModule, KernelModule, NetBroker, NetBrokerServer } from '@deepkit/framework';
-import { Module } from '@deepkit/command';
+import { Application, ApplicationServer, Broker, BrokerServer, KernelModule, NetBroker, NetBrokerServer } from '@deepkit/framework';
+import { AppModule } from '@deepkit/app';
 import { Observable } from 'rxjs';
 import { createServer } from 'http';
 import { DeepkitClient, RemoteController } from '@deepkit/rpc';
@@ -39,9 +39,9 @@ export async function closeAllCreatedServers() {
     }
 }
 
-export function appModuleForControllers(controllers: ClassType[], entities: ClassType[] = []): Module<any> {
+export function appModuleForControllers(controllers: ClassType[], entities: ClassType[] = []): AppModule<any, any> {
     const database = Database.createClass('default', new SQLiteDatabaseAdapter(), entities);
-    return createModule({
+    return new AppModule({
         controllers: controllers,
         providers: [
             { provide: Database, useClass: database },
@@ -56,7 +56,7 @@ export function appModuleForControllers(controllers: ClassType[], entities: Clas
 
 export async function createServerClientPair(
     name: string,
-    AppModule: Module<any>
+    AppModule: AppModule<any, any>
 ): Promise<{
     app: Application<any>,
     server: ApplicationServer,

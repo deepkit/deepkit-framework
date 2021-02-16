@@ -1,7 +1,7 @@
 import { ClassType } from '@deepkit/core';
-import { ConfiguredProviderCalls, ConfiguredProviderRegistry, ConfigureProvider, setupProvider } from './injector';
+import { ConfiguredProviderRegistry, ConfigureProvider, setupProvider } from './injector';
 
-export class InjectorModule<N extends string = any, C extends { [name: string]: any } = any> {
+export class InjectorModule<N extends string = string, C extends { [name: string]: any } = any> {
     protected setupProviderRegistry = new ConfiguredProviderRegistry;
 
     constructor(

@@ -10,7 +10,8 @@
 
 import { FsConfig } from './fs.config';
 import { Database, DatabaseAdapter } from '@deepkit/orm';
-import { createModule, injectable } from '@deepkit/framework';
+import { AppModule } from '@deepkit/app';
+import { injectable } from '@deepkit/injector';
 import { DeepkitFile } from '@deepkit/framework-shared';
 
 @injectable()
@@ -20,7 +21,7 @@ export class FsModuleBootstrap {
     }
 }
 
-export const FSModule = createModule({
+export const FSModule = new AppModule({
     name: 'fs',
     bootstrap: FsModuleBootstrap,
     providers: [

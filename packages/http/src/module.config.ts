@@ -1,6 +1,6 @@
-import { createConfig } from '@deepkit/injector';
 import { t } from '@deepkit/type';
+import { AppModuleConfig } from '@deepkit/app';
 
-export const config = createConfig({
+export const config = new AppModuleConfig({
     debug: t.boolean.default(false)
 });

@@ -10,7 +10,7 @@ import { InjectorContext, ProviderWithScope, Tag } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { HttpRequest } from '../src/model';
 import { ClassType } from '@deepkit/core';
-import { TagProviders } from '@deepkit/command';
+import { TagProviders } from '@deepkit/app';
 
 function createHttpKernel(controllers: ClassType[], providers: ProviderWithScope[] = []) {
     const tagProviders = new TagProviders();

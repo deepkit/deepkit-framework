@@ -9,7 +9,7 @@
  */
 
 import { ApplicationServer } from '../application-server';
-import { cli, Command, flag } from '@deepkit/command';
+import { cli, Command, flag } from '@deepkit/app';
 import { InjectorContext } from '@deepkit/injector';
 import { Logger, TimestampFormatter } from '@deepkit/logger';
 

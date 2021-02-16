@@ -2,7 +2,7 @@ import { rpc } from '@deepkit/rpc';
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { Application } from '../src/application';
-import { createModule } from '@deepkit/command';
+import { AppModule } from '@deepkit/app';
 import { InjectorContext } from '@deepkit/injector';
 import { createTestingApp } from '../src/testing';
 import { ApplicationServer } from '../src/application-server';
@@ -47,7 +47,7 @@ test('basic controller', async () => {
         }
     }
 
-    const AppModule = createModule({
+    const appModule = new AppModule({
         controllers: [MyController],
         imports: [
             KernelModule.configure({
@@ -56,7 +56,7 @@ test('basic controller', async () => {
         ]
     });
 
-    const app = new Application(AppModule);
+    const app = new Application(appModule);
     const applicationServer = app.get(ApplicationServer);
     const injectorContext = app.get(InjectorContext);
     const controller = injectorContext.createChildScope('rpc').get(MyController);

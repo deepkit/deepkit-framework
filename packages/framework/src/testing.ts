@@ -17,7 +17,7 @@ import { Application } from './application';
 import { ApplicationServer } from './application-server';
 import { Broker, BrokerServer, DirectBroker } from './broker/broker';
 import { injectorReference, Provider } from '@deepkit/injector';
-import { createModule, Module, ModuleOptions } from '@deepkit/command';
+import { AppModule, ModuleOptions } from '@deepkit/app';
 import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker';
 
 
@@ -55,8 +55,8 @@ export class BrokerMemoryServer extends BrokerServer {
  * Creates a new Application instance, but with kernel services in place that work in memory.
  * For example RPC/Broker/HTTP communication without TCP stack. Logger uses MemoryLogger.
 */
-export function createTestingApp<O extends ModuleOptions<NAME>, NAME extends string>(optionsOrModule: (O & { name?: NAME } | Module<O>), entities?: (ClassType | ClassSchema)[]): TestingFascade<Application<O>> {
-    const module = optionsOrModule instanceof Module ? optionsOrModule : createModule(optionsOrModule);
+export function createTestingApp<O extends ModuleOptions>(optionsOrModule: O, entities?: (ClassType | ClassSchema)[]): TestingFascade<Application<O>> {
+    const module = optionsOrModule instanceof AppModule ? optionsOrModule : new AppModule(optionsOrModule);
 
     module.setupProvider(Logger).removeTransport(injectorReference(ConsoleTransport));
     module.setupProvider(Logger).addTransport(injectorReference(MemoryLoggerTransport));

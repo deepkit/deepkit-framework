@@ -8,11 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { createConfig } from '@deepkit/injector';
 import { t } from '@deepkit/type';
+import { AppModuleConfig } from '@deepkit/app';
 import { Session } from './session';
 
-export const kernelConfig = createConfig({
+export const kernelConfig = new AppModuleConfig({
     host: t.string.default('localhost'), //binding to 127.0.0.1 is roughly 20% slower.
     port: t.number.default(8080),
     httpsPort: t.number.optional.description('If httpsPort and ssl is defined, then the https server is started additional to the http-server.'),

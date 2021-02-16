@@ -11,7 +11,7 @@
 import { ClassType, isArray } from '@deepkit/core';
 import { ServiceContainer } from './service-container';
 import { ProviderWithScope } from '@deepkit/injector';
-import { createModule, Module, ModuleConfigOfOptions, ModuleOptions } from './module';
+import { AppModule, ModuleConfigOfOptions, ModuleOptions } from './module';
 import { Command, Config, Options } from '@oclif/config';
 import { basename, relative } from 'path';
 import { Main } from '@oclif/command';
@@ -19,23 +19,13 @@ import { ExitError } from '@oclif/errors';
 import { buildOclifCommand } from './command';
 import { EnvConfiguration } from './configuration';
 
-export class CommandApplication<T extends ModuleOptions<any>, C extends ServiceContainer<T> = ServiceContainer<T>> {
+export class CommandApplication<T extends ModuleOptions, C extends ServiceContainer<T> = ServiceContainer<T>> {
     constructor(
-        appModule: Module<T>,
+        appModule: AppModule<T, any>,
         providers: ProviderWithScope<any>[] = [],
-        imports: Module<any>[] = [],
+        imports: AppModule<any, any>[] = [],
         public readonly serviceContainer: ServiceContainer<T> = new ServiceContainer(appModule, providers, imports.slice(0))
     ) {
-    }
-
-    static create<T extends Module<any> | ModuleOptions<any>>(module: T): CommandApplication<T extends Module<infer K> ? K : T> {
-        if (module instanceof Module) {
-            return new CommandApplication(module as any);
-        } else {
-            //see: https://github.com/microsoft/TypeScript/issues/13995
-            const mod = module as any as ModuleOptions<any>;
-            return new CommandApplication(createModule(mod) as any);
-        }
     }
 
     configure(config: ModuleConfigOfOptions<T>): this {

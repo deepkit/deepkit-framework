@@ -12,7 +12,7 @@ import { indent } from '@deepkit/core';
 import { format } from 'date-fns';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
-import { cli, Command, flag } from '@deepkit/command';
+import { cli, Command, flag } from '@deepkit/app';
 import { Logger } from '@deepkit/logger';
 import { SQLDatabaseAdapter } from '../sql-adapter';
 import { DatabaseComparator, DatabaseModel } from '../schema/table';

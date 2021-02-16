@@ -33,7 +33,7 @@
       "path": "../framework/tsconfig.json"
     },
     {
-      "path": "../command/tsconfig.json"
+      "path": "../app/tsconfig.json"
     },
     {
       "path": "../template/tsconfig.json"

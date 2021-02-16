@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { injectable } from '@deepkit/injector';
-import { createModule } from '../src/module';
+import { AppModule } from '../src/module';
 import { ServiceContainer } from '../src/service-container';
 
 test('simple setup with import and overwrite', () => {
@@ -14,7 +14,7 @@ test('simple setup with import and overwrite', () => {
         }
     }
 
-    const DatabaseModule = createModule({
+    const databaseModule = new AppModule({
         providers: [Connection, HiddenDatabaseService],
         exports: [Connection]
     });
@@ -22,13 +22,13 @@ test('simple setup with import and overwrite', () => {
     class MyService {
     }
 
-    const MyModule = createModule({
+    const myModule = new AppModule({
         providers: [MyService],
-        imports: [DatabaseModule]
+        imports: [databaseModule]
     });
 
     {
-        const serviceContainer = new ServiceContainer(MyModule);
+        const serviceContainer = new ServiceContainer(myModule);
         const injector = serviceContainer.getRootInjectorContext().getInjector(0);
 
         expect(injector.get(Connection)).toBeInstanceOf(Connection);
@@ -37,7 +37,7 @@ test('simple setup with import and overwrite', () => {
         expect(() => injector.get(HiddenDatabaseService)).toThrow('Could not resolve injector token HiddenDatabaseService');
         expect(injector.get(MyService)).toBeInstanceOf(MyService);
 
-        const databaseModuleInjector = serviceContainer.getInjectorFor(DatabaseModule);
+        const databaseModuleInjector = serviceContainer.getInjectorFor(databaseModule);
         expect(databaseModuleInjector.get(HiddenDatabaseService)).toBeInstanceOf(HiddenDatabaseService);
         expect(databaseModuleInjector.get(Connection)).toBe(injector.get(Connection));
 
@@ -50,15 +50,15 @@ test('simple setup with import and overwrite', () => {
         class OverwrittenConnection {
         }
 
-        const MyModuleOverwritten = createModule({
+        const myModuleOverwritten = new AppModule({
             providers: [MyService, { provide: Connection, useClass: OverwrittenConnection }],
-            imports: [DatabaseModule]
+            imports: [databaseModule]
         });
 
-        const serviceContainer = new ServiceContainer(MyModuleOverwritten);
+        const serviceContainer = new ServiceContainer(myModuleOverwritten);
         expect(serviceContainer.getRootInjectorContext().get(Connection)).toBeInstanceOf(OverwrittenConnection);
 
-        const databaseModuleInjector = serviceContainer.getInjectorFor(DatabaseModule);
+        const databaseModuleInjector = serviceContainer.getInjectorFor(databaseModule);
         const hiddenService = databaseModuleInjector.get(HiddenDatabaseService);
         expect(hiddenService.connection).toBeInstanceOf(OverwrittenConnection);
         expect(databaseModuleInjector.get(Connection)).toBeInstanceOf(OverwrittenConnection);
@@ -69,7 +69,7 @@ test('deep', () => {
     class DeepService {
     }
 
-    const DeepModule = createModule({
+    const deepModule = new AppModule({
         providers: [DeepService]
     });
 
@@ -79,21 +79,21 @@ test('deep', () => {
     class HiddenDatabaseService {
     }
 
-    const DatabaseModule = createModule({
+    const databaseModule = new AppModule({
         providers: [Connection, HiddenDatabaseService],
         exports: [Connection],
-        imports: [DeepModule]
+        imports: [deepModule]
     });
 
     class MyService {
     }
 
-    const MyModule = createModule({
+    const myModule = new AppModule({
         providers: [MyService],
-        imports: [DatabaseModule]
+        imports: [databaseModule]
     });
 
-    const serviceContainer = new ServiceContainer(MyModule);
+    const serviceContainer = new ServiceContainer(myModule);
     const injector = serviceContainer.getRootInjectorContext();
 
     expect(injector.get(Connection)).toBeInstanceOf(Connection);
@@ -112,11 +112,11 @@ test('scopes', () => {
     class SessionHandler {
     }
 
-    const MyModule = createModule({
+    const myModule = new AppModule({
         providers: [MyService, { provide: SessionHandler, scope: 'rpc' }],
     });
 
-    const serviceContainer = new ServiceContainer(MyModule);
+    const serviceContainer = new ServiceContainer(myModule);
     const sessionInjector = serviceContainer.getRootInjectorContext().createChildScope('rpc');
 
     expect(() => serviceContainer.getRootInjectorContext().get(SessionHandler)).toThrow('Could not resolve');
@@ -132,7 +132,7 @@ test('for root with exported module', () => {
     class SharedService {
     }
 
-    const SharedModule = createModule({
+    const SharedModule = new AppModule({
         providers: [SharedService],
         exports: [SharedService]
     });
@@ -144,20 +144,20 @@ test('for root with exported module', () => {
         }
     }
 
-    const MyBaseModule = createModule({
+    const myBaseModule = new AppModule({
         providers: [
             BaseHandler
         ],
         imports: [SharedModule],
     });
 
-    const MyModule = createModule({
+    const myModule = new AppModule({
         imports: [
-            MyBaseModule.forRoot()
+            myBaseModule.forRoot()
         ]
     });
 
-    const serviceContainer = new ServiceContainer(MyModule);
+    const serviceContainer = new ServiceContainer(myModule);
     const injector = serviceContainer.getRootInjectorContext();
 
     expect(injector.get(BaseHandler)).toBeInstanceOf(BaseHandler);
@@ -179,7 +179,7 @@ test('module with config object', () => {
         }
     }
 
-    const ExchangeModule = createModule({
+    const exchangeModule = new AppModule({
         bootstrap: ExchangeModuleBootstrap,
         providers: [
             ExchangeConfig,
@@ -189,15 +189,15 @@ test('module with config object', () => {
         ]
     });
 
-    const MyBaseModule = createModule({
-        imports: [ExchangeModule]
+    const myBaseModule = new AppModule({
+        imports: [exchangeModule]
     });
 
     {
         bootstrapMainCalledConfig = undefined;
 
-        const MyModule = createModule({
-            imports: [MyBaseModule.forRoot()]
+        const MyModule = new AppModule({
+            imports: [myBaseModule.forRoot()]
         });
 
         const serviceContainer = new ServiceContainer(MyModule);
@@ -208,9 +208,9 @@ test('module with config object', () => {
     {
         bootstrapMainCalledConfig = undefined;
 
-        const MyModule = createModule({});
+        const MyModule = new AppModule({});
 
-        const serviceContainer = new ServiceContainer(MyModule, [], [MyBaseModule.forRoot()]);
+        const serviceContainer = new ServiceContainer(MyModule, [], [myBaseModule.forRoot()]);
         expect(serviceContainer.getRootInjectorContext().get(ExchangeConfig)).toBeInstanceOf(ExchangeConfig);
         expect(bootstrapMainCalledConfig).toBeInstanceOf(ExchangeConfig);
     }
@@ -218,8 +218,8 @@ test('module with config object', () => {
     {
         bootstrapMainCalledConfig = undefined;
 
-        const MyModule = createModule({
-            imports: [ExchangeModule]
+        const MyModule = new AppModule({
+            imports: [exchangeModule]
         });
 
         const serviceContainer = new ServiceContainer(MyModule);
@@ -232,11 +232,11 @@ test('module with config object', () => {
         const changedConfig = new ExchangeConfig();
         changedConfig.startOnBootstrap = false;
 
-        const MyModule = createModule({
+        const MyModule = new AppModule({
             providers: [
                 { provide: ExchangeConfig, useValue: changedConfig }
             ],
-            imports: [ExchangeModule]
+            imports: [exchangeModule]
         });
 
         const serviceContainer = new ServiceContainer(MyModule);
@@ -250,42 +250,39 @@ test('exported module', () => {
     class DatabaseConnection {
     }
 
-    const DatabaseModule = createModule({
-        name: 'database',
+    const databaseModule = new AppModule({
         providers: [DatabaseConnection],
         exports: [
             DatabaseConnection
         ]
-    });
+    }, 'database');
 
     class FSService {
     }
 
-    const FSModule = createModule({
-        name: 'fs',
+    const FSModule = new AppModule({
         providers: [FSService],
-        imports: [DatabaseModule],
+        imports: [databaseModule],
         exports: [
-            DatabaseModule
+            databaseModule
         ]
-    });
+    }, 'fs');
 
     {
-        const MyModule = createModule({
-            name: 'myModule',
+        const myModule = new AppModule({
             imports: [FSModule]
-        });
+        }, 'myModule');
 
-        const copy = MyModule.clone();
-        expect(copy.id).toBe(MyModule.id);
+        const copy = myModule.clone();
+        expect(copy.id).toBe(myModule.id);
         expect(copy.getImports()[0].id).toBe(FSModule.id);
 
-        const serviceContainer = new ServiceContainer(MyModule);
+        const serviceContainer = new ServiceContainer(myModule);
         const rootInjector = serviceContainer.getRootInjectorContext().getInjector(0);
 
         expect(rootInjector.get(DatabaseConnection)).toBeInstanceOf(DatabaseConnection);
 
-        const databaseModuleInjector = serviceContainer.getInjectorFor(DatabaseModule);
+        const databaseModuleInjector = serviceContainer.getInjectorFor(databaseModule);
         expect(databaseModuleInjector.get(DatabaseConnection)).toBeInstanceOf(DatabaseConnection);
         expect(databaseModuleInjector.get(DatabaseConnection)).toBe(rootInjector.get(DatabaseConnection));
     }
