@@ -9,21 +9,24 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { Database } from '@deepkit/orm';
+import { Database, DatabaseRegistry } from '@deepkit/orm';
 import glob from 'fast-glob';
 import { basename, join } from 'path';
-import { DatabaseRegistry } from '../database-registry';
-import { inject } from '@deepkit/injector';
-import { kernelConfig } from '../kernel.config';
+import { injectable } from '@deepkit/injector';
 import { Migration } from './migration';
 
+@injectable()
 export class MigrationProvider {
     protected databaseMap = new Map<string, Database<any>>();
+    protected migrationDir: string = 'migrations/';
 
     constructor(
-        @inject().root protected databases: DatabaseRegistry,
-        @inject(kernelConfig.token('migrationDir')) protected migrationDir: string,
+        public databases: DatabaseRegistry,
     ) {
+    }
+
+    setMigrationDir(dir: string) {
+        this.migrationDir = dir;
     }
 
     async getMigrationsPerDatabase(limitDatabase?: string) {

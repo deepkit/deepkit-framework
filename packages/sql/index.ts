@@ -12,6 +12,12 @@ export * from './src/sql-builder';
 export * from './src/sql-adapter';
 export * from './src/sql-filter-builder';
 
+export * from './src/migration/migration';
+export * from './src/migration/migration-provider';
+export * from './src/cli/migration-create-command';
+export * from './src/cli/migration-down-command';
+export * from './src/cli/migration-up-command';
+export * from './src/cli/migration-pending-command';
 export * from './src/test';
 export * from './src/schema/table';
 export * from './src/reverse/schema-parser';

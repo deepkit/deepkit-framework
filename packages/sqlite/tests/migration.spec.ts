@@ -1,7 +1,8 @@
-import { expect, test } from "@jest/globals";
-import { schemaMigrationRoundTrip } from "@deepkit/sql";
-import { t } from "../../type";
-import { SQLiteDatabaseAdapter } from "../src/sqlite-adapter";
+import 'reflect-metadata';
+import { expect, test } from '@jest/globals';
+import { schemaMigrationRoundTrip } from '@deepkit/sql';
+import { t } from '../../type';
+import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter';
 
 test('sqlite custom type', async () => {
     const post = t.schema({

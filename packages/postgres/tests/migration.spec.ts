@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { expect, test } from '@jest/globals';
 import { schemaMigrationRoundTrip } from '@deepkit/sql';
 import { t } from '@deepkit/type';

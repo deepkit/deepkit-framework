@@ -9,7 +9,7 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, FreeFluidDecorator, getClassSchema, getPropertyXtoClassFunction, jsonSerializer, PropertyApiTypeInterface, PropertySchema } from '@deepkit/type';
+import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, FreeFluidDecorator, getClassSchema, getPropertyXtoClassFunction, jsonSerializer, PropertyApiTypeInterface, PropertySchema, t } from '@deepkit/type';
 import { Command as OclifCommandBase } from '@oclif/command';
 import { Command as OclifCommand } from '@oclif/config';
 import { args, flags } from '@oclif/parser';
@@ -19,7 +19,12 @@ import { InjectorContext } from '@deepkit/injector';
 class ArgDefinitions {
     name: string = '';
     description: string = '';
-    args: { [name: string]: ArgDefinition } = {};
+    args: ArgDefinition[] = [];
+
+    getArg(name: string): ArgDefinition {
+        for (const arg of this.args) if (arg.name === name) return arg;
+        throw new Error(`No argument with name ${name} found`);
+    }
 }
 
 class CommandDecorator {
@@ -33,7 +38,7 @@ class CommandDecorator {
     }
 
     addArg(arg: ArgDefinition) {
-        this.t.args[arg.name] = arg;
+        this.t.args.unshift(arg);
     }
 }
 
@@ -42,7 +47,7 @@ export const cli: ClassDecoratorResult<typeof CommandDecorator> = createClassDec
 class ArgDefinition {
     name: string = '';
     isFlag: boolean = false;
-    propertySchema?: PropertySchema;
+    propertySchema!: PropertySchema;
     multiple: boolean = false;
     hidden: boolean = false;
     char: string = '';
@@ -55,15 +60,28 @@ export class ArgDecorator implements PropertyApiTypeInterface<ArgDefinition> {
     t = new ArgDefinition;
 
     onDecorator(classType: ClassType, property: string | undefined, parameterIndex?: number): void {
-        //property is `execute` always since we use decorators on the method's arguments
-        if (!property) throw new Error('arg|flag needs to be on a method argument, .e.g execute(@arg hostname: string) {}');
-        if (parameterIndex === undefined) throw new Error('arg|flag needs to be on a method argument, .e.g execute(@arg hostname: string) {}');
+        if (!property) throw new Error('arg|flag needs to be on a method argument or class property, .e.g execute(@arg hostname: string) {}');
+        const schema = getClassSchema(classType);
 
-        const properties = getClassSchema(classType).getMethodProperties(property);
-        const propertySchema = properties[parameterIndex];
+        if (parameterIndex === undefined && !schema.hasProperty(property)) {
+            //make sure its known in ClassSchema
+            t(classType.prototype, property);
+        }
+
+        const propertySchema = parameterIndex !== undefined
+            ? getClassSchema(classType).getMethodProperties(property)[parameterIndex]
+            : getClassSchema(classType).getProperty(property);
 
         this.t.name = propertySchema.name;
         this.t.propertySchema = propertySchema;
+
+        const aBase = cli._fetch(Object.getPrototypeOf(classType.prototype)?.constructor);
+        if (aBase) {
+            const a = cli._fetch(classType);
+            if (a) {
+                a.args.unshift(...aBase.args);
+            }
+        }
 
         cli.addArg(this.t)(classType);
     }
@@ -125,24 +143,18 @@ export function buildOclifCommand(classType: ClassType<Command>, rootScopedConte
     if (!argDefinitions) throw new Error(`No command name set. use @cli.controller('name')`);
     if (!argDefinitions.name) throw new Error(`No command name set. use @cli.controller('name')`);
 
-    const schema = getClassSchema(classType);
-    let properties: PropertySchema[] = [];
-    let converters: {[name: string]: (v: any) => any} = {};
-    try {
-        properties = schema.getMethodProperties('execute');
-    } catch { }
+    let converters = new Map<PropertySchema, (v: any) => any>();
 
-    for (const property of properties) {
-        converters[property.name] = getPropertyXtoClassFunction(property, jsonSerializer);
+    for (const property of argDefinitions.args) {
+        converters.set(property.propertySchema, getPropertyXtoClassFunction(property.propertySchema, jsonSerializer));
     }
 
     for (const i in argDefinitions.args) {
         if (!argDefinitions.args.hasOwnProperty(i)) continue;
         const t = argDefinitions.args[i];
-        if (!t.propertySchema) continue;
 
         const options = {
-            name: i,
+            name: t.name,
             description: t.description,
             hidden: t.hidden,
             required: !t.optional,
@@ -152,7 +164,7 @@ export function buildOclifCommand(classType: ClassType<Command>, rootScopedConte
 
         //todo, add `parse(i)` and make sure type is correct depending on t.propertySchema.type
         if (t.isFlag) {
-            oclifFlags[i] = t.propertySchema.type === 'boolean' ? flags.boolean(options) : flags.string(options);
+            oclifFlags[t.name] = t.propertySchema.type === 'boolean' ? flags.boolean(options) : flags.string(options);
         } else {
             oclifArgs.push(options);
         }
@@ -171,8 +183,15 @@ export function buildOclifCommand(classType: ClassType<Command>, rootScopedConte
                     const instance = cliScopedContext.get(classType);
                     const methodArgs: any[] = [];
 
-                    for (const property of properties) {
-                        methodArgs.push(converters[property.name](args[property.name] ?? flags[property.name]));
+                    for (const property of argDefinitions!.args) {
+                        const v = converters.get(property.propertySchema)!(args[property.name] ?? flags[property.name]);
+                        if (property.propertySchema.methodName === 'execute') {
+                            methodArgs.push(v);
+                        } else if (!property.propertySchema.methodName) {
+                            if (v !== undefined) {
+                                instance[property.name as keyof typeof instance] = v;
+                            }
+                        }
                     }
 
                     return instance.execute(...methodArgs);

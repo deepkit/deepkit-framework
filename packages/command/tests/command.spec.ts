@@ -19,9 +19,9 @@ test('command simple', () => {
     if (!cliConfig) throw new Error('cliConfig expected');
 
     expect(cliConfig.name).toBe('my');
-    expect(cliConfig.args.host.name).toBe('host');
-    expect(cliConfig.args.host.optional).toBe(false);
-    expect(cliConfig.args.host.propertySchema!.type).toBe('string');
+    expect(cliConfig.getArg('host').name).toBe('host');
+    expect(cliConfig.getArg('host').optional).toBe(false);
+    expect(cliConfig.getArg('host').propertySchema!.type).toBe('string');
 });
 
 test('command execute', async () => {

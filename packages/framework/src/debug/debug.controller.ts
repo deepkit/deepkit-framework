@@ -14,9 +14,8 @@ import { ApplicationServiceContainer } from '../application-service-container';
 import { parseRouteControllerAction, Router } from '@deepkit/http';
 import { changeClass, getClassName } from '@deepkit/core';
 import { EventDispatcher, isEventListenerContainerEntryService } from '@deepkit/event';
-import { DatabaseRegistry } from '../database-registry';
 import { inject } from '@deepkit/injector';
-import { DatabaseAdapter } from '@deepkit/orm';
+import { DatabaseAdapter, DatabaseRegistry } from '@deepkit/orm';
 import { LiveDatabase } from '../database/live-database';
 
 @rpc.controller(DebugControllerInterface)

@@ -8,27 +8,32 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { SQLDatabaseAdapter, SqlMigrationHandler } from '@deepkit/sql';
 import { indent } from '@deepkit/core';
 import { cli, flag } from '@deepkit/command';
 import { Logger } from '@deepkit/logger';
-import { MigrationProvider } from '../migration-provider';
+import { MigrationProvider } from '../migration/migration-provider';
+import { SQLDatabaseAdapter, SqlMigrationHandler } from '../sql-adapter';
+import { BaseCommand } from './base-command';
 
 @cli.controller('migration:up', {
     description: 'Executes pending migration files. Use migration:pending to see which are pending.'
 })
-export class MigrationUpCommand {
+export class MigrationUpCommand extends BaseCommand {
     constructor(
         protected logger: Logger,
-        protected databaseProvider: MigrationProvider,
+        protected provider: MigrationProvider,
     ) {
+        super();
     }
 
     async execute(
         @flag.optional.description('Limit migrations to a specific database.') database?: string,
         @flag.optional.description('Sets the migration version without executing actual SQL commands') fake: boolean = false,
     ): Promise<void> {
-        const migrationsPerDatabase = await this.databaseProvider.getMigrationsPerDatabase(database);
+        if (this.path.length) this.provider.databases.readDatabase(this.path);
+        if (this.migrationDir) this.provider.setMigrationDir(this.migrationDir);
+
+        const migrationsPerDatabase = await this.provider.getMigrationsPerDatabase(database);
 
         for (const [database, migrations] of migrationsPerDatabase.entries()) {
             this.logger.log(`Execute migrations for <yellow>${database.name}</yellow>`);

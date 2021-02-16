@@ -9,10 +9,10 @@
  */
 
 import { onServerMainBootstrap, onServerMainShutdown } from '../application-server';
-import { DatabaseRegistry } from '../database-registry';
 import { eventDispatcher } from '@deepkit/event';
 import { injectable } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
+import { DatabaseRegistry } from '@deepkit/orm';
 
 @injectable()
 export class DatabaseListener {

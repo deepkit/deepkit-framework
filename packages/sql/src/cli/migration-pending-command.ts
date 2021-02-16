@@ -8,26 +8,31 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { SqlMigrationHandler } from '@deepkit/sql';
 import { cli, flag } from '@deepkit/command';
 import { Logger } from '@deepkit/logger';
-import { MigrationProvider } from '../migration-provider';
+import { MigrationProvider } from '../migration/migration-provider';
+import { SqlMigrationHandler } from '../sql-adapter';
+import { BaseCommand } from './base-command';
 
 @cli.controller('migration:pending', {
     description: 'Shows pending migration files.'
 })
-export class MigrationPendingCommand {
+export class MigrationPendingCommand extends BaseCommand {
     constructor(
         protected logger: Logger,
-        protected databaseProvider: MigrationProvider,
+        protected provider: MigrationProvider,
     ) {
+        super()
     }
 
     async execute(
         @flag.optional.description('Show SQL commands') verbose: boolean = false,
         @flag.char('db').optional.description('Limit migrations to a specific database.') database?: string,
     ): Promise<void> {
-        const migrationsPerDatabase = await this.databaseProvider.getMigrationsPerDatabase(database);
+        if (this.path.length) this.provider.databases.readDatabase(this.path);
+        if (this.migrationDir) this.provider.setMigrationDir(this.migrationDir);
+
+        const migrationsPerDatabase = await this.provider.getMigrationsPerDatabase(database);
 
         for (const [database, migrations] of migrationsPerDatabase.entries()) {
             const migrationHandler = new SqlMigrationHandler(database);

@@ -12,6 +12,9 @@
       "default": "./dist/esm/index.js"
     }
   },
+  "bin": {
+    "deepkit-sql": "./dist/cjs/main.js"
+  },
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
@@ -25,15 +28,22 @@
   "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/orm": "^1.0.1-alpha.13",
+    "@deepkit/logger": "^1.0.1-alpha.13",
+    "@deepkit/injector": "^1.0.1-alpha.13",
+    "@deepkit/command": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13"
   },
   "dependencies": {
     "sqlstring": "^2.3.2",
+    "date-fns": "^2.17.0",
     "sqlstring-sqlite": "^0.1.1"
   },
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/orm": "^1.0.1-alpha.13",
+    "@deepkit/logger": "^1.0.1-alpha.13",
+    "@deepkit/injector": "^1.0.1-alpha.13",
+    "@deepkit/command": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13",
     "@types/sqlstring": "^2.2.1",
     "reflect-metadata": "^0.1.13"

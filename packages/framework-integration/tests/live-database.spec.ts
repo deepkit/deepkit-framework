@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { ClassType } from '@deepkit/core';
-import { Application, createModule, createTestingApp as createTestingAppOriginal, DatabaseRegistry, LiveDatabase, TestingFascade } from '@deepkit/framework';
+import { Application, createModule, createTestingApp as createTestingAppOriginal, LiveDatabase, TestingFascade } from '@deepkit/framework';
 import { Module, ModuleOptions } from '@deepkit/command';
-import { Database } from '@deepkit/orm';
+import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { Collection, IdInterface, rpc } from '@deepkit/rpc';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { ClassSchema, Entity, t, uuid } from '@deepkit/type';

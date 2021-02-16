@@ -9,15 +9,7 @@
  */
 
 import { PropertyValidatorError } from './jit-validation';
-import {
-    ClassType,
-    eachPair,
-    extractParameters,
-    getClassName,
-    isFunction,
-    isNumber,
-    isPlainObject,
-} from '@deepkit/core';
+import { ClassType, eachPair, extractParameters, getClassName, getClassPropertyName, isFunction, isNumber, isPlainObject, } from '@deepkit/core';
 import { isArray } from './utils';
 import { ClassDecoratorResult, createClassDecoratorContext } from './decorator-builder';
 import {
@@ -38,14 +30,7 @@ import {
 } from './model';
 import { PartialField, Types } from './types';
 import { validators } from './validation-decorator';
-import {
-    FieldDecoratorResult,
-    isFieldDecorator,
-    MySQLOptions,
-    PostgresOptions,
-    SqliteOptions,
-    ValidatorFn
-} from './field-decorator';
+import { FieldDecoratorResult, isFieldDecorator, MySQLOptions, PostgresOptions, SqliteOptions, ValidatorFn } from './field-decorator';
 
 export type PlainSchemaProps = { [name: string]: FieldDecoratorResult<any> | PlainSchemaProps | ClassSchema | string | number | boolean };
 
@@ -79,8 +64,8 @@ export type ExtractClassDefinition<T extends PlainSchemaProps> = MakeUndefinedOp
 export function Entity<T>(name: string, collectionName?: string) {
     return (target: ClassType<T>) => {
         if (getGlobalStore().RegisteredEntities[name]) {
-            throw new Error(`deepkit/type entity with name '${name}' already registered. 
-            This could be caused by the fact that you used a name twice or that you loaded the entity 
+            throw new Error(`deepkit/type entity with name '${name}' already registered.
+            This could be caused by the fact that you used a name twice or that you loaded the entity
             via different imports.`);
         }
 
@@ -103,8 +88,8 @@ class EntityApi {
         this.t.name = name;
 
         if (getGlobalStore().RegisteredEntities[name]) {
-            throw new Error(`deepkit/type entity with name '${name}' already registered. 
-            This could be caused by the fact that you used a name twice or that you loaded the entity 
+            throw new Error(`deepkit/type entity with name '${name}' already registered.
+            This could be caused by the fact that you used a name twice or that you loaded the entity
             via different imports.`);
         }
 
@@ -281,6 +266,14 @@ function createFieldDecoratorResult<T>(
                     argumentsProperties[parameterIndexOrDescriptor] = propertySchema;
                 } else {
                     if (!argumentsProperties[parameterIndexOrDescriptor]) {
+                        const method = (target as any)[methodName];
+                        if (!method) {
+                            throw new Error(
+                                `Decorator @t used on a methods argument where the method does not exist. `
+                                + `If you manually instantiate t, make sure to pass the Prototype for properties. `
+                                + `${getClassPropertyName(target, methodName)} #${parameterIndexOrDescriptor}`
+                            );
+                        }
                         const constructorParamNames = extractParameters((target as any)[methodName]);
                         const name = constructorParamNames[parameterIndexOrDescriptor] || String(parameterIndexOrDescriptor);
                         argumentsProperties[parameterIndexOrDescriptor] = new PropertySchema(name);

@@ -8,11 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType } from '@deepkit/core';
-import { Database } from '@deepkit/orm';
+import { ClassType, getClassTypeFromInstance } from '@deepkit/core';
 import { ClassSchema, getClassSchema } from '@deepkit/type';
-import { inject, InjectorContext } from '@deepkit/injector';
-import { kernelConfig } from './kernel.config';
+import { InjectorContext } from '@deepkit/injector';
+import { Database } from './database';
+import { isAbsolute, join } from 'path';
 
 /**
  * Class to register a new database and resolve a schema/type to a database.
@@ -26,9 +26,38 @@ export class DatabaseRegistry {
 
     constructor(
         protected scopedContext: InjectorContext,
-        @inject(kernelConfig.token('databases')) protected readonly databaseTypes: ClassType<Database<any>>[] = [],
-        @inject(kernelConfig.token('migrateOnStartup')) protected migrateOnStartup: boolean,
+        protected readonly databaseTypes: ClassType<Database<any>>[] = [],
+        protected migrateOnStartup: boolean = false,
     ) {
+        if (!scopedContext) throw new Error('no scopedContext');
+    }
+
+    /**
+     * Reads database from a path. Imports the given paths
+     * and looks for instantiated Database classes. All instantiated Database classes will be returned.
+     *
+     * This is an alternative way to find Database and entities compared to
+     * a config file driven way.
+     */
+    readDatabase(paths: string[]) {
+        Database.registry = [];
+        require('ts-node').register({
+            compilerOptions: {
+                experimentalDecorators: true
+            }
+        });
+
+        for (const path of paths) {
+            require(isAbsolute(path) ? path : join(process.cwd(), path));
+        }
+
+        for (const db of Database.registry) {
+            this.databases.push(db);
+            const classType = getClassTypeFromInstance(db);
+            this.databaseNameMap.set(db.name, db);
+            this.databaseMap.set(classType, db);
+            this.databaseTypes.push(classType);
+        }
     }
 
     public onShutDown() {
@@ -57,10 +86,9 @@ export class DatabaseRegistry {
         if (this.initialized) return;
 
         for (const databaseType of this.databaseTypes) {
+            if (this.databaseMap.has(databaseType)) continue;
+
             const database = this.scopedContext.get(databaseType);
-            if (this.databaseNameMap.has(database.name)) {
-                throw new Error(`Database with name ${database.name} already registered. If you have multiple Database instances, make sure each has its own name.`);
-            }
 
             for (const classSchema of database.entities) {
                 classSchema.data['orm.database'] = database;

@@ -20,6 +20,7 @@
     "benchmarks",
     "src",
     "tests",
+    "main.ts",
     "index.ts"
   ],
   "references": [

@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { plainToClass, t } from '@deepkit/type';
 import { createPool } from 'mariadb';
 import { MySQLConnectionPool, MySQLDatabaseAdapter } from '../src/mysql-adapter';
