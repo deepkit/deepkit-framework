@@ -85,7 +85,7 @@ export const bookstoreTests = {
         const database = await databaseFactory(entities);
         const session = database.createSession();
 
-        const count = 500;
+        const count = 100;
         for (let i = 0; i < count; i++) session.add(new User('User' + i));
         await session.commit();
         expect(await database.query(User).count()).toBe(count);
