@@ -13,6 +13,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "files": [
+    "dist"
+  ],
   "browser": {
     "fs": false,
     "path": false,
