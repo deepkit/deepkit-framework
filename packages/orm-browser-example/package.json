@@ -3,6 +3,7 @@
   "version": "1.0.1-alpha.14",
   "description": "Deepkit ORM Data Browser example",
   "type": "commonjs",
+  "private": true,
   "main": "./dist/cjs/main.js",
   "sideEffects": false,
   "publishConfig": {
