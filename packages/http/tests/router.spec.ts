@@ -11,6 +11,7 @@ import { Logger } from '@deepkit/logger';
 import { HttpRequest } from '../src/model';
 import { ClassType } from '@deepkit/core';
 import { TagProviders } from '@deepkit/app';
+import { Stopwatch } from '@deepkit/stopwatch';
 
 function createHttpKernel(controllers: ClassType[], providers: ProviderWithScope[] = []) {
     const tagProviders = new TagProviders();
@@ -19,7 +20,7 @@ function createHttpKernel(controllers: ClassType[], providers: ProviderWithScope
     const injector = InjectorContext.forProviders([{ provide: Router, useValue: router }, ...controllers, HttpListener, Logger, ...providers]);
     const eventDispatcher = new EventDispatcher(injector);
     eventDispatcher.registerListener(HttpListener);
-    return new HttpKernel(router, eventDispatcher, injector, new Logger(), false);
+    return new HttpKernel(router, eventDispatcher, injector, new Logger(), new Stopwatch());
 }
 
 test('router', async () => {

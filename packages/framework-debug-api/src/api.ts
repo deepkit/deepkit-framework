@@ -9,7 +9,7 @@
  */
 
 import { entity, PropertySchema, PropertySchemaSerialized, t } from '@deepkit/type';
-import { Collection, ControllerSymbol } from '@deepkit/rpc';
+import { ControllerSymbol } from '@deepkit/rpc';
 import { DebugRequest } from './model';
 
 export class ConfigOption {
@@ -118,7 +118,9 @@ export interface DebugControllerInterface {
 
     getWorkflow(name: string): Workflow;
 
+    getProfilerFrames(): Uint8Array;
+
     events(): Event[];
 
-    httpRequests(): Promise<Collection<DebugRequest>>;
+    // httpRequests(): Promise<Collection<DebugRequest>>;
 }

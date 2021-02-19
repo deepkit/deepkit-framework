@@ -10,7 +10,7 @@
 
 import { AsyncLocalStorage } from 'async_hooks';
 
-type SimpleStore = { [name: string]: any };
+export type SimpleStore = { [name: string]: any };
 
 export class Zone {
     static asyncLocalStorage?: AsyncLocalStorage<any>;
@@ -20,8 +20,8 @@ export class Zone {
         this.asyncLocalStorage.enterWith({});
     }
 
-    static current(): SimpleStore {
-        return Zone.asyncLocalStorage?.getStore() || {};
+    static current(): SimpleStore | undefined {
+        return Zone.asyncLocalStorage?.getStore();
     }
 
     static run<T>(data: SimpleStore, cb: () => T): T {

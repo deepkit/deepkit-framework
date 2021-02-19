@@ -9,36 +9,11 @@
  */
 
 import { ClassType, empty, Mutex } from '@deepkit/core';
-import {
-    DatabaseAdapter,
-    DatabasePersistenceChangeSet,
-    DatabaseSession, DatabaseTransaction,
-    DeleteResult,
-    Entity,
-    PatchResult
-} from '@deepkit/orm';
-import {
-    DefaultPlatform,
-    SqlBuilder, SQLConnection,
-    SQLConnectionPool,
-    SQLDatabaseAdapter,
-    SQLDatabaseQuery,
-    SQLDatabaseQueryFactory,
-    SQLPersistence,
-    SQLQueryModel,
-    SQLQueryResolver,
-    SQLStatement
-} from '@deepkit/sql';
-import {
-    Changes,
-    ClassSchema,
-    getClassSchema,
-    getPropertyXtoClassFunction,
-    resolvePropertySchema
-} from '@deepkit/type';
+import { DatabaseAdapter, DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
+import { DefaultPlatform, SqlBuilder, SQLConnection, SQLConnectionPool, SQLDatabaseAdapter, SQLDatabaseQuery, SQLDatabaseQueryFactory, SQLPersistence, SQLQueryModel, SQLQueryResolver, SQLStatement } from '@deepkit/sql';
+import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, resolvePropertySchema } from '@deepkit/type';
 import sqlite3 from 'better-sqlite3';
 import { SQLitePlatform } from './sqlite-platform';
-import { DatabaseLogger } from '@deepkit/orm';
 
 export class SQLiteStatement extends SQLStatement {
     constructor(protected logger: DatabaseLogger, protected sql: string, protected stmt: sqlite3.Statement) {
@@ -251,13 +226,13 @@ export class SQLitePersistence extends SQLPersistence {
         const sql = `
               DROP TABLE IF EXISTS _b;
               CREATE TEMPORARY TABLE _b AS
-                SELECT ${selects.join(', ')} 
+                SELECT ${selects.join(', ')}
                 FROM (SELECT ${_rename.join(', ')} FROM (VALUES ${valuesValues.join(', ')})) as _
                 INNER JOIN ${tableName} as _origin ON (_origin.${pkField} = _.${pkField});
-              UPDATE 
+              UPDATE
                 ${tableName}
                 SET ${setNames.join(', ')}
-              FROM 
+              FROM
                 _b
               WHERE ${tableName}.${pkField} = _b.${pkField};
         `;
@@ -385,11 +360,11 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const selectSQL = sqlBuilder.select(this.classSchema, model, { select }, selectParams);
 
         const sql = `
-              UPDATE 
+              UPDATE
                 ${tableName}
               SET
                 ${set.join(', ')}
-              FROM 
+              FROM
                 _b
               WHERE ${tableName}.${this.platform.quoteIdentifier(primaryKey.name)} = _b.${this.platform.quoteIdentifier(bPrimaryKey)};
         `;

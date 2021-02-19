@@ -45,7 +45,7 @@ export function uuidStringToByte(hex: string, index: number = 0): number {
     return hexToByte(hex, index, offset);
 }
 
-function stringByteLength(str: string): number {
+export function stringByteLength(str: string): number {
     if (!str) return 0;
     let size = 0;
     for (let i = 0; i < str.length; i++) {
@@ -143,7 +143,7 @@ function getPropertySizer(schema: ClassSchema, compiler: CompilerContext, proper
         compiler.context.set('digitByteSize', digitByteSize);
         const isArrayVar = compiler.reserveVariable('isArray', isArray);
         const unpopulatedSymbolVar = compiler.reserveVariable('unpopulatedSymbol', unpopulatedSymbol);
-        
+
         const i = compiler.reserveVariable('i');
         code = `
         if (${accessor} && ${accessor} !== ${unpopulatedSymbolVar} && ${isArrayVar}(${accessor})) {
@@ -368,14 +368,14 @@ export function createBSONSizer(schema: ClassSchema, jitStack: JitStack = new Ji
     const functionCode = `
         ${circularCheckBeginning}
         let size = 4; //object size
-        
+
         const unpopulatedCheck = _global.unpopulatedCheck;
         _global.unpopulatedCheck = UnpopulatedCheck.ReturnSymbol;
 
         ${getSizeCode.join('\n')}
 
         size += 1; //null
-        
+
         _global.unpopulatedCheck = unpopulatedCheck;
 
         ${circularCheckEnd}
@@ -462,7 +462,7 @@ export class Writer {
         value = value instanceof UUID ? value.id : value;
         this.writeUint32(16);
         this.writeByte(BSON_BINARY_SUBTYPE_UUID);
-        
+
         this.buffer[this.offset+0] = uuidStringToByte(value, 0);
         this.buffer[this.offset+1] = uuidStringToByte(value, 1);
         this.buffer[this.offset+2] = uuidStringToByte(value, 2);
@@ -685,7 +685,7 @@ function getPropertySerializerCode(
 
     let nameWriter = `
         writer.writeAsciiString(${nameAccessor});
-        writer.writeByte(0); 
+        writer.writeByte(0);
     `;
 
     if (!nameAccessor) {
@@ -787,7 +787,7 @@ function getPropertySerializerCode(
             if (!(${accessor} instanceof Date)) {
                 throw new Error(${JSON.stringify(accessor)} + " not a Date object");
             }
-            
+
             writer.writeUint32((${accessor} % TWO_PWR_32_DBL_N) | 0); //low
             writer.writeUint32((${accessor} / TWO_PWR_32_DBL_N) | 0); //high
         } else {
@@ -800,7 +800,7 @@ function getPropertySerializerCode(
         code = `
             if ('string' === typeof ${accessor} || isObjectId(${accessor})) {
                 writer.writeByte(${BSONType.OID});
-                ${nameWriter}   
+                ${nameWriter}
                 writer.writeObjectId(${accessor});
             } else {
                 ${undefinedWriter}
@@ -867,7 +867,7 @@ function getPropertySerializerCode(
             ${nameWriter}
             const start = writer.offset;
             writer.offset += 4; //size
-            
+
             for (let ${i} = 0; ${i} < ${accessor}.length; ${i}++) {
                 //${property.getSubType().name} (${property.getSubType().type})
                 ${getPropertySerializerCode(schema, compiler, property.getSubType(), `${accessor}[${i}]`, jitStack, `''+${i}`)}
@@ -885,7 +885,7 @@ function getPropertySerializerCode(
             ${nameWriter}
             const start = writer.offset;
             writer.offset += 4; //size
-            
+
             for (let ${i} in ${accessor}) {
                 if (!${accessor}.hasOwnProperty(${i})) continue;
                 //${property.getSubType().name} (${property.getSubType().type})
@@ -1015,10 +1015,10 @@ function createBSONSerialize(schema: ClassSchema, jitStack: JitStack = new JitSt
         writer.writeUint32(size);
         const unpopulatedCheck = _global.unpopulatedCheck;
         _global.unpopulatedCheck = UnpopulatedCheck.ReturnSymbol;
-        
+
         ${getPropertyCode.join('\n')}
         writer.writeNull();
-        
+
         _global.unpopulatedCheck = unpopulatedCheck;
         if (size !== writer.offset - started) {
             console.error('Wrong size calculated. Calculated=' + size + ', but serializer wrote ' + (writer.offset - started) + ' bytes. Object: ', JSON.stringify(obj), Object.getOwnPropertyNames(obj), schema.toString());

@@ -18,6 +18,7 @@ import { Logger } from '@deepkit/logger';
 import { RouteConfig, RouteParameterResolverForInjector, Router } from './router';
 import { createWorkflow, WorkflowEvent } from '@deepkit/workflow';
 import { isElementStruct, render } from '@deepkit/template';
+import { Stopwatch } from '@deepkit/stopwatch';
 
 export class Redirect {
     public routeName?: string;
@@ -285,6 +286,7 @@ export class HttpListener {
     constructor(
         protected router: Router,
         protected logger: Logger,
+        protected stopwatch: Stopwatch,
     ) {
     }
 
@@ -425,7 +427,7 @@ export class HttpListener {
             event.response.end(response.html);
         } else if (isElementStruct(response)) {
             event.response.setHeader('Content-Type', 'text/html; charset=utf-8');
-            event.response.end(await render(event.injectorContext, response));
+            event.response.end(await render(event.injectorContext, response, this.stopwatch.active ? this.stopwatch : undefined));
         } else if (isClassInstance(response) && isRegisteredEntity(getClassTypeFromInstance(response))) {
             event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
             event.response.end(JSON.stringify(jsonSerializer.for(getClassTypeFromInstance(response)).serialize(response)));

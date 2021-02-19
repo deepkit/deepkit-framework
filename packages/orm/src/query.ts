@@ -9,16 +9,7 @@
  */
 
 import { ClassType, empty } from '@deepkit/core';
-import {
-    Changes,
-    ChangesInterface,
-    ClassSchema,
-    ExtractPrimaryKeyType,
-    ExtractReferences,
-    getSimplePrimaryKeyHashGenerator,
-    PrimaryKeyFields,
-    PropertySchema
-} from '@deepkit/type';
+import { Changes, ChangesInterface, ClassSchema, ExtractPrimaryKeyType, ExtractReferences, getSimplePrimaryKeyHashGenerator, PrimaryKeyFields, PropertySchema } from '@deepkit/type';
 import { Subject } from 'rxjs';
 import { DatabaseAdapter } from './database-adapter';
 import { DatabaseSession } from './database-session';
@@ -259,7 +250,7 @@ export class BaseQuery<T extends Entity> {
         return c;
     }
 
-    /** 
+    /**
      * Sets the page size when `page(x)` is used.
     */
     itemsPerPage(value: number): this {
@@ -560,8 +551,18 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     }
 
     public async find(): Promise<Resolve<this>[]> {
-        const query = await this.callQueryEvent();
-        return await query.resolver.find(query.model) as Resolve<this>[];
+        if (!this.databaseSession.stopwatch.active) {
+            const query = await this.callQueryEvent();
+            return await query.resolver.find(query.model) as Resolve<this>[];
+        }
+
+        const frame = this.databaseSession.stopwatch.start(this.classSchema.getClassName() + ': Find');
+        try {
+            const query = await this.callQueryEvent();
+            return await query.resolver.find(query.model) as Resolve<this>[];
+        } finally {
+            frame.end();
+        }
     }
 
     public async findOneOrUndefined(): Promise<T | undefined> {
@@ -637,7 +638,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
             }
         }
 
-        
+
         const patchResult: PatchResult<T> = {
             modified: 0,
             returning: {},

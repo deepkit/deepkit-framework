@@ -18,6 +18,30 @@ export class DebugRequest {
     @t.optional statusCode?: number;
     @t logs: number = 0;
 
+    /*
+        db time:
+            - total
+            - query time
+        message bus:
+            - total time
+            - total bytes
+            - total latencies
+            - messages
+                - time
+                - bytes
+                - latency
+        response/request:
+            - header
+            - body
+        events:
+            - name
+            - time
+        template:
+            - name
+            - time
+        logs:
+     */
+
     @t.map(t.number) times: { [name: string]: number } = {};
 
     constructor(

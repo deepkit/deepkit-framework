@@ -8,19 +8,17 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ProcessLocker } from '@deepkit/core';
+import { ClassType, ProcessLocker } from '@deepkit/core';
 import { DebugRequest } from '@deepkit/framework-debug-api';
 import fs from 'fs-extra';
-import { dirname } from 'path';
+import { join } from 'path';
 import { ApplicationServer, ApplicationServerListener } from './application-server';
 import { BrokerModule } from './broker/broker.module';
 import { LiveDatabase } from './database/live-database';
-import { DebugRouterController } from './cli/router-debug';
-import { DebugDIController } from './cli/router-di';
+import { DebugRouterController } from './cli/debug-router';
+import { DebugDIController } from './cli/debug-di';
 import { ServerListenController } from './cli/server-listen';
-import { DebugDatabase } from './debug/db';
 import { DebugController } from './debug/debug.controller';
-import { Debugger, HttpRequestDebugCollector } from './debug/debugger';
 import { registerDebugHttpController } from './debug/http-debug.controller';
 import { HttpKernel, HttpListener, HttpLogger, HttpModule, Router, serveStaticListener } from '@deepkit/http';
 import { InjectorContext, injectorReference } from '@deepkit/injector';
@@ -29,12 +27,14 @@ import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { DeepkitRpcSecurity } from './rpc';
 import { SessionHandler } from './session';
 import { WebWorkerFactory } from './worker';
-import { Zone } from './zone';
+import { Stopwatch, Zone } from '@deepkit/stopwatch';
 import { OrmBrowserController } from './orm-browser/controller';
 import { DatabaseListener } from './database/database-listener';
-import { DatabaseRegistry } from '@deepkit/orm';
+import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql';
 import { AppModule } from '@deepkit/app';
+import { FileStopwatchStore } from './debug/stopwatch/store';
+import { DebugDebugFramesCommand } from './cli/debug-debug-frames';
 
 export const KernelModule = new AppModule({
     config: kernelConfig,
@@ -45,6 +45,7 @@ export const KernelModule = new AppModule({
         HttpKernel,
         WebWorkerFactory,
         ConsoleTransport,
+        Stopwatch,
         Logger,
         DeepkitRpcSecurity,
         MigrationProvider,
@@ -52,7 +53,6 @@ export const KernelModule = new AppModule({
         { provide: LiveDatabase, scope: 'rpc' },
         { provide: HttpListener },
         { provide: SessionHandler, scope: 'http' },
-        { provide: HttpRequestDebugCollector, scope: 'http' },
     ],
     workflows: [
         // httpWorkflow
@@ -67,6 +67,7 @@ export const KernelModule = new AppModule({
         ServerListenController,
         DebugRouterController,
         DebugDIController,
+        DebugDebugFramesCommand,
 
         MigrationUpCommand,
         MigrationDownCommand,
@@ -79,10 +80,15 @@ export const KernelModule = new AppModule({
     ],
 }, 'kernel').setup((module, config) => {
     if (config.databases) {
-        module.addProvider(...config.databases);
+        const dbs: ClassType<Database>[] = config.databases;
+        module.addProvider(...dbs);
         module.setupProvider(MigrationProvider).setMigrationDir(config.migrationDir);
-        for (const db of config.databases) module.setupProvider(DatabaseRegistry).addDatabase(db);
+        for (const db of dbs) {
+            module.setupProvider(DatabaseRegistry).addDatabase(db);
+            module.setupProvider(db).stopwatch = injectorReference(Stopwatch);
+        }
     }
+    module.setupProvider(DatabaseRegistry).setMigrateOnStartup(config.migrateOnStartup);
 
     if (config.httpLog) {
         module.addListener(HttpLogger);
@@ -95,19 +101,22 @@ export const KernelModule = new AppModule({
     module.setupProvider(Logger).addTransport(injectorReference(ConsoleTransport));
 
     if (config.debug) {
-        fs.ensureDirSync(config.debugStorePath);
-        fs.ensureDirSync(dirname(config.debugSqlitePath));
+        fs.ensureDirSync(join(config.varPath, config.debugStorePath));
 
         Zone.enable();
-        module.addProvider(Debugger);
         module.addProvider({ provide: OrmBrowserController, deps: [DatabaseRegistry], useFactory: (registry: DatabaseRegistry) => new OrmBrowserController(registry.getDatabases()) });
         module.addController(DebugController);
         module.addController(OrmBrowserController);
         registerDebugHttpController(module, config.debugUrl);
 
+        module.addProvider(FileStopwatchStore);
+        module.addProvider({
+            provide: Stopwatch,
+            deps: [FileStopwatchStore],
+            useFactory(store: FileStopwatchStore) {
+                return new Stopwatch(store);
+            }
+        });
         module.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
-
-        module.addProvider(DebugDatabase);
-        module.setupProvider(DatabaseRegistry).addDatabase(DebugDatabase, { migrateOnStartup: true });
     }
 }).forRoot();

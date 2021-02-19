@@ -10,3 +10,4 @@
 
 export * from './src/model';
 export * from './src/api';
+export * from './src/stopwatch-encoding';

@@ -13,6 +13,10 @@
   "private": true,
   "browser": {
     "fs": false,
+    "path": false,
+    "async_hooks": false,
+    "cluster": false,
+    "perf_hooks": false,
     "@deepkit/logger": false
   },
   "dependencies": {
@@ -24,6 +28,7 @@
     "@angular/platform-browser": "~11.1.2",
     "@angular/platform-browser-dynamic": "~11.1.2",
     "@angular/router": "~11.1.2",
+    "pixi.js": "^5.3.7",
     "rxjs": "~6.6.0",
     "tslib": "^2.0.0",
     "zone.js": "~0.11.3"
@@ -37,8 +42,10 @@
     "@deepkit/bson": "^1.0.1-alpha.13",
     "@deepkit/crypto": "^1.0.1-alpha.13",
     "@deepkit/logger": "^1.0.1-alpha.13",
+    "@deepkit/injector": "^1.0.1-alpha.13",
     "@deepkit/topsort": "^1.0.1-alpha.13",
     "@deepkit/desktop-ui": "^1.0.1-alpha.13",
+    "@deepkit/stopwatch": "^1.0.1-alpha.13",
     "@deepkit/framework-debug-api": "^1.0.1-alpha.13",
     "@deepkit/orm-browser-api": "^1.0.1-alpha.13",
     "@deepkit/orm-browser-gui": "^1.0.1-alpha.13",
@@ -49,6 +56,8 @@
     "@types/jasmine": "~3.6.0",
     "@types/node": "^12.11.1",
     "@types/dagre": "^0.7.44",
+    "@types/hammerjs": "^2.0.38",
+    "hammerjs": "^2.0.8",
     "codelyzer": "^6.0.0",
     "dagre": "^0.8.5",
     "jasmine-core": "~3.6.0",

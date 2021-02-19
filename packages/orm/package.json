@@ -26,6 +26,7 @@
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/logger": "^1.0.1-alpha.13",
     "@deepkit/injector": "^1.0.1-alpha.13",
+    "@deepkit/stopwatch": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13"
   },
   "dependencies": {
@@ -36,6 +37,7 @@
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/logger": "^1.0.1-alpha.13",
     "@deepkit/injector": "^1.0.1-alpha.13",
+    "@deepkit/stopwatch": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13",
     "@types/sqlstring": "^2.2.1",
     "conditional-type-checks": "^1.0.5",

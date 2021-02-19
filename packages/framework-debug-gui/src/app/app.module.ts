@@ -13,19 +13,7 @@ import { NgModule } from '@angular/core';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
-import {
-    DuiButtonModule,
-    DuiCheckboxModule,
-    DuiFormComponent,
-    DuiInputModule,
-    DuiRadioboxModule,
-    DuiSelectModule,
-    DuiWindowModule,
-    DuiIconModule,
-    DuiListModule,
-    DuiTableModule,
-    DuiAppModule,
-} from '@deepkit/desktop-ui';
+import { DuiAppModule, DuiButtonModule, DuiCheckboxModule, DuiFormComponent, DuiIconModule, DuiInputModule, DuiListModule, DuiRadioboxModule, DuiSelectModule, DuiTableModule, DuiWindowModule, } from '@deepkit/desktop-ui';
 import { ConfigurationComponent } from './views/configuration/configuration.component';
 import { HttpComponent } from './views/http/http.component';
 import { ControllerClient } from './client';
@@ -38,6 +26,7 @@ import { OverlayModule } from '@angular/cdk/overlay';
 import { HttpRequestComponent } from './views/http/request/http-request.component';
 import { OrmBrowserModule } from '@deepkit/orm-browser-gui';
 import { RouterModule } from '@angular/router';
+import { ProfileComponent } from './views/profile/profile.component';
 
 @NgModule({
     declarations: [
@@ -45,6 +34,7 @@ import { RouterModule } from '@angular/router';
         ConfigurationComponent,
         HttpComponent,
         RpcComponent,
+        ProfileComponent,
         WorkflowComponent,
         WorkflowCardComponent,
         EventsComponent,

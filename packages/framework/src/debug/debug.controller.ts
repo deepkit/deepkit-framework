@@ -7,16 +7,20 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { Config, ConfigOption, Database, DatabaseEntity, DebugControllerInterface, DebugRequest, Event, Route, RpcAction, RpcActionParameter, Workflow } from '@deepkit/framework-debug-api';
-import { Collection, rpc, rpcClass } from '@deepkit/rpc';
+import { Config, ConfigOption, Database, DatabaseEntity, DebugControllerInterface, Event, Route, RpcAction, RpcActionParameter, Workflow } from '@deepkit/framework-debug-api';
+import { rpc, rpcClass } from '@deepkit/rpc';
 import { getClassSchema, t } from '@deepkit/type';
 import { ApplicationServiceContainer } from '../application-service-container';
 import { parseRouteControllerAction, Router } from '@deepkit/http';
 import { changeClass, getClassName } from '@deepkit/core';
 import { EventDispatcher, isEventListenerContainerEntryService } from '@deepkit/event';
-import { inject } from '@deepkit/injector';
 import { DatabaseAdapter, DatabaseRegistry } from '@deepkit/orm';
-import { LiveDatabase } from '../database/live-database';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { kernelConfig } from '../kernel.config';
+
+class DebugConfig extends kernelConfig.slice(['varPath', 'debugStorePath']) {
+}
 
 @rpc.controller(DebugControllerInterface)
 export class DebugController implements DebugControllerInterface {
@@ -24,10 +28,19 @@ export class DebugController implements DebugControllerInterface {
         protected serviceContainer: ApplicationServiceContainer,
         protected eventDispatcher: EventDispatcher,
         protected router: Router,
-        protected liveDatabase: LiveDatabase,
-        @inject().optional protected databaseRegistry?: DatabaseRegistry,
+        protected config: DebugConfig,
+        protected databaseRegistry: DatabaseRegistry,
+        // protected liveDatabase: LiveDatabase,
     ) {
     }
+
+    @rpc.action()
+    getProfilerFrames(): Uint8Array {
+        const path = join(this.config.varPath, this.config.debugStorePath);
+
+        return readFileSync(join(path, 'frames.bin'));
+    }
+
 
     @rpc.action()
     @t.array(Database)
@@ -195,9 +208,9 @@ export class DebugController implements DebugControllerInterface {
         }, Workflow);
     }
 
-    @rpc.action()
-    @t.generic(DebugRequest)
-    httpRequests(): Promise<Collection<DebugRequest>> {
-        return this.liveDatabase.query(DebugRequest).find();
-    }
+    // @rpc.action()
+    // @t.generic(DebugRequest)
+    // httpRequests(): Promise<Collection<DebugRequest>> {
+    //     return this.liveDatabase.query(DebugRequest).find();
+    // }
 }

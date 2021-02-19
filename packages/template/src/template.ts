@@ -9,10 +9,11 @@
  */
 
 import 'reflect-metadata';
-import { ClassType, isClass } from '@deepkit/core';
+import { ClassType, getClassName, isClass } from '@deepkit/core';
 import { isArray } from '@deepkit/type';
 import './optimize-tsx';
 import { BasicInjector } from '@deepkit/injector';
+import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
 export type Attributes<T = any> = {
     [P in keyof T]: T[P];
@@ -81,17 +82,17 @@ export function isElementStruct(v: any): v is ElementStruct {
     return 'object' === typeof v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes') && !v.slice;
 }
 
-async function renderChildren(injector: BasicInjector, contents: ElementStructChildren[]): Promise<string> {
+async function renderChildren(injector: BasicInjector, contents: ElementStructChildren[], stopwatch?: Stopwatch): Promise<string> {
     let children = '';
     //this is 3x faster than contents.join('')
     // for (const content of struct.contents) {
     for (const item of contents) {
         if (item === undefined) continue;
         if (isArray(item)) {
-            children += await renderChildren(injector, item);
+            children += await renderChildren(injector, item, stopwatch);
         } else {
             if (isElementStruct(item)) {
-                children += await render(injector, item);
+                children += await render(injector, item, stopwatch);
             } else {
                 if ((item as any).htmlString) {
                     children += (item as any).htmlString;
@@ -105,7 +106,7 @@ async function renderChildren(injector: BasicInjector, contents: ElementStructCh
     return children;
 }
 
-export async function render(injector: BasicInjector, struct: ElementStruct | string): Promise<any> {
+export async function render(injector: BasicInjector, struct: ElementStruct | string, stopwatch?: Stopwatch): Promise<any> {
     if ('string' === typeof struct) {
         return struct;
     }
@@ -113,15 +114,15 @@ export async function render(injector: BasicInjector, struct: ElementStruct | st
     let children: string = '';
     if (struct.children) {
         if (isArray(struct.children)) {
-            children = await renderChildren(injector, struct.children);
+            children = await renderChildren(injector, struct.children, stopwatch);
         } else {
-            children = await renderChildren(injector, [struct.children]);
+            children = await renderChildren(injector, [struct.children], stopwatch);
         }
     } else if (struct.attributes && 'string' !== typeof struct.attributes && struct.attributes?.children) {
         if (isArray(struct.attributes.children)) {
-            children = await renderChildren(injector, struct.attributes.children);
+            children = await renderChildren(injector, struct.attributes.children, stopwatch);
         } else {
-            children = await renderChildren(injector, [struct.attributes.children]);
+            children = await renderChildren(injector, [struct.attributes.children], stopwatch);
         }
     }
 
@@ -159,15 +160,29 @@ export async function render(injector: BasicInjector, struct: ElementStruct | st
             }
         }
         const instance = new element(...args);
-        return await render(injector, await instance.render(struct.attributes || {}, html(children)));
+        if (stopwatch) {
+            const frame = stopwatch.start(getClassName(struct.render), FrameCategory.template);
+            try {
+                return await render(injector, await instance.render(struct.attributes || {}, html(children)), stopwatch);
+            } finally {
+                frame.end();
+            }
+        }
+        return await render(injector, await instance.render(struct.attributes || {}, html(children)), stopwatch);
     }
 
     if ('function' === typeof struct.render) {
-        const res = await struct.render(struct.attributes as any || {}, html(children));
-        if (isElementStruct(res)) {
-            return await render(injector, res);
-        } else {
-            return res + '';
+        const frame = stopwatch?.start(struct.render.name, FrameCategory.template);
+
+        try {
+            const res = await struct.render(struct.attributes as any || {}, html(children));
+            if (isElementStruct(res)) {
+                return await render(injector, res, stopwatch);
+            } else {
+                return res + '';
+            }
+        } finally {
+            frame?.end();
         }
     }
 
