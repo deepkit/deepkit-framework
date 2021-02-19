@@ -37,6 +37,9 @@
       "path": "../core-rxjs/tsconfig.json"
     },
     {
+      "path": "../injector/tsconfig.json"
+    },
+    {
       "path": "../orm/tsconfig.json"
     },
     {

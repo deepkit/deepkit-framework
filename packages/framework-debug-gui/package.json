@@ -13,6 +13,7 @@
   "private": true,
   "browser": {
     "fs": false,
+    "path": false,
     "@deepkit/logger": false
   },
   "dependencies": {

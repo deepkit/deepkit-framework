@@ -13,6 +13,7 @@
   "private": true,
   "browser": {
     "fs": false,
+    "path": false,
     "@deepkit/logger": false
   },
   "peerDependencies": {
@@ -29,6 +30,7 @@
     "@deepkit/orm-browser-api": "^1.0.1-alpha.13",
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/core-rxjs": "^1.0.1-alpha.13",
+    "@deepkit/injector": "^1.0.1-alpha.13",
     "@deepkit/orm": "^1.0.1-alpha.13",
     "@deepkit/rpc": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13",
@@ -61,6 +63,7 @@
     "@deepkit/orm-browser-api": "^1.0.1-alpha.13",
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/core-rxjs": "^1.0.1-alpha.13",
+    "@deepkit/injector": "^1.0.1-alpha.13",
     "@deepkit/orm": "^1.0.1-alpha.13",
     "@deepkit/rpc": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13",
