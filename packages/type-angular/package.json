@@ -19,6 +19,8 @@
   "devDependencies": {
     "@angular/core": "^9.0.0",
     "@angular/forms": "^9.0.0",
+    "@deepkit/core": "^1.0.1-alpha.19",
+    "@deepkit/type": "^1.0.1-alpha.19",
     "reflect-metadata": "^0.1.13",
     "rxjs": "~6.6.0"
   },
