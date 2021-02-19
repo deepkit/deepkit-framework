@@ -10,6 +10,9 @@
     "lint": "ng lint",
     "e2e": "ng e2e"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "browser": {
     "fs": false,
     "path": false,
