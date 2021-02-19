@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/app",
-  "version": "1.0.1-alpha.13",
+  "version": "1.0.1-alpha.15",
   "description": "Deepkit App, CLI framework and service container",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -23,25 +23,25 @@
   },
   "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
     "@deepkit/event": "^1.0.1-alpha.13",
-    "@deepkit/workflow": "^1.0.1-alpha.13",
-    "@deepkit/stopwatch": "^1.0.1-alpha.13",
     "@deepkit/injector": "^1.0.1-alpha.13",
+    "@deepkit/stopwatch": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13",
+    "@deepkit/workflow": "^1.0.1-alpha.13",
     "reflect-metadata": "^0.1.13"
   },
   "dependencies": {
-    "@oclif/config": "^1.17.0",
     "@oclif/command": "^1.8.0",
+    "@oclif/config": "^1.17.0",
     "@oclif/errors": "^1.3.4"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/event": "^1.0.1-alpha.13",
-    "@deepkit/workflow": "^1.0.1-alpha.13",
-    "@deepkit/stopwatch": "^1.0.1-alpha.13",
-    "@deepkit/injector": "^1.0.1-alpha.13",
+    "@deepkit/core": "^1.0.1-alpha.15",
+    "@deepkit/event": "^1.0.1-alpha.15",
+    "@deepkit/injector": "^1.0.1-alpha.15",
+    "@deepkit/stopwatch": "^1.0.1-alpha.15",
+    "@deepkit/type": "^1.0.1-alpha.15",
+    "@deepkit/workflow": "^1.0.1-alpha.15",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {

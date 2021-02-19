@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/http",
-  "version": "1.0.1-alpha.13",
+  "version": "1.0.1-alpha.15",
   "description": "Deepkit HTTP server and router.",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -22,32 +22,32 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
-    "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/event": "^1.0.1-alpha.13",
     "@deepkit/app": "^1.0.1-alpha.13",
-    "@deepkit/injector": "^1.0.1-alpha.13",
-    "@deepkit/workflow": "^1.0.1-alpha.13",
-    "@deepkit/logger": "^1.0.1-alpha.13",
-    "@deepkit/template": "^1.0.1-alpha.13",
-    "@deepkit/stopwatch": "^1.0.1-alpha.13",
     "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/event": "^1.0.1-alpha.13",
+    "@deepkit/injector": "^1.0.1-alpha.13",
+    "@deepkit/logger": "^1.0.1-alpha.13",
+    "@deepkit/stopwatch": "^1.0.1-alpha.13",
+    "@deepkit/template": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13",
+    "@deepkit/workflow": "^1.0.1-alpha.13",
     "reflect-metadata": "^0.1.13"
   },
   "dependencies": {
-    "send": "^0.17.1",
-    "formidable": "^1.2.2"
+    "formidable": "^1.2.2",
+    "send": "^0.17.1"
   },
   "devDependencies": {
+    "@deepkit/app": "^1.0.1-alpha.15",
+    "@deepkit/core": "^1.0.1-alpha.15",
+    "@deepkit/event": "^1.0.1-alpha.15",
+    "@deepkit/injector": "^1.0.1-alpha.15",
+    "@deepkit/logger": "^1.0.1-alpha.15",
+    "@deepkit/stopwatch": "^1.0.1-alpha.15",
+    "@deepkit/template": "^1.0.1-alpha.15",
+    "@deepkit/type": "^1.0.1-alpha.15",
+    "@deepkit/workflow": "^1.0.1-alpha.15",
     "@types/node": "14.14.28",
-    "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/event": "^1.0.1-alpha.13",
-    "@deepkit/app": "^1.0.1-alpha.13",
-    "@deepkit/injector": "^1.0.1-alpha.13",
-    "@deepkit/workflow": "^1.0.1-alpha.13",
-    "@deepkit/logger": "^1.0.1-alpha.13",
-    "@deepkit/template": "^1.0.1-alpha.13",
-    "@deepkit/stopwatch": "^1.0.1-alpha.13",
-    "@deepkit/core": "^1.0.1-alpha.13",
     "@types/send": "^0.14.6",
     "reflect-metadata": "^0.1.13"
   },

@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/orm",
-  "version": "1.0.1-alpha.14",
+  "version": "1.0.1-alpha.15",
   "description": "Deepkit ORM, the fastest JIT-based ORM for Typescript",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -29,14 +29,14 @@
     "@deepkit/type": "^1.0.1-alpha.13"
   },
   "dependencies": {
-    "@deepkit/topsort": "^1.0.1-alpha.14",
+    "@deepkit/topsort": "^1.0.1-alpha.15",
     "sift": "^7.0.1"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.14",
-    "@deepkit/injector": "^1.0.1-alpha.13",
-    "@deepkit/logger": "^1.0.1-alpha.14",
-    "@deepkit/type": "^1.0.1-alpha.14",
+    "@deepkit/core": "^1.0.1-alpha.15",
+    "@deepkit/injector": "^1.0.1-alpha.15",
+    "@deepkit/logger": "^1.0.1-alpha.15",
+    "@deepkit/type": "^1.0.1-alpha.15",
     "@types/sqlstring": "^2.2.1",
     "conditional-type-checks": "^1.0.5",
     "reflect-metadata": "^0.1.13"
