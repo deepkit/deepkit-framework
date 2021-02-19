@@ -18,7 +18,7 @@
     "path": false,
     "@deepkit/logger": false
   },
-  "dependencies": {
+  "devDependencies": {
     "buffer": "^6.0.3",
     "dagre": "^0.8.5",
     "file-saver": "^2.0.5",
@@ -26,9 +26,7 @@
     "panzoom": "^9.4.1",
     "rxjs": "~6.6.0",
     "tslib": "^2.0.0",
-    "zone.js": "~0.11.3"
-  },
-  "devDependencies": {
+    "zone.js": "~0.11.3",
     "@angular-devkit/build-angular": "~0.1101.4",
     "@angular/animations": "~11.1.2",
     "@angular/cdk": "~11.2.0",
