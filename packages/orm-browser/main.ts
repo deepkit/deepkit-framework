@@ -2,8 +2,7 @@
 
 import 'reflect-metadata';
 import { Application, KernelModule, OrmBrowserController } from '@deepkit/framework';
-import { AppModule } from '@deepkit/app';
-import { join } from 'path';
+import { AppModule, findParentPath } from '@deepkit/app';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { registerStaticHttpController } from '@deepkit/http';
 import { InjectorContext } from '@deepkit/injector';
@@ -14,7 +13,7 @@ databaseRegistry.readDatabase(process.argv.slice(2));
 
 const appModule = new AppModule({
     providers: [
-        {provide: OrmBrowserController, useValue: new OrmBrowserController(Database.registry)},
+        { provide: OrmBrowserController, useValue: new OrmBrowserController(Database.registry) },
     ],
     controllers: [
         OrmBrowserController
@@ -29,8 +28,8 @@ const appModule = new AppModule({
         })
     ]
 }).setup((module, config) => {
-    const localPathPrefix = __dirname.includes('orm-browser/dist') ? '../../' : './';
-    const localPath = join(__dirname, localPathPrefix, 'node_modules/@deepkit/orm-browser-gui/dist/orm-browser-gui');
+    const localPath = findParentPath('orm-browser-gui/dist/orm-browser-gui');
+    if (!localPath) throw new Error('orm-browser-gui not installed');
     registerStaticHttpController(module, '/', localPath);
 });
 
