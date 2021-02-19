@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/stopwatch",
-  "version": "1.0.1-alpha.20",
+  "version": "1.0.1-alpha.21",
   "description": "Deepkit Stopwatch",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -25,7 +25,7 @@
     "@deepkit/core": "^1.0.1-alpha.13"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.20",
+    "@deepkit/core": "^1.0.1-alpha.21",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {

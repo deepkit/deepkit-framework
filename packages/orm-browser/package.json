@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/orm-browser",
-  "version": "1.0.1-alpha.20",
+  "version": "1.0.1-alpha.21",
   "description": "Deepkit ORM Data Browser",
   "type": "commonjs",
   "sideEffects": false,
@@ -14,17 +14,17 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@deepkit/app": "^1.0.1-alpha.20",
-    "@deepkit/core": "^1.0.1-alpha.20",
-    "@deepkit/framework": "^1.0.1-alpha.20",
-    "@deepkit/http": "^1.0.1-alpha.20",
-    "@deepkit/orm-browser-gui": "^1.0.1-alpha.20",
-    "@deepkit/injector": "^1.0.1-alpha.20",
-    "@deepkit/logger": "^1.0.1-alpha.20",
-    "@deepkit/orm": "^1.0.1-alpha.20",
-    "@deepkit/rpc": "^1.0.1-alpha.20",
-    "@deepkit/sql": "^1.0.1-alpha.20",
-    "@deepkit/type": "^1.0.1-alpha.20"
+    "@deepkit/app": "^1.0.1-alpha.21",
+    "@deepkit/core": "^1.0.1-alpha.21",
+    "@deepkit/framework": "^1.0.1-alpha.21",
+    "@deepkit/http": "^1.0.1-alpha.21",
+    "@deepkit/injector": "^1.0.1-alpha.21",
+    "@deepkit/logger": "^1.0.1-alpha.21",
+    "@deepkit/orm": "^1.0.1-alpha.21",
+    "@deepkit/orm-browser-gui": "^1.0.1-alpha.21",
+    "@deepkit/rpc": "^1.0.1-alpha.21",
+    "@deepkit/sql": "^1.0.1-alpha.21",
+    "@deepkit/type": "^1.0.1-alpha.21"
   },
   "devDependencies": {
     "@types/faker": "5.1.6",
