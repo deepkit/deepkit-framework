@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/rpc",
-  "version": "1.0.1-alpha.13",
+  "version": "1.0.1-alpha.14",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -21,25 +21,25 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
-    "@deepkit/type": "^1.0.1-alpha.13",
     "@deepkit/bson": "^1.0.1-alpha.13",
-    "@deepkit/crypto": "^1.0.1-alpha.13",
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/core-rxjs": "^1.0.1-alpha.13",
+    "@deepkit/crypto": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13",
     "rxjs": "~6.6.0"
   },
   "dependencies": {
     "dot-prop": "^5.1.1"
   },
   "devDependencies": {
-    "@types/node": "14.14.28",
-    "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/bson": "^1.0.1-alpha.13",
-    "@deepkit/crypto": "^1.0.1-alpha.13",
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.13",
+    "@deepkit/bson": "^1.0.1-alpha.14",
+    "@deepkit/core": "^1.0.1-alpha.14",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.14",
+    "@deepkit/crypto": "^1.0.1-alpha.14",
+    "@deepkit/type": "^1.0.1-alpha.14",
     "@types/dot-prop": "^5.0.1",
     "@types/fs-extra": "^9.0.1",
+    "@types/node": "14.14.28",
     "reflect-metadata": "^0.1.13",
     "rxjs": "~6.6.0"
   },

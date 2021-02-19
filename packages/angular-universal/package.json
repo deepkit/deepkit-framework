@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/angular-universal",
-  "version": "1.0.1-alpha.13",
+  "version": "1.0.1-alpha.14",
   "description": "Angular server side rendering for Deepkit Framework",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -26,27 +26,27 @@
   "license": "MIT",
   "peerDependencies": {
     "@deepkit/app": "^1.0.1-alpha.13",
-    "@deepkit/injector": "^1.0.1-alpha.13",
-    "@deepkit/http": "^1.0.1-alpha.13",
-    "@deepkit/logger": "^1.0.1-alpha.13",
     "@deepkit/event": "^1.0.1-alpha.13",
+    "@deepkit/http": "^1.0.1-alpha.13",
+    "@deepkit/injector": "^1.0.1-alpha.13",
+    "@deepkit/logger": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13"
   },
   "dependencies": {
     "domino": "^2.0.0"
   },
   "devDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.13",
-    "@deepkit/injector": "^1.0.1-alpha.13",
-    "@deepkit/http": "^1.0.1-alpha.13",
-    "@deepkit/logger": "^1.0.1-alpha.13",
-    "@deepkit/event": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
     "@angular/animations": "^10.0.0 || ^11.0.0",
     "@angular/common": "^10.0.0 || ^11.0.0",
     "@angular/core": "^10.0.0 || ^11.0.0",
     "@angular/platform-server": "^10.0.0 || ^11.0.0",
     "@angular/router": "^10.0.0 || ^11.0.0",
+    "@deepkit/app": "^1.0.1-alpha.13",
+    "@deepkit/event": "^1.0.1-alpha.13",
+    "@deepkit/http": "^1.0.1-alpha.13",
+    "@deepkit/injector": "^1.0.1-alpha.13",
+    "@deepkit/logger": "^1.0.1-alpha.14",
+    "@deepkit/type": "^1.0.1-alpha.14",
     "@types/node": "^14.0.0"
   },
   "jest": {
