@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/framework-debug-gui",
-  "version": "1.0.1-alpha.22",
+  "version": "1.0.1-alpha.23",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -43,7 +43,7 @@
     "@deepkit/logger": "^1.0.1-alpha.22",
     "@deepkit/orm": "^1.0.1-alpha.22",
     "@deepkit/orm-browser-api": "^1.0.1-alpha.22",
-    "@deepkit/orm-browser-gui": "^1.0.1-alpha.22",
+    "@deepkit/orm-browser-gui": "^1.0.1-alpha.23",
     "@deepkit/rpc": "^1.0.1-alpha.22",
     "@deepkit/topsort": "^1.0.1-alpha.22",
     "@deepkit/type": "^1.0.1-alpha.22",
