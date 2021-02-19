@@ -25,16 +25,16 @@
       "path": "../core/tsconfig.json"
     },
     {
-      "path": "../type/tsconfig.json"
+      "path": "../event/tsconfig.json"
     },
     {
-      "path": "../event/tsconfig.json"
+      "path": "../injector/tsconfig.json"
     },
     {
       "path": "../stopwatch/tsconfig.json"
     },
     {
-      "path": "../injector/tsconfig.json"
+      "path": "../type/tsconfig.json"
     }
   ]
 }

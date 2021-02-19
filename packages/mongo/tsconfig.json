@@ -24,22 +24,22 @@
   ],
   "references": [
     {
-      "path": "../crypto/tsconfig.json"
-    },
-    {
       "path": "../bson/tsconfig.json"
     },
     {
       "path": "../core/tsconfig.json"
     },
     {
+      "path": "../crypto/tsconfig.json"
+    },
+    {
       "path": "../orm/tsconfig.json"
     },
     {
-      "path": "../type/tsconfig.json"
+      "path": "../orm-integration/tsconfig.json"
     },
     {
-      "path": "../orm-integration/tsconfig.json"
+      "path": "../type/tsconfig.json"
     }
   ]
 }

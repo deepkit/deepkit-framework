@@ -14,6 +14,7 @@
   "license": "MIT",
   "dependencies": {
     "@deepkit/mongo": "^1.0.1-alpha.14",
+    "@deepkit/orm-browser": "^1.0.1-alpha.14",
     "@deepkit/mysql": "^1.0.1-alpha.14",
     "@deepkit/orm": "^1.0.1-alpha.14",
     "@deepkit/postgres": "^1.0.1-alpha.14",

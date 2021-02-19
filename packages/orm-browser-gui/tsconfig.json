@@ -28,7 +28,7 @@
   },
   "references": [
     {
-      "path": "../orm-browser-api/tsconfig.json"
+      "path": "../bson/tsconfig.json"
     },
     {
       "path": "../core/tsconfig.json"
@@ -37,28 +37,28 @@
       "path": "../core-rxjs/tsconfig.json"
     },
     {
-      "path": "../injector/tsconfig.json"
-    },
-    {
-      "path": "../orm/tsconfig.json"
-    },
-    {
-      "path": "../rpc/tsconfig.json"
-    },
-    {
-      "path": "../type/tsconfig.json"
-    },
-    {
-      "path": "../bson/tsconfig.json"
-    },
-    {
       "path": "../crypto/tsconfig.json"
+    },
+    {
+      "path": "../injector/tsconfig.json"
     },
     {
       "path": "../logger/tsconfig.json"
     },
     {
+      "path": "../orm/tsconfig.json"
+    },
+    {
+      "path": "../orm-browser-api/tsconfig.json"
+    },
+    {
+      "path": "../rpc/tsconfig.json"
+    },
+    {
       "path": "../topsort/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.json"
     }
   ]
 }

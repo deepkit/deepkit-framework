@@ -8,7 +8,7 @@
     "access": "public"
   },
   "bin": {
-    "deepkit-orm-browser": "./main.ts"
+    "deepkit-orm-browser": "./dist/cjs/main.js"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -18,6 +18,8 @@
     "@deepkit/core": "^1.0.1-alpha.20",
     "@deepkit/framework": "^1.0.1-alpha.20",
     "@deepkit/http": "^1.0.1-alpha.20",
+    "@deepkit/orm-browser-gui": "^1.0.1-alpha.20",
+    "@deepkit/injector": "^1.0.1-alpha.20",
     "@deepkit/logger": "^1.0.1-alpha.20",
     "@deepkit/orm": "^1.0.1-alpha.20",
     "@deepkit/rpc": "^1.0.1-alpha.20",

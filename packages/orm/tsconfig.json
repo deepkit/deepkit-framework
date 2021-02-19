@@ -28,10 +28,10 @@
       "path": "../core/tsconfig.json"
     },
     {
-      "path": "../logger/tsconfig.json"
+      "path": "../injector/tsconfig.json"
     },
     {
-      "path": "../injector/tsconfig.json"
+      "path": "../logger/tsconfig.json"
     },
     {
       "path": "../type/tsconfig.json"

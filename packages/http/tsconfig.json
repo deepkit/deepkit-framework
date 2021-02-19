@@ -22,31 +22,31 @@
   ],
   "references": [
     {
-      "path": "../type/tsconfig.json"
+      "path": "../app/tsconfig.json"
+    },
+    {
+      "path": "../core/tsconfig.json"
     },
     {
       "path": "../event/tsconfig.json"
     },
     {
-      "path": "../app/tsconfig.json"
-    },
-    {
       "path": "../injector/tsconfig.json"
-    },
-    {
-      "path": "../workflow/tsconfig.json"
     },
     {
       "path": "../logger/tsconfig.json"
     },
     {
-      "path": "../template/tsconfig.json"
-    },
-    {
       "path": "../stopwatch/tsconfig.json"
     },
     {
-      "path": "../core/tsconfig.json"
+      "path": "../template/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.json"
+    },
+    {
+      "path": "../workflow/tsconfig.json"
     }
   ]
 }
