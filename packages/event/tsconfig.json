@@ -25,10 +25,10 @@
       "path": "../core/tsconfig.json"
     },
     {
-      "path": "../type/tsconfig.json"
+      "path": "../injector/tsconfig.json"
     },
     {
-      "path": "../injector/tsconfig.json"
+      "path": "../type/tsconfig.json"
     }
   ]
 }

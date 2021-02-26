@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/framework-debug-gui",
-  "version": "1.0.1-alpha.13",
+  "version": "1.0.1-alpha.23",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -10,54 +10,46 @@
     "lint": "ng lint",
     "e2e": "ng e2e"
   },
-  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
   "browser": {
     "fs": false,
     "path": false,
-    "async_hooks": false,
-    "cluster": false,
-    "perf_hooks": false,
     "@deepkit/logger": false
   },
-  "dependencies": {
+  "devDependencies": {
+    "@angular-devkit/build-angular": "~0.1101.4",
     "@angular/animations": "~11.1.2",
+    "@angular/cdk": "~11.2.0",
+    "@angular/cli": "~11.1.4",
     "@angular/common": "~11.1.2",
     "@angular/compiler": "~11.1.2",
+    "@angular/compiler-cli": "~11.1.2",
     "@angular/core": "~11.1.2",
     "@angular/forms": "~11.1.2",
     "@angular/platform-browser": "~11.1.2",
     "@angular/platform-browser-dynamic": "~11.1.2",
     "@angular/router": "~11.1.2",
-    "pixi.js": "^5.3.7",
-    "rxjs": "~6.6.0",
-    "tslib": "^2.0.0",
-    "zone.js": "~0.11.3"
-  },
-  "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.13",
-    "@deepkit/orm": "^1.0.1-alpha.13",
-    "@deepkit/rpc": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/bson": "^1.0.1-alpha.13",
-    "@deepkit/crypto": "^1.0.1-alpha.13",
-    "@deepkit/logger": "^1.0.1-alpha.13",
-    "@deepkit/injector": "^1.0.1-alpha.13",
-    "@deepkit/topsort": "^1.0.1-alpha.13",
-    "@deepkit/desktop-ui": "^1.0.1-alpha.13",
-    "@deepkit/stopwatch": "^1.0.1-alpha.13",
-    "@deepkit/framework-debug-api": "^1.0.1-alpha.13",
-    "@deepkit/orm-browser-api": "^1.0.1-alpha.13",
-    "@deepkit/orm-browser-gui": "^1.0.1-alpha.13",
-    "@angular/cdk": "~11.2.0",
-    "@angular-devkit/build-angular": "~0.1101.4",
-    "@angular/cli": "~11.1.4",
-    "@angular/compiler-cli": "~11.1.2",
+    "@deepkit/bson": "^1.0.1-alpha.22",
+    "@deepkit/core": "^1.0.1-alpha.22",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.22",
+    "@deepkit/crypto": "^1.0.1-alpha.22",
+    "@deepkit/desktop-ui": "^1.0.1-alpha.22",
+    "@deepkit/framework-debug-api": "^1.0.1-alpha.22",
+    "@deepkit/logger": "^1.0.1-alpha.22",
+    "@deepkit/orm": "^1.0.1-alpha.22",
+    "@deepkit/orm-browser-api": "^1.0.1-alpha.22",
+    "@deepkit/orm-browser-gui": "^1.0.1-alpha.23",
+    "@deepkit/rpc": "^1.0.1-alpha.22",
+    "@deepkit/topsort": "^1.0.1-alpha.22",
+    "@deepkit/type": "^1.0.1-alpha.22",
+    "@types/dagre": "^0.7.44",
     "@types/jasmine": "~3.6.0",
     "@types/node": "^12.11.1",
-    "@types/dagre": "^0.7.44",
-    "@types/hammerjs": "^2.0.38",
-    "hammerjs": "^2.0.8",
     "codelyzer": "^6.0.0",
     "dagre": "^0.8.5",
     "jasmine-core": "~3.6.0",
@@ -68,8 +60,11 @@
     "karma-jasmine": "~4.0.0",
     "karma-jasmine-html-reporter": "^1.5.0",
     "protractor": "~7.0.0",
+    "rxjs": "~6.6.0",
     "ts-node": "~8.3.0",
+    "tslib": "^2.0.0",
     "tslint": "~6.1.0",
-    "typescript": "~4.1.2"
+    "typescript": "~4.1.2",
+    "zone.js": "~0.11.3"
   }
 }

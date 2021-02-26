@@ -25,19 +25,19 @@
   ],
   "references": [
     {
+      "path": "../app/tsconfig.json"
+    },
+    {
       "path": "../core/tsconfig.json"
-    },
-    {
-      "path": "../orm/tsconfig.json"
-    },
-    {
-      "path": "../logger/tsconfig.json"
     },
     {
       "path": "../injector/tsconfig.json"
     },
     {
-      "path": "../app/tsconfig.json"
+      "path": "../logger/tsconfig.json"
+    },
+    {
+      "path": "../orm/tsconfig.json"
     },
     {
       "path": "../type/tsconfig.json"

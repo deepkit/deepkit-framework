@@ -1,8 +1,7 @@
 {
   "name": "@deepkit/template",
-  "version": "1.0.1-alpha.13",
+  "version": "1.0.1-alpha.22",
   "description": "Deepkit template engine based on TSX",
-  "private": true,
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -28,19 +27,17 @@
   },
   "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/stopwatch": "^1.0.1-alpha.13",
-    "@deepkit/injector": "^1.0.1-alpha.13"
+    "@deepkit/injector": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13"
   },
   "dependencies": {
     "@types/estree": "^0.0.45",
     "abstract-syntax-tree": "^2.9.4"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/stopwatch": "^1.0.1-alpha.13",
-    "@deepkit/injector": "^1.0.1-alpha.13",
+    "@deepkit/core": "^1.0.1-alpha.22",
+    "@deepkit/injector": "^1.0.1-alpha.22",
+    "@deepkit/type": "^1.0.1-alpha.22",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {

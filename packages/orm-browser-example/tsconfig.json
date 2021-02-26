@@ -21,7 +21,13 @@
   ],
   "references": [
     {
-      "path": "../type/tsconfig.json"
+      "path": "../mongo/tsconfig.json"
+    },
+    {
+      "path": "../orm-browser/tsconfig.json"
+    },
+    {
+      "path": "../mysql/tsconfig.json"
     },
     {
       "path": "../orm/tsconfig.json"
@@ -30,13 +36,10 @@
       "path": "../postgres/tsconfig.json"
     },
     {
-      "path": "../mongo/tsconfig.json"
-    },
-    {
       "path": "../sqlite/tsconfig.json"
     },
     {
-      "path": "../mysql/tsconfig.json"
+      "path": "../type/tsconfig.json"
     }
   ]
 }

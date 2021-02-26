@@ -29,6 +29,9 @@
       "path": "packages/template/tsconfig.esm.json"
     },
     {
+      "path": "packages/skeleton/tsconfig.esm.json"
+    },
+    {
       "path": "packages/stopwatch/tsconfig.esm.json"
     },
     {

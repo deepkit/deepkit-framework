@@ -29,6 +29,9 @@
       "path": "packages/template/tsconfig.json"
     },
     {
+      "path": "packages/skeleton/tsconfig.json"
+    },
+    {
       "path": "packages/framework-debug-api/tsconfig.json"
     },
     {

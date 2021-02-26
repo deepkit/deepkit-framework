@@ -36,7 +36,13 @@
       "path": "../orm-browser-api/tsconfig.json"
     },
     {
+      "path": "../app/tsconfig.json"
+    },
+    {
       "path": "../broker/tsconfig.json"
+    },
+    {
+      "path": "../bson/tsconfig.json"
     },
     {
       "path": "../core/tsconfig.json"
@@ -48,34 +54,22 @@
       "path": "../crypto/tsconfig.json"
     },
     {
-      "path": "../orm/tsconfig.json"
+      "path": "../event/tsconfig.json"
     },
     {
       "path": "../http/tsconfig.json"
     },
     {
-      "path": "../bson/tsconfig.json"
-    },
-    {
-      "path": "../rpc/tsconfig.json"
-    },
-    {
       "path": "../injector/tsconfig.json"
     },
     {
-      "path": "../app/tsconfig.json"
+      "path": "../logger/tsconfig.json"
     },
     {
-      "path": "../event/tsconfig.json"
+      "path": "../orm/tsconfig.json"
     },
     {
-      "path": "../workflow/tsconfig.json"
-    },
-    {
-      "path": "../template/tsconfig.json"
-    },
-    {
-      "path": "../stopwatch/tsconfig.json"
+      "path": "../rpc/tsconfig.json"
     },
     {
       "path": "../rpc-tcp/tsconfig.json"
@@ -87,10 +81,16 @@
       "path": "../sqlite/tsconfig.json"
     },
     {
+      "path": "../stopwatch/tsconfig.json"
+    },
+    {
+      "path": "../template/tsconfig.json"
+    },
+    {
       "path": "../type/tsconfig.json"
     },
     {
-      "path": "../logger/tsconfig.json"
+      "path": "../workflow/tsconfig.json"
     }
   ]
 }

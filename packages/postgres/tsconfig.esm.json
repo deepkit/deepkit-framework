@@ -12,13 +12,13 @@
       "path": "../orm/tsconfig.esm.json"
     },
     {
+      "path": "../orm-integration/tsconfig.json"
+    },
+    {
       "path": "../sql/tsconfig.esm.json"
     },
     {
       "path": "../type/tsconfig.esm.json"
-    },
-    {
-      "path": "../orm-integration/tsconfig.json"
     }
   ]
 }

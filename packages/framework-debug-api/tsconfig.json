@@ -27,13 +27,13 @@
   ],
   "references": [
     {
+      "path": "../bson/tsconfig.json"
+    },
+    {
       "path": "../core/tsconfig.json"
     },
     {
       "path": "../core-rxjs/tsconfig.json"
-    },
-    {
-      "path": "../bson/tsconfig.json"
     },
     {
       "path": "../crypto/tsconfig.json"

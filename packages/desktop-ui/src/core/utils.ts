@@ -127,7 +127,7 @@ export function triggerResize() {
 }
 
 export function focusWatcher(target: HTMLElement, allowedFocuses: HTMLElement[] = [], customChecker?: (currentlyFocused: HTMLElement | null) => boolean): Observable<void> {
-    if (target.ownerDocument.body.tabIndex === -1) target.ownerDocument.body.tabIndex = 1;
+    if (target.ownerDocument!.body.tabIndex === -1) target.ownerDocument!.body.tabIndex = 1;
 
     return new Observable<void>((observer) => {
         let currentlyFocused: HTMLElement | null = target;

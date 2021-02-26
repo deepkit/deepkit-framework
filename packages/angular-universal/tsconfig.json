@@ -27,16 +27,16 @@
       "path": "../app/tsconfig.json"
     },
     {
-      "path": "../injector/tsconfig.json"
+      "path": "../event/tsconfig.json"
     },
     {
       "path": "../http/tsconfig.json"
     },
     {
-      "path": "../logger/tsconfig.json"
+      "path": "../injector/tsconfig.json"
     },
     {
-      "path": "../event/tsconfig.json"
+      "path": "../logger/tsconfig.json"
     },
     {
       "path": "../type/tsconfig.json"
