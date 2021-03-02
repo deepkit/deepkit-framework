@@ -10,7 +10,6 @@
 
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
-
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { DuiAppModule, DuiButtonModule, DuiCheckboxModule, DuiFormComponent, DuiIconModule, DuiInputModule, DuiListModule, DuiRadioboxModule, DuiSelectModule, DuiTableModule, DuiWindowModule, } from '@deepkit/desktop-ui';
@@ -44,8 +43,7 @@ import { ProfileComponent } from './views/profile/profile.component';
         BrowserModule,
         AppRoutingModule,
         FormsModule,
-        RouterModule.forRoot([
-        ]),
+        RouterModule.forRoot([]),
 
         OrmBrowserModule,
         DuiAppModule.forRoot(),
@@ -63,8 +61,8 @@ import { ProfileComponent } from './views/profile/profile.component';
         DuiTableModule,
     ],
     providers: [
-        ControllerClient,
         { provide: DeepkitClient, useFactory: () => new DeepkitClient('ws://' + ControllerClient.getServerHost()) },
+        ControllerClient,
     ],
     bootstrap: [AppComponent]
 })

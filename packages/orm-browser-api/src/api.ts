@@ -9,15 +9,7 @@
  */
 
 import { ControllerSymbol } from '@deepkit/rpc';
-import {
-    ChangesInterface,
-    ClassSchema,
-    deserializeSchemas,
-    entity,
-    SerializedSchema,
-    serializedSchemaDefinition,
-    t
-} from '@deepkit/type';
+import { ChangesInterface, ClassSchema, deserializeSchemas, entity, SerializedSchema, serializedSchemaDefinition, t } from '@deepkit/type';
 import { FakerTypes } from './faker';
 import { Forward } from '@deepkit/core';
 

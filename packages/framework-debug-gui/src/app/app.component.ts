@@ -33,6 +33,7 @@ import { ControllerClient } from './client';
                                     icon="toggle_sidebar"></dui-button>
                     </dui-button-group>
 
+                    <dui-window-toolbar-container name="main"></dui-window-toolbar-container>
                     <dui-window-toolbar-container name="orm-browser"></dui-window-toolbar-container>
                 </dui-window-toolbar>
             </dui-window-header>

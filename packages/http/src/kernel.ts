@@ -71,8 +71,8 @@ export class HttpKernel {
             { provide: HttpResponse, useValue: res },
         ]));
 
-        const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext);
         const frame = this.stopwatch.active ? this.stopwatch.start(req.getUrl(), FrameCategory.http, true) : undefined;
+        const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext, this.stopwatch);
 
         try {
             if (frame) {

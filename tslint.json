@@ -11,11 +11,6 @@
     "object-curly-spacing": false,
     "eofline": true,
     "forin": true,
-    "import-blacklist": [
-      true,
-      "rxjs",
-      "rxjs/Rx"
-    ],
     "import-spacing": false,
     "indent": [
       true,
