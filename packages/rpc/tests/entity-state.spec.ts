@@ -1,12 +1,13 @@
 import { entity, getClassSchema, plainToClass, t } from '@deepkit/type';
 import { test } from '@jest/globals';
 import 'reflect-metadata';
-import { EntitySubject, rpcEntityPatch, RpcInjector, RpcTypes } from '../src/model';
+import { EntitySubject, rpcEntityPatch, RpcTypes } from '../src/model';
 import { DirectClient } from '../src/client/client-direct';
 import { EntitySubjectStore } from '../src/client/entity-state';
 import { rpc } from '../src/decorators';
 import { RpcConnectionWriter, RpcKernel, RpcKernelConnection } from '../src/server/kernel';
 import { ClassType } from '@deepkit/core';
+import { Injector } from '@deepkit/injector';
 
 test('EntitySubjectStore multi', () => {
     class MyModel {
@@ -106,7 +107,7 @@ test('controller', async () => {
                 get(classType: ClassType) {
                     return new classType(connection);
                 }
-            }
+            } as Injector;
             connection = new RpcKernelConnection(writer, this.connections, this.controllers, this.security, injector || this.injector, this.peerExchange);
             return connection;
         }

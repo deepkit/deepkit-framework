@@ -1,4 +1,4 @@
-import { parseHost } from '@deepkit/core';
+import { ParsedHost, parseHost } from '@deepkit/core';
 import { ClientTransportAdapter, TransportConnectionHooks } from '@deepkit/rpc';
 import { connect } from 'net';
 
@@ -9,7 +9,7 @@ import * as turbo from 'turbo-net';
  * Uses `turbo-net` module to connect to the server.
  */
 export class TcpRpcClientAdapter implements ClientTransportAdapter {
-    protected host;
+    protected host: ParsedHost;
     public bufferSize: number = 100 * 1024 //100kb per connection;
 
     constructor(
@@ -20,7 +20,7 @@ export class TcpRpcClientAdapter implements ClientTransportAdapter {
 
     public async connect(connection: TransportConnectionHooks) {
         const port = this.host.port || 8811;
-        const socket = turbo.connect(port, 'localhost');
+        const socket = turbo.connect(port, this.host.host);
         // socket.setNoDelay(true);
 
         socket.on('close', () => {
@@ -48,6 +48,13 @@ export class TcpRpcClientAdapter implements ClientTransportAdapter {
         read();
 
         connection.onConnected({
+            clientAddress: () => {
+                return this.host.toString();
+            },
+            bufferedAmount(): number {
+                //implement that to step back when too big
+                return 0;
+            },
             disconnect() {
                 socket.end();
             },
@@ -91,6 +98,13 @@ export class NetTcpRpcClientAdapter implements ClientTransportAdapter {
 
         socket.on('connect', async () => {
             connection.onConnected({
+                clientAddress: () => {
+                    return this.host.toString();
+                },
+                bufferedAmount(): number {
+                    //implement that to step back when too big
+                    return socket.bufferSize;
+                },
                 disconnect() {
                     socket.end();
                 },

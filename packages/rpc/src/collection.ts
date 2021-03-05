@@ -82,12 +82,17 @@ export interface CollectionEventSet {
     items: any[];
 }
 
+export interface CollectionEventUpdate {
+    type: 'update';
+    items: any[];
+}
+
 export interface CollectionSetSort {
     type: 'sort';
     ids: (string | number)[];
 }
 
-export type CollectionEvent<T> = CollectionEventAdd<T> | CollectionEventRemove | CollectionEventSet | CollectionEventState | CollectionSetSort;
+export type CollectionEvent<T> = CollectionEventAdd<T> | CollectionEventRemove | CollectionEventSet | CollectionEventState | CollectionEventUpdate | CollectionSetSort;
 
 export type CollectionSortDirection = 'asc' | 'desc';
 
@@ -112,7 +117,7 @@ export interface CollectionQueryModelInterface<T> {
 /**
  * internal note: This is aligned with @deepit/orm `DatabaseQueryModel`
  */
-export class CollectionQueryModel<T> implements CollectionQueryModelInterface<T>  {
+export class CollectionQueryModel<T> implements CollectionQueryModelInterface<T> {
     //filter is not used yet
     @t.map(t.any).optional
     filter?: FilterQuery<T>;
@@ -155,7 +160,7 @@ export class CollectionQueryModel<T> implements CollectionQueryModelInterface<T>
 
     /**
      * Whether limit/skip is activated.
-    */
+     */
     hasPaging(): boolean {
         return this.limit !== undefined || this.skip !== undefined;
     }
@@ -164,7 +169,7 @@ export class CollectionQueryModel<T> implements CollectionQueryModelInterface<T>
 export class CollectionState {
     /**
      * Total count in the database for the current query, regardless of paging (skip/limit) count.
-     * 
+     *
      * Use count() to get the items count on the current page (which is equal to all().length)
      */
     @t total: number = 0;
@@ -426,6 +431,25 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
         if (withEvent) {
             this.event.next({ type: 'remove', ids: ids });
+        }
+    }
+
+    public update(items: T | T[], withEvent = true) {
+        items = isArray(items) ? items : [items];
+
+        for (const item of items) {
+            if (this.itemsMap.has(item.id)) {
+                const index = this.items.indexOf(this.itemsMap.get(item.id) as any);
+                this.items[index] = item;
+                this.itemsMap.set(item.id, item);
+            } else {
+                this.items.push(item);
+                this.itemsMap.set(item.id, item);
+            }
+        }
+
+        if (withEvent) {
+            this.event.next({ type: 'update', items });
         }
     }
 

@@ -1,8 +1,8 @@
-import { parseHost, ParsedHost, asyncOperation } from '@deepkit/core';
+import { asyncOperation, ParsedHost, parseHost } from '@deepkit/core';
 import { RpcKernel } from '@deepkit/rpc';
 // @ts-ignore
 import * as turbo from 'turbo-net';
-import {existsSync, unlinkSync} from "fs";
+import { existsSync, unlinkSync } from 'fs';
 import { createServer, Server } from 'net';
 
 /**
@@ -52,6 +52,9 @@ export class TcpRpcServer {
                 },
                 bufferedAmount(): number {
                     return socket.bufferedAmount || 0;
+                },
+                clientAddress(): string {
+                    return socket.remoteAddress + ':' + socket.remotePort;
                 }
             });
 

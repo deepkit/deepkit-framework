@@ -220,27 +220,6 @@ export function ControllerSymbol<T>(path: string, entities: ClassType[] = []): C
     return new ControllerDefinition<T>(path, entities);
 }
 
-export interface RpcInjector {
-    get(token: any): any;
-}
-
-export class SimpleInjector implements RpcInjector {
-    protected instances = new Map<any, any>();
-
-    set<T>(token: ClassType<T>, instance: T) {
-        this.instances.set(token, instance);
-    }
-
-    get(token: ClassType) {
-        let instance = this.instances.get(token);
-        if (instance) return instance;
-        instance = new token;
-        this.instances.set(token, instance);
-        return instance;
-    }
-}
-
-
 @Entity('@error:json')
 export class JSONError {
     constructor(@t.any.name('json') public readonly json: any) {
@@ -339,6 +318,7 @@ export enum RpcTypes {
     ResponseActionCollectionSet,
     ResponseActionCollectionAdd,
     ResponseActionCollectionRemove,
+    ResponseActionCollectionUpdate,
 
     ResponseEntity, //single entity sent
 

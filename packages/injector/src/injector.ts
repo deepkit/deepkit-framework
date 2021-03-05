@@ -12,7 +12,6 @@ import { ClassSchema, ExtractClassDefinition, FieldDecoratorWrapper, getClassSch
 import { getProviders, isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider, Provider, ProviderWithScope } from './provider';
 import { ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction } from '@deepkit/core';
 import { InjectorModule } from './module';
-import { inspect } from 'util';
 
 
 export class ConfigToken<T extends {}> {
@@ -43,7 +42,7 @@ export class ConfigSlice<T extends {}> {
         }
     }
 
-    [inspect.custom]() {
+    valueOf() {
         return { ...this };
     }
 }
@@ -210,15 +209,14 @@ export interface BasicInjector {
     get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R;
 }
 
-export class Injector {
+export class Injector implements BasicInjector {
     public circularCheck: boolean = true;
-    public allowUnknown: boolean = false;
 
     protected resolved: any[] = [];
 
     protected retriever(injector: Injector, token: any, frontInjector?: Injector): any {
         for (const parent of injector.parents) {
-            const v = parent.retriever(parent, token, frontInjector);
+            const v = 'retriever' in parent ? parent.retriever(parent, token, frontInjector) : parent.get(token, frontInjector);
             if (v !== undefined) return v;
         }
         return undefined;
@@ -226,7 +224,7 @@ export class Injector {
 
     constructor(
         protected providers: Provider[] = [],
-        protected parents: Injector[] = [],
+        protected parents: (BasicInjector | Injector)[] = [],
         protected injectorContext: InjectorContext = new InjectorContext,
         protected configuredProviderRegistry: ConfiguredProviderRegistry | undefined = undefined
     ) {
@@ -245,14 +243,20 @@ export class Injector {
         return injector;
     }
 
-    public isRoot() {
-        return this.parents.length === 0;
+    /**
+     * Changes the provider structure of this injector.
+     *
+     * Note: This is very performance sensitive. Every time you call this function a new dependency injector function
+     * is generated, which si pretty slow. So, it's recommended to create a Injector with providers in the constructor
+     * and not change it.
+     */
+    public addProviders(...providers: Provider[]) {
+        this.providers.push(...providers);
+        this.retriever = this.buildRetriever();
     }
 
-    protected getRoot(): Injector {
-        if (this.parents.length) return this.parents[0].getRoot();
-
-        return this;
+    public isRoot() {
+        return this.parents.length === 0;
     }
 
     protected createFactoryProperty(property: PropertySchema, compiler: CompilerContext, classTypeVar: string, argPosition: number, notFoundFunction: string) {
@@ -438,9 +442,10 @@ export class Injector {
 
         const parents: string[] = [];
         for (let i = 0; i < this.parents.length; i++) {
+            let retriever = 'retriever' in this.parents[i] ? `injector.parents[${i}].retriever(injector.parents[${i}], ` : `injector.parents[${i}].get(`;
             parents.push(`
                 {
-                    const v = injector.parents[${i}].retriever(injector.parents[${i}], token, frontInjector);
+                    const v = ${retriever}token, frontInjector);
                     if (v !== undefined) return v;
                 }
             `);
@@ -506,8 +511,7 @@ function throwCircularDependency() {
 }
 
 export class MemoryInjector extends Injector {
-
-    constructor(protected providers: { provide: any, useValue: any }[]) {
+    constructor(protected providers: ({ provide: any, useValue: any } | { provide: any, factory: () => any })[]) {
         super();
     }
 
@@ -516,14 +520,15 @@ export class MemoryInjector extends Injector {
     }
 
     protected retriever(injector: Injector, token: any) {
-        return injector.get(token);
+        for (const p of this.providers) {
+            if (p.provide === token) return 'factory' in p ? p.factory() : p.useValue;
+        }
     }
 
     public get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R {
-        for (const p of this.providers) {
-            if (p.provide === token) return p.useValue;
-        }
-        throw new TokenNotFoundError(`Could not resolve injector token ${tokenLabel(token)}`);
+        const result = this.retriever(this, token);
+        if (result === undefined) throw new TokenNotFoundError(`Could not resolve injector token ${tokenLabel(token)}`);
+        return result;
     }
 }
 
@@ -643,7 +648,7 @@ export function setupProvider<T extends ClassType<T> | any>(classTypeOrToken: T,
     return proxy as any;
 }
 
-export class InjectorContext {
+export class InjectorContext implements BasicInjector {
     protected injectors: (Injector | undefined)[] = new Array(this.contextManager.contexts.length);
     public readonly scopeCaches: ScopedContextScopeCaches;
     protected cache: ScopedContextCache;

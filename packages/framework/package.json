@@ -64,7 +64,8 @@
     "pirates": "^4.0.1",
     "selfsigned": "1.10.8",
     "sift": "^7.0.1",
-    "ws": "^7.4.2"
+    "ws": "^7.4.2",
+    "@types/ws": "^7.4.0"
   },
   "devDependencies": {
     "@deepkit/app": "^1.0.1-alpha.22",

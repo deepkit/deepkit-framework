@@ -9,14 +9,26 @@
  */
 
 import { asyncOperation, toFastProperties } from '@deepkit/core';
-import { ClassSchema, createClassSchema, getClassSchema, propertyDefinition, PropertySchema, PropertySchemaSerialized, t } from '@deepkit/type';
+import { ClassSchema, createClassSchema, getClassSchema, propertyDefinition, PropertySchema, PropertySchemaSerialized } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';
 import { skip } from 'rxjs/operators';
 import { Collection, CollectionQueryModel, CollectionState } from '../collection';
-import { ActionObservableTypes, IdInterface, rpcAction, rpcActionObservableSubscribeId, rpcActionType, rpcResponseActionCollectionRemove, rpcResponseActionCollectionSort, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes } from '../model';
+import {
+    ActionObservableTypes,
+    IdInterface,
+    rpcAction,
+    rpcActionObservableSubscribeId,
+    rpcActionType,
+    rpcResponseActionCollectionRemove,
+    rpcResponseActionCollectionSort,
+    rpcResponseActionObservable,
+    rpcResponseActionObservableSubscriptionError,
+    rpcResponseActionType,
+    RpcTypes
+} from '../model';
 import { rpcDecodeError, RpcMessage } from '../protocol';
 import { ClientProgress } from '../writer';
-import type { RpcBaseClient } from './client';
+import type { WritableClient } from './client';
 import { EntityState, EntitySubjectStore } from './entity-state';
 
 type ControllerStateActionTypes = {
@@ -74,7 +86,7 @@ function setReturnType(types: ControllerStateActionTypes, prop: PropertySchemaSe
 export class RpcActionClient {
     public entityState = new EntityState;
 
-    constructor(protected client: RpcBaseClient) {
+    constructor(protected client: WritableClient) {
     }
 
     public action<T>(controller: RpcControllerState, method: string, args: any[], recipient?: string) {
@@ -207,7 +219,7 @@ export class RpcActionClient {
                                                 delete subscribers[id];
                                                 subject.send(RpcTypes.ActionObservableUnsubscribe, rpcActionObservableSubscribeId, { id });
                                             }
-                                        }
+                                        };
                                     });
                                     resolve(observable);
                                 } else if (body.type === ActionObservableTypes.subject) {
@@ -286,7 +298,8 @@ export class RpcActionClient {
                             default: {
                                 console.log(`Unexpected type received ${reply.type} ${RpcTypes[reply.type]}`);
                             }
-                        };
+                        }
+                        ;
                     } catch (error) {
                         console.warn('reply error', reply.id, RpcTypes[reply.type], error);
                         reject(error);
@@ -318,6 +331,7 @@ export class RpcActionClient {
                     break;
                 }
 
+                case RpcTypes.ResponseActionCollectionUpdate:
                 case RpcTypes.ResponseActionCollectionAdd: {
                     if (!types.collectionSchema) continue;
                     const incomingItems = next.parseBody(types.collectionSchema).v as IdInterface[];
@@ -325,19 +339,30 @@ export class RpcActionClient {
 
                     for (const item of incomingItems) {
                         if (!entityStore.isRegistered(item.id)) entityStore.register(item);
-                        const fork = entityStore.createFork(item.id);
-                        collection.entitySubjects.set(item.id, fork);
+                        if (next.type === RpcTypes.ResponseActionCollectionUpdate) {
+                            entityStore.onSet(item.id, item);
+                        }
+
+                        let fork = collection.entitySubjects.get(item.id);
+                        if (!fork) {
+                            fork = entityStore.createFork(item.id);
+                            collection.entitySubjects.set(item.id, fork);
+                        }
                         items.push(fork.value);
 
                         //fork is automatically unsubscribed once removed from the collection
                         fork.pipe(skip(1)).subscribe(i => {
-                            if (fork.deleted) return; //we get deleted already
+                            if (fork!.deleted) return; //we get deleted already
                             collection.deepChange.next(i);
                             collection.loaded();
                         });
                     }
 
-                    collection.add(items);
+                    if (next.type === RpcTypes.ResponseActionCollectionAdd) {
+                        collection.add(items);
+                    } else if (next.type === RpcTypes.ResponseActionCollectionUpdate) {
+                        collection.update(items);
+                    }
                     break;
                 }
 

@@ -28,7 +28,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
 
     public async connect(connection: TransportConnectionHooks) {
         const socket = new WebSocket(this.url);
-        socket.binaryType = "arraybuffer";
+        socket.binaryType = 'arraybuffer';
 
         socket.onmessage = (event: MessageEvent) => {
             connection.onData(new Uint8Array(event.data));
@@ -44,6 +44,12 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
 
         socket.onopen = async () => {
             connection.onConnected({
+                clientAddress: () => {
+                    return this.url;
+                },
+                bufferedAmount(): number {
+                    return socket.bufferedAmount;
+                },
                 disconnect() {
                     socket.close();
                 },

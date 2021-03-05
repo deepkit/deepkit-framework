@@ -212,6 +212,9 @@ export class WebWorker {
             },
             bufferedAmount(): number {
                 return ws.bufferedAmount;
+            },
+            clientAddress(): string {
+                return req.getRemoteAddress();
             }
         }, req);
 

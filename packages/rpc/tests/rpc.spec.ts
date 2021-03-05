@@ -1,7 +1,7 @@
 import { t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { RpcMessageWriter, Progress } from '../src/writer';
+import { Progress, RpcMessageWriter } from '../src/writer';
 import { DirectClient } from '../src/client/client-direct';
 import { rpc } from '../src/decorators';
 import {
@@ -18,7 +18,7 @@ import {
     RpcMessageRouteType
 } from '../src/protocol';
 import { RpcKernel } from '../src/server/kernel';
-import { RpcTypes } from "../src/model";
+import { RpcTypes } from '../src/model';
 import { createBuffer, Writer } from '@deepkit/bson';
 
 test('readUint32LE', () => {
@@ -28,7 +28,7 @@ test('readUint32LE', () => {
 
         const view = new DataView(writer.buffer.buffer, writer.buffer.byteOffset);
         expect(view.getUint32(0, true)).toBe(545);
-        
+
         expect(readUint32LE(writer.buffer)).toBe(545);
     }
 
@@ -249,7 +249,7 @@ test('rpc peer', async () => {
     }
 
     await client1.registerAsPeer('peer1');
-    client1.registerController('foo', Controller);
+    client1.registerPeerController('foo', Controller);
 
     const client2 = new DirectClient(kernel);
 

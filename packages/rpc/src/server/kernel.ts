@@ -11,17 +11,7 @@
 import { arrayRemoveItem, ClassType } from '@deepkit/core';
 import { ClassSchema, getClassSchema, stringifyUuid, writeUuid } from '@deepkit/type';
 import { RpcMessageSubject } from '../client/message-subject';
-import {
-    ControllerDefinition,
-    rpcAuthenticate,
-    rpcClientId,
-    rpcError,
-    RpcInjector,
-    rpcPeerRegister,
-    rpcResponseAuthenticate,
-    RpcTypes,
-    SimpleInjector
-} from '../model';
+import { ControllerDefinition, rpcAuthenticate, rpcClientId, rpcError, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model';
 import {
     createBuffer,
     createRpcCompositeMessage,
@@ -39,6 +29,9 @@ import {
 import { RpcMessageWriter } from '../writer';
 import { RpcServerAction } from './action';
 import { RpcKernelSecurity, Session, SessionState } from './security';
+import { RpcActionClient, RpcControllerState } from '../client/action';
+import { RemoteController } from '../client/client';
+import { BasicInjector, Injector, MemoryInjector } from '@deepkit/injector';
 
 export class RpcCompositeMessage {
     protected messages: RpcCreateMessageDef<any>[] = [];
@@ -49,6 +42,7 @@ export class RpcCompositeMessage {
         protected writer: RpcConnectionWriter,
         protected clientId?: Uint8Array,
         protected source?: Uint8Array,
+        protected routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client
     ) {
     }
 
@@ -62,12 +56,14 @@ export class RpcCompositeMessage {
             //we route back accordingly
             this.writer.write(createRpcCompositeMessageSourceDest(this.id, this.clientId, this.source, this.type, this.messages));
         } else {
-            this.writer.write(createRpcCompositeMessage(this.id, this.type, this.messages));
+            this.writer.write(createRpcCompositeMessage(this.id, this.type, this.messages, this.routeType));
         }
     }
 }
 
 export class RpcMessageBuilder {
+    public routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client;
+
     constructor(
         protected writer: RpcConnectionWriter,
         protected id: number,
@@ -82,14 +78,14 @@ export class RpcMessageBuilder {
                 //we route back accordingly
                 return createRpcMessageSourceDestForBody(this.id, type, this.clientId, this.source, schemaOrBody);
             } else {
-                return createRpcMessageForBody(this.id, type, schemaOrBody);
+                return createRpcMessageForBody(this.id, type, schemaOrBody, this.routeType);
             }
         } else {
             if (this.source && this.clientId) {
                 //we route back accordingly
                 return createRpcMessageSourceDest(this.id, type, this.clientId, this.source, schemaOrBody, data);
             } else {
-                return createRpcMessage(this.id, type, schemaOrBody, data);
+                return createRpcMessage(this.id, type, schemaOrBody, data, this.routeType);
             }
         }
     }
@@ -166,6 +162,8 @@ export interface RpcConnectionWriter {
     write(buffer: Uint8Array): void;
 
     bufferedAmount?(): number;
+
+    clientAddress?(): string;
 }
 
 export abstract class RpcKernelBaseConnection {
@@ -176,6 +174,8 @@ export abstract class RpcKernelBaseConnection {
             this.writer.write(createRpcMessage(id, RpcTypes.ChunkAck));
         }
     );
+
+    protected actionClient: RpcActionClient = new RpcActionClient(this);
 
     protected id: Uint8Array = writeUuid(createBuffer(16));
 
@@ -193,7 +193,11 @@ export abstract class RpcKernelBaseConnection {
         this.connections.connections.push(this);
         this.onClose = new Promise((resolve) => {
             this.onCloseResolve = resolve;
-        })
+        });
+    }
+
+    clientAddress(): string | undefined {
+        return this.transportWriter.clientAddress ? this.transportWriter.clientAddress() : undefined;
     }
 
     createMessageBuilder(): RpcMessageBuilder {
@@ -238,6 +242,18 @@ export abstract class RpcKernelBaseConnection {
 
     abstract onMessage(message: RpcMessage, response: RpcMessageBuilder): void | Promise<void>;
 
+    public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, timeoutInSeconds = 60): RemoteController<T> {
+        const controller = new RpcControllerState('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path);
+
+        return new Proxy(this, {
+            get: (target, propertyName) => {
+                return (...args: any[]) => {
+                    return this.actionClient.action(controller, propertyName as string, args);
+                };
+            }
+        }) as any as RemoteController<T>;
+    }
+
     public sendMessage<T>(
         type: number,
         schema?: ClassSchema<T>,
@@ -279,12 +295,14 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
     protected sessionState = new SessionState<Session>();
     protected actionHandler = new RpcServerAction(this.controllers, this.injector, this.security, this.sessionState);
 
+    public routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client;
+
     constructor(
         writer: RpcConnectionWriter,
         connections: RpcKernelConnections,
         protected controllers: Map<string, ClassType>,
         protected security = new RpcKernelSecurity<Session>(),
-        protected injector: RpcInjector,
+        protected injector: BasicInjector,
         protected peerExchange: RpcPeerExchange,
     ) {
         super(writer, connections);
@@ -316,6 +334,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
 
         //all outgoing replies need to be routed to the source via sourceDest messages.
         const response = new RpcMessageBuilder(this.writer, message.id, this.id, message.routeType === RpcMessageRouteType.peer ? message.getSource() : undefined);
+        response.routeType = this.routeType;
 
         try {
             if (message.routeType === RpcMessageRouteType.client) {
@@ -387,18 +406,33 @@ export class RpcKernel {
     protected controllers = new Map<string, ClassType>();
     protected peerExchange = new RpcPeerExchange;
     protected connections = new RpcKernelConnections;
+    protected injector: BasicInjector;
 
     constructor(
-        protected injector: RpcInjector = new SimpleInjector,
+        injector?: BasicInjector,
         protected security = new RpcKernelSecurity<Session>(),
     ) {
+        if (injector) {
+            this.injector = injector;
+        } else {
+            this.injector = new Injector();
+        }
     }
 
     public registerController(id: string | ControllerDefinition<any>, controller: ClassType) {
+        if (this.injector instanceof Injector) this.injector.addProviders(controller);
         this.controllers.set('string' === typeof id ? id : id.path, controller);
     }
 
-    createConnection(writer: RpcConnectionWriter, injector?: RpcInjector): RpcKernelBaseConnection {
-        return new RpcKernelConnection(writer, this.connections, this.controllers, this.security, injector || this.injector, this.peerExchange);
+    createConnection(writer: RpcConnectionWriter, injector?: BasicInjector): RpcKernelBaseConnection {
+        let connection: RpcKernelConnection;
+
+        const subInjector = new MemoryInjector([
+            { provide: RpcKernelConnection, factory: () => connection }
+        ]);
+        const childInjectors: BasicInjector[] = [subInjector, injector || this.injector];
+
+        connection = new RpcKernelConnection(writer, this.connections, this.controllers, this.security, new Injector([], childInjectors), this.peerExchange);
+        return connection;
     }
 }

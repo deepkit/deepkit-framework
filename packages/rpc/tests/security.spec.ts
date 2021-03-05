@@ -56,7 +56,7 @@ test('authentication', async () => {
         const client2 = new DirectClient(kernel);
         client2.token.set('secret');
         await client2.registerAsPeer('asd');
-        client2.registerController('controller', Controller);
+        client2.registerPeerController('controller', Controller);
 
         expect(await client.peer('asd').controller<Controller>('controller').test('foo')).toBe('foo');
         expect(client.username).toBe('user');

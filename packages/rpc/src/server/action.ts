@@ -14,10 +14,24 @@ import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, ji
 import { isObservable, Observable, Subject, Subscription } from 'rxjs';
 import { Collection, CollectionEvent, CollectionQueryModel, CollectionState, isCollection } from '../collection';
 import { getActionParameters, getActions } from '../decorators';
-import { ActionObservableTypes, EntitySubject, isEntitySubject, rpcActionObservableSubscribeId, rpcActionType, RpcInjector, rpcResponseActionCollectionRemove, rpcResponseActionCollectionSort, rpcResponseActionObservable, rpcResponseActionObservableSubscriptionError, rpcResponseActionType, RpcTypes, ValidationError } from '../model';
+import {
+    ActionObservableTypes,
+    EntitySubject,
+    isEntitySubject,
+    rpcActionObservableSubscribeId,
+    rpcActionType,
+    rpcResponseActionCollectionRemove,
+    rpcResponseActionCollectionSort,
+    rpcResponseActionObservable,
+    rpcResponseActionObservableSubscriptionError,
+    rpcResponseActionType,
+    RpcTypes,
+    ValidationError
+} from '../model';
 import { rpcEncodeError, RpcMessage } from '../protocol';
 import { RpcMessageBuilder } from './kernel';
 import { RpcKernelSecurity, Session, SessionState } from './security';
+import { BasicInjector } from '@deepkit/injector';
 
 export type ActionTypes = {
     parameters: PropertySchema[],
@@ -62,7 +76,7 @@ export class RpcServerAction {
 
     constructor(
         protected controllers: Map<string, ClassType>,
-        protected injector: RpcInjector,
+        protected injector: BasicInjector,
         protected security: RpcKernelSecurity<Session>,
         protected sessionState: SessionState<Session>,
     ) {
@@ -324,6 +338,8 @@ export class RpcServerAction {
                             composite.add(RpcTypes.ResponseActionCollectionAdd, types.collectionSchema, { v: event.items, });
                         } else if (event.type === 'remove') {
                             composite.add(RpcTypes.ResponseActionCollectionRemove, rpcResponseActionCollectionRemove, { ids: event.ids, });
+                        } else if (event.type === 'update') {
+                            composite.add(RpcTypes.ResponseActionCollectionUpdate, types.collectionSchema, { v: event.items, });
                         } else if (event.type === 'set') {
                             composite.add(RpcTypes.ResponseActionCollectionSet, types.collectionSchema, { v: collection.all(), });
                         } else if (event.type === 'state') {
@@ -449,7 +465,7 @@ export function isResultTypeDifferent(result: any, property: PropertySchema): bo
     if (property.type === 'array' && !isArray(result)) return true;
 
     if (property.type === 'any' && property.typeSet === false) {
-        //type is infered as Promise, Observable, Collection, EntitySubject, so we should try to infer 
+        //type is inferred as Promise, Observable, Collection, EntitySubject, so we should try to infer
         //from the result now
         return true;
     }

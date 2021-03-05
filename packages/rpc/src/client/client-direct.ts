@@ -8,25 +8,30 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { RpcInjector } from '../model';
-import { readRpcMessage } from '../protocol';
 import { RpcKernel } from '../server/kernel';
 import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client';
+import { Injector } from '@deepkit/injector';
 
 export class DirectClient extends RpcClient {
-    constructor(rpcKernel: RpcKernel, injector?: RpcInjector) {
+    constructor(rpcKernel: RpcKernel, injector?: Injector) {
         super(new RpcDirectClientAdapter(rpcKernel, injector));
     }
 }
 
 export class RpcDirectClientAdapter implements ClientTransportAdapter {
-    constructor(public rpcKernel: RpcKernel, protected injector?: RpcInjector) {
+    constructor(public rpcKernel: RpcKernel, protected injector?: Injector) {
     }
 
     public async connect(connection: TransportConnectionHooks) {
         const kernelConnection = this.rpcKernel.createConnection({ write: (buffer) => connection.onData(buffer) }, this.injector);
 
         connection.onConnected({
+            clientAddress: () => {
+                return 'direct';
+            },
+            bufferedAmount(): number {
+                return 0;
+            },
             disconnect() {
                 kernelConnection.close();
             },

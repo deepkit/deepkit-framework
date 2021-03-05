@@ -12,16 +12,8 @@ import { asyncOperation, ClassType, sleep } from '@deepkit/core';
 import { ClassSchema } from '@deepkit/type';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { ControllerDefinition, rpcAuthenticate, rpcClientId, rpcPeerDeregister, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model';
-import {
-    createRpcMessage,
-    createRpcMessagePeer,
-    ErroredRpcMessage,
-
-    RpcMessage,
-    RpcMessageReader,
-    RpcMessageRouteType
-} from '../protocol';
-import { RpcKernel } from '../server/kernel';
+import { createRpcMessage, createRpcMessagePeer, ErroredRpcMessage, RpcMessage, RpcMessageReader, RpcMessageRouteType } from '../protocol';
+import { RpcKernel, RpcKernelConnection } from '../server/kernel';
 import { ClientProgress, RpcMessageWriter, SingleProgress } from '../writer';
 import { RpcActionClient, RpcControllerState } from './action';
 import { RpcMessageSubject } from './message-subject';
@@ -46,6 +38,10 @@ export type RemoteController<T> = {
 export interface TransportConnection {
     send(message: Uint8Array): void;
 
+    bufferedAmount?(): number;
+
+    clientAddress?(): string;
+
     disconnect(): void;
 }
 
@@ -61,6 +57,20 @@ export interface TransportConnectionHooks {
 
 export interface ClientTransportAdapter {
     connect(connection: TransportConnectionHooks): Promise<void> | void;
+}
+
+export interface WritableClient {
+    sendMessage<T>(
+        type: number,
+        schema?: ClassSchema<T>,
+        body?: T,
+        options?: {
+            dontWaitForConnection?: boolean,
+            connectionId?: number,
+            peerId?: string,
+            timeout?: number
+        }
+    ): RpcMessageSubject
 }
 
 export class RpcClientToken {
@@ -113,6 +123,16 @@ export class RpcClientTransporter {
     ) {
     }
 
+    bufferedAmount(): number {
+        if (!this.transportConnection?.bufferedAmount) return 0;
+        return this.transportConnection.bufferedAmount();
+    }
+
+    clientAddress(): string {
+        if (!this.transportConnection?.clientAddress) return 'unknown';
+        return this.transportConnection.clientAddress();
+    }
+
     public isConnected(): boolean {
         return this.connected;
     }
@@ -146,7 +166,7 @@ export class RpcClientTransporter {
     }
 
     /**
-     * Optional handshake. 
+     * Optional handshake.
      * When peer messages are allowed, this needs to request the client id and returns id.
      */
     public async onHandshake(): Promise<Uint8Array | undefined> {
@@ -185,7 +205,13 @@ export class RpcClientTransporter {
 
                     onConnected: async (transport: TransportConnection) => {
                         this.transportConnection = transport;
-                        this.writer = new RpcMessageWriter({ write(v) { transport.send(v) } }, this.reader);
+                        this.writer = new RpcMessageWriter({
+                            write(v) {
+                                transport.send(v);
+                            },
+                            clientAddress: transport.clientAddress ? () => transport.clientAddress!() : undefined,
+                            bufferedAmount: transport.bufferedAmount ? () => transport.bufferedAmount!() : undefined,
+                        }, this.reader);
 
                         //it's important to place it here, since authenticate() sends messages and checks this.connected.
                         this.connected = true;
@@ -281,13 +307,13 @@ export class RpcClientPeer {
     }
 }
 
-export class RpcBaseClient {
+export class RpcBaseClient implements WritableClient {
     protected messageId: number = 1;
     protected replies = new Map<number, ((message: RpcMessage) => void)>();
 
     protected actionClient = new RpcActionClient(this);
     public readonly token = new RpcClientToken;
-    protected transporter: RpcClientTransporter;
+    public readonly transporter: RpcClientTransporter;
 
     public username?: string;
 
@@ -303,7 +329,7 @@ export class RpcBaseClient {
     /**
      * The connection process is only finished when this method returns a boolean.
      * If false is returned an authentication error is thrown.
-     * 
+     *
      * Use this.sendMessage(type, schema, body, {dontWaitForConnection: true}) during handshake.
      */
     protected async onAuthenticate(): Promise<boolean> {
@@ -421,16 +447,38 @@ export class RpcBaseClient {
 
 export class RpcClient extends RpcBaseClient {
     protected registeredAsPeer?: string;
-    protected kernel?: RpcKernel;
+
+    /**
+     * For server->client (us) communication.
+     * This is automatically created when registerController is called.
+     * Set this property earlier to work with a custom RpcKernel.
+     */
+    public clientKernel?: RpcKernel;
+
+    /**
+     * Once the server starts actively with first RPC action for the client,
+     * a RPC connection is created.
+     */
+    protected clientKernelConnection?: RpcKernelConnection;
+
+    /**
+     * For peer->client(us) communication.
+     * This is automatically created when registerAsPeer is called.
+     * Set this property earlier to work with a custom RpcKernel.
+     */
+    public peerKernel?: RpcKernel;
+
     protected peerConnections = new Map<string, RpcClientPeer>();
 
     protected async onHandshake(): Promise<Uint8Array> {
+        this.clientKernelConnection = undefined;
+
         const reply = await this.sendMessage(RpcTypes.ClientId, undefined, undefined, { dontWaitForConnection: true })
             .firstThenClose(RpcTypes.ClientIdResponse, rpcClientId);
         return reply.id;
     }
 
-    protected peerKernelConnection = new Map<string, any>();
+    protected peerKernelConnection = new Map<string, RpcKernelConnection>();
 
     public async ping(): Promise<void> {
         await this.sendMessage(RpcTypes.Ping).waitNext(RpcTypes.Pong);
@@ -438,7 +486,7 @@ export class RpcClient extends RpcBaseClient {
 
     protected onMessage(message: RpcMessage) {
         if (message.routeType === RpcMessageRouteType.peer) {
-            if (!this.kernel) return;
+            if (!this.peerKernel) return;
 
             const peerId = message.getPeerId();
             if (this.registeredAsPeer !== peerId) return;
@@ -455,13 +503,35 @@ export class RpcClient extends RpcBaseClient {
 
                 //todo: set up timeout for idle detection. Make the timeout configurable
 
-                connection = this.kernel.createConnection(writer);
+                const c = this.peerKernel.createConnection(writer);
+                if (!(c instanceof RpcKernelConnection)) throw new Error('Expected RpcKernelConnection from peerKernel.createConnection');
+                connection = c;
                 connection.myPeerId = peerId; //necessary so that the kernel does not redirect the package again.
                 this.peerKernelConnection.set(peerId, connection);
             }
 
-            connection.feed(message.buffer);
+            connection.handleMessage(message);
         } else {
+            if (message.routeType === RpcMessageRouteType.server && this.clientKernel) {
+                if (!this.clientKernelConnection) {
+                    const c = this.clientKernel.createConnection({
+                        write: (answer: Uint8Array) => {
+                            this.transporter.send(answer);
+                        },
+                        clientAddress: () => {
+                            return this.transporter.clientAddress();
+                        },
+                        bufferedAmount: () => {
+                            return this.transporter.bufferedAmount();
+                        }
+                    });
+                    if (!(c instanceof RpcKernelConnection)) throw new Error('Expected RpcKernelConnection from clientKernel.createConnection');
+                    this.clientKernelConnection = c;
+                }
+                this.clientKernelConnection.routeType = RpcMessageRouteType.server;
+                this.clientKernelConnection.handleMessage(message);
+                return;
+            }
             super.onMessage(message);
         }
     }
@@ -475,9 +545,18 @@ export class RpcClient extends RpcBaseClient {
      * Registers a new controller for the peer's RPC kernel.
      * Use `registerAsPeer` first.
      */
+    public registerPeerController<T>(nameOrDefinition: string | ControllerDefinition<T>, classType: ClassType<T>) {
+        if (!this.peerKernel) throw new Error('Not registered as peer. Call registerAsPeer() first');
+        this.peerKernel.registerController('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path, classType);
+    }
+
+    /**
+     * Registers a new controller for the server's RPC kernel.
+     * This is when the server wants to communicate actively with the client (us).
+     */
     public registerController<T>(nameOrDefinition: string | ControllerDefinition<T>, classType: ClassType<T>) {
-        if (!this.kernel) throw new Error('Not registered as peer. Call registerAsPeer() first');
-        this.kernel.registerController('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path, classType);
+        if (!this.clientKernel) this.clientKernel = new RpcKernel();
+        this.clientKernel.registerController('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path, classType);
     }
 
     public async registerAsPeer(id: string) {
@@ -485,7 +564,7 @@ export class RpcClient extends RpcBaseClient {
             throw new Error('Already registered as a peer');
         }
 
-        this.kernel = new RpcKernel();
+        this.peerKernel = new RpcKernel();
 
         await this.sendMessage(RpcTypes.PeerRegister, rpcPeerRegister, { id }).firstThenClose(RpcTypes.Ack);
         this.registeredAsPeer = id;
@@ -495,12 +574,12 @@ export class RpcClient extends RpcBaseClient {
                 await this.sendMessage(RpcTypes.PeerDeregister, rpcPeerDeregister, { id }).firstThenClose(RpcTypes.Ack);
                 this.registeredAsPeer = undefined;
             }
-        }
+        };
     }
 
     /**
      * Creates a new peer connection, or re-uses an existing non-disconnected one.
-     * 
+     *
      * Make sure to call disconnect() on it once you're done using it, otherwise the peer
      * will leak memory. (connection will be dropped if idle for too long automatically tough)
      */
