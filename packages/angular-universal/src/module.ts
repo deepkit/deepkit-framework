@@ -13,9 +13,8 @@ import { AngularUniversalListener } from './listener';
 import { config } from './config';
 
 export const angularUniversalModule = new AppModule({
-    name: 'angular-universal',
     config: config,
     listeners: [
         AngularUniversalListener
     ]
-}).forRoot();
+}, 'angular-universal').forRoot();

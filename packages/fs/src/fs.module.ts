@@ -22,7 +22,6 @@ export class FsModuleBootstrap {
 }
 
 export const FSModule = new AppModule({
-    name: 'fs',
     bootstrap: FsModuleBootstrap,
     providers: [
         FsConfig,
@@ -32,4 +31,4 @@ export const FSModule = new AppModule({
         FsConfig,
         Database,
     ]
-});
+}, 'fs');
