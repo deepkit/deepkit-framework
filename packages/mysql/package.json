@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/mysql",
-  "version": "1.0.1-alpha.24",
+  "version": "1.0.1-alpha.25",
   "description": "deepkit/orm MySQL adapter.",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -32,11 +32,11 @@
     "mariadb": "^2.5.2"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.24",
-    "@deepkit/orm": "^1.0.1-alpha.24",
+    "@deepkit/core": "^1.0.1-alpha.25",
+    "@deepkit/orm": "^1.0.1-alpha.25",
     "@deepkit/orm-integration": "^1.0.1-alpha.13",
-    "@deepkit/sql": "^1.0.1-alpha.24",
-    "@deepkit/type": "^1.0.1-alpha.24",
+    "@deepkit/sql": "^1.0.1-alpha.25",
+    "@deepkit/type": "^1.0.1-alpha.25",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
