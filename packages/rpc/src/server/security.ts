@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType } from "@deepkit/core";
+import { ClassType } from '@deepkit/core';
 
 export class Session {
     constructor(
@@ -39,7 +39,6 @@ export class RpcKernelSecurity<T extends Session> {
         throw new Error('Authentication not implemented');
     }
 }
-
 
 export class SessionState<T extends Session> {
     protected session: T = new Session('anon', undefined) as T;

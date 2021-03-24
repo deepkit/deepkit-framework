@@ -292,7 +292,7 @@ export class RpcKernelConnections {
 
 export class RpcKernelConnection extends RpcKernelBaseConnection {
     public myPeerId?: string;
-    protected sessionState = new SessionState<Session>();
+    public sessionState = new SessionState<Session>();
     protected actionHandler = new RpcServerAction(this.controllers, this.injector, this.security, this.sessionState);
 
     public routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client;
@@ -428,7 +428,8 @@ export class RpcKernel {
         let connection: RpcKernelConnection;
 
         const subInjector = new MemoryInjector([
-            { provide: RpcKernelConnection, factory: () => connection }
+            { provide: RpcKernelConnection, factory: () => connection },
+            { provide: SessionState, factory: () => connection.sessionState },
         ]);
         const childInjectors: BasicInjector[] = [subInjector, injector || this.injector];
 

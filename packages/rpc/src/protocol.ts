@@ -41,36 +41,36 @@ export const enum RpcMessageRouteType {
  * size: uint32 //total message size
  * version: uint8
  * id: uint32 //message id
- * 
- * //type of routing: 
+ *
+ * //type of routing:
  * //0=client (context from client -> server), //client initiated a message context (message id created on client)
  * //1=server (context from server -> client), //server initiated a message context (message id created on server)
  * //2=sourceDest //route this message to a specific client using its client id
  * //4=peer //route this message to a client using a peer alias (the peer alias needs to be registered). replies will be rewritten to sourceDest
- * 
+ *
  * //when route=0
  * routeConfig: not defined
- * 
+ *
  * //when route=1
  * routeConfig: not defined
- * 
+ *
  * //when route=2
  * routeConfig: <source><destination>, each 16 bytes, uuid v4
- * 
+ *
  * //when route=3
  * routeConfig: <source><peerId> //where source=uuid v4, and peerId=ascii string (terminated by \0)
- * 
+ *
  * composite: uint8 //when 1 then there are multiple messageBody, each prefixed with uint32 for their size
- * 
+ *
  * composite=0 then messageBody=<type><body>:
  *   type: uint8 (256 types supported) //supported type
  *   body: BSON|any //arbitrary payload passed to type
- * 
+ *
  * composite=1 then messageBody=<size><type><body>:
  *   size: uint32
  *   type: uint8 (256 types supported) //supported type
  *   body: BSON|any //arbitrary payload passed to type
- * 
+ *
  */
 export class RpcMessage {
     protected peerId?: string;
@@ -194,7 +194,7 @@ export function readRpcMessage(buffer: Uint8Array): RpcMessage {
     return new RpcMessage(id, composite, type, routeType, offset, size - offset, buffer);
 }
 
-export const createBuffer: (size: number) => Uint8Array = 'undefined' !== typeof Buffer ? Buffer.allocUnsafe : (size) => new Uint8Array(size);
+export const createBuffer: (size: number) => Uint8Array = 'undefined' !== typeof Buffer && 'function' === typeof Buffer.allocUnsafe ? Buffer.allocUnsafe : (size) => new Uint8Array(size);
 
 export interface RpcCreateMessageDef<T> {
     type: number;

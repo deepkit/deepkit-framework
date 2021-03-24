@@ -33,17 +33,7 @@ import {
     ViewChild,
     ViewChildren,
 } from '@angular/core';
-import {
-    arrayClear,
-    arrayHasItem,
-    arrayRemoveItem,
-    eachPair,
-    empty,
-    first,
-    indexOf,
-    isArray,
-    isNumber
-} from '@deepkit/core';
+import { arrayClear, arrayHasItem, arrayRemoveItem, eachPair, empty, first, indexOf, isArray, isNumber } from '@deepkit/core';
 import Hammer from 'hammerjs';
 import { isObservable, Observable } from 'rxjs';
 import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
@@ -568,7 +558,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
         if ($event && $event.button === 2) return;
 
         //only when shift is pressed do we activate multi-column sort
-        if (!$event?.shiftKey) this.sort = {[name]: this.sort[name]};
+        if (!$event || ! $event.shiftKey) this.sort = {[name]: this.sort[name]};
 
         if (this.columnMap[name]) {
             const headerDef = this.columnMap[name];

@@ -8,13 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    BSON_BINARY_SUBTYPE_BYTE_ARRAY,
-    BSON_BINARY_SUBTYPE_UUID,
-    BSONType,
-    digitByteSize,
-    TWO_PWR_32_DBL_N
-} from './utils';
+import { BSON_BINARY_SUBTYPE_BYTE_ARRAY, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils';
 import { buildStringDecoder, decodeUTF8 } from './strings';
 import { nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap } from '@deepkit/type';
 import { hexTable } from './model';
@@ -257,7 +251,7 @@ const stringParser = buildStringDecoder(32);
  * This is way faster than BaseParser when property names are mainly ascii (which is usually the case).
  */
 export class ParserV2 extends BaseParser {
-    
+
     eatObjectPropertyName() {
         let end = this.offset;
         let simple = true;
@@ -287,7 +281,7 @@ export class ParserV2 extends BaseParser {
     eatString(size: number): string {
         // const s = stringParser(this.buffer, this.offset, this.offset + size);
         let s = '';
-        if (size > 64 && 'undefined' !== typeof Buffer) {
+        if (size > 64 && 'undefined' !== typeof Buffer && 'function' === typeof Buffer.from) {
             s = Buffer.from(this.buffer.buffer, this.buffer.byteOffset + this.offset, size - 1).toString('utf8');
         } else {
             s = stringParser(this.buffer, this.offset, this.offset + size);

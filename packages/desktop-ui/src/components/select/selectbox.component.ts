@@ -198,7 +198,7 @@ export class SelectboxComponent<T> extends ValueAccessorBase<T | NotSelected> im
     }
 
     open() {
-        this.dropdown?.open();
+        if (this.dropdown) this.dropdown.open();
     }
 
     async writeValue(value?: T | NotSelected): Promise<void> {

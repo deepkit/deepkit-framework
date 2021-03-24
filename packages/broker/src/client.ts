@@ -8,13 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BSONDecoder, BSONSerializer, getBSONDecoder, getBSONSerializer } from "@deepkit/bson";
-import { arrayRemoveItem, asyncOperation, ClassType } from "@deepkit/core";
-import { AsyncSubscription } from "@deepkit/core-rxjs";
-import { createRpcMessage, RpcBaseClient, RpcDirectClientAdapter, RpcMessage, RpcMessageRouteType } from "@deepkit/rpc";
-import { ClassSchema, FieldDecoratorResult, getClassSchema, isFieldDecorator, PropertySchema, t } from "@deepkit/type";
-import { BrokerKernel } from "./kernel";
-import { brokerDelete, brokerEntityFields, brokerGet, brokerIncrement, brokerLock, brokerLockId, brokerPublish, brokerResponseGet, brokerResponseIncrement, brokerResponseIsLock, brokerResponseSubscribeMessage, brokerSet, brokerSubscribe, BrokerType } from "./model";
+import { BSONDecoder, BSONSerializer, getBSONDecoder, getBSONSerializer } from '@deepkit/bson';
+import { arrayRemoveItem, asyncOperation, ClassType } from '@deepkit/core';
+import { AsyncSubscription } from '@deepkit/core-rxjs';
+import { createRpcMessage, RpcBaseClient, RpcDirectClientAdapter, RpcMessage, RpcMessageRouteType } from '@deepkit/rpc';
+import { ClassSchema, FieldDecoratorResult, getClassSchema, isFieldDecorator, PropertySchema, t } from '@deepkit/type';
+import { BrokerKernel } from './kernel';
+import { brokerDelete, brokerEntityFields, brokerGet, brokerIncrement, brokerLock, brokerLockId, brokerPublish, brokerResponseIncrement, brokerResponseIsLock, brokerResponseSubscribeMessage, brokerSet, brokerSubscribe, BrokerType } from './model';
 
 export class BrokerChannel<T> {
     protected listener: number = 0;
@@ -238,11 +238,11 @@ export class BrokerClient extends RpcBaseClient {
         });
     }
 
-    /** 
+    /**
      * Tries to lock an id on the broker. If the id is already locked, it returns immediately undefined without locking anything
-     * 
+     *
      * ttl (time to life) defines how long the given lock is allowed to stay active. Per default each lock is automatically unlocked
-     * after 30 seconds. If you haven't released the lock until then, another lock aquisition is allowed to receive it anyways.
+     * after 30 seconds. If you haven't released the lock until then, another lock acquisition is allowed to receive it anyways.
      * ttl of 0 disables ttl and keeps the lock alive until you manually unlock it (or the process dies).
     */
     public async tryLock(id: string, ttl: number = 30): Promise<AsyncSubscription | undefined> {
@@ -262,12 +262,12 @@ export class BrokerClient extends RpcBaseClient {
         throw new Error(`Invalid message returned. Expected Lock, but got ${message.type}`);
     }
 
-    /** 
+    /**
      * Locks an id on the broker. If the id is already locked, it waits until it is released. If timeout is specified,
-     * the lock acquisation should take maximum `timeout` seconds. 0 means it waits without limit.
-     * 
+     * the lock acquisition should take maximum `timeout` seconds. 0 means it waits without limit.
+     *
      * ttl (time to life) defines how long the given lock is allowed to stay active. Per default each lock is automatically unlocked
-     * after 30 seconds. If you haven't released the lock until then, another lock aquisition is allowed to receive it anyways.
+     * after 30 seconds. If you haven't released the lock until then, another lock acquisition is allowed to receive it anyways.
      * ttl of 0 disables ttl and keeps the lock alive until you manually unlock it (or the process dies).
     */
     public async lock(id: string, ttl: number = 30, timeout: number = 0): Promise<AsyncSubscription> {

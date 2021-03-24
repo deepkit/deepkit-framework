@@ -10,17 +10,9 @@
 
 // copied from @deepkit/type-angular, as long as it doesnt compile
 
-import { AbstractControl, FormArray, FormControl, FormGroup, ValidationErrors, ValidatorFn } from '@angular/forms';
+import { AbstractControl, AbstractControlOptions, AsyncValidatorFn, FormArray, FormControl, FormGroup, ValidationErrors, ValidatorFn } from '@angular/forms';
 import { ClassType, isFunction } from '@deepkit/core';
-import {
-    getClassSchema,
-    handleCustomValidator,
-    jitValidateProperty,
-    PropertySchema,
-    PropertyValidator,
-    PropertyValidatorError,
-    ValidationFailedItem
-} from '@deepkit/type';
+import { getClassSchema, handleCustomValidator, jitValidateProperty, PropertySchema, PropertyValidator, PropertyValidatorError, ValidationFailedItem } from '@deepkit/type';
 import { Subscription } from 'rxjs';
 
 export function requiredIfValidator(predicate: () => boolean, validator: ValidatorFn): any {
@@ -283,50 +275,57 @@ export class TypedFormGroup<T extends object> extends FormGroup {
     public typedValue?: T;
     protected lastSyncSub?: Subscription;
 
+    public value: T | undefined;
+
     get typedControls(): Controls<T> {
         return this.controls as any;
     }
 
-    // @ts-ignore
-    get value(): T {
-        return this.typedValue!;
-    }
+    constructor(controls: { [p: string]: AbstractControl }, validatorOrOpts?: ValidatorFn | ValidatorFn[] | AbstractControlOptions | null, asyncValidator?: AsyncValidatorFn | AsyncValidatorFn[] | null) {
+        super(controls, validatorOrOpts, asyncValidator);
 
-    set value(v: T) {
-        if (this.classType && v instanceof this.classType) {
-            if (!this.typedValue || this.typedValue !== v) {
-                // is needed since angular wont set `this.value` to `value`, but it simply iterates.
-                // we need however the actual reference.
-                this.typedValue = v;
-            }
+        Object.defineProperty(this, 'value', {
+            get(): any {
+                return this.typedValue;
+            },
+            set(v: T[]): void {
+                if (this.classType && v instanceof this.classType) {
+                    if (!this.typedValue || this.typedValue !== v) {
+                        // is needed since angular wont set `this.value` to `value`, but it simply iterates.
+                        // we need however the actual reference.
+                        this.typedValue = v;
+                    }
 
-            if (this.lastSyncSub) {
-                this.lastSyncSub.unsubscribe();
-            }
+                    if (this.lastSyncSub) {
+                        this.lastSyncSub.unsubscribe();
+                    }
 
-            for (const [name, control] of Object.entries(this.controls)) {
-                // const control = this.controls[i as keyof T & string];
-                if (control instanceof TypedFormArray) {
-                    control.setRefValue((v as any)[name]);
+                    for (const [name, control] of Object.entries(this.controls)) {
+                        // const control = this.controls[i as keyof T & string];
+                        if (control instanceof TypedFormArray) {
+                            control.setRefValue((v as any)[name]);
+                        } else {
+                            (control as any).setValue((v as any)[name]);
+                        }
+                    }
+
+                    // this comes after `setValue` so we don't get old values
+                    this.lastSyncSub = this.valueChanges.subscribe(() => {
+                        this.updateEntity(v);
+                        this.updateValueAndValidity({ emitEvent: false });
+                    });
+                    this.updateValueAndValidity();
                 } else {
-                    control.setValue((v as any)[name]);
+                    // angular tries to set via _updateValue() `this.value` again using `{}`, which we simply ignore.
+                    // except when its resetted
+                    if (v === undefined) {
+                        this.typedValue = undefined;
+                        this.updateValueAndValidity();
+                    }
                 }
             }
+        });
 
-            // this comes after `setValue` so we don't get old values
-            this.lastSyncSub = this.valueChanges.subscribe(() => {
-                this.updateEntity(v);
-                this.updateValueAndValidity({ emitEvent: false });
-            });
-            this.updateValueAndValidity();
-        } else {
-            // angular tries to set via _updateValue() `this.value` again using `{}`, which we simply ignore.
-            // except when its resetted
-            if (v === undefined) {
-                this.typedValue = undefined;
-                this.updateValueAndValidity();
-            }
-        }
     }
 
     static fromEntityClass<T extends object>(
