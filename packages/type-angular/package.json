@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/type-angular",
-  "version": "1.0.1-alpha.26",
+  "version": "1.0.1-alpha.27",
   "description": "Types angular forms",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,8 +21,8 @@
   "devDependencies": {
     "@angular/core": "~10.2.3 || ~11.0.0",
     "@angular/forms": "~10.2.3 || ~11.0.0",
-    "@deepkit/core": "^1.0.1-alpha.26",
-    "@deepkit/type": "^1.0.1-alpha.26",
+    "@deepkit/core": "^1.0.1-alpha.27",
+    "@deepkit/type": "^1.0.1-alpha.27",
     "reflect-metadata": "^0.1.13",
     "rxjs": "~6.6.0"
   },
@@ -33,5 +33,6 @@
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]
-  }
+  },
+  "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
 }

@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/desktop-ui",
-  "version": "1.0.1-alpha.26",
+  "version": "1.0.1-alpha.27",
   "description": "Library for desktop UI widgets in Angular 10+",
   "keywords": [
     "Desktop",
@@ -76,5 +76,6 @@
     "webpack": "^4.41.5",
     "webpack-cli": "^3.3.10",
     "zone.js": "~0.10.3"
-  }
+  },
+  "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
 }
