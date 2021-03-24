@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/type-angular",
-  "version": "1.0.1-alpha.25",
+  "version": "1.0.1-alpha.26",
   "description": "Types angular forms",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,16 +13,16 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.19",
-    "@deepkit/type": "^1.0.1-alpha.19",
     "@angular/core": "~10.2.3 || ~11.0.0",
-    "@angular/forms": "~10.2.3 || ~11.0.0"
+    "@angular/forms": "~10.2.3 || ~11.0.0",
+    "@deepkit/core": "^1.0.1-alpha.19",
+    "@deepkit/type": "^1.0.1-alpha.19"
   },
   "devDependencies": {
     "@angular/core": "~10.2.3 || ~11.0.0",
     "@angular/forms": "~10.2.3 || ~11.0.0",
-    "@deepkit/core": "^1.0.1-alpha.25",
-    "@deepkit/type": "^1.0.1-alpha.25",
+    "@deepkit/core": "^1.0.1-alpha.26",
+    "@deepkit/type": "^1.0.1-alpha.26",
     "reflect-metadata": "^0.1.13",
     "rxjs": "~6.6.0"
   },
