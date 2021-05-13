@@ -84,6 +84,7 @@ export class HttpKernel {
         } catch (error) {
             if (!res.headersSent) res.status(500);
 
+            throw error;
             this.logger.error('HTTP kernel request failed', error);
         } finally {
             frame?.data({responseStatus: res.statusCode});

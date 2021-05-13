@@ -17,7 +17,14 @@ function createHttpKernel(controllers: ClassType[], providers: ProviderWithScope
     const tagProviders = new TagProviders();
     for (const provider of providers) if (provider instanceof Tag) tagProviders.tags.push(provider);
     const router = Router.forControllers(controllers, tagProviders);
-    const injector = InjectorContext.forProviders([{ provide: Router, useValue: router }, ...controllers, HttpListener, Logger, ...providers]);
+    const injector = InjectorContext.forProviders([
+        { provide: Router, useValue: router },
+        ...controllers,
+        ...providers,
+        HttpListener,
+        Logger,
+        Stopwatch
+    ]);
     const eventDispatcher = new EventDispatcher(injector);
     eventDispatcher.registerListener(HttpListener);
     return new HttpKernel(router, eventDispatcher, injector, new Logger(), new Stopwatch());

@@ -175,7 +175,7 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
                 if (!(event instanceof ${eventTypeVar})) {
                     throw new Error(\`State ${place} got the wrong event. Expected ${getClassName(eventType)}, got \${getClassName(event)}\`);
                 }
-                const frame = stopwatch ? stopwatch.start(${JSON.stringify(stopWatchId)}) : undefined;
+                const frame = stopwatch && stopwatch.active ? stopwatch.start(${JSON.stringify(stopWatchId)}) : undefined;
 
                 ${listenerCode.join('\n')}
 
