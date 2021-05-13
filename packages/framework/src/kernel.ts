@@ -27,14 +27,15 @@ import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { DeepkitRpcSecurity } from './rpc';
 import { SessionHandler } from './session';
 import { WebWorkerFactory } from './worker';
-import { Stopwatch, Zone } from '@deepkit/stopwatch';
+import { Stopwatch } from '@deepkit/stopwatch';
 import { OrmBrowserController } from './orm-browser/controller';
 import { DatabaseListener } from './database/database-listener';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
-import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql';
+import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
 import { AppModule } from '@deepkit/app';
 import { FileStopwatchStore } from './debug/stopwatch/store';
 import { DebugDebugFramesCommand } from './cli/debug-debug-frames';
+import { Zone } from './zone';
 
 export const KernelModule = new AppModule({
     config: kernelConfig,

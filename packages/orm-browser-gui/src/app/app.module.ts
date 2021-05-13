@@ -23,8 +23,6 @@ import { OverlayModule } from '@angular/cdk/overlay';
 import { FormsModule } from '@angular/forms';
 import { OrmBrowserModule } from './orm-browser.module';
 import { RouterModule } from '@angular/router';
-import { DatabaseComponent } from './views/database.component';
-import { DatabaseBrowserComponent } from './views/database-browser.component';
 
 @NgModule({
     declarations: [
@@ -34,8 +32,7 @@ import { DatabaseBrowserComponent } from './views/database-browser.component';
         BrowserModule,
         FormsModule,
         OverlayModule,
-        RouterModule.forRoot([
-        ]),
+        RouterModule.forRoot([]),
         OrmBrowserModule.forRoot(),
 
         DuiAppModule.forRoot(),

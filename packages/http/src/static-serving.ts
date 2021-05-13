@@ -81,7 +81,7 @@ export function registerStaticHttpController(module: AppModule<any, any>, path: 
     let indexHtml = '';
 
     @http.controller(path)
-    class HttpDebugController {
+    class StaticController {
         @http.GET(':any').regexp('any', '[^\.]*')
         serviceApp(any: string) {
             if (!indexHtml) indexHtml = loadHtml(localPath, path);
@@ -89,6 +89,6 @@ export function registerStaticHttpController(module: AppModule<any, any>, path: 
         }
     }
 
-    module.addController(HttpDebugController);
+    module.addController(StaticController);
     module.addListener(serveStaticListener(path, localPath));
 }

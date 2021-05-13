@@ -45,7 +45,7 @@ import { ProfileComponent } from './views/profile/profile.component';
         FormsModule,
         RouterModule.forRoot([]),
 
-        OrmBrowserModule,
+        OrmBrowserModule.forRoot(),
         DuiAppModule.forRoot(),
         DuiWindowModule.forRoot(),
         OverlayModule,

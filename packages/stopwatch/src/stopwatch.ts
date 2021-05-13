@@ -7,12 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { performance } from 'perf_hooks';
-import cluster from 'cluster';
-import { SimpleStore, Zone } from './zone';
 import { FrameCategory, FrameCategoryModel, FrameData, FrameEnd, FrameStart, FrameType } from './types';
 
-export class StopwatchStore {
+export abstract class StopwatchStore {
     public frameQueue: (FrameStart | FrameEnd)[] = [];
     public dataQueue: FrameData[] = [];
 
@@ -20,14 +17,19 @@ export class StopwatchStore {
 
     }
 
+    abstract run<T>(data: { [name: string]: any }, cb: () => Promise<T>): Promise<T>
+
+    abstract getZone(): { [name: string]: any } | undefined;
+
     data(data: FrameData) {
         this.dataQueue.push(data);
         this.sync();
     }
 
-    add(frame: FrameStart | FrameEnd) {
+    add(frame: FrameStart | FrameEnd): number {
         this.frameQueue.push(frame);
         this.sync();
+        return 0;
     }
 }
 
@@ -46,12 +48,12 @@ export class StopwatchFrame<C extends FrameCategory & keyof FrameCategoryModel> 
     }
 
     end() {
-        this.store.add({ id: this.id, type: FrameType.end, worker: this.worker, timestamp: Math.floor(performance.timeOrigin * 1_000 + performance.now() * 1_000) });
+        this.store.add({ id: this.id, type: FrameType.end, worker: this.worker, timestamp: 0 });
     }
 
-    run<T>(data: SimpleStore, cb: () => Promise<T>): Promise<T> {
+    run<T>(data: { [name: string]: any }, cb: () => Promise<T>): Promise<T> {
         data.stopwatchContextId = this.context;
-        return Zone.run(data, cb);
+        return this.store.run(data, cb);
     }
 }
 
@@ -83,9 +85,8 @@ export class Stopwatch {
         if (!this.active || !this.store) throw new Error('Stopwatch not active');
 
         const id = ++frameId;
-        const worker = cluster.isWorker ? cluster.worker.id : 0;
         let context: number = 0;
-        const zone = Zone.current();
+        const zone = this.store.getZone();
 
         if (newContext || !zone) {
             context = ++contextId;
@@ -94,7 +95,10 @@ export class Stopwatch {
             if (!context) throw new Error('No Stopwatch context given');
         }
 
-        this.store.add({ id, type: FrameType.start, worker, category, context: context, label, timestamp: Math.floor(performance.timeOrigin * 1_000 + performance.now() * 1_000) });
+        const worker = this.store.add({
+            id, type: FrameType.start, worker: 0, category,
+            context: context, label, timestamp: 0,
+        });
 
         return new StopwatchFrame(this.store, context, category, id, worker);
     }

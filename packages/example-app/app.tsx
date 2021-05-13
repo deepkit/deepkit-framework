@@ -8,9 +8,10 @@ import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { entity, sliceClass, t } from '@deepkit/type';
 import { Website } from './views/website';
+import { cli, Command } from '@deepkit/app';
 
 @entity.name('user')
-class User {
+export class User {
     @t.primary.autoIncrement id: number = 0;
     @t created: Date = new Date;
 
@@ -20,13 +21,24 @@ class User {
     }
 }
 
-class SQLiteDatabase extends Database {
+export class SQLiteDatabase extends Database {
     constructor() {
         super(new SQLiteDatabaseAdapter('/tmp/myapp.sqlite'), [User]);
     }
 }
 
 class AddUserDto extends sliceClass(User).exclude('id', 'created') {
+}
+
+@cli.controller('test')
+export class TestCommand implements Command {
+    constructor(protected logger: Logger, protected database: SQLiteDatabase) {
+    }
+    async execute(): Promise<any> {
+        this.logger.log('Loading users ...');
+        const users = await this.database.query(User).find();
+        console.table(users);
+    }
 }
 
 @injectable()
@@ -100,7 +112,7 @@ class HelloWorldController {
 }
 
 Application.create({
-    controllers: [HelloWorldController],
+    controllers: [HelloWorldController, TestCommand],
     imports: [
         KernelModule.configure({
             workers: 1, debug: true, publicDir: 'public', httpLog: false,

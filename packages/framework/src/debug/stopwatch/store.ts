@@ -1,4 +1,4 @@
-import { FrameType, StopwatchStore } from '@deepkit/stopwatch';
+import { FrameEnd, FrameStart, FrameType, StopwatchStore } from '@deepkit/stopwatch';
 import { openSync, readFileSync, write } from 'fs';
 import { join } from 'path';
 import { decodeFrames, encodeFrameData, encodeFrames } from '@deepkit/framework-debug-api';
@@ -7,9 +7,12 @@ import { Broker } from '../../broker/broker';
 import { kernelConfig } from '../../kernel.config';
 import { injectable } from '@deepkit/injector';
 import { t } from '@deepkit/type';
+import { Zone } from '../../zone';
+import cluster from 'cluster';
+import { performance } from 'perf_hooks';
 
-
-class Config extends kernelConfig.slice(['varPath', 'debugStorePath']) {}
+class Config extends kernelConfig.slice(['varPath', 'debugStorePath']) {
+}
 
 @injectable()
 export class FileStopwatchStore extends StopwatchStore {
@@ -28,6 +31,21 @@ export class FileStopwatchStore extends StopwatchStore {
         protected broker: Broker,
     ) {
         super();
+    }
+
+    run<T>(data: { [name: string]: any }, cb: () => Promise<T>): Promise<T> {
+        return Zone.run(data, cb);
+    }
+
+    getZone(): { [name: string]: any } | undefined {
+        return Zone.current();
+    }
+
+    add(frame: FrameStart | FrameEnd): number {
+        frame.worker = cluster.isWorker ? cluster.worker.id : 0;
+        frame.timestamp = Math.floor(performance.timeOrigin * 1_000 + performance.now() * 1_000);
+        super.add(frame);
+        return frame.worker;
     }
 
     protected async loadLastNumberRange() {

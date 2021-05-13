@@ -10,6 +10,10 @@
     ".": {
       "require": "./dist/cjs/index.js",
       "default": "./dist/esm/index.js"
+    },
+    "./commands": {
+      "require": "./dist/cjs/commands.js",
+      "default": "./dist/esm/commands.js"
     }
   },
   "bin": {

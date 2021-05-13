@@ -465,7 +465,7 @@ export class SQLPersistence extends DatabasePersistence {
     }
 
     release() {
-        this.connection?.release();
+        if (this.connection) this.connection.release();
     }
 
     protected prepareAutoIncrement(classSchema: ClassSchema, count: number) {

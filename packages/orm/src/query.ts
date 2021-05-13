@@ -16,6 +16,7 @@ import { DatabaseSession } from './database-session';
 import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event';
 import { DeleteResult, Entity, PatchResult } from './type';
 import { FieldName, FlattenIfArray, Replace, Resolve } from './utils';
+import { FrameCategory } from '@deepkit/stopwatch';
 
 export type SORT_ORDER = 'asc' | 'desc' | any;
 export type Sort<T extends Entity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
@@ -556,7 +557,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
             return await query.resolver.find(query.model) as Resolve<this>[];
         }
 
-        const frame = this.databaseSession.stopwatch.start(this.classSchema.getClassName() + ': Find');
+        const frame = this.databaseSession.stopwatch.start(this.classSchema.getClassName() + ': Find', FrameCategory.database);
         try {
             const query = await this.callQueryEvent();
             return await query.resolver.find(query.model) as Resolve<this>[];
