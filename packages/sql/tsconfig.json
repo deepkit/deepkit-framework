@@ -21,6 +21,7 @@
     "src",
     "tests",
     "main.ts",
+    "commands.ts",
     "index.ts"
   ],
   "references": [

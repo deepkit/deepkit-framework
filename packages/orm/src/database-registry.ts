@@ -32,6 +32,10 @@ export class DatabaseRegistry {
         if (!scopedContext) throw new Error('no scopedContext');
     }
 
+    setMigrateOnStartup(v: boolean) {
+        this.migrateOnStartup = v;
+    }
+
     /**
      * Reads database from a path. Imports the given paths
      * and looks for instantiated Database classes. All instantiated Database classes will be returned.
@@ -41,7 +45,11 @@ export class DatabaseRegistry {
      */
     readDatabase(paths: string[]) {
         Database.registry = [];
-        require('ts-node').register({
+
+        //we dont want to allow bundles to bundle ts-node
+        const n = 'ts' + '-node';
+        const r = require;
+        r(n).register({
             compilerOptions: {
                 experimentalDecorators: true
             }

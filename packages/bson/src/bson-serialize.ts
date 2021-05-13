@@ -45,7 +45,7 @@ export function uuidStringToByte(hex: string, index: number = 0): number {
     return hexToByte(hex, index, offset);
 }
 
-function stringByteLength(str: string): number {
+export function stringByteLength(str: string): number {
     if (!str) return 0;
     let size = 0;
     for (let i = 0; i < str.length; i++) {

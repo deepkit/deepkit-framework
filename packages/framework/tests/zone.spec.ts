@@ -1,5 +1,5 @@
 import { sleep } from '@deepkit/core';
-import { test, expect } from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import { Zone } from '../src/zone';
 
 
@@ -12,20 +12,20 @@ test('zone', async () => {
 
     promises.push(Zone.run({ sub: 1 }, async () => {
         await sleep(0.2);
-        expect(Zone.current().sub).toBe(1);
+        expect(Zone.current()?.sub).toBe(1);
     }));
 
     promises.push(Zone.run({ sub: 3 }, async () => {
         await sleep(0.2);
-        expect(Zone.current().sub).toBe(3);
+        expect(Zone.current()?.sub).toBe(3);
     }));
 
     promises.push(Zone.run({ sub: 2 }, async () => {
         await sleep(0.01);
-        expect(Zone.current().sub).toBe(2);
+        expect(Zone.current()?.sub).toBe(2);
         await new Promise<void>(async (resolve) => {
             await sleep(0.01);
-            expect(Zone.current().sub).toBe(2);
+            expect(Zone.current()?.sub).toBe(2);
             resolve();
         });
     }));

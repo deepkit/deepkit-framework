@@ -167,7 +167,7 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
                 }
             }
 
-            const stopWatchId = 'workflow/' + this.name + '/' + place;
+            const stopWatchId = this.name + '/' + place;
 
             lines.push(`
             case ${stateString}: {
@@ -175,11 +175,11 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
                 if (!(event instanceof ${eventTypeVar})) {
                     throw new Error(\`State ${place} got the wrong event. Expected ${getClassName(eventType)}, got \${getClassName(event)}\`);
                 }
-                if (stopwatch) stopwatch.start(${JSON.stringify(stopWatchId)});
+                const frame = stopwatch ? stopwatch.start(${JSON.stringify(stopWatchId)}) : undefined;
 
                 ${listenerCode.join('\n')}
 
-                if (stopwatch) stopwatch.end(${JSON.stringify(stopWatchId)});
+                if (frame) frame.end();
                 state.set(${stateString});
                 break;
             }

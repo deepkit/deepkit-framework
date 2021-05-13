@@ -465,7 +465,7 @@ export class SQLPersistence extends DatabasePersistence {
     }
 
     release() {
-        this.connection?.release();
+        if (this.connection) this.connection.release();
     }
 
     protected prepareAutoIncrement(classSchema: ClassSchema, count: number) {
@@ -486,12 +486,9 @@ export class SQLPersistence extends DatabasePersistence {
         if (batchSize > changeSets.length) {
             await this.batchUpdate(classSchema, changeSets);
         } else {
-            const promises: Promise<void>[] = [];
             for (let i = 0; i < changeSets.length; i += batchSize) {
-                promises.push(this.batchUpdate(classSchema, changeSets.slice(i, i + batchSize)));
+                await this.batchUpdate(classSchema, changeSets.slice(i, i + batchSize));
             }
-
-            await Promise.all(promises);
         }
     }
 

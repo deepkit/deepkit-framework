@@ -7,33 +7,99 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { performance } from 'perf_hooks';
+import { FrameCategory, FrameCategoryModel, FrameData, FrameEnd, FrameStart, FrameType } from './types';
+
+export abstract class StopwatchStore {
+    public frameQueue: (FrameStart | FrameEnd)[] = [];
+    public dataQueue: FrameData[] = [];
+
+    protected sync() {
+
+    }
+
+    abstract run<T>(data: { [name: string]: any }, cb: () => Promise<T>): Promise<T>
+
+    abstract getZone(): { [name: string]: any } | undefined;
+
+    data(data: FrameData) {
+        this.dataQueue.push(data);
+        this.sync();
+    }
+
+    add(frame: FrameStart | FrameEnd): number {
+        this.frameQueue.push(frame);
+        this.sync();
+        return 0;
+    }
+}
+
+export class StopwatchFrame<C extends FrameCategory & keyof FrameCategoryModel> {
+    constructor(
+        protected store: StopwatchStore,
+        public context: number,
+        public category: number,
+        public id: number,
+        public worker: number,
+    ) {
+    }
+
+    data(data: Partial<FrameCategoryModel[C]>) {
+        this.store.data({ id: this.id, category: this.category, worker: this.worker, data });
+    }
+
+    end() {
+        this.store.add({ id: this.id, type: FrameType.end, worker: this.worker, timestamp: 0 });
+    }
+
+    run<T>(data: { [name: string]: any }, cb: () => Promise<T>): Promise<T> {
+        data.stopwatchContextId = this.context;
+        return this.store.run(data, cb);
+    }
+}
+
+let frameId = 0;
+let contextId = 0;
 
 export class Stopwatch {
     public times: { [name: string]: { stack: number[], time: number } } = {};
 
-    public start(name: string) {
-        if (this.times[name]) {
-            this.times[name].stack.push(performance.now());
-        }
-        this.times[name] = { stack: [performance.now()], time: 0 };
+    /**
+     * It's active when there is a StopwatchStore attached.
+     * Per default its inactive.
+     */
+    public active = false;
+
+    constructor(
+        protected store?: StopwatchStore,
+    ) {
+        this.active = this.store !== undefined;
     }
 
-    public end(name: string) {
-        if (!this.times[name]) throw new Error(`Stopwatch item ${name} not started`);
+    /**
+     * Please check Stopwatch.active before using this method.
+     *
+     * When a new context is created, it's important to use StopwatchFrame.run() so that all
+     * sub frames are correctly assigned to the new context.
+     */
+    public start<C extends FrameCategory & keyof FrameCategoryModel>(label: string, category: C = FrameCategory.none as C, newContext: boolean = false): StopwatchFrame<C> {
+        if (!this.active || !this.store) throw new Error('Stopwatch not active');
 
-        const last = this.times[name].stack.pop();
-        if (last === undefined) return;
-        const diff = performance.now() - last;
-        this.times[name].time += diff;
-    }
+        const id = ++frameId;
+        let context: number = 0;
+        const zone = this.store.getZone();
 
-    getTimes(): { [name: string]: number } {
-        const result: { [name: string]: number } = {};
-        for (const [name, time] of Object.entries(this.times)) {
-            result[name] = time.time;
+        if (newContext || !zone) {
+            context = ++contextId;
+        } else {
+            context = zone.stopwatchContextId;
+            if (!context) throw new Error('No Stopwatch context given');
         }
 
-        return result;
+        const worker = this.store.add({
+            id, type: FrameType.start, worker: 0, category,
+            context: context, label, timestamp: 0,
+        });
+
+        return new StopwatchFrame(this.store, context, category, id, worker);
     }
 }

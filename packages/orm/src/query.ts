@@ -9,22 +9,14 @@
  */
 
 import { ClassType, empty } from '@deepkit/core';
-import {
-    Changes,
-    ChangesInterface,
-    ClassSchema,
-    ExtractPrimaryKeyType,
-    ExtractReferences,
-    getSimplePrimaryKeyHashGenerator,
-    PrimaryKeyFields,
-    PropertySchema
-} from '@deepkit/type';
+import { Changes, ChangesInterface, ClassSchema, ExtractPrimaryKeyType, ExtractReferences, getSimplePrimaryKeyHashGenerator, PrimaryKeyFields, PropertySchema } from '@deepkit/type';
 import { Subject } from 'rxjs';
 import { DatabaseAdapter } from './database-adapter';
 import { DatabaseSession } from './database-session';
 import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event';
 import { DeleteResult, Entity, PatchResult } from './type';
 import { FieldName, FlattenIfArray, Replace, Resolve } from './utils';
+import { FrameCategory } from '@deepkit/stopwatch';
 
 export type SORT_ORDER = 'asc' | 'desc' | any;
 export type Sort<T extends Entity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
@@ -259,7 +251,7 @@ export class BaseQuery<T extends Entity> {
         return c;
     }
 
-    /** 
+    /**
      * Sets the page size when `page(x)` is used.
     */
     itemsPerPage(value: number): this {
@@ -560,8 +552,18 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     }
 
     public async find(): Promise<Resolve<this>[]> {
-        const query = await this.callQueryEvent();
-        return await query.resolver.find(query.model) as Resolve<this>[];
+        if (!this.databaseSession.stopwatch.active) {
+            const query = await this.callQueryEvent();
+            return await query.resolver.find(query.model) as Resolve<this>[];
+        }
+
+        const frame = this.databaseSession.stopwatch.start(this.classSchema.getClassName() + ': Find', FrameCategory.database);
+        try {
+            const query = await this.callQueryEvent();
+            return await query.resolver.find(query.model) as Resolve<this>[];
+        } finally {
+            frame.end();
+        }
     }
 
     public async findOneOrUndefined(): Promise<T | undefined> {
@@ -637,7 +639,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
             }
         }
 
-        
+
         const patchResult: PatchResult<T> = {
             modified: 0,
             returning: {},

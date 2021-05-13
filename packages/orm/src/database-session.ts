@@ -11,33 +11,15 @@
 import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
 import { DatabaseValidationError, Entity } from './type';
 import { ClassType, CustomError, isArray } from '@deepkit/core';
-import {
-    ClassSchema,
-    getChangeDetector,
-    getClassSchema,
-    getClassTypeFromInstance,
-    getConverterForSnapshot,
-    getGlobalStore,
-    getPrimaryKeyExtractor,
-    GlobalStore,
-    isReference,
-    PrimaryKeyFields,
-    UnpopulatedCheck,
-    validate
-} from '@deepkit/type';
+import { ClassSchema, getChangeDetector, getClassSchema, getClassTypeFromInstance, getConverterForSnapshot, getGlobalStore, getPrimaryKeyExtractor, GlobalStore, isReference, PrimaryKeyFields, UnpopulatedCheck, validate } from '@deepkit/type';
 import { GroupArraySort } from '@deepkit/topsort';
 import { getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map';
 import { getClassSchemaInstancePairs } from './utils';
 import { HydratorFn, markAsHydrated } from './formatter';
 import { getReference } from './reference';
-import {
-    QueryDatabaseEmitter,
-    UnitOfWorkCommitEvent,
-    UnitOfWorkDatabaseEmitter,
-    UnitOfWorkEvent,
-    UnitOfWorkUpdateEvent
-} from './event';
+import { QueryDatabaseEmitter, UnitOfWorkCommitEvent, UnitOfWorkDatabaseEmitter, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event';
 import { DatabaseLogger } from './logger';
+import { Stopwatch } from '@deepkit/stopwatch';
 
 let SESSION_IDS = 0;
 
@@ -290,6 +272,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
         public readonly unitOfWorkEmitter: UnitOfWorkDatabaseEmitter = new UnitOfWorkDatabaseEmitter,
         public readonly queryEmitter: QueryDatabaseEmitter = new QueryDatabaseEmitter(),
         public logger: DatabaseLogger = new DatabaseLogger,
+        public stopwatch: Stopwatch = new Stopwatch(),
     ) {
         const queryFactory = this.adapter.queryFactory(this);
         this.query = queryFactory.createQuery.bind(queryFactory);

@@ -1,3 +1,3 @@
-# @deepkit/event
+# @deepkit/workflow
 
-Deepkit async event dispatcher.
+Deepkit workflow engine / finite state machine.

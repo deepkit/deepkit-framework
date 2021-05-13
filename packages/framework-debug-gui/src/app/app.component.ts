@@ -33,6 +33,7 @@ import { ControllerClient } from './client';
                                     icon="toggle_sidebar"></dui-button>
                     </dui-button-group>
 
+                    <dui-window-toolbar-container name="main"></dui-window-toolbar-container>
                     <dui-window-toolbar-container name="orm-browser"></dui-window-toolbar-container>
                 </dui-window-toolbar>
             </dui-window-header>
@@ -44,6 +45,7 @@ import { ControllerClient } from './client';
                         <dui-list-item routerLink="/http" [routerLinkExact]="true">HTTP</dui-list-item>
                         <dui-list-item routerLink="/rpc">RPC</dui-list-item>
                         <dui-list-item routerLink="/events">Events</dui-list-item>
+                        <dui-list-item routerLink="/timeline">Timeline</dui-list-item>
 
                         <dui-list-title>Database</dui-list-title>
                         <orm-browser-list></orm-browser-list>
@@ -106,7 +108,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     async ngOnInit() {
         this.databases = await this.controllerClient.debug.databases();
-        this.requests = await this.controllerClient.getHttpRequests();
+        // this.requests = await this.controllerClient.getHttpRequests();
         this.cd.detectChanges();
     }
 

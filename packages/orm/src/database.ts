@@ -20,6 +20,7 @@ import { Query } from './query';
 import { getReference } from './reference';
 import { Entity } from './type';
 import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint';
+import { Stopwatch } from '@deepkit/stopwatch';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -63,16 +64,18 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      */
     public readonly unitOfWorkEvents = new UnitOfWorkDatabaseEmitter();
 
+    public stopwatch: Stopwatch = new Stopwatch();
+
     /**
      * Creates a new DatabaseQuery instance which can be used to query data.
      *  - Entity instances ARE NOT cached or tracked.
      *
      * Use a DatabaseSession (createSession()) with its query() in your workflow to enable
      * identity map.
-     * 
+     *
      * ```typescript
      * const session = database.createSession();
-     * 
+     *
      * const item = await session.query(MyType).findOne();
      * item.name = 'changed';
      * session.commit(); //only necessary when you changed items received by this session
@@ -156,7 +159,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * ```
      */
     public createSession(): DatabaseSession<ADAPTER> {
-        return new DatabaseSession(this.adapter, this.unitOfWorkEvents, this.queryEvents, this.logger);
+        return new DatabaseSession(this.adapter, this.unitOfWorkEvents, this.queryEvents, this.logger, this.stopwatch);
     }
 
     /**
@@ -172,7 +175,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     /**
      * Creates a new reference.
-     * 
+     *
      * If you work with a DatabaseSession, use DatabaseSession.getReference instead to
      * maintain object identity.
      *

@@ -33,7 +33,6 @@ export const kernelConfig = new AppModuleConfig({
     debugUrl: t.string.default('_debug'),
     varPath: t.string.default('var/'),
     debugStorePath: t.string.default('debug/').description('Relative to {varPath} option'),
-    debugSqlitePath: t.string.default('debug/deepkit-debug.sqlite').description('Relative to {varPath} option'),
     httpLog: t.boolean.default(true),
 
     session: t.any.default(Session).description('The session ClassType'),

@@ -42,7 +42,6 @@ import { JsonCellComponent } from './components/cell/json-cell.component';
 import { BinaryInputComponent } from './components/edit/binary-input.component';
 import { BinaryCellComponent } from './components/cell/binary-cell.component';
 import { BrowserCellComponent } from './components/browser-cell.component';
-import { DeepkitClient } from '@deepkit/rpc';
 import { FormsModule } from '@angular/forms';
 import { BrowserState } from './browser-state';
 import { Registry } from './registry';
@@ -153,10 +152,10 @@ export class OrmBrowserModule {
         return {
             ngModule: OrmBrowserModule,
             providers: [
-                {
-                    provide: DeepkitClient,
-                    useFactory: () => new DeepkitClient('ws://' + ControllerClient.getServerHost())
-                }
+                // {
+                //     provide: DeepkitClient,
+                //     useFactory: () => new DeepkitClient('ws://' + ControllerClient.getServerHost())
+                // }
             ]
         };
     }

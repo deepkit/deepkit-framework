@@ -1,12 +1,11 @@
-import { inject, injectable, InjectorContext, MemoryInjector } from '@deepkit/injector';
+import { injectable, InjectorContext, MemoryInjector } from '@deepkit/injector';
 import { Router } from './router';
 import { EventDispatcher } from '@deepkit/event';
 import { Logger } from '@deepkit/logger';
 import { HttpRequest, HttpResponse } from './model';
 import { Socket } from 'net';
 import { HttpRequestEvent, httpWorkflow } from './http';
-import { config } from './module.config';
-
+import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
 @injectable()
 export class HttpKernel {
@@ -15,7 +14,7 @@ export class HttpKernel {
         protected eventDispatcher: EventDispatcher,
         protected injectorContext: InjectorContext,
         protected logger: Logger,
-        @inject(config.token('debug')) protected debug: boolean = false,
+        protected stopwatch: Stopwatch,
     ) {
 
     }
@@ -72,32 +71,23 @@ export class HttpKernel {
             { provide: HttpResponse, useValue: res },
         ]));
 
-        //todo: How should we do that?
-        // const collector = this.debug ? httpInjectorContext.get(HttpRequestDebugCollector) : undefined;
-
-        // const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext, collector?.stopwatch);
-        const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext);
+        const frame = this.stopwatch.active ? this.stopwatch.start(req.getUrl(), FrameCategory.http, true) : undefined;
+        const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext, this.stopwatch);
 
         try {
-            // if (collector) {
-            //     await collector.init();
-            //     try {
-            //         collector.stopwatch.start('http');
-            //
-            //         //todo: How should we do that?
-            //         await Zone.run({ collector: collector }, async () => {
-            //             await workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res));
-            //         });
-            //         collector.stopwatch.end('http');
-            //     } finally {
-            //         await collector.save();
-            //     }
-            // } else {
+            if (frame) {
+                frame.data({url: req.getUrl(), method: req.getMethod(), clientIp: req.getRemoteAddress()});
+                await frame.run({}, () => workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res)));
+            } else {
                 await workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res));
-            // }
+            }
         } catch (error) {
+            if (!res.headersSent) res.status(500);
+
             this.logger.error('HTTP kernel request failed', error);
-            throw error;
+        } finally {
+            frame?.data({responseStatus: res.statusCode});
+            frame?.end();
         }
     }
 }
