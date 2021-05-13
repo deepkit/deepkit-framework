@@ -24,6 +24,7 @@
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/core-rxjs": "^1.0.1-alpha.13",
     "@deepkit/crypto": "^1.0.1-alpha.13",
+    "@deepkit/stopwatch": "^1.0.1-alpha.13",
     "@deepkit/rpc": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13"
   },
@@ -32,6 +33,7 @@
     "@deepkit/core": "^1.0.1-alpha.28",
     "@deepkit/core-rxjs": "^1.0.1-alpha.28",
     "@deepkit/crypto": "^1.0.1-alpha.28",
+    "@deepkit/stopwatch": "^1.0.1-alpha.28",
     "@deepkit/rpc": "^1.0.1-alpha.28",
     "@deepkit/type": "^1.0.1-alpha.28"
   },

@@ -28,6 +28,7 @@
   "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/injector": "^1.0.1-alpha.13",
+    "@deepkit/stopwatch": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13"
   },
   "dependencies": {
@@ -37,6 +38,7 @@
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.28",
     "@deepkit/injector": "^1.0.1-alpha.28",
+    "@deepkit/stopwatch": "^1.0.1-alpha.28",
     "@deepkit/type": "^1.0.1-alpha.28",
     "reflect-metadata": "^0.1.13"
   },
