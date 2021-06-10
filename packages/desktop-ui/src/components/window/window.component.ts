@@ -8,20 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ChangeDetectionStrategy,
-    ChangeDetectorRef,
-    Component,
-    ContentChild,
-    Inject,
-    Input,
-    OnChanges,
-    OnDestroy,
-    Optional,
-    SimpleChanges,
-    SkipSelf,
-    ViewContainerRef
-} from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChild, Inject, Input, OnChanges, OnDestroy, Optional, SimpleChanges, SkipSelf, ViewContainerRef } from '@angular/core';
 import { WindowContentComponent } from './window-content.component';
 import { WindowRegistry, WindowState } from './window-state';
 import { DOCUMENT } from '@angular/common';
@@ -51,6 +38,7 @@ export class WindowFrameComponent {
     styleUrls: ['./window.component.scss'],
     host: {
         '[class.in-dialog]': 'isInDialog()',
+        '[class.dui-body]': 'true',
     },
     changeDetection: ChangeDetectionStrategy.OnPush,
     providers: [

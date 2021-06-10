@@ -8,18 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ChangeDetectorRef,
-    Component,
-    ContentChild,
-    EventEmitter,
-    HostListener,
-    Input,
-    OnChanges,
-    Output,
-    SimpleChanges,
-    SkipSelf
-} from '@angular/core';
+import { ChangeDetectorRef, Component, ContentChild, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, SkipSelf } from '@angular/core';
 import { FormGroup, NgControl } from '@angular/forms';
 import { detectChangesNextFrame } from '../app';
 
@@ -45,7 +34,7 @@ export class FormRowComponent {
     @Input() label: string = '';
 
     @Input() labelWidth?: number;
-    @Input() left?: boolean | '' = false;
+    @Input() left: boolean | '' = false;
 
     @ContentChild(NgControl, {static: false}) ngControl?: NgControl;
 

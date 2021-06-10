@@ -8,19 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    AfterViewInit,
-    ChangeDetectorRef,
-    Component,
-    ContentChild,
-    ElementRef,
-    EventEmitter,
-    Input,
-    OnChanges,
-    Output,
-    SimpleChanges,
-    ViewChild
-} from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ContentChild, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { WindowSidebarComponent } from './window-sidebar.component';
 import { Subject } from 'rxjs';
 import { WindowState } from './window-state';
@@ -30,7 +18,7 @@ import { triggerResize } from '../../core/utils';
     selector: 'dui-window-content',
     template: `
         <div class="top-line"></div>
-        
+
         <div class="content {{class}}" #content>
             <ng-content></ng-content>
         </div>
@@ -40,7 +28,9 @@ import { triggerResize } from '../../core/utils';
              #sidebar *ngIf="toolbar" [class.hidden]="!sidebarVisible " [class.with-animation]="withAnimation"
              [style.width.px]="getSidebarWidth()">
             <div class="hider">
-                <div class="sidebar-container overlay-scrollbar-small" [style.width.px]="getSidebarWidth()"
+                <div class="sidebar-container overlay-scrollbar-small"
+                     [style.width.px]="getSidebarWidth()"
+                     [style.maxWidth.px]="getSidebarWidth()"
                      #sidebarContainer>
                     <ng-container [ngTemplateOutlet]="toolbar!.template"
                                   [ngTemplateOutletContext]="{}"></ng-container>

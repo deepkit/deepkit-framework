@@ -88,6 +88,10 @@ select {
     white-space: pre;
     overflow: hidden;
     text-overflow: ellipsis;
+
+    dui-icon {
+        overflow: visible;
+    }
 }
 
 .placeholder {

@@ -42,7 +42,7 @@ import { ButtonComponent } from './button.component';
     selector: 'dui-dropdown',
     template: `
         <ng-template #dropdownTemplate>
-            <div class="dui-dropdown" tabindex="1" #dropdown>
+            <div class="dui-body dui-dropdown" tabindex="1" #dropdown>
                 <!--                <div *ngIf="overlay !== false" class="dui-dropdown-arrow"></div>-->
                 <div class="content" [class.overlay-scrollbar-small]="scrollbars">
                     <ng-content></ng-content>

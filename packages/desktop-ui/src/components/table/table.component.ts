@@ -42,7 +42,7 @@ import { detectChangesNextFrame } from '../app/utils';
 import { findParentWithClass } from '../../core/utils';
 
 /**
- * Necessary directive to get information about the row item T in dui-table-column.
+ * Directive to allow dynamic content in a cell.
  *
  * ```html
  * <dui-table-column>
@@ -84,6 +84,7 @@ export class TableCustomRowContextMenuDirective {
 }
 
 /**
+ * Directive to allow dynamic content in a column header.
  *
  * ```html
  * <dui-table-column name="fieldName">
