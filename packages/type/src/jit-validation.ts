@@ -9,15 +9,7 @@
  */
 
 import { ClassType, isPlainObject } from '@deepkit/core';
-import {
-    ClassSchema,
-    getClassSchema,
-    getGlobalStore,
-    PropertySchema,
-    PropertyValidator,
-    UnpopulatedCheck,
-    unpopulatedSymbol
-} from './model';
+import { ClassSchema, getClassSchema, getGlobalStore, PropertySchema, PropertyValidator, UnpopulatedCheck, unpopulatedSymbol } from './model';
 import { executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry } from './jit-validation-registry';
 import { reserveVariable } from './serializer-compiler';
 import { JitStack, resolvePropertySchema } from './jit';
@@ -72,7 +64,7 @@ export function handleCustomValidator<T>(
     classType?: ClassType,
 ) {
     try {
-        validator.validate(value, propSchema.name, classType);
+        validator.validate(value, propSchema, classType);
     } catch (error) {
         if (error instanceof PropertyValidatorError) {
             errors.push(new ValidationFailedItem(propertyPath, error.code, error.message || String(error)));
@@ -116,7 +108,7 @@ export function getDataCheckerJS(
             rootContext.set(validatorsVar, instance);
             checks.push(`
             try {
-                ${validatorsVar}.validate(${accessor}, ${propertySchemaVar}.name, _classType);
+                ${validatorsVar}.validate(${accessor}, ${propertySchemaVar}, _classType);
             } catch (error) {
                 if (error instanceof PropertyValidatorError) {
                     _errors.push(new ValidationFailedItem(${path}, error.code, error.message || String(error)));
@@ -154,7 +146,7 @@ export function getDataCheckerJS(
                 } else {
                     _errors.push(new ValidationError(${path}, 'invalid_type', 'Type is not an array'));
                 }
-                
+
                 ${getCustomValidatorCode(`${accessor}`, `${path}`)}
             }
         `;
@@ -175,7 +167,7 @@ export function getDataCheckerJS(
                 } else {
                     _errors.push(new ValidationError(${path}, 'invalid_type', 'Type is not an object'));
                 }
-                
+
                 ${getCustomValidatorCode(`${accessor}`, `${path}`)}
             }
         `;
@@ -196,7 +188,7 @@ export function getDataCheckerJS(
             } else {
                 _errors.push(new ValidationError(${path}, 'invalid_type', 'Type is not an object'));
             }
-            
+
             ${getCustomValidatorCode(`${accessor}`, `${path}`)};
         }
         `;
@@ -212,7 +204,7 @@ export function getDataCheckerJS(
             } else {
                 ${executeCheckerCompiler(path, rootContext, jitStack, compiler, accessor, property)}
             }
-            
+
             ${getCustomValidatorCode(accessor, path)}
         }
         `;
@@ -253,7 +245,7 @@ export function jitValidateProperty(property: PropertySchema, classType?: ClassT
 
     const functionCode = `
         return function(_data, _path, _errors, _overwritePath) {
-            const _oldPopulatedCheck = _globalStore.unpopulatedCheck; 
+            const _oldPopulatedCheck = _globalStore.unpopulatedCheck;
             _globalStore.unpopulatedCheck = ReturnSymbol;
             _path = _path === undefined ? undefined : _path;
             _errors = _errors ? _errors : [];
@@ -325,7 +317,7 @@ export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>, jitStack: 
 
     const functionCode = `
         return function(_data, _path, _errors, _stack) {
-            const _oldPopulatedCheck = _globalStore.unpopulatedCheck; 
+            const _oldPopulatedCheck = _globalStore.unpopulatedCheck;
             _globalStore.unpopulatedCheck = ReturnSymbol;
             _path = _path ? _path + '.' : '';
             _errors = _errors || [];

@@ -104,7 +104,7 @@ export interface PropertyValidator {
     /**
      * @throws PropertyValidatorError when validation invalid
      */
-    validate<T>(value: any, propertyName: string, classType?: ClassType,): void;
+    validate<T>(value: any, property: PropertySchema, classType?: ClassType,): void;
 }
 
 export function isPropertyValidator(object: any): object is ClassType<PropertyValidator> {
@@ -951,7 +951,11 @@ export class ClassSchema<T = any> {
         this.properties.push(property);
     }
 
-    protected resetCache() {
+    /**
+     * Resets all cached data for this class schema.
+     * This includes all JIT generated functions, like serializer, change detector, and validator functions.
+     */
+    resetCache() {
         this.jit = {};
         this.primaryKeys = undefined;
         this.autoIncrements = undefined;

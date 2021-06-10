@@ -9,15 +9,7 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import {
-    BackReferenceOptions,
-    ClassSchema,
-    ForwardRefFn,
-    IndexOptions,
-    PropertySchema,
-    PropertyValidator,
-    ReferenceActions
-} from './model';
+import { BackReferenceOptions, ClassSchema, ForwardRefFn, IndexOptions, PropertySchema, PropertyValidator, ReferenceActions } from './model';
 import { BackReference, PrimaryKey, Reference } from './types';
 import { FlattenIfArray } from './utils';
 import { PlainSchemaProps } from './decorators';
@@ -26,7 +18,7 @@ import validator from 'validator';
 /**
  * @throws PropertyValidatorError when validation invalid
  */
-export type ValidatorFn = (value: any, propertyName: string, classType?: ClassType) => void;
+export type ValidatorFn = (value: any, property: PropertySchema, classType?: ClassType) => void;
 
 export interface FieldDecoratorResult<T> extends FieldDecoratorResultBase<T> {
     pattern(regex: RegExp): this;

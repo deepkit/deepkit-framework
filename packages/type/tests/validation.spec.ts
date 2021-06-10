@@ -1,17 +1,6 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {
-    getClassSchema,
-    jsonSerializer,
-    PropertyValidator,
-    PropertyValidatorError,
-    t,
-    validate,
-    validates,
-    validatesFactory,
-    ValidationFailed,
-    ValidationFailedItem
-} from '../index';
+import { getClassSchema, jsonSerializer, PropertySchema, PropertyValidator, PropertyValidatorError, t, validate, validates, validatesFactory, ValidationFailed, ValidationFailedItem } from '../index';
 import { CustomError, isPlainObject } from '@deepkit/core';
 import { fail } from 'assert';
 
@@ -206,6 +195,26 @@ test('test inline validator', async () => {
 
     expect(validate(Model, { id: '2' })).toEqual([]);
     expect(validate(Model, { id: '123456' })).toEqual([{ code: 'too_long', message: 'Too long', path: 'id' }]);
+});
+
+
+test('test inline validator PropertySchema', async () => {
+    function validator(value: string, property: PropertySchema) {
+        if (property.name !== 'id') throw new PropertyValidatorError('not_id', 'Only on id');
+    }
+
+    class Model1 {
+        @t.validator(validator)
+        id: string = '2';
+    }
+
+    class Model2 {
+        @t.validator(validator)
+        id2: string = '2';
+    }
+
+    expect(validate(Model1, { id: '2' })).toEqual([]);
+    expect(validate(Model2, { id: '2' })).toEqual([{ code: 'not_id', message: 'Only on id', path: 'id2' }]);
 });
 
 test('test uuid', async () => {

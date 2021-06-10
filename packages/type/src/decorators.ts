@@ -122,8 +122,8 @@ export function DatabaseName<T>(name: string) {
 
 export function createValidatorFromFunction(validator: ValidatorFn) {
     return class implements PropertyValidator {
-        validate<T>(value: any, propertyName: string, classType?: ClassType): PropertyValidatorError | undefined | void {
-            return validator(value, propertyName, classType);
+        validate<T>(value: any, property: PropertySchema, classType?: ClassType): PropertyValidatorError | undefined | void {
+            return validator(value, property, classType);
         }
     };
 }
