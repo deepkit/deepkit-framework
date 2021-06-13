@@ -7,9 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import 'reflect-metadata';
 import { asyncOperation, ClassType, CompilerContext } from '@deepkit/core';
-import { getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, jsonSerializer, PropertySchema, ValidationFailed, ValidationFailedItem } from '@deepkit/type';
+import { getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, jsonSerializer, PropertySchema, t, ValidationFailed, ValidationFailedItem } from '@deepkit/type';
 // @ts-ignore
 import formidable from 'formidable';
 import { IncomingMessage } from 'http';
@@ -17,17 +17,52 @@ import { join } from 'path';
 import querystring from 'querystring';
 import { httpClass } from './decorator';
 import { HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters } from './model';
-import { BasicInjector, injectable, NormalizedProvider, Tag } from '@deepkit/injector';
+import { BasicInjector, injectable, Tag, TagProvider, TagRegistry } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
-import { TagProviders } from '@deepkit/app';
 import { HttpControllers } from './controllers';
 
 export type RouteParameterResolverForInjector = ((injector: BasicInjector) => any[] | Promise<any[]>);
-type ResolvedController = { parameters: RouteParameterResolverForInjector, routeConfig: RouteConfig };
+type ResolvedController = { parameters: RouteParameterResolverForInjector, routeConfig: RouteConfig, uploadedFiles: {[name: string]: UploadedFile} };
 
+export class UploadedFile {
+    /**
+     * The size of the uploaded file in bytes.
+     */
+    @t.required size!: number;
 
-function parseBody(form: any, req: IncomingMessage) {
+    /**
+     * The path this file is being written to.
+     */
+    @t.required path!: string;
+
+    /**
+     * The name this file had according to the uploading client.
+     */
+    @t.string.required.nullable name!: string | null;
+
+    /**
+     * The mime type of this file, according to the uploading client.
+     */
+    @t.string.required.nullable type!: string | null;
+
+    /**
+     * A Date object (or `null`) containing the time this file was last written to.
+     * Mostly here for compatibility with the [W3C File API Draft](http://dev.w3.org/2006/webapi/FileAPI/).
+     */
+    @t.date.required.nullable lastModifiedDate!: Date | null;
+
+    // /**
+    //  * If `options.hash` calculation was set, you can read the hex digest out of this var.
+    //  */
+    // @t.string.required.nullable hash!: string | 'sha1' | 'md5' | 'sha256' | null;
+}
+
+function parseBody(form: any, req: IncomingMessage, files: {[name: string]: UploadedFile}) {
     return asyncOperation((resolve, reject) => {
+
+        form.on('file', (name: string, file: UploadedFile) => {
+            files[name] = file;
+        });
         form.parse(req, (err: any, fields: any, files: any) => {
             if (err) {
                 reject(err);
@@ -221,6 +256,8 @@ export function dotToUrlPath(dotPath: string): string {
 }
 
 export interface RouteParameterResolver {
+    supports?(classType: ClassType): boolean;
+
     resolve(context: RouteParameterResolverContext): any | Promise<any>;
 }
 
@@ -233,19 +270,7 @@ export interface RouteParameterResolverContext {
 }
 
 export class RouteParameterResolverTag extends Tag<RouteParameterResolver> {
-    public classTypes: ClassType[] = [];
 
-    constructor(
-        public provider: NormalizedProvider,
-    ) {
-        super(provider);
-        if (!this.provider.scope) provider.scope = 'http';
-    }
-
-    forClassType(...classTypes: ClassType[]): this {
-        this.classTypes = classTypes;
-        return this;
-    }
 }
 
 @injectable()
@@ -255,7 +280,7 @@ export class Router {
 
     protected routes: RouteConfig[] = [];
 
-    protected parameterResolverTags: RouteParameterResolverTag[] = [];
+    protected parameterResolverTags: TagProvider<RouteParameterResolverTag>[] = [];
 
     //todo, move some settings to KernelConfig
     protected form = formidable({
@@ -267,9 +292,9 @@ export class Router {
     constructor(
         controllers: HttpControllers,
         private logger: Logger,
-        tagProviders: TagProviders,
+        tagRegistry: TagRegistry,
     ) {
-        this.parameterResolverTags = tagProviders.getProviders(RouteParameterResolverTag);
+        this.parameterResolverTags = tagRegistry.resolve(RouteParameterResolverTag);
 
         for (const controller of controllers.controllers) this.addRouteForController(controller);
     }
@@ -278,8 +303,8 @@ export class Router {
         return this.routes;
     }
 
-    static forControllers(controllers: ClassType[], tagProviders: TagProviders = new TagProviders()): Router {
-        return new this(new HttpControllers(controllers), new Logger([], []), tagProviders);
+    static forControllers(controllers: ClassType[], tagRegistry: TagRegistry = new TagRegistry()): Router {
+        return new this(new HttpControllers(controllers), new Logger([], []), tagRegistry);
     }
 
     protected getRouteCode(compiler: CompilerContext, routeConfig: RouteConfig): string {
@@ -326,7 +351,7 @@ export class Router {
                         parameterValidator.push(`
                         ${bodyVar} = ${converterVar}(bodyFields);
                         ${validatorVar}(${bodyVar}, ${JSON.stringify(parameter.typePath || '')}, bodyErrors);
-                `);
+                        `);
                         setParameters.push(`parameters.${parameter.property.name} = ${bodyVar};`);
                         parameterNames.push(`parameters.${parameter.property.name}`);
                     } else if (parameter.query) {
@@ -346,20 +371,27 @@ export class Router {
                         const classTypeVar = compiler.reserveVariable('classType', classType);
 
                         for (const resolverTag of this.parameterResolverTags) {
-                            if (resolverTag.classTypes.includes(classType)) {
-                                const resolverProvideTokenVar = compiler.reserveVariable('resolverProvideToken', resolverTag.provider.provide);
-                                requiresAsyncParameters = true;
-                                if (!setParametersFromPath) {
-                                    for (const i in parsedRoute.pathParameterNames) {
-                                        setParametersFromPath += `parameters.${i} = _match[${1 + parsedRoute.pathParameterNames[i]}];`;
-                                    }
+                            const resolverProvideTokenVar = compiler.reserveVariable('resolverProvideToken', resolverTag.provider.provide);
+                            requiresAsyncParameters = true;
+                            if (!setParametersFromPath) {
+                                for (const i in parsedRoute.pathParameterNames) {
+                                    setParametersFromPath += `parameters.${i} = _match[${1 + parsedRoute.pathParameterNames[i]}];`;
                                 }
-                                setParameters.push(`parameters.${parameter.property.name} = await _injector.get(${resolverProvideTokenVar}).resolve(
-                                {classType: ${classTypeVar}, routeConfig: ${routeConfigVar}, request: request, query: _query, parameters: parameters}
-                            );`);
-                                parameterNames.push(`parameters.${parameter.property.name}`);
-                                continue params;
                             }
+                            const instance = compiler.reserveVariable('resolverInstance');
+                            setParameters.push(`
+                            ${instance} = _injector.get(${resolverProvideTokenVar});
+                            if (!${instance}.supports || ${instance}.supports(${classTypeVar})) {
+                                parameters.${parameter.property.name} = await ${instance}.resolve({
+                                    classType: ${classTypeVar},
+                                    routeConfig: ${routeConfigVar},
+                                    request: request,
+                                    query: _query,
+                                    parameters: parameters
+                                });
+                            }`);
+                            parameterNames.push(`parameters.${parameter.property.name}`);
+                            continue params;
                         }
 
                         setParameters.push(`parameters.${parameter.property.name} = _injector.get(${classTypeVar});`);
@@ -372,7 +404,9 @@ export class Router {
         if (enableParseBody) {
             const parseBodyVar = compiler.reserveVariable('parseBody', parseBody);
             const formVar = compiler.reserveVariable('form', this.form);
-            parseBodyLoading = `const bodyFields = (await ${parseBodyVar}(${formVar}, request)).fields;`;
+            parseBodyLoading = `
+            const bodyParsed = (await ${parseBodyVar}(${formVar}, request, uploadedFiles));
+            const bodyFields = {...bodyParsed.fields, ...bodyParsed.files};`;
             requiresAsyncParameters = true;
         }
 
@@ -400,7 +434,7 @@ export class Router {
         return `
             //=> ${path}
             if (_method === '${routeConfig.httpMethod.toLowerCase()}' && ${matcher}) {
-                return {routeConfig: ${routeConfigVar}, parameters: ${parameters}};
+                return {routeConfig: ${routeConfigVar}, parameters: ${parameters}, uploadedFiles: uploadedFiles};
             }
         `;
     }
@@ -483,6 +517,7 @@ export class Router {
             const _method = request.getMethod().toLowerCase();
             const _url = request.getUrl();
             const _qPosition = _url.indexOf('?');
+            let uploadedFiles = {};
             const _path = _qPosition === -1 ? _url : _url.substr(0, _qPosition);
             const _query = _qPosition === -1 ? {} : parseQueryString(_url.substr(_qPosition + 1));
             ${code.join('\n')}

@@ -6,16 +6,15 @@ import { t } from '@deepkit/type';
 import { HttpListener, JSONResponse } from '../src/http';
 import { HttpKernel } from '../src/kernel';
 import { EventDispatcher } from '@deepkit/event';
-import { InjectorContext, ProviderWithScope, Tag } from '@deepkit/injector';
+import { InjectorContext, ProviderWithScope, TagProvider, TagRegistry } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { HttpRequest } from '../src/model';
 import { ClassType } from '@deepkit/core';
-import { TagProviders } from '@deepkit/app';
 import { Stopwatch } from '@deepkit/stopwatch';
 
 function createHttpKernel(controllers: ClassType[], providers: ProviderWithScope[] = []) {
-    const tagProviders = new TagProviders();
-    for (const provider of providers) if (provider instanceof Tag) tagProviders.tags.push(provider);
+    const tagProviders = new TagRegistry();
+    for (const provider of providers) if (provider instanceof TagProvider) tagProviders.tags.push(provider);
     const router = Router.forControllers(controllers, tagProviders);
     const injector = InjectorContext.forProviders([
         { provide: Router, useValue: router },
@@ -142,9 +141,13 @@ test('router parameterResolver', async () => {
             if (!context.parameters.username) throw new Error('No :username specified');
             return new User(context.parameters.username);
         }
+
+        supports(classType: ClassType): boolean {
+            return classType === User;
+        }
     }
 
-    const httpKernel = createHttpKernel([Controller], [RouteParameterResolverTag.provide(MyRouteParameterResolver).forClassType(User)]);
+    const httpKernel = createHttpKernel([Controller], [RouteParameterResolverTag.provide(MyRouteParameterResolver)]);
 
     expect(await httpKernel.handleRequestFor('GET', '/user/peter')).toEqual(['peter']);
     expect(await httpKernel.handleRequestFor('GET', '/group')).toEqual('Internal error');

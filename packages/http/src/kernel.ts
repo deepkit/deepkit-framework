@@ -6,6 +6,7 @@ import { HttpRequest, HttpResponse } from './model';
 import { Socket } from 'net';
 import { HttpRequestEvent, httpWorkflow } from './http';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+import { unlink } from 'fs';
 
 @injectable()
 export class HttpKernel {
@@ -76,7 +77,7 @@ export class HttpKernel {
 
         try {
             if (frame) {
-                frame.data({url: req.getUrl(), method: req.getMethod(), clientIp: req.getRemoteAddress()});
+                frame.data({ url: req.getUrl(), method: req.getMethod(), clientIp: req.getRemoteAddress() });
                 await frame.run({}, () => workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res)));
             } else {
                 await workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res));
@@ -86,7 +87,12 @@ export class HttpKernel {
 
             this.logger.error('HTTP kernel request failed', error);
         } finally {
-            frame?.data({responseStatus: res.statusCode});
+            for (const file of Object.values(req.uploadedFiles)) {
+                unlink(file.path, () => {
+                });
+            }
+
+            frame?.data({ responseStatus: res.statusCode });
             frame?.end();
         }
     }

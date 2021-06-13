@@ -305,6 +305,7 @@ export class HttpListener {
 
         const resolved = this.router.resolveRequest(event.request);
         if (resolved) {
+            event.request.uploadedFiles = resolved.uploadedFiles;
             event.routeFound(resolved.routeConfig, resolved.parameters);
         }
     }
@@ -408,6 +409,7 @@ export class HttpListener {
         if (response === null || response === undefined) {
             event.response.end(response);
         } else if ('string' === typeof response) {
+            event.response.setHeader('Content-Type', 'text/plain; charset=utf-8');
             event.response.end(response);
         } else if (response instanceof Redirect) {
             if (response.routeName) {
