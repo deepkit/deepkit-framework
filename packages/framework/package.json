@@ -65,6 +65,7 @@
     "pirates": "^4.0.1",
     "selfsigned": "1.10.8",
     "sift": "^7.0.1",
+    "enhanced-resolve": "^5.8.2",
     "ws": "^7.4.2"
   },
   "devDependencies": {

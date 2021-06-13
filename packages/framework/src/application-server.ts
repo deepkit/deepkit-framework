@@ -109,6 +109,7 @@ export class ApplicationServer {
                     worker.kill();
                 }
             }
+            await this.shutdown();
         } else {
             await this.shutdown();
             if (this.worker) {
@@ -176,7 +177,7 @@ export class ApplicationServer {
         return this.worker;
     }
 
-    public createClient() {
+    public createClient(): RpcClient {
         const worker = this.getWorker();
         const context = this.rootScopedContext;
         const kernel = worker.rpcKernel;

@@ -24,7 +24,6 @@ import { HttpKernel, HttpListener, HttpLogger, HttpModule, Router, serveStaticLi
 import { InjectorContext, injectorReference } from '@deepkit/injector';
 import { kernelConfig } from './kernel.config';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
-import { DeepkitRpcSecurity } from './rpc';
 import { SessionHandler } from './session';
 import { WebWorkerFactory } from './worker';
 import { Stopwatch } from '@deepkit/stopwatch';
@@ -36,6 +35,8 @@ import { AppModule } from '@deepkit/app';
 import { FileStopwatchStore } from './debug/stopwatch/store';
 import { DebugDebugFramesCommand } from './cli/debug-debug-frames';
 import { Zone } from './zone';
+import { RpcKernelSecurity } from '@deepkit/rpc';
+import { AppConfigController } from './cli/app-config';
 
 export const KernelModule = new AppModule({
     config: kernelConfig,
@@ -48,8 +49,9 @@ export const KernelModule = new AppModule({
         ConsoleTransport,
         Stopwatch,
         Logger,
-        DeepkitRpcSecurity,
+        RpcKernelSecurity,
         MigrationProvider,
+        DebugController,
         { provide: DatabaseRegistry, deps: [InjectorContext], useFactory: (ic) => new DatabaseRegistry(ic) },
         { provide: LiveDatabase, scope: 'rpc' },
         { provide: HttpListener },
@@ -69,6 +71,7 @@ export const KernelModule = new AppModule({
         DebugRouterController,
         DebugDIController,
         DebugDebugFramesCommand,
+        AppConfigController,
 
         MigrationUpCommand,
         MigrationDownCommand,

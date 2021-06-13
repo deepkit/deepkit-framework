@@ -7,7 +7,6 @@ import * as faker from 'faker';
 import { SQLDatabaseAdapter } from '@deepkit/sql';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { performance } from 'perf_hooks';
-import { inspect } from 'util';
 import { http } from '@deepkit/http';
 
 @rpc.controller(BrowserControllerInterface)
@@ -117,7 +116,6 @@ export class OrmBrowserController implements BrowserControllerInterface {
     async seed(dbName: string, seed: SeedDatabase): Promise<void> {
         const db = this.getDb(dbName);
         db.logger.active = false;
-        console.log(inspect(seed, false, 2133));
 
         try {
             const session = db.createSession();

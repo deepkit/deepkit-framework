@@ -66,7 +66,7 @@ test('router parameterResolver', async () => {
     }
 
     const app = Application.create({
-        providers: [RouteParameterResolverTag.provide(MyRouteParameterResolver).forClassType(User)],
+        providers: [RouteParameterResolverTag.provide(MyRouteParameterResolver)],
         controllers: [Controller],
     });
     const httpHandler = app.get(HttpKernel);

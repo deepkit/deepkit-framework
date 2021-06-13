@@ -8,13 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection } from '@deepkit/rpc';
+import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity } from '@deepkit/rpc';
 import http, { Server } from 'http';
 import https from 'https';
 import WebSocket from 'ws';
 import { HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
 import { injectable, Injector, InjectorContext, Provider } from '@deepkit/injector';
-import { DeepkitRpcSecurity, RpcInjectorContext } from './rpc';
+import { RpcInjectorContext } from './rpc';
 import { RpcControllers } from './application-service-container';
 import { SecureContextOptions, TlsOptions } from 'tls';
 
@@ -95,7 +95,7 @@ export class WebWorkerFactory {
     }
 
     createRpcKernel() {
-        const security = this.rootScopedContext.get(DeepkitRpcSecurity);
+        const security = this.rootScopedContext.get(RpcKernelSecurity);
         const kernel = new RpcKernel(this.rootScopedContext, security);
 
         for (const [name, controller] of this.rpcControllers.controllers.entries()) {
