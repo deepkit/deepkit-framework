@@ -9,7 +9,20 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, FreeFluidDecorator, getClassSchema, getPropertyXtoClassFunction, jsonSerializer, PropertyApiTypeInterface, PropertySchema, t } from '@deepkit/type';
+import {
+    ClassDecoratorResult,
+    createClassDecoratorContext,
+    createPropertyDecoratorContext,
+    FreeFluidDecorator,
+    getClassSchema,
+    getPropertyXtoClassFunction,
+    jitValidateProperty,
+    jsonSerializer,
+    PropertyApiTypeInterface,
+    PropertySchema,
+    t,
+    ValidationFailedItem
+} from '@deepkit/type';
 import { Command as OclifCommandBase } from '@oclif/command';
 import { Command as OclifCommand } from '@oclif/config';
 import { args, flags } from '@oclif/parser';
@@ -74,6 +87,8 @@ export class ArgDecorator implements PropertyApiTypeInterface<ArgDefinition> {
 
         this.t.name = propertySchema.name;
         this.t.propertySchema = propertySchema;
+
+        if (this.t.optional) propertySchema.isOptional = true;
 
         const aBase = cli._fetch(Object.getPrototypeOf(classType.prototype)?.constructor);
         if (aBase) {
@@ -146,7 +161,19 @@ export function buildOclifCommand(classType: ClassType<Command>, rootScopedConte
     let converters = new Map<PropertySchema, (v: any) => any>();
 
     for (const property of argDefinitions.args) {
-        converters.set(property.propertySchema, getPropertyXtoClassFunction(property.propertySchema, jsonSerializer));
+        converters.set(property.propertySchema, (value: any) => {
+            value = getPropertyXtoClassFunction(property.propertySchema, jsonSerializer)(value);
+            const errors: ValidationFailedItem[] = [];
+            jitValidateProperty(property.propertySchema)(
+                value,
+                property.propertySchema.name,
+                errors
+            );
+            if (errors.length) {
+                throw errors[0];
+            }
+            return value;
+        });
     }
 
     for (const i in argDefinitions.args) {
@@ -184,17 +211,28 @@ export function buildOclifCommand(classType: ClassType<Command>, rootScopedConte
                     const methodArgs: any[] = [];
 
                     for (const property of argDefinitions!.args) {
-                        const v = converters.get(property.propertySchema)!(args[property.name] ?? flags[property.name]);
-                        if (property.propertySchema.methodName === 'execute') {
-                            methodArgs.push(v);
-                        } else if (!property.propertySchema.methodName) {
-                            if (v !== undefined) {
-                                instance[property.name as keyof typeof instance] = v;
+                        try {
+                            const v = converters.get(property.propertySchema)!(args[property.name] ?? flags[property.name]);
+                            if (property.propertySchema.methodName === 'execute') {
+                                methodArgs.push(v);
+                            } else if (!property.propertySchema.methodName) {
+                                if (v !== undefined) {
+                                    instance[property.name as keyof typeof instance] = v;
+                                }
                             }
+                        } catch (e) {
+                            if (e instanceof ValidationFailedItem) {
+                                console.log(`Validation error in ${e.path}: ${e.message} [${e.code}]`);
+                                this.exit(8);
+                                return;
+                            }
+                            console.log(e);
+                            this.exit(8);
                         }
                     }
 
-                    return instance.execute(...methodArgs);
+                    const exitCode = await instance.execute(...methodArgs);
+                    if (typeof exitCode === 'number') this.exit(exitCode);
                 }
             }
 
