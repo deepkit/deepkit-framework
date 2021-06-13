@@ -21,11 +21,16 @@ import { EnvConfiguration } from './configuration';
 
 export class CommandApplication<T extends ModuleOptions, C extends ServiceContainer<T> = ServiceContainer<T>> {
     constructor(
-        appModule: AppModule<T, any>,
+        public appModule: AppModule<T, any>,
         providers: ProviderWithScope<any>[] = [],
         imports: AppModule<any, any>[] = [],
         public readonly serviceContainer: ServiceContainer<T> = new ServiceContainer(appModule, providers, imports.slice(0))
     ) {
+    }
+
+    setup(...args: Parameters<this['appModule']['setup']>): this {
+        this.serviceContainer.appModule = (this.serviceContainer.appModule.setup as any)(...args as any[]);
+        return this;
     }
 
     configure(config: ModuleConfigOfOptions<T>): this {
@@ -135,11 +140,13 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
      * Application.run().loadConfigFromEnvVariable('APP_CONFIG').run();
      */
     loadConfigFromEnvVariable(variableName: string = 'APP_CONFIG'): this {
+        if (!process.env[variableName]) return this;
+
         let config = {};
         try {
             config = JSON.parse(process.env[variableName] || '');
         } catch (error) {
-            throw new Error(`Invalid JSON in env varibale ${variableName}. Parse error: ${error}`);
+            throw new Error(`Invalid JSON in env variable ${variableName}. Parse error: ${error}`);
         }
 
         this.configure(config as any);
