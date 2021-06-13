@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType } from '@deepkit/core';
+import { RpcAction } from '../decorators';
 
 export class Session {
     constructor(
@@ -22,32 +22,32 @@ export class Session {
     }
 }
 
-export class RpcKernelSecurity<T extends Session> {
-    async hasControllerAccess(session: T, classType: ClassType, method: string): Promise<boolean> {
+export class RpcKernelSecurity {
+    async hasControllerAccess(session: Session, action: RpcAction): Promise<boolean> {
         return true;
     }
 
-    async isAllowedToRegisterAsPeer(session: T, peerId: string): Promise<boolean> {
+    async isAllowedToRegisterAsPeer(session: Session, peerId: string): Promise<boolean> {
         return true;
     }
 
-    async isAllowedToSendToPeer(session: T, peerId: string): Promise<boolean> {
+    async isAllowedToSendToPeer(session: Session, peerId: string): Promise<boolean> {
         return true;
     }
 
-    async authenticate(token: any): Promise<T> {
+    async authenticate(token: any): Promise<Session> {
         throw new Error('Authentication not implemented');
     }
 }
 
-export class SessionState<T extends Session> {
-    protected session: T = new Session('anon', undefined) as T;
+export class SessionState {
+    protected session: Session = new Session('anon', undefined);
 
-    public setSession(session: T) {
+    public setSession(session: Session) {
         this.session = session;
     }
 
-    public getSession(): T {
+    public getSession(): Session {
         return this.session;
     }
 }

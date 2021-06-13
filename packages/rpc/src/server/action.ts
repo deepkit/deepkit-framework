@@ -30,7 +30,7 @@ import {
 } from '../model';
 import { rpcEncodeError, RpcMessage } from '../protocol';
 import { RpcMessageBuilder } from './kernel';
-import { RpcKernelSecurity, Session, SessionState } from './security';
+import { RpcKernelSecurity, SessionState } from './security';
 import { BasicInjector } from '@deepkit/injector';
 
 export type ActionTypes = {
@@ -77,8 +77,8 @@ export class RpcServerAction {
     constructor(
         protected controllers: Map<string, ClassType>,
         protected injector: BasicInjector,
-        protected security: RpcKernelSecurity<Session>,
-        protected sessionState: SessionState<Session>,
+        protected security: RpcKernelSecurity,
+        protected sessionState: SessionState,
     ) {
     }
 
@@ -120,16 +120,16 @@ export class RpcServerAction {
         if (!classType) {
             throw new Error(`No controller registered for id ${controller}`);
         }
+        const action = getActions(classType).get(method);
 
-        if (!await this.security.hasControllerAccess(this.sessionState.getSession(), classType, method)) {
+        if (!action) {
+            throw new Error(`Action unknown ${method}`);
+        }
+
+        if (!await this.security.hasControllerAccess(this.sessionState.getSession(), action)) {
             throw new Error(`Access denied to action ${method}`);
         }
 
-        const actions = getActions(classType);
-
-        if (!actions.has(method)) {
-            throw new Error(`Action unknown ${method}`);
-        }
 
         const parameters = getActionParameters(classType, method);
 

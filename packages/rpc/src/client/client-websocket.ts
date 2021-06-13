@@ -22,12 +22,17 @@ export class DeepkitClient extends RpcClient {
     }
 }
 
+declare var require: (module: string) => any;
+
 export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
     constructor(public url: string) {
     }
 
     public async connect(connection: TransportConnectionHooks) {
-        const socket = new WebSocket(this.url);
+        const wsPackage = 'ws';
+        const webSocketConstructor = 'undefined' === typeof WebSocket && require ? require(wsPackage) : WebSocket;
+
+        const socket = new webSocketConstructor(this.url);
         socket.binaryType = 'arraybuffer';
 
         socket.onmessage = (event: MessageEvent) => {

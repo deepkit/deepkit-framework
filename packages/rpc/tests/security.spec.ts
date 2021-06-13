@@ -13,7 +13,7 @@ test('authentication', async () => {
         }
     }
 
-    class MyKernelSecurity extends RpcKernelSecurity<Session> {
+    class MyKernelSecurity extends RpcKernelSecurity {
         async hasControllerAccess(session: Session) {
             return !session.isAnonymous();
         }

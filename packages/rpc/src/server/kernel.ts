@@ -28,7 +28,7 @@ import {
 } from '../protocol';
 import { RpcMessageWriter } from '../writer';
 import { RpcServerAction } from './action';
-import { RpcKernelSecurity, Session, SessionState } from './security';
+import { RpcKernelSecurity, SessionState } from './security';
 import { RpcActionClient, RpcControllerState } from '../client/action';
 import { RemoteController } from '../client/client';
 import { BasicInjector, Injector, MemoryInjector } from '@deepkit/injector';
@@ -292,7 +292,7 @@ export class RpcKernelConnections {
 
 export class RpcKernelConnection extends RpcKernelBaseConnection {
     public myPeerId?: string;
-    public sessionState = new SessionState<Session>();
+    public sessionState = new SessionState();
     protected actionHandler = new RpcServerAction(this.controllers, this.injector, this.security, this.sessionState);
 
     public routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client;
@@ -301,7 +301,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
         writer: RpcConnectionWriter,
         connections: RpcKernelConnections,
         protected controllers: Map<string, ClassType>,
-        protected security = new RpcKernelSecurity<Session>(),
+        protected security = new RpcKernelSecurity(),
         protected injector: BasicInjector,
         protected peerExchange: RpcPeerExchange,
     ) {
@@ -410,7 +410,7 @@ export class RpcKernel {
 
     constructor(
         injector?: BasicInjector,
-        protected security = new RpcKernelSecurity<Session>(),
+        protected security = new RpcKernelSecurity(),
     ) {
         if (injector) {
             this.injector = injector;
