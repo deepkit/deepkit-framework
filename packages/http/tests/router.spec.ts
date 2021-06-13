@@ -7,26 +7,31 @@ import { HttpListener, JSONResponse } from '../src/http';
 import { HttpKernel } from '../src/kernel';
 import { EventDispatcher } from '@deepkit/event';
 import { InjectorContext, ProviderWithScope, TagProvider, TagRegistry } from '@deepkit/injector';
-import { Logger } from '@deepkit/logger';
+import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { HttpRequest } from '../src/model';
 import { ClassType } from '@deepkit/core';
 import { Stopwatch } from '@deepkit/stopwatch';
 
 function createHttpKernel(controllers: ClassType[], providers: ProviderWithScope[] = []) {
     const tagProviders = new TagRegistry();
-    for (const provider of providers) if (provider instanceof TagProvider) tagProviders.tags.push(provider);
+    for (const provider of providers.slice(0)) {
+        if (provider instanceof TagProvider) {
+            providers.unshift(provider.provider);
+            tagProviders.tags.push(provider);
+        }
+    }
     const router = Router.forControllers(controllers, tagProviders);
     const injector = InjectorContext.forProviders([
         { provide: Router, useValue: router },
         ...controllers,
         ...providers,
         HttpListener,
-        Logger,
+        { provide: Logger, useValue: new Logger([new ConsoleTransport()]) },
         Stopwatch
     ]);
     const eventDispatcher = new EventDispatcher(injector);
     eventDispatcher.registerListener(HttpListener);
-    return new HttpKernel(router, eventDispatcher, injector, new Logger(), new Stopwatch());
+    return new HttpKernel(router, eventDispatcher, injector, new Logger([new ConsoleTransport()]), new Stopwatch());
 }
 
 test('router', async () => {
@@ -97,7 +102,7 @@ test('router parameters', async () => {
 
     expect(await httpKernel.handleRequestFor('GET', '/user/peter')).toBe('peter');
     expect(await httpKernel.handleRequestFor('GET', '/user-id/123')).toBe(123);
-    expect(await httpKernel.handleRequestFor('GET', '/user-id/asd')).toMatchObject({ message: 'Validation failed: id(No number given): invalid_number' });
+    expect(await httpKernel.handleRequestFor('GET', '/user-id/asd')).toMatchObject({ message: 'Validation failed: id(invalid_number): No number given' });
     expect(await httpKernel.handleRequestFor('GET', '/boolean/1')).toBe(true);
     expect(await httpKernel.handleRequestFor('GET', '/boolean/false')).toBe(false);
 

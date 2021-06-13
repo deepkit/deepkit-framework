@@ -31,7 +31,7 @@ test('router parameters', async () => {
 
     expect(await httpHandler.handleRequestFor('GET', '/user/peter')).toBe('peter');
     expect(await httpHandler.handleRequestFor('GET', '/user-id/123')).toBe(123);
-    expect(await httpHandler.handleRequestFor('GET', '/user-id/asd')).toMatchObject({ message: 'Validation failed: id(No number given): invalid_number' });
+    expect(await httpHandler.handleRequestFor('GET', '/user-id/asd')).toMatchObject({ message: 'Validation failed: id(invalid_number): No number given' });
     expect(await httpHandler.handleRequestFor('GET', '/boolean/1')).toBe(true);
     expect(await httpHandler.handleRequestFor('GET', '/boolean/false')).toBe(false);
 

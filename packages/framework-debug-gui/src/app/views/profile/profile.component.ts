@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, OnInit } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { ControllerClient } from '../../client';
 import { decodeFrames } from '@deepkit/framework-debug-api';
 import { Application, Container, Graphics, Sprite, Text, TextStyle, Texture } from 'pixi.js';
@@ -248,7 +248,7 @@ class ProfilerContainer extends Container {
         }
     `]
 })
-export class ProfileComponent implements OnInit {
+export class ProfileComponent implements OnInit, OnDestroy {
     protected app = new Application({
         width: 500,
         height: 500,
@@ -265,6 +265,10 @@ export class ProfileComponent implements OnInit {
         protected client: ControllerClient,
         protected host: ElementRef<HTMLElement>,
     ) {
+    }
+
+    ngOnDestroy() {
+        this.app.destroy(true);
     }
 
     forward() {

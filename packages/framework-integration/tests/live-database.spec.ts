@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { ClassType } from '@deepkit/core';
-import { Application, createTestingApp as createTestingAppOriginal, LiveDatabase, TestingFascade } from '@deepkit/framework';
+import { Application, createTestingApp as createTestingAppOriginal, LiveDatabase, TestingFacade } from '@deepkit/framework';
 import { AppModule, ModuleOptions } from '@deepkit/app';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { Collection, IdInterface, rpc } from '@deepkit/rpc';
@@ -8,7 +8,7 @@ import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { ClassSchema, Entity, t, uuid } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 
-export function createTestingApp<O extends ModuleOptions>(optionsOrModule: O, entities?: (ClassType | ClassSchema)[]) {
+export function createTestingApp<O extends ModuleOptions>(optionsOrModule: O, entities?: (ClassType | ClassSchema)[]): TestingFacade<Application<O>> {
     const module = optionsOrModule instanceof AppModule ? optionsOrModule : new AppModule(optionsOrModule);
 
     if (entities) {
@@ -16,7 +16,7 @@ export function createTestingApp<O extends ModuleOptions>(optionsOrModule: O, en
         module.setupProvider(DatabaseRegistry).addDatabase(Database, { migrateOnStartup: true });
     }
 
-    return createTestingAppOriginal(module) as TestingFascade<Application<O>>;
+    return createTestingAppOriginal(module) as any;
 }
 
 (global as any)['createTestingApp'] ||= createTestingApp;

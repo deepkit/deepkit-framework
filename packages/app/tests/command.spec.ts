@@ -10,7 +10,7 @@ class MyCli implements Command {
     async execute(
         @arg host: string
     ) {
-        return host;
+        return 'bar' === host ? 0 : 1;
     }
 }
 
@@ -33,5 +33,5 @@ test('command execute', async () => {
     const serviceContainer = app.get(ServiceContainer);
     expect(serviceContainer.cliControllers.controllers.get('my')).toBe(MyCli);
 
-    expect(await app.execute(['my', 'bar'])).toBe('bar');
+    expect(await app.execute(['my', 'bar'])).toBe(0);
 });

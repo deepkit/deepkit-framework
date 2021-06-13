@@ -22,7 +22,7 @@ export class ValidationFailed extends CustomError {
     }
 
     static from(errors: { path: string, message: string, code?: string }[]) {
-        return new ValidationFailed(errors.map(v => new ValidationFailedItem(v.path, v.message, v.code || '')));
+        return new ValidationFailed(errors.map(v => new ValidationFailedItem(v.path, v.code || '', v.message)));
     }
 }
 

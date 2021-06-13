@@ -154,14 +154,15 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
     }
 
     async run(argv?: any[]) {
-        await this.execute(argv ?? process.argv.slice(2));
+        const exitCode = await this.execute(argv ?? process.argv.slice(2));
+        if (exitCode > 0) process.exit(exitCode);
     }
 
     public get<T, R = T extends ClassType<infer R> ? R : T>(token: T): R {
         return this.serviceContainer.getRootInjectorContext().getInjector(0).get(token);
     }
 
-    public async execute(argv: string[]) {
+    public async execute(argv: string[]): Promise<number> {
         this.serviceContainer.process();
         let result: any;
 
@@ -219,10 +220,11 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
             await Main.run(argv, config);
         } catch (e) {
             if (e instanceof ExitError) {
-                process.exit(e.oclif.exit);
+                return e.oclif.exit;
             } else {
                 console.log(e);
             }
+            return 12;
         }
         return result;
     }

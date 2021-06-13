@@ -181,6 +181,15 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
             context = this.getContext(0);
         }
 
+        for (const provider of providers.slice(0)) {
+            if (provider instanceof TagProvider) {
+                if (!isProvided(providers, provider)) {
+                    providers.unshift(provider.provider);
+                }
+                this.rootInjectorContext.tagRegistry.tags.push(provider);
+            }
+        }
+
         for (const token of exports.slice(0)) {
             // if (isModuleToken(token)) {
             if (token instanceof AppModule) {
@@ -233,12 +242,6 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         }
 
         context.providers.push(...providers);
-
-        for (const provider of providers) {
-            if (provider instanceof TagProvider) {
-                this.rootInjectorContext.tagRegistry.tags.push(provider);
-            }
-        }
 
         return context;
     }

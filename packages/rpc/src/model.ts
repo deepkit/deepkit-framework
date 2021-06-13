@@ -230,8 +230,8 @@ export class JSONError {
 export class ValidationErrorItem {
     constructor(
         @t.name('path') public readonly path: string,
-        @t.name('message') public readonly message: string,
         @t.name('code') public readonly code: string,
+        @t.name('message') public readonly message: string,
     ) {
     }
 

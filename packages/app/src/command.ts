@@ -223,16 +223,16 @@ export function buildOclifCommand(classType: ClassType<Command>, rootScopedConte
                         } catch (e) {
                             if (e instanceof ValidationFailedItem) {
                                 console.log(`Validation error in ${e.path}: ${e.message} [${e.code}]`);
-                                this.exit(8);
-                                return;
+                                return 8;
                             }
                             console.log(e);
-                            this.exit(8);
+                            return 8;
                         }
                     }
 
                     const exitCode = await instance.execute(...methodArgs);
-                    if (typeof exitCode === 'number') this.exit(exitCode);
+                    if (typeof exitCode === 'number') return exitCode;
+                    return 0;
                 }
             }
 
