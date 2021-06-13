@@ -52,6 +52,12 @@ export class BaseEvent {
     }
 }
 
+export class DataEvent<T> extends BaseEvent {
+    constructor(public data: T) {
+        super();
+    }
+}
+
 class EventStore {
     token?: EventToken<any>;
     order: number = 0;
