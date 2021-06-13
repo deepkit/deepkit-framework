@@ -815,7 +815,7 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
                 } else {
                     property.setFromJSType(type);
                 }
-            } else {
+            } else if (returnType !== Array) {
                 property.setFromJSType(returnType);
             }
         }
@@ -837,38 +837,38 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
             return getClassName(t);
         }
 
-        if (!isArray(type) && returnType !== Promise && returnType !== undefined && type !== 'any') {
+        if (returnType !== Promise && returnType !== undefined && type !== 'any') {
             //we don't want to check for type mismatch when returnType is a Promise.
 
-            if (type && property.isArray && returnType !== Array) {
+            if (property.typeSet && property.isArray && returnType !== Array) {
                 throw new Error(`${id} type mismatch. Given ${property}, but declared is ${getTypeName(returnType)}. ` +
                     `Please use the correct type in @t.type(T).`
                 );
             }
 
-            if (type && !property.isArray && returnType === Array) {
+            if (property.typeSet && !property.isArray && returnType === Array) {
                 throw new Error(`${id} type mismatch. Given ${property}, but declared is ${getTypeName(returnType)}. ` +
                     `Please use @t.array(MyType) or @t.array(() => MyType), e.g. @t.array(String) for '${propertyName}: string[]'.`);
             }
 
-            if (type && property.isMap && returnType !== Object) {
+            if (property.typeSet && property.isMap && returnType !== Object) {
                 throw new Error(`${id} type mismatch. Given ${property}, but declared is ${getTypeName(returnType)}. ` +
                     `Please use the correct type in @t.type(TYPE).`);
             }
 
-            if (!type && returnType === Array) {
+            if (!property.typeSet && returnType === Array) {
                 throw new Error(`${id} type mismatch. Given nothing, but declared is Array. You have to specify what type is in that array.  ` +
-                    `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @t.type(String).\n` +
-                    `If you don't have a type, use @t.any(). If you reference a class with circular dependency, use @t.type(() => MyType).`
+                    `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @t.array(t.string).\n` +
+                    `If you don't have a type, use @t.any.`
                 );
             }
 
-            if (!type && returnType === Object) {
+            if (!property.typeSet && returnType === Object) {
                 //typescript puts `Object` for undefined types.
                 throw new Error(`${id} type mismatch. Given ${property}, but declared is Object or undefined. ` +
-                    `Please note that Typescript's reflection system does not support type hints based on interfaces or types, but only classes and primitives (String, Number, Boolean, Date). ` +
-                    `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @t.type(String).\n` +
-                    `If you don't have a type, use @t.any(). If you reference a class with circular dependency, use @t.type(() => MyType).`
+                    `Please note that Typescript's reflection system does not support type hints based on interfaces or custom types, but only classes and primitives (String, Number, Boolean, Date). ` +
+                    `When you don't declare a type in TypeScript or types are excluded, you need to pass a type manually via @t.string.\n` +
+                    `If you don't have a type, use @t.any. If you reference a class with circular dependency, use @t.type(() => MyType).`
                 );
             }
         }
@@ -877,7 +877,7 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
 
 const fRaw: any = Field();
 
-fRaw['schema'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(props: PlainSchemaProps, options: { name?: string, classType?: ClassType } = {}, base?: E): ClassSchema {
+fRaw['schema'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(props: PlainSchemaProps, options: { name?: string, collectionName?: string, classType?: ClassType } = {}, base?: E): ClassSchema {
     let extendClazz: ClassType | undefined;
     if (base) {
         if (base instanceof ClassSchema) {
@@ -893,6 +893,7 @@ fRaw['schema'] = function <T extends FieldTypes<any>, E extends ClassSchema | Cl
 
     const schema = createClassSchema(clazz, options.name);
     schema.fromClass = false;
+    schema.collectionName = options.collectionName;
 
     if (!props) throw new Error('No props given');
 
@@ -1056,7 +1057,7 @@ export interface MainDecorator {
      * Creates a new ClassSchema from a plain schema definition object.
      * If you want to decorate an external/already existing class, use `options.classType`.
      */
-    schema<T extends PlainSchemaProps>(props: T, options?: { name?: string, classType?: ClassType }): ClassSchema<ExtractClassDefinition<T>>;
+    schema<T extends PlainSchemaProps>(props: T, options?: { name?: string, collectionName?: string, classType?: ClassType }): ClassSchema<ExtractClassDefinition<T>>;
 
     extendSchema<T extends PlainSchemaProps, BASE extends ClassSchema | ClassType>(base: BASE, props: T, options?: { name?: string, classType?: ClassType }): ClassSchema<MergeSchemaAndBase<T, BASE>>;
 

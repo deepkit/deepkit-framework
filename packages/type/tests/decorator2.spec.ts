@@ -81,7 +81,8 @@ test('test propertySchema serialization', () => {
         @t created: Date = new Date;
     }
 
-    class User {}
+    class User {
+    }
 
     class Page {
         @t.primary.uuid
@@ -272,7 +273,7 @@ test('test invalid @f', () => {
     expect(() => {
         class User1 {
             @t
-            // @ts-ignore
+                // @ts-ignore
             notDefined;
         }
     }).toThrowError('User1::notDefined type mismatch. Given any?, but declared is Object or undefined.');
@@ -284,7 +285,7 @@ test('test invalid @f', () => {
         class User2 {
             // @ts-ignore
             @t.type(NOTEXIST)
-            // @ts-ignore
+                // @ts-ignore
             notDefined;
         }
     }).toThrowError('User2::notDefined type mismatch. Given any?, but declared is Object or undefined.');
@@ -344,6 +345,13 @@ test('test invalid @f', () => {
     {
         //works
         class Model {
+            @t.string.required.nullable name!: string | null;
+        }
+    }
+
+    {
+        //works
+        class Model {
             @t.any
             any?: { [k: string]: any };
         }
@@ -352,7 +360,7 @@ test('test invalid @f', () => {
         //works
         class Model {
             @t.map(t.any)
-            // @ts-ignore
+                // @ts-ignore
             any?;
         }
     }
@@ -466,8 +474,7 @@ test('date default', () => {
         value: '2020-11-03T09:10:39.392Z',
     })).toEqual({ value: new Date('2020-11-03T09:10:39.392Z') });
 
-    expect(jsonSerializer.for(DateClass).validatedDeserialize({
-    })).toEqual({ value: new Date('2019-11-03T09:10:38.392Z') });
+    expect(jsonSerializer.for(DateClass).validatedDeserialize({})).toEqual({ value: new Date('2019-11-03T09:10:38.392Z') });
 });
 
 
@@ -498,4 +505,4 @@ test('missing public in constructor', () => {
 
     expect(schema.getMethodProperties('constructor')[0].methodName).toBe('constructor');
     expect(schema.getMethodProperties('constructor')[1].methodName).toBe('constructor');
-})
+});

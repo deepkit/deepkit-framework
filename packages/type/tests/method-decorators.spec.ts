@@ -96,7 +96,7 @@ test('short @f 2', () => {
     }
 });
 
-test('short @f unmet array definition', () => {
+test('short @t unmet array definition', () => {
     expect(() => {
         class Controller {
             public foo(@t bar: string[]) {
