@@ -9,8 +9,8 @@
  */
 
 import { ClassSchema, ExtractClassDefinition, FieldDecoratorWrapper, getClassSchema, jsonSerializer, PlainSchemaProps, PropertySchema, t } from '@deepkit/type';
-import { getProviders, isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider, Provider, ProviderWithScope } from './provider';
-import { ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction } from '@deepkit/core';
+import { getProviders, isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider, Provider, ProviderWithScope, Tag, TagProvider, TagRegistry } from './provider';
+import { ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction, isPrototypeOfBase } from '@deepkit/core';
 import { InjectorModule } from './module';
 
 
@@ -192,6 +192,7 @@ export class DependenciesUnmetError extends CustomError {
 export function tokenLabel(token: any): string {
     if (token === null) return 'null';
     if (token === undefined) return 'undefined';
+    if (token instanceof TagProvider) return 'Tag(' + getClassName(token.provider.provide) + ')';
     if (isClass(token)) return getClassName(token);
     if (isFunction(token.toString)) return token.toString();
 
@@ -226,7 +227,8 @@ export class Injector implements BasicInjector {
         protected providers: Provider[] = [],
         protected parents: (BasicInjector | Injector)[] = [],
         protected injectorContext: InjectorContext = new InjectorContext,
-        protected configuredProviderRegistry: ConfiguredProviderRegistry | undefined = undefined
+        protected configuredProviderRegistry: ConfiguredProviderRegistry | undefined = undefined,
+        protected tagRegistry: TagRegistry = new TagRegistry()
     ) {
         if (!this.configuredProviderRegistry) this.configuredProviderRegistry = injectorContext.configuredProviderRegistry;
         if (this.providers.length) this.retriever = this.buildRetriever();
@@ -237,7 +239,7 @@ export class Injector implements BasicInjector {
      * Note: addProviders() in the new fork changes the origin, since providers array is not cloned.
      */
     public fork(parents?: Injector[], injectorContext?: InjectorContext) {
-        const injector = new Injector(undefined, parents || this.parents, injectorContext, this.configuredProviderRegistry);
+        const injector = new Injector(undefined, parents || this.parents, injectorContext, this.configuredProviderRegistry, this.tagRegistry);
         injector.providers = this.providers;
         injector.retriever = this.retriever;
         return injector;
@@ -295,6 +297,12 @@ export class Injector implements BasicInjector {
                 }
                 return compiler.reserveVariable('configSlice', value);
             }
+        } else if (token === TagRegistry) {
+            return compiler.reserveVariable('tagRegistry', this.tagRegistry);
+        } else if (isPrototypeOfBase(token, Tag)) {
+            const tokenVar = compiler.reserveVariable('token', token);
+            const providers = compiler.reserveVariable('tagRegistry', this.tagRegistry.resolve(token));
+            return `new ${tokenVar}(${providers}.map(v => frontInjector.retriever(frontInjector, v, frontInjector)))`;
         } else {
             if (token === undefined) throw new Error(`Argument type ${property.name} at position ${argPosition} is undefined. Imported reflect-metadata correctly?`);
             const tokenVar = compiler.reserveVariable('token', token);
@@ -341,7 +349,9 @@ export class Injector implements BasicInjector {
 
         //make sure that providers that declare the same provider token will be filtered out so that the last will be used.
         for (const provider of this.providers) {
-            if (isValueProvider(provider)) {
+            if (provider instanceof TagProvider) {
+                normalizedProviders.set(provider, provider);
+            } else if (isValueProvider(provider)) {
                 normalizedProviders.set(provider.provide, provider);
             } else if (isClassProvider(provider)) {
                 normalizedProviders.set(provider.provide, provider);
@@ -354,12 +364,16 @@ export class Injector implements BasicInjector {
             }
         }
 
-        for (const provider of normalizedProviders.values()) {
+        for (let provider of normalizedProviders.values()) {
             const resolvedId = resolvedIds++;
             this.resolved.push(undefined);
             let transient = false;
             let factory = '';
             let token: any;
+            const tagToken = provider instanceof TagProvider ? provider : undefined;
+            if (provider instanceof TagProvider) {
+                provider = provider.provider;
+            }
 
             if (isValueProvider(provider)) {
                 transient = provider.transient === true;
@@ -384,9 +398,10 @@ export class Injector implements BasicInjector {
                 token = provider;
                 factory = this.createFactory(compiler, provider);
             } else {
-                console.log('provider', provider);
                 throw new Error('Invalid provider');
             }
+
+            if (tagToken) token = tagToken;
 
             const tokenVar = compiler.reserveVariable('token', token);
             const creatingVar = compiler.reserveVariable('creating', false);
@@ -663,6 +678,7 @@ export class InjectorContext implements BasicInjector {
         public readonly additionalInjectorParent: Injector | undefined = undefined,
         public readonly modules: { [name: string]: InjectorModule } = {},
         scopeCaches?: ScopedContextScopeCaches,
+        public tagRegistry: TagRegistry = new TagRegistry(),
     ) {
         this.scopeCaches = scopeCaches || new ScopedContextScopeCaches(this.contextManager.size);
         this.cache = this.scopeCaches.getCache(this.scope);
@@ -724,7 +740,7 @@ export class InjectorContext implements BasicInjector {
 
         const providers = getProviders(context.providers, this.scope);
 
-        injector = new Injector(providers, parents, this, this.configuredProviderRegistry);
+        injector = new Injector(providers, parents, this, this.configuredProviderRegistry, this.tagRegistry);
         this.injectors[contextId] = injector;
         this.cache.set(contextId, injector);
 
@@ -738,6 +754,6 @@ export class InjectorContext implements BasicInjector {
     }
 
     public createChildScope(scope: string, additionalInjectorParent?: Injector): InjectorContext {
-        return new InjectorContext(this.contextManager, scope, this.configuredProviderRegistry, this, additionalInjectorParent, this.modules, this.scopeCaches);
+        return new InjectorContext(this.contextManager, scope, this.configuredProviderRegistry, this, additionalInjectorParent, this.modules, this.scopeCaches, this.tagRegistry);
     }
 }

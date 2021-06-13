@@ -72,24 +72,43 @@ export interface FactoryProvider<T> extends ProviderBase {
     deps?: any[];
 }
 
-export type Provider<T = any> = ClassType | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>;
+export type Provider<T = any> = ClassType | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T> | TagProvider<T>;
 
 export type ProviderProvide<T = any> = ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>;
+
+export class TagRegistry {
+    constructor(
+        public tags: TagProvider<any>[] = []
+    ) {
+    }
+
+    resolve<T extends ClassType<Tag<any>>>(tag: T): TagProvider<InstanceType<T>>[] {
+        return this.tags.filter(v => v.tag instanceof tag);
+    }
+}
+
+export class TagProvider<T> {
+    constructor(
+        public provider: NormalizedProvider<T>,
+        public tag: Tag<T>,
+    ) {
+    }
+}
 
 export class Tag<T> {
     _!: () => T;
 
     constructor(
-        public provider: NormalizedProvider<T>,
+        public readonly services: T[] = []
     ) {
     }
 
-    static provide<P extends ClassType<T> | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>, T extends ReturnType<InstanceType<B>['_']>, B extends ClassType<Tag<any>>>(this: B, provider: P): InstanceType<B> {
+    static provide<P extends ClassType<T> | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>, T extends ReturnType<InstanceType<B>['_']>, B extends ClassType<Tag<any>>>(this: B, provider: P): TagProvider<T> {
         if (isClass(provider)) {
-            return new (this as ClassType<any>)({ provide: provider });
+            return new TagProvider({ provide: provider }, new this);
         }
 
-        return new (this as ClassType<any>)(provider);
+        return new TagProvider(provider as NormalizedProvider<T>, new this);
     }
 }
 
@@ -99,7 +118,7 @@ export interface ProviderScope {
 
 export type NormalizedProvider<T = any> = ProviderProvide<T> & ProviderScope;
 
-export type ProviderWithScope<T = any> = ClassType | (ProviderProvide<T> & ProviderScope) | Tag<any>;
+export type ProviderWithScope<T = any> = ClassType | (ProviderProvide<T> & ProviderScope) | TagProvider<any>;
 
 export function isScopedProvider(obj: any): obj is ProviderProvide & ProviderScope {
     return obj.provide && obj.hasOwnProperty('scope');
@@ -134,10 +153,6 @@ export function getProviders(
     function normalize(provider: ProviderWithScope<any>): Provider<any> {
         if (isClass(provider)) {
             return provider;
-        }
-
-        if (provider instanceof Tag) {
-            return provider.provider;
         }
 
         return provider;

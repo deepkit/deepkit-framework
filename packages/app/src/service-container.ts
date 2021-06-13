@@ -11,7 +11,7 @@
 import { arrayRemoveItem, ClassType, isClass } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
 import { AppModule, ModuleOptions } from './module';
-import { ConfiguredProviderRegistry, Context, ContextRegistry, Injector, InjectorContext, ProviderWithScope, Tag, tokenLabel } from '@deepkit/injector';
+import { ConfiguredProviderRegistry, Context, ContextRegistry, Injector, InjectorContext, ProviderWithScope, TagProvider, tokenLabel } from '@deepkit/injector';
 import { cli } from './command';
 import { WorkflowDefinition } from '@deepkit/workflow';
 
@@ -45,19 +45,8 @@ export class WorkflowRegistry {
     }
 }
 
-export class TagProviders {
-    constructor(
-        public tags: Tag<any>[] = []
-    ) {
-    }
-
-    getProviders<T extends ClassType<Tag<any>>>(tag: T): InstanceType<T>[] {
-        return this.tags.filter(v => v instanceof tag) as any;
-    }
-}
-
 export function isProvided(providers: ProviderWithScope[], token: any): boolean {
-    return providers.find(v => !(v instanceof Tag) ? token === (isClass(v) ? v : v.provide) : false) !== undefined;
+    return providers.find(v => !(v instanceof TagProvider) ? token === (isClass(v) ? v : v.provide) : false) !== undefined;
 }
 
 export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
@@ -73,10 +62,9 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
     protected rootContext?: Context;
     protected moduleContexts = new Map<AppModule<ModuleOptions>, Context[]>();
     protected moduleIdContexts = new Map<number, Context[]>();
-    protected tagProviders = new TagProviders([]);
 
     constructor(
-        public readonly appModule: AppModule<any, any>,
+        public appModule: AppModule<any, any>,
         protected providers: ProviderWithScope[] = [],
         protected imports: AppModule<any, any>[] = [],
     ) {
@@ -91,7 +79,6 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         this.providers.push({ provide: EventDispatcher, useValue: this.eventListenerContainer });
         this.providers.push({ provide: CliControllers, useValue: this.cliControllers });
         this.providers.push({ provide: InjectorContext, useValue: this.rootInjectorContext });
-        this.providers.push({ provide: TagProviders, useValue: this.tagProviders });
 
         this.rootContext = this.processModule(this.appModule, undefined, this.providers, this.imports);
         this.bootstrapModules();
@@ -237,7 +224,7 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         for (const token of exports) {
             if (token instanceof AppModule) throw new Error('Should already be handled');
 
-            const provider = providers.findIndex(v => !(v instanceof Tag) ? token === (isClass(v) ? v : v.provide) : false);
+            const provider = providers.findIndex(v => !(v instanceof TagProvider) ? token === (isClass(v) ? v : v.provide) : false);
             if (provider === -1) {
                 throw new Error(`Export ${tokenLabel(token)}, but not provided in providers.`);
             }
@@ -248,8 +235,8 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         context.providers.push(...providers);
 
         for (const provider of providers) {
-            if (provider instanceof Tag) {
-                this.tagProviders.tags.push(provider);
+            if (provider instanceof TagProvider) {
+                this.rootInjectorContext.tagRegistry.tags.push(provider);
             }
         }
 
