@@ -6,6 +6,7 @@ export class BrowserText {
 
     constructor(public fontSize: number = 11, public fontFamily: string = getComputedStyle(document.body).fontFamily) {
         document.body.appendChild(this.canvas);
+        this.canvas.style.display = 'none';
     }
 
     destroy() {
