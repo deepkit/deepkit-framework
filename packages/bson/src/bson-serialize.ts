@@ -12,11 +12,15 @@ import { ClassType, CompilerContext, isArray, isObject, toFastProperties } from 
 import { ClassSchema, getClassSchema, getGlobalStore, getSortedUnionTypes, JitStack, jsonTypeGuards, PropertySchema, UnpopulatedCheck, unpopulatedSymbol } from '@deepkit/type';
 import { seekElementSize } from './continuation';
 import { isObjectId, isUUID, ObjectId, ObjectIdSymbol, UUID, UUIDSymbol } from './model';
-import { BSON_BINARY_SUBTYPE_DEFAULT, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils';
+import { BSON_BINARY_SUBTYPE_BIGINT, BSON_BINARY_SUBTYPE_DEFAULT, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils';
 
 export function createBuffer(size: number): Uint8Array {
     return 'undefined' !== typeof Buffer && 'function' === typeof Buffer.allocUnsafe ? Buffer.allocUnsafe(size) : new Uint8Array(size);
 }
+
+(BigInt.prototype as any).toJSON = function () {
+    return this.toString();
+};
 
 // BSON MAX VALUES
 const BSON_INT32_MAX = 0x7fffffff;
@@ -64,8 +68,7 @@ export function getValueSize(value: any): number {
         //size + content + null
         return 4 + stringByteLength(value) + 1;
     } else if ('bigint' === typeof value) {
-        //long
-        return 8;
+        return 4 + 1 + Math.ceil(value.toString(16).length / 2);
     } else if ('number' === typeof value) {
         if (Math.floor(value) === value) {
             //it's an int
@@ -156,10 +159,33 @@ function getPropertySizer(schema: ClassSchema, compiler: CompilerContext, proper
             size += 1; //null
         }
         `;
+    } else if (property.type === 'bigint') {
+        code = `
+        if (typeof ${accessor} === 'bigint') {
+            size += 4 + 1 + Math.ceil(${accessor}.toString(16).length / 2);
+        }
+        `;
     } else if (property.type === 'number') {
         code = `
-        if (typeof ${accessor} === 'number' || typeof ${accessor} === 'bigint') {
-            size += getValueSize(${accessor});
+        if (typeof ${accessor} === 'number') {
+            if (Math.floor(${accessor}) === ${accessor}) {
+                //it's an int
+                if (${accessor} >= ${BSON_INT32_MIN} && ${accessor} <= ${BSON_INT32_MAX}) {
+                    //32bit
+                    size += 4;
+                } else if (${accessor} >= ${JS_INT_MIN} && ${accessor} <= ${JS_INT_MAX}) {
+                    //double, 64bit
+                    size += 8;
+                } else {
+                    //long
+                    size += 8;
+                }
+            } else {
+                //double
+                size += 8;
+            }
+        } else if (typeof ${accessor} === 'bigint') {
+            size += 8;
         }
         `;
     } else if (property.type === 'string') {
@@ -458,31 +484,43 @@ export class Writer {
         }
     }
 
+    writeBigInt(value: bigint) {
+        let hex = value.toString(16);
+        if (hex.length % 2) hex = '0' + hex;
+        const size = Math.ceil(hex.length / 2);
+        this.writeUint32(size);
+        this.writeByte(BSON_BINARY_SUBTYPE_BIGINT);
+        for (let i = 0; i < size; i++) {
+            this.buffer[this.offset + i] = hexToByte(hex, i);
+        }
+        this.offset += size;
+    }
+
     writeUUID(value: string | UUID) {
         value = value instanceof UUID ? value.id : value;
         this.writeUint32(16);
         this.writeByte(BSON_BINARY_SUBTYPE_UUID);
 
-        this.buffer[this.offset+0] = uuidStringToByte(value, 0);
-        this.buffer[this.offset+1] = uuidStringToByte(value, 1);
-        this.buffer[this.offset+2] = uuidStringToByte(value, 2);
-        this.buffer[this.offset+3] = uuidStringToByte(value, 3);
+        this.buffer[this.offset + 0] = uuidStringToByte(value, 0);
+        this.buffer[this.offset + 1] = uuidStringToByte(value, 1);
+        this.buffer[this.offset + 2] = uuidStringToByte(value, 2);
+        this.buffer[this.offset + 3] = uuidStringToByte(value, 3);
         //-
-        this.buffer[this.offset+4] = uuidStringToByte(value, 4);
-        this.buffer[this.offset+5] = uuidStringToByte(value, 5);
+        this.buffer[this.offset + 4] = uuidStringToByte(value, 4);
+        this.buffer[this.offset + 5] = uuidStringToByte(value, 5);
         //-
-        this.buffer[this.offset+6] = uuidStringToByte(value, 6);
-        this.buffer[this.offset+7] = uuidStringToByte(value, 7);
+        this.buffer[this.offset + 6] = uuidStringToByte(value, 6);
+        this.buffer[this.offset + 7] = uuidStringToByte(value, 7);
         //-
-        this.buffer[this.offset+8] = uuidStringToByte(value, 8);
-        this.buffer[this.offset+9] = uuidStringToByte(value, 9);
+        this.buffer[this.offset + 8] = uuidStringToByte(value, 8);
+        this.buffer[this.offset + 9] = uuidStringToByte(value, 9);
         //-
-        this.buffer[this.offset+10] = uuidStringToByte(value, 10);
-        this.buffer[this.offset+11] = uuidStringToByte(value, 11);
-        this.buffer[this.offset+12] = uuidStringToByte(value, 12);
-        this.buffer[this.offset+13] = uuidStringToByte(value, 13);
-        this.buffer[this.offset+14] = uuidStringToByte(value, 14);
-        this.buffer[this.offset+15] = uuidStringToByte(value, 15);
+        this.buffer[this.offset + 10] = uuidStringToByte(value, 10);
+        this.buffer[this.offset + 11] = uuidStringToByte(value, 11);
+        this.buffer[this.offset + 12] = uuidStringToByte(value, 12);
+        this.buffer[this.offset + 13] = uuidStringToByte(value, 13);
+        this.buffer[this.offset + 14] = uuidStringToByte(value, 14);
+        this.buffer[this.offset + 15] = uuidStringToByte(value, 15);
         this.offset += 16;
     }
 
@@ -532,13 +570,6 @@ export class Writer {
             this.writeString(value);
             this.writeByte(0); //null
             this.writeDelayedSize(this.offset - start - 4, start);
-        } else if ('bigint' === typeof value) {
-            if (nameWriter) {
-                this.writeByte(BSONType.LONG);
-                nameWriter();
-            }
-            this.writeUint32(Number(value % BigInt(TWO_PWR_32_DBL_N)) | 0);
-            this.writeUint32(Number(value / BigInt(TWO_PWR_32_DBL_N)) | 0);
         } else if ('number' === typeof value) {
             if (Math.floor(value) === value) {
                 //it's an int
@@ -586,6 +617,12 @@ export class Writer {
                 nameWriter();
             }
             this.writeUUID(value);
+        } else if ('bigint' === typeof value) {
+            if (nameWriter) {
+                this.writeByte(BSONType.BINARY);
+                nameWriter();
+            }
+            this.writeBigInt(value);
         } else if (isObjectId(value)) {
             if (nameWriter) {
                 this.writeByte(BSONType.OID);
@@ -718,7 +755,7 @@ function getPropertySerializerCode(
 
         let primarKeyHandling = '';
         const isReference = property.isReference || (property.parent && property.parent.isReference);
-        if (isReference ) {
+        if (isReference) {
             primarKeyHandling = getPropertySerializerCode(schema, compiler, forwardSchema.getPrimaryField(), accessor, jitStack, nameAccessor || JSON.stringify(property.name));
         }
 
@@ -818,6 +855,15 @@ function getPropertySerializerCode(
             ${undefinedWriter}
         }
         `;
+    } else if (property.type === 'bigint') {
+        code = `
+            if ('bigint' === typeof ${accessor}) {
+                writer.writeByte(${BSONType.BINARY});
+                ${nameWriter}
+                writer.writeBigInt(${accessor});
+            }
+        `;
+
     } else if (property.type === 'number') {
         compiler.context.set('TWO_PWR_32_DBL_N', TWO_PWR_32_DBL_N);
         code = `

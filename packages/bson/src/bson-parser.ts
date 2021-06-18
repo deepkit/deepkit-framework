@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BSON_BINARY_SUBTYPE_BYTE_ARRAY, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils';
+import { BSON_BINARY_SUBTYPE_BIGINT, BSON_BINARY_SUBTYPE_BYTE_ARRAY, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils';
 import { buildStringDecoder, decodeUTF8 } from './strings';
 import { nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap } from '@deepkit/type';
 import { hexTable } from './model';
@@ -102,9 +102,16 @@ export class BaseParser {
 
         if (subType === BSON_BINARY_SUBTYPE_UUID) {
             const nextPosition = this.offset + size;
-            const string = this.parseUUID();
+            const v = this.parseUUID();
             this.offset = nextPosition;
-            return string;
+            return v;
+        }
+
+        if (subType === BSON_BINARY_SUBTYPE_BIGINT) {
+            const nextPosition = this.offset + size;
+            const v = this.parseBigInt(size);
+            this.offset = nextPosition;
+            return v;
         }
 
         if (subType === BSON_BINARY_SUBTYPE_BYTE_ARRAY) {
@@ -142,10 +149,19 @@ export class BaseParser {
             + hexTable[b[offset + 9]]
             + hexTable[b[offset + 10]]
             + hexTable[b[offset + 11]]
-            ;
+        ;
 
         this.seek(12);
         return o;
+    }
+
+    parseBigInt(size: number): bigint {
+        let s = '';
+        for (let i = 0; i < size; i++) {
+            s += hexTable[this.buffer[this.offset + i]];
+        }
+
+        return BigInt('0x' + s);
     }
 
     parseUUID() {
@@ -172,7 +188,7 @@ export class BaseParser {
             + hexTable[b[offset + 13]]
             + hexTable[b[offset + 14]]
             + hexTable[b[offset + 15]]
-            ;
+        ;
 
         this.seek(16);
         return o;
@@ -292,6 +308,7 @@ export class ParserV2 extends BaseParser {
 }
 
 const decoder = new TextDecoder('utf8');
+
 export class ParserV3 extends BaseParser {
     eatObjectPropertyName() {
         let end = this.offset;

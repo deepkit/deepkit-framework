@@ -495,6 +495,15 @@ function createFieldDecoratorResult<T>(
         }
     });
 
+    Object.defineProperty(fn, 'bigint', {
+        get: () => {
+            resetIfNecessary();
+            return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+                property.setType('bigint');
+            }]);
+        }
+    });
+
     // Object.defineProperty(fn, 'integer', {
     //     get: () => {
     //         resetIfNecessary();
@@ -708,9 +717,8 @@ function GroupName(...names: string[]) {
 /**
  * Used to define a field as a reference to a parent.
  *
- * @category Decorator
- *
  * Example one direction.
+ *
  * ```typescript
  * class JobConfig {
  *     @t.type(() => Job).parentReference //forward necessary since circular dependency
@@ -724,6 +732,7 @@ function GroupName(...names: string[]) {
  * ```
  *
  * Example circular parent-child setup.
+ *
  * ```typescript
  * export class PageClass {
  *     @t.uuid
@@ -1090,6 +1099,11 @@ export interface MainDecorator {
      * Marks a field as number.
      */
     number: FieldDecoratorResult<number>;
+
+    /**
+     * Marks a field as bigint.
+     */
+    bigint: FieldDecoratorResult<bigint>;
 
     // /**
     //  * Marks a field as integer.

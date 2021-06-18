@@ -136,6 +136,12 @@ registerJSONTypeGuard('number', (property: PropertySchema) => {
     };
 });
 
+registerJSONTypeGuard('bigint', (property: PropertySchema) => {
+    return (v: any) => {
+        return 'bigint' === typeof v || (v && v['$type'] === 'bigint');
+    };
+});
+
 registerJSONTypeGuard('boolean', (property: PropertySchema) => {
     return (v: any) => {
         return 'boolean' === typeof v;

@@ -30,12 +30,11 @@
     "jest": "^27.0.0-next.2",
     "lerna": "^4.0.0",
     "madge": "^4.0.0",
-    "ts-jest": "^27.0.0-next.3",
     "npm-local-development": "^0.3.1",
+    "ts-jest": "^27.0.0-next.3",
     "ts-node": "^9.1.1",
     "ts-node-dev": "^1.1.1",
-    "typedoc": "^0.19.2",
-    "typedoc-plugin-lerna-packages": "^0.3.1",
+    "typedoc": "^0.21.0",
     "typescript": "^4.1.2"
   },
   "engines": {

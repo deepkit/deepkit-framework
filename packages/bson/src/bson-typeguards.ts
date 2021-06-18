@@ -153,6 +153,12 @@ registerBSONTypeGuard('number', (property: PropertySchema) => {
     };
 });
 
+registerBSONTypeGuard('bigint', (property: PropertySchema) => {
+    return (elementType: BSONType, parser: BaseParser) => {
+        return elementType === BSONType.BINARY;
+    };
+});
+
 registerBSONTypeGuard('boolean', (property: PropertySchema) => {
     return (elementType: BSONType, parser: BaseParser) => {
         return elementType === BSONType.BOOLEAN;

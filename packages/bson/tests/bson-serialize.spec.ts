@@ -7,6 +7,7 @@ import { getBSONDecoder } from '../src/bson-jit-parser';
 import { randomBytes } from 'crypto';
 import { parseObject, ParserV2 } from '../src/bson-parser';
 import { ObjectId } from '../src/model';
+
 const { Binary, calculateObjectSize, deserialize, Long, ObjectId: OfficialObjectId, serialize } = bson;
 
 test('hexToByte', () => {
@@ -130,10 +131,6 @@ test('basic long', () => {
             0, //object null
         ]));
     }
-
-    (BigInt.prototype as any).toJSON = function () {
-        return this.toString();
-    };
 
     const reParsed = getBSONDecoder(schema)(getBSONSerializer(schema)(object));
     expect(reParsed.position).toBe(3364367088039355000n);

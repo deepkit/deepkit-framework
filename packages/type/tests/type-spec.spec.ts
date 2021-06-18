@@ -165,6 +165,15 @@ test('map allows undefined when allowed', () => {
     expect('foo' in roundTrip(t.map(t.string.optional), { foo: undefined } as any)).toEqual(true);
 });
 
+test('bigint', () => {
+    expect(roundTrip(t.bigint, 0n)).toEqual(0n);
+    expect(roundTrip(t.bigint, 5n)).toEqual(5n);
+    expect(roundTrip(t.bigint, 12n)).toEqual(12n);
+    expect(roundTrip(t.bigint, 12012020202020202020202020202020202020n)).toEqual(12012020202020202020202020202020202020n);
+    expect(roundTrip(t.bigint, 16n**16n**2n)).toEqual(16n**16n**2n);
+    expect(roundTrip(t.bigint, 16n**16n**3n)).toEqual(16n**16n**3n);
+});
+
 test('propertyDefinition', () => {
     const property = t.string.optional.default('asd').buildPropertySchema();
     const json = property.toJSON();
@@ -177,6 +186,9 @@ test('union basics', () => {
 
     expect(roundTrip(t.union(t.boolean, t.number), true)).toEqual(true);
     expect(roundTrip(t.union(t.boolean, t.number), 23)).toEqual(23);
+
+    expect(roundTrip(t.union(t.bigint, t.number), 23)).toEqual(23);
+    expect(roundTrip(t.union(t.bigint, t.number), 23n)).toEqual(23n);
 
     expect(roundTrip(t.union(t.string, Model), new Model)).toBeInstanceOf(Model);
     {

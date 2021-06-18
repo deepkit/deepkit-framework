@@ -34,6 +34,7 @@ const sorts: { [type in Types]: number } = {
     boolean: 3,
     string: 3,
     number: 3,
+    bigint: 3,
 
     patch: 4,
     partial: 4,

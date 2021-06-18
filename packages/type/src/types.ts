@@ -50,6 +50,7 @@ export type Types =
     | 'any'
     | 'string'
     | 'number'
+    | 'bigint'
     | 'boolean'
     | 'Int8Array'
     | 'Uint8Array'

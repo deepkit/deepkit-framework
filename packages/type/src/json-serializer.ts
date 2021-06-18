@@ -10,13 +10,7 @@
 
 import { ClassType, getEnumLabels, getEnumValues, getValidEnumValue, isObject, isValidEnumValue } from '@deepkit/core';
 import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64 } from './core';
-import {
-    getClassToXFunction,
-    getPartialClassToXFunction,
-    getPartialXToClassFunction,
-    getXToClassFunction,
-    JitConverterOptions
-} from './jit';
+import { getClassToXFunction, getPartialClassToXFunction, getPartialXToClassFunction, getXToClassFunction, JitConverterOptions } from './jit';
 import { jsonTypeGuards } from './json-typeguards';
 import { ClassSchema, getClassSchema, getClassTypeFromInstance, PropertySchema } from './model';
 import { Serializer } from './serializer';
@@ -94,6 +88,10 @@ export function validatedPlainToClass<T extends ClassType | ClassSchema>(
 
 export function isBinaryJSON(v: any): boolean {
     return v && v['$type'] === 'binary' && typeof v.data === 'string';
+}
+
+export function isBigIntJSON(v: any): boolean {
+    return v && v['$type'] === 'bigint' && typeof v.data === 'string';
 }
 
 /**
@@ -223,6 +221,15 @@ jsonSerializer.fromClass.register('arrayBuffer', (property: PropertySchema, stat
     state.addSetter(`{'$type': 'binary', data: arrayBufferToBase64(${state.accessor})}`);
 });
 
+jsonSerializer.toClass.register('bigint', (property: PropertySchema, state: CompilerState) => {
+    state.setContext({ isBigIntJSON });
+    state.addSetter(`typeof ${state.accessor} === 'bigint' ? ${state.accessor} : (isBigIntJSON(${state.accessor}) ? BigInt('0x' + ${state.accessor}.data): 0n)`);
+});
+
+jsonSerializer.fromClass.register('bigint', (property: PropertySchema, state: CompilerState) => {
+    state.addSetter(`{'$type': 'bigint', data: ${state.accessor}.toString(16)}`);
+});
+
 const convertToPlainUsingToJson = (property: PropertySchema, state: CompilerState) => {
     state.addSetter(`${state.accessor}.toJSON();`);
 };
@@ -250,7 +257,7 @@ export function convertArray(property: PropertySchema, state: CompilerState) {
                 if (${!property.getSubType().isOptional} && itemValue === undefined) {
                     ${a}.splice(${l}, 1);
                 } else {
-                    ${a}[${l}] = itemValue;   
+                    ${a}[${l}] = itemValue;
                 }
             }
          }
