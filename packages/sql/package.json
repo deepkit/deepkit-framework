@@ -17,7 +17,7 @@
     }
   },
   "bin": {
-    "deepkit-sql": "./dist/cjs/main.js"
+    "deepkit-sql": "./bin/deepkit-sql.js"
   },
   "sideEffects": false,
   "publishConfig": {
