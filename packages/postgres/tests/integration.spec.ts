@@ -1,11 +1,6 @@
-import {
-    bookstoreTests,
-    activeRecordTests,
-    softDeleteTests,
-    aggregateTest,
-    executeTest
-} from '@deepkit/orm-integration';
+import { activeRecordTests, aggregateTest, bookstoreTests, executeTest, softDeleteTests } from '@deepkit/orm-integration';
 import { databaseFactory } from './factory';
+import { test } from '@jest/globals';
 
 for (const i in bookstoreTests) {
     test(i, executeTest(bookstoreTests[i], databaseFactory));

@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { entity, plainToClass, t } from '@deepkit/type';
-import { test } from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import { DirectClient } from '../src/client/client-direct';
 import { Collection } from '../src/collection';
 import { rpc } from '../src/decorators';

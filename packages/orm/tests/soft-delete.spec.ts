@@ -1,5 +1,5 @@
 import { entity, plainToClass, t } from '@deepkit/type';
-import { test } from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import { getInstanceState } from '../src/identity-map';
 import { Database } from '../src/database';
 import { MemoryDatabaseAdapter } from '../src/memory-db';

@@ -1,4 +1,4 @@
-import { test } from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { EntitySubject, isEntitySubject } from '../src/model';
 import { Collection, isCollection } from '../src/collection';

@@ -38,7 +38,6 @@ declare namespace JSX {
         'audio': ExtractProps<HTMLAudioElement>;
         'b': ExtractProps<HTMLElement>;
         'base': ExtractProps<HTMLBaseElement>;
-        'basefont': ExtractProps<HTMLBaseFontElement>;
         'bdi': ExtractProps<HTMLElement>;
         'bdo': ExtractProps<HTMLElement>;
         'blockquote': ExtractProps<HTMLQuoteElement>;

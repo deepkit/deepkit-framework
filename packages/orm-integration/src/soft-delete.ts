@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { SoftDelete, SoftDeleteQuery, SoftDeleteSession } from '@deepkit/orm';
 import { entity, getClassSchema, plainToClass, t } from '@deepkit/type';
 import { DatabaseFactory } from './test';
+import { expect } from '@jest/globals';
 
 export const softDeleteTests = {
     async query(databaseFactory: DatabaseFactory) {

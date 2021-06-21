@@ -1,6 +1,6 @@
 import { DatabaseFactory } from './test';
 import { plainToClass, t } from '@deepkit/type';
-
+import { expect } from '@jest/globals';
 
 export const aggregateTest = {
     async basics(databaseFactory: DatabaseFactory) {

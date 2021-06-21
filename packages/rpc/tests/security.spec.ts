@@ -1,4 +1,4 @@
-import { test } from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { DirectClient } from '../src/client/client-direct';
 import { rpc } from '../src/decorators';

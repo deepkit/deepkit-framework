@@ -1,5 +1,5 @@
 import { entity, getClassSchema, plainToClass, t } from '@deepkit/type';
-import { test } from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { EntitySubject, rpcEntityPatch, RpcTypes } from '../src/model';
 import { DirectClient } from '../src/client/client-direct';

@@ -166,7 +166,7 @@ export class Patcher<T extends object> {
             has(target, p): boolean {
                 return Reflect.has(dereferencedOriginalItem || originalItem, p);
             },
-            ownKeys(target): PropertyKey[] {
+            ownKeys(target): ArrayLike<string | symbol> {
                 return Reflect.ownKeys(dereferencedOriginalItem || originalItem);
             },
             getOwnPropertyDescriptor(target, p) {

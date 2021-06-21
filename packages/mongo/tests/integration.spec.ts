@@ -1,4 +1,5 @@
-import { bookstoreTests, activeRecordTests, softDeleteTests, aggregateTest } from '@deepkit/orm-integration';
+import { test } from '@jest/globals';
+import { activeRecordTests, aggregateTest, bookstoreTests, softDeleteTests } from '@deepkit/orm-integration';
 import { databaseFactory } from './factory';
 
 for (const i in bookstoreTests) {

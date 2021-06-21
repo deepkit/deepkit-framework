@@ -3,6 +3,7 @@ import { ClassSchema, getClassSchema } from '@deepkit/type';
 import { ClassType } from '@deepkit/core';
 import { SQLDatabaseAdapter } from '../src/sql-adapter';
 import { DatabaseModel, TableComparator } from '../src/schema/table';
+import { expect } from '@jest/globals';
 
 export async function createSetup(adapter: SQLDatabaseAdapter, schemas: (ClassSchema | ClassType)[]) {
     const database = new Database(adapter);

@@ -1,5 +1,6 @@
 import { Stopwatch, StopwatchStore } from '../src/stopwatch';
 import { FrameCategory } from '../src/types';
+import { expect, test } from '@jest/globals';
 
 class Store extends StopwatchStore {
     getZone(): { [p: string]: any } | undefined {

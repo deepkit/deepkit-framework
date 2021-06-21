@@ -1,6 +1,6 @@
 import { plainToClass, PrimaryKey, t } from '@deepkit/type';
-import { test } from '@jest/globals';
-import { assert, IsExact } from "conditional-type-checks";
+import { expect, test } from '@jest/globals';
+import { assert, IsExact } from 'conditional-type-checks';
 import { Database } from '../src/database';
 import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db';
 import { Query } from '../src/query';
@@ -89,7 +89,7 @@ test('query lift', async () => {
     expect(q.lift(UserQuery).hello()).toBe('world');
     expect(q.lift(UserQuery).lift(BilligQuery).hello()).toBe('world');
     expect(q.lift(UserQuery).lift(OverwriteHello).hello()).toBe('nope');
-    
+
     expect(Query.is(q.lift(UserQuery).lift(OverwriteHello), MyBase)).toBe(true);
     expect(Query.is(q.lift(UserQuery).lift(OverwriteHello), OverwriteHello)).toBe(true);
 

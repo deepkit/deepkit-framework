@@ -1,3 +1,4 @@
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { plainToClass, t } from '@deepkit/type';
 import { createPool } from 'mariadb';
