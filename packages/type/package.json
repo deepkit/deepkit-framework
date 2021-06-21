@@ -46,7 +46,12 @@
     },
     "testMatch": [
       "**/tests/**/*.spec.ts"
-    ]
+    ],
+    "globals": {
+      "ts-jest": {
+        "tsConfigFile": "<rootDir>/tsconfig.test.json"
+      }
+    }
   },
   "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
 }
