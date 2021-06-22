@@ -52,6 +52,7 @@ import { FakerTypeDialogComponent } from './components/dialog/faker-type-dialog.
 import { DatabaseSeedPropertyComponent } from './components/database-seed-property.component';
 import { DatabaseSeedPropertiesComponent } from './components/database-seed-properties.component';
 import { RouterModule } from '@angular/router';
+import { DeepkitClient } from '@deepkit/rpc';
 
 @NgModule({
     declarations: [
@@ -152,10 +153,10 @@ export class OrmBrowserModule {
         return {
             ngModule: OrmBrowserModule,
             providers: [
-                // {
-                //     provide: DeepkitClient,
-                //     useFactory: () => new DeepkitClient('ws://' + ControllerClient.getServerHost())
-                // }
+                {
+                    provide: DeepkitClient,
+                    useFactory: () => new DeepkitClient('ws://' + ControllerClient.getServerHost())
+                }
             ]
         };
     }

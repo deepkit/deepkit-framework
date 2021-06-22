@@ -4,8 +4,9 @@ export class BrowserText {
 
     protected context = this.canvas.getContext('2d')!;
 
-    constructor(public fontSize: number = 11, public fontFamily: string = getComputedStyle(document.body).fontFamily) {
+    constructor(public fontSize: number = 11, public fontFamily: string = getComputedStyle(document.querySelector('.dui-body') || document.body).fontFamily) {
         document.body.appendChild(this.canvas);
+        this.canvas.style.display = 'none';
     }
 
     destroy() {

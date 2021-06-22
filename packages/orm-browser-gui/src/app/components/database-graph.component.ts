@@ -8,36 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    AfterViewInit,
-    ChangeDetectorRef,
-    Component,
-    ElementRef,
-    Input,
-    OnChanges,
-    SimpleChanges,
-    ViewChild
-} from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, Input, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
 import { DatabaseInfo } from '@deepkit/orm-browser-api';
 import { ClassSchema, PropertySchema } from '@deepkit/type';
 import { graphlib, layout } from 'dagre';
 import { default as createPanZoom, PanZoom } from 'panzoom';
 import { BrowserText } from './browser-text';
-
-// @Component({
-//   selector: 'app-workflow-card',
-//   template: '<ng-template #templateRef><ng-content></ng-content></ng-template>'
-// })
-// export class WorkflowCardComponent {
-//   /**
-//    * The name of the field of T.
-//    */
-//   @Input('name') name!: string;
-
-//   @Input('class') class!: string;
-
-//   @ViewChild('templateRef', { static: false }) template!: TemplateRef<any>;
-// }
 
 type EdgeNode = { d: string, class?: string };
 type DKNode = { entity: ClassSchema, properties: PropertySchema[], height: number, width: number, x: number, y: number };
@@ -142,7 +118,7 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
     g.setGraph({
       nodesep: 50,
       ranksep: 50,
-      rankdir: "LR",
+      rankdir: 'LR',
       align: 'DL',
       // rankdir: 'LR',
       // ranker: 'longest-path'
