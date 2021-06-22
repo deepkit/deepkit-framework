@@ -31,6 +31,14 @@ export class MySQLPlatform extends DefaultPlatform {
         this.addType('date', 'datetime');
         this.addType('boolean', 'tinyint', 1);
         this.addType('uuid', 'binary', 16);
+
+        this.addType('class', 'json');
+        this.addType('array', 'json');
+        this.addType('union', 'json');
+        this.addType('partial', 'json');
+        this.addType('map', 'json');
+        this.addType('patch', 'json');
+
         this.addBinaryType('longblob');
     }
 
