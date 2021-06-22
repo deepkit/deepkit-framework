@@ -10,13 +10,7 @@
 
 import { SQLQueryModel } from './sql-adapter';
 import { DefaultPlatform } from './platform/default-platform';
-import {
-    ClassSchema,
-    getClassSchema,
-    getPrimaryKeyHashGenerator,
-    PropertySchema,
-    resolveClassTypeOrForward
-} from '@deepkit/type';
+import { ClassSchema, getClassSchema, getPrimaryKeyHashGenerator, PropertySchema, resolveClassTypeOrForward } from '@deepkit/type';
 import { DatabaseJoinModel, DatabaseQueryModel } from '@deepkit/orm';
 import { getSqlFilter } from './filter';
 
@@ -108,8 +102,22 @@ export class SqlBuilder {
         const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getProperties();
         const tableName = this.platform.getTableIdentifier(schema);
 
+        for (const property of schema.getPrimaryFields()) {
+            if (property.backReference) continue;
+
+            result.fields.push(property);
+            const as = this.platform.quoteIdentifier(this.sqlSelect.length + '');
+
+            if (refName) {
+                this.sqlSelect.push(this.platform.quoteIdentifier(refName) + '.' + this.platform.quoteIdentifier(property.name) + ' AS ' + as);
+            } else {
+                this.sqlSelect.push(tableName + '.' + this.platform.quoteIdentifier(property.name) + ' AS ' + as);
+            }
+        }
+
         for (const property of properties) {
             if (property.backReference) continue;
+            if (property.isId) continue;
 
             result.fields.push(property);
             const as = this.platform.quoteIdentifier(this.sqlSelect.length + '');
@@ -213,7 +221,7 @@ export class SqlBuilder {
         const code = `
             return function(row) {
                 if (null === row[${primaryKeyIndex}]) return;
-            
+
                 return {
                     ${lines.join(',\n')}
                 };

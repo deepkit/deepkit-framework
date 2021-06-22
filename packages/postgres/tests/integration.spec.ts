@@ -1,9 +1,15 @@
-import { activeRecordTests, aggregateTest, bookstoreTests, executeTest, softDeleteTests } from '@deepkit/orm-integration';
+import { activeRecordTests, aggregateTest, bookstoreTests, executeTest, softDeleteTests, usersTests } from '@deepkit/orm-integration';
 import { databaseFactory } from './factory';
 import { test } from '@jest/globals';
 
 for (const i in bookstoreTests) {
     test(i, executeTest(bookstoreTests[i], databaseFactory));
+}
+
+for (const i in usersTests) {
+    test(i, async () => {
+        await usersTests[i](databaseFactory);
+    });
 }
 
 for (const i in activeRecordTests) {

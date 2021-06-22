@@ -212,7 +212,7 @@ export abstract class DefaultPlatform {
                 const foreignSchema = property.getResolvedClassSchema();
                 const foreignTable = database.schemaMap.get(foreignSchema);
                 if (!foreignTable) {
-                    throw new Error(`References entity ${foreignSchema.getName()} from ${schema.getName()}.${property.name} is not is not available`);
+                    throw new Error(`Referenced entity ${foreignSchema.getName()} from ${schema.getName()}.${property.name} is not available`);
                 }
                 const foreignKey = table.addForeignKey('', foreignTable);
                 foreignKey.localColumns = [table.getColumn(property.name)];
@@ -438,8 +438,8 @@ export abstract class DefaultPlatform {
         const ddl: string[] = [];
 
         ddl.push(`
-        CONSTRAINT ${this.getIdentifier(foreignKey)} 
-        FOREIGN KEY (${this.getColumnListDDL(foreignKey.localColumns)}) 
+        CONSTRAINT ${this.getIdentifier(foreignKey)}
+        FOREIGN KEY (${this.getColumnListDDL(foreignKey.localColumns)})
         REFERENCES ${this.getIdentifier(foreignKey.foreign)} (${this.getColumnListDDL(foreignKey.foreignColumns)})
         `.trim());
 
