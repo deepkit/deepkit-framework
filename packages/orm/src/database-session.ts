@@ -48,7 +48,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         return this.committed;
     }
 
-    public add<T extends Entity>(...items: T[]): void {
+    public add(...items: Entity[]): void {
         if (this.isInCommit()) throw new Error('Already in commit. Can not change queues.');
 
         for (const item of items) {

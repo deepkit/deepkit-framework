@@ -12,18 +12,18 @@ export class DatabaseLogger {
     }
 
     setLogger(logger: LoggerInterface) {
-        this.logger = logger;
+        this.logger = logger.scoped('deepkit/orm');
     }
 
     failedQuery(error: any, query: string, params: any[]) {
         if (!this.active || !this.logger) return;
 
-        this.logger.scoped('deepkit/orm').error('failed query', query.trim(), params, error);
+        this.logger.error('failed query', query.trim(), params, error);
     }
 
     logQuery(query: string, params: any[]) {
         if (!this.active || !this.logger) return;
 
-        this.logger.scoped('deepkit/orm').log(query.trim(), params);
+        this.logger.log(query.trim(), params);
     }
 }

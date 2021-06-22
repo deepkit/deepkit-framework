@@ -12,12 +12,7 @@ import { DatabaseSession } from './database-session';
 import { DatabaseQueryModel, GenericQueryResolver, Query } from './query';
 import { Changes, ClassSchema, CompilerState, getClassSchema, jsonSerializer, PropertySchema } from '@deepkit/type';
 import { ClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
-import {
-    DatabaseAdapter,
-    DatabaseAdapterQueryFactory,
-    DatabasePersistence,
-    DatabasePersistenceChangeSet
-} from './database-adapter';
+import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
 import { DeleteResult, Entity, PatchResult } from './type';
 import { findQueryList } from './utils';
 import { convertQueryFilter } from './query-filter';
@@ -71,7 +66,7 @@ function sort(items: any[], field: string, sortFn: typeof sortAsc | typeof sortA
 
 export class MemoryQuery<T> extends Query<T> {
     protected isMemory = true;
-    
+
     isMemoryDb() {
         return this.isMemory;
     }
@@ -149,11 +144,17 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
             }
 
             async count(model: DatabaseQueryModel<T>): Promise<number> {
+                if (this.session.logger.logger) {
+                    this.session.logger.logger.log('count', model.filter);
+                }
                 const items = find(adapter, schema, model);
                 return items.length;
             }
 
             async delete(model: DatabaseQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
+                if (this.session.logger.logger) {
+                    this.session.logger.logger.log('delete', model.filter);
+                }
                 const items = find(adapter, schema, model);
                 const primaryKey = schema.getPrimaryFieldName();
                 for (const item of items) {
@@ -164,6 +165,9 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
 
             async find(model: DatabaseQueryModel<T>): Promise<T[]> {
                 const items = find(adapter, schema, model);
+                if (this.session.logger.logger) {
+                    this.session.logger.logger.log('find', model.filter);
+                }
                 const formatter = this.createFormatter(model.withIdentityMap);
                 return items.map(v => formatter.hydrate(model, v));
             }

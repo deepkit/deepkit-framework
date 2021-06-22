@@ -78,7 +78,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      *
      * const item = await session.query(MyType).findOne();
      * item.name = 'changed';
-     * session.commit(); //only necessary when you changed items received by this session
+     * await session.commit(); //only necessary when you changed items received by this session
      * ```
      */
     public readonly query: ReturnType<this['adapter']['queryFactory']>['createQuery'];
@@ -232,7 +232,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      *
      * You should prefer the add/remove and commit() workflow to fully utilizing database performance.
      */
-    public async persist<T extends Entity>(...items: T[]) {
+    public async persist(...items: Entity[]) {
         const session = this.createSession();
         session.add(...items);
         await session.commit();
@@ -246,7 +246,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      *
      * You should prefer the add/remove and commit() workflow to fully utilizing database performance.
      */
-    public async remove<T extends Entity>(...items: T[]) {
+    public async remove(...items: Entity[]) {
         const session = this.createSession();
         session.remove(...items);
         await session.commit();
