@@ -78,6 +78,15 @@ export class SoftDeleteQuery<T extends SoftDeleteEntity> extends Query<T> {
         return m;
     }
 
+    /**
+     * Includes only soft deleted records.
+     */
+    isSoftDeleted(): this {
+        const m = this.clone();
+        m.includeSoftDeleted = true;
+        return m.addFilter('deletedAt', {$ne: undefined});
+    }
+
     deletedBy(value: T['deletedBy']): this {
         const c = this.clone();
         c.setDeletedBy = value;

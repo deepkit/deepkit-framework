@@ -28,6 +28,7 @@ test('soft-delete query', async () => {
     await database.query(s).filter({ id: 1 }).deleteOne();
 
     expect(await database.query(s).count()).toBe(2);
+    expect(await database.query(s).lift(SoftDeleteQuery).isSoftDeleted().count()).toBe(1);
 
     await database.query(s).filter({ id: 2 }).lift(SoftDeleteQuery).deletedBy('me').deleteOne();
 
