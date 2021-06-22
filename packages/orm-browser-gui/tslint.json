@@ -61,7 +61,7 @@
     "no-empty": false,
     "callable-types": false,
     "no-inferrable-types": false,
-    "no-non-null-assertion": true,
+    "no-non-null-assertion": false,
     "no-redundant-jsdoc": true,
     "no-switch-case-fall-through": true,
     "no-var-requires": false,

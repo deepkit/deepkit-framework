@@ -10,6 +10,9 @@ import { entity, sliceClass, t } from '@deepkit/type';
 import { Website } from './views/website';
 import { cli, Command } from '@deepkit/app';
 
+const SegfaultHandler = require('segfault-handler');
+SegfaultHandler.registerHandler('crash.log');
+
 @entity.name('user')
 export class User {
     @t.primary.autoIncrement id: number = 0;
