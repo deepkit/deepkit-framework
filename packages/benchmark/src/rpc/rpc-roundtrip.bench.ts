@@ -9,15 +9,8 @@
  */
 
 import 'reflect-metadata';
-import { ClassType } from "@deepkit/core";
-import { createRpcMessage, DirectClient, readRpcMessage, rpc, rpcAction, RpcKernel, RpcTypes } from "@deepkit/rpc";
-import { BenchSuite } from "../bench";
-
-class SimpleInjector {
-    get(classType: ClassType) {
-        return new classType;
-    }
-}
+import { createRpcMessage, DirectClient, readRpcMessage, rpc, rpcAction, RpcKernel } from '@deepkit/rpc';
+import { BenchSuite } from '../bench';
 
 export async function main() {
     const bench1 = new BenchSuite('protocol');
@@ -36,7 +29,7 @@ export async function main() {
     bench1.run();
 
     let called = 0;
-    
+
     class Controller {
         @rpc.action()
         action(value: string): string {
@@ -44,25 +37,25 @@ export async function main() {
             return value;
         }
     }
-    
-    const kernel = new RpcKernel(new SimpleInjector());
+
+    const kernel = new RpcKernel();
     kernel.registerController('myController', Controller);
-    
+
     // const connection = kernel.createConnection({ write: (v) => console.log(readRpcMessage(v)) });
     // connection.handleMessage(createRpcMessage(0, RpcTypes.ActionType, rpcActionType, { controller: 'myController', method: 'action' }));
-    
+
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
-    
+
     const bench = new BenchSuite('controller');
     // const res = await controller.action('foo');
     // console.log('res', res);
-    
+
     bench.addAsync('action', async () => {
         // await client.sendMessage(RpcTypes.Ping).ackThenClose();
         const res = await controller.action('foo');
     });
-    
+
     await bench.runAsync();
 
     console.log('called', called);
