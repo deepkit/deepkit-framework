@@ -2,10 +2,11 @@ import 'reflect-metadata';
 import { entity, t, uuid } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
-//import { MongoDatabaseAdapter } from '@deepkit/mongo';
 import { User, UserGroup } from './bookstore/user';
 import { Group } from './bookstore/group';
 import { UserCredentials } from './bookstore/user-credentials';
+
+//import { MongoDatabaseAdapter } from '@deepkit/mongo';
 
 
 class BookModeration {
