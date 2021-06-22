@@ -16,6 +16,7 @@ export class Zone {
     static asyncLocalStorage?: AsyncLocalStorage<any>;
 
     static enable() {
+        if (this.asyncLocalStorage) return;
         this.asyncLocalStorage = new AsyncLocalStorage<any>();
         this.asyncLocalStorage.enterWith({});
     }
