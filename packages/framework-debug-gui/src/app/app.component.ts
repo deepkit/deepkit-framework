@@ -14,6 +14,7 @@ import { Database, DebugRequest } from '@deepkit/framework-debug-api';
 import { Collection } from '@deepkit/rpc';
 import { Observable } from 'rxjs';
 import { ControllerClient } from './client';
+import { Router } from '@angular/router';
 
 @Component({
     selector: 'app-root',
@@ -37,7 +38,7 @@ import { ControllerClient } from './client';
                     <dui-window-toolbar-container name="orm-browser"></dui-window-toolbar-container>
                 </dui-window-toolbar>
             </dui-window-header>
-            <dui-window-content [sidebarVisible]="sidebarVisible">
+            <dui-window-content [sidebarVisible]="sidebarVisible" [class.no-padding]="router.url.startsWith('/database/')">
                 <dui-window-sidebar>
                     <dui-list>
                         <dui-list-title>Application</dui-list-title>
@@ -86,7 +87,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
     constructor(
         protected controllerClient: ControllerClient,
-        protected cd: ChangeDetectorRef
+        protected cd: ChangeDetectorRef,
+        public router: Router,
     ) {
     }
 

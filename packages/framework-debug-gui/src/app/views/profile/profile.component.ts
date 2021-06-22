@@ -234,7 +234,7 @@ class ProfilerContainer extends Container {
     template: `
         <dui-window-toolbar for="main">
             <dui-button-group>
-                <dui-button icon="arrow_right" (click)="forward()"></dui-button>
+                <dui-button textured icon="arrow_right" (click)="forward()"></dui-button>
             </dui-button-group>
         </dui-window-toolbar>
     `,
@@ -277,9 +277,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
     @HostListener('window:resize')
     onResize() {
-        this.app.renderer.resize(this.host.nativeElement.clientWidth, this.host.nativeElement.clientHeight);
-        this.viewState.width = this.host.nativeElement.clientWidth;
-        this.profiler.update();
+        // this.app.renderer.resize(this.host.nativeElement.clientWidth, this.host.nativeElement.clientHeight);
+        // this.viewState.width = this.host.nativeElement.clientWidth;
+        // this.profiler.update();
     }
 
     async ngOnInit() {
@@ -296,7 +296,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
         const frames = decodeFrames(buffer);
 
         this.viewState.width = this.host.nativeElement.clientWidth;
-        this.profiler.addFrames(frames);
+        //todo: implement automatic slicing based on offsetX
+        this.profiler.addFrames(frames.slice(0, 100));
         this.profiler.update();
 
         this.app.stage.addChild(this.profiler);

@@ -1,3 +1,7 @@
+:host ::ng-deep dui-window-content.no-padding > .content {
+    padding: 0 !important;
+}
+
 .request-line {
   display: flex;
   font-size: 10px;
