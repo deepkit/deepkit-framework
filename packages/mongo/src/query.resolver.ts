@@ -8,15 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    DatabaseAdapter,
-    DatabaseSession,
-    DeleteResult,
-    Entity,
-    Formatter,
-    GenericQueryResolver,
-    PatchResult
-} from '@deepkit/orm';
+import { DatabaseAdapter, DatabaseSession, DeleteResult, Entity, Formatter, GenericQueryResolver, PatchResult } from '@deepkit/orm';
 import { Changes, ClassSchema, createClassSchema, getClassSchema, resolveClassTypeOrForward, t } from '@deepkit/type';
 import { MongoClient } from './client/client';
 import { AggregateCommand } from './client/command/aggregate';
@@ -245,6 +237,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
     }
 
     protected buildAggregationPipeline(model: MongoQueryModel<T>) {
+        const joinRefs: string[] = [];
         const handleJoins = <T>(pipeline: any[], query: MongoQueryModel<T>, schema: ClassSchema) => {
             for (const join of query.joins) {
                 if (join.query.model.isPartial()) {
@@ -252,6 +245,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                 } else {
                     join.as = '__ref_' + join.propertySchema.name;
                 }
+                joinRefs.push(join.as);
 
                 const foreignSchema = join.propertySchema.getResolvedClassSchema();
                 const joinPipeline: any[] = [];
@@ -365,7 +359,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
 
                 if (join.propertySchema.isArray) {
                     if (!schema.hasProperty(join.as)) {
-                        //it's important that joins with partials have a different name. We set it at the beginngin
+                        //it's important that joins with partials have a different name. We set it at the beginning
                         //of this for each join loop.
                         if (join.query.model.isPartial()) {
                             schema.addProperty(join.as, t.array(t.partial(foreignSchema)).noValidation.exclude('all'));
@@ -443,14 +437,19 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
 
         if (!model.isAggregate()) {
             const projection = this.getProjection(this.classSchema, model.select);
+            if (projection) {
+                for (const name of joinRefs) {
+                    (projection as any)[name] = 1;
+                }
+            }
             if (projection) pipeline.push({ $project: projection });
         }
 
         return pipeline;
     }
 
-    /** 
-     * Returns undefined when no selection limitation has happened. When non-undefined 
+    /**
+     * Returns undefined when no selection limitation has happened. When non-undefined
      * the mongo driver returns a t.partial.
     */
     protected getProjection<T>(classSchema: ClassSchema, select: Set<string>): { [name: string]: 0 | 1 } | undefined {
