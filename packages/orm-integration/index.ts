@@ -2,6 +2,7 @@ export * from './src/bookstore';
 export * from './src/active-record';
 export * from './src/soft-delete';
 export * from './src/aggregate';
+export * from './src/users';
 
 export * from './src/test';
 export * from './src/active-record/book-tag';
