@@ -326,7 +326,7 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
             _depth = !_depth ? 1 : _depth + 1;
             var _oldUnpopulatedCheck = _global.unpopulatedCheck;
             _global.unpopulatedCheck = UnpopulatedCheckNone;
-    
+
             ${convertProperties.join('\n')}
 
             _global.unpopulatedCheck = _oldUnpopulatedCheck;
@@ -592,6 +592,7 @@ export function createPartialXToClassFunction<T>(schema: ClassSchema<T>, seriali
 
     for (const property of schema.getProperties()) {
         if (property.isParentReference) continue;
+        if (isExcluded(schema, property.name, serializer.name)) continue;
 
         props.push(`
             if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})){
@@ -629,6 +630,7 @@ export function createPartialClassToXFunction<T>(schema: ClassSchema<T>, seriali
 
     for (const property of schema.getProperties()) {
         if (property.isParentReference) continue;
+        if (isExcluded(schema, property.name, serializer.name)) continue;
 
         props.push(`
             if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})){
@@ -649,9 +651,9 @@ export function createPartialClassToXFunction<T>(schema: ClassSchema<T>, seriali
 
             var _oldUnpopulatedCheck = _global.unpopulatedCheck;
             _global.unpopulatedCheck = UnpopulatedCheckNone;
-    
+
             ${props.join('\n')}
-            
+
             _global.unpopulatedCheck = _oldUnpopulatedCheck;
             return _result;
         }

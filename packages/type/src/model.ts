@@ -55,8 +55,8 @@ export interface BackReferenceOptions<T> {
 
     /**
      * A reference/backReference can define which reference on the other side
-     * reference back. This is necessary when multiple outgoing references
-     * to the same
+     * reference back. This is necessary when there are multiple outgoing references
+     * to the same entity.
      */
     mappedBy?: keyof T & string,
 }
@@ -734,6 +734,8 @@ export class ClassSchema<T = any> {
     public fromClass: boolean = true;
 
     constructor(classType: ClassType) {
+        if (!classType) throw new Error('No classType given');
+
         this.classType = classType;
 
         this.loadDefaults();
