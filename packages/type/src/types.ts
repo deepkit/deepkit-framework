@@ -89,11 +89,14 @@ export type PatchField<T> = {
 
 export type PartialEntity<T> = { [name in keyof T & string]?: T[name] };
 
+declare const BigInt: any;
+
 export const typedArrayMap = new Map<any, Types>();
 typedArrayMap.set(String, 'string');
 typedArrayMap.set(Number, 'number');
 typedArrayMap.set(Date, 'date');
 typedArrayMap.set(Boolean, 'boolean');
+typedArrayMap.set(BigInt, 'bigint');
 typedArrayMap.set(Int8Array, 'Int8Array');
 typedArrayMap.set(Buffer, 'Uint8Array');
 typedArrayMap.set(Uint8Array, 'Uint8Array');

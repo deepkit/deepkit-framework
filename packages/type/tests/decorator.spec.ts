@@ -807,3 +807,15 @@ test('default creates clones', () => {
         expect(propertySchema.getDefaultValue()).not.toBe(defaultValue);
     }
 });
+
+
+test('bigint', () => {
+    class ExecuteTransaction<C> {
+        @t.required publicKey!: Uint8Array;
+        @t.required signature!: Uint8Array;
+        @t.any command!: C;
+        @t.required nonce!: bigint;
+    }
+
+    expect(getClassSchema(ExecuteTransaction).getProperty('nonce').type).toBe('bigint');
+})
