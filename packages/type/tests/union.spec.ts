@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { jsonSerializer, t, validate } from '../index';
+import { jsonSerializer, plainToClass, t, validate } from '../index';
 
 test('union ClassType', () => {
     class RegularUser {
@@ -363,6 +363,38 @@ test('union string | MyClass', () => {
     }
 
     expect(validate(s, { union: {} })).toEqual([{ code: 'required', message: 'Required value is undefined', path: 'union.id', }]);
+    expect(validate(s, { union: false })).toEqual([{ code: 'invalid_union', message: 'No compatible type for union found', path: 'union', }]);
+    expect(validate(s, { union: 'sad' })).toEqual([]);
+    expect(validate(s, { union: '2012-08-13T22:57:24.716Z' })).toEqual([]);
+});
+
+test('union number|boolean validation', () => {
+    const s = t.schema({
+        union: t.union(t.number, t.boolean),
+    });
+
+    expect(plainToClass(s, {union: '123'}).union).toBe(123);
+    expect(plainToClass(s, {union: '1'}).union).toBe(1);
+    expect(plainToClass(s, {union: 1}).union).toBe(1);
+    expect(plainToClass(s, {union: 0}).union).toBe(0);
+    expect(plainToClass(s, {union: '0'}).union).toBe(0);
+    expect(plainToClass(s, {union: 'true'}).union).toBe(true);
+    expect(plainToClass(s, {union: 'false'}).union).toBe(false);
+
+    expect(validate(s, { union: 123 })).toEqual([]);
+    expect(validate(s, { union: false })).toEqual([]);
+    expect(validate(s, { union: '123' })).toEqual([]);
+    expect(validate(s, { union: 'sad' })).toEqual([{ code: 'invalid_union', message: 'No compatible type for union found', path: 'union', }]);
+    expect(validate(s, { union: {} })).toEqual([{ code: 'invalid_union', message: 'No compatible type for union found', path: 'union', }]);
+});
+
+test('union number|string validation', () => {
+    const s = t.schema({
+        union: t.union(t.number.maximum(100), t.string),
+    });
+
+    expect(validate(s, { union: 12 })).toEqual([]);
+    expect(validate(s, { union: 123 })).toEqual([{ code: 'maximum', message: 'Number needs to be smaller than or equal to 100', path: 'union', }]);
     expect(validate(s, { union: false })).toEqual([{ code: 'invalid_union', message: 'No compatible type for union found', path: 'union', }]);
     expect(validate(s, { union: 'sad' })).toEqual([]);
     expect(validate(s, { union: '2012-08-13T22:57:24.716Z' })).toEqual([]);
