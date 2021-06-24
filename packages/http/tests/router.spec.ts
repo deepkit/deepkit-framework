@@ -102,7 +102,7 @@ test('router parameters', async () => {
 
     expect(await httpKernel.handleRequestFor('GET', '/user/peter')).toBe('peter');
     expect(await httpKernel.handleRequestFor('GET', '/user-id/123')).toBe(123);
-    expect(await httpKernel.handleRequestFor('GET', '/user-id/asd')).toMatchObject({ message: 'Validation failed: id(invalid_number): No number given' });
+    expect(await httpKernel.handleRequestFor('GET', '/user-id/asd')).toMatchObject({ message: 'Validation failed: id(invalid_number): No valid number given, got NaN' });
     expect(await httpKernel.handleRequestFor('GET', '/boolean/1')).toBe(true);
     expect(await httpKernel.handleRequestFor('GET', '/boolean/false')).toBe(false);
 

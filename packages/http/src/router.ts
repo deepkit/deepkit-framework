@@ -333,7 +333,7 @@ export class Router {
                     const validatorVar = compiler.reserveVariable('argumentValidator', validator);
 
                     setParameters.push(`parameters.${parameter.property.name} = ${converterVar}(_match[${1 + (parameter.regexPosition || 0)}]);`);
-                    parameterValidator.push(`${validatorVar}(_match[1 + ${parameter.regexPosition}], ${JSON.stringify(parameter.getName())}, validationErrors);`);
+                    parameterValidator.push(`${validatorVar}(parameters.${parameter.property.name}, ${JSON.stringify(parameter.getName())}, validationErrors);`);
                     parameterNames.push(`parameters.${parameter.property.name}`);
                 } else {
                     if (parsedRoute.customValidationErrorHandling === parameter) {
@@ -342,17 +342,12 @@ export class Router {
                         setParameters.push(`parameters.${parameter.property.name} = new BodyValidation(bodyErrors);`);
                         parameterNames.push(`parameters.${parameter.property.name}`);
                     } else if (parameter.body) {
-                        const bodyVar = compiler.reserveVariable('body');
-
                         const validatorVar = compiler.reserveVariable('argumentValidator', jitValidateProperty(parameter.property));
                         const converterVar = compiler.reserveVariable('argumentConverter', getPropertyXtoClassFunction(parameter.property, jsonSerializer));
 
                         enableParseBody = true;
-                        parameterValidator.push(`
-                        ${bodyVar} = ${converterVar}(bodyFields);
-                        ${validatorVar}(${bodyVar}, ${JSON.stringify(parameter.typePath || '')}, bodyErrors);
-                        `);
-                        setParameters.push(`parameters.${parameter.property.name} = ${bodyVar};`);
+                        setParameters.push(`parameters.${parameter.property.name} = ${converterVar}(bodyFields);`);
+                        parameterValidator.push(`${validatorVar}(parameters.${parameter.property.name}, ${JSON.stringify(parameter.typePath || '')}, bodyErrors);`);
                         parameterNames.push(`parameters.${parameter.property.name}`);
                     } else if (parameter.query) {
                         const converted = parameter.property.type === 'any' ? (v: any) => v : getPropertyXtoClassFunction(parameter.property, jsonSerializer);
@@ -423,9 +418,9 @@ export class Router {
                 const parameters = {};
                 ${setParametersFromPath}
                 ${parseBodyLoading}
+                ${setParameters.join('\n')}
                 ${parameterValidator.join('\n')}
                 ${bodyValidationErrorHandling}
-                ${setParameters.join('\n')}
                 if (validationErrors.length) throw ValidationFailed.from(validationErrors);
                 return [${parameterNames.join(',')}];
             }`;
