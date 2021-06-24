@@ -35,6 +35,7 @@
     "@mikro-orm/sqlite": "^4.1.0",
     "@prisma/cli": "2.6.2",
     "bson": "^4.4.0",
+    "sequelize": "^6.6.2",
     "turbo-net": "1.4.0",
     "sqlite3": "^5.0.1",
     "@prisma/client": "2.6.2",

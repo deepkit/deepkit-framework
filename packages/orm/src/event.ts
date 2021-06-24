@@ -86,7 +86,7 @@ export class QueryDatabaseEvent<T> extends AsyncEmitterEvent {
         public readonly classSchema: ClassSchema<T>,
         public query: Query<T>
     ) {
-        super()
+        super();
     }
 
     isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is QueryDatabaseDeleteEvent<T> {
@@ -101,7 +101,7 @@ export class QueryDatabaseDeleteEvent<T> extends AsyncEmitterEvent {
         public query: Query<T>,
         public readonly deleteResult: DeleteResult<T>
     ) {
-        super()
+        super();
     }
 
     isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is QueryDatabaseDeleteEvent<T> {
@@ -119,7 +119,7 @@ export class QueryDatabasePatchEvent<T> extends AsyncEmitterEvent {
         public readonly patch: Changes<T>,
         public readonly patchResult: PatchResult<T>
     ) {
-        super()
+        super();
     }
 
     isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is QueryDatabasePatchEvent<T> {
@@ -128,9 +128,9 @@ export class QueryDatabasePatchEvent<T> extends AsyncEmitterEvent {
 }
 
 export class QueryDatabaseEmitter {
-    /** 
+    /**
      * For all queries related to fetching data like: find, findOne, count, has.
-    */
+     */
     public readonly onFetch: AsyncEventEmitter<QueryDatabaseEvent<any>> = new AsyncEventEmitter(this.parent?.onDeletePre);
 
     public readonly onDeletePre: AsyncEventEmitter<QueryDatabaseDeleteEvent<any>> = new AsyncEventEmitter(this.parent?.onDeletePre);

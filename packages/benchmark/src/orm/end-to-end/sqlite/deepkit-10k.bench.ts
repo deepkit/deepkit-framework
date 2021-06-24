@@ -58,6 +58,10 @@ export async function main() {
             await session.query(DeepkitModel).disableIdentityMap().find();
         });
 
+        await bench.runAsyncFix(10, 'fetch-1', async () => {
+            await session.query(DeepkitModel).disableIdentityMap().findOne();
+        });
+
         const dbItems = await session.query(DeepkitModel).find();
         for (const item of dbItems) {
             item.priority++;
