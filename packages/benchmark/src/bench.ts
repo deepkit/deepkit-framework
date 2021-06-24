@@ -145,7 +145,7 @@ export async function bench(times: number, title: string, exec: () => void | Pro
         ops((1000 / took) * times),
         green(title),
         took.toLocaleString(undefined, { maximumFractionDigits: 17 }), 'ms,',
-        (took / times).toLocaleString(undefined, { maximumFractionDigits: 17 }), 'ms per item',
+        (took / times).toLocaleString(undefined, { maximumFractionDigits: 17 }), 'ms per op',
         process.memoryUsage().rss / 1024 / 1024, 'MB memory'
     ].join(' ') + '\n');
     return took;
