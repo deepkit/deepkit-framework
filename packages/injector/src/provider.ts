@@ -95,20 +95,31 @@ export class TagProvider<T> {
     }
 }
 
-export class Tag<T> {
+export class Tag<T, TP extends TagProvider<T> = TagProvider<T>> {
     _!: () => T;
+    _2!: () => TP;
 
     constructor(
         public readonly services: T[] = []
     ) {
     }
 
-    static provide<P extends ClassType<T> | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>, T extends ReturnType<InstanceType<B>['_']>, B extends ClassType<Tag<any>>>(this: B, provider: P): TagProvider<T> {
+    protected createTagProvider(provider: NormalizedProvider<any>): TP {
+        return new TagProvider(provider, this) as TP;
+    }
+
+    static provide<
+        P extends ClassType<T> | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>,
+        T extends ReturnType<InstanceType<B>['_']>,
+        TP extends ReturnType<InstanceType<B>['_2']>,
+        B extends ClassType<Tag<any>>>(this: B, provider: P): TP {
+        const t = new this;
+
         if (isClass(provider)) {
-            return new TagProvider({ provide: provider }, new this);
+            return t.createTagProvider({ provide: provider }) as TP;
         }
 
-        return new TagProvider(provider as NormalizedProvider<T>, new this);
+        return t.createTagProvider(provider as NormalizedProvider<T>) as TP;
     }
 }
 

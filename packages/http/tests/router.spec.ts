@@ -131,33 +131,48 @@ test('router parameterResolver', async () => {
         }
     }
 
+    class Group {
+        constructor(public name: string) {
+        }
+    }
+
     class Controller {
         @http.GET('user/:username')
         route1(user: User) {
             return [user.username];
         }
 
-        @http.GET('group')
+        @http.GET('invalid')
         route2(user: User) {
             return [user.username];
         }
+
+        @http.GET('user/:user/group/:group')
+        route3(user: User, group: Group) {
+            return [user.username, group.name];
+        }
     }
 
-    class MyRouteParameterResolver {
+    class UserResolver {
         resolve(context: RouteParameterResolverContext): any | Promise<any> {
-            if (!context.parameters.username) throw new Error('No :username specified');
-            return new User(context.parameters.username);
-        }
-
-        supports(classType: ClassType): boolean {
-            return classType === User;
+            const value = context.value || context.parameters.username
+            if (!value) throw new Error('No value specified');
+            return new User(value);
         }
     }
 
-    const httpKernel = createHttpKernel([Controller], [RouteParameterResolverTag.provide(MyRouteParameterResolver)]);
+    class GroupResolver {
+        resolve(context: RouteParameterResolverContext): any | Promise<any> {
+            if (!context.value) throw new Error('No value specified');
+            return new Group(context.value);
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [RouteParameterResolverTag.provide(UserResolver).forClassType(User), RouteParameterResolverTag.provide(GroupResolver).forClassType(Group)]);
 
     expect(await httpKernel.handleRequestFor('GET', '/user/peter')).toEqual(['peter']);
-    expect(await httpKernel.handleRequestFor('GET', '/group')).toEqual('Internal error');
+    expect(await httpKernel.handleRequestFor('GET', '/user/peter/group/a')).toEqual(['peter', 'a']);
+    expect(await httpKernel.handleRequestFor('GET', '/invalid')).toEqual('Internal error');
 });
 
 test('router body', async () => {
