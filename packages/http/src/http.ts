@@ -229,6 +229,11 @@ export class HttpControllerEvent extends HttpWorkflowEventWithRoute {
 }
 
 export class HttpResponseEvent extends WorkflowEvent {
+    /**
+     * The time it took to call the controller action in milliseconds.
+     */
+    public controllerActionTime: number = 0;
+
     constructor(
         public injectorContext: InjectorContext,
         public request: HttpRequest,
@@ -371,8 +376,11 @@ export class HttpListener {
 
         const controllerInstance = event.injectorContext.get(event.route.action.controller);
         try {
+            const start = Date.now();
             const method = controllerInstance[event.route.action.methodName];
-            event.next('response', new HttpResponseEvent(event.injectorContext, event.request, event.response, await method.apply(controllerInstance, event.parameters), event.route));
+            const responseEvent = new HttpResponseEvent(event.injectorContext, event.request, event.response, await method.apply(controllerInstance, event.parameters), event.route);
+            responseEvent.controllerActionTime = Date.now() - start;
+            event.next('response', responseEvent);
         } catch (error) {
             if (error instanceof HttpAccessDeniedError) {
                 event.next('accessDenied', new HttpAccessDeniedEvent(event.injectorContext, event.request, event.response, event.route));
@@ -409,8 +417,11 @@ export class HttpListener {
         event.send(new HtmlResponse('Internal error', 500));
     }
 
-    @eventDispatcher.listen(httpWorkflow.onResponse, 100)
-    async onResponse(event: typeof httpWorkflow.onResponse.event) {
+    /**
+     * This happens before the result is sent.
+     */
+    @eventDispatcher.listen(httpWorkflow.onResponse, -100)
+    async onResultSerialization(event: typeof httpWorkflow.onResponse.event) {
         if (event.route && event.route.returnSchema && event.route.returnSchema.typeSet) {
             if (event.result !== undefined) {
                 event.result = getPropertyClassToXFunction(
@@ -419,7 +430,10 @@ export class HttpListener {
                 )(event.result, event.route.serializationOptions);
             }
         }
+    }
 
+    @eventDispatcher.listen(httpWorkflow.onResponse, 100)
+    async onResponse(event: typeof httpWorkflow.onResponse.event) {
         const response = event.result;
 
         if (response === null || response === undefined) {

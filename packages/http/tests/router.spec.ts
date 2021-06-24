@@ -3,16 +3,16 @@ import 'reflect-metadata';
 import { dotToUrlPath, RouteParameterResolverContext, RouteParameterResolverTag, Router } from '../src/router';
 import { http, httpClass } from '../src/decorator';
 import { t } from '@deepkit/type';
-import { HttpListener, JSONResponse } from '../src/http';
+import { HttpListener, httpWorkflow, JSONResponse } from '../src/http';
 import { HttpKernel } from '../src/kernel';
-import { EventDispatcher } from '@deepkit/event';
+import { eventDispatcher, EventDispatcher } from '@deepkit/event';
 import { InjectorContext, ProviderWithScope, TagProvider, TagRegistry } from '@deepkit/injector';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { HttpRequest } from '../src/model';
-import { ClassType } from '@deepkit/core';
+import { ClassType, sleep } from '@deepkit/core';
 import { Stopwatch } from '@deepkit/stopwatch';
 
-function createHttpKernel(controllers: ClassType[], providers: ProviderWithScope[] = []) {
+function createHttpKernel(controllers: ClassType[], providers: ProviderWithScope[] = [], listeners: ClassType[] = []) {
     const tagProviders = new TagRegistry();
     for (const provider of providers.slice(0)) {
         if (provider instanceof TagProvider) {
@@ -25,12 +25,14 @@ function createHttpKernel(controllers: ClassType[], providers: ProviderWithScope
         { provide: Router, useValue: router },
         ...controllers,
         ...providers,
+        ...listeners,
         HttpListener,
         { provide: Logger, useValue: new Logger([new ConsoleTransport()]) },
         Stopwatch
     ]);
     const eventDispatcher = new EventDispatcher(injector);
     eventDispatcher.registerListener(HttpListener);
+    for (const listener of listeners) eventDispatcher.registerListener(listener);
     return new HttpKernel(router, eventDispatcher, injector, new Logger([new ConsoleTransport()]), new Stopwatch());
 }
 
@@ -307,15 +309,45 @@ test('serializer options', async () => {
     }
 
     class Controller {
-        @http.GET().serialization({groupsExclude: ['sensitive']})
+        @http.GET().serialization({ groupsExclude: ['sensitive'] })
         @t.type(User)
         anyReq() {
-            return {username: 'Peter', password: 'secret'};
+            return { username: 'Peter', password: 'secret' };
         }
     }
+
     const httpKernel = createHttpKernel([Controller]);
 
     expect(await httpKernel.handleRequestFor('GET', '/')).toEqual({ username: 'Peter' });
+});
+
+test('hook after serializer', async () => {
+    class User {
+        @t username!: string;
+        @t.group('sensitive') password!: string;
+    }
+
+    class Controller {
+        @http.GET().serialization({ groupsExclude: ['sensitive'] })
+        @t.type(User)
+        async anyReq() {
+            await sleep(0.1);
+            return { username: 'Peter', password: 'secret' };
+        }
+    }
+
+    class Listener {
+        @eventDispatcher.listen(httpWorkflow.onResponse)
+        onResponse(event: typeof httpWorkflow.onResponse.event) {
+            event.result = { processingTime: event.controllerActionTime, data: event.result };
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [], [Listener]);
+
+    const result = await httpKernel.handleRequestFor('GET', '/');
+    expect(result.data).toEqual({ username: 'Peter' });
+    expect(result.processingTime).toBeGreaterThan(99);
 });
 
 
@@ -326,6 +358,7 @@ test('unions', async () => {
             return page;
         }
     }
+
     const httpKernel = createHttpKernel([Controller]);
 
     expect(await httpKernel.handleRequestFor('GET', '/list?page=1')).toEqual(1);
