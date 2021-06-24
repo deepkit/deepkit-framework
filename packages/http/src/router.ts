@@ -9,7 +9,18 @@
  */
 import 'reflect-metadata';
 import { asyncOperation, ClassType, CompilerContext } from '@deepkit/core';
-import { getClassSchema, getPropertyXtoClassFunction, jitValidateProperty, jsonSerializer, PropertySchema, t, ValidationFailed, ValidationFailedItem } from '@deepkit/type';
+import {
+    getClassSchema,
+    getPropertyXtoClassFunction,
+    JitConverterOptions,
+    jitValidateProperty,
+    jsonSerializer,
+    PropertySchema,
+    Serializer,
+    t,
+    ValidationFailed,
+    ValidationFailedItem
+} from '@deepkit/type';
 // @ts-ignore
 import formidable from 'formidable';
 import { IncomingMessage } from 'http';
@@ -96,6 +107,14 @@ export class RouteConfig {
     public description: string = '';
     public groups: string[] = [];
     public category: string = '';
+
+    /**
+     * This is set when the route action has a manual return type defined using @t.
+     */
+    public returnSchema?: PropertySchema;
+
+    public serializationOptions?: JitConverterOptions;
+    public serializer?: Serializer;
 
     /**
      * An arbitrary data container the user can use to store app specific settings/values.
@@ -478,6 +497,7 @@ export class Router {
     public addRouteForController(controller: ClassType) {
         const data = httpClass._fetch(controller);
         if (!data) return;
+        const schema = getClassSchema(controller);
 
         for (const action of data.getActions()) {
             const routeConfig = new RouteConfig(action.name, action.httpMethod, action.path, {
@@ -492,6 +512,9 @@ export class Router {
             routeConfig.data = new Map(action.data);
             routeConfig.baseUrl = data.baseUrl;
             routeConfig.parameters = { ...action.parameters };
+            routeConfig.serializationOptions = action.serializationOptions;
+            routeConfig.serializer = action.serializer;
+            if (schema.hasMethod(action.methodName)) routeConfig.returnSchema = schema.getMethod(action.methodName);
             this.addRoute(routeConfig);
         }
     }

@@ -300,6 +300,38 @@ test('router query all', async () => {
     expect(await httpKernel.handleRequestFor('GET', '/my-action?filter=page&page=5')).toEqual({ filter: 'page', page: 5 });
 });
 
+test('serializer options', async () => {
+    class User {
+        @t username!: string;
+        @t.group('sensitive') password!: string;
+    }
+
+    class Controller {
+        @http.GET().serialization({groupsExclude: ['sensitive']})
+        @t.type(User)
+        anyReq() {
+            return {username: 'Peter', password: 'secret'};
+        }
+    }
+    const httpKernel = createHttpKernel([Controller]);
+
+    expect(await httpKernel.handleRequestFor('GET', '/')).toEqual({ username: 'Peter' });
+});
+
+
+test('unions', async () => {
+    class Controller {
+        @http.GET('/list')
+        list(@http.query() @t.union(t.number, t.boolean) page: number | boolean) {
+            return page;
+        }
+    }
+    const httpKernel = createHttpKernel([Controller]);
+
+    expect(await httpKernel.handleRequestFor('GET', '/list?page=1')).toEqual(1);
+    expect(await httpKernel.handleRequestFor('GET', '/list?page=2222')).toEqual(2222);
+    expect(await httpKernel.handleRequestFor('GET', '/list?page=false')).toEqual(false);
+});
 
 test('router dotToUrlPath', () => {
     expect(dotToUrlPath('peter')).toBe('peter');

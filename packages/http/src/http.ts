@@ -9,7 +9,7 @@
  */
 
 import { CustomError } from '@deepkit/core';
-import { getClassTypeFromInstance, isClassInstance, isRegisteredEntity, jsonSerializer, ValidationFailed } from '@deepkit/type';
+import { getClassTypeFromInstance, getPropertyClassToXFunction, isClassInstance, isRegisteredEntity, jsonSerializer, ValidationFailed } from '@deepkit/type';
 import { ServerResponse } from 'http';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpRequest, HttpResponse } from './model';
@@ -98,6 +98,9 @@ export class HttpWorkflowEvent {
         this.nextStateEvent = event;
     }
 
+    /**
+     * Whether already a next workflow state has been scheduled.
+     */
     hasNext(): boolean {
         return this.nextState !== undefined;
     }
@@ -141,6 +144,10 @@ export class HttpWorkflowEventWithRoute extends HttpWorkflowEvent {
     send(response: any) {
         this.next('response', new HttpResponseEvent(this.injectorContext, this.request, this.response, response, this.route));
     }
+
+    accessDenied() {
+        this.next('accessDenied', new HttpAccessDeniedEvent(this.injectorContext, this.request, this.response, this.route));
+    }
 }
 
 export class HttpRouteEvent extends HttpWorkflowEvent {
@@ -178,10 +185,6 @@ export class HttpAuthEvent extends HttpWorkflowEventWithRoute {
     success() {
         this.next('resolveParameters', new HttpResolveParametersEvent(this.injectorContext, this.request, this.response, this.parameterResolver, this.route));
     }
-
-    accessDenied() {
-        this.next('accessDenied', new HttpAccessDeniedEvent(this.injectorContext, this.request, this.response, this.route));
-    }
 }
 
 export class HttpAccessDeniedEvent extends HttpWorkflowEvent {
@@ -195,7 +198,7 @@ export class HttpAccessDeniedEvent extends HttpWorkflowEvent {
     }
 }
 
-export class HttpResolveParametersEvent extends HttpWorkflowEvent {
+export class HttpResolveParametersEvent extends HttpWorkflowEventWithRoute {
     public parameters: any[] = [];
 
     constructor(
@@ -205,11 +208,15 @@ export class HttpResolveParametersEvent extends HttpWorkflowEvent {
         public parameterResolver: RouteParameterResolverForInjector,
         public route: RouteConfig,
     ) {
-        super(injectorContext, request, response);
+        super(injectorContext, request, response, route);
+    }
+
+    accessDenied() {
+        this.next('accessDenied', new HttpAccessDeniedEvent(this.injectorContext, this.request, this.response, this.route));
     }
 }
 
-export class HttpControllerEvent extends HttpWorkflowEvent {
+export class HttpControllerEvent extends HttpWorkflowEventWithRoute {
     constructor(
         public injectorContext: InjectorContext,
         public request: HttpRequest,
@@ -217,7 +224,7 @@ export class HttpControllerEvent extends HttpWorkflowEvent {
         public parameters: any[] = [],
         public route: RouteConfig,
     ) {
-        super(injectorContext, request, response);
+        super(injectorContext, request, response, route);
     }
 }
 
@@ -233,7 +240,7 @@ export class HttpResponseEvent extends WorkflowEvent {
     }
 }
 
-export class HttpControllerErrorEvent extends HttpWorkflowEvent {
+export class HttpControllerErrorEvent extends HttpWorkflowEventWithRoute {
     constructor(
         public injectorContext: InjectorContext,
         public request: HttpRequest,
@@ -241,7 +248,7 @@ export class HttpControllerErrorEvent extends HttpWorkflowEvent {
         public route: RouteConfig,
         public error: Error,
     ) {
-        super(injectorContext, request, response);
+        super(injectorContext, request, response, route);
     }
 }
 
@@ -404,6 +411,15 @@ export class HttpListener {
 
     @eventDispatcher.listen(httpWorkflow.onResponse, 100)
     async onResponse(event: typeof httpWorkflow.onResponse.event) {
+        if (event.route && event.route.returnSchema && event.route.returnSchema.typeSet) {
+            if (event.result !== undefined) {
+                event.result = getPropertyClassToXFunction(
+                    event.route.returnSchema,
+                    event.route && event.route?.serializer ? event.route.serializer : jsonSerializer
+                )(event.result, event.route.serializationOptions);
+            }
+        }
+
         const response = event.result;
 
         if (response === null || response === undefined) {
@@ -432,7 +448,14 @@ export class HttpListener {
             event.response.end(await render(event.injectorContext, response, this.stopwatch.active ? this.stopwatch : undefined));
         } else if (isClassInstance(response) && isRegisteredEntity(getClassTypeFromInstance(response))) {
             event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
-            event.response.end(JSON.stringify(jsonSerializer.for(getClassTypeFromInstance(response)).serialize(response)));
+            event.response.end(JSON.stringify(
+                (event.route && event.route?.serializer ? event.route.serializer : jsonSerializer)
+                    .for(getClassTypeFromInstance(response)).serialize(
+                    response,
+                    event.route ? event.route.serializationOptions : undefined
+                )
+                )
+            );
         } else if (response instanceof Uint8Array) {
             event.response.end(response);
         } else if (response instanceof JSONResponse) {

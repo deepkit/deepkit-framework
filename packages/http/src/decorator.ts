@@ -9,7 +9,16 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, getClassSchema, mergeDecorator, PropertyDecoratorResult } from '@deepkit/type';
+import {
+    ClassDecoratorResult,
+    createClassDecoratorContext,
+    createPropertyDecoratorContext,
+    getClassSchema,
+    JitConverterOptions,
+    mergeDecorator,
+    PropertyDecoratorResult,
+    Serializer
+} from '@deepkit/type';
 import { join } from 'path';
 
 export interface ControllerOptions {
@@ -66,6 +75,8 @@ export class HttpAction {
     httpMethod: string = 'GET';
     methodName: string = '';
     groups: string[] = [];
+    serializer?: Serializer;
+    serializationOptions?: JitConverterOptions;
 
     parameterRegularExpressions: { [name: string]: any } = {};
 
@@ -118,6 +129,14 @@ export class HttpActionDecorator {
 
     description(description: string) {
         this.t.description = description;
+    }
+
+    serialization(options: JitConverterOptions) {
+        this.t.serializationOptions = options;
+    }
+
+    serializer(serializer: Serializer) {
+        this.t.serializer = serializer;
     }
 
     /**
