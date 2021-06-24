@@ -8,7 +8,23 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { arrayRemoveItem, capitalize, ClassType, eachKey, eachPair, ExtractClassType, extractMethodBody, extractParameters, getClassName, isClass, isConstructable, isFunction, isObject, isPlainObject, toFastProperties } from '@deepkit/core';
+import {
+    arrayRemoveItem,
+    capitalize,
+    ClassType,
+    eachKey,
+    eachPair,
+    ExtractClassType,
+    extractMethodBody,
+    extractParameters,
+    getClassName,
+    isClass,
+    isConstructable,
+    isFunction,
+    isObject,
+    isPlainObject,
+    toFastProperties
+} from '@deepkit/core';
 import { ExtractClassDefinition, PlainSchemaProps, t } from './decorators';
 import { FieldDecoratorResult } from './field-decorator';
 import { typedArrayMap, typedArrayNamesMap, Types } from './types';
@@ -313,7 +329,7 @@ export class PropertySchema {
     index?: IndexOptions;
 
     /**
-     * Used in decorator to check whether type has been set already.
+     * Used in decorator to check whether type has been set manually using @t decorator.
      */
     typeSet: boolean = false;
 
@@ -1148,6 +1164,7 @@ export class ClassSchema<T = any> {
                 const returnType = Reflect.getMetadata && Reflect.getMetadata('design:returntype', this.classType.prototype, name);
                 this.methods[name] = new PropertySchema(name);
                 this.methods[name].setFromJSType(returnType);
+                this.methods[name].typeSet = false;
             }
 
             const properties = this.getOrCreateMethodProperties(name);
@@ -1164,6 +1181,7 @@ export class ClassSchema<T = any> {
                     properties[i].methodName = name;
                     if (paramtypes[i] !== Object) {
                         properties[i].setFromJSType(t, false);
+                        properties[i].typeSet = false;
                     }
                 }
             }

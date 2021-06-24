@@ -350,6 +350,26 @@ test('hook after serializer', async () => {
     expect(result.processingTime).toBeGreaterThan(99);
 });
 
+test('promise serializer', async () => {
+    class Controller {
+        @http.GET('1')
+        async anyReq1() {
+            return "test";
+        }
+
+        @http.GET('2')
+        @t.string
+        async anyReq2() {
+            return 1;
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    // expect(await httpKernel.handleRequestFor('GET', '/1')).toBe("test");
+    expect(await httpKernel.handleRequestFor('GET', '/2')).toBe("1");
+});
+
 
 test('unions', async () => {
     class Controller {
