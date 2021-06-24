@@ -68,6 +68,9 @@
       "path": "packages/rpc/tsconfig.json"
     },
     {
+      "path": "packages/rpc/tsconfig.test.json"
+    },
+    {
       "path": "packages/rpc-tcp/tsconfig.json"
     },
     {
