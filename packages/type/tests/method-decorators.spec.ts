@@ -324,7 +324,7 @@ test('argument convertion', () => {
 
     {
         const name = jsonSerializer.for(Controller).serializeMethodArgument('foo', 0, 2);
-        expect(name).toBe(2);
+        expect(name).toBe('2');
 
         const res = jsonSerializer.for(Controller).deserializeMethodResult('foo', { name: 3 });
         expect(res).toEqual({ name: '3' });
