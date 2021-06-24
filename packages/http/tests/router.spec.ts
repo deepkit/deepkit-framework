@@ -366,7 +366,7 @@ test('promise serializer', async () => {
 
     const httpKernel = createHttpKernel([Controller]);
 
-    // expect(await httpKernel.handleRequestFor('GET', '/1')).toBe("test");
+    expect(await httpKernel.handleRequestFor('GET', '/1')).toBe("test");
     expect(await httpKernel.handleRequestFor('GET', '/2')).toBe("1");
 });
 

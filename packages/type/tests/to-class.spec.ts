@@ -2,7 +2,7 @@ import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { CollectionWrapper, now, Plan, SimpleModel, StringCollectionWrapper, SubModel } from './entities';
 import { isExcluded } from '../src/mapper';
-import { getClassSchema, OnLoad, jsonSerializer, resolvePropertySchema, t, uuid, validate, cloneClass } from '../index';
+import { cloneClass, getClassSchema, getPropertyClassToXFunction, getPropertyXtoClassFunction, jsonSerializer, OnLoad, resolvePropertySchema, t, uuid, validate } from '../index';
 import { ClassWithUnmetParent, DocumentClass } from './document-scenario/DocumentClass';
 import { PageClass } from './document-scenario/PageClass';
 import { getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue } from '@deepkit/core';
@@ -889,4 +889,12 @@ test('nullable container', () => {
 
     expect(jsonSerializer.for(s).deserialize({ tags: null, tagMap: null, tagPartial: null })).toEqual({ tags: null, tagMap: null, tagPartial: null });
     expect(jsonSerializer.for(s).deserialize({})).toEqual({ tags: null, tagMap: null, tagPartial: null });
+});
+
+test('property number to string', () => {
+    expect(getPropertyXtoClassFunction(t.string.buildPropertySchema(), jsonSerializer)("1")).toBe("1");
+    expect(getPropertyXtoClassFunction(t.string.buildPropertySchema(), jsonSerializer)(1)).toBe("1");
+
+    expect(getPropertyClassToXFunction(t.string.buildPropertySchema(), jsonSerializer)("1")).toBe("1");
+    expect(getPropertyClassToXFunction(t.string.buildPropertySchema(), jsonSerializer)(1)).toBe("1");
 });

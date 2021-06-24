@@ -104,6 +104,7 @@ export function cloneClass<T>(target: T, options?: JitConverterOptions): T {
 
 
 jsonSerializer.toClass.register('string', compilerToString);
+jsonSerializer.fromClass.register('string', compilerToString);
 
 export function compilerToNumber(property: PropertySchema, state: CompilerState) {
     state.addSetter(`typeof ${state.accessor} === 'number' ? ${state.accessor} : +${state.accessor};`);
