@@ -53,12 +53,12 @@ export async function main() {
             await session.commit();
         });
 
-        await bench.runAsyncFix(1000, 'fetch-1', async () => {
-            await session.query(Model).disableIdentityMap().findOne();
-        });
-
         await bench.runAsyncFix(10, 'fetch', async () => {
             await session.query(Model).disableIdentityMap().find();
+        });
+
+        await bench.runAsyncFix(1000, 'fetch-1', async () => {
+            await session.query(Model).disableIdentityMap().findOne();
         });
 
         // const dbItems = await session.query(Model).find();

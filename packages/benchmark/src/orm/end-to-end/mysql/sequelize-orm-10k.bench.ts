@@ -12,7 +12,7 @@ import 'reflect-metadata';
 import { BenchSuite } from '../../../bench';
 import { DataTypes, Model, Sequelize } from 'sequelize';
 
-const sequelize = new Sequelize('sqlite::memory:', {
+const sequelize = new Sequelize('mysql://root@localhost/default', {
     logging: false
 });
 
@@ -49,7 +49,7 @@ export async function main() {
             await User.findAll();
         });
 
-        await bench.runAsyncFix(10, 'fetch-1', async () => {
+        await bench.runAsyncFix(1000, 'fetch-1', async () => {
             await User.findOne();
         });
     }
