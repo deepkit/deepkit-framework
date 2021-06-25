@@ -24,13 +24,13 @@ import {
 // @ts-ignore
 import formidable from 'formidable';
 import { IncomingMessage } from 'http';
-import { join } from 'path';
 import querystring from 'querystring';
 import { httpClass } from './decorator';
 import { HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters } from './model';
 import { BasicInjector, injectable, NormalizedProvider, Tag, TagProvider, TagRegistry } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { HttpControllers } from './controllers';
+import { resolveUrl } from './utils';
 
 export type RouteParameterResolverForInjector = ((injector: BasicInjector) => any[] | Promise<any[]>);
 type ResolvedController = { parameters: RouteParameterResolverForInjector, routeConfig: RouteConfig, uploadedFiles: { [name: string]: UploadedFile } };
@@ -134,7 +134,7 @@ export class RouteConfig {
     }
 
     getFullPath(): string {
-        let path = this.baseUrl ? join(this.baseUrl, this.path) : this.path;
+        let path = this.baseUrl ? resolveUrl(this.baseUrl, this.path) : this.path;
         if (!path.startsWith('/')) path = '/' + path;
         return path;
     }
