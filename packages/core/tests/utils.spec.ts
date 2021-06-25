@@ -11,4 +11,11 @@ test('urlJoin', async () => {
 
     expect(urlJoin('path')).toBe('path');
     expect(urlJoin('/path')).toBe('/path');
+    expect(urlJoin('/path/')).toBe('/path/');
+
+    expect(urlJoin('/path/', 'sub')).toBe('/path/sub');
+    expect(urlJoin('/path/', '/sub')).toBe('/path/sub');
+    expect(urlJoin('/path///', '/sub')).toBe('/path/sub');
+    expect(urlJoin('/path///', '//sub///')).toBe('/path/sub/');
+    expect(urlJoin('////path///', '//sub///')).toBe('/path/sub/');
 });
