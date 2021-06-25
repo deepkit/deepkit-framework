@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType } from '@deepkit/core';
+import { ClassType, urlJoin } from '@deepkit/core';
 import {
     ClassDecoratorResult,
     createClassDecoratorContext,
@@ -19,7 +19,6 @@ import {
     PropertyDecoratorResult,
     Serializer
 } from '@deepkit/type';
-import { join } from 'path';
 
 export interface ControllerOptions {
     name: string;
@@ -31,7 +30,7 @@ class HttpController {
     groups: string[] = [];
 
     getUrl(action: HttpAction): string {
-        return join('/', this.baseUrl, action.path);
+        return urlJoin('/', this.baseUrl, action.path);
     }
 
     addAction(action: HttpAction) {

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import 'reflect-metadata';
-import { asyncOperation, ClassType, CompilerContext, getClassName } from '@deepkit/core';
+import { asyncOperation, ClassType, CompilerContext, getClassName, urlJoin } from '@deepkit/core';
 import {
     getClassSchema,
     getPropertyXtoClassFunction,
@@ -24,7 +24,6 @@ import {
 // @ts-ignore
 import formidable from 'formidable';
 import { IncomingMessage } from 'http';
-import { join } from 'path';
 import querystring from 'querystring';
 import { httpClass } from './decorator';
 import { HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters } from './model';
@@ -134,7 +133,7 @@ export class RouteConfig {
     }
 
     getFullPath(): string {
-        let path = this.baseUrl ? join(this.baseUrl, this.path) : this.path;
+        let path = this.baseUrl ? urlJoin(this.baseUrl, this.path) : this.path;
         if (!path.startsWith('/')) path = '/' + path;
         return path;
     }

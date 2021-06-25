@@ -14,7 +14,7 @@ import { readFileSync, stat } from 'fs';
 import { HtmlResponse, httpWorkflow } from './http';
 import { AppModule } from '@deepkit/app';
 import { normalizeDirectory } from './utils';
-import { ClassType } from '@deepkit/core';
+import { ClassType, urlJoin } from '@deepkit/core';
 import { injectable } from '@deepkit/injector';
 import { HttpRequest, HttpResponse } from './model';
 import send from 'send';
@@ -39,7 +39,7 @@ export function serveStaticListener(path: string, localPath: string = path): Cla
 
             if (!event.request.url?.startsWith(path)) return;
 
-            const relativePath = join('/', event.url.substr(path.length));
+            const relativePath = urlJoin('/', event.url.substr(path.length));
             const finalLocalPath = join(localPath, relativePath);
 
             return new Promise(resolve => {
