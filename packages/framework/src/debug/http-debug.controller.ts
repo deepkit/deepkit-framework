@@ -8,12 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { join } from 'path';
 import { registerStaticHttpController } from '@deepkit/http';
-import { AppModule } from '@deepkit/app';
+import { AppModule, findParentPath } from '@deepkit/app';
 
 export function registerDebugHttpController(module: AppModule<any, any>, path: string): void {
-    const localPathPrefix = __dirname.includes('framework/dist') ? '../../../../' : '../../../';
-    const localPath = join(__dirname, localPathPrefix, 'node_modules/@deepkit/framework-debug-gui/dist/framework-debug-gui');
-    registerStaticHttpController(module, path, localPath);
+    const localPath = findParentPath('framework-debug-gui/dist/framework-debug-gui', __dirname);
+    if (localPath) {
+        registerStaticHttpController(module, path, localPath);
+    } else {
+        console.log('Warning: framework-debug-gui no build found.');
+    }
 }
