@@ -96,7 +96,7 @@ export class WebWorkerFactory {
 
     createRpcKernel() {
         const security = this.rootScopedContext.get(RpcKernelSecurity);
-        const kernel = new RpcKernel(this.rootScopedContext, security);
+        const kernel = new RpcKernel(this.rootScopedContext, security, this.logger.scoped('rpc'));
 
         for (const [name, controller] of this.rpcControllers.controllers.entries()) {
             kernel.registerController(name, controller);

@@ -18,12 +18,6 @@ import { ClientProgress, RpcMessageWriter, SingleProgress } from '../writer';
 import { RpcActionClient, RpcControllerState } from './action';
 import { RpcMessageSubject } from './message-subject';
 
-export class AuthenticationError extends Error {
-    constructor(message: string = 'Authentication failed') {
-        super(message);
-    }
-}
-
 export class OfflineError extends Error {
     constructor(message: string = 'Offline') {
         super(message);
@@ -217,12 +211,21 @@ export class RpcClientTransporter {
                         this.connected = true;
                         this.connectionTries = 0;
 
-                        this.id = await this.onHandshake();
-
-                        if (!await this.onAuthenticate()) {
+                        try {
+                            this.id = await this.onHandshake();
+                        } catch (error) {
                             this.connected = false;
                             this.connectionTries = 0;
-                            reject(new AuthenticationError());
+                            reject(error);
+                            return;
+                        }
+
+                        try {
+                            await this.onAuthenticate();
+                        } catch (error) {
+                            this.connected = false;
+                            this.connectionTries = 0;
+                            reject(error);
                             return;
                         }
 
@@ -338,7 +341,7 @@ export class RpcBaseClient implements WritableClient {
         const reply = await this.sendMessage(RpcTypes.Authenticate, rpcAuthenticate, { token: this.token.get()! }, { dontWaitForConnection: true })
             .waitNextMessage();
 
-        if (reply.isError()) return false;
+        if (reply.isError()) throw reply.getError();
 
         if (reply.type === RpcTypes.AuthenticateResponse) {
             const body = reply.parseBody(rpcResponseAuthenticate);

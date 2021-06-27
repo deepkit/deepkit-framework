@@ -426,3 +426,9 @@ export const rpcEntityPatch = t.schema({
         $inc: t.map(t.number).optional,
     })
 });
+
+export class AuthenticationError extends Error {
+    constructor(message: string = 'Authentication failed') {
+        super(message);
+    }
+}

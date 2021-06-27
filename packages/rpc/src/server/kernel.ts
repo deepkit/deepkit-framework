@@ -11,7 +11,7 @@
 import { arrayRemoveItem, ClassType } from '@deepkit/core';
 import { ClassSchema, getClassSchema, stringifyUuid, writeUuid } from '@deepkit/type';
 import { RpcMessageSubject } from '../client/message-subject';
-import { ControllerDefinition, rpcAuthenticate, rpcClientId, rpcError, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model';
+import { AuthenticationError, ControllerDefinition, rpcAuthenticate, rpcClientId, rpcError, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model';
 import {
     createBuffer,
     createRpcCompositeMessage,
@@ -32,6 +32,7 @@ import { RpcKernelSecurity, SessionState } from './security';
 import { RpcActionClient, RpcControllerState } from '../client/action';
 import { RemoteController } from '../client/client';
 import { BasicInjector, Injector, MemoryInjector } from '@deepkit/injector';
+import { Logger, LoggerInterface } from '@deepkit/logger';
 
 export class RpcCompositeMessage {
     protected messages: RpcCreateMessageDef<any>[] = [];
@@ -304,6 +305,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
         protected security = new RpcKernelSecurity(),
         protected injector: BasicInjector,
         protected peerExchange: RpcPeerExchange,
+        protected logger: LoggerInterface = new Logger(),
     ) {
         super(writer, connections);
         this.onClose.then(() => this.actionHandler.onClose());
@@ -365,35 +367,53 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
 
     protected async authenticate(message: RpcMessage, response: RpcMessageBuilder) {
         const body = message.parseBody(rpcAuthenticate);
-        const session = await this.security.authenticate(body.token);
-        this.sessionState.setSession(session);
-        response.reply(RpcTypes.AuthenticateResponse, rpcResponseAuthenticate, { username: session.username });
+        try {
+            const session = await this.security.authenticate(body.token);
+            this.sessionState.setSession(session);
+            response.reply(RpcTypes.AuthenticateResponse, rpcResponseAuthenticate, { username: session.username });
+        } catch (error) {
+            if (error instanceof AuthenticationError) throw new Error(error.message);
+            this.logger.error('authenticate failed', error);
+            throw new AuthenticationError();
+        }
     }
 
     protected async deregisterAsPeer(message: RpcMessage, response: RpcMessageBuilder) {
         const body = message.parseBody(rpcPeerRegister);
-        if (body.id !== this.myPeerId) {
-            return response.error(new Error(`Not registered as that peer`));
+
+        try {
+            if (body.id !== this.myPeerId) {
+                return response.error(new Error(`Not registered as that peer`));
+            }
+            this.myPeerId = undefined;
+            await this.peerExchange.deregister(body.id);
+            response.ack();
+        } catch (error) {
+            this.logger.error('deregisterAsPeer failed', error);
+            response.error(new Error('Failed'));
         }
-        this.myPeerId = undefined;
-        await this.peerExchange.deregister(body.id);
-        response.ack();
     }
 
     protected async registerAsPeer(message: RpcMessage, response: RpcMessageBuilder) {
         const body = message.parseBody(rpcPeerRegister);
-        if (await this.peerExchange.isRegistered(body.id)) {
-            return response.error(new Error(`Peer ${body.id} already registereed`));
-        }
 
-        if (!await this.security.isAllowedToRegisterAsPeer(this.sessionState.getSession(), body.id)) {
-            response.error(new Error('Access denied'));
-            return;
-        }
+        try {
+            if (await this.peerExchange.isRegistered(body.id)) {
+                return response.error(new Error(`Peer ${body.id} already registereed`));
+            }
 
-        await this.peerExchange.register(body.id, this.writer);
-        this.myPeerId = body.id;
-        response.ack();
+            if (!await this.security.isAllowedToRegisterAsPeer(this.sessionState.getSession(), body.id)) {
+                response.error(new Error('Access denied'));
+                return;
+            }
+
+            await this.peerExchange.register(body.id, this.writer);
+            this.myPeerId = body.id;
+            response.ack();
+        } catch (error) {
+            this.logger.error('registerAsPeer failed', error);
+            response.error(new Error('Failed'));
+        }
     }
 }
 
@@ -411,6 +431,7 @@ export class RpcKernel {
     constructor(
         injector?: BasicInjector,
         protected security = new RpcKernelSecurity(),
+        protected logger: LoggerInterface = new Logger(),
     ) {
         if (injector) {
             this.injector = injector;
@@ -433,7 +454,7 @@ export class RpcKernel {
         ]);
         const childInjectors: BasicInjector[] = [subInjector, injector || this.injector];
 
-        connection = new RpcKernelConnection(writer, this.connections, this.controllers, this.security, new Injector([], childInjectors), this.peerExchange);
+        connection = new RpcKernelConnection(writer, this.connections, this.controllers, this.security, new Injector([], childInjectors), this.peerExchange, this.logger);
         return connection;
     }
 }

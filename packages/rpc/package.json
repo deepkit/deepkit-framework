@@ -25,6 +25,7 @@
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/core-rxjs": "^1.0.1-alpha.13",
     "@deepkit/crypto": "^1.0.1-alpha.13",
+    "@deepkit/logger": "^1.0.1-alpha.13",
     "@deepkit/injector": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13",
     "rxjs": "~6.6.0"
@@ -38,6 +39,7 @@
     "@deepkit/core-rxjs": "^1.0.1-alpha.34",
     "@deepkit/crypto": "^1.0.1-alpha.31",
     "@deepkit/injector": "^1.0.1-alpha.34",
+    "@deepkit/logger": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.34",
     "@types/dot-prop": "^5.0.1",
     "@types/fs-extra": "^9.0.1",

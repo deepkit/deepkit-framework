@@ -4,6 +4,9 @@ import { DirectClient } from '../src/client/client-direct';
 import { rpc } from '../src/decorators';
 import { RpcKernel } from '../src/server/kernel';
 import { RpcKernelSecurity, Session } from '../src/server/security';
+import { AuthenticationError } from '../src/model';
+import { MemoryLoggerTransport } from '../../logger';
+import { Logger } from '@deepkit/logger';
 
 test('authentication', async () => {
     class Controller {
@@ -69,4 +72,28 @@ test('authentication', async () => {
         client.token.set('secret');
         expect(await controller.test('asd')).toBe('asd');
     }
+});
+
+test('authentication errors', async () => {
+    class MyKernelSecurity extends RpcKernelSecurity {
+        async authenticate(token: any): Promise<Session> {
+            if (token === 'generic') throw new Error('Secure error');
+            throw new AuthenticationError('Custom message');
+        }
+    }
+
+    const memoryLogger = new MemoryLoggerTransport;
+    const kernel = new RpcKernel(undefined, new MyKernelSecurity, new Logger([memoryLogger]));
+    const client = new DirectClient(kernel);
+
+    client.token.set('generic');
+    await expect(() => client.connect()).rejects.toThrow('Authentication failed');
+    //generic errors get logged
+    expect(memoryLogger.messages.length).toBe(1);
+    expect(memoryLogger.messageStrings[0]).toContain('authenticate failed Error: Secure error');
+
+    client.token.set('asd');
+    await expect(() => client.connect()).rejects.toThrow('Custom message');
+    //AuthenticationError don't get logged.
+    expect(memoryLogger.messages.length).toBe(1);
 });
