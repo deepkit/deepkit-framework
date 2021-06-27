@@ -18,7 +18,7 @@
     "@deepkit/broker": "^1.0.1-alpha.34",
     "@deepkit/bson": "^1.0.1-alpha.34",
     "@deepkit/core": "^1.0.1-alpha.34",
-    "@deepkit/crypto": "^1.0.1-alpha.33",
+    "@deepkit/crypto": "^1.0.1-alpha.31",
     "@deepkit/framework": "^1.0.1-alpha.34",
     "@deepkit/http": "^1.0.1-alpha.34",
     "@deepkit/injector": "^1.0.1-alpha.34",
