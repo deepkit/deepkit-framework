@@ -167,8 +167,7 @@ export class RpcClientTransporter {
         return undefined;
     }
 
-    public async onAuthenticate(): Promise<boolean> {
-        return true;
+    public async onAuthenticate(): Promise<void> {
     }
 
     public onMessage(message: RpcMessage) {
@@ -330,13 +329,13 @@ export class RpcBaseClient implements WritableClient {
     }
 
     /**
-     * The connection process is only finished when this method returns a boolean.
-     * If false is returned an authentication error is thrown.
+     * The connection process is only finished when this method resolves.
+     * When a error is thrown, the authentication was unsuccessful.
      *
      * Use this.sendMessage(type, schema, body, {dontWaitForConnection: true}) during handshake.
      */
-    protected async onAuthenticate(): Promise<boolean> {
-        if (!this.token.has()) return true;
+    protected async onAuthenticate(): Promise<void> {
+        if (!this.token.has()) return;
 
         const reply = await this.sendMessage(RpcTypes.Authenticate, rpcAuthenticate, { token: this.token.get()! }, { dontWaitForConnection: true })
             .waitNextMessage();
@@ -346,10 +345,10 @@ export class RpcBaseClient implements WritableClient {
         if (reply.type === RpcTypes.AuthenticateResponse) {
             const body = reply.parseBody(rpcResponseAuthenticate);
             this.username = body.username;
-            return true;
+            return;
         }
 
-        return false;
+        throw new Error('Invalid response');
     }
 
 
