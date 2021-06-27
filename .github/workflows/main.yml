@@ -37,6 +37,7 @@ jobs:
             --ignore @deepkit/framework-examples \
             --ignore @deepkit/benchmark \
             --ignore @deepkit/mysql --ignore @deepkit/postgres \
+            --ignore @deepkit/orm-browser-examples \
             --ignore @deepkit/orm-browser;
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Build
