@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/http",
-  "version": "1.0.1-alpha.34",
+  "version": "1.0.1-alpha.35",
   "description": "Deepkit HTTP server and router.",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -38,15 +38,15 @@
     "send": "^0.17.1"
   },
   "devDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.34",
-    "@deepkit/core": "^1.0.1-alpha.34",
-    "@deepkit/event": "^1.0.1-alpha.34",
-    "@deepkit/injector": "^1.0.1-alpha.34",
-    "@deepkit/logger": "^1.0.1-alpha.34",
-    "@deepkit/stopwatch": "^1.0.1-alpha.34",
-    "@deepkit/template": "^1.0.1-alpha.34",
-    "@deepkit/type": "^1.0.1-alpha.34",
-    "@deepkit/workflow": "^1.0.1-alpha.34",
+    "@deepkit/app": "^1.0.1-alpha.35",
+    "@deepkit/core": "^1.0.1-alpha.35",
+    "@deepkit/event": "^1.0.1-alpha.35",
+    "@deepkit/injector": "^1.0.1-alpha.35",
+    "@deepkit/logger": "^1.0.1-alpha.35",
+    "@deepkit/stopwatch": "^1.0.1-alpha.35",
+    "@deepkit/template": "^1.0.1-alpha.35",
+    "@deepkit/type": "^1.0.1-alpha.35",
+    "@deepkit/workflow": "^1.0.1-alpha.35",
     "@types/node": "14.14.28",
     "@types/send": "^0.14.6",
     "reflect-metadata": "^0.1.13"
