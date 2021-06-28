@@ -53,6 +53,9 @@ export class TcpRpcServer {
                 bufferedAmount(): number {
                     return socket.bufferedAmount || 0;
                 },
+                close() {
+                    socket.close();
+                },
                 clientAddress(): string {
                     return socket.remoteAddress + ':' + socket.remotePort;
                 }
@@ -115,6 +118,9 @@ export class NetTcpRpcServer {
                 const connection = this.kernel?.createConnection({
                     write(b: Uint8Array) {
                         socket.write(b);
+                    },
+                    close() {
+                        socket.close();
                     },
                     bufferedAmount(): number {
                         return socket.bufferedAmount || 0;

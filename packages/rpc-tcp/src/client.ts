@@ -55,7 +55,7 @@ export class TcpRpcClientAdapter implements ClientTransportAdapter {
                 //implement that to step back when too big
                 return 0;
             },
-            disconnect() {
+            close() {
                 socket.end();
             },
             send(message) {
@@ -105,7 +105,7 @@ export class NetTcpRpcClientAdapter implements ClientTransportAdapter {
                     //implement that to step back when too big
                     return socket.bufferSize;
                 },
-                disconnect() {
+                close() {
                     socket.end();
                 },
                 send(message) {
