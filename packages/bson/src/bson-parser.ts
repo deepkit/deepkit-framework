@@ -8,10 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+import { TextDecoder } from 'util';
 import { BSON_BINARY_SUBTYPE_BIGINT, BSON_BINARY_SUBTYPE_BYTE_ARRAY, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils';
 import { buildStringDecoder, decodeUTF8 } from './strings';
 import { nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap } from '@deepkit/type';
 import { hexTable } from './model';
+
 
 declare var Buffer: any;
 
