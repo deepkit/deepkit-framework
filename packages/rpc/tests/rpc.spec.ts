@@ -399,7 +399,7 @@ test('message chunks', async () => {
     }, reader);
 
     const message = createRpcMessage(2, RpcTypes.ResponseActionSimple, schema, { v: bigString });
-    await writer.write(message);
+    await writer.writeAsync(message);
     expect(buffers.length).toBe(11); //total size is 1_000_025, chunk is 100k, so we have 11 packages
 
     expect(readRpcMessage(buffers[0]).id).toBe(2);
