@@ -17,6 +17,7 @@
     "clean:modules": "rm -rf packages/*/node_modules; rm -rf node_modules",
     "clean:lock": "rm -rf packages/*/package-lock.json",
     "docs": "rm -rf docs && typedoc",
+    "publish": "lerna publish --no-private prerelease",
     "publish-force": "npm run build && lerna publish --no-private --force-publish",
     "publish-website": "heroku container:push web && heroku container:release web"
   },
