@@ -365,6 +365,19 @@ test('hook after serializer', async () => {
     expect(result.processingTime).toBeGreaterThan(99);
 });
 
+test('custom request handling', async () => {
+    class Listener {
+        @eventDispatcher.listen(httpWorkflow.onRouteNotFound)
+        onRouteNotFound(event: typeof httpWorkflow.onRouteNotFound.event) {
+            //CORS requirement for example
+            if (event.request.method === 'OPTIONS') event.send(new JSONResponse(true, 200));
+        }
+    }
+
+    const httpKernel = createHttpKernel([], [], [Listener]);
+    expect(await httpKernel.handleRequestFor('OPTIONS', '/')).toBe(true);
+});
+
 test('promise serializer', async () => {
     class Controller {
         @http.GET('1')
