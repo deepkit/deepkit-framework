@@ -526,7 +526,7 @@ function throwCircularDependency() {
 }
 
 export class MemoryInjector extends Injector {
-    constructor(protected providers: ({ provide: any, useValue: any } | { provide: any, factory: () => any })[]) {
+    constructor(protected providers: ({ provide: any, useValue: any } | { provide: any, useFactory: () => any })[]) {
         super();
     }
 
@@ -536,7 +536,7 @@ export class MemoryInjector extends Injector {
 
     protected retriever(injector: Injector, token: any) {
         for (const p of this.providers) {
-            if (p.provide === token) return 'factory' in p ? p.factory() : p.useValue;
+            if (p.provide === token) return 'useFactory' in p ? p.useFactory() : p.useValue;
         }
     }
 
