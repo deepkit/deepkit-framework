@@ -64,11 +64,11 @@ export interface WritableClient {
             peerId?: string,
             timeout?: number
         }
-    ): RpcMessageSubject
+    ): RpcMessageSubject;
 }
 
 export class RpcClientToken {
-    constructor(protected token?: string) {
+    constructor(protected token: any) {
     }
 
     get() {
@@ -91,12 +91,9 @@ export class RpcClientTransporter {
     protected connectionPromise?: Promise<void>;
 
     protected connected = false;
-    protected authenticated = false;
     protected writer?: RpcMessageWriter;
 
     public id?: Uint8Array;
-
-    public isConnecting: boolean = false;
 
     /**
      * true when the connection fully established (after authentication)
@@ -129,12 +126,11 @@ export class RpcClientTransporter {
         return this.transportConnection.clientAddress();
     }
 
+    /**
+     * True when fully connected (after successful handshake and authentication)
+     */
     public isConnected(): boolean {
         return this.connected;
-    }
-
-    public isAuthenticated(): boolean {
-        return this.authenticated;
     }
 
     protected onError() {
@@ -142,14 +138,13 @@ export class RpcClientTransporter {
     }
 
     protected onDisconnect() {
-        this.authenticated = false;
         this.id = undefined;
         this.connectionPromise = undefined;
 
         if (this.connected) {
-            this.connectionId++;
             this.connection.next(false);
             this.disconnected.next(this.connectionId);
+            this.connectionId++;
             this.connected = false;
         }
     }
@@ -204,17 +199,15 @@ export class RpcClientTransporter {
                             write(v) {
                                 transport.send(v);
                             },
-                            close() { transport.close(); },
+                            close() {
+                                transport.close();
+                            },
                             clientAddress: transport.clientAddress ? () => transport.clientAddress!() : undefined,
                             bufferedAmount: transport.bufferedAmount ? () => transport.bufferedAmount!() : undefined,
                         }, this.reader);
 
-                        //it's important to place it here, since authenticate() sends messages and checks this.connected.
-                        this.connected = true;
+                        this.connected = false;
                         this.connectionTries = 0;
-
-                        //We allow actions to the server without having a fully connected connection active.
-                        this.isConnecting = true;
 
                         try {
                             this.id = await this.onHandshake();
@@ -224,10 +217,9 @@ export class RpcClientTransporter {
                             this.connectionTries = 0;
                             reject(error);
                             return;
-                        } finally {
-                            this.isConnecting = false;
                         }
 
+                        this.connected = true;
                         this.onConnect();
                         resolve(undefined);
                     },
@@ -252,11 +244,11 @@ export class RpcClientTransporter {
      */
     public async connect(): Promise<void> {
         while (this.connectionPromise) {
-            await sleep(0.01);
             await this.connectionPromise;
+            await sleep(0.01);
         }
 
-        if (this.connection.value && this.id) {
+        if (this.connected) {
             return;
         }
 
@@ -291,14 +283,14 @@ export class RpcClientPeer {
 
     }
 
-    public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, timeoutInSeconds = 60): RemoteController<T> {
+    public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, options: { timeout?: number, dontWaitForConnection?: true } = {}): RemoteController<T> {
         const controller = new RpcControllerState('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path);
         controller.peerId = this.peerId;
 
         return new Proxy(this, {
             get: (target, propertyName) => {
                 return (...args: any[]) => {
-                    return this.actionClient.action(controller, propertyName as string, args);
+                    return this.actionClient.action(controller, propertyName as string, args, options);
                 };
             }
         }) as any as RemoteController<T>;
@@ -314,7 +306,7 @@ export class RpcBaseClient implements WritableClient {
     protected replies = new Map<number, ((message: RpcMessage) => void)>();
 
     protected actionClient = new RpcActionClient(this);
-    public readonly token = new RpcClientToken;
+    public readonly token = new RpcClientToken(undefined);
     public readonly transporter: RpcClientTransporter;
 
     public username?: string;
@@ -329,13 +321,23 @@ export class RpcBaseClient implements WritableClient {
     }
 
     /**
-     * The connection process is only finished when this method resolves.
-     * When a error is thrown, the authentication was unsuccessful.
+     * The connection process is only finished when this method resolves and doesn't throw.
+     * When an error is thrown, the authentication was unsuccessful.
+     *
+     * If you use controllers in this callback, make sure to use dontWaitForConnection=true, otherwise you get an endless loop.
+     *
+     * ```typescript
+     * async onAuthenticate(): Promise<void> {
+     *     const auth = this.controller<AuthController>('auth', {dontWaitForConnection: true});
+     *     const result = auth.login('username', 'password');
+     *     if (!result) throw new AuthenticationError('Authentication failed);
+     * }
+     * ```
      */
     protected async onAuthenticate(): Promise<void> {
         if (!this.token.has()) return;
 
-        const reply = await this.sendMessage(RpcTypes.Authenticate, rpcAuthenticate, { token: this.token.get()! })
+        const reply = await this.sendMessage(RpcTypes.Authenticate, rpcAuthenticate, { token: this.token.get()! }, {dontWaitForConnection: true})
             .waitNextMessage();
 
         if (reply.isError()) throw reply.getError();
@@ -384,7 +386,7 @@ export class RpcBaseClient implements WritableClient {
     ): RpcMessageSubject {
         const id = this.messageId++;
         const connectionId = options && options.connectionId ? options.connectionId : this.transporter.connectionId;
-        const dontWaitForConnection = options && options.dontWaitForConnection !== undefined ? options.dontWaitForConnection : this.transporter.isConnecting;
+        const dontWaitForConnection = !!options.dontWaitForConnection;
         // const timeout = options && options.timeout ? options.timeout : 0;
 
         const continuation = <T>(type: number, schema?: ClassSchema<T>, body?: T) => {
@@ -469,7 +471,7 @@ export class RpcClient extends RpcBaseClient {
     protected async onHandshake(): Promise<Uint8Array> {
         this.clientKernelConnection = undefined;
 
-        const reply = await this.sendMessage(RpcTypes.ClientId)
+        const reply = await this.sendMessage(RpcTypes.ClientId, undefined, undefined, {dontWaitForConnection: true})
             .firstThenClose(RpcTypes.ClientIdResponse, rpcClientId);
         return reply.id;
     }
@@ -598,13 +600,13 @@ export class RpcClient extends RpcBaseClient {
         return peer;
     }
 
-    public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, timeoutInSeconds = 60): RemoteController<T> {
+    public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, options: { timeout?: number, dontWaitForConnection?: true } = {}): RemoteController<T> {
         const controller = new RpcControllerState('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path);
 
         return new Proxy(this, {
             get: (target, propertyName) => {
                 return (...args: any[]) => {
-                    return this.actionClient.action(controller, propertyName as string, args);
+                    return this.actionClient.action(controller, propertyName as string, args, options);
                 };
             }
         }) as any as RemoteController<T>;

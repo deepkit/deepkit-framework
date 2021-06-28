@@ -99,7 +99,7 @@ export class WebWorkerFactory {
         const kernel = new RpcKernel(this.rootScopedContext, security, this.logger.scoped('rpc'));
 
         for (const [name, controller] of this.rpcControllers.controllers.entries()) {
-            kernel.registerController(name, controller);
+            kernel.registerController(name, controller, false);
         }
 
         return kernel;

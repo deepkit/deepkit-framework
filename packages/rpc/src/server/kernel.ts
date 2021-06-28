@@ -428,7 +428,7 @@ export class RpcKernel {
     protected controllers = new Map<string, ClassType>();
     protected peerExchange = new RpcPeerExchange;
     protected connections = new RpcKernelConnections;
-    protected injector: BasicInjector;
+    protected injector: BasicInjector | InjectorContext;
 
     constructor(
         injector?: BasicInjector,
@@ -438,12 +438,27 @@ export class RpcKernel {
         if (injector) {
             this.injector = injector;
         } else {
-            this.injector = new Injector();
+            this.injector = InjectorContext.forProviders([]);
         }
     }
 
-    public registerController(id: string | ControllerDefinition<any>, controller: ClassType) {
-        if (this.injector instanceof Injector && !(this.injector instanceof InjectorContext)) this.injector.addProviders(controller);
+    /**
+     * This registers the controller and adds it as provider to the injector.
+     *
+     * If you created a kernel with custom injector, you probably want to set addAsProvider to false.
+     * Adding a provider is rather expensive, so you should prefer to create a kernel with pre-filled  injector.
+     */
+    public registerController(id: string | ControllerDefinition<any>, controller: ClassType, addAsProvider: boolean = true) {
+        if (addAsProvider) {
+            if (this.injector instanceof InjectorContext) {
+                this.injector.contextManager.get(0).providers.push({provide: controller, scope: 'rpc'});
+            }
+
+            if (this.injector instanceof Injector) {
+                this.injector.addProviders(controller);
+            }
+        }
+
         this.controllers.set('string' === typeof id ? id : id.path, controller);
     }
 

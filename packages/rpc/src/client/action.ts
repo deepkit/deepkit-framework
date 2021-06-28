@@ -89,11 +89,11 @@ export class RpcActionClient {
     constructor(protected client: WritableClient) {
     }
 
-    public action<T>(controller: RpcControllerState, method: string, args: any[], recipient?: string) {
+    public action<T>(controller: RpcControllerState, method: string, args: any[], options: { timeout?: number, dontWaitForConnection?: true } = {}) {
         return asyncOperation<any>(async (resolve, reject) => {
             try {
                 const progress = ClientProgress.getNext();
-                const types = controller.getState(method)?.types || await this.loadActionTypes(controller, method);
+                const types = controller.getState(method)?.types || await this.loadActionTypes(controller, method, options);
                 // console.log('client types', types.parameterSchema.getProperty('args').getResolvedClassSchema().toString(), )
 
                 const argsObject: any = {};
@@ -121,7 +121,11 @@ export class RpcActionClient {
                     controller: controller.controller,
                     method: method,
                     args: argsObject
-                }, { peerId: controller.peerId }).onReply((reply) => {
+                }, {
+                    peerId: controller.peerId,
+                    dontWaitForConnection: options.dontWaitForConnection,
+                    timeout: options.timeout,
+                }).onReply((reply) => {
                     try {
                         // console.log('client: answer', RpcTypes[reply.type], reply.composite);
 
@@ -299,7 +303,6 @@ export class RpcActionClient {
                                 console.log(`Unexpected type received ${reply.type} ${RpcTypes[reply.type]}`);
                             }
                         }
-                        ;
                     } catch (error) {
                         console.warn('reply error', reply.id, RpcTypes[reply.type], error);
                         reject(error);
@@ -398,7 +401,7 @@ export class RpcActionClient {
         collection.loaded();
     }
 
-    public async loadActionTypes(controller: RpcControllerState, method: string): Promise<ControllerStateActionTypes> {
+    public async loadActionTypes(controller: RpcControllerState, method: string, options: { timeout?: number, dontWaitForConnection?: true } = {}): Promise<ControllerStateActionTypes> {
         const state = controller.getState(method);
         if (state.types) return state.types;
 
@@ -411,7 +414,11 @@ export class RpcActionClient {
                 const parsed = await this.client.sendMessage(RpcTypes.ActionType, rpcActionType, {
                     controller: controller.controller,
                     method: method,
-                }, { peerId: controller.peerId }).firstThenClose(RpcTypes.ResponseActionType, rpcResponseActionType);
+                }, {
+                    peerId: controller.peerId,
+                    dontWaitForConnection: options.dontWaitForConnection,
+                    timeout: options.timeout,
+                }).firstThenClose(RpcTypes.ResponseActionType, rpcResponseActionType);
 
                 const parameters: string[] = [];
                 const argsSchema = createClassSchema();

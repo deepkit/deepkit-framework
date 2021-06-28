@@ -44,3 +44,46 @@ export class RpcDirectClientAdapter implements ClientTransportAdapter {
         });
     }
 }
+
+/**
+ * This direct client includes in each outgoing/incoming message an async hop making
+ * the communication asynchronous.
+ */
+export class AsyncDirectClient extends RpcClient {
+    constructor(rpcKernel: RpcKernel, injector?: Injector) {
+        super(new RpcAsyncDirectClientAdapter(rpcKernel, injector));
+    }
+}
+
+export class RpcAsyncDirectClientAdapter implements ClientTransportAdapter {
+    constructor(public rpcKernel: RpcKernel, protected injector?: Injector) {
+    }
+
+    public async connect(connection: TransportConnectionHooks) {
+        const kernelConnection = this.rpcKernel.createConnection({
+            write: (buffer) => {
+                setTimeout(() => {
+                    connection.onData(buffer)
+                });
+            },
+            close: () => {connection.onClose(); },
+        }, this.injector);
+
+        connection.onConnected({
+            clientAddress: () => {
+                return 'direct';
+            },
+            bufferedAmount(): number {
+                return 0;
+            },
+            close() {
+                kernelConnection.close();
+            },
+            send(buffer) {
+                setTimeout(() => {
+                    kernelConnection.feed(buffer);
+                });
+            }
+        });
+    }
+}

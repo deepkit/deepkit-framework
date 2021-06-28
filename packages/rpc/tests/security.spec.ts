@@ -1,12 +1,13 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { DirectClient } from '../src/client/client-direct';
+import { AsyncDirectClient, DirectClient } from '../src/client/client-direct';
 import { rpc } from '../src/decorators';
-import { RpcKernel } from '../src/server/kernel';
+import { RpcKernel, RpcKernelConnection } from '../src/server/kernel';
 import { RpcKernelSecurity, Session } from '../src/server/security';
 import { AuthenticationError } from '../src/model';
 import { MemoryLoggerTransport } from '../../logger';
 import { Logger } from '@deepkit/logger';
+import { injectable } from '@deepkit/injector';
 
 test('authentication', async () => {
     class Controller {
@@ -96,4 +97,85 @@ test('authentication errors', async () => {
     await expect(() => client.connect()).rejects.toThrow('Custom message');
     //AuthenticationError don't get logged.
     expect(memoryLogger.messages.length).toBe(1);
+});
+
+
+test('onAuthenticate controllers', async () => {
+    class AuthenticatedSession extends Session {
+        isAnonymous(): boolean {
+            return false;
+        }
+    }
+
+    @injectable()
+    class Controller {
+        constructor(protected connection: RpcKernelConnection) {
+        }
+
+        @rpc.action()
+        authenticated(): boolean {
+            return this.connection.sessionState.getSession() instanceof AuthenticatedSession;
+        }
+
+        @rpc.action()
+        auth(value: string): boolean {
+            if (value === 'secret') {
+                this.connection.sessionState.setSession(new AuthenticatedSession('safe', undefined));
+                return true;
+            }
+            return false;
+        }
+    }
+
+    const kernel = new RpcKernel(undefined);
+    kernel.registerController('test', Controller);
+
+    class CustomAuthClient extends AsyncDirectClient {
+        authCalled: number = 0;
+        protected async onAuthenticate(): Promise<void> {
+            if (!this.token.has()) return;
+            this.authCalled++;
+            const success = await this.controller<Controller>('test', {dontWaitForConnection: true}).auth(this.token.get());
+            if (!success) throw new AuthenticationError('Invalid');
+        }
+    }
+
+    {
+        const client = new CustomAuthClient(kernel);
+        expect(await client.controller<Controller>('test').authenticated()).toBe(false);
+        expect(await client.controller<Controller>('test').auth('secret')).toBe(true);
+        expect(await client.controller<Controller>('test').authenticated()).toBe(true);
+        expect(client.authCalled).toBe(0);
+    }
+
+    {
+        const client = new CustomAuthClient(kernel);
+        expect(await client.controller<Controller>('test').authenticated()).toBe(false);
+        expect(await client.controller<Controller>('test').auth('wrong')).toBe(false);
+        expect(await client.controller<Controller>('test').authenticated()).toBe(false );
+        expect(client.authCalled).toBe(0);
+    }
+
+    {
+        const client = new CustomAuthClient(kernel);
+        client.token.set('secret');
+        expect(client.transporter.isConnected()).toBe(false);
+        expect(await client.controller<Controller>('test').authenticated()).toBe(true);
+        expect(client.transporter.isConnected()).toBe(true);
+        expect(client.authCalled).toBe(1);
+        expect(await client.controller<Controller>('test').authenticated()).toBe(true);
+        expect(client.authCalled).toBe(1);
+    }
+
+    {
+        const client = new CustomAuthClient(kernel);
+        client.token.set('secret');
+        const res = await Promise.all([
+            client.controller<Controller>('test').authenticated(),
+            client.controller<Controller>('test').authenticated(),
+            client.controller<Controller>('test').authenticated(),
+        ]);
+        expect(client.authCalled).toBe(1);
+        expect(res).toEqual([true, true, true]);
+    }
 });
