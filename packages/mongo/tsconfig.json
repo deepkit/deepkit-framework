@@ -17,7 +17,6 @@
     "composite": true
   },
   "include": [
-    "benchmarks",
     "src",
     "tests",
     "index.ts"
