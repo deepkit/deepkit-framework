@@ -394,12 +394,13 @@ test('message chunks', async () => {
             buffers.push(b);
             reader.feed(createRpcMessage(2, RpcTypes.ChunkAck)); //confirm chunk, this is done automatically in the kernel
             reader.feed(b); //echo back
-        }
+        },
+        close() {}
     }, reader);
 
     const message = createRpcMessage(2, RpcTypes.ResponseActionSimple, schema, { v: bigString });
     await writer.write(message);
-    expect(buffers.length).toBe(11) //total size is 1_000_025, chunk is 100k, so we have 11 packages
+    expect(buffers.length).toBe(11); //total size is 1_000_025, chunk is 100k, so we have 11 packages
 
     expect(readRpcMessage(buffers[0]).id).toBe(2);
     expect(readRpcMessage(buffers[0]).type).toBe(RpcTypes.Chunk);
@@ -428,6 +429,8 @@ test('message progress', async () => {
         write(b) {
             reader.feed(createRpcMessage(2, RpcTypes.ChunkAck)); //confirm chunk, this is done automatically in the kernel
             reader.feed(b); //echo
+        },
+        close() {
         }
     }, reader);
 

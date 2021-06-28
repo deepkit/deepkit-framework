@@ -205,10 +205,13 @@ export class WebWorker {
         }
     }
 
-    onWsConnection(ws: any, req: HttpRequest) {
+    onWsConnection(ws: WebSocket, req: HttpRequest) {
         const connection = createRpcConnection(this.rootScopedContext, this.rpcKernel, {
             write(b) {
                 ws.send(b);
+            },
+            close() {
+                ws.close();
             },
             bufferedAmount(): number {
                 return ws.bufferedAmount;

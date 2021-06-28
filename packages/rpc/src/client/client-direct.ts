@@ -23,7 +23,10 @@ export class RpcDirectClientAdapter implements ClientTransportAdapter {
     }
 
     public async connect(connection: TransportConnectionHooks) {
-        const kernelConnection = this.rpcKernel.createConnection({ write: (buffer) => connection.onData(buffer) }, this.injector);
+        const kernelConnection = this.rpcKernel.createConnection({
+            write: (buffer) => connection.onData(buffer),
+            close: () => {connection.onClose(); },
+        }, this.injector);
 
         connection.onConnected({
             clientAddress: () => {
@@ -32,7 +35,7 @@ export class RpcDirectClientAdapter implements ClientTransportAdapter {
             bufferedAmount(): number {
                 return 0;
             },
-            disconnect() {
+            close() {
                 kernelConnection.close();
             },
             send(buffer) {

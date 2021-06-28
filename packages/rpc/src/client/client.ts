@@ -36,7 +36,7 @@ export interface TransportConnection {
 
     clientAddress?(): string;
 
-    disconnect(): void;
+    close(): void;
 }
 
 export interface TransportConnectionHooks {
@@ -95,6 +95,8 @@ export class RpcClientTransporter {
     protected writer?: RpcMessageWriter;
 
     public id?: Uint8Array;
+
+    public isConnecting: boolean = false;
 
     /**
      * true when the connection fully established (after authentication)
@@ -175,7 +177,7 @@ export class RpcClientTransporter {
 
     public disconnect() {
         if (this.transportConnection) {
-            this.transportConnection.disconnect();
+            this.transportConnection.close();
             this.transportConnection = undefined;
         }
         this.onDisconnect();
@@ -185,7 +187,7 @@ export class RpcClientTransporter {
         this.connectionTries++;
 
         if (this.transportConnection) {
-            this.transportConnection.disconnect();
+            this.transportConnection.close();
             this.transportConnection = undefined;
         }
 
@@ -202,6 +204,7 @@ export class RpcClientTransporter {
                             write(v) {
                                 transport.send(v);
                             },
+                            close() { transport.close(); },
                             clientAddress: transport.clientAddress ? () => transport.clientAddress!() : undefined,
                             bufferedAmount: transport.bufferedAmount ? () => transport.bufferedAmount!() : undefined,
                         }, this.reader);
@@ -210,22 +213,19 @@ export class RpcClientTransporter {
                         this.connected = true;
                         this.connectionTries = 0;
 
-                        try {
-                            this.id = await this.onHandshake();
-                        } catch (error) {
-                            this.connected = false;
-                            this.connectionTries = 0;
-                            reject(error);
-                            return;
-                        }
+                        //We allow actions to the server without having a fully connected connection active.
+                        this.isConnecting = true;
 
                         try {
+                            this.id = await this.onHandshake();
                             await this.onAuthenticate();
                         } catch (error) {
                             this.connected = false;
                             this.connectionTries = 0;
                             reject(error);
                             return;
+                        } finally {
+                            this.isConnecting = false;
                         }
 
                         this.onConnect();
@@ -331,13 +331,11 @@ export class RpcBaseClient implements WritableClient {
     /**
      * The connection process is only finished when this method resolves.
      * When a error is thrown, the authentication was unsuccessful.
-     *
-     * Use this.sendMessage(type, schema, body, {dontWaitForConnection: true}) during handshake.
      */
     protected async onAuthenticate(): Promise<void> {
         if (!this.token.has()) return;
 
-        const reply = await this.sendMessage(RpcTypes.Authenticate, rpcAuthenticate, { token: this.token.get()! }, { dontWaitForConnection: true })
+        const reply = await this.sendMessage(RpcTypes.Authenticate, rpcAuthenticate, { token: this.token.get()! })
             .waitNextMessage();
 
         if (reply.isError()) throw reply.getError();
@@ -351,10 +349,6 @@ export class RpcBaseClient implements WritableClient {
         throw new Error('Invalid response');
     }
 
-
-    /**
-     * Use this.sendMessage(type, schema, body, {dontWaitForConnection: true}) during handshake.
-     */
     protected async onHandshake(): Promise<Uint8Array | undefined> {
         return undefined;
     }
@@ -390,7 +384,7 @@ export class RpcBaseClient implements WritableClient {
     ): RpcMessageSubject {
         const id = this.messageId++;
         const connectionId = options && options.connectionId ? options.connectionId : this.transporter.connectionId;
-        const dontWaitForConnection = !!(options && options.dontWaitForConnection);
+        const dontWaitForConnection = options && options.dontWaitForConnection !== undefined ? options.dontWaitForConnection : this.transporter.isConnecting;
         // const timeout = options && options.timeout ? options.timeout : 0;
 
         const continuation = <T>(type: number, schema?: ClassSchema<T>, body?: T) => {
@@ -475,7 +469,7 @@ export class RpcClient extends RpcBaseClient {
     protected async onHandshake(): Promise<Uint8Array> {
         this.clientKernelConnection = undefined;
 
-        const reply = await this.sendMessage(RpcTypes.ClientId, undefined, undefined, { dontWaitForConnection: true })
+        const reply = await this.sendMessage(RpcTypes.ClientId)
             .firstThenClose(RpcTypes.ClientIdResponse, rpcClientId);
         return reply.id;
     }
@@ -497,6 +491,10 @@ export class RpcClient extends RpcBaseClient {
             if (!connection) {
                 //todo: create a connection per message.getSource()
                 const writer = {
+                    close: () => {
+                        if (connection) connection.close();
+                        this.peerKernelConnection.delete(peerId);
+                    },
                     write: (answer: Uint8Array) => {
                         //should we modify the package?
                         this.transporter.send(answer);
@@ -519,6 +517,9 @@ export class RpcClient extends RpcBaseClient {
                     const c = this.clientKernel.createConnection({
                         write: (answer: Uint8Array) => {
                             this.transporter.send(answer);
+                        },
+                        close: () => {
+                            this.transporter.disconnect();
                         },
                         clientAddress: () => {
                             return this.transporter.clientAddress();

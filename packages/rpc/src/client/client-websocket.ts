@@ -55,7 +55,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
                 bufferedAmount(): number {
                     return socket.bufferedAmount;
                 },
-                disconnect() {
+                close() {
                     socket.close();
                 },
                 send(message) {

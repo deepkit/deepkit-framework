@@ -3,14 +3,16 @@ import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { DirectClient } from '../src/client/client-direct';
 import { rpc } from '../src/decorators';
-import { RpcKernel } from '../src/server/kernel';
+import { RpcKernel, RpcKernelConnection } from '../src/server/kernel';
+import { injectable } from '@deepkit/injector';
 
 test('basics', async () => {
     @entity.name('model/basics')
     class MyModel {
         constructor(
             @t public name: string
-        ) { }
+        ) {
+        }
     }
 
     @entity.name('MyError')
@@ -34,7 +36,7 @@ test('basics', async () => {
 
         @rpc.action()
         notDefined(): (string | number)[] {
-            return [123, "bar"];
+            return [123, 'bar'];
         }
 
         @rpc.action()
@@ -72,7 +74,7 @@ test('basics', async () => {
 
     {
         const m = await controller.notDefined();
-        expect(m).toEqual([123, "bar"]);
+        expect(m).toEqual([123, 'bar']);
     }
 
     {
@@ -102,12 +104,13 @@ test('promise', async () => {
     class MyModel {
         constructor(
             @t public name: string
-        ) { }
+        ) {
+        }
     }
 
     class Controller {
         @rpc.action()
-        //MyModel is automatically detected once executed. 
+        //MyModel is automatically detected once executed.
         async createModel(value: string): Promise<MyModel> {
             return new MyModel(value);
         }
@@ -135,12 +138,13 @@ test('wrong arguments', async () => {
     class MyModel {
         constructor(
             @t public id: number
-        ) { }
+        ) {
+        }
     }
 
     class Controller {
         @rpc.action()
-        //MyModel is automatically detected once executed. 
+        //MyModel is automatically detected once executed.
         async getProduct(id: number): Promise<MyModel> {
             return new MyModel(id);
         }
@@ -166,4 +170,53 @@ test('wrong arguments', async () => {
     {
         await expect(controller.getProduct(NaN as any)).rejects.toThrow('id(invalid_number): No valid number given, got NaN');
     }
+});
+
+test('connect disconnect', async () => {
+    @injectable()
+    class Controller {
+        constructor(protected connection: RpcKernelConnection) {
+
+        }
+
+        @rpc.action()
+        test(): void {
+        }
+
+        @rpc.action()
+        bye(): void {
+            this.connection.close();
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController('myController', Controller);
+
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    let triggered = 0;
+    client.transporter.disconnected.subscribe(() => triggered++);
+
+    expect(client.transporter.isConnected()).toBe(false);
+    await client.connect();
+    expect(client.transporter.isConnected()).toBe(true);
+    await client.disconnect();
+    expect(client.transporter.isConnected()).toBe(false);
+    expect(triggered).toBe(1);
+
+    await controller.test();
+    expect(client.transporter.isConnected()).toBe(true);
+    await client.disconnect();
+    expect(client.transporter.isConnected()).toBe(false);
+    expect(triggered).toBe(2);
+
+    await controller.test();
+    expect(client.transporter.isConnected()).toBe(true);
+    await controller.bye();
+    expect(client.transporter.isConnected()).toBe(false);
+    expect(triggered).toBe(3);
+
+    await controller.test();
+    expect(client.transporter.isConnected()).toBe(true);
 });

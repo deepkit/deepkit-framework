@@ -31,7 +31,7 @@ import { RpcServerAction } from './action';
 import { RpcKernelSecurity, SessionState } from './security';
 import { RpcActionClient, RpcControllerState } from '../client/action';
 import { RemoteController } from '../client/client';
-import { BasicInjector, Injector, MemoryInjector } from '@deepkit/injector';
+import { BasicInjector, Injector, InjectorContext, MemoryInjector } from '@deepkit/injector';
 import { Logger, LoggerInterface } from '@deepkit/logger';
 
 export class RpcCompositeMessage {
@@ -126,7 +126,7 @@ export class RpcPeerExchange {
         this.registeredPeers.delete('string' === typeof id ? id : stringifyUuid(id));
     }
 
-    async register(id: string | Uint8Array, writer: RpcConnectionWriter): Promise<void> {
+    register(id: string | Uint8Array, writer: RpcConnectionWriter): void {
         this.registeredPeers.set('string' === typeof id ? id : stringifyUuid(id), writer);
     }
 
@@ -158,9 +158,10 @@ export class RpcPeerExchange {
     }
 }
 
-//this will not be responsible for packaging. We pack in the transporter.
 export interface RpcConnectionWriter {
     write(buffer: Uint8Array): void;
+
+    close(): void;
 
     bufferedAmount?(): number;
 
@@ -221,6 +222,7 @@ export abstract class RpcKernelBaseConnection {
         for (const timeout of this.timeoutTimers) clearTimeout(timeout);
         if (this.onCloseResolve) this.onCloseResolve();
         arrayRemoveItem(this.connections.connections, this);
+        this.writer.close();
     }
 
     public feed(buffer: Uint8Array, bytes?: number): void {
@@ -441,7 +443,7 @@ export class RpcKernel {
     }
 
     public registerController(id: string | ControllerDefinition<any>, controller: ClassType) {
-        if (this.injector instanceof Injector) this.injector.addProviders(controller);
+        if (this.injector instanceof Injector && !(this.injector instanceof InjectorContext)) this.injector.addProviders(controller);
         this.controllers.set('string' === typeof id ? id : id.path, controller);
     }
 
@@ -449,10 +451,16 @@ export class RpcKernel {
         let connection: RpcKernelConnection;
 
         const subInjector = new MemoryInjector([
-            { provide: RpcKernelConnection, factory: () => connection },
-            { provide: SessionState, factory: () => connection.sessionState },
+            { provide: RpcKernelConnection, useFactory: () => connection },
+            { provide: SessionState, useFactory: () => connection.sessionState },
         ]);
-        const childInjectors: BasicInjector[] = [subInjector, injector || this.injector];
+
+        let parent = injector || this.injector;
+        if (parent instanceof InjectorContext) {
+            parent = parent.createChildScope('rpc');
+        }
+
+        const childInjectors: BasicInjector[] = [subInjector, parent];
 
         connection = new RpcKernelConnection(writer, this.connections, this.controllers, this.security, new Injector([], childInjectors), this.peerExchange, this.logger);
         return connection;

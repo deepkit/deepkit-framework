@@ -184,10 +184,13 @@ export class ApplicationServer {
 
         return new RpcClient({
             connect(connection) {
-                const kernelConnection = createRpcConnection(context, kernel, { write: (buffer) => connection.onData(buffer) });
+                const kernelConnection = createRpcConnection(context, kernel, {
+                    write: (buffer) => connection.onData(buffer),
+                    close: () => connection.onClose(),
+                });
 
                 connection.onConnected({
-                    disconnect() {
+                    close() {
                         kernelConnection.close();
                     },
                     send(message) {
