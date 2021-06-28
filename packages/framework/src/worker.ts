@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity } from '@deepkit/rpc';
+import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
 import http, { Server } from 'http';
 import https from 'https';
 import WebSocket from 'ws';
@@ -119,6 +119,7 @@ export function createRpcConnection(rootScopedContext: InjectorContext, rpcKerne
     const providers: Provider<any>[] = [
         { provide: HttpRequest, useValue: request },
         { provide: RpcInjectorContext, useFactory: () => rpcScopedContext },
+        { provide: SessionState, useFactory: () => connection.sessionState },
         { provide: RpcKernelConnection, useFactory: () => connection },
         { provide: RpcKernelBaseConnection as ClassType<any>, useFactory: () => connection },
         { provide: ConnectionWriter, useValue: writer },

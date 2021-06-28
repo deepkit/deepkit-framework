@@ -170,6 +170,8 @@ export interface RpcConnectionWriter {
 
 export abstract class RpcKernelBaseConnection {
     protected messageId: number = 0;
+    public sessionState = new SessionState();
+
     protected reader = new RpcMessageReader(
         this.handleMessage.bind(this),
         (id: number) => {
@@ -295,7 +297,6 @@ export class RpcKernelConnections {
 
 export class RpcKernelConnection extends RpcKernelBaseConnection {
     public myPeerId?: string;
-    public sessionState = new SessionState();
     protected actionHandler = new RpcServerAction(this.controllers, this.injector, this.security, this.sessionState);
 
     public routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client;
@@ -465,19 +466,22 @@ export class RpcKernel {
     createConnection(writer: RpcConnectionWriter, injector?: BasicInjector): RpcKernelBaseConnection {
         let connection: RpcKernelConnection;
 
-        const subInjector = new MemoryInjector([
-            { provide: RpcKernelConnection, useFactory: () => connection },
-            { provide: SessionState, useFactory: () => connection.sessionState },
-        ]);
+        if (!injector) {
+            const subInjector = new MemoryInjector([
+                { provide: RpcKernelConnection, useFactory: () => connection },
+                { provide: SessionState, useFactory: () => connection.sessionState },
+            ]);
 
-        let parent = injector || this.injector;
-        if (parent instanceof InjectorContext) {
-            parent = parent.createChildScope('rpc');
+            let parent = this.injector;
+            if (parent instanceof InjectorContext) {
+                parent = parent.createChildScope('rpc');
+            }
+
+            const childInjectors: BasicInjector[] = [subInjector, parent];
+            injector = new Injector([], childInjectors);
         }
 
-        const childInjectors: BasicInjector[] = [subInjector, parent];
-
-        connection = new RpcKernelConnection(writer, this.connections, this.controllers, this.security, new Injector([], childInjectors), this.peerExchange, this.logger);
+        connection = new RpcKernelConnection(writer, this.connections, this.controllers, this.security, injector, this.peerExchange, this.logger);
         return connection;
     }
 }

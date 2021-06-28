@@ -5,6 +5,7 @@ import { DirectClient } from '../src/client/client-direct';
 import { rpc } from '../src/decorators';
 import { RpcKernel, RpcKernelConnection } from '../src/server/kernel';
 import { injectable } from '@deepkit/injector';
+import { Session, SessionState } from '../src/server/security';
 
 test('basics', async () => {
     @entity.name('model/basics')
@@ -170,6 +171,33 @@ test('wrong arguments', async () => {
     {
         await expect(controller.getProduct(NaN as any)).rejects.toThrow('id(invalid_number): No valid number given, got NaN');
     }
+});
+
+test('di', async () => {
+    @injectable()
+    class Controller {
+        constructor(protected connection: RpcKernelConnection, protected sessionState: SessionState) {
+        }
+
+        @rpc.action()
+        hasSession(): boolean {
+            return this.sessionState.getSession() instanceof Session;
+        }
+
+        @rpc.action()
+        hasConnection(): boolean {
+            return this.connection instanceof RpcKernelConnection;
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController('test', Controller);
+
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('test');
+
+    expect(await controller.hasConnection()).toBe(true);
+    expect(await controller.hasSession()).toBe(true);
 });
 
 test('connect disconnect', async () => {
