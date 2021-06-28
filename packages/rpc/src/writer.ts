@@ -111,10 +111,10 @@ export class RpcMessageWriter implements RpcConnectionWriter {
     }
 
     write(buffer: Uint8Array, progress?: SingleProgress): void {
-        this.writeAsync(buffer, progress).catch(error => console.log('RpcMessageWriter writeAsync error', error));
+        this.writeFull(buffer, progress).catch(error => console.log('RpcMessageWriter writeAsync error', error));
     }
 
-    async writeAsync(buffer: Uint8Array, progress?: SingleProgress): Promise<void> {
+    async writeFull(buffer: Uint8Array, progress?: SingleProgress): Promise<void> {
         if (buffer.byteLength >= this.chunkSize) {
             //split up
             const chunkId = this.chunkId++;
