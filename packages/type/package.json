@@ -27,6 +27,7 @@
     "reflect-metadata": "^0.1.13"
   },
   "dependencies": {
+    "@deepkit/core": "^1.0.1-alpha.35",
     "@types/uuid": "^8.3.0",
     "@types/validator": "^13.1.0",
     "buffer": "^5.2.1",
@@ -35,7 +36,6 @@
     "validator": "^13.1.17"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.35",
     "@types/clone": "^0.1.30",
     "reflect-metadata": "^0.1.13"
   },
