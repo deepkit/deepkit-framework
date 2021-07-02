@@ -304,7 +304,7 @@ export class Injector implements BasicInjector {
             const providers = compiler.reserveVariable('tagRegistry', this.tagRegistry.resolve(token));
             return `new ${tokenVar}(${providers}.map(v => frontInjector.retriever(frontInjector, v, frontInjector)))`;
         } else {
-            if (token === undefined) throw new Error(`Argument type ${property.name} at position ${argPosition} is undefined. Imported reflect-metadata correctly?`);
+            if (token === undefined) throw new Error(`Argument type of '${property.name}' at position ${argPosition} is undefined. Imported reflect-metadata correctly? For circular references use @inject(() => T) ${property.name}:T.`);
             const tokenVar = compiler.reserveVariable('token', token);
             const orThrow = isOptional ? '' : `|| ${notFoundFunction}(${classTypeVar}, ${JSON.stringify(property.name)}, ${argPosition}, ${tokenVar})`;
 
