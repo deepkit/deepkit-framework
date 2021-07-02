@@ -21,8 +21,14 @@ function convertBinaryFromBase64(property: PropertySchema, state: CompilerState)
     state.addSetter(`typeof ${state.accessor} === 'string' && ${state.accessor}.startsWith('base64:') ? Buffer.from(${state.accessor}.substr(${offset}), 'base64') : ${state.accessor}`);
 }
 
-mySqlSerializer.toClass.prepend('uuid', convertBinaryFromBase64)
-mySqlSerializer.toClass.prepend('arrayBuffer', convertBinaryFromBase64)
+//enums are stored as json, so we need always a string, no matter if the enum is actually an number index.
+mySqlSerializer.fromClass.append('enum', (property, compiler) => {
+    compiler.addSetter(`${compiler.accessor}+''`);
+});
+
+mySqlSerializer.toClass.prepend('uuid', convertBinaryFromBase64);
+mySqlSerializer.toClass.prepend('arrayBuffer', convertBinaryFromBase64);
+
 for (const type of binaryTypes) {
-    mySqlSerializer.toClass.prepend(type, convertBinaryFromBase64)
+    mySqlSerializer.toClass.prepend(type, convertBinaryFromBase64);
 }
