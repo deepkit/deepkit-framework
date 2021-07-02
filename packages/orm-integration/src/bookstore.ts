@@ -589,6 +589,25 @@ export const bookstoreTests = {
         }
     },
 
+    async enum(databaseFactory: DatabaseFactory) {
+        const database = await databaseFactory(entities);
+
+        const user = new User('Peter');
+        const book = new Book(user, 'Great');
+
+        const review = new Review(user, book);
+        review.status = ReviewStatus.hidden;
+        await database.persist(user, book, review);
+
+        {
+            const review = await database.query(Review).findOne();
+            expect(review.user.id).toBe(user.id);
+            expect(review.book.id).toBe(book.id);
+            expect(review.status).toBe(ReviewStatus.hidden);
+        }
+    },
+
+
     async atomic(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
         {

@@ -38,6 +38,7 @@ export class MySQLPlatform extends DefaultPlatform {
         this.addType('partial', 'json');
         this.addType('map', 'json');
         this.addType('patch', 'json');
+        this.addType('enum', 'json');
 
         this.addBinaryType('longblob');
     }
