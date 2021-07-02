@@ -420,6 +420,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
     }
 }
 
+export type OnConnectionCallback = (connection: RpcKernelConnection, injector: BasicInjector, logger: LoggerInterface) => void;
 
 /**
  * The kernel is responsible for parsing the message header, redirecting to peer if necessary, loading the body parser,
@@ -430,6 +431,8 @@ export class RpcKernel {
     protected peerExchange = new RpcPeerExchange;
     protected connections = new RpcKernelConnections;
     protected injector: BasicInjector | InjectorContext;
+
+    protected onConnectionListeners: OnConnectionCallback[] = [];
 
     constructor(
         injector?: BasicInjector,
@@ -443,6 +446,13 @@ export class RpcKernel {
         }
     }
 
+    public onConnection(callback: OnConnectionCallback) {
+        this.onConnectionListeners.push(callback);
+        return () => {
+            arrayRemoveItem(this.onConnectionListeners, callback);
+        };
+    }
+
     /**
      * This registers the controller and adds it as provider to the injector.
      *
@@ -452,7 +462,7 @@ export class RpcKernel {
     public registerController(id: string | ControllerDefinition<any>, controller: ClassType, addAsProvider: boolean = true) {
         if (addAsProvider) {
             if (this.injector instanceof InjectorContext) {
-                this.injector.contextManager.get(0).providers.push({provide: controller, scope: 'rpc'});
+                this.injector.contextManager.get(0).providers.push({ provide: controller, scope: 'rpc' });
             }
 
             if (this.injector instanceof Injector) {
@@ -482,6 +492,7 @@ export class RpcKernel {
         }
 
         connection = new RpcKernelConnection(writer, this.connections, this.controllers, this.security, injector, this.peerExchange, this.logger);
+        for (const on of this.onConnectionListeners) on(connection, injector, this.logger);
         return connection;
     }
 }
