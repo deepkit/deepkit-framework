@@ -9,7 +9,7 @@
  */
 
 import 'reflect-metadata';
-import {PrismaClient} from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { BenchSuite } from '../../../bench';
 
 const prisma = new PrismaClient();
@@ -17,23 +17,27 @@ const prisma = new PrismaClient();
 export async function main() {
     const count = 10_000;
 
-    for (let i = 0; i < 1; i++) {
+    let created = false;
+    for (let i = 0; i < 5; i++) {
         console.log('round', i);
         const bench = new BenchSuite('prisma');
-        await prisma.model.deleteMany({});
 
-        await bench.runAsyncFix(1, 'insert', async () => {
-            for (let i = 1; i <= count; i++) {
-                await prisma.model.create({
-                    data: {
-                        username: 'Peter ' + i,
-                        tags: 'a,b,c',
-                        priority: 5,
-                        ready: true,
-                    }
-                });
-            }
-        });
+        if (!created) {
+            created = true;
+            await prisma.model.deleteMany({});
+            await bench.runAsyncFix(1, 'insert', async () => {
+                for (let i = 1; i <= count; i++) {
+                    await prisma.model.create({
+                        data: {
+                            username: 'Peter ' + i,
+                            tags: 'a,b,c',
+                            priority: 5,
+                            ready: true,
+                        }
+                    });
+                }
+            });
+        }
 
         await bench.runAsyncFix(10, 'fetch', async () => {
             const users = await prisma.model.findMany();
