@@ -27,6 +27,8 @@ import {
     PatchResult,
     Query,
     RawFactory,
+    Replace,
+    Resolve,
     SORT_ORDER
 } from '@deepkit/orm';
 import { ClassType, isArray } from '@deepkit/core';
@@ -42,11 +44,17 @@ export type DEEP_SORT<T extends Entity> = { [P in keyof T]?: SORT_TYPE } & { [P:
 
 export class SQLQueryModel<T extends Entity> extends DatabaseQueryModel<T, FilterQuery<T>, DEEP_SORT<T>> {
     where?: SqlQuery;
+    sqlSelect?: SqlQuery;
 
     clone(parentQuery: BaseQuery<T>): this {
         const m = super.clone(parentQuery);
-        m.where = this.where;
+        m.where = this.where ? this.where.clone() : undefined;
+        m.sqlSelect = this.sqlSelect ? this.sqlSelect.clone() : undefined;
         return m;
+    }
+
+    isPartial(): boolean {
+        return super.isPartial() || !!this.sqlSelect;
     }
 }
 
@@ -205,7 +213,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         try {
             const rows = await connection.execAndReturnAll(sql.sql, sql.params);
             const results: T[] = [];
-            if (model.isAggregate()) {
+            if (model.isAggregate() || model.sqlSelect) {
                 //when aggregate the field types could be completely different, so don't normalize
                 for (const row of rows) results.push(row); //mysql returns not a real array, so we have to iterate
                 return results;
@@ -234,7 +242,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
             const row = await connection.execAndReturnSingle(sql.sql, sql.params);
             if (!row) return;
 
-            if (model.isAggregate()) {
+            if (model.isAggregate() || model.sqlSelect) {
                 //when aggregate the field types could be completely different, so don't normalize
                 return row;
             }
@@ -290,6 +298,10 @@ export function identifier(id: string) {
 
 export class SqlQuery {
     constructor(public parts: ReadonlyArray<QueryPart>) {
+    }
+
+    public clone(): SqlQuery {
+        return new SqlQuery(this.parts.slice());
     }
 
     convertToSQL(
@@ -361,17 +373,29 @@ export class SQLDatabaseQuery<T extends Entity> extends Query<T> {
     }
 
     /**
-     * Executes raw SQL using template literal and automatic value escaping using prepared statements.
+     * Adds raw SQL to the where clause of the query.
+     * If there is a `filter()` set as well, the where is added after the filter using AND.
      *
      * ```
-     * const id = 1;
-     * database.query(User).raw(`SELECT * FROM ${User} WHERE id > ${id}`);
+     * database.query(User).where(`id > ${id}`).find();
      * ```
      *
+     * Use `${identifier('name')} = ${'Peter'}` for column names that need to be quoted.
      */
     where(sql: SqlQuery): this {
-        this.model.where = sql;
-        return this;
+        const c = this.clone();
+        c.model.where = sql;
+        return c as any;
+    }
+
+    /**
+     * Adds additional selects to the query.
+     * Automatically converts the query to a partial (no class instances).
+     */
+    sqlSelect(sql: SqlQuery): Replace<this, Pick<Resolve<this>, any>> {
+        const c = this.clone();
+        c.model.sqlSelect = sql;
+        return c as any;
     }
 }
 

@@ -10,7 +10,19 @@
 
 import { ClassType, empty, Mutex } from '@deepkit/core';
 import { DatabaseAdapter, DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
-import { DefaultPlatform, SqlBuilder, SQLConnection, SQLConnectionPool, SQLDatabaseAdapter, SQLDatabaseQuery, SQLDatabaseQueryFactory, SQLPersistence, SQLQueryModel, SQLQueryResolver, SQLStatement } from '@deepkit/sql';
+import {
+    DefaultPlatform,
+    SqlBuilder,
+    SQLConnection,
+    SQLConnectionPool,
+    SQLDatabaseAdapter,
+    SQLDatabaseQuery,
+    SQLDatabaseQueryFactory,
+    SQLPersistence,
+    SQLQueryModel,
+    SQLQueryResolver,
+    SQLStatement
+} from '@deepkit/sql';
 import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, resolvePropertySchema } from '@deepkit/type';
 import sqlite3 from 'better-sqlite3';
 import { SQLitePlatform } from './sqlite-platform';
@@ -356,8 +368,8 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
             select.unshift(this.platform.quoteIdentifier(primaryKey.name));
         }
 
-        const sqlBuilder = new SqlBuilder(this.platform);
-        const selectSQL = sqlBuilder.select(this.classSchema, model, { select }, selectParams);
+        const sqlBuilder = new SqlBuilder(this.platform, selectParams);
+        const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
 
         const sql = `
               UPDATE

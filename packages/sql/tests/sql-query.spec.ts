@@ -2,10 +2,11 @@ import { expect, test } from '@jest/globals';
 import { entity, getClassSchema, jsonSerializer, t } from '@deepkit/type';
 import { SQLFilterBuilder } from '../src/sql-filter-builder';
 import { escape } from 'sqlstring';
-import { sql } from '../src/sql-adapter';
+import { sql, SQLQueryModel } from '../src/sql-adapter';
 import { DefaultPlatform, SqlPlaceholderStrategy } from '../src/platform/default-platform';
 import { SchemaParser } from '../src/reverse/schema-parser';
 import { DatabaseModel } from '../src/schema/table';
+import { SqlBuilder } from '../src/sql-builder';
 
 function quoteId(value: string): string {
     return value;
@@ -35,6 +36,31 @@ test('sql query', () => {
     const generated = query.convertToSQL(new MyPlatform(), new SqlPlaceholderStrategy());
     expect(generated.sql).toBe('SELECT * FROM "user" WHERE id > ?');
     expect(generated.params).toEqual([0]);
+});
+
+
+test('select', () => {
+    @entity.name('user-select')
+    class User {
+        @t.required id: number = 0;
+        @t.required username!: string;
+    }
+
+    {
+        const builder = new SqlBuilder(new MyPlatform());
+        const model = new SQLQueryModel();
+        const builtSQL = builder.select(getClassSchema(User), model);
+        expect(builtSQL.sql).toBe(`SELECT "user"."id", "user"."username" FROM "user"`);
+    }
+
+    {
+        const builder = new SqlBuilder(new MyPlatform());
+        const model = new SQLQueryModel();
+        model.sqlSelect = sql`count(*) as count`;
+        const builtSQL = builder.select(getClassSchema(User), model);
+        expect(builtSQL.sql).toBe(`SELECT count(*) as count FROM "user"`);
+        expect(model.isPartial()).toBe(true);
+    }
 });
 
 test('QueryToSql', () => {

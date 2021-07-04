@@ -64,9 +64,7 @@ export const variousTests = {
         const database = await databaseFactory([user]);
 
         if (isDatabaseOf(database, SQLDatabaseAdapter)) {
-            await database.persist(plainToClass(user, { username: 'peter' }));
-            await database.persist(plainToClass(user, { username: 'marie' }));
-            await database.persist(plainToClass(user, { username: 'mueller' }));
+            await database.persist(plainToClass(user, { username: 'peter' }), plainToClass(user, { username: 'marie' }), plainToClass(user, { username: 'mueller' }));
 
             {
                 const result = await database.query(user).where(sql`id > 1`).findOne();
@@ -83,6 +81,19 @@ export const variousTests = {
                 const id = 3;
                 const result = await database.query(user).filter({id: {$gt: 1}}).where(sql`${identifier('id')} < ${id}`).find();
                 expect(result).toMatchObject([{ id: 2, username: 'marie' }]);
+            }
+
+            {
+                const result = await database.query(user).withSum('id', 'countUsers').withMax('id', 'maxId').withMin('id').findOne();
+                expect(result.countUsers).toBe(1 + 2 + 3);
+                expect(result.maxId).toBe(3);
+                expect(result.id).toBe(1);
+            }
+
+            {
+                const result = await database.query(user).sqlSelect(sql`count(*) as count`).findOne();
+                console.log('result', result);
+                expect(result.count).toBe(3);
             }
         }
     }

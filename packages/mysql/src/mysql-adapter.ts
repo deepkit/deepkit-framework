@@ -24,14 +24,7 @@ import {
 } from '@deepkit/sql';
 import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
 import { MySQLPlatform } from './mysql-platform';
-import {
-    Changes,
-    ClassSchema,
-    getClassSchema,
-    getPropertyXtoClassFunction,
-    isArray,
-    resolvePropertySchema
-} from '@deepkit/type';
+import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, isArray, resolvePropertySchema } from '@deepkit/type';
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
 
 export class MySQLStatement extends SQLStatement {
@@ -250,13 +243,13 @@ export class MySQLPersistence extends SQLPersistence {
 
         const sql = `
               WITH _tmp(${valuesNames.join(', ')}) AS (
-                SELECT ${selects.join(', ')} FROM 
+                SELECT ${selects.join(', ')} FROM
                     (VALUES ${valuesValues.join(', ')}) as _(${valuesNames.join(', ')})
                     INNER JOIN ${tableName} as _origin ON (_origin.${pkField} = _.${pkField})
               )
-              UPDATE 
+              UPDATE
                 ${tableName}, _tmp as _b ${setVars}
-                
+
               SET ${setNames.join(', ')}
               WHERE ${tableName}.${pkField} = _b.${pkField};
               ${endSelect}
@@ -401,8 +394,8 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
             `;
         const selectVarsSQL = `SELECT ${selectVars.join(', ')};`;
 
-        const sqlBuilder = new SqlBuilder(this.platform);
-        const selectSQL = sqlBuilder.select(this.classSchema, model, { select }, selectParams);
+        const sqlBuilder = new SqlBuilder(this.platform, selectParams);
+        const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
 
         const params = selectSQL.params;
         const sql = `

@@ -9,7 +9,7 @@
  */
 
 import { SQLQueryModel } from './sql-adapter';
-import { DefaultPlatform } from './platform/default-platform';
+import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform';
 import { ClassSchema, getClassSchema, getPrimaryKeyHashGenerator, PropertySchema, resolveClassTypeOrForward } from '@deepkit/type';
 import { DatabaseJoinModel, DatabaseQueryModel } from '@deepkit/orm';
 import { getSqlFilter } from './filter';
@@ -38,9 +38,13 @@ export class SqlBuilder {
     protected sqlSelect: string[] = [];
     protected joins: { join: DatabaseJoinModel<any, any>, forJoinIndex: number, startIndex: number, converter: ConvertDataToDict }[] = [];
 
+    protected placeholderStrategy: SqlPlaceholderStrategy;
+
     public rootConverter?: ConvertDataToDict;
 
-    constructor(protected platform: DefaultPlatform) {
+    constructor(protected platform: DefaultPlatform, public params: string[] = []) {
+        this.placeholderStrategy = new platform.placeholderStrategy();
+        this.placeholderStrategy.offset = this.params.length;
     }
 
     protected appendWhereSQL(sql: Sql, schema: ClassSchema, model: SQLQueryModel<any>, tableName?: string, prefix: string = 'WHERE') {
@@ -95,7 +99,7 @@ export class SqlBuilder {
         const tableName = this.platform.getTableIdentifier(schema);
         const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getProperties();
 
-        if (model.aggregate.size || model.groupBy.size) {
+        if (model.aggregate.size || model.groupBy.size || model.sqlSelect) {
             //we select only whats aggregated
             for (const name of model.groupBy.values()) {
                 this.sqlSelect.push(tableName + '.' + this.platform.quoteIdentifier(name));
@@ -104,6 +108,12 @@ export class SqlBuilder {
                 if (a.property.backReference) continue;
 
                 this.sqlSelect.push(this.platform.getAggregateSelect(tableName, a.property, a.func) + ' AS ' + this.platform.quoteIdentifier(as));
+            }
+
+            if (model.sqlSelect) {
+                const build = model.sqlSelect?.convertToSQL(this.platform, this.placeholderStrategy, tableName);
+                this.params.push(...build.params);
+                this.sqlSelect.push(build.sql);
             }
         } else {
             for (const property of properties) {
@@ -314,9 +324,9 @@ export class SqlBuilder {
         }
     }
 
-    public build<T>(schema: ClassSchema, model: SQLQueryModel<T>, head: string, withRange: boolean = true, params: string[] = []): Sql {
+    public build<T>(schema: ClassSchema, model: SQLQueryModel<T>, head: string, withRange: boolean = true): Sql {
         const tableName = this.platform.getTableIdentifier(schema);
-        const sql = new Sql(`${head} FROM ${tableName}`, params);
+        const sql = new Sql(`${head} FROM ${tableName}`, this.params);
         this.appendJoinSQL(sql, model, tableName);
         this.appendWhereSQL(sql, schema, model);
 
@@ -339,14 +349,13 @@ export class SqlBuilder {
     public select(
         schema: ClassSchema,
         model: SQLQueryModel<any>,
-        options: { select?: string[] } = {},
-        params: any[] = [],
+        options: { select?: string[] } = {}
     ): Sql {
         const manualSelect = options.select && options.select.length ? options.select : undefined;
 
         if (!manualSelect) {
             if (model.hasJoins()) {
-                const map = this.selectColumnsWithJoins(schema, model);
+                const map = this.selectColumnsWithJoins(schema, model, '');
                 this.rootConverter = this.buildConverter(map.startIndex, map.fields);
             } else {
                 this.selectColumns(schema, model);
@@ -360,7 +369,7 @@ export class SqlBuilder {
             }
         }
 
-        const sql = this.build(schema, model, 'SELECT ' + (manualSelect || this.sqlSelect).join(', '), false, params);
+        const sql = this.build(schema, model, 'SELECT ' + (manualSelect || this.sqlSelect).join(', '), false);
 
         if (model.groupBy.size) {
             const groupBy: string[] = [];

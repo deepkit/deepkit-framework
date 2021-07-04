@@ -23,14 +23,7 @@ import {
 } from '@deepkit/sql';
 import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
 import { PostgresPlatform } from './postgres-platform';
-import {
-    Changes,
-    ClassSchema,
-    getClassSchema,
-    getPropertyXtoClassFunction,
-    PropertySchema,
-    resolvePropertySchema
-} from '@deepkit/type';
+import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, PropertySchema, resolvePropertySchema } from '@deepkit/type';
 import type { Pool, PoolClient, PoolConfig } from 'pg';
 import pg from 'pg';
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
@@ -265,7 +258,7 @@ export class PostgresPersistence extends SQLPersistence {
 
         const sql = `
               WITH _b(${escapedValuesNames.join(', ')}) AS (
-                SELECT ${selects.join(', ')} FROM 
+                SELECT ${selects.join(', ')} FROM
                     (VALUES ${valuesValues.join(', ')}) as _(${escapedValuesNames.join(', ')})
                     INNER JOIN ${tableName} as _origin ON (_origin.${pkField} = _.${pkField})
               )
@@ -419,8 +412,8 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
             }
         }
 
-        const sqlBuilder = new SqlBuilder(this.platform);
-        const selectSQL = sqlBuilder.select(this.classSchema, model, { select }, selectParams);
+        const sqlBuilder = new SqlBuilder(this.platform, selectParams);
+        const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
 
         const sql = `
             WITH _b AS (${selectSQL.sql})

@@ -180,7 +180,7 @@ export interface QueryClassType<T> {
 }
 
 export class BaseQuery<T extends Entity> {
-    //for higher kinded type
+    //for higher kinded type for selected fields
     _!: () => T;
 
     protected createModel<T>() {
@@ -202,34 +202,34 @@ export class BaseQuery<T extends Entity> {
         return c as any;
     }
 
-    withSum<K extends FieldName<T>>(field: K, as?: string): this {
-        return this.aggregateField(field, 'sum', as);
+    withSum<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & {[K in [AS] as `${AS}`]: number}> {
+        return this.aggregateField(field, 'sum', as) as any;
     }
 
-    withGroupConcat<K extends FieldName<T>>(field: K, as?: string): this {
+    withGroupConcat<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & {[C in [AS] as `${AS}`]: T[K][]}> {
         return this.aggregateField(field, 'group_concat', as);
     }
 
-    withCount<K extends FieldName<T>>(field: K, as?: string): this {
-        return this.aggregateField(field, 'count', as);
+    withCount<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & {[K in [AS] as `${AS}`]: number}> {
+        return this.aggregateField(field, 'count', as) as any;
     }
 
-    withMax<K extends FieldName<T>>(field: K, as?: string): this {
-        return this.aggregateField(field, 'max', as);
+    withMax<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & {[K in [AS] as `${AS}`]: number}> {
+        return this.aggregateField(field, 'max', as) as any;
     }
 
-    withMin<K extends FieldName<T>>(field: K, as?: string): this {
-        return this.aggregateField(field, 'min', as);
+    withMin<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & {[K in [AS] as `${AS}`]: number}> {
+        return this.aggregateField(field, 'min', as) as any;
     }
 
-    withAverage<K extends FieldName<T>>(field: K, as?: string): this {
-        return this.aggregateField(field, 'avg', as);
+    withAverage<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & {[K in [AS] as `${AS}`]: number}> {
+        return this.aggregateField(field, 'avg', as) as any;
     }
 
-    aggregateField<K extends FieldName<T>>(field: K, func: string, as?: string): this {
+    aggregateField<K extends FieldName<T>, AS extends string>(field: K, func: string, as?: AS): Replace<this, Resolve<this> & {[K in [AS] as `${AS}`]: number}> {
         const c = this.clone();
-        as ||= field;
-        c.model.aggregate.set(as, {property: this.classSchema.getProperty(field), func});
+        (as as any) ||= field;
+        c.model.aggregate.set((as as any), {property: this.classSchema.getProperty(field), func});
         return c as any;
     }
 
