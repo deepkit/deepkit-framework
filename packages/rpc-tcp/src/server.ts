@@ -3,7 +3,7 @@ import { RpcKernel } from '@deepkit/rpc';
 // @ts-ignore
 import * as turbo from 'turbo-net';
 import { existsSync, unlinkSync } from 'fs';
-import { createServer, Server } from 'net';
+import { createServer, Server, Socket } from 'net';
 
 /**
  * Uses the `turbo-net` module to create a server.
@@ -114,16 +114,19 @@ export class NetTcpRpcServer {
                 reject(new Error('Could not start broker server: ' + err));
             });
 
-            this.server.on('connection', (socket: any) => {
+            this.server.on('connection', (socket: Socket) => {
                 const connection = this.kernel?.createConnection({
                     write(b: Uint8Array) {
                         socket.write(b);
                     },
+                    clientAddress(): string {
+                        return socket.remoteAddress || '';
+                    },
                     close() {
-                        socket.close();
+                        socket.destroy();
                     },
                     bufferedAmount(): number {
-                        return socket.bufferedAmount || 0;
+                        return socket.writableLength || 0;
                     }
                 });
 
@@ -132,6 +135,10 @@ export class NetTcpRpcServer {
                 });
 
                 socket.on('close', () => {
+                    connection!.close();
+                });
+
+                socket.on('error', () => {
                     connection!.close();
                 });
             });
