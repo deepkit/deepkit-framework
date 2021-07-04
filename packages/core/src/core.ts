@@ -42,7 +42,7 @@ export interface ClassType<T = any> {
 /**
  * @public
  */
-export type AbstractClassType<T> = abstract new (...args: any[]) => T;
+export type AbstractClassType<T = any> = abstract new (...args: any[]) => T;
 
 export type ExtractClassType<T> = T extends ClassType<infer K> ? K : never;
 

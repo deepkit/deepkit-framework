@@ -9,13 +9,13 @@
  */
 
 import { Entity } from './type';
-import { ClassType } from '@deepkit/core';
+import { AbstractClassType } from '@deepkit/core';
 import { ClassSchema, ItemChanges, PrimaryKeyFields } from '@deepkit/type';
 import { Query } from './query';
 import { DatabaseSession } from './database-session';
 
 export abstract class DatabaseAdapterQueryFactory {
-    abstract createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): Query<T>;
+    abstract createQuery<T extends Entity>(classType: AbstractClassType<T> | ClassSchema<T>): Query<T>;
 }
 
 export interface DatabasePersistenceChangeSet<T> {

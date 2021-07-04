@@ -50,7 +50,7 @@ test('select', () => {
         const builder = new SqlBuilder(new MyPlatform());
         const model = new SQLQueryModel();
         const builtSQL = builder.select(getClassSchema(User), model);
-        expect(builtSQL.sql).toBe(`SELECT "user"."id", "user"."username" FROM "user"`);
+        expect(builtSQL.sql).toBe(`SELECT "user-select"."id", "user-select"."username" FROM "user-select"`);
     }
 
     {
@@ -58,7 +58,7 @@ test('select', () => {
         const model = new SQLQueryModel();
         model.sqlSelect = sql`count(*) as count`;
         const builtSQL = builder.select(getClassSchema(User), model);
-        expect(builtSQL.sql).toBe(`SELECT count(*) as count FROM "user"`);
+        expect(builtSQL.sql).toBe(`SELECT count(*) as count FROM "user-select"`);
         expect(model.isPartial()).toBe(true);
     }
 });

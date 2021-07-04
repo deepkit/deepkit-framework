@@ -8,16 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ClassSchema,
-    createReferenceClass,
-    getGlobalStore,
-    getPrimaryKeyHashGenerator,
-    PropertySchema,
-    Serializer,
-    UnpopulatedCheck,
-    unpopulatedSymbol
-} from '@deepkit/type';
+import { ClassSchema, createReferenceClass, getGlobalStore, getPrimaryKeyHashGenerator, PropertySchema, Serializer, UnpopulatedCheck, unpopulatedSymbol } from '@deepkit/type';
 import { DatabaseQueryModel } from './query';
 import { capitalize, ClassType } from '@deepkit/core';
 import { getInstanceState, IdentityMap, PKHash } from './identity-map';
@@ -170,6 +161,18 @@ export class Formatter {
     protected hydrateModel(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, dbRecord: DBRecord) {
         let pool: Map<PKHash, any> | undefined = undefined;
         let pkHash: any = undefined;
+
+        const singleTableInheritanceMap = classSchema.getAssignedSingleTableInheritanceSubClassesByIdentifier();
+        if (singleTableInheritanceMap) {
+            const discriminant = classSchema.getSingleTableInheritanceDiscriminant();
+            const subClassSchema = singleTableInheritanceMap[dbRecord[discriminant.name]];
+            if (!subClassSchema) {
+                console.log('singleTableInheritanceMap', singleTableInheritanceMap);
+                throw new Error(`${classSchema.getClassName()} has no sub class with discriminator value ${JSON.stringify(dbRecord[discriminant.name])} for field ${discriminant.name}`);
+            }
+            classSchema = subClassSchema;
+        }
+
         if (this.rootClassSchema.references.size > 0) {
             //the pool is only necessary when the root class has actually references
             pkHash = classSchema === this.rootClassSchema ? this.rootPkHash(dbRecord) : getPrimaryKeyHashGenerator(classSchema, this.serializer)(dbRecord);

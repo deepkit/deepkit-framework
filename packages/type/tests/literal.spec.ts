@@ -24,25 +24,25 @@ test('literal string', () => {
         type: t.literal('a'),
     });
 
-    // {
-    //     const item = jsonSerializer.for(s).deserialize({type: 'a'});
-    //     expect(item.type).toBe('a');
-    // }
+    {
+        const item = jsonSerializer.for(s).deserialize({type: 'a'});
+        expect(item.type).toBe('a');
+    }
 
-    // {
-    //     const item = jsonSerializer.for(s).deserialize({type: 'ff'});
-    //     expect(item.type).toBe('a');
-    // }
+    {
+        const item = jsonSerializer.for(s).deserialize({type: 'ff'});
+        expect(item.type).toBe('a');
+    }
 
-    // {
-    //     const item = jsonSerializer.for(s).deserialize({});
-    //     expect(item.type).toBe('a');
-    // }
+    {
+        const item = jsonSerializer.for(s).deserialize({});
+        expect(item.type).toBe('a');
+    }
 
-    // {
-    //     const item = jsonSerializer.for(s).deserialize({ type: undefined });
-    //     expect(item.type).toBe('a');
-    // }
+    {
+        const item = jsonSerializer.for(s).deserialize({ type: undefined });
+        expect(item.type).toBe('a');
+    }
 
     {
         const item = jsonSerializer.for(s).deserialize({ type: null });

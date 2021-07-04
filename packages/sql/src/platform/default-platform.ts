@@ -178,10 +178,37 @@ export abstract class DefaultPlatform {
     }
 
     createTables(schemas: (ClassSchema | ClassType)[], database: DatabaseModel = new DatabaseModel()): Table[] {
+        const mergedToSingleTable = new Set<ClassSchema>();
+
+        const refs = new Map<ClassSchema, ClassSchema>();
+
         for (let schema of schemas) {
             schema = getClassSchema(schema);
 
-            if (!schema.name) throw new Error(`No entity name for schema for class ${schema.getClassName()} given`);
+            if (schema.singleTableInheritance) {
+                if (!schema.superClass) throw new Error(`Class ${schema.getClassName()} has singleTableInheritance enabled but no super class.`);
+
+                if (mergedToSingleTable.has(schema.superClass)) continue;
+                mergedToSingleTable.add(schema.superClass);
+
+                const discriminant = schema.superClass.getSingleTableInheritanceDiscriminant();
+
+                const old = schema;
+                schema = schema.superClass.clone();
+                refs.set(old.superClass!, schema);
+
+                //add all properties from all sub classes.
+                for (const subSchema of schema.subClasses) {
+                    for (let property of subSchema.getProperties()) {
+                        if (schema.hasProperty(property.name)) continue;
+                        property = property.clone();
+                        property.isOptional = true;
+                        schema.registerProperty(property);
+                    }
+                }
+
+                schema.getProperty(discriminant.name).isOptional = false;
+            }
 
             const table = new Table(this.namingStrategy.getTableName(schema));
             database.schemaMap.set(schema, table);
@@ -211,18 +238,14 @@ export abstract class DefaultPlatform {
         }
 
         //set foreign keys
-        for (let schema of schemas) {
-            schema = getClassSchema(schema);
-
-            const table = database.schemaMap.get(schema)!;
-
+        for (let [schema, table] of database.schemaMap.entries()) {
             for (const property of schema.getProperties()) {
                 if (!property.isReference) continue;
 
                 const foreignSchema = property.getResolvedClassSchema();
-                const foreignTable = database.schemaMap.get(foreignSchema);
+                const foreignTable = database.schemaMap.get(refs.get(foreignSchema) || foreignSchema);
                 if (!foreignTable) {
-                    throw new Error(`Referenced entity ${foreignSchema.getName()} from ${schema.getName()}.${property.name} is not available`);
+                    throw new Error(`Referenced entity ${foreignSchema.getClassName()} from ${schema.getClassName()}.${property.name} is not available`);
                 }
                 const foreignKey = table.addForeignKey('', foreignTable);
                 foreignKey.localColumns = [table.getColumn(property.name)];
@@ -233,10 +256,7 @@ export abstract class DefaultPlatform {
         }
 
         //create index
-        for (let schema of schemas) {
-            schema = getClassSchema(schema);
-            const table = database.schemaMap.get(schema)!;
-
+        for (let [schema, table] of database.schemaMap.entries()) {
             for (const [name, index] of schema.indices.entries()) {
                 if (table.hasIndexByName(name)) continue;
                 const columns = index.fields.map(v => table.getColumn(v));
@@ -283,7 +303,6 @@ export abstract class DefaultPlatform {
     }
 
     getTableIdentifier(schema: ClassSchema): string {
-        if (!schema.name) throw new Error(`Class ${schema.getClassName()} has no name defined`);
         const collectionName = this.namingStrategy.getTableName(schema);
 
         if (schema.databaseSchemaName) return this.quoteIdentifier(schema.databaseSchemaName + this.getSchemaDelimiter() + collectionName);

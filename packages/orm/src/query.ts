@@ -9,7 +9,17 @@
  */
 
 import { ClassType, empty } from '@deepkit/core';
-import { Changes, ChangesInterface, ClassSchema, ExtractPrimaryKeyType, ExtractReferences, getSimplePrimaryKeyHashGenerator, PrimaryKeyFields, PropertySchema } from '@deepkit/type';
+import {
+    Changes,
+    ChangesInterface,
+    ClassSchema,
+    ExtractPrimaryKeyType,
+    ExtractReferences,
+    getSimplePrimaryKeyHashGenerator,
+    getSingleTableInheritanceTypeValue,
+    PrimaryKeyFields,
+    PropertySchema
+} from '@deepkit/type';
 import { Subject } from 'rxjs';
 import { DatabaseAdapter } from './database-adapter';
 import { DatabaseSession } from './database-session';
@@ -75,7 +85,7 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<T> 
     public filter?: FILTER;
     public having?: FILTER;
     public groupBy: Set<string> = new Set<string>();
-    public aggregate = new Map<string, {property: PropertySchema, func: string}>();
+    public aggregate = new Map<string, { property: PropertySchema, func: string }>();
     public select: Set<string> = new Set<string>();
     public joins: DatabaseJoinModel<any, any>[] = [];
     public skip?: number;
@@ -96,7 +106,7 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<T> 
 
     /**
      * Whether limit/skip is activated.
-    */
+     */
     hasPaging(): boolean {
         return this.limit !== undefined || this.skip !== undefined;
     }
@@ -110,8 +120,8 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<T> 
     clone(parentQuery: BaseQuery<T>): this {
         const constructor = this.constructor as ClassType<this>;
         const m = new constructor();
-        m.filter = this.filter && {...this.filter};
-        m.having = this.having && {...this.having};
+        m.filter = this.filter && { ...this.filter };
+        m.having = this.having && { ...this.having };
         m.withIdentityMap = this.withIdentityMap;
         m.select = new Set(this.select);
         m.groupBy = new Set(this.groupBy);
@@ -202,34 +212,34 @@ export class BaseQuery<T extends Entity> {
         return c as any;
     }
 
-    withSum<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & {[K in [AS] as `${AS}`]: number}> {
+    withSum<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'sum', as) as any;
     }
 
-    withGroupConcat<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & {[C in [AS] as `${AS}`]: T[K][]}> {
+    withGroupConcat<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [C in [AS] as `${AS}`]: T[K][] }> {
         return this.aggregateField(field, 'group_concat', as);
     }
 
-    withCount<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & {[K in [AS] as `${AS}`]: number}> {
+    withCount<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'count', as) as any;
     }
 
-    withMax<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & {[K in [AS] as `${AS}`]: number}> {
+    withMax<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'max', as) as any;
     }
 
-    withMin<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & {[K in [AS] as `${AS}`]: number}> {
+    withMin<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'min', as) as any;
     }
 
-    withAverage<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & {[K in [AS] as `${AS}`]: number}> {
+    withAverage<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'avg', as) as any;
     }
 
-    aggregateField<K extends FieldName<T>, AS extends string>(field: K, func: string, as?: AS): Replace<this, Resolve<this> & {[K in [AS] as `${AS}`]: number}> {
+    aggregateField<K extends FieldName<T>, AS extends string>(field: K, func: string, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         const c = this.clone();
         (as as any) ||= field;
-        c.model.aggregate.set((as as any), {property: this.classSchema.getProperty(field), func});
+        c.model.aggregate.set((as as any), { property: this.classSchema.getProperty(field), func });
         return c as any;
     }
 
@@ -253,7 +263,7 @@ export class BaseQuery<T extends Entity> {
 
     /**
      * Sets the page size when `page(x)` is used.
-    */
+     */
     itemsPerPage(value: number): this {
         const c = this.clone();
         c.model.itemsPerPage = value;
@@ -326,6 +336,7 @@ export class BaseQuery<T extends Entity> {
         const c = this.clone();
         if (!c.model.filter) c.model.filter = {};
         c.model.filter[name] = value;
+        //todo: when c.model.filter is a complex object with $and/$or, we need to adjust accordingly.
         return c;
     }
 
@@ -355,7 +366,7 @@ export class BaseQuery<T extends Entity> {
     join<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K, type: 'left' | 'inner' = 'left', populate: boolean = false): this {
         const propertySchema = this.classSchema.getProperty(field as string);
         if (!propertySchema.isReference && !propertySchema.backReference) {
-            throw new Error(`Field ${field} is not marked as reference. Use @f.reference()`);
+            throw new Error(`Field ${field} is not marked as reference. Use @t.reference()`);
         }
         const c = this.clone();
 
@@ -493,7 +504,8 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     ): Replace<InstanceType<B>, Resolve<this>> & Pick<this, Methods<this>> {
         const base = this['constructor'] as ClassType;
         //we create a custom class to have our own prototype
-        const clazz = class extends base { };
+        const clazz = class extends base {
+        };
 
         let obj: any = query;
         const wasSet: { [name: string]: true } = {};
@@ -537,7 +549,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         return cloned;
     }
 
-    protected async callQueryEvent(): Promise<this> {
+    protected async callOnFetchEvent(): Promise<this> {
         const hasEvents = this.databaseSession.queryEmitter.onFetch.hasSubscriptions();
         if (!hasEvents) return this;
 
@@ -546,20 +558,29 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         return event.query as any;
     }
 
+    protected onQueryResolve(query: this): this {
+        if (query.classSchema.singleTableInheritance && query.classSchema.superClass) {
+            const discriminant = query.classSchema.superClass.getSingleTableInheritanceDiscriminant();
+            const value = query.classSchema.getProperty(discriminant.name).getDefaultValue() || getSingleTableInheritanceTypeValue(query.classSchema);
+            return query.addFilter(discriminant.name as keyof T & string, value);
+        }
+        return query;
+    }
+
     public async count(): Promise<number> {
-        const query = await this.callQueryEvent();
+        const query = this.onQueryResolve(await this.callOnFetchEvent());
         return await query.resolver.count(query.model);
     }
 
     public async find(): Promise<Resolve<this>[]> {
         if (!this.databaseSession.stopwatch.active) {
-            const query = await this.callQueryEvent();
+            const query = this.onQueryResolve(await this.callOnFetchEvent());
             return await query.resolver.find(query.model) as Resolve<this>[];
         }
 
         const frame = this.databaseSession.stopwatch.start(this.classSchema.getClassName() + ': Find', FrameCategory.database);
         try {
-            const query = await this.callQueryEvent();
+            const query = this.onQueryResolve(await this.callOnFetchEvent());
             return await query.resolver.find(query.model) as Resolve<this>[];
         } finally {
             frame.end();
@@ -567,26 +588,26 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     }
 
     public async findOneOrUndefined(): Promise<T | undefined> {
-        const query = await this.callQueryEvent();
+        const query = this.onQueryResolve(await this.callOnFetchEvent());
         return await query.resolver.findOneOrUndefined(query.model);
     }
 
     public async findOne(): Promise<Resolve<this>> {
-        const query = await this.callQueryEvent();
+        const query = this.onQueryResolve(await this.callOnFetchEvent());
         const item = await query.resolver.findOneOrUndefined(query.model);
         if (!item) throw new ItemNotFound(`Item ${this.classSchema.getClassName()} not found`);
         return item as Resolve<this>;
     }
 
     public async deleteMany(): Promise<DeleteResult<T>> {
-        return this.delete(this) as any;
+        return await this.delete(this) as any;
     }
 
     public async deleteOne(): Promise<DeleteResult<T>> {
-        return this.delete(this.limit(1));
+        return await this.delete(this.limit(1));
     }
 
-    protected async delete(query: Query<T>): Promise<DeleteResult<T>> {
+    protected async delete(query: this): Promise<DeleteResult<T>> {
         const hasEvents = this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions() || this.databaseSession.queryEmitter.onDeletePost.hasSubscriptions();
 
         const deleteResult: DeleteResult<T> = {
@@ -595,6 +616,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         };
 
         if (!hasEvents) {
+            query = this.onQueryResolve(query);
             await this.resolver.delete(query.model, deleteResult);
             this.databaseSession.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
             return deleteResult;
@@ -607,6 +629,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         }
 
         //whe need to use event.query in case someone overwrite it
+        event.query = this.onQueryResolve(event.query as this);
         await event.query.resolver.delete(event.query.model, deleteResult);
         this.databaseSession.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
 
@@ -626,7 +649,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         return this.patch(this.limit(1), patch);
     }
 
-    protected async patch(query: Query<T>, patch: Partial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
+    protected async patch(query: this, patch: Partial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
         const changes: Changes<T> = new Changes<T>({
             $set: (patch as Changes<T>).$set || {},
             $inc: (patch as Changes<T>).$inc,
@@ -650,6 +673,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
 
         const hasEvents = this.databaseSession.queryEmitter.onPatchPre.hasSubscriptions() || this.databaseSession.queryEmitter.onPatchPost.hasSubscriptions();
         if (!hasEvents) {
+            query = this.onQueryResolve(query);
             await this.resolver.patch(query.model, changes, patchResult);
             return patchResult;
         }
@@ -665,6 +689,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         }
 
         //whe need to use event.query in case someone overwrite it
+        query = this.onQueryResolve(query);
         await event.query.resolver.patch(event.query.model, changes, patchResult);
 
         if (query.model.withIdentityMap) {

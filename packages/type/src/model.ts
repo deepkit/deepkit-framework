@@ -9,6 +9,7 @@
  */
 
 import {
+    AbstractClassType,
     arrayRemoveItem,
     capitalize,
     ClassType,
@@ -27,8 +28,15 @@ import {
 } from '@deepkit/core';
 import { ExtractClassDefinition, PlainSchemaProps, t } from './decorators';
 import { FieldDecoratorResult } from './field-decorator';
+import { findCommonDiscriminant, findCommonLiteral } from './inheritance';
 import { typedArrayMap, typedArrayNamesMap, Types } from './types';
 import { isArray } from './utils';
+
+export function getSingleTableInheritanceTypeValue(classSchema: ClassSchema): any {
+    if (!classSchema.singleTableInheritance) throw new Error(`${classSchema.getClassName()} has no singleTableInheritance enabled.`);
+    let value = classSchema.singleTableInheritance.type;
+    return value || classSchema.name || classSchema.getClassName().toLowerCase();
+}
 
 export enum UnpopulatedCheck {
     None,
@@ -96,6 +104,7 @@ export interface PropertySchemaSerialized {
     name: string;
     type: Types;
     literalValue?: string | number | boolean;
+    extractedDefaultValue?: any;
     isDecorated?: true;
     isParentReference?: true;
     isOptional?: true;
@@ -226,6 +235,11 @@ export class PropertySchema {
 
     literalValue?: string | number | boolean;
 
+    /**
+     * When the constructors sets a default value (for discriminants/literals), we try to extract the value.
+     */
+    extractedDefaultValue?: any;
+
     noValidation: boolean = false;
 
     /**
@@ -258,10 +272,6 @@ export class PropertySchema {
     }
 
     groupNames: string[] = [];
-
-    /**
-     * Whether given classType can be populated partially (for example in patch mechanisms).
-     */
 
     isOptional: boolean = false;
     isNullable: boolean = false;
@@ -380,11 +390,14 @@ export class PropertySchema {
     }
 
     getDefaultValue(): any {
+        if (this.literalValue) return this.literalValue;
+
         if (this.defaultValue) {
             this.lastGeneratedDefaultValue = this.defaultValue();
             return this.lastGeneratedDefaultValue;
         }
-        return undefined;
+
+        return this.extractedDefaultValue;
     }
 
     toString(optionalAffix = true): string {
@@ -438,6 +451,7 @@ export class PropertySchema {
         };
 
         if (this.literalValue !== undefined) props.literalValue = this.literalValue;
+        if (this.extractedDefaultValue !== undefined) props.extractedDefaultValue = this.extractedDefaultValue;
         if (this.isDecorated) props.isDecorated = true;
         if (this.isDiscriminant) props.isDiscriminant = true;
         if (this.isParentReference) props.isParentReference = true;
@@ -483,7 +497,8 @@ export class PropertySchema {
     static fromJSON(props: PropertySchemaSerialized, parent?: PropertySchema, throwForInvalidClassType: boolean = true): PropertySchema {
         const p = new PropertySchema(props['name']);
         p.type = props['type'];
-        p.literalValue = props['literalValue'];
+        p.literalValue = props.literalValue;
+        p.extractedDefaultValue = props.extractedDefaultValue;
 
         if (props.isDecorated) p.isDecorated = true;
         if (props.isParentReference) p.isParentReference = true;
@@ -670,6 +685,10 @@ export interface EntityIndex {
     options: IndexOptions
 }
 
+export interface SingleTableInheritance {
+    type?: string;
+}
+
 export class ClassSchema<T = any> {
     /**
      * The build id. When a property is added, this buildId changes, so JIT compiler knows when to refresh
@@ -682,6 +701,16 @@ export class ClassSchema<T = any> {
     description?: string;
     collectionName?: string;
     databaseSchemaName?: string;
+
+    /**
+     * Whether the schema uses single-table inheritance in the database.
+     * The actual collection name is then used from the parent class.
+     */
+    singleTableInheritance?: SingleTableInheritance;
+
+    subClasses: ClassSchema[] = [];
+
+    superClass?: ClassSchema;
 
     /**
      * Name of the property which this class is decorating.
@@ -743,6 +772,7 @@ export class ClassSchema<T = any> {
 
     private detectedDefaultValueProperties: string[] = [];
     private assignedInConstructor: string[] = [];
+    private extractedDefaultValues: {[name: string]: any } = {};
 
     /**
      * Whether this schema comes from an actual class (not t.schema);
@@ -754,7 +784,7 @@ export class ClassSchema<T = any> {
 
         this.classType = classType;
 
-        this.loadDefaults();
+        this.parseDefaults();
     }
 
     /**
@@ -768,14 +798,51 @@ export class ClassSchema<T = any> {
         return `<ClassSchema ${this.getClassName()}>\n` + this.properties.map(v => '   ' + v.name + '=' + v.toString()).join('\n') + '\n</ClassSchema>';
     }
 
+    public assignedSingleTableInheritanceSubClassesByIdentifier?: {[id: string]: ClassSchema};
+
+    getAssignedSingleTableInheritanceSubClassesByIdentifier(): {[id: string]: ClassSchema} | undefined {
+        if (!this.subClasses.length) return;
+
+        const discriminant = this.getSingleTableInheritanceDiscriminant();
+
+        for (const schema of this.subClasses) {
+            if (schema.singleTableInheritance) {
+                if (!this.assignedSingleTableInheritanceSubClassesByIdentifier) this.assignedSingleTableInheritanceSubClassesByIdentifier = {};
+                const value = schema.getProperty(discriminant.name).getDefaultValue() || getSingleTableInheritanceTypeValue(schema);
+                this.assignedSingleTableInheritanceSubClassesByIdentifier[value] = schema;
+            }
+        }
+        if (this.subClasses.length === 1) throw new Error('wat');
+        return this.assignedSingleTableInheritanceSubClassesByIdentifier;
+    }
+
+    hasSingleTableInheritanceSubClasses(): boolean {
+        return this.getAssignedSingleTableInheritanceSubClassesByIdentifier() !== undefined;
+    }
+
+    getSingleTableInheritanceDiscriminant(): PropertySchema {
+        if (this.data.singleTableInheritanceProperty) return this.data.singleTableInheritanceProperty;
+
+        let discriminant = findCommonDiscriminant(this.subClasses);
+
+        //when no discriminator was found, find a common literal
+        if (!discriminant) discriminant = findCommonLiteral(this.subClasses);
+
+        if (!discriminant) {
+            throw new Error(`Sub classes of ${this.getClassName()} single-table inheritance [${this.subClasses.map(v => v.getClassName())}] have no common discriminant or common literal. Please define one.`);
+        }
+
+        return this.data.singleTableInheritanceProperty = this.getProperty(discriminant);
+    }
+
     /**
      * To not force the user to always annotate `.optional` to properties that
      * are actually optional (properties with default values),
-     * we automatically read the code of the constructor and check if which properties
+     * we automatically read the code of the constructor and check if properties
      * are actually optional. If we find an assignment, we assume it has a default value,
      * and set property.hasDefaultValue = true;
      */
-    protected loadDefaults() {
+    protected parseDefaults() {
         const originCode = this.classType.toString();
 
         const constructorCode = originCode.startsWith('class') ? extractMethodBody(originCode, 'constructor') : originCode;
@@ -875,6 +942,9 @@ export class ClassSchema<T = any> {
         s.decorator = this.decorator;
         s.discriminant = this.discriminant;
         s.fromClass = this.fromClass;
+        s.singleTableInheritance = this.singleTableInheritance ? {...this.singleTableInheritance} : undefined;
+        s.subClasses = this.subClasses.slice();
+        s.superClass = this.superClass;
 
         s.propertiesMap = new Map();
         s.properties = [];
@@ -946,6 +1016,10 @@ export class ClassSchema<T = any> {
         if (this.fromClass && !property.methodName) {
             property.hasDefaultValue = this.detectedDefaultValueProperties.includes(property.name);
 
+            if (this.extractedDefaultValues[property.name]) {
+                property.extractedDefaultValue = this.extractedDefaultValues[property.name];
+            }
+
             if (!property.manuallySetToRequired && !property.hasDefaultValue && !this.assignedInConstructor.includes(property.name)) {
                 //when we have no default value AND the property was never seen in the constructor, its
                 //a optional one.
@@ -964,7 +1038,11 @@ export class ClassSchema<T = any> {
             }
         }
 
-        this.propertyNames.push(property.name);
+        if (this.propertiesMap.has(property.name)) {
+            arrayRemoveItem(this.properties, this.propertiesMap.get(property.name));
+        } else {
+            this.propertyNames.push(property.name);
+        }
         this.propertiesMap.set(property.name, property);
         this.properties.push(property);
     }
@@ -1506,7 +1584,7 @@ export const classSchemaSymbol = Symbol.for('deepkit/type/classSchema');
 /**
  * @hidden
  */
-export function getOrCreateEntitySchema<T>(target: object | ClassType<T> | any): ClassSchema {
+export function getOrCreateEntitySchema<T>(target: object | AbstractClassType<T> | any): ClassSchema {
     const proto = target['prototype'] ? target['prototype'] : target;
     const classType = target['prototype'] ? target as ClassType<T> : target.constructor as ClassType<T>;
 
@@ -1514,18 +1592,21 @@ export function getOrCreateEntitySchema<T>(target: object | ClassType<T> | any):
         Object.defineProperty(proto, classSchemaSymbol, { writable: true, enumerable: false });
     }
 
-    // if (!ClassSchemas.has(proto)) {
     if (!proto[classSchemaSymbol]) {
         //check if parent has a EntitySchema, if so clone and use it as base.
-
         let currentProto = Object.getPrototypeOf(proto);
         let found = false;
         while (currentProto && currentProto !== Object.prototype) {
             // if (ClassSchemas.has(currentProto)) {
             if (currentProto[classSchemaSymbol]) {
                 found = true;
-                proto[classSchemaSymbol] = currentProto[classSchemaSymbol].clone(classType);
-                // ClassSchemas.set(proto, ClassSchemas.get(currentProto)!.clone(classType));
+                const parent = currentProto[classSchemaSymbol] as ClassSchema;
+                const classSchema = parent.clone(classType);
+                classSchema.subClasses = [];
+
+                proto[classSchemaSymbol] = classSchema;
+                classSchema.superClass = parent;
+                parent.subClasses.push(classSchema);
                 break;
             }
             currentProto = Object.getPrototypeOf(currentProto);
@@ -1533,8 +1614,6 @@ export function getOrCreateEntitySchema<T>(target: object | ClassType<T> | any):
 
         if (!found) {
             proto[classSchemaSymbol] = new ClassSchema(classType);
-            // const reflection = new ClassSchema(classType);
-            // ClassSchemas.set(proto, reflection);
         }
     }
 
@@ -1549,7 +1628,7 @@ export function hasClassSchema(target: object | ClassType | any): boolean {
 /**
  * Returns meta information / schema about given entity class.
  */
-export function getClassSchema<T>(classTypeIn: ClassType<T> | Object | ClassSchema): ClassSchema<T> {
+export function getClassSchema<T>(classTypeIn: AbstractClassType<T> | Object | ClassSchema): ClassSchema<T> {
     if (classTypeIn instanceof ClassSchema) return classTypeIn;
     const classType = (classTypeIn as any)['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
 
@@ -1564,8 +1643,13 @@ export function getClassSchema<T>(classTypeIn: ClassType<T> | Object | ClassSche
         while (currentProto && currentProto !== Object.prototype) {
             if (currentProto[classSchemaSymbol]) {
                 found = true;
-                classType.prototype[classSchemaSymbol] = currentProto[classSchemaSymbol].clone(classType);
-                // ClassSchemas.set(classType.prototype, ClassSchemas.get(currentProto)!.clone(classType));
+                const parent = currentProto[classSchemaSymbol] as ClassSchema;
+                const classSchema = parent.clone(classType);
+                classSchema.subClasses = [];
+
+                classType.prototype[classSchemaSymbol] = classSchema;
+                classSchema.superClass = parent;
+                parent.subClasses.push(classSchema);
                 break;
             }
             currentProto = Object.getPrototypeOf(currentProto);

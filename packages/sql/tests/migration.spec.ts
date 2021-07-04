@@ -2,9 +2,8 @@ import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { t } from '@deepkit/type';
 import { DatabaseModel, Index } from '../src/schema/table';
-import { schemaMigrationRoundTrip } from './setup';
 import { DefaultPlatform } from '../src/platform/default-platform';
-import { SchemaParser } from "../src/reverse/schema-parser";
+import { SchemaParser } from '../src/reverse/schema-parser';
 
 const user = t.schema({
     id: t.number.autoIncrement.primary,

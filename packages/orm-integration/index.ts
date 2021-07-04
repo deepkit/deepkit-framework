@@ -12,3 +12,4 @@ export * from './src/active-record/tag';
 export * from './src/bookstore/group';
 export * from './src/bookstore/user';
 export * from './src/bookstore/user-credentials';
+export * from './src/company';

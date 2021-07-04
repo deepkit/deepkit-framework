@@ -23,6 +23,6 @@ export class DatabaseValidationError extends CustomError {
         public readonly classSchema: ClassSchema,
         public readonly errors: ValidationFailedItem[],
     ) {
-        super(`Validation error for class ${classSchema.getName()}:\n${errors.map(v => v.toString()).join(',\n')}`);
+        super(`Validation error for class ${classSchema.name || classSchema.getClassName()}:\n${errors.map(v => v.toString()).join(',\n')}`);
     }
 }

@@ -27,6 +27,40 @@ test('simple', () => {
     expect(schema.getProperty('another').hasDefaultValue).toBe(true);
 });
 
+test('default value extracted', () => {
+    class Model {
+        @t id: number = 0;
+
+        @t.literal('a') type: 'a' = 'a';
+    }
+
+    expect(getClassSchema(Model).getProperty('type').getDefaultValue()).toBe('a');
+});
+
+
+test('default value extracted', () => {
+    abstract class Person {
+        @t.primary.autoIncrement id: number = 0;
+        @t firstName?: string;
+        @t lastName?: string;
+        @t.discriminant abstract type: string;
+    }
+
+    class Employee extends Person {
+        @t email?: string;
+
+        @t.literal('employee') type: 'employee' = 'employee';
+    }
+
+    class Freelancer extends Person {
+        @t budget: number = 10_000;
+
+        @t.literal('freelancer') type: 'freelancer' = 'freelancer';
+    }
+
+    expect(getClassSchema(Freelancer).getProperty('type').getDefaultValue()).toBe('freelancer');
+    expect(getClassSchema(Employee).getProperty('type').getDefaultValue()).toBe('employee');
+});
 
 test('auto detect isOptional class', () => {
 

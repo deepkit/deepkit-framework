@@ -11,7 +11,7 @@
 import { DatabaseSession } from './database-session';
 import { DatabaseQueryModel, GenericQueryResolver, Query } from './query';
 import { Changes, ClassSchema, CompilerState, getClassSchema, jsonSerializer, PropertySchema } from '@deepkit/type';
-import { ClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
+import { AbstractClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
 import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
 import { DeleteResult, Entity, PatchResult } from './type';
 import { findQueryList } from './utils';
@@ -128,7 +128,7 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
         super();
     }
 
-    createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): MemoryQuery<T> {
+    createQuery<T extends Entity>(classType: AbstractClassType<T> | ClassSchema<T>): MemoryQuery<T> {
         const schema = getClassSchema(classType);
         const adapter = this.adapter;
 

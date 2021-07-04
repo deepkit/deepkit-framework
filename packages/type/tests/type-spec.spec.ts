@@ -10,7 +10,7 @@ import { propertyDefinition } from '../src/model-schema';
 /**
  * When the value is not existent anymore (don't confuse with being undefined.).
  * Equal to check with `in`.
-*/
+ */
 export const RoundTripExcluded: unique symbol = Symbol('NoValue');
 
 export function roundTrip<T>(s: ClassSchema<T> | ClassType<T> | FieldDecoratorResult<T>, value: T): T {
@@ -170,8 +170,8 @@ test('bigint', () => {
     expect(roundTrip(t.bigint, 5n)).toEqual(5n);
     expect(roundTrip(t.bigint, 12n)).toEqual(12n);
     expect(roundTrip(t.bigint, 12012020202020202020202020202020202020n)).toEqual(12012020202020202020202020202020202020n);
-    expect(roundTrip(t.bigint, 16n**16n**2n)).toEqual(16n**16n**2n);
-    expect(roundTrip(t.bigint, 16n**16n**3n)).toEqual(16n**16n**3n);
+    expect(roundTrip(t.bigint, 16n ** 16n ** 2n)).toEqual(16n ** 16n ** 2n);
+    expect(roundTrip(t.bigint, 16n ** 16n ** 3n)).toEqual(16n ** 16n ** 3n);
 });
 
 test('propertyDefinition', () => {
@@ -485,7 +485,7 @@ test('partial allowed undefined', () => {
     //important for databas epatches
     expect(roundTrip(t.partial(Product), { id: 23, created: undefined } as any).created).toBe(undefined);
     expect('created' in roundTrip(t.partial(Product), { id: 23, created: undefined } as any)).toBe(true);
-})
+});
 
 test('optional basics', () => {
     expect(roundTrip(t.string.optional, undefined)).toBe(undefined);
@@ -783,10 +783,13 @@ test('constructor argument', () => {
 test('omit circular reference 1', () => {
     class Model {
         @t another?: Model;
+
         constructor(
             @t public id: number = 0
-        ) { }
+        ) {
+        }
     }
+
     expect(getClassSchema(Model).hasCircularReference()).toBe(true);
 
     {
@@ -808,12 +811,15 @@ test('omit circular reference 1', () => {
 
 test('omit circular reference 2', () => {
     class Config {
-        constructor(@t.type(() => Model) public model: any) { }
+        constructor(@t.type(() => Model) public model: any) {
+        }
     }
+
     class Model {
         @t id: number = 0;
         @t config?: Config;
     }
+
     expect(getClassSchema(Model).hasCircularReference()).toBe(true);
     expect(getClassSchema(Config).hasCircularReference()).toBe(true);
 

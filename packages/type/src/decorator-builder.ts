@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType } from '@deepkit/core';
+import { AbstractClassType, ClassType } from '@deepkit/core';
 
-export type ClassDecoratorFn = (classType: ClassType, property?: string, parameterIndexOrDescriptor?: any) => void;
+export type ClassDecoratorFn = (classType: AbstractClassType, property?: string, parameterIndexOrDescriptor?: any) => void;
 export type PropertyDecoratorFn = (prototype: object, property?: string, parameterIndexOrDescriptor?: any) => void;
 
 export type FluidDecorator<T, D extends Function> = {
@@ -97,12 +97,12 @@ export interface ClassApiTypeInterface<T> {
 }
 
 export type APIClass<T> = ClassType<ClassApiTypeInterface<T>>;
-export type ExtractClass<T> = T extends ClassType<infer K> ? K : never;
-export type ExtractApiDataType<T> = T extends ClassType<infer K> ? K extends { t: infer P } ? P : never : (T extends { t: infer P } ? P : never);
+export type ExtractClass<T> = T extends AbstractClassType<infer K> ? K : never;
+export type ExtractApiDataType<T> = T extends AbstractClassType<infer K> ? K extends { t: infer P } ? P : never : (T extends { t: infer P } ? P : never);
 
 export type ClassDecoratorResult<API extends APIClass<any>> =
     FluidDecorator<ExtractClass<API>, ClassDecoratorFn>
-    & { (classType: ClassType): void }
+    & { (classType: AbstractClassType): void }
     & { _fetch: (classType: ClassType) => ExtractApiDataType<API> | undefined };
 
 export function createClassDecoratorContext<API extends APIClass<any>, T = ExtractApiDataType<API>>(

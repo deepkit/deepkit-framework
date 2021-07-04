@@ -26,7 +26,8 @@ import {
     isPropertyValidator,
     PropertySchema,
     PropertyValidator,
-    ReferenceActions
+    ReferenceActions,
+    SingleTableInheritance
 } from './model';
 import { PartialField, Types } from './types';
 import { validators } from './validation-decorator';
@@ -103,6 +104,10 @@ class EntityApi {
 
     collectionName(name: string) {
         this.t.collectionName = name;
+    }
+
+    singleTableInheritance(options: SingleTableInheritance = {}) {
+        this.t.singleTableInheritance = options;
     }
 }
 
@@ -287,11 +292,8 @@ function createFieldDecoratorResult<T>(
                     throw new Error(`Could not resolve property name for class property on ${getClassName(target)}`);
                 }
 
-                if (!schema.getPropertiesMap().has(givenPropertyName)) {
-                    schema.registerProperty(new PropertySchema(givenPropertyName));
-                }
-
-                propertySchema = schema.getPropertiesMap().get(givenPropertyName)!;
+                propertySchema = schema.getPropertiesMap().get(givenPropertyName) || new PropertySchema(givenPropertyName);
+                schema.registerProperty(propertySchema);
             }
         }
 
@@ -950,6 +952,7 @@ fRaw['type'] = function <T extends FieldTypes<any>>(this: FieldDecoratorResult<a
 
 fRaw['literal'] = function <T extends number | string | boolean>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
     return Field('literal').use((target, property) => {
+        property.type = 'literal';
         property.literalValue = type;
     });
 };
@@ -1044,11 +1047,11 @@ export interface MainDecorator {
      */
     union<T extends (ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any> | string | number | boolean)[]>(...type: T): FieldDecoratorResult<ExtractType<T[number]>>;
 
-    /**
-     * Marks a field as discriminant. This field MUST have a default value.
-     * The default value is used to discriminate this class type when used in a union type. See @t.union.
-     */
-    discriminant<T>(): FieldDecoratorResult<T>;
+    // /**
+    //  * Marks a field as discriminant. This field MUST have a default value.
+    //  * The default value is used to discriminate this class type when used in a union type. See @t.union.
+    //  */
+    // discriminant<T>(): FieldDecoratorResult<T>;
 
     /**
      * Marks a field as array.
@@ -1083,7 +1086,12 @@ export interface MainDecorator {
     string: FieldDecoratorResult<string>;
 
     /**
-     * Marks a field as literal type. Nice with union types.
+     * Marks a field as literal type.
+     *
+     * When no value is given, it tries to detect it from the default value.
+     * This strategy is only possible in TypeScript strict mode, since literals need a default value and can not be optional.
+     * For non-strict mode when no literal value is given, an error is thrown.
+     *
      *
      * ```typescript
      * @t.literal('a')
@@ -1091,6 +1099,16 @@ export interface MainDecorator {
      * @t.union(t.literal('a'), t.literal('b')) //'a' | 'b'
      *
      * @t.union('a', 'b') //'a' | 'b'
+     *
+     * //works in strict mode
+     * class Model {
+     *     @t.literal() type: 'bar' = 'bar';
+     * }
+     *
+     * //non strict mode requires to define the type
+     * class Model {
+     *     @t.literal('bar') type!: 'bar';
+     * }
      * ```
      */
     literal<T extends number | string | boolean>(type: T): FieldDecoratorResult<T>;
