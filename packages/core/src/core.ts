@@ -39,6 +39,11 @@ export interface ClassType<T = any> {
     new(...args: any[]): T;
 }
 
+/**
+ * @public
+ */
+export type AbstractClassType<T> = abstract new (...args: any[]) => T;
+
 export type ExtractClassType<T> = T extends ClassType<infer K> ? K : never;
 
 declare const __forward: unique symbol;

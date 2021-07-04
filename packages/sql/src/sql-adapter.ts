@@ -9,6 +9,7 @@
  */
 
 import {
+    BaseQuery,
     Database,
     DatabaseAdapter,
     DatabaseAdapterQueryFactory,
@@ -21,14 +22,16 @@ import {
     DatabaseTransaction,
     DeleteResult,
     Entity,
+    FilterQuery,
     GenericQueryResolver,
     PatchResult,
     Query,
+    RawFactory,
     SORT_ORDER
 } from '@deepkit/orm';
-import { ClassType } from '@deepkit/core';
-import { Changes, ClassSchema, getClassSchema, plainToClass, t } from '@deepkit/type';
-import { DefaultPlatform } from './platform/default-platform';
+import { ClassType, isArray } from '@deepkit/core';
+import { Changes, ClassSchema, getClassSchema, hasClassSchema, plainToClass, t } from '@deepkit/type';
+import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform';
 import { SqlBuilder } from './sql-builder';
 import { SqlFormatter } from './sql-formatter';
 import { sqlSerializer } from './serializer/sql-serializer';
@@ -37,9 +40,14 @@ import { DatabaseComparator, DatabaseModel } from './schema/table';
 export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
 export type DEEP_SORT<T extends Entity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };
 
-type FilterQuery<T> = Partial<T>;
-
 export class SQLQueryModel<T extends Entity> extends DatabaseQueryModel<T, FilterQuery<T>, DEEP_SORT<T>> {
+    where?: SqlQuery;
+
+    clone(parentQuery: BaseQuery<T>): this {
+        const m = super.clone(parentQuery);
+        m.where = this.where;
+        return m;
+    }
 }
 
 export abstract class SQLStatement {
@@ -71,16 +79,20 @@ export abstract class SQLConnection {
 
     async execAndReturnSingle(sql: string, params?: any[]): Promise<any> {
         const stmt = await this.prepare(sql);
-        const row = await stmt.get(params);
-        stmt.release();
-        return row;
+        try {
+            return await stmt.get(params);
+        } finally {
+            stmt.release();
+        }
     }
 
     async execAndReturnAll(sql: string, params?: any[]): Promise<any> {
         const stmt = await this.prepare(sql);
-        const rows = await stmt.all(params);
-        stmt.release();
-        return rows;
+        try {
+            return await stmt.all(params);
+        } finally {
+            stmt.release();
+        }
     }
 }
 
@@ -260,7 +272,85 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     }
 }
 
+type QueryPart = string | SqlQuery | SqlQueryParameter | SQLQueryIdentifier;
+
+export class SqlQueryParameter {
+    constructor(public value: any) {
+    }
+}
+
+export class SQLQueryIdentifier {
+    constructor(public id: any) {
+    }
+}
+
+export function identifier(id: string) {
+    return new SQLQueryIdentifier(id);
+}
+
+export class SqlQuery {
+    constructor(public parts: ReadonlyArray<QueryPart>) {
+    }
+
+    convertToSQL(
+        platform: DefaultPlatform,
+        placeholderStrategy: SqlPlaceholderStrategy,
+        tableName?: string
+    ): { sql: string, params: any[] } {
+        let sql = '';
+        const params: any[] = [];
+
+        for (const part of this.parts) {
+            if (part instanceof SqlQuery) {
+                sql += part.convertToSQL(platform, placeholderStrategy);
+            } else if (part instanceof SQLQueryIdentifier) {
+                const column = platform.quoteIdentifier(part.id);
+                if (tableName) {
+                    sql += tableName + '.' + column;
+                } else {
+                    sql += column;
+                }
+            } else if (part instanceof SqlQueryParameter) {
+                if (part.value instanceof ClassSchema) {
+                    sql += platform.getTableIdentifier(part.value);
+                } else if (hasClassSchema(part.value)) {
+                    sql += platform.getTableIdentifier(getClassSchema(part.value));
+                } else {
+                    sql += placeholderStrategy.getPlaceholder();
+                    params.push(part.value);
+                }
+            } else {
+                sql += part;
+            }
+        }
+
+        return { sql, params };
+    }
+}
+
+export function sql(strings: TemplateStringsArray, ...params: ReadonlyArray<any>) {
+    const parts: QueryPart[] = [strings[0]];
+
+    for (let i = 1; i < strings.length; i++) {
+        if (
+            params[i - 1] instanceof SqlQuery
+            || params[i - 1] instanceof SqlQueryParameter
+            || params[i - 1] instanceof SQLQueryIdentifier
+        ) {
+            parts.push(params[i - 1]);
+        } else {
+            parts.push(new SqlQueryParameter(params[i - 1]));
+        }
+
+        parts.push(strings[i]);
+    }
+
+    return new SqlQuery(parts);
+}
+
 export class SQLDatabaseQuery<T extends Entity> extends Query<T> {
+    public model: SQLQueryModel<T> = new SQLQueryModel<T>();
+
     constructor(
         classSchema: ClassSchema<T>,
         protected databaseSession: DatabaseSession<DatabaseAdapter>,
@@ -268,6 +358,20 @@ export class SQLDatabaseQuery<T extends Entity> extends Query<T> {
     ) {
         super(classSchema, databaseSession, resolver);
         if (!databaseSession.withIdentityMap) this.model.withIdentityMap = false;
+    }
+
+    /**
+     * Executes raw SQL using template literal and automatic value escaping using prepared statements.
+     *
+     * ```
+     * const id = 1;
+     * database.query(User).raw(`SELECT * FROM ${User} WHERE id > ${id}`);
+     * ```
+     *
+     */
+    where(sql: SqlQuery): this {
+        this.model.where = sql;
+        return this;
     }
 }
 
@@ -330,6 +434,65 @@ export class SqlMigrationHandler {
     }
 }
 
+export class RawQuery {
+    constructor(
+        protected session: DatabaseSession<SQLDatabaseAdapter>,
+        protected connectionPool: SQLConnectionPool,
+        protected platform: DefaultPlatform,
+        protected sql: SqlQuery,
+    ) {
+    }
+
+    /**
+     * Executes the raw query and returns nothing.
+     */
+    async execute(): Promise<void> {
+        const sql = this.sql.convertToSQL(this.platform, new this.platform.placeholderStrategy);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+
+        try {
+            return await connection.run(sql.sql, sql.params);
+        } finally {
+            connection.release();
+        }
+    }
+
+    /**
+     * Returns the raw result of a single row.
+     */
+    async findOne(): Promise<any> {
+        return (await this.find())[0];
+    }
+
+    /**
+     * Returns the full result of a raw query.
+     */
+    async find(): Promise<any[]> {
+        const sql = this.sql.convertToSQL(this.platform, new this.platform.placeholderStrategy);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+
+        try {
+            const res = await connection.execAndReturnAll(sql.sql, sql.params);
+            return isArray(res) ? [...res] : [];
+        } finally {
+            connection.release();
+        }
+    }
+}
+
+export class SqlRawFactory implements RawFactory<[SqlQuery]> {
+    constructor(
+        protected session: DatabaseSession<SQLDatabaseAdapter>,
+        protected connectionPool: SQLConnectionPool,
+        protected platform: DefaultPlatform,
+    ) {
+    }
+
+    create(sql: SqlQuery): RawQuery {
+        return new RawQuery(this.session, this.connectionPool, this.platform, sql);
+    }
+}
+
 export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
     public abstract platform: DefaultPlatform;
     public abstract connectionPool: SQLConnectionPool;
@@ -339,6 +502,10 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
     abstract createPersistence(databaseSession: DatabaseSession<this>): SQLPersistence;
 
     abstract getSchemaName(): string;
+
+    rawFactory(session: DatabaseSession<this>): SqlRawFactory {
+        return new SqlRawFactory(session, this.connectionPool, this.platform);
+    }
 
     async getInsertBatchSize(schema: ClassSchema): Promise<number> {
         return Math.floor(30000 / schema.getProperties().length);

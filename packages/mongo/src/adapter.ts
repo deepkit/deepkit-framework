@@ -33,7 +33,7 @@ export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     }
 }
 
-export class MongoDatabaseAdapter implements DatabaseAdapter {
+export class MongoDatabaseAdapter extends DatabaseAdapter {
     public readonly client: MongoClient;
 
     protected ormSequences = t.schema({
@@ -44,6 +44,7 @@ export class MongoDatabaseAdapter implements DatabaseAdapter {
     constructor(
         connectionString: string
     ) {
+        super();
         this.client = new MongoClient(connectionString);
     }
 

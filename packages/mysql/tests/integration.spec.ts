@@ -1,9 +1,14 @@
 import { test } from '@jest/globals';
 import { activeRecordTests, aggregateTest, bookstoreTests, executeTest, softDeleteTests, usersTests } from '@deepkit/orm-integration';
 import { databaseFactory } from './factory';
+import { variousTests } from '../../orm-integration/src/various';
 
 for (const i in bookstoreTests) {
     test(i, executeTest(bookstoreTests[i], databaseFactory));
+}
+
+for (const i in variousTests) {
+    test(i, executeTest(variousTests[i], databaseFactory));
 }
 
 for (const i in usersTests) {

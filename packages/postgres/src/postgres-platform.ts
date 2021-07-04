@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Column, DefaultPlatform, Index, isSet, parseType, Table } from '@deepkit/sql';
+import { Column, DefaultPlatform, Index, isSet, parseType, SqlPlaceholderStrategy, Table } from '@deepkit/sql';
 import { postgresSerializer } from './postgres-serializer';
 import { ClassSchema, isArray, PostgresOptions, PropertySchema } from '@deepkit/type';
 import { PostgresSchemaParser } from './postgres-schema-parser';
@@ -46,10 +46,18 @@ function escapeLiteral(value: any): string {
     return escaped;
 }
 
+export class PostgresPlaceholderStrategy extends SqlPlaceholderStrategy {
+    override getPlaceholder() {
+        return '$' + (++this.offset);
+    }
+}
+
 export class PostgresPlatform extends DefaultPlatform {
     protected defaultSqlType = 'text';
     public readonly serializer = postgresSerializer;
     schemaParserType = PostgresSchemaParser;
+
+    placeholderStrategy = PostgresPlaceholderStrategy;
 
     constructor() {
         super();
@@ -78,7 +86,7 @@ export class PostgresPlatform extends DefaultPlatform {
     }
 
     createSqlFilterBuilder(schema: ClassSchema, tableName: string): PostgreSQLFilterBuilder {
-        return new PostgreSQLFilterBuilder(schema, tableName, this.serializer, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
+        return new PostgreSQLFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
     }
 
     quoteValue(value: any): string {

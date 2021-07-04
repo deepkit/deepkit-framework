@@ -309,7 +309,7 @@ export class BaseQuery<T extends Entity> {
         return c;
     }
 
-    filter(filter?: this['model']['filter'] | T): this {
+    filter(filter?: this['model']['filter']): this {
         const c = this.clone();
         if (filter && !Object.keys(filter as object).length) filter = undefined;
 

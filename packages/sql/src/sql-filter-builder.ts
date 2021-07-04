@@ -10,24 +10,21 @@
 
 import { isArray, isPlainObject } from '@deepkit/core';
 import { ClassSchema, resolvePropertySchema, Serializer } from '@deepkit/type';
+import { SqlPlaceholderStrategy } from './platform/default-platform';
 
 type Filter = { [name: string]: any };
 
 export class SQLFilterBuilder {
     public params: any[] = [];
-    public placeholderPosition = 0;
 
     constructor(
         protected schema: ClassSchema,
         protected tableName: string,
         protected serializer: Serializer,
+        public placeholderStrategy: SqlPlaceholderStrategy,
         protected quoteValue: (v: any) => string,
         protected quoteId: (v: string) => string
     ) {
-    }
-
-    createPlaceholder(): string {
-        return '?';
     }
 
     isNull() {
@@ -106,7 +103,7 @@ export class SQLFilterBuilder {
                     if (isArray(value)) {
                         const params: string[] = [];
                         for (let item of value) {
-                            params.push(this.createPlaceholder());
+                            params.push(this.placeholderStrategy.getPlaceholder());
 
                             if (!property.isReference && !property.backReference && (property.type === 'class' || property.type === 'map' || property.type === 'array')) {
                                 item = JSON.stringify(item);
@@ -116,7 +113,7 @@ export class SQLFilterBuilder {
                         rvalue = params.length ? `(${params.join(', ')})` : '(null)';
                     }
                 } else {
-                    rvalue = this.createPlaceholder();
+                    rvalue = this.placeholderStrategy.getPlaceholder();
 
                     if (!property.isReference && !property.backReference && (property.type === 'class' || property.type === 'map' || property.type === 'array')) {
                         value = JSON.stringify(value);

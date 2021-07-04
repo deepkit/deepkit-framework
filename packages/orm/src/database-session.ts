@@ -11,7 +11,20 @@
 import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
 import { DatabaseValidationError, Entity } from './type';
 import { ClassType, CustomError, isArray } from '@deepkit/core';
-import { ClassSchema, getChangeDetector, getClassSchema, getClassTypeFromInstance, getConverterForSnapshot, getGlobalStore, getPrimaryKeyExtractor, GlobalStore, isReference, PrimaryKeyFields, UnpopulatedCheck, validate } from '@deepkit/type';
+import {
+    ClassSchema,
+    getChangeDetector,
+    getClassSchema,
+    getClassTypeFromInstance,
+    getConverterForSnapshot,
+    getGlobalStore,
+    getPrimaryKeyExtractor,
+    GlobalStore,
+    isReference,
+    PrimaryKeyFields,
+    UnpopulatedCheck,
+    validate
+} from '@deepkit/type';
 import { GroupArraySort } from '@deepkit/topsort';
 import { getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map';
 import { getClassSchemaInstancePairs } from './utils';
@@ -259,6 +272,8 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
      */
     public readonly query: ReturnType<this['adapter']['queryFactory']>['createQuery'];
 
+    public readonly raw!: ReturnType<this['adapter']['rawFactory']>['create'];
+
     protected rounds: DatabaseSessionRound<ADAPTER>[] = [];
 
     protected commitDepth: number = 0;
@@ -276,6 +291,9 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     ) {
         const queryFactory = this.adapter.queryFactory(this);
         this.query = queryFactory.createQuery.bind(queryFactory);
+
+        const factory = this.adapter.rawFactory(this);
+        this.raw = factory.create.bind(factory);
     }
 
     from<T>(hook: DatabaseSessionHookConstructor<T>): T {

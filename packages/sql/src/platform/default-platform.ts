@@ -36,6 +36,15 @@ export class DefaultNamingStrategy implements NamingStrategy {
     }
 }
 
+export class SqlPlaceholderStrategy {
+    constructor(public offset: number = 0) {
+    }
+
+    getPlaceholder(): string {
+        return '?';
+    }
+}
+
 interface NativeTypeInformation {
     needsIndexPrefix: boolean;
     defaultIndexSize: number;
@@ -50,6 +59,7 @@ export abstract class DefaultPlatform {
 
     public serializer: Serializer = sqlSerializer;
     public namingStrategy: NamingStrategy = new DefaultNamingStrategy();
+    public placeholderStrategy: ClassType<SqlPlaceholderStrategy> = SqlPlaceholderStrategy;
 
     typeCast(schema: ClassSchema, name: string): string {
         let property = schema.getProperty(name);
@@ -64,7 +74,7 @@ export abstract class DefaultPlatform {
     }
 
     createSqlFilterBuilder(schema: ClassSchema, tableName: string): SQLFilterBuilder {
-        return new SQLFilterBuilder(schema, tableName, this.serializer, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
+        return new SQLFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
     }
 
     getMigrationTableName() {
@@ -125,8 +135,8 @@ export abstract class DefaultPlatform {
     getEntityFields(schema: ClassSchema): PropertySchema[] {
         const fields: PropertySchema[] = [];
         for (const property of schema.getProperties()) {
-                if (property.isParentReference) continue;
-                if (property.backReference) continue;
+            if (property.isParentReference) continue;
+            if (property.backReference) continue;
             fields.push(property);
         }
         return fields;

@@ -4,6 +4,7 @@ export * from './src/soft-delete';
 export * from './src/aggregate';
 export * from './src/users';
 
+export * from './src/various';
 export * from './src/test';
 export * from './src/active-record/book-tag';
 export * from './src/active-record/book';

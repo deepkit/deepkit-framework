@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DefaultPlatform, isSet, Column, ForeignKey, Table, TableDiff, parseType} from '@deepkit/sql';
+import { Column, DefaultPlatform, ForeignKey, isSet, parseType, Table, TableDiff } from '@deepkit/sql';
 import { ClassSchema, isArray, PropertySchema, SqliteOptions } from '@deepkit/type';
 import { SQLiteSchemaParser } from './sqlite-schema-parser';
 import { SqliteSerializer } from './sqlite-serializer';
@@ -37,7 +37,7 @@ export class SQLitePlatform extends DefaultPlatform {
     }
 
     createSqlFilterBuilder(schema: ClassSchema, tableName: string): SQLiteFilterBuilder {
-        return new SQLiteFilterBuilder(schema, tableName, this.serializer, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
+        return new SQLiteFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
     }
 
     getModifyTableDDL(diff: TableDiff): string[] {
@@ -203,7 +203,7 @@ export class SQLitePlatform extends DefaultPlatform {
         const ddl: string[] = [];
 
         ddl.push(`
-        FOREIGN KEY (${this.getColumnListDDL(foreignKey.localColumns)}) 
+        FOREIGN KEY (${this.getColumnListDDL(foreignKey.localColumns)})
         REFERENCES ${this.getIdentifier(foreignKey.foreign)} (${this.getColumnListDDL(foreignKey.foreignColumns)})
         `.trim());
 

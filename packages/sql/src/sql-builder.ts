@@ -20,7 +20,8 @@ export class Sql {
     constructor(
         public sql: string = '',
         public params: any[] = [],
-    ) { }
+    ) {
+    }
 
     public appendSql(sql: Sql) {
         this.sql += ' ' + sql.sql;
@@ -42,19 +43,35 @@ export class SqlBuilder {
     constructor(protected platform: DefaultPlatform) {
     }
 
-    protected appendWhereSQL(sql: Sql, schema: ClassSchema, model: DatabaseQueryModel<any>, tableName?: string, prefix: string = 'WHERE') {
-        if (!model.filter) return;
+    protected appendWhereSQL(sql: Sql, schema: ClassSchema, model: SQLQueryModel<any>, tableName?: string, prefix: string = 'WHERE') {
+        let whereClause: string = '';
+        let whereParams: any[] = [];
 
+        const placeholderStrategy = new this.platform.placeholderStrategy(sql.params.length);
         tableName = tableName || this.platform.getTableIdentifier(schema);
-        const filter = getSqlFilter(schema, model.filter, model.parameters, this.platform.serializer);
-        const builder = this.platform.createSqlFilterBuilder(schema, tableName);
-        builder.placeholderPosition = sql.params.length;
-        const whereClause = builder.convert(filter);
 
-        if (whereClause) {
+        if (model.filter) {
+            const filter = getSqlFilter(schema, model.filter, model.parameters, this.platform.serializer);
+            const builder = this.platform.createSqlFilterBuilder(schema, tableName);
+            builder.placeholderStrategy = placeholderStrategy;
+            whereClause = builder.convert(filter);
+            whereParams = builder.params;
+        }
+
+        if (whereClause || model.where) {
             sql.append(prefix);
-            sql.params.push(...builder.params);
-            sql.append(whereClause);
+
+            if (whereClause) {
+                sql.params.push(...whereParams);
+                sql.append(whereClause);
+            }
+
+            if (model.where) {
+                if (whereClause) sql.append('AND');
+                const whereSql = model.where.convertToSQL(this.platform, placeholderStrategy, tableName);
+                sql.params.push(...whereSql.params);
+                sql.append(whereSql.sql);
+            }
         }
     }
 
@@ -64,7 +81,7 @@ export class SqlBuilder {
         // tableName = tableName || this.platform.getTableIdentifier(schema);
         const filter = getSqlFilter(schema, model.having, model.parameters, this.platform.serializer);
         const builder = this.platform.createSqlFilterBuilder(schema, '');
-        builder.placeholderPosition = sql.params.length;
+        builder.placeholderStrategy.offset = sql.params.length;
         const whereClause = builder.convert(filter);
 
         if (whereClause) {
@@ -73,6 +90,7 @@ export class SqlBuilder {
             sql.append(whereClause);
         }
     }
+
     protected selectColumns(schema: ClassSchema, model: SQLQueryModel<any>) {
         const tableName = this.platform.getTableIdentifier(schema);
         const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getProperties();

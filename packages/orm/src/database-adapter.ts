@@ -38,6 +38,12 @@ export abstract class DatabasePersistence {
     abstract release(): void;
 }
 
+export class RawFactory<A extends Array<any>> {
+    create(...args: A): any {
+        throw new Error(`Current database adapter does not support raw mode.`);
+    }
+}
+
 /**
  * A generic database adapter you can use if the API of `Query` is sufficient.
  *
@@ -45,6 +51,10 @@ export abstract class DatabasePersistence {
  */
 export abstract class DatabaseAdapter {
     abstract queryFactory(session: DatabaseSession<this>): DatabaseAdapterQueryFactory;
+
+    rawFactory(session: DatabaseSession<this>): RawFactory<any> {
+        return new RawFactory();
+    };
 
     abstract createPersistence(session: DatabaseSession<this>): DatabasePersistence;
 

@@ -15,10 +15,6 @@ export class PostgreSQLFilterBuilder extends SQLFilterBuilder {
         return `${table}.${this.quoteId(column)}->${this.quoteValue(path)}`;
     }
 
-    createPlaceholder() {
-        return '$' + (++this.placeholderPosition);
-    }
-
     regexpComparator() {
         return '~';
     }

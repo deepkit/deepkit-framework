@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, CustomError, getClassName } from '@deepkit/core';
+import { AbstractClassType, ClassType, CustomError, getClassName } from '@deepkit/core';
 import { ClassSchema, getClassSchema, PrimaryKeyFields } from '@deepkit/type';
 import { DatabaseAdapter } from './database-adapter';
 import { DatabaseSession } from './database-session';
@@ -32,7 +32,28 @@ export async function hydrateEntity<T>(item: T) {
     throw new Error(`Given object is not a proxy object and thus can not be hydrated, or is already hydrated.`);
 }
 
-export class DatabaseError extends CustomError { }
+export class DatabaseError extends CustomError {
+}
+
+/**
+ * Type guard for a specialised database adapter. Can be used to
+ * use special methods from an adapter on a generic Database object.
+ *
+ * ```
+ * const database = new Database(...); //we don't know the adapter
+ *
+ * if (isDatabaseOf(database, SQLDatabaseAdapter)) {
+ *     // cool, we can use `where(sql)` which is only available for SQLDatabaseAdapter
+ *     database.query(User).where(sql`id > 2`).find();
+ *
+ *     //or raw SQL queries
+ *     database.raw(sql`SELECT count(*) FROM ${User}`).find();
+ * }
+ * ```
+ */
+export function isDatabaseOf<T extends DatabaseAdapter>(database: Database<any>, adapterClassType: AbstractClassType<T>): database is Database<T> {
+    return database.adapter instanceof adapterClassType;
+}
 
 /**
  * Database abstraction. Use createSession() to create a work session with transaction support.
@@ -83,6 +104,8 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      */
     public readonly query: ReturnType<this['adapter']['queryFactory']>['createQuery'];
 
+    public readonly raw: ReturnType<this['adapter']['rawFactory']>['create'];
+
     protected virtualForeignKeyConstraint: VirtualForeignKeyConstraint = new VirtualForeignKeyConstraint(this);
 
     public logger: DatabaseLogger = new DatabaseLogger();
@@ -98,6 +121,14 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
             session.withIdentityMap = false;
             return session.query(classType);
         };
+
+        this.raw = (...args: any[]) => {
+            const session = this.createSession();
+            session.withIdentityMap = false;
+            if (!session.raw) throw new Error('Adapter has no raw mode');
+            return session.raw(...args);
+        };
+
         this.registerEntity(...schemas);
 
         if (!this.adapter.isNativeForeignKeyConstraintSupported()) {
@@ -268,7 +299,8 @@ export function isActiveRecordClassType(entity: any): entity is ActiveRecordClas
 }
 
 export class ActiveRecord {
-    constructor(...args: any[]) { }
+    constructor(...args: any[]) {
+    }
 
     public static getDatabase(): Database<any> {
         const database = getClassSchema(this).data['orm.database'] as Database<any> | undefined;

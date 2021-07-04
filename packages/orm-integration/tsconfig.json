@@ -29,6 +29,9 @@
     },
     {
       "path": "../orm/tsconfig.json"
+    },
+    {
+      "path": "../sql/tsconfig.json"
     }
   ]
 }

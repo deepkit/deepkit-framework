@@ -1541,6 +1541,11 @@ export function getOrCreateEntitySchema<T>(target: object | ClassType<T> | any):
     return proto[classSchemaSymbol];
 }
 
+export function hasClassSchema(target: object | ClassType | any): boolean {
+    const proto = target['prototype'] ? target['prototype'] : target;
+    return proto.hasOwnProperty(classSchemaSymbol);
+}
+
 /**
  * Returns meta information / schema about given entity class.
  */

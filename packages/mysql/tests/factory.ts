@@ -1,8 +1,7 @@
 import { Database } from '@deepkit/orm';
-import { DatabaseFactory } from '@deepkit/orm-integration';
 import { MySQLDatabaseAdapter } from '../src/mysql-adapter';
 
-export const databaseFactory: DatabaseFactory = async (entities): Promise<Database> => {
+export async function databaseFactory(entities): Promise<Database<MySQLDatabaseAdapter>> {
     const adapter = new MySQLDatabaseAdapter({host: 'localhost', database: 'default', user: 'root'});
 
     const database = new Database(adapter);
