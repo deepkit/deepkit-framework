@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/event",
-  "version": "1.0.1-alpha.38",
+  "version": "1.0.1-alpha.39",
   "description": "Deepkit async event dispatcher",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -28,9 +28,9 @@
     "reflect-metadata": "^0.1.13"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.35",
-    "@deepkit/injector": "^1.0.1-alpha.38",
-    "@deepkit/type": "^1.0.1-alpha.35",
+    "@deepkit/core": "^1.0.1-alpha.39",
+    "@deepkit/injector": "^1.0.1-alpha.39",
+    "@deepkit/type": "^1.0.1-alpha.39",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
