@@ -9,8 +9,6 @@
  */
 
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { DatabaseInfo } from '@deepkit/orm-browser-api';
-import { ClassSchema } from '@deepkit/type';
 import { BrowserState } from './browser-state';
 import { ControllerClient } from './client';
 
@@ -25,8 +23,7 @@ import { ControllerClient } from './client';
                             <img class="logo visible-for-dark-mode" src="assets/deepkit_white.svg"/>
                             <img class="logo visible-for-white-mode" theme-white src="assets/deepkit_black.svg"/>
 
-                            <span
-                                style="margin-left: 8px; display: inline-block; color: var(--text-grey)">ORM Browser</span>
+                            <span class="app-label">ORM Browser</span>
                         </div>
                     </dui-button-group>
 
@@ -40,7 +37,7 @@ import { ControllerClient } from './client';
             </dui-window-header>
             <dui-window-content [sidebarVisible]="sidebarVisible">
                 <dui-window-sidebar>
-                    <dui-list [ngModel]="getListModel()" (ngModelChange)="setListModel($event)">
+                    <dui-list>
                         <dui-list-title>Database</dui-list-title>
                         <orm-browser-list></orm-browser-list>
 
@@ -60,19 +57,6 @@ export class AppComponent implements OnInit, OnDestroy {
         protected cd: ChangeDetectorRef,
         public state: BrowserState,
     ) {
-    }
-
-    getListModel() {
-        return this.state.database && !this.state.entity ? this.state.database : this.state.entity;
-    }
-
-    setListModel(item: any) {
-        if (item instanceof DatabaseInfo) {
-            this.state.database = item;
-            this.state.entity = undefined;
-        } else if (item instanceof ClassSchema) {
-            this.state.entity = item;
-        }
     }
 
     ngOnDestroy(): void {

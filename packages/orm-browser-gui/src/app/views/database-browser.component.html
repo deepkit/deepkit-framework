@@ -92,6 +92,7 @@
                         </div>
                         <ng-container *ngIf="!query.error && isArray(query.result) && query.result.length > 0">
                             <dui-table class="raw-table" noFocusOutline borderless [items]="query.result"
+                                       [sort]="query.sort"
                                        style="height: 100%"
                                        [preferenceKey]="'query/' + entity.getName()"
                             >
@@ -111,8 +112,8 @@
             </div>
         </div>
     </ng-container>
-    <ng-container *ngIf="entityState.activeQuery === -1">
-        <div class="actions">
+    <ng-container>
+        <div class="actions" [class.hidden]="entityState.activeQuery !== -1">
             <dui-button-group padding="none" *ngIf="withBack">
                 <dui-button textured icon="arrow-small-left" (click)="back.emit()"></dui-button>
             </dui-button-group>
@@ -178,7 +179,7 @@
                         </span>
                     </span>
         </div>
-        <div class="table">
+        <div class="table" [class.hidden]="entityState.activeQuery !== -1">
             <ng-container *ngIf="entity">
                 <dui-table noFocusOutline borderless [items]="entityState.items" [rowClass]="rowClass"
                            [preferenceKey]="'browser/' + entity.getName()"

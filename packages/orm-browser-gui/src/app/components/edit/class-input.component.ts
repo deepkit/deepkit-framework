@@ -1,16 +1,4 @@
-import {
-    AfterViewInit,
-    ChangeDetectorRef,
-    Component,
-    ElementRef,
-    EventEmitter,
-    Input,
-    OnChanges,
-    OnDestroy,
-    Optional,
-    Output,
-    SkipSelf
-} from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Optional, Output, SkipSelf } from '@angular/core';
 import { arrayRemoveItem } from '@deepkit/core';
 import { DuiDialog, ReactiveChangeDetectionModule } from '@deepkit/desktop-ui';
 import { ClassSchema, getPrimaryKeyHashGenerator, jsonSerializer, PropertySchema } from '@deepkit/type';
@@ -37,7 +25,7 @@ import { BrowserState } from '../../browser-state';
                     [visible]="browserStack.length > 0" (closed)="done.emit(); open = false" minWidth="80%"
                     minHeight="75%">
             <div class="layout">
-                <div class="header" *ngIf="state.database && foreignSchema">
+                <div class="header" *ngIf="foreignSchema">
                     <span *ngFor="let browser of browserStack">
                          &raquo; {{browser.foreignSchema?.getClassName()}}
                     </span>
@@ -163,6 +151,7 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     registerBrowser(child: ClassInputComponent) {
+        console.log('registerBrowser', this.browserStack.length);
         this.browserStack.push(child);
         this.browserStack = this.browserStack.slice();
         this.cd.detectChanges();
@@ -194,8 +183,8 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
             } else {
                 this.jsonContent = '';
             }
-            this.cd.detectChanges();
         }
+        this.cd.detectChanges();
     }
 
     loadSelection() {

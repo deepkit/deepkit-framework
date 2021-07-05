@@ -30,6 +30,7 @@ export class BrowserQuery {
     downloadBytes: number = 0;
 
     result: any;
+    sort: any = {};
     error?: string;
     log: string[] = [];
 
@@ -120,7 +121,6 @@ export class BrowserState {
     seedSettings: { [storeKey: string]: EntitySeed } = {};
 
     database?: DatabaseInfo;
-    entity?: ClassSchema;
 
     newId: number = 0;
 
@@ -178,7 +178,7 @@ export class BrowserState {
         localStorage.setItem('orm-browser/seed-properties/' + db + '/' + entity, JSON.stringify(properties));
     }
 
-    async resetAll() {
+    resetAll() {
         this.changes = {};
         this.addedItems = {};
         this.validationErrors = {};

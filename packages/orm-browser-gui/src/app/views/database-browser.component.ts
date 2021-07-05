@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Optional, Output } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Optional, Output } from '@angular/core';
 import { DuiDialog, unsubscribe } from '@deepkit/desktop-ui';
 import { ClassSchema, getPrimaryKeyHashGenerator, jsonSerializer, plainToClass, PropertySchema, validate } from '@deepkit/type';
 import { Subscription } from 'rxjs';
@@ -16,7 +16,7 @@ import { ActivatedRoute } from '@angular/router';
     templateUrl: './database-browser.component.html',
     styleUrls: ['./database-browser.component.scss']
 })
-export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
+export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
     trackByIndex = trackByIndex;
     isArray = isArray;
 
@@ -100,19 +100,24 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
         public state: BrowserState,
         @Optional() protected activatedRoute?: ActivatedRoute,
     ) {
-        if (activatedRoute) {
-            this.routeSub = activatedRoute.params.subscribe(async (params) => {
-                this.state.databases = await this.controllerClient.getDatabases();
-                this.database = this.state.getDatabase(decodeURIComponent(params.database));
-                this.entity = this.database.getEntity(decodeURIComponent(params.entity));
-                await this.loadEntity(true);
-            });
-        }
     }
 
     ngOnDestroy(): void {
         this.paramsSub?.unsubscribe();
     }
+
+    ngOnInit(): void {
+        if (this.database || this.entity) return;
+        if (!this.activatedRoute) return;
+
+        this.routeSub = this.activatedRoute.params.subscribe(async (params) => {
+            this.state.databases = await this.controllerClient.getDatabases();
+            this.database = this.state.database = this.state.getDatabase(decodeURIComponent(params.database));
+            this.entity = this.database.getEntity(decodeURIComponent(params.entity));
+            await this.loadEntity(true);
+        });
+    }
+
 
     async ngOnChanges(changes: any) {
         await this.loadEntity();
@@ -200,7 +205,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
 
         this.entityState.items = this.entityState.items.slice();
         this.state.resetAll();
-        this.loadEntity(true);
+        await this.loadEntity(true);
     }
 
     async commit() {

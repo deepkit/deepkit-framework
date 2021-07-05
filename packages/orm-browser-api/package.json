@@ -11,6 +11,9 @@
       "default": "./dist/esm/index.js"
     }
   },
+  "scripts": {
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+  },
   "license": "MIT",
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -18,7 +21,6 @@
   "publishConfig": {
     "access": "public"
   },
-  "scripts": {},
   "peerDependencies": {
     "@deepkit/rpc": "^1.0.1-alpha.13",
     "@deepkit/stopwatch": "^1.0.1-alpha.13",

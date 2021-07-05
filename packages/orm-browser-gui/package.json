@@ -19,12 +19,13 @@
   "browser": {
     "fs": false,
     "path": false,
+    "process": false,
     "@deepkit/logger": false
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "~12.1.1",
     "@angular/animations": "~12.1.1",
-    "@angular/cdk": "^11.2.13",
+    "@angular/cdk": "^12.1.1",
     "@angular/cli": "~12.1.1",
     "@angular/common": "~12.1.1",
     "@angular/compiler": "~12.1.1",

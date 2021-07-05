@@ -18,6 +18,7 @@
   "include": [
     "src",
     "tests",
+    "browser.ts",
     "index.ts"
   ],
   "references": [

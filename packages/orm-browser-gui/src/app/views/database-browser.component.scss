@@ -11,6 +11,7 @@
 
 .actions {
     position: relative;
+    display: flex;
     margin-bottom: 12px;
     padding: 12px;
     padding-bottom: 0;
@@ -18,6 +19,10 @@
 
 dui-table ::ng-deep .table-row.new > div {
     background-color: rgba(255, 255, 0, 0.212);
+}
+
+.hidden {
+    display: none;
 }
 
 .raw-table,

@@ -23,6 +23,13 @@
         "build": {
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
+            "allowedCommonJsDependencies": [
+              "dot-prop",
+              "buffer",
+              "ansi-styles",
+              "dagre",
+              "validator"
+            ],
             "outputPath": "dist/orm-browser-gui",
             "index": "src/index.html",
             "main": "src/main.ts",
