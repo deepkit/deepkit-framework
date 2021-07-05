@@ -362,7 +362,7 @@ test('hook after serializer', async () => {
 
     const result = await httpKernel.handleRequestFor('GET', '/');
     expect(result.data).toEqual({ username: 'Peter' });
-    expect(result.processingTime).toBeGreaterThan(99);
+    expect(result.processingTime).toBeGreaterThanOrEqual(99);
 });
 
 test('custom request handling', async () => {
