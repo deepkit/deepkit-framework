@@ -18,7 +18,9 @@
   "publishConfig": {
     "access": "public"
   },
-  "scripts": {},
+  "scripts": {
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+  },
   "peerDependencies": {
     "@deepkit/bson": "^1.0.1-alpha.13",
     "@deepkit/core": "^1.0.1-alpha.13",
