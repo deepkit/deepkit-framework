@@ -1,6 +1,6 @@
 :host {
     //fix for non-integer widths, making icons blurry that come behind those elements
-    display: inline-table;
+    display: inline-flex;
     line-height: 0;
     white-space: nowrap;
 }
