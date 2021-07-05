@@ -35,7 +35,6 @@
     "access": "public"
   },
   "peerDependencies": {
-    "@angular/cdk": "~10.2.3 || ~11.0.0 || ~12.0.0",
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/core-rxjs": "^1.0.1-alpha.13",
     "electron": ">7.1.9",
@@ -44,7 +43,7 @@
   "devDependencies": {
     "@angular-devkit/build-angular": "^12.1.1",
     "@angular/animations": "~12.1.1",
-    "@angular/cdk": "~10.2.3",
+    "@angular/cdk": "~12.1.1",
     "@angular/cli": "~12.1.1",
     "@angular/common": "~12.1.1",
     "@angular/compiler": "~12.1.1",
