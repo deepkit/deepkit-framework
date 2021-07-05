@@ -549,11 +549,11 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         return cloned;
     }
 
-    protected async callOnFetchEvent(): Promise<this> {
+    protected async callOnFetchEvent(query: this): Promise<this> {
         const hasEvents = this.databaseSession.queryEmitter.onFetch.hasSubscriptions();
-        if (!hasEvents) return this;
+        if (!hasEvents) return query;
 
-        const event = new QueryDatabaseEvent(this.databaseSession, this.classSchema, this);
+        const event = new QueryDatabaseEvent(this.databaseSession, this.classSchema, query);
         await this.databaseSession.queryEmitter.onFetch.emit(event);
         return event.query as any;
     }
@@ -568,19 +568,19 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     }
 
     public async count(): Promise<number> {
-        const query = this.onQueryResolve(await this.callOnFetchEvent());
+        const query = this.onQueryResolve(await this.callOnFetchEvent(this));
         return await query.resolver.count(query.model);
     }
 
     public async find(): Promise<Resolve<this>[]> {
         if (!this.databaseSession.stopwatch.active) {
-            const query = this.onQueryResolve(await this.callOnFetchEvent());
+            const query = this.onQueryResolve(await this.callOnFetchEvent(this));
             return await query.resolver.find(query.model) as Resolve<this>[];
         }
 
         const frame = this.databaseSession.stopwatch.start(this.classSchema.getClassName() + ': Find', FrameCategory.database);
         try {
-            const query = this.onQueryResolve(await this.callOnFetchEvent());
+            const query = this.onQueryResolve(await this.callOnFetchEvent(this));
             return await query.resolver.find(query.model) as Resolve<this>[];
         } finally {
             frame.end();
@@ -588,12 +588,12 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     }
 
     public async findOneOrUndefined(): Promise<T | undefined> {
-        const query = this.onQueryResolve(await this.callOnFetchEvent());
+        const query = this.onQueryResolve(await this.callOnFetchEvent(this.limit(1)));
         return await query.resolver.findOneOrUndefined(query.model);
     }
 
     public async findOne(): Promise<Resolve<this>> {
-        const query = this.onQueryResolve(await this.callOnFetchEvent());
+        const query = this.onQueryResolve(await this.callOnFetchEvent(this.limit(1)));
         const item = await query.resolver.findOneOrUndefined(query.model);
         if (!item) throw new ItemNotFound(`Item ${this.classSchema.getClassName()} not found`);
         return item as Resolve<this>;

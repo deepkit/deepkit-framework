@@ -58,6 +58,7 @@ export async function main() {
         await bench.runAsyncFix(10, 'fetch', async () => {
             await session.query(DeepkitModel).disableIdentityMap().find();
         });
+
         await bench.runAsyncFix(1000, 'fetch-1', async () => {
             await session.query(DeepkitModel).disableIdentityMap().findOne();
         });
