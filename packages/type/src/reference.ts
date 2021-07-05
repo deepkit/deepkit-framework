@@ -9,23 +9,85 @@
  */
 
 import { ClassType, isObject } from '@deepkit/core';
-import { ClassSchema, classSchemaSymbol, getGlobalStore, UnpopulatedCheck, unpopulatedSymbol } from './model';
+import { ClassSchema, classSchemaSymbol, getClassSchema, getGlobalStore, UnpopulatedCheck, unpopulatedSymbol } from './model';
 
 export function isReference(obj: any): boolean {
     return isObject(obj) && referenceSymbol in obj;
 }
 
-export const referenceSymbol = Symbol('reference');
+export function getReferenceInfo<T>(obj: T): ReferenceInfo<T> | undefined {
+    return (obj as any)[referenceSymbol] as ReferenceInfo<T>;
+}
 
+export function getReferenceItemInfo<T>(obj: T): ReferenceItemInfo<T> | undefined {
+    return (obj as any)[referenceItemSymbol] as ReferenceItemInfo<T>;
+}
+
+export function getOrCreateReferenceItemInfo<T>(obj: T): ReferenceItemInfo<T> {
+    if (!(obj as any)[referenceItemSymbol]) (obj as any)[referenceItemSymbol] = {hydrated: false};
+    return (obj as any)[referenceItemSymbol] as ReferenceItemInfo<T>;
+}
+
+export function isReferenceHydrated(obj: any): boolean {
+    if (!(referenceItemSymbol in obj)) return false;
+    const info = getReferenceItemInfo(obj);
+    return info ? info.hydrated : false;
+}
+
+export function markAsHydrated(item: any) {
+    getOrCreateReferenceItemInfo(item).hydrated = true;
+}
+
+export interface ReferenceInfo<T> {
+    hydrator?: (item: T) => Promise<void>;
+}
+
+export interface ReferenceItemInfo<T> {
+    hydrated: boolean,
+}
+
+export const referenceSymbol = Symbol('reference');
+export const referenceItemSymbol = Symbol('reference/item');
+
+export function createReference<T>(referenceClass: ClassType<T>, pk: { [name: string]: any }) {
+    const args: any[] = [];
+
+    const classSchema = getClassSchema(referenceClass);
+
+    if (!(referenceSymbol in referenceClass.prototype)) {
+        referenceClass = createReferenceClass(classSchema);
+    }
+
+    for (const prop of classSchema.getMethodProperties('constructor')) {
+        args.push(pk[prop.name]);
+    }
+
+    const old = getGlobalStore().unpopulatedCheck;
+    getGlobalStore().unpopulatedCheck = UnpopulatedCheck.None;
+
+    try {
+        const ref = new referenceClass(...args);
+        Object.assign(ref, pk);
+
+
+        return ref;
+    } finally {
+        getGlobalStore().unpopulatedCheck = old;
+    }
+
+}
 export function createReferenceClass<T>(
     classSchema: ClassSchema<T>,
 ): ClassType<T> {
     const type = classSchema.classType as any;
 
+    if (classSchema.data.referenceClass) return classSchema.data.referenceClass;
+
     const Reference = class extends type {
     };
 
-    Object.defineProperty(Reference.prototype, referenceSymbol, { value: true });
+    Object.defineProperty(Reference.prototype, referenceSymbol, { value: { hydrator: undefined }, enumerable: false });
+    Object.defineProperty(Reference.prototype, referenceItemSymbol, { value: null, writable: true, enumerable: false });
     Object.defineProperty(Reference.prototype, classSchemaSymbol, { writable: true, enumerable: false, value: classSchema });
 
     Reference.buildId = classSchema.buildId;
@@ -35,6 +97,8 @@ export function createReferenceClass<T>(
     Object.defineProperty(Reference, 'name', {
         value: classSchema.getClassName() + 'Reference'
     });
+
+    classSchema.data.referenceClass = Reference;
 
     for (const property of classSchema.getProperties()) {
         if (property.isId) continue;

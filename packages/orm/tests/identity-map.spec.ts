@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { getClassSchema, jsonSerializer, t } from '@deepkit/type';
-import { BaseQuery, Formatter, getInstanceState, getNormalizedPrimaryKey } from '../index';
+import { BaseQuery, Formatter, getInstanceStateFromItem, getNormalizedPrimaryKey } from '../index';
 import { getReference } from '../src/reference';
 
 test('getNormalizedPrimaryKey', () => {
@@ -53,7 +53,7 @@ test('snapshot correct state', () => {
     {
         const query = new BaseQuery(user);
         const user1 = formatter.hydrate(query.model, { username: 'Peter', id: '2', image: '1' });
-        const snapshot = getInstanceState(user1).getSnapshot();
+        const snapshot = getInstanceStateFromItem(user1).getSnapshot();
         expect(snapshot.hasOwnProperty('image2')).toBe(true);
         //when schema changes we get from mongodb `undefined` for new fields, but our snapshot converts that to `null`
         // since all databases use `null` as `not defined`. this means we basically ignore `undefined` where possible.
@@ -61,24 +61,24 @@ test('snapshot correct state', () => {
 
         user1.image2 = getReference(image, { id: 2 });
         expect(user1.image2.id).toBe(2);
-        getInstanceState(user1).markAsPersisted();
-        expect(getInstanceState(user1).getSnapshot()).toEqual({ username: 'Peter', id: 2, image: { id: 1 }, image2: { id: 2 } });
+        getInstanceStateFromItem(user1).markAsPersisted();
+        expect(getInstanceStateFromItem(user1).getSnapshot()).toEqual({ username: 'Peter', id: 2, image: { id: 1 }, image2: { id: 2 } });
 
         user1.image = undefined;
-        getInstanceState(user1).markAsPersisted();
-        expect(getInstanceState(user1).getSnapshot()).toEqual({ username: 'Peter', id: 2, image: null, image2: { id: 2 } });
+        getInstanceStateFromItem(user1).markAsPersisted();
+        expect(getInstanceStateFromItem(user1).getSnapshot()).toEqual({ username: 'Peter', id: 2, image: null, image2: { id: 2 } });
     }
 
     {
         const query = new BaseQuery(user);
         const user1 = formatter.hydrate(query.model, { username: 'Peter2', id: '3', image: '1', image2: null });
-        const snapshot = getInstanceState(user1).getSnapshot();
+        const snapshot = getInstanceStateFromItem(user1).getSnapshot();
         expect(snapshot.hasOwnProperty('image2')).toBe(true);
         expect(snapshot).toEqual({ username: 'Peter2', id: 3, image: { id: 1 }, image2: null });
 
         user1.image2 = getReference(image, { id: 2 });
         expect(user1.image2.id).toBe(2);
-        getInstanceState(user1).markAsPersisted();
-        expect(getInstanceState(user1).getSnapshot()).toEqual({ username: 'Peter2', id: 3, image: { id: 1 }, image2: { id: 2 } });
+        getInstanceStateFromItem(user1).markAsPersisted();
+        expect(getInstanceStateFromItem(user1).getSnapshot()).toEqual({ username: 'Peter2', id: 3, image: { id: 1 }, image2: { id: 2 } });
     }
 });

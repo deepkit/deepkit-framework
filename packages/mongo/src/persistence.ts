@@ -8,13 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    DatabasePersistence,
-    DatabasePersistenceChangeSet,
-    DatabaseSession,
-    Entity,
-    getInstanceState
-} from '@deepkit/orm';
+import { DatabasePersistence, DatabasePersistenceChangeSet, DatabaseSession, Entity, getClassState, getInstanceState } from '@deepkit/orm';
 import { ClassSchema } from '@deepkit/type';
 import { convertClassQueryToMongo } from './mapping';
 import { FilterQuery } from './query.model';
@@ -40,6 +34,7 @@ export class MongoPersistence extends DatabasePersistence {
 
     async remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
         const scopeSerializer = mongoSerializer.for(classSchema);
+        const classState = getClassState(classSchema);
 
         if (classSchema.getPrimaryFields().length === 1) {
             const pk = classSchema.getPrimaryField();
@@ -47,14 +42,14 @@ export class MongoPersistence extends DatabasePersistence {
             const ids: any[] = [];
 
             for (const item of items) {
-                const converted = scopeSerializer.partialSerialize(getInstanceState(item).getLastKnownPK());
+                const converted = scopeSerializer.partialSerialize(getInstanceState(classState, item).getLastKnownPK());
                 ids.push(converted[pkName]);
             }
             await this.client.execute(new DeleteCommand(classSchema, { [pkName]: { $in: ids } }));
         } else {
             const fields: any[] = [];
             for (const item of items) {
-                fields.push(scopeSerializer.partialSerialize(getInstanceState(item).getLastKnownPK()));
+                fields.push(scopeSerializer.partialSerialize(getInstanceState(classState, item).getLastKnownPK()));
             }
             await this.client.execute(new DeleteCommand(classSchema, { $or: fields }));
         }

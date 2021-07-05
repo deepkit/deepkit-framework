@@ -6,6 +6,7 @@ import { FieldDecoratorResult, isFieldDecorator } from '../src/field-decorator';
 import { cloneClass, jsonSerializer, plainToClass } from '../src/json-serializer';
 import { ClassSchema, getClassSchema, unpopulatedSymbol } from '../src/model';
 import { propertyDefinition } from '../src/model-schema';
+import { createReference } from '../src/reference';
 
 /**
  * When the value is not existent anymore (don't confuse with being undefined.).
@@ -347,9 +348,13 @@ test('relation 1', () => {
 
     {
         const team = new Team('foo');
-        (team as any).lead = 12; //an ORM might set the primary key directly
-        expect(serializeToJson(Team, team)).toEqual(team);
-        expect(deserializeFromJson(Team, team)).toEqual(team);
+        team.id = 1;
+        team.version = 2;
+        team.lead = createReference(User, { id: 12 });
+        const json = { id: 1, version: 2, name: 'foo', lead: 12 as any };
+
+        expect(serializeToJson(Team, team)).toEqual(json);
+        expect(deserializeFromJson(Team, json)).toEqual(team);
         expect(roundTrip(Team, team)).toEqual(team);
     }
 });

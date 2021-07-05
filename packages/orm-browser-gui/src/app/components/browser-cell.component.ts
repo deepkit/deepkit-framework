@@ -1,7 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { Changes, PropertySchema } from '@deepkit/type';
 import { BrowserEntityState, BrowserState, ValidationErrors } from '../browser-state';
-import { getInstanceState } from '@deepkit/orm';
+import { getInstanceStateFromItem } from '@deepkit/orm';
 
 @Component({
     selector: 'orm-browser-cell',
@@ -68,7 +68,7 @@ export class BrowserCellComponent {
         const errors: ValidationErrors | undefined = this.entityState.validationStore ? this.entityState.validationStore.get(item) : undefined;
 
         if (!this.state.isNew(item)) {
-            const pkHash = getInstanceState(item).getLastKnownPKHash();
+            const pkHash = getInstanceStateFromItem(item).getLastKnownPKHash();
             changes = this.entityState.changes && this.entityState.changes[pkHash] ? this.entityState.changes[pkHash].changes : undefined;
         }
         const property = this.entityState.schema.getProperty(column);

@@ -18,6 +18,7 @@ import { CompilerState, getDataConverterJS } from './serializer-compiler';
 import { getSortedUnionTypes } from './union';
 import { ExtractClassType, JSONEntity, PlainOrFullEntityFromClassTypeOrSchema } from './utils';
 import { validate, ValidationFailed } from './validation';
+import { createReference, createReferenceClass, isReference, isReferenceHydrated } from './reference';
 
 export class JSONSerializer extends Serializer {
     constructor() {
@@ -297,20 +298,30 @@ jsonSerializer.fromClass.register('map', convertMap);
 jsonSerializer.toClass.register('map', convertMap);
 
 jsonSerializer.fromClass.register('class', (property: PropertySchema, state: CompilerState) => {
-    const classSchema = getClassSchema(property.resolveClassType!);
-    const classToX = state.setVariable('classToX', state.jitStack.getOrCreate(classSchema, () => getClassToXFunction(classSchema, state.serializerCompilers.serializer, state.jitStack)));
+    const foreignClassSchema = getClassSchema(property.resolveClassType!);
+    const classToX = state.setVariable('classToX', state.jitStack.getOrCreate(foreignClassSchema, () => getClassToXFunction(foreignClassSchema, state.serializerCompilers.serializer, state.jitStack)));
 
-    state.setContext({isObject});
-    let primarKeyHandling = '';
-    if (property.isReference) {
-        primarKeyHandling = getDataConverterJS(state.setter, state.accessor, property.getResolvedClassSchema().getPrimaryField(), state.serializerCompilers, state.rootContext, state.jitStack);
+    state.setContext({ isObject, isReference, isReferenceHydrated });
+    let serializeObject = `
+        ${state.setter} = ${classToX}.fn(${state.accessor}, _options, _stack, _depth);
+    `;
+    let serialize
+
+    if (property.isReference && foreignClassSchema.hasPrimaryFields()) {
+        serializeObject = `
+        if (isReference(${state.accessor}) && !isReferenceHydrated(${state.accessor})) {
+            ${getDataConverterJS(state.setter, `${state.accessor}.${foreignClassSchema.getPrimaryField().name}`, foreignClassSchema.getPrimaryField(), state.serializerCompilers, state.rootContext, state.jitStack)}
+        } else {
+            ${state.setter} = ${classToX}.fn(${state.accessor}, _options, _stack, _depth);
+        }
+        `;
     }
 
     state.addCodeForSetter(`
     if (isObject(${state.accessor})) {
-        ${state.setter} = ${classToX}.fn(${state.accessor}, _options, _stack, _depth);
+        ${serializeObject}
     } else if (${property.isReference}) {
-        ${primarKeyHandling}
+        ${state.setter} = ${state.accessor};
     }
     `);
 });
@@ -320,33 +331,46 @@ jsonSerializer.toClass.register('class', (property: PropertySchema, state) => {
         throw new Error(`Property ${property.name} has no classType defined`);
     }
 
-    const classSchema = getClassSchema(property.resolveClassType!);
-    const xToClass = state.setVariable('xToClass', state.jitStack.getOrCreate(classSchema, () => getXToClassFunction(classSchema, state.serializerCompilers.serializer, state.jitStack)));
+    const foreignClassSchema = getClassSchema(property.resolveClassType);
+    const xToClass = state.setVariable('xToClass', state.jitStack.getOrCreate(foreignClassSchema, () => getXToClassFunction(foreignClassSchema, state.serializerCompilers.serializer, state.jitStack)));
 
-    const foreignSchema = getClassSchema(property.resolveClassType!);
-    if (foreignSchema.decorator) {
+    if (foreignClassSchema.decorator) {
         //the actual type checking happens within getXToClassFunction()'s constructor param
         //so we dont check here for object.
         state.addSetter(`${xToClass}.fn(${state.accessor}, _options, getParents(), _state)`);
         return;
     }
 
-    state.setContext({isObject});
-    let primarKeyHandling = '';
+    state.setContext({ isObject, isReference, createReference });
+
+    let primaryKeyHandling = '';
     if (property.isReference) {
-        primarKeyHandling = getDataConverterJS(state.setter, state.accessor, property.getResolvedClassSchema().getPrimaryField(), state.serializerCompilers, state.rootContext, state.jitStack);
+        const referenceClassTypeVar = state.setVariable('referenceClassType', createReferenceClass(foreignClassSchema));
+        //when its a primary key only, we need to convert it to the a real object.
+        //if we
+        primaryKeyHandling = `
+            if (isObject(${state.accessor})) {
+                ${getDataConverterJS(state.setter, state.accessor, property.getResolvedClassSchema().getPrimaryField(), state.serializerCompilers, state.rootContext, state.jitStack)}
+            } else {
+                ${state.setter} = createReference(${referenceClassTypeVar}, {${foreignClassSchema.getPrimaryField().name}: ${state.accessor}});
+            }
+        `;
     }
 
     state.addCodeForSetter(`
         //object and not an array
         if ('object' === typeof ${state.accessor} && 'function' !== typeof ${state.accessor}.slice) {
-            ${state.setter} = ${xToClass}.fn(${state.accessor}, _options, getParents(), _state);
+            if (isReference(${state.accessor})) {
+                ${state.setter} = ${state.accessor};
+            } else {
+                ${state.setter} = ${xToClass}.fn(${state.accessor}, _options, getParents(), _state);
+            }
         } else if (${!property.isReference} && 'string' === typeof ${state.accessor} && '{' === ${state.accessor}[0]) {
             try {
                 ${state.setter} = ${xToClass}.fn(JSON.parse(${state.accessor}), _options, getParents(), _state);
             } catch (e) {}
         } else if (${property.isReference}) {
-            ${primarKeyHandling}
+            ${primaryKeyHandling}
         }
     `);
 });

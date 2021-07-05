@@ -1,26 +1,10 @@
-import {
-    ChangeDetectorRef,
-    Component,
-    ElementRef,
-    EventEmitter,
-    Input,
-    OnChanges,
-    OnDestroy, Optional,
-    Output
-} from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Optional, Output } from '@angular/core';
 import { DuiDialog, unsubscribe } from '@deepkit/desktop-ui';
-import {
-    ClassSchema,
-    getPrimaryKeyHashGenerator,
-    jsonSerializer,
-    plainToClass,
-    PropertySchema,
-    validate
-} from '@deepkit/type';
+import { ClassSchema, getPrimaryKeyHashGenerator, jsonSerializer, plainToClass, PropertySchema, validate } from '@deepkit/type';
 import { Subscription } from 'rxjs';
 import { BrowserEntityState, BrowserQuery, BrowserState, ValidationErrors, } from '../browser-state';
 import { DatabaseInfo } from '@deepkit/orm-browser-api';
-import { getInstanceState } from '@deepkit/orm';
+import { getInstanceStateFromItem } from '@deepkit/orm';
 import { ControllerClient } from '../client';
 import { arrayRemoveItem, isArray } from '@deepkit/core';
 import { trackByIndex } from '../utils';
@@ -196,7 +180,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
         if (!this.entity) return;
 
         this.ignoreNextCellClick = true;
-        const snapshot = getInstanceState(item).getSnapshot();
+        const snapshot = getInstanceStateFromItem(item).getSnapshot();
         item[column] = jsonSerializer.deserializeProperty(this.entity.getProperty(column), snapshot[column]);
 
         this.changed(item);
@@ -289,7 +273,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
         try {
             const jsonItem = await this.controllerClient.browser.create(this.database.name, this.entity.getName());
             const item = plainToClass(this.entity, jsonItem);
-            const state = getInstanceState(item);
+            const state = getInstanceStateFromItem(item);
             state.markAsPersisted();
             state.markAsFromDatabase();
             this.changed(item);
@@ -342,7 +326,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
             }
 
             for (const item of this.entityState.dbItems) {
-                const state = getInstanceState(item);
+                const state = getInstanceStateFromItem(item);
                 const pkHash = state.getLastKnownPKHash();
 
                 if (this.selectedPkHashes.includes(pkHash)) {
@@ -438,7 +422,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges {
 
             for (const jsonItem of items) {
                 const item = plainToClass(this.entity, jsonItem);
-                const state = getInstanceState(item);
+                const state = getInstanceStateFromItem(item);
 
                 state.markAsPersisted();
                 state.markAsFromDatabase();

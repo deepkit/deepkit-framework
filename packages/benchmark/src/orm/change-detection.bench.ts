@@ -9,7 +9,7 @@
  */
 
 import { plainToClass, t } from '@deepkit/type';
-import { buildChanges, getInstanceState, getJITConverterForSnapshot } from '@deepkit/orm';
+import { buildChanges, getClassState, getInstanceState, getJITConverterForSnapshot } from '@deepkit/orm';
 import { BenchSuite } from '../bench';
 
 export async function main() {
@@ -30,7 +30,7 @@ export async function main() {
         const bla = createSnapshot(item);
     });
 
-    getInstanceState(item).markAsPersisted();
+    getInstanceState(getClassState(schema), item).markAsPersisted();
     item.name = 'Alex';
     item.tags = ['a', 'b', 'c'];
     bench.add('build-changeSet', () => {

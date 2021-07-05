@@ -1,8 +1,8 @@
-import {expect, test} from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import {Entity, t} from '@deepkit/type';
-import {createDatabase} from './utils';
-import {getInstanceState} from '@deepkit/orm';
+import { Entity, t } from '@deepkit/type';
+import { createDatabase } from './utils';
+import { getInstanceStateFromItem } from '@deepkit/orm';
 
 @Entity('image')
 class Image {
@@ -56,8 +56,8 @@ test('test back reference', async () => {
 
     await session.commit();
 
-    expect(getInstanceState(peter).isKnownInDatabase()).toBe(true);
-    expect(getInstanceState(image1).isKnownInDatabase()).toBe(true);
+    expect(getInstanceStateFromItem(peter).isKnownInDatabase()).toBe(true);
+    expect(getInstanceStateFromItem(image1).isKnownInDatabase()).toBe(true);
 
     {
         const images = await session.query(Image).disableIdentityMap().find();

@@ -9,11 +9,10 @@
  */
 
 import { AbstractClassType, ClassType, CustomError, getClassName } from '@deepkit/core';
-import { ClassSchema, getClassSchema, PrimaryKeyFields } from '@deepkit/type';
+import { ClassSchema, getClassSchema, getReferenceInfo, isReferenceHydrated, PrimaryKeyFields } from '@deepkit/type';
 import { DatabaseAdapter } from './database-adapter';
 import { DatabaseSession } from './database-session';
 import { QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter } from './event';
-import { getDatabaseSessionHydrator, isHydrated } from './formatter';
 import { getNormalizedPrimaryKey } from './identity-map';
 import { DatabaseLogger } from './logger';
 import { Query } from './query';
@@ -25,11 +24,15 @@ import { Stopwatch } from '@deepkit/stopwatch';
 /**
  * Hydrates not completely populated item and makes it completely accessible.
  */
-export async function hydrateEntity<T>(item: T) {
-    if (isHydrated(item)) {
-        return await getDatabaseSessionHydrator(item)(item);
+export async function hydrateEntity<T>(item: T): Promise<void> {
+    const info = getReferenceInfo(item);
+    if (info && isReferenceHydrated(item)) return;
+
+    if (info && info.hydrator) {
+        await info.hydrator(item);
+        return;
     }
-    throw new Error(`Given object is not a proxy object and thus can not be hydrated, or is already hydrated.`);
+    throw new Error(`Given object is not a reference from a database session and thus can not be hydrated.`);
 }
 
 export class DatabaseError extends CustomError {

@@ -9,7 +9,7 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { ClassSchema, createReferenceClass, getGlobalStore, getPrimaryKeyHashGenerator, jsonSerializer, UnpopulatedCheck } from '@deepkit/type';
+import { ClassSchema, createReference, getPrimaryKeyHashGenerator, jsonSerializer } from '@deepkit/type';
 import { IdentityMap } from './identity-map';
 
 export function getReference<T>(
@@ -32,27 +32,8 @@ export function getReference<T>(
         }
     }
 
-    const args: any[] = [];
-
-    for (const prop of classSchema.getMethodProperties('constructor')) {
-        args.push(pk[prop.name]);
-    }
-
-    const old = getGlobalStore().unpopulatedCheck;
-    getGlobalStore().unpopulatedCheck = UnpopulatedCheck.None;
-
-    try {
-        ReferenceClass = ReferenceClass ?? createReferenceClass(classSchema);
-
-        const ref = new ReferenceClass(...args);
-        Object.assign(ref, pk);
-
-
-        if (pool) pool.set(pkHash, ref);
-        if (identityMap) identityMap.store(classSchema, ref);
-
-        return ref;
-    } finally {
-        getGlobalStore().unpopulatedCheck = old;
-    }
+    const ref = createReference(ReferenceClass || classSchema.classType, pk);
+    if (pool) pool.set(pkHash, ref);
+    if (identityMap) identityMap.store(classSchema, ref);
+    return ref;
 }

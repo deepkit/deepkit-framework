@@ -1,9 +1,9 @@
 import { expect } from '@jest/globals';
 import 'reflect-metadata';
-import { entity, getClassSchema, t, uuid } from '@deepkit/type';
+import { entity, getClassSchema, plainToClass, t, uuid } from '@deepkit/type';
 import { User, UserGroup } from './bookstore/user';
 import { UserCredentials } from './bookstore/user-credentials';
-import { atomicChange, getInstanceState } from '@deepkit/orm';
+import { atomicChange, getInstanceStateFromItem } from '@deepkit/orm';
 import { isArray } from '@deepkit/core';
 import { Group } from './bookstore/group';
 import { DatabaseFactory } from './test';
@@ -236,6 +236,54 @@ export const bookstoreTests = {
         }
     },
 
+    async reference(databaseFactory: DatabaseFactory) {
+        const database = await databaseFactory(entities);
+
+        const peter = new User('Peter');
+        const marie = new User('Marie');
+        await database.persist(peter, marie);
+
+        const book1 = new Book(peter, 'Super book');
+        await database.persist(book1);
+
+        {
+            const book1 = await database.query(Book).findOne();
+            expect(book1.author.id).toBe(peter.id);
+            book1.author = database.getReference(User, marie.id);
+            await database.persist(book1);
+
+            const book2 = await database.query(Book).findOne();
+            expect(book2.author.id).toBe(marie.id);
+        }
+
+        {
+            const book = plainToClass(Book, {
+                author: marie.id,
+                title: 'Maries path'
+            });
+
+            expect(book.author.id).toBe(marie.id);
+            await database.persist(book);
+
+            const book1 = await database.query(Book).filter({title: 'Maries path'}).findOne();
+            expect(book1.author.id).toBe(marie.id);
+        }
+
+
+        {
+            const book = plainToClass(Book, {
+                author: database.getReference(User, peter.id),
+                title: 'Peters path'
+            });
+
+            expect(book.author.id).toBe(peter.id);
+            await database.persist(book);
+
+            const book1 = await database.query(Book).filter({title: 'Peters path'}).findOne();
+            expect(book1.author.id).toBe(peter.id);
+        }
+
+    },
     async basics(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
         {
@@ -383,26 +431,26 @@ export const bookstoreTests = {
 
             const peter = new User('Peter');
             const herbert = new User('Herbert');
-            expect(getInstanceState(peter).isKnownInDatabase()).toBe(false);
-            expect(getInstanceState(herbert).isKnownInDatabase()).toBe(false);
+            expect(getInstanceStateFromItem(peter).isKnownInDatabase()).toBe(false);
+            expect(getInstanceStateFromItem(herbert).isKnownInDatabase()).toBe(false);
 
             session.add(peter);
             session.add(herbert);
 
             await session.commit();
-            expect(getInstanceState(peter).isKnownInDatabase()).toBe(true);
-            expect(getInstanceState(herbert).isKnownInDatabase()).toBe(true);
+            expect(getInstanceStateFromItem(peter).isKnownInDatabase()).toBe(true);
+            expect(getInstanceStateFromItem(herbert).isKnownInDatabase()).toBe(true);
         }
 
         {
             const session = database.createSession();
             const [peter, herbert] = await session.query(User).find();
-            expect(getInstanceState(peter).isKnownInDatabase()).toBe(true);
-            expect(getInstanceState(herbert).isKnownInDatabase()).toBe(true);
+            expect(getInstanceStateFromItem(peter).isKnownInDatabase()).toBe(true);
+            expect(getInstanceStateFromItem(herbert).isKnownInDatabase()).toBe(true);
 
             await session.query(User).deleteMany();
-            expect(getInstanceState(peter).isKnownInDatabase()).toBe(false);
-            expect(getInstanceState(herbert).isKnownInDatabase()).toBe(false);
+            expect(getInstanceStateFromItem(peter).isKnownInDatabase()).toBe(false);
+            expect(getInstanceStateFromItem(herbert).isKnownInDatabase()).toBe(false);
         }
     },
 

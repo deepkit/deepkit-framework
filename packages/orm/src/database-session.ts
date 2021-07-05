@@ -13,22 +13,21 @@ import { DatabaseValidationError, Entity } from './type';
 import { ClassType, CustomError, isArray } from '@deepkit/core';
 import {
     ClassSchema,
-    getChangeDetector,
     getClassSchema,
     getClassTypeFromInstance,
-    getConverterForSnapshot,
     getGlobalStore,
     getPrimaryKeyExtractor,
     GlobalStore,
     isReference,
+    markAsHydrated,
     PrimaryKeyFields,
     UnpopulatedCheck,
     validate
 } from '@deepkit/type';
 import { GroupArraySort } from '@deepkit/topsort';
-import { getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map';
+import { getClassState, getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map';
 import { getClassSchemaInstancePairs } from './utils';
-import { HydratorFn, markAsHydrated } from './formatter';
+import { HydratorFn } from './formatter';
 import { getReference } from './reference';
 import { QueryDatabaseEmitter, UnitOfWorkCommitEvent, UnitOfWorkDatabaseEmitter, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event';
 import { DatabaseLogger } from './logger';
@@ -170,20 +169,19 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
             for (const group of groups) {
                 const inserts: Entity[] = [];
                 const changeSets: DatabasePersistenceChangeSet<Entity>[] = [];
-                const changeDetector = getChangeDetector(group.type);
-                const doSnapshot = getConverterForSnapshot(group.type);
+                const classState = getClassState(group.type);
 
                 for (const item of group.items) {
-                    const state = getInstanceState(item);
-                    const errors = validate(state.classSchema, item);
+                    const state = getInstanceState(classState, item);
+                    const errors = validate(classState.classSchema, item);
                     if (errors.length) {
-                        throw new DatabaseValidationError(state.classSchema, errors);
+                        throw new DatabaseValidationError(classState.classSchema, errors);
                     }
 
                     if (state.isKnownInDatabase()) {
                         const lastSnapshot = state.getSnapshot();
-                        const currentSnapshot = doSnapshot(item);
-                        const changeSet = changeDetector(lastSnapshot, currentSnapshot, item);
+                        const currentSnapshot = classState.snapshot(item);
+                        const changeSet = classState.changeDetector(lastSnapshot, currentSnapshot, item);
                         if (!changeSet) {
                             continue;
                         }

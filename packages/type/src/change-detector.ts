@@ -76,7 +76,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
             return `
                 if (!${has(changedName)}) {
                 if (!${current} && !${last}) {
-                
+
                 } else if ((${current} && !${last}) || (!${current} && ${last})) {
                     changes.${changedName} = item.${changedName};
                     ${onChanged}
@@ -99,7 +99,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
             return `
                 if (!${has(changedName)}) {
                 if (!${current} && !${last}) {
-                    
+
                 } else if ((${current} && !${last}) || (!${current} && ${last})) {
                     changes.${changedName} = item.${changedName};
                     ${onChanged}
@@ -127,7 +127,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
                 return `
                 if (!${has(changedName)}) {
                 if (!${current} && !${last}) {
-                
+
                 } else if ((${current} && !${last}) || (!${current} && ${last})) {
                     changes.${changedName} = item.${changedName};
                     ${onChanged}
@@ -145,7 +145,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
             return `
                 if (!${has(changedName)}) {
                     if (!${current} && !${last}) {
-                    
+
                     } else if ((${current} && !${last}) || (!${current} && ${last})) {
                         changes.${changedName} = item.${changedName};
                         ${onChanged}
@@ -153,7 +153,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
                         const thisChanged = ${jitChangeDetectorThis}.fn(${last}, ${current}, ${accessor});
                         if (!empty(thisChanged)) {
                             changes.${changedName} = item.${changedName};
-                            ${onChanged}    
+                            ${onChanged}
                         }
                     }
                 }
@@ -192,7 +192,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
 
     const functionCode = `
         return function(last, current, item) {
-            var changeSet = item[changeSetSymbol] || new ItemChanges(item);
+            var changeSet = item[changeSetSymbol] || new ItemChanges(undefined, item);
             var changes = {};
             ${props.join('\n')}
             changeSet.mergeSet(changes);

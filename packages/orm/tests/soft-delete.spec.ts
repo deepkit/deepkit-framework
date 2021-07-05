@@ -1,6 +1,6 @@
 import { entity, plainToClass, t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { getInstanceState } from '../src/identity-map';
+import { getInstanceStateFromItem } from '../src/identity-map';
 import { Database } from '../src/database';
 import { MemoryDatabaseAdapter } from '../src/memory-db';
 import { SoftDelete, SoftDeleteQuery, SoftDeleteSession } from '../src/plugin/soft-delete';
@@ -89,7 +89,7 @@ test('soft-delete session', async () => {
     const lizz = new User('Lizz');
     session.add(peter, joe, lizz);
     await session.commit();
-    expect(getInstanceState(peter).isKnownInDatabase()).toBe(true);
+    expect(getInstanceStateFromItem(peter).isKnownInDatabase()).toBe(true);
 
     expect(await database.query(User).count()).toBe(3);
 
@@ -97,7 +97,7 @@ test('soft-delete session', async () => {
         const peterDB = await session.query(User).filter({ id: 1 }).findOne();
         session.remove(peterDB);
         await session.commit();
-        expect(getInstanceState(peterDB).isKnownInDatabase()).toBe(true);
+        expect(getInstanceStateFromItem(peterDB).isKnownInDatabase()).toBe(true);
 
         expect(await database.query(User).count()).toBe(2);
         expect(await session.query(User).lift(SoftDeleteQuery).withSoftDeleted().count()).toBe(3);

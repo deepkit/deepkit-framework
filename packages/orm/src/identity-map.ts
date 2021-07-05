@@ -11,14 +11,13 @@
 import {
     changeSetSymbol,
     ClassSchema,
+    getChangeDetector,
     getClassSchema,
     getConverterForSnapshot,
     getPrimaryKeyExtractor,
     getPrimaryKeyHashGenerator,
     getSimplePrimaryKeyHashGenerator,
-    ItemChanges,
     JSONPartial,
-    jsonSerializer,
     PartialEntity
 } from '@deepkit/type';
 import { Entity } from './type';
@@ -47,7 +46,28 @@ export function getNormalizedPrimaryKey(schema: ClassSchema, primaryKey: any) {
     }
 }
 
+export class ClassState<T = any> {
+    public snapshot = getConverterForSnapshot(this.classSchema);
+    public primaryKeyExtractor = getPrimaryKeyExtractor(this.classSchema);
+    public primaryKeyHashGenerator = getPrimaryKeyHashGenerator(this.classSchema);
+    public simplePrimaryKeyHashGenerator = getSimplePrimaryKeyHashGenerator(this.classSchema);
+    public changeDetector = getChangeDetector(this.classSchema);
+
+    constructor(public classSchema: ClassSchema<T>) {
+    }
+}
+
+export function getClassState<T>(classSchema: ClassSchema<T>): ClassState<T> {
+    if (classSchema.data.classState) return classSchema.data.classState;
+    classSchema.data.classState = new ClassState(classSchema);
+    toFastProperties(classSchema.data);
+    return classSchema.data.classState;
+}
+
 class InstanceState<T extends Entity> {
+    /**
+     * Whether current state is known in database.
+     */
     knownInDatabase: boolean = false;
 
     /**
@@ -57,15 +77,13 @@ class InstanceState<T extends Entity> {
      */
     snapshot?: JSONPartial<T>;
 
-    readonly classSchema: ClassSchema<T>;
-    readonly item: T;
-
+    /**
+     * Whether the item was originally from the database (and thus PK are known there).
+     */
     fromDatabase: boolean = false;
     protected lastPKHash?: string;
 
-    constructor(item: T) {
-        this.item = item;
-        this.classSchema = getClassSchema(item);
+    constructor(public classState: ClassState<T>, public item: T) {
     }
 
     [inspect.custom]() {
@@ -77,7 +95,7 @@ class InstanceState<T extends Entity> {
     }
 
     getSnapshot(): JSONPartial<T> {
-        if (!this.snapshot) this.snapshot = getConverterForSnapshot(this.classSchema)(this.item);
+        if (!this.snapshot) this.snapshot = this.classState.snapshot(this.item);
         return this.snapshot!;
     }
 
@@ -94,20 +112,27 @@ class InstanceState<T extends Entity> {
     }
 
     markAsPersisted() {
-        const snap = getConverterForSnapshot(this.classSchema);
-        this.snapshot = snap(this.item);
         this.knownInDatabase = true;
         this.lastPKHash = undefined; //mark it for generation on-demand
-        (this.item as any)[changeSetSymbol] = new ItemChanges({}, this.item);
+
+        //This is pretty heavy and only necessary when the user works with the objects
+        //but that is not always the case. So we need a way to postpone those
+        //calls to a place where we know we need them. For example return
+        //not the real object but a Proxy and detect write-operations. As soon
+        //a write operation is detected, we create a snapshot. Essentially implement copy-on-write,
+        //or in our case snapshot-on-write.
+        this.snapshot = this.classState.snapshot(this.item);
+
+        if ((this.item as any)[changeSetSymbol]) (this.item as any)[changeSetSymbol].clear();
     }
 
     getLastKnownPK(): Partial<T> {
-        return getPrimaryKeyExtractor(this.classSchema)(this.snapshot);
+        return this.classState.primaryKeyExtractor(this.snapshot);
     }
 
     getLastKnownPKHash(): string {
         if (this.lastPKHash === undefined) {
-            this.lastPKHash = getPrimaryKeyHashGenerator(this.classSchema, jsonSerializer)(this.snapshot);
+            this.lastPKHash = this.classState.primaryKeyHashGenerator(this.snapshot);
         }
         return this.lastPKHash;
     }
@@ -119,7 +144,11 @@ class InstanceState<T extends Entity> {
 
 const instanceStateSymbol = Symbol('state');
 
-export function getInstanceState<T>(item: T): InstanceState<T> {
+export function getInstanceStateFromItem<T>(item: T): InstanceState<T> {
+    return getInstanceState(getClassState(getClassSchema(item)), item);
+}
+
+export function getInstanceState<T>(classState: ClassState<T>, item: T): InstanceState<T> {
     //this approach is up to 60-90x faster than a WeakMap
     if (!(item as any)['constructor'].prototype.hasOwnProperty(instanceStateSymbol)) {
         Object.defineProperty((item as any)['constructor'].prototype, instanceStateSymbol, {
@@ -127,7 +156,6 @@ export function getInstanceState<T>(item: T): InstanceState<T> {
             enumerable: false,
             value: null
         });
-        toFastProperties((item as any)['constructor'].prototype);
     }
 
     if (!(item as any)['constructor'].prototype.hasOwnProperty(changeSetSymbol)) {
@@ -136,12 +164,10 @@ export function getInstanceState<T>(item: T): InstanceState<T> {
             enumerable: false,
             value: null
         });
-        toFastProperties((item as any)['constructor'].prototype);
     }
 
-
     if (!(item as any)[instanceStateSymbol]) {
-        (item as any)[instanceStateSymbol] = new InstanceState(item);
+        (item as any)[instanceStateSymbol] = new InstanceState(classState, item);
     }
     return (item as any)[instanceStateSymbol];
 }
@@ -157,26 +183,28 @@ export class IdentityMap {
 
     deleteMany<T>(classSchema: ClassSchema<T>, pks: Partial<T>[]) {
         const store = this.getStore(classSchema);
-        const pkHashGenerator = getPrimaryKeyHashGenerator(classSchema, jsonSerializer);
+        const state = getClassState(classSchema);
         for (const pk of pks) {
-            const pkHash = pkHashGenerator(pk);
+            const pkHash = state.primaryKeyHashGenerator(pk);
             let item = store.get(pkHash);
+
             if (item) {
                 store.delete(pkHash);
-                getInstanceState(item.ref).markAsDeleted();
+                getInstanceState(state, item.ref).markAsDeleted();
             }
         }
     }
 
     deleteManyBySimplePK<T>(classSchema: ClassSchema<T>, pks: any[]) {
         const store = this.getStore(classSchema);
-        const pkHashGenerator = getSimplePrimaryKeyHashGenerator(classSchema);
+        const state = getClassState(classSchema);
+
         for (const pk of pks) {
-            const pkHash = pkHashGenerator(pk);
+            const pkHash = state.simplePrimaryKeyHashGenerator(pk);
             let item = store.get(pkHash);
             if (item) {
                 store.delete(pkHash);
-                getInstanceState(item.ref).markAsDeleted();
+                getInstanceState(state, item.ref).markAsDeleted();
             }
         }
     }
@@ -186,8 +214,11 @@ export class IdentityMap {
     }
 
     isKnown<T>(item: T): boolean {
-        const store = this.getStore(getClassSchema(item));
-        const pkHash = getInstanceState(item).getLastKnownPKHash();
+        const classSchema = getClassSchema(item);
+        const store = this.getStore(classSchema);
+        const state = getClassState(classSchema);
+
+        const pkHash = getInstanceState(state, item).getLastKnownPKHash();
 
         return store.has(pkHash);
     }
@@ -195,10 +226,12 @@ export class IdentityMap {
     storeMany<T>(classSchema: ClassSchema<T>, items: PartialEntity<T>[]) {
         if (!classSchema.hasPrimaryFields()) throw new Error(`Entity ${classSchema.getClassName()} has no primary field defined. Use @f.primary to defined one.`);
         const store = this.getStore(classSchema);
+        const state = getClassState(classSchema);
+
         for (const item of items) {
-            const pkHash = getPrimaryKeyHashGenerator(classSchema, jsonSerializer)(item);
+            const pkHash = state.primaryKeyHashGenerator(item);
             store.set(pkHash, { ref: item, stale: false });
-            getInstanceState(item).markAsPersisted();
+            getInstanceState(state as ClassState<any>, item).markAsPersisted();
         }
     }
 
@@ -212,7 +245,7 @@ export class IdentityMap {
         return store.has(pk) ? store.get(pk)!.ref : undefined;
     }
 
-    getStore(classSchema: ClassSchema): Map<PKHash, Store> {
+    protected getStore(classSchema: ClassSchema): Map<PKHash, Store> {
         const store = this.registry.get(classSchema);
         if (store) {
             return store;

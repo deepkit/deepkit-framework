@@ -1,10 +1,10 @@
 import { EventEmitter, Injectable } from '@angular/core';
 import { arrayRemoveItem, empty, isObject } from '@deepkit/core';
-import { getInstanceState } from '@deepkit/orm';
 import { DatabaseCommit, DatabaseInfo, EntityPropertySeed, EntitySeed, FakerTypes, findFaker } from '@deepkit/orm-browser-api';
 import { Changes, changeSetSymbol, ClassSchema, getChangeDetector, getConverterForSnapshot, PropertySchema, PropertyValidatorError } from '@deepkit/type';
 import { ControllerClient } from './client';
 import { Progress } from '@deepkit/rpc';
+import { getInstanceStateFromItem } from '@deepkit/orm';
 
 export type ChangesStore = { [pkHash: string]: { pk: { [name: string]: any }, changes: Changes<any> } };
 export type ValidationErrors = { [fieldName: string]: PropertyValidatorError };
@@ -207,7 +207,7 @@ export class BrowserState {
     scheduleForDeletion(dbName: string, entityName: string, item: any) {
         const deletions = this.getDeletions(dbName, entityName);
 
-        const state = getInstanceState(item);
+        const state = getInstanceStateFromItem(item);
         deletions[state.getLastKnownPKHash()] = state.getLastKnownPK();
     }
 
@@ -215,7 +215,7 @@ export class BrowserState {
         const storeKey = this.getStoreKey(dbName, entityName);
         const deletions = this.deletions[storeKey] ||= {};
 
-        const state = getInstanceState(item);
+        const state = getInstanceStateFromItem(item);
         delete deletions[state.getLastKnownPKHash()];
     }
 
@@ -372,7 +372,7 @@ export class BrowserState {
         const entity = this.getEntity(dbName, entityName);
         const changes = this.getChangeStore(dbName, entityName);
 
-        const state = getInstanceState(item);
+        const state = getInstanceStateFromItem(item);
 
         const lastSnapshot = state.getSnapshot();
         const changeDetector = getChangeDetector(entity);

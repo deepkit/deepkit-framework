@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { arrayBufferFrom, Entity, getClassSchema, getEntityName, jsonSerializer, nodeBufferToArrayBuffer, PropertySchema, t, uuid, } from '@deepkit/type';
-import { getInstanceState } from '@deepkit/orm';
+import { getInstanceStateFromItem } from '@deepkit/orm';
 import { SimpleModel, SuperSimple } from './entities';
 import { createDatabase } from './utils';
 
@@ -231,8 +231,8 @@ test('test delete', async () => {
     session.add(instance1);
     session.add(instance2);
     await session.commit();
-    expect(getInstanceState(instance1).isKnownInDatabase()).toBe(true);
-    expect(getInstanceState(instance2).isKnownInDatabase()).toBe(true);
+    expect(getInstanceStateFromItem(instance1).isKnownInDatabase()).toBe(true);
+    expect(getInstanceStateFromItem(instance2).isKnownInDatabase()).toBe(true);
 
     expect(await session.query(SimpleModel).count()).toBe(2);
     expect(await session.query(SimpleModel).filter({name: 'myName1'}).count()).toBe(1);
@@ -242,7 +242,7 @@ test('test delete', async () => {
     session.remove(instance1);
     await session.commit();
 
-    expect(getInstanceState(instance1).isKnownInDatabase()).toBe(false);
+    expect(getInstanceStateFromItem(instance1).isKnownInDatabase()).toBe(false);
 
     expect(await session.query(SimpleModel).count()).toBe(1);
     expect(await session.query(SimpleModel).filter({name: 'myName1'}).count()).toBe(0);
@@ -251,26 +251,26 @@ test('test delete', async () => {
 
     session.remove(instance2);
     await session.commit();
-    expect(getInstanceState(instance2).isKnownInDatabase()).toBe(false);
+    expect(getInstanceStateFromItem(instance2).isKnownInDatabase()).toBe(false);
 
     expect(await session.query(SimpleModel).count()).toBe(0);
     expect(await session.query(SimpleModel).filter({name: 'myName1'}).count()).toBe(0);
     expect(await session.query(SimpleModel).filter({name: 'myName2'}).count()).toBe(0);
     expect(await session.query(SimpleModel).filter({name: 'myName3'}).count()).toBe(0);
-    expect(getInstanceState(instance1).isKnownInDatabase()).toBe(false);
-    expect(getInstanceState(instance2).isKnownInDatabase()).toBe(false);
+    expect(getInstanceStateFromItem(instance1).isKnownInDatabase()).toBe(false);
+    expect(getInstanceStateFromItem(instance2).isKnownInDatabase()).toBe(false);
 
     session.add(instance1);
     session.add(instance2);
     await session.commit();
-    expect(getInstanceState(instance1).isKnownInDatabase()).toBe(true);
-    expect(getInstanceState(instance2).isKnownInDatabase()).toBe(true);
+    expect(getInstanceStateFromItem(instance1).isKnownInDatabase()).toBe(true);
+    expect(getInstanceStateFromItem(instance2).isKnownInDatabase()).toBe(true);
     expect(await session.query(SimpleModel).count()).toBe(2);
 
     expect((await session.query(SimpleModel).filter({name: {$regex: /myName[0-9]/}}).deleteMany()).modified).toBe(2);
     expect(await session.query(SimpleModel).count()).toBe(0);
 
-    expect(getInstanceState(instance1).isKnownInDatabase()).toBe(false);
+    expect(getInstanceStateFromItem(instance1).isKnownInDatabase()).toBe(false);
 
     session.add(instance1);
     session.add(instance2);
@@ -458,15 +458,15 @@ test('references back', async () => {
     await session.commit();
 
     {
-        expect(getInstanceState(marc).isFromDatabase()).toBe(false);
-        expect(getInstanceState(image2).isFromDatabase()).toBe(false);
+        expect(getInstanceStateFromItem(marc).isFromDatabase()).toBe(false);
+        expect(getInstanceStateFromItem(image2).isFromDatabase()).toBe(false);
         const marcFromDb = await session.query(User).joinWith('images').filter({name: 'marc'}).findOne();
         expect(marcFromDb === marc).toBe(true);
-        expect(getInstanceState(marcFromDb).isFromDatabase()).toBe(false);
+        expect(getInstanceStateFromItem(marcFromDb).isFromDatabase()).toBe(false);
 
         //make sure that it returns the image2 we already have
         const imageDb = await session.query(Image).joinWith('user').filter({title: 'image2'}).findOne();
-        expect(getInstanceState(imageDb).isFromDatabase()).toBe(false);
+        expect(getInstanceStateFromItem(imageDb).isFromDatabase()).toBe(false);
 
         expect(imageDb).toBe(image2);
         expect(imageDb.title).toBe('image2');
@@ -481,7 +481,7 @@ test('references back', async () => {
 
     {
         const marcFromDb = await session.query(User).disableIdentityMap().filter({name: 'marc'}).findOne();
-        expect(getInstanceState(marcFromDb).isFromDatabase()).toBe(true);
+        expect(getInstanceStateFromItem(marcFromDb).isFromDatabase()).toBe(true);
 
         expect(() => {
             marcFromDb.images;
@@ -498,7 +498,7 @@ test('references back', async () => {
     {
         const marcFromDb = await session.query(User).joinWith('images').filter({name: 'marc'}).findOne();
         expect(marcFromDb === marc).toBe(true);
-        expect(getInstanceState(marcFromDb).isFromDatabase()).toBe(false);
+        expect(getInstanceStateFromItem(marcFromDb).isFromDatabase()).toBe(false);
         expect(marcFromDb.name).toBe('marc');
         expect(marcFromDb.images.length).toBe(3);
         expect(marcFromDb.images[0]).toBeInstanceOf(Image);
@@ -538,7 +538,7 @@ test('test identityMap', async () => {
     session.add(item);
     await session.commit();
 
-    const pkHash = getInstanceState(item).getLastKnownPKHash();
+    const pkHash = getInstanceStateFromItem(item).getLastKnownPKHash();
     const idItem = session.identityMap.getByHash(getClassSchema(SimpleModel), pkHash);
     expect(idItem).toBe(item);
 

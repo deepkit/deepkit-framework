@@ -8,38 +8,29 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, createReferenceClass, getGlobalStore, getPrimaryKeyHashGenerator, PropertySchema, Serializer, UnpopulatedCheck, unpopulatedSymbol } from '@deepkit/type';
+import {
+    ClassSchema,
+    createReferenceClass,
+    getGlobalStore,
+    getPrimaryKeyHashGenerator,
+    getReferenceInfo,
+    isReferenceHydrated,
+    markAsHydrated,
+    PropertySchema,
+    Serializer,
+    UnpopulatedCheck,
+    unpopulatedSymbol
+} from '@deepkit/type';
 import { DatabaseQueryModel } from './query';
 import { capitalize, ClassType } from '@deepkit/core';
-import { getInstanceState, IdentityMap, PKHash } from './identity-map';
+import { ClassState, getClassState, getInstanceState, IdentityMap, PKHash } from './identity-map';
 import { getReference } from './reference';
-
-const sessionHydratorSymbol = Symbol('sessionHydratorSymbol');
 
 export type HydratorFn = (item: any) => Promise<void>;
 
-/**
- * Returns true if item is hydrated. Returns false when its a unpopulated proxy/reference.
- */
-export function isHydrated(item: any) {
-    return !!(item[sessionHydratorSymbol]);
-}
-
-export function setHydratedDatabaseSession(item: any, hydrator: HydratorFn) {
-    Object.defineProperty(item, sessionHydratorSymbol, {
-        enumerable: false,
-        configurable: false,
-        writable: true,
-        value: hydrator,
-    });
-}
-
-export function markAsHydrated(item: any) {
-    item[sessionHydratorSymbol] = undefined;
-}
-
-export function getDatabaseSessionHydrator(item: any): HydratorFn {
-    return item[sessionHydratorSymbol];
+export function setHydratedDatabaseSession(item: any, hydrator: (item: any) => Promise<void>) {
+    const info = getReferenceInfo(item);
+    if (info) info.hydrator = hydrator;
 }
 
 type DBRecord = { [name: string]: any };
@@ -56,6 +47,8 @@ export class Formatter {
     public withIdentityMap: boolean = true;
     protected rootSerializer = this.serializer.for(this.rootClassSchema);
     protected rootPkHash: (value: any) => string = getPrimaryKeyHashGenerator(this.rootClassSchema, this.serializer);
+
+    protected rootClassState: ClassState<any> = getClassState(this.rootClassSchema);
 
     constructor(
         protected rootClassSchema: ClassSchema,
@@ -153,7 +146,7 @@ export class Formatter {
             this.getReferenceClass(foreignSchema)
         );
 
-        getInstanceState(ref).markAsFromDatabase();
+        getInstanceState(getClassState(foreignSchema), ref).markAsFromDatabase();
 
         return ref;
     }
@@ -161,13 +154,14 @@ export class Formatter {
     protected hydrateModel(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, dbRecord: DBRecord) {
         let pool: Map<PKHash, any> | undefined = undefined;
         let pkHash: any = undefined;
+        const partial = model.isPartial();
+        const classState = classSchema === this.rootClassSchema ? this.rootClassState : getClassState(classSchema);
 
         const singleTableInheritanceMap = classSchema.getAssignedSingleTableInheritanceSubClassesByIdentifier();
         if (singleTableInheritanceMap) {
             const discriminant = classSchema.getSingleTableInheritanceDiscriminant();
             const subClassSchema = singleTableInheritanceMap[dbRecord[discriminant.name]];
             if (!subClassSchema) {
-                console.log('singleTableInheritanceMap', singleTableInheritanceMap);
                 throw new Error(`${classSchema.getClassName()} has no sub class with discriminator value ${JSON.stringify(dbRecord[discriminant.name])} for field ${discriminant.name}`);
             }
             classSchema = subClassSchema;
@@ -183,17 +177,17 @@ export class Formatter {
             }
         }
 
-        if (this.identityMap && !model.isPartial()) {
+        if (this.identityMap && !partial) {
             if (!pkHash) {
                 pkHash = classSchema === this.rootClassSchema ? this.rootPkHash(dbRecord) : getPrimaryKeyHashGenerator(classSchema, this.serializer)(dbRecord);
             }
             const item = this.identityMap.getByHash(classSchema, pkHash);
 
             if (item) {
-                const fromDatabase = getInstanceState(item).isFromDatabase();
+                const fromDatabase = getInstanceState(classState, item).isFromDatabase();
 
                 //if its proxy a unhydrated proxy then we update property values
-                if (fromDatabase && !isHydrated(item)) {
+                if (fromDatabase && !isReferenceHydrated(item)) {
                     //we automatically hydrate proxy object once someone fetches them from the database.
                     //or we update a stale instance
                     const converted = this.serializer.for(classSchema).deserialize(dbRecord);
@@ -210,7 +204,7 @@ export class Formatter {
                             Object.defineProperty(item, propName, {
                                 enumerable: true,
                                 configurable: true,
-                                value: this.getReference(classSchema, dbRecord, prop, model.isPartial()),
+                                value: this.getReference(classSchema, dbRecord, prop, partial),
                             });
                             continue;
                         }
@@ -234,10 +228,10 @@ export class Formatter {
             }
         }
 
-        const converted = this.createObject(model, classSchema, dbRecord);
+        const converted = this.createObject(model, classState, classSchema, dbRecord);
 
-        if (!model.isPartial()) {
-            getInstanceState(converted).markAsPersisted();
+        if (!partial) {
+            getInstanceState(classState, converted).markAsPersisted();
             if (pool) pool.set(pkHash, converted);
 
             if (this.identityMap) {
@@ -294,15 +288,15 @@ export class Formatter {
         return handledRelation;
     }
 
-    protected createObject(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, dbRecord: DBRecord) {
+    protected createObject(model: DatabaseQueryModel<any, any, any>, classState: ClassState, classSchema: ClassSchema, dbRecord: DBRecord) {
         const partial = model.isPartial();
 
         const converted = classSchema === this.rootClassSchema
             ? (partial ? this.rootSerializer.partialDeserialize(dbRecord) : this.rootSerializer.deserialize(dbRecord))
             : (partial ? this.serializer.for(classSchema).partialDeserialize(dbRecord) : this.serializer.for(classSchema).deserialize(dbRecord));
 
-        if (!model.isPartial()) {
-            getInstanceState(converted).markAsFromDatabase();
+        if (!partial) {
+            getInstanceState(classState, converted).markAsFromDatabase();
         }
 
         if (classSchema.references.size > 0) {
@@ -313,10 +307,10 @@ export class Formatter {
                 if (model.select.size && !model.select.has(propertySchema.name)) continue;
                 if (handledRelation && handledRelation[propertySchema.name]) continue;
                 if (propertySchema.isReference) {
-                    converted[propertySchema.name] = this.getReference(classSchema, dbRecord, propertySchema, model.isPartial());
+                    converted[propertySchema.name] = this.getReference(classSchema, dbRecord, propertySchema, partial);
                 } else {
                     //unpopulated backReferences are inaccessible
-                    if (!model.isPartial()) {
+                    if (!partial) {
                         this.makeInvalidReference(converted, classSchema, propertySchema);
                     }
                 }

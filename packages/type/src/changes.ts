@@ -27,12 +27,21 @@ export class Changes<T> {
     empty = true;
 
     constructor(
-        { $set, $unset, $inc }: ChangesInterface<T> = {}
+        changes?: ChangesInterface<T>
     ) {
-        this.$set = empty($set) ? undefined : $set;
-        this.$unset = empty($unset) ? undefined : $unset;
-        this.$inc = empty($inc) ? undefined : $inc;
-        this.detectEmpty();
+        if (changes) {
+            this.$set = empty(changes.$set) ? undefined : changes.$set;
+            this.$unset = empty(changes.$unset) ? undefined : changes.$unset;
+            this.$inc = empty(changes.$inc) ? undefined : changes.$inc;
+            this.detectEmpty();
+        }
+    }
+
+    clear(): void {
+        this.empty = true;
+        this.$set = undefined;
+        this.$unset = undefined;
+        this.$inc = undefined;
     }
 
     getReturning(): string[] {

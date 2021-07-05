@@ -238,26 +238,28 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         const sql = sqlBuilder.select(this.classSchema, model);
 
         const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        let row: any;
+
         try {
-            const row = await connection.execAndReturnSingle(sql.sql, sql.params);
+            row = await connection.execAndReturnSingle(sql.sql, sql.params);
             if (!row) return;
-
-            if (model.isAggregate() || model.sqlSelect) {
-                //when aggregate the field types could be completely different, so don't normalize
-                return row;
-            }
-
-            const formatter = this.createFormatter(model.withIdentityMap);
-            if (model.hasJoins()) {
-                const [converted] = sqlBuilder.convertRows(this.classSchema, model, [row]);
-                return formatter.hydrate(model, converted);
-            } else {
-                return formatter.hydrate(model, row);
-            }
         } catch (error) {
             throw new DatabaseError(`Could not query ${this.classSchema.getClassName()} due to SQL error ${error}.\nSQL: ${sql.sql}\nParams: ${JSON.stringify(sql.params)}`);
         } finally {
             connection.release();
+        }
+
+        if (model.isAggregate() || model.sqlSelect) {
+            //when aggregate the field types could be completely different, so don't normalize
+            return row;
+        }
+
+        const formatter = this.createFormatter(model.withIdentityMap);
+        if (model.hasJoins()) {
+            const [converted] = sqlBuilder.convertRows(this.classSchema, model, [row]);
+            return formatter.hydrate(model, converted);
+        } else {
+            return formatter.hydrate(model, row);
         }
     }
 
