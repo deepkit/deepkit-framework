@@ -402,7 +402,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
 
     @Input() noFocusOutline: boolean | '' = false;
 
-    public sort: { [column: string]: 'asc' | 'desc' } = {};
+    @Input() public sort: { [column: string]: 'asc' | 'desc' } = {};
 
     public rawItems: T[] = [];
     public sorted: T[] = [];
@@ -559,7 +559,9 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
         if ($event && $event.button === 2) return;
 
         //only when shift is pressed do we activate multi-column sort
-        if (!$event || ! $event.shiftKey) this.sort = {[name]: this.sort[name]};
+        if (!$event || ! $event.shiftKey) {
+            for (const member in this.sort) if (member !== name) delete this.sort[member];
+        }
 
         if (this.columnMap[name]) {
             const headerDef = this.columnMap[name];
