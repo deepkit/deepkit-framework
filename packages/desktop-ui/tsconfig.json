@@ -3,7 +3,6 @@
     "baseUrl": "./",
     "outDir": "./dist",
     "moduleResolution": "node",
-    "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "downlevelIteration": true,
     "sourceMap": true,
