@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build --prod",
+    "build": "ng build --configuration production",
     "build:dev": "ng build",
     "test": "ng test",
     "lint": "ng lint",
@@ -22,18 +22,18 @@
     "@deepkit/logger": false
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "~0.1101.4",
-    "@angular/animations": "~11.1.2",
+    "@angular-devkit/build-angular": "~12.1.1",
+    "@angular/animations": "~12.1.1",
     "@angular/cdk": "^11.2.13",
-    "@angular/cli": "~11.1.4",
-    "@angular/common": "~11.1.2",
-    "@angular/compiler": "~11.1.2",
-    "@angular/compiler-cli": "~11.1.2",
-    "@angular/core": "~11.1.2",
-    "@angular/forms": "~11.1.2",
-    "@angular/platform-browser": "~11.1.2",
-    "@angular/platform-browser-dynamic": "~11.1.2",
-    "@angular/router": "~11.1.2",
+    "@angular/cli": "~12.1.1",
+    "@angular/common": "~12.1.1",
+    "@angular/compiler": "~12.1.1",
+    "@angular/compiler-cli": "~12.1.1",
+    "@angular/core": "~12.1.1",
+    "@angular/forms": "~12.1.1",
+    "@angular/platform-browser": "~12.1.1",
+    "@angular/platform-browser-dynamic": "~12.1.1",
+    "@angular/router": "~12.1.1",
     "@deepkit/bson": "^1.0.1-alpha.35",
     "@deepkit/core": "^1.0.1-alpha.35",
     "@deepkit/core-rxjs": "^1.0.1-alpha.35",
@@ -58,7 +58,7 @@
     "file-type": "^16.5.0",
     "jasmine-core": "~3.6.0",
     "jasmine-spec-reporter": "~5.0.0",
-    "karma": "~5.2.0",
+    "karma": "~6.3.4",
     "karma-chrome-launcher": "~3.1.0",
     "karma-coverage": "~2.0.3",
     "karma-jasmine": "~4.0.0",
@@ -69,7 +69,7 @@
     "ts-node": "~8.3.0",
     "tslib": "^2.3.0",
     "tslint": "~6.1.0",
-    "typescript": "~4.1.2",
-    "zone.js": "^0.11.4"
+    "typescript": "~4.3.5",
+    "zone.js": "~0.11.4"
   }
 }
