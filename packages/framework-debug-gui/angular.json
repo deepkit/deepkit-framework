@@ -29,7 +29,6 @@
             "polyfills": "src/polyfills.ts",
             "tsConfig": "tsconfig.app.json",
             "preserveSymlinks": true,
-            "aot": true,
             "assets": [
               "src/favicon.ico",
               "src/assets"
@@ -39,7 +38,13 @@
               "node_modules/@deepkit/desktop-ui/src/scss/icon.scss",
               "src/styles.scss"
             ],
-            "scripts": []
+            "scripts": [],
+            "vendorChunk": true,
+            "extractLicenses": false,
+            "buildOptimizer": false,
+            "sourceMap": true,
+            "optimization": false,
+            "namedChunks": true
           },
           "configurations": {
             "production": {
@@ -69,7 +74,8 @@
                 }
               ]
             }
-          }
+          },
+          "defaultConfiguration": ""
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
