@@ -12,8 +12,10 @@ import {
     ClassSchema,
     createReferenceClass,
     getGlobalStore,
+    getPartialXToClassFunction,
     getPrimaryKeyHashGenerator,
     getReferenceInfo,
+    getXToClassFunction,
     isReferenceHydrated,
     markAsHydrated,
     PropertySchema,
@@ -231,12 +233,9 @@ export class Formatter {
         const converted = this.createObject(model, classState, classSchema, dbRecord);
 
         if (!partial) {
-            getInstanceState(classState, converted).markAsPersisted();
+            if (model.withChangeDetection) getInstanceState(classState, converted).markAsPersisted();
             if (pool) pool.set(pkHash, converted);
-
-            if (this.identityMap) {
-                this.identityMap.store(classSchema, converted);
-            }
+            if (this.identityMap) this.identityMap.store(classSchema, converted);
         }
 
         return converted;
@@ -293,10 +292,10 @@ export class Formatter {
 
         const converted = classSchema === this.rootClassSchema
             ? (partial ? this.rootSerializer.partialDeserialize(dbRecord) : this.rootSerializer.deserialize(dbRecord))
-            : (partial ? this.serializer.for(classSchema).partialDeserialize(dbRecord) : this.serializer.for(classSchema).deserialize(dbRecord));
+            : (partial ? getPartialXToClassFunction(classSchema, this.serializer)(dbRecord) : getXToClassFunction(classSchema, this.serializer)(dbRecord));
 
         if (!partial) {
-            getInstanceState(classState, converted).markAsFromDatabase();
+            if (model.withChangeDetection) getInstanceState(classState, converted).markAsFromDatabase();
         }
 
         if (classSchema.references.size > 0) {

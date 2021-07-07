@@ -54,11 +54,11 @@ export async function main() {
         });
 
         await bench.runAsyncFix(10, 'fetch', async () => {
-            await session.query(Model).disableIdentityMap().find();
+            await database.query(Model).disableChangeDetection().find();
         });
 
         await bench.runAsyncFix(1000, 'fetch-1', async () => {
-            await session.query(Model).disableIdentityMap().findOne();
+            await database.query(Model).disableChangeDetection().findOne();
         });
 
         // const dbItems = await session.query(Model).find();

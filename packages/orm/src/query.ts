@@ -82,6 +82,7 @@ export type FilterQuery<T> = {
 
 export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<T> = FilterQuery<T>, SORT extends Sort<T> = Sort<T>> {
     public withIdentityMap: boolean = true;
+    public withChangeDetection: boolean = true;
     public filter?: FILTER;
     public having?: FILTER;
     public groupBy: Set<string> = new Set<string>();
@@ -306,10 +307,28 @@ export class BaseQuery<T extends Entity> {
      * This ensures object instances uniqueness and generally saves CPU circles.
      *
      * This disabled entity tracking, forcing always to create new entity instances.
+     *
+     * For queries created on the database object (database.query(T)), this is disabled
+     * per default. Only on sessions (const session = database.createSession(); session.query(T))
+     * is the identity map enabled per default, and can be disabled with this method.
      */
     disableIdentityMap(): this {
         const c = this.clone();
         c.model.withIdentityMap = false;
+        return c;
+    }
+
+    /**
+     * When fetching objects from the database, for each object will a snapshot be generated,
+     * on which change-detection happens. This behavior is not necessary when only fetching
+     * data and never modifying its objects (when for example returning data to the client directly).
+     * When this is the case, you can disable change-detection entirely for the returned objects.
+     * Note: Persisting/committing (database.persist(), session.commit) won't detect any changes
+     * when change-detection is disabled.
+     */
+    disableChangeDetection(): this {
+        const c = this.clone();
+        c.model.withChangeDetection = false;
         return c;
     }
 
