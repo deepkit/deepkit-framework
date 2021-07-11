@@ -17,8 +17,23 @@ import { injectable, InjectorContext } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { RouteConfig, RouteParameterResolverForInjector, Router } from './router';
 import { createWorkflow, WorkflowEvent } from '@deepkit/workflow';
-import { isElementStruct, render } from '@deepkit/template';
+import type { ElementStruct, render } from '@deepkit/template';
 import { Stopwatch } from '@deepkit/stopwatch';
+
+export function isElementStruct(v: any): v is ElementStruct {
+    return 'object' === typeof v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes') && !v.slice;
+}
+
+let templateRender: typeof render;
+
+function getTemplateRender(): typeof render {
+    if (!templateRender) {
+        const template = require('@deepkit/template');
+        templateRender = template.render;
+    }
+
+    return templateRender;
+}
 
 export class Redirect {
     public routeName?: string;
@@ -246,6 +261,11 @@ export class HttpResponseEvent extends WorkflowEvent {
 }
 
 export class HttpControllerErrorEvent extends HttpWorkflowEventWithRoute {
+    /**
+     * The time it took to call the controller action in milliseconds.
+     */
+    public controllerActionTime: number = 0;
+
     constructor(
         public injectorContext: InjectorContext,
         public request: HttpRequest,
@@ -375,8 +395,8 @@ export class HttpListener {
         if (event.hasNext()) return;
 
         const controllerInstance = event.injectorContext.get(event.route.action.controller);
+        const start = Date.now();
         try {
-            const start = Date.now();
             const method = controllerInstance[event.route.action.methodName];
             const responseEvent = new HttpResponseEvent(event.injectorContext, event.request, event.response, await method.apply(controllerInstance, event.parameters), event.route);
             responseEvent.controllerActionTime = Date.now() - start;
@@ -385,7 +405,9 @@ export class HttpListener {
             if (error instanceof HttpAccessDeniedError) {
                 event.next('accessDenied', new HttpAccessDeniedEvent(event.injectorContext, event.request, event.response, event.route));
             } else {
-                event.next('controllerError', new HttpControllerErrorEvent(event.injectorContext, event.request, event.response, event.route, error));
+                const errorEvent = new HttpControllerErrorEvent(event.injectorContext, event.request, event.response, event.route, error);
+                errorEvent.controllerActionTime = Date.now() - start;
+                event.next('controllerError', errorEvent);
             }
         }
     }
@@ -456,7 +478,7 @@ export class HttpListener {
             event.response.end(response.html);
         } else if (isElementStruct(response)) {
             event.response.setHeader('Content-Type', 'text/html; charset=utf-8');
-            event.response.end(await render(event.injectorContext, response, this.stopwatch.active ? this.stopwatch : undefined));
+            event.response.end(await getTemplateRender()(event.injectorContext, response, this.stopwatch.active ? this.stopwatch : undefined));
         } else if (isClassInstance(response) && isRegisteredEntity(getClassTypeFromInstance(response))) {
             event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
             event.response.end(JSON.stringify(

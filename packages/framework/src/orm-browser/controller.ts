@@ -1,9 +1,19 @@
 import { getEnumValues, isArray, isObject } from '@deepkit/core';
 import { Database, DatabaseAdapter } from '@deepkit/orm';
-import { BrowserControllerInterface, DatabaseCommit, DatabaseInfo, EntityPropertySeed, EntityPropertySeedReference, fakerFunctions, FakerTypes, getType, QueryResult, SeedDatabase } from '@deepkit/orm-browser-api';
+import {
+    BrowserControllerInterface,
+    DatabaseCommit,
+    DatabaseInfo,
+    EntityPropertySeed,
+    EntityPropertySeedReference,
+    fakerFunctions,
+    FakerTypes,
+    getType,
+    QueryResult,
+    SeedDatabase
+} from '@deepkit/orm-browser-api';
 import { rpc } from '@deepkit/rpc';
 import { ClassSchema, jsonSerializer, plainToClass, PropertySchema, serializeSchemas, t } from '@deepkit/type';
-import * as faker from 'faker';
 import { SQLDatabaseAdapter } from '@deepkit/sql';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { performance } from 'perf_hooks';
@@ -90,6 +100,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
     async getFakerTypes(): Promise<FakerTypes> {
         const res: FakerTypes = {};
 
+        const faker = require('faker');
         for (const fn of fakerFunctions) {
             const [p1, p2] = fn.split('.');
             try {
@@ -128,6 +139,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
                 callback: (v: any) => any
             }[] = [];
 
+            const faker = require('faker');
             function fakerValue(path: string, fakerName: string): any {
                 const [p1, p2] = fakerName.split('.');
                 try {

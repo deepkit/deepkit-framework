@@ -19,7 +19,6 @@ import { RpcControllers } from './application-service-container';
 import { SecureContextOptions, TlsOptions } from 'tls';
 
 // @ts-ignore
-import selfsigned from 'selfsigned';
 import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { Logger } from '@deepkit/logger';
@@ -165,6 +164,7 @@ export class WebWorker {
                         options.key = readFileSync(keyPath, 'utf8');
                         options.cert = readFileSync(certificatePath, 'utf8');
                     } else {
+                        const selfsigned = require('selfsigned');
                         const attrs = [{ name: 'commonName', value: this.options.host }];
                         const pems = selfsigned.generate(attrs, { days: 365 });
                         options.cert = pems.cert;
