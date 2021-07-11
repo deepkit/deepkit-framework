@@ -1,7 +1,6 @@
 import { test } from '@jest/globals';
-import { activeRecordTests, aggregateTest, bookstoreTests, companyTests, executeTest, softDeleteTests, usersTests } from '@deepkit/orm-integration';
+import { activeRecordTests, aggregateTest, bookstoreTests, companyTests, executeTest, softDeleteTests, usersTests, variousTests } from '@deepkit/orm-integration';
 import { databaseFactory } from './factory';
-import { variousTests } from '../../orm-integration/src/various';
 
 for (const i in companyTests) {
     test(i, executeTest(companyTests[i], databaseFactory));
