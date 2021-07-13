@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { http, HttpKernel, JSONResponse, RouteParameterResolverContext, RouteParameterResolverTag } from '@deepkit/http';
+import { http, HttpKernel, JSONResponse, RouteParameterResolverContext } from '@deepkit/http';
 import { Application } from '../src/application';
 
 test('router parameters', async () => {
@@ -46,6 +46,14 @@ test('router parameterResolver', async () => {
         }
     }
 
+    class MyRouteParameterResolver {
+        resolve(context: RouteParameterResolverContext): any | Promise<any> {
+            if (!context.parameters.username) throw new Error('No :username specified');
+            return new User(context.parameters.username);
+        }
+    }
+
+    @http.resolve(User, MyRouteParameterResolver)
     class Controller {
         @http.GET('user/:username')
         route1(user: User) {
@@ -58,15 +66,9 @@ test('router parameterResolver', async () => {
         }
     }
 
-    class MyRouteParameterResolver {
-        resolve(context: RouteParameterResolverContext): any | Promise<any> {
-            if (!context.parameters.username) throw new Error('No :username specified');
-            return new User(context.parameters.username);
-        }
-    }
 
     const app = Application.create({
-        providers: [RouteParameterResolverTag.provide(MyRouteParameterResolver)],
+        providers: [MyRouteParameterResolver],
         controllers: [Controller],
     });
     const httpHandler = app.get(HttpKernel);
