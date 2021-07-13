@@ -71,28 +71,20 @@ export class Progress extends BehaviorSubject<number> {
     }
 }
 
-/**
- * This class acts as a layer between kernel/client and a connection writer.
- * It automatically chunks long messages into multiple smaller one using the RpcType.Chunks type.
- * It keeps track of the back-pressure and sends only when the pressure is not too big.
- *
- * It automatically saves big buffer to the file system and streams data from there to not
- * block valuable memory.
- */
-export class RpcMessageWriter implements RpcConnectionWriter {
-    protected chunkId = 0;
-
+export class RpcMessageWriterOptions {
     /**
      * Stores big buffers to the file system and stream it from there.
      * In bytes.
+     * note: not implemented yet
      */
-    public cacheOnFileSystemWhenSizeIsAtLeast: number = 1_000_000;
+    public cacheOnFileSystemWhenSizeIsAtLeast: number = 100_000_000;
 
     /**
      * When back-pressure is bigger than this value, we wait with sending new data.
      * In bytes.
+     * note: not implemented yet
      */
-    public stepBackWhenBackPressureBiggerThan: number = 500_000;
+    public stepBackWhenBackPressureBiggerThan: number = 5_000_000;
 
     /**
      * Chunk size.
@@ -100,9 +92,24 @@ export class RpcMessageWriter implements RpcConnectionWriter {
      */
     public chunkSize: number = 100_000;
 
+}
+
+/**
+ * This class acts as a layer between kernel/client and a connection writer.
+ * It automatically chunks long messages into multiple smaller one using the RpcType.Chunks type.
+ *
+ * todo:
+ * It keeps track of the back-pressure and sends only when the pressure is not too big.
+ * It automatically saves big buffer to the file system and streams data from there to not
+ * block valuable memory.
+ */
+export class RpcMessageWriter implements RpcConnectionWriter {
+    protected chunkId = 0;
+
     constructor(
         protected writer: RpcConnectionWriter,
         protected reader: RpcMessageReader,
+        protected options: RpcMessageWriterOptions
     ) {
     }
 
@@ -115,14 +122,14 @@ export class RpcMessageWriter implements RpcConnectionWriter {
     }
 
     async writeFull(buffer: Uint8Array, progress?: SingleProgress): Promise<void> {
-        if (buffer.byteLength >= this.chunkSize) {
+        if (buffer.byteLength >= this.options.chunkSize) {
             //split up
             const chunkId = this.chunkId++;
             const message = readRpcMessage(buffer); //we need the original message-id, so the chunks are correctly assigned in Progress tracker
             let offset = 0;
             while (offset < buffer.byteLength) {
                 //todo: check back-pressure and wait if necessary
-                const slice = buffer.slice(offset, offset + this.chunkSize);
+                const slice = buffer.slice(offset, offset + this.options.chunkSize);
                 const chunkMessage = createRpcMessage(message.id, RpcTypes.Chunk, rpcChunk, {
                     id: chunkId,
                     total: buffer.byteLength,

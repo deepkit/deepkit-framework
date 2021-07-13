@@ -14,7 +14,7 @@ import { BehaviorSubject, Subject } from 'rxjs';
 import { ControllerDefinition, rpcAuthenticate, rpcClientId, rpcPeerDeregister, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model';
 import { createRpcMessage, createRpcMessagePeer, ErroredRpcMessage, RpcMessage, RpcMessageReader, RpcMessageRouteType } from '../protocol';
 import { RpcKernel, RpcKernelConnection } from '../server/kernel';
-import { ClientProgress, RpcMessageWriter, SingleProgress } from '../writer';
+import { ClientProgress, RpcMessageWriter, RpcMessageWriterOptions, SingleProgress } from '../writer';
 import { RpcActionClient, RpcControllerState } from './action';
 import { RpcMessageSubject } from './message-subject';
 
@@ -92,6 +92,7 @@ export class RpcClientTransporter {
 
     protected connected = false;
     protected writer?: RpcMessageWriter;
+    public writerOptions: RpcMessageWriterOptions = new RpcMessageWriterOptions;
 
     public id?: Uint8Array;
 
@@ -204,7 +205,7 @@ export class RpcClientTransporter {
                             },
                             clientAddress: transport.clientAddress ? () => transport.clientAddress!() : undefined,
                             bufferedAmount: transport.bufferedAmount ? () => transport.bufferedAmount!() : undefined,
-                        }, this.reader);
+                        }, this.reader, this.writerOptions);
 
                         this.connected = false;
                         this.connectionTries = 0;

@@ -1,7 +1,7 @@
 import { t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { Progress, RpcMessageWriter } from '../src/writer';
+import { Progress, RpcMessageWriter, RpcMessageWriterOptions } from '../src/writer';
 import { DirectClient } from '../src/client/client-direct';
 import { rpc } from '../src/decorators';
 import {
@@ -396,7 +396,7 @@ test('message chunks', async () => {
             reader.feed(b); //echo back
         },
         close() {}
-    }, reader);
+    }, reader, new RpcMessageWriterOptions);
 
     const message = createRpcMessage(2, RpcTypes.ResponseActionSimple, schema, { v: bigString });
     await writer.writeFull(message);
@@ -432,7 +432,7 @@ test('message progress', async () => {
         },
         close() {
         }
-    }, reader);
+    }, reader, new RpcMessageWriterOptions);
 
     const message = createRpcMessage(2, RpcTypes.ResponseActionSimple, schema, { v: bigString });
     const progress = new Progress();

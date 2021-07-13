@@ -26,7 +26,7 @@ import {
     RpcMessageReader,
     RpcMessageRouteType
 } from '../protocol';
-import { RpcMessageWriter } from '../writer';
+import { RpcMessageWriter, RpcMessageWriterOptions } from '../writer';
 import { RpcServerAction } from './action';
 import { RpcKernelSecurity, SessionState } from './security';
 import { RpcActionClient, RpcControllerState } from '../client/action';
@@ -184,7 +184,9 @@ export abstract class RpcKernelBaseConnection {
     protected id: Uint8Array = writeUuid(createBuffer(16));
 
     protected replies = new Map<number, ((message: RpcMessage) => void)>();
-    public writer: RpcMessageWriter = new RpcMessageWriter(this.transportWriter, this.reader);
+    public writerOptions: RpcMessageWriterOptions = new RpcMessageWriterOptions;
+
+    public writer: RpcMessageWriter = new RpcMessageWriter(this.transportWriter, this.reader, this.writerOptions);
 
     protected timeoutTimers: any[] = [];
     public readonly onClose: Promise<void>;
