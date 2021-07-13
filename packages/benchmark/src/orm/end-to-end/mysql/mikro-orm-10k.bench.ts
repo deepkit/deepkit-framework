@@ -63,8 +63,9 @@ export async function main() {
         });
 
         await bench.runAsyncFix(10, 'fetch', async () => {
-            orm.em.clear();
-            await orm.em.find(MikroModel, {});
+            await orm.em.find(MikroModel, {}, {
+                disableIdentityMap: true
+            });
         });
 
         const dbItems = await orm.em.find(MikroModel, {});

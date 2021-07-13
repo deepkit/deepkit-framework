@@ -54,11 +54,11 @@ export async function main() {
             await session.commit();
         });
 
-        await bench.runAsyncFix(10, 'fetch', async () => {
+        await bench.runAsyncFix(100, 'fetch', async () => {
             await database.query(DeepkitModel).disableChangeDetection().find();
         });
 
-        await bench.runAsyncFix(10, 'fetch-1', async () => {
+        await bench.runAsyncFix(100, 'fetch-1', async () => {
             await database.query(DeepkitModel).disableChangeDetection().findOne();
         });
 
