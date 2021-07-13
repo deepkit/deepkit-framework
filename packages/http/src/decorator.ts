@@ -110,7 +110,7 @@ export class HttpDecorator {
         this.t.groups.push(...group);
     }
 
-    resolve(classType: ClassType, resolver: ClassType<RouteParameterResolver>) {
+    resolve(classType: ClassType | string | any, resolver: ClassType<RouteParameterResolver>) {
         this.t.resolverForToken.set(classType, resolver);
     }
 
@@ -229,7 +229,7 @@ export class HttpActionDecorator {
         this.t.throws.push({ errorType, message });
     }
 
-    resolve(classType: ClassType, resolver: ClassType<RouteParameterResolver>) {
+    resolve(classType: ClassType | string | any, resolver: ClassType<RouteParameterResolver>) {
         this.t.resolverForToken.set(classType, resolver);
     }
 
