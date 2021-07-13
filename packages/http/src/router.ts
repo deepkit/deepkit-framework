@@ -27,7 +27,7 @@ import { IncomingMessage } from 'http';
 import querystring from 'querystring';
 import { httpClass } from './decorator';
 import { HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters } from './model';
-import { BasicInjector, injectable, NormalizedProvider, Tag, TagProvider, TagRegistry } from '@deepkit/injector';
+import { BasicInjector, injectable, InjectOptions, TagRegistry } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { HttpControllers } from './controllers';
 
@@ -88,6 +88,10 @@ export interface RouteControllerAction {
     methodName: string;
 }
 
+function getRouterControllerActionName(action: RouteControllerAction): string {
+    return `${getClassName(action.controller)}.${action.methodName}`;
+}
+
 export interface RouteParameterConfig {
     type?: 'body' | 'query';
     /**
@@ -114,6 +118,10 @@ export class RouteConfig {
 
     public serializationOptions?: JitConverterOptions;
     public serializer?: Serializer;
+
+    resolverForToken: Map<any, ClassType> = new Map();
+
+    resolverForParameterName: Map<string, ClassType> = new Map();
 
     /**
      * An arbitrary data container the user can use to store app specific settings/values.
@@ -278,9 +286,10 @@ export interface RouteParameterResolver {
 }
 
 export interface RouteParameterResolverContext {
-    classType: ClassType;
+    token: ClassType | string | symbol | any;
     route: RouteConfig;
     request: HttpRequest;
+
     /**
      * The parameter name (variable name).
      */
@@ -296,29 +305,12 @@ export interface RouteParameterResolverContext {
     parameters: HttpRequestResolvedParameters;
 }
 
-export class ParameterResolverTagProvider extends TagProvider<any> {
-    public classTypes: ClassType[] = [];
-
-    forClassType(...classTypes: ClassType[]): this {
-        this.classTypes = classTypes;
-        return this;
-    }
-}
-
-export class RouteParameterResolverTag extends Tag<RouteParameterResolver, ParameterResolverTagProvider> {
-    protected createTagProvider(provider: NormalizedProvider<any>): ParameterResolverTagProvider {
-        return new ParameterResolverTagProvider(provider, this);
-    }
-}
-
 @injectable()
 export class Router {
     protected fn?: (request: HttpRequest) => ResolvedController | undefined;
     protected resolveFn?: (name: string, parameters: { [name: string]: any }) => string;
 
     protected routes: RouteConfig[] = [];
-
-    protected parameterResolverTags: TagProvider<RouteParameterResolverTag>[] = [];
 
     //todo, move some settings to KernelConfig
     protected form = formidable({
@@ -332,8 +324,6 @@ export class Router {
         private logger: Logger,
         tagRegistry: TagRegistry,
     ) {
-        this.parameterResolverTags = tagRegistry.resolve(RouteParameterResolverTag);
-
         for (const controller of controllers.controllers) this.addRouteForController(controller);
     }
 
@@ -405,44 +395,57 @@ export class Router {
                     }
                 }
 
-                if (parameter.property.type === 'class') {
-                    const classType = parameter.property.getResolvedClassType();
-                    const classTypeVar = compiler.reserveVariable('classType', classType);
-                    const parameterResolverFoundVar = compiler.reserveVariable('parameterResolverFound', false);
+                const injectorOptions = parameter.property.data['deepkit/inject'] as InjectOptions | undefined
 
-                    setParameters.push(`${parameterResolverFoundVar} = false;`);
+                if (!parameter.isPartOfPath() && parameter.property.type !== 'class' && (!injectorOptions || !injectorOptions.token)) {
+                    throw new Error(
+                        `Route parameter '${parameter.property.name}' of ${getRouterControllerActionName(routeConfig.action)} is not a ClassType nor is a @inject(T) set. It can not be resolved like that.` +
+                        `If its a query parameter use '@http.query() ${parameter.property.name}' or if its a body '@http.body() ${parameter.property.name}'`
+                    );
+                }
 
-                    //make sure all parameter values from the path are available
-                    if (this.parameterResolverTags.length && !setParametersFromPath) {
-                        for (const i in parsedRoute.pathParameterNames) {
-                            setParametersFromPath += `parameters.${i} = _match[${1 + parsedRoute.pathParameterNames[i]}];`;
-                        }
+                const injectorToken = injectorOptions && injectorOptions.token ? injectorOptions.token : (parameter.property.type === 'class' ? parameter.property.getResolvedClassType() : undefined);
+                const injectorTokenVar = compiler.reserveVariable('classType', injectorToken);
+                const parameterResolverFoundVar = compiler.reserveVariable('parameterResolverFound', false);
+
+                setParameters.push(`${parameterResolverFoundVar} = false;`);
+
+                const resolver = routeConfig.resolverForParameterName.get(parameter.getName()) || routeConfig.resolverForToken.get(injectorToken);
+
+                //make sure all parameter values from the path are available
+                if (resolver && !setParametersFromPath) {
+                    for (const i in parsedRoute.pathParameterNames) {
+                        setParametersFromPath += `parameters.${i} = _match[${1 + parsedRoute.pathParameterNames[i]}];`;
                     }
+                }
 
-                    for (const resolverTag of this.parameterResolverTags) {
-                        if (resolverTag instanceof ParameterResolverTagProvider && resolverTag.classTypes.length && !resolverTag.classTypes.includes(classType)) continue;
+                if (resolver) {
+                    const resolverProvideTokenVar = compiler.reserveVariable('resolverProvideToken', resolver);
+                    requiresAsyncParameters = true;
+                    const instance = compiler.reserveVariable('resolverInstance');
+                    setParameters.push(`
+                    //resolver ${getClassName(resolver)} for ${parameter.getName()}
+                    ${instance} = _injector.get(${resolverProvideTokenVar});
+                    if (!${parameterResolverFoundVar}) {
+                        ${parameterResolverFoundVar} = true;
+                        parameters.${parameter.property.name} = await ${instance}.resolve({
+                            token: ${injectorToken},
+                            routeConfig: ${routeConfigVar},
+                            request: request,
+                            name: ${JSON.stringify(parameter.property.name)},
+                            value: parameters.${parameter.property.name},
+                            query: _query,
+                            parameters: parameters
+                        });
+                    }`);
+                }
 
-                        const resolverProvideTokenVar = compiler.reserveVariable('resolverProvideToken', resolverTag.provider.provide);
-                        requiresAsyncParameters = true;
-                        const instance = compiler.reserveVariable('resolverInstance');
-                        setParameters.push(`
-                            //resolver ${getClassName(resolverTag.provider.provide)} for ${parameter.getName()}
-                            ${instance} = _injector.get(${resolverProvideTokenVar});
-                            if (!${parameterResolverFoundVar}) {
-                                ${parameterResolverFoundVar} = true;
-                                parameters.${parameter.property.name} = await ${instance}.resolve({
-                                    classType: ${classTypeVar},
-                                    routeConfig: ${routeConfigVar},
-                                    request: request,
-                                    name: ${JSON.stringify(parameter.property.name)},
-                                    value: parameters.${parameter.property.name},
-                                    query: _query,
-                                    parameters: parameters
-                                });
-                            }`);
+                if (!parameter.isPartOfPath()) {
+                    let injectorGet = `parameters.${parameter.property.name} = _injector.get(${injectorTokenVar});`
+                    if (injectorOptions && injectorOptions.optional) {
+                        injectorGet = `try {parameters.${parameter.property.name} = _injector.get(${injectorTokenVar}); } catch (e) {}`;
                     }
-
-                    setParameters.push(`if (!${parameterResolverFoundVar}) parameters.${parameter.property.name} = _injector.get(${classTypeVar});`);
+                    setParameters.push(`if (!${parameterResolverFoundVar}) ${injectorGet}`);
                 }
             }
         }
@@ -544,8 +547,15 @@ export class Router {
             routeConfig.groups = action.groups;
             routeConfig.data = new Map(action.data);
             routeConfig.baseUrl = data.baseUrl;
+            routeConfig.resolverForToken = new Map(data.resolverForToken);
+            for (const item of action.resolverForToken) routeConfig.resolverForToken.set(...item);
+
+            routeConfig.resolverForParameterName = new Map(data.resolverForParameterName);
+            for (const item of action.resolverForParameterName) routeConfig.resolverForParameterName.set(...item);
+
             routeConfig.parameters = { ...action.parameters };
             routeConfig.serializationOptions = action.serializationOptions;
+            routeConfig.serializer = action.serializer;
             routeConfig.serializer = action.serializer;
             if (schema.hasMethod(action.methodName)) routeConfig.returnSchema = schema.getMethod(action.methodName);
             this.addRoute(routeConfig);

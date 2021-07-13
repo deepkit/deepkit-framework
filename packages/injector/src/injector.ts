@@ -126,7 +126,7 @@ export interface InjectDecorator {
     readonly root: this;
 }
 
-type InjectOptions = {
+export type InjectOptions = {
     token: any | ForwardRef<any>;
     optional: boolean;
     root: boolean;

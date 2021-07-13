@@ -335,10 +335,16 @@ export class HttpListener {
         if (event.sent) return;
         if (event.hasNext()) return;
 
-        const resolved = this.router.resolveRequest(event.request);
-        if (resolved) {
-            event.request.uploadedFiles = resolved.uploadedFiles;
-            event.routeFound(resolved.routeConfig, resolved.parameters);
+        try {
+            const resolved = this.router.resolveRequest(event.request);
+
+            if (resolved) {
+                event.request.uploadedFiles = resolved.uploadedFiles;
+                event.routeFound(resolved.routeConfig, resolved.parameters);
+            }
+        } catch (error) {
+            this.logger.error('Could not resolve request', error);
+            event.notFound();
         }
     }
 

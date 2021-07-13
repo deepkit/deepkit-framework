@@ -20,7 +20,7 @@ export class HttpKernel {
 
     }
 
-    async handleRequestFor(method: string, url: string, jsonBody?: any): Promise<any> {
+    async handleRequestFor(method: string, url: string, jsonBody?: any, header?: {[name: string]: string}): Promise<any> {
         const body = Buffer.from(jsonBody ? JSON.stringify(jsonBody) : '');
 
         const request = new (class extends HttpRequest {
@@ -31,6 +31,7 @@ export class HttpKernel {
             headers = {
                 'content-type': 'application/json',
                 'content-length': String(body.byteLength),
+                ...header
             };
 
             done = false;

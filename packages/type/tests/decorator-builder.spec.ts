@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { createClassDecoratorContext, createFreeDecoratorContext, createPropertyDecoratorContext, isDecoratorContext, mergeDecorator } from '../src/decorator-builder';
+import { createClassDecoratorContext, createFreeDecoratorContext, createPropertyDecoratorContext, DualDecorator, isDecoratorContext, mergeDecorator } from '../src/decorator-builder';
 import { entity, getClassSchema, t } from '../index';
 
 test('without host', () => {
@@ -23,18 +23,18 @@ test('without host', () => {
 
     {
         const c2 = dec1.name('Peter')();
-        expect(c2).toBeInstanceOf(Dec1Model)
+        expect(c2).toBeInstanceOf(Dec1Model);
         expect(c2.name).toBe('Peter');
     }
 
     {
         const c2 = dec1();
-        expect(c2).toBeInstanceOf(Dec1Model)
+        expect(c2).toBeInstanceOf(Dec1Model);
         expect(c2.name).toBe('');
     }
 });
 
-test('collapsing correcly', () => {
+test('collapsing correctly', () => {
     class ArgDefinition {
         optional: boolean = false;
         default?: any;
@@ -64,13 +64,13 @@ test('collapsing correcly', () => {
 
     {
         const c2 = dec1.optional.default('Peter')();
-        expect(c2).toBeInstanceOf(ArgDefinition)
+        expect(c2).toBeInstanceOf(ArgDefinition);
         expect(c2.default).toBe('Peter');
     }
 
     {
         const c2 = dec1.optional();
-        expect(c2).toBeInstanceOf(ArgDefinition)
+        expect(c2).toBeInstanceOf(ArgDefinition);
         expect(c2.default).toBe(undefined);
     }
 });
@@ -99,12 +99,12 @@ test('inheritance', () => {
 
     {
         const r = dec1.methodB()();
-        expect(r).toBeInstanceOf(Dec1Model)
+        expect(r).toBeInstanceOf(Dec1Model);
     }
 
     {
         const r = dec1.methodA()();
-        expect(r).toBeInstanceOf(Dec1Model)
+        expect(r).toBeInstanceOf(Dec1Model);
     }
 });
 
@@ -153,6 +153,82 @@ test('merge', () => {
     expect(dec1._fetch(Peter2)).toBe(undefined);
     expect(dec2._fetch(Peter)).toBe(undefined);
     expect(dec2._fetch(Peter2)!.title).toBe('myTitle');
+});
+
+test('dual decorator', () => {
+    const dec1 = createClassDecoratorContext(
+        class {
+            t = new class {
+                name = '';
+                resolver: string[] = [];
+            };
+
+            resolve(name: string): DualDecorator {
+                this.t.resolver.push(name);
+            };
+
+            controller(name: string) {
+                this.t.name = name;
+            };
+        }
+    );
+
+    const dec2 = createPropertyDecoratorContext(
+        class {
+            t = new class {
+                name = '';
+                resolver: string[] = [];
+            };
+
+            name(name: string) {
+                this.t.name = name;
+            };
+
+            resolve(name: string): DualDecorator {
+                this.t.resolver.push(name);
+            };
+        }
+    );
+
+    const merged = mergeDecorator(dec1, dec2);
+
+    {
+        @merged.controller('asd').resolve('a').resolve('b')
+        class MyClass {
+            @merged.resolve('c').resolve('d')
+            property!: string;
+        }
+
+        expect(dec1._fetch(MyClass)!.resolver).toEqual(['a', 'b']);
+        expect(dec2._fetch(MyClass, 'property')!.resolver).toEqual(['c', 'd']);
+    }
+
+    {
+        @merged.resolve('a').resolve('b').resolve('2')
+        class MyClass {
+            @merged.resolve('c').resolve('d').resolve('3')
+            property!: string;
+        }
+
+        expect(dec1._fetch(MyClass)!.resolver).toEqual(['a', 'b', '2']);
+        expect(dec2._fetch(MyClass, 'property')!.resolver).toEqual(['c', 'd', '3']);
+    }
+
+    {
+        expect(() => {
+            @merged.name('b')
+            class MyClass {
+            }
+        }).toThrow(`Decorator 'name' can not be used on class MyClass`)
+    }
+    {
+        expect(() => {
+            class MyClass {
+                 @(merged as any).controller('b')
+                 prop!: string;
+            }
+        }).toThrow(`Decorator 'controller' can not be used on class property MyClass.prop`)
+    }
 });
 
 test('basic', () => {

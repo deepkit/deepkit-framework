@@ -19,6 +19,7 @@ import {
     PropertyDecoratorResult,
     Serializer
 } from '@deepkit/type';
+import { RouteParameterResolver } from './router';
 
 export interface ControllerOptions {
     name: string;
@@ -28,6 +29,9 @@ class HttpController {
     baseUrl: string = '';
     protected actions = new Set<HttpAction>();
     groups: string[] = [];
+
+    resolverForToken: Map<any, ClassType> = new Map();
+    resolverForParameterName: Map<string, ClassType> = new Map();
 
     getUrl(action: HttpAction): string {
         return urlJoin('/', this.baseUrl, action.path);
@@ -79,6 +83,9 @@ export class HttpAction {
 
     parameterRegularExpressions: { [name: string]: any } = {};
 
+    resolverForToken: Map<any, ClassType> = new Map();
+    resolverForParameterName: Map<string, ClassType> = new Map();
+
     /**
      * This is only filled when the user used @http.body() for example on an method argument.
      */
@@ -99,8 +106,16 @@ export class HttpDecorator {
         this.t.baseUrl = baseUrl;
     }
 
-    groupAll(...group: string[]) {
+    group(...group: string[]) {
         this.t.groups.push(...group);
+    }
+
+    resolve(classType: ClassType, resolver: ClassType<RouteParameterResolver>) {
+        this.t.resolverForToken.set(classType, resolver);
+    }
+
+    resolveParameter(name: string, resolver: ClassType<RouteParameterResolver>) {
+        this.t.resolverForParameterName.set(name, resolver);
     }
 
     setAction(action: HttpAction) {
@@ -212,6 +227,14 @@ export class HttpActionDecorator {
 
     throws(errorType: ClassType, message?: string) {
         this.t.throws.push({ errorType, message });
+    }
+
+    resolve(classType: ClassType, resolver: ClassType<RouteParameterResolver>) {
+        this.t.resolverForToken.set(classType, resolver);
+    }
+
+    resolveParameter(name: string, resolver: ClassType<RouteParameterResolver>) {
+        this.t.resolverForParameterName.set(name, resolver);
     }
 
     regexp(parameterName: string, regex: any) {

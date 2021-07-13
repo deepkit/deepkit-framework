@@ -1,12 +1,12 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { dotToUrlPath, RouteParameterResolverContext, RouteParameterResolverTag, Router } from '../src/router';
+import { dotToUrlPath, RouteParameterResolverContext, Router } from '../src/router';
 import { http, httpClass } from '../src/decorator';
 import { t } from '@deepkit/type';
 import { HttpListener, httpWorkflow, JSONResponse } from '../src/http';
 import { HttpKernel } from '../src/kernel';
 import { eventDispatcher, EventDispatcher } from '@deepkit/event';
-import { InjectorContext, ProviderWithScope, TagProvider, TagRegistry } from '@deepkit/injector';
+import { inject, InjectorContext, ProviderWithScope, TagProvider, TagRegistry } from '@deepkit/injector';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { HttpRequest } from '../src/model';
 import { ClassType, sleep } from '@deepkit/core';
@@ -136,23 +136,6 @@ test('router parameterResolver', async () => {
         }
     }
 
-    class Controller {
-        @http.GET('user/:username')
-        route1(user: User) {
-            return [user.username];
-        }
-
-        @http.GET('invalid')
-        route2(user: User) {
-            return [user.username];
-        }
-
-        @http.GET('user/:user/group/:group')
-        route3(user: User, group: Group) {
-            return [user.username, group.name];
-        }
-    }
-
     class UserResolver {
         resolve(context: RouteParameterResolverContext): any | Promise<any> {
             const value = context.value || context.parameters.username
@@ -168,7 +151,31 @@ test('router parameterResolver', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([Controller], [RouteParameterResolverTag.provide(UserResolver).forClassType(User), RouteParameterResolverTag.provide(GroupResolver).forClassType(Group)]);
+    @http.resolve(User, UserResolver)
+    class Controller {
+        @http.GET('user/:username')
+        route1(user: User) {
+            return [user.username];
+        }
+
+        @http.GET('invalid')
+        route2(user: User) {
+            return [user.username];
+        }
+
+        @http.GET('user/:user/group/:group').resolve(Group, GroupResolver)
+        route3(user: User, group: Group) {
+            return [user.username, group.name];
+        }
+    }
+
+    const data = httpClass._fetch(Controller)!;
+    expect(data.getActions().size).toBe(3);
+    expect(data.resolverForToken.get(User)).toBe(UserResolver);
+    expect(data.resolverForToken.get(User)).toBe(UserResolver);
+    expect(data.getAction('route3').resolverForToken.get(Group)).toBe(GroupResolver);
+
+    const httpKernel = createHttpKernel([Controller], [UserResolver, GroupResolver]);
 
     expect(await httpKernel.handleRequestFor('GET', '/user/peter')).toEqual(['peter']);
     expect(await httpKernel.handleRequestFor('GET', '/user/peter/group/a')).toEqual(['peter', 'a']);
@@ -244,7 +251,7 @@ test('router groups', async () => {
     }
 
     {
-        @http.groupAll('all')
+        @http.group('all')
         class Controller {
             @http.GET('a').group('a')
             a() {
@@ -265,12 +272,6 @@ test('router groups', async () => {
         expect(httpData.getAction('b').groups).toEqual(['all']);
         expect(httpData.getAction('c').groups).toEqual(['c', 'all']);
     }
-
-    expect(() => {
-        @http.group('all')
-        class ControllerC {
-        }
-    }).toThrow('Property decorators can only be used on class properties');
 });
 
 test('router query', async () => {
@@ -363,6 +364,85 @@ test('hook after serializer', async () => {
     const result = await httpKernel.handleRequestFor('GET', '/');
     expect(result.data).toEqual({ username: 'Peter' });
     expect(result.processingTime).toBeGreaterThanOrEqual(99);
+});
+
+test('invalid route definition', async () => {
+    class Controller {
+        @http.GET()
+        doIt(user: any) {
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    expect(await httpKernel.handleRequestFor('GET', '/')).toEqual("Not found");
+});
+
+
+test('inject request storage ClassType', async () => {
+    class User {
+        constructor(public username: string) {
+        }
+    }
+
+    class Controller {
+        @http.GET()
+        doIt(user: User) {
+            return {isUser: user instanceof User, username: user.username};
+        }
+
+        @http.GET('optional')
+        doItOptional(@inject().optional user?: User) {
+            return {isUser: user instanceof User};
+        }
+    }
+
+    class Listener {
+        @eventDispatcher.listen(httpWorkflow.onAuth)
+        onAuth(event: typeof httpWorkflow.onAuth.event) {
+            if (event.request.headers.authorization === 'yes') {
+                event.request.store.user = new User('bar');
+            }
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [
+        {provide: User, scope: 'http', deps: [HttpRequest], useFactory(request: HttpRequest) {return request.store.user}}
+    ], [Listener]);
+
+    expect(await httpKernel.handleRequestFor('GET', '/', undefined, {authorization: 'yes'})).toEqual({isUser: true, username: 'bar'});
+    expect(await httpKernel.handleRequestFor('GET', '/', undefined, {authorization: 'no'})).toEqual("Internal error");
+
+    expect(await httpKernel.handleRequestFor('GET', '/optional', undefined, {authorization: 'no'})).toEqual({isUser: false});
+});
+
+
+test('inject request storage @inject', async () => {
+    class User {
+        constructor(public username: string) {
+        }
+    }
+
+    class Controller {
+        @http.GET()
+        doIt(@inject('user') user: any) {
+            return {isUser: user instanceof User, username: user.username};
+        }
+    }
+
+    class Listener {
+        @eventDispatcher.listen(httpWorkflow.onAuth)
+        onAuth(event: typeof httpWorkflow.onAuth.event) {
+            event.request.store.user = new User('bar');
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [
+        {provide: 'user', scope: 'http', deps: [HttpRequest], useFactory(request: HttpRequest) {return request.store.user}}
+    ], [Listener]);
+
+    const result = await httpKernel.handleRequestFor('GET', '/');
+    expect(result.isUser).toBe(true);
+    expect(result.username).toBe('bar');
 });
 
 test('custom request handling', async () => {
