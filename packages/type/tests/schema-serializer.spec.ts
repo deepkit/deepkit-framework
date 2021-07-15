@@ -47,6 +47,7 @@ test('serialize types', async () => {
     expect(serializedSchema[1].properties[2].name).toBe('status');
     expect(serializedSchema[1].properties[2].type).toBe('enum');
     expect(serializedSchema[1].properties[2].classType).toBeUndefined();
+    expect(serializedSchema[1].properties[2].classTypeProperties).toBeUndefined();
     expect(serializedSchema[1].properties[2].enum).not.toBeUndefined();
 
     const schemas = deserializeSchemas(serializedSchema, 'prefix');
