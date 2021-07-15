@@ -38,11 +38,11 @@ export class FindCommand<T extends ClassSchema | ClassType> extends Command {
     }
 
     async execute(config): Promise<ExtractClassType<T>[]> {
-        const schema = getClassSchema(this.classSchema);
+        let classSchema = getClassSchema(this.classSchema);
 
         const cmd: InstanceType<typeof findSchema.classType> = {
-            find: schema.collectionName || schema.name || 'unknown',
-            $db: schema.databaseSchemaName || config.defaultDb || 'admin',
+            find: classSchema.collectionName || classSchema.name || 'unknown',
+            $db: classSchema.databaseSchemaName || config.defaultDb || 'admin',
             filter: this.filter,
             limit: this.limit,
             skip: this.skip,
@@ -52,15 +52,22 @@ export class FindCommand<T extends ClassSchema | ClassType> extends Command {
         if (this.projection) cmd.projection = this.projection;
         if (this.sort) cmd.sort = this.sort;
 
-        const jit = schema.jit;
+        const jit = classSchema.jit;
         let specialisedResponse = this.projection ? jit.mdbFindPartial : jit.mdbFind;
         if (!specialisedResponse) {
+            let itemType = this.projection ? t.partial(classSchema) : classSchema;
+
+            const singleTableInheritanceMap = classSchema.getAssignedSingleTableInheritanceSubClassesByIdentifier();
+            if (singleTableInheritanceMap) {
+                itemType = this.projection ? t.any : t.union(...Array.from(Object.values(singleTableInheritanceMap)));
+            }
+
             if (this.projection) {
                 specialisedResponse = t.extendSchema(BaseResponse, {
                     cursor: {
                         id: t.number,
-                        firstBatch: t.array(t.partial(schema)),
-                        nextBatch: t.array(t.partial(schema)),
+                        firstBatch: t.array(itemType),
+                        nextBatch: t.array(itemType),
                     },
                 });
                 jit.mdbFindPartial = specialisedResponse;
@@ -68,8 +75,8 @@ export class FindCommand<T extends ClassSchema | ClassType> extends Command {
                 specialisedResponse = t.extendSchema(BaseResponse, {
                     cursor: {
                         id: t.number,
-                        firstBatch: t.array(schema),
-                        nextBatch: t.array(schema),
+                        firstBatch: t.array(itemType),
+                        nextBatch: t.array(itemType),
                     },
                 });
                 jit.mdbFind = specialisedResponse;

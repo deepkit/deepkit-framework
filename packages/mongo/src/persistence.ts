@@ -85,6 +85,9 @@ export class MongoPersistence extends DatabasePersistence {
             const converted = scopeSerializer.serialize(item);
             insert.push(converted);
         }
+
+        if (this.session.logger.active) this.session.logger.log('insert', classSchema.getClassName(), items.length);
+
         await this.client.execute(new InsertCommand(classSchema, insert));
     }
 
@@ -132,6 +135,8 @@ export class MongoPersistence extends DatabasePersistence {
                 multi: false,
             });
         }
+
+        if (this.session.logger.active) this.session.logger.log('update', classSchema.getClassName(), updates.length);
 
         const res = await this.client.execute(new UpdateCommand(classSchema, updates));
 
