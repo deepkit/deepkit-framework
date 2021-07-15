@@ -16,6 +16,7 @@ import {
     getPrimaryKeyHashGenerator,
     getReferenceInfo,
     getXToClassFunction,
+    isReference,
     isReferenceHydrated,
     markAsHydrated,
     PropertySchema,
@@ -164,7 +165,11 @@ export class Formatter {
             const discriminant = classSchema.getSingleTableInheritanceDiscriminant();
             const subClassSchema = singleTableInheritanceMap[dbRecord[discriminant.name]];
             if (!subClassSchema) {
-                throw new Error(`${classSchema.getClassName()} has no sub class with discriminator value ${JSON.stringify(dbRecord[discriminant.name])} for field ${discriminant.name}`);
+                const availableValues = Array.from(Object.keys(singleTableInheritanceMap));
+                throw new Error(
+                    `${classSchema.getClassName()} has no sub class with discriminator value ${JSON.stringify(dbRecord[discriminant.name])} for field ${discriminant.name}.` +
+                    `Available discriminator values ${availableValues.map(v => JSON.stringify(v)).join(',')}`
+                );
             }
             classSchema = subClassSchema;
         }
@@ -174,8 +179,15 @@ export class Formatter {
             pkHash = classSchema === this.rootClassSchema ? this.rootPkHash(dbRecord) : getPrimaryKeyHashGenerator(classSchema, this.serializer)(dbRecord);
             pool = this.getInstancePoolForClass(classSchema.classType);
 
-            if (pool.has(pkHash)) {
-                return pool.get(pkHash);
+            const found = pool.get(pkHash);
+            //When in a record is a reference found, it will be put into the pool.
+            //If a subsequent record has the same PK as that reference, it would return that
+            //reference instead of the full record - which is wrong. This makes sure
+            //that references are excluded from the pool. However, that also breaks for
+            //references the identity. We could improve that with a more complex resolution algorithm,
+            //that involves changing already populated objects.
+            if (found && !isReference(found)) {
+                return found;
             }
         }
 
