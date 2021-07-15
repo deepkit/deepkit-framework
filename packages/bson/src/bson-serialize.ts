@@ -232,8 +232,8 @@ function getPropertySizer(schema: ClassSchema, compiler: CompilerContext, proper
         compiler.context.set('ObjectIdSymbol', ObjectIdSymbol);
 
         let primarKeyHandling = '';
-        const isReference = property.isReference || (property.parent && property.parent.isReference);
-        if (isReference) {
+        const isReferenceCheck = property.isReference || (property.parent && property.parent.isReference);
+        if (isReferenceCheck) {
             primarKeyHandling = getPropertySizer(schema, compiler, forwardSchema.getPrimaryField(), accessor, jitStack);
         }
 
@@ -246,7 +246,7 @@ function getPropertySizer(schema: ClassSchema, compiler: CompilerContext, proper
             if (${accessor} !== ${unpopulatedSymbolVar}) {
                 if (isObject(${accessor}) && !${accessor}.hasOwnProperty(UUIDSymbol) && !${accessor}.hasOwnProperty(ObjectIdSymbol) && ${circularCheck}) {
                     size += ${sizer}.fn(${accessor}, _stack);
-                } else if (${isReference})  {
+                } else if (${isReferenceCheck})  {
                     ${primarKeyHandling}
                 }
             }
@@ -315,7 +315,7 @@ function getPropertySizer(schema: ClassSchema, compiler: CompilerContext, proper
     }
 
     return `
-    if (${accessor} === undefined) {
+    if (${accessor} === undefined || ${accessor} === unpopulatedSymbol) {
         ${writeDefaultValue}
     } else if (${accessor} === null) {
         if (${property.isNullable}) {
@@ -336,7 +336,6 @@ export function createBSONSizer(schema: ClassSchema, jitStack: JitStack = new Ji
     const compiler = new CompilerContext;
     let getSizeCode: string[] = [];
     const prepared = jitStack.prepare(schema);
-
 
     for (const property of schema.getProperties()) {
         //todo, support non-ascii names
@@ -377,6 +376,7 @@ export function createBSONSizer(schema: ClassSchema, jitStack: JitStack = new Ji
     }
 
     compiler.context.set('_global', getGlobalStore());
+    compiler.context.set('unpopulatedSymbol', unpopulatedSymbol);
     compiler.context.set('UnpopulatedCheck', UnpopulatedCheck);
     compiler.context.set('seekElementSize', seekElementSize);
 
@@ -987,7 +987,7 @@ function getPropertySerializerCode(
     // Since mongodb does not support undefined as column type (or better it shouldn't be used that way)
     // we transport fields that are `undefined` and isOptional as `null`, and decode this `null` back to `undefined`.
     return `
-    if (${accessor} === undefined) {
+    if (${accessor} === undefined || ${accessor} === unpopulatedSymbol) {
         ${writeDefaultValue}
     } else if (${accessor} === null) {
         if (${property.isNullable}) {
@@ -1008,6 +1008,7 @@ function createBSONSerialize(schema: ClassSchema, jitStack: JitStack = new JitSt
     const prepared = jitStack.prepare(schema);
     compiler.context.set('_global', getGlobalStore());
     compiler.context.set('UnpopulatedCheck', UnpopulatedCheck);
+    compiler.context.set('unpopulatedSymbol', unpopulatedSymbol);
     compiler.context.set('_sizer', getBSONSizer(schema));
     compiler.context.set('Writer', Writer);
     compiler.context.set('seekElementSize', seekElementSize);
