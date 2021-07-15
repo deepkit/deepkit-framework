@@ -56,8 +56,8 @@ test('test entity collection reactive find', async () => {
         @t version: number = 0;
 
         constructor(
-            @t.reference({onDelete: 'CASCADE'}) public team: Team,
-            @t.reference({onDelete: 'CASCADE'}) public user: User,
+            @t.reference() public team: Team,
+            @t.reference() public user: User,
         ) {
         }
     }
