@@ -11,7 +11,7 @@
 import { each, getClassName } from '@deepkit/core';
 import { RpcClient } from '@deepkit/rpc';
 import cluster from 'cluster';
-import { httpClass, HttpControllers } from '@deepkit/http';
+import { HttpControllers, Router } from '@deepkit/http';
 import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
 import { injectable, InjectorContext } from '@deepkit/injector';
 import { kernelConfig } from './kernel.config';
@@ -55,6 +55,7 @@ export class ApplicationServerListener {
         protected logger: Logger,
         protected rpcControllers: RpcControllers,
         protected httpControllers: HttpControllers,
+        protected router: Router,
         protected config: ApplicationServerConfig,
     ) {
     }
@@ -65,12 +66,18 @@ export class ApplicationServerListener {
             this.logger.log('RPC', `<yellow>${getClassName(controller)}</yellow>`, `<grey>${name}</grey>`);
         }
 
-        for (const controller of this.httpControllers.controllers.values()) {
-            const httpConfig = httpClass._fetch(controller)!;
-            this.logger.log('HTTP', `<yellow>${getClassName(controller)}</yellow>`);
+        const routes = this.router.getRoutes();
 
-            for (const action of httpConfig.getActions()) {
-                this.logger.log(`    ${action.httpMethod} ${httpConfig.getUrl(action)} <grey>${action.methodName}</grey>`);
+        if (routes.length) {
+            this.logger.log(`<green>${routes.length}</green> HTTP routes`);
+
+            let lastController: any = undefined;
+            for (const route of routes) {
+                if (lastController !== route.action.controller) {
+                    lastController = route.action.controller;
+                    this.logger.log(`HTTP Controller <green>${getClassName(lastController)}</green>`);
+                }
+                this.logger.log(`  <green>${route.httpMethod}</green> <yellow>${route.getFullPath()}</yellow>`);
             }
         }
 
