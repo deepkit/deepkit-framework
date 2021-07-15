@@ -52,7 +52,7 @@ export function nodeBufferToTypedArray<K>(buf: Buffer, type: TypedArrayClassType
  * using `Buffer.from` by the `buffer.js` library.
  */
 function base64ToUint8ArrayAtoB(base64: string): Uint8Array {
-    const raw = window.atob(base64);
+    const raw = atob(base64);
     const rawLength = raw.length;
     const array = new Uint8Array(new ArrayBuffer(rawLength));
 
