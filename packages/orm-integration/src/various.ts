@@ -117,7 +117,7 @@ export const variousTests = {
     async testSelfReference(databaseFactory: DatabaseFactory) {
         @entity.name('explorer/block').collectionName('blocks')
         class ExplorerBlock {
-            @t.primary.mongoId public _id!: string;
+            @t.primary.autoIncrement public id: number = 0;
 
             @t level: number = 0;
             @t transactions: number = 0;
@@ -147,7 +147,7 @@ export const variousTests = {
 
         expect(await database.query(ExplorerBlock).count()).toBe(10);
 
-        const blocks = await database.query(ExplorerBlock).sort({_id: 'desc'}).find();
+        const blocks = await database.query(ExplorerBlock).sort({id: 'desc'}).find();
 
         for (const block of blocks) {
             expect(isReference(block)).toBe(false);

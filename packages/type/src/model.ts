@@ -297,8 +297,8 @@ export class PropertySchema {
     isReference: boolean = false;
 
     referenceOptions: { onDelete: ReferenceActions, onUpdate: ReferenceActions } = {
-        onDelete: 'SET NULL',
-        onUpdate: 'SET NULL',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
     };
 
     /**
