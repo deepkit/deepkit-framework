@@ -248,3 +248,33 @@ test('connect disconnect', async () => {
     await controller.test();
     expect(client.transporter.isConnected()).toBe(true);
 });
+
+
+test('types', async () => {
+    @entity.name('types/model')
+    class Model {
+
+    }
+
+    @injectable()
+    class Controller {
+        @rpc.action()
+        @t.type({total: t.number, items: t.array(Model)})
+        test(): { total: number, items: Model[] } {
+            return {total: 5, items: [new Model]};
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController('myController', Controller);
+
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    {
+        const res = await controller.test();
+        expect(res.total).toBe(5);
+        expect(res.items.length).toBe(1);
+        expect(res.items[0]).toBeInstanceOf(Model);
+    }
+});

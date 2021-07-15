@@ -8,9 +8,30 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, collectForMicrotask, getClassName, getClassPropertyName, isArray, isPlainObject, isPrototypeOfBase, stringifyValueWithType, toFastProperties } from '@deepkit/core';
+import {
+    ClassType,
+    collectForMicrotask,
+    getClassName,
+    getClassPropertyName,
+    isArray,
+    isPlainObject,
+    isPrototypeOfBase,
+    stringifyValueWithType,
+    toFastProperties
+} from '@deepkit/core';
 import { isBehaviorSubject, isSubject } from '@deepkit/core-rxjs';
-import { ClassSchema, createClassSchema, getClassSchema, getXToClassFunction, jitValidate, jsonSerializer, propertyDefinition, PropertySchema, t, ValidationFailedItem } from '@deepkit/type';
+import {
+    ClassSchema,
+    createClassSchema,
+    getClassSchema,
+    getXToClassFunction,
+    jitValidate,
+    jsonSerializer,
+    propertyDefinition,
+    PropertySchema,
+    t,
+    ValidationFailedItem
+} from '@deepkit/type';
 import { isObservable, Observable, Subject, Subscription } from 'rxjs';
 import { Collection, CollectionEvent, CollectionQueryModel, CollectionState, isCollection } from '../collection';
 import { getActionParameters, getActions } from '../decorators';
@@ -452,6 +473,8 @@ export function createNewPropertySchemaIfNecessary(result: any, property: Proper
 }
 
 export function isResultTypeDifferent(result: any, property: PropertySchema): boolean {
+    if (property.typeSet) return false;
+
     if (result === null || result === undefined) return false;
 
     if (property.type === 'number' && (typeof result !== 'number' && typeof result !== 'bigint')) return true;
@@ -464,7 +487,7 @@ export function isResultTypeDifferent(result: any, property: PropertySchema): bo
     if (property.type === 'map' && !isPlainObject(result)) return true;
     if (property.type === 'array' && !isArray(result)) return true;
 
-    if (property.type === 'any' && property.typeSet === false) {
+    if (property.type === 'any' && !property.typeSet) {
         //type is inferred as Promise, Observable, Collection, EntitySubject, so we should try to infer
         //from the result now
         return true;
