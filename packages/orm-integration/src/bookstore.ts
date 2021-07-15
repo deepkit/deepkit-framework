@@ -25,7 +25,7 @@ class Book {
     @t moderation: BookModeration = new BookModeration;
 
     constructor(
-        @t.reference() public author: User,
+        @t.reference({onDelete: 'CASCADE'}) public author: User,
         @t public title: string,
     ) {
     }
@@ -60,8 +60,8 @@ class Review {
     @t.enum(ReviewStatus) status: ReviewStatus = ReviewStatus.published;
 
     constructor(
-        @t.reference() public user: User,
-        @t.reference() public book: Book,
+        @t.reference({onDelete: 'CASCADE'}) public user: User,
+        @t.reference({onDelete: 'CASCADE'}) public book: Book,
     ) {
     }
 }
