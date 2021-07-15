@@ -117,6 +117,7 @@ export interface PropertySchemaSerialized {
     defaultValue?: any;
     templateArgs?: PropertySchemaSerialized[];
     classType?: string;
+    classTypeProperties?: PropertySchemaSerialized[];
     classTypeName?: string; //the getClassName() when the given classType is not registered using a @entity.name
     noValidation?: boolean;
     isReference?: true;
@@ -390,7 +391,7 @@ export class PropertySchema {
     }
 
     getDefaultValue(): any {
-        if (this.literalValue) return this.literalValue;
+        if (this.literalValue !== undefined) return this.literalValue;
 
         if (this.defaultValue) {
             this.lastGeneratedDefaultValue = this.defaultValue();
@@ -486,6 +487,9 @@ export class PropertySchema {
             const name = getClassSchema(resolved).name;
             if (!name) {
                 props.classTypeName = getClassName(resolved);
+                if (this.type === 'class') {
+                    props.classTypeProperties = getClassSchema(resolved).getProperties().map(v => v.toJSON());
+                }
             } else {
                 props.classType = name;
             }
@@ -543,6 +547,11 @@ export class PropertySchema {
             // } else if (p.type === 'class' && !props['classType']) {
             //     throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got class name ${props['classTypeName']}. ` +
             //         `Make sure this class has a @entity.name(name) decorator with a unique name assigned and given entity is loaded (imported at least once globally)`);
+        } else if (props.classTypeProperties) {
+            const properties = props.classTypeProperties.map(v => PropertySchema.fromJSON(v, p, throwForInvalidClassType));
+            const schema = createClassSchema();
+            for (const property of properties) schema.registerProperty(property);
+            p.classType = schema.classType;
         }
         p.classTypeName = props.classTypeName;
 
@@ -760,7 +769,7 @@ export class ClassSchema<T = any> {
     /**
      * Contains all references, owning reference and back references.
      */
-    public readonly references = new Set<PropertySchema>();
+    public references = new Set<PropertySchema>();
 
     protected referenceInitialized = false;
 
@@ -772,7 +781,7 @@ export class ClassSchema<T = any> {
 
     private detectedDefaultValueProperties: string[] = [];
     private assignedInConstructor: string[] = [];
-    private extractedDefaultValues: {[name: string]: any } = {};
+    private extractedDefaultValues: { [name: string]: any } = {};
 
     /**
      * Whether this schema comes from an actual class (not t.schema);
@@ -798,9 +807,9 @@ export class ClassSchema<T = any> {
         return `<ClassSchema ${this.getClassName()}>\n` + this.properties.map(v => '   ' + v.name + '=' + v.toString()).join('\n') + '\n</ClassSchema>';
     }
 
-    public assignedSingleTableInheritanceSubClassesByIdentifier?: {[id: string]: ClassSchema};
+    public assignedSingleTableInheritanceSubClassesByIdentifier?: { [id: string]: ClassSchema };
 
-    getAssignedSingleTableInheritanceSubClassesByIdentifier(): {[id: string]: ClassSchema} | undefined {
+    getAssignedSingleTableInheritanceSubClassesByIdentifier(): { [id: string]: ClassSchema } | undefined {
         if (!this.subClasses.length) return;
 
         const discriminant = this.getSingleTableInheritanceDiscriminant();
@@ -808,7 +817,7 @@ export class ClassSchema<T = any> {
         for (const schema of this.subClasses) {
             if (schema.singleTableInheritance) {
                 if (!this.assignedSingleTableInheritanceSubClassesByIdentifier) this.assignedSingleTableInheritanceSubClassesByIdentifier = {};
-                const value = schema.getProperty(discriminant.name).getDefaultValue() || getSingleTableInheritanceTypeValue(schema);
+                const value = schema.getProperty(discriminant.name).getDefaultValue() ?? getSingleTableInheritanceTypeValue(schema);
                 this.assignedSingleTableInheritanceSubClassesByIdentifier[value] = schema;
             }
         }
@@ -942,9 +951,10 @@ export class ClassSchema<T = any> {
         s.decorator = this.decorator;
         s.discriminant = this.discriminant;
         s.fromClass = this.fromClass;
-        s.singleTableInheritance = this.singleTableInheritance ? {...this.singleTableInheritance} : undefined;
+        s.singleTableInheritance = this.singleTableInheritance ? { ...this.singleTableInheritance } : undefined;
         s.subClasses = this.subClasses.slice();
         s.superClass = this.superClass;
+        s.references = new Set(this.references);
 
         s.propertiesMap = new Map();
         s.properties = [];

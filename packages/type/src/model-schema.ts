@@ -35,4 +35,5 @@ export const propertyDefinition: ClassSchema<PropertySchemaSerialized> = t.schem
     groupNames: t.array(t.string).optional,
     backReference: t.type({mappedBy: t.string.optional, via: t.string.optional},).optional,
     templateArgs: t.array((): any => propertyDefinition).optional,
+    classTypeProperties: t.array((): any => propertyDefinition).optional,
 });
