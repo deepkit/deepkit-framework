@@ -532,7 +532,7 @@ export class Router {
 
     public addRouteForController(controller: ClassType) {
         const data = httpClass._fetch(controller);
-        if (!data) return;
+        if (!data) throw new Error(`Http controller class ${getClassName(controller)} has no @http.controller decorator.`);
         const schema = getClassSchema(controller);
 
         for (const action of data.getActions()) {
@@ -566,7 +566,7 @@ export class Router {
         const compiler = new CompilerContext;
         compiler.context.set('_match', null);
         compiler.context.set('ValidationFailed', ValidationFailed);
-        compiler.context.set('parseQueryString', querystring.parse);
+        compiler.context.set('qs', require('qs'));
 
         const code: string[] = [];
 
@@ -580,7 +580,7 @@ export class Router {
             const _qPosition = _url.indexOf('?');
             let uploadedFiles = {};
             const _path = _qPosition === -1 ? _url : _url.substr(0, _qPosition);
-            const _query = _qPosition === -1 ? {} : parseQueryString(_url.substr(_qPosition + 1));
+            const _query = _qPosition === -1 ? {} : qs.parse(_url.substr(_qPosition + 1));
             ${code.join('\n')}
         `, 'request') as any;
     }
