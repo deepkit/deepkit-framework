@@ -125,7 +125,7 @@ test('router HttpRequest', async () => {
     expect(await httpKernel.handleRequestFor('GET', '/req/any/path')).toEqual(['/req/any/path', 'req/any/path']);
 });
 
-test('router parameterResolver', async () => {
+test('router parameter resolver by class', async () => {
     class User {
         constructor(public username: string) {
         }
@@ -151,7 +151,7 @@ test('router parameterResolver', async () => {
         }
     }
 
-    @http.resolve(User, UserResolver)
+    @http.resolveParameter(User, UserResolver)
     class Controller {
         @http.GET('user/:username')
         route1(user: User) {
@@ -163,7 +163,7 @@ test('router parameterResolver', async () => {
             return [user.username];
         }
 
-        @http.GET('user/:user/group/:group').resolve(Group, GroupResolver)
+        @http.GET('user/:user/group/:group').resolveParameter(Group, GroupResolver)
         route3(user: User, group: Group) {
             return [user.username, group.name];
         }
@@ -174,6 +174,62 @@ test('router parameterResolver', async () => {
     expect(data.resolverForToken.get(User)).toBe(UserResolver);
     expect(data.resolverForToken.get(User)).toBe(UserResolver);
     expect(data.getAction('route3').resolverForToken.get(Group)).toBe(GroupResolver);
+
+    const httpKernel = createHttpKernel([Controller], [UserResolver, GroupResolver]);
+
+    expect(await httpKernel.handleRequestFor('GET', '/user/peter')).toEqual(['peter']);
+    expect(await httpKernel.handleRequestFor('GET', '/user/peter/group/a')).toEqual(['peter', 'a']);
+    expect(await httpKernel.handleRequestFor('GET', '/invalid')).toEqual('Internal error');
+});
+
+test('router parameter resolver by name', async () => {
+    class User {
+        constructor(public username: string) {
+        }
+    }
+
+    class Group {
+        constructor(public name: string) {
+        }
+    }
+
+    class UserResolver {
+        resolve(context: RouteParameterResolverContext): any | Promise<any> {
+            const value = context.value || context.parameters.username
+            if (!value) throw new Error('No value specified');
+            return new User(value);
+        }
+    }
+
+    class GroupResolver {
+        resolve(context: RouteParameterResolverContext): any | Promise<any> {
+            if (!context.value) throw new Error('No value specified');
+            return new Group(context.value);
+        }
+    }
+
+    @http.resolveParameterByName('user', UserResolver)
+    class Controller {
+        @http.GET('user/:username')
+        route1(user: User) {
+            return [user.username];
+        }
+
+        @http.GET('invalid')
+        route2(user: User) {
+            return [user.username];
+        }
+
+        @http.GET('user/:user/group/:group').resolveParameterByName('group', GroupResolver)
+        route3(user: User, group: Group) {
+            return [user.username, group.name];
+        }
+    }
+
+    const data = httpClass._fetch(Controller)!;
+    expect(data.getActions().size).toBe(3);
+    expect(data.resolverForParameterName.get('user')).toBe(UserResolver);
+    expect(data.getAction('route3').resolverForParameterName.get('group')).toBe(GroupResolver);
 
     const httpKernel = createHttpKernel([Controller], [UserResolver, GroupResolver]);
 

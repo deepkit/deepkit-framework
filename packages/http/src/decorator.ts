@@ -110,11 +110,55 @@ export class HttpDecorator {
         this.t.groups.push(...group);
     }
 
-    resolve(classType: ClassType | string | any, resolver: ClassType<RouteParameterResolver>) {
+    /**
+     * Adds a parameter resolver for parameters based on the class type. Use .resolveParameterByName() for name-based resolving.
+     *
+     * ```typescript
+     *
+     * class UserResolver {
+     *     resolve(context: RouteParameterResolverContext): any | Promise<any> {
+     *         return new User();
+     *     }
+     * }
+     *
+     * @http.resolveParameter(User, UserResolver)
+     * class MyController {
+     *
+     *     @http.GET()
+     *     myAction(user: User) {
+     *     }
+     * }
+     *
+     * Application.create({providers: [UserResolver]}).run();
+     * ```
+     */
+    resolveParameter(classType: ClassType | string | any, resolver: ClassType<RouteParameterResolver>) {
         this.t.resolverForToken.set(classType, resolver);
     }
 
-    resolveParameter(name: string, resolver: ClassType<RouteParameterResolver>) {
+    /**
+     * Adds a parameter resolver for parameters based on its name. Use .resolveParameter() for class-based resolving.
+     *
+     * ```typescript
+     *
+     * class UserResolver {
+     *     resolve(context: RouteParameterResolverContext): any | Promise<any> {
+     *         return new User();
+     *     }
+     * }
+     *
+     * @http.resolveParameterByName('user', UserResolver)
+     * class MyController {
+     *
+     *     @http.GET()
+     *     myAction(user: User) {
+     *     }
+     * }
+     *
+     * Application.create({providers: [UserResolver]}).run();
+     * ```
+     */
+    resolveParameterByName(name: string, resolver: ClassType<RouteParameterResolver>) {
         this.t.resolverForParameterName.set(name, resolver);
     }
 
@@ -229,11 +273,53 @@ export class HttpActionDecorator {
         this.t.throws.push({ errorType, message });
     }
 
-    resolve(classType: ClassType | string | any, resolver: ClassType<RouteParameterResolver>) {
+    /**
+     * Adds a parameter resolver for parameters based on the class type. Use .resolveParameterByName() for name-based resolving.
+     *
+     * ```typescript
+     *
+     * class UserResolver {
+     *     resolve(context: RouteParameterResolverContext): any | Promise<any> {
+     *         return new User();
+     *     }
+     * }
+     *
+     * class MyController {
+     *     @http.GET()
+     *     @http.resolveParameter(User, UserResolver)
+     *     myAction(user: User) {
+     *     }
+     * }
+     *
+     * Application.create({providers: [UserResolver]}).run();
+     * ```
+     */
+    resolveParameter(classType: ClassType | string | any, resolver: ClassType<RouteParameterResolver>) {
         this.t.resolverForToken.set(classType, resolver);
     }
 
-    resolveParameter(name: string, resolver: ClassType<RouteParameterResolver>) {
+    /**
+     * Adds a parameter resolver for parameters based on its name. Use .resolveParameter() for class-based resolving.
+     *
+     * ```typescript
+     *
+     * class UserResolver {
+     *     resolve(context: RouteParameterResolverContext): any | Promise<any> {
+     *         return new User();
+     *     }
+     * }
+     *
+     * class MyController {
+     *     @http.GET()
+     *     @http.resolveParameterByName('user', UserResolver)
+     *     myAction(user: User) {
+     *     }
+     * }
+     *
+     * Application.create({providers: [UserResolver]}).run();
+     * ```
+     */
+    resolveParameterByName(name: string, resolver: ClassType<RouteParameterResolver>) {
         this.t.resolverForParameterName.set(name, resolver);
     }
 

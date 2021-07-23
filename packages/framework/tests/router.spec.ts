@@ -53,7 +53,7 @@ test('router parameterResolver', async () => {
         }
     }
 
-    @http.resolve(User, MyRouteParameterResolver)
+    @http.resolveParameter(User, MyRouteParameterResolver)
     class Controller {
         @http.GET('user/:username')
         route1(user: User) {
