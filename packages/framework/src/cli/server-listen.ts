@@ -44,6 +44,6 @@ export class ServerListenController implements Command {
         kernel.setConfig(overwrite);
         const server = this.injectorContext.get(ApplicationServer);
 
-        await server.start();
+        await server.start(true);
     }
 }

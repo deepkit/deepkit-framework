@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { each, getClassName } from '@deepkit/core';
+import { asyncOperation, getClassName } from '@deepkit/core';
 import { RpcClient } from '@deepkit/rpc';
 import cluster from 'cluster';
 import { HttpControllers, Router } from '@deepkit/http';
@@ -19,16 +19,28 @@ import { Logger } from '@deepkit/logger';
 import { RpcControllers } from './application-service-container';
 import { createRpcConnection, WebWorker, WebWorkerFactory } from './worker';
 
-export class ServerBootstrapEvent extends BaseEvent { }
+export class ServerBootstrapEvent extends BaseEvent {
+}
 
 /**
- * Called only once for application server bootstrap (in the cluster main process)
+ * Called only once for application server bootstrap (for main process and workers)
+ */
+export const onServerBootstrap = new EventToken('server.bootstrap', ServerBootstrapEvent);
+
+/**
+ * Called only once for application server bootstrap (for main process and workers)
+ * as soon as the application server has started
+ */
+export const onServerBootstrapDone = new EventToken('server.bootstrapDone', ServerBootstrapEvent);
+
+/**
+ * Called only once for application server bootstrap (in the main process)
  * as soon as the application server starts.
  */
 export const onServerMainBootstrap = new EventToken('server.main.bootstrap', ServerBootstrapEvent);
 
 /**
- * Called only once for application server bootstrap (in the cluster main process)
+ * Called only once for application server bootstrap (in the main process)
  * as soon as the application server has started.
  */
 export const onServerMainBootstrapDone = new EventToken('server.main.bootstrapDone', ServerBootstrapEvent);
@@ -38,16 +50,35 @@ export const onServerMainBootstrapDone = new EventToken('server.main.bootstrapDo
  */
 export const onServerWorkerBootstrap = new EventToken('server.worker.bootstrap', ServerBootstrapEvent);
 
-export class ServerShutdownEvent extends BaseEvent { }
+/**
+ * Called only once for application server bootstrap (in the worker process)
+ * as soon as the application server has started.
+ */
+export const onServerWorkerBootstrapDone = new EventToken('server.worker.bootstrapDone', ServerBootstrapEvent);
+
+
+export class ServerShutdownEvent extends BaseEvent {
+}
+
+/**
+ * Called when application server shuts down (in master process and each worker).
+ */
+export const onServerShutdown = new EventToken('server.shutdown', ServerBootstrapEvent);
 
 /**
  * Called when application server shuts down in the main process.
  */
 export const onServerMainShutdown = new EventToken('server.main.shutdown', ServerBootstrapEvent);
 
+/**
+ * Called when application server shuts down in the worker process.
+ */
+export const onServerWorkerShutdown = new EventToken('server.worker.shutdown', ServerBootstrapEvent);
+
 class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'host', 'httpsPort',
     'ssl', 'sslKey', 'sslCertificate', 'sslCa', 'sslCrl',
-    'varPath', 'selfSigned', 'keepAliveTimeout', 'workers']) { }
+    'varPath', 'selfSigned', 'keepAliveTimeout', 'workers']) {
+}
 
 @injectable()
 export class ApplicationServerListener {
@@ -99,6 +130,8 @@ export class ApplicationServerListener {
 export class ApplicationServer {
     protected worker?: WebWorker;
     protected started = false;
+    protected stopping = false;
+    protected onlineWorkers = 0;
 
     constructor(
         protected logger: Logger,
@@ -109,73 +142,143 @@ export class ApplicationServer {
     ) {
     }
 
+    /**
+     * Closes all server listener and triggers shutdown events.
+     * This is only used for integration tests.
+     */
     public async close() {
-        if (this.config.workers > 1) {
-            for (const worker of each(cluster.workers)) {
-                if (worker) {
-                    worker.kill();
-                }
-            }
-            await this.shutdown();
-        } else {
-            await this.shutdown();
-            if (this.worker) {
-                this.worker.close();
-            }
-        }
-    }
+        if (!this.started) return;
 
-    public async shutdown() {
+        await this.stopWorkers();
+        await this.eventDispatcher.dispatch(onServerShutdown, new ServerShutdownEvent());
         await this.eventDispatcher.dispatch(onServerMainShutdown, new ServerShutdownEvent());
+        if (this.worker) this.worker.close();
     }
 
-    protected async bootstrap() {
-        await this.eventDispatcher.dispatch(onServerMainBootstrap, new ServerBootstrapEvent());
+    protected stopWorkers(): Promise<void> {
+        if (this.config.workers === 0) return Promise.resolve();
+
+        return asyncOperation((resolve) => {
+            cluster.on('exit', async () => {
+                if (this.onlineWorkers === 0) {
+                    this.logger.debug('All workers offline. Shutting down ...');
+                    await this.eventDispatcher.dispatch(onServerShutdown, new ServerShutdownEvent());
+                    await this.eventDispatcher.dispatch(onServerMainShutdown, new ServerShutdownEvent());
+                    resolve(undefined);
+                }
+            });
+
+            for (const worker of Object.values(cluster.workers)) {
+                if (worker) worker.send('stop');
+            }
+        });
     }
 
-    protected async bootstrapDone() {
-        await this.eventDispatcher.dispatch(onServerMainBootstrapDone, new ServerBootstrapEvent());
-    }
-
-    public async start() {
+    public async start(listenOnSignals: boolean = false) {
         if (this.started) throw new Error('ApplicationServer already started');
         this.started = true;
 
         //listening to this signal is required to make ts-node-dev working with its reload feature.
-        process.on('SIGTERM', () => {
-            console.log('Received SIGTERM.');
-            process.exit(0);
-        });
+        if (listenOnSignals) {
+            process.on('SIGTERM', () => {
+                this.logger.warning('Received SIGTERM. Forced non-graceful shutdown.');
+                process.exit(0);
+            });
+        }
 
         if (cluster.isMaster) {
-            this.logger.log(`Start HTTP server, using ${this.config.workers} workers.`);
+            if (this.config.workers) {
+                this.logger.log(`Start server, using ${this.config.workers} workers ...`);
+            } else {
+                this.logger.log(`Start server ...`);
+            }
         }
+
+        await this.eventDispatcher.dispatch(onServerBootstrap, new ServerBootstrapEvent());
 
         if (this.config.workers > 1) {
             if (cluster.isMaster) {
-                await this.bootstrap();
+                await this.eventDispatcher.dispatch(onServerMainBootstrap, new ServerBootstrapEvent());
 
                 for (let i = 0; i < this.config.workers; i++) {
                     cluster.fork();
                 }
 
-                await this.bootstrapDone();
+                await asyncOperation((resolve) => {
+                    cluster.on('online', () => {
+                        this.onlineWorkers++;
+                        if (this.onlineWorkers === this.config.workers) resolve(undefined);
+                    });
+
+                    cluster.on('exit', (w) => {
+                        this.onlineWorkers--;
+                        if (this.stopping) return;
+                        this.logger.warning(`Worker ${w.id} died. Restarted`);
+                        cluster.fork();
+                    });
+                });
+
+                if (listenOnSignals) {
+                    process.on('SIGINT', async () => {
+                        if (this.stopping) {
+                            this.logger.warning('Received SIGINT. Stopping already in process ...');
+                            return;
+                        }
+                        this.stopping = true;
+                        this.logger.warning('Received SIGINT. Stopping server ...');
+                        await this.stopWorkers();
+                        process.exit(0);
+                    });
+                }
+
+                await this.eventDispatcher.dispatch(onServerBootstrap, new ServerBootstrapEvent());
+                await this.eventDispatcher.dispatch(onServerMainBootstrap, new ServerBootstrapEvent());
             } else {
+                process.on('message', async (msg: any) => {
+                    if (msg === 'stop') {
+                        await this.eventDispatcher.dispatch(onServerShutdown, new ServerShutdownEvent());
+                        await this.eventDispatcher.dispatch(onServerWorkerShutdown, new ServerShutdownEvent());
+                        if (this.worker) this.worker.close();
+                        process.exit(0);
+                    }
+                });
+
+                process.on('SIGINT', async () => {
+                    //we don't do anything in sigint, as the master controls our process.
+                    //we need to register to though so the process doesn't get killed.
+                });
+
                 await this.eventDispatcher.dispatch(onServerWorkerBootstrap, new ServerBootstrapEvent());
                 this.worker = this.webWorkerFactory.create(cluster.worker.id, this.config);
                 this.worker.start();
-
-                cluster.on('exit', (w) => {
-                    this.logger.warning(`Worker ${w.id} died.`);
-                    cluster.fork();
-                });
+                await this.eventDispatcher.dispatch(onServerBootstrapDone, new ServerBootstrapEvent());
+                await this.eventDispatcher.dispatch(onServerWorkerBootstrapDone, new ServerBootstrapEvent());
             }
         } else {
-            await this.bootstrap();
-            await this.eventDispatcher.dispatch(onServerWorkerBootstrap, new ServerBootstrapEvent());
+            if (listenOnSignals) {
+                process.on('SIGINT', async () => {
+                    if (this.stopping) {
+                        this.logger.warning('Received SIGINT. Stopping already in process ...');
+                        return;
+                    }
+                    this.stopping = true;
+                    this.logger.warning('Received SIGINT. Stopping server ...');
+                    await this.eventDispatcher.dispatch(onServerShutdown, new ServerShutdownEvent());
+                    await this.eventDispatcher.dispatch(onServerMainShutdown, new ServerShutdownEvent());
+                    if (this.worker) this.worker.close();
+                    process.exit(0);
+                });
+            }
+            await this.eventDispatcher.dispatch(onServerBootstrap, new ServerBootstrapEvent());
+            await this.eventDispatcher.dispatch(onServerMainBootstrap, new ServerBootstrapEvent());
             this.worker = this.webWorkerFactory.create(1, this.config);
             this.worker.start();
-            await this.bootstrapDone();
+            await this.eventDispatcher.dispatch(onServerBootstrapDone, new ServerBootstrapEvent());
+            await this.eventDispatcher.dispatch(onServerMainBootstrapDone, new ServerBootstrapEvent());
+        }
+
+        if (cluster.isMaster) {
+            this.logger.log(`Server started.`);
         }
     }
 

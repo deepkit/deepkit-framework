@@ -19,7 +19,7 @@ export const kernelConfig = new AppModuleConfig({
     selfSigned: t.boolean.optional.description('If for ssl: true the certificate and key should be automatically generated.'),
     keepAliveTimeout: t.number.optional,
     path: t.string.default('/'),
-    workers: t.number.default(1),
+    workers: t.number.default(0).description('A value of 0 means the main process handles requests alone. A value of > 0 means the main process does not handle any requests and anything is redirected to workers'),
     ssl: t.boolean.default(false).description("Enables HTTPS server"),
     sslOptions: t.any.description("Same interface as tls.SecureContextOptions & tls.TlsOptions."),
     sslKey: t.string.optional.description('A file path to a ssl key file for https'),
