@@ -231,7 +231,7 @@ export class HttpActionDecorator {
      *    assets() {}
      * }
      * ```
-    */
+     */
     data(name: string, value: any) {
         this.t.data.set(name, value);
     }
@@ -249,6 +249,11 @@ export class HttpActionDecorator {
         this.t.path = path;
     }
 
+    HEAD(path: string = '') {
+        this.t.httpMethod = 'HEAD';
+        this.t.path = path;
+    }
+
     POST(path: string = '') {
         this.t.httpMethod = 'POST';
         this.t.path = path;
@@ -261,6 +266,21 @@ export class HttpActionDecorator {
 
     DELETE(path: string = '') {
         this.t.httpMethod = 'DELETE';
+        this.t.path = path;
+    }
+
+    OPTIONS(path: string = '') {
+        this.t.httpMethod = 'HEAD';
+        this.t.path = path;
+    }
+
+    TRACE(path: string = '') {
+        this.t.httpMethod = 'HEAD';
+        this.t.path = path;
+    }
+
+    PATCH(path: string = '') {
+        this.t.httpMethod = 'PATCH';
         this.t.path = path;
     }
 
