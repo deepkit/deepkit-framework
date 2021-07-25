@@ -14,5 +14,5 @@ import { AppModuleConfig } from '@deepkit/app';
 export const brokerConfig = new AppModuleConfig({
     listen: t.string.default('localhost:8811').description('Unix socket path or host:port combination'),
     host: t.string.default('localhost:8811').description('Unix socket path or host:port combination'),
-    startOnBootstrap: t.boolean.default(true).description('Automatically starts a single broker for all workers. Disable it if you have a custom broker node.'),
+    startOnBootstrap: t.boolean.default(false).description('Automatically starts a single broker in the main process. Disable it if you have a custom broker node.'),
 });

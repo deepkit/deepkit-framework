@@ -10,31 +10,36 @@
 
 import { AppLocker } from './app-locker';
 import { AppModule } from '@deepkit/app';
-import { inject, injectable } from '@deepkit/injector';
+import { injectable } from '@deepkit/injector';
 import { eventDispatcher } from '@deepkit/event';
 import { onServerMainBootstrap, onServerMainShutdown } from '../application-server';
 import { brokerConfig } from './broker.config';
 import { Broker, BrokerServer } from './broker';
+import { Logger } from '@deepkit/logger';
+
+class BrokerStartConfig extends brokerConfig.slice(['startOnBootstrap', 'listen']) {}
 
 @injectable()
 export class BrokerListener {
     constructor(
+        protected logger: Logger,
         protected broker: Broker,
         protected brokerServer: BrokerServer,
-        @inject(brokerConfig.token('startOnBootstrap')) protected startOnBootstrap: boolean,
+        protected config: BrokerStartConfig,
     ) {
     }
 
     @eventDispatcher.listen(onServerMainBootstrap)
     async onMainBootstrap() {
-        if (this.startOnBootstrap) {
+        if (this.config.startOnBootstrap) {
             await this.brokerServer.start();
+            this.logger.log(`Broker started at <green>${this.config.listen}</green>`);
         }
     }
 
     @eventDispatcher.listen(onServerMainShutdown)
     async onMainShutdown() {
-        if (this.startOnBootstrap) {
+        if (this.config.startOnBootstrap) {
             this.brokerServer.close();
         }
         await this.broker.disconnect();
