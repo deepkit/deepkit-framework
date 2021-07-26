@@ -45,7 +45,7 @@ export async function main() {
 
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
-        await typeorm.manager.delete(TypeOrmModel, {});
+        await typeorm.manager.getRepository(TypeOrmModel).clear();
         const bench = new BenchSuite('type-orm');
 
         await bench.runAsyncFix(1, 'insert', async () => {

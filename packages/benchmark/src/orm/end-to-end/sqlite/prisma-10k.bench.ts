@@ -11,11 +11,15 @@
 import 'reflect-metadata';
 import { PrismaClient } from '@prisma/client';
 import { BenchSuite } from '../../../bench';
+import { spawnSync } from 'child_process';
 
 const prisma = new PrismaClient();
 
 export async function main() {
     const count = 10_000;
+
+    spawnSync(`./node_modules/.bin/prisma generate --schema src/orm/end-to-end/sqlite/model.prisma`, {stdio: 'inherit', shell: true});
+    spawnSync(`./node_modules/.bin/prisma db push --schema=src/orm/end-to-end/sqlite/model.prisma --force-reset`, {stdio: 'inherit', shell: true});
 
     let created = false;
     for (let i = 0; i < 5; i++) {
@@ -41,6 +45,10 @@ export async function main() {
 
         await bench.runAsyncFix(10, 'fetch', async () => {
             const users = await prisma.model.findMany();
+        });
+
+        await bench.runAsyncFix(100, 'fetch-1', async () => {
+            const user = await prisma.model.findFirst();
         });
 
         // const dbItems = await session.query(DeepkitModel).find();

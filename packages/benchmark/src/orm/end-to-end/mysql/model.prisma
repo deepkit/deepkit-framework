@@ -1,0 +1,17 @@
+datasource db {
+  provider = "mysql"
+  url      = "mysql://root@localhost/default"
+}
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["napi"]
+}
+
+model Model {
+  id    Int     @id @default(autoincrement())
+  username String
+  ready Boolean
+  tags  String
+  priority Int
+}
