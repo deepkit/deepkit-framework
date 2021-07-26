@@ -2,7 +2,7 @@ import { injectable, InjectorContext, MemoryInjector } from '@deepkit/injector';
 import { Router } from './router';
 import { EventDispatcher } from '@deepkit/event';
 import { Logger } from '@deepkit/logger';
-import { HttpRequest, HttpResponse } from './model';
+import { HttpRequest, HttpResponse, MemoryHttpResponse, RequestBuilder } from './model';
 import { Socket } from 'net';
 import { HttpRequestEvent, httpWorkflow } from './http';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
@@ -65,6 +65,14 @@ export class HttpKernel {
         } catch (error) {
             return result;
         }
+    }
+
+    public async request(requestBuilder: RequestBuilder): Promise<MemoryHttpResponse> {
+        const request = requestBuilder.build();
+        const response = new MemoryHttpResponse(request);
+        response.assignSocket(request.socket);
+        await this.handleRequest(request, response);
+        return response;
     }
 
     async handleRequest(req: HttpRequest, res: HttpResponse) {

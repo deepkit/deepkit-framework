@@ -10,8 +10,8 @@
 
 import { IncomingMessage, ServerResponse } from 'http';
 import { UploadedFile } from './router';
-import { Socket } from 'net';
 import * as querystring from 'querystring';
+import { Writable } from 'stream';
 
 export class HttpResponse extends ServerResponse {
     status(code: number) {
@@ -47,7 +47,15 @@ export class RequestBuilder {
         const url = this.getUrl();
         const bodyContent = this.contentBuffer;
 
-        return new (class extends HttpRequest {
+        const writable = new Writable({
+            write(chunk, encoding, callback) {-
+                callback();
+            },
+            writev(chunks, callback) {
+                callback();
+            }
+        });
+        const request = new (class extends HttpRequest {
             url = url;
             method = method;
             position = 0;
@@ -64,7 +72,8 @@ export class RequestBuilder {
                     this.done = true;
                 }
             }
-        })(new Socket());
+        })(writable as any);
+        return request;
     }
 
     header(name: string, value: string | number): this {
@@ -129,5 +138,54 @@ export class HttpRequest extends IncomingMessage {
 
     getRemoteAddress(): string {
         return this.connection.remoteAddress || '';
+    }
+}
+
+export class MemoryHttpResponse extends HttpResponse {
+    public body: Buffer = Buffer.alloc(0);
+
+    get bodyString(): string {
+        return this.body.toString('utf8');
+    }
+
+    write(
+        chunk: any,
+        encoding: any,
+        callback?: any
+    ): boolean {
+        if (typeof encoding === 'function') {
+            callback = encoding;
+            encoding = null;
+        }
+
+        if (chunk) {
+            if ('string' === typeof chunk) {
+                chunk = Buffer.from(chunk, encoding || 'utf8');
+            }
+            this.body = Buffer.concat([this.body, chunk]);
+        }
+
+        if (callback) callback();
+        return true;
+    }
+
+    end(chunk: any, encoding?: any, callback?: any): void {
+        if (typeof chunk === 'function') {
+            callback = chunk;
+            chunk = null;
+            encoding = null;
+        } else if (typeof encoding === 'function') {
+            callback = encoding;
+            encoding = null;
+        }
+
+        if (chunk) {
+            if ('string' === typeof chunk) {
+                chunk = Buffer.from(chunk, encoding || 'utf8');
+            }
+            this.body = Buffer.concat([this.body, chunk]);
+        }
+        super.end(chunk, encoding, callback);
+        // if (callback) callback();
     }
 }

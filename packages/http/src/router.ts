@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import 'reflect-metadata';
-import { asyncOperation, ClassType, CompilerContext, getClassName, urlJoin } from '@deepkit/core';
+import { asyncOperation, ClassType, CompilerContext, getClassName, isClass, urlJoin } from '@deepkit/core';
 import {
     getClassSchema,
     getPropertyXtoClassFunction,
@@ -30,9 +30,17 @@ import { HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters } from './
 import { BasicInjector, injectable, InjectOptions, TagRegistry } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { HttpControllers } from './controllers';
+import { AppModule, MiddlewareRegistry } from '@deepkit/app';
+import { HttpMiddleware, HttpMiddlewareConfig } from './middleware';
 
 export type RouteParameterResolverForInjector = ((injector: BasicInjector) => any[] | Promise<any[]>);
-type ResolvedController = { parameters: RouteParameterResolverForInjector, routeConfig: RouteConfig, uploadedFiles: { [name: string]: UploadedFile } };
+
+interface ResolvedController {
+    parameters: RouteParameterResolverForInjector;
+    routeConfig: RouteConfig;
+    uploadedFiles: { [name: string]: UploadedFile };
+    middlewares?: (injector: BasicInjector) => { fn: HttpMiddleware, timeout: number }[];
+}
 
 export class UploadedFile {
     /**
@@ -69,11 +77,13 @@ export class UploadedFile {
 
 function parseBody(form: any, req: IncomingMessage, files: { [name: string]: UploadedFile }) {
     return asyncOperation((resolve, reject) => {
-
-        form.on('file', (name: string, file: UploadedFile) => {
+        function onFile(name: string, file: UploadedFile) {
             files[name] = file;
-        });
+        }
+
+        form.on('file', onFile);
         form.parse(req, (err: any, fields: any, files: any) => {
+            form.off('file', onFile);
             if (err) {
                 reject(err);
             } else {
@@ -84,6 +94,7 @@ function parseBody(form: any, req: IncomingMessage, files: { [name: string]: Upl
 }
 
 export interface RouteControllerAction {
+    contextId?: number;
     controller: ClassType;
     methodName: string;
 }
@@ -119,7 +130,14 @@ export class RouteConfig {
     public serializationOptions?: JitConverterOptions;
     public serializer?: Serializer;
 
+    /**
+     * When assigned defines where this route came from.
+     */
+    public module?: AppModule<any>;
+
     resolverForToken: Map<any, ClassType> = new Map();
+
+    middlewares: {config: HttpMiddlewareConfig, module: AppModule<any>}[] = [];
 
     resolverForParameterName: Map<string, ClassType> = new Map();
 
@@ -323,16 +341,19 @@ export class Router {
         controllers: HttpControllers,
         private logger: Logger,
         tagRegistry: TagRegistry,
+        private middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry,
     ) {
-        for (const controller of controllers.controllers) this.addRouteForController(controller);
+        for (const controller of controllers.controllers) this.addRouteForController(controller.controller, controller.contextId, controller.module);
     }
 
     getRoutes(): RouteConfig[] {
         return this.routes;
     }
 
-    static forControllers(controllers: ClassType[], tagRegistry: TagRegistry = new TagRegistry()): Router {
-        return new this(new HttpControllers(controllers), new Logger([], []), tagRegistry);
+    static forControllers(controllers: (ClassType | {module: AppModule<any, any>, controller: ClassType})[], tagRegistry: TagRegistry = new TagRegistry(), middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry()): Router {
+        return new this(new HttpControllers(controllers.map(v => {
+            return isClass(v) ? { contextId: 0, controller: v, module: new AppModule({}) } : {...v, contextId: 0};
+        })), new Logger([], []), tagRegistry, middlewareRegistry);
     }
 
     protected getRouteCode(compiler: CompilerContext, routeConfig: RouteConfig): string {
@@ -351,6 +372,74 @@ export class Router {
         const hasParameters = parsedRoute.getParameters().length > 0;
         let requiresAsyncParameters = false;
         let setParametersFromPath = '';
+
+        const fullPath = routeConfig.getFullPath();
+        const middlewareRawConfigs = this.middlewareRegistry.configs;
+        middlewareRawConfigs.push(...routeConfig.middlewares);
+
+        const middlewareConfigs = middlewareRawConfigs.filter((v) => {
+            if (!(v.config instanceof HttpMiddlewareConfig)) return false;
+
+            if (v.config.controllers.length && !v.config.controllers.includes(routeConfig.action.controller)) {
+                return false;
+            }
+
+            if (v.config.excludeControllers.length && v.config.excludeControllers.includes(routeConfig.action.controller)) {
+                return false;
+            }
+
+            if (v.config.modules.length && (!routeConfig.module || !v.config.modules.includes(routeConfig.module))) {
+                if (!routeConfig.module) return false;
+                for (const module of v.config.modules) {
+                    if (routeConfig.module.name !== module.name) return false;
+                }
+            }
+
+            if (v.config.selfModule && v.module.name !== routeConfig.module?.name) return false;
+
+            if (v.config.routeNames.length) {
+                for (const name of v.config.routeNames) {
+                    if (name.includes('*')) {
+                        const regex = new RegExp('^' + name.replace(/\*/g, '.*') + '$');
+                        if (!regex.test(routeConfig.name)) return false;
+                    } else if (name !== routeConfig.name) {
+                        return false;
+                    }
+                }
+            }
+
+            if (v.config.excludeRouteNames.length) {
+                for (const name of v.config.excludeRouteNames) {
+                    if (name.includes('*')) {
+                        const regex = new RegExp('^' + name.replace(/\*/g, '.*') + '$');
+                        if (regex.test(routeConfig.name)) return false;
+                    } else if (name == routeConfig.name) {
+                        return false;
+                    }
+                }
+            }
+
+            for (const route of v.config.routes) {
+                if (route.httpMethod && route.httpMethod !== routeConfig.httpMethod) return false;
+
+                if (route.category && route.category !== routeConfig.category) return false;
+                if (route.excludeCategory && route.excludeCategory === routeConfig.category) return false;
+
+                if (route.group && !routeConfig.groups.includes(route.group)) return false;
+                if (route.excludeGroup && routeConfig.groups.includes(route.excludeGroup)) return false;
+
+                if (route.path) {
+                    if (!route.pathRegExp) route.pathRegExp = new RegExp('^' + route.path.replace(/\*/g, '.*') + '$');
+                    if (!route.pathRegExp.test(fullPath)) return false;
+                }
+            }
+
+            return true;
+        }).map(v => v.config) as HttpMiddlewareConfig[];
+
+        middlewareConfigs.sort((a, b) => {
+            return a.order - b.order;
+        })
 
         for (const parameter of parsedRoute.getParameters()) {
             if (parsedRoute.customValidationErrorHandling === parameter) {
@@ -395,7 +484,7 @@ export class Router {
                     }
                 }
 
-                const injectorOptions = parameter.property.data['deepkit/inject'] as InjectOptions | undefined
+                const injectorOptions = parameter.property.data['deepkit/inject'] as InjectOptions | undefined;
 
                 const injectorToken = injectorOptions && injectorOptions.token ? injectorOptions.token : (parameter.property.type === 'class' ? parameter.property.getResolvedClassType() : undefined);
                 const injectorTokenVar = compiler.reserveVariable('classType', injectorToken);
@@ -441,7 +530,7 @@ export class Router {
                 }
 
                 if (!parameter.isPartOfPath()) {
-                    let injectorGet = `parameters.${parameter.property.name} = _injector.get(${injectorTokenVar});`
+                    let injectorGet = `parameters.${parameter.property.name} = _injector.get(${injectorTokenVar});`;
                     if (injectorOptions && injectorOptions.optional) {
                         injectorGet = `try {parameters.${parameter.property.name} = _injector.get(${injectorTokenVar}); } catch (e) {}`;
                     }
@@ -465,6 +554,27 @@ export class Router {
             matcher = `_path === ${JSON.stringify(path)}`;
         }
 
+        let middlewares = 'undefined';
+        if (middlewareConfigs.length) {
+            const middlewareItems: string[] = [];
+            for (const middlewareConfig of middlewareConfigs) {
+                for (const middleware of middlewareConfig.middlewares) {
+                    if (isClass(middleware)) {
+                        const classVar = compiler.reserveVariable('middlewareClassType', middleware);
+                        middlewareItems.push(`{fn: function() {_injector.get(${classVar}).execute(...arguments) }, timeout: ${middlewareConfig.timeout}}`);
+                    } else {
+                        middlewareItems.push(`{fn: ${compiler.reserveVariable('middlewareFn', middleware)}, timeout: ${middlewareConfig.timeout}}`);
+                    }
+                }
+            }
+
+            middlewares = `
+                function(_injector) {
+                    return [${middlewareItems.join(', ')}];
+                }
+            `;
+        }
+
         let parameters = '() => []';
         if (setParameters.length) {
             parameters = `${requiresAsyncParameters ? 'async' : ''} function(_injector){
@@ -484,7 +594,7 @@ export class Router {
         return `
             //=> ${path}
             if (_method === '${routeConfig.httpMethod.toLowerCase()}' && ${matcher}) {
-                return {routeConfig: ${routeConfigVar}, parameters: ${parameters}, uploadedFiles: uploadedFiles};
+                return {routeConfig: ${routeConfigVar}, parameters: ${parameters}, uploadedFiles: uploadedFiles, middlewares: ${middlewares}};
             }
         `;
     }
@@ -530,7 +640,7 @@ export class Router {
         this.fn = undefined;
     }
 
-    public addRouteForController(controller: ClassType) {
+    public addRouteForController(controller: ClassType, contextId: number, module: AppModule<any>) {
         const data = httpClass._fetch(controller);
         if (!data) throw new Error(`Http controller class ${getClassName(controller)} has no @http.controller decorator.`);
         const schema = getClassSchema(controller);
@@ -538,8 +648,10 @@ export class Router {
         for (const action of data.getActions()) {
             const routeConfig = new RouteConfig(action.name, action.httpMethod, action.path, {
                 controller,
+                contextId,
                 methodName: action.methodName
             });
+            routeConfig.module = module;
             routeConfig.parameterRegularExpressions = action.parameterRegularExpressions;
             routeConfig.throws = action.throws;
             routeConfig.description = action.description;
@@ -547,6 +659,12 @@ export class Router {
             routeConfig.groups = action.groups;
             routeConfig.data = new Map(action.data);
             routeConfig.baseUrl = data.baseUrl;
+
+            routeConfig.middlewares = data.middlewares.map(v => {return {config: v(), module}});
+            routeConfig.middlewares.push(...action.middlewares.map(v => {return {config: v(), module}}));
+
+            for (const item of action.resolverForToken) routeConfig.resolverForToken.set(...item);
+
             routeConfig.resolverForToken = new Map(data.resolverForToken);
             for (const item of action.resolverForToken) routeConfig.resolverForToken.set(...item);
 

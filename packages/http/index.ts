@@ -8,3 +8,4 @@ export * from './src/kernel';
 export * from './src/module';
 export * from './src/module.config';
 export * from './src/controllers';
+export * from './src/middleware';

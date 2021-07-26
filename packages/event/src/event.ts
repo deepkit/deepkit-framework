@@ -239,3 +239,15 @@ export class EventDispatcher {
         return fn ? fn(this.scopedContext, event) : undefined;
     }
 }
+
+export function createListener<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: (event: T['event'], ...deps: DEPS) => void | Promise<void>, ...deps: DEPS): ClassType<any> {
+    class DynamicListener {
+        @eventDispatcher.listen(eventToken)
+        execute(event: T['event']) {
+            //todo: resolve deps
+            // return callback(event);
+        }
+    }
+
+    return DynamicListener;
+}

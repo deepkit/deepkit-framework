@@ -8,27 +8,33 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, urlJoin } from '@deepkit/core';
+import { ClassType, isClass, urlJoin } from '@deepkit/core';
 import {
     ClassDecoratorResult,
     createClassDecoratorContext,
     createPropertyDecoratorContext,
     getClassSchema,
+    isDecoratorContext,
     JitConverterOptions,
     mergeDecorator,
     PropertyDecoratorResult,
     Serializer
 } from '@deepkit/type';
 import { RouteParameterResolver } from './router';
+import { httpMiddleware, HttpMiddleware, HttpMiddlewareConfig } from './middleware';
 
 export interface ControllerOptions {
     name: string;
 }
 
+type HttpActionMiddleware = (() => HttpMiddlewareConfig) | ClassType<{ execute: HttpMiddleware }> | HttpMiddleware;
+
 class HttpController {
     baseUrl: string = '';
     protected actions = new Set<HttpAction>();
     groups: string[] = [];
+
+    middlewares: (() => HttpMiddlewareConfig)[] = [];
 
     resolverForToken: Map<any, ClassType> = new Map();
     resolverForParameterName: Map<string, ClassType> = new Map();
@@ -79,6 +85,7 @@ export class HttpAction {
     methodName: string = '';
     groups: string[] = [];
     serializer?: Serializer;
+    middlewares: (() => HttpMiddlewareConfig)[] = [];
     serializationOptions?: JitConverterOptions;
 
     parameterRegularExpressions: { [name: string]: any } = {};
@@ -108,6 +115,10 @@ export class HttpDecorator {
 
     group(...group: string[]) {
         this.t.groups.push(...group);
+    }
+
+    middleware(...middlewares: HttpActionMiddleware[]) {
+        this.t.middlewares.push(...middlewares.map(v => isClass(v) || !isDecoratorContext(httpMiddleware, v) ? httpMiddleware.for(v) : v));
     }
 
     /**
@@ -195,6 +206,10 @@ export class HttpActionDecorator {
 
     serializer(serializer: Serializer) {
         this.t.serializer = serializer;
+    }
+
+    middleware(...middlewares: HttpActionMiddleware[]) {
+        this.t.middlewares.push(...middlewares.map(v => isClass(v) || !isDecoratorContext(httpMiddleware, v) ? httpMiddleware.for(v) : v));
     }
 
     /**

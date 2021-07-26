@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { CustomError } from '@deepkit/core';
+import { asyncOperation, CustomError } from '@deepkit/core';
 import { getClassTypeFromInstance, getPropertyClassToXFunction, isClassInstance, isRegisteredEntity, jsonSerializer, ValidationFailed } from '@deepkit/type';
-import { ServerResponse } from 'http';
+import { OutgoingHttpHeaders, ServerResponse } from 'http';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpRequest, HttpResponse } from './model';
 import { injectable, InjectorContext } from '@deepkit/injector';
@@ -302,13 +302,37 @@ export const httpWorkflow = createWorkflow('http', {
     routeNotFound: 'response',
 });
 
-export class HtmlResponse {
-    constructor(public html: string, public statusCode?: number) {
+export class BaseResponse {
+    constructor(public _statusCode?: number, public _headers: OutgoingHttpHeaders = {}) {
+    }
+
+    status(code: number): this {
+        this._statusCode = code;
+        return this;
+    }
+
+    header(name: string, value: string | number) {
+        this._headers[name] = value;
+    }
+
+    headers(headers: OutgoingHttpHeaders) {
+        this._headers = headers;
+    }
+
+    contentType(type: string) {
+        this._headers['content-type'] = type;
     }
 }
 
-export class JSONResponse {
-    constructor(public json: any, public statusCode?: number) {
+export class HtmlResponse extends BaseResponse {
+    constructor(public html: string, statusCode?: number) {
+        super(statusCode);
+    }
+}
+
+export class JSONResponse extends BaseResponse {
+    constructor(public json: any, statusCode?: number) {
+        super(statusCode);
     }
 }
 
@@ -331,15 +355,62 @@ export class HttpListener {
     }
 
     @eventDispatcher.listen(httpWorkflow.onRoute, 100)
-    onRoute(event: typeof httpWorkflow.onRoute.event) {
+    async onRoute(event: typeof httpWorkflow.onRoute.event) {
         if (event.sent) return;
         if (event.hasNext()) return;
+        const logger = this.logger;
 
         try {
             const resolved = this.router.resolveRequest(event.request);
 
             if (resolved) {
                 event.request.uploadedFiles = resolved.uploadedFiles;
+
+                if (resolved.middlewares) {
+                    const middlewares = resolved.middlewares(event.injectorContext);
+                    if (middlewares.length) {
+
+                        await asyncOperation((resolve, reject) => {
+                            let lastTimer: any = undefined;
+
+                            function finish() {
+                                clearTimeout(lastTimer);
+                                resolve(undefined);
+                                //middleware finished the request. We end the workflow transition
+                            }
+
+                            event.response.once('finish', finish);
+                            let i = -1;
+
+                            function next() {
+                                i++;
+                                if (i >= middlewares.length) {
+                                    event.response.off('finish', finish);
+                                    resolve(undefined);
+                                    return;
+                                }
+
+                                lastTimer = setTimeout(() => {
+                                    logger.warning(`Middleware timed out. Increase the timeout or fix the middleware. (${middlewares[i].fn})`);
+                                    next();
+                                }, middlewares[i].timeout);
+
+                                middlewares[i].fn(event.request, event.response, (error?: any) => {
+                                    clearTimeout(lastTimer);
+                                    if (error) {
+                                        event.response.off('finish', finish);
+                                        reject(error);
+                                    } else {
+                                        next();
+                                    }
+                                });
+                            }
+
+                            next();
+                        });
+                    }
+                }
+
                 event.routeFound(resolved.routeConfig, resolved.parameters);
             }
         } catch (error) {
@@ -452,10 +523,17 @@ export class HttpListener {
     async onResultSerialization(event: typeof httpWorkflow.onResponse.event) {
         if (event.route && event.route.returnSchema && event.route.returnSchema.typeSet) {
             if (event.result !== undefined) {
-                event.result = getPropertyClassToXFunction(
-                    event.route.returnSchema,
-                    event.route && event.route?.serializer ? event.route.serializer : jsonSerializer
-                )(event.result, event.route.serializationOptions);
+                if (event.result instanceof JSONResponse) {
+                    event.result.json = getPropertyClassToXFunction(
+                        event.route.returnSchema,
+                        event.route && event.route?.serializer ? event.route.serializer : jsonSerializer
+                    )(event.result.json, event.route.serializationOptions);
+                } else {
+                    event.result = getPropertyClassToXFunction(
+                        event.route.returnSchema,
+                        event.route && event.route?.serializer ? event.route.serializer : jsonSerializer
+                    )(event.result, event.route.serializationOptions);
+                }
             }
         }
     }
@@ -463,6 +541,8 @@ export class HttpListener {
     @eventDispatcher.listen(httpWorkflow.onResponse, 100)
     async onResponse(event: typeof httpWorkflow.onResponse.event) {
         const response = event.result;
+
+        if (event.response.headersSent) return;
 
         if (response === null || response === undefined) {
             event.response.end(response);
@@ -479,8 +559,8 @@ export class HttpListener {
             event.response.end();
         } else if (response instanceof ServerResponse || response instanceof HttpResponse) {
         } else if (response instanceof HtmlResponse) {
-            event.response.setHeader('Content-Type', 'text/html; charset=utf-8');
-            if (response.statusCode) event.response.writeHead(response.statusCode);
+            if (!event.response.hasHeader('Content-Type')) event.response.setHeader('Content-Type', 'text/html; charset=utf-8');
+            event.response.writeHead(response._statusCode || 200, response._headers);
             event.response.end(response.html);
         } else if (isElementStruct(response)) {
             event.response.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -488,21 +568,21 @@ export class HttpListener {
         } else if (isClassInstance(response) && isRegisteredEntity(getClassTypeFromInstance(response))) {
             event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
             event.response.end(JSON.stringify(
-                (event.route && event.route?.serializer ? event.route.serializer : jsonSerializer)
-                    .for(getClassTypeFromInstance(response)).serialize(
-                    response,
-                    event.route ? event.route.serializationOptions : undefined
-                )
+                    (event.route && event.route?.serializer ? event.route.serializer : jsonSerializer)
+                        .for(getClassTypeFromInstance(response)).serialize(
+                        response,
+                        event.route ? event.route.serializationOptions : undefined
+                    )
                 )
             );
         } else if (response instanceof Uint8Array) {
             event.response.end(response);
         } else if (response instanceof JSONResponse) {
-            event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
-            if (response.statusCode) event.response.writeHead(response.statusCode);
+            if (!event.response.hasHeader('Content-Type')) event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
+            event.response.writeHead(response._statusCode || 200, response._headers);
             event.response.end(JSON.stringify(response.json));
         } else {
-            event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
+            if (!event.response.hasHeader('Content-Type')) event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
             event.response.end(JSON.stringify(response));
         }
     }

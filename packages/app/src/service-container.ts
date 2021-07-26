@@ -10,7 +10,7 @@
 
 import { arrayRemoveItem, ClassType, isClass } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
-import { AppModule, ModuleOptions } from './module';
+import { AppModule, MiddlewareConfig, ModuleOptions } from './module';
 import { ConfiguredProviderRegistry, Context, ContextRegistry, Injector, InjectorContext, ProviderWithScope, TagProvider, tokenLabel } from '@deepkit/injector';
 import { cli } from './command';
 import { WorkflowDefinition } from '@deepkit/workflow';
@@ -26,6 +26,12 @@ export interface onDestroy {
 
 export class CliControllers {
     public readonly controllers = new Map<string, ClassType>();
+}
+
+type MiddlewareRegistryEntry = { config: MiddlewareConfig, module: AppModule<any> };
+
+export class MiddlewareRegistry {
+    public readonly configs: MiddlewareRegistryEntry[] = [];
 }
 
 export class WorkflowRegistry {
@@ -51,6 +57,7 @@ export function isProvided(providers: ProviderWithScope[], token: any): boolean 
 
 export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
     public readonly cliControllers = new CliControllers;
+    public readonly middlewares = new MiddlewareRegistry;
     public readonly workflowRegistry = new WorkflowRegistry([]);
 
     protected currentIndexId = 0;
@@ -78,6 +85,7 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         this.providers.push({ provide: ServiceContainer, useValue: this });
         this.providers.push({ provide: EventDispatcher, useValue: this.eventListenerContainer });
         this.providers.push({ provide: CliControllers, useValue: this.cliControllers });
+        this.providers.push({ provide: MiddlewareRegistry, useValue: this.middlewares });
         this.providers.push({ provide: InjectorContext, useValue: this.rootInjectorContext });
 
         this.rootContext = this.processModule(this.appModule, undefined, this.providers, this.imports);
@@ -117,6 +125,11 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
     public getInjectorFor(module: AppModule<any, any>): Injector {
         this.process();
         const context = this.getContextFor(module);
+        return this.rootInjectorContext.getInjector(context.id);
+    }
+
+    public getInjectorForContext(context: Context): Injector {
+        this.process();
         return this.rootInjectorContext.getInjector(context.id);
     }
 
@@ -161,6 +174,7 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         const controllers = module.options.controllers ? module.options.controllers.slice(0) : [];
         const imports = module.options.imports ? module.options.imports.slice(0) : [];
         const listeners = module.options.listeners ? module.options.listeners.slice(0) : [];
+        const middlewares = module.options.middlewares ? module.options.middlewares.slice(0) : [];
 
         providers.push(...additionalProviders);
         imports.unshift(...additionalImports);
@@ -188,6 +202,18 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
                 }
                 this.rootInjectorContext.tagRegistry.tags.push(provider);
             }
+        }
+
+        for (const middleware of middlewares) {
+            const config = middleware();
+
+            for (const fnOrClassTye of config.getClassTypes()) {
+                if (!isClass(fnOrClassTye)) continue;
+                if (!isProvided(providers, fnOrClassTye)) {
+                    providers.unshift(fnOrClassTye);
+                }
+            }
+            this.middlewares.configs.push({ config, module });
         }
 
         for (const token of exports.slice(0)) {
@@ -224,7 +250,7 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         }
 
         for (const controller of controllers) {
-            this.setupController(providers, controller, context);
+            this.setupController(providers, controller, context, module);
         }
 
         //if there are exported tokens, their providers will be added to the parent or root context
@@ -246,7 +272,7 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         return context;
     }
 
-    protected setupController(providers: ProviderWithScope[], controller: ClassType, context: Context) {
+    protected setupController(providers: ProviderWithScope[], controller: ClassType, context: Context, module: AppModule<any>) {
         const cliConfig = cli._fetch(controller);
         if (cliConfig) {
             if (!isProvided(providers, controller)) providers.unshift({ provide: controller, scope: 'cli' });

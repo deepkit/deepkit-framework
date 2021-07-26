@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { isProvided, ModuleOptions, ServiceContainer } from '@deepkit/app';
+import { AppModule, isProvided, ModuleOptions, ServiceContainer } from '@deepkit/app';
 import { Context, InjectorContext, ProviderWithScope } from '@deepkit/injector';
 import { ClassType } from '@deepkit/core';
 import { rpcClass } from '@deepkit/rpc';
@@ -44,7 +44,7 @@ export class ApplicationServiceContainer<C extends ModuleOptions = ModuleOptions
         return super.process();
     }
 
-    protected setupController(providers: ProviderWithScope[], controller: ClassType, context: Context) {
+    protected setupController(providers: ProviderWithScope[], controller: ClassType, context: Context, module: AppModule<any>) {
         const rpcConfig = rpcClass._fetch(controller);
         if (rpcConfig) {
             if (!isProvided(providers, controller)) providers.unshift({ provide: controller, scope: 'rpc' });
@@ -56,9 +56,9 @@ export class ApplicationServiceContainer<C extends ModuleOptions = ModuleOptions
         if (httpConfig) {
             if (!isProvided(providers, controller)) providers.unshift({ provide: controller, scope: 'http' });
             (controller as any)[InjectorContext.contextSymbol] = context;
-            this.httpControllers.add(controller);
+            this.httpControllers.add(controller, context.id, module);
         }
 
-        super.setupController(providers, controller, context);
+        super.setupController(providers, controller, context, module);
     }
 }

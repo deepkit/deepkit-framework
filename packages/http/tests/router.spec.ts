@@ -3,38 +3,13 @@ import 'reflect-metadata';
 import { dotToUrlPath, RouteParameterResolverContext, Router } from '../src/router';
 import { http, httpClass } from '../src/decorator';
 import { t } from '@deepkit/type';
-import { HttpListener, httpWorkflow, JSONResponse } from '../src/http';
-import { HttpKernel } from '../src/kernel';
-import { eventDispatcher, EventDispatcher } from '@deepkit/event';
-import { inject, InjectorContext, ProviderWithScope, TagProvider, TagRegistry } from '@deepkit/injector';
-import { ConsoleTransport, Logger } from '@deepkit/logger';
+import { httpWorkflow, JSONResponse } from '../src/http';
+import { eventDispatcher } from '@deepkit/event';
+import { inject } from '@deepkit/injector';
 import { HttpRequest } from '../src/model';
-import { ClassType, getClassName, sleep } from '@deepkit/core';
-import { Stopwatch } from '@deepkit/stopwatch';
+import { getClassName, sleep } from '@deepkit/core';
+import { createHttpKernel } from './utils';
 
-function createHttpKernel(controllers: ClassType[], providers: ProviderWithScope[] = [], listeners: ClassType[] = []) {
-    const tagProviders = new TagRegistry();
-    for (const provider of providers.slice(0)) {
-        if (provider instanceof TagProvider) {
-            providers.unshift(provider.provider);
-            tagProviders.tags.push(provider);
-        }
-    }
-    const router = Router.forControllers(controllers, tagProviders);
-    const injector = InjectorContext.forProviders([
-        { provide: Router, useValue: router },
-        ...controllers,
-        ...providers,
-        ...listeners,
-        HttpListener,
-        { provide: Logger, useValue: new Logger([new ConsoleTransport()]) },
-        Stopwatch
-    ]);
-    const eventDispatcher = new EventDispatcher(injector);
-    eventDispatcher.registerListener(HttpListener);
-    for (const listener of listeners) eventDispatcher.registerListener(listener);
-    return new HttpKernel(router, eventDispatcher, injector, new Logger([new ConsoleTransport()]), new Stopwatch());
-}
 
 test('router', async () => {
     class Controller {

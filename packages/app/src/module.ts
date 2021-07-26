@@ -22,6 +22,12 @@ export type ExtractPartialConfigOfDefinition<T> = T extends ConfigDefinition<inf
 export type ExtractModuleOptions<T extends AppModule<any, any>> = T extends AppModule<infer O, any> ? O : never;
 export type ModuleConfigOfOptions<O extends ModuleOptions> = ExtractImportConfigs<O['imports']> & ExtractPartialConfigOfDefinition<DefaultObject<O['config']>>;
 
+export interface MiddlewareConfig {
+    getClassTypes(): ClassType[];
+}
+
+export type MiddlewareFactory = () => MiddlewareConfig;
+
 export interface ModuleOptions {
     /**
      * Providers.
@@ -34,7 +40,8 @@ export interface ModuleOptions {
     exports?: (ClassType | InjectToken | string | AppModule<any, any>)[];
 
     /**
-     * Module bootstrap class.
+     * Module bootstrap class. This class is instantiated on bootstrap and can
+     * setup various injected services. A more flexible alternative is to use .setup() with compiler passes.
      */
     bootstrap?: ClassType;
 
@@ -45,10 +52,12 @@ export interface ModuleOptions {
      * ```typescript
      * import {t} from '@deepkit/type';
      *
+     * const myModuleConfig = new AppModuleConfig({
+     *     debug: t.boolean.default(false),
+     * });
+     *
      * const myModule = new AppModule({
-     *     config: {
-     *         debug: t.boolean.default(false),
-     *     }
+     *     config: myModuleConfig
      * });
      * ```
      */
@@ -97,6 +106,11 @@ export interface ModuleOptions {
     listeners?: (EventListener<any> | ClassType)[];
 
     /**
+     * HTTP middlewares.
+     */
+    middlewares?: MiddlewareFactory[];
+
+    /**
      * Import another module.
      */
     imports?: AppModule<any, any>[];
@@ -113,10 +127,10 @@ function cloneOptions<T extends ModuleOptions>(options: T): T {
     return copied;
 }
 
-export class ConfigurationInvalidError extends CustomError { }
+export class ConfigurationInvalidError extends CustomError {
+}
 
 let moduleId = 0;
-
 
 export class AppModuleConfig<T extends PlainSchemaProps> extends ConfigDefinition<ExtractClassDefinition<T>> {
     constructor(public config: T) {
@@ -194,6 +208,12 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
         if (!this.options.listeners) this.options.listeners = [];
 
         this.options.listeners.push(...listener);
+    }
+
+    addMiddleware(...middlewares: MiddlewareFactory[]) {
+        if (!this.options.middlewares) this.options.middlewares = [];
+
+        this.options.middlewares.push(...middlewares);
     }
 
     private hasConfigOption(path: string): boolean {
@@ -302,6 +322,7 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
         m.configValues = configValues;
         return m;
     }
+
     /**
      * Overwrites configuration values of the current module.
      */
