@@ -9,7 +9,7 @@ import { eventDispatcher, EventDispatcher } from '@deepkit/event';
 import { inject, InjectorContext, ProviderWithScope, TagProvider, TagRegistry } from '@deepkit/injector';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { HttpRequest } from '../src/model';
-import { ClassType, sleep } from '@deepkit/core';
+import { ClassType, getClassName, sleep } from '@deepkit/core';
 import { Stopwatch } from '@deepkit/stopwatch';
 
 function createHttpKernel(controllers: ClassType[], providers: ProviderWithScope[] = [], listeners: ClassType[] = []) {
@@ -196,7 +196,9 @@ test('router parameter resolver by name', async () => {
     class UserResolver {
         resolve(context: RouteParameterResolverContext): any | Promise<any> {
             const value = context.value || context.parameters.username
-            if (!value) throw new Error('No value specified');
+            if (!value) {
+                throw new Error('No value specified');
+            }
             return new User(value);
         }
     }
@@ -205,6 +207,17 @@ test('router parameter resolver by name', async () => {
         resolve(context: RouteParameterResolverContext): any | Promise<any> {
             if (!context.value) throw new Error('No value specified');
             return new Group(context.value);
+        }
+    }
+
+    class MyAuth {
+        constructor(public name: string) {
+        }
+    }
+
+    class AuthResolver {
+        resolve(context: RouteParameterResolverContext): any | Promise<any> {
+            return new MyAuth('auth');
         }
     }
 
@@ -224,18 +237,24 @@ test('router parameter resolver by name', async () => {
         route3(user: User, group: Group) {
             return [user.username, group.name];
         }
+
+        @http.GET('nonClass').resolveParameterByName('auth', AuthResolver)
+        nonClass(auth: any) {
+            return [auth.name, getClassName(auth)];
+        }
     }
 
     const data = httpClass._fetch(Controller)!;
-    expect(data.getActions().size).toBe(3);
+    expect(data.getActions().size).toBe(4);
     expect(data.resolverForParameterName.get('user')).toBe(UserResolver);
     expect(data.getAction('route3').resolverForParameterName.get('group')).toBe(GroupResolver);
 
-    const httpKernel = createHttpKernel([Controller], [UserResolver, GroupResolver]);
+    const httpKernel = createHttpKernel([Controller], [UserResolver, GroupResolver, AuthResolver]);
 
     expect(await httpKernel.handleRequestFor('GET', '/user/peter')).toEqual(['peter']);
     expect(await httpKernel.handleRequestFor('GET', '/user/peter/group/a')).toEqual(['peter', 'a']);
     expect(await httpKernel.handleRequestFor('GET', '/invalid')).toEqual('Internal error');
+    expect(await httpKernel.handleRequestFor('GET', '/nonClass')).toEqual(['auth', 'MyAuth']);
 });
 
 test('router body', async () => {

@@ -391,18 +391,11 @@ export class Router {
                         const validatorVar = compiler.reserveVariable('argumentValidator', validator);
                         parameterValidator.push(`${validatorVar}(parameters.${parameter.property.name}, ${JSON.stringify(parameter.getName())}, validationErrors);`);
                     } else {
-                        setParameters.push(`parameters.${parameter.property.name} =_match[${1 + (parameter.regexPosition || 0)}];`);
+                        setParameters.push(`parameters.${parameter.property.name} = _match[${1 + (parameter.regexPosition || 0)}];`);
                     }
                 }
 
                 const injectorOptions = parameter.property.data['deepkit/inject'] as InjectOptions | undefined
-
-                if (!parameter.isPartOfPath() && parameter.property.type !== 'class' && (!injectorOptions || !injectorOptions.token)) {
-                    throw new Error(
-                        `Route parameter '${parameter.property.name}' of ${getRouterControllerActionName(routeConfig.action)} is not a ClassType nor is a @inject(T) set. It can not be resolved like that.` +
-                        `If its a query parameter use '@http.query() ${parameter.property.name}' or if its a body '@http.body() ${parameter.property.name}'`
-                    );
-                }
 
                 const injectorToken = injectorOptions && injectorOptions.token ? injectorOptions.token : (parameter.property.type === 'class' ? parameter.property.getResolvedClassType() : undefined);
                 const injectorTokenVar = compiler.reserveVariable('classType', injectorToken);
@@ -438,6 +431,13 @@ export class Router {
                             parameters: parameters
                         });
                     }`);
+                } else {
+                    if (!parameter.isPartOfPath() && parameter.property.type !== 'class' && (!injectorOptions || !injectorOptions.token)) {
+                        throw new Error(
+                            `Route parameter '${parameter.property.name}' of ${getRouterControllerActionName(routeConfig.action)} is not a ClassType nor is a @inject(T) set. It can not be requested from the DI container like that.` +
+                            `If its a query parameter use '@http.query() ${parameter.property.name}' or if its a body '@http.body() ${parameter.property.name}'.`
+                        );
+                    }
                 }
 
                 if (!parameter.isPartOfPath()) {
