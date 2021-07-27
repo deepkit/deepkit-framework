@@ -147,19 +147,16 @@ jobs:
     strategy:
       matrix:
         node-version: [ 14.x ]
-
-# GitHub actions has mysql 8 pre-installed and running per default since a few days, so we get this error when we start it:
-# listen tcp 0.0.0.0:3306: bind: address already in use.
-#        mysql-version: [ 8.0 ]
-#    services:
-#      mysql:
-#        image: "mysql:${{ matrix.mysql-version }}"
-#        options: >-
-#          --health-cmd "mysqladmin ping --silent"
-#          -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
-#          -e MYSQL_DATABASE=default
-#        ports:
-#          - "3306:3306"
+        mysql-version: [ 8.0 ]
+    services:
+      mysql:
+        image: "mysql:${{ matrix.mysql-version }}"
+        options: >-
+          --health-cmd "mysqladmin ping --silent"
+          -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
+          -e MYSQL_DATABASE=default
+        ports:
+          - "3306:3306"
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -171,8 +168,6 @@ jobs:
         with:
           path: "**/node_modules"
           key: ${{ runner.os }}-mysql-node_modules-${{ hashFiles('**/package-lock.json') }}
-      - name: Create DB
-        run: mysql -uroot -proot -e 'CREATE DATABASE `default`;'
       - name: npm install
         run: npm install -g npm@6 && npm install
       - name: Lerna bootstrap
