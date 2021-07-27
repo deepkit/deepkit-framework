@@ -172,7 +172,7 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-mysql-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: Create DB
-        run: mysql -uroot -proot -e "CREATE DATABASE `default`;"
+        run: mysql -uroot -proot -e 'CREATE DATABASE `default`;'
       - name: npm install
         run: npm install -g npm@6 && npm install
       - name: Lerna bootstrap
