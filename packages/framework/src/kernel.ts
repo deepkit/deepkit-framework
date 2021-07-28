@@ -17,7 +17,7 @@ import { BrokerModule } from './broker/broker.module';
 import { LiveDatabase } from './database/live-database';
 import { DebugRouterController } from './cli/debug-router';
 import { DebugDIController } from './cli/debug-di';
-import { ServerListenController } from './cli/server-listen';
+import { ServerStartController } from './cli/server-start';
 import { DebugController } from './debug/debug.controller';
 import { registerDebugHttpController } from './debug/http-debug.controller';
 import { HttpKernel, HttpListener, HttpLogger, HttpModule, Router, serveStaticListener } from '@deepkit/http';
@@ -66,7 +66,7 @@ export const KernelModule = new AppModule({
         DatabaseListener,
     ],
     controllers: [
-        ServerListenController,
+        ServerStartController,
         DebugRouterController,
         DebugDIController,
         DebugDebugFramesCommand,
