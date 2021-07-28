@@ -1,5 +1,5 @@
 import { rpc } from '@deepkit/rpc';
-import { expect, test } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { Application } from '../src/application';
 import { AppModule } from '@deepkit/app';
@@ -8,6 +8,7 @@ import { createTestingApp } from '../src/testing';
 import { ApplicationServer } from '../src/application-server';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { KernelModule } from '../src/kernel';
+import { WebWorker } from '../src/worker';
 
 test('testing app api', async () => {
     @rpc.controller('test')
@@ -90,3 +91,29 @@ test('basic controller', async () => {
 
     await applicationServer.close();
 });
+
+describe('http worker', () => {
+    test('needed for publicDir', async () => {
+        const testing = createTestingApp({
+            controllers: [],
+            imports: [KernelModule.configure({ publicDir: 'public' })]
+        });
+
+        await testing.startServer();
+        const applicationServer = testing.app.get(ApplicationServer);
+        expect(applicationServer.getWorker()).toBeInstanceOf(WebWorker);
+        await testing.stopServer();
+    })
+
+    test('not needed without controllers or publicDir', async () => {
+        const testing = createTestingApp({
+            controllers: [],
+        });
+
+        await testing.startServer();
+        const applicationServer = testing.app.get(ApplicationServer);
+        expect(() => applicationServer.getWorker()).toThrow();
+        await testing.stopServer();
+    })
+})
+

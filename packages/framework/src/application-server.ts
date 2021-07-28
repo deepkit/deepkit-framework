@@ -77,7 +77,7 @@ export const onServerWorkerShutdown = new EventToken('server.worker.shutdown', S
 
 class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'host', 'httpsPort',
     'ssl', 'sslKey', 'sslCertificate', 'sslCa', 'sslCrl',
-    'varPath', 'selfSigned', 'keepAliveTimeout', 'workers']) {
+    'varPath', 'selfSigned', 'keepAliveTimeout', 'workers', 'publicDir']) {
 }
 
 @injectable()
@@ -128,10 +128,11 @@ export class ApplicationServerListener {
 
 @injectable()
 export class ApplicationServer {
-    protected worker?: WebWorker;
+    protected httpWorker?: WebWorker;
     protected started = false;
     protected stopping = false;
     protected onlineWorkers = 0;
+    protected needsHttpWorker: boolean;
 
     constructor(
         protected logger: Logger,
@@ -139,7 +140,10 @@ export class ApplicationServer {
         protected eventDispatcher: EventDispatcher,
         protected rootScopedContext: InjectorContext,
         public config: ApplicationServerConfig,
+        protected rpcControllers: RpcControllers,
+        protected router: Router,
     ) {
+        this.needsHttpWorker = Boolean(config.publicDir || rpcControllers.controllers.size || router.getRoutes().length);
     }
 
     /**
@@ -152,7 +156,7 @@ export class ApplicationServer {
         await this.stopWorkers();
         await this.eventDispatcher.dispatch(onServerShutdown, new ServerShutdownEvent());
         await this.eventDispatcher.dispatch(onServerMainShutdown, new ServerShutdownEvent());
-        if (this.worker) this.worker.close();
+        if (this.httpWorker) this.httpWorker.close();
     }
 
     protected stopWorkers(): Promise<void> {
@@ -238,7 +242,7 @@ export class ApplicationServer {
                     if (msg === 'stop') {
                         await this.eventDispatcher.dispatch(onServerShutdown, new ServerShutdownEvent());
                         await this.eventDispatcher.dispatch(onServerWorkerShutdown, new ServerShutdownEvent());
-                        if (this.worker) this.worker.close();
+                        if (this.httpWorker) this.httpWorker.close();
                         process.exit(0);
                     }
                 });
@@ -249,8 +253,10 @@ export class ApplicationServer {
                 });
 
                 await this.eventDispatcher.dispatch(onServerWorkerBootstrap, new ServerBootstrapEvent());
-                this.worker = this.webWorkerFactory.create(cluster.worker.id, this.config);
-                this.worker.start();
+                if (this.needsHttpWorker) {
+                    this.httpWorker = this.webWorkerFactory.create(cluster.worker.id, this.config);
+                    this.httpWorker.start();
+                }
                 await this.eventDispatcher.dispatch(onServerBootstrapDone, new ServerBootstrapEvent());
                 await this.eventDispatcher.dispatch(onServerWorkerBootstrapDone, new ServerBootstrapEvent());
             }
@@ -265,14 +271,16 @@ export class ApplicationServer {
                     this.logger.warning('Received SIGINT. Stopping server ...');
                     await this.eventDispatcher.dispatch(onServerShutdown, new ServerShutdownEvent());
                     await this.eventDispatcher.dispatch(onServerMainShutdown, new ServerShutdownEvent());
-                    if (this.worker) this.worker.close();
+                    if (this.httpWorker) this.httpWorker.close();
                     process.exit(0);
                 });
             }
             await this.eventDispatcher.dispatch(onServerBootstrap, new ServerBootstrapEvent());
             await this.eventDispatcher.dispatch(onServerMainBootstrap, new ServerBootstrapEvent());
-            this.worker = this.webWorkerFactory.create(1, this.config);
-            this.worker.start();
+            if (this.needsHttpWorker) {
+                this.httpWorker = this.webWorkerFactory.create(1, this.config);
+                this.httpWorker.start();
+            }
             await this.eventDispatcher.dispatch(onServerBootstrapDone, new ServerBootstrapEvent());
             await this.eventDispatcher.dispatch(onServerMainBootstrapDone, new ServerBootstrapEvent());
         }
@@ -283,8 +291,8 @@ export class ApplicationServer {
     }
 
     public getWorker(): WebWorker {
-        if (!this.worker) throw new Error('No WebWorker registered yet. Did you start()?');
-        return this.worker;
+        if (!this.httpWorker) throw new Error('No WebWorker registered yet. Did you start()?');
+        return this.httpWorker;
     }
 
     public createClient(): RpcClient {
