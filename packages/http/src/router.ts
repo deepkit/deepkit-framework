@@ -428,9 +428,9 @@ export class Router {
                 if (route.group && !routeConfig.groups.includes(route.group)) return false;
                 if (route.excludeGroup && routeConfig.groups.includes(route.excludeGroup)) return false;
 
-                if (route.path) {
-                    if (!route.pathRegExp) route.pathRegExp = new RegExp('^' + route.path.replace(/\*/g, '.*') + '$');
-                    if (!route.pathRegExp.test(fullPath)) return false;
+                if (route.path || route.pathRegExp) {
+                    if (!route.pathRegExp && route.path) route.pathRegExp = new RegExp('^' + route.path.replace(/\*/g, '.*') + '$');
+                    if (route.pathRegExp && !route.pathRegExp.test(fullPath)) return false;
                 }
             }
 
