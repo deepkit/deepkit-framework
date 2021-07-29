@@ -15,7 +15,10 @@ test('connect handshake', async () => {
     const client = new MongoClient('mongodb://localhost/');
     await client.connect();
 
-    expect(client.config.hosts[0].getType()).toBe(HostType.standalone);
+    const type = client.config.hosts[0].getType();
+    const rightType = type === HostType.primary || type === HostType.standalone;
+    expect(rightType).toBe(true);
+
     client.close();
 });
 
