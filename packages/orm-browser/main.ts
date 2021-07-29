@@ -21,10 +21,7 @@ const appModule = new AppModule({
 
     imports: [
         KernelModule.configure({
-            port: 9090,
-            broker: {
-                startOnBootstrap: false,
-            }
+            port: 9090
         })
     ]
 }).setup((module, config) => {
