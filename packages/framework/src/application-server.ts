@@ -231,8 +231,8 @@ export class ApplicationServer {
                     });
                 }
 
-                await this.eventDispatcher.dispatch(onServerBootstrap, new ServerBootstrapEvent());
-                await this.eventDispatcher.dispatch(onServerMainBootstrap, new ServerBootstrapEvent());
+                await this.eventDispatcher.dispatch(onServerBootstrapDone, new ServerBootstrapEvent());
+                await this.eventDispatcher.dispatch(onServerMainBootstrapDone, new ServerBootstrapEvent());
             } else {
                 process.on('message', async (msg: any) => {
                     if (msg === 'stop') {
