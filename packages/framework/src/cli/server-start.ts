@@ -29,9 +29,8 @@ export class ServerStartController implements Command {
         @flag.optional workers?: number,
         @flag.optional ssl?: boolean,
         @flag.optional selfSigned?: boolean,
-        @flag.default(false) watch?: boolean,
     ): Promise<void> {
-        if (!this.logger.hasFormatter(TimestampFormatter)) this.logger.addFormatter(new TimestampFormatter);
+        if (!this.logger.hasFormatters()) this.logger.addFormatter(new TimestampFormatter);
 
         const overwrite: { [name: string]: any } = {};
         if (host) overwrite.host = host;

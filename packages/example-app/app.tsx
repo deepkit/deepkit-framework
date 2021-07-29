@@ -123,6 +123,9 @@ Application.create({
             databases: [SQLiteDatabase], migrateOnStartup: true
         }),
     ]
+}).setup((module) => {
+    //enable logging JSON messages instead of formatted strings
+    // module.setupProvider(Logger).setTransport([new JSONTransport]);
 })
     .loadConfigFromEnvVariables('APP_')
     .run();

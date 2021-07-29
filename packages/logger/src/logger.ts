@@ -36,8 +36,18 @@ export class ConsoleTransport implements LoggerTransport {
     }
 }
 
+export class JSONTransport implements LoggerTransport {
+    write(message: string, level: LoggerLevel, rawMessage: string) {
+        process.stdout.write(JSON.stringify({message: rawMessage, level, time: new Date}) + '\n');
+    }
+
+    supportsColor() {
+        return false;
+    }
+}
+
 export interface LoggerTransport {
-    write(message: string, level: LoggerLevel): void;
+    write(message: string, level: LoggerLevel, rawMessage: string): void;
 
     supportsColor(): boolean;
 }
@@ -182,6 +192,10 @@ export class Logger implements LoggerInterface {
         this.transport.push(transport);
     }
 
+    setTransport(transport: LoggerTransport[]) {
+        this.transport = transport;
+    }
+
     removeTransport(transport: LoggerTransport) {
         arrayRemoveItem(this.transport, transport);
     }
@@ -193,8 +207,16 @@ export class Logger implements LoggerInterface {
         return false;
     }
 
+    hasFormatters(): boolean {
+        return this.formatter.length > 0;
+    }
+
     addFormatter(formatter: LoggerFormatter) {
         this.formatter.push(formatter);
+    }
+
+    setFormatter(formatter: LoggerFormatter[]) {
+        this.formatter = formatter;
     }
 
     protected format(message: string, level: LoggerLevel): string {
@@ -211,13 +233,14 @@ export class Logger implements LoggerInterface {
     protected send(messages: any[], level: LoggerLevel) {
         if (!this.is(level)) return;
 
-        let message = this.format((format as any)(...messages), level);
+        const rawMessage = (format as any)(...messages);
+        const message = this.format(rawMessage, level);
 
         for (const transport of this.transport) {
             if (transport.supportsColor()) {
-                transport.write(this.colorFormatter.format(message, level), level);
+                transport.write(this.colorFormatter.format(message, level), level, rawMessage);
             } else {
-                transport.write(this.removeColorFormatter.format(message, level), level);
+                transport.write(this.removeColorFormatter.format(message, level), level, this.removeColorFormatter.format(rawMessage, level));
             }
         }
     }

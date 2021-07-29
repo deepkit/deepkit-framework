@@ -68,8 +68,8 @@ test('injector scoped setup provider', () => {
     class MySubService extends MyService { }
 
     const context = InjectorContext.forProviders([MyService, { provide: MySubService, scope: 'rpc' }]);
-    context.configuredProviderRegistry.add(MyService, { type: 'call', methodName: 'set', args: ['foo'] });
-    context.configuredProviderRegistry.add(MySubService, { type: 'call', methodName: 'set', args: ['foo'] });
+    context.configuredProviderRegistry.add(MyService, { type: 'call', methodName: 'set', args: ['foo'], order: 0 });
+    context.configuredProviderRegistry.add(MySubService, { type: 'call', methodName: 'set', args: ['foo'], order: 0 });
 
     {
         const s = context.getInjector(0).get(MyService);

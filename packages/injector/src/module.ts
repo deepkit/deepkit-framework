@@ -30,7 +30,7 @@ export class InjectorModule<N extends string = string, C extends { [name: string
      * Returns a configuration object that reflects the API of the given ClassType or token. Each call
      * is scheduled and executed once the provider has been created by the dependency injection container.
      */
-    setupProvider<T extends ClassType<T> | any>(classTypeOrToken: T): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
-        return setupProvider(classTypeOrToken, this.setupProviderRegistry);
+    setupProvider<T extends ClassType<T> | any>(classTypeOrToken: T, order: number = 0): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
+        return setupProvider(classTypeOrToken, this.setupProviderRegistry, order);
     }
 }

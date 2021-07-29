@@ -409,6 +409,10 @@ export class Injector implements BasicInjector {
 
             const configureProvider: string[] = [];
             if (configuredProviderCalls) {
+                configuredProviderCalls.sort((a, b) => {
+                    return a.order - b.order;
+                });
+
                 for (const call of configuredProviderCalls) {
                     if (call.type === 'stop') break;
                     if (call.type === 'call') {
@@ -609,10 +613,10 @@ export class Context {
 }
 
 export type ConfiguredProviderCalls = {
-        type: 'call', methodName: string | symbol | number, args: any[]
+        type: 'call', methodName: string | symbol | number, args: any[], order: number
     }
-    | { type: 'property', property: string | symbol | number, value: any }
-    | { type: 'stop' }
+    | { type: 'property', property: string | symbol | number, value: any, order: number }
+    | { type: 'stop', order: number }
     ;
 
 export class ConfiguredProviderRegistry {
@@ -646,16 +650,16 @@ export type ConfigureProvider<T> = { [name in keyof T]: T[name] extends (...args
  * Returns a configuration object that reflects the API of the given ClassType or token. Each call
  * is scheduled and executed once the provider has been created by the dependency injection container.
  */
-export function setupProvider<T extends ClassType<T> | any>(classTypeOrToken: T, registry: ConfiguredProviderRegistry): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
+export function setupProvider<T extends ClassType<T> | any>(classTypeOrToken: T, registry: ConfiguredProviderRegistry, order: number): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
     const proxy = new Proxy({}, {
         get(target, prop) {
             return (...args: any[]) => {
-                registry.add(classTypeOrToken, { type: 'call', methodName: prop, args: args });
+                registry.add(classTypeOrToken, { type: 'call', methodName: prop, args: args, order });
                 return proxy;
             };
         },
         set(target, prop, value) {
-            registry.add(classTypeOrToken, { type: 'property', property: prop, value: value });
+            registry.add(classTypeOrToken, { type: 'property', property: prop, value: value, order });
             return true;
         }
     });
@@ -704,8 +708,8 @@ export class InjectorContext implements BasicInjector {
      * Returns a configuration object that reflects the API of the given ClassType or token. Each call
      * is scheduled and executed once the provider has been created by the dependency injection container.
      */
-    setupProvider<T extends ClassType<T> | any>(classTypeOrToken: T): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
-        return setupProvider(classTypeOrToken, this.configuredProviderRegistry);
+    setupProvider<T extends ClassType<T> | any>(classTypeOrToken: T, order: number = 0): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
+        return setupProvider(classTypeOrToken, this.configuredProviderRegistry, order);
     }
 
     getModuleNames(): string[] {
