@@ -11,11 +11,15 @@
 import 'reflect-metadata';
 import { PrismaClient } from '@prisma/client';
 import { BenchSuite } from '../../../bench';
+import { spawnSync } from 'child_process';
 
 const prisma = new PrismaClient();
 
 export async function main() {
     const count = 10_000;
+
+    spawnSync(`./node_modules/.bin/prisma generate --schema src/orm/end-to-end/mongo/model.prisma`, { stdio: 'inherit', shell: true });
+    // spawnSync(`./node_modules/.bin/prisma db push --schema=src/orm/end-to-end/mongo/model.prisma --force-reset`, {stdio: 'inherit', shell: true});
 
     let created = false;
     for (let i = 0; i < 5; i++) {
@@ -26,21 +30,21 @@ export async function main() {
             created = true;
             await prisma.model.deleteMany({});
             await bench.runAsyncFix(1, 'insert', async () => {
+                const items: any[] = [];
                 for (let i = 1; i <= count; i++) {
-                    await prisma.model.create({
-                        data: {
-                            username: 'Peter ' + i,
-                            tags: 'a,b,c',
-                            priority: 5,
-                            ready: true,
-                        }
+                    items.push({
+                        username: 'Peter ' + i,
+                        tags: 'a,b,c',
+                        priority: 5,
+                        ready: true,
                     });
                 }
+                await prisma.model.createMany({ data: items });
             });
         }
 
         await bench.runAsyncFix(10, 'fetch', async () => {
-            const users = await prisma.model.findMany();
+            const users = await prisma.model.findMany({take: 10});
         });
 
         await bench.runAsyncFix(100, 'fetch-1', async () => {

@@ -1,6 +1,6 @@
 datasource db {
   provider = "mongodb"
-  url      = "mongodb://localhost/prisma?retryWrites=false"
+  url      = "mongodb://localhost:27018/prisma?retryWrites=false"
 }
 
 generator client {

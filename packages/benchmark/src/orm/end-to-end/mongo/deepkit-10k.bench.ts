@@ -33,6 +33,7 @@ export class Model {
 export async function main() {
     const count = 10_000;
     const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/bench-small-deepkit'));
+    await database.migrate();
     await database.adapter.client.connect();
 
     for (let i = 0; i < 5; i++) {

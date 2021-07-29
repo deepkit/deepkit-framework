@@ -10,7 +10,7 @@
 
 import 'reflect-metadata';
 import { BenchSuite } from '../../../bench';
-import {MongoClient} from 'mongodb';
+import { MongoClient } from 'mongodb';
 
 
 export async function main() {
@@ -37,12 +37,12 @@ export async function main() {
             await collection.insertMany(items);
         });
 
-        await bench.runAsyncFix(1000, 'fetch-1', async () => {
-            await collection.findOne({});
-        });
-        
         await bench.runAsyncFix(10, 'fetch', async () => {
             await collection.find({}).toArray();
+        });
+
+        await bench.runAsyncFix(1000, 'fetch-1', async () => {
+            await collection.findOne({});
         });
 
         await bench.runAsyncFix(1, 'update-query', async () => {
