@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/fs",
-  "version": "1.0.1-alpha.40",
+  "version": "1.0.1-alpha.41",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "repository": "https://github.com/deepkit/deepkit-framework",
@@ -16,8 +16,8 @@
   },
   "dependencies": {
     "@deepkit/core": "^1.0.1-alpha.39",
-    "@deepkit/framework": "^1.0.1-alpha.40",
-    "@deepkit/orm": "^1.0.1-alpha.40",
+    "@deepkit/framework": "^1.0.1-alpha.41",
+    "@deepkit/orm": "^1.0.1-alpha.41",
     "@deepkit/type": "^1.0.1-alpha.40",
     "fs-extra": "^9.0.1",
     "rxjs": "~6.6.0"
