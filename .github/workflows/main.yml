@@ -240,7 +240,7 @@ jobs:
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.6.0
         with:
-          mongodb-version: ${{ matrix.mongodb-version }}
+          mongodb-version: ${{ matrix.mongo-version }}
           mongodb-replica-set: test-rs
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
