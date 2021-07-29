@@ -114,12 +114,15 @@ class HelloWorldController {
     }
 }
 
+
 Application.create({
     controllers: [HelloWorldController, TestCommand],
     imports: [
         KernelModule.configure({
-            workers: 1, debug: true, publicDir: 'public', httpLog: false,
+            debug: true, publicDir: 'public', httpLog: true,
             databases: [SQLiteDatabase], migrateOnStartup: true
         }),
     ]
-}).run();
+})
+    .loadConfigFromEnvVariables('APP_')
+    .run();
