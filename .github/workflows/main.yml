@@ -233,9 +233,12 @@ jobs:
     services:
       mongo:
         image: "mongo:${{ matrix.mongo-version }}"
+        options: --replSet rs0
         ports:
           - "27017:27017"
     steps:
+      - name: initialize mongodb
+        run: mongo localhost --eval 'rs.initiate()'
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1

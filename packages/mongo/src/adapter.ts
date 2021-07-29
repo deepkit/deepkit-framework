@@ -16,6 +16,10 @@ import { MongoPersistence } from './persistence';
 import { MongoClient } from './client/client';
 import { DeleteCommand } from './client/command/delete';
 import { MongoQueryResolver } from './query.resolver';
+import { MongoDatabaseTransaction } from './client/connection';
+import { CreateIndex, CreateIndexesCommand } from './client/command/createIndexes';
+import { DropIndexesCommand } from './client/command/dropIndexes';
+import { CreateCollectionCommand } from './client/command/createCollection';
 
 export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     constructor(
@@ -60,6 +64,10 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
         return new MongoPersistence(this.client, this.ormSequences, session);
     }
 
+    createTransaction(session: DatabaseSession<this>): MongoDatabaseTransaction {
+        return new MongoDatabaseTransaction;
+    }
+
     isNativeForeignKeyConstraintSupported() {
         return false;
     }
@@ -81,33 +89,54 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
     }
 
     async migrate(classSchemas: Iterable<ClassSchema>) {
-        // for (const schema of classSchemas) {
-        //     const collection = await this.connection.getCollection(schema);
-        //     //collection not existing yet, so create lock
-        //     for (const [name, index] of schema.indices.entries()) {
-        //         const fields: { [name: string]: 1 } = {};
-        //
-        //         if (index.fields.length === 1 && index.fields[0] === '_id') continue;
-        //
-        //         for (const f of index.fields) {
-        //             fields[f] = 1;
-        //         }
-        //
-        //         const options: any = {
-        //             name: name
-        //         };
-        //         if (index.options.unique) options.unique = true;
-        //         if (index.options.sparse) options.sparse = true;
-        //
-        //         try {
-        //             await collection.createIndex(fields, options);
-        //         } catch (error) {
-        //             console.log('failed index', name, '. Recreate ...');
-        //             //failed, so drop and re-create
-        //             await collection.dropIndex(name);
-        //             await collection.createIndex(fields, options);
-        //         }
-        //     }
-        // }
+        let withOrmSequences = false;
+        for (const schema of classSchemas) {
+            await this.migrateClassSchema(schema);
+            for (const property of schema.getProperties()) {
+                if (property.isAutoIncrement) withOrmSequences = true;
+            }
+        }
+
+        if (withOrmSequences) {
+            await this.migrateClassSchema(this.ormSequences);
+        }
     };
+
+    async migrateClassSchema(schema: ClassSchema) {
+        try {
+            await this.client.execute(new CreateCollectionCommand(schema));
+        } catch (error) {
+            //its fine to fail
+        }
+
+        for (const [name, index] of schema.indices.entries()) {
+            const fields: { [name: string]: 1 } = {};
+
+            if (index.fields.length === 1 && index.fields[0] === '_id') continue;
+
+            for (const f of index.fields) {
+                fields[f] = 1;
+            }
+
+            const createIndex: CreateIndex = {
+                name,
+                key: fields,
+                unique: !!index.options.unique,
+                sparse: !!index.options.sparse,
+            };
+
+            try {
+                await this.client.execute(new CreateIndexesCommand(schema, [createIndex]));
+            } catch (error) {
+                console.log('failed index', name, '. Recreate ...');
+                //failed (because perhaps of incompatibilities). Dropping and creating a fresh index
+                //can resolve that. If the second create also fails, then it throws.
+                try {
+                    await this.client.execute(new DropIndexesCommand(schema, [name]));
+                } catch (error) {}
+
+                await this.client.execute(new CreateIndexesCommand(schema, [createIndex]));
+            }
+        }
+    }
 }

@@ -69,7 +69,7 @@ export abstract class SQLStatement {
 export abstract class SQLConnection {
     released: boolean = false;
 
-    constructor(protected connectionPool: SQLConnectionPool, protected logger: DatabaseLogger = new DatabaseLogger) {
+    constructor(protected connectionPool: SQLConnectionPool, public transaction?: DatabaseTransaction, protected logger: DatabaseLogger = new DatabaseLogger) {
     }
 
     release() {
@@ -182,7 +182,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     async count(model: SQLQueryModel<T>): Promise<number> {
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.build(this.classSchema, model, 'SELECT COUNT(*) as count');
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
         try {
             const row = await connection.execAndReturnSingle(sql.sql, sql.params);
             //postgres has bigint as return type of COUNT, so we need to convert always
@@ -196,7 +196,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.build(this.classSchema, model, 'DELETE');
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
         try {
             await connection.run(sql.sql, sql.params);
             deleteResult.modified = await connection.getChanges();
@@ -209,7 +209,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     async find(model: SQLQueryModel<T>): Promise<T[]> {
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.select(this.classSchema, model);
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
         try {
             const rows = await connection.execAndReturnAll(sql.sql, sql.params);
             const results: T[] = [];
@@ -237,7 +237,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.select(this.classSchema, model);
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
         let row: any;
 
         try {
@@ -272,7 +272,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         const set = buildSetFromChanges(this.platform, this.classSchema, changes);
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.update(this.classSchema, model, set);
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
         try {
             await connection.run(sql.sql, sql.params);
             patchResult.modified = await connection.getChanges();
@@ -474,7 +474,7 @@ export class RawQuery {
      */
     async execute(): Promise<void> {
         const sql = this.sql.convertToSQL(this.platform, new this.platform.placeholderStrategy);
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
 
         try {
             return await connection.run(sql.sql, sql.params);
@@ -495,7 +495,7 @@ export class RawQuery {
      */
     async find(): Promise<any[]> {
         const sql = this.sql.convertToSQL(this.platform, new this.platform.placeholderStrategy);
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
 
         try {
             const res = await connection.execAndReturnAll(sql.sql, sql.params);
@@ -652,7 +652,7 @@ export class SQLPersistence extends DatabasePersistence {
 
     async getConnection(): Promise<ReturnType<this['connectionPool']['getConnection']>> {
         if (!this.connection) {
-            this.connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+            this.connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
         }
         return this.connection;
     }

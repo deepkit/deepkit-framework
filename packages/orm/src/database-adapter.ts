@@ -12,7 +12,7 @@ import { Entity } from './type';
 import { AbstractClassType } from '@deepkit/core';
 import { ClassSchema, ItemChanges, PrimaryKeyFields } from '@deepkit/type';
 import { Query } from './query';
-import { DatabaseSession } from './database-session';
+import { DatabaseSession, DatabaseTransaction } from './database-session';
 
 export abstract class DatabaseAdapterQueryFactory {
     abstract createQuery<T extends Entity>(classType: AbstractClassType<T> | ClassSchema<T>): Query<T>;
@@ -57,6 +57,8 @@ export abstract class DatabaseAdapter {
     };
 
     abstract createPersistence(session: DatabaseSession<this>): DatabasePersistence;
+
+    abstract createTransaction(session: DatabaseSession<this>): DatabaseTransaction;
 
     abstract disconnect(force?: boolean): void;
 

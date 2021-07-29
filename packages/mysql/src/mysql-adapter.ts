@@ -72,11 +72,12 @@ export class MySQLConnection extends SQLConnection {
     protected connector?: Promise<PoolConnection>;
 
     constructor(
-        connectionPool: SQLConnectionPool,
         public connection: PoolConnection,
+        connectionPool: SQLConnectionPool,
+        transaction?: DatabaseTransaction,
         logger?: DatabaseLogger
     ) {
-        super(connectionPool, logger);
+        super(connectionPool, transaction, logger);
     }
 
     async prepare(sql: string) {
@@ -100,20 +101,92 @@ export class MySQLConnection extends SQLConnection {
     }
 }
 
+export type TransactionTypes = 'REPEATABLE READ' | 'READ UNCOMMITTED' | 'READ COMMITTED' | 'SERIALIZABLE';
+
+export class MySQLDatabaseTransaction extends DatabaseTransaction {
+    connection?: MySQLConnection;
+
+    setTransaction?: TransactionTypes;
+
+    /**
+     * This is the default for mysql databases.
+     */
+    repeatableRead(): this {
+        this.setTransaction = 'REPEATABLE READ';
+        return this;
+    }
+
+    readUncommitted(): this {
+        this.setTransaction = 'READ UNCOMMITTED';
+        return this;
+    }
+
+    readCommitted(): this {
+        this.setTransaction = 'READ COMMITTED';
+        return this;
+    }
+
+    serializable(): this {
+        this.setTransaction = 'SERIALIZABLE';
+        return this;
+    }
+
+    async begin() {
+        if (!this.connection) return;
+        const set = this.setTransaction ? 'SET TRANSACTION ISOLATION LEVEL ' + this.setTransaction + ';' : '';
+        await this.connection.run(set + 'START TRANSACTION');
+    }
+
+    async commit() {
+        if (!this.connection) return;
+        if (this.ended) throw new Error('Transaction ended already');
+
+        await this.connection.run('COMMIT');
+        this.ended = true;
+        this.connection.release();
+    }
+
+    async rollback() {
+        if (!this.connection) return;
+
+        if (this.ended) throw new Error('Transaction ended already');
+        await this.connection.run('ROLLBACK');
+        this.ended = true;
+        this.connection.release();
+    }
+}
+
 export class MySQLConnectionPool extends SQLConnectionPool {
     constructor(protected pool: Pool) {
         super();
     }
 
-    async getConnection(logger?: DatabaseLogger, transaction?: DatabaseTransaction): Promise<MySQLConnection> {
-        //todo: handle transaction, when given we make sure we return a sticky connection to the transaction
-        // and release the stickiness when transaction finished.
+    async getConnection(logger?: DatabaseLogger, transaction?: MySQLDatabaseTransaction): Promise<MySQLConnection> {
+        //when a transaction object is given, it means we make the connection sticky exclusively to that transaction
+        //and only release the connection when the transaction is commit/rollback is executed.
+
+        if (transaction && transaction.connection) return transaction.connection;
 
         this.activeConnections++;
-        return new MySQLConnection(this, await this.pool.getConnection(), logger);
+        const connection = new MySQLConnection(await this.pool.getConnection(), this, transaction, logger);
+        if (transaction) {
+            transaction.connection = connection;
+            try {
+                await transaction.begin();
+            } catch (error) {
+                transaction.ended = true;
+                connection.release();
+                throw new Error('Could not start transaction: ' + error);
+            }
+        }
+        return connection;
     }
 
     release(connection: MySQLConnection) {
+        //connections attached to a transaction are not automatically released.
+        //only with commit/rollback actions
+        if (connection.transaction && !connection.transaction.ended) return;
+
         connection.connection.release();
         super.release(connection);
     }
@@ -307,7 +380,7 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
         const tableName = this.platform.getTableIdentifier(this.classSchema);
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
         try {
             const sql = `
                 WITH _ AS (${select.sql})
@@ -408,7 +481,7 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
             ${selectVarsSQL}
         `;
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
         try {
             const result = await connection.execAndReturnAll(sql, params);
             const packet = result[0];
@@ -459,6 +532,10 @@ export class MySQLDatabaseAdapter extends SQLDatabaseAdapter {
 
     createPersistence(session: DatabaseSession<any>): SQLPersistence {
         return new MySQLPersistence(this.platform, this.connectionPool, session);
+    }
+
+    createTransaction(session: DatabaseSession<this>): MySQLDatabaseTransaction {
+        return new MySQLDatabaseTransaction();
     }
 
     queryFactory(databaseSession: DatabaseSession<any>): MySQLDatabaseQueryFactory {

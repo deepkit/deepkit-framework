@@ -1,7 +1,8 @@
-import {expect, test} from '@jest/globals';
-import {MongoClient} from '../../src/client/client';
-import {HostType} from '../../src/client/host';
-import {IsMasterCommand} from '../../src/client/command/ismaster';
+import { expect, test } from '@jest/globals';
+import { MongoClient } from '../../src/client/client';
+import { HostType } from '../../src/client/host';
+import { IsMasterCommand } from '../../src/client/command/ismaster';
+import { sleep } from '@deepkit/core';
 
 test('connect invalid', async () => {
     const client = new MongoClient('mongodb://invalid/');
@@ -89,3 +90,57 @@ test('connect isMaster command', async () => {
 //
 //
 // });
+
+
+
+test('connection pool', async () => {
+    const client = new MongoClient('mongodb://localhost?maxPoolSize=10');
+
+    {
+        const c1 = await client.connectionPool.getConnection();
+        const c2 = await client.connectionPool.getConnection();
+
+        expect(c1 === c2).toBe(false);
+
+        c1.release();
+        c2.release();
+
+        const c3 = await client.connectionPool.getConnection();
+        expect(c3 === c1).toBe(true);
+    }
+
+    {
+        const c1 = await client.connectionPool.getConnection();
+        const c2 = await client.connectionPool.getConnection();
+        const c3 = await client.connectionPool.getConnection();
+        const c4 = await client.connectionPool.getConnection();
+        const c5 = await client.connectionPool.getConnection();
+        const c6 = await client.connectionPool.getConnection();
+        const c7 = await client.connectionPool.getConnection();
+        const c8 = await client.connectionPool.getConnection();
+        const c9 = await client.connectionPool.getConnection();
+        const c10 = await client.connectionPool.getConnection();
+        // this blocks
+        let c11: any;
+        client.connectionPool.getConnection().then((c) => {
+            c11 = c;
+            expect(c11.id).toBe(1);
+        });
+        let c12: any;
+        client.connectionPool.getConnection().then((c) => {
+            c12 = c;
+            expect(c12.id).toBe(2);
+        });
+        await sleep(0.01);
+        expect(c11).toBe(undefined);
+        expect(c12).toBe(undefined);
+
+        c1.release();
+        await sleep(0.01);
+        expect(c11).toBe(c1);
+
+        c2.release();
+        await sleep(0.01);
+        expect(c12).toBe(c2);
+    }
+});

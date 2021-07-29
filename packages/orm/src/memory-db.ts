@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseSession } from './database-session';
+import { DatabaseSession, DatabaseTransaction } from './database-session';
 import { DatabaseQueryModel, GenericQueryResolver, Query } from './query';
 import { Changes, ClassSchema, CompilerState, getClassSchema, jsonSerializer, PropertySchema } from '@deepkit/type';
 import { AbstractClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
@@ -230,6 +230,17 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
     }
 }
 
+export class MemoryDatabaseTransaction extends DatabaseTransaction {
+    async begin(): Promise<void> {
+    }
+
+    async commit(): Promise<void> {
+    }
+
+    async rollback(): Promise<void> {
+    }
+}
+
 export class MemoryDatabaseAdapter extends DatabaseAdapter {
     protected store = new Map<ClassSchema, SimpleStore<any>>();
 
@@ -238,6 +249,10 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
 
     isNativeForeignKeyConstraintSupported(): boolean {
         return false;
+    }
+
+    createTransaction(session: DatabaseSession<this>): MemoryDatabaseTransaction {
+        return new MemoryDatabaseTransaction();
     }
 
     getStore<T>(classSchema: ClassSchema<T>): SimpleStore<T> {

@@ -25,6 +25,10 @@ const findAndModifySchema = t.schema({
     new: t.boolean,
     upsert: t.boolean,
     fields: t.map(t.number),
+    lsid: t.type({ id: t.uuid }).optional,
+    txnNumber: t.number.optional,
+    autocommit: t.boolean.optional,
+    startTransaction: t.boolean.optional,
 });
 
 export class FindAndModifyCommand<T extends ClassSchema | ClassType> extends Command {
@@ -40,13 +44,13 @@ export class FindAndModifyCommand<T extends ClassSchema | ClassType> extends Com
         super();
     }
 
-    async execute(config): Promise<FindAndModifyResponse> {
+    async execute(config, host, transaction): Promise<FindAndModifyResponse> {
         const schema = getClassSchema(this.classSchema);
 
         const fields = {};
         for (const name of this.fields) fields[name] = 1;
 
-        const cmd = {
+        const cmd: any = {
             findAndModify: schema.collectionName || schema.name || 'unknown',
             $db: schema.databaseSchemaName || config.defaultDb || 'admin',
             query: this.query,
@@ -55,6 +59,8 @@ export class FindAndModifyCommand<T extends ClassSchema | ClassType> extends Com
             upsert: this.upsert,
             fields: fields,
         };
+
+        if (transaction) transaction.applyTransaction(cmd);
 
         return await this.sendAndWait(findAndModifySchema, cmd, FindAndModifyResponse);
     }

@@ -8,20 +8,19 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ConnectionRequest, MongoConnection, MongoConnectionPool } from './connection';
+import { ConnectionRequest, MongoConnection, MongoConnectionPool, MongoDatabaseTransaction } from './connection';
 import { ClassSchema } from '@deepkit/type';
 import { isErrorRetryableRead, isErrorRetryableWrite, MongoError } from './error';
 import { ClassType, sleep } from '@deepkit/core';
 import { Command } from './command/command';
-import { DropDatabaseCommand } from './command/drop-database';
+import { DropDatabaseCommand } from './command/dropDatabase';
 import { MongoClientConfig } from './config';
 
 export class MongoClient {
     protected inCloseProcedure: boolean = false;
 
     public readonly config: MongoClientConfig;
-
-    protected connectionPool: MongoConnectionPool;
+    public connectionPool: MongoConnectionPool;
 
     constructor(
         connectionString: string
@@ -50,14 +49,26 @@ export class MongoClient {
     /**
      * Returns an existing or new connection, that needs to be released once done using it.
      */
-    getConnection(request: ConnectionRequest = {}): Promise<MongoConnection> {
-        return this.connectionPool.getConnection(request);
+    async getConnection(request: ConnectionRequest = {}, transaction?: MongoDatabaseTransaction): Promise<MongoConnection> {
+        if (transaction && transaction.connection) return transaction.connection;
+        const connection = await this.connectionPool.getConnection(request);
+        if (transaction) {
+            transaction.connection = connection;
+            connection.transaction = transaction;
+            try {
+                await transaction.begin();
+            } catch (error) {
+                transaction.ended = true;
+                connection.release();
+                throw new Error('Could not start transaction: ' + error);
+            }
+        }
+        return connection;
     }
 
     public async execute<T extends Command>(command: T): Promise<ReturnType<T['execute']>> {
         const maxRetries = 10;
         const request = { writable: command.needsWritableHost() };
-        await this.connectionPool.ensureHostsConnected(true);
 
         for (let i = 1; i <= maxRetries; i++) {
             const connection = await this.connectionPool.getConnection(request);

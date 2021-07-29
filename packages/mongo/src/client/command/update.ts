@@ -25,7 +25,11 @@ const updateSchema = t.schema({
         // maybe in the future support classSchema. But `u` supports update statements https://docs.mongodb.com/manual/reference/operator/update/#id1
         u: t.any,
         multi: t.boolean,
-    })
+    }),
+    lsid: t.type({id: t.uuid}).optional,
+    txnNumber: t.number.optional,
+    autocommit: t.boolean.optional,
+    startTransaction: t.boolean.optional,
 });
 
 export class UpdateCommand<T extends ClassSchema | ClassType> extends Command {
@@ -36,14 +40,15 @@ export class UpdateCommand<T extends ClassSchema | ClassType> extends Command {
         super();
     }
 
-    async execute(config): Promise<number> {
+    async execute(config, host, transaction): Promise<number> {
         const schema = getClassSchema(this.classSchema);
 
-        const cmd = {
+        const cmd: any = {
             update: schema.collectionName || schema.name || 'unknown',
             $db: schema.databaseSchemaName || config.defaultDb || 'admin',
             updates: this.updates
         };
+        if (transaction) transaction.applyTransaction(cmd);
 
         const res = await this.sendAndWait(updateSchema, cmd, UpdateResponse);
         return res.n;

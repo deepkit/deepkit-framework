@@ -24,6 +24,10 @@ const deleteSchema = t.schema({
         q: t.any,
         limit: t.number,
     }),
+    lsid: t.type({ id: t.uuid }).optional,
+    txnNumber: t.number.optional,
+    autocommit: t.boolean.optional,
+    startTransaction: t.boolean.optional,
 });
 
 export class DeleteCommand<T extends ClassSchema | ClassType> extends Command {
@@ -37,7 +41,7 @@ export class DeleteCommand<T extends ClassSchema | ClassType> extends Command {
         super();
     }
 
-    async execute(config): Promise<number> {
+    async execute(config, host, transaction): Promise<number> {
         const schema = getClassSchema(this.classSchema);
 
         const cmd = {
@@ -50,6 +54,8 @@ export class DeleteCommand<T extends ClassSchema | ClassType> extends Command {
                 }
             ]
         };
+
+        if (transaction) transaction.applyTransaction(cmd);
 
         const res = await this.sendAndWait(deleteSchema, cmd, DeleteResponse);
         return res.n;

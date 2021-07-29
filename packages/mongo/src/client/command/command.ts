@@ -14,6 +14,7 @@ import { deserialize, getBSONDecoder } from '@deepkit/bson';
 import { MongoError } from '../error';
 import { MongoClientConfig } from '../config';
 import { Host } from '../host';
+import { MongoDatabaseTransaction } from '../connection';
 
 
 export interface CommandMessageResponseCallbackResult<T> {
@@ -26,7 +27,7 @@ export interface CommandMessageResponseCallbackResult<T> {
      * When the command is not finished and another message should be sent, set the new CommandMessage
      * as `next`.
      */
-    next?: CommandMessage<any, any>
+    next?: CommandMessage<any, any>;
 }
 
 export class CommandMessage<T, R extends ClassSchema | ClassType> {
@@ -62,7 +63,7 @@ export abstract class Command {
         });
     }
 
-    abstract execute(config: MongoClientConfig, host: Host): Promise<any>;
+    abstract execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<any>;
 
     abstract needsWritableHost(): boolean;
 
@@ -70,10 +71,25 @@ export abstract class Command {
         if (!this.current) throw new Error('Got handleResponse without active command');
         const message = this.current.response ? getBSONDecoder(this.current.response)(response) : deserialize(response);
         if (!message.ok) {
-            console.error(message);
+            // console.log('Mongo error', message);
             this.current.reject(new MongoError(message.errmsg, message.code));
         } else {
             this.current.resolve(message);
         }
+    }
+}
+
+export class GenericCommand extends Command {
+    constructor(protected classSchema: ClassSchema, protected cmd: { [name: string]: any }, protected _needsWritableHost: boolean) {
+        super();
+    }
+
+    async execute(config): Promise<number> {
+        const res = await this.sendAndWait(this.classSchema, this.cmd);
+        return res.n;
+    }
+
+    needsWritableHost(): boolean {
+        return this._needsWritableHost;
     }
 }

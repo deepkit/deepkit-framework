@@ -239,14 +239,24 @@ export class SessionClosedException extends CustomError {
 }
 
 export interface DatabaseSessionHookConstructor<C> {
-    new<T extends DatabaseSession<DatabaseAdapter>>(session: T): C;
+    new<T extends DatabaseSession<any>>(session: T): C;
 }
 
-export interface DatabaseSessionHook<T extends DatabaseSession<DatabaseAdapter>> {
+export interface DatabaseSessionHook<T extends DatabaseSession<any>> {
 }
 
-export class DatabaseTransaction {
-    constructor(public id: number) {
+export abstract class DatabaseTransaction {
+    static transactionCounter: number = 0;
+
+    public ended: boolean = false;
+
+    abstract begin(): Promise<void>;
+
+    abstract commit(): Promise<void>;
+
+    abstract rollback(): Promise<void>;
+
+    constructor(public id: number = DatabaseTransaction.transactionCounter++) {
     }
 }
 
@@ -261,7 +271,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
      * (that's how transaction work). The connection between a transaction
      * and connection should be unlinked when the transaction commits/rollbacks.
      */
-    public transaction?: DatabaseTransaction;
+    public assignedTransaction?: ReturnType<this['adapter']['createTransaction']>;
 
     public readonly identityMap = new IdentityMap();
 
@@ -273,8 +283,6 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     public readonly raw!: ReturnType<this['adapter']['rawFactory']>['create'];
 
     protected rounds: DatabaseSessionRound<ADAPTER>[] = [];
-
-    protected commitDepth: number = 0;
 
     protected inCommit: boolean = false;
 
@@ -292,6 +300,91 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
 
         const factory = this.adapter.rawFactory(this);
         this.raw = factory.create.bind(factory);
+    }
+
+    /**
+     * Marks this session as transactional. On the next query or flush/commit() a transaction on the database adapter is started.
+     * Use flush(), commit(), and rollback() to control the transaction behavior. All created query objects from this session
+     * are running in this transaction as well.
+     *
+     * The transaction is released when commit()/rollback is executed. When the transaction is released then
+     * this session is not marked as transactional anymore. You have to use useTransaction() again if you want to
+     * have a new transaction on this session.
+     */
+    useTransaction(): ReturnType<this['adapter']['createTransaction']> {
+        if (!this.assignedTransaction) {
+            this.assignedTransaction = this.adapter.createTransaction(this) as ReturnType<this['adapter']['createTransaction']>;
+        }
+        return this.assignedTransaction;
+    }
+
+    /**
+     * Whether a transaction is assigned to this session.
+     */
+    hasTransaction(): boolean {
+        return !!this.assignedTransaction;
+    }
+
+    /**
+     * Commits all open changes (pending inserts, updates, deletions) in optimized batches.
+     *
+     * If a transaction is assigned, this will automatically call a transaction commit and the transaction released.
+     * Use flush() if you don't want to end the transaction and keep making changes to the current transaction.
+     */
+    public async commit() {
+        await this.flush();
+        if (!this.assignedTransaction) return;
+        await this.assignedTransaction.commit();
+        this.assignedTransaction = undefined;
+    }
+
+    /**
+     * If a transaction is assigned, a transaction rollback is executed and the transaction released.
+     *
+     * This does not rollback changes made to objects in memory.
+     */
+    async rollback(): Promise<void> {
+        if (!this.assignedTransaction) return;
+        await this.assignedTransaction.rollback();
+        this.assignedTransaction = undefined;
+    }
+
+    /**
+     * If a transaction is assigned, a transaction commit is executed.
+     *
+     * This does not commit changes made to your objects in memory. Use commit() for that instead (which executes commitTransaction() as well).
+     */
+    async commitTransaction(): Promise<void> {
+        if (!this.assignedTransaction) return;
+        await this.assignedTransaction.commit();
+        this.assignedTransaction = undefined;
+    }
+
+    /**
+     * Executes an async callback inside of a new transaction. If the callback succeeds (not throwing), the
+     * session is automatically committed (and thus its transaction committed and all changes flushed).
+     * If the callback throws, the session executes rollback() automatically, and the error rethrown.
+     *
+     * ```typescript
+     * await session.transaction(async (session) => {
+     *     await session.query(...);
+     *     session.add(...);
+     *
+     *     //...
+     * });
+     * ```
+     */
+    async transaction<T>(callback: (session: this) => Promise<T>): Promise<T> {
+        this.useTransaction();
+
+        try {
+            const result = await callback(this);
+            await this.commit();
+            return result;
+        } catch (error) {
+            await this.rollback();
+            throw error;
+        }
     }
 
     from<T>(hook: DatabaseSessionHookConstructor<T>): T {
@@ -327,7 +420,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     }
 
     /**
-     * Adds a single or multiple to the to add/update queue. Use session.commit() to persist all queued items to the database.
+     * Adds a single or multiple items to the to add/update queue. Use session.commit() to persist all queued items to the database.
      *
      * This works like Git: you add files, and later commit all in one batch.
      */
@@ -349,9 +442,12 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
 
         this.getCurrentRound().remove(...items);
     }
-
+    /**
+     * Resets all scheduled changes (add() and remove() calls).
+     *
+     * This does not reset changes made to your objects in memory.
+     */
     public reset() {
-        this.commitDepth = 0;
         this.inCommit = false;
         this.rounds = [];
         if (this.currentPersistence) {
@@ -388,7 +484,13 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
         markAsHydrated(item);
     }
 
-    public async commit<T>() {
+    /**
+     * Commits all open changes (pending inserts, updates, deletions) in optimized batches.
+     *
+     * The transaction (if there is any) is still alive. You can call flush() multiple times in an active transaction.
+     * commit() does the same as flush() but also automatically commits and closes the transaction.
+     */
+    public async flush() {
         if (!this.currentPersistence) {
             this.currentPersistence = this.adapter.createPersistence(this);
         }
@@ -406,8 +508,6 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
             }
         }
 
-        this.commitDepth++;
-
         if (this.unitOfWorkEmitter.onCommitPre.hasSubscriptions()) {
             const event = new UnitOfWorkCommitEvent(this);
             await this.unitOfWorkEmitter.onCommitPre.emit(event);
@@ -423,19 +523,14 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
                 await round.commit(this.currentPersistence);
             } catch (error) {
                 this.rounds = [];
-                this.commitDepth = 0;
                 this.currentPersistence.release();
                 this.currentPersistence = undefined;
                 throw error;
             }
         }
 
-        if (this.commitDepth - 1 === 0) {
-            this.currentPersistence.release();
-            this.currentPersistence = undefined;
-            this.rounds = [];
-        }
-
-        this.commitDepth--;
+        this.currentPersistence.release();
+        this.currentPersistence = undefined;
+        this.rounds = [];
     }
 }

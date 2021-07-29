@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, empty, Mutex } from '@deepkit/core';
+import { asyncOperation, ClassType, empty } from '@deepkit/core';
 import { DatabaseAdapter, DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
 import {
     DefaultPlatform,
@@ -58,12 +58,46 @@ export class SQLiteStatement extends SQLStatement {
     }
 }
 
+export class SQLiteDatabaseTransaction extends DatabaseTransaction {
+    connection?: SQLiteConnection;
+
+    async begin() {
+        if (!this.connection) return;
+        await this.connection.run('BEGIN');
+    }
+
+    async commit() {
+        if (!this.connection) return;
+        if (this.ended) throw new Error('Transaction ended already');
+
+        await this.connection.run('COMMIT');
+        this.ended = true;
+        this.connection.release();
+    }
+
+    async rollback() {
+        if (!this.connection) return;
+
+        if (this.ended) throw new Error('Transaction ended already');
+        await this.connection.run('ROLLBACK');
+        this.ended = true;
+        this.connection.release();
+    }
+}
+
 export class SQLiteConnection extends SQLConnection {
     public platform = new SQLitePlatform();
     protected changes: number = 0;
+    public db: sqlite3.Database;
 
-    constructor(connectionPool: SQLConnectionPool, protected db:sqlite3.Database, logger?: DatabaseLogger) {
-        super(connectionPool, logger);
+    constructor(connectionPool: SQLConnectionPool,
+                protected dbPath: string,
+                logger?: DatabaseLogger,
+                transaction?: DatabaseTransaction,
+    ) {
+        super(connectionPool, transaction, logger);
+        this.db = new sqlite3(this.dbPath);
+        this.db.exec('PRAGMA foreign_keys=ON');
     }
 
     async prepare(sql: string) {
@@ -98,25 +132,66 @@ export class SQLiteConnection extends SQLConnection {
 }
 
 export class SQLiteConnectionPool extends SQLConnectionPool {
-    protected connectionMutex = new Mutex();
+    public maxConnections: number = 10;
 
-    constructor(protected db: sqlite3.Database) {
+    protected queue: ((connection: SQLiteConnection) => void)[] = [];
+
+    //we keep the first connection alive
+    protected firstConnection?: SQLiteConnection;
+
+    constructor(protected dbPath: string) {
         super();
     }
 
-    async getConnection(logger?: DatabaseLogger, transaction?: DatabaseTransaction): Promise<SQLiteConnection> {
-        //todo: handle transaction, when given we make sure we return a sticky connection to the transaction
-        // and release the stickiness when transaction finished.
-
-        await this.connectionMutex.lock();
-        this.activeConnections++;
-
-        return new SQLiteConnection(this, this.db, logger);
+    close() {
+        if (this.firstConnection) this.firstConnection.db.close();
     }
 
-    release(connection: SQLConnection) {
+    async getConnection(logger?: DatabaseLogger, transaction?: SQLiteDatabaseTransaction): Promise<SQLiteConnection> {
+        //when a transaction object is given, it means we make the connection sticky exclusively to that transaction
+        //and only release the connection when the transaction is commit/rollback is executed.
+
+        if (transaction && transaction.connection) return transaction.connection;
+
+        const connection = this.firstConnection && this.firstConnection.released ? this.firstConnection :
+            this.activeConnections > this.maxConnections
+                //we wait for the next query to be released and reuse it
+                ? await asyncOperation<SQLiteConnection>((resolve) => {
+                    this.queue.push(resolve);
+                })
+                : new SQLiteConnection(this, this.dbPath, logger);
+
+        if (!this.firstConnection) this.firstConnection = connection;
+        connection.released = false;
+
+        this.activeConnections++;
+
+        if (transaction) {
+            transaction.connection = connection;
+            connection.transaction = transaction;
+            try {
+                await transaction.begin();
+            } catch (error) {
+                transaction.ended = true;
+                connection.release();
+                throw new Error('Could not start transaction: ' + error);
+            }
+        }
+        return connection;
+    }
+
+    release(connection: SQLiteConnection) {
+        //connections attached to a transaction are not automatically released.
+        //only with commit/rollback actions
+        if (connection.transaction && !connection.transaction.ended) return;
+
         super.release(connection);
-        this.connectionMutex.unlock();
+        const resolve = this.queue.shift();
+        if (resolve) {
+            resolve(connection);
+        } else if (this.firstConnection !== connection) {
+            connection.db.close();
+        }
     }
 }
 
@@ -299,7 +374,7 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
         const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
         try {
             await connection.exec(`DROP TABLE IF EXISTS _tmp_d`);
             await connection.run(`CREATE TEMPORARY TABLE _tmp_d as ${select.sql};`, select.params);
@@ -381,7 +456,7 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
               WHERE ${tableName}.${this.platform.quoteIdentifier(primaryKey.name)} = _b.${this.platform.quoteIdentifier(bPrimaryKey)};
         `;
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
         try {
             await connection.exec(`DROP TABLE IF EXISTS _b;`);
 
@@ -426,16 +501,13 @@ export class SQLiteDatabaseQueryFactory extends SQLDatabaseQueryFactory {
 }
 
 export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
-    public readonly db: sqlite3.Database;
     public readonly connectionPool: SQLiteConnectionPool;
     public readonly platform = new SQLitePlatform();
 
     constructor(protected sqlitePath: string = ':memory:') {
         super();
-        this.db = new sqlite3(sqlitePath);
-        this.db.exec('PRAGMA foreign_keys=ON');
 
-        this.connectionPool = new SQLiteConnectionPool(this.db);
+        this.connectionPool = new SQLiteConnectionPool(this.sqlitePath);
     }
 
     async getInsertBatchSize(schema: ClassSchema): Promise<number> {
@@ -450,6 +522,10 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
         return '';
     }
 
+    createTransaction(session: DatabaseSession<this>): SQLiteDatabaseTransaction {
+        return new SQLiteDatabaseTransaction();
+    }
+
     createPersistence(session: DatabaseSession<any>): SQLPersistence {
         return new SQLitePersistence(this.platform, this.connectionPool, session);
     }
@@ -459,9 +535,9 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
     }
 
     disconnect(force?: boolean): void {
-        if (this.connectionPool.getActiveConnections() > 0) {
+        if (!force && this.connectionPool.getActiveConnections() > 0) {
             throw new Error(`There are still active connections. Please release() any fetched connection first.`);
         }
-        this.db.close();
+        this.connectionPool.close();
     }
 }

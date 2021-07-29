@@ -22,6 +22,10 @@ const findSchema = t.schema({
     filter: t.any,
     projection: t.any.optional,
     sort: t.any.optional,
+    lsid: t.type({id: t.uuid}).optional,
+    txnNumber: t.number.optional,
+    startTransaction: t.boolean.optional,
+    autocommit: t.boolean.optional,
 });
 
 export class FindCommand<T extends ClassSchema | ClassType> extends Command {
@@ -37,7 +41,7 @@ export class FindCommand<T extends ClassSchema | ClassType> extends Command {
         super();
     }
 
-    async execute(config): Promise<ExtractClassType<T>[]> {
+    async execute(config, host, transaction): Promise<ExtractClassType<T>[]> {
         let classSchema = getClassSchema(this.classSchema);
 
         const cmd: InstanceType<typeof findSchema.classType> = {
@@ -48,6 +52,8 @@ export class FindCommand<T extends ClassSchema | ClassType> extends Command {
             skip: this.skip,
             batchSize: 1_000_000, //todo make configurable
         };
+
+        if (transaction) transaction.applyTransaction(cmd);
 
         if (this.projection) cmd.projection = this.projection;
         if (this.sort) cmd.sort = this.sort;

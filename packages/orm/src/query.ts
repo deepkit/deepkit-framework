@@ -505,7 +505,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
 
     constructor(
         classSchema: ClassSchema,
-        protected databaseSession: DatabaseSession<DatabaseAdapter>,
+        protected databaseSession: DatabaseSession<any>,
         protected resolver: GenericQueryResolver<T>
     ) {
         super(classSchema);

@@ -18,7 +18,11 @@ const aggregateSchema = t.schema({
     pipeline: t.array(t.any),
     cursor: {
         batchSize: t.number,
-    }
+    },
+    lsid: t.type({id: t.uuid}).optional,
+    txnNumber: t.number.optional,
+    startTransaction: t.boolean.optional,
+    autocommit: t.boolean.optional,
 });
 
 export class AggregateCommand<T extends ClassSchema | ClassType, R extends ClassSchema> extends Command {
@@ -32,7 +36,7 @@ export class AggregateCommand<T extends ClassSchema | ClassType, R extends Class
         super();
     }
 
-    async execute(config): Promise<ExtractClassType<R extends undefined ? T : R>[]> {
+    async execute(config, host, transaction): Promise<ExtractClassType<R extends undefined ? T : R>[]> {
         const schema = getClassSchema(this.classSchema);
 
         const cmd = {
@@ -44,6 +48,7 @@ export class AggregateCommand<T extends ClassSchema | ClassType, R extends Class
             }
         };
 
+        if (transaction) transaction.applyTransaction(cmd);
         const resultSchema = this.resultSchema || schema;
 
         const jit = resultSchema.jit;

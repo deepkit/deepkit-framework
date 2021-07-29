@@ -20,6 +20,10 @@ class InsertResponse extends t.extendClass(BaseResponse, {
 const insertSchema = t.schema({
     insert: t.string,
     $db: t.string,
+    lsid: t.type({ id: t.uuid }).optional,
+    txnNumber: t.number.optional,
+    autocommit: t.boolean.optional,
+    startTransaction: t.boolean.optional,
 });
 
 export class InsertCommand<T extends ClassSchema | ClassType> extends Command {
@@ -30,14 +34,16 @@ export class InsertCommand<T extends ClassSchema | ClassType> extends Command {
         super();
     }
 
-    async execute(config): Promise<number> {
+    async execute(config, host, transaction): Promise<number> {
         const schema = getClassSchema(this.classSchema);
 
-        const cmd = {
+        const cmd: any = {
             insert: schema.collectionName || schema.name || 'unknown',
             $db: schema.databaseSchemaName || config.defaultDb || 'admin',
             documents: this.documents,
         };
+
+        if (transaction) transaction.applyTransaction(cmd);
 
         const jit = schema.jit;
         let specialisedSchema = jit.mdbInsert;

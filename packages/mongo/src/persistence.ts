@@ -17,19 +17,29 @@ import { InsertCommand } from './client/command/insert';
 import { UpdateCommand } from './client/command/update';
 import { DeleteCommand } from './client/command/delete';
 import { mongoSerializer } from './mongo-serializer';
-import { FindAndModifyCommand } from './client/command/find-and-modify';
+import { FindAndModifyCommand } from './client/command/findAndModify';
 import { empty } from '@deepkit/core';
 import { FindCommand } from './client/command/find';
 import { ObjectId } from '@deepkit/bson';
+import { MongoConnection } from './client/connection';
 
 export class MongoPersistence extends DatabasePersistence {
+    protected connection?: MongoConnection;
+
 
     constructor(protected client: MongoClient, protected ormSequences: ClassSchema, protected session: DatabaseSession<any>) {
         super();
     }
 
     release() {
+        if (this.connection) this.connection.release();
+    }
 
+    async getConnection(): Promise<MongoConnection> {
+        if (!this.connection) {
+            this.connection = await this.client.getConnection(undefined, this.session.assignedTransaction);
+        }
+        return this.connection;
     }
 
     async remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
@@ -45,13 +55,13 @@ export class MongoPersistence extends DatabasePersistence {
                 const converted = scopeSerializer.partialSerialize(getInstanceState(classState, item).getLastKnownPK());
                 ids.push(converted[pkName]);
             }
-            await this.client.execute(new DeleteCommand(classSchema, { [pkName]: { $in: ids } }));
+            await (await this.getConnection()).execute(new DeleteCommand(classSchema, { [pkName]: { $in: ids } }));
         } else {
             const fields: any[] = [];
             for (const item of items) {
                 fields.push(scopeSerializer.partialSerialize(getInstanceState(classState, item).getLastKnownPK()));
             }
-            await this.client.execute(new DeleteCommand(classSchema, { $or: fields }));
+            await (await this.getConnection()).execute(new DeleteCommand(classSchema, { $or: fields }));
         }
     }
 
@@ -60,6 +70,7 @@ export class MongoPersistence extends DatabasePersistence {
         const has_Id = classSchema.hasProperty('_id');
         const scopeSerializer = mongoSerializer.for(classSchema);
 
+        const connection = await this.getConnection();
         const autoIncrement = classSchema.getAutoIncrementField();
         let autoIncrementValue = 0;
         if (autoIncrement) {
@@ -71,7 +82,10 @@ export class MongoPersistence extends DatabasePersistence {
             command.returnNew = true;
             command.fields = ['value'];
             command.upsert = true;
-            const res = await this.client.execute(command);
+
+            //we do not use the same connection for ormSequences if it has a transaction, since
+            //sequences need to behave like AUTO_INCREMENT does in SQL databases (they increase no matter if transaction is aborted or not)
+            const res = await (this.session.assignedTransaction ? this.client : connection).execute(command);
             autoIncrementValue = res.value['value'] - items.length;
         }
 
@@ -88,7 +102,7 @@ export class MongoPersistence extends DatabasePersistence {
 
         if (this.session.logger.active) this.session.logger.log('insert', classSchema.getClassName(), items.length);
 
-        await this.client.execute(new InsertCommand(classSchema, insert));
+        await connection.execute(new InsertCommand(classSchema, insert));
     }
 
     async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
@@ -138,10 +152,12 @@ export class MongoPersistence extends DatabasePersistence {
 
         if (this.session.logger.active) this.session.logger.log('update', classSchema.getClassName(), updates.length);
 
-        const res = await this.client.execute(new UpdateCommand(classSchema, updates));
+        const connection = await this.getConnection();
+
+        const res = await connection.execute(new UpdateCommand(classSchema, updates));
 
         if (res > 0 && hasAtomic) {
-            const returnings = await this.client.execute(new FindCommand(classSchema, { [primaryKeyName]: { $in: pks } }, projection));
+            const returnings = await connection.execute(new FindCommand(classSchema, { [primaryKeyName]: { $in: pks } }, projection));
             for (const returning of returnings) {
                 const r = assignReturning[returning[primaryKeyName]];
 

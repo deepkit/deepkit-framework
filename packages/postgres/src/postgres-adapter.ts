@@ -74,9 +74,10 @@ export class PostgresConnection extends SQLConnection {
     constructor(
         connectionPool: PostgresConnectionPool,
         public connection: PoolClient,
+        transaction?: DatabaseTransaction,
         logger?: DatabaseLogger,
     ) {
-        super(connectionPool, logger);
+        super(connectionPool, transaction, logger);
     }
 
     async prepare(sql: string) {
@@ -104,21 +105,88 @@ export class PostgresConnection extends SQLConnection {
     }
 }
 
+export type TransactionTypes = 'REPEATABLE READ' | 'READ COMMITTED' | 'SERIALIZABLE';
+
+export class PostgresDatabaseTransaction extends DatabaseTransaction {
+    connection?: PostgresConnection;
+
+    setTransaction?: TransactionTypes;
+
+    /**
+     * This is the default for mysql databases.
+     */
+    repeatableRead(): this {
+        this.setTransaction = 'REPEATABLE READ';
+        return this;
+    }
+
+    readCommitted(): this {
+        this.setTransaction = 'READ COMMITTED';
+        return this;
+    }
+
+    serializable(): this {
+        this.setTransaction = 'SERIALIZABLE';
+        return this;
+    }
+
+    async begin() {
+        if (!this.connection) return;
+        const set = this.setTransaction ? 'SET TRANSACTION ISOLATION LEVEL ' + this.setTransaction + ';' : '';
+        await this.connection.run(set + 'START TRANSACTION');
+    }
+
+    async commit() {
+        if (!this.connection) return;
+        if (this.ended) throw new Error('Transaction ended already');
+
+        await this.connection.run('COMMIT');
+        this.ended = true;
+        this.connection.release();
+    }
+
+    async rollback() {
+        if (!this.connection) return;
+
+        if (this.ended) throw new Error('Transaction ended already');
+        await this.connection.run('ROLLBACK');
+        this.ended = true;
+        this.connection.release();
+    }
+}
+
 export class PostgresConnectionPool extends SQLConnectionPool {
     constructor(protected pool: Pool) {
         super();
     }
 
-    async getConnection(logger?: DatabaseLogger, transaction?: DatabaseTransaction): Promise<PostgresConnection> {
-        //todo: handle transaction, when given we make sure we return a sticky connection to the transaction
-        // and release the stickiness when transaction finished.
+    async getConnection(logger?: DatabaseLogger, transaction?: PostgresDatabaseTransaction): Promise<PostgresConnection> {
+        //when a transaction object is given, it means we make the connection sticky exclusively to that transaction
+        //and only release the connection when the transaction is commit/rollback is executed.
 
-        const connection = await this.pool.connect();
+        if (transaction && transaction.connection) return transaction.connection;
+
+        const poolClient = await this.pool.connect();
         this.activeConnections++;
-        return new PostgresConnection(this, connection, logger);
+        const connection = new PostgresConnection(this, poolClient, transaction, logger);
+        if (transaction) {
+            transaction.connection = connection;
+            try {
+                await transaction.begin();
+            } catch (error) {
+                transaction.ended = true;
+                connection.release();
+                throw new Error('Could not start transaction: ' + error);
+            }
+        }
+        return connection;
     }
 
     release(connection: PostgresConnection) {
+        //connections attached to a transaction are not automatically released.
+        //only with commit/rollback actions
+        if (connection.transaction && !connection.transaction.ended) return;
+
         super.release(connection);
         connection.connection.release();
     }
@@ -327,7 +395,7 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
         const tableName = this.platform.getTableIdentifier(this.classSchema);
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
         try {
             const sql = `
                 WITH _ AS (${select.sql})
@@ -426,7 +494,7 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
             RETURNING ${returningSelect.join(', ')}
         `;
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.transaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
         try {
             const result = await connection.execAndReturnAll(sql, selectSQL.params);
 
@@ -484,6 +552,10 @@ export class PostgresDatabaseAdapter extends SQLDatabaseAdapter {
 
     createPersistence(session: DatabaseSession<this>): SQLPersistence {
         return new PostgresPersistence(this.platform, this.connectionPool, session);
+    }
+
+    createTransaction(session: DatabaseSession<this>): PostgresDatabaseTransaction {
+        return new PostgresDatabaseTransaction;
     }
 
     queryFactory(session: DatabaseSession<any>): SQLDatabaseQueryFactory {

@@ -23,6 +23,10 @@ const countSchema = t.schema({
     limit: t.number.optional,
     query: t.any,
     skip: t.number.optional,
+    lsid: t.type({id: t.uuid}).optional,
+    txnNumber: t.number.optional,
+    startTransaction: t.boolean.optional,
+    autocommit: t.boolean.optional,
 });
 
 export class CountCommand<T extends ClassSchema | ClassType> extends Command {
@@ -35,16 +39,18 @@ export class CountCommand<T extends ClassSchema | ClassType> extends Command {
         super();
     }
 
-    async execute(config): Promise<number> {
+    async execute(config, host, transaction): Promise<number> {
         const schema = getClassSchema(this.classSchema);
 
-        const cmd = {
+        const cmd: any = {
             count: schema.collectionName || schema.name || 'unknown',
             $db: schema.databaseSchemaName || config.defaultDb || 'admin',
             query: this.query,
             limit: this.limit,
             skip: this.skip,
         };
+
+        if (transaction) transaction.applyTransaction(cmd);
 
         const res = await this.sendAndWait(countSchema, cmd, CountResponse);
         return res.n;
