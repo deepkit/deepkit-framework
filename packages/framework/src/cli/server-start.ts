@@ -13,10 +13,10 @@ import { cli, Command, flag } from '@deepkit/app';
 import { InjectorContext } from '@deepkit/injector';
 import { Logger, TimestampFormatter } from '@deepkit/logger';
 
-@cli.controller('server:listen', {
-    description: 'Starts the HTTP server'
+@cli.controller('server:start', {
+    description: 'Starts the application server. If HTTP or RPC controllers or a publicDir are provided this will include an HTTP listener'
 })
-export class ServerListenController implements Command {
+export class ServerStartController implements Command {
     constructor(
         protected logger: Logger,
         protected injectorContext: InjectorContext,
