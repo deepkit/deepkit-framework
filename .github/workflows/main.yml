@@ -230,15 +230,18 @@ jobs:
       matrix:
         node-version: [ 14.x ]
         mongo-version: [ 4.0 ]
-    services:
-      mongo:
-        image: "mongo:${{ matrix.mongo-version }}"
-        options: --replSet rs0
-        ports:
-          - "27017:27017"
+#    services:
+#      mongo:
+#        image: "mongo:${{ matrix.mongo-version }}"
+#        options: --replSet rs0
+#        ports:
+#          - "27017:27017"
     steps:
-      - name: initialize mongodb
-        run: mongo localhost --eval 'rs.initiate()'
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.6.0
+        with:
+          mongodb-version: ${{ matrix.mongodb-version }}
+          mongodb-replica-set: test-rs
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
