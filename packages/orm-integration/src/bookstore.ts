@@ -189,6 +189,16 @@ export const bookstoreTests = {
         }
 
         {
+            const patched = await database.query(Image).returning('path', 'privateToken', 'image').patchOne({ $inc: { downloads: 1 } });
+            expect(patched.modified).toBe(1);
+            expect(patched.primaryKeys).toEqual([image.id]);
+            expect(patched.returning.downloads).toEqual([2]);
+            expect(patched.returning.path).toEqual(['/foo.jpg']);
+            expect(patched.returning.privateToken).toEqual([image.privateToken]);
+            expect(patched.returning.image).toEqual([new Uint8Array([128, 255])]);
+        }
+
+        {
             const deleted = await database.query(Image).deleteMany();
             expect(deleted.primaryKeys).toEqual([image.id]);
             expect(deleted.modified).toBe(1);

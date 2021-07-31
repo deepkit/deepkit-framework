@@ -146,6 +146,7 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<T> 
 
         m.skip = this.skip;
         m.limit = this.limit;
+        m.returning = this.returning.slice(0);
         m.itemsPerPage = this.itemsPerPage;
         m.sort = this.sort ? { ...this.sort } : undefined;
 
