@@ -44,6 +44,10 @@ export class TestCommand implements Command {
     }
 }
 
+async function Title(props: {title: string}) {
+    return <h1>{ props.title }</h1>;
+}
+
 @injectable()
 class UserList {
     constructor(
@@ -56,9 +60,10 @@ class UserList {
     async render() {
         const users = await this.database.query(User).find();
         return <Website title="Users">
-            <h1>Users</h1>
+            <Title title="Users"/>
 
             <img src="/lara.jpeg" style="max-width: 100%"/>
+
             <div style="margin: 25px 0;">
                 {users.map(user => <div>#{user.id} <strong>{user.username}</strong>, created {user.created}</div>)}
             </div>
@@ -78,13 +83,14 @@ class HelloWorldController {
     }
 
     @http.GET('/').name('startPage').description('List all users')
-    startPage() {
+    async startPage() {
         this.logger.log('Hi!');
         return <UserList/>;
     }
 
     @http.GET('/api/users')
     async users() {
+
         return await this.database.query(User).find();
     }
 

@@ -8,7 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Injector, render } from '@deepkit/framework';
+import { Injector } from '@deepkit/injector';
+import { render } from '@deepkit/template';
 import { bench } from '../../bench';
 import { Website } from './website';
 

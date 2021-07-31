@@ -1,8 +1,9 @@
-import {mkdirSync, writeFileSync} from 'fs';
-import {join} from 'path';
+import { mkdirSync, writeFileSync } from 'fs';
+import { join } from 'path';
 import 'reflect-metadata';
 import * as vm from 'vm';
-import {getGlobalStore} from '@deepkit/type';
+import { getGlobalStore } from '@deepkit/type';
+
 const fg = require('fast-glob');
 
 const filter = process.argv[2] || '';
@@ -11,7 +12,7 @@ if (filter) console.log('filter by', filter);
 
 async function main() {
     const totalResults: { [path: string]: any } = {};
-    let glob = ['./src/**/*.bench.ts'];
+    let glob = ['./src/**/*.bench.(ts|tsx)'];
 
     const benchmarkPaths = fg.sync(glob, {onlyFiles: true, unique: true});
     const filterRegex = filter ? new RegExp(filter.replace(/\*/, '.*')) : undefined;
