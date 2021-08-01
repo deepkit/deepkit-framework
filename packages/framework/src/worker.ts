@@ -11,7 +11,10 @@
 import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
 import http, { Server } from 'http';
 import https from 'https';
-import WebSocket from 'ws';
+
+import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions } from 'ws';
+import type WebSocket from 'ws';
+
 import { HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
 import { injectable, Injector, InjectorContext, Provider } from '@deepkit/injector';
 import { RpcInjectorContext } from './rpc';
@@ -50,9 +53,14 @@ export interface WebServerOptions {
     keepAliveTimeout?: number;
 
     /**
-     * When external server should be used. If this is set, all other opptions are ignored.
+     * When external server should be used. If this is set, all other options except for wsServerFactory are ignored.
      */
     server?: Server;
+
+    /**
+     * When external webSocket server should be used. If this is set, the factory function will be used with the http server instance in options
+     */
+    wsServerFactory?: (options: Pick<WebSocketServerOptions, 'server'>) => WebSocketServer;
 
     /**
      * Enables HTTPS.
@@ -132,8 +140,8 @@ export function createRpcConnection(rootScopedContext: InjectorContext, rpcKerne
 
 @injectable()
 export class WebWorker {
-    protected wsServer?: WebSocket.Server;
-    protected wssServer?: WebSocket.Server;
+    protected wsServer?: WebSocketServer;
+    protected wssServer?: WebSocketServer;
     protected server?: http.Server | https.Server;
     protected servers?: https.Server;
 
@@ -147,11 +155,21 @@ export class WebWorker {
     ) {
     }
 
+    private createWebSocketServer(options: WebSocketServerOptions): WebSocketServer {
+        if (this.options.wsServerFactory) {
+            return this.options.wsServerFactory(options);
+        } else {
+            const ws = require('ws');
+            const { Server }: { Server: { new(options: WebSocketServerOptions): WebSocketServer } } = ws;
+            return new Server(options);
+        }
+    }
+
     start() {
         if (this.options.server) {
             this.server = this.options.server as Server;
             this.server.on('request', this.httpKernel.handleRequest.bind(this.httpKernel));
-            this.wsServer = new WebSocket.Server({ server: this.server });
+            this.wsServer = this.createWebSocketServer({ server: this.server });
             this.wsServer.on('connection', this.onWsConnection.bind(this));
         } else {
             if (this.options.ssl) {
@@ -188,7 +206,7 @@ export class WebWorker {
                 this.servers.listen(this.options.httpsPort || this.options.port, this.options.host);
                 if (this.options.keepAliveTimeout) this.servers.keepAliveTimeout = this.options.keepAliveTimeout;
 
-                this.wssServer = new WebSocket.Server({ server: this.servers });
+                this.wssServer = this.createWebSocketServer({ server: this.servers });
                 this.wssServer.on('connection', this.onWsConnection.bind(this));
             }
 
@@ -200,7 +218,7 @@ export class WebWorker {
                 );
                 if (this.options.keepAliveTimeout) this.server.keepAliveTimeout = this.options.keepAliveTimeout;
                 this.server.listen(this.options.port, this.options.host);
-                this.wsServer = new WebSocket.Server({ server: this.server });
+                this.wsServer = this.createWebSocketServer({ server: this.server });
                 this.wsServer.on('connection', this.onWsConnection.bind(this));
             }
         }
