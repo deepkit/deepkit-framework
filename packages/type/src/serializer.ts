@@ -281,11 +281,10 @@ export class ScopedSerializer<T extends ClassSchema> {
         data: PlainOrFullEntityFromClassTypeOrSchema<T>,
         options?: JitConverterOptions
     ): ExtractClassType<T> {
-        if (!this._deserialize) this._deserialize = getXToClassFunction(this.schema, this.serializer);
-        const item = this._deserialize(data, options);
-        const errors = validate(this.schema, item);
+        const errors = validate(this.schema, data);
         if (errors.length) throw new ValidationFailed(errors);
-        return item;
+        if (!this._deserialize) this._deserialize = getXToClassFunction(this.schema, this.serializer);
+        return this._deserialize(data, options);
     }
 
     /**

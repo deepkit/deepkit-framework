@@ -9,7 +9,7 @@
  */
 
 import { AppModule, isProvided, ModuleOptions, ServiceContainer } from '@deepkit/app';
-import { Context, InjectorContext, ProviderWithScope } from '@deepkit/injector';
+import { Context, ProviderWithScope } from '@deepkit/injector';
 import { ClassType } from '@deepkit/core';
 import { rpcClass } from '@deepkit/rpc';
 import { httpClass, HttpControllers } from '@deepkit/http';
@@ -20,14 +20,14 @@ export type RpcController = {
 }
 
 export class RpcControllers {
-    public readonly controllers = new Map<string, ClassType>();
+    public readonly controllers = new Map<string, {controller: ClassType, context: Context}>();
 
-    public resolveController(name: string): ClassType {
-        const classType = this.controllers.get(name);
-        if (!classType) throw new Error(`Controller not found for ${name}`);
-
-        return classType;
-    }
+    // public resolveController(name: string): ClassType {
+    //     const classType = this.controllers.get(name);
+    //     if (!classType) throw new Error(`Controller not found for ${name}`);
+    //
+    //     return classType;
+    // }
 }
 
 export class ApplicationServiceContainer<C extends ModuleOptions = ModuleOptions> extends ServiceContainer<C> {
@@ -48,14 +48,14 @@ export class ApplicationServiceContainer<C extends ModuleOptions = ModuleOptions
         const rpcConfig = rpcClass._fetch(controller);
         if (rpcConfig) {
             if (!isProvided(providers, controller)) providers.unshift({ provide: controller, scope: 'rpc' });
-            (controller as any)[InjectorContext.contextSymbol] = context;
-            this.rpcControllers.controllers.set(rpcConfig.getPath(), controller);
+            this.rpcControllers.controllers.set(rpcConfig.getPath(), {controller, context});
         }
 
         const httpConfig = httpClass._fetch(controller);
         if (httpConfig) {
             if (!isProvided(providers, controller)) providers.unshift({ provide: controller, scope: 'http' });
-            (controller as any)[InjectorContext.contextSymbol] = context;
+            // (controller as any)[InjectorContext.contextSymbol] = context;
+            //todo, move context to controller info
             this.httpControllers.add(controller, context.id, module);
         }
 

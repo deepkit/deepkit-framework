@@ -10,10 +10,11 @@
 
 import { arrayRemoveItem, ClassType, isClass } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
-import { AppModule, MiddlewareConfig, ModuleOptions } from './module';
+import { AppModule, ConfigurationInvalidError, MiddlewareConfig, ModuleOptions } from './module';
 import { ConfiguredProviderRegistry, Context, ContextRegistry, Injector, InjectorContext, ProviderWithScope, TagProvider, tokenLabel } from '@deepkit/injector';
 import { cli } from './command';
 import { WorkflowDefinition } from '@deepkit/workflow';
+import { ClassSchema, jsonSerializer, ValidationFailed } from '@deepkit/type';
 
 export interface OnInit {
     onInit: () => Promise<void>;
@@ -25,7 +26,7 @@ export interface onDestroy {
 
 
 export class CliControllers {
-    public readonly controllers = new Map<string, ClassType>();
+    public readonly controllers = new Map<string, {controller: ClassType, context: Context}>();
 }
 
 type MiddlewareRegistryEntry = { config: MiddlewareConfig, module: AppModule<any> };
@@ -55,6 +56,10 @@ export function isProvided(providers: ProviderWithScope[], token: any): boolean 
     return providers.find(v => !(v instanceof TagProvider) ? token === (isClass(v) ? v : v.provide) : false) !== undefined;
 }
 
+export interface ConfigLoader {
+    load(moduleName: string, config: {[name: string]: any}, schema: ClassSchema): void;
+}
+
 export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
     public readonly cliControllers = new CliControllers;
     public readonly middlewares = new MiddlewareRegistry;
@@ -70,11 +75,17 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
     protected moduleContexts = new Map<AppModule<ModuleOptions>, Context[]>();
     protected moduleIdContexts = new Map<number, Context[]>();
 
+    protected configLoaders: ConfigLoader[] = [];
+
     constructor(
         public appModule: AppModule<any, any>,
         protected providers: ProviderWithScope[] = [],
         protected imports: AppModule<any, any>[] = [],
     ) {
+    }
+
+    addConfigLoader(loader: ConfigLoader) {
+        this.configLoaders.push(loader);
     }
 
     public process() {
@@ -98,7 +109,24 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
     }
 
     private setupHook(module: AppModule<any, any>) {
-        const config = module.getConfig();
+        let config = module.getConfig();
+
+        if (module.options.config) {
+            for (const loader of this.configLoaders) loader.load(module.name, config, module.options.config.schema);
+
+            for (const setupConfig of module.setupConfigs) setupConfig(module, config);
+
+            try {
+                Object.assign(config, jsonSerializer.for(module.options.config.schema).validatedDeserialize(config) as any);
+            } catch (e) {
+                if (e instanceof ValidationFailed) {
+                    const errorsMessage = e.errors.map(v => v.toString(module.getName())).join(', ');
+                    throw new ConfigurationInvalidError(`Configuration for module ${module.getName() || 'root'} is invalid. Make sure the module is correctly configured. Error: ` + errorsMessage);
+                }
+                throw e;
+            }
+        }
+
         for (const setup of module.setups) setup(module, config);
 
         for (const importModule of module.getImports()) {
@@ -144,6 +172,10 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         if (!context) throw new Error(`No context for ${id} found`);
 
         return context;
+    }
+
+    public getModulesForName(name: string): AppModule<any, any>[] {
+        return [...this.moduleContexts.keys()].filter(v => v.name === name);
     }
 
     protected getNewContext(module: AppModule<any, any>, parent?: Context): Context {
@@ -239,6 +271,7 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         for (const listener of listeners) {
             if (isClass(listener)) {
                 providers.unshift({ provide: listener });
+                exports.unshift(listener);
                 this.eventListenerContainer.registerListener(listener, context);
             } else {
                 this.eventListenerContainer.add(listener.eventToken, { fn: listener.callback, order: listener.order });
@@ -276,8 +309,7 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         const cliConfig = cli._fetch(controller);
         if (cliConfig) {
             if (!isProvided(providers, controller)) providers.unshift({ provide: controller, scope: 'cli' });
-            (controller as any)[InjectorContext.contextSymbol] = context;
-            this.cliControllers.controllers.set(cliConfig.name, controller);
+            this.cliControllers.controllers.set(cliConfig.name, {controller, context});
         }
     }
 }

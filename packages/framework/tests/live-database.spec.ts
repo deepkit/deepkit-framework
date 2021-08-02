@@ -90,6 +90,7 @@ test('test increase', async () => {
     await testController.start();
 
     const user = await testController.user();
+    console.log('user loaded', user.value);
     expect(user.value.name).toBe('peter');
     expect(user.value.connections).toBe(0);
 

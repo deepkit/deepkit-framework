@@ -20,6 +20,7 @@ export class TcpRpcClientAdapter implements ClientTransportAdapter {
 
     public async connect(connection: TransportConnectionHooks) {
         const port = this.host.port || 8811;
+
         const socket = turbo.connect(port, this.host.host);
         // socket.setNoDelay(true);
 
@@ -47,20 +48,23 @@ export class TcpRpcClientAdapter implements ClientTransportAdapter {
 
         read();
 
-        connection.onConnected({
-            clientAddress: () => {
-                return this.host.toString();
-            },
-            bufferedAmount(): number {
-                //implement that to step back when too big
-                return 0;
-            },
-            close() {
-                socket.end();
-            },
-            send(message) {
-                socket.write(message);
-            }
+
+        socket.on('connect', () => {
+            connection.onConnected({
+                clientAddress: () => {
+                    return this.host.toString();
+                },
+                bufferedAmount(): number {
+                    //implement that to step back when too big
+                    return 0;
+                },
+                close() {
+                    socket.end();
+                },
+                send(message) {
+                    socket.write(message);
+                }
+            });
         });
     }
 }

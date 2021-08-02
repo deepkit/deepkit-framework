@@ -12,7 +12,7 @@ import { capitalize, ClassType, CompilerContext, CustomError, getClassName, isAr
 import { ExtractClassType } from '@deepkit/type';
 import { BaseEvent, EventDispatcher, EventToken, isEventListenerContainerEntryCallback, isEventListenerContainerEntryService } from '@deepkit/event';
 import { InjectorContext } from '@deepkit/injector';
-import { Stopwatch } from '@deepkit/stopwatch';
+import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
 interface WorkflowTransition<T> {
     from: keyof T & string,
@@ -175,7 +175,7 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
                 if (!(event instanceof ${eventTypeVar})) {
                     throw new Error(\`State ${place} got the wrong event. Expected ${getClassName(eventType)}, got \${getClassName(event)}\`);
                 }
-                const frame = stopwatch && stopwatch.active ? stopwatch.start(${JSON.stringify(stopWatchId)}) : undefined;
+                const frame = stopwatch && stopwatch.active ? stopwatch.start(${JSON.stringify(stopWatchId)}, ${FrameCategory.workflow}) : undefined;
 
                 ${listenerCode.join('\n')}
 

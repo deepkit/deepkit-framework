@@ -12,7 +12,6 @@ import { cli, Command, flag } from '@deepkit/app';
 import { join } from 'path';
 import { readFileSync, unlinkSync } from 'fs';
 import { decodeFrameData, decodeFrames } from '@deepkit/framework-debug-api';
-import { deserialize } from '@deepkit/bson';
 import { kernelConfig } from '../kernel.config';
 import { Logger } from '@deepkit/logger';
 
@@ -39,9 +38,6 @@ export class DebugDebugFramesCommand implements Command {
         }
 
         console.log('frames', decodeFrames(readFileSync(join(path, 'frames.bin'))));
-        console.log('data', decodeFrameData(readFileSync(join(path, 'frames-data.bin'))).map(v => {
-            v.bson = deserialize(v.bson);
-            return v;
-        }));
+        console.log('data', decodeFrameData(readFileSync(join(path, 'frames-data.bin'))));
     }
 }

@@ -13,8 +13,8 @@ import http, { Server } from 'http';
 import https from 'https';
 import WebSocket from 'ws';
 import { HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
-import { injectable, Injector, InjectorContext, Provider } from '@deepkit/injector';
-import { RpcInjectorContext } from './rpc';
+import { inject, injectable, Injector, InjectorContext, Provider } from '@deepkit/injector';
+import { RpcInjectorContext, RpcKernelWithStopwatch } from './rpc';
 import { RpcControllers } from './application-service-container';
 import { SecureContextOptions, TlsOptions } from 'tls';
 
@@ -23,6 +23,7 @@ import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { Logger } from '@deepkit/logger';
 import { ClassType } from '@deepkit/core';
+import { Stopwatch } from '@deepkit/stopwatch';
 
 export interface WebServerOptions {
     host: string;
@@ -86,6 +87,7 @@ export class WebWorkerFactory {
         public logger: Logger,
         protected rpcControllers: RpcControllers,
         protected rootScopedContext: InjectorContext,
+        @inject().optional protected stopwatch?: Stopwatch,
     ) {
     }
 
@@ -95,10 +97,15 @@ export class WebWorkerFactory {
 
     createRpcKernel() {
         const security = this.rootScopedContext.get(RpcKernelSecurity);
-        const kernel = new RpcKernel(this.rootScopedContext, security, this.logger.scoped('rpc'));
+        const classType = this.stopwatch ? RpcKernelWithStopwatch : RpcKernel;
+        const kernel = new classType(this.rootScopedContext, security, this.logger.scoped('rpc'));
 
-        for (const [name, controller] of this.rpcControllers.controllers.entries()) {
-            kernel.registerController(name, controller, false);
+        if (kernel instanceof RpcKernelWithStopwatch) {
+            kernel.stopwatch = this.stopwatch;
+        }
+
+        for (const [name, info] of this.rpcControllers.controllers.entries()) {
+            kernel.registerController(name, info.controller, false, info.context.id);
         }
 
         return kernel;

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { RpcAction } from '../decorators';
+import { ClassType } from '@deepkit/core';
 
 export class Session {
     constructor(
@@ -22,8 +22,16 @@ export class Session {
     }
 }
 
+export interface RpcControllerAccess {
+    controllerName: string;
+    controllerClassType: ClassType;
+    actionName: string;
+    actionGroups: string[];
+    actionData: {[name: string]: any}
+}
+
 export class RpcKernelSecurity {
-    async hasControllerAccess(session: Session, action: RpcAction): Promise<boolean> {
+    async hasControllerAccess(session: Session, controllerAccess: RpcControllerAccess): Promise<boolean> {
         return true;
     }
 

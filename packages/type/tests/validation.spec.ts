@@ -1,6 +1,19 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { getClassSchema, jsonSerializer, PropertySchema, PropertyValidator, PropertyValidatorError, t, validate, validates, validatesFactory, ValidationFailed, ValidationFailedItem } from '../index';
+import {
+    getClassSchema,
+    jsonSerializer,
+    PropertySchema,
+    PropertyValidator,
+    PropertyValidatorError,
+    t,
+    validate,
+    validatedPlainToClass,
+    validates,
+    validatesFactory,
+    ValidationFailed,
+    ValidationFailedItem
+} from '../index';
 import { CustomError, isPlainObject } from '@deepkit/core';
 import { fail } from 'assert';
 
@@ -391,7 +404,7 @@ test('test Date', async () => {
         fail('should throw error');
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
-        expect(error.errors[0].message).toBe('No valid Date given');
+        expect(error.errors[0].message).toBe('No valid Date string given');
     }
 
     try {
@@ -399,7 +412,7 @@ test('test Date', async () => {
         fail('should throw error');
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
-        expect(error.errors[0].message).toBe('No valid Date given');
+        expect(error.errors[0].message).toBe('No Date string given');
     }
 
     try {
@@ -407,7 +420,7 @@ test('test Date', async () => {
         fail('should throw error');
     } catch (error) {
         expect(error).toBeInstanceOf(ValidationFailed);
-        expect(error.errors[0].message).toBe('Required value is undefined'); //because not nullable, converts automatically to undefined
+        expect(error.errors[0].message).toBe('Required value is null');
     }
 
     try {
@@ -832,4 +845,13 @@ test('custom isRequired null', () => {
     expect(validate(MyModel, {})).toEqual([{ code: 'required', message: 'Required value is undefined', path: 'enum' }]);
     expect(validate(MyModel, { enum: undefined })).toEqual([{ code: 'required', message: 'Required value is undefined', path: 'enum' }]);
     expect(validate(MyModel, { enum: null })).toEqual([{ code: 'no', message: 'Sollte angegeben werden', path: 'enum' }]);
+});
+
+test('defaults are not omitted when wrong value', async () => {
+    const schema = t.schema({
+        log: t.boolean.default(false),
+    });
+
+    expect(() => validatedPlainToClass(schema, {log: 'asda'} as any)).toThrow('No Boolean given');
+    expect(() => jsonSerializer.for(schema).validatedDeserialize({log: 'asda'} as any)).toThrow('No Boolean given');
 });

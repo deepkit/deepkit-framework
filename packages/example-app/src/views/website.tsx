@@ -15,12 +15,11 @@ export class Website {
             <html>
             <head>
                 <title>{this.props.title} - My Website!</title>
+                <link rel="stylesheet" href="/style.css"/>
             </head>
 
-            <body style="display: flex; justify-content: center">
-            <div style="max-width: 800px; border: 1px solid silver;">
-                <div class="subline">Subline</div>
-
+            <body>
+            <div class="frame">
                 <div class="content">
                     {this.children}
                 </div>

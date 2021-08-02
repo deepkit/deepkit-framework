@@ -8,17 +8,17 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { asyncOperation, CustomError } from '@deepkit/core';
+import { asyncOperation, CustomError, getClassName } from '@deepkit/core';
 import { getClassTypeFromInstance, getPropertyClassToXFunction, isClassInstance, isRegisteredEntity, jsonSerializer, ValidationFailed } from '@deepkit/type';
 import { OutgoingHttpHeaders, ServerResponse } from 'http';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpRequest, HttpResponse } from './model';
-import { injectable, InjectorContext } from '@deepkit/injector';
+import { inject, injectable, InjectorContext } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { RouteConfig, RouteParameterResolverForInjector, Router } from './router';
 import { createWorkflow, WorkflowEvent } from '@deepkit/workflow';
 import type { ElementStruct, render } from '@deepkit/template';
-import { Stopwatch } from '@deepkit/stopwatch';
+import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
 export function isElementStruct(v: any): v is ElementStruct {
     return 'object' === typeof v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes') && !v.slice;
@@ -311,16 +311,19 @@ export class BaseResponse {
         return this;
     }
 
-    header(name: string, value: string | number) {
+    header(name: string, value: string | number): this {
         this._headers[name] = value;
+        return this;
     }
 
-    headers(headers: OutgoingHttpHeaders) {
+    headers(headers: OutgoingHttpHeaders): this {
         this._headers = headers;
+        return this;
     }
 
-    contentType(type: string) {
+    contentType(type: string): this {
         this._headers['content-type'] = type;
+        return this;
     }
 }
 
@@ -342,7 +345,7 @@ export class HttpListener {
     constructor(
         protected router: Router,
         protected logger: Logger,
-        protected stopwatch: Stopwatch,
+        @inject().optional protected stopwatch?: Stopwatch,
     ) {
     }
 
@@ -473,12 +476,21 @@ export class HttpListener {
 
         const controllerInstance = event.injectorContext.get(event.route.action.controller);
         const start = Date.now();
+        const frame = this.stopwatch ? this.stopwatch.start(getClassName(event.route.action.controller)+'.'+event.route.action.methodName, FrameCategory.httpController) : undefined;
         try {
             const method = controllerInstance[event.route.action.methodName];
-            const responseEvent = new HttpResponseEvent(event.injectorContext, event.request, event.response, await method.apply(controllerInstance, event.parameters), event.route);
+            let result = await method.apply(controllerInstance, event.parameters);
+
+            if (isElementStruct(result)){
+                const html = await getTemplateRender()(event.injectorContext, result, this.stopwatch ? this.stopwatch : undefined);
+                result = new HtmlResponse(html, 200).header('Content-Type', 'text/html; charset=utf-8');
+            }
+            if (frame) frame.end();
+            const responseEvent = new HttpResponseEvent(event.injectorContext, event.request, event.response, result, event.route);
             responseEvent.controllerActionTime = Date.now() - start;
             event.next('response', responseEvent);
         } catch (error) {
+            if (frame) frame.end();
             if (error instanceof HttpAccessDeniedError) {
                 event.next('accessDenied', new HttpAccessDeniedEvent(event.injectorContext, event.request, event.response, event.route));
             } else {
@@ -486,6 +498,7 @@ export class HttpListener {
                 errorEvent.controllerActionTime = Date.now() - start;
                 event.next('controllerError', errorEvent);
             }
+        } finally {
         }
     }
 
@@ -562,9 +575,6 @@ export class HttpListener {
             if (!event.response.hasHeader('Content-Type')) event.response.setHeader('Content-Type', 'text/html; charset=utf-8');
             event.response.writeHead(response._statusCode || 200, response._headers);
             event.response.end(response.html);
-        } else if (isElementStruct(response)) {
-            event.response.setHeader('Content-Type', 'text/html; charset=utf-8');
-            event.response.end(await getTemplateRender()(event.injectorContext, response, this.stopwatch.active ? this.stopwatch : undefined));
         } else if (isClassInstance(response) && isRegisteredEntity(getClassTypeFromInstance(response))) {
             event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
             event.response.end(JSON.stringify(

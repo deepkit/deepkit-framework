@@ -26,14 +26,17 @@ import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, Database
 import { MySQLPlatform } from './mysql-platform';
 import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, isArray, resolvePropertySchema } from '@deepkit/type';
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
+import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
 export class MySQLStatement extends SQLStatement {
-    constructor(protected logger: DatabaseLogger, protected sql: string, protected connection: PoolConnection) {
+    constructor(protected logger: DatabaseLogger, protected sql: string, protected connection: PoolConnection, protected stopwatch?: Stopwatch) {
         super();
     }
 
     async get(params: any[] = []) {
+        const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
+            if (frame) frame.data({sql: this.sql, sqlParams: params});
             //mysql/mariadb driver does not maintain error.stack when they throw errors, so
             //we have to manually convert it using asyncOperation.
             const rows = await asyncOperation<any[]>((resolve, reject) => {
@@ -44,11 +47,15 @@ export class MySQLStatement extends SQLStatement {
         } catch (error) {
             this.logger.failedQuery(error, this.sql, params);
             throw error;
+        } finally {
+            if (frame) frame.end();
         }
     }
 
     async all(params: any[] = []) {
+        const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
+            if (frame) frame.data({sql: this.sql, sqlParams: params});
             //mysql/mariadb driver does not maintain error.stack when they throw errors, so
             //we have to manually convert it using asyncOperation.
             const rows = await asyncOperation<any[]>((resolve, reject) => {
@@ -59,6 +66,8 @@ export class MySQLStatement extends SQLStatement {
         } catch (error) {
             this.logger.failedQuery(error, this.sql, params);
             throw error;
+        } finally {
+            if (frame) frame.end();
         }
     }
 
@@ -74,10 +83,11 @@ export class MySQLConnection extends SQLConnection {
     constructor(
         public connection: PoolConnection,
         connectionPool: SQLConnectionPool,
+        logger?: DatabaseLogger,
         transaction?: DatabaseTransaction,
-        logger?: DatabaseLogger
+        stopwatch?: Stopwatch,
     ) {
-        super(connectionPool, transaction, logger);
+        super(connectionPool, logger, transaction, stopwatch);
     }
 
     async prepare(sql: string) {
@@ -85,14 +95,18 @@ export class MySQLConnection extends SQLConnection {
     }
 
     async run(sql: string, params: any[] = []) {
+        const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         //batch returns in reality a single UpsertResult if only one query is given
         try {
+            if (frame) frame.data({sql, sqlParams: params});
             const res = (await this.connection.query(sql, params)) as UpsertResult[] | UpsertResult;
             this.logger.logQuery(sql, params);
             this.lastExecResult = isArray(res) ? res : [res];
         } catch (error) {
             this.logger.failedQuery(error, sql, params);
             throw error;
+        } finally {
+            if (frame) frame.end();
         }
     }
 
@@ -161,14 +175,14 @@ export class MySQLConnectionPool extends SQLConnectionPool {
         super();
     }
 
-    async getConnection(logger?: DatabaseLogger, transaction?: MySQLDatabaseTransaction): Promise<MySQLConnection> {
+    async getConnection(logger?: DatabaseLogger, transaction?: MySQLDatabaseTransaction, stopwatch?: Stopwatch): Promise<MySQLConnection> {
         //when a transaction object is given, it means we make the connection sticky exclusively to that transaction
         //and only release the connection when the transaction is commit/rollback is executed.
 
         if (transaction && transaction.connection) return transaction.connection;
 
         this.activeConnections++;
-        const connection = new MySQLConnection(await this.pool.getConnection(), this, transaction, logger);
+        const connection = new MySQLConnection(await this.pool.getConnection(), this, logger, transaction, stopwatch);
         if (transaction) {
             transaction.connection = connection;
             try {
@@ -380,7 +394,7 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
         const tableName = this.platform.getTableIdentifier(this.classSchema);
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
         try {
             const sql = `
                 WITH _ AS (${select.sql})
@@ -481,7 +495,7 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
             ${selectVarsSQL}
         `;
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
         try {
             const result = await connection.execAndReturnAll(sql, params);
             const packet = result[0];

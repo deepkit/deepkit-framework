@@ -198,6 +198,16 @@ export function isFunction(obj: any): obj is Function {
     return false;
 }
 
+const AsyncFunction = (async () => {}).constructor;
+/**
+ * Returns true if given obj is a async function.
+ *
+ * @public
+ */
+export function isAsyncFunction(obj: any): obj is (...args: any[]) => Promise<any> {
+    return obj instanceof AsyncFunction;
+}
+
 /**
  * Returns true if given obj is a promise like object.
  *

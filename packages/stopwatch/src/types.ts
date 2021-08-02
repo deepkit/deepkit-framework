@@ -1,63 +1,60 @@
+import { ClassSchema, t } from '@deepkit/type';
 
 export enum FrameCategory {
     none,
-    http, rpc, cli, job, function, lock,
-    workflow, event, database, email, template,
+    http, httpController, rpc, rpcAuthenticate, cli, job, function, lock,
+    workflow, event, database, databaseQuery, email, template,
 }
 
 export enum FrameType {
     start, end
 }
 
-export type FrameCategoryModel = {
-    [FrameCategory.none]: never;
-    [FrameCategory.http]: {
-        url: string,
-        method: string,
-        clientIp: string,
+export const categorySchemas: { [name in FrameCategory]: ClassSchema } = {
+    [FrameCategory.none]: t.schema({
+    }),
+    [FrameCategory.http]: t.schema({
+        url: t.string.optional,
+        method: t.string.optional,
+        clientIp: t.string.optional,
+        responseStatus: t.number.optional,
+    }),
+    [FrameCategory.httpController]: t.schema({
+    }),
+    [FrameCategory.rpc]: t.schema({
+        method: t.string,
+        controller: t.string,
+        arguments: t.array(t.any)
+    }),
+    [FrameCategory.cli]: t.schema({
+    }),
+    [FrameCategory.job]: t.schema({
+    }),
+    [FrameCategory.rpcAuthenticate]: t.schema({
+    }),
+    [FrameCategory.function]: t.schema({
+    }),
+    [FrameCategory.lock]: t.schema({
+    }),
+    [FrameCategory.workflow]: t.schema({
+    }),
+    [FrameCategory.event]: t.schema({
+    }),
+    [FrameCategory.database]: t.schema({
+        collection: t.string.optional,
+        className: t.string.optional,
+    }),
+    [FrameCategory.databaseQuery]: t.schema({
+        sql: t.string.optional,
+        sqlParams: t.array(t.any).optional
+    }),
+    [FrameCategory.email]: t.schema({
+    }),
+    [FrameCategory.template]: t.schema({
+    }),
+};
 
-        responseStatus?: number,
-
-        //these are stored externally, and fetched from the GUI via a custom RPC action
-        // requestBody: string,
-        // responseBody: string,
-    };
-    [FrameCategory.rpc]: {
-        controller: string,
-        action: string,
-        // parameter: any[],
-    };
-    [FrameCategory.database]: {
-        name: string,
-        entity: string,
-        sql: string,
-        // parameter: any[],
-    };
-    [FrameCategory.template]: {
-        path: string;
-        name: string;
-    };
-    [FrameCategory.lock]: {
-        name: string;
-    },
-    [FrameCategory.workflow]: {
-        name: string;
-    },
-    [FrameCategory.event]: {
-        name: string;
-    },
-    [FrameCategory.email]: {
-        name: string;
-    },
-    [FrameCategory.cli]: {
-        name: string;
-        //where are parameters stored?
-    },
-    [FrameCategory.function]: {
-        name: string;
-        //where is the stack trace stored?
-    };
-}
+export type FrameCategoryModel = {[T in keyof typeof categorySchemas]: (typeof categorySchemas)[T]['classType'] };
 
 export interface FrameStart {
     id: number;

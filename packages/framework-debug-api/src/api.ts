@@ -11,6 +11,7 @@
 import { entity, PropertySchema, PropertySchemaSerialized, t } from '@deepkit/type';
 import { ControllerSymbol } from '@deepkit/rpc';
 import { DebugRequest } from './model';
+import { Subject } from 'rxjs';
 
 export class ConfigOption {
     @t name!: string;
@@ -110,6 +111,8 @@ export const DebugControllerInterface = ControllerSymbol<DebugControllerInterfac
 export interface DebugControllerInterface {
     configuration(): Config;
 
+    subscribeStopwatch(): Promise<Subject<Uint8Array>>;
+
     databases(): Database[];
 
     routes(): Route[];
@@ -119,6 +122,8 @@ export interface DebugControllerInterface {
     getWorkflow(name: string): Workflow;
 
     getProfilerFrames(): Uint8Array;
+
+    getProfilerFrameData(): Uint8Array;
 
     events(): Event[];
 

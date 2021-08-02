@@ -28,7 +28,8 @@
     "@deepkit/crypto": "^1.0.1-alpha.13",
     "@deepkit/rpc": "^1.0.1-alpha.13",
     "@deepkit/stopwatch": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13"
+    "@deepkit/type": "^1.0.1-alpha.13",
+    "rxjs": "~6.6.0"
   },
   "devDependencies": {
     "@deepkit/bson": "^1.0.1-alpha.40",
@@ -37,7 +38,8 @@
     "@deepkit/crypto": "^1.0.1-alpha.35",
     "@deepkit/rpc": "^1.0.1-alpha.41",
     "@deepkit/stopwatch": "^1.0.1-alpha.39",
-    "@deepkit/type": "^1.0.1-alpha.40"
+    "@deepkit/type": "^1.0.1-alpha.40",
+    "rxjs": "~6.6.0"
   },
   "jest": {
     "testEnvironment": "node",

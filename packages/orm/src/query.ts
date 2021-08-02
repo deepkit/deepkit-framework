@@ -485,8 +485,6 @@ export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = 
     abstract delete(model: MODEL, deleteResult: DeleteResult<T>): Promise<void>;
 
     abstract patch(model: MODEL, value: Changes<T>, patchResult: PatchResult<T>): Promise<void>;
-
-    abstract has(model: MODEL): Promise<boolean>;
 }
 
 export type Methods<T> = { [K in keyof T]: K extends keyof Query<any> ? never : T[K] extends ((...args: any[]) => any) ? K : never }[keyof T];
@@ -506,15 +504,15 @@ export class Query<T extends Entity> extends BaseQuery<T> {
 
     constructor(
         classSchema: ClassSchema,
-        protected databaseSession: DatabaseSession<any>,
+        protected session: DatabaseSession<any>,
         protected resolver: GenericQueryResolver<T>
     ) {
         super(classSchema);
-        this.model.withIdentityMap = databaseSession.withIdentityMap;
+        this.model.withIdentityMap = session.withIdentityMap;
     }
 
     static from<Q extends Query<any> & { _: () => T }, T extends ReturnType<InstanceType<B>['_']>, B extends ClassType<Query<any>>>(this: B, query: Q): Replace<InstanceType<B>, Resolve<Q>> {
-        const result = (new this(query.classSchema, query.databaseSession, query.resolver));
+        const result = (new this(query.classSchema, query.session, query.resolver));
         result.model = query.model.clone(result);
         return result as any;
     }
@@ -546,9 +544,9 @@ export class Query<T extends Entity> extends BaseQuery<T> {
             }
         } while (obj = Object.getPrototypeOf(obj));
 
-        const cloned = new clazz(this.classSchema, this.databaseSession, this.resolver);
+        const cloned = new clazz(this.classSchema, this.session, this.resolver);
 
-        const lift = new query(this.classSchema, this.databaseSession, this.resolver, this.model);
+        const lift = new query(this.classSchema, this.session, this.resolver, this.model);
         for (const i in this) {
             (cloned)[i] = (this as any)[i];
         }
@@ -563,18 +561,18 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     }
 
     clone(): this {
-        const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.databaseSession, this.resolver);
+        const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.session, this.resolver);
         cloned.model = this.model.clone(cloned) as this['model'];
         cloned.lifts = this.lifts;
         return cloned;
     }
 
     protected async callOnFetchEvent(query: this): Promise<this> {
-        const hasEvents = this.databaseSession.queryEmitter.onFetch.hasSubscriptions();
+        const hasEvents = this.session.queryEmitter.onFetch.hasSubscriptions();
         if (!hasEvents) return query;
 
-        const event = new QueryDatabaseEvent(this.databaseSession, this.classSchema, query);
-        await this.databaseSession.queryEmitter.onFetch.emit(event);
+        const event = new QueryDatabaseEvent(this.session, this.classSchema, query);
+        await this.session.queryEmitter.onFetch.emit(event);
         return event.query as any;
     }
 
@@ -587,20 +585,36 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         return query;
     }
 
-    public async count(): Promise<number> {
-        const query = this.onQueryResolve(await this.callOnFetchEvent(this));
-        return await query.resolver.count(query.model);
+    public async count(fromHas: boolean = false): Promise<number> {
+        if (!this.session.stopwatch) {
+            const query = this.onQueryResolve(await this.callOnFetchEvent(this));
+            return await query.resolver.count(query.model);
+        }
+
+        const frame = this.session.stopwatch.start((fromHas ? 'Has:' : 'Count:') +this.classSchema.getClassName(), FrameCategory.database);
+        try {
+            frame.data({collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName()});
+            const eventFrame = this.session.stopwatch.start('Events');
+            const query = this.onQueryResolve(await this.callOnFetchEvent(this));
+            eventFrame.end();
+            return await query.resolver.count(query.model);
+        } finally {
+            frame.end();
+        }
     }
 
     public async find(): Promise<Resolve<this>[]> {
-        if (!this.databaseSession.stopwatch.active) {
+        if (!this.session.stopwatch) {
             const query = this.onQueryResolve(await this.callOnFetchEvent(this));
             return await query.resolver.find(query.model) as Resolve<this>[];
         }
 
-        const frame = this.databaseSession.stopwatch.start(this.classSchema.getClassName() + ': Find', FrameCategory.database);
+        const frame = this.session.stopwatch.start('Find:' + this.classSchema.getClassName(), FrameCategory.database);
         try {
+            frame.data({collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName()});
+            const eventFrame = this.session.stopwatch.start('Events');
             const query = this.onQueryResolve(await this.callOnFetchEvent(this));
+            eventFrame.end();
             return await query.resolver.find(query.model) as Resolve<this>[];
         } finally {
             frame.end();
@@ -608,13 +622,25 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     }
 
     public async findOneOrUndefined(): Promise<T | undefined> {
-        const query = this.onQueryResolve(await this.callOnFetchEvent(this.limit(1)));
-        return await query.resolver.findOneOrUndefined(query.model);
+        if (!this.session.stopwatch) {
+            const query = this.onQueryResolve(await this.callOnFetchEvent(this.limit(1)));
+            return await query.resolver.findOneOrUndefined(query.model);
+        }
+
+        const frame = this.session.stopwatch.start('FindOne:' + this.classSchema.getClassName(), FrameCategory.database);
+        try {
+            frame.data({collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName()});
+            const eventFrame = this.session.stopwatch.start('Events');
+            const query = this.onQueryResolve(await this.callOnFetchEvent(this.limit(1)));
+            eventFrame.end();
+            return await query.resolver.findOneOrUndefined(query.model);
+        } finally {
+            frame.end();
+        }
     }
 
     public async findOne(): Promise<Resolve<this>> {
-        const query = this.onQueryResolve(await this.callOnFetchEvent(this.limit(1)));
-        const item = await query.resolver.findOneOrUndefined(query.model);
+        const item = await this.findOneOrUndefined();
         if (!item) throw new ItemNotFound(`Item ${this.classSchema.getClassName()} not found`);
         return item as Resolve<this>;
     }
@@ -628,116 +654,138 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     }
 
     protected async delete(query: this): Promise<DeleteResult<T>> {
-        const hasEvents = this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions() || this.databaseSession.queryEmitter.onDeletePost.hasSubscriptions();
+        const hasEvents = this.session.queryEmitter.onDeletePre.hasSubscriptions() || this.session.queryEmitter.onDeletePost.hasSubscriptions();
 
         const deleteResult: DeleteResult<T> = {
             modified: 0,
             primaryKeys: []
         };
 
-        if (!hasEvents) {
-            query = this.onQueryResolve(query);
-            await this.resolver.delete(query.model, deleteResult);
-            this.databaseSession.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
+        const frame = this.session.stopwatch ? this.session.stopwatch.start('Delete:' + this.classSchema.getClassName(), FrameCategory.database) : undefined;
+        if (frame) frame.data({collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName()});
+
+        try {
+            if (!hasEvents) {
+                query = this.onQueryResolve(query);
+                await this.resolver.delete(query.model, deleteResult);
+                this.session.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
+                return deleteResult;
+            }
+
+            const event = new QueryDatabaseDeleteEvent<any>(this.session, this.classSchema, query, deleteResult);
+
+            if (this.session.queryEmitter.onDeletePre.hasSubscriptions()) {
+                const eventFrame = this.session.stopwatch ? this.session.stopwatch.start('Events') : undefined;
+                await this.session.queryEmitter.onDeletePre.emit(event);
+                if (eventFrame) eventFrame.end();
+                if (event.stopped) return deleteResult;
+            }
+
+            //we need to use event.query in case someone overwrite it
+            event.query = this.onQueryResolve(event.query as this);
+            await event.query.resolver.delete(event.query.model, deleteResult);
+            this.session.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
+
+            if (deleteResult.primaryKeys.length && this.session.queryEmitter.onDeletePost.hasSubscriptions()) {
+                const eventFrame = this.session.stopwatch ? this.session.stopwatch.start('Events Post') : undefined;
+                await this.session.queryEmitter.onDeletePost.emit(event);
+                if (eventFrame) eventFrame.end();
+                if (event.stopped) return deleteResult;
+            }
+
             return deleteResult;
+        } finally {
+            if (frame) frame.end();
         }
-        const event = new QueryDatabaseDeleteEvent<any>(this.databaseSession, this.classSchema, query, deleteResult);
-
-        if (this.databaseSession.queryEmitter.onDeletePre.hasSubscriptions()) {
-            await this.databaseSession.queryEmitter.onDeletePre.emit(event);
-            if (event.stopped) return deleteResult;
-        }
-
-        //whe need to use event.query in case someone overwrite it
-        event.query = this.onQueryResolve(event.query as this);
-        await event.query.resolver.delete(event.query.model, deleteResult);
-        this.databaseSession.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
-
-        if (deleteResult.primaryKeys.length && this.databaseSession.queryEmitter.onDeletePost.hasSubscriptions()) {
-            await this.databaseSession.queryEmitter.onDeletePost.emit(event);
-            if (event.stopped) return deleteResult;
-        }
-
-        return deleteResult;
     }
 
     public async patchMany(patch: ChangesInterface<T> | Partial<T>): Promise<PatchResult<T>> {
-        return this.patch(this, patch);
+        return await this.patch(this, patch);
     }
 
     public async patchOne(patch: ChangesInterface<T> | Partial<T>): Promise<PatchResult<T>> {
-        return this.patch(this.limit(1), patch);
+        return await this.patch(this.limit(1), patch);
     }
 
     protected async patch(query: this, patch: Partial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
-        const changes: Changes<T> = new Changes<T>({
-            $set: (patch as Changes<T>).$set || {},
-            $inc: (patch as Changes<T>).$inc,
-            $unset: (patch as Changes<T>).$unset,
-        });
+        const frame = this.session.stopwatch ? this.session.stopwatch.start('Patch:' + this.classSchema.getClassName(), FrameCategory.database) : undefined;
+        if (frame) frame.data({collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName()});
 
-        for (const property of this.classSchema.getProperties()) {
-            if (property.name in patch) {
-                changes.set(property.name as any, (patch as any)[property.name]);
+        try {
+            const changes: Changes<T> = new Changes<T>({
+                $set: (patch as Changes<T>).$set || {},
+                $inc: (patch as Changes<T>).$inc,
+                $unset: (patch as Changes<T>).$unset,
+            });
+
+            for (const property of this.classSchema.getProperties()) {
+                if (property.name in patch) {
+                    changes.set(property.name as any, (patch as any)[property.name]);
+                }
             }
-        }
 
+            const patchResult: PatchResult<T> = {
+                modified: 0,
+                returning: {},
+                primaryKeys: []
+            };
 
-        const patchResult: PatchResult<T> = {
-            modified: 0,
-            returning: {},
-            primaryKeys: []
-        };
+            if (changes.empty) return patchResult;
 
-        if (changes.empty) return patchResult;
+            const hasEvents = this.session.queryEmitter.onPatchPre.hasSubscriptions() || this.session.queryEmitter.onPatchPost.hasSubscriptions();
+            if (!hasEvents) {
+                query = this.onQueryResolve(query);
+                await this.resolver.patch(query.model, changes, patchResult);
+                return patchResult;
+            }
 
-        const hasEvents = this.databaseSession.queryEmitter.onPatchPre.hasSubscriptions() || this.databaseSession.queryEmitter.onPatchPost.hasSubscriptions();
-        if (!hasEvents) {
+            const event = new QueryDatabasePatchEvent<T>(this.session, this.classSchema, query, changes, patchResult);
+            if (this.session.queryEmitter.onPatchPre.hasSubscriptions()) {
+                const eventFrame = this.session.stopwatch ? this.session.stopwatch.start('Events') : undefined;
+                await this.session.queryEmitter.onPatchPre.emit(event);
+                if (eventFrame) eventFrame.end();
+                if (event.stopped) return patchResult;
+            }
+
+            for (const field of event.returning) {
+                if (!event.query.model.returning.includes(field)) event.query.model.returning.push(field);
+            }
+
+            //whe need to use event.query in case someone overwrite it
             query = this.onQueryResolve(query);
-            await this.resolver.patch(query.model, changes, patchResult);
-            return patchResult;
-        }
+            await event.query.resolver.patch(event.query.model, changes, patchResult);
 
-        const event = new QueryDatabasePatchEvent<T>(this.databaseSession, this.classSchema, query, changes, patchResult);
-        if (this.databaseSession.queryEmitter.onPatchPre.hasSubscriptions()) {
-            await this.databaseSession.queryEmitter.onPatchPre.emit(event);
-            if (event.stopped) return patchResult;
-        }
+            if (query.model.withIdentityMap) {
+                const pkHashGenerator = getSimplePrimaryKeyHashGenerator(this.classSchema);
+                for (let i = 0; i < patchResult.primaryKeys.length; i++) {
+                    const item = this.session.identityMap.getByHash(this.classSchema, pkHashGenerator(patchResult.primaryKeys[i]));
+                    if (!item) continue;
 
-        for (const field of event.returning) {
-            if (!event.query.model.returning.includes(field)) event.query.model.returning.push(field);
-        }
+                    if (changes.$set) for (const name in changes.$set) {
+                        (item as any)[name] = (changes.$set as any)[name];
+                    }
 
-        //whe need to use event.query in case someone overwrite it
-        query = this.onQueryResolve(query);
-        await event.query.resolver.patch(event.query.model, changes, patchResult);
-
-        if (query.model.withIdentityMap) {
-            const pkHashGenerator = getSimplePrimaryKeyHashGenerator(this.classSchema);
-            for (let i = 0; i < patchResult.primaryKeys.length; i++) {
-                const item = this.databaseSession.identityMap.getByHash(this.classSchema, pkHashGenerator(patchResult.primaryKeys[i]));
-                if (!item) continue;
-
-                if (changes.$set) for (const name in changes.$set) {
-                    (item as any)[name] = (changes.$set as any)[name];
-                }
-
-                for (const name in patchResult.returning) {
-                    (item as any)[name] = (patchResult.returning as any)[name][i];
+                    for (const name in patchResult.returning) {
+                        (item as any)[name] = (patchResult.returning as any)[name][i];
+                    }
                 }
             }
-        }
 
-        if (this.databaseSession.queryEmitter.onPatchPost.hasSubscriptions()) {
-            await this.databaseSession.queryEmitter.onPatchPost.emit(event);
-            if (event.stopped) return patchResult;
-        }
+            if (this.session.queryEmitter.onPatchPost.hasSubscriptions()) {
+                const eventFrame = this.session.stopwatch ? this.session.stopwatch.start('Events Post') : undefined;
+                await this.session.queryEmitter.onPatchPost.emit(event);
+                if (eventFrame) eventFrame.end();
+                if (event.stopped) return patchResult;
+            }
 
-        return patchResult;
+            return patchResult;
+        } finally {
+            if (frame) frame.end();
+        }
     }
 
     public async has(): Promise<boolean> {
-        return await this.count() > 0;
+        return await this.count(true) > 0;
     }
 
     public async ids(singleKey?: false): Promise<PrimaryKeyFields<T>[]>;

@@ -293,7 +293,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
         public readonly unitOfWorkEmitter: UnitOfWorkDatabaseEmitter = new UnitOfWorkDatabaseEmitter,
         public readonly queryEmitter: QueryDatabaseEmitter = new QueryDatabaseEmitter(),
         public logger: DatabaseLogger = new DatabaseLogger,
-        public stopwatch: Stopwatch = new Stopwatch(),
+        public stopwatch?: Stopwatch,
     ) {
         const queryFactory = this.adapter.queryFactory(this);
         this.query = queryFactory.createQuery.bind(queryFactory);

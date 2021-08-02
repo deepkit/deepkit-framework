@@ -20,9 +20,9 @@ export interface EventListener<T> {
     order: number;
 }
 
-export type EventOfEventToken<T> = T extends EventToken<infer E> ? E : unknown;
+export type EventOfEventToken<T> = T extends EventToken<infer E> ? E : BaseEvent;
 
-export class EventToken<T extends BaseEvent> {
+export class EventToken<T extends BaseEvent = BaseEvent> {
     /**
      * This is only to get easy the event-type. In reality this property is undefined.
      * e.g. `onHttpRequest(event: typeof onHttpRequest.event) {`
@@ -31,7 +31,7 @@ export class EventToken<T extends BaseEvent> {
 
     constructor(
         public readonly id: string,
-        event: ClassType<T>,
+        event?: ClassType<T>,
     ) {
     }
 

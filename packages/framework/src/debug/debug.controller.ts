@@ -18,6 +18,8 @@ import { DatabaseAdapter, DatabaseRegistry } from '@deepkit/orm';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { kernelConfig } from '../kernel.config';
+import { FileStopwatchStore } from './stopwatch/store';
+import { Subject } from 'rxjs';
 
 class DebugConfig extends kernelConfig.slice(['varPath', 'debugStorePath']) {
 }
@@ -30,8 +32,21 @@ export class DebugController implements DebugControllerInterface {
         protected router: Router,
         protected config: DebugConfig,
         protected databaseRegistry: DatabaseRegistry,
+        protected stopwatchStore: FileStopwatchStore,
         // protected liveDatabase: LiveDatabase,
     ) {
+    }
+
+    @rpc.action()
+    async subscribeStopwatch(): Promise<Subject<Uint8Array>> {
+        const subject = new Subject<Uint8Array>();
+        const sub = await this.stopwatchStore.frameChannel.subscribe(() => {
+
+        });
+        subject.subscribe().add(() => {
+            sub.unsubscribe();
+        });
+        return subject;
     }
 
     @rpc.action()
@@ -41,6 +56,12 @@ export class DebugController implements DebugControllerInterface {
         return readFileSync(join(path, 'frames.bin'));
     }
 
+    @rpc.action()
+    getProfilerFrameData(): Uint8Array {
+        const path = join(this.config.varPath, this.config.debugStorePath);
+
+        return readFileSync(join(path, 'frames-data.bin'));
+    }
 
     @rpc.action()
     @t.array(Database)
@@ -175,7 +196,7 @@ export class DebugController implements DebugControllerInterface {
     actions(@t.optional peter?: string): RpcAction[] {
         const result: RpcAction[] = [];
 
-        for (const controller of this.serviceContainer.rpcControllers.controllers.values()) {
+        for (const {controller} of this.serviceContainer.rpcControllers.controllers.values()) {
             const rpcConfig = rpcClass._fetch(controller);
             if (!rpcConfig) continue;
 

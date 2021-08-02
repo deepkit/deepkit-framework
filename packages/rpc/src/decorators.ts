@@ -9,7 +9,15 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, getClassSchema, mergeDecorator, PropertyDecoratorResult, PropertySchema, } from '@deepkit/type';
+import {
+    ClassDecoratorResult,
+    createClassDecoratorContext,
+    createPropertyDecoratorContext,
+    getClassSchema,
+    mergeDecorator,
+    PropertyDecoratorResult,
+    PropertySchema,
+} from '@deepkit/type';
 import { ControllerDefinition } from './model';
 
 class RpcController {
@@ -29,6 +37,7 @@ export class RpcAction {
     classType!: ClassType;
 
     groups: string[] = [];
+    data: { [name: string]: any } = {};
 }
 
 class RpcClass {
@@ -63,6 +72,10 @@ class RpcProperty {
 
     group(...groups: string[]) {
         this.t.groups.push(...groups);
+    }
+
+    data(name: string, value: any) {
+        this.t.data[name] = value;
     }
 }
 

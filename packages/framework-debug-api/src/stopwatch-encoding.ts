@@ -1,6 +1,5 @@
-import { getBSONSerializer, getBSONSizer, ParserV2, stringByteLength, Writer } from '@deepkit/bson';
-import { FrameCategory, FrameData, FrameEnd, FrameStart, FrameType } from '@deepkit/stopwatch';
-import { ClassSchema, t } from '@deepkit/type';
+import { deserialize, getBSONSerializer, getBSONSizer, ParserV2, stringByteLength, Writer } from '@deepkit/bson';
+import { categorySchemas, FrameCategory, FrameData, FrameEnd, FrameStart, FrameType } from '@deepkit/stopwatch';
 
 export function encodeFrames(frames: (FrameStart | FrameEnd)[]): Uint8Array {
     //<id uint32><worker uint8><type uint8><timestamp uint64><context uint32><category uint8><labelSize uint8><label utf8string>.
@@ -40,14 +39,6 @@ export function encodeFrames(frames: (FrameStart | FrameEnd)[]): Uint8Array {
     return buffer;
 }
 
-export const categorySchemas: { [name in FrameCategory]?: ClassSchema } = {
-    [FrameCategory.http]: t.schema({
-        url: t.string.optional,
-        method: t.string.optional,
-        clientIp: t.string.optional,
-        responseStatus: t.number.optional,
-    })
-};
 
 export function encodeFrameData(dataItems: FrameData[]) {
     //<id uint32><worker uint8><bson document>
@@ -71,15 +62,16 @@ export function encodeFrameData(dataItems: FrameData[]) {
     return buffer;
 }
 
-export function decodeFrameData(buffer: Uint8Array): { id: number, worker: number, bson: Uint8Array }[] {
+export function decodeFrameData(buffer: Uint8Array): { id: number, worker: number, data: Uint8Array }[] {
     const parser = new ParserV2(buffer);
-    const data: { id: number, worker: number, bson: Uint8Array }[] = [];
+
+    const data: { id: number, worker: number, data: Uint8Array }[] = [];
 
     while (parser.offset < buffer.byteLength) {
         const id = parser.eatUInt32();
         const worker = parser.eatByte();
         const end = parser.peekUInt32() + parser.offset;
-        data.push({ id, worker, bson: parser.buffer.slice(parser.offset, end) });
+        data.push({ id, worker, data: deserialize(parser.buffer.slice(parser.offset, end)) });
         parser.offset = end;
     }
     return data;

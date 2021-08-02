@@ -12,7 +12,19 @@ import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
-import { DuiAppModule, DuiButtonModule, DuiCheckboxModule, DuiFormComponent, DuiIconModule, DuiInputModule, DuiListModule, DuiRadioboxModule, DuiSelectModule, DuiTableModule, DuiWindowModule, } from '@deepkit/desktop-ui';
+import {
+    DuiAppModule,
+    DuiButtonModule,
+    DuiCheckboxModule,
+    DuiFormComponent,
+    DuiIconModule,
+    DuiInputModule,
+    DuiListModule,
+    DuiRadioboxModule,
+    DuiSelectModule,
+    DuiTableModule,
+    DuiWindowModule,
+} from '@deepkit/desktop-ui';
 import { ConfigurationComponent } from './views/configuration/configuration.component';
 import { HttpComponent } from './views/http/http.component';
 import { ControllerClient } from './client';
@@ -26,6 +38,7 @@ import { HttpRequestComponent } from './views/http/request/http-request.componen
 import { OrmBrowserModule } from '@deepkit/orm-browser-gui';
 import { RouterModule } from '@angular/router';
 import { ProfileComponent } from './views/profile/profile.component';
+import { ProfileTimelineComponent } from './views/profile/timeline.component';
 
 @NgModule({
     declarations: [
@@ -34,6 +47,7 @@ import { ProfileComponent } from './views/profile/profile.component';
         HttpComponent,
         RpcComponent,
         ProfileComponent,
+        ProfileTimelineComponent,
         WorkflowComponent,
         WorkflowCardComponent,
         EventsComponent,

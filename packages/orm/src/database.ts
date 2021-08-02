@@ -88,7 +88,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      */
     public readonly unitOfWorkEvents = new UnitOfWorkDatabaseEmitter();
 
-    public stopwatch: Stopwatch = new Stopwatch();
+    public stopwatch?: Stopwatch;
 
     /**
      * Creates a new DatabaseQuery instance which can be used to query data.

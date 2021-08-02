@@ -18,9 +18,9 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@deepkit/template"
   },
-  "include": [
-    "*.tsx",
-    "*.ts"
+  "includes": [
+    "*.ts",
+    "*.tsx"
   ],
   "references": [
     {

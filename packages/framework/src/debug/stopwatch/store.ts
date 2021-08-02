@@ -24,7 +24,7 @@ export class FileStopwatchStore extends StopwatchStore {
     protected lastId: number = -1;
     protected lastContext: number = -1;
 
-    protected frameChannel = this.broker.channel('_debug/frames', t.type(Uint8Array));
+    public frameChannel = this.broker.channel('_debug/frames', t.type(Uint8Array));
 
     constructor(
         protected config: Config,
@@ -104,7 +104,7 @@ export class FileStopwatchStore extends StopwatchStore {
             await asyncOperation((resolve, reject) => {
                 const frameBytes = encodeFrames(frames);
                 write(this.frameFileHandle!, frameBytes, (error) => {
-                    this.frameChannel.publish(frameBytes);
+                    this.frameChannel.publish(frameBytes).catch(() => void 0);
                     if (error) reject(error); else resolve(undefined);
                 });
             });

@@ -33,7 +33,14 @@ export abstract class StopwatchStore {
     }
 }
 
-export class StopwatchFrame<C extends FrameCategory & keyof FrameCategoryModel> {
+export interface StopwatchFrameInterface<C extends FrameCategory & keyof FrameCategoryModel> {
+    data(data: Partial<FrameCategoryModel[C]>): void;
+    end(): void;
+    run<T>(data: { [name: string]: any }, cb: () => Promise<T> | T): Promise<T>;
+}
+
+export class StopwatchFrame<C extends FrameCategory & keyof FrameCategoryModel> implements StopwatchFrameInterface<C> {
+    protected stopped = false;
     constructor(
         protected store: StopwatchStore,
         public context: number,
@@ -48,6 +55,9 @@ export class StopwatchFrame<C extends FrameCategory & keyof FrameCategoryModel> 
     }
 
     end() {
+        if (this.stopped) return;
+
+        this.stopped = true;
         this.store.add({ id: this.id, type: FrameType.end, worker: this.worker, timestamp: 0 });
     }
 
@@ -57,12 +67,22 @@ export class StopwatchFrame<C extends FrameCategory & keyof FrameCategoryModel> 
     }
 }
 
+export class NoopStopwatchFrame<C extends FrameCategory & keyof FrameCategoryModel> implements StopwatchFrameInterface<C> {
+    data(data: Partial<any>) {
+    }
+
+    end() {
+    }
+
+    run<T>(data: { [p: string]: any }, cb: () => Promise<T>): Promise<T> {
+        return cb();
+    }
+}
+
 let frameId = 0;
 let contextId = 0;
 
 export class Stopwatch {
-    public times: { [name: string]: { stack: number[], time: number } } = {};
-
     /**
      * It's active when there is a StopwatchStore attached.
      * Per default its inactive.
@@ -81,20 +101,21 @@ export class Stopwatch {
      * When a new context is created, it's important to use StopwatchFrame.run() so that all
      * sub frames are correctly assigned to the new context.
      */
-    public start<C extends FrameCategory & keyof FrameCategoryModel>(label: string, category: C = FrameCategory.none as C, newContext: boolean = false): StopwatchFrame<C> {
+    public start<C extends FrameCategory & keyof FrameCategoryModel>(label: string, category: C = FrameCategory.none as C, newContext: boolean = false): StopwatchFrameInterface<C> {
         if (!this.active || !this.store) throw new Error('Stopwatch not active');
 
-        const id = ++frameId;
         let context: number = 0;
         const zone = this.store.getZone();
 
-        if (newContext || !zone) {
+        if (newContext) {
             context = ++contextId;
         } else {
+            if (!zone) return new NoopStopwatchFrame();
             context = zone.stopwatchContextId;
             if (!context) throw new Error('No Stopwatch context given');
         }
 
+        const id = ++frameId;
         const worker = this.store.add({
             id, type: FrameType.start, worker: 0, category,
             context: context, label, timestamp: 0,

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType } from '@deepkit/core';
+import { ClassType, getClassName } from '@deepkit/core';
 import {
     ClassDecoratorResult,
     createClassDecoratorContext,
@@ -27,7 +27,8 @@ import { Command as OclifCommandBase } from '@oclif/command';
 import { Command as OclifCommand } from '@oclif/config';
 import { args, flags } from '@oclif/parser';
 import { IBooleanFlag, IOptionFlag } from '@oclif/parser/lib/flags';
-import { InjectorContext } from '@deepkit/injector';
+import { Injector } from '@deepkit/injector';
+import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
 class ArgDefinitions {
     name: string = '';
@@ -144,14 +145,14 @@ export const flag = createPropertyDecoratorContext(ArgFlagDecorator);
 export type CommandArgs = { [name: string]: FreeFluidDecorator<ArgDecorator> };
 
 export interface Command {
-    execute(...args: any[]): Promise<any>;
+    execute(...args: any[]): Promise<number | void> | number | void;
 }
 
 export function isCommand(classType: ClassType<Command>) {
     return !!cli._fetch(classType);
 }
 
-export function buildOclifCommand(classType: ClassType<Command>, rootScopedContext: InjectorContext): OclifCommand.Plugin {
+export function buildOclifCommand(name: string, classType: ClassType<Command>, injector: Injector): OclifCommand.Plugin {
     const oclifArgs: args.Input = [];
     const oclifFlags: { [name: string]: IBooleanFlag<any> | IOptionFlag<any> } = {};
     const argDefinitions = cli._fetch(classType);
@@ -205,9 +206,14 @@ export function buildOclifCommand(classType: ClassType<Command>, rootScopedConte
                 static flags = oclifFlags;
 
                 async run() {
+                    let stopwatch: Stopwatch | undefined;
+                    try {
+                        stopwatch = injector.get(Stopwatch);
+                    } catch {
+                    }
+
                     const { flags, args } = this.parse(Clazz);
-                    const cliScopedContext = rootScopedContext.createChildScope('cli');
-                    const instance = cliScopedContext.get(classType);
+                    const instance = injector.get(classType);
                     const methodArgs: any[] = [];
 
                     for (const property of argDefinitions!.args) {
@@ -230,7 +236,18 @@ export function buildOclifCommand(classType: ClassType<Command>, rootScopedConte
                         }
                     }
 
-                    const exitCode = await instance.execute(...methodArgs);
+                    let exitCode: any;
+
+                    if (stopwatch) {
+                        const frame = stopwatch.start(name + '(' + getClassName(classType) + ')', FrameCategory.cli, true);
+                        try {
+                            exitCode = await frame.run({}, () => instance.execute(...methodArgs));
+                        } finally {
+                            frame.end();
+                        }
+                    } else {
+                        exitCode = await instance.execute(...methodArgs);
+                    }
                     if (typeof exitCode === 'number') return exitCode;
                     return 0;
                 }
