@@ -1,4 +1,4 @@
-import { expect, test } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { entity, FieldDecoratorResult, t, Types } from '@deepkit/type';
 import bson from 'bson';
@@ -59,12 +59,7 @@ test('compare ab', () => {
 const decoratedValue2 = new DecoratedValue2();
 decoratedValue2.items = ['a', 'b', 'c'];
 
-
-
-
-
-
-
+const actualUndefined = Symbol('undefined');
 
 const types: [type: FieldDecoratorResult<any>, value: any, expected?: any, dontComarepToMongo?: true][] = [
     [t.string, 'Hello Peter'],
@@ -77,6 +72,9 @@ const types: [type: FieldDecoratorResult<any>, value: any, expected?: any, dontC
     [t.number, -134.444444445],
     [t.number, 212313134.444444445],
     [t.number, -1212313134.444444445],
+    [t.bigint, 555n, undefined, true],
+    [t.bigint, undefined, undefined, true],
+    [t.bigint, 'asd', actualUndefined, true],
     [t.boolean, false],
     [t.boolean, true],
     [t.boolean, true],
@@ -93,11 +91,11 @@ const types: [type: FieldDecoratorResult<any>, value: any, expected?: any, dontC
     [t.enum(MyEnum2), MyEnum2.third],
     [t.type({ name: t.string }), { name: 'Peter' }],
     [t.union(t.string, MyModel), 'asd'],
-    [t.union(t.string, MyModel), {name: 'foo'}, new MyModel('foo'), true],
+    [t.union(t.string, MyModel), { name: 'foo' }, new MyModel('foo'), true],
     [t.union(t.string, SimpleModel), 'asd'],
-    [t.union(t.string, SimpleModel), {name: 'foo'}, new SimpleModel('foo')],
+    [t.union(t.string, SimpleModel), { name: 'foo' }, new SimpleModel('foo')],
     [t.union(t.mongoId, SimpleModel), '507f191e810c19729de860ea', undefined, true],
-    [t.union(t.mongoId, SimpleModel), {name: 'foo'}, new SimpleModel('foo')],
+    [t.union(t.mongoId, SimpleModel), { name: 'foo' }, new SimpleModel('foo')],
     [t.union(t.string, t.array(t.string)), 'asd'],
     [t.union(t.string, t.array(t.string)), ['a', 'b']],
     [t.union(t.string, t.uuid), 'asd'],
@@ -138,74 +136,79 @@ const types: [type: FieldDecoratorResult<any>, value: any, expected?: any, dontC
     [t.any, /abc/gim],
 ];
 
-for (let i = 0; i < types.length; i++) {
-    const type = types[i];
-    const [field, value, expected, dontCompareToBSONJS] = type;
-    const property = (field as FieldDecoratorResult<any>).buildPropertySchema('test_' + i);
+describe('integration', () => {
+    for (let i = 0; i < types.length; i++) {
+        const type = types[i];
+        const [field, value, expected, dontCompareToBSONJS] = type;
+        const property = (field as FieldDecoratorResult<any>).buildPropertySchema('test_' + i);
 
-    test(`types round-trip #${i} ${property.toString()}: ${value}`, () => {
-        const s = t.schema({
-            field: field
+        test(`types round-trip #${i} ${property.toString()}: ${value}`, () => {
+            const s = t.schema({
+                field: field
+            });
+
+            const sOptional = t.schema({
+                field: field.optional
+            });
+
+            const sNullable = t.schema({
+                field: field.nullable
+            });
+
+            const obj = {
+                field: value
+            };
+
+            const expectedFieldValue = expected === actualUndefined ? undefined : expected ?? value;
+
+            const expectedObj = {
+                field: expectedFieldValue
+            };
+
+            expect(sOptional.getProperty('field').isOptional).toBe(true);
+            expect(sNullable.getProperty('field').isNullable).toBe(true);
+
+            const serializer = getBSONSerializer(s);
+            const bsonDeepkit = serializer(obj);
+            // console.log('back', obj, deserialize(Buffer.from(bsonDeepkit)));
+
+            const decoded = getBSONDecoder(s)(bsonDeepkit);
+            expect(decoded).toEqual(expectedObj);
+
+            expect(getBSONDecoder(s)(getBSONSerializer(s)({}))).toEqual({});
+
+            //optional
+            // expect(getBSONDecoder(sOptional)(getBSONSerializer(sOptional)({}))).toEqual({});
+            const optionalTrip = getBSONDecoder(sOptional)(getBSONSerializer(sOptional)({ field: undefined }));
+            expect(optionalTrip).toEqual({ field: undefined });
+            expect('field' in optionalTrip).toEqual(true);
+
+            //null
+            expect(getBSONDecoder(sNullable)(getBSONSerializer(sNullable)({ field: undefined }))).toEqual({ field: null });
+            expect('field' in getBSONDecoder(sNullable)(getBSONSerializer(sNullable)({ field: undefined }))).toEqual(true);
+            const nullTrip = getBSONDecoder(sNullable)(getBSONSerializer(sNullable)({ field: null }));
+            expect(nullTrip).toEqual({ field: null });
+
+            const type = field.buildPropertySchema().type;
+            const blacklist: Types[] = [
+                'uuid',
+                'objectId',
+                'arrayBuffer',
+                'Uint8Array',
+                'Int16Array'
+            ];
+            if (blacklist.includes(type)) return;
+
+            if (dontCompareToBSONJS) return;
+
+            expect(createBSONSizer(s)(obj)).toEqual(calculateObjectSize(obj));
+
+            //official BSON serializer has a bug not serializing LONG correctly
+            if (field.buildPropertySchema().type === 'number' && (value > JS_INT_MAX || value < JS_INT_MIN)) return;
+
+            const bsonOfficial = serialize(obj);
+            expect(obj).toEqual(deserialize(serialize(obj)));
+            expect(bsonDeepkit).toEqual(bsonOfficial);
         });
-
-        const sOptional = t.schema({
-            field: field.optional
-        });
-
-        const sNullable = t.schema({
-            field: field.nullable
-        });
-
-        const obj = {
-            field: value
-        };
-
-        const expectedObj = {
-            field: expected ?? value
-        };
-
-        expect(sOptional.getProperty('field').isOptional).toBe(true);
-        expect(sNullable.getProperty('field').isNullable).toBe(true);
-
-        const bsonDeepkit = getBSONSerializer(s)(obj);
-        // console.log('back', obj, deserialize(Buffer.from(bsonDeepkit)));
-
-        const decoded = getBSONDecoder(s)(bsonDeepkit);
-        expect(decoded).toEqual(expectedObj);
-
-        expect(getBSONDecoder(s)(getBSONSerializer(s)({}))).toEqual({});
-
-        //optional
-        // expect(getBSONDecoder(sOptional)(getBSONSerializer(sOptional)({}))).toEqual({});
-        const optionalTrip = getBSONDecoder(sOptional)(getBSONSerializer(sOptional)({field: undefined}));
-        expect(optionalTrip).toEqual({field: undefined});
-        expect('field' in optionalTrip).toEqual(true);
-
-        //null
-        expect(getBSONDecoder(sNullable)(getBSONSerializer(sNullable)({field: undefined}))).toEqual({field: null});
-        expect('field' in getBSONDecoder(sNullable)(getBSONSerializer(sNullable)({field: undefined}))).toEqual(true);
-        const nullTrip = getBSONDecoder(sNullable)(getBSONSerializer(sNullable)({field: null}));
-        expect(nullTrip).toEqual({field: null});
-
-        const type = field.buildPropertySchema().type;
-        const blacklist: Types[] = [
-            'uuid',
-            'objectId',
-            'arrayBuffer',
-            'Uint8Array',
-            'Int16Array'
-        ];
-        if (blacklist.includes(type)) return;
-
-        if (dontCompareToBSONJS) return;
-
-        expect(createBSONSizer(s)(obj)).toEqual(calculateObjectSize(obj));
-
-        //official BSON serializer has a bug not serializing LONG correctly
-        if (field.buildPropertySchema().type === 'number' && (value > JS_INT_MAX || value < JS_INT_MIN)) return;
-
-        const bsonOfficial = serialize(obj);
-        expect(obj).toEqual(deserialize(serialize(obj)));
-        expect(bsonDeepkit).toEqual(bsonOfficial);
-    });
-}
+    }
+});

@@ -8,6 +8,8 @@ import { ClassSchema, getClassSchema, unpopulatedSymbol } from '../src/model';
 import { propertyDefinition } from '../src/model-schema';
 import { createReference } from '../src/reference';
 
+(BigInt.prototype as any).toJSON = function() { return this.toString() };
+
 /**
  * When the value is not existent anymore (don't confuse with being undefined.).
  * Equal to check with `in`.
@@ -108,11 +110,11 @@ test('with implicit default value', () => {
     expect(roundTrip(t.partial(Product), { id: 23 } as any)).toEqual({ id: 23 });
     expect(roundTrip(t.partial(Product), { id: 23, created: undefined } as any)).toEqual({ id: 23 });
 
-    //not set properties are ommited
+    //not set properties are omitted
     expect('created' in roundTrip(t.partial(Product), { id: 23 } as any)).toEqual(false);
 
     //we need to keep undefined values otherwise there is not way to reset a value
-    //for JSON/BSON on the transport layer is null used to communicate the fact that we set explictely `created` to undefined
+    //for JSON/BSON on the transport layer is null used to communicate the fact that we set explicitly `created` to undefined
     expect('created' in roundTrip(t.partial(Product), { id: 23, created: undefined } as any)).toEqual(true);
 });
 
@@ -129,6 +131,11 @@ test('partial keeps explicitely undefined fields', () => {
     expect(roundTrip(t.partial(Model), {})).toEqual({});
     expect('name' in roundTrip(t.partial(Model), {})).toBe(false);
     expect(roundTrip(t.partial(Model), { title: undefined })).toEqual({ title: undefined });
+
+    {
+        const item = serializeToJson(t.partial(Model), { title: undefined });
+        console.log('item', item);
+    }
 
     {
         const item = roundTrip(t.partial(Model), { title: undefined });

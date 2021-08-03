@@ -19,15 +19,17 @@ import { referenceSymbol } from './reference';
 registerCheckerCompiler('number', (accessor: string, property: PropertySchema, utils) => {
     return `
     if ('number' !== typeof ${accessor}) {
-        if ('string' === typeof ${accessor}) {
-            if (!Number.isFinite(parseFloat(${accessor}))) {
-                ${utils.raise('invalid_number', 'No number given')}
-            }
-        } else {
-            ${utils.raise('invalid_number', 'No number given')}
-        }
+        ${utils.raise('invalid_number', 'No number given')}
     } else if (${accessor} !== ${accessor}) {
         ${utils.raise('invalid_number', 'No valid number given, got NaN')}
+    }
+    `;
+});
+
+registerCheckerCompiler('bigint', (accessor: string, property: PropertySchema, utils) => {
+    return `
+    if ('bigint' !== typeof ${accessor}) {
+        ${utils.raise('invalid_bigint', 'No bigint given')}
     }
     `;
 });
@@ -105,12 +107,10 @@ registerCheckerCompiler('date', (accessor: string, property: PropertySchema, uti
     return `
     if (${accessor} instanceof Date) {
         if (isNaN(new Date(${accessor}).getTime())) {
-            ${utils.raise('invalid_date', 'No valid Date given')};
+            ${utils.raise('invalid_date', 'No date given')};
         }
-    } else if ('string' !== typeof ${accessor} || !${accessor}) {
-        ${utils.raise('invalid_date', 'No Date string given')};
-    } else if (isNaN(new Date(${accessor}).getTime())) {
-        ${utils.raise('invalid_date', 'No valid Date string given')};
+    } else {
+        ${utils.raise('invalid_date', 'No date given')};
     }
     `;
 });
@@ -138,7 +138,12 @@ registerCheckerCompiler('class', (accessor: string, property: PropertySchema, ut
 
 registerCheckerCompiler('literal', (accessor: string, property: PropertySchema, utils) => {
     //todo. really necessary? Because we force set the literal value always, no matter what value comes in.
-    return '';
+    // what if we validate a plain object?
+    return `
+    if (${accessor} !== ${JSON.stringify(property.literalValue)}) {
+        ${utils.raise('invalid', 'Literal value is wrong')};
+    }
+    `
 });
 
 registerCheckerCompiler('union', (accessor: string, property: PropertySchema, utils, jitStack) => {
@@ -168,7 +173,7 @@ registerCheckerCompiler('union', (accessor: string, property: PropertySchema, ut
                         ${utils.raise('required', 'Required value is null')};
                     }
                 } else if (${accessor} === undefined) {
-                    if (!${property.isUndefinedAllowed()}) {
+                    if (!${property.isOptional}) {
                         ${utils.raise('required', 'Required value is undefined')};
                     }
                 } else {

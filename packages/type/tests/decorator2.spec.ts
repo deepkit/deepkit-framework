@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { Entity, getClassSchema, jsonSerializer, PropertySchema, t } from '../index';
+import { Entity, getClassSchema, getXToClassFunction, jsonSerializer, PropertySchema, t } from '../index';
 import { uuid } from '../src/utils';
 
 test('test optional', () => {
@@ -390,29 +390,31 @@ test('nullable', () => {
         }
     }
 
+    const serializer = jsonSerializer.for(ConstructorClass);
+
     {
-        const clazz = jsonSerializer.for(ConstructorClass).deserialize({ klass1: { label: '1' }, klass2: { label: '2' } });
+        const clazz = serializer.deserialize({ klass1: { label: '1' }, klass2: { label: '2' } });
         expect(clazz).toBeInstanceOf(ConstructorClass);
         expect(clazz.klass1).toBeInstanceOf(ExampleClass);
         expect(clazz.klass2).toBeInstanceOf(ExampleClass);
     }
 
     {
-        const clazz = jsonSerializer.for(ConstructorClass).deserialize({ klass1: null, klass2: { label: '2' } });
+        const clazz = serializer.deserialize({ klass1: null, klass2: { label: '2' } });
         expect(clazz).toBeInstanceOf(ConstructorClass);
         expect(clazz.klass1).toBe(null);
         expect(clazz.klass2).toBeInstanceOf(ExampleClass);
     }
 
     {
-        const clazz = jsonSerializer.for(ConstructorClass).deserialize({ klass1: undefined, klass2: { label: '2' } });
+        const clazz = serializer.deserialize({ klass1: undefined, klass2: { label: '2' } });
         expect(clazz).toBeInstanceOf(ConstructorClass);
         expect(clazz.klass1).toBe(null);
         expect(clazz.klass2).toBeInstanceOf(ExampleClass);
     }
 
     {
-        const clazz = jsonSerializer.for(ConstructorClass).deserialize({ klass1: null, klass2: null });
+        const clazz = serializer.deserialize({ klass1: null, klass2: null });
         expect(clazz).toBeInstanceOf(ConstructorClass);
         expect(clazz.klass1).toBe(null);
         expect(clazz.klass2).toBe(null);
@@ -431,6 +433,10 @@ test('null as default value', () => {
 
     const testClassSerializer = jsonSerializer.for(TestClass);
 
+    const c = getXToClassFunction(getClassSchema(TestClass), jsonSerializer);
+
+    expect(c({})).toEqual({ v1: 1.0 });
+    expect(testClassSerializer.validatedDeserialize({})).toEqual({ v1: 1.0 });
     expect(testClassSerializer.validatedDeserialize({ v1: undefined })).toEqual({ v1: 1.0 });
     expect(testClassSerializer.validatedDeserialize({ v1: null })).toEqual({ v1: null });
     expect(testClassSerializer.validatedDeserialize({ v1: 3.14 })).toEqual({ v1: 3.14 });
@@ -443,6 +449,7 @@ test('null as default value', () => {
 
     const testClassDbSerializer = myDbSerializer.for(TestClass);
 
+    expect(testClassDbSerializer.validatedDeserialize({ })).toEqual({ v1: 1.0 });
     expect(testClassDbSerializer.validatedDeserialize({ v1: undefined })).toEqual({ v1: 1.0 });
     expect(testClassDbSerializer.validatedDeserialize({ v1: null })).toEqual({ v1: 1.0 });
     expect(testClassDbSerializer.validatedDeserialize({ v1: 3.14 })).toEqual({ v1: 3.14 });

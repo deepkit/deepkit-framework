@@ -114,7 +114,7 @@ test('validation fails when env is wrong', async () => {
 
     const baseModule = new AppModule({ config: baseConfig, providers: [BaseService] })
         .setup((module, config) => {
-            expect(config.log).toBe(true);
+            if (!config.log) throw new Error('log needs to be true');
         })
     ;
 
@@ -122,7 +122,7 @@ test('validation fails when env is wrong', async () => {
 
     const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
     app.loadConfigFromEnvVariables('APP_');
-    expect(() => app.serviceContainer.process()).toThrow('No Boolean given');
+    expect(() => app.serviceContainer.process()).toThrow('log needs to be true');
 });
 
 test('required value can be set via env or setupConfig', async () => {
@@ -132,7 +132,7 @@ test('required value can be set via env or setupConfig', async () => {
 
     const baseModule = new AppModule({ config: baseConfig, providers: [BaseService] })
         .setup((module, config) => {
-            expect(config.log).toBe(true);
+            if (!config.log) throw new Error('log needs to be true');
         })
     ;
 
@@ -166,7 +166,7 @@ test('required value can be set via env or setupConfig', async () => {
 
         const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
         app.loadConfigFromEnvVariables('APP_');
-        expect(() => app.serviceContainer.process()).toThrow('No Boolean given');
+        expect(() => app.serviceContainer.process()).toThrow('log(invalid_boolean): No Boolean given');
     }
 
     {

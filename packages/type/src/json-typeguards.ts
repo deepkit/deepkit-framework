@@ -132,7 +132,7 @@ registerJSONTypeGuard('partial', (property: PropertySchema) => {
 
 registerJSONTypeGuard('number', (property: PropertySchema) => {
     return (v: any) => {
-        return 'number' === typeof v || ('string' === typeof v && !Number.isNaN(parseInt(v)));
+        return 'number' === typeof v || ('string' === typeof v && !Number.isNaN(+v));
     };
 });
 

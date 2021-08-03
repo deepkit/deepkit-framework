@@ -14,7 +14,7 @@ import { AppModule, ConfigurationInvalidError, MiddlewareConfig, ModuleOptions }
 import { ConfiguredProviderRegistry, Context, ContextRegistry, Injector, InjectorContext, ProviderWithScope, TagProvider, tokenLabel } from '@deepkit/injector';
 import { cli } from './command';
 import { WorkflowDefinition } from '@deepkit/workflow';
-import { ClassSchema, jsonSerializer, ValidationFailed } from '@deepkit/type';
+import { ClassSchema, jsonSerializer, validate } from '@deepkit/type';
 
 export interface OnInit {
     onInit: () => Promise<void>;
@@ -26,7 +26,7 @@ export interface onDestroy {
 
 
 export class CliControllers {
-    public readonly controllers = new Map<string, {controller: ClassType, context: Context}>();
+    public readonly controllers = new Map<string, { controller: ClassType, context: Context }>();
 }
 
 type MiddlewareRegistryEntry = { config: MiddlewareConfig, module: AppModule<any> };
@@ -57,7 +57,7 @@ export function isProvided(providers: ProviderWithScope[], token: any): boolean 
 }
 
 export interface ConfigLoader {
-    load(moduleName: string, config: {[name: string]: any}, schema: ClassSchema): void;
+    load(moduleName: string, config: { [name: string]: any }, schema: ClassSchema): void;
 }
 
 export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
@@ -112,18 +112,20 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         let config = module.getConfig();
 
         if (module.options.config) {
+            const configSerializer = jsonSerializer.for(module.options.config.schema);
+
             for (const loader of this.configLoaders) loader.load(module.name, config, module.options.config.schema);
+
+            //config loads can set arbitrary values (like string for numbers), so we try deserialize them automatically
+            Object.assign(config, configSerializer.deserialize(config));
 
             for (const setupConfig of module.setupConfigs) setupConfig(module, config);
 
-            try {
-                Object.assign(config, jsonSerializer.for(module.options.config.schema).validatedDeserialize(config) as any);
-            } catch (e) {
-                if (e instanceof ValidationFailed) {
-                    const errorsMessage = e.errors.map(v => v.toString(module.getName())).join(', ');
-                    throw new ConfigurationInvalidError(`Configuration for module ${module.getName() || 'root'} is invalid. Make sure the module is correctly configured. Error: ` + errorsMessage);
-                }
-                throw e;
+            //at this point, no deserialization needs to happen anymore, so validation happens on the config object itself.
+            const errors = validate(module.options.config.schema, config);
+            if (errors.length) {
+                const errorsMessage = errors.map(v => v.toString(module.getName())).join(', ');
+                throw new ConfigurationInvalidError(`Configuration for module ${module.getName() || 'root'} is invalid. Make sure the module is correctly configured. Error: ` + errorsMessage);
             }
         }
 
@@ -309,7 +311,7 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         const cliConfig = cli._fetch(controller);
         if (cliConfig) {
             if (!isProvided(providers, controller)) providers.unshift({ provide: controller, scope: 'cli' });
-            this.cliControllers.controllers.set(cliConfig.name, {controller, context});
+            this.cliControllers.controllers.set(cliConfig.name, { controller, context });
         }
     }
 }

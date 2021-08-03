@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { getClassSchema, jsonSerializer, t } from '../index';
+import { getClassSchema, getClassToXFunction, jsonSerializer, t } from '../index';
 import { Plan, SimpleModel, SubModel } from './entities';
 
 test('test simple model', () => {
@@ -48,29 +48,44 @@ test('test simple model all fields', () => {
 
 
 test('nullable', () => {
-    const s = t.schema({
+    const schema = t.schema({
         username: t.string,
         password: t.string.nullable,
         optional: t.string.optional,
     });
 
-    const item = new s.classType;
+    const item = new schema.classType;
     item.username = 'asd';
+    const serializer = jsonSerializer.for(schema);
 
-    expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd', password: null });
+    expect(serializer.serialize(item)).toEqual({ username: 'asd', password: null });
 
     item.password = null;
-    expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd', password: null });
+    expect(serializer.serialize(item)).toEqual({ username: 'asd', password: null });
 
     item.optional = undefined;
-    expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd', password: null, optional: null });
+    expect(serializer.serialize(item)).toEqual({ username: 'asd', password: null, optional: null });
 
     delete item.optional;
-    expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd', password: null });
+    expect(serializer.serialize(item)).toEqual({ username: 'asd', password: null });
 
     item.optional = 'yes';
-    expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd', password: null, optional: 'yes' });
+    expect(serializer.serialize(item)).toEqual({ username: 'asd', password: null, optional: 'yes' });
 
     item.password = 'secret';
-    expect(jsonSerializer.for(s).serialize(item)).toEqual({ username: 'asd', password: 'secret', optional: 'yes' });
+    expect(serializer.serialize(item)).toEqual({ username: 'asd', password: 'secret', optional: 'yes' });
 });
+
+test('optional keeps undefined values', () => {
+    //we need to keep undefined values otherwise there is not way to reset a value
+    //for JSON/BSON on the transport layer is null used to communicate the fact that we set a field explicitly to undefined
+    const schema = t.schema({
+        v: t.string.optional
+    });
+
+    const converter = getClassToXFunction(schema, jsonSerializer);
+
+    const plain = converter({v: undefined});
+    expect('v' in plain).toBe(true);
+    expect(plain.v).toBe(null);
+})

@@ -48,10 +48,10 @@ export function validateMethodArgs<T>(classType: ClassType<T>, methodName: strin
 
 /**
  * Validates a object or class instance and returns all errors.
+ *
  * Returns an empty array if not errors found and validation succeeded.
  *
- * Warning: If `item` is a plain object this does not check if `item` is exactly of type T, but if it can safely be
- * converted to one using plainToClass/deserialize. For example `t.string` allows numbers because it can be safely converted to string.
+ * Note: You want probably to pass as `item` the deserialized structure, like `validate(T, plainToClass(T, jsonObject))`.
  *
  * @example
  * ```
@@ -59,7 +59,8 @@ export function validateMethodArgs<T>(classType: ClassType<T>, methodName: strin
  * ```
  */
 export function validate<T extends ClassType | ClassSchema>(classType: T, item: PlainOrFullEntityFromClassTypeOrSchema<T>, path?: string): ValidationFailedItem[] {
-    return jitValidate(classType)(item, path);
+    const v = jitValidate(classType);
+    return v(item, path);
 }
 
 
@@ -75,9 +76,6 @@ export function validateFactory<T extends ClassType | ClassSchema>(classType: T)
  *
  * Note: Methods are not type guarded.
  *
- * Warning: If `item` is a plain object this does not check if `item` is exactly of type T, but if it can safely be
- * converted to one using plainToClass. For example `t.string` allows numbers because it can be safely converted to string.
- *
  * @example
  * ```
  * if (validates(SimpleMode, item)) {
@@ -86,7 +84,8 @@ export function validateFactory<T extends ClassType | ClassSchema>(classType: T)
  * ```
  */
 export function validates<T extends ClassType | ClassSchema>(classType: T, item: PlainOrFullEntityFromClassTypeOrSchema<T>): item is ExtractClassType<T> {
-    return jitValidate(classType)(item).length === 0;
+    const v = jitValidate(classType);
+    return v(item).length === 0;
 }
 
 /**

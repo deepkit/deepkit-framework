@@ -225,11 +225,10 @@ export class PropertySchema {
 
     /**
      * Returns true when `undefined` or a missing value is allowed.
-     * This is now only true when `optional` is set, but alos when type is `any`,
-     * or when the property has an actual default value (then a undefined value sets the default value instead).
+     * This is now only true when `optional` is set, but also when type is `any`.
      */
-    public isUndefinedAllowed(): boolean {
-        return this.isOptional || this.type === 'any' || this.hasManualDefaultValue() || this.hasDefaultValue;
+    get isActualOptional(): boolean {
+        return this.isOptional || this.type === 'any';
     }
 
     type: Types = 'any';

@@ -128,7 +128,6 @@ test('test array optionalItem value', async () => {
     expect(jitValidateProperty(propSchema)([12313, null])).toEqual([{ path: 'lastValue.1', message: 'Required value is null', code: 'required' }]);
 });
 
-
 test('test custom validator on array items', async () => {
     class MyCustomValidator implements PropertyValidator {
         validate<T>(value: any): PropertyValidatorError | void {

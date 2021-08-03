@@ -99,7 +99,8 @@ test('classSlicer overwrite', () => {
         expect(plain.owner).toBe(undefined);
     }
 
-    class UserFrontend extends sliceClass(User).extend({ owner: t.string }) { };
+    class UserFrontend extends sliceClass(User).extend({ owner: t.string }) {
+    };
 
     {
         //should not modify the parent
@@ -124,7 +125,8 @@ test('classSlicer serialize', () => {
         }
     }
 
-    class AddUserDto extends sliceClass(User).exclude('id', 'created') { };
+    class AddUserDto extends sliceClass(User).exclude('id', 'created') {
+    };
     const schema = getClassSchema(AddUserDto);
     expect(schema.getProperty('username').type).toBe('string');
     expect(schema.getProperty('username').isOptional).toBe(false);
@@ -152,7 +154,7 @@ test('classSlicer mixin', () => {
         @t deletedBy?: string;
     }
 
-    class User extends mixin(Timestampable, SoftDeleted, t.schema({foo: t.boolean})) {
+    class User extends mixin(Timestampable, SoftDeleted, t.schema({ foo: t.boolean })) {
         @t.primary.autoIncrement id: number = 0;
 
         constructor(
@@ -170,7 +172,9 @@ test('classSlicer mixin', () => {
     expect(user.getProperty('username').type).toBe('string');
     expect(user.getProperty('foo').type).toBe('boolean');
 
-    class AddUserDto extends sliceClass(User).exclude('id', 'createdAt') { };
+    class AddUserDto extends sliceClass(User).exclude('id', 'createdAt') {
+    }
+
     const schema = getClassSchema(AddUserDto);
     expect(schema.getProperty('username').type).toBe('string');
     expect(schema.getProperty('username').isOptional).toBe(false);

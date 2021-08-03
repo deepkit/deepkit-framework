@@ -861,6 +861,8 @@ function getPropertySerializerCode(
                 writer.writeByte(${BSONType.BINARY});
                 ${nameWriter}
                 writer.writeBigInt(${accessor});
+            } else {
+                ${undefinedWriter}
             }
         `;
 

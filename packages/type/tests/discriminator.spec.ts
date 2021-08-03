@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { jsonTypeGuards } from '../src/json-typeguards';
-import { getClassSchema, getSortedUnionTypes, jsonSerializer, PropertySchema, t, validate } from '../index';
+import { getClassSchema, getSortedUnionTypes, jsonSerializer, plainToClass, t, validate } from '../index';
 
 class ConfigA {
     @t.literal('a').discriminant
@@ -190,11 +190,15 @@ test('test discriminator validation in array', () => {
     {
         const plain = { configs: [{ kind: 'a', myValue: 'abc' }] };
         expect(validate(UserWithConfigArray, plain)).toEqual([]);
+        expect(validate(UserWithConfigArray, plainToClass(UserWithConfigArray, plain))).toEqual([]);
     }
 
     {
         const plain = { configs: [{ kind: 'b', myValue: 'cdf' }] };
-        expect(validate(UserWithConfigArray, plain)).toEqual([]);
+        expect(validate(UserWithConfigArray, plain)).toEqual([
+            { code: 'required', message: 'Required value is undefined', path: 'configs.0.myValue2' }
+        ]);
+        expect(validate(UserWithConfigArray, plainToClass(UserWithConfigArray, plain))).toEqual([]);
     }
 
     {
