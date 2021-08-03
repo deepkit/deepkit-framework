@@ -31,7 +31,14 @@ export function setPartialConfig(target: { [name: string]: any }, partial: { [na
     }
 }
 
-type EnvNamingStrategy = 'same' | 'upper' | ((name: string) => string | 'same' | 'upper' | undefined);
+type EnvNamingStrategy = 'same' | 'upper' | 'lower' | ((name: string) => string | 'same' | 'upper' | 'lower' | undefined);
+
+function camelToUpperCase(str: string) {
+    return str.replace(/[A-Z]+/g, (letter: string) => `_${letter.toUpperCase()}`).toUpperCase();
+}
+function camelToLowerCase(str: string) {
+    return str.replace(/[A-Z]+/g, (letter: string) => `_${letter.toLowerCase()}`).toLowerCase();
+}
 
 function parseEnv(
     config: { [name: string]: any },
@@ -46,7 +53,9 @@ function parseEnv(
         const strategy = isFunction(namingStrategy) ? namingStrategy(property.name) || 'same' : namingStrategy;
         let name = property.name;
         if (strategy === 'upper') {
-            name = property.name.toUpperCase();
+            name = camelToUpperCase(property.name);
+        } else if (strategy === 'lower') {
+            name = camelToLowerCase(property.name);
         } else if (strategy !== 'same') {
             name = strategy;
         }
@@ -64,6 +73,7 @@ function parseEnv(
         } else {
             const dotPath = (incomingDotPath ? incomingDotPath + '.' : '') + property.name;
             const envName = prefix + (incomingEnvPath ? incomingEnvPath + '_' : '') + name;
+
             if (envContainer[envName] === undefined) continue;
 
             setPathValue(config, dotPath, envContainer[envName]);

@@ -205,6 +205,34 @@ test('loadConfigFromEnvVariables() happens before setup() calls', async () => {
     app.serviceContainer.process();
 });
 
+test('config uppercase naming strategy', async () => {
+    const config = new AppModuleConfig({
+        dbHost: t.string,
+    });
+
+    const app = new CommandApplication(new AppModule({config})).setup((module, config) => {
+        expect(config.dbHost).toBe('mongodb://localhost');
+    });
+    process.env.APP_DB_HOST = 'mongodb://localhost';
+    app.loadConfigFromEnvVariables('APP_', 'upper');
+
+    app.serviceContainer.process();
+});
+
+test('config lowercase naming strategy', async () => {
+    const config = new AppModuleConfig({
+        dbHost: t.string,
+    });
+
+    const app = new CommandApplication(new AppModule({config})).setup((module, config) => {
+        expect(config.dbHost).toBe('mongodb://localhost');
+    });
+    process.env.app_db_host = 'mongodb://localhost';
+    app.loadConfigFromEnvVariables('app_', 'lower');
+
+    app.serviceContainer.process();
+});
+
 test('loadConfigFromEnvVariable() happens before setup() calls', async () => {
     const baseConfig = new AppModuleConfig({
         log: t.boolean.default(false),
