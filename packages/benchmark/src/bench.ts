@@ -10,6 +10,7 @@
 
 import { performance } from 'perf_hooks';
 import Benchmark from 'benchmark';
+import { isAsyncFunction } from '@deepkit/core';
 
 const Reset = '\x1b[0m';
 const FgGreen = '\x1b[32m';
@@ -56,6 +57,8 @@ export class BenchSuite {
 
     protected fixResult: BenchSuiteResult = {};
 
+    protected hasAsync: boolean = false;
+
     constructor(
         public name: string,
         protected maxTime: number = 1
@@ -99,11 +102,13 @@ export class BenchSuite {
     }
 
     add(title: string, fn: () => void | Promise<void>, options: any = {}) {
+        if (isAsyncFunction(fn)) return this.addAsync(title, fn, options);
         options = Object.assign({ maxTime: this.maxTime }, options);
         this.suite.add(title, fn, options);
     }
 
     run(options: object = {}): void {
+        if (this.hasAsync) throw new Error('This benchmark has async functions. use runAsync() instead.');
         print('Start benchmark', green(this.name));
         return this.suite.run(options);
     }
@@ -123,6 +128,9 @@ export class BenchSuite {
         print('Start benchmark', green(this.name));
         await new Promise(async (resolve, reject) => {
             this.suite.run({ async: true });
+            this.suite.on('error', (error) => {
+                reject(error);
+            });
             this.suite.on('complete', () => {
                 resolve(undefined);
             });

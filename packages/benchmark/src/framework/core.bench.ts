@@ -8,13 +8,16 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { asyncOperation } from "@deepkit/core";
-import { BenchSuite } from "../bench";
+import { asyncOperation } from '@deepkit/core';
+import { BenchSuite } from '../bench';
 
 
 export async function main() {
 
     const bench = new BenchSuite('asyncOperation');
+
+    bench.addAsync('empty', async () => {
+    });
 
     bench.addAsync('new Promise', async () => {
         await new Promise((resolve) => {
@@ -28,5 +31,5 @@ export async function main() {
         });
     });
 
-    await bench.runAsync();
+    await bench.run();
 }

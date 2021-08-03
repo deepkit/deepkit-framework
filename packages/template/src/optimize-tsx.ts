@@ -30,7 +30,8 @@ import {
 // @ts-ignore
 import abstractSyntaxTree from 'abstract-syntax-tree';
 import { inDebugMode } from '@deepkit/core';
-import { escape } from './utils';
+import { escape, escapeHtml } from './utils';
+import { voidElements } from './template';
 
 const { parse, generate, replace } = abstractSyntaxTree;
 
@@ -38,7 +39,7 @@ export function transform(code: string, filename: string) {
     if (inDebugMode()) return code;
     //for CommonJs its jsx_runtime_1.jsx, for ESM its _jsx. ESM is handled in loader.ts#transformSource
     if (code.indexOf('.jsx(') === -1 && code.indexOf('.jsxs(') === -1) return code;
-    console.log('optimize code for', filename, optimizeJSX(code));
+    // console.log('optimize code for', filename, optimizeJSX(code));
     return optimizeJSX(code);
 }
 
@@ -94,7 +95,7 @@ function optimizeAttributes(jsxRuntime: string, node: ObjectExpression): any {
         expressions.push(createEscapedLiteral('="'));
 
         if (value.type !== 'Literal' && !isPattern(value) && !isCreateElementCall(value) && !isEscapeCall(value) && !isHtmlCall(value)) {
-            expressions.push(toEscapeAttributeCall(jsxRuntime, value));
+            expressions.push(toSafeString(jsxRuntime, toEscapeAttributeCall(jsxRuntime, value)));
         } else {
             if (value.type === 'Literal') {
                 expressions.push(createEscapedLiteral(value.value));
@@ -136,7 +137,7 @@ function isESMJSXCall(node: any): boolean {
  * _jsx.createElement("div", Object.assign({ id: "123" }, { children: _jsx.createElement('b", { children: "strong' }, void 0) }), void 0);
  * -> "<div id=\"123\">" + "<b>strong</b>" + "</div>"
  */
-function optimizeNode(node: Expression, asHtml: boolean = true): Expression {
+function optimizeNode(node: Expression, root: boolean = true): Expression {
     if (node.type !== 'CallExpression') return node;
     if (node.callee.type !== 'MemberExpression') return node;
     if (node.callee.object.type !== 'Identifier') return node;
@@ -168,18 +169,23 @@ function optimizeNode(node: Expression, asHtml: boolean = true): Expression {
                 }
             }
         }
-        if (optimisedString) {
-            //all arguments are string literals, which can merge to one big string
-            return createEscapedLiteral(strings.join(''));
+
+        //all arguments are string literals, which can merge to one big string
+        const result = optimisedString ? createEscapedLiteral(strings.join('')) : concatExpressions(jsxRuntime, concat);
+        const safeString = getSafeString(result);
+        if (safeString !== undefined) {
+            if (root) return createRenderObjectWithEscapedChildren(safeString);
+            return safeString;
         }
-        return concatExpressions(jsxRuntime, concat);
+        if (root) return createRenderObjectWithEscapedChildren(result);
+        return result;
     }
 
     //go deeper if possible
     for (let i = 2; i < node.arguments.length; i++) {
         const a = node.arguments[i];
         if (a && a.type === 'CallExpression') {
-            node.arguments[i] = optimizeNode(a);
+            node.arguments[i] = optimizeNode(a, false);
         }
     }
 
@@ -220,31 +226,26 @@ function optimizeNode(node: Expression, asHtml: boolean = true): Expression {
         const attributes = args[1];
 
         const concat: Expression[] = [];
+        const closing = voidElements[tag] ? '/>' : '>';
         if (tag) {
             if (attributes.type === 'Literal' && !attributes.value) {
                 //no attributes
-                concat.push(createEscapedLiteral('<' + tag + '>'));
+                concat.push(createEscapedLiteral('<' + tag + closing));
             } else {
                 concat.push(createEscapedLiteral('<' + tag + ' '));
                 concat.push(attributes);
-                concat.push(createEscapedLiteral('>'));
+                concat.push(createEscapedLiteral(closing));
             }
         }
 
         for (let i = 2; i < node.arguments.length; i++) {
             let e = node.arguments[i];
-            if (e && e.type !== 'SpreadElement') {
-                if (e.type === 'Literal') {
-                    e.value = escape('' + e.value);
-                }
-                if (e.type !== 'Literal' && !isCreateElementCall(e) && !isRenderObject(e) && !isChildren(e) && !isEscapeCall(e) && !isHtmlCall(e)) {
-                    e = toEscapeCall(jsxRuntime, e);
-                }
+            if (e.type !== 'SpreadElement') {
                 concat.push(e);
             }
         }
 
-        if (tag) {
+        if (tag && closing === '>') {
             concat.push(createEscapedLiteral('</' + tag + '>'));
         }
 
@@ -253,24 +254,188 @@ function optimizeNode(node: Expression, asHtml: boolean = true): Expression {
         }
 
         if (node.arguments[0].type !== 'Literal') {
-            //for custom elements, we only merge its arguments
+            //for custom elements, we only merge its  arguments
             if (node.arguments[2]) {
-                if (concat.length >= 2) {
-                    node.arguments[2] = concatExpressions(jsxRuntime, concat);
-                    node.arguments.splice(3);
-                }
+                node.arguments[2] = optimiseArguments(jsxRuntime, concat, false);
+                node.arguments.splice(3);
             }
+            //todo: convert to {render:, attributes:, children: }
             return node;
         }
 
-        //concatExpressions tries to convert everything to one big literal if possible
-        //alternatively returns an renderObject expression with array children.
-        const compressed = concatExpressions(jsxRuntime, concat);
-        return asHtml && !isRenderObject(compressed) ? toHtmlCall(jsxRuntime, compressed) : compressed;
+        // //concatExpressions tries to convert everything to one big literal if possible
+        // //alternatively returns an renderObject expression with array children.
+        return optimiseArguments(jsxRuntime, concat, root);
     }
 
     return node;
 }
+
+function optimiseArguments(jsxRuntime: string, expressions: ConcatableType[], root: boolean): Expression {
+    if (expressions.length === 0) throw new Error('No expression for optimise arguments');
+
+    if (expressions.length === 1) {
+        const e = expressions[0];
+        const htmlArg = getHtmlCallArg(e);
+        const value = htmlArg ? extractStaticString(htmlArg) : extractStaticString(e);
+        if (value !== noStaticValue) {
+            expressions[0] = toSafeString(jsxRuntime, createEscapedLiteral(value));
+        }
+    }
+
+    const result = expressions.length === 1 ? toOptimisedArrayExpression(expressions) : concatExpressions(jsxRuntime, expressions);
+
+    const safeString = getSafeString(result);
+    if (safeString !== undefined) {
+        if (root) return createRenderObjectWithEscapedChildren(safeString);
+        return safeString;
+    }
+    if (root) return createRenderObjectWithEscapedChildren(result);
+    return result;
+}
+
+function concatExpressions(jsxRuntime: string, expressions: ConcatableType[]): ConcatableType {
+    if (expressions.length < 2) {
+        console.dir(expressions, { depth: null });
+        throw new Error('concatExpressions requires at least 2 expressions');
+    }
+
+    const normalizedExpressions: ConcatableType[] = [];
+
+    //todo: can this BinaryExpression check be entirely be removed?
+    for (let e of expressions) {
+        if (e.type === 'BinaryExpression' && !isOptimisedBinaryExpression(e)) {
+            //check if its ours BinaryExpression from concatExpressions. If so do not merge.
+            //we merge later at the end of the pipeline
+
+            //unwrap existing binaryExpression to avoid brackets: a + (b + (c + d)) + e
+            for (const a of extractBinaryExpressions(e)) {
+                normalizedExpressions.push(a);
+            }
+        } else if (isOptimisedArrayExpression(e)) {
+            for (const a of e.elements) {
+                if (a.type === 'SpreadElement') continue;
+                normalizedExpressions.push(a);
+            }
+        } else {
+            normalizedExpressions.push(e);
+        }
+    }
+
+    function mergeLiterals(expression: Expression[]): ConcatableType[] {
+        const result: ConcatableType[] = [];
+        let lastLiteral: Literal | undefined;
+
+        //try to optimise static values together
+        for (let e of expression) {
+            if (e.type === 'Literal' && !(e as any).escape) {
+                //we need to escape it
+                e.value = escapeHtml(e.value);
+                (e as any).escape = true;
+            }
+
+            const htmlArg = getHtmlCallArg(e);
+            const value = htmlArg ? extractStaticString(htmlArg) : extractStaticString(e);
+
+            if (value === noStaticValue) {
+                lastLiteral = undefined;
+                result.push(e);
+            } else {
+                if (lastLiteral) {
+                    lastLiteral.value += value;
+                } else {
+                    lastLiteral = createEscapedLiteral(value);
+                    result.push(toSafeString(jsxRuntime, lastLiteral));
+                }
+            }
+        }
+        return result;
+    }
+
+    let optimizedExpressions = mergeLiterals(normalizedExpressions);
+
+    if (optimizedExpressions.length === 1) {
+        return optimizedExpressions[0];
+    }
+
+    const allExpressionsConcatable = optimizedExpressions.every(e => {
+        return isOptimisedBinaryExpression(e) || isHtmlCall(e) || isSafeCall(e) || isEscapedLiteral(e) || getSafeString(e) !== undefined || isUserEscapeCall(e) || isOptimisedHtmlString(e);
+    });
+
+    const lastStep: ConcatableType[] = [];
+
+    for (let e of optimizedExpressions) {
+        if (e.type === 'BinaryExpression') {
+            //unwrap existing binaryExpression to avoid brackets: a + (b + (c + d)) + e
+            for (const a of extractBinaryExpressions(e)) {
+                lastStep.push(a);
+            }
+        } else {
+            lastStep.push(e);
+        }
+    }
+    optimizedExpressions = mergeLiterals(lastStep);
+
+    // console.log('allExpressionsConcatable', allExpressionsConcatable);
+    // console.dir(optimizedExpressions, { depth: null });
+
+    if (!allExpressionsConcatable) {
+        //we can't optimise this as one big binary expression
+        //we have to return it as array
+        return toOptimisedArrayExpression(optimizedExpressions);
+    }
+
+    let lastBinaryExpression: OptimisedBinaryExpression | undefined;
+    for (let i = 1; i < optimizedExpressions.length; i++) {
+        lastBinaryExpression = {
+            type: 'BinaryExpression',
+            _optimised: true,
+            left: lastBinaryExpression || normalizeLastStep(optimizedExpressions[0]),
+            right: normalizeLastStep(optimizedExpressions[i]),
+            operator: '+',
+        };
+    }
+
+    if (!lastBinaryExpression) throw new Error('Could not build binary expression');
+
+    return lastBinaryExpression;
+}
+
+function normalizeLastStep(e: Expression): Expression {
+    const safeCallArg = getSafeCallArg(e);
+    if (safeCallArg !== undefined) return safeCallArg;
+
+    const safeString = getSafeString(e);
+    if (safeString !== undefined) return safeString;
+
+    const htmlCall = getHtmlCallArg(e);
+    if (htmlCall !== undefined) return htmlCall;
+
+    if (isUserEscapeCall(e) || isHtmlCall(e)) {
+        //convert from `escape(e)` to `escape(e).htmlString`
+        //and from `html(e)` to `html(e).htmlString`
+        return {
+            type: 'MemberExpression',
+            object: e,
+            computed: false,
+            property: { type: 'Identifier', name: 'htmlString' }
+        } as MemberExpression;
+    }
+
+    return e;
+}
+function toOptimisedArrayExpression(expressions: ConcatableType[]): ArrayExpression {
+    const arrayExpression: OptimisedArrayExpression = {
+        type: 'ArrayExpression',
+        _optimised: true,
+        elements: [],
+    };
+    for (let e of expressions) {
+        arrayExpression.elements.push(e);
+    }
+    return arrayExpression;
+}
+
 
 function createRenderObjectWithEscapedChildren(children?: Expression, render: Expression = { type: 'Identifier', name: 'undefined' }, attributes: Expression = {
     type: 'Identifier',
@@ -333,7 +498,7 @@ function createEscapedLiteral(v: string | number | boolean | null | RegExp | und
 }
 
 function isEscapedLiteral(e: Node): boolean {
-    return e.type === 'Literal' && (e as any).escaped === true;
+    return e.type === 'Literal' && (e as any).escape === true;
 }
 
 function isCreateElementCall(e: Node) {
@@ -361,20 +526,20 @@ function toHtmlCall(jsxRuntime: string, expression: Expression): CallExpression 
     };
 }
 
-function toEscapeCall(jsxRuntime: string, expression: Expression): CallExpression {
-    return {
-        type: 'CallExpression',
-        callee: {
-            type: 'MemberExpression',
-            object: { type: 'Identifier', name: jsxRuntime },
-            computed: false,
-            optional: false,
-            property: { type: 'Identifier', name: 'escape' }
-        },
-        optional: false,
-        arguments: [expression]
-    };
-}
+// function toEscapeCall(jsxRuntime: string, expression: Expression): CallExpression {
+//     return {
+//         type: 'CallExpression',
+//         callee: {
+//             type: 'MemberExpression',
+//             object: { type: 'Identifier', name: jsxRuntime },
+//             computed: false,
+//             optional: false,
+//             property: { type: 'Identifier', name: 'escape' }
+//         },
+//         optional: false,
+//         arguments: [expression]
+//     };
+// }
 
 function toEscapeAttributeCall(jsxRuntime: string, expression: Expression): CallExpression {
     return {
@@ -399,10 +564,8 @@ export function extractStaticString(e: Expression | SpreadElement): string | typ
         return e.quasis.map(v => v.value.cooked).join('');
     }
 
-    const htmlCallArg = getHtmlCallArg(e);
-    if (htmlCallArg) {
-        return extractStaticString(htmlCallArg);
-    }
+    const safeString = getSafeString(e);
+    if (safeString !== undefined) return extractStaticString(safeString);
 
     return noStaticValue;
 }
@@ -433,6 +596,28 @@ function getHtmlCallArg(e: Expression | SpreadElement): Expression | undefined {
     return;
 }
 
+function isSafeCall(object: Expression | SpreadElement): boolean {
+    return getSafeCallArg(object) !== undefined;
+}
+
+function getSafeCallArg(e: Expression | SpreadElement): Expression | undefined {
+    if (e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
+        && e.callee.object.type === 'Identifier' && e.callee.object.name === '_jsx'
+        && e.callee.property.type === 'Identifier' && e.callee.property.name === 'safe'
+        && e.arguments[0]) return unwrapSpread(e.arguments[0]);
+
+    if (e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
+        && e.callee.object.type === 'Identifier'
+        && e.callee.property.type === 'Identifier' && e.callee.property.name === 'safe'
+        && e.arguments[0]) return unwrapSpread(e.arguments[0]);
+
+    if (e.type === 'CallExpression' && e.callee.type === 'Identifier' && e.callee.name === 'safe' && e.arguments[0]) {
+        return unwrapSpread(e.arguments[0]);
+    }
+
+    return;
+}
+
 function isChildren(e: Expression | SpreadElement): boolean {
     if (e.type === 'MemberExpression' && (e.object.type === 'Identifier' || e.object.type === 'ThisExpression')
         && e.property.type === 'Identifier' && e.property.name === 'children') return true;
@@ -444,12 +629,61 @@ function isChildren(e: Expression | SpreadElement): boolean {
     return false;
 }
 
+function getSafeString(e: Expression | SpreadElement): Expression | undefined {
+    if (e.type === 'ObjectExpression' && e.properties.length === 1 && e.properties[0].type === 'Property' && e.properties[0].key.type === 'MemberExpression'
+        && e.properties[0].key.property.type === 'Identifier' && e.properties[0].key.property.name === 'safeString'
+        && !isPattern(e.properties[0].value)
+    ) {
+        return e.properties[0].value;
+    }
+    return;
+}
+
+function toSafeString(jsxRuntime: string, e: Expression): ObjectExpression {
+    return {
+        type: 'ObjectExpression',
+        properties: [
+            {
+                type: 'Property',
+                key: {
+                    type: 'MemberExpression',
+                    object: { type: 'Identifier', name: jsxRuntime },
+                    computed: false,
+                    property: { type: 'Identifier', name: 'safeString' }
+                } as MemberExpression,
+                value: e,
+                kind: 'init',
+                computed: true,
+                method: false,
+                shorthand: false
+            }
+        ]
+    };
+}
+
 function isEscapeCall(e: Expression | SpreadElement): boolean {
     return e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
         && e.callee.object.type === 'Identifier'
         && e.callee.property.type === 'Identifier'
         && (e.callee.property.name === 'escape' || e.callee.property.name === 'escapeAttribute')
         ;
+}
+
+function isOptimisedHtmlString(e: Expression | SpreadElement): boolean {
+    return e.type === 'MemberExpression' && e.object.type === 'CallExpression' && e.object.callee.type === 'MemberExpression'
+        && e.object.callee.property.type === 'Identifier' && e.object.callee.property.name === 'escape'
+        && e.property.type === 'Identifier' && e.property.name === 'htmlString';
+}
+
+function isUserEscapeCall(e: Expression | SpreadElement): boolean {
+    if (e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
+        && e.callee.object.type === 'Identifier'
+        && e.callee.property.type === 'Identifier'
+        && (e.callee.property.name === 'escape')) {
+        return true;
+    }
+
+    return e.type === 'CallExpression' && e.callee.type === 'Identifier' && e.callee.name === 'escape' && e.arguments[0] !== undefined;
 }
 
 function extractChildrenFromObjectExpressionProperties(props: Array<Property | SpreadElement>): Expression | undefined {
@@ -465,80 +699,15 @@ function extractChildrenFromObjectExpressionProperties(props: Array<Property | S
 
 type ConcatableType = Expression | Identifier;
 
-function concatExpressions(jsxRuntime: string, expressions: ConcatableType[]): ConcatableType {
-    if (expressions.length < 2) {
-        console.dir(expressions, { depth: null });
-        throw new Error('concatExpressions requires at least 2 expressions');
-    }
+type OptimisedBinaryExpression = BinaryExpression & { _optimised?: boolean };
+type OptimisedArrayExpression = ArrayExpression & { _optimised?: boolean };
 
-    const normalizedExpressions: ConcatableType[] = [];
+function isOptimisedArrayExpression(e: Expression): e is OptimisedArrayExpression {
+    return e.type === 'ArrayExpression' && (e as any)._optimised === true;
+}
 
-    for (let e of expressions) {
-        const htmlArg = getHtmlCallArg(e);
-        if (htmlArg) e = htmlArg;
-
-        if (e.type === 'BinaryExpression') {
-            //unwrap existing binaryExpression to avoid brackets: a + (b + (c + d)) + e
-            for (const a of extractBinaryExpressions(e)) {
-                normalizedExpressions.push(a);
-            }
-        } else {
-            normalizedExpressions.push(e);
-        }
-    }
-
-    let optimizedExpressions: ConcatableType[] = [];
-    let lastLiteral: Literal | undefined;
-
-    //try to optimise static values together
-    for (const e of normalizedExpressions) {
-        const value = extractStaticString(e);
-        if (value === noStaticValue) {
-            lastLiteral = undefined;
-            optimizedExpressions.push(e);
-        } else {
-            if (lastLiteral) {
-                lastLiteral.value += value;
-            } else {
-                lastLiteral = createEscapedLiteral(value);
-                optimizedExpressions.push(lastLiteral);
-            }
-        }
-    }
-
-    let lastBinaryExpression: BinaryExpression | undefined;
-
-    if (optimizedExpressions.length === 1) {
-        return optimizedExpressions[0];
-    }
-
-    for (const e of optimizedExpressions) {
-        if (isCreateElementCall(e) || isChildren(e) || isRenderObject(e)) {
-            //we can't optimise this as one big binary expression
-            //we have to return it as array
-            const arrayExpression: ArrayExpression = {
-                type: 'ArrayExpression',
-                elements: [],
-            };
-            for (let e of optimizedExpressions) {
-                arrayExpression.elements.push(e);
-            }
-            return createRenderObjectWithEscapedChildren(arrayExpression);
-        }
-    }
-
-    for (let i = 1; i < optimizedExpressions.length; i++) {
-        lastBinaryExpression = {
-            type: 'BinaryExpression',
-            left: lastBinaryExpression || optimizedExpressions[0],
-            right: optimizedExpressions[i],
-            operator: '+',
-        };
-    }
-
-    if (!lastBinaryExpression) throw new Error('Could not build binary expression');
-
-    return lastBinaryExpression;
+function isOptimisedBinaryExpression(e: Expression): e is OptimisedBinaryExpression {
+    return e.type === 'BinaryExpression' && (e as any)._optimised === true;
 }
 
 function extractBinaryExpressions(e: BinaryExpression, expressions?: Expression[]): Expression[] {
@@ -646,7 +815,7 @@ export function optimizeJSX(code: string): string {
 
     replace(tree, (node: any) => {
         if (isESMJSXCall(node) || isCjsJSXCall(node)) {
-            return optimizeNode(convertNodeToCreateElement(node), false);
+            return optimizeNode(convertNodeToCreateElement(node), true);
         }
         return node;
     });

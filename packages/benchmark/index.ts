@@ -42,4 +42,4 @@ async function main() {
     writeFileSync(resultsPath + '/' + (new Date().toJSON()) + '.json', JSON.stringify(totalResults, undefined, 4));
 }
 
-main();
+main().catch(console.error);

@@ -1,10 +1,10 @@
-import { html } from '../../../../template/src/template';
+import { html } from '@deepkit/template';
 
 function Test() {
     return <div>Yes</div>;
 }
 
-export function Website({ title }: { title: string }, contents: string[]) {
+export function Website({ title }: { title: string }, contents?: string[]) {
     return <>
         {html(`<!DOCTYPE html>`)}
         <html lang="en">

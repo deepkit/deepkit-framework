@@ -14,7 +14,7 @@ import { isArray } from '@deepkit/type';
 import './optimize-tsx';
 import { BasicInjector } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
-import { escape, escapeAttribute } from './utils';
+import { escapeAttribute, escapeHtml, safeString } from './utils';
 
 export type Attributes<T = any> = {
     [P in keyof T]: T[P];
@@ -52,7 +52,7 @@ export interface ElementFn {
 
 export type Element = string | ElementFn | ClassType<ElementClass> | Element[];
 
-const voidElements: { [name: string]: true } = {
+export const voidElements: { [name: string]: true } = {
     area: true,
     base: true,
     br: true,
@@ -71,12 +71,18 @@ const voidElements: { [name: string]: true } = {
     wbr: true,
 };
 
-type ElementStructChildren = HtmlString | ElementStruct | string;
+type ElementStructChildren = HtmlString | ElementStruct | string | SafeString;
 
-export type ElementStruct = { render: string | ElementFn, attributes: Attributes | null | string, children: ElementStructChildren | ElementStructChildren[], childrenEscaped?: ElementStructChildren[]  };
+export type ElementStruct = { render: string | ElementFn, attributes: Attributes | null | string, children: ElementStructChildren | ElementStructChildren[], childrenEscaped?: ElementStructChildren[] | string };
+
+export type SafeString = { [safeString]: string };
 
 export function isElementStruct(v: any): v is ElementStruct {
     return 'object' === typeof v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes') && !v.slice;
+}
+
+export function isSafeString(v: any): v is SafeString {
+    return 'object' === typeof v && v.hasOwnProperty(safeString);
 }
 
 async function renderChildren(injector: BasicInjector, contents: ElementStructChildren[], stopwatch?: Stopwatch, autoEscape: boolean = true): Promise<string> {
@@ -86,15 +92,17 @@ async function renderChildren(injector: BasicInjector, contents: ElementStructCh
     for (const item of contents) {
         if (item === undefined) continue;
         if (isArray(item)) {
-            children += await renderChildren(injector, item, stopwatch, autoEscape);
+            children += await renderChildren(injector, item, stopwatch);
         } else {
-            if (isElementStruct(item)) {
+            if (isSafeString(item)) {
+                children += item[safeString];
+            } else if (isElementStruct(item)) {
                 children += await render(injector, item, stopwatch);
             } else {
                 if ((item as any).htmlString) {
                     children += (item as any).htmlString;
                 } else {
-                    children += autoEscape ? escape(item as string) : item as string;
+                    children += autoEscape ? escapeHtml(item as string) : item as string;
                 }
             }
         }
@@ -103,14 +111,21 @@ async function renderChildren(injector: BasicInjector, contents: ElementStructCh
     return children;
 }
 
-export async function render(injector: BasicInjector, struct: ElementStruct | string, stopwatch?: Stopwatch): Promise<any> {
+export async function render(injector: BasicInjector, struct: ElementStruct | string | (ElementStruct | string)[], stopwatch?: Stopwatch): Promise<any> {
     if ('string' === typeof struct) {
         return struct;
+    } else if ((struct as any).htmlString) {
+        return (struct as any).htmlString;
+    } else if (isSafeString(struct)) {
+        return struct[safeString];
+    } else if (isArray(struct)) {
+        return await renderChildren(injector, struct, stopwatch);
     }
 
     let children: string = '';
     if (struct.childrenEscaped) {
-        children = await renderChildren(injector, struct.childrenEscaped, stopwatch, false);
+        if ('string' === typeof struct.childrenEscaped) return struct.childrenEscaped;
+        return await renderChildren(injector, struct.childrenEscaped, stopwatch);
     } else if (struct.children) {
         if (isArray(struct.children)) {
             children = await renderChildren(injector, struct.children, stopwatch);
