@@ -26,31 +26,40 @@ import {
 import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, resolvePropertySchema } from '@deepkit/type';
 import sqlite3 from 'better-sqlite3';
 import { SQLitePlatform } from './sqlite-platform';
+import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
 export class SQLiteStatement extends SQLStatement {
-    constructor(protected logger: DatabaseLogger, protected sql: string, protected stmt: sqlite3.Statement) {
+    constructor(protected logger: DatabaseLogger, protected sql: string, protected stmt: sqlite3.Statement, protected stopwatch?: Stopwatch) {
         super();
     }
 
     async get(params: any[] = []): Promise<any> {
+        const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
+            if (frame) frame.data({sql: this.sql, sqlParams: params});
             const res = this.stmt.get(...params);
             this.logger.logQuery(this.sql, params);
             return res;
         } catch (error) {
             this.logger.failedQuery(error, this.sql, params);
             throw error;
+        } finally {
+            if (frame) frame.end();
         }
     }
 
     async all(params: any[] = []): Promise<any[]> {
+        const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
+            if (frame) frame.data({sql: this.sql, sqlParams: params});
             const res = this.stmt.all(...params);
             this.logger.logQuery(this.sql, params);
             return res;
         } catch (error) {
             this.logger.failedQuery(error, this.sql, params);
             throw error;
+        } finally {
+            if (frame) frame.end();
         }
     }
 
@@ -94,18 +103,21 @@ export class SQLiteConnection extends SQLConnection {
                 protected dbPath: string,
                 logger?: DatabaseLogger,
                 transaction?: DatabaseTransaction,
+                stopwatch?: Stopwatch,
     ) {
-        super(connectionPool, transaction, logger);
+        super(connectionPool, logger, transaction, stopwatch);
         this.db = new sqlite3(this.dbPath);
         this.db.exec('PRAGMA foreign_keys=ON');
     }
 
     async prepare(sql: string) {
-        return new SQLiteStatement(this.logger, sql, this.db.prepare(sql));
+        return new SQLiteStatement(this.logger, sql, this.db.prepare(sql), this.stopwatch);
     }
 
     async run(sql: string, params: any[] = []) {
+        const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
+            if (frame) frame.data({sql, sqlParams: params});
             const stmt = this.db.prepare(sql);
             this.logger.logQuery(sql, params);
             const result = stmt.run(...params);
@@ -113,16 +125,22 @@ export class SQLiteConnection extends SQLConnection {
         } catch (error) {
             this.logger.failedQuery(error, sql, params);
             throw error;
+        } finally {
+            if (frame) frame.end()
         }
     }
 
     async exec(sql: string) {
+        const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
+            if (frame) frame.data({sql});
             this.db.exec(sql);
             this.logger.logQuery(sql, []);
         } catch (error) {
             this.logger.failedQuery(error, sql, []);
             throw error;
+        } finally {
+            if (frame) frame.end()
         }
     }
 
@@ -147,11 +165,14 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
         if (this.firstConnection) this.firstConnection.db.close();
     }
 
-    async getConnection(logger?: DatabaseLogger, transaction?: SQLiteDatabaseTransaction): Promise<SQLiteConnection> {
+    async getConnection(logger?: DatabaseLogger, transaction?: SQLiteDatabaseTransaction, stopwatch?: Stopwatch): Promise<SQLiteConnection> {
         //when a transaction object is given, it means we make the connection sticky exclusively to that transaction
         //and only release the connection when the transaction is commit/rollback is executed.
 
-        if (transaction && transaction.connection) return transaction.connection;
+        if (transaction && transaction.connection) {
+            transaction.connection.stopwatch = stopwatch;
+            return transaction.connection;
+        }
 
         const connection = this.firstConnection && this.firstConnection.released ? this.firstConnection :
             this.activeConnections > this.maxConnections
@@ -159,10 +180,11 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
                 ? await asyncOperation<SQLiteConnection>((resolve) => {
                     this.queue.push(resolve);
                 })
-                : new SQLiteConnection(this, this.dbPath, logger);
+                : new SQLiteConnection(this, this.dbPath, logger, transaction, stopwatch);
 
         if (!this.firstConnection) this.firstConnection = connection;
         connection.released = false;
+        connection.stopwatch = stopwatch;
 
         this.activeConnections++;
 
@@ -361,20 +383,26 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         protected connectionPool: SQLiteConnectionPool,
         protected platform: DefaultPlatform,
         classSchema: ClassSchema<T>,
-        databaseSession: DatabaseSession<DatabaseAdapter>) {
-        super(connectionPool, platform, classSchema, databaseSession);
+        session: DatabaseSession<DatabaseAdapter>) {
+        super(connectionPool, platform, classSchema, session);
     }
 
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
         // if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
+
+        const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
         const pkName = this.classSchema.getPrimaryField().name;
         const primaryKey = this.classSchema.getPrimaryField();
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
         const sqlBuilder = new SqlBuilder(this.platform);
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
         const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
+        if (sqlBuilderFrame) sqlBuilderFrame.end();
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
+        const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        if (connectionFrame) connectionFrame.end();
+
         try {
             await connection.exec(`DROP TABLE IF EXISTS _tmp_d`);
             await connection.run(`CREATE TEMPORARY TABLE _tmp_d as ${select.sql};`, select.params);
@@ -382,6 +410,7 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
             const sql = `DELETE FROM ${this.platform.getTableIdentifier(this.classSchema)} WHERE ${pkField} IN (SELECT * FROM _tmp_d)`;
             await connection.run(sql);
             const rows = await connection.execAndReturnAll('SELECT * FROM _tmp_d');
+
             deleteResult.modified = await connection.getChanges();
             for (const row of rows) {
                 deleteResult.primaryKeys.push(primaryKeyConverted(row[pkName]));
@@ -392,6 +421,7 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
     }
 
     async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
+        const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
         const select: string[] = [];
         const selectParams: any[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
@@ -455,8 +485,9 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
                 _b
               WHERE ${tableName}.${this.platform.quoteIdentifier(primaryKey.name)} = _b.${this.platform.quoteIdentifier(bPrimaryKey)};
         `;
+        if (sqlBuilderFrame) sqlBuilderFrame.end();
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
         try {
             await connection.exec(`DROP TABLE IF EXISTS _b;`);
 

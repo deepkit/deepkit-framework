@@ -492,7 +492,7 @@ test('references back', async () => {
         const plain = jsonSerializer.for(User).serialize(marcFromDb);
         expect(typeof plain.id).toBe('string');
         expect(plain.name).toBe('marc');
-        expect(plain.images).toBe(null);
+        expect(plain.images).toBe(undefined);
     }
 
     {

@@ -466,7 +466,7 @@ export class Router {
                 const queryAccessor = queryPath ? `_query${accessor}` : '_query';
                 setParameters.push(`parameters.${parameter.property.name} = ${converterVar}(${queryAccessor});`);
                 parameterNames.push(`parameters.${parameter.property.name}`);
-                parameterValidator.push(`${validatorVar}(${queryAccessor}, ${JSON.stringify(parameter.typePath)}, validationErrors);`);
+                parameterValidator.push(`${validatorVar}(parameters.${parameter.property.name}, ${JSON.stringify(parameter.typePath)}, validationErrors);`);
             } else {
                 parameterNames.push(`parameters.${parameter.property.name}`);
 

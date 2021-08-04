@@ -36,6 +36,7 @@ import { FileStopwatchStore } from './debug/stopwatch/store';
 import { DebugDebugFramesCommand } from './cli/debug-debug-frames';
 import { RpcKernelSecurity } from '@deepkit/rpc';
 import { AppConfigController } from './cli/app-config';
+import { Zone } from './zone';
 
 export const KernelModule = new AppModule({
     config: kernelConfig,
@@ -47,7 +48,6 @@ export const KernelModule = new AppModule({
         WebWorkerFactory,
         WebSocketServerFactory,
         ConsoleTransport,
-        Stopwatch,
         Logger,
         RpcKernelSecurity,
         MigrationProvider,
@@ -89,7 +89,9 @@ export const KernelModule = new AppModule({
         module.setupProvider(MigrationProvider).setMigrationDir(config.migrationDir);
         for (const db of dbs) {
             module.setupProvider(DatabaseRegistry).addDatabase(db);
-            module.setupProvider(db).stopwatch = injectorReference(Stopwatch);
+            if (config.debug) {
+                module.setupProvider(db).stopwatch = injectorReference(Stopwatch);
+            }
         }
     }
     module.setupProvider(DatabaseRegistry).setMigrateOnStartup(config.migrateOnStartup);
@@ -107,8 +109,7 @@ export const KernelModule = new AppModule({
     if (config.debug) {
         fs.ensureDirSync(join(config.varPath, config.debugStorePath));
 
-        //this segfaults on node v16, so disable for the moment, until the framework debugger is fully launched
-        // Zone.enable();
+        Zone.enable();
 
         module.addProvider({ provide: OrmBrowserController, deps: [DatabaseRegistry], useFactory: (registry: DatabaseRegistry) => new OrmBrowserController(registry.getDatabases()) });
         module.addController(DebugController);

@@ -14,6 +14,7 @@ import { isArray } from '@deepkit/type';
 import './optimize-tsx';
 import { BasicInjector } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+import { escapeAttribute, escapeHtml, safeString } from './utils';
 
 export type Attributes<T = any> = {
     [P in keyof T]: T[P];
@@ -45,17 +46,13 @@ function isHtmlString(obj: any): obj is HtmlString {
     return 'object' === typeof obj && 'string' === typeof obj.htmlString;
 }
 
-export function escapeHtml(html: string): string {
-    return 'string' === typeof html ? html.replace(/</g, '&lt;').replace(/>/g, '&gt;') : escapeHtml(String(html));
-}
-
 export interface ElementFn {
     (attributes: Attributes, children: HtmlString | string): Element;
 }
 
 export type Element = string | ElementFn | ClassType<ElementClass> | Element[];
 
-const voidElements: { [name: string]: true } = {
+export const voidElements: { [name: string]: true } = {
     area: true,
     base: true,
     br: true,
@@ -74,15 +71,21 @@ const voidElements: { [name: string]: true } = {
     wbr: true,
 };
 
-type ElementStructChildren = HtmlString | ElementStruct | string;
+type ElementStructChildren = HtmlString | ElementStruct | string | SafeString;
 
-export type ElementStruct = { render: string | ElementFn, attributes: Attributes | null | string, children: ElementStructChildren | ElementStructChildren[] };
+export type ElementStruct = { render: string | ElementFn, attributes: Attributes | null | string, children: ElementStructChildren | ElementStructChildren[], childrenEscaped?: ElementStructChildren[] | string };
+
+export type SafeString = { [safeString]: string };
 
 export function isElementStruct(v: any): v is ElementStruct {
     return 'object' === typeof v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes') && !v.slice;
 }
 
-async function renderChildren(injector: BasicInjector, contents: ElementStructChildren[], stopwatch?: Stopwatch): Promise<string> {
+export function isSafeString(v: any): v is SafeString {
+    return 'object' === typeof v && v.hasOwnProperty(safeString);
+}
+
+async function renderChildren(injector: BasicInjector, contents: ElementStructChildren[], stopwatch?: Stopwatch, autoEscape: boolean = true): Promise<string> {
     let children = '';
     //this is 3x faster than contents.join('')
     // for (const content of struct.contents) {
@@ -91,13 +94,15 @@ async function renderChildren(injector: BasicInjector, contents: ElementStructCh
         if (isArray(item)) {
             children += await renderChildren(injector, item, stopwatch);
         } else {
-            if (isElementStruct(item)) {
+            if (isSafeString(item)) {
+                children += item[safeString];
+            } else if (isElementStruct(item)) {
                 children += await render(injector, item, stopwatch);
             } else {
                 if ((item as any).htmlString) {
                     children += (item as any).htmlString;
                 } else {
-                    children += escapeHtml(item as string);
+                    children += autoEscape ? escapeHtml(item as string) : item as string;
                 }
             }
         }
@@ -106,13 +111,22 @@ async function renderChildren(injector: BasicInjector, contents: ElementStructCh
     return children;
 }
 
-export async function render(injector: BasicInjector, struct: ElementStruct | string, stopwatch?: Stopwatch): Promise<any> {
+export async function render(injector: BasicInjector, struct: ElementStruct | string | (ElementStruct | string)[], stopwatch?: Stopwatch): Promise<any> {
     if ('string' === typeof struct) {
         return struct;
+    } else if ((struct as any).htmlString) {
+        return (struct as any).htmlString;
+    } else if (isSafeString(struct)) {
+        return struct[safeString];
+    } else if (isArray(struct)) {
+        return await renderChildren(injector, struct, stopwatch);
     }
 
     let children: string = '';
-    if (struct.children) {
+    if (struct.childrenEscaped) {
+        if ('string' === typeof struct.childrenEscaped) return struct.childrenEscaped;
+        return await renderChildren(injector, struct.childrenEscaped, stopwatch);
+    } else if (struct.children) {
         if (isArray(struct.children)) {
             children = await renderChildren(injector, struct.children, stopwatch);
         } else {
@@ -124,6 +138,10 @@ export async function render(injector: BasicInjector, struct: ElementStruct | st
         } else {
             children = await renderChildren(injector, [struct.attributes.children], stopwatch);
         }
+    }
+
+    if (undefined === struct.render) {
+        return children;
     }
 
     if ('string' === typeof struct.render) {
@@ -138,7 +156,7 @@ export async function render(injector: BasicInjector, struct: ElementStruct | st
             for (const i in struct.attributes) {
                 if (i === 'children') continue;
                 const attributeValue = struct.attributes[i];
-                const v = isHtmlString(attributeValue) ? attributeValue.htmlString : escapeHtml(attributeValue);
+                const v = isHtmlString(attributeValue) ? attributeValue.htmlString : escapeAttribute(attributeValue);
                 res += ' ' + i + '="' + v + '"';
             }
         }

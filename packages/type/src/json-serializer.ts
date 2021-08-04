@@ -79,12 +79,13 @@ export function validatedPlainToClass<T extends ClassType | ClassSchema>(
     data: PlainOrFullEntityFromClassTypeOrSchema<ExtractClassType<T>>,
     options?: JitConverterOptions
 ): ExtractClassType<T> {
-    const errors = validate(classType, data);
+    const item = plainToClass(classType, data, options);
+    const errors = validate(classType, item);
     if (errors.length) {
         throw new ValidationFailed(errors);
     }
 
-    return plainToClass(classType, data, options);
+    return item;
 }
 
 export function isBinaryJSON(v: any): boolean {
@@ -225,7 +226,8 @@ jsonSerializer.fromClass.register('arrayBuffer', (property: PropertySchema, stat
 
 jsonSerializer.toClass.register('bigint', (property: PropertySchema, state: CompilerState) => {
     state.setContext({ isBigIntJSON });
-    state.addSetter(`typeof ${state.accessor} === 'bigint' ? ${state.accessor} : (isBigIntJSON(${state.accessor}) ? BigInt('0x' + ${state.accessor}.data): 0n)`);
+    const convert = `'string' === typeof ${state.accessor} || 'number' === typeof ${state.accessor} ? BigInt(${state.accessor}) : 0n`;
+    state.addSetter(`typeof ${state.accessor} === 'bigint' ? ${state.accessor} : (isBigIntJSON(${state.accessor}) ? BigInt('0x' + ${state.accessor}.data): (${convert}))`);
 });
 
 jsonSerializer.fromClass.register('bigint', (property: PropertySchema, state: CompilerState) => {

@@ -159,21 +159,21 @@ export function getDataConverterJS(
         }
     }
 
-    // since JSON does not support undefined, we emulate it via using null for serialization, and convert that back to undefined when deserialization happens
-    // not: When the value is not defined (property.name in object === false), then this code will never run.
+    // since JSON does not support undefined, we emulate it via using null for serialization, and convert that back to undefined when deserialization happens.
+    // note: When the value is not defined (property.name in object === false), then this code will never run.
     let defaultValue = isSerialization ? 'null' : 'undefined';
     if (!property.hasDefaultValue && property.defaultValue !== undefined) {
         defaultValue = `${reserveVariable(rootContext, 'defaultValue', property.defaultValue)}()`;
-    } else if (!property.isOptional && property.isNullable ) { 
+    } else if (!property.isOptional && property.isNullable ) {
         defaultValue = 'null';
     }
 
     return `
         if (${accessor} === undefined) {
-            ${setter} = ${defaultValue}; 
+            if (${!property.hasDefaultValue || property.isOptional}) ${setter} = ${defaultValue};
             ${undefinedSetterCode}
         } else if (${accessor} === null) {
-            //null acts on transport layer as telling an explicitely set undefined
+            //null acts on transport layer as telling an explicitly set undefined
             //this is to support actual undefined as value across a transport layer. Otherwise it
             //would be impossible to set a already set value to undefined back (since JSON.stringify() omits that information)
             if (${property.isNullable}) {

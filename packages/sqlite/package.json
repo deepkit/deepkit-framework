@@ -26,6 +26,7 @@
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/orm": "^1.0.1-alpha.13",
     "@deepkit/sql": "^1.0.1-alpha.13",
+    "@deepkit/stopwatch": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13"
   },
   "dependencies": {
@@ -38,6 +39,7 @@
     "@deepkit/orm": "^1.0.1-alpha.41",
     "@deepkit/orm-integration": "^1.0.1-alpha.13",
     "@deepkit/sql": "^1.0.1-alpha.41",
+    "@deepkit/stopwatch": "^1.0.1-alpha.39",
     "@deepkit/type": "^1.0.1-alpha.40",
     "reflect-metadata": "^0.1.13"
   },

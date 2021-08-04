@@ -1,4 +1,4 @@
-import { injectable, InjectorContext, MemoryInjector } from '@deepkit/injector';
+import { inject, injectable, InjectorContext, MemoryInjector } from '@deepkit/injector';
 import { Router } from './router';
 import { EventDispatcher } from '@deepkit/event';
 import { Logger } from '@deepkit/logger';
@@ -15,7 +15,7 @@ export class HttpKernel {
         protected eventDispatcher: EventDispatcher,
         protected injectorContext: InjectorContext,
         protected logger: Logger,
-        protected stopwatch: Stopwatch,
+        @inject().optional protected stopwatch?: Stopwatch,
     ) {
 
     }
@@ -81,7 +81,7 @@ export class HttpKernel {
             { provide: HttpResponse, useValue: res },
         ]));
 
-        const frame = this.stopwatch.active ? this.stopwatch.start(req.getUrl(), FrameCategory.http, true) : undefined;
+        const frame = this.stopwatch ? this.stopwatch.start(req.getUrl(), FrameCategory.http, true) : undefined;
         const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext, this.stopwatch);
 
         try {

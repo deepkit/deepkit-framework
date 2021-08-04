@@ -165,7 +165,7 @@ test('union literal', () => {
         expect(item.union).toBe('a');
     }
 
-    expect(validate(s, {})).toEqual([]); //because of default
+    expect(validate(s, {})).toEqual([{ code: 'required', message: 'Required value is undefined', path: 'union', }]);
     expect(validate(s, { union: 'd' })).toEqual([{ code: 'invalid_union', message: 'No compatible type for union found', path: 'union', }]);
     expect(validate(s, { union: 'a' })).toEqual([]);
     expect(validate(s, { union: 'b' })).toEqual([]);
@@ -340,7 +340,8 @@ test('union string | date', () => {
     expect(validate(s, { union: {} })).toEqual([{ code: 'invalid_union', message: 'No compatible type for union found', path: 'union', }]);
     expect(validate(s, { union: false })).toEqual([{ code: 'invalid_union', message: 'No compatible type for union found', path: 'union', }]);
     expect(validate(s, { union: 'sad' })).toEqual([]);
-    expect(validate(s, { union: '2012-08-13T22:57:24.716Z' })).toEqual([]);
+    expect(validate(s, { union: '2012-08-13T22:57:24.716Z' })).toEqual([{ code: 'invalid_date', message: 'No date given', path: 'union', }]);
+    expect(validate(s, { union: new Date('2012-08-13T22:57:24.716Z') })).toEqual([]);
 });
 
 test('union string | MyClass', () => {
@@ -383,7 +384,7 @@ test('union number|boolean validation', () => {
 
     expect(validate(s, { union: 123 })).toEqual([]);
     expect(validate(s, { union: false })).toEqual([]);
-    expect(validate(s, { union: '123' })).toEqual([]);
+    expect(validate(s, { union: '123' })).toEqual([{ code: 'invalid_number', message: 'No number given', path: 'union', }]);
     expect(validate(s, { union: 'sad' })).toEqual([{ code: 'invalid_union', message: 'No compatible type for union found', path: 'union', }]);
     expect(validate(s, { union: {} })).toEqual([{ code: 'invalid_union', message: 'No compatible type for union found', path: 'union', }]);
 });

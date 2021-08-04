@@ -38,6 +38,7 @@ import { SqlBuilder } from './sql-builder';
 import { SqlFormatter } from './sql-formatter';
 import { sqlSerializer } from './serializer/sql-serializer';
 import { DatabaseComparator, DatabaseModel } from './schema/table';
+import { Stopwatch } from '@deepkit/stopwatch';
 
 export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
 export type DEEP_SORT<T extends Entity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };
@@ -69,7 +70,12 @@ export abstract class SQLStatement {
 export abstract class SQLConnection {
     released: boolean = false;
 
-    constructor(protected connectionPool: SQLConnectionPool, public transaction?: DatabaseTransaction, protected logger: DatabaseLogger = new DatabaseLogger) {
+    constructor(
+        protected connectionPool: SQLConnectionPool,
+        protected logger: DatabaseLogger = new DatabaseLogger,
+        public transaction?: DatabaseTransaction,
+        public stopwatch?: Stopwatch
+    ) {
     }
 
     release() {
@@ -111,7 +117,7 @@ export abstract class SQLConnectionPool {
      * Reserves an existing or new connection. It's important to call `.release()` on it when
      * done. When release is not called a resource leak occurs and server crashes.
      */
-    abstract getConnection(logger?: DatabaseLogger, transaction?: DatabaseTransaction): Promise<SQLConnection>;
+    abstract getConnection(logger?: DatabaseLogger, transaction?: DatabaseTransaction, stopwatch?: Stopwatch): Promise<SQLConnection>;
 
     public getActiveConnections() {
         return this.activeConnections;
@@ -180,11 +186,18 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     }
 
     async count(model: SQLQueryModel<T>): Promise<number> {
+        const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.build(this.classSchema, model, 'SELECT COUNT(*) as count');
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
+        if (sqlBuilderFrame) sqlBuilderFrame.end();
+
+        const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        if (connectionFrame) connectionFrame.end();
+
         try {
             const row = await connection.execAndReturnSingle(sql.sql, sql.params);
+
             //postgres has bigint as return type of COUNT, so we need to convert always
             return Number(row.count);
         } finally {
@@ -194,12 +207,20 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
 
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
         if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
+
+        const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.build(this.classSchema, model, 'DELETE');
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
+        if (sqlBuilderFrame) sqlBuilderFrame.end();
+
+        const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        if (connectionFrame) connectionFrame.end();
+
         try {
             await connection.run(sql.sql, sql.params);
             deleteResult.modified = await connection.getChanges();
+
             //todo, implement deleteResult.primaryKeys
         } finally {
             connection.release();
@@ -207,15 +228,25 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     }
 
     async find(model: SQLQueryModel<T>): Promise<T[]> {
+        const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
         const sqlBuilder = new SqlBuilder(this.platform);
+        // console.log('find', model);
         const sql = sqlBuilder.select(this.classSchema, model);
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
+        if (sqlBuilderFrame) sqlBuilderFrame.end();
+
+        const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        if (connectionFrame) connectionFrame.end();
+
         try {
             const rows = await connection.execAndReturnAll(sql.sql, sql.params);
+
+            const formatterFrame = this.session.stopwatch ? this.session.stopwatch.start('Formatter') : undefined;
             const results: T[] = [];
             if (model.isAggregate() || model.sqlSelect) {
                 //when aggregate the field types could be completely different, so don't normalize
                 for (const row of rows) results.push(row); //mysql returns not a real array, so we have to iterate
+                if (formatterFrame) formatterFrame.end();
                 return results;
             }
             const formatter = this.createFormatter(model.withIdentityMap);
@@ -225,6 +256,8 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
             } else {
                 for (const row of rows) results.push(formatter.hydrate(model, row));
             }
+            if (formatterFrame) formatterFrame.end();
+
             return results;
         } catch (error) {
             throw new DatabaseError(`Could not query ${this.classSchema.getClassName()} due to SQL error ${error}.\nSQL: ${sql.sql}\nParams: ${JSON.stringify(sql.params)}`);
@@ -234,10 +267,14 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     }
 
     async findOneOrUndefined(model: SQLQueryModel<T>): Promise<T | undefined> {
+        const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.select(this.classSchema, model);
+        if (sqlBuilderFrame) sqlBuilderFrame.end();
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
+        const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        if (connectionFrame) connectionFrame.end();
         let row: any;
 
         try {
@@ -254,12 +291,17 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
             return row;
         }
 
-        const formatter = this.createFormatter(model.withIdentityMap);
-        if (model.hasJoins()) {
-            const [converted] = sqlBuilder.convertRows(this.classSchema, model, [row]);
-            return formatter.hydrate(model, converted);
-        } else {
-            return formatter.hydrate(model, row);
+        const formatterFrame = this.session.stopwatch ? this.session.stopwatch.start('Formatter') : undefined;
+        try {
+            const formatter = this.createFormatter(model.withIdentityMap);
+            if (model.hasJoins()) {
+                const [converted] = sqlBuilder.convertRows(this.classSchema, model, [row]);
+                return formatter.hydrate(model, converted);
+            } else {
+                return formatter.hydrate(model, row);
+            }
+        } finally {
+            if (formatterFrame) formatterFrame.end();
         }
     }
 
@@ -269,10 +311,17 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
 
     async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
         //this is the default SQL implementation that does not support RETURNING functionality (e.g. returning values from changes.$inc)
+
+        const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
         const set = buildSetFromChanges(this.platform, this.classSchema, changes);
         const sqlBuilder = new SqlBuilder(this.platform);
         const sql = sqlBuilder.update(this.classSchema, model, set);
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
+        if (sqlBuilderFrame) sqlBuilderFrame.end();
+
+        const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        if (connectionFrame) connectionFrame.end();
+
         try {
             await connection.run(sql.sql, sql.params);
             patchResult.modified = await connection.getChanges();
@@ -474,7 +523,7 @@ export class RawQuery {
      */
     async execute(): Promise<void> {
         const sql = this.sql.convertToSQL(this.platform, new this.platform.placeholderStrategy);
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
 
         try {
             return await connection.run(sql.sql, sql.params);
@@ -495,7 +544,7 @@ export class RawQuery {
      */
     async find(): Promise<any[]> {
         const sql = this.sql.convertToSQL(this.platform, new this.platform.placeholderStrategy);
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
 
         try {
             const res = await connection.execAndReturnAll(sql.sql, sql.params);
@@ -652,7 +701,7 @@ export class SQLPersistence extends DatabasePersistence {
 
     async getConnection(): Promise<ReturnType<this['connectionPool']['getConnection']>> {
         if (!this.connection) {
-            this.connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
+            this.connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
         }
         return this.connection;
     }

@@ -207,7 +207,8 @@ let CircularDetector: any[] = [];
 let CircularDetectorResets: (() => void)[] = [];
 
 export interface BasicInjector {
-    get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R;
+    get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: BasicInjector): R;
+    getInjector(contextId: number): BasicInjector;
 }
 
 export class Injector implements BasicInjector {
@@ -228,10 +229,15 @@ export class Injector implements BasicInjector {
         protected parents: (BasicInjector | Injector)[] = [],
         protected injectorContext: InjectorContext = new InjectorContext,
         protected configuredProviderRegistry: ConfiguredProviderRegistry | undefined = undefined,
-        protected tagRegistry: TagRegistry = new TagRegistry()
+        protected tagRegistry: TagRegistry = new TagRegistry(),
+        protected contextResolver?: { getInjector(contextId: number): BasicInjector }
     ) {
         if (!this.configuredProviderRegistry) this.configuredProviderRegistry = injectorContext.configuredProviderRegistry;
         if (this.providers.length) this.retriever = this.buildRetriever();
+    }
+
+    getInjector(contextId: number): BasicInjector {
+        return this.contextResolver ? this.contextResolver.getInjector(contextId) : this;
     }
 
     /**
@@ -239,7 +245,7 @@ export class Injector implements BasicInjector {
      * Note: addProviders() in the new fork changes the origin, since providers array is not cloned.
      */
     public fork(parents?: Injector[], injectorContext?: InjectorContext) {
-        const injector = new Injector(undefined, parents || this.parents, injectorContext, this.configuredProviderRegistry, this.tagRegistry);
+        const injector = new Injector(undefined, parents || this.parents, injectorContext, this.configuredProviderRegistry, this.tagRegistry, this.contextResolver);
         injector.providers = this.providers;
         injector.retriever = this.retriever;
         return injector;
@@ -302,19 +308,20 @@ export class Injector implements BasicInjector {
         } else if (isPrototypeOfBase(token, Tag)) {
             const tokenVar = compiler.reserveVariable('token', token);
             const providers = compiler.reserveVariable('tagRegistry', this.tagRegistry.resolve(token));
-            return `new ${tokenVar}(${providers}.map(v => frontInjector.retriever(frontInjector, v, frontInjector)))`;
+            return `new ${tokenVar}(${providers}.map(v => (frontInjector.retriever ? frontInjector.retriever(frontInjector, v, frontInjector) : frontInjector.get(v, frontInjector))))`;
         } else {
             if (token === undefined) throw new Error(`Argument type of '${property.name}' at position ${argPosition} is undefined. Imported reflect-metadata correctly? For circular references use @inject(() => T) ${property.name}:T.`);
             const tokenVar = compiler.reserveVariable('token', token);
-            const orThrow = isOptional ? '' : `|| ${notFoundFunction}(${classTypeVar}, ${JSON.stringify(property.name)}, ${argPosition}, ${tokenVar})`;
+            const orThrow = isOptional ? '' : `?? ${notFoundFunction}(${classTypeVar}, ${JSON.stringify(property.name)}, ${argPosition}, ${tokenVar})`;
 
-            return `frontInjector.retriever(frontInjector, ${tokenVar}, frontInjector) ${orThrow}`;
+            return `(frontInjector.retriever ? frontInjector.retriever(frontInjector, ${tokenVar}, frontInjector) : frontInjector.get(${tokenVar}, frontInjector)) ${orThrow}`;
         }
 
         return 'undefined';
     }
 
     protected createFactory(compiler: CompilerContext, classType: ClassType): string {
+        if (!classType) throw new Error('Can not create factory for undefined ClassType');
         const schema = getClassSchema(classType);
         const args: string[] = [];
         const propertyAssignment: string[] = [];
@@ -672,8 +679,6 @@ export class InjectorContext implements BasicInjector {
     public readonly scopeCaches: ScopedContextScopeCaches;
     protected cache: ScopedContextCache;
 
-    public static contextSymbol = Symbol('context');
-
     constructor(
         public readonly contextManager: ContextRegistry = new ContextRegistry,
         public readonly scope: string = 'module',
@@ -752,8 +757,7 @@ export class InjectorContext implements BasicInjector {
     }
 
     public get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R {
-        const context = typeof token === 'object' || typeof token === 'function' ? (token as any)[InjectorContext.contextSymbol] as Context : undefined;
-        const injector = this.getInjector(context ? context.id : 0);
+        const injector = this.getInjector(0);
         return injector.get(token, frontInjector);
     }
 

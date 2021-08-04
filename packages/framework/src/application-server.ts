@@ -249,7 +249,7 @@ export class ApplicationServer {
 
                 process.on('SIGINT', async () => {
                     //we don't do anything in sigint, as the master controls our process.
-                    //we need to register to though so the process doesn't get killed.
+                    //we need to register to it though so the process doesn't get killed.
                 });
 
                 await this.eventDispatcher.dispatch(onServerWorkerBootstrap, new ServerBootstrapEvent());
@@ -298,11 +298,10 @@ export class ApplicationServer {
     public createClient(): RpcClient {
         const worker = this.getWorker();
         const context = this.rootScopedContext;
-        const kernel = worker.rpcKernel;
 
         return new RpcClient({
             connect(connection) {
-                const kernelConnection = createRpcConnection(context, kernel, {
+                const kernelConnection = createRpcConnection(context, worker.rpcKernel, {
                     write: (buffer) => connection.onData(buffer),
                     close: () => connection.onClose(),
                 });

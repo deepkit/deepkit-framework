@@ -84,7 +84,7 @@
 
     .text-selection,
     .text-selection * {
-        cursor: text;
+        cursor: auto;
         user-select: text;
         -webkit-user-select: text;
     }

@@ -22,7 +22,7 @@ const routes: Routes = [
   { path: 'configuration', component: ConfigurationComponent },
   { path: 'http', component: HttpComponent },
   { path: 'rpc', component: RpcComponent },
-  { path: 'timeline', component: ProfileComponent },
+  { path: 'profiler', component: ProfileComponent },
   { path: 'events', component: EventsComponent },
   { path: 'http/request/:id', component: HttpRequestComponent },
 ];

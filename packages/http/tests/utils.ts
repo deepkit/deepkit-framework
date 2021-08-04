@@ -3,7 +3,6 @@ import { InjectorContext, ProviderWithScope, TagProvider, TagRegistry } from '@d
 import { Router } from '../src/router';
 import { HttpListener } from '../src/http';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
-import { Stopwatch } from '@deepkit/stopwatch';
 import { EventDispatcher } from '@deepkit/event';
 import { HttpKernel } from '../src/kernel';
 import { AppModule, MiddlewareFactory, MiddlewareRegistry } from '@deepkit/app';
@@ -32,11 +31,10 @@ export function createHttpKernel(controllers: (ClassType | {module: AppModule<an
         ...providers,
         ...listeners,
         HttpListener,
-        { provide: Logger, useValue: new Logger([new ConsoleTransport()]) },
-        Stopwatch
+        { provide: Logger, useValue: new Logger([new ConsoleTransport()]) }
     ]);
     const eventDispatcher = new EventDispatcher(injector);
     eventDispatcher.registerListener(HttpListener);
     for (const listener of listeners) eventDispatcher.registerListener(listener);
-    return new HttpKernel(router, eventDispatcher, injector, new Logger([new ConsoleTransport()]), new Stopwatch());
+    return new HttpKernel(router, eventDispatcher, injector, new Logger([new ConsoleTransport()]));
 }

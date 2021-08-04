@@ -306,7 +306,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
     constructor(
         writer: RpcConnectionWriter,
         connections: RpcKernelConnections,
-        protected controllers: Map<string, ClassType>,
+        protected controllers: Map<string, {controller: ClassType, context: number}>,
         protected security = new RpcKernelSecurity(),
         protected injector: BasicInjector,
         protected peerExchange: RpcPeerExchange,
@@ -429,10 +429,12 @@ export type OnConnectionCallback = (connection: RpcKernelConnection, injector: B
  * and encode/send outgoing messages.
  */
 export class RpcKernel {
-    protected controllers = new Map<string, ClassType>();
+    protected controllers = new Map<string, {controller: ClassType, context: number}>();
     protected peerExchange = new RpcPeerExchange;
     protected connections = new RpcKernelConnections;
     protected injector: BasicInjector | InjectorContext;
+
+    protected RpcKernelConnection = RpcKernelConnection;
 
     protected onConnectionListeners: OnConnectionCallback[] = [];
 
@@ -461,7 +463,7 @@ export class RpcKernel {
      * If you created a kernel with custom injector, you probably want to set addAsProvider to false.
      * Adding a provider is rather expensive, so you should prefer to create a kernel with pre-filled  injector.
      */
-    public registerController(id: string | ControllerDefinition<any>, controller: ClassType, addAsProvider: boolean = true) {
+    public registerController(id: string | ControllerDefinition<any>, controller: ClassType, addAsProvider: boolean = true, context: number = 0) {
         if (addAsProvider) {
             if (this.injector instanceof InjectorContext) {
                 this.injector.contextManager.get(0).providers.push({ provide: controller, scope: 'rpc' });
@@ -472,7 +474,7 @@ export class RpcKernel {
             }
         }
 
-        this.controllers.set('string' === typeof id ? id : id.path, controller);
+        this.controllers.set('string' === typeof id ? id : id.path, {controller, context});
     }
 
     createConnection(writer: RpcConnectionWriter, injector?: BasicInjector): RpcKernelBaseConnection {
@@ -486,14 +488,13 @@ export class RpcKernel {
 
             let parent = this.injector;
             if (parent instanceof InjectorContext) {
-                parent = parent.createChildScope('rpc');
+                parent = parent.createChildScope('rpc', subInjector);
             }
 
-            const childInjectors: BasicInjector[] = [subInjector, parent];
-            injector = new Injector([], childInjectors);
+            injector = parent;
         }
 
-        connection = new RpcKernelConnection(writer, this.connections, this.controllers, this.security, injector, this.peerExchange, this.logger);
+        connection = new this.RpcKernelConnection(writer, this.connections, this.controllers, this.security, injector, this.peerExchange, this.logger);
         for (const on of this.onConnectionListeners) on(connection, injector, this.logger);
         return connection;
     }

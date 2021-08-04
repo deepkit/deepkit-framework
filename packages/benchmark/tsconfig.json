@@ -16,7 +16,7 @@
     "declaration": true,
     "composite": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "@deepkit/framework"
+    "jsxImportSource": "@deepkit/template"
   },
   "include": [
     "src",

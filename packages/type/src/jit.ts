@@ -211,7 +211,7 @@ export function getParentResolverJS<T>(
 
     const code = `${setter} = findParent(_parents, ${varClassType});`;
 
-    if (property.isUndefinedAllowed()) {
+    if (property.isOptional) {
         return code;
     }
 
@@ -422,6 +422,40 @@ export class JitStack {
     }
 }
 
+function getXToClassPropertyConverter(context: Map<string, any>, property: PropertySchema, setter: string, serializer: Serializer, jitStack: JitStack): string {
+    let setDefault = '';
+    if (property.hasManualDefaultValue() || property.type === 'literal') {
+        if (property.defaultValue !== undefined) {
+            const defaultValue = reserveVariable(context, 'defaultValue', property.defaultValue);
+            setDefault = `${setter} = ${defaultValue}();`;
+        } else if (property.type === 'literal' && !property.isOptional) {
+            setDefault = `${setter} = ${JSON.stringify(property.literalValue)};`;
+        }
+    } else if (property.isNullable) {
+        setDefault = `${setter} = null;`;
+    }
+
+    let setDefaultWhenUndefined = '';
+    if (!property.isOptional && setDefault) {
+        setDefaultWhenUndefined = `
+                if (undefined === ${setter}) {
+                    ${setDefault}
+                }
+        `;
+    }
+
+    return `
+            if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})) {
+                if (${JSON.stringify(property.name)} in _data) {
+                    ${getDataConverterJS(`${setter}`, `_data[${JSON.stringify(property.name)}]`, property, serializer.toClass, context, jitStack)}
+                    ${setDefaultWhenUndefined}
+                } else {
+                    ${setDefault}
+                }
+            }
+        `;
+}
+
 export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Serializer, jitStack: JitStack = new JitStack())
     : (data: any, options?: JitConverterOptions, parents?: any[], state?: ToClassState) => T {
 
@@ -433,6 +467,7 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Se
     const constructorArgumentNames: string[] = [];
     const assignedViaConstructor: { [propertyName: string]: boolean } = {};
     const constructorParameter = schema.getMethodProperties('constructor');
+
 
     for (const property of constructorParameter) {
         assignedViaConstructor[property.name] = true;
@@ -448,9 +483,8 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Se
             constructorArguments.push(`var c_${property.name}; ` + getParentResolverJS(schema, `c_${property.name}`, property, context));
         } else {
             constructorArguments.push(`
-                //constructor parameter ${property.name}
-                var c_${property.name} = _data[${JSON.stringify(property.name)}];
-                ${getDataConverterJS(`c_${property.name}`, `c_${property.name}`, property, serializer.toClass, context, jitStack)}
+            var c_${property.name};
+            ${getXToClassPropertyConverter(context, property, `c_${property.name}`, serializer, jitStack)}
             `);
         }
 
@@ -465,27 +499,7 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Se
         if (property.isParentReference) {
             setProperties.push(getParentResolverJS(schema, `_instance.${property.name}`, property, context));
         } else {
-            let setDefault = '';
-            if (property.hasManualDefaultValue() || property.type === 'literal') {
-                if (property.defaultValue !== undefined) {
-                    const defaultValue = reserveVariable(context, 'defaultValue', property.defaultValue);
-                    setDefault = `_instance.${property.name} = ${defaultValue}();`;
-                } else if (property.type === 'literal' && !property.isOptional) {
-                    setDefault = `_instance.${property.name} = ${JSON.stringify(property.literalValue)};`;
-                }
-            } else if (property.isNullable) {
-                setDefault = `_instance.${property.name} = null;`;
-            }
-
-            setProperties.push(`
-            if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})) {
-                if (${JSON.stringify(property.name)} in _data) {
-                    ${getDataConverterJS(`_instance.${property.name}`, `_data.${property.name}`, property, serializer.toClass, context, jitStack)}
-                } else {
-                    ${setDefault}
-                }
-            }
-            `);
+            setProperties.push(getXToClassPropertyConverter(context, property, `_instance[${JSON.stringify(property.name)}]`, serializer, jitStack));
         }
     }
 
@@ -597,7 +611,8 @@ export function createPartialXToClassFunction<T>(schema: ClassSchema<T>, seriali
         props.push(`
             if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})){
             if (_data.hasOwnProperty(${JSON.stringify(property.name)})) {
-                ${getDataConverterJS(`_result.${property.name}`, `_data.${property.name}`, property, serializer.toClass, context, jitStack)}
+                ${getDataConverterJS(`_result[${JSON.stringify(property.name)}]`, `_data[${JSON.stringify(property.name)}]`, property, serializer.toClass, context, jitStack)}
+                if (!_result.hasOwnProperty(${JSON.stringify(property.name)})) _result[${JSON.stringify(property.name)}] = undefined;
             }
             }
         `);

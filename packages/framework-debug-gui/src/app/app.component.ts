@@ -24,7 +24,8 @@ import { Router } from '@angular/router';
                 <dui-window-toolbar>
                     <dui-button-group>
                         <div style="position: relative; top: -2px;">
-                            <img style="width: 16px; vertical-align: text-bottom; margin-left: 4px;" src="assets/deepkit_white.svg"/>
+                            <img class="logo visible-for-dark-mode" src="assets/deepkit_white.svg"/>
+                            <img class="logo visible-for-white-mode" theme-white src="assets/deepkit_black.svg"/>
                             <span style="margin-left: 8px; display: inline-block; color: var(--text-grey)">Framework Debugger</span>
                         </div>
                     </dui-button-group>
@@ -46,7 +47,7 @@ import { Router } from '@angular/router';
                         <dui-list-item routerLink="/http" [routerLinkExact]="true">HTTP</dui-list-item>
                         <dui-list-item routerLink="/rpc">RPC</dui-list-item>
                         <dui-list-item routerLink="/events">Events</dui-list-item>
-                        <dui-list-item routerLink="/timeline">Timeline</dui-list-item>
+                        <dui-list-item routerLink="/profiler">Profiler</dui-list-item>
 
                         <dui-list-title>Database</dui-list-title>
                         <orm-browser-list></orm-browser-list>

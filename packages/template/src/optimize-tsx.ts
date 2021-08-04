@@ -9,10 +9,29 @@
  */
 
 import { addHook } from 'pirates';
-import { CallExpression, Expression, Literal, MemberExpression, ObjectExpression, Property, SpreadElement, UnaryExpression } from 'estree';
+import {
+    ArrayExpression,
+    ArrayPattern,
+    AssignmentPattern,
+    BinaryExpression,
+    CallExpression,
+    Expression,
+    Identifier,
+    Literal,
+    MemberExpression,
+    Node,
+    ObjectExpression,
+    ObjectPattern,
+    Property,
+    RestElement,
+    SpreadElement,
+    UnaryExpression
+} from 'estree';
 // @ts-ignore
 import abstractSyntaxTree from 'abstract-syntax-tree';
 import { inDebugMode } from '@deepkit/core';
+import { escape, escapeHtml } from './utils';
+import { voidElements } from './template';
 
 const { parse, generate, replace } = abstractSyntaxTree;
 
@@ -20,12 +39,21 @@ export function transform(code: string, filename: string) {
     if (inDebugMode()) return code;
     //for CommonJs its jsx_runtime_1.jsx, for ESM its _jsx. ESM is handled in loader.ts#transformSource
     if (code.indexOf('.jsx(') === -1 && code.indexOf('.jsxs(') === -1) return code;
+    // console.log('optimize code for', filename, optimizeJSX(code));
     return optimizeJSX(code);
 }
 
 addHook(transform, { exts: ['.js', '.tsx'] });
 
 class NotSerializable {
+}
+
+export function parseCode(code: string) {
+    return parse(code);
+}
+
+export function generateCode(ast: Node) {
+    return generate(ast);
 }
 
 function serializeValue(node: Literal | UnaryExpression): any {
@@ -40,20 +68,50 @@ function serializeValue(node: Literal | UnaryExpression): any {
     return NotSerializable;
 }
 
-function optimizeAttributes(node: ObjectExpression): any {
-    let value: string[] = [];
+/**
+ * Our strategy is to convert ObjectExpressions to a BinaryExpression that has basically like
+ *
+ *      p1 + '=' + p1Value + ' ' + p2 + '=' + p2Value + ...
+ *
+ * concatExpressions() can then further optimise it down to one big literal (or several literals depending on where non-literals are used).
+ */
+function optimizeAttributes(jsxRuntime: string, node: ObjectExpression): any {
+    const expressions: ConcatableType[] = [];
+
     for (const p of node.properties) {
         if (p.type === 'SpreadElement') return node;
+        if (isPattern(p.value)) return node;
 
-        const keyName = p.key.type === 'Literal' ? p.key.value : (p.key.type === 'Identifier' ? p.key.name : '');
-        if (!keyName) return node;
+        const value = p.value.type === 'UnaryExpression' ? p.value.argument : p.value;
 
-        if (p.value.type !== 'Literal' && p.value.type !== 'UnaryExpression') return node;
+        if (expressions.length) {
+            expressions.push(createEscapedLiteral(' '));
+        }
+        if (p.key.type === 'Identifier') {
+            expressions.push(createEscapedLiteral(p.key.name));
+        } else {
+            expressions.push(p.key);
+        }
+        expressions.push(createEscapedLiteral('="'));
 
-        value.push(keyName + '="' + serializeValue(p.value) + '"');
+        if (value.type !== 'Literal' && !isPattern(value) && !isCreateElementCall(value) && !isEscapeCall(value) && !isHtmlCall(value)) {
+            expressions.push(toSafeString(jsxRuntime, toEscapeAttributeCall(jsxRuntime, value)));
+        } else {
+            if (value.type === 'Literal') {
+                expressions.push(createEscapedLiteral(value.value));
+            } else {
+                expressions.push(value);
+            }
+        }
+        expressions.push(createEscapedLiteral('"'));
     }
 
-    return { type: 'Literal', value: value.join(' ') };
+    if (expressions.length >= 2) return concatExpressions(jsxRuntime, expressions);
+    return createEscapedLiteral('');
+}
+
+function isPattern(e: Node): e is ObjectPattern | ArrayPattern | RestElement | AssignmentPattern | MemberExpression {
+    return e.type === 'ArrayPattern' || e.type === 'ObjectPattern' || e.type === 'AssignmentPattern' || e.type === 'RestElement' || e.type === 'MemberExpression';
 }
 
 function isCjsJSXCall(node: any): boolean {
@@ -65,23 +123,21 @@ function isESMJSXCall(node: any): boolean {
 }
 
 /**
- *
  * We convert
  *
- * _jsx("div", { id: "123" }, void 0)
+ * _jsx.createElement("div", { id: "123" }, void 0)
  * -> "<div id=\"123\"></div>"
  *
- * _jsx("div", { children: "Test" }, void 0)
+ * _jsx.createElement("div", { children: "Test" }, void 0)
  * -> "<div>Test</div>"
  *
- * _jsx("div", Object.assign({ id: "123" }, { children: "Test" }), void 0)
+ * _jsx.createElement("div", Object.assign({ id: "123" }, { children: "Test" }), void 0)
  * -> "<div id=\"123\">Test</div>"
  *
- * _jsx("div", Object.assign({ id: "123" }, { children: _jsx("b", { children: "strong" }, void 0) }), void 0);
+ * _jsx.createElement("div", Object.assign({ id: "123" }, { children: _jsx.createElement('b", { children: "strong' }, void 0) }), void 0);
  * -> "<div id=\"123\">" + "<b>strong</b>" + "</div>"
- *
  */
-function optimizeNode(node: Expression): any {
+function optimizeNode(node: Expression, root: boolean = true): Expression {
     if (node.type !== 'CallExpression') return node;
     if (node.callee.type !== 'MemberExpression') return node;
     if (node.callee.object.type !== 'Identifier') return node;
@@ -89,81 +145,545 @@ function optimizeNode(node: Expression): any {
     const isCreateElementExpression = node.callee.property.type === 'Identifier' && node.callee.property?.name === 'createElement';
     if (!isCreateElementExpression) return node;
 
+    const jsxRuntime = node.callee.object.name;
+
+    //if first argument is a Fragment, we optimise for that
+    if (node.arguments[0].type === 'MemberExpression' && node.arguments[0].object.type === 'Identifier'
+        && node.arguments[0].property.type === 'Identifier' && node.arguments[0].property.name === 'Fragment') {
+        //we normalize Fragments (or all createElement(var)) to have as second parameter the attributes.
+        //since Fragments don't have attributes, this is always an empty object, so we skip that
+
+        const concat: Expression[] = [];
+        let optimisedString: boolean = true;
+        let strings: string[] = [];
+        for (let i = 2; i < node.arguments.length; i++) {
+            const a = node.arguments[i];
+            if (a && a.type !== 'SpreadElement') {
+                const o = optimizeNode(a, false);
+                concat.push(o);
+                const staticString = extractStaticString(o);
+                if (staticString !== noStaticValue) {
+                    strings.push(staticString);
+                } else {
+                    optimisedString = false;
+                }
+            }
+        }
+
+        //all arguments are string literals, which can merge to one big string
+        const result = optimisedString ? createEscapedLiteral(strings.join('')) : concatExpressions(jsxRuntime, concat);
+        const safeString = getSafeString(result);
+        if (safeString !== undefined) {
+            if (root) return createRenderObjectWithEscapedChildren(safeString);
+            return safeString;
+        }
+        if (root) return createRenderObjectWithEscapedChildren(result);
+        return result;
+    }
+
     //go deeper if possible
     for (let i = 2; i < node.arguments.length; i++) {
         const a = node.arguments[i];
         if (a && a.type === 'CallExpression') {
-            node.arguments[i] = optimizeNode(a);
+            node.arguments[i] = optimizeNode(a, false);
         }
     }
 
-    //can we serialize/optimize attributes?
+    let tag: any = '';
     //we only optimize attributes when we have createElement(string)
-    if (node.arguments[0].type !== 'Literal') return node;
-    const tag = node.arguments[0].value;
+    if (node.arguments[0].type === 'Literal') {
+        tag = node.arguments[0].value;
 
-    if (node.arguments[1] && node.arguments[1].type === 'ObjectExpression') {
-        const ori = node.arguments[1];
-        node.arguments[1] = optimizeAttributes(ori);
-        if (ori === node.arguments[1]) {
-            //we did not change the attributes to a better option, so we stop optimizing further.
-            return;
+        const attributes = node.arguments[1];
+
+        if (isObjectAssignCall(attributes)) {
+            //when we have here Object.assign still, then it includes a spread operator, which we can't optimise.
+            return node;
+        } else {
+            if (node.arguments[1] && node.arguments[1].type === 'ObjectExpression') {
+                const ori = node.arguments[1];
+                node.arguments[1] = optimizeAttributes(jsxRuntime, ori);
+                if (ori === node.arguments[1]) {
+                    //we did not change the attributes to a better option, so we stop optimizing further.
+                    return node;
+                }
+            }
         }
     }
 
-    //check if we can consolidate arguments to one big string
-    let canBeReplaced = true;
+    //check if we can concatenate (+) arguments
+    let canBeConcatenated = true;
     for (let i = 1; i < node.arguments.length; i++) {
-        if (node.arguments[i] && (node.arguments[i].type !== 'Literal' && !isHtmlCall(node.arguments[i]))) {
-            canBeReplaced = false;
+        const a = node.arguments[i];
+        if (a && a.type !== 'SpreadElement' && !isConcatenatable(a)) {
+            canBeConcatenated = false;
             break;
         }
     }
 
-    if (canBeReplaced) {
+    if (canBeConcatenated) {
         const args = node.arguments as (Literal | CallExpression)[];
-        const attributeLiteral = extractLiteralValue(args[1]);
+        const attributes = args[1];
 
-        let value = '<' + tag + (attributeLiteral ? (' ' + attributeLiteral) : '') + '>';
-
-        for (let i = 2; i < node.arguments.length; i++) {
-            if (node.arguments[i] === undefined || node.arguments[i] === null) {
-                value += node.arguments[i];
+        const concat: Expression[] = [];
+        const closing = voidElements[tag] ? '/>' : '>';
+        if (tag) {
+            if (attributes.type === 'Literal' && !attributes.value) {
+                //no attributes
+                concat.push(createEscapedLiteral('<' + tag + closing));
             } else {
-                value += extractLiteralValue(args[i]);
+                concat.push(createEscapedLiteral('<' + tag + ' '));
+                concat.push(attributes);
+                concat.push(createEscapedLiteral(closing));
             }
         }
-        value += '</' + tag + '>';
 
-        return {
-            type: 'CallExpression', callee: {
-                type: 'MemberExpression',
-                object: { type: 'Identifier', name: node.callee.object.name },
-                computed: false,
-                property: { type: 'Identifier', name: 'html' }
-            }, arguments: [{ type: 'Literal', value: value }]
-        };
+        for (let i = 2; i < node.arguments.length; i++) {
+            let e = node.arguments[i];
+            if (e.type !== 'SpreadElement') {
+                concat.push(e);
+            }
+        }
+
+        if (tag && closing === '>') {
+            concat.push(createEscapedLiteral('</' + tag + '>'));
+        }
+
+        if (concat.length === 0) {
+            return node;
+        }
+
+        if (node.arguments[0].type !== 'Literal') {
+            //for custom elements, we only merge its  arguments
+            if (node.arguments[2]) {
+                node.arguments[2] = optimiseArguments(jsxRuntime, concat, false);
+                node.arguments.splice(3);
+            }
+            //todo: convert to {render:, attributes:, children: }
+            return node;
+        }
+
+        // //concatExpressions tries to convert everything to one big literal if possible
+        // //alternatively returns an renderObject expression with array children.
+        return optimiseArguments(jsxRuntime, concat, root);
     }
 
     return node;
 }
 
-function extractLiteralValue(object: Literal | CallExpression) {
-    return object.type === 'Literal' ? object.value : (object.arguments[0] && object.arguments[0].type === 'Literal' ? object.arguments[0].value : '');
+function optimiseArguments(jsxRuntime: string, expressions: ConcatableType[], root: boolean): Expression {
+    if (expressions.length === 0) throw new Error('No expression for optimise arguments');
+
+    if (expressions.length === 1) {
+        const e = expressions[0];
+        const htmlArg = getHtmlCallArg(e);
+        const value = htmlArg ? extractStaticString(htmlArg) : extractStaticString(e);
+        if (value !== noStaticValue) {
+            expressions[0] = toSafeString(jsxRuntime, createEscapedLiteral(value));
+        }
+    }
+
+    const result = expressions.length === 1 ? toOptimisedArrayExpression(expressions) : concatExpressions(jsxRuntime, expressions);
+
+    const safeString = getSafeString(result);
+    if (safeString !== undefined) {
+        if (root) return createRenderObjectWithEscapedChildren(safeString);
+        return safeString;
+    }
+    if (root) return createRenderObjectWithEscapedChildren(result);
+    return result;
 }
 
-function isHtmlCall(object: Expression | SpreadElement) {
-    if (object.type === 'CallExpression' && object.callee.type === 'MemberExpression'
-        && object.callee.object.type === 'Identifier' && object.callee.object.name === '_jsx'
-        && object.callee.property.type === 'Identifier' && object.callee.property.name === 'html'
-        && object.arguments[0] && object.arguments[0].type === 'Literal') return true;
+function concatExpressions(jsxRuntime: string, expressions: ConcatableType[]): ConcatableType {
+    if (expressions.length < 2) {
+        console.dir(expressions, { depth: null });
+        throw new Error('concatExpressions requires at least 2 expressions');
+    }
 
-    if (object.type === 'CallExpression' && object.callee.type === 'MemberExpression'
-        && object.callee.object.type === 'Identifier'
-        && object.callee.property.type === 'Identifier' && object.callee.property.name === 'html'
-        && object.arguments[0] && object.arguments[0].type === 'Literal') return true;
+    const normalizedExpressions: ConcatableType[] = [];
 
-    return object.type === 'CallExpression' && object.callee.type === 'Identifier' && object.callee.name === 'html' && object.arguments[0] && object.arguments[0].type === 'Literal';
+    //todo: can this BinaryExpression check be entirely be removed?
+    for (let e of expressions) {
+        if (e.type === 'BinaryExpression' && !isOptimisedBinaryExpression(e)) {
+            //check if its ours BinaryExpression from concatExpressions. If so do not merge.
+            //we merge later at the end of the pipeline
+
+            //unwrap existing binaryExpression to avoid brackets: a + (b + (c + d)) + e
+            for (const a of extractBinaryExpressions(e)) {
+                normalizedExpressions.push(a);
+            }
+        } else if (isOptimisedArrayExpression(e)) {
+            for (const a of e.elements) {
+                if (a.type === 'SpreadElement') continue;
+                normalizedExpressions.push(a);
+            }
+        } else {
+            normalizedExpressions.push(e);
+        }
+    }
+
+    function mergeLiterals(expression: Expression[]): ConcatableType[] {
+        const result: ConcatableType[] = [];
+        let lastLiteral: Literal | undefined;
+
+        //try to optimise static values together
+        for (let e of expression) {
+            if (e.type === 'Literal' && !(e as any).escape) {
+                //we need to escape it
+                e.value = escapeHtml(e.value);
+                (e as any).escape = true;
+            }
+
+            const htmlArg = getHtmlCallArg(e);
+            const value = htmlArg ? extractStaticString(htmlArg) : extractStaticString(e);
+
+            if (value === noStaticValue) {
+                lastLiteral = undefined;
+                result.push(e);
+            } else {
+                if (lastLiteral) {
+                    lastLiteral.value += value;
+                } else {
+                    lastLiteral = createEscapedLiteral(value);
+                    result.push(toSafeString(jsxRuntime, lastLiteral));
+                }
+            }
+        }
+        return result;
+    }
+
+    let optimizedExpressions = mergeLiterals(normalizedExpressions);
+
+    if (optimizedExpressions.length === 1) {
+        return optimizedExpressions[0];
+    }
+
+    const allExpressionsConcatable = optimizedExpressions.every(e => {
+        return isOptimisedBinaryExpression(e) || isHtmlCall(e) || isSafeCall(e) || isEscapedLiteral(e) || getSafeString(e) !== undefined || isUserEscapeCall(e) || isOptimisedHtmlString(e);
+    });
+
+    const lastStep: ConcatableType[] = [];
+
+    for (let e of optimizedExpressions) {
+        if (e.type === 'BinaryExpression') {
+            //unwrap existing binaryExpression to avoid brackets: a + (b + (c + d)) + e
+            for (const a of extractBinaryExpressions(e)) {
+                lastStep.push(a);
+            }
+        } else {
+            lastStep.push(e);
+        }
+    }
+    optimizedExpressions = mergeLiterals(lastStep);
+
+    // console.log('allExpressionsConcatable', allExpressionsConcatable);
+    // console.dir(optimizedExpressions, { depth: null });
+
+    if (!allExpressionsConcatable) {
+        //we can't optimise this as one big binary expression
+        //we have to return it as array
+        return toOptimisedArrayExpression(optimizedExpressions);
+    }
+
+    let lastBinaryExpression: OptimisedBinaryExpression | undefined;
+    for (let i = 1; i < optimizedExpressions.length; i++) {
+        lastBinaryExpression = {
+            type: 'BinaryExpression',
+            _optimised: true,
+            left: lastBinaryExpression || normalizeLastStep(optimizedExpressions[0]),
+            right: normalizeLastStep(optimizedExpressions[i]),
+            operator: '+',
+        };
+    }
+
+    if (!lastBinaryExpression) throw new Error('Could not build binary expression');
+
+    return lastBinaryExpression;
+}
+
+function normalizeLastStep(e: Expression): Expression {
+    const safeCallArg = getSafeCallArg(e);
+    if (safeCallArg !== undefined) return safeCallArg;
+
+    const safeString = getSafeString(e);
+    if (safeString !== undefined) return safeString;
+
+    const htmlCall = getHtmlCallArg(e);
+    if (htmlCall !== undefined) return htmlCall;
+
+    if (isUserEscapeCall(e) || isHtmlCall(e)) {
+        //convert from `escape(e)` to `escape(e).htmlString`
+        //and from `html(e)` to `html(e).htmlString`
+        return {
+            type: 'MemberExpression',
+            object: e,
+            computed: false,
+            property: { type: 'Identifier', name: 'htmlString' }
+        } as MemberExpression;
+    }
+
+    return e;
+}
+function toOptimisedArrayExpression(expressions: ConcatableType[]): ArrayExpression {
+    const arrayExpression: OptimisedArrayExpression = {
+        type: 'ArrayExpression',
+        _optimised: true,
+        elements: [],
+    };
+    for (let e of expressions) {
+        arrayExpression.elements.push(e);
+    }
+    return arrayExpression;
+}
+
+
+function createRenderObjectWithEscapedChildren(children?: Expression, render: Expression = { type: 'Identifier', name: 'undefined' }, attributes: Expression = {
+    type: 'Identifier',
+    name: 'undefined'
+}): Expression {
+    const o: ObjectExpression = {
+        type: 'ObjectExpression',
+        properties: [
+            {
+                type: 'Property',
+                key: { type: 'Identifier', name: 'render' },
+                value: render,
+                kind: 'init',
+                computed: false,
+                method: false,
+                shorthand: false
+            },
+            {
+                type: 'Property',
+                key: { type: 'Identifier', name: 'attributes' },
+                value: attributes,
+                kind: 'init',
+                computed: false,
+                method: false,
+                shorthand: false
+            }
+        ]
+    };
+
+    if (children) {
+        o.properties.push({
+            type: 'Property',
+            key: { type: 'Identifier', name: 'childrenEscaped' },
+            value: children,
+            kind: 'init',
+            computed: false,
+            method: false,
+            shorthand: false
+        });
+    }
+
+    return o;
+}
+
+function isRenderObject(e: Node) {
+    return e.type === 'ObjectExpression' && e.properties[0] && e.properties[0].type === 'Property'
+        && e.properties[0].key.type === 'Identifier' && e.properties[0].key.name === 'render'
+        ;
+}
+
+function isObjectAssignCall(e: Node) {
+    return e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
+        && e.callee.object.type === 'Identifier' && e.callee.object.name === 'Object'
+        && e.callee.property.type === 'Identifier' && e.callee.property.name === 'assign'
+        ;
+}
+
+function createEscapedLiteral(v: string | number | boolean | null | RegExp | undefined): Literal {
+    return { type: 'Literal', value: v, escape: true } as any;
+}
+
+function isEscapedLiteral(e: Node): boolean {
+    return e.type === 'Literal' && (e as any).escape === true;
+}
+
+function isCreateElementCall(e: Node) {
+    return e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
+        && e.callee.object.type === 'Identifier'
+        && e.callee.property.type === 'Identifier' && e.callee.property.name === 'createElement';
+}
+
+function isConcatenatable(e: Expression): boolean {
+    return extractStaticString(e) !== undefined || e.type === 'Identifier';
+}
+
+function toHtmlCall(jsxRuntime: string, expression: Expression): CallExpression {
+    return {
+        type: 'CallExpression',
+        callee: {
+            type: 'MemberExpression',
+            object: { type: 'Identifier', name: jsxRuntime },
+            computed: false,
+            optional: false,
+            property: { type: 'Identifier', name: 'html' }
+        },
+        optional: false,
+        arguments: [expression]
+    };
+}
+
+// function toEscapeCall(jsxRuntime: string, expression: Expression): CallExpression {
+//     return {
+//         type: 'CallExpression',
+//         callee: {
+//             type: 'MemberExpression',
+//             object: { type: 'Identifier', name: jsxRuntime },
+//             computed: false,
+//             optional: false,
+//             property: { type: 'Identifier', name: 'escape' }
+//         },
+//         optional: false,
+//         arguments: [expression]
+//     };
+// }
+
+function toEscapeAttributeCall(jsxRuntime: string, expression: Expression): CallExpression {
+    return {
+        type: 'CallExpression',
+        callee: {
+            type: 'MemberExpression',
+            object: { type: 'Identifier', name: jsxRuntime },
+            computed: false,
+            optional: false,
+            property: { type: 'Identifier', name: 'escapeAttribute' }
+        },
+        optional: false,
+        arguments: [expression]
+    };
+}
+
+export const noStaticValue: unique symbol = Symbol('');
+
+export function extractStaticString(e: Expression | SpreadElement): string | typeof noStaticValue {
+    if (e.type === 'Literal') return '' + e.value;
+    if (e.type === 'TemplateLiteral' && e.expressions.length === 0) {
+        return e.quasis.map(v => v.value.cooked).join('');
+    }
+
+    const safeString = getSafeString(e);
+    if (safeString !== undefined) return extractStaticString(safeString);
+
+    return noStaticValue;
+}
+
+function unwrapSpread(e: Expression | SpreadElement): Expression {
+    return e.type === 'SpreadElement' ? e.argument : e;
+}
+
+function isHtmlCall(object: Expression | SpreadElement): boolean {
+    return getHtmlCallArg(object) !== undefined;
+}
+
+function getHtmlCallArg(e: Expression | SpreadElement): Expression | undefined {
+    if (e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
+        && e.callee.object.type === 'Identifier' && e.callee.object.name === '_jsx'
+        && e.callee.property.type === 'Identifier' && e.callee.property.name === 'html'
+        && e.arguments[0]) return unwrapSpread(e.arguments[0]);
+
+    if (e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
+        && e.callee.object.type === 'Identifier'
+        && e.callee.property.type === 'Identifier' && e.callee.property.name === 'html'
+        && e.arguments[0]) return unwrapSpread(e.arguments[0]);
+
+    if (e.type === 'CallExpression' && e.callee.type === 'Identifier' && e.callee.name === 'html' && e.arguments[0]) {
+        return unwrapSpread(e.arguments[0]);
+    }
+
+    return;
+}
+
+function isSafeCall(object: Expression | SpreadElement): boolean {
+    return getSafeCallArg(object) !== undefined;
+}
+
+function getSafeCallArg(e: Expression | SpreadElement): Expression | undefined {
+    if (e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
+        && e.callee.object.type === 'Identifier' && e.callee.object.name === '_jsx'
+        && e.callee.property.type === 'Identifier' && e.callee.property.name === 'safe'
+        && e.arguments[0]) return unwrapSpread(e.arguments[0]);
+
+    if (e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
+        && e.callee.object.type === 'Identifier'
+        && e.callee.property.type === 'Identifier' && e.callee.property.name === 'safe'
+        && e.arguments[0]) return unwrapSpread(e.arguments[0]);
+
+    if (e.type === 'CallExpression' && e.callee.type === 'Identifier' && e.callee.name === 'safe' && e.arguments[0]) {
+        return unwrapSpread(e.arguments[0]);
+    }
+
+    return;
+}
+
+function isChildren(e: Expression | SpreadElement): boolean {
+    if (e.type === 'MemberExpression' && (e.object.type === 'Identifier' || e.object.type === 'ThisExpression')
+        && e.property.type === 'Identifier' && e.property.name === 'children') return true;
+
+    if (e.type === 'Identifier' && e.name === 'children') {
+        return true;
+    }
+
+    return false;
+}
+
+function getSafeString(e: Expression | SpreadElement): Expression | undefined {
+    if (e.type === 'ObjectExpression' && e.properties.length === 1 && e.properties[0].type === 'Property' && e.properties[0].key.type === 'MemberExpression'
+        && e.properties[0].key.property.type === 'Identifier' && e.properties[0].key.property.name === 'safeString'
+        && !isPattern(e.properties[0].value)
+    ) {
+        return e.properties[0].value;
+    }
+    return;
+}
+
+function toSafeString(jsxRuntime: string, e: Expression): ObjectExpression {
+    return {
+        type: 'ObjectExpression',
+        properties: [
+            {
+                type: 'Property',
+                key: {
+                    type: 'MemberExpression',
+                    object: { type: 'Identifier', name: jsxRuntime },
+                    computed: false,
+                    property: { type: 'Identifier', name: 'safeString' }
+                } as MemberExpression,
+                value: e,
+                kind: 'init',
+                computed: true,
+                method: false,
+                shorthand: false
+            }
+        ]
+    };
+}
+
+function isEscapeCall(e: Expression | SpreadElement): boolean {
+    return e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
+        && e.callee.object.type === 'Identifier'
+        && e.callee.property.type === 'Identifier'
+        && (e.callee.property.name === 'escape' || e.callee.property.name === 'escapeAttribute')
+        ;
+}
+
+function isOptimisedHtmlString(e: Expression | SpreadElement): boolean {
+    return e.type === 'MemberExpression' && e.object.type === 'CallExpression' && e.object.callee.type === 'MemberExpression'
+        && e.object.callee.property.type === 'Identifier' && e.object.callee.property.name === 'escape'
+        && e.property.type === 'Identifier' && e.property.name === 'htmlString';
+}
+
+function isUserEscapeCall(e: Expression | SpreadElement): boolean {
+    if (e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
+        && e.callee.object.type === 'Identifier'
+        && e.callee.property.type === 'Identifier'
+        && (e.callee.property.name === 'escape')) {
+        return true;
+    }
+
+    return e.type === 'CallExpression' && e.callee.type === 'Identifier' && e.callee.name === 'escape' && e.arguments[0] !== undefined;
 }
 
 function extractChildrenFromObjectExpressionProperties(props: Array<Property | SpreadElement>): Expression | undefined {
@@ -175,6 +695,37 @@ function extractChildrenFromObjectExpressionProperties(props: Array<Property | S
         }
     }
     return;
+}
+
+type ConcatableType = Expression | Identifier;
+
+type OptimisedBinaryExpression = BinaryExpression & { _optimised?: boolean };
+type OptimisedArrayExpression = ArrayExpression & { _optimised?: boolean };
+
+function isOptimisedArrayExpression(e: Expression): e is OptimisedArrayExpression {
+    return e.type === 'ArrayExpression' && (e as any)._optimised === true;
+}
+
+function isOptimisedBinaryExpression(e: Expression): e is OptimisedBinaryExpression {
+    return e.type === 'BinaryExpression' && (e as any)._optimised === true;
+}
+
+function extractBinaryExpressions(e: BinaryExpression, expressions?: Expression[]): Expression[] {
+    expressions ||= [];
+
+    if (e.left.type === 'BinaryExpression') {
+        extractBinaryExpressions(e.left, expressions);
+    } else {
+        expressions.push(e.left);
+    }
+
+    if (e.right.type === 'BinaryExpression') {
+        extractBinaryExpressions(e.right, expressions);
+    } else {
+        expressions.push(e.right);
+    }
+
+    return expressions;
 }
 
 /**
@@ -191,7 +742,7 @@ function extractChildrenFromObjectExpressionProperties(props: Array<Property | S
  * _jsx("div", Object.assign({ id: "123" }, { children: "Test" }), void 0)
  * -> _jsx.createElement("div", {id: "123"}, "Test"}
  *
- * _jsx("div", Object.assign({ id: "123" }, { children: _jsx("b", { children: "strong" }, void 0) }), void 0);
+ * _jsx("div", Object.assign({ id: "123" }, { children: _jsx('b", { children: "strong' }, void 0) }), void 0);
  * -> _jsx.createElement("div", {id: "123"}, _jsx.createElement("b", {}, "strong"))
  */
 function convertNodeToCreateElement(node: Expression): Expression {
@@ -264,13 +815,7 @@ export function optimizeJSX(code: string): string {
 
     replace(tree, (node: any) => {
         if (isESMJSXCall(node) || isCjsJSXCall(node)) {
-            try {
-                return optimizeNode(convertNodeToCreateElement(node));
-            } catch (error) {
-                console.log('failed optimize template node', error);
-                console.log('node:', node);
-                return node;
-            }
+            return optimizeNode(convertNodeToCreateElement(node), true);
         }
         return node;
     });
@@ -284,13 +829,7 @@ export function convertJsxCodeToCreateElement(code: string): string {
     replace(tree, (node: any) => {
 
         if (isESMJSXCall(node) || isCjsJSXCall(node)) {
-            try {
-                return convertNodeToCreateElement(node);
-            } catch (error) {
-                console.log('failed optimize template node', error);
-                console.log('node:', node);
-                return node;
-            }
+            return convertNodeToCreateElement(node);
         }
         return node;
     });

@@ -51,7 +51,7 @@ import {
 } from '../model';
 import { rpcEncodeError, RpcMessage } from '../protocol';
 import { RpcMessageBuilder } from './kernel';
-import { RpcKernelSecurity, SessionState } from './security';
+import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security';
 import { BasicInjector } from '@deepkit/injector';
 
 export type ActionTypes = {
@@ -96,7 +96,7 @@ export class RpcServerAction {
     } = {};
 
     constructor(
-        protected controllers: Map<string, ClassType>,
+        protected controllers: Map<string, {controller: ClassType, context: number}>,
         protected injector: BasicInjector,
         protected security: RpcKernelSecurity,
         protected sessionState: SessionState,
@@ -132,6 +132,10 @@ export class RpcServerAction {
         }
     }
 
+    protected async hasControllerAccess(controllerAccess: RpcControllerAccess): Promise<boolean> {
+        return await this.security.hasControllerAccess(this.sessionState.getSession(), controllerAccess);
+    }
+
     protected async loadTypes(controller: string, method: string): Promise<ActionTypes> {
         const cacheId = controller + '!' + method;
         let types = this.cachedActionsTypes[cacheId];
@@ -141,25 +145,29 @@ export class RpcServerAction {
         if (!classType) {
             throw new Error(`No controller registered for id ${controller}`);
         }
-        const action = getActions(classType).get(method);
+        const action = getActions(classType.controller).get(method);
 
         if (!action) {
             throw new Error(`Action unknown ${method}`);
         }
 
-        if (!await this.security.hasControllerAccess(this.sessionState.getSession(), action)) {
+        const controllerAccess: RpcControllerAccess = {
+            controllerName: controller, actionName: method, controllerClassType: classType.controller,
+            actionGroups: action.groups, actionData: action.data
+        };
+
+        if (!await this.hasControllerAccess(controllerAccess)) {
             throw new Error(`Access denied to action ${method}`);
         }
 
-
-        const parameters = getActionParameters(classType, method);
+        const parameters = getActionParameters(classType.controller, method);
 
         const argSchema = createClassSchema();
         for (let i = 0; i < parameters.length; i++) {
             argSchema.registerProperty(parameters[i]);
         }
 
-        let resultProperty = getClassSchema(classType).getMethod(method).clone();
+        let resultProperty = getClassSchema(classType.controller).getMethod(method).clone();
 
         if (resultProperty.classType) {
             const generic = resultProperty.templateArgs[0];
@@ -298,7 +306,7 @@ export class RpcServerAction {
         const types = await this.loadTypes(body.controller, body.method);
         const value = message.parseBody(types.parameterSchema);
 
-        const controller = this.injector.get(classType);
+        const controller = this.injector.getInjector(classType.context).get(classType.controller);
         const converted = types.parametersDeserialize(value.args);
         const errors = types.parametersValidate(converted);
 
@@ -388,7 +396,7 @@ export class RpcServerAction {
                 };
 
             } else if (isObservable(result)) {
-                this.observables[message.id] = { observable: result, subscriptions: {}, types, classType, method: body.method };
+                this.observables[message.id] = { observable: result, subscriptions: {}, types, classType: classType.controller, method: body.method };
 
                 let type: ActionObservableTypes = ActionObservableTypes.observable;
                 if (isSubject(result)) {

@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { getClassSchema, jsonSerializer, PartialField, PropertySchema, t, validateMethodArgs } from '../index';
+import { entity, getClassSchema, jsonSerializer, PartialField, PropertySchema, t, uuid, validateMethodArgs } from '../index';
 
 test('Basic array', () => {
     class Other {
@@ -673,4 +673,36 @@ test('set array result', () => {
         expect(prop.type).toBe('any');
         expect(prop.isArray).toBe(false);
     }
+});
+
+
+test('base class with constructor', () => {
+    class UserBase  {
+        @t.primary.uuid
+        id: string = uuid();
+
+        @t
+        version: number = 1;
+
+        constructor(@t public name: string) {
+        }
+    }
+
+    @entity.name('test_test')
+    class User extends UserBase {
+        @t
+        connections: number = 0;
+    }
+
+
+    const newProperty = new PropertySchema('v');
+    newProperty.setFromJSValue(new User('asd'));
+
+    const schema = getClassSchema(User);
+
+    expect(schema.getProperty('name').type).toBe('string');
+    const args = schema.getMethodProperties('constructor');
+    expect(args[0] === schema.getProperty('name')).toBe(true);
+    expect(args[0].name).toBe('name');
+    expect(args[0].type).toBe('string');
 });

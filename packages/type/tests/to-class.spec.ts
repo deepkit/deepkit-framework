@@ -2,7 +2,19 @@ import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { CollectionWrapper, now, Plan, SimpleModel, StringCollectionWrapper, SubModel } from './entities';
 import { isExcluded } from '../src/mapper';
-import { cloneClass, getClassSchema, getPropertyClassToXFunction, getPropertyXtoClassFunction, jsonSerializer, OnLoad, resolvePropertySchema, t, uuid, validate } from '../index';
+import {
+    cloneClass,
+    getClassSchema,
+    getPropertyClassToXFunction,
+    getPropertyXtoClassFunction,
+    getXToClassFunction,
+    jsonSerializer,
+    OnLoad,
+    resolvePropertySchema,
+    t,
+    uuid,
+    validate
+} from '../index';
 import { ClassWithUnmetParent, DocumentClass } from './document-scenario/DocumentClass';
 import { PageClass } from './document-scenario/PageClass';
 import { getEnumLabels, getEnumValues, getValidEnumValue, isValidEnumValue } from '@deepkit/core';
@@ -831,18 +843,22 @@ test('enums arrays', () => {
     }).toThrow('Invalid ENUM given in property');
 
     expect(jsonSerializer.for(Model).deserialize({
+        enum1: 0,
         enum2: 2
     }).enum2).toEqual([]);
 
     expect(validate(Model, {
-        enum1: [1]
+        enum1: [1],
+        enum2: ['z'],
     })).toEqual([]);
 
     expect(validate(Model, {
-        enum2: ['z']
+        enum1: [0],
+        enum2: ['z'],
     })).toEqual([]);
 
     expect(validate(Model, {
+        enum1: [0],
         enum2: ['nope']
     })).toEqual([
         { code: 'invalid_enum', message: 'Invalid enum value received. Allowed: z,x', path: 'enum2.0' }
@@ -892,9 +908,61 @@ test('nullable container', () => {
 });
 
 test('property number to string', () => {
-    expect(getPropertyXtoClassFunction(t.string.buildPropertySchema(), jsonSerializer)("1")).toBe("1");
-    expect(getPropertyXtoClassFunction(t.string.buildPropertySchema(), jsonSerializer)(1)).toBe("1");
+    expect(getPropertyXtoClassFunction(t.string.buildPropertySchema(), jsonSerializer)('1')).toBe('1');
+    expect(getPropertyXtoClassFunction(t.string.buildPropertySchema(), jsonSerializer)(1)).toBe('1');
 
-    expect(getPropertyClassToXFunction(t.string.buildPropertySchema(), jsonSerializer)("1")).toBe("1");
-    expect(getPropertyClassToXFunction(t.string.buildPropertySchema(), jsonSerializer)(1)).toBe("1");
+    expect(getPropertyClassToXFunction(t.string.buildPropertySchema(), jsonSerializer)('1')).toBe('1');
+    expect(getPropertyClassToXFunction(t.string.buildPropertySchema(), jsonSerializer)(1)).toBe('1');
+});
+
+
+test('undefined|null triggers default value', () => {
+    const schema = t.schema({
+        v: t.string.default('default')
+    });
+
+    const converter = getXToClassFunction(schema, jsonSerializer);
+
+    expect(converter({}).v).toBe('default');
+    expect(converter({ v: undefined }).v).toBe('default');
+    expect(converter({ v: null }).v).toBe('default');
+    expect(converter({ v: 'asd' }).v).toBe('asd');
+});
+
+test('class undefined|null triggers default value', () => {
+    class Model {
+        @t v: string = 'default';
+    }
+    const converter = getXToClassFunction(getClassSchema(Model), jsonSerializer);
+
+    expect(converter({}).v).toBe('default');
+    expect(converter({ v: undefined }).v).toBe('default');
+    expect(converter({ v: null }).v).toBe('default');
+    expect(converter({ v: 'asd' }).v).toBe('asd');
+});
+
+test('undefined|null triggers optional default value', () => {
+    const schema = t.schema({
+        v: t.string.optional.default('default')
+    });
+
+    const converter = getXToClassFunction(schema, jsonSerializer);
+
+    expect(converter({}).v).toBe('default');
+    expect(converter({ v: undefined }).v).toBe('default');
+    expect(converter({ v: null }).v).toBe('default');
+    expect(converter({ v: 'asd' }).v).toBe('asd');
+});
+
+test('undefined triggers default value for nullable', () => {
+    const schema = t.schema({
+        v: t.string.nullable.default('default')
+    });
+
+    const converter = getXToClassFunction(schema, jsonSerializer);
+
+    expect(converter({}).v).toBe('default');
+    expect(converter({ v: undefined }).v).toBe('default');
+    expect(converter({ v: null }).v).toBe(null);
+    expect(converter({ v: 'asd' }).v).toBe('asd');
 });

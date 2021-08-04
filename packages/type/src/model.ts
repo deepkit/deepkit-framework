@@ -225,11 +225,10 @@ export class PropertySchema {
 
     /**
      * Returns true when `undefined` or a missing value is allowed.
-     * This is now only true when `optional` is set, but alos when type is `any`,
-     * or when the property has an actual default value (then a undefined value sets the default value instead).
+     * This is now only true when `optional` is set, but also when type is `any`.
      */
-    public isUndefinedAllowed(): boolean {
-        return this.isOptional || this.type === 'any' || this.hasManualDefaultValue() || this.hasDefaultValue;
+    get isActualOptional(): boolean {
+        return this.isOptional || this.type === 'any';
     }
 
     type: Types = 'any';
@@ -967,8 +966,10 @@ export class ClassSchema<T = any> {
         s.methodProperties = new Map();
         for (const [i, properties] of this.methodProperties.entries()) {
             const obj: PropertySchema[] = [];
-            for (const v of properties) {
-                obj.push(s.propertiesMap.get(v.name) || v.clone());
+            //properties can have holes
+            for (let i = 0; i < properties.length; i++) {
+                if (!properties[i]) continue;
+                obj[i] = (s.propertiesMap.get(properties[i].name) || properties[i].clone());
             }
             s.methodProperties.set(i, obj);
         }
@@ -1244,6 +1245,17 @@ export class ClassSchema<T = any> {
 
     protected initializeMethod(name: string) {
         if (!this.initializedMethods.has(name)) {
+            if (name === 'constructor' && this.superClass) {
+                const properties = this.superClass.getMethodProperties(name);
+                const obj: PropertySchema[] = [];
+
+                this.methodProperties.set(name, obj);
+
+                for (let i =0; i < properties.length; i++) {
+                    obj[i] = (this.propertiesMap.get(properties[i].name) || properties[i].clone());
+                }
+            }
+
             if (name !== 'constructor' && (!Reflect.getMetadata || !Reflect.hasMetadata('design:returntype', this.classType.prototype, name))) {
                 throw new Error(`Method ${this.getClassPropertyName(name)} has no decorators used or is not defined, so reflection does not work. Use @t on the method or arguments. Is emitDecoratorMetadata enabled? Correctly 'reflect-metadata' imported? Return type annotated?`);
             }
@@ -1264,6 +1276,8 @@ export class ClassSchema<T = any> {
             const names = extractParameters(this.classType.prototype[name]);
 
             for (const [i, t] of eachPair(paramtypes)) {
+                if (names[i] && names[i].startsWith('...')) continue;
+
                 if (!properties[i]) {
                     properties[i] = new PropertySchema(names[i] || String(i));
                     properties[i].methodName = name;

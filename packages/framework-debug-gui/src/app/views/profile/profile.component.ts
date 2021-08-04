@@ -1,187 +1,223 @@
-import { Component, ElementRef, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ControllerClient } from '../../client';
-import { decodeFrames } from '@deepkit/framework-debug-api';
-import { Application, Container, Graphics, Sprite, Text, TextStyle, Texture } from 'pixi.js';
-import { FrameCategory, FrameEnd, FrameStart, FrameType } from '@deepkit/stopwatch';
+import { decodeFrameData, decodeFrames } from '@deepkit/framework-debug-api';
+import { Application, Container, Graphics, InteractionEvent, Rectangle, Text, TextStyle } from 'pixi.js';
+import { FrameCategory, FrameEnd, FrameStart } from '@deepkit/stopwatch';
 import * as Hammer from 'hammerjs';
+import { formatTime, FrameItem, FrameParser } from './frame';
+import { FrameContainer } from './frame-container';
+import { Subject } from 'rxjs';
 
 class ViewState {
     scrollX: number = 0;
     zoom: number = 20;
     width: number = 500;
+    height: number = 100;
     scrollWidth: number = 1;
 }
 
-export const frameColors: {[type in FrameCategory]: {border: number, bg: number}} = {
-    [FrameCategory.none]: {border: 0x73AB77, bg: 0x497A4C},
-    [FrameCategory.cli]: {border: 0x73AB77, bg: 0x497A4C},
-    [FrameCategory.database]: {border: 0x737DAB, bg: 0x49497A},
-    [FrameCategory.email]: {border: 0x73AB77, bg: 0x497A4C},
-    [FrameCategory.event]: {border: 0x73AB77, bg: 0x497A4C},
-    [FrameCategory.function]: {border: 0x73AB77, bg: 0x497A4C},
-    [FrameCategory.http]: {border: 0x7392AB, bg: 0x496C7A},
-    [FrameCategory.job]: {border: 0x73AB77, bg: 0x497A4C},
-    [FrameCategory.lock]: {border: 0x73AB77, bg: 0x497A4C},
-    [FrameCategory.rpc]: {border: 0x73AB77, bg: 0x497A4C},
-    [FrameCategory.template]: {border: 0xAF9C42, bg: 0x8D7522},
-    [FrameCategory.workflow]: {border: 0x73AB77, bg: 0x497A4C},
-};
-
-function formatTime(microseconds: number): string {
-    if (microseconds === 0) return '0';
-    if (Math.abs(microseconds) < 1_000) return parseFloat(microseconds.toFixed(1)) + 'µs';
-    if (Math.abs(microseconds) < 1_000_000) return parseFloat((microseconds / 1000).toFixed(1)) + 'ms';
-    return parseFloat((microseconds / 1000 / 1000).toFixed(1)) + 's';
-}
-
-class FrameContainer extends Container {
-    protected rectangle: Graphics;
-    mask: Sprite;
-
-    protected textStyle = {
-        fontSize: 12,
-        fill: 0xffffff
-    };
-
-    constructor(
-        public frame: { id: number, category: FrameCategory, context: number, y: number, label: string, x: number, took: number },
-        public offset: number,
-        public viewState: ViewState,
-    ) {
-        super();
-        this.rectangle = new Graphics();
-        this.drawBg();
-
-        const text = new Text(frame.label, this.textStyle);
-        text.y = 3.5;
-        text.x = 3.5;
-        this.updatePosition();
-        this.addChild(this.rectangle, text);
-
-        this.interactive = true;
-
-        let hoverMenu: Container | undefined;
-
-        this.addListener('mouseover', (event) => {
-            if (hoverMenu) return;
-
-            hoverMenu = new Container();
-            const message = new Text(this.frame.label, this.textStyle);
-            hoverMenu.addChild(message);
-
-            hoverMenu.x = event.data.global.x;
-            hoverMenu.y = event.data.global.y;
-            this.parent.addChild(hoverMenu);
-        });
-
-        this.addListener('mousemove', (event) => {
-            if (!hoverMenu) return;
-            hoverMenu.x = event.data.global.x;
-            hoverMenu.y = event.data.global.y;
-        });
-
-        this.addListener('mouseout', (event) => {
-            if (!hoverMenu) return;
-            this.parent.removeChild(hoverMenu);
-            hoverMenu = undefined;
-        });
-
-        this.mask = new Sprite(Texture.WHITE);
-        this.mask.width = this.width;
-        this.mask.height = this.height;
-        this.addChild(this.mask);
-    }
-
-    get frameWidth(): number {
-        return this.frame.took / this.viewState.zoom;
-    }
-
-    protected updatePosition() {
-        const x = (this.frame.x - this.offset - this.viewState.scrollX) / this.viewState.zoom;
-        this.x = x + .5;
-        this.y = (this.frame.y * 25) + 0.5;
-    }
-
-    protected drawBg() {
-        this.rectangle.clear();
-        this.rectangle.beginFill(frameColors[this.frame.category].bg);
-        this.rectangle.lineStyle(1, frameColors[this.frame.category].border);
-        this.rectangle.drawRect(0, 0, this.frameWidth, 20);
-        this.rectangle.endFill();
-    }
-
-    update() {
-        this.updatePosition();
-        this.drawBg();
-        this.mask.width = this.frameWidth;
-        this.mask.height = 20;
-    }
+interface FrameData {
+    id: number;
+    worker: number;
+    data: Uint8Array;
 }
 
 class ProfilerContainer extends Container {
     protected headerLines = new Graphics();
+    protected selectedLines = new Graphics();
     protected headerText = new Container();
     protected frameContainer = new Container();
-    protected containers: FrameContainer[] = [];
     protected offsetText: Text;
     protected textStyle = { fontSize: 12, fill: 0xdddddd } as TextStyle;
 
-    protected offsetX: number = 0; //where the first frame starts. We place all boxes accordingly, so `0` starts here.
+    protected hoverMenu?: Container;
 
-    constructor(public viewState: ViewState) {
+    public selected?: FrameItem;
+
+    public ignoreNextClick: boolean = false;
+    protected inactiveAlpha = 0.6;
+
+    protected parserSub = this.parser.subscribe(this.onUpdate.bind(this));
+
+    constructor(
+        public parser: FrameParser,
+        public viewState: ViewState,
+        public onSelect: (frame?: FrameItem) => void,
+    ) {
         super();
         this.addChild(this.headerLines);
         this.addChild(this.headerText);
         this.addChild(this.frameContainer);
+        this.addChild(this.selectedLines);
         this.offsetText = new Text('0', this.textStyle);
         this.addChild(this.offsetText);
         this.offsetText.x = 0;
         this.offsetText.y = 13;
 
+        this.hitArea = new Rectangle(0, 0, this.viewState.width, this.viewState.height);
+
+        this.interactive = true;
+        this.on('click', () => {
+            if (this.ignoreNextClick) {
+                this.ignoreNextClick = false;
+                return;
+            }
+            this.setSelected(undefined);
+        });
+
         this.frameContainer.y = 15;
     }
 
-    addFrames(frames: (FrameStart | FrameEnd)[]) {
-        const framesMap: { id: number, context: number, category: FrameCategory, y: number, label: string, x: number, took: number }[] = [];
-        const contextMap: { y: number }[] = [];
+    onUpdate(create: FrameItem[], update: FrameItem[], remove: FrameItem[]) {
+        // console.log('create', create, remove);
+        for (const item of remove) {
+            if (!item.container) continue;
+            this.frameContainer.removeChild(item.container);
+            item.container = undefined;
+        }
 
-        for (const frame of frames) {
-            if (frame.type === FrameType.start) {
-                if (!this.offsetX) this.offsetX = frame.timestamp;
-                if (!contextMap[frame.context]) contextMap[frame.context] = { y: 0 };
-                contextMap[frame.context].y++;
-                framesMap.push({ id: frame.id, category: frame.category, context: frame.context, y: contextMap[frame.context].y, label: frame.label, x: frame.timestamp, took: 0 });
-            } else {
-                const f = framesMap[frame.id - 1];
-                if (!f || f.id !== frame.id) {
-                    throw new Error(`Frame end #${frame.id} not in framesMap`);
+        const add: FrameContainer[] = [];
+        for (const item of create) {
+            const container = item.container = new FrameContainer(item, this.parser.offsetX, this.viewState);
+
+            container.rectangle.interactive = true;
+
+            container.rectangle.addListener('click', (event) => {
+                if (this.ignoreNextClick) {
+                    //the bg click resets it
+                    return;
                 }
-                contextMap[f.context].y--;
-                f.took = frame.timestamp - f.x;
-                if (this.viewState.scrollWidth < frame.timestamp - this.offsetX) this.viewState.scrollWidth = frame.timestamp - this.offsetX;
+                event.stopPropagation();
+                this.setSelected(item);
+            });
+
+            container.rectangle.addListener('mouseover', (event) => {
+                this.onHover(container, event);
+            });
+
+            container.rectangle.addListener('mousemove', (event) => {
+                this.onHoverMove(container, event);
+            });
+
+            container.rectangle.addListener('mouseout', (event) => {
+                this.onHoverOut(container, event);
+            });
+
+
+            if (this.selected) {
+                container.rectangle.alpha = container.item.frame.id === this.selected.frame.id ? 1 : this.inactiveAlpha;
+                container.text.alpha = container.item.frame.id === this.selected.frame.id ? 1 : this.inactiveAlpha;
+            }
+
+            add.push(container);
+
+            // this.containers.push(container);
+            // console.log('children[0].item.x > item.x', children[0] ? children[0].item.frame.label : '', children[0] ? children[0].item.x : '', item.x, item.frame.label);
+            // if (children.length) {
+            //     if (children[0].item.x > item.x) {
+            //         this.frameContainer.addChildAt(container, 0);
+            //     // } else if (children[children.length-1].item.x < item.x) {
+            //     } else {
+            //         this.frameContainer.addChild(container);
+            //     }
+            // } else {
+            //     this.frameContainer.addChild(container);
+            // }
+        }
+
+        // console.log(children.map(v => v.item.frame.label));
+        if (add.length) {
+            this.frameContainer.addChild(...add);
+            this.containers.sort((a, b) => {
+                return a.item.x - b.item.x;
+            });
+        }
+        // this.updateTransform();
+    }
+
+    timestampToX(timestamp: number): number {
+        return ((timestamp - this.parser.offsetX - this.viewState.scrollX) / this.viewState.zoom);
+    }
+
+    protected setWindow() {
+        // const padding = (this.viewState.width * 0.05) * this.viewState.zoom;
+        const padding = 1;
+        const start = (this.viewState.scrollX) - padding;
+        const end = start + ((this.viewState.width) * this.viewState.zoom) + padding;
+        this.parserSub.setWindow({start, end});
+        // console.log('setWindow', start, end, this.viewState);
+    }
+
+    viewChanged() {
+        this.setWindow();
+        this.update();
+    }
+
+    addFrames(frames: (FrameStart | FrameEnd)[]) {
+        this.setWindow();
+
+        this.parser.feed(frames);
+    }
+
+    get containers(): FrameContainer[] {
+        return this.frameContainer.children as FrameContainer[];
+    }
+
+    setSelected(frame?: FrameItem) {
+        if (this.selected && this.selected === frame) {
+            this.selected = undefined;
+        } else {
+            this.selected = frame;
+        }
+
+        for (const container of this.containers) {
+            if (this.selected) {
+                container.rectangle.alpha = container.item.frame.id === this.selected.frame.id ? 1 : this.inactiveAlpha;
+                container.text.alpha = container.item.frame.id === this.selected.frame.id ? 1 : this.inactiveAlpha;
+            } else {
+                container.rectangle.alpha = 1;
+                container.text.alpha = 1;
             }
         }
+        this.renderSelectedLines();
+        this.onSelect(this.selected);
+    }
 
-        // console.log('frames', [...framesMap.values()]);
-        for (const frame of framesMap) {
-            const container = new FrameContainer(frame, this.offsetX, this.viewState);
-            this.containers.push(container);
+    protected onHover(container: FrameContainer, event: InteractionEvent) {
+        if (this.hoverMenu) return;
 
-            this.frameContainer.addChild(container);
-        }
+        this.hoverMenu = new Container();
+        const prefix = container.item.frame.category ? '[' + FrameCategory[container.item.frame.category] + '] ' : '';
+        const message = new Text(prefix + container.item.frame.label + ' (' + formatTime(container.item.took, 3) + ')', this.textStyle);
+        this.hoverMenu.addChild(message);
+
+        this.hoverMenu.x = event.data.global.x;
+        this.hoverMenu.y = event.data.global.y + 20;
+        this.addChild(this.hoverMenu);
+    }
+
+    protected onHoverMove(container: FrameContainer, event: InteractionEvent) {
+        if (!this.hoverMenu) return;
+        this.hoverMenu.x = event.data.global.x;
+        this.hoverMenu.y = event.data.global.y + 20;
+    }
+
+    protected onHoverOut(container: FrameContainer, event: InteractionEvent) {
+        if (!this.hoverMenu) return;
+        this.removeChild(this.hoverMenu);
+        this.hoverMenu = undefined;
     }
 
     forward() {
-        let lastX = this.viewState.scrollX;
+        const scrollX = this.selected ? this.selected.x - this.parser.offsetX : this.viewState.scrollX;
         for (const frame of this.frameContainer.children as FrameContainer[]) {
-            if (frame.frame.x-this.offsetX > lastX) {
-                lastX = frame.frame.x - this.offsetX;
-                break;
+            if (frame.item.x - this.parser.offsetX > scrollX) {
+                // this.viewState.scrollX = frame.frame.x - this.offsetX;
+                this.setSelected(frame.item);
+                this.update();
+                return;
             }
         }
-
-        this.viewState.scrollX = lastX;
-        this.update();
     }
 
     update() {
@@ -189,6 +225,21 @@ class ProfilerContainer extends Container {
             layer.update();
         }
         this.renderHeaderLines();
+        this.renderSelectedLines();
+        this.hitArea = new Rectangle(0, 0, this.viewState.width, this.viewState.height);
+    }
+
+    protected renderSelectedLines() {
+        this.selectedLines.clear();
+        if (this.selected) {
+            this.selectedLines.beginFill(0xeeeeee, 0.5);
+            // this.selectedLines.lineStyle(1, 0x73AB77);
+            this.selectedLines.drawRect(this.timestampToX(this.selected.x), 0, 1, this.viewState.height);
+            if (this.selected.took) {
+                this.selectedLines.drawRect(this.timestampToX(this.selected.x + this.selected.took), 0, 1, this.height);
+            }
+        }
+        this.selectedLines.endFill();
     }
 
     protected renderHeaderLines() {
@@ -236,19 +287,139 @@ class ProfilerContainer extends Container {
             <dui-button-group>
                 <dui-button textured icon="arrow_right" (click)="forward()"></dui-button>
             </dui-button-group>
+
+            <div>
+                {{profiler.parser.items.length}} frames, {{profiler.parser.rootItems.length}} contexts
+            </div>
         </dui-window-toolbar>
+
+        <!--        <div class="top-frames">-->
+
+        <!--        </div>-->
+
+        <div class="canvas" #canvas></div>
+
+        <profile-timeline [parser]="parser" (selectItem)="timelineSelect($event)"></profile-timeline>
+
+        <div class="inspector text-selection" *ngIf="selectedFrame">
+            <h3>{{selectedFrame.frame.label}}</h3>
+
+            <div style="margin-bottom: 10px;">
+                <label>Type</label>
+                {{FrameCategory[selectedFrame.frame.category]}}
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <label>y</label>
+                {{selectedFrame.y}}
+            </div>
+
+            <ng-container *ngIf="selectedFrameChildrenStats.contextStart">
+
+                <div>
+                    <label>Context</label>
+
+                    {{FrameCategory[selectedFrameChildrenStats.contextStart.frame.category]}} (#{{selectedFrameChildrenStats.contextStart.frame.context}})
+                    {{selectedFrameChildrenStats.contextStart.frame.label}}
+                </div>
+
+                <div>
+                    <label>Time from start of context</label>
+
+                    {{formatTime(selectedFrame.x - selectedFrameChildrenStats.contextStart.x, 3)}}
+                </div>
+            </ng-container>
+
+            <div>
+                <label>Total time</label>
+
+                <ng-container *ngIf="selectedFrame.took">
+                    {{formatTime(selectedFrame.took, 3)}}
+                </ng-container>
+
+                <ng-container *ngIf="!selectedFrame.took">
+                    Pending
+                </ng-container>
+            </div>
+
+            <ng-container *ngIf="selectedFrame.frame.category === FrameCategory.http">
+                <div>
+                    <label>Method</label>
+                    {{selectedFrameData.method}}
+                </div>
+                <div>
+                    <label>Client IP</label>
+                    {{selectedFrameData.clientIp}}
+                </div>
+                <div>
+                    <label>Response Status</label>
+                    {{selectedFrameData.responseStatus || 'pending'}}
+                </div>
+            </ng-container>
+
+            <ng-container *ngIf="selectedFrame.frame.category === FrameCategory.database">
+                <div>
+                    <label>Entity</label>
+                    {{selectedFrameData.className}}
+                </div>
+
+                <div style="padding: 10px 0;">
+                    <label class="header">SQL</label>
+                    <ng-container *ngFor="let item of selectedFrameChildren">
+                        <ng-container *ngIf="item.data && item.frame.category === FrameCategory.databaseQuery">
+                            <div>
+                                {{item.data.sql}}<br/>
+                                {{item.data.sqlParams|json}}
+                            </div>
+                        </ng-container>
+                    </ng-container>
+                </div>
+            </ng-container>
+
+            <ng-container *ngIf="selectedFrame.frame.category === FrameCategory.databaseQuery">
+                <div style="padding: 10px 0;">
+                    <label class="header">SQL</label>
+                    {{selectedFrameData.sql}}<br/>
+                    {{selectedFrameData.sqlParams|json}}
+                </div>
+            </ng-container>
+
+            <ng-container *ngIf="selectedFrameChildren.length">
+                <h4 style="margin-top: 10px;">Child frames ({{selectedFrameChildren.length}})</h4>
+
+                <div class="child">
+                    <label>Self time</label>
+                    <div class="bar">
+                        <div class="bg" [style.width.%]="(selectedFrame.took-selectedFrameChildrenStats.totalTime) / selectedFrame.took * 100"></div>
+                        <div class="text">
+                            {{formatTime(selectedFrame.took - selectedFrameChildrenStats.totalTime, 3)}}
+                            ({{(selectedFrame.took - selectedFrameChildrenStats.totalTime) / selectedFrame.took * 100|number:'2.2-2'}}%)
+                        </div>
+                    </div>
+                </div>
+
+                <div class="child" *ngFor="let item of selectedFrameChildren">
+                    <label>{{item.frame.label}}</label>
+                    <div class="bar">
+                        <div class="bg" [style.width.%]="item.took / selectedFrame.took * 100"></div>
+                        <div class="text">
+                            {{formatTime(item.took, 3)}}
+                            ({{item.took / selectedFrame.took * 100|number:'2.2-2'}}%)
+                        </div>
+                    </div>
+                </div>
+            </ng-container>
+            <!--            <div>-->
+            <!--                {{selectedFrameData|json}}-->
+            <!--            </div>-->
+        </div>
     `,
-    styles: [`
-        :host {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-        }
-    `]
+    styleUrls: ['./profile.component.scss']
 })
-export class ProfileComponent implements OnInit, OnDestroy {
+export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
+    FrameCategory = FrameCategory;
+    formatTime = formatTime;
+
     protected app = new Application({
         width: 500,
         height: 500,
@@ -258,47 +429,169 @@ export class ProfileComponent implements OnInit, OnDestroy {
         resolution: window.devicePixelRatio
     });
 
+    protected frameData: FrameData[] = [];
+
+    public selectedFrame?: FrameItem;
+    public selectedFrameChildrenStats: { totalTime: number, contextStart?: FrameItem } = { totalTime: 0 };
+    public selectedFrameChildren: FrameItem[] = [];
+    public selectedFrameData: { [name: string]: any } = {};
+
     protected viewState = new ViewState();
-    protected profiler = new ProfilerContainer(this.viewState);
+
+    public parser = new FrameParser();
+
+    public profiler: ProfilerContainer = new ProfilerContainer(this.parser, this.viewState, this.onSelect.bind(this));
+
+    public frameSub?: Subject<Uint8Array>;
+
+    @ViewChild('canvas', { read: ElementRef }) canvas?: ElementRef;
 
     constructor(
         protected client: ControllerClient,
-        protected host: ElementRef<HTMLElement>,
+        protected cd: ChangeDetectorRef,
     ) {
+    }
+
+    timelineSelect(item: FrameItem) {
+        this.viewState.scrollX = item.x - this.parser.offsetX;
+        this.profiler.viewChanged();
+        this.profiler.setSelected(item);
+        this.profiler.update();
+    }
+
+    onSelect(item?: FrameItem) {
+        this.selectedFrame = item;
+        this.selectedFrameData = {};
+
+        if (item) {
+            for (const data of this.frameData) {
+                if (data.id === item.frame.id && data.worker === item.frame.worker) {
+                    Object.assign(this.selectedFrameData, data.data);
+                }
+            }
+            this.selectedFrameChildren = [];
+
+            const map: { [id: number]: FrameItem } = {};
+            const end = item.x + item.took;
+
+            this.selectedFrameChildrenStats.totalTime = 0;
+            this.selectedFrameChildrenStats.contextStart = undefined;
+
+            let contextStartFound: boolean = false;
+            const targetY = item.y + 1;
+
+            for (const child of this.profiler.parser.items) {
+                if (!child) continue;
+
+                if (!contextStartFound && child.frame.context === item.frame.context && child.frame.worker === item.frame.worker) {
+                    contextStartFound = true;
+                    this.selectedFrameChildrenStats.contextStart = child;
+                }
+
+                if (child.frame.context === item.frame.context
+                    && child.frame.worker === item.frame.worker && child.x > item.x && child.x < end && child.y === targetY) {
+
+                    this.selectedFrameChildrenStats.totalTime += child.took;
+                    this.selectedFrameChildren.push(child);
+
+                    for (const data of this.frameData) {
+                        if (data.id === child.frame.id && data.worker === item.frame.worker) {
+                            if (!child.data) child.data = {};
+                            Object.assign(child.data, data.data);
+                        }
+                    }
+                }
+            }
+        }
+        // console.log('selectedFrameChildren', this.selectedFrameChildren);
+        this.cd.detectChanges();
     }
 
     ngOnDestroy() {
         this.app.destroy(true);
+        if (this.frameSub) this.frameSub.unsubscribe();
     }
 
     forward() {
-        this.profiler.forward();
+        //todo: use this.topLevelFrames
+        // console.log('this.viewState', this.viewState);
+        for (const frame of this.profiler.parser.rootItems) {
+            if (this.selectedFrame && frame.x <= this.selectedFrame.x) continue;
+            if (frame.x > this.viewState.scrollX) {
+                this.viewState.scrollX = frame.x - this.parser.offsetX;
+                this.profiler.viewChanged();
+                this.profiler.setSelected(frame);
+                this.profiler.update();
+                return;
+            }
+        }
+        // this.profiler.forward();
     }
 
     @HostListener('window:resize')
     onResize() {
-        // this.app.renderer.resize(this.host.nativeElement.clientWidth, this.host.nativeElement.clientHeight);
-        // this.viewState.width = this.host.nativeElement.clientWidth;
-        // this.profiler.update();
+        if (!this.canvas) return;
+
+        this.app.renderer.resize(this.canvas.nativeElement.clientWidth, this.canvas.nativeElement.clientHeight);
+        this.viewState.width = this.canvas.nativeElement.clientWidth;
+        this.viewState.height = this.canvas.nativeElement.clientHeight;
+        this.profiler.update();
+    }
+
+    async ngAfterViewInit() {
+        this.createCanvas();
+        await this.loadFrames();
+        this.cd.detectChanges();
     }
 
     async ngOnInit() {
+    }
+
+    protected async loadFrames() {
+
+        console.time('download');
+        const framesBuffer = await this.client.debug.getProfilerFrames();
+        const dataBuffer = await this.client.debug.getProfilerFrameData();
+        console.timeEnd('download');
+
+        console.time('parse');
+        const frames = decodeFrames(framesBuffer);
+        this.frameData = decodeFrameData(dataBuffer);
+        console.timeEnd('parse');
+
+        // console.log('this.frames', frames);
+        // console.log('this.frameData', this.frameData);
+
+        //todo: implement automatic slicing based on offsetX
+        // load frameData depending on the selected frames
+        // this.profiler.addFrames(this.frames);
+        console.time('addFrames');
+        this.profiler.addFrames(frames);
+        console.timeEnd('addFrames');
+        this.profiler.update();
+
+        const frameSub = this.frameSub = await this.client.debug.subscribeStopwatch();
+        frameSub.subscribe((next) => {
+            console.log('got frames', next, decodeFrames(next));
+            this.profiler.addFrames(decodeFrames(next));
+            this.profiler.update();
+        });
+    }
+
+    protected createCanvas() {
         // The application will create a canvas element for you that you
         // can then insert into the DOM.
-        this.host.nativeElement.appendChild(this.app.view);
+        if (!this.canvas) return;
+
+        this.canvas.nativeElement.appendChild(this.app.view);
         this.app.renderer.view.style.position = 'absolute';
         this.app.renderer.view.style.display = 'block';
         this.app.renderer.view.style.width = '100%';
         this.app.renderer.view.style.height = '100%';
-        this.app.renderer.resize(this.host.nativeElement.clientWidth, this.host.nativeElement.clientHeight);
+        this.app.renderer.resize(this.canvas.nativeElement.clientWidth, this.canvas.nativeElement.clientHeight);
 
-        const buffer = await this.client.debug.getProfilerFrames();
-        const frames = decodeFrames(buffer);
-
-        this.viewState.width = this.host.nativeElement.clientWidth;
-        //todo: implement automatic slicing based on offsetX
-        this.profiler.addFrames(frames.slice(0, 100));
-        this.profiler.update();
+        this.viewState.width = this.canvas.nativeElement.clientWidth;
+        this.viewState.height = this.canvas.nativeElement.clientHeight;
 
         this.app.stage.addChild(this.profiler);
 
@@ -308,11 +601,16 @@ export class ProfileComponent implements OnInit, OnDestroy {
         let offsetXStart = 0;
         mc.on('panstart', () => {
             offsetXStart = this.viewState.scrollX;
+            this.profiler.ignoreNextClick = true;
+        });
+        mc.on('panend', () => {
+            offsetXStart = this.viewState.scrollX;
         });
 
         mc.on('pan', (ev) => {
+            if (ev.deltaX === 0) return;
             this.viewState.scrollX = offsetXStart - (ev.deltaX * this.viewState.zoom);
-            this.profiler.update();
+            this.profiler.viewChanged();
         });
 
         this.app.renderer.view.addEventListener('wheel', (event) => {
@@ -323,8 +621,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
             this.viewState.scrollX -= (eventOffsetX) * this.viewState.zoom * (ratio - 1);
             this.viewState.zoom = newZoom;
 
-            this.profiler.update();
+            this.profiler.viewChanged();
         });
     }
-
 }

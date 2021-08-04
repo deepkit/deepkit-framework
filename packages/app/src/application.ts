@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, isArray } from '@deepkit/core';
-import { ServiceContainer } from './service-container';
+import { ClassType, isArray, isFunction, isObject, setPathValue } from '@deepkit/core';
+import { ConfigLoader, ServiceContainer } from './service-container';
 import { ProviderWithScope } from '@deepkit/injector';
 import { AppModule, ModuleConfigOfOptions, ModuleOptions } from './module';
 import { Command, Config, Options } from '@oclif/config';
@@ -17,7 +17,69 @@ import { basename, relative } from 'path';
 import { Main } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { buildOclifCommand } from './command';
+import { ClassSchema } from '@deepkit/type';
 import { EnvConfiguration } from './configuration';
+
+export function setPartialConfig(target: { [name: string]: any }, partial: { [name: string]: any }, incomingPath: string = '') {
+    for (const i in partial) {
+        const path = (incomingPath ? incomingPath + '.' : '') + i;
+        if (isObject(partial[i])) {
+            setPartialConfig(target, partial[i], path);
+        } else {
+            setPathValue(target, path, partial[i]);
+        }
+    }
+}
+
+type EnvNamingStrategy = 'same' | 'upper' | 'lower' | ((name: string) => string | 'same' | 'upper' | 'lower' | undefined);
+
+function camelToUpperCase(str: string) {
+    return str.replace(/[A-Z]+/g, (letter: string) => `_${letter.toUpperCase()}`).toUpperCase();
+}
+function camelToLowerCase(str: string) {
+    return str.replace(/[A-Z]+/g, (letter: string) => `_${letter.toLowerCase()}`).toLowerCase();
+}
+
+function parseEnv(
+    config: { [name: string]: any },
+    prefix: string,
+    schema: ClassSchema,
+    incomingDotPath: string,
+    incomingEnvPath: string,
+    namingStrategy: EnvNamingStrategy,
+    envContainer: { [name: string]: any }
+) {
+    for (const property of schema.getProperties()) {
+        const strategy = isFunction(namingStrategy) ? namingStrategy(property.name) || 'same' : namingStrategy;
+        let name = property.name;
+        if (strategy === 'upper') {
+            name = camelToUpperCase(property.name);
+        } else if (strategy === 'lower') {
+            name = camelToLowerCase(property.name);
+        } else if (strategy !== 'same') {
+            name = strategy;
+        }
+
+        if (property.type === 'class') {
+            parseEnv(
+                config,
+                prefix,
+                property.getResolvedClassSchema(),
+                (incomingDotPath ? incomingDotPath + '.' : '') + property.name,
+                (incomingEnvPath ? incomingEnvPath + '_' : '') + name,
+                namingStrategy,
+                envContainer
+            );
+        } else {
+            const dotPath = (incomingDotPath ? incomingDotPath + '.' : '') + property.name;
+            const envName = prefix + (incomingEnvPath ? incomingEnvPath + '_' : '') + name;
+
+            if (envContainer[envName] === undefined) continue;
+
+            setPathValue(config, dotPath, envContainer[envName]);
+        }
+    }
+}
 
 export class CommandApplication<T extends ModuleOptions, C extends ServiceContainer<T> = ServiceContainer<T>> {
     constructor(
@@ -30,6 +92,11 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
 
     setup(...args: Parameters<this['appModule']['setup']>): this {
         this.serviceContainer.appModule = (this.serviceContainer.appModule.setup as any)(...args as any[]);
+        return this;
+    }
+
+    addConfigLoader(loader: ConfigLoader): this {
+        this.serviceContainer.addConfigLoader(loader);
         return this;
     }
 
@@ -61,8 +128,9 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
         this.serviceContainer.appModule.setConfig(appConfig);
 
         for (const i in moduleConfigs) {
-            const module = this.serviceContainer.getRootInjectorContext().getModule(i);
-            module.setConfig(moduleConfigs[i]);
+            for (const module of this.serviceContainer.getModulesForName(i)) {
+                module.setConfig(moduleConfigs[i]);
+            }
         }
 
         return this;
@@ -78,14 +146,19 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
      *
      * `path` can be an array of paths. First existing path is picked.
      */
-    loadConfigFromEnvFile(path: string | string[]): this {
-        const envConfiguration = new EnvConfiguration();
-        const paths = isArray(path) ? path : [path];
-        for (const path of paths) {
-            if (envConfiguration.loadEnvFile(path)) break;
-        }
+    loadConfigFromEnvFile(path: string | string[], namingStrategy: EnvNamingStrategy = 'same'): this {
+        this.addConfigLoader({
+            load(moduleName: string, config: { [p: string]: any }, schema: ClassSchema) {
+                const envConfiguration = new EnvConfiguration();
+                const paths = isArray(path) ? path : [path];
+                for (const path of paths) {
+                    if (envConfiguration.loadEnvFile(path)) break;
+                }
+                const all = envConfiguration.getAll() as any;
 
-        this.configure(envConfiguration.getAll() as any);
+                parseEnv(config, '', schema, '', moduleName, namingStrategy, all);
+            }
+        });
 
         return this;
     }
@@ -100,33 +173,12 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
      *
      * Application.run().loadConfigFromEnvVariables('APP_').run();
      */
-    loadConfigFromEnvVariables(prefix: string = 'APP_'): this {
-        const appConfig: any = {};
-        const moduleConfigs: { [name: string]: any } = {};
-
-        for (const i in process.env) {
-            if (!i.startsWith(prefix)) continue;
-            let name = i.substr(prefix.length);
-            const separator = name.indexOf('_');
-            let module = '';
-            if (separator > 0) {
-                module = name.substr(0, separator);
-                name = name.substr(separator + 1);
+    loadConfigFromEnvVariables(prefix: string = 'APP_', namingStrategy: EnvNamingStrategy = 'same'): this {
+        this.addConfigLoader({
+            load(moduleName: string, config: { [p: string]: any }, schema: ClassSchema) {
+                parseEnv(config, prefix, schema, '', moduleName, namingStrategy, process.env);
             }
-            if (module) {
-                if (!moduleConfigs[module]) moduleConfigs[module] = {};
-                moduleConfigs[module][name] = process.env[i];
-            } else {
-                appConfig[name] = process.env[i];
-            }
-        }
-
-        this.serviceContainer.appModule.setConfig(appConfig);
-
-        for (const i in moduleConfigs) {
-            const module = this.serviceContainer.getRootInjectorContext().getModule(i);
-            module.setConfig(moduleConfigs[i]);
-        }
+        });
         return this;
     }
 
@@ -135,21 +187,24 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
      *
      * Example:
      *
-     * APP_CONFIG={"databaseUrl": "mongodb://localhost/mydb", "moduleA": {"foo": "bar"}}
+     * APP_CONFIG={'databaseUrl": "mongodb://localhost/mydb", "moduleA": {"foo": "bar'}}
      *
      * Application.run().loadConfigFromEnvVariable('APP_CONFIG').run();
      */
     loadConfigFromEnvVariable(variableName: string = 'APP_CONFIG'): this {
         if (!process.env[variableName]) return this;
 
-        let config = {};
-        try {
-            config = JSON.parse(process.env[variableName] || '');
-        } catch (error) {
-            throw new Error(`Invalid JSON in env variable ${variableName}. Parse error: ${error}`);
-        }
+        this.addConfigLoader({
+            load(moduleName: string, config: { [p: string]: any }, schema: ClassSchema) {
+                try {
+                    const jsonConfig = JSON.parse(process.env[variableName] || '');
 
-        this.configure(config as any);
+                    setPartialConfig(config, moduleName ? jsonConfig[moduleName] : jsonConfig);
+                } catch (error) {
+                    throw new Error(`Invalid JSON in env variable ${variableName}. Parse error: ${error}`);
+                }
+            }
+        });
         return this;
     }
 
@@ -213,8 +268,8 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
 
         try {
             const config = new MyConfig({ root: __dirname });
-            for (const [name, controller] of this.serviceContainer.cliControllers.controllers.entries()) {
-                config.commandsMap[name] = buildOclifCommand(controller, this.serviceContainer.getRootInjectorContext());
+            for (const [name, info] of this.serviceContainer.cliControllers.controllers.entries()) {
+                config.commandsMap[name] = buildOclifCommand(name, info.controller, this.serviceContainer.getRootInjectorContext().createChildScope('cli').getInjector(info.context.id));
             }
 
             await Main.run(argv, config);

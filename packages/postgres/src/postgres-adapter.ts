@@ -27,16 +27,19 @@ import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, Prop
 import type { Pool, PoolClient, PoolConfig } from 'pg';
 import pg from 'pg';
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
+import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
 export class PostgresStatement extends SQLStatement {
     protected released = false;
 
-    constructor(protected logger: DatabaseLogger, protected sql: string, protected client: PoolClient) {
+    constructor(protected logger: DatabaseLogger, protected sql: string, protected client: PoolClient, protected stopwatch?: Stopwatch) {
         super();
     }
 
     async get(params: any[] = []) {
+        const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
+            if (frame) frame.data({sql: this.sql, sqlParams: params});
             //postgres driver does not maintain error.stack when they throw errors, so
             //we have to manually convert it using asyncOperation.
             const res = await asyncOperation<any>((resolve, reject) => {
@@ -46,11 +49,15 @@ export class PostgresStatement extends SQLStatement {
         } catch (error) {
             this.logger.failedQuery(error, this.sql, params);
             throw error;
+        } finally {
+            if (frame) frame.end();
         }
     }
 
     async all(params: any[] = []) {
+        const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
+            if (frame) frame.data({sql: this.sql, sqlParams: params});
             //postgres driver does not maintain error.stack when they throw errors, so
             //we have to manually convert it using asyncOperation.
             const res = await asyncOperation<any>((resolve, reject) => {
@@ -60,6 +67,8 @@ export class PostgresStatement extends SQLStatement {
         } catch (error) {
             this.logger.failedQuery(error, this.sql, params);
             throw error;
+        } finally {
+            if (frame) frame.end();
         }
     }
 
@@ -74,18 +83,21 @@ export class PostgresConnection extends SQLConnection {
     constructor(
         connectionPool: PostgresConnectionPool,
         public connection: PoolClient,
-        transaction?: DatabaseTransaction,
         logger?: DatabaseLogger,
+        transaction?: DatabaseTransaction,
+        stopwatch?: Stopwatch,
     ) {
-        super(connectionPool, transaction, logger);
+        super(connectionPool, logger, transaction, stopwatch);
     }
 
     async prepare(sql: string) {
-        return new PostgresStatement(this.logger, sql, this.connection);
+        return new PostgresStatement(this.logger, sql, this.connection, this.stopwatch);
     }
 
     async run(sql: string, params: any[] = []) {
+        const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
+            if (frame) frame.data({sql, sqlParams: params});
             //postgres driver does not maintain error.stack when they throw errors, so
             //we have to manually convert it using asyncOperation.
             const res = await asyncOperation<any>((resolve, reject) => {
@@ -97,6 +109,8 @@ export class PostgresConnection extends SQLConnection {
         } catch (error) {
             this.logger.failedQuery(error, sql, params);
             throw error;
+        } finally {
+            if (frame) frame.end();
         }
     }
 
@@ -160,7 +174,7 @@ export class PostgresConnectionPool extends SQLConnectionPool {
         super();
     }
 
-    async getConnection(logger?: DatabaseLogger, transaction?: PostgresDatabaseTransaction): Promise<PostgresConnection> {
+    async getConnection(logger?: DatabaseLogger, transaction?: PostgresDatabaseTransaction, stopwatch?: Stopwatch): Promise<PostgresConnection> {
         //when a transaction object is given, it means we make the connection sticky exclusively to that transaction
         //and only release the connection when the transaction is commit/rollback is executed.
 
@@ -168,7 +182,7 @@ export class PostgresConnectionPool extends SQLConnectionPool {
 
         const poolClient = await this.pool.connect();
         this.activeConnections++;
-        const connection = new PostgresConnection(this, poolClient, transaction, logger);
+        const connection = new PostgresConnection(this, poolClient, logger, transaction, stopwatch);
         if (transaction) {
             transaction.connection = connection;
             try {
@@ -395,7 +409,7 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
         const tableName = this.platform.getTableIdentifier(this.classSchema);
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
         try {
             const sql = `
                 WITH _ AS (${select.sql})
@@ -494,7 +508,7 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
             RETURNING ${returningSelect.join(', ')}
         `;
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
         try {
             const result = await connection.execAndReturnAll(sql, selectSQL.params);
 

@@ -158,7 +158,7 @@ test('basic configured', () => {
     }
 });
 
-test('config inheritance', () => {
+test('config inheritance 1', () => {
     const appModule = new AppModule({
         providers: [
             MyService,
@@ -170,7 +170,7 @@ test('config inheritance', () => {
         config: appModuleConfig,
     });
 
-    expect(() => appModule.getImports()[0].getConfig()).toThrow(
+    expect(() => new ServiceContainer(appModule).process()).toThrow(
         'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(required): Required value is undefined'
     );
 
@@ -179,7 +179,7 @@ test('config inheritance', () => {
 });
 
 
-test('config inheritance', () => {
+test('config inheritance 2', () => {
     const appModule = new AppModule({
         providers: [
             MyService,
@@ -191,7 +191,7 @@ test('config inheritance', () => {
         config: appModuleConfig,
     });
 
-    expect(() => appModule.getImports()[0].getConfig()).toThrow(
+    expect(() => new ServiceContainer(appModule).process()).toThrow(
         'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(required): Required value is undefined'
     );
 

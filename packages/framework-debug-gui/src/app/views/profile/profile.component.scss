@@ -1,0 +1,78 @@
+:host {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.top-frames {
+    border: 1px solid red;
+    height: 50px;
+}
+
+.canvas {
+    flex: 1;
+    background-color: #222;
+}
+
+profile-timeline {
+    border-top: 1px solid #555;
+    flex: 0 0 100px;
+}
+
+.inspector {
+    position: absolute;
+    overflow: auto;
+    overflow: overflow;
+
+    right: 0;
+    bottom: 100px;
+    top: 35px;
+    width: 350px;
+    background: rgba(64, 64, 64, 0.86);
+
+    color: white;
+    padding: 16px;
+    font-size: 12px;
+
+    label {
+        color: #ADADAD;
+
+        &.header {
+            display: block;
+        }
+
+        &:not(.header)::after {
+            content: ':';
+        }
+    }
+
+    .child {
+        display: flex;
+        max-width: 300px;
+        margin: 2px 0;
+        label {
+            flex: 1;
+        }
+        .bar {
+            flex: 0 0 50%;
+            position: relative;
+            text-align: right;
+            .bg {
+                position: absolute;
+                height: 14px;
+                border-radius: 2px;
+                top: 2px;
+                background-color: #909C08;
+            }
+
+            .text {
+                position: relative;
+            }
+        }
+    }
+}

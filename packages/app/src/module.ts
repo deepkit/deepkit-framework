@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ExtractClassDefinition, JSONPartial, jsonSerializer, PlainSchemaProps, t, ValidationFailed } from '@deepkit/type';
+import { ExtractClassDefinition, JSONPartial, jsonSerializer, PlainSchemaProps, t } from '@deepkit/type';
 import { ConfigDefinition, InjectorModule, InjectToken, ProviderWithScope } from '@deepkit/injector';
 import { ClassType, CustomError } from '@deepkit/core';
 import { EventListener } from '@deepkit/event';
@@ -143,6 +143,8 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
     public parent?: AppModule<any, any>;
     protected configLoaded: boolean = false;
 
+    public setupConfigs: ((module: AppModule<T, NAME>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void)[] = [];
+
     constructor(
         public options: T,
         /**
@@ -232,6 +234,11 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
         return;
     }
 
+    clearConfig(): void {
+        this.config = {} as any;
+        this.configLoaded = false;
+    }
+
     getConfig(): ExtractConfigOfDefinition<DefaultObject<T['config']>> {
         if (this.configLoaded) return this.config;
         const config: any = {};
@@ -243,16 +250,8 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
             config[option.name] = this.getConfigOption(path);
         }
 
-        try {
-            Object.assign(this.config, jsonSerializer.for(this.options.config.schema).validatedDeserialize(config));
-            return this.config;
-        } catch (e) {
-            if (e instanceof ValidationFailed) {
-                const errorsMessage = e.errors.map(v => v.toString(this.getName())).join(', ');
-                throw new ConfigurationInvalidError(`Configuration for module ${this.getName() || 'root'} is invalid. Make sure the module is correctly configured. Error: ` + errorsMessage);
-            }
-            throw e;
-        }
+        Object.assign(this.config, jsonSerializer.for(this.options.config.schema).partialDeserialize(config));
+        return this.config;
     }
 
     setParent(module: AppModule<any, any>) {
@@ -264,6 +263,7 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
         m.root = this.root;
         m.parent = this.parent;
         m.setupProviderRegistry = this.setupProviderRegistry.clone();
+        m.setupConfigs = this.setupConfigs.slice(0);
 
         const imports = m.getImports();
         const exports = m.getExports();
@@ -278,6 +278,17 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
 
     getName(): NAME {
         return this.name;
+    }
+
+    /**
+     * Allows to change the module config before `setup` and bootstrap is called. This is the last step right before the config is validated.
+     *
+     * Returns a new forked module of this with the changes applied.
+     */
+    setupConfig(callback: (module: AppModule<T, any>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void): AppModule<T, NAME> {
+        const m = this.clone();
+        m.setupConfigs.push(callback);
+        return m;
     }
 
     /**

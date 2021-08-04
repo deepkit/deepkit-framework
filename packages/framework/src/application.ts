@@ -32,4 +32,8 @@ export class Application<T extends ModuleOptions> extends CommandApplication<T> 
             return new Application(new AppModule(mod) as any);
         }
     }
+
+    run(argv?: any[]): Promise<void> {
+        return super.run(argv);
+    }
 }

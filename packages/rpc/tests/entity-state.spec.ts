@@ -7,7 +7,7 @@ import { EntitySubjectStore } from '../src/client/entity-state';
 import { rpc } from '../src/decorators';
 import { RpcConnectionWriter, RpcKernel, RpcKernelConnection } from '../src/server/kernel';
 import { ClassType } from '@deepkit/core';
-import { Injector } from '@deepkit/injector';
+import { BasicInjector } from '@deepkit/injector';
 
 test('EntitySubjectStore multi', () => {
     class MyModel {
@@ -15,7 +15,8 @@ test('EntitySubjectStore multi', () => {
 
         constructor(
             @t public id: number = 0
-        ) { }
+        ) {
+        }
     }
 
     const store = new EntitySubjectStore(getClassSchema(MyModel));
@@ -64,7 +65,8 @@ test('controller', async () => {
 
         constructor(
             @t public id: number
-        ) { }
+        ) {
+        }
     }
 
     class Controller {
@@ -106,8 +108,11 @@ test('controller', async () => {
             const injector = {
                 get(classType: ClassType) {
                     return new classType(connection);
+                },
+                getInjector(contextId: number): BasicInjector {
+                    return this;
                 }
-            } as Injector;
+            } as BasicInjector;
             connection = new RpcKernelConnection(writer, this.connections, this.controllers, this.security, injector || this.injector, this.peerExchange);
             return connection;
         }

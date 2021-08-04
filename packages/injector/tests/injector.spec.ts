@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { t } from '@deepkit/type';
+import { getClassSchema, t } from '@deepkit/type';
 import 'reflect-metadata';
-import { CircularDependencyError, createConfig, inject, injectable, Injector, InjectorContext } from '../src/injector';
+import { CircularDependencyError, createConfig, inject, injectable, InjectOptions, Injector, InjectorContext } from '../src/injector';
 import { InjectorModule } from '../src/module';
 
 export const a = 'asd';
@@ -358,4 +358,41 @@ test('injector fork', () => {
     const s2 = i2.get(MyService);
     expect(s2).toBeInstanceOf(MyService);
     expect(s2).not.toBe(s1);
+});
+
+test('constructor one with @inject', () => {
+    class HttpKernel {
+    }
+
+    class Logger {
+    }
+
+    class Stopwatch {
+    }
+
+    @injectable()
+    class MyService {
+        constructor(
+            protected httpKernel: HttpKernel,
+            public logger: Logger,
+            @inject().optional protected stopwatch?: Stopwatch,
+        ) {
+        }
+    }
+
+    class SubService extends MyService {
+
+    }
+
+    {
+        const schema = getClassSchema(SubService);
+        const methods = schema.getMethodProperties('constructor');
+        expect(methods.length).toBe(3);
+
+        expect(methods[0].name).toBe('httpKernel');
+        expect(methods[1].name).toBe('logger');
+        expect(methods[2].name).toBe('stopwatch');
+
+        expect((methods[2].data['deepkit/inject'] as InjectOptions).optional).toBe(true);
+    }
 });

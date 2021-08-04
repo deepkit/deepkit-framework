@@ -1,0 +1,20 @@
+:host {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.controls {
+    display: flex;
+    align-items: center;
+    flex: 0 0 30px;
+    padding-bottom: 2px;
+    > * {
+        margin-left: 6px;
+    }
+}
+
+.canvas {
+    flex: 1;
+    background-color: #222;
+}

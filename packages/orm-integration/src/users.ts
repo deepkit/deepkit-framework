@@ -75,6 +75,7 @@ export const usersTests = {
         }
 
         {
+            const q = database.query(User).select('username', 'groups');
             const users = await database.query(User).select('username', 'groups').joinWith('groups').find();
             expect(users.length).toBe(2);
             expect(getObjectKeysSize(users[0])).toBe(3);

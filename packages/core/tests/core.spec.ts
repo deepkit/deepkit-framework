@@ -8,6 +8,7 @@ import {
     getObjectKeysSize,
     getPathValue,
     isArray,
+    isAsyncFunction,
     isClass,
     isClassInstance,
     isConstructable,
@@ -105,6 +106,25 @@ test('helper isFunction', () => {
     expect(isFunction(async () => { })).toBe(true);
     expect(isFunction(function () { })).toBe(true);
     expect(isFunction(async function () { })).toBe(true);
+});
+
+test('helper isAsyncFunction', () => {
+    expect(isAsyncFunction([])).toBe(false);
+    expect(isAsyncFunction(false)).toBe(false);
+    expect(isAsyncFunction(true)).toBe(false);
+    expect(isAsyncFunction(null)).toBe(false);
+    expect(isAsyncFunction(undefined)).toBe(false);
+    expect(isAsyncFunction(1)).toBe(false);
+    expect(isAsyncFunction('1')).toBe(false);
+    expect(isAsyncFunction({})).toBe(false);
+    expect(isAsyncFunction(new Date())).toBe(false);
+    expect(isAsyncFunction(new SimpleClass('asd'))).toBe(false);
+
+    expect(isAsyncFunction(isFunction)).toBe(false);
+    expect(isAsyncFunction(() => { })).toBe(false);
+    expect(isAsyncFunction(async () => { })).toBe(true);
+    expect(isAsyncFunction(function () { })).toBe(false);
+    expect(isAsyncFunction(async function () { })).toBe(true);
 });
 
 test('helper isClass', () => {
@@ -375,7 +395,7 @@ test('isClassInstance', async () => {
     }
 
     class Base {}
-    
+
     class Model2 extends Base {
         id: number = 0;
 
