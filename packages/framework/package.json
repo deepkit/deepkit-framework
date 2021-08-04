@@ -44,8 +44,7 @@
     "@deepkit/type": "^1.0.1-alpha.13",
     "@deepkit/workflow": "^1.0.1-alpha.13",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "~6.6.0",
-    "ws": "^7.4.2"
+    "rxjs": "~6.6.0"
   },
   "dependencies": {
     "@deepkit/framework-debug-api": "^1.0.1-alpha.41",
@@ -66,7 +65,8 @@
     "mime-types": "^2.1.27",
     "pirates": "^4.0.1",
     "selfsigned": "1.10.8",
-    "sift": "^7.0.1"
+    "sift": "^7.0.1",
+    "ws": "^7.4.2"
   },
   "devDependencies": {
     "@deepkit/app": "^1.0.1-alpha.41",
