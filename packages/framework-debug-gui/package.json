@@ -16,15 +16,8 @@
   "files": [
     "dist"
   ],
-  "browser": {
-    "fs": false,
-    "path": false,
-    "cluster": false,
-    "async_hooks": false,
-    "perf_hooks": false,
-    "@deepkit/logger": false
-  },
   "devDependencies": {
+    "@angular-builders/custom-webpack": "^12.1.0",
     "@angular-devkit/build-angular": "~12.1.1",
     "@angular/animations": "~12.1.1",
     "@angular/cdk": "~12.1.1",
