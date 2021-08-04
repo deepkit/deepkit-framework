@@ -53,14 +53,9 @@ export interface WebServerOptions {
     keepAliveTimeout?: number;
 
     /**
-     * When external server should be used. If this is set, all other options except for wsServerFactory are ignored.
+     * When external server should be used. If this is set, all other options are ignored.
      */
     server?: Server;
-
-    /**
-     * When external webSocket server should be used. If this is set, the factory function will be used with the http server instance in options
-     */
-    wsServerFactory?: (options: Pick<WebSocketServerOptions, 'server'>) => WebSocketServer;
 
     /**
      * Enables HTTPS.
@@ -88,17 +83,27 @@ export interface WebServerOptions {
 }
 
 @injectable()
+export class WebSocketServerFactory {
+    create(options: WebSocketServerOptions): WebSocketServer {
+        const ws = require('ws');
+        const { Server }: { Server: { new(options: WebSocketServerOptions): WebSocketServer } } = ws;
+        return new Server(options);
+      }
+}
+
+@injectable()
 export class WebWorkerFactory {
     constructor(
         protected httpKernel: HttpKernel,
         public logger: Logger,
         protected rpcControllers: RpcControllers,
         protected rootScopedContext: InjectorContext,
+        protected webSocketServerFactory: WebSocketServerFactory,
     ) {
     }
 
     create(id: number, options: WebServerOptions): WebWorker {
-        return new WebWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options);
+        return new WebWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options, this.webSocketServerFactory);
     }
 
     createRpcKernel() {
@@ -115,7 +120,7 @@ export class WebWorkerFactory {
 
 export class WebMemoryWorkerFactory extends WebWorkerFactory {
     create(id: number, options: WebServerOptions): WebMemoryWorker {
-        return new WebMemoryWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options);
+        return new WebMemoryWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options, this.webSocketServerFactory);
     }
 }
 
@@ -152,24 +157,15 @@ export class WebWorker {
         public rpcKernel: RpcKernel,
         protected rootScopedContext: InjectorContext,
         protected options: WebServerOptions,
+        private webSocketServerFactory: WebSocketServerFactory,
     ) {
-    }
-
-    private createWebSocketServer(options: WebSocketServerOptions): WebSocketServer {
-        if (this.options.wsServerFactory) {
-            return this.options.wsServerFactory(options);
-        } else {
-            const ws = require('ws');
-            const { Server }: { Server: { new(options: WebSocketServerOptions): WebSocketServer } } = ws;
-            return new Server(options);
-        }
     }
 
     start() {
         if (this.options.server) {
             this.server = this.options.server as Server;
             this.server.on('request', this.httpKernel.handleRequest.bind(this.httpKernel));
-            this.wsServer = this.createWebSocketServer({ server: this.server });
+            this.wsServer = this.webSocketServerFactory.create({ server: this.server });
             this.wsServer.on('connection', this.onWsConnection.bind(this));
         } else {
             if (this.options.ssl) {
@@ -206,7 +202,7 @@ export class WebWorker {
                 this.servers.listen(this.options.httpsPort || this.options.port, this.options.host);
                 if (this.options.keepAliveTimeout) this.servers.keepAliveTimeout = this.options.keepAliveTimeout;
 
-                this.wssServer = this.createWebSocketServer({ server: this.servers });
+                this.wssServer = this.webSocketServerFactory.create({ server: this.servers });
                 this.wssServer.on('connection', this.onWsConnection.bind(this));
             }
 
@@ -218,7 +214,7 @@ export class WebWorker {
                 );
                 if (this.options.keepAliveTimeout) this.server.keepAliveTimeout = this.options.keepAliveTimeout;
                 this.server.listen(this.options.port, this.options.host);
-                this.wsServer = this.createWebSocketServer({ server: this.server });
+                this.wsServer = this.webSocketServerFactory.create({ server: this.server });
                 this.wsServer.on('connection', this.onWsConnection.bind(this));
             }
         }

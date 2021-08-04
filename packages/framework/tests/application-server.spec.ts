@@ -8,14 +8,15 @@ import { createTestingApp } from '../src/testing';
 import { ApplicationServer } from '../src/application-server';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { KernelModule } from '../src/kernel';
-import { WebWorker } from '../src/worker';
+import { WebSocketServerFactory, WebWorker } from '../src/worker';
 
 jest.mock('ws', () => {
     const on = jest.fn();
+    const Server = jest.fn(() => ({
+        on,
+    }));
     return {
-        Server: jest.fn(() => ({
-            on,
-        })),
+        Server,
     };
 });
 
@@ -27,6 +28,7 @@ jest.mock('http', () => ({
         close: jest.fn(),
     })),
 }));
+
 
 describe('application-server', () => {
     afterEach(() => {
@@ -140,32 +142,35 @@ describe('application-server', () => {
         })
     })
 
-    describe('wsServerFactory', () => {
-        test('used when .wsServerFactory specified', async () => {
+    describe('WebServerFactory', () => {
+        test('should use custom implementation when provided', async () => {
             const onMock = jest.fn();
-            const wsServerFactoryMock = jest.fn(() => ({
+            const wsServerMock = {
                 on: onMock,
-            }));
+            };
+
+            const wsServerFactoryMock = {
+                create: jest.fn(() => wsServerMock)
+            };
 
             @rpc.controller('test')
-            class MyController {
-                constructor() {
-                }
-            }
+            class MyController {}
+
             const appModule = new AppModule({
                 controllers: [MyController],
-                imports: [
-                    KernelModule.configure({
-                        wsServerFactory: wsServerFactoryMock,
-                    })
-                ]
+                providers: [
+                    {
+                        provide: WebSocketServerFactory,
+                        useValue: wsServerFactoryMock,
+                    }
+                ],
             });
 
             const app = new Application(appModule);
             const applicationServer = app.get(ApplicationServer);
             await applicationServer.start();
 
-            expect(wsServerFactoryMock).toHaveBeenCalledTimes(1);
+            expect(wsServerFactoryMock.create).toHaveBeenCalledTimes(1);
             expect(onMock).toHaveBeenCalledTimes(1);
             expect(require('ws').Server).not.toHaveBeenCalled();
             expect((new (require('ws').Server)()).on).not.toHaveBeenCalled();
@@ -173,31 +178,18 @@ describe('application-server', () => {
             await applicationServer.close();
         });
 
-        test('not used when not specified', async () => {
-            const onMock = jest.fn();
-            const wsServerFactoryMock = jest.fn(() => ({
-                on: onMock,
-            }));
-
+        test('should use default implementation via ws when not specified', async () => {
             @rpc.controller('test')
-            class MyController {
-                constructor() {
-                }
-            }
+            class MyController {}
+
             const appModule = new AppModule({
                 controllers: [MyController],
-                imports: [
-                    KernelModule.configure({
-                    })
-                ]
             });
 
             const app = new Application(appModule);
             const applicationServer = app.get(ApplicationServer);
             await applicationServer.start();
 
-            expect(wsServerFactoryMock).not.toHaveBeenCalled();
-            expect(onMock).not.toHaveBeenCalled();
             expect(require('ws').Server).toHaveBeenCalledTimes(1);
             expect((new (require('ws').Server)()).on).toHaveBeenCalledTimes(1);
 

@@ -25,7 +25,7 @@ import { InjectorContext, injectorReference } from '@deepkit/injector';
 import { kernelConfig } from './kernel.config';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { SessionHandler } from './session';
-import { WebWorkerFactory } from './worker';
+import { WebSocketServerFactory, WebWorkerFactory } from './worker';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { OrmBrowserController } from './orm-browser/controller';
 import { DatabaseListener } from './database/database-listener';
@@ -45,6 +45,7 @@ export const KernelModule = new AppModule({
         Router,
         HttpKernel,
         WebWorkerFactory,
+        WebSocketServerFactory,
         ConsoleTransport,
         Stopwatch,
         Logger,

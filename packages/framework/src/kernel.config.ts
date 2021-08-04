@@ -27,7 +27,6 @@ export const kernelConfig = new AppModuleConfig({
     sslCa: t.string.optional.description('A file path to a ca file for https'),
     sslCrl: t.string.optional.description('A file path to a crl file for https'),
     server: t.any, //todo: change to t.classType(Server)
-    wsServerFactory: t.any, //todo: change to t.classType(WebSocketServer)
     maxPayload: t.number.optional,
     publicDir: t.string.optional.description('A path to a folder that should be served per default. Relative to cwd.'),
     debug: t.boolean.default(false),

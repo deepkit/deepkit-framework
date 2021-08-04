@@ -75,7 +75,7 @@ export const onServerMainShutdown = new EventToken('server.main.shutdown', Serve
  */
 export const onServerWorkerShutdown = new EventToken('server.worker.shutdown', ServerBootstrapEvent);
 
-class ApplicationServerConfig extends kernelConfig.slice(['server', 'wsServerFactory', 'port', 'host', 'httpsPort',
+class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'host', 'httpsPort',
     'ssl', 'sslKey', 'sslCertificate', 'sslCa', 'sslCrl',
     'varPath', 'selfSigned', 'keepAliveTimeout', 'workers', 'publicDir']) {
 }
