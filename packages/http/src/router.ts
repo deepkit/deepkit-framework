@@ -324,7 +324,10 @@ export interface RouteParameterResolverContext {
 }
 
 function filterMiddlewaresForRoute(middlewareRawConfigs: MiddlewareRegistryEntry[], routeConfig: RouteConfig, fullPath: string) {
-    const middlewareConfigs = routeConfig.middlewares.filter((v) => {
+    const middlewares = middlewareRawConfigs.slice(0);
+    middlewares.push(...routeConfig.middlewares);
+
+    const middlewareConfigs = middlewares.filter((v) => {
         if (!(v.config instanceof HttpMiddlewareConfig)) return false;
 
         if (v.config.controllers.length && !v.config.controllers.includes(routeConfig.action.controller)) {
