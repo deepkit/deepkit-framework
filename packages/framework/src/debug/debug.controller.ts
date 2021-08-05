@@ -20,6 +20,7 @@ import { join } from 'path';
 import { kernelConfig } from '../kernel.config';
 import { FileStopwatchStore } from './stopwatch/store';
 import { Subject } from 'rxjs';
+import { unlink } from 'fs/promises';
 
 class DebugConfig extends kernelConfig.slice(['varPath', 'debugStorePath']) {
 }
@@ -38,15 +39,35 @@ export class DebugController implements DebugControllerInterface {
     }
 
     @rpc.action()
-    async subscribeStopwatch(): Promise<Subject<Uint8Array>> {
+    async subscribeStopwatchFramesData(): Promise<Subject<Uint8Array>> {
         const subject = new Subject<Uint8Array>();
-        const sub = await this.stopwatchStore.frameChannel.subscribe(() => {
-
+        const sub = await this.stopwatchStore.frameDataChannel.subscribe((v) => {
+            subject.next(v);
         });
         subject.subscribe().add(() => {
             sub.unsubscribe();
         });
         return subject;
+    }
+
+    @rpc.action()
+    async subscribeStopwatchFrames(): Promise<Subject<Uint8Array>> {
+        const subject = new Subject<Uint8Array>();
+        const sub = await this.stopwatchStore.frameChannel.subscribe((v) => {
+            subject.next(v);
+        });
+        subject.subscribe().add(() => {
+            sub.unsubscribe();
+        });
+        return subject;
+    }
+
+    @rpc.action()
+    resetProfilerFrames(): void {
+        const path = join(this.config.varPath, this.config.debugStorePath);
+
+        unlink(join(path, 'frames.bin')).catch();
+        unlink(join(path, 'frames-data.bin')).catch();
     }
 
     @rpc.action()
@@ -196,7 +217,7 @@ export class DebugController implements DebugControllerInterface {
     actions(@t.optional peter?: string): RpcAction[] {
         const result: RpcAction[] = [];
 
-        for (const {controller} of this.serviceContainer.rpcControllers.controllers.values()) {
+        for (const { controller } of this.serviceContainer.rpcControllers.controllers.values()) {
             const rpcConfig = rpcClass._fetch(controller);
             if (!rpcConfig) continue;
 

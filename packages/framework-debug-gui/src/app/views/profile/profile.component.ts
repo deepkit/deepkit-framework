@@ -7,6 +7,7 @@ import * as Hammer from 'hammerjs';
 import { formatTime, FrameItem, FrameParser } from './frame';
 import { FrameContainer } from './frame-container';
 import { Subject } from 'rxjs';
+import { ClientProgress } from '@deepkit/rpc';
 
 class ViewState {
     scrollX: number = 0;
@@ -285,11 +286,12 @@ class ProfilerContainer extends Container {
     template: `
         <dui-window-toolbar for="main">
             <dui-button-group>
-                <dui-button textured icon="arrow_right" (click)="forward()"></dui-button>
+<!--                <dui-button textured icon="arrow_right" (click)="forward()"></dui-button>-->
+                <dui-button textured icon="garbage" (click)="resetProfilerFrames()"></dui-button>
             </dui-button-group>
 
             <div>
-                {{profiler.parser.items.length}} frames, {{profiler.parser.rootItems.length}} contexts
+                {{profiler.parser.frames}} frames, {{profiler.parser.rootItems.length}} contexts
             </div>
         </dui-window-toolbar>
 
@@ -299,7 +301,7 @@ class ProfilerContainer extends Container {
 
         <div class="canvas" #canvas></div>
 
-        <profile-timeline [parser]="parser" (selectItem)="timelineSelect($event)"></profile-timeline>
+        <profile-timeline [parser]="parser" [selected]="selectedFrameChildrenStats.contextStart" (selectItem)="timelineSelect($event)"></profile-timeline>
 
         <div class="inspector text-selection" *ngIf="selectedFrame">
             <h3>{{selectedFrame.frame.label}}</h3>
@@ -443,6 +445,7 @@ export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
     public profiler: ProfilerContainer = new ProfilerContainer(this.parser, this.viewState, this.onSelect.bind(this));
 
     public frameSub?: Subject<Uint8Array>;
+    public frameDataSub?: Subject<Uint8Array>;
 
     @ViewChild('canvas', { read: ElementRef }) canvas?: ElementRef;
 
@@ -510,6 +513,7 @@ export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
     ngOnDestroy() {
         this.app.destroy(true);
         if (this.frameSub) this.frameSub.unsubscribe();
+        if (this.frameDataSub) this.frameDataSub.unsubscribe();
     }
 
     forward() {
@@ -547,11 +551,19 @@ export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
     async ngOnInit() {
     }
 
-    protected async loadFrames() {
+    async resetProfilerFrames() {
+        this.parser.reset();
+        this.frameData = [];
+        await this.client.debug.resetProfilerFrames();
+    }
 
+    protected async loadFrames() {
         console.time('download');
+
+        const trackFrames = ClientProgress.track();
         const framesBuffer = await this.client.debug.getProfilerFrames();
         const dataBuffer = await this.client.debug.getProfilerFrameData();
+
         console.timeEnd('download');
 
         console.time('parse');
@@ -562,19 +574,27 @@ export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
         // console.log('this.frames', frames);
         // console.log('this.frameData', this.frameData);
 
-        //todo: implement automatic slicing based on offsetX
-        // load frameData depending on the selected frames
-        // this.profiler.addFrames(this.frames);
         console.time('addFrames');
         this.profiler.addFrames(frames);
         console.timeEnd('addFrames');
         this.profiler.update();
 
-        const frameSub = this.frameSub = await this.client.debug.subscribeStopwatch();
+        const frameSub = this.frameSub = await this.client.debug.subscribeStopwatchFrames();
         frameSub.subscribe((next) => {
-            console.log('got frames', next, decodeFrames(next));
             this.profiler.addFrames(decodeFrames(next));
             this.profiler.update();
+        });
+
+        const frameDataSub = this.frameDataSub = await this.client.debug.subscribeStopwatchFramesData();
+        frameDataSub.subscribe((next) => {
+            const item = this.selectedFrame;
+            for (const data of decodeFrameData(next)) {
+                this.frameData.push(data);
+                if (item && data.id === item.frame.id && data.worker === item.frame.worker) {
+                    Object.assign(this.selectedFrameData, data.data);
+                }
+            }
+            this.cd.detectChanges();
         });
     }
 
@@ -621,6 +641,7 @@ export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
             this.viewState.scrollX -= (eventOffsetX) * this.viewState.zoom * (ratio - 1);
             this.viewState.zoom = newZoom;
 
+            event.preventDefault();
             this.profiler.viewChanged();
         });
     }

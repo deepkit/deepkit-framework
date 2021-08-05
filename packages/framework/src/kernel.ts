@@ -10,7 +10,7 @@
 
 import { ClassType, ProcessLocker } from '@deepkit/core';
 import { DebugRequest } from '@deepkit/framework-debug-api';
-import fs from 'fs-extra';
+import { mkdirSync } from 'fs';
 import { join } from 'path';
 import { ApplicationServer, ApplicationServerListener } from './application-server';
 import { BrokerModule } from './broker/broker.module';
@@ -37,6 +37,7 @@ import { DebugDebugFramesCommand } from './cli/debug-debug-frames';
 import { RpcKernelSecurity } from '@deepkit/rpc';
 import { AppConfigController } from './cli/app-config';
 import { Zone } from './zone';
+import { DebugBroker, DebugBrokerListener } from './debug/broker';
 
 export const KernelModule = new AppModule({
     config: kernelConfig,
@@ -106,16 +107,25 @@ export const KernelModule = new AppModule({
     module.setupProvider(Logger).addTransport(injectorReference(ConsoleTransport));
 
     if (config.debug) {
-        fs.ensureDirSync(join(config.varPath, config.debugStorePath));
+        mkdirSync(join(config.varPath, config.debugStorePath), { recursive: true });
 
         Zone.enable();
 
-        module.addProvider({ provide: OrmBrowserController, deps: [DatabaseRegistry], useFactory: (registry: DatabaseRegistry) => new OrmBrowserController(registry.getDatabases()) });
+        module.addProvider({
+            provide: OrmBrowserController,
+            deps: [DatabaseRegistry],
+            useFactory: (registry: DatabaseRegistry) => new OrmBrowserController(registry.getDatabases())
+        });
         module.addController(DebugController);
         module.addController(OrmBrowserController);
         registerDebugHttpController(module, config.debugUrl);
 
         module.addProvider(FileStopwatchStore);
+
+        //we start our own broker
+        module.addListener(DebugBrokerListener);
+        module.addProvider(DebugBroker);
+
         module.addProvider({
             provide: Stopwatch,
             deps: [FileStopwatchStore],
