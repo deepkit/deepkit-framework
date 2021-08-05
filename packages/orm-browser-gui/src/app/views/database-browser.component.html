@@ -38,7 +38,7 @@
                 <div class="results-header">
                     <ng-container *ngIf="query.executed && !query.javascriptError">
                         <span class="executing-progress" *ngIf="query.progress" [class.visible]="query.loading">
-                            <dui-indicator [step]="(query.progress?.download|asyncRender)  || 0"></dui-indicator>
+                            <dui-indicator [step]="(query.progress?.download|asyncRender)?.progress || 0"></dui-indicator>
                         </span>
                         <span *ngIf="!query.loading">
                             Query time {{query.executionTime|number:'0.3-6'}} ms,
@@ -170,7 +170,7 @@
                             ({{entityState.count}} records).
                         </span>
                         <span class="executing-progress" *ngIf="entityState.progress" [class.visible]="entityState.loading">
-                            <dui-indicator [step]="(entityState.progress?.download|asyncRender)  || 0"></dui-indicator>
+                            <dui-indicator [step]="(entityState.progress.download|asyncRender)?.progress || 0"></dui-indicator>
                         </span>
                         <span *ngIf="!entityState.loading">
                             Query time {{entityState.executionTime|number:'0.3-6'}} ms,
