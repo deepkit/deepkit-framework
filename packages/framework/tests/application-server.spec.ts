@@ -9,7 +9,7 @@ import { ApplicationServer } from '../src/application-server';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { KernelModule } from '../src/kernel';
 import { RpcServer, RpcServerInterface, WebWorker } from '../src/worker';
-import { HttpRequest } from '../../http';
+import { HttpRequest } from '@deepkit/http';
 
 jest.mock('ws', () => {
     const on = jest.fn();
