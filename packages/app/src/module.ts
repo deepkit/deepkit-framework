@@ -206,7 +206,7 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
         this.options.providers.push(...provider);
     }
 
-    addListener(...listener: ClassType[]) {
+    addListener(...listener: (EventListener<any> | ClassType)[]) {
         if (!this.options.listeners) this.options.listeners = [];
 
         this.options.listeners.push(...listener);
