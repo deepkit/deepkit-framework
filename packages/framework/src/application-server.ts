@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { asyncOperation, getClassName } from '@deepkit/core';
+import { asyncOperation, getClassName, urlJoin } from '@deepkit/core';
 import { RpcClient } from '@deepkit/rpc';
 import cluster from 'cluster';
 import { HttpControllers, Router } from '@deepkit/http';
@@ -77,7 +77,8 @@ export const onServerWorkerShutdown = new EventToken('server.worker.shutdown', S
 
 class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'host', 'httpsPort',
     'ssl', 'sslKey', 'sslCertificate', 'sslCa', 'sslCrl',
-    'varPath', 'selfSigned', 'keepAliveTimeout', 'workers', 'publicDir']) {
+    'varPath', 'selfSigned', 'keepAliveTimeout', 'workers', 'publicDir',
+    'debug', 'debugUrl']) {
 }
 
 @injectable()
@@ -115,14 +116,19 @@ export class ApplicationServerListener {
         if (this.config.server) {
             this.logger.log(`Server up and running`);
         } else {
+            let url = `http://${this.config.host}:${this.config.port}`;
+
             if (this.config.ssl) {
-                this.logger.log(`HTTPS listening at https://${this.config.host}:${this.config.httpsPort || this.config.port}/`);
+                url = `https://${this.config.host}:${this.config.httpsPort || this.config.port}`;
             }
 
-            if (!this.config.ssl || (this.config.ssl && this.config.httpsPort)) {
-                this.logger.log(`HTTP listening at http://${this.config.host}:${this.config.port}/`);
+            this.logger.log(`HTTP listening at ${url}`);
+
+            if (this.config.debug) {
+                this.logger.log(`Debugger enabled at ${url}${urlJoin('/', this.config.debugUrl, '/')}`);
             }
         }
+
     }
 }
 
