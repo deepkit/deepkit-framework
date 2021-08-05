@@ -29,7 +29,7 @@ export class CliControllers {
     public readonly controllers = new Map<string, { controller: ClassType, context: Context }>();
 }
 
-type MiddlewareRegistryEntry = { config: MiddlewareConfig, module: AppModule<any> };
+export type MiddlewareRegistryEntry = { config: MiddlewareConfig, module: AppModule<any> };
 
 export class MiddlewareRegistry {
     public readonly configs: MiddlewareRegistryEntry[] = [];
