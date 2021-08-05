@@ -9,7 +9,7 @@ Application.create({
     controllers: [MainController, UsersCommand],
     imports: [
         KernelModule.configure({
-            debug: false, publicDir: 'public', httpLog: true,
+            debug: true, publicDir: 'public', httpLog: true,
             databases: [SQLiteDatabase], migrateOnStartup: true
         }),
     ]
