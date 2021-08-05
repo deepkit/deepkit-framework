@@ -273,6 +273,8 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         for (const listener of listeners) {
             if (isClass(listener)) {
                 providers.unshift({ provide: listener });
+                //listeners needs to be exported, otherwise the EventDispatcher can't instantiate them, since
+                //we do not store the injector context yet.
                 exports.unshift(listener);
                 this.eventListenerContainer.registerListener(listener, context);
             } else {
@@ -290,16 +292,18 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
 
         //if there are exported tokens, their providers will be added to the parent or root context
         //and removed from module providers.
-        const exportedProviders = forRootContext ? this.getContext(0).providers : (parentContext ? parentContext.providers : []);
-        for (const token of exports) {
-            if (token instanceof AppModule) throw new Error('Should already be handled');
+        const exportedProviders = forRootContext ? this.getContext(0).providers : parentContext ? parentContext.providers : undefined;
+        if (exportedProviders) {
+            for (const token of exports) {
+                if (token instanceof AppModule) throw new Error('Should already be handled');
 
-            const provider = providers.findIndex(v => !(v instanceof TagProvider) ? token === (isClass(v) ? v : v.provide) : false);
-            if (provider === -1) {
-                throw new Error(`Export ${tokenLabel(token)}, but not provided in providers.`);
+                const provider = providers.findIndex(v => !(v instanceof TagProvider) ? token === (isClass(v) ? v : v.provide) : false);
+                if (provider === -1) {
+                    throw new Error(`Export ${tokenLabel(token)}, but not provided in providers.`);
+                }
+                exportedProviders.push(providers[provider]);
+                providers.splice(provider, 1);
             }
-            exportedProviders.push(providers[provider]);
-            providers.splice(provider, 1);
         }
 
         context.providers.push(...providers);
