@@ -31,5 +31,5 @@ export async function main() {
         });
     });
 
-    await bench.run();
+    await bench.runAsync();
 }

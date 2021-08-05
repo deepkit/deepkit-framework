@@ -92,6 +92,7 @@ export class BenchSuite {
     }
 
     addAsync(title: string, fn: () => Promise<void>, options: any = {}) {
+        this.hasAsync = true;
         this.suite.add(title, {
             defer: true,
             maxTime: this.maxTime,
