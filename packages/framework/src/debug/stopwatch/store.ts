@@ -104,7 +104,7 @@ export class FileStopwatchStore extends StopwatchStore {
             await asyncOperation((resolve, reject) => {
                 const frameBytes = encodeFrames(frames);
                 appendFile(this.framesPath, frameBytes, (error) => {
-                    this.frameChannel.publish(frameBytes).catch(console.error);
+                    this.frameChannel.publish(frameBytes).catch(() => {});
                     if (error) reject(error); else resolve(undefined);
                 });
             });
@@ -112,7 +112,7 @@ export class FileStopwatchStore extends StopwatchStore {
             await asyncOperation((resolve, reject) => {
                 const bytes = encodeFrameData(frameData);
                 appendFile(this.framesDataPath, bytes, (error) => {
-                    this.frameDataChannel.publish(bytes).catch(console.error);
+                    this.frameDataChannel.publish(bytes).catch(() => {});
                     if (error) reject(error); else resolve(undefined);
                 });
             });
