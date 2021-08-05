@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/sql",
-  "version": "1.0.1-alpha.41",
+  "version": "1.0.1-alpha.42",
   "description": "deepkit/orm base SQL",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -34,8 +34,8 @@
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/injector": "^1.0.1-alpha.13",
     "@deepkit/logger": "^1.0.1-alpha.13",
-    "@deepkit/stopwatch": "^1.0.1-alpha.13",
     "@deepkit/orm": "^1.0.1-alpha.13",
+    "@deepkit/stopwatch": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13"
   },
   "dependencies": {
@@ -46,13 +46,13 @@
     "sqlstring-sqlite": "^0.1.1"
   },
   "devDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.41",
-    "@deepkit/core": "^1.0.1-alpha.39",
-    "@deepkit/injector": "^1.0.1-alpha.41",
-    "@deepkit/logger": "^1.0.1-alpha.41",
-    "@deepkit/stopwatch": "^1.0.1-alpha.39",
-    "@deepkit/orm": "^1.0.1-alpha.41",
-    "@deepkit/type": "^1.0.1-alpha.40",
+    "@deepkit/app": "^1.0.1-alpha.42",
+    "@deepkit/core": "^1.0.1-alpha.42",
+    "@deepkit/injector": "^1.0.1-alpha.42",
+    "@deepkit/logger": "^1.0.1-alpha.42",
+    "@deepkit/orm": "^1.0.1-alpha.42",
+    "@deepkit/stopwatch": "^1.0.1-alpha.42",
+    "@deepkit/type": "^1.0.1-alpha.42",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
