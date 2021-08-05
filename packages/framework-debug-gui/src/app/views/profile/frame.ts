@@ -84,6 +84,7 @@ class FrameSubscription {
  */
 export class FrameParser {
     public items: FrameItem[] = [];
+    public frames: number = 0;
 
     public rootItems: FrameItem[] = [];
 
@@ -94,6 +95,29 @@ export class FrameParser {
 
     protected subscriptions: FrameSubscription[] = [];
     protected rootCallbacks: ((items: FrameItem[]) => void)[] = [];
+
+    reset() {
+        const remove: FrameItem[] = [];
+        //check which to delete
+        for (const item of this.items) {
+            if (!item) continue;
+            if (!item.issued) continue;
+            remove.push(item);
+        }
+
+        this.frames = 0;
+        this.items = [];
+        this.rootItems = [];
+        this.openContexts = [];
+
+        for (const sub of this.subscriptions) {
+            sub.callback([], [], remove);
+        }
+
+        for (const cb of this.rootCallbacks) {
+            cb(this.rootItems);
+        }
+    }
 
     subscribeRoot(callback: (items: FrameItem[]) => void) {
         this.rootCallbacks.push(callback);
@@ -182,7 +206,7 @@ export class FrameParser {
     feed(frames: (FrameStart | FrameEnd)[]) {
         //todo check updated
         //todo removed: when took is set and its out of window
-        const newRoots: FrameItem[] = [];
+        let newRoots = false;
 
         for (const frame of frames) {
             if (frame.type === FrameType.start) {
@@ -207,6 +231,7 @@ export class FrameParser {
 
                 item.y = ++context.y;
                 this.items[frame.id] = item;
+                this.frames++;
                 context.items.push(item);
 
                 if (!root) {
@@ -215,7 +240,7 @@ export class FrameParser {
 
                 if (item.root) {
                     this.rootItems.push(item);
-                    newRoots.push(item);
+                    newRoots = true;
                 }
 
                 for (const sub of this.subscriptions) {
@@ -242,9 +267,9 @@ export class FrameParser {
             }
         }
 
-        if (newRoots.length) {
+        if (newRoots) {
             for (const cb of this.rootCallbacks) {
-                cb(newRoots);
+                cb(this.rootItems);
             }
         }
 

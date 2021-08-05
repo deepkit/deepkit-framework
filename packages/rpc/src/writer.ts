@@ -8,12 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject, Subscriber, Subscription, SubscriptionLike } from 'rxjs';
 import { rpcChunk, RpcTypes } from './model';
 import { createRpcMessage, readRpcMessage, RpcMessageReader } from './protocol';
 import type { RpcConnectionWriter } from './server/kernel';
 
-export class SingleProgress extends BehaviorSubject<number> {
+export class SingleProgress extends Subject<SingleProgress> {
     public done = false;
 
     public total = 0;
@@ -28,7 +28,18 @@ export class SingleProgress extends BehaviorSubject<number> {
     });
 
     constructor() {
-        super(0);
+        super();
+    }
+
+    /**
+     * Acts like a BehaviorSubject.
+     */
+    _subscribe(subscriber: Subscriber<SingleProgress>): Subscription {
+        const subscription = super._subscribe(subscriber);
+        if (subscription && !(<SubscriptionLike>subscription).closed) {
+            subscriber.next(this);
+        }
+        return subscription;
     }
 
     public setStart(total: number) {
@@ -54,7 +65,7 @@ export class SingleProgress extends BehaviorSubject<number> {
         this.current = current;
         this.done = total === current;
         this.stats++;
-        this.next(this.total > 0 ? this.current / this.total : 0);
+        this.next(this);
         if (this.done) {
             this.complete();
             if (this.triggerFinished) this.triggerFinished();
@@ -173,7 +184,7 @@ export class ClientProgress {
      * ```typescript
      *
      * ClientProgress.track();
-     * api.myMethod();
+     * await api.myMethod();
      *
      * ```
      */

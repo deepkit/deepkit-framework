@@ -26,6 +26,7 @@ import { eachPair } from './iterators';
 export class CustomError extends Error {
     public name: string;
     public stack?: string;
+
     constructor(public message: string = '') {
         super(message);
         this.name = this.constructor.name;
@@ -142,7 +143,7 @@ export function isClassInstance(target: any): boolean {
 
 /**
  * Returns a human readable string representation from the given value.
-*/
+ */
 export function stringifyValueWithType(value: any): string {
     if ('string' === typeof value) return `String(${value})`;
     if ('number' === typeof value) return `Number(${value})`;
@@ -198,7 +199,9 @@ export function isFunction(obj: any): obj is Function {
     return false;
 }
 
-const AsyncFunction = (async () => {}).constructor;
+const AsyncFunction = (async () => {
+}).constructor;
+
 /**
  * Returns true if given obj is a async function.
  *
@@ -217,8 +220,8 @@ export function isAsyncFunction(obj: any): obj is (...args: any[]) => Promise<an
  * @public
  */
 export function isPromise<T>(obj: any | Promise<T>): obj is Promise<T> {
-    return obj !== null && typeof obj === "object" && typeof obj.then === "function"
-        && typeof obj.catch === "function" && typeof obj.finally === "function";
+    return obj !== null && typeof obj === 'object' && typeof obj.then === 'function'
+        && typeof obj.catch === 'function' && typeof obj.finally === 'function';
 }
 
 /**
@@ -502,23 +505,18 @@ export function appendObject(origin: { [k: string]: any }, extend: { [k: string]
  * @public
  */
 export async function asyncOperation<T>(executor: (resolve: (value: T) => void, reject: (error: any) => void) => void | Promise<void>): Promise<T> {
-    let error: any, async: any;
     try {
-        async = await new Promise<T>(async (resolve, reject) => {
+        return await new Promise<T>(async (resolve, reject) => {
             try {
                 await executor(resolve, reject);
             } catch (e) {
                 reject(e);
             }
-        })
-    } catch (e) {
-        error = e;
-    }
-    if (error) {
+        });
+    } catch (error) {
         mergeStack(error, createStack());
         throw error;
     }
-    return async;
 }
 
 /**
@@ -537,7 +535,7 @@ export function mergePromiseStack<T>(promise: Promise<T>, stack?: string): Promi
  * @beta
  */
 export function createStack(removeCallee: boolean = true): string {
-    if (Error.stackTraceLimit === 10) Error.stackTraceLimit = 100
+    if (Error.stackTraceLimit === 10) Error.stackTraceLimit = 100;
     let stack = new Error().stack || '';
 
     /*

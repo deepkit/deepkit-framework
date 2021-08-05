@@ -111,7 +111,8 @@ export const DebugControllerInterface = ControllerSymbol<DebugControllerInterfac
 export interface DebugControllerInterface {
     configuration(): Config;
 
-    subscribeStopwatch(): Promise<Subject<Uint8Array>>;
+    subscribeStopwatchFrames(): Promise<Subject<Uint8Array>>;
+    subscribeStopwatchFramesData(): Promise<Subject<Uint8Array>>;
 
     databases(): Database[];
 
@@ -124,6 +125,8 @@ export interface DebugControllerInterface {
     getProfilerFrames(): Uint8Array;
 
     getProfilerFrameData(): Uint8Array;
+
+    resetProfilerFrames(): void;
 
     events(): Event[];
 

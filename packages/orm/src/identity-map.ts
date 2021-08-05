@@ -86,7 +86,8 @@ class InstanceState<T extends Entity> {
     constructor(public classState: ClassState<T>, public item: T) {
     }
 
-    [inspect.custom]() {
+    //we support browser environment, so there is `inspect` not available
+    [inspect ? inspect.custom : '']() {
         return `InstanceState<knownInDatabase=${this.knownInDatabase}, fromDatabase=${this.fromDatabase}>`;
     }
 

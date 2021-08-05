@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { ControllerClient } from '../../client';
 import { Application, Container, Rectangle, Text } from 'pixi.js';
 import { formatTime, FrameItem, FrameParser } from './frame';
@@ -60,6 +60,9 @@ class TimelineContainer extends Container {
 
     protected lastEnd: number = 0;
 
+    public selected?: FrameItem;
+    protected inactiveAlpha = 0.6;
+
     constructor(
         public parser: FrameParser,
         public viewState: TimelineState,
@@ -77,6 +80,11 @@ class TimelineContainer extends Container {
                 return;
             }
         });
+    }
+
+    setSelected(frame?: FrameItem) {
+        this.selected = frame;
+        this.update();
     }
 
     updateFilter() {
@@ -99,12 +107,17 @@ class TimelineContainer extends Container {
     }
 
     onNewRootItems(items: FrameItem[]) {
-        // const frameContainer: TimelineFrameContainer[] = [];
+        this.frameContainer.removeChildren();
+        this.lastEnd = 0;
+
+        if (items.length === 0) {
+            this.viewState.scrollX = 0;
+        }
+
         for (const item of items) {
             if (!this.matchesFilter(item)) continue;
             this.frameContainer.addChild(this.create(item));
         }
-        // this.frameContainer.addChild(...frameContainer);
     }
 
     protected create(item: FrameItem) {
@@ -126,8 +139,15 @@ class TimelineContainer extends Container {
     }
 
     update() {
-        for (const layer of this.containers) {
-            layer.update();
+        for (const container of this.containers) {
+            if (this.selected) {
+                container.rectangle.alpha = container.item.frame.id === this.selected.frame.id ? 1 : this.inactiveAlpha;
+                container.text.alpha = container.item.frame.id === this.selected.frame.id ? 1 : this.inactiveAlpha;
+            } else {
+                container.rectangle.alpha = 1;
+                container.text.alpha = 1;
+            }
+            container.update();
         }
         this.hitArea = new Rectangle(0, 0, this.viewState.width, this.viewState.height);
     }
@@ -152,10 +172,11 @@ class TimelineContainer extends Container {
     `,
     styleUrls: ['./timeline.component.scss']
 })
-export class ProfileTimelineComponent implements AfterViewInit {
+export class ProfileTimelineComponent implements AfterViewInit, OnChanges {
     FrameCategory = FrameCategory;
 
     @Input() parser!: FrameParser;
+    @Input() selected?: FrameItem;
     @Output() selectItem = new EventEmitter();
 
     protected app = new Application({
@@ -178,6 +199,12 @@ export class ProfileTimelineComponent implements AfterViewInit {
         protected client: ControllerClient,
         protected cd: ChangeDetectorRef,
     ) {
+    }
+
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes.selected) {
+            this.timeline?.setSelected(this.selected);
+        }
     }
 
     updateFilter() {
@@ -264,6 +291,7 @@ export class ProfileTimelineComponent implements AfterViewInit {
             this.viewState.scrollX -= (eventOffsetX) * this.viewState.zoom * (ratio - 1);
             this.viewState.zoom = newZoom;
 
+            event.preventDefault();
             this.update();
         });
     }
