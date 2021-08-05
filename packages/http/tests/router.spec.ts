@@ -29,8 +29,8 @@ test('router', async () => {
         userStatic2(id: string, id2: string) {
         }
 
-        @http.GET('/static')
-        static() {
+        @http.ANY('/any')
+        any() {
         }
     }
 
@@ -48,6 +48,21 @@ test('router', async () => {
     expect(userStatic2?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'userStatic2' });
     expect(userStatic2?.parameters!(undefined as any)).toEqual(['1233', '123']);
 });
+
+test('any', async () => {
+    class Controller {
+        @http.ANY('/any')
+        any() {
+        }
+    }
+
+    const router = Router.forControllers([Controller]);
+
+    expect((await router.resolve('GET', '/any'))!.routeConfig.action.methodName).toEqual('any');
+    expect((await router.resolve('POST', '/any'))!.routeConfig.action.methodName).toEqual('any');
+    expect((await router.resolve('OPTIONS', '/any'))!.routeConfig.action.methodName).toEqual('any');
+});
+
 
 test('router parameters', async () => {
     class Controller {
@@ -113,7 +128,7 @@ test('router parameter resolver by class', async () => {
 
     class UserResolver {
         resolve(context: RouteParameterResolverContext): any | Promise<any> {
-            const value = context.value || context.parameters.username
+            const value = context.value || context.parameters.username;
             if (!value) throw new Error('No value specified');
             return new User(value);
         }
@@ -170,7 +185,7 @@ test('router parameter resolver by name', async () => {
 
     class UserResolver {
         resolve(context: RouteParameterResolverContext): any | Promise<any> {
-            const value = context.value || context.parameters.username
+            const value = context.value || context.parameters.username;
             if (!value) {
                 throw new Error('No value specified');
             }
@@ -424,7 +439,7 @@ test('invalid route definition', async () => {
     }
 
     const httpKernel = createHttpKernel([Controller]);
-    expect(await httpKernel.handleRequestFor('GET', '/')).toEqual("Not found");
+    expect(await httpKernel.handleRequestFor('GET', '/')).toEqual('Not found');
 });
 
 
@@ -437,12 +452,12 @@ test('inject request storage ClassType', async () => {
     class Controller {
         @http.GET()
         doIt(user: User) {
-            return {isUser: user instanceof User, username: user.username};
+            return { isUser: user instanceof User, username: user.username };
         }
 
         @http.GET('optional')
         doItOptional(@inject().optional user?: User) {
-            return {isUser: user instanceof User};
+            return { isUser: user instanceof User };
         }
     }
 
@@ -456,13 +471,17 @@ test('inject request storage ClassType', async () => {
     }
 
     const httpKernel = createHttpKernel([Controller], [
-        {provide: User, scope: 'http', deps: [HttpRequest], useFactory(request: HttpRequest) {return request.store.user}}
+        {
+            provide: User, scope: 'http', deps: [HttpRequest], useFactory(request: HttpRequest) {
+                return request.store.user;
+            }
+        }
     ], [Listener]);
 
-    expect(await httpKernel.handleRequestFor('GET', '/', undefined, {authorization: 'yes'})).toEqual({isUser: true, username: 'bar'});
-    expect(await httpKernel.handleRequestFor('GET', '/', undefined, {authorization: 'no'})).toEqual("Internal error");
+    expect(await httpKernel.handleRequestFor('GET', '/', undefined, { authorization: 'yes' })).toEqual({ isUser: true, username: 'bar' });
+    expect(await httpKernel.handleRequestFor('GET', '/', undefined, { authorization: 'no' })).toEqual('Internal error');
 
-    expect(await httpKernel.handleRequestFor('GET', '/optional', undefined, {authorization: 'no'})).toEqual({isUser: false});
+    expect(await httpKernel.handleRequestFor('GET', '/optional', undefined, { authorization: 'no' })).toEqual({ isUser: false });
 });
 
 
@@ -475,7 +494,7 @@ test('inject request storage @inject', async () => {
     class Controller {
         @http.GET()
         doIt(@inject('user') user: any) {
-            return {isUser: user instanceof User, username: user.username};
+            return { isUser: user instanceof User, username: user.username };
         }
     }
 
@@ -487,7 +506,11 @@ test('inject request storage @inject', async () => {
     }
 
     const httpKernel = createHttpKernel([Controller], [
-        {provide: 'user', scope: 'http', deps: [HttpRequest], useFactory(request: HttpRequest) {return request.store.user}}
+        {
+            provide: 'user', scope: 'http', deps: [HttpRequest], useFactory(request: HttpRequest) {
+                return request.store.user;
+            }
+        }
     ], [Listener]);
 
     const result = await httpKernel.handleRequestFor('GET', '/');
@@ -512,7 +535,7 @@ test('promise serializer', async () => {
     class Controller {
         @http.GET('1')
         async anyReq1() {
-            return "test";
+            return 'test';
         }
 
         @http.GET('2')
@@ -524,8 +547,8 @@ test('promise serializer', async () => {
 
     const httpKernel = createHttpKernel([Controller]);
 
-    expect(await httpKernel.handleRequestFor('GET', '/1')).toBe("test");
-    expect(await httpKernel.handleRequestFor('GET', '/2')).toBe("1");
+    expect(await httpKernel.handleRequestFor('GET', '/1')).toBe('test');
+    expect(await httpKernel.handleRequestFor('GET', '/2')).toBe('1');
 });
 
 

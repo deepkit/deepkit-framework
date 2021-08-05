@@ -30,7 +30,7 @@ import { HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters } from './
 import { BasicInjector, injectable, InjectOptions, TagRegistry } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { HttpControllers } from './controllers';
-import { AppModule, MiddlewareRegistry } from '@deepkit/app';
+import { AppModule, MiddlewareRegistry, MiddlewareRegistryEntry } from '@deepkit/app';
 import { HttpMiddleware, HttpMiddlewareConfig } from './middleware';
 
 export type RouteParameterResolverForInjector = ((injector: BasicInjector) => any[] | Promise<any[]>);
@@ -137,7 +137,7 @@ export class RouteConfig {
 
     resolverForToken: Map<any, ClassType> = new Map();
 
-    middlewares: {config: HttpMiddlewareConfig, module: AppModule<any>}[] = [];
+    middlewares: { config: HttpMiddlewareConfig, module: AppModule<any> }[] = [];
 
     resolverForParameterName: Map<string, ClassType> = new Map();
 
@@ -323,6 +323,73 @@ export interface RouteParameterResolverContext {
     parameters: HttpRequestResolvedParameters;
 }
 
+function filterMiddlewaresForRoute(middlewareRawConfigs: MiddlewareRegistryEntry[], routeConfig: RouteConfig, fullPath: string) {
+    const middlewareConfigs = routeConfig.middlewares.filter((v) => {
+        if (!(v.config instanceof HttpMiddlewareConfig)) return false;
+
+        if (v.config.controllers.length && !v.config.controllers.includes(routeConfig.action.controller)) {
+            return false;
+        }
+
+        if (v.config.excludeControllers.length && v.config.excludeControllers.includes(routeConfig.action.controller)) {
+            return false;
+        }
+
+        if (v.config.modules.length && (!routeConfig.module || !v.config.modules.includes(routeConfig.module))) {
+            if (!routeConfig.module) return false;
+            for (const module of v.config.modules) {
+                if (routeConfig.module.name !== module.name) return false;
+            }
+        }
+
+        if (v.config.selfModule && v.module.name !== routeConfig.module?.name) return false;
+
+        if (v.config.routeNames.length) {
+            for (const name of v.config.routeNames) {
+                if (name.includes('*')) {
+                    const regex = new RegExp('^' + name.replace(/\*/g, '.*') + '$');
+                    if (!regex.test(routeConfig.name)) return false;
+                } else if (name !== routeConfig.name) {
+                    return false;
+                }
+            }
+        }
+
+        if (v.config.excludeRouteNames.length) {
+            for (const name of v.config.excludeRouteNames) {
+                if (name.includes('*')) {
+                    const regex = new RegExp('^' + name.replace(/\*/g, '.*') + '$');
+                    if (regex.test(routeConfig.name)) return false;
+                } else if (name == routeConfig.name) {
+                    return false;
+                }
+            }
+        }
+
+        for (const route of v.config.routes) {
+            if (route.httpMethod && route.httpMethod !== routeConfig.httpMethod) return false;
+
+            if (route.category && route.category !== routeConfig.category) return false;
+            if (route.excludeCategory && route.excludeCategory === routeConfig.category) return false;
+
+            if (route.group && !routeConfig.groups.includes(route.group)) return false;
+            if (route.excludeGroup && routeConfig.groups.includes(route.excludeGroup)) return false;
+
+            if (route.path || route.pathRegExp) {
+                if (!route.pathRegExp && route.path) route.pathRegExp = new RegExp('^' + route.path.replace(/\*/g, '.*') + '$');
+                if (route.pathRegExp && !route.pathRegExp.test(fullPath)) return false;
+            }
+        }
+
+        return true;
+    }).map(v => v.config) as HttpMiddlewareConfig[];
+
+    middlewareConfigs.sort((a, b) => {
+        return a.order - b.order;
+    });
+    return middlewareConfigs;
+}
+
 @injectable()
 export class Router {
     protected fn?: (request: HttpRequest) => ResolvedController | undefined;
@@ -343,16 +410,22 @@ export class Router {
         tagRegistry: TagRegistry,
         private middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry,
     ) {
-        for (const controller of controllers.controllers) this.addRouteForController(controller.controller, controller.contextId, controller.module);
+        for (const controller of controllers.controllers) {
+            this.addRouteForController(controller.controller, controller.contextId, controller.module);
+        }
     }
 
     getRoutes(): RouteConfig[] {
         return this.routes;
     }
 
-    static forControllers(controllers: (ClassType | {module: AppModule<any, any>, controller: ClassType})[], tagRegistry: TagRegistry = new TagRegistry(), middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry()): Router {
+    static forControllers(
+        controllers: (ClassType | { module: AppModule<any, any>, controller: ClassType })[],
+        tagRegistry: TagRegistry = new TagRegistry(),
+        middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry()
+    ): Router {
         return new this(new HttpControllers(controllers.map(v => {
-            return isClass(v) ? { contextId: 0, controller: v, module: new AppModule({}) } : {...v, contextId: 0};
+            return isClass(v) ? { contextId: 0, controller: v, module: new AppModule({}) } : { ...v, contextId: 0 };
         })), new Logger([], []), tagRegistry, middlewareRegistry);
     }
 
@@ -374,72 +447,7 @@ export class Router {
         let setParametersFromPath = '';
 
         const fullPath = routeConfig.getFullPath();
-        const middlewareRawConfigs = this.middlewareRegistry.configs;
-        middlewareRawConfigs.push(...routeConfig.middlewares);
-
-        const middlewareConfigs = middlewareRawConfigs.filter((v) => {
-            if (!(v.config instanceof HttpMiddlewareConfig)) return false;
-
-            if (v.config.controllers.length && !v.config.controllers.includes(routeConfig.action.controller)) {
-                return false;
-            }
-
-            if (v.config.excludeControllers.length && v.config.excludeControllers.includes(routeConfig.action.controller)) {
-                return false;
-            }
-
-            if (v.config.modules.length && (!routeConfig.module || !v.config.modules.includes(routeConfig.module))) {
-                if (!routeConfig.module) return false;
-                for (const module of v.config.modules) {
-                    if (routeConfig.module.name !== module.name) return false;
-                }
-            }
-
-            if (v.config.selfModule && v.module.name !== routeConfig.module?.name) return false;
-
-            if (v.config.routeNames.length) {
-                for (const name of v.config.routeNames) {
-                    if (name.includes('*')) {
-                        const regex = new RegExp('^' + name.replace(/\*/g, '.*') + '$');
-                        if (!regex.test(routeConfig.name)) return false;
-                    } else if (name !== routeConfig.name) {
-                        return false;
-                    }
-                }
-            }
-
-            if (v.config.excludeRouteNames.length) {
-                for (const name of v.config.excludeRouteNames) {
-                    if (name.includes('*')) {
-                        const regex = new RegExp('^' + name.replace(/\*/g, '.*') + '$');
-                        if (regex.test(routeConfig.name)) return false;
-                    } else if (name == routeConfig.name) {
-                        return false;
-                    }
-                }
-            }
-
-            for (const route of v.config.routes) {
-                if (route.httpMethod && route.httpMethod !== routeConfig.httpMethod) return false;
-
-                if (route.category && route.category !== routeConfig.category) return false;
-                if (route.excludeCategory && route.excludeCategory === routeConfig.category) return false;
-
-                if (route.group && !routeConfig.groups.includes(route.group)) return false;
-                if (route.excludeGroup && routeConfig.groups.includes(route.excludeGroup)) return false;
-
-                if (route.path || route.pathRegExp) {
-                    if (!route.pathRegExp && route.path) route.pathRegExp = new RegExp('^' + route.path.replace(/\*/g, '.*') + '$');
-                    if (route.pathRegExp && !route.pathRegExp.test(fullPath)) return false;
-                }
-            }
-
-            return true;
-        }).map(v => v.config) as HttpMiddlewareConfig[];
-
-        middlewareConfigs.sort((a, b) => {
-            return a.order - b.order;
-        })
+        const middlewareConfigs = filterMiddlewaresForRoute(this.middlewareRegistry.configs, routeConfig, fullPath);
 
         for (const parameter of parsedRoute.getParameters()) {
             if (parsedRoute.customValidationErrorHandling === parameter) {
@@ -591,9 +599,14 @@ export class Router {
             }`;
         }
 
+        //todo: handle ANY
+        const methodCheck = routeConfig.httpMethod.toLowerCase() === 'any'
+            ? ''
+            : `_method === '${routeConfig.httpMethod.toLowerCase()}' && `;
+
         return `
-            //=> ${path}
-            if (_method === '${routeConfig.httpMethod.toLowerCase()}' && ${matcher}) {
+            //=> ${routeConfig.httpMethod} ${path}
+            if (${methodCheck}${matcher}) {
                 return {routeConfig: ${routeConfigVar}, parameters: ${parameters}, uploadedFiles: uploadedFiles, middlewares: ${middlewares}};
             }
         `;
@@ -660,8 +673,12 @@ export class Router {
             routeConfig.data = new Map(action.data);
             routeConfig.baseUrl = data.baseUrl;
 
-            routeConfig.middlewares = data.middlewares.map(v => {return {config: v(), module}});
-            routeConfig.middlewares.push(...action.middlewares.map(v => {return {config: v(), module}}));
+            routeConfig.middlewares = data.middlewares.map(v => {
+                return { config: v(), module };
+            });
+            routeConfig.middlewares.push(...action.middlewares.map(v => {
+                return { config: v(), module };
+            }));
 
             for (const item of action.resolverForToken) routeConfig.resolverForToken.set(...item);
 
