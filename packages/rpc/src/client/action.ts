@@ -90,9 +90,10 @@ export class RpcActionClient {
     }
 
     public action<T>(controller: RpcControllerState, method: string, args: any[], options: { timeout?: number, dontWaitForConnection?: true } = {}) {
+        const progress = ClientProgress.getNext();
+
         return asyncOperation<any>(async (resolve, reject) => {
             try {
-                const progress = ClientProgress.getNext();
                 const types = controller.getState(method)?.types || await this.loadActionTypes(controller, method, options);
                 // console.log('client types', types.parameterSchema.getProperty('args').getResolvedClassSchema().toString(), )
 
