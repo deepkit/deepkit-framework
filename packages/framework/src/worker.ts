@@ -13,7 +13,6 @@ import http, { Server } from 'http';
 import https from 'https';
 
 import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions } from 'ws';
-import type WebSocket from 'ws';
 
 import { HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
 import { inject, injectable, Injector, InjectorContext, Provider } from '@deepkit/injector';
@@ -83,14 +82,64 @@ export interface WebServerOptions {
     selfSigned?: boolean;
 }
 
+
+export interface RpcServerListener {
+    close(): void | Promise<void>;
+}
+
+export interface RpcServerCreateConnection {
+    (writer: RpcConnectionWriter, request?: HttpRequest): RpcKernelBaseConnection;
+}
+
+export interface RpcServerOptions {
+    server?: http.Server | https.Server;
+}
+
+export interface RpcServerInterface {
+    start(options: RpcServerOptions, createRpcConnection: RpcServerCreateConnection): void;
+}
+
 @injectable()
-export class WebSocketServerFactory {
-    create(options: WebSocketServerOptions): WebSocketServer {
+export class RpcServer implements RpcServerInterface {
+    start(options: RpcServerOptions, createRpcConnection: RpcServerCreateConnection): RpcServerListener {
         const ws = require('ws');
         const { Server }: { Server: { new(options: WebSocketServerOptions): WebSocketServer } } = ws;
-        return new Server(options);
-      }
+
+        const server = new Server(options);
+
+        server.on('connection', (ws, req: HttpRequest) => {
+            const connection = createRpcConnection({
+                write(b) {
+                    ws.send(b);
+                },
+                close() {
+                    ws.close();
+                },
+                bufferedAmount(): number {
+                    return ws.bufferedAmount;
+                },
+                clientAddress(): string {
+                    return req.getRemoteAddress();
+                }
+            }, req);
+
+            ws.on('message', async (message: Uint8Array) => {
+                connection.feed(message);
+            });
+
+            ws.on('close', async () => {
+                connection.close();
+            });
+        });
+
+        return {
+            close() {
+                server.close();
+            }
+        };
+    }
 }
+
 
 @injectable()
 export class WebWorkerFactory {
@@ -99,13 +148,13 @@ export class WebWorkerFactory {
         public logger: Logger,
         protected rpcControllers: RpcControllers,
         protected rootScopedContext: InjectorContext,
-        protected webSocketServerFactory: WebSocketServerFactory,
+        protected rpcServer: RpcServer,
         @inject().optional protected stopwatch?: Stopwatch,
     ) {
     }
 
     create(id: number, options: WebServerOptions): WebWorker {
-        return new WebWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options, this.webSocketServerFactory);
+        return new WebWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options, this.rpcServer);
     }
 
     createRpcKernel() {
@@ -127,7 +176,7 @@ export class WebWorkerFactory {
 
 export class WebMemoryWorkerFactory extends WebWorkerFactory {
     create(id: number, options: WebServerOptions): WebMemoryWorker {
-        return new WebMemoryWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options, this.webSocketServerFactory);
+        return new WebMemoryWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options, this.rpcServer);
     }
 }
 
@@ -152,8 +201,7 @@ export function createRpcConnection(rootScopedContext: InjectorContext, rpcKerne
 
 @injectable()
 export class WebWorker {
-    protected wsServer?: WebSocketServer;
-    protected wssServer?: WebSocketServer;
+    protected rpcListener?: RpcServerListener;
     protected server?: http.Server | https.Server;
     protected servers?: https.Server;
 
@@ -164,7 +212,7 @@ export class WebWorker {
         public rpcKernel: RpcKernel,
         protected rootScopedContext: InjectorContext,
         protected options: WebServerOptions,
-        private webSocketServerFactory: WebSocketServerFactory,
+        private rpcServer: RpcServer,
     ) {
     }
 
@@ -172,8 +220,6 @@ export class WebWorker {
         if (this.options.server) {
             this.server = this.options.server as Server;
             this.server.on('request', this.httpKernel.handleRequest.bind(this.httpKernel));
-            this.wsServer = this.webSocketServerFactory.create({ server: this.server });
-            this.wsServer.on('connection', this.onWsConnection.bind(this));
         } else {
             if (this.options.ssl) {
                 const options = this.options.sslOptions || {};
@@ -209,8 +255,6 @@ export class WebWorker {
                 this.servers.listen(this.options.httpsPort || this.options.port, this.options.host);
                 if (this.options.keepAliveTimeout) this.servers.keepAliveTimeout = this.options.keepAliveTimeout;
 
-                this.wssServer = this.webSocketServerFactory.create({ server: this.servers });
-                this.wssServer.on('connection', this.onWsConnection.bind(this));
             }
 
             const startHttpServer = !this.servers || (this.servers && this.options.httpsPort);
@@ -221,38 +265,21 @@ export class WebWorker {
                 );
                 if (this.options.keepAliveTimeout) this.server.keepAliveTimeout = this.options.keepAliveTimeout;
                 this.server.listen(this.options.port, this.options.host);
-                this.wsServer = this.webSocketServerFactory.create({ server: this.server });
-                this.wsServer.on('connection', this.onWsConnection.bind(this));
             }
+        }
+        this.startRpc();
+    }
+
+    private startRpc() {
+        if (this.server) {
+            this.rpcListener = this.rpcServer.start({ server: this.server }, (writer: RpcConnectionWriter, request?: HttpRequest) => {
+                return createRpcConnection(this.rootScopedContext, this.rpcKernel, writer, request);
+            });
         }
     }
 
-    onWsConnection(ws: WebSocket, req: HttpRequest) {
-        const connection = createRpcConnection(this.rootScopedContext, this.rpcKernel, {
-            write(b) {
-                ws.send(b);
-            },
-            close() {
-                ws.close();
-            },
-            bufferedAmount(): number {
-                return ws.bufferedAmount;
-            },
-            clientAddress(): string {
-                return req.getRemoteAddress();
-            }
-        }, req);
-
-        ws.on('message', async (message: any) => {
-            connection.feed(message);
-        });
-
-        ws.on('close', async () => {
-            connection.close();
-        });
-    }
-
-    close() {
+    async close() {
+        if (this.rpcListener) await this.rpcListener.close();
         if (this.server) this.server.close();
         if (this.servers) this.servers.close();
     }

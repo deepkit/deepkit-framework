@@ -8,7 +8,8 @@ import { createTestingApp } from '../src/testing';
 import { ApplicationServer } from '../src/application-server';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { KernelModule } from '../src/kernel';
-import { WebSocketServerFactory, WebWorker } from '../src/worker';
+import { RpcServer, RpcServerInterface, WebWorker } from '../src/worker';
+import { HttpRequest } from '../../http';
 
 jest.mock('ws', () => {
     const on = jest.fn();
@@ -142,15 +143,25 @@ describe('application-server', () => {
         })
     })
 
-    describe('WebServerFactory', () => {
+    describe('RpcServer', () => {
         test('should use custom implementation when provided', async () => {
             const onMock = jest.fn();
             const wsServerMock = {
                 on: onMock,
             };
 
-            const wsServerFactoryMock = {
-                create: jest.fn(() => wsServerMock)
+            const rpcServerMock: RpcServerInterface = {
+                start: jest.fn((
+                    options,
+                    createRpcConnection
+                ) => wsServerMock.on('connection', (ws: any, req: HttpRequest) => {
+                    createRpcConnection({
+                        write: jest.fn(),
+                        close: jest.fn(),
+                        bufferedAmount: jest.fn(),
+                        clientAddress: jest.fn(),
+                    })
+                })),
             };
 
             @rpc.controller('test')
@@ -160,8 +171,8 @@ describe('application-server', () => {
                 controllers: [MyController],
                 providers: [
                     {
-                        provide: WebSocketServerFactory,
-                        useValue: wsServerFactoryMock,
+                        provide: RpcServer,
+                        useValue: rpcServerMock,
                     }
                 ],
             });
@@ -170,7 +181,7 @@ describe('application-server', () => {
             const applicationServer = app.get(ApplicationServer);
             await applicationServer.start();
 
-            expect(wsServerFactoryMock.create).toHaveBeenCalledTimes(1);
+            expect(rpcServerMock.start).toHaveBeenCalledTimes(1);
             expect(onMock).toHaveBeenCalledTimes(1);
             expect(require('ws').Server).not.toHaveBeenCalled();
             expect((new (require('ws').Server)()).on).not.toHaveBeenCalled();
