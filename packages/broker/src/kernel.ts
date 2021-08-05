@@ -9,8 +9,22 @@
  */
 
 import { arrayRemoveItem, ProcessLock, ProcessLocker } from '@deepkit/core';
-import { createRpcMessage, RpcKernelBaseConnection, RpcConnectionWriter, RpcMessage, RpcMessageRouteType, RpcMessageBuilder, RpcKernelConnections, RpcKernel } from '@deepkit/rpc';
-import { brokerDelete, brokerEntityFields, brokerGet, brokerIncrement, brokerLock, brokerLockId, brokerPublish, brokerResponseGet, brokerResponseIncrement, brokerResponseIsLock, brokerResponseSubscribeMessage, brokerSet, brokerSubscribe, BrokerType } from './model';
+import { createRpcMessage, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnections, RpcMessage, RpcMessageBuilder, RpcMessageRouteType } from '@deepkit/rpc';
+import {
+    brokerDelete,
+    brokerEntityFields,
+    brokerGet,
+    brokerIncrement,
+    brokerLock,
+    brokerLockId,
+    brokerPublish,
+    brokerResponseIncrement,
+    brokerResponseIsLock,
+    brokerResponseSubscribeMessage,
+    brokerSet,
+    brokerSubscribe,
+    BrokerType
+} from './model';
 
 export class BrokerConnection extends RpcKernelBaseConnection {
     protected subscribedChannels: string[] = [];
@@ -279,7 +293,6 @@ export class BrokerState {
 
 export class BrokerKernel extends RpcKernel {
     protected state: BrokerState = new BrokerState;
-    protected connections = new RpcKernelConnections();
 
     createConnection(writer: RpcConnectionWriter): BrokerConnection {
         return new BrokerConnection(writer, this.connections, this.state);
