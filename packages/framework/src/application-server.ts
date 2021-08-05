@@ -156,7 +156,7 @@ export class ApplicationServer {
         await this.stopWorkers();
         await this.eventDispatcher.dispatch(onServerShutdown, new ServerShutdownEvent());
         await this.eventDispatcher.dispatch(onServerMainShutdown, new ServerShutdownEvent());
-        if (this.httpWorker) this.httpWorker.close();
+        if (this.httpWorker) await this.httpWorker.close();
     }
 
     protected stopWorkers(): Promise<void> {

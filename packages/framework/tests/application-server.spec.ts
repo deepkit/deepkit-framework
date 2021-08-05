@@ -1,5 +1,5 @@
 import { rpc } from '@deepkit/rpc';
-import { describe, expect, test, jest, afterEach } from '@jest/globals';
+import { afterEach, describe, expect, jest, test } from '@jest/globals';
 import 'reflect-metadata';
 import { Application } from '../src/application';
 import { AppModule } from '@deepkit/app';
@@ -15,6 +15,7 @@ jest.mock('ws', () => {
     const on = jest.fn();
     const Server = jest.fn(() => ({
         on,
+        close: jest.fn(),
     }));
     return {
         Server,
