@@ -29,7 +29,6 @@ export class DebugBrokerListener {
 
     @eventDispatcher.listen(onServerMainBootstrap)
     async onMainBootstrap() {
-        console.log('debug broker start');
         await this.server.start();
     }
 
