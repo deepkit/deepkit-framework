@@ -139,7 +139,10 @@ export class PostgresSchemaParser extends SchemaParser {
                 if (row.column_default.includes('nextval(') && row.column_default.includes('::regclass')) {
                     column.isAutoIncrement = true;
                 } else {
-                    column.defaultValue = JSON.parse(row.column_default);
+                    try {
+                        column.defaultValue = JSON.parse(row.column_default);
+                    } catch {
+                    }
                 }
             }
 
@@ -154,7 +157,7 @@ export class PostgresSchemaParser extends SchemaParser {
             select table_name, table_schema as schema_name
             from information_schema.tables where table_schema not like 'pg_%' and table_schema = current_schema()
             and table_name != 'geometry_columns' and table_name != 'spatial_ref_sys' and table_type != 'VIEW'
-            and table_schema = '${database.schemaName || 'public'}' 
+            and table_schema = '${database.schemaName || 'public'}'
             order by table_name
         `);
 
