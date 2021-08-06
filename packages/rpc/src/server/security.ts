@@ -27,7 +27,7 @@ export interface RpcControllerAccess {
     controllerClassType: ClassType;
     actionName: string;
     actionGroups: string[];
-    actionData: {[name: string]: any}
+    actionData: { [name: string]: any };
 }
 
 export class RpcKernelSecurity {
