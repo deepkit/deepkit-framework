@@ -13,6 +13,7 @@ import { eventDispatcher } from '@deepkit/event';
 import { injectable } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { DatabaseRegistry } from '@deepkit/orm';
+import { getClassName } from '@deepkit/core';
 
 @injectable()
 export class DatabaseListener {
@@ -28,7 +29,7 @@ export class DatabaseListener {
             if (this.databases.isMigrateOnStartup(databaseType)) {
                 const database = this.databases.getDatabase(databaseType);
                 if (!database) throw new Error('Database not created');
-                this.logger.log(`Migrate database <yellow>${database.name}</yellow>`);
+                this.logger.log(`Migrate database <yellow>${getClassName(database)} ${database.name}</yellow> (${getClassName(database.adapter)})`);
                 await database.migrate();
             }
         }

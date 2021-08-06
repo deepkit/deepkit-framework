@@ -95,7 +95,7 @@ export class ApplicationServerListener {
     @eventDispatcher.listen(onServerMainBootstrapDone)
     onBootstrapDone() {
         for (const [name, controller] of this.rpcControllers.controllers.entries()) {
-            this.logger.log('RPC', `<yellow>${getClassName(controller)}</yellow>`, `<grey>${name}</grey>`);
+            this.logger.log('RPC Controller', `<green>${getClassName(controller.controller)}</green>`, `<grey>${name}</grey>`);
         }
 
         const routes = this.router.getRoutes();
@@ -122,10 +122,10 @@ export class ApplicationServerListener {
                 url = `https://${this.config.host}:${this.config.httpsPort || this.config.port}`;
             }
 
-            this.logger.log(`HTTP listening at ${url}`);
+            this.logger.log(`HTTP listening at <yellow>${url}</yellow>`);
 
             if (this.config.debug) {
-                this.logger.log(`Debugger enabled at ${url}${urlJoin('/', this.config.debugUrl, '/')}`);
+                this.logger.log(`Debugger enabled at <yellow>${url}${urlJoin('/', this.config.debugUrl, '/')}</yellow>`);
             }
         }
 

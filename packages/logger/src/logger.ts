@@ -10,7 +10,7 @@
 
 import style from 'ansi-styles';
 import format from 'format-util';
-import { arrayRemoveItem, ClassType } from '@deepkit/core';
+import { arrayRemoveItem, ClassType, isPlainObject } from '@deepkit/core';
 
 export enum LoggerLevel {
     none,
@@ -22,23 +22,43 @@ export enum LoggerLevel {
     debug,
 }
 
+export type LogData = { [name: string]: any };
+
+export interface LogMessage {
+    message: string;
+    rawMessage: string;
+    date: Date;
+    level: LoggerLevel;
+    scope: string;
+    data: LogData;
+}
+
 export class ConsoleTransport implements LoggerTransport {
-    write(message: string, level: LoggerLevel) {
-        if (level === LoggerLevel.error) {
-            process.stderr.write(message + '\n');
+    constructor(protected withColors: boolean = true) {
+    }
+
+    write(message: LogMessage): void {
+        if (message.level === LoggerLevel.error) {
+            process.stderr.write(message.message + '\n');
         } else {
-            process.stdout.write(message + '\n');
+            process.stdout.write(message.message + '\n');
         }
     }
 
     supportsColor() {
-        return true;
+        return this.withColors;
     }
 }
 
 export class JSONTransport implements LoggerTransport {
-    write(message: string, level: LoggerLevel, rawMessage: string) {
-        process.stdout.write(JSON.stringify({message: rawMessage, level, time: new Date}) + '\n');
+    write(message: LogMessage) {
+        process.stdout.write(JSON.stringify({
+            message: message.rawMessage,
+            level: message.level,
+            date: message.date,
+            scope: message.scope,
+            data: message.data,
+        }) + '\n');
     }
 
     supportsColor() {
@@ -47,13 +67,13 @@ export class JSONTransport implements LoggerTransport {
 }
 
 export interface LoggerTransport {
-    write(message: string, level: LoggerLevel, rawMessage: string): void;
+    write(message: LogMessage): void;
 
     supportsColor(): boolean;
 }
 
 export interface LoggerFormatter {
-    format(message: string, level: LoggerLevel): string;
+    format(message: LogMessage): void;
 }
 
 export class ColorFormatter implements LoggerFormatter {
@@ -70,36 +90,57 @@ export class ColorFormatter implements LoggerFormatter {
         'grey',
     ];
 
-    format(message: string, level: LoggerLevel): string {
-        if (level === LoggerLevel.error || level === LoggerLevel.alert) {
-            message = `<red>${message}</red>`;
+    format(message: LogMessage): void {
+        if (message.level === LoggerLevel.error || message.level === LoggerLevel.alert) {
+            message.message = `<red>${message}</red>`;
         }
 
-        if (message.includes('<')) {
-            message = message.replace(/<(\/)?([a-zA-Z]+)>/g, function (a, end, color) {
+        if (message.message.includes('<')) {
+            message.message = message.message.replace(/<(\/)?([a-zA-Z]+)>/g, function (a, end, color) {
                 if (!(style as any)[color]) return a;
                 if (end === '/') return (style as any)[color].close;
                 return (style as any)[color].open;
             });
         }
-        return message;
     }
 }
 
 export class RemoveColorFormatter implements LoggerFormatter {
-    format(message: string, level: LoggerLevel): string {
-        if (message.includes('<')) {
-            message = message.replace(/<(\/)?([a-zA-Z]+)>/g, function (a, end, color) {
+    format(message: LogMessage): void {
+        if (message.message.includes('<')) {
+            message.message = message.message.replace(/<(\/)?([a-zA-Z]+)>/g, function (a, end, color) {
                 return '';
             });
         }
-        return message;
+    }
+}
+
+export class DefaultFormatter implements LoggerFormatter {
+    formatters: LoggerFormatter[] = [new ScopeFormatter(), new LogLevelFormatter(), new TimestampFormatter()];
+
+    format(message: LogMessage): void {
+        for (const formatter of this.formatters) {
+            formatter.format(message);
+        }
     }
 }
 
 export class TimestampFormatter implements LoggerFormatter {
-    format(message: string, level: LoggerLevel): string {
-        return `<yellow>${new Date().toISOString()}</yellow> [${String(LoggerLevel[level]).toUpperCase()}] ${message}`;
+    format(message: LogMessage): void {
+        message.message = `<yellow>${new Date().toISOString()}</yellow> ${message.message}`;
+    }
+}
+
+export class LogLevelFormatter implements LoggerFormatter {
+    format(message: LogMessage): void {
+        message.message = `[${String(LoggerLevel[message.level]).toUpperCase()}] ${message.message}`;
+    }
+}
+
+export class ScopeFormatter implements LoggerFormatter {
+    format(message: LogMessage): void {
+        if (!message.scope) return;
+        message.message = `(<yellow>${message.scope}</yellow>) ${message.message}`;
     }
 }
 
@@ -123,81 +164,39 @@ export interface LoggerInterface {
     debug(...message: any[]): void;
 }
 
-export class ScopedLogger implements LoggerInterface {
-    constructor(protected parent: Logger, protected scope: string) {
-    }
-
-    scoped(name: string): LoggerInterface {
-        return this.parent.scoped(name);
-    }
-
-    get level() {
-        if (this.parent.scopedLevel[this.scope] !== undefined) return this.parent.scopedLevel[this.scope];
-
-        return this.parent.level;
-    }
-
-    set level(level: LoggerLevel) {
-        this.parent.scopedLevel[this.scope] = level;
-    }
-
-    is(level: LoggerLevel): boolean {
-        return level <= this.level;
-    }
-
-    alert(...message: any[]) {
-        this.parent.alert(`<yellow>${this.scope}</yellow>`, ...message);
-    }
-
-    error(...message: any[]) {
-        this.parent.error(`<yellow>${this.scope}</yellow>`, ...message);
-    }
-
-    warning(...message: any[]) {
-        this.parent.warning(`<yellow>${this.scope}</yellow>`, ...message);
-    }
-
-    log(...message: any[]) {
-        this.parent.log(`<yellow>${this.scope}</yellow>`, ...message);
-    }
-
-    info(...message: any[]) {
-        this.parent.info(`<yellow>${this.scope}</yellow>`, ...message);
-    }
-
-    debug(...message: any[]) {
-        this.parent.debug(`<yellow>${this.scope}</yellow>`, ...message);
-    }
-}
-
 export class Logger implements LoggerInterface {
     protected colorFormatter = new ColorFormatter;
     protected removeColorFormatter = new RemoveColorFormatter;
 
+    /**
+     * Setting a log level means only logs below or equal to this level will be handled.
+     */
     level: LoggerLevel = LoggerLevel.info;
+
     scopedLevel: { [scope: string]: LoggerLevel } = {};
-    protected scopes: { [scope: string]: LoggerInterface } = {};
+    protected scopes: { [scope: string]: Logger } = {};
 
     constructor(
-        protected transport: LoggerTransport[] = [],
+        protected transporter: LoggerTransport[] = [],
         protected formatter: LoggerFormatter[] = [],
+        protected scope: string = '',
     ) {
     }
 
-    scoped(name: string): LoggerInterface {
-        return this.scopes[name] ||= new ScopedLogger(this, name);
+    scoped(name: string): Logger {
+        return this.scopes[name] ||= new (this.constructor as any)(this.transporter, this.formatter, name);
     }
 
     addTransport(transport: LoggerTransport) {
-        this.transport.push(transport);
+        this.transporter.push(transport);
     }
 
     setTransport(transport: LoggerTransport[]) {
-        this.transport = transport;
+        this.transporter = transport;
     }
 
     removeTransport(transport: LoggerTransport) {
-        arrayRemoveItem(this.transport, transport);
+        arrayRemoveItem(this.transporter, transport);
     }
 
     hasFormatter(formatterType: ClassType<LoggerFormatter>) {
@@ -219,11 +218,10 @@ export class Logger implements LoggerInterface {
         this.formatter = formatter;
     }
 
-    protected format(message: string, level: LoggerLevel): string {
+    protected format(message: LogMessage): void {
         for (const formatter of this.formatter) {
-            message = formatter.format(message, level);
+            formatter.format(message);
         }
-        return message;
     }
 
     is(level: LoggerLevel): boolean {
@@ -233,14 +231,24 @@ export class Logger implements LoggerInterface {
     protected send(messages: any[], level: LoggerLevel) {
         if (!this.is(level)) return;
 
-        const rawMessage = (format as any)(...messages);
-        const message = this.format(rawMessage, level);
+        let data = {};
+        if (messages.length > 1 && isPlainObject(messages[messages.length - 1])) {
+            data = messages[messages.length - 1];
+            messages.splice(messages.length - 1);
+        }
 
-        for (const transport of this.transport) {
+        const rawMessage: string = (format as any)(...messages);
+        const message: LogMessage = { message: rawMessage, rawMessage, level, date: new Date, scope: this.scope, data };
+        this.format(message);
+
+        for (const transport of this.transporter) {
+            const formattedMessage = { ...message };
             if (transport.supportsColor()) {
-                transport.write(this.colorFormatter.format(message, level), level, rawMessage);
+                this.colorFormatter.format(formattedMessage);
+                transport.write(formattedMessage);
             } else {
-                transport.write(this.removeColorFormatter.format(message, level), level, this.removeColorFormatter.format(rawMessage, level));
+                this.removeColorFormatter.format(formattedMessage);
+                transport.write(formattedMessage);
             }
         }
     }

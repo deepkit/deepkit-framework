@@ -1,12 +1,17 @@
-import { LoggerLevel, LoggerTransport } from "./logger";
+import { LoggerTransport, LogMessage } from './logger';
 
 export class MemoryLoggerTransport implements LoggerTransport {
-    public messages: { level: LoggerLevel, message: string }[] = [];
+    public messages: LogMessage[] = [];
     public messageStrings: string[] = [];
 
-    write(message: string, level: LoggerLevel) {
-        this.messages.push({ level, message });
-        this.messageStrings.push(message);
+    clear(): void {
+        this.messages.length = 0;
+        this.messageStrings.length = 0;
+    }
+
+    write(message: LogMessage) {
+        this.messages.push(message);
+        this.messageStrings.push(message.message);
     }
 
     supportsColor() {

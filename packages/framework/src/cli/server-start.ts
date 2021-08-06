@@ -11,7 +11,7 @@
 import { ApplicationServer } from '../application-server';
 import { cli, Command, flag } from '@deepkit/app';
 import { InjectorContext } from '@deepkit/injector';
-import { Logger, TimestampFormatter } from '@deepkit/logger';
+import { DefaultFormatter, Logger } from '@deepkit/logger';
 
 @cli.controller('server:start', {
     description: 'Starts the application server. If HTTP or RPC controllers or a publicDir are provided this will include an HTTP listener'
@@ -30,7 +30,7 @@ export class ServerStartController implements Command {
         @flag.optional ssl?: boolean,
         @flag.optional selfSigned?: boolean,
     ): Promise<void> {
-        if (!this.logger.hasFormatters()) this.logger.addFormatter(new TimestampFormatter);
+        if (!this.logger.hasFormatters()) this.logger.addFormatter(new DefaultFormatter);
 
         const overwrite: { [name: string]: any } = {};
         if (host) overwrite.host = host;

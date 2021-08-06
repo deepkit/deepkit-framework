@@ -84,7 +84,7 @@ export function getClassName<T>(classTypeOrInstance: ClassType<T> | Object): str
 export function getClassPropertyName<T>(classType: ClassType<T> | Object, propertyName: string): string {
     const name = getClassName(classType);
 
-    return `${name}::${propertyName}`;
+    return `${name}.${propertyName}`;
 }
 
 /**
