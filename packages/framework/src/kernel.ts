@@ -90,7 +90,7 @@ export const KernelModule = new AppModule({
         module.setupProvider(MigrationProvider).setMigrationDir(config.migrationDir);
         for (const db of dbs) {
             module.setupProvider(DatabaseRegistry).addDatabase(db);
-            if (config.debug) {
+            if (config.debug && config.debugProfiler) {
                 module.setupProvider(db).stopwatch = injectorReference(Stopwatch);
             }
         }
@@ -121,19 +121,21 @@ export const KernelModule = new AppModule({
         module.addController(OrmBrowserController);
         registerDebugHttpController(module, config.debugUrl);
 
-        module.addProvider(FileStopwatchStore);
-
         //we start our own broker
-        module.addListener(DebugBrokerListener);
-        module.addProvider(DebugBroker);
+        if (config.debugProfiler) {
+            module.addListener(DebugBrokerListener);
+            module.addProvider(DebugBroker);
 
-        module.addProvider({
-            provide: Stopwatch,
-            deps: [FileStopwatchStore],
-            useFactory(store: FileStopwatchStore) {
-                return new Stopwatch(store);
-            }
-        });
+            module.addProvider(FileStopwatchStore);
+            module.addProvider({
+                provide: Stopwatch,
+                deps: [FileStopwatchStore],
+                useFactory(store: FileStopwatchStore) {
+                    return new Stopwatch(store);
+                }
+            });
+        }
+
         module.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
     }
 }).forRoot();

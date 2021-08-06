@@ -31,6 +31,8 @@ export const kernelConfig = new AppModuleConfig({
     publicDir: t.string.optional.description('A path to a folder that should be served per default. Relative to cwd.'),
     debug: t.boolean.default(false),
     debugUrl: t.string.default('_debug'),
+    debugProfiler: t.boolean.default(true),
+    debugBrokerHost: t.string.default('var/debug-broker.sock').description('IP:Port or unix socket name or named pipes'),
     varPath: t.string.default('var/'),
     debugStorePath: t.string.default('debug/').description('Relative to {varPath} option'),
     httpLog: t.boolean.default(true),

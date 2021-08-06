@@ -21,6 +21,7 @@ import { kernelConfig } from '../kernel.config';
 import { FileStopwatchStore } from './stopwatch/store';
 import { Subject } from 'rxjs';
 import { unlink } from 'fs/promises';
+import { inject } from '@deepkit/injector';
 
 class DebugConfig extends kernelConfig.slice(['varPath', 'debugStorePath']) {
 }
@@ -33,13 +34,15 @@ export class DebugController implements DebugControllerInterface {
         protected router: Router,
         protected config: DebugConfig,
         protected databaseRegistry: DatabaseRegistry,
-        protected stopwatchStore: FileStopwatchStore,
+        @inject().optional protected stopwatchStore?: FileStopwatchStore,
         // protected liveDatabase: LiveDatabase,
     ) {
     }
 
     @rpc.action()
     async subscribeStopwatchFramesData(): Promise<Subject<Uint8Array>> {
+        if (!this.stopwatchStore) throw new Error('not enabled');
+
         const subject = new Subject<Uint8Array>();
         const sub = await this.stopwatchStore.frameDataChannel.subscribe((v) => {
             subject.next(v);
@@ -52,6 +55,8 @@ export class DebugController implements DebugControllerInterface {
 
     @rpc.action()
     async subscribeStopwatchFrames(): Promise<Subject<Uint8Array>> {
+        if (!this.stopwatchStore) throw new Error('not enabled');
+
         const subject = new Subject<Uint8Array>();
         const sub = await this.stopwatchStore.frameChannel.subscribe((v) => {
             subject.next(v);

@@ -5,24 +5,23 @@ import { onServerMainBootstrap, onServerMainShutdown } from '../application-serv
 import { NetTcpRpcClientAdapter, NetTcpRpcServer } from '@deepkit/rpc-tcp';
 import { BrokerKernel } from '@deepkit/broker';
 import { kernelConfig } from '../kernel.config';
-import { join } from 'path';
 
 @injectable()
 export class DebugBroker extends BaseBroker {
     constructor(
-        @inject(kernelConfig.token('varPath')) varPath: string
+        @inject(kernelConfig.token('debugBrokerHost')) brokerHost: string
     ) {
-        super(new NetTcpRpcClientAdapter(join(varPath, 'debug-broker.socket')));
+        super(new NetTcpRpcClientAdapter(brokerHost));
     }
 }
 
 @injectable()
 export class DebugBrokerListener {
     protected kernel: BrokerKernel = new BrokerKernel;
-    protected server = new NetTcpRpcServer(this.kernel, join(this.varPath, 'debug-broker.socket'));
+    protected server = new NetTcpRpcServer(this.kernel, this.brokerHost);
 
     constructor(
-        @inject(kernelConfig.token('varPath')) protected varPath: string,
+        @inject(kernelConfig.token('debugBrokerHost')) protected brokerHost: string,
         protected broker: DebugBroker,
     ) {
     }
