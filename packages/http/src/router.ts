@@ -31,7 +31,7 @@ import { BasicInjector, injectable, InjectOptions, TagRegistry } from '@deepkit/
 import { Logger } from '@deepkit/logger';
 import { HttpControllers } from './controllers';
 import { AppModule, MiddlewareRegistry, MiddlewareRegistryEntry } from '@deepkit/app';
-import { HttpMiddleware, HttpMiddlewareConfig } from './middleware';
+import { HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware';
 
 export type RouteParameterResolverForInjector = ((injector: BasicInjector) => any[] | Promise<any[]>);
 
@@ -39,7 +39,7 @@ interface ResolvedController {
     parameters: RouteParameterResolverForInjector;
     routeConfig: RouteConfig;
     uploadedFiles: { [name: string]: UploadedFile };
-    middlewares?: (injector: BasicInjector) => { fn: HttpMiddleware, timeout: number }[];
+    middlewares?: (injector: BasicInjector) => { fn: HttpMiddlewareFn, timeout: number }[];
 }
 
 export class UploadedFile {
@@ -572,7 +572,7 @@ export class Router {
                 for (const middleware of middlewareConfig.middlewares) {
                     if (isClass(middleware)) {
                         const classVar = compiler.reserveVariable('middlewareClassType', middleware);
-                        middlewareItems.push(`{fn: function() {_injector.get(${classVar}).execute(...arguments) }, timeout: ${middlewareConfig.timeout}}`);
+                        middlewareItems.push(`{fn: function() {return _injector.get(${classVar}).execute(...arguments) }, timeout: ${middlewareConfig.timeout}}`);
                     } else {
                         middlewareItems.push(`{fn: ${compiler.reserveVariable('middlewareFn', middleware)}, timeout: ${middlewareConfig.timeout}}`);
                     }

@@ -2,9 +2,10 @@ import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { http } from '../src/decorator';
 import { createHttpKernel } from './utils';
-import { httpMiddleware } from '../src/middleware';
+import { HttpMiddleware, httpMiddleware } from '../src/middleware';
 import { HttpRequest, HttpResponse } from '../src/model';
 import { AppModule } from '@deepkit/app';
+import { sleep } from '@deepkit/core';
 
 class Controller {
     @http.GET('user/:name')
@@ -22,6 +23,58 @@ test('middleware empty', async () => {
     expect(response.statusCode).toEqual(200);
     expect(response.bodyString).toEqual('"name1"');
     expect(response.getHeader('content-type')).toEqual('application/json; charset=utf-8');
+});
+
+test('middleware async success', async () => {
+    const httpKernel = createHttpKernel([Controller], [], [], [httpMiddleware.for(async (req, res, next) => {
+        await sleep(0.1);
+        res.end('nope');
+    })]);
+
+    const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
+    expect(response.statusCode).toEqual(200);
+    expect(response.bodyString).toEqual('nope');
+});
+
+test('middleware async failed', async () => {
+    const httpKernel = createHttpKernel([Controller], [], [], [httpMiddleware.for(async (req, res, next) => {
+        await sleep(0.1);
+        throw new Error('nope');
+    })]);
+
+    const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
+    expect(response.statusCode).toEqual(404);
+    expect(response.bodyString).toEqual('Not found');
+});
+
+test('middleware class async success', async () => {
+    class MyMiddleware implements HttpMiddleware {
+        async execute(req: HttpRequest, res: HttpResponse, next: (err?: any) => void): Promise<void> {
+            await sleep(0.1);
+            res.end('nope');
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [MyMiddleware], [], [httpMiddleware.for(MyMiddleware)]);
+
+    const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
+    expect(response.statusCode).toEqual(200);
+    expect(response.bodyString).toEqual('nope');
+});
+
+test('middleware class async failed', async () => {
+    class MyMiddleware implements HttpMiddleware {
+        async execute(req: HttpRequest, res: HttpResponse, next: (err?: any) => void): Promise<void> {
+            await sleep(0.1);
+            throw new Error('nope');
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [MyMiddleware], [], [httpMiddleware.for(MyMiddleware)]);
+
+    const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
+    expect(response.statusCode).toEqual(404);
+    expect(response.bodyString).toEqual('Not found');
 });
 
 test('middleware direct response', async () => {

@@ -3,7 +3,11 @@ import { AppModule } from '@deepkit/app';
 import { createFreeDecoratorContext } from '@deepkit/type';
 import { HttpRequest, HttpResponse } from './model';
 
-export type HttpMiddleware = (req: HttpRequest, res: HttpResponse, next: (err?: any) => void) => void;
+export type HttpMiddlewareFn = (req: HttpRequest, res: HttpResponse, next: (err?: any) => void) => void | Promise<void>;
+
+export interface HttpMiddleware {
+    execute: HttpMiddlewareFn;
+}
 
 export interface HttpMiddlewareRoute {
     path?: string;
@@ -13,11 +17,11 @@ export interface HttpMiddlewareRoute {
     excludeCategory?: string;
     group?: string;
     excludeGroup?: string;
-};
+}
 
 export class HttpMiddlewareConfig {
     name?: string;
-    middlewares: (HttpMiddleware | ClassType)[] = [];
+    middlewares: (HttpMiddlewareFn | ClassType<HttpMiddleware>)[] = [];
 
     routes: HttpMiddlewareRoute[] = [];
     excludeRoutes: HttpMiddlewareRoute[] = [];
@@ -53,7 +57,7 @@ export class HttpMiddlewareApi {
         this.t.name = name;
     }
 
-    for(...middlewares: (HttpMiddleware | ClassType<{ execute: HttpMiddleware }>)[]) {
+    for(...middlewares: (HttpMiddlewareFn | ClassType<HttpMiddleware>)[]) {
         this.t.middlewares = middlewares;
     }
 
@@ -109,5 +113,3 @@ export class HttpMiddlewareApi {
 }
 
 export const httpMiddleware = createFreeDecoratorContext(HttpMiddlewareApi);
-
-httpMiddleware._fluidFunctionSymbol

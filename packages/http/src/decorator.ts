@@ -21,13 +21,17 @@ import {
     Serializer
 } from '@deepkit/type';
 import { RouteParameterResolver } from './router';
-import { httpMiddleware, HttpMiddleware, HttpMiddlewareConfig } from './middleware';
+import { httpMiddleware, HttpMiddleware, HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware';
 
 export interface ControllerOptions {
     name: string;
 }
 
-type HttpActionMiddleware = (() => HttpMiddlewareConfig) | ClassType<{ execute: HttpMiddleware }> | HttpMiddleware;
+type HttpActionMiddleware = (() => HttpMiddlewareConfig) | ClassType<HttpMiddleware> | HttpMiddlewareFn;
+
+function isMiddlewareClassTypeOrFn(v: HttpActionMiddleware): v is ClassType<HttpMiddleware> | HttpMiddlewareFn {
+    return isClass(v) || !isDecoratorContext(httpMiddleware, v);
+}
 
 class HttpController {
     baseUrl: string = '';
@@ -118,7 +122,7 @@ export class HttpDecorator {
     }
 
     middleware(...middlewares: HttpActionMiddleware[]) {
-        this.t.middlewares.push(...middlewares.map(v => isClass(v) || !isDecoratorContext(httpMiddleware, v) ? httpMiddleware.for(v) : v));
+        this.t.middlewares.push(...middlewares.map(v => isMiddlewareClassTypeOrFn(v) ? httpMiddleware.for(v) : v));
     }
 
     /**
@@ -209,7 +213,7 @@ export class HttpActionDecorator {
     }
 
     middleware(...middlewares: HttpActionMiddleware[]) {
-        this.t.middlewares.push(...middlewares.map(v => isClass(v) || !isDecoratorContext(httpMiddleware, v) ? httpMiddleware.for(v) : v));
+        this.t.middlewares.push(...middlewares.map(v => isMiddlewareClassTypeOrFn(v) ? httpMiddleware.for(v) : v));
     }
 
     /**

@@ -372,8 +372,7 @@ export class HttpListener {
                 if (resolved.middlewares) {
                     const middlewares = resolved.middlewares(event.injectorContext);
                     if (middlewares.length) {
-
-                        await asyncOperation((resolve, reject) => {
+                        await asyncOperation(async (resolve, reject) => {
                             let lastTimer: any = undefined;
 
                             function finish() {
@@ -385,7 +384,7 @@ export class HttpListener {
                             event.response.once('finish', finish);
                             let i = -1;
 
-                            function next() {
+                            async function next() {
                                 i++;
                                 if (i >= middlewares.length) {
                                     event.response.off('finish', finish);
@@ -398,18 +397,22 @@ export class HttpListener {
                                     next();
                                 }, middlewares[i].timeout);
 
-                                middlewares[i].fn(event.request, event.response, (error?: any) => {
-                                    clearTimeout(lastTimer);
-                                    if (error) {
-                                        event.response.off('finish', finish);
-                                        reject(error);
-                                    } else {
-                                        next();
-                                    }
-                                });
+                                try {
+                                    await middlewares[i].fn(event.request, event.response, (error?: any) => {
+                                        clearTimeout(lastTimer);
+                                        if (error) {
+                                            event.response.off('finish', finish);
+                                            reject(error);
+                                        } else {
+                                            next();
+                                        }
+                                    });
+                                } catch (error) {
+                                    reject(error);
+                                }
                             }
 
-                            next();
+                            await next();
                         });
                     }
                 }
