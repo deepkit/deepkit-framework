@@ -92,7 +92,7 @@ export class ColorFormatter implements LoggerFormatter {
 
     format(message: LogMessage): void {
         if (message.level === LoggerLevel.error || message.level === LoggerLevel.alert) {
-            message.message = `<red>${message}</red>`;
+            message.message = `<red>${message.message}</red>`;
         }
 
         if (message.message.includes('<')) {
