@@ -1,13 +1,14 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { ControllerSymbol, rpc, RpcKernelConnection, Session, SessionState } from '@deepkit/rpc';
+import { ControllerSymbol, rpc, RpcKernelConnection, RpcKernelSecurity, Session, SessionState } from '@deepkit/rpc';
 import { createTestingApp } from '../src/testing';
 import { AppModule } from '@deepkit/app';
 
 test('di', async () => {
-    class MyService {}
+    class MyService {
+    }
 
-    const MyController = ControllerSymbol<Controller>('test')
+    const MyController = ControllerSymbol<Controller>('test');
 
     @rpc.controller(MyController)
     class Controller {
@@ -42,9 +43,10 @@ test('di', async () => {
 });
 
 test('non-forRoot sub module lives in own injector scope for rpc controllers', async () => {
-    class MyService {}
+    class MyService {
+    }
 
-    const MyController = ControllerSymbol<Controller>('test')
+    const MyController = ControllerSymbol<Controller>('test');
 
     @rpc.controller(MyController)
     class Controller {
@@ -68,7 +70,7 @@ test('non-forRoot sub module lives in own injector scope for rpc controllers', a
     }
 
     const module = new AppModule({ providers: [MyService], controllers: [Controller] });
-    const testing = createTestingApp({imports: [module]});
+    const testing = createTestingApp({ imports: [module] });
     await testing.startServer();
 
     const client = testing.createRpcClient();
@@ -77,4 +79,20 @@ test('non-forRoot sub module lives in own injector scope for rpc controllers', a
     expect(await controller.hasConnection()).toBe(true);
     expect(await controller.hasSession()).toBe(true);
     expect(await controller.hasService()).toBe(true);
+});
+
+
+test('module provides RpcKernelSecurity', () => {
+    class MyRpcKernelSecurity extends RpcKernelSecurity {
+
+    }
+
+    const module = new AppModule({
+        providers: [{
+            provide: RpcKernelSecurity, useClass: MyRpcKernelSecurity
+        }]
+    }).forRoot();
+    const testing = createTestingApp({ imports: [module] });
+
+    expect(testing.app.get(RpcKernelSecurity)).toBeInstanceOf(MyRpcKernelSecurity);
 });

@@ -19,7 +19,10 @@ export class Application<T extends ModuleOptions> extends CommandApplication<T> 
         providers: ProviderWithScope<any>[] = [],
         imports: AppModule<any, any>[] = [],
     ) {
-        if (!appModule.hasImport(KernelModule)) appModule.addImport(KernelModule);
+        if (!appModule.hasImport(KernelModule)) {
+            if (!appModule.options.imports) appModule.options.imports = [];
+            appModule.options.imports.unshift(KernelModule);
+        }
         super(appModule, providers, imports, new ApplicationServiceContainer(appModule, providers, imports.slice(0)));
     }
 
