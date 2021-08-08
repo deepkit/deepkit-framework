@@ -702,7 +702,6 @@ export class Router {
 
     protected build(): any {
         const compiler = new CompilerContext;
-        compiler.context.set('_match', null);
         compiler.context.set('ValidationFailed', ValidationFailed);
         compiler.context.set('qs', require('qs'));
 
@@ -713,6 +712,7 @@ export class Router {
         }
 
         return compiler.build(`
+            let _match;
             const _method = request.getMethod().toLowerCase();
             const _url = request.getUrl();
             const _qPosition = _url.indexOf('?');

@@ -531,6 +531,41 @@ test('custom request handling', async () => {
     expect(await httpKernel.handleRequestFor('OPTIONS', '/')).toBe(true);
 });
 
+test('race condition', async () => {
+    let call = 0;
+    class Listener {
+        @eventDispatcher.listen(httpWorkflow.onAuth)
+        async onRouteNotFound(event: typeof httpWorkflow.onRouteNotFound.event) {
+            if (call === 0) {
+                await sleep(0.1);
+            }
+            call++;
+        }
+    }
+
+    class Controller {
+        @http.GET('/one/:param1')
+        one(param1: string) {
+            return param1;
+        }
+
+        @http.GET('/second/:param2')
+        second(param2: string) {
+            return param2;
+        }
+    }
+
+
+    const httpKernel = createHttpKernel([Controller], [], [Listener]);
+
+    const [a, b] = await Promise.all([
+        httpKernel.handleRequestFor('GET', '/one/a'),
+        httpKernel.handleRequestFor('GET', '/second/b'),
+    ]);
+    expect(a).toBe('a');
+    expect(b).toBe('b');
+});
+
 test('promise serializer', async () => {
     class Controller {
         @http.GET('1')
