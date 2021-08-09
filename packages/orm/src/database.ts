@@ -208,6 +208,33 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     }
 
     /**
+     * Executes an async callback inside of a new transactional session. If the callback succeeds (not throwing), the
+     * session is automatically committed (and thus its transaction committed and all changes flushed).
+     * If the callback throws, the session executes rollback() automatically, and the error is rethrown.
+     *
+     * ```typescript
+     * await database.transaction(async (session) => {
+     *     await session.query(...);
+     *     session.add(...);
+     *
+     *     //...
+     * });
+     * ```
+     */
+    async transaction<T>(callback: (session: DatabaseSession<ADAPTER>) => Promise<T>): Promise<T> {
+        const session = this.createSession();
+        session.useTransaction();
+        try {
+            const result = await callback(session);
+            await session.commit();
+            return result;
+        } catch (error) {
+            await session.rollback();
+            throw error;
+        }
+    }
+
+    /**
      * Creates a new reference.
      *
      * If you work with a DatabaseSession, use DatabaseSession.getReference instead to

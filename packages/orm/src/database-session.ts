@@ -363,7 +363,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     /**
      * Executes an async callback inside of a new transaction. If the callback succeeds (not throwing), the
      * session is automatically committed (and thus its transaction committed and all changes flushed).
-     * If the callback throws, the session executes rollback() automatically, and the error rethrown.
+     * If the callback throws, the session executes rollback() automatically, and the error is rethrown.
      *
      * ```typescript
      * await session.transaction(async (session) => {
@@ -442,6 +442,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
 
         this.getCurrentRound().remove(...items);
     }
+
     /**
      * Resets all scheduled changes (add() and remove() calls).
      *

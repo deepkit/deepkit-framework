@@ -246,6 +246,21 @@ export const variousTests = {
         }
 
         {
+            await database.query(User).deleteMany();
+            expect(await database.query(User).count()).toBe(0);
+            await database.transaction(async (session) => {
+                session.add(new User('user 1'), new User('user 2'), new User('user 3'));
+                await session.flush();
+
+                expect(await session.query(User).count()).toBe(3);
+
+                //not yet committed
+                expect(await database.query(User).count()).toBe(0);
+            });
+            expect(await database.query(User).count()).toBe(3);
+        }
+
+        {
             //empty transaction
             const session = database.createSession();
             session.useTransaction();
