@@ -209,7 +209,7 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
     }
 
     async run(argv?: any[]) {
-        const exitCode = await this.execute(argv ?? process.argv.slice(2));
+        const exitCode = await this.execute(argv ?? process.argv.slice(2), argv ? [] : process.argv.slice(0, 2));
         if (exitCode > 0) process.exit(exitCode);
     }
 
@@ -217,7 +217,7 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
         return this.serviceContainer.getRootInjectorContext().getInjector(0).get(token);
     }
 
-    public async execute(argv: string[]): Promise<number> {
+    public async execute(argv: string[], binPaths: string[] = []): Promise<number> {
         this.serviceContainer.process();
         let result: any;
 
@@ -229,8 +229,18 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
                 this.root = options.root;
                 this.userAgent = 'Node';
                 this.name = 'app';
-                const bin = basename(process.argv[0]);
-                this.bin = `${bin} ${relative(process.cwd(), process.argv[1]) || '.'}`;
+
+                const bin = basename(binPaths[0]);
+                if (binPaths.length === 2) {
+                    if (bin === 'ts-node-script') {
+                        this.bin = `${relative(process.cwd(), binPaths[1]) || '.'}`;
+                    } else {
+                        this.bin = `${bin} ${relative(process.cwd(), binPaths[1]) || '.'}`;
+                    }
+                } else {
+                    this.bin = `node`;
+                }
+
                 this.version = '0.0.1';
                 this.pjson = {
                     name: this.name,
