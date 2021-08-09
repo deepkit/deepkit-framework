@@ -102,6 +102,15 @@ class EntityApi {
         this.t.description = description;
     }
 
+    /**
+     * Adds a multi-field index.
+     *
+     * If no name given, all field names are joined with '_' as name.
+     */
+    index(fields: string[], options?: IndexOptions, name?: string) {
+        this.t.indices.set(name || fields.join('_'), { fields: fields as string[], options: options || {} });
+    }
+
     collectionName(name: string) {
         this.t.collectionName = name;
     }
