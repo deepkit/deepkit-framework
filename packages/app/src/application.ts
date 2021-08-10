@@ -40,6 +40,19 @@ function camelToLowerCase(str: string) {
     return str.replace(/[A-Z]+/g, (letter: string) => `_${letter.toLowerCase()}`).toLowerCase();
 }
 
+function convertNameStrategy(namingStrategy: EnvNamingStrategy, name: string): string {
+    const strategy = isFunction(namingStrategy) ? namingStrategy(name) || 'same' : namingStrategy;
+    if (strategy === 'upper') {
+        return camelToUpperCase(name);
+    } else if (strategy === 'lower') {
+        return camelToLowerCase(name);
+    } else if (strategy === 'same') {
+        return name;
+    } else {
+        return strategy;
+    }
+}
+
 function parseEnv(
     config: { [name: string]: any },
     prefix: string,
@@ -50,15 +63,7 @@ function parseEnv(
     envContainer: { [name: string]: any }
 ) {
     for (const property of schema.getProperties()) {
-        const strategy = isFunction(namingStrategy) ? namingStrategy(property.name) || 'same' : namingStrategy;
-        let name = property.name;
-        if (strategy === 'upper') {
-            name = camelToUpperCase(property.name);
-        } else if (strategy === 'lower') {
-            name = camelToLowerCase(property.name);
-        } else if (strategy !== 'same') {
-            name = strategy;
-        }
+        const name = convertNameStrategy(namingStrategy, property.name);
 
         if (property.type === 'class') {
             parseEnv(
@@ -156,7 +161,7 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
                 }
                 const all = envConfiguration.getAll() as any;
 
-                parseEnv(config, '', schema, '', moduleName, namingStrategy, all);
+                parseEnv(config, '', schema, '', convertNameStrategy(namingStrategy, moduleName), namingStrategy, all);
             }
         });
 
@@ -171,12 +176,12 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
      *
      * APP_databaseUrl="mongodb://localhost/mydb"
      *
-     * Application.run().loadConfigFromEnvVariables('APP_').run();
+     * Application.create({}).loadConfigFromEnvVariables('APP_').run();
      */
     loadConfigFromEnvVariables(prefix: string = 'APP_', namingStrategy: EnvNamingStrategy = 'same'): this {
         this.addConfigLoader({
             load(moduleName: string, config: { [p: string]: any }, schema: ClassSchema) {
-                parseEnv(config, prefix, schema, '', moduleName, namingStrategy, process.env);
+                parseEnv(config, prefix, schema, '', convertNameStrategy(namingStrategy, moduleName), namingStrategy, process.env);
             }
         });
         return this;
@@ -230,8 +235,8 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
                 this.userAgent = 'Node';
                 this.name = 'app';
 
-                const bin = basename(binPaths[0]);
                 if (binPaths.length === 2) {
+                    const bin = basename(binPaths[0]);
                     if (bin === 'ts-node-script') {
                         this.bin = `${relative(process.cwd(), binPaths[1]) || '.'}`;
                     } else {
