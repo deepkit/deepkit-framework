@@ -81,6 +81,10 @@ class ApplicationServerConfig extends kernelConfig.slice(['server', 'port', 'hos
     'debug', 'debugUrl']) {
 }
 
+function needsHttpWorker(config: { publicDir?: string }, rpcControllers: RpcControllers, router: Router) {
+    return Boolean(config.publicDir || rpcControllers.controllers.size || router.getRoutes().length);
+}
+
 @injectable()
 export class ApplicationServerListener {
     constructor(
@@ -113,19 +117,23 @@ export class ApplicationServerListener {
             }
         }
 
+        const httpActive = needsHttpWorker(this.config, this.rpcControllers, this.router);
+
         if (this.config.server) {
             this.logger.log(`Server up and running`);
         } else {
-            let url = `http://${this.config.host}:${this.config.port}`;
+            if (httpActive) {
+                let url = `http://${this.config.host}:${this.config.port}`;
 
-            if (this.config.ssl) {
-                url = `https://${this.config.host}:${this.config.httpsPort || this.config.port}`;
-            }
+                if (this.config.ssl) {
+                    url = `https://${this.config.host}:${this.config.httpsPort || this.config.port}`;
+                }
 
-            this.logger.log(`HTTP listening at <yellow>${url}</yellow>`);
+                this.logger.log(`HTTP listening at <yellow>${url}</yellow>`);
 
-            if (this.config.debug) {
-                this.logger.log(`Debugger enabled at <yellow>${url}${urlJoin('/', this.config.debugUrl, '/')}</yellow>`);
+                if (this.config.debug) {
+                    this.logger.log(`Debugger enabled at <yellow>${url}${urlJoin('/', this.config.debugUrl, '/')}</yellow>`);
+                }
             }
         }
 
@@ -149,7 +157,7 @@ export class ApplicationServer {
         protected rpcControllers: RpcControllers,
         protected router: Router,
     ) {
-        this.needsHttpWorker = Boolean(config.publicDir || rpcControllers.controllers.size || router.getRoutes().length);
+        this.needsHttpWorker = needsHttpWorker(config, rpcControllers, router);
     }
 
     /**
