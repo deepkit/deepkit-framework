@@ -803,7 +803,7 @@ export class ClassSchema<T = any> {
     }
 
     toString() {
-        return `<ClassSchema ${this.getClassName()}>\n` + this.properties.map(v => '   ' + v.name + '=' + v.toString()).join('\n') + '\n</ClassSchema>';
+        return `class ${this.getClassName()} {\n` + this.properties.map(v => '   ' + v.name + (v.isOptional ? '?' : '') + ': ' + v.toString(false) + ';').join('\n') + '\n}';
     }
 
     public assignedSingleTableInheritanceSubClassesByIdentifier?: { [id: string]: ClassSchema };
