@@ -13,6 +13,23 @@ test('nextValue subject', async () => {
     expect(next).toBe(5);
 });
 
+test('sub subject', async () => {
+    const subject = new BehaviorSubject(2);
+
+    const sub2 = new BehaviorSubject(1);
+    const sub = subject.subscribe(sub2);
+    sub2.subscribe().add(() => sub.unsubscribe());
+
+    expect(sub2.getValue()).toBe(2);
+    subject.next(3);
+    expect(sub2.getValue()).toBe(3);
+
+    sub2.complete();
+
+    subject.next(4);
+    expect(sub2.getValue()).toBe(3);
+});
+
 test('nextValue behaviorsubject', async () => {
     const subject = new BehaviorSubject(0);
 
@@ -38,8 +55,10 @@ test('is functions', async () => {
 test('Subscriptions unsubscribe', async () => {
     const subscriptions = new Subscriptions();
 
-    const sub1 = subscriptions.add = new Subscription(() => { });
-    const sub2 = subscriptions.add = new Subscription(() => { });
+    const sub1 = subscriptions.add = new Subscription(() => {
+    });
+    const sub2 = subscriptions.add = new Subscription(() => {
+    });
 
     expect(subscriptions.list.length).toBe(2);
     expect(sub1.closed).toBe(false);
@@ -55,8 +74,10 @@ test('Subscriptions unsubscribe', async () => {
 test('Subscriptions auto remove', async () => {
     const subscriptions = new Subscriptions();
 
-    const sub1 = subscriptions.add = new Subscription(() => { });
-    const sub2 = subscriptions.add = new Subscription(() => { });
+    const sub1 = subscriptions.add = new Subscription(() => {
+    });
+    const sub2 = subscriptions.add = new Subscription(() => {
+    });
 
     expect(subscriptions.list.length).toBe(2);
     expect(sub1.closed).toBe(false);
