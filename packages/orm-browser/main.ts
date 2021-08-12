@@ -30,4 +30,4 @@ const appModule = new AppModule({
     registerStaticHttpController(module, '/', localPath);
 });
 
-new Application(appModule).run(['server:listen']);
+new Application(appModule).run(['server:start']);
