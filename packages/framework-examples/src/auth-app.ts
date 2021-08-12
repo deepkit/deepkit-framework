@@ -2,22 +2,22 @@
 import 'reflect-metadata';
 import {
     Application,
+    eventDispatcher,
     http,
+    HttpAction,
+    httpWorkflow,
+    injectable,
+    JSONResponse,
     Logger,
     RouteParameterResolverContext,
-    RouteParameterResolverTag,
-    eventDispatcher,
-    httpWorkflow,
-    JSONResponse,
-    HttpAction,
-    injectable
+    RouteParameterResolverTag
 } from '@deepkit/framework';
 
 /*
 
 This example demonstrates a manual build authentication layer using httpWorklow.onAuth event listener.
 
-You can run this application using `./examples/auth-app.ts server:listen` and query its HTTP API:
+You can run this application using `./examples/auth-app.ts server:start` and query its HTTP API:
 
 //should print "Hello Foo"
 $ curl -H "Authorization: foo" http://localhost:8080
