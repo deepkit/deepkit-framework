@@ -113,7 +113,7 @@ export class ApplicationServerListener {
                     lastController = route.action.controller;
                     this.logger.log(`HTTP Controller <green>${getClassName(lastController)}</green>`);
                 }
-                this.logger.log(`  <green>${route.httpMethod}</green> <yellow>${route.getFullPath()}</yellow>`);
+                this.logger.log(`  <green>${route.httpMethods.length === 0 ? 'ANY' : route.httpMethods.join(',')}</green> <yellow>${route.getFullPath()}</yellow>`);
             }
         }
 

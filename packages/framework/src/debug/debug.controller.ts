@@ -39,7 +39,6 @@ export class DebugController implements DebugControllerInterface {
     ) {
     }
 
-    @rpc.action()
     async subscribeStopwatchFramesData(): Promise<Subject<Uint8Array>> {
         if (!this.stopwatchStore) throw new Error('not enabled');
 
@@ -135,7 +134,7 @@ export class DebugController implements DebugControllerInterface {
         for (const route of this.router.getRoutes()) {
             const routeD: Route = {
                 path: route.getFullPath(),
-                httpMethod: route.httpMethod,
+                httpMethods: route.httpMethods,
                 parameters: [],
                 groups: route.groups,
                 category: route.category,

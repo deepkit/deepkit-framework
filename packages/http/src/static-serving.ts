@@ -46,7 +46,7 @@ export function serveStaticListener(path: string, localPath: string = path): Cla
                 stat(finalLocalPath, (err, stat) => {
                     if (stat && stat.isFile()) {
                         event.routeFound(
-                            new RouteConfig('static', 'GET', event.url, {
+                            new RouteConfig('static', ['GET'], event.url, {
                                 controller: HttpRequestStaticServingListener,
                                 methodName: 'serve'
                             }),
@@ -77,18 +77,21 @@ function loadHtml(localPath: string, path: string): string {
  * ${localPath}/index.html.
  */
 export function registerStaticHttpController(module: AppModule<any, any>, path: string, localPath: string): void {
-    path = normalizeDirectory(path);
     let indexHtml = '';
 
     @http.controller(path)
     class StaticController {
-        @http.GET(':any').regexp('any', '[^\.]*')
-        serviceApp(any: string) {
-            if (!indexHtml) indexHtml = loadHtml(localPath, path);
+        @http.GET()
+        serviceApp() {
+            if (!indexHtml) indexHtml = loadHtml(localPath, normalizeDirectory(path));
             return indexHtml ? new HtmlResponse(indexHtml) : new HtmlResponse('Index not found', 404);
+        }
+        @http.GET(':any').regexp('any', '[^\.]*')
+        serviceAppDeep(any: string) {
+            return this.serviceApp();
         }
     }
 
     module.addController(StaticController);
-    module.addListener(serveStaticListener(path, localPath));
+    module.addListener(serveStaticListener(normalizeDirectory(path), localPath));
 }

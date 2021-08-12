@@ -539,8 +539,10 @@ export class HttpListener {
     @eventDispatcher.listen(httpWorkflow.onResponse, -100)
     async onResultSerialization(event: typeof httpWorkflow.onResponse.event) {
         if (event.route && event.route.returnSchema && event.route.returnSchema.typeSet) {
-            if (event.result !== undefined) {
-                if (event.result instanceof JSONResponse) {
+            if (event.result !== undefined || event.result !== null) {
+                if (event.result instanceof HtmlResponse || event.result instanceof ServerResponse || event.result instanceof Redirect) {
+                    // don't do anything
+                } else if (event.result instanceof JSONResponse) {
                     event.result.json = getPropertyClassToXFunction(
                         event.route.returnSchema,
                         event.route && event.route?.serializer ? event.route.serializer : jsonSerializer

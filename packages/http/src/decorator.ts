@@ -85,7 +85,7 @@ export class HttpAction {
     description: string = '';
     category: string = '';
     path: string = '';
-    httpMethod: string = 'GET';
+    httpMethods: string[] = [];
     methodName: string = '';
     groups: string[] = [];
     serializer?: Serializer;
@@ -264,48 +264,48 @@ export class HttpActionDecorator {
     }
 
     GET(path: string = '') {
-        this.t.httpMethod = 'GET';
-        this.t.path = path;
+        this.t.httpMethods.push('GET');
+        if (path) this.t.path = path;
     }
 
     HEAD(path: string = '') {
-        this.t.httpMethod = 'HEAD';
-        this.t.path = path;
+        this.t.httpMethods.push('HEAD');
+        if (path) this.t.path = path;
     }
 
     POST(path: string = '') {
-        this.t.httpMethod = 'POST';
-        this.t.path = path;
+        this.t.httpMethods.push('POST');
+        if (path) this.t.path = path;
     }
 
     PUT(path: string = '') {
-        this.t.httpMethod = 'PUT';
-        this.t.path = path;
+        this.t.httpMethods.push('PUT');
+        if (path) this.t.path = path;
     }
 
     DELETE(path: string = '') {
-        this.t.httpMethod = 'DELETE';
-        this.t.path = path;
+        this.t.httpMethods.push('DELETE');
+        if (path) this.t.path = path;
     }
 
     OPTIONS(path: string = '') {
-        this.t.httpMethod = 'HEAD';
-        this.t.path = path;
+        this.t.httpMethods.push('HEAD');
+        if (path) this.t.path = path;
     }
 
     TRACE(path: string = '') {
-        this.t.httpMethod = 'HEAD';
-        this.t.path = path;
+        this.t.httpMethods.push('HEAD');
+        if (path) this.t.path = path;
     }
 
     PATCH(path: string = '') {
-        this.t.httpMethod = 'PATCH';
-        this.t.path = path;
+        this.t.httpMethods.push('PATCH');
+        if (path) this.t.path = path;
     }
 
     ANY(path: string = '') {
-        this.t.httpMethod = 'ANY';
-        this.t.path = path;
+        this.t.httpMethods = [];
+        if (path) this.t.path = path;
     }
 
     throws(errorType: ClassType, message?: string) {

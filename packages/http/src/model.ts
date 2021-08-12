@@ -120,6 +120,10 @@ export class HttpRequest extends IncomingMessage {
         return new RequestBuilder(path, 'POST');
     }
 
+    static PATCH(path: string): RequestBuilder {
+        return new RequestBuilder(path, 'PATCH');
+    }
+
     static PUT(path: string): RequestBuilder {
         return new RequestBuilder(path, 'PUT');
     }
@@ -143,6 +147,15 @@ export class HttpRequest extends IncomingMessage {
 
 export class MemoryHttpResponse extends HttpResponse {
     public body: Buffer = Buffer.alloc(0);
+
+    get json(): any {
+        const json = this.bodyString;
+        try {
+            return JSON.parse(json);
+        }  catch (error) {
+            throw new Error(`Could not parse JSON: ${error.message}, body: ${json}`);
+        }
+    }
 
     get bodyString(): string {
         return this.body.toString('utf8');

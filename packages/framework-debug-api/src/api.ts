@@ -21,19 +21,19 @@ export class ConfigOption {
     @t.optional description?: string;
 }
 
-@entity.name('debug/workflow')
+@entity.name('.deepkit/debugger/workflow')
 export class Workflow {
     @t.array(t.string) places!: string[];
     @t.array(t.schema({ from: t.string, to: t.string, label: t.string.optional })) transitions!: { from: string, to: string, label?: string; }[];
 }
 
-@entity.name('debug/database/entity')
+@entity.name('.deepkit/debugger/database/entity')
 export class DatabaseEntity {
     @t.optional name?: string;
     @t className!: string;
 }
 
-@entity.name('debug/database')
+@entity.name('.deepkit/debugger/database')
 export class Database {
     @t name!: string;
     @t adapter!: string;
@@ -41,7 +41,7 @@ export class Database {
     @t.array(DatabaseEntity) entities: DatabaseEntity[] = [];
 }
 
-@entity.name('debug/config')
+@entity.name('.deepkit/debugger/config')
 export class Config {
     @t.array(ConfigOption) appConfig!: ConfigOption[];
     @t.array(ConfigOption) modulesConfig!: ConfigOption[];
@@ -53,13 +53,13 @@ export class RouteParameter {
     @t.any schema: any;
 }
 
-@entity.name('debug/route')
+@entity.name('.deepkit/debugger/route')
 export class Route {
     public bodyPropertySchema?: PropertySchema;
 
     constructor(
         @t.name('path') public path: string,
-        @t.name('httpMethod') public httpMethod: string,
+        @t.array(t.string).name('httpMethods') public httpMethods: string[],
         @t.name('controller') public controller: string,
         @t.name('description') public description: string,
         @t.array(RouteParameter).name('parameters') public parameters: RouteParameter[],
@@ -79,7 +79,7 @@ export class Route {
     }
 }
 
-@entity.name('rpc/action/parameter')
+@entity.name('.deepkit/debugger/rpc/action/parameter')
 export class RpcActionParameter {
     public propertySchema: PropertySchema;
 
@@ -91,7 +91,7 @@ export class RpcActionParameter {
     }
 }
 
-@entity.name('rpc/action')
+@entity.name('.deepkit/debugger/rpc/action')
 export class RpcAction {
     @t path!: string;
     @t controller!: string;
@@ -99,7 +99,7 @@ export class RpcAction {
     @t.array(RpcActionParameter) parameters!: RpcActionParameter[];
 }
 
-@entity.name('rpc/event')
+@entity.name('.deepkit/debugger/rpc/event')
 export class Event {
     @t event!: string;
     @t controller!: string;

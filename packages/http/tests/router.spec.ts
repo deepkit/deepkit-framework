@@ -281,7 +281,7 @@ test('router body double', async () => {
     if (!httpData) throw new Error('httpClass undefined');
     const action = [...httpData.getActions()][0];
     expect(action.methodName).toBe('anyReq');
-    expect(action.httpMethod).toBe('POST');
+    expect(action.httpMethods).toEqual(['POST']);
     expect(action.parameters['body']).not.toBeUndefined();
     expect(action.parameters['body'].name).toBe('body');
     expect(action.parameters['body2']).not.toBeUndefined();
@@ -351,7 +351,7 @@ test('router query', async () => {
     if (!httpData) throw new Error('httpClass undefined');
     const action = [...httpData.getActions()][0];
     expect(action.methodName).toBe('anyReq');
-    expect(action.httpMethod).toBe('GET');
+    expect(action.httpMethods).toEqual(['GET']);
     expect(action.parameters['test']).not.toBeUndefined();
     expect(action.parameters['test'].name).toBe('test');
     expect(action.parameters['test'].type).toBe('query');
@@ -564,6 +564,22 @@ test('race condition', async () => {
     ]);
     expect(a).toBe('a');
     expect(b).toBe('b');
+});
+
+test('multiple methods', async () => {
+    class Controller {
+        @http.GET('/one').POST()
+        one() {
+            return true;
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [], []);
+
+    expect((await httpKernel.request(HttpRequest.GET('/one'))).json).toBe(true);
+    expect((await httpKernel.request(HttpRequest.POST('/one'))).json).toBe(true);
+    expect((await httpKernel.request(HttpRequest.PATCH('/one'))).bodyString).toBe("Not found");
+    expect((await httpKernel.request(HttpRequest.PUT('/one'))).bodyString).toBe("Not found");
 });
 
 test('promise serializer', async () => {

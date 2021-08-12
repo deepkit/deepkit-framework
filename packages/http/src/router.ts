@@ -152,7 +152,7 @@ export class RouteConfig {
 
     constructor(
         public readonly name: string,
-        public readonly httpMethod: string,
+        public readonly httpMethods: string[],
         public readonly path: string,
         public readonly action: RouteControllerAction,
     ) {
@@ -370,7 +370,7 @@ function filterMiddlewaresForRoute(middlewareRawConfigs: MiddlewareRegistryEntry
         }
 
         for (const route of v.config.routes) {
-            if (route.httpMethod && route.httpMethod !== routeConfig.httpMethod) return false;
+            if (route.httpMethod && !routeConfig.httpMethods.includes(route.httpMethod)) return false;
 
             if (route.category && route.category !== routeConfig.category) return false;
             if (route.excludeCategory && route.excludeCategory === routeConfig.category) return false;
@@ -602,13 +602,15 @@ export class Router {
             }`;
         }
 
-        //todo: handle ANY
-        const methodCheck = routeConfig.httpMethod.toLowerCase() === 'any'
-            ? ''
-            : `_method === '${routeConfig.httpMethod.toLowerCase()}' && `;
+        let methodCheck = '';
+        if (routeConfig.httpMethods.length) {
+            methodCheck = '(' + routeConfig.httpMethods.map(v => {
+                return `_method === '${v.toLowerCase()}'`;
+            }).join(' || ') + ') && ';
+        }
 
         return `
-            //=> ${routeConfig.httpMethod} ${path}
+            //=> ${routeConfig.httpMethods.join(',')} ${path}
             if (${methodCheck}${matcher}) {
                 return {routeConfig: ${routeConfigVar}, parameters: ${parameters}, uploadedFiles: uploadedFiles, middlewares: ${middlewares}};
             }
@@ -662,7 +664,7 @@ export class Router {
         const schema = getClassSchema(controller);
 
         for (const action of data.getActions()) {
-            const routeConfig = new RouteConfig(action.name, action.httpMethod, action.path, {
+            const routeConfig = new RouteConfig(action.name, action.httpMethods, action.path, {
                 controller,
                 contextId,
                 methodName: action.methodName
