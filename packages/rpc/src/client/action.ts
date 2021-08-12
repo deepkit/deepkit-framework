@@ -236,6 +236,11 @@ export class RpcActionClient {
                                         subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
                                     };
 
+                                    observableSubject.complete = () => {
+                                        Subject.prototype.complete.call(observableSubject);
+                                        subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
+                                    };
+
                                     if (firstObservableNextCalled) {
                                         observableSubject.next(firstObservableNext);
                                         firstObservableNext = undefined;
@@ -249,6 +254,11 @@ export class RpcActionClient {
                                     // note: subject.subscribe().add(T), T is not called when subject.unsubscribe() is called.
                                     observableSubject.unsubscribe = () => {
                                         Subject.prototype.unsubscribe.call(observableSubject);
+                                        subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
+                                    };
+
+                                    observableSubject.complete = () => {
+                                        Subject.prototype.complete.call(observableSubject);
                                         subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
                                     };
                                     resolve(observableSubject);

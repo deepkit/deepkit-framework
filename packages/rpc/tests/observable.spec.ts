@@ -13,7 +13,8 @@ test('observable basics', async () => {
     class MyModel {
         constructor(
             @t public name: string
-        ) { }
+        ) {
+        }
     }
 
     class Controller {
@@ -115,8 +116,9 @@ test('Subject', async () => {
     }
 });
 
-test('subject unsubscribes automatically when connection closes', async () => {
+test('subject completes automatically when connection closes', async () => {
     let unsubscribed = false;
+
     class Controller {
         @rpc.action()
         strings(): Subject<string> {
@@ -154,18 +156,22 @@ test('subject unsubscribes automatically when connection closes', async () => {
     }
 });
 
-test('observable unsubscribes automatically when connection closes', async () => {
-    let unsubscribed = false;
+test('subject redirect of global subject', async () => {
+    const globalSubject = new Subject<string>();
+    const subjects: Subject<string>[] = [];
+    let completes: number = 0;
+
     class Controller {
         @rpc.action()
-        strings(): Observable<string> {
-            return new Observable((observer) => {
-                return {
-                    unsubscribe() {
-                        unsubscribed = true;
-                    }
-                }
-            })
+        strings(): Subject<string> {
+            const subject = new Subject<string>();
+            subjects.push(subject);
+            const sub = globalSubject.subscribe(subject);
+            subject.subscribe().add(() => {
+                completes++;
+                sub.unsubscribe()
+            });
+            return subject;
         }
     }
 
@@ -176,7 +182,73 @@ test('observable unsubscribes automatically when connection closes', async () =>
     const controller = client.controller<Controller>('myController');
 
     {
-        const o = (await controller.strings()).subscribe(() => { });
+        const o = await controller.strings();
+        expect(o).toBeInstanceOf(Subject);
+        expect(globalSubject.isStopped).toBe(false);
+        expect(completes).toBe(0);
+        o.unsubscribe();
+        await sleep(0);
+        expect(completes).toBe(1);
+        expect(globalSubject.isStopped).toBe(false);
+        for (const subject of subjects) {
+            expect(subject.isStopped).toBe(true);
+        }
+    }
+
+    {
+        const o = await controller.strings();
+        expect(o).toBeInstanceOf(Subject);
+        expect(globalSubject.isStopped).toBe(false);
+        expect(completes).toBe(1);
+        o.unsubscribe();
+        await sleep(0);
+        expect(completes).toBe(2);
+        expect(globalSubject.isStopped).toBe(false);
+        for (const subject of subjects) {
+            expect(subject.isStopped).toBe(true);
+        }
+    }
+
+    {
+        const o = await controller.strings();
+        expect(o).toBeInstanceOf(Subject);
+        expect(globalSubject.isStopped).toBe(false);
+        expect(completes).toBe(2);
+        o.complete();
+        await sleep(0);
+        expect(completes).toBe(3);
+        expect(globalSubject.isStopped).toBe(false);
+        for (const subject of subjects) {
+            expect(subject.isStopped).toBe(true);
+        }
+    }
+});
+
+test('observable unsubscribes automatically when connection closes', async () => {
+    let unsubscribed = false;
+
+    class Controller {
+        @rpc.action()
+        strings(): Observable<string> {
+            return new Observable((observer) => {
+                return {
+                    unsubscribe() {
+                        unsubscribed = true;
+                    }
+                };
+            });
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController('myController', Controller);
+
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    {
+        const o = (await controller.strings()).subscribe(() => {
+        });
         expect(o).toBeInstanceOf(Subscription);
         expect(unsubscribed).toBe(false);
         o.unsubscribe();
@@ -186,7 +258,8 @@ test('observable unsubscribes automatically when connection closes', async () =>
 
     {
         unsubscribed = false;
-        const o = (await controller.strings()).subscribe(() => { });
+        const o = (await controller.strings()).subscribe(() => {
+        });
         expect(o).toBeInstanceOf(Subscription);
         expect(unsubscribed).toBe(false);
         client.disconnect();
@@ -350,7 +423,7 @@ test('observable complete', async () => {
                         done = true;
                         active = false;
                     }
-                }
+                };
             });
         }
     }
@@ -372,7 +445,7 @@ test('observable complete', async () => {
                 unsubscribe() {
                     unsubscribedCalled = true;
                 }
-            }
+            };
         });
         {
             const lastValue = await o.toPromise();
@@ -385,10 +458,11 @@ test('observable complete', async () => {
                 let l: any = undefined;
                 o.subscribe((value) => {
                     l = value;
-                }, () => { }, () => {
+                }, () => {
+                }, () => {
                     resolve(l);
                 });
-            })
+            });
             expect(lastValue).toBe(1);
             expect(unsubscribedCalled).toBe(true);
         }
