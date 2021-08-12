@@ -23,7 +23,8 @@ export class ControllerClient {
     public readonly debug = this.client.controller(DebugControllerInterface);
 
     static getServerHost(): string {
-        return (location.port === '4200' ? location.hostname + ':8080' : location.host);
+        const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+        return proto + (location.port === '4200' ? location.hostname + ':8080' : location.host);
     }
 
     public getWorkflow(name: string): Promise<Workflow> {

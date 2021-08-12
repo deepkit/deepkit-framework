@@ -75,7 +75,7 @@ import { ProfileTimelineComponent } from './views/profile/timeline.component';
         DuiTableModule,
     ],
     providers: [
-        { provide: DeepkitClient, useFactory: () => new DeepkitClient('ws://' + ControllerClient.getServerHost()) },
+        { provide: DeepkitClient, useFactory: () => new DeepkitClient(ControllerClient.getServerHost()) },
         ControllerClient,
     ],
     bootstrap: [AppComponent]
