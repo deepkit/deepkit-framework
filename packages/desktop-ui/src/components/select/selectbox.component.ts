@@ -61,6 +61,9 @@ export class DynamicOptionDirective {
 })
 export class OptionDirective {
     @Input() value: any;
+
+    @Input() disabled: boolean = false;
+
     @ContentChild(DynamicOptionDirective, { static: false }) dynamic?: DynamicOptionDirective;
 
     constructor(public readonly element: ElementRef) {

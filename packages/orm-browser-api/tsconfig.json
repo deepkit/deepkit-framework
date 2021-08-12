@@ -30,6 +30,9 @@
       "path": "../rpc/tsconfig.json"
     },
     {
+      "path": "../stopwatch/tsconfig.json"
+    },
+    {
       "path": "../type/tsconfig.json"
     }
   ]

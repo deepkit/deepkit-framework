@@ -42,6 +42,9 @@
       "path": "../framework-debug-api/tsconfig.json"
     },
     {
+      "path": "../injector/tsconfig.json"
+    },
+    {
       "path": "../logger/tsconfig.json"
     },
     {
@@ -52,6 +55,9 @@
     },
     {
       "path": "../rpc/tsconfig.json"
+    },
+    {
+      "path": "../stopwatch/tsconfig.json"
     },
     {
       "path": "../topsort/tsconfig.json"

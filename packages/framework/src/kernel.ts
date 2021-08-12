@@ -38,6 +38,7 @@ import { RpcKernelSecurity } from '@deepkit/rpc';
 import { AppConfigController } from './cli/app-config';
 import { Zone } from './zone';
 import { DebugBroker, DebugBrokerListener } from './debug/broker';
+import { ApiConsoleModule } from '@deepkit/api-console-module';
 
 export const KernelModule = new AppModule({
     config: kernelConfig,
@@ -120,6 +121,8 @@ export const KernelModule = new AppModule({
         module.addController(DebugController);
         module.addController(OrmBrowserController);
         registerDebugHttpController(module, config.debugUrl);
+
+        module.addImport(ApiConsoleModule.configure({listen: false}));
 
         //we start our own broker
         if (config.debugProfiler) {

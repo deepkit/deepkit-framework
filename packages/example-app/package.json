@@ -7,6 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "@deepkit/api-console-module": "^1.0.1-alpha.43",
     "@deepkit/app": "^1.0.1-alpha.0",
     "@deepkit/core": "^1.0.1-alpha.0",
     "@deepkit/core-rxjs": "^1.0.1-alpha.0",

@@ -25,7 +25,16 @@
       "path": "../app/tsconfig.json"
     },
     {
+      "path": "../broker/tsconfig.json"
+    },
+    {
+      "path": "../bson/tsconfig.json"
+    },
+    {
       "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../crypto/tsconfig.json"
     },
     {
       "path": "../framework/tsconfig.json"
@@ -44,6 +53,9 @@
     },
     {
       "path": "../rpc/tsconfig.json"
+    },
+    {
+      "path": "../rpc-tcp/tsconfig.json"
     },
     {
       "path": "../sql/tsconfig.json"

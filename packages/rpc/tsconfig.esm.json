@@ -18,6 +18,12 @@
       "path": "../crypto/tsconfig.json"
     },
     {
+      "path": "../injector/tsconfig.esm.json"
+    },
+    {
+      "path": "../logger/tsconfig.esm.json"
+    },
+    {
       "path": "../type/tsconfig.esm.json"
     }
   ]

@@ -20,8 +20,21 @@ export class MainController {
     }
 
     @http.GET('/api/users')
+    @t.array(User)
     async users() {
         return await this.database.query(User).find();
+    }
+
+    @http.GET('/api/user/:id')
+    @t.type(User)
+    async user(id: number) {
+        return await this.database.query(User).filter({id}).findOne();
+    }
+
+    @http.DELETE('/api/user/:id')
+    async deleteUser(id: number) {
+        const res = await this.database.query(User).filter({id}).deleteOne();
+        return res.modified === 1;
     }
 
     @http.GET('/benchmark')

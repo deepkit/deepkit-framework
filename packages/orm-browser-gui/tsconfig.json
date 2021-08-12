@@ -54,6 +54,9 @@
       "path": "../rpc/tsconfig.json"
     },
     {
+      "path": "../stopwatch/tsconfig.json"
+    },
+    {
       "path": "../topsort/tsconfig.json"
     },
     {

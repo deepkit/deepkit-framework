@@ -12,6 +12,9 @@
       "path": "../injector/tsconfig.esm.json"
     },
     {
+      "path": "../stopwatch/tsconfig.esm.json"
+    },
+    {
       "path": "../type/tsconfig.esm.json"
     }
   ]

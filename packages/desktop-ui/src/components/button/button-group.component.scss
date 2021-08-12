@@ -14,14 +14,6 @@
     margin-right: 6px;
 }
 
-:host ::ng-deep > dui-input {
-    height: 19px;
-}
-
-:host-context(.dui-theme-light) ::ng-deep > dui-input {
-    height: 21px;
-}
-
 :host:last-child ::ng-deep > *:last-child {
     margin-right: 0;
 }

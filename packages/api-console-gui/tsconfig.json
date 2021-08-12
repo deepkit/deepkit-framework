@@ -1,0 +1,52 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "baseUrl": "./",
+    "outDir": "./dist/out-tsc",
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowSyntheticDefaultImports": true,
+    "sourceMap": true,
+    "declaration": false,
+    "downlevelIteration": true,
+    "experimentalDecorators": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "target": "es2018",
+    "module": "es2020",
+    "lib": [
+      "es2018",
+      "dom"
+    ]
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true
+  },
+  "references": [
+    {
+      "path": "../bson/tsconfig.json"
+    },
+    {
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../core-rxjs/tsconfig.json"
+    },
+    {
+      "path": "../crypto/tsconfig.json"
+    },
+    {
+      "path": "../rpc/tsconfig.json"
+    },
+    {
+      "path": "../stopwatch/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.json"
+    }
+  ]
+}

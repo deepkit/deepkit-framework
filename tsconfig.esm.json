@@ -14,6 +14,12 @@
       "path": "packages/bson/tsconfig.esm.json"
     },
     {
+      "path": "packages/api-console/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/api-console-module/tsconfig.esm.json"
+    },
+    {
       "path": "packages/app/tsconfig.esm.json"
     },
     {

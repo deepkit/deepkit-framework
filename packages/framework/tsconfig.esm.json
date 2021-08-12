@@ -12,6 +12,9 @@
       "path": "../orm-browser-api/tsconfig.esm.json"
     },
     {
+      "path": "../api-console-module/tsconfig.esm.json"
+    },
+    {
       "path": "../app/tsconfig.esm.json"
     },
     {

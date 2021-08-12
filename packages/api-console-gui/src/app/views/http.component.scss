@@ -1,0 +1,146 @@
+:host {
+    display: flex;
+    width: 100%;
+    overflow: hidden;
+    height: 100%;
+}
+
+.routes {
+    flex: 1 0 240px;
+    display: flex;
+    flex-direction: column;
+
+    dui-list {
+        flex: 1;
+    }
+}
+
+dui-button-group {
+    margin-right: 0px !important;
+}
+
+.form {
+    flex: 1 1 50%;
+    border-left: 1px solid var(--line-color-light);
+    border-right: 1px solid var(--line-color-light);
+    padding: 12px;
+}
+
+.right {
+    flex: 1 1 50%;
+    padding: 0 6px;
+}
+
+.request {
+    display: block;
+    margin-top: 6px;
+
+    .line {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        overflow: hidden;
+        border: 1px solid var(--line-color-light);
+        border-radius: 3px;
+
+        dui-icon {
+            margin-left: 3px;
+        }
+
+        .method {
+            font-size: 11px;
+            font-weight: bold;
+            padding: 3px 5px;
+        }
+
+        .url {
+            padding: 3px 5px;
+            flex: 1;
+            word-break: break-all;
+        }
+
+        .status {
+            padding: 0 3px;
+            font-size: 11px;
+        }
+
+        .status-box {
+            border: 1px solid var(--color-green);
+            color: var(--color-green);
+            border-radius: 3px;
+            padding: 0px 5px;
+            &.red {
+                color: var(--color-red);
+                border: 1px solid var(--color-red);
+            }
+            &.orange {
+                color: var(--color-orange);
+                border: 1px solid var(--color-orange);
+            }
+        }
+    }
+
+    .results {
+        display: none;
+        word-break: break-all;
+        overflow: hidden;
+        max-height: 80%;
+        padding: 5px;
+        background-color: var(--dui-window-header-bg);
+
+        &.visible {
+            display: block;
+        }
+    }
+}
+
+.filter {
+    margin: 2px 12px;
+    display: flex;
+    align-items: center;
+}
+
+.list-item {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+
+    .path {
+        flex: 1;
+        overflow: hidden;
+        word-break: break-all;
+    }
+
+    .method {
+        text-align: right;
+        font-size: 11px;
+        font-weight: bold;
+        padding: 0px 5px;
+
+        border: 1px solid var(--line-color-light);
+        border-radius: 3px;
+    }
+}
+
+.url-input {
+    display: flex;
+    height: 21px;
+    flex: 1;
+    border: 1px solid var(--line-color-light);
+    background-color: var(--dui-window-header-bg);
+
+    .urlPart {
+        padding: 2px 4px;
+        display: flex;
+        line-height: 100%;
+        align-items: center;
+    }
+
+    dui-input {
+        border-radius: 3px;
+        border-top: 0;
+        border-bottom: 0;
+        height: 100%;
+    }
+}
+

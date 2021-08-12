@@ -8,6 +8,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
+    "preserveSymlinks": true,
     "target": "es2018",
     "module": "CommonJS",
     "esModuleInterop": true,
@@ -37,6 +38,12 @@
     },
     {
       "path": "../crypto/tsconfig.json"
+    },
+    {
+      "path": "../injector/tsconfig.json"
+    },
+    {
+      "path": "../logger/tsconfig.json"
     },
     {
       "path": "../rpc/tsconfig.json"

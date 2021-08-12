@@ -52,6 +52,7 @@
       "packages/core",
       "packages/core-rxjs",
       "packages/type",
+      "packages/api-console",
       "packages/app",
       "packages/event",
       "packages/workflow",
