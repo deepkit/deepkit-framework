@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, getClassTypeFromInstance } from '@deepkit/core';
+import { arrayRemoveItem, ClassType, getClassTypeFromInstance } from '@deepkit/core';
 import { ClassSchema, getClassSchema } from '@deepkit/type';
 import { InjectorContext } from '@deepkit/injector';
 import { Database } from './database';
@@ -75,8 +75,20 @@ export class DatabaseRegistry {
     }
 
     public addDatabase(database: ClassType, options: { migrateOnStartup?: boolean } = {}) {
-        this.databaseTypes.push(database);
-        this.databaseOptions.set(database, options);
+        if (this.databaseTypes.indexOf(database) === -1) {
+            this.databaseTypes.push(database);
+        }
+        let o = this.databaseOptions.get(database);
+        if (o) {
+            Object.assign(o, options);
+        } else {
+            this.databaseOptions.set(database, options);
+        }
+    }
+
+    public removeDatabase(database: ClassType) {
+        arrayRemoveItem(this.databaseTypes, database);
+        this.databaseOptions.delete(database);
     }
 
     public getDatabaseTypes() {

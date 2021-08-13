@@ -306,9 +306,14 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
             }
         }
 
+        this.handleProviders(module, providers);
         context.providers.push(...providers);
 
         return context;
+    }
+
+    protected handleProviders(module: AppModule<any, any>, providers: ProviderWithScope[]) {
+
     }
 
     protected setupController(providers: ProviderWithScope[], controller: ClassType, context: Context, module: AppModule<any>) {

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, ProcessLocker } from '@deepkit/core';
+import { ProcessLocker } from '@deepkit/core';
 import { DebugRequest } from '@deepkit/framework-debug-api';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
@@ -29,7 +29,7 @@ import { RpcServer, WebWorkerFactory } from './worker';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { OrmBrowserController } from './orm-browser/controller';
 import { DatabaseListener } from './database/database-listener';
-import { Database, DatabaseRegistry } from '@deepkit/orm';
+import { DatabaseRegistry } from '@deepkit/orm';
 import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
 import { AppModule } from '@deepkit/app';
 import { FileStopwatchStore } from './debug/stopwatch/store';
@@ -85,17 +85,7 @@ export const KernelModule = new AppModule({
         HttpModule,
     ],
 }, 'kernel').setup((module, config) => {
-    if (config.databases) {
-        const dbs: ClassType<Database>[] = config.databases;
-        module.addProvider(...dbs);
-        module.setupProvider(MigrationProvider).setMigrationDir(config.migrationDir);
-        for (const db of dbs) {
-            module.setupProvider(DatabaseRegistry).addDatabase(db);
-            if (config.debug && config.debugProfiler) {
-                module.setupProvider(db).stopwatch = injectorReference(Stopwatch);
-            }
-        }
-    }
+    module.setupProvider(MigrationProvider).setMigrationDir(config.migrationDir);
     module.setupProvider(DatabaseRegistry).setMigrateOnStartup(config.migrateOnStartup);
 
     if (config.httpLog) {
@@ -122,7 +112,7 @@ export const KernelModule = new AppModule({
         module.addController(OrmBrowserController);
         registerDebugHttpController(module, config.debugUrl);
 
-        module.addImport(ApiConsoleModule.configure({listen: false}));
+        module.addImport(ApiConsoleModule.configure({ listen: false }));
 
         //we start our own broker
         if (config.debugProfiler) {
