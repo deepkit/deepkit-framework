@@ -1,5 +1,5 @@
 import { arrayRemoveItem, ClassType, sleep } from '@deepkit/core';
-import { Application, ApplicationServer, Broker, BrokerServer, NetBroker, NetBrokerServer } from '@deepkit/framework';
+import { Application, ApplicationServer, Broker, BrokerServer, KernelModule, NetBroker, NetBrokerServer } from '@deepkit/framework';
 import { AppModule } from '@deepkit/app';
 import { Observable } from 'rxjs';
 import { createServer } from 'http';
@@ -48,6 +48,9 @@ export function appModuleForControllers(controllers: ClassType[], entities: Clas
             { provide: Broker, useClass: NetBroker },
             { provide: BrokerServer, useClass: NetBrokerServer },
         ],
+        imports: [
+            KernelModule
+        ]
     });
 }
 
