@@ -1,7 +1,7 @@
 import { ApiConsoleApi, ApiRoute } from '@deepkit/api-console-gui/src/api';
 import { rpc } from '@deepkit/rpc';
 import { parseRouteControllerAction, Router } from '@deepkit/http';
-import { serializeSchemas, t } from '@deepkit/type';
+import { createClassSchema, getClassSchema, serializeSchemas, t } from '@deepkit/type';
 import { getClassName } from '@deepkit/core';
 
 @rpc.controller(ApiConsoleApi)
@@ -50,6 +50,13 @@ export class ApiConsoleController implements ApiConsoleApi {
                     //its a dependency injection token
                 }
             }
+
+            const schema = getClassSchema(route.action.controller);
+            const resultSchema = createClassSchema();
+            const prop = schema.getMethod(route.action.methodName).clone();
+            prop.name = 'v';
+            resultSchema.registerProperty(prop);
+            routeD.resultSchemas = serializeSchemas([resultSchema]);
 
             // if (queryParameters.length) {
             //     routeD.path += '?' + queryParameters.join('&');

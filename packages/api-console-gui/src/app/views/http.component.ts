@@ -79,8 +79,58 @@ class Request {
                 </div>
 
                 <div *ngIf="route.deserializedBodySchemas as bodies">
-                    <pre *ngFor="let s of bodies">{{s.toString()}}</pre>
+                    <ng-container *ngIf="bodies.length">
+                        <h3>Request Body</h3>
+                        <ng-container *ngFor="let s of bodies; let last = last">
+                            <ng-container *ngIf="!last">
+                                <pre class="ts text-selection">{{s.toString()}}</pre>
+                            </ng-container>
+                            <ng-container *ngIf="last">
+                                <h4>Body</h4>
+                                <pre class="ts text-selection">{{s.toString()}}</pre>
+                            </ng-container>
+                        </ng-container>
+                    </ng-container>
                 </div>
+
+                <div *ngIf="route.getResultSchemas() as bodies">
+                    <ng-container *ngIf="bodies.length">
+                        <h3>Response Body</h3>
+                        <ng-container *ngFor="let s of bodies; let last = last">
+                            <ng-container *ngIf="!last">
+                                <pre class="ts text-selection">{{s.toString()}}</pre>
+                            </ng-container>
+                            <ng-container *ngIf="last">
+                                <pre class="ts text-selection">{{s.getProperty('v').getResolvedClassSchema().toString()}}</pre>
+                                <h4>Result</h4>
+                                <pre class="ts text-selection">{{s.getProperty('v').toString()}}</pre>
+                            </ng-container>
+                        </ng-container>
+                    </ng-container>
+                </div>
+
+
+                <h4>Category</h4>
+                <div class="group-content">
+                    {{route.category || 'none'}}
+                </div>
+
+                <h4>Groups</h4>
+                <div class="group-content">
+                    {{route.groups.join(',') || 'none'}}
+                </div>
+
+                <h4>Description</h4>
+                <div class="group-content">
+                    {{route.description || 'none'}}
+                </div>
+
+                <h4>Response Status Codes</h4>
+
+                <div class="group-content">
+                    {{route.description || 'none'}}
+                </div>
+
             </ng-container>
         </div>
 

@@ -11,6 +11,9 @@ export class ApiRouteParameter {
 export class ApiRoute {
     public deserializedBodySchemas: ClassSchema[] = [];
 
+    @t.array(serializedSchemaDefinition) public resultSchemas: SerializedSchema[] = [];
+    protected parsedResultSchemas: ClassSchema[] = [];
+
     constructor(
         @t.name('path') public path: string,
         @t.array(t.string).name('httpMethods') public httpMethods: string[],
@@ -35,11 +38,20 @@ export class ApiRoute {
         // }
     }
 
+    getResultSchemas(): ClassSchema[] {
+        if (!this.parsedResultSchemas.length && this.resultSchemas.length > 0) {
+            this.parsedResultSchemas = deserializeSchemas(this.resultSchemas, '@api-console/');
+        }
+        return this.parsedResultSchemas;
+    }
+
     get id(): string {
         return this.httpMethods.join('-') + ':' + this.controller + ':' + this.path;
     }
 }
-export const ApiConsoleApi = ControllerSymbol<ApiConsoleApi>('.deepkit/api-console')
+
+export const ApiConsoleApi = ControllerSymbol<ApiConsoleApi>('.deepkit/api-console');
+
 export interface ApiConsoleApi {
-    getRoutes(): ApiRoute[]
+    getRoutes(): ApiRoute[];
 }

@@ -100,6 +100,18 @@ dui-button-group {
     align-items: center;
 }
 
+.ts {
+    border: 1px solid var(--line-color-light);
+    border-radius: 3px;
+    background-color: var(--dui-window-header-bg);
+    padding: 5px;
+    margin: 5px 0;
+}
+
+.group-content {
+    margin-bottom: 10px;
+}
+
 .list-item {
     display: flex;
     align-items: center;
