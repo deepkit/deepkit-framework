@@ -13,7 +13,7 @@ import { ClassSchema, getClassSchema, getSortedUnionTypes, PropertySchema } from
 import { BaseParser, ParserV2 } from './bson-parser';
 import { bsonTypeGuards } from './bson-typeguards';
 import { seekElementSize } from './continuation';
-import { BSONType, BSON_BINARY_SUBTYPE_UUID, digitByteSize } from './utils';
+import { BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize } from './utils';
 
 function createPropertyConverter(setter: string, property: PropertySchema, compiler: CompilerContext, parentProperty?: PropertySchema): string {
     //we want the isNullable value from the actual property, not the decorated.
@@ -93,6 +93,20 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
                 ${nullOrSeek}
             }
         `;
+    } else if (property.type === 'bigint') {
+        return `
+            if (elementType === ${BSONType.INT}) {
+                ${setter} = BigInt(parser.parseInt());
+            } else if (elementType === ${BSONType.NUMBER}) {
+                ${setter} = BigInt(parser.parseNumber());
+            } else if (elementType === ${BSONType.LONG} || elementType === ${BSONType.TIMESTAMP}) {
+                ${setter} = parser.parseLong();
+            } else if (elementType === ${BSONType.BINARY}) {
+                ${setter} = parser.parseBinary();
+            } else {
+                ${nullOrSeek}
+            }
+        `;
     } else if (property.type === 'number') {
         return `
             if (elementType === ${BSONType.INT}) {
@@ -110,7 +124,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
             if (elementType === ${BSONType.BINARY}) {
                 parser.eatUInt32(); //size
                 const subType = parser.eatByte();
-                if (subType !== ${BSON_BINARY_SUBTYPE_UUID}) throw new Error('${property.name} BSON binary type invalid. Expected UUID(4), but got ' + subType); 
+                if (subType !== ${BSON_BINARY_SUBTYPE_UUID}) throw new Error('${property.name} BSON binary type invalid. Expected UUID(4), but got ' + subType);
                 ${setter} = parser.parseUUID();
             } else {
                 ${nullOrSeek}
@@ -125,7 +139,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
             }
             `;
     } else if (property.type === 'partial') {
-        const object = compiler.reserveVariable('partiaObject', {});
+        const object = compiler.reserveVariable('partialObject', {});
         const propertyCode: string[] = [];
         const schema = property.getResolvedClassSchema();
 
@@ -151,13 +165,13 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
         if (elementType === ${BSONType.OBJECT}) {
             ${object} = {};
             const end = parser.eatUInt32() + parser.offset;
-            
+
             while (parser.offset < end) {
                 const elementType = parser.eatByte();
                 if (elementType === 0) break;
-                
+
                 ${propertyCode.join('\n')}
-                
+
                 //jump over this property when not registered in schema
                 while (parser.offset < end && parser.buffer[parser.offset++] != 0);
 
@@ -211,7 +225,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
         if (property.isReference) {
             primaryKeyHandling = createPropertyConverter(setter, property.getResolvedClassSchema().getPrimaryField(), compiler);
         }
-        
+
         return `
             if (elementType === ${BSONType.OBJECT}) {
                 ${setter} = getRawBSONDecoder(${propertySchema})(parser);
@@ -232,10 +246,10 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
             for (let i = 0; ; i++) {
                 const elementType = parser.eatByte();
                 if (elementType === 0) break;
-        
+
                 //arrays are represented as objects, so we skip the key name
                 parser.seek(digitByteSize(i));
-        
+
                 let ${v} = undefined;
                 ${createPropertyConverter(v, property.getSubType(), compiler, property)}
                 ${setter}.push(${v});
@@ -374,7 +388,7 @@ function createSchemaDecoder(schema: ClassSchema): DecoderFn {
         var object = {};
         ${schema.isCustomClass() ? 'var _instance;' : ''}
         const end = parser.eatUInt32() + parser.offset;
-        
+
         ${resetDefaultSets.join('\n')}
 
         while (parser.offset < end) {

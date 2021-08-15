@@ -63,6 +63,8 @@ export const BSON_BINARY_SUBTYPE_UUID_OLD = 3;
 export const BSON_BINARY_SUBTYPE_UUID = 4;
 export const BSON_BINARY_SUBTYPE_MD5 = 5;
 export const BSON_BINARY_SUBTYPE_USER_DEFINED = 128;
+
+//our custom type. Not supported by MongoDB natively. We need to adjust once MongoDB supports bigint
 export const BSON_BINARY_SUBTYPE_BIGINT = 127;
 
 export function digitByteSize(v: number): number {

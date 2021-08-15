@@ -30,6 +30,9 @@ const BSON_INT32_MIN = -0x80000000;
 export const JS_INT_MAX = 0x20000000000000; // Any integer up to 2^53 can be precisely represented by a double.
 export const JS_INT_MIN = -0x20000000000000; // Any integer down to -2^53 can be precisely represented by a double.
 
+const LONG_MAX = 'undefined' !== typeof BigInt ? BigInt('9223372036854775807') : 9223372036854775807;
+const LONG_MIN = 'undefined' !== typeof BigInt ? BigInt('-9223372036854775807') : -9223372036854775807;
+
 export function hexToByte(hex: string, index: number = 0, offset: number = 0): number {
     let code1 = hex.charCodeAt(index * 2 + offset) - 48;
     if (code1 > 9) code1 -= 39;
@@ -61,6 +64,20 @@ export function stringByteLength(str: string): number {
     return size;
 }
 
+function getBigIntSizeBinary(value: bigint): number {
+    let hex = value.toString(16);
+    let signum = hex === '0' ? 0 : 1;
+    if (hex[0] === '-') {
+        //negative number
+        signum = -1;
+        hex = hex.slice(1);
+    }
+    if (hex.length % 2) hex = '0' + hex;
+    let size = 4 + 1 + Math.ceil(hex.length / 2);
+    if (signum !== 0) size++;
+    return size;
+}
+
 export function getValueSize(value: any): number {
     if ('boolean' === typeof value) {
         return 1;
@@ -68,7 +85,8 @@ export function getValueSize(value: any): number {
         //size + content + null
         return 4 + stringByteLength(value) + 1;
     } else if ('bigint' === typeof value) {
-        return 4 + 1 + Math.ceil(value.toString(16).length / 2);
+        //for bigint in `any` context, we serialize always as binary
+        return getBigIntSizeBinary(value);
     } else if ('number' === typeof value) {
         if (Math.floor(value) === value) {
             //it's an int
@@ -160,9 +178,10 @@ function getPropertySizer(schema: ClassSchema, compiler: CompilerContext, proper
         }
         `;
     } else if (property.type === 'bigint') {
+        compiler.context.set('getBigIntSizeBinary', getBigIntSizeBinary);
         code = `
         if (typeof ${accessor} === 'bigint') {
-            size += 4 + 1 + Math.ceil(${accessor}.toString(16).length / 2);
+            size += getBigIntSizeBinary(${accessor});
         }
         `;
     } else if (property.type === 'number') {
@@ -484,16 +503,62 @@ export class Writer {
         }
     }
 
-    writeBigInt(value: bigint) {
-        let hex = value.toString(16);
-        if (hex.length % 2) hex = '0' + hex;
-        const size = Math.ceil(hex.length / 2);
-        this.writeUint32(size);
-        this.writeByte(BSON_BINARY_SUBTYPE_BIGINT);
-        for (let i = 0; i < size; i++) {
-            this.buffer[this.offset + i] = hexToByte(hex, i);
+    getBigIntBSONType(value: bigint): number {
+        if (BSON_INT32_MIN <= value && value <= BSON_INT32_MAX) {
+            return BSONType.INT;
+        } else if (LONG_MIN <= value && value <= LONG_MAX) {
+            return BSONType.LONG;
+        } else {
+            return BSONType.BINARY;
         }
-        this.offset += size;
+    }
+
+    writeBigIntLong(value: bigint) {
+        if (value < 0) {
+            this.writeInt32(~Number(-value % BigInt(TWO_PWR_32_DBL_N)) + 1 | 0); //low
+            this.writeInt32(~(Number(-value / BigInt(TWO_PWR_32_DBL_N))) | 0); //high
+        } else {
+            this.writeInt32(Number(value % BigInt(TWO_PWR_32_DBL_N)) | 0); //low
+            this.writeInt32(Number(value / BigInt(TWO_PWR_32_DBL_N)) | 0); //high
+        }
+    }
+
+    writeBigIntBinary(value: bigint) {
+        //custom binary
+        let hex = value.toString(16);
+        let signum = hex === '0' ? 0 : 1;
+        if (hex[0] === '-') {
+            //negative number
+            signum = -1;
+            hex = hex.slice(1);
+        }
+        if (hex.length % 2) hex = '0' + hex;
+        if (signum === 0) {
+            this.writeUint32(1);
+            this.writeByte(BSON_BINARY_SUBTYPE_BIGINT);
+            this.buffer[this.offset++] = 0;
+            return;
+        }
+        let size = Math.ceil(hex.length / 2);
+        this.writeUint32(size + 1);
+        this.writeByte(BSON_BINARY_SUBTYPE_BIGINT);
+        this.buffer[this.offset++] = signum === 1 ? 1 : 255; //255 means -1
+        for (let i = 0; i < size; i++) {
+            this.buffer[this.offset++] = hexToByte(hex, i);
+        }
+    }
+
+    writeLong(value: number) {
+        if (value > 9223372036854775807) value = 9223372036854775807;
+        if (value < -9223372036854775807) value = -9223372036854775807;
+
+        if (value < 0) {
+            this.writeInt32(~(-value % TWO_PWR_32_DBL_N) + 1 | 0); //low
+            this.writeInt32(~(-value / TWO_PWR_32_DBL_N) | 0); //high
+        } else {
+            this.writeInt32((value % TWO_PWR_32_DBL_N) | 0); //low
+            this.writeInt32((value / TWO_PWR_32_DBL_N) | 0); //high
+        }
     }
 
     writeUUID(value: string | UUID) {
@@ -609,8 +674,7 @@ export class Writer {
                 nameWriter();
             }
 
-            this.writeUint32((value.valueOf() % TWO_PWR_32_DBL_N) | 0); //low
-            this.writeUint32((value.valueOf() / TWO_PWR_32_DBL_N) | 0); //high
+            this.writeLong(value.valueOf());
         } else if (isUUID(value)) {
             if (nameWriter) {
                 this.writeByte(BSONType.BINARY);
@@ -618,11 +682,13 @@ export class Writer {
             }
             this.writeUUID(value);
         } else if ('bigint' === typeof value) {
+            //this is only called for bigint in any structures.
+            //to make sure the deserializing yields a bigint as well, we have to always use binary representation
             if (nameWriter) {
                 this.writeByte(BSONType.BINARY);
                 nameWriter();
             }
-            this.writeBigInt(value);
+            this.writeBigIntBinary(value);
         } else if (isObjectId(value)) {
             if (nameWriter) {
                 this.writeByte(BSONType.OID);
@@ -816,7 +882,6 @@ function getPropertySerializerCode(
         }
         `;
     } else if (property.type === 'date') {
-        compiler.context.set('TWO_PWR_32_DBL_N', TWO_PWR_32_DBL_N);
         code = `
         if (${accessor} instanceof Date) {
             writer.writeByte(${BSONType.DATE});
@@ -825,8 +890,7 @@ function getPropertySerializerCode(
                 throw new Error(${JSON.stringify(accessor)} + " not a Date object");
             }
 
-            writer.writeUint32((${accessor} % TWO_PWR_32_DBL_N) | 0); //low
-            writer.writeUint32((${accessor} / TWO_PWR_32_DBL_N) | 0); //high
+            writer.writeLong(${accessor}.valueOf());
         } else {
             ${undefinedWriter}
         }
@@ -860,21 +924,19 @@ function getPropertySerializerCode(
             if ('bigint' === typeof ${accessor}) {
                 writer.writeByte(${BSONType.BINARY});
                 ${nameWriter}
-                writer.writeBigInt(${accessor});
+                writer.writeBigIntBinary(${accessor});
             } else {
                 ${undefinedWriter}
             }
         `;
 
     } else if (property.type === 'number') {
-        compiler.context.set('TWO_PWR_32_DBL_N', TWO_PWR_32_DBL_N);
         code = `
             if ('bigint' === typeof ${accessor}) {
                 //long
                 writer.writeByte(${BSONType.LONG});
                 ${nameWriter}
-                writer.writeUint32(Number(${accessor} % BigInt(TWO_PWR_32_DBL_N)) | 0); //low
-                writer.writeUint32(Number(${accessor} / BigInt(TWO_PWR_32_DBL_N)) | 0); //high
+                writer.writeBigIntLong(${accessor});
             } else if ('number' === typeof ${accessor}) {
                 if (Math.floor(${accessor}) === ${accessor}) {
                     //it's an int

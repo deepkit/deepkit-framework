@@ -72,9 +72,26 @@ const types: [type: FieldDecoratorResult<any>, value: any, expected?: any, dontC
     [t.number, -134.444444445],
     [t.number, 212313134.444444445],
     [t.number, -1212313134.444444445],
+
+    [t.bigint, -1348574839n, undefined, true],
+    [t.bigint, -156n, undefined, true],
+    [t.bigint, -0n, undefined, true],
+    [t.bigint, 0n, undefined, true],
     [t.bigint, 555n, undefined, true],
+    [t.bigint, 9223372036854775810n, undefined, true], //forces binary format
+    [t.bigint, -9223372036854775810n, undefined, true],  //forces binary format
+
+    [t.any, -1348574839n, undefined, true],
+    [t.any, -156n, undefined, true],
+    [t.any, -0n, undefined, true],
+    [t.any, 0n, undefined, true],
+    [t.any, 555n, undefined, true],
+    [t.any, 9223372036854775810n, undefined, true], //forces binary format
+    [t.any, -9223372036854775810n, undefined, true],  //forces binary format
+
     [t.bigint, undefined, undefined, true],
     [t.bigint, 'asd', actualUndefined, true],
+
     [t.boolean, false],
     [t.boolean, true],
     [t.boolean, true],
@@ -82,7 +99,10 @@ const types: [type: FieldDecoratorResult<any>, value: any, expected?: any, dontC
     [t.uuid, 'bef8de92-41fe-442f-b70c-c3a150f8c961'],
     [t.mongoId, '507f191e810c19729de860ea'],
     [t.date, new Date('1987-10-12T00:00:00.000Z')],
+    [t.date, new Date('2920-08-09T19:02:28.397Z')],
     [t.date, new Date('2020-08-09T19:02:28.397Z')],
+    [t.date, new Date('1900-10-12T00:00:00.000Z')],
+    [t.date, new Date('1000-10-12T00:00:00.000Z')],
     [t.enum(MyEnum), MyEnum.first],
     [t.enum(MyEnum), MyEnum.second],
     [t.enum(MyEnum), MyEnum.third],
@@ -170,7 +190,7 @@ describe('integration', () => {
 
             const serializer = getBSONSerializer(s);
             const bsonDeepkit = serializer(obj);
-            // console.log('back', obj, deserialize(Buffer.from(bsonDeepkit)));
+            // console.log(`types round-trip #${i} ${property.toString()}: ${value} back`, obj, deserialize(Buffer.from(bsonDeepkit)));
 
             const decoded = getBSONDecoder(s)(bsonDeepkit);
             expect(decoded).toEqual(expectedObj);

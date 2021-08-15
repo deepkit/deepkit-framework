@@ -86,8 +86,8 @@ export class BaseParser {
     }
 
     parseLong() {
-        const lowBits = this.eatUInt32();
-        const highBits = this.eatUInt32();
+        const lowBits = this.eatInt32();
+        const highBits = this.eatInt32();
 
         return BigInt(highBits) * BigInt(TWO_PWR_32_DBL_N) + (BigInt(lowBits >>> 0));
     }
@@ -109,7 +109,7 @@ export class BaseParser {
 
         if (subType === BSON_BINARY_SUBTYPE_BIGINT) {
             const nextPosition = this.offset + size;
-            const v = this.parseBigInt(size);
+            const v = this.parseBigIntBinary(size);
             this.offset = nextPosition;
             return v;
         }
@@ -129,6 +129,20 @@ export class BaseParser {
         }
 
         return b;
+    }
+
+    parseBigIntBinary(size: number): bigint {
+        let s = '';
+        const signum = this.buffer[this.offset];
+        if (signum === 0) return BigInt(0);
+
+        for (let i = 1; i < size; i++) {
+            s += hexTable[this.buffer[this.offset + i]];
+        }
+
+        //255 === -1, means negative
+        if (signum === 255) return BigInt('0x' + s) * -1n;
+        return BigInt('0x' + s);
     }
 
     parseNumber() {
@@ -153,15 +167,6 @@ export class BaseParser {
 
         this.seek(12);
         return o;
-    }
-
-    parseBigInt(size: number): bigint {
-        let s = '';
-        for (let i = 0; i < size; i++) {
-            s += hexTable[this.buffer[this.offset + i]];
-        }
-
-        return BigInt('0x' + s);
     }
 
     parseUUID() {
@@ -199,9 +204,8 @@ export class BaseParser {
     }
 
     parseDate() {
-        const lowBits = this.eatUInt32();
-        const highBits = this.eatUInt32();
-
+        const lowBits = this.eatInt32();
+        const highBits = this.eatInt32();
         return new Date(highBits * TWO_PWR_32_DBL_N + (lowBits >>> 0));
     }
 

@@ -8,6 +8,10 @@ import { deserialize } from '../src/bson-parser';
 import crypto from 'crypto';
 import { ObjectId, UUID } from '../src/model';
 
+(BigInt.prototype as any).toJSON = function () {
+    return this.toString();
+};
+
 Object.defineProperty(global, 'crypto', { value: { getRandomValues: arr => crypto.randomBytes(arr.length) } });
 
 /**
@@ -221,6 +225,9 @@ test('map allows undefined when allowed', () => {
 });
 
 test('bigint', () => {
+    expect(roundTrip(t.bigint, -12n)).toEqual(-12n);
+    expect(roundTrip(t.bigint, -5n)).toEqual(-5n);
+    expect(roundTrip(t.bigint, -1n)).toEqual(-1n);
     expect(roundTrip(t.bigint, 0n)).toEqual(0n);
     expect(roundTrip(t.bigint, 5n)).toEqual(5n);
     expect(roundTrip(t.bigint, 12n)).toEqual(12n);
@@ -244,6 +251,8 @@ test('union basics', () => {
 
     expect(roundTrip(t.union(t.bigint, t.number), 23)).toEqual(23);
     expect(roundTrip(t.union(t.bigint, t.number), 23n)).toEqual(23n);
+
+    expect(roundTrip(t.union(t.bigint, t.number), 9223372036854775810n)).toEqual(9223372036854775810n);
 
     expect(roundTrip(t.union(t.string, Model), new Model)).toBeInstanceOf(Model);
     {

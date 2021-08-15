@@ -7,6 +7,7 @@ import { getBSONDecoder } from '../src/bson-jit-parser';
 import { randomBytes } from 'crypto';
 import { parseObject, ParserV2 } from '../src/bson-parser';
 import { ObjectId } from '../src/model';
+import { BSON_BINARY_SUBTYPE_BIGINT, BSONType } from '../src/utils';
 
 const { Binary, calculateObjectSize, deserialize, Long, ObjectId: OfficialObjectId, serialize } = bson;
 
@@ -41,15 +42,15 @@ test('basic string', () => {
     const object = { name: 'Peter' };
 
     const expectedSize =
-        4 //size uint32
-        + 1 // type (string)
-        + 'name\0'.length
-        + (
-            4 //string size uint32
-            + 'Peter'.length + 1 //string content + null
-        )
-        + 1 //object null
-        ;
+            4 //size uint32
+            + 1 // type (string)
+            + 'name\0'.length
+            + (
+                4 //string size uint32
+                + 'Peter'.length + 1 //string content + null
+            )
+            + 1 //object null
+    ;
 
     expect(calculateObjectSize(object)).toBe(expectedSize);
 
@@ -66,14 +67,14 @@ test('basic number int', () => {
     const object = { position: 24 };
 
     const expectedSize =
-        4 //size uint32
-        + 1 // type (number)
-        + 'position\0'.length
-        + (
-            4 //int uint32
-        )
-        + 1 //object null
-        ;
+            4 //size uint32
+            + 1 // type (number)
+            + 'position\0'.length
+            + (
+                4 //int uint32
+            )
+            + 1 //object null
+    ;
 
     expect(calculateObjectSize(object)).toBe(expectedSize);
 
@@ -90,53 +91,184 @@ test('basic long', () => {
     const object = { position: 3364367088039355000n };
 
     const expectedSize =
-        4 //size uint32
-        + 1 // type (number)
-        + 'position\0'.length
-        + (
-            4 //uint32 low bits
-            + 4 //uint32 high bits
-        )
-        + 1 //object null
-        ;
+            4 //size uint32
+            + 1 // type (number)
+            + 'position\0'.length
+            + (
+                4 //uint32 low bits
+                + 4 //uint32 high bits
+            )
+            + 1 //object null
+    ;
 
     const schema = t.schema({
         position: t.number,
     });
 
+    const serializer = getBSONSerializer(schema);
+    const deserializer = getBSONDecoder(schema);
     expect(createBSONSizer(schema)(object)).toBe(expectedSize);
-    expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
+    expect(serializer(object).byteLength).toBe(expectedSize);
 
-    const numbers: BigInt[] = [0n, 1n, 65536n, 4294967296n];
-    for (const number of numbers) {
-        const bson = getBSONSerializer(schema)({
-            position: number
-        });
+    const reParsed = getBSONDecoder(schema)(serializer(object));
+    expect(reParsed.position).toBe(3364367088039355000n);
 
-        const long = Long.fromNumber(Number(number));
-        const lowBytes = Buffer.alloc(4);
-        lowBytes.writeUInt32LE(long.getLowBits(), 0);
+    expect(serializer({ position: 123456n })).toEqual(serialize({ position: Long.fromNumber(123456) }));
+    expect(serializer({ position: -123456n })).toEqual(serialize({ position: Long.fromNumber(-123456) }));
+    expect(serializer({ position: 3364367088039355000n })).toEqual(serialize({ position: Long.fromBigInt(3364367088039355000n) }));
+    expect(serializer({ position: -3364367088039355000n })).toEqual(serialize({ position: Long.fromBigInt(-3364367088039355000n) }));
 
-        const heightBytes = Buffer.alloc(4);
-        heightBytes.writeUInt32LE(long.getHighBits(), 0);
+    expect(deserializer(serializer({ position: 3364367088039355000n }))).toEqual({ position: 3364367088039355000n });
+    expect(deserializer(serializer({ position: -3364367088039355000n }))).toEqual({ position: -3364367088039355000n });
+});
 
+test('basic bigint', () => {
+    const object = { position: 3364367088039355000n };
+
+    const expectedSize =
+            4 //size uint32
+            + 1 // type (binary)
+            + 'position\0'.length
+            + (
+                4 //binary size
+                + 1 //binary type
+                + 9 //binary content
+            )
+            + 1 //object null
+    ;
+
+    const schema = t.schema({
+        position: t.bigint,
+    });
+
+    const serializer = getBSONSerializer(schema);
+    const deserializer = getBSONDecoder(schema);
+    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(serializer(object).byteLength).toBe(expectedSize);
+
+    const reParsed = deserializer(serializer(object));
+    expect(reParsed.position).toBe(3364367088039355000n);
+
+    //this cases are valid when dynamic bigint serialization is activated
+    // expect(serializer({ position: 123456n })).toEqual(serialize({ position: 123456 }));
+    // expect(serializer({ position: -123456n })).toEqual(serialize({ position: -123456 }));
+    // expect(serializer({ position: 3364367088039355000n })).toEqual(serialize({ position: Long.fromBigInt(3364367088039355000n) }));
+    // expect(serializer({ position: -3364367088039355000n })).toEqual(serialize({ position: Long.fromBigInt(-3364367088039355000n) }));
+    //
+    // expect(serializer({ position: 9223372036854775807n })).toEqual(serialize({ position: Long.fromBigInt(9223372036854775807n) }));
+    // expect(serializer({ position: -9223372036854775807n })).toEqual(serialize({ position: Long.fromBigInt(-9223372036854775807n) }));
+
+    expect(deserializer(serializer({ position: 123456n }))).toEqual({ position: 123456n });
+    expect(deserializer(serializer({ position: -123456n }))).toEqual({ position: -123456n });
+    expect(deserializer(serializer({ position: 3364367088039355000n }))).toEqual({ position: 3364367088039355000n });
+    expect(deserializer(serializer({ position: -3364367088039355000n }))).toEqual({ position: -3364367088039355000n });
+
+    expect(deserializer(serializer({ position: 9223372036854775807n }))).toEqual({ position: 9223372036854775807n });
+    expect(deserializer(serializer({ position: -9223372036854775807n }))).toEqual({ position: -9223372036854775807n });
+
+    {
+        const bson = serializer({ position: 9223372036854775810n }); //force binary format
         expect(bson).toEqual(Buffer.from([
-            23, 0, 0, 0, //size
-            18, //type long
+            29, 0, 0, 0, //size
+            BSONType.BINARY, //type long
             112, 111, 115, 105, 116, 105, 111, 110, 0, //position\n string
 
-            lowBytes[0], lowBytes[1], lowBytes[2], lowBytes[3], //low byte
-            heightBytes[0], heightBytes[1], heightBytes[2], heightBytes[3], //low byte
+            9, 0, 0, 0, //binary size, int32
+            BSON_BINARY_SUBTYPE_BIGINT, //binary type
+
+            1, //signum
+            128, 0, 0, 0, 0, 0, 0, 2, //binary data
 
             0, //object null
         ]));
     }
 
-    const reParsed = getBSONDecoder(schema)(getBSONSerializer(schema)(object));
+    {
+        const bson = serializer({ position: -9223372036854775810n }); //force binary format
+        expect(bson).toEqual(Buffer.from([
+            29, 0, 0, 0, //size
+            BSONType.BINARY, //type long
+            112, 111, 115, 105, 116, 105, 111, 110, 0, //position\n string
+
+            9, 0, 0, 0, //binary size, int32
+            BSON_BINARY_SUBTYPE_BIGINT, //binary type
+
+            255, //signum, 255 = -1
+            128, 0, 0, 0, 0, 0, 0, 2, //binary data
+
+            0, //object null
+        ]));
+    }
+});
+
+test('basic any bigint', () => {
+    const object = { position: 3364367088039355000n };
+
+    const expectedSize =
+            4 //size uint32
+            + 1 // type (binary)
+            + 'position\0'.length
+            + (
+                4 //binary size
+                + 1 //binary type
+                + 9 //binary content
+            )
+            + 1 //object null
+    ;
+
+    const schema = t.schema({
+        position: t.any,
+    });
+
+    const serializer = getBSONSerializer(schema);
+    const deserializer = getBSONDecoder(schema);
+    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(serializer(object).byteLength).toBe(expectedSize);
+
+    const reParsed = getBSONDecoder(schema)(serializer(object));
     expect(reParsed.position).toBe(3364367088039355000n);
 
-    //there's a bug in BSON.js, https://github.com/mongodb/js-bson/issues/384 so we can't compare
-    // expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
+    expect(deserializer(serializer({ position: 123456n }))).toEqual({ position: 123456n });
+    expect(deserializer(serializer({ position: -123456n }))).toEqual({ position: -123456n });
+    expect(deserializer(serializer({ position: 3364367088039355000n }))).toEqual({ position: 3364367088039355000n });
+    expect(deserializer(serializer({ position: -3364367088039355000n }))).toEqual({ position: -3364367088039355000n });
+
+    expect(deserializer(serializer({ position: 9223372036854775807n }))).toEqual({ position: 9223372036854775807n });
+    expect(deserializer(serializer({ position: -9223372036854775807n }))).toEqual({ position: -9223372036854775807n });
+
+    {
+        const bson = serializer({ position: 9223372036854775810n }); //force binary format
+        expect(bson).toEqual(Buffer.from([
+            29, 0, 0, 0, //size
+            BSONType.BINARY, //type long
+            112, 111, 115, 105, 116, 105, 111, 110, 0, //position\n string
+
+            9, 0, 0, 0, //binary size, int32
+            BSON_BINARY_SUBTYPE_BIGINT, //binary type
+
+            1, //signum
+            128, 0, 0, 0, 0, 0, 0, 2, //binary data
+
+            0, //object null
+        ]));
+    }
+
+    {
+        const bson = serializer({ position: -9223372036854775810n }); //force binary format
+        expect(bson).toEqual(Buffer.from([
+            29, 0, 0, 0, //size
+            BSONType.BINARY, //type long
+            112, 111, 115, 105, 116, 105, 111, 110, 0, //position\n string
+
+            9, 0, 0, 0, //binary size, int32
+            BSON_BINARY_SUBTYPE_BIGINT, //binary type
+
+            255, //signum, 255 = -1
+            128, 0, 0, 0, 0, 0, 0, 2, //binary data
+
+            0, //object null
+        ]));
+    }
 });
 
 test('basic long bigint', () => {
@@ -164,24 +296,24 @@ test('basic number double', () => {
     const object = { position: 149943944399 };
 
     const expectedSize =
-        4 //size uint32
-        + 1 // type (number)
-        + 'position\0'.length
-        + (
-            8 //double, 64bit
-        )
-        + 1 //object null
-        ;
+            4 //size uint32
+            + 1 // type (number)
+            + 'position\0'.length
+            + (
+                8 //double, 64bit
+            )
+            + 1 //object null
+    ;
 
     const expectedSizeNull =
-        4 //size uint32
-        + 1 // type (number)
-        + 'position\0'.length
-        + (
-            0 //undefined
-        )
-        + 1 //object null
-        ;
+            4 //size uint32
+            + 1 // type (number)
+            + 'position\0'.length
+            + (
+                0 //undefined
+            )
+            + 1 //object null
+    ;
 
     expect(calculateObjectSize(object)).toBe(expectedSize);
     expect(calculateObjectSize({ position: null })).toBe(expectedSizeNull);
@@ -212,14 +344,14 @@ test('basic boolean', () => {
     const object = { valid: true };
 
     const expectedSize =
-        4 //size uint32
-        + 1 // type (boolean)
-        + 'valid\0'.length
-        + (
-            1 //boolean
-        )
-        + 1 //object null
-        ;
+            4 //size uint32
+            + 1 // type (boolean)
+            + 'valid\0'.length
+            + (
+                1 //boolean
+            )
+            + 1 //object null
+    ;
 
     expect(calculateObjectSize(object)).toBe(expectedSize);
 
@@ -236,14 +368,14 @@ test('basic date', () => {
     const object = { created: new Date };
 
     const expectedSize =
-        4 //size uint32
-        + 1 // type (date)
-        + 'created\0'.length
-        + (
-            8 //date
-        )
-        + 1 //object null
-        ;
+            4 //size uint32
+            + 1 // type (date)
+            + 'created\0'.length
+            + (
+                8 //date
+            )
+            + 1 //object null
+    ;
 
     expect(calculateObjectSize(object)).toBe(expectedSize);
 
@@ -251,25 +383,36 @@ test('basic date', () => {
         created: t.date,
     });
 
-    expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
-    expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
+    const serializer = getBSONSerializer(schema);
+    const deserializer = getBSONDecoder(schema);
+
+    // expect(serializer(object).byteLength).toBe(expectedSize);
+    // expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    // expect(serializer(object)).toEqual(serialize(object));
+
+    expect(serializer({created: new Date('2900-10-12T00:00:00.000Z') })).toEqual(serialize({ created: new Date('2900-10-12T00:00:00.000Z') }));
+    expect(serializer({created: new Date('1900-10-12T00:00:00.000Z') })).toEqual(serialize({ created: new Date('1900-10-12T00:00:00.000Z') }));
+    expect(serializer({created: new Date('1000-10-12T00:00:00.000Z') })).toEqual(serialize({ created: new Date('1000-10-12T00:00:00.000Z') }));
+    expect(deserializer(serializer({created: new Date('2900-10-12T00:00:00.000Z') }))).toEqual({ created: new Date('2900-10-12T00:00:00.000Z') });
+    expect(deserializer(serializer({created: new Date('1900-10-12T00:00:00.000Z') }))).toEqual({ created: new Date('1900-10-12T00:00:00.000Z') });
+    expect(deserializer(serializer({created: new Date('1000-10-12T00:00:00.000Z') }))).toEqual({ created: new Date('1000-10-12T00:00:00.000Z') });
+
 });
 
 test('basic binary', () => {
     const object = { binary: new Uint16Array(32) };
 
     const expectedSize =
-        4 //size uint32
-        + 1 // type (date)
-        + 'binary\0'.length
-        + (
-            4 //size of binary, uin32
-            + 1 //sub type
-            + 32 * 2 //size of data
-        )
-        + 1 //object null
-        ;
+            4 //size uint32
+            + 1 // type (date)
+            + 'binary\0'.length
+            + (
+                4 //size of binary, uin32
+                + 1 //sub type
+                + 32 * 2 //size of data
+            )
+            + 1 //object null
+    ;
 
     expect(new Uint16Array(32).byteLength).toBe(32 * 2);
 
@@ -303,16 +446,16 @@ test('basic arrayBuffer', () => {
     const object = { binary: arrayBuffer };
 
     const expectedSize =
-        4 //size uint32
-        + 1 // type (date)
-        + 'binary\0'.length
-        + (
-            4 //size of binary, uin32
-            + 1 //sub type
-            + 5 //size of data
-        )
-        + 1 //object null
-        ;
+            4 //size uint32
+            + 1 // type (date)
+            + 'binary\0'.length
+            + (
+                4 //size of binary, uin32
+                + 1 //sub type
+                + 5 //size of data
+            )
+            + 1 //object null
+    ;
 
     // expect(calculateObjectSize(object)).toBe(expectedSize);
 
@@ -330,16 +473,16 @@ test('basic Buffer', () => {
     const object = { binary: new Uint8Array(32) };
 
     const expectedSize =
-        4 //size uint32
-        + 1 // type (date)
-        + 'binary\0'.length
-        + (
-            4 //size of binary, uin32
-            + 1 //sub type
-            + 32 //size of data
-        )
-        + 1 //object null
-        ;
+            4 //size uint32
+            + 1 // type (date)
+            + 'binary\0'.length
+            + (
+                4 //size of binary, uin32
+                + 1 //sub type
+                + 32 //size of data
+            )
+            + 1 //object null
+    ;
 
     // expect(calculateObjectSize(object)).toBe(expectedSize);
 
@@ -373,16 +516,16 @@ test('basic uuid', () => {
     const object = { uuid: '75ed2328-89f2-4b89-9c49-1498891d616d' };
 
     const expectedSize =
-        4 //size uint32
-        + 1 // type (date)
-        + 'uuid\0'.length
-        + (
-            4 //size of binary
-            + 1 //sub type
-            + 16 //content of uuid
-        )
-        + 1 //object null
-        ;
+            4 //size uint32
+            + 1 // type (date)
+            + 'uuid\0'.length
+            + (
+                4 //size of binary
+                + 1 //sub type
+                + 16 //content of uuid
+            )
+            + 1 //object null
+    ;
 
     expect(calculateObjectSize({ uuid: uuidRandomBinary })).toBe(expectedSize);
 
@@ -411,14 +554,14 @@ test('basic objectId', () => {
     const object = { _id: '507f191e810c19729de860ea' };
 
     const expectedSize =
-        4 //size uint32
-        + 1 // type
-        + '_id\0'.length
-        + (
-            12 //size of objectId
-        )
-        + 1 //object null
-        ;
+            4 //size uint32
+            + 1 // type
+            + '_id\0'.length
+            + (
+                12 //size of objectId
+            )
+            + 1 //object null
+    ;
 
     const nativeBson = { _id: new OfficialObjectId('507f191e810c19729de860ea') };
     expect(calculateObjectSize(nativeBson)).toBe(expectedSize);
@@ -436,21 +579,21 @@ test('basic nested', () => {
     const object = { name: { anotherOne: 'Peter2' } };
 
     const expectedSize =
-        4 //size uint32
-        + 1 //type (object)
-        + 'name\0'.length
-        + (
             4 //size uint32
             + 1 //type (object)
-            + 'anotherOne\0'.length
+            + 'name\0'.length
             + (
-                4 //string size uint32
-                + 'Peter2'.length + 1 //string content + null
+                4 //size uint32
+                + 1 //type (object)
+                + 'anotherOne\0'.length
+                + (
+                    4 //string size uint32
+                    + 'Peter2'.length + 1 //string content + null
+                )
+                + 1 //object null
             )
             + 1 //object null
-        )
-        + 1 //object null
-        ;
+    ;
 
     expect(calculateObjectSize(object)).toBe(expectedSize);
 
@@ -468,21 +611,21 @@ test('basic map', () => {
     const object = { name: { anotherOne: 'Peter2' } };
 
     const expectedSize =
-        4 //size uint32
-        + 1 //type (object)
-        + 'name\0'.length
-        + (
             4 //size uint32
             + 1 //type (object)
-            + 'anotherOne\0'.length
+            + 'name\0'.length
             + (
-                4 //string size uint32
-                + 'Peter2'.length + 1 //string content + null
+                4 //size uint32
+                + 1 //type (object)
+                + 'anotherOne\0'.length
+                + (
+                    4 //string size uint32
+                    + 'Peter2'.length + 1 //string content + null
+                )
+                + 1 //object null
             )
             + 1 //object null
-        )
-        + 1 //object null
-        ;
+    ;
 
     expect(calculateObjectSize(object)).toBe(expectedSize);
 
@@ -499,21 +642,21 @@ test('basic array', () => {
     const object = { name: ['Peter3'] };
 
     const expectedSize =
-        4 //size uint32
-        + 1 //type (array)
-        + 'name\0'.length
-        + (
-            4 //size uint32 of array
-            + 1 //type (string)
-            + '0\0'.length //key
+            4 //size uint32
+            + 1 //type (array)
+            + 'name\0'.length
             + (
-                4 //string size uint32
-                + 'Peter3'.length + 1 //string content + null
+                4 //size uint32 of array
+                + 1 //type (string)
+                + '0\0'.length //key
+                + (
+                    4 //string size uint32
+                    + 'Peter3'.length + 1 //string content + null
+                )
+                + 1 //object null
             )
             + 1 //object null
-        )
-        + 1 //object null
-        ;
+    ;
 
     expect(calculateObjectSize(object)).toBe(expectedSize);
 
@@ -753,21 +896,21 @@ test('decorated', () => {
     const object = { v: new DecoratedValue(['Peter3']) };
 
     const expectedSize =
-        4 //size uint32
-        + 1 //type (array)
-        + 'v\0'.length
-        + (
-            4 //size uint32 of array
-            + 1 //type (string)
-            + '0\0'.length //key
+            4 //size uint32
+            + 1 //type (array)
+            + 'v\0'.length
             + (
-                4 //string size uint32
-                + 'Peter3'.length + 1 //string content + null
+                4 //size uint32 of array
+                + 1 //type (string)
+                + '0\0'.length //key
+                + (
+                    4 //string size uint32
+                    + 'Peter3'.length + 1 //string content + null
+                )
+                + 1 //object null
             )
             + 1 //object null
-        )
-        + 1 //object null
-        ;
+    ;
 
     expect(calculateObjectSize({ v: ['Peter3'] })).toBe(expectedSize);
 
