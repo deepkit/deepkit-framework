@@ -1,13 +1,19 @@
 {
   "name": "@deepkit/api-console-gui",
   "version": "1.0.1-alpha.43",
+  "description": "API Console GUI",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build --prod",
     "watch": "ng build --watch --configuration development"
   },
-  "private": true,
+  "repository": "https://github.com/deepkit/deepkit-framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@angular/animations": "~12.2.0",
     "@angular/cdk": "^12.2.0",
