@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/api-console-module",
-  "version": "1.0.1-alpha.44",
+  "version": "1.0.1-alpha.45",
   "description": "API Console",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -35,7 +35,7 @@
     "@deepkit/type": "^1.0.1-alpha.43"
   },
   "devDependencies": {
-    "@deepkit/api-console-gui": "^1.0.1-alpha.43",
+    "@deepkit/api-console-gui": "^1.0.1-alpha.45",
     "@deepkit/app": "^1.0.1-alpha.44",
     "@deepkit/broker": "^1.0.1-alpha.44",
     "@deepkit/bson": "^1.0.1-alpha.44",
