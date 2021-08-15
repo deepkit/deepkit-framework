@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/framework",
-  "version": "1.0.1-alpha.45",
+  "version": "1.0.1-alpha.47",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -47,7 +47,7 @@
     "rxjs": "~6.6.0"
   },
   "dependencies": {
-    "@deepkit/api-console-module": "^1.0.1-alpha.45",
+    "@deepkit/api-console-module": "^1.0.1-alpha.47",
     "@deepkit/framework-debug-api": "^1.0.1-alpha.44",
     "@deepkit/framework-debug-gui": "^1.0.1-alpha.44",
     "@deepkit/orm-browser-api": "^1.0.1-alpha.44",
