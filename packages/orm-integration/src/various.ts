@@ -81,24 +81,20 @@ export const variousTests = {
             await database.persist(plainToClass(user, { username: 'peter' }), plainToClass(user, { username: 'marie' }), plainToClass(user, { username: 'mueller' }));
 
             {
-                const result = await database.query(user).where(sql`id
-                > 1`).findOne();
+                const result = await database.query(user).where(sql`id > 1`).findOne();
                 expect(result).toMatchObject({ id: 2, username: 'marie' });
             }
 
             {
                 const id = 1;
-                const result = await database.query(user).where(sql`id
-                =
-                ${id}`).findOne();
+                const result = await database.query(user).where(sql`id = ${id}`).findOne();
                 expect(result).toMatchObject({ id: 1, username: 'peter' });
             }
 
             {
                 const id = 3;
-                const result = await database.query(user).filter({ id: { $gt: 1 } }).where(sql`${identifier('id')}
-                <
-                ${id}`).find();
+                const result = await database.query(user).filter({ id: { $gt: 1 } })
+                    .where(sql`${identifier('id')} < ${id}`).find();
                 expect(result).toMatchObject([{ id: 2, username: 'marie' }]);
             }
 
@@ -149,7 +145,7 @@ export const variousTests = {
 
         expect(await database.query(ExplorerBlock).count()).toBe(10);
 
-        const blocks = await database.query(ExplorerBlock).sort({id: 'desc'}).find();
+        const blocks = await database.query(ExplorerBlock).sort({ id: 'desc' }).find();
 
         for (const block of blocks) {
             expect(isReference(block)).toBe(false);
@@ -164,6 +160,7 @@ export const variousTests = {
         @entity.collectionName('users')
         class User {
             @t.primary.autoIncrement public id: number = 0;
+
             constructor(@t public username: string) {
             }
         }
@@ -184,16 +181,16 @@ export const variousTests = {
             await session.flush(); //no transaction commit
             expect(session.hasTransaction()).toBe(true);
 
-            expect(await session.query(User).filter({username: 'user1 changed'}).has()).toBe(true);
+            expect(await session.query(User).filter({ username: 'user1 changed' }).has()).toBe(true);
 
             //in another connection we still have the old changed
-            expect(await database.query(User).filter({username: 'user1 changed'}).has()).toBe(false);
+            expect(await database.query(User).filter({ username: 'user1 changed' }).has()).toBe(false);
 
             await session.commit();
             expect(session.hasTransaction()).toBe(false);
 
             //in another connection we now have the changes
-            expect(await database.query(User).filter({username: 'user1 changed'}).has()).toBe(true);
+            expect(await database.query(User).filter({ username: 'user1 changed' }).has()).toBe(true);
         }
 
         {
@@ -207,19 +204,19 @@ export const variousTests = {
             user.username = 'user1 changed';
             await session.flush(); //no transaction commit
 
-            expect(await session.query(User).filter({username: 'user1 changed'}).has()).toBe(true);
+            expect(await session.query(User).filter({ username: 'user1 changed' }).has()).toBe(true);
 
             //in another connection we still have the old changed
-            expect(await database.query(User).filter({username: 'user1 changed'}).has()).toBe(false);
+            expect(await database.query(User).filter({ username: 'user1 changed' }).has()).toBe(false);
 
             await session.rollback();
             expect(session.hasTransaction()).toBe(false);
 
             //user1 changed is not there anymore
-            expect(await session.query(User).filter({username: 'user1 changed'}).has()).toBe(false);
+            expect(await session.query(User).filter({ username: 'user1 changed' }).has()).toBe(false);
 
             //in another connection still user1 is not changed.
-            expect(await database.query(User).filter({username: 'user1 changed'}).has()).toBe(false);
+            expect(await database.query(User).filter({ username: 'user1 changed' }).has()).toBe(false);
         }
 
         {
