@@ -14,7 +14,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
+  "devDependencies": {
     "@angular/animations": "~12.2.0",
     "@angular/cdk": "^12.2.0",
     "@angular/common": "~12.2.0",
@@ -28,18 +28,16 @@
     "@deepkit/core": "^1.0.1-alpha.43",
     "@deepkit/core-rxjs": "^1.0.1-alpha.43",
     "@deepkit/crypto": "^1.0.1-alpha.35",
-    "@deepkit/desktop-ui": "^1.0.1-alpha.42",
     "@deepkit/rpc": "^1.0.1-alpha.43",
     "@deepkit/stopwatch": "^1.0.1-alpha.43",
     "@deepkit/type": "^1.0.1-alpha.43",
     "hammerjs": "^2.0.8",
     "rxjs": "~6.6.0",
     "tslib": "^2.3.0",
-    "zone.js": "~0.11.4"
-  },
-  "devDependencies": {
+    "zone.js": "~0.11.4",
     "@angular-devkit/build-angular": "~12.2.0",
     "@angular/cli": "~12.2.0",
+    "@deepkit/desktop-ui": "^1.0.1-alpha.42",
     "@angular/compiler-cli": "~12.2.0",
     "@types/node": "^12.11.1",
     "typescript": "~4.3.5"
