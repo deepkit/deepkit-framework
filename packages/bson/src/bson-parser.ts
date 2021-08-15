@@ -141,7 +141,7 @@ export class BaseParser {
         }
 
         //255 === -1, means negative
-        if (signum === 255) return BigInt('0x' + s) * -1n;
+        if (signum === 255) return BigInt('0x' + s) * BigInt(-1);
         return BigInt('0x' + s);
     }
 
