@@ -22,7 +22,6 @@ import {
 } from '@deepkit/type';
 import { Entity } from './type';
 import { isObject, toFastProperties } from '@deepkit/core';
-import { inspect } from 'util';
 
 export function getNormalizedPrimaryKey(schema: ClassSchema, primaryKey: any) {
     const primaryFields = schema.getPrimaryFields();
@@ -87,7 +86,7 @@ class InstanceState<T extends Entity> {
     }
 
     //we support browser environment, so there is `inspect` not available
-    [inspect ? inspect.custom : '']() {
+    [Symbol.for('nodejs.util.inspect.custom')]() {
         return `InstanceState<knownInDatabase=${this.knownInDatabase}, fromDatabase=${this.fromDatabase}>`;
     }
 
