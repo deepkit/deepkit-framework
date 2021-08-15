@@ -354,9 +354,11 @@ export class BaseQuery<T extends Entity> {
 
     addFilter<K extends keyof T & string>(name: K, value: FilterQuery<T>[K]): this {
         const c = this.clone();
-        if (!c.model.filter) c.model.filter = {};
-        c.model.filter[name] = value;
-        //todo: when c.model.filter is a complex object with $and/$or, we need to adjust accordingly.
+        if (c.model.filter) {
+            c.model.filter = {$and: [{[name]: value}, c.model.filter]} as any;
+        } else {
+            c.model.filter = {[name]: value} as any;
+        }
         return c;
     }
 
@@ -579,7 +581,8 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     protected onQueryResolve(query: this): this {
         if (query.classSchema.singleTableInheritance && query.classSchema.superClass) {
             const discriminant = query.classSchema.superClass.getSingleTableInheritanceDiscriminant();
-            const value = query.classSchema.getProperty(discriminant.name).getDefaultValue() || getSingleTableInheritanceTypeValue(query.classSchema);
+            let value = query.classSchema.getProperty(discriminant.name).getDefaultValue();
+            if (value === undefined) value = getSingleTableInheritanceTypeValue(query.classSchema);
             return query.addFilter(discriminant.name as keyof T & string, value);
         }
         return query;
