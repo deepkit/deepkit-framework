@@ -38,7 +38,6 @@ export const kernelConfig = new AppModuleConfig({
     httpLog: t.boolean.default(true),
 
     session: t.any.default(Session).description('The session ClassType'),
-    databases: t.array(t.any).optional.description('ClassType[] of Database classes'),
     migrateOnStartup: t.boolean.default(false).description('Whether all registered database should be migrated automatically on startup.'),
     migrationDir: t.string.default('migrations'),
 });
