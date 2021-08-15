@@ -15,6 +15,8 @@ import { isExcluded } from './mapper';
 import { ClassSchema, getGlobalStore, PropertySchema, UnpopulatedCheck } from './model';
 import { Serializer, SerializerCompilers } from './serializer';
 import { getDataConverterJS } from './serializer-compiler';
+import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64 } from './core';
+
 
 function createJITConverterForSnapshot(
     schema: ClassSchema,
@@ -100,6 +102,38 @@ function createJITConverterForSnapshot(
     return fn;
 }
 
+export const snapshotSerializer = new class extends jsonSerializer.fork('snapshot') {
+    constructor() {
+        super();
+
+        //we keep bigint as is
+        this.fromClass.noop('bigint');
+        this.toClass.noop('bigint');
+
+        //convert binary to base64 (instead of hex, important for primary key hash)
+        this.fromClass.registerForBinary((property, compiler) => {
+            if (property.type === 'arrayBuffer') {
+                compiler.setContext({ arrayBufferToBase64 });
+                compiler.addSetter(`arrayBufferToBase64(${compiler.accessor})`);
+                return;
+            }
+            compiler.setContext({ typedArrayToBase64 });
+            compiler.addSetter(`typedArrayToBase64(${compiler.accessor})`);
+        });
+
+        this.toClass.registerForBinary((property, compiler) => {
+            if (property.type === 'arrayBuffer') {
+                compiler.setContext({ base64ToArrayBuffer });
+                compiler.addSetter(`base64ToArrayBuffer(${compiler.accessor})`);
+                return;
+            }
+
+            compiler.setContext({ base64ToTypedArray });
+            compiler.addSetter(`base64ToTypedArray(${compiler.accessor}, ${property.type})`);
+        });
+    }
+};
+
 /**
  * Creates a new JIT compiled function to convert the class instance to a snapshot.
  * A snapshot is essentially the class instance as `plain` serialization while references are
@@ -113,7 +147,7 @@ export function getConverterForSnapshot(
     const jit = classSchema.jit;
     if (jit.snapshotConverter) return jit.snapshotConverter;
 
-    jit.snapshotConverter = createJITConverterForSnapshot(classSchema, classSchema.getProperties(), jsonSerializer.fromClass);
+    jit.snapshotConverter = createJITConverterForSnapshot(classSchema, classSchema.getProperties(), snapshotSerializer.fromClass);
     toFastProperties(jit);
     return jit.snapshotConverter;
 }
@@ -134,7 +168,7 @@ export function getPrimaryKeyExtractor<T>(
     const jit = classSchema.jit;
     if (jit.primaryKey) return jit.primaryKey;
 
-    jit.primaryKey = createJITConverterForSnapshot(classSchema, classSchema.getPrimaryFields(), jsonSerializer.toClass);
+    jit.primaryKey = createJITConverterForSnapshot(classSchema, classSchema.getPrimaryFields(), snapshotSerializer.toClass);
     toFastProperties(jit);
     return jit.primaryKey;
 }
@@ -142,6 +176,8 @@ export function getPrimaryKeyExtractor<T>(
 /**
  * Creates a primary key hash generator that takes an item from any format
  * converts it to class format, then to plain, then uses the primitive values to create a string hash.
+ *
+ * This function is designed to work on the plain values (db records or json values)
  */
 export function getPrimaryKeyHashGenerator(
     classSchema: ClassSchema,
@@ -161,10 +197,10 @@ export function getPrimaryKeyHashGenerator(
     return jit.pkHash[serializer.name];
 }
 
-export function getForeignKeyHash(row: any, property: PropertySchema): string {
-    const foreignSchema = property.getResolvedClassSchema();
-    return getPrimaryKeyHashGenerator(foreignSchema)(row[property.name]);
-}
+// export function getForeignKeyHash(row: any, property: PropertySchema): string {
+//     const foreignSchema = property.getResolvedClassSchema();
+//     return getPrimaryKeyHashGenerator(foreignSchema)(row[property.name]);
+// }
 
 function simplePrimaryKeyHash(value: any): string {
     return '\0' + value;
@@ -197,7 +233,7 @@ function createPrimaryKeyHashGenerator(
                 //getPrimaryKeyExtractor ${property.name}->${pk.name} class:snapshot:${property.type} reference
                 lastValue = '';
                 ${getDataConverterJS(`lastValue`, `_value.${property.name}.${pk.name}`, pk, serializer.toClass, context, jitStack)}
-                ${getDataConverterJS(`lastValue`, `lastValue`, pk, jsonSerializer.fromClass, context, jitStack)}
+                ${getDataConverterJS(`lastValue`, `lastValue`, pk, snapshotSerializer.fromClass, context, jitStack)}
                 _result += '\\0' + lastValue;
             `);
             }
@@ -221,7 +257,7 @@ function createPrimaryKeyHashGenerator(
             //getPrimaryKeyHashGenerator ${property.name} class:plain:${property.type}
             lastValue = '';
             ${getDataConverterJS(`lastValue`, `_value.${property.name}`, property, serializer.toClass, context, jitStack)}
-            ${getDataConverterJS(`lastValue`, `lastValue`, property, jsonSerializer.fromClass, context, jitStack)}
+            ${getDataConverterJS(`lastValue`, `lastValue`, property, snapshotSerializer.fromClass, context, jitStack)}
             _result += '\\0' + lastValue;
         `);
     }

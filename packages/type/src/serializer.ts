@@ -109,7 +109,8 @@ export class SerializerCompilers {
     }
 
     /**
-     * Removes a compiler.
+     * Removes a compiler. If the serializer has a parent, then parent's serializer code is used.
+     * Use `noop` to remove an existing serializer code.
      */
     reset(type: CompilerTypes) {
         this.compilers.delete(type);

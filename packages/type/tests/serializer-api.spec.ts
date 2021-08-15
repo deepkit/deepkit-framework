@@ -252,3 +252,24 @@ test('inheritance', () => {
     expect(res.created).toBeInstanceOf(Date);
     expect(res.moderator.created).toBeInstanceOf(Date);
 });
+
+test('noop', () => {
+    const baseSerializer = new Serializer('base');
+
+    baseSerializer.fromClass.register('bigint', (property, state) => {
+        state.addSetter(`'nope'`);
+    });
+
+    const resetBigInt = new (baseSerializer.fork('noBigInt'));
+    resetBigInt.fromClass.noop('bigint');
+
+    const s = t.schema({
+        v: t.bigint,
+    });
+
+    const o1 = baseSerializer.for(s).serialize({ v: 12n });
+    expect(o1.v).toBe('nope');
+
+    const o2 = resetBigInt.for(s).serialize({ v: 12n });
+    expect(o2.v).toBe(12n);
+});
