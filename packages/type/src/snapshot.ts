@@ -114,11 +114,11 @@ export const snapshotSerializer = new class extends jsonSerializer.fork('snapsho
         this.fromClass.registerForBinary((property, compiler) => {
             if (property.type === 'arrayBuffer') {
                 compiler.setContext({ arrayBufferToBase64 });
-                compiler.addSetter(`arrayBufferToBase64(${compiler.accessor})`);
+                compiler.addSetter(`${compiler.accessor} instanceof ArrayBuffer ? arrayBufferToBase64(${compiler.accessor}) : null`);
                 return;
             }
             compiler.setContext({ typedArrayToBase64 });
-            compiler.addSetter(`typedArrayToBase64(${compiler.accessor})`);
+            compiler.addSetter(`${compiler.accessor} instanceof ${property.type} ? typedArrayToBase64(${compiler.accessor}) : null`);
         });
 
         this.toClass.registerForBinary((property, compiler) => {

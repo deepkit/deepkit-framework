@@ -78,10 +78,13 @@ test('getPrimaryKeyHashGenerator', () => {
 
 test('bigint and binary', () => {
     class Node {
+        @t created: Date = new Date;
+
         @t stake: bigint = 0n;
 
         constructor(
-            @t.primary public publicKey: Uint8Array,
+            @t.name('publicKey').primary public publicKey: Uint8Array,
+            @t.name('address') public address: Uint8Array,
         ) {
         }
     }
@@ -100,7 +103,7 @@ test('bigint and binary', () => {
 
     {
         const converted = snapshot({ publicKey: new Uint8Array([0, 1, 2, 3]), stake: 12n });
-        expect(converted).toEqual({ publicKey: 'AAECAw==', stake: 12n });
+        expect(converted).toEqual({ address: null, created: null, publicKey: 'AAECAw==', stake: 12n });
 
         const back = snapshotSerializer.for(schema).deserialize(converted);
         expect(back.stake).toBe(12n);
@@ -111,6 +114,13 @@ test('bigint and binary', () => {
         expect(pk.publicKey).toBeInstanceOf(Uint8Array);
         expect(Array.from(pk.publicKey as any)).toEqual([0, 1, 2, 3]);
     }
+
+    {
+        const converted = snapshot({ address: '' });
+        expect(converted).toEqual({ address: null, created: null, publicKey: null, stake: null });
+        const back = snapshotSerializer.for(schema).deserialize(converted);
+    }
+
 });
 
 test('bigint primary key', () => {
