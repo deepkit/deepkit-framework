@@ -267,7 +267,7 @@ export class Injector implements BasicInjector {
         return this.parents.length === 0;
     }
 
-    protected createFactoryProperty(property: PropertySchema, compiler: CompilerContext, classTypeVar: string, argPosition: number, notFoundFunction: string) {
+    protected createFactoryProperty(classType: ClassType, property: PropertySchema, compiler: CompilerContext, classTypeVar: string, argPosition: number, notFoundFunction: string) {
         const options = property.data['deepkit/inject'] as InjectOptions | undefined;
         let token: any = property.resolveClassType;
         const isOptional = options && options.optional;
@@ -310,7 +310,20 @@ export class Injector implements BasicInjector {
             const providers = compiler.reserveVariable('tagRegistry', this.tagRegistry.resolve(token));
             return `new ${tokenVar}(${providers}.map(v => (frontInjector.retriever ? frontInjector.retriever(frontInjector, v, frontInjector) : frontInjector.get(v, frontInjector))))`;
         } else {
-            if (token === undefined) throw new Error(`Argument type of '${property.name}' at position ${argPosition} is undefined. Imported reflect-metadata correctly? For circular references use @inject(() => T) ${property.name}:T.`);
+            if (token === undefined) {
+                let of = `${getClassName(classType)}.${property.name}`;
+                if (argPosition >= 0) {
+                    const argsCheck: string[] = [];
+                    for (let i = 0; i < argPosition; i++) argsCheck.push('✓');
+                    argsCheck.push('?');
+                    of = `${getClassName(classType)}(${argsCheck.join(', ')})`;
+                }
+
+                throw new DependenciesUnmetError(
+                    `Undefined dependency '${property.name}: undefined' of ${of}. Dependency '${property.name}' has no type. Imported reflect-metadata correctly? `+
+                    `Use '@inject(PROVIDER) ${property.name}: T' if T is an interface. For circular references use @inject(() => T) ${property.name}: T.`
+                );
+            }
             const tokenVar = compiler.reserveVariable('token', token);
             const orThrow = isOptional ? '' : `?? ${notFoundFunction}(${classTypeVar}, ${JSON.stringify(property.name)}, ${argPosition}, ${tokenVar})`;
 
@@ -328,13 +341,13 @@ export class Injector implements BasicInjector {
         const classTypeVar = compiler.reserveVariable('classType', classType);
 
         for (const property of schema.getMethodProperties('constructor')) {
-            args.push(this.createFactoryProperty(property, compiler, classTypeVar, args.length, 'constructorParameterNotFound'));
+            args.push(this.createFactoryProperty(classType, property, compiler, classTypeVar, args.length, 'constructorParameterNotFound'));
         }
 
         for (const property of schema.getProperties()) {
             if (!('deepkit/inject' in property.data)) continue;
             if (property.methodName === 'constructor') continue;
-            propertyAssignment.push(`v.${property.name} = ${this.createFactoryProperty(property, compiler, classTypeVar, args.length, 'propertyParameterNotFound')};`);
+            propertyAssignment.push(`v.${property.name} = ${this.createFactoryProperty(classType, property, compiler, classTypeVar, -1, 'propertyParameterNotFound')};`);
         }
 
         return `v = new ${classTypeVar}(${args.join(',')});\n${propertyAssignment.join('\n')}`;
@@ -513,12 +526,12 @@ export class Injector implements BasicInjector {
 
 function constructorParameterNotFound(classType: ClassType, name: string, position: number, token: any) {
     const argsCheck: string[] = [];
-    for (let i = 0; i < position - 1; i++) argsCheck.push('✓');
+    for (let i = 0; i < position; i++) argsCheck.push('✓');
     argsCheck.push('?');
 
     for (const reset of CircularDetectorResets) reset();
     throw new DependenciesUnmetError(
-        `Unknown constructor argument ${name} of ${getClassName(classType)}(${argsCheck.join(', ')}). Make sure '${tokenLabel(token)}' is provided.`
+        `Unknown constructor argument '${name}: ${tokenLabel(token)}' of ${getClassName(classType)}(${argsCheck.join(', ')}). Make sure '${tokenLabel(token)}' is provided.`
     );
 }
 

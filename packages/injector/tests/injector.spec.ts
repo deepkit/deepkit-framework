@@ -6,7 +6,7 @@ import { InjectorModule } from '../src/module';
 
 export const a = 'asd';
 
-test('injector', () => {
+test('injector basics', () => {
     class Connection {
     }
 
@@ -20,6 +20,57 @@ test('injector', () => {
     const injector = new Injector([MyServer, Connection]);
     expect(injector.get(Connection)).toBeInstanceOf(Connection);
     expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
+});
+
+test('missing dep', () => {
+    class Connection {
+    }
+
+    class Missing {
+    }
+
+    @injectable()
+    class MyServer {
+        constructor(private connection: Connection, private missing: Missing) {
+            expect(connection).toBeInstanceOf(Connection);
+        }
+    }
+
+    const injector = new Injector([MyServer, Connection]);
+    expect(() => injector.get(MyServer)).toThrow(`Unknown constructor argument 'missing: Missing' of MyServer(✓, ?). Make sure 'Missing' is provided.`);
+});
+
+test('wrong dep 1', () => {
+    class Connection {
+    }
+
+    @injectable()
+    class MyServer {
+        constructor(private connection: Connection, private missing: any) {
+            expect(connection).toBeInstanceOf(Connection);
+        }
+    }
+
+    expect(() => new Injector([MyServer, Connection])).toThrow(`Undefined dependency 'missing: undefined' of MyServer(✓, ?).`);
+});
+
+test('wrong dep 2', () => {
+    @injectable()
+    class MyServer {
+        constructor(private missing: any) {
+        }
+    }
+
+    expect(() => new Injector([MyServer])).toThrow(`Undefined dependency 'missing: undefined' of MyServer(?).`);
+});
+
+test('wrong dep 3', () => {
+    @injectable()
+    class MyServer {
+        @inject() private missing: any;
+    }
+
+    expect(() => new Injector([MyServer])).toThrow(`Undefined dependency 'missing: undefined' of MyServer.missing.`);
 });
 
 test('injector key', () => {
@@ -122,7 +173,7 @@ test('injector unmet dependency', () => {
     {
         const injector = new Injector([MyServer]);
         expect(() => injector.get(Connection)).toThrow('Could not resolve injector token Connection');
-        expect(() => injector.get(MyServer)).toThrow(`Unknown constructor argument connection of MyServer(?). Make sure 'Connection' is provided`);
+        expect(() => injector.get(MyServer)).toThrow(`Unknown constructor argument 'connection: Connection' of MyServer(?).`);
     }
 });
 
