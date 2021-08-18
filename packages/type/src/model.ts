@@ -1279,7 +1279,7 @@ export class ClassSchema<T = any> {
                 if (names[i] && names[i].startsWith('...')) continue;
 
                 if (!properties[i]) {
-                    properties[i] = new PropertySchema(names[i] || String(i));
+                    properties[i] = new PropertySchema(names[i] || String('parameter' + i));
                     properties[i].methodName = name;
                     if (paramtypes[i] !== Object) {
                         properties[i].setFromJSType(t, false);

@@ -77,13 +77,7 @@ export class UploadedFile {
 
 function parseBody(form: any, req: IncomingMessage, files: { [name: string]: UploadedFile }) {
     return asyncOperation((resolve, reject) => {
-        function onFile(name: string, file: UploadedFile) {
-            files[name] = file;
-        }
-
-        form.on('file', onFile);
         form.parse(req, (err: any, fields: any, files: any) => {
-            form.off('file', onFile);
             if (err) {
                 reject(err);
             } else {

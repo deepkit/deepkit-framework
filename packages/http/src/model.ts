@@ -83,8 +83,8 @@ export class RequestBuilder {
 
     json(body: object): this {
         this.contentBuffer = Buffer.from(JSON.stringify(body), 'utf8');
-        this.headers['Content-Type'] = 'application/json';
-        this.headers['Content-Length'] = String(this.contentBuffer.byteLength);
+        this.headers['content-type'] = 'application/json; charset=utf-8';
+        this.headers['content-length'] = String(this.contentBuffer.byteLength);
         return this;
     }
 
@@ -94,7 +94,7 @@ export class RequestBuilder {
         } else {
             this.contentBuffer = body;
         }
-        this.headers['Content-Length'] = String(this.contentBuffer.byteLength);
+        this.headers['content-length'] = String(this.contentBuffer.byteLength);
         return this;
     }
 

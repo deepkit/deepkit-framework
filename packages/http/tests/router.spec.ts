@@ -678,3 +678,22 @@ test('router url resolve', async () => {
     expect(router.resolveUrl('third2', { params: { test: 123 } })).toBe('/third2?deep[test]=123');
     expect(router.resolveUrl('third2', { params: { test: 123, filter: 'peter' } })).toBe('/third2?deep[test]=123&deep[filter]=peter');
 });
+
+test('destructing params', async () => {
+
+    class DTO {
+        @t.required name!: string;
+        @t.required title!: string;
+    }
+
+    class Controller {
+        @http.GET('')
+        first(@http.body() { name, title }: DTO) {
+            return [name, title];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    expect((await httpKernel.request(HttpRequest.GET('/').json({name: 'Peter', title: 'CTO'}))).json).toEqual(['Peter', 'CTO']);
+});
