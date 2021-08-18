@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { t, validateFactory } from '@deepkit/type';
+import { getClassSchema, jitValidate, t, validateFactory } from '@deepkit/type';
 import { good } from './validation';
 import { BenchSuite } from '../../bench';
 
@@ -31,6 +31,13 @@ export async function main() {
     const suite = new BenchSuite('deepkit');
 
     if (!validate(good)) throw new Error('Should be valid');
+
+    const schema = getClassSchema(Model);
+
+    suite.add('JIT creation', () => {
+        schema.jit.validation = undefined;
+        jitValidate(schema);
+    });
 
     suite.add('validate', () => {
         validate(good);
