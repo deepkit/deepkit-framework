@@ -29,7 +29,7 @@ import { Route, Workflow } from '@deepkit/framework-debug-api';
       [items]="filter(routes, filterQuery)" [(selected)]="selected" selectable defaultSort="path" noFocusOutline>
       <dui-table-column [width]="90" name="HTTP">
         <ng-container *duiTableCell="let row">
-          {{row.httpMethod.toUpperCase()}}
+          {{row.httpMethods.join(',')}}
         </ng-container>
       </dui-table-column>
       <dui-table-column [width]="220" name="path"></dui-table-column>
