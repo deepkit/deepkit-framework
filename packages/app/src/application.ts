@@ -86,7 +86,26 @@ function parseEnv(
     }
 }
 
+class EnvConfigLoader {
+    public prefix: string = '';
+    public envFilePaths: string[] = [];
+    public namingStrategy: EnvNamingStrategy = 'same';
+
+    load(moduleName: string, config: { [p: string]: any }, schema: ClassSchema) {
+        const envConfiguration = new EnvConfiguration();
+        for (const path of this.envFilePaths) {
+            if (envConfiguration.loadEnvFile(path)) break;
+        }
+        const env = Object.assign({}, envConfiguration.getAll());
+        Object.assign(env, process.env);
+
+        parseEnv(config, this.prefix, schema, '', convertNameStrategy(this.namingStrategy, moduleName), this.namingStrategy, env);
+    }
+}
+
 export class CommandApplication<T extends ModuleOptions, C extends ServiceContainer<T> = ServiceContainer<T>> {
+    protected envConfigLoader?: EnvConfigLoader;
+
     constructor(
         public appModule: AppModule<T, any>,
         providers: ProviderWithScope<any>[] = [],
@@ -151,19 +170,12 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
      *
      * `path` can be an array of paths. First existing path is picked.
      */
-    loadConfigFromEnvFile(path: string | string[], namingStrategy: EnvNamingStrategy = 'same'): this {
-        this.addConfigLoader({
-            load(moduleName: string, config: { [p: string]: any }, schema: ClassSchema) {
-                const envConfiguration = new EnvConfiguration();
-                const paths = isArray(path) ? path : [path];
-                for (const path of paths) {
-                    if (envConfiguration.loadEnvFile(path)) break;
-                }
-                const all = envConfiguration.getAll() as any;
-
-                parseEnv(config, '', schema, '', convertNameStrategy(namingStrategy, moduleName), namingStrategy, all);
-            }
-        });
+    loadConfigFromEnvFile(path: string | string[]): this {
+        if (!this.envConfigLoader) {
+            this.envConfigLoader = new EnvConfigLoader;
+            this.addConfigLoader(this.envConfigLoader);
+        }
+        this.envConfigLoader.envFilePaths = isArray(path) ? path : [path];
 
         return this;
     }
@@ -179,11 +191,12 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
      * Application.create({}).loadConfigFromEnvVariables('APP_').run();
      */
     loadConfigFromEnvVariables(prefix: string = 'APP_', namingStrategy: EnvNamingStrategy = 'same'): this {
-        this.addConfigLoader({
-            load(moduleName: string, config: { [p: string]: any }, schema: ClassSchema) {
-                parseEnv(config, prefix, schema, '', convertNameStrategy(namingStrategy, moduleName), namingStrategy, process.env);
-            }
-        });
+        if (!this.envConfigLoader) {
+            this.envConfigLoader = new EnvConfigLoader;
+            this.addConfigLoader(this.envConfigLoader);
+        }
+        this.envConfigLoader.prefix = prefix;
+        this.envConfigLoader.namingStrategy = namingStrategy;
         return this;
     }
 

@@ -210,7 +210,7 @@ test('config uppercase naming strategy', async () => {
         dbHost: t.string,
     });
 
-    const app = new CommandApplication(new AppModule({config})).setup((module, config) => {
+    const app = new CommandApplication(new AppModule({ config })).setup((module, config) => {
         expect(config.dbHost).toBe('mongodb://localhost');
     });
     process.env.APP_DB_HOST = 'mongodb://localhost';
@@ -224,7 +224,7 @@ test('config lowercase naming strategy', async () => {
         dbHost: t.string,
     });
 
-    const app = new CommandApplication(new AppModule({config})).setup((module, config) => {
+    const app = new CommandApplication(new AppModule({ config })).setup((module, config) => {
         expect(config.dbHost).toBe('mongodb://localhost');
     });
     process.env.app_db_host = 'mongodb://localhost';
@@ -335,5 +335,87 @@ test('cli controllers in sub modules are in correct injector context', async () 
         }));
         const res = await app.execute(['test']);
         expect(res).toBe(10);
+    }
+});
+
+test('config deps and @inject() in FactoryProvider', async () => {
+
+    const config = new AppModuleConfig({
+        host: t.string.default('0.0.0.0'),
+    });
+
+    class MyClass {
+        constructor(public readonly host: string) {
+        }
+    }
+
+    class MyClassConfig extends config.slice(['host']) {
+    }
+
+    class Unknown {}
+
+    const module = new AppModule({
+        config,
+        providers: [
+            {
+                provide: MyClass, deps: [MyClassConfig], useFactory(config: MyClassConfig) {
+                    return new MyClass(config.host);
+                }
+            },
+            {
+                provide: 'myToken', deps: [inject(Unknown).optional], useFactory(config?: Unknown) {
+                    return !!config;
+                }
+            },
+            {
+                provide: 'myToken2', deps: [inject(MyClassConfig).optional], useFactory(config: MyClassConfig) {
+                    return config instanceof MyClassConfig;
+                }
+            },
+            {
+                provide: 'myToken3', deps: [inject(MyClassConfig)], useFactory(config: MyClassConfig) {
+                    return config instanceof MyClassConfig;
+                }
+            },
+            {
+                provide: 'myToken4', deps: [inject(Unknown).optional, MyClassConfig], useFactory(unknown: Unknown | undefined, config: MyClassConfig) {
+                    return [!!unknown, config instanceof MyClassConfig];
+                }
+            },
+            {
+                provide: 'configHost', deps: [config.token('host')], useFactory(host: string) {
+                    return host;
+                }
+            }
+        ]
+    });
+
+    {
+        const app = new CommandApplication(module);
+        expect(app.get(MyClass).host).toBe('0.0.0.0');
+
+        expect(app.get('myToken')).toBe(false);
+
+        expect(app.get('myToken2')).toBe(true);
+
+        expect(app.get('myToken3')).toBe(true);
+
+        expect(app.get('myToken4')).toEqual([false, true]);
+
+        expect(app.get('configHost')).toEqual('0.0.0.0');
+    }
+
+    {
+        const module = new AppModule({
+            providers: [
+                {
+                    provide: 'undefinedDep', deps: [undefined], useFactory(host: string) {
+                        return host;
+                    }
+                },
+            ]
+        });
+        const app = new CommandApplication(module);
+        expect(() => app.get('undefinedDep')).toThrow(`No token defined for dependency 0 in 'deps' of useFactory for undefinedDep`);
     }
 });

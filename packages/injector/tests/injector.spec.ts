@@ -286,7 +286,7 @@ test('injector stack parent', () => {
     expect(i2.get('level')).toBe(2);
     expect(i3.get('level')).toBe(2);
 
-    expect(() => i2.get('level2')).toThrow('Could not resolve injector token deep2');
+    expect(() => i2.get('level2')).toThrow(`Unknown factory dependency argument 'deep2' of useFactory`);
     expect(i3.get('level2')).toBe(3);
 });
 
@@ -302,7 +302,7 @@ test('injector stack parent fork', () => {
     expect(i2.get('level')).toBe(2);
     expect(i3.get('level')).toBe(2);
 
-    expect(() => i2.get('level2')).toThrow('Could not resolve injector token deep2');
+    expect(() => i2.get('level2')).toThrow(`Unknown factory dependency argument 'deep2' of useFactory`);
     expect(i3.get('level2')).toBe(3);
 });
 

@@ -124,6 +124,8 @@ export interface InjectDecorator {
      * Resolves the dependency token from the root injector.
      */
     readonly root: this;
+
+    readonly options: {token: any, optional: boolean, root: boolean};
 }
 
 export type InjectOptions = {
@@ -133,6 +135,12 @@ export type InjectOptions = {
 };
 
 type ForwardRef<T> = () => T;
+
+const injectSymbol = Symbol('inject');
+
+export function isInjectDecorator(v: any): v is InjectDecorator {
+    return isFunction(v) && v.hasOwnProperty(injectSymbol);
+}
 
 export function inject(token?: any | ForwardRef<any>): InjectDecorator {
     const injectOptions: InjectOptions = {
@@ -148,10 +156,18 @@ export function inject(token?: any | ForwardRef<any>): InjectDecorator {
         })(target, propertyOrMethodName, parameterIndexOrDescriptor);
     };
 
+    Object.defineProperty(fn, injectSymbol, {value: true, enumerable: false});
+
     Object.defineProperty(fn, 'optional', {
         get() {
             injectOptions.optional = true;
             return fn;
+        }
+    });
+
+    Object.defineProperty(fn, 'options', {
+        get() {
+            return injectOptions;
         }
     });
 
@@ -267,14 +283,8 @@ export class Injector implements BasicInjector {
         return this.parents.length === 0;
     }
 
-    protected createFactoryProperty(classType: ClassType, property: PropertySchema, compiler: CompilerContext, classTypeVar: string, argPosition: number, notFoundFunction: string) {
-        const options = property.data['deepkit/inject'] as InjectOptions | undefined;
-        let token: any = property.resolveClassType;
-        const isOptional = options && options.optional;
-
-        if (options && options.token) {
-            token = isFunction(options.token) ? options.token() : options.token;
-        }
+    protected createFactoryProperty(options: {name: string | number, token: any, optional: boolean}, compiler: CompilerContext, ofName: string, argPosition: number, notFoundFunction: string) {
+        const token = options.token;
 
         if (token instanceof ConfigDefinition) {
             if (token.hasModule()) {
@@ -311,26 +321,37 @@ export class Injector implements BasicInjector {
             return `new ${tokenVar}(${providers}.map(v => (frontInjector.retriever ? frontInjector.retriever(frontInjector, v, frontInjector) : frontInjector.get(v, frontInjector))))`;
         } else {
             if (token === undefined) {
-                let of = `${getClassName(classType)}.${property.name}`;
+                let of = `${ofName}.${options.name}`;
                 if (argPosition >= 0) {
                     const argsCheck: string[] = [];
                     for (let i = 0; i < argPosition; i++) argsCheck.push('✓');
                     argsCheck.push('?');
-                    of = `${getClassName(classType)}(${argsCheck.join(', ')})`;
+                    of = `${ofName}(${argsCheck.join(', ')})`;
                 }
 
                 throw new DependenciesUnmetError(
-                    `Undefined dependency '${property.name}: undefined' of ${of}. Dependency '${property.name}' has no type. Imported reflect-metadata correctly? `+
-                    `Use '@inject(PROVIDER) ${property.name}: T' if T is an interface. For circular references use @inject(() => T) ${property.name}: T.`
+                    `Undefined dependency '${options.name}: undefined' of ${of}. Dependency '${options.name}' has no type. Imported reflect-metadata correctly? `+
+                    `Use '@inject(PROVIDER) ${options.name}: T' if T is an interface. For circular references use @inject(() => T) ${options.name}: T.`
                 );
             }
             const tokenVar = compiler.reserveVariable('token', token);
-            const orThrow = isOptional ? '' : `?? ${notFoundFunction}(${classTypeVar}, ${JSON.stringify(property.name)}, ${argPosition}, ${tokenVar})`;
+            const orThrow = options.optional ? '' : `?? ${notFoundFunction}(${JSON.stringify(ofName)}, ${JSON.stringify(options.name)}, ${argPosition}, ${tokenVar})`;
 
             return `(frontInjector.retriever ? frontInjector.retriever(frontInjector, ${tokenVar}, frontInjector) : frontInjector.get(${tokenVar}, frontInjector)) ${orThrow}`;
         }
 
         return 'undefined';
+    }
+
+    protected optionsFromProperty(property: PropertySchema): {token: any, name: string|number, optional: boolean} {
+        const options = property.data['deepkit/inject'] as InjectOptions | undefined;
+        let token: any = property.resolveClassType;
+
+        if (options && options.token) {
+            token = isFunction(options.token) ? options.token() : options.token;
+        }
+
+        return {token, name: property.name, optional: !!options && options.optional};
     }
 
     protected createFactory(compiler: CompilerContext, classType: ClassType): string {
@@ -341,13 +362,13 @@ export class Injector implements BasicInjector {
         const classTypeVar = compiler.reserveVariable('classType', classType);
 
         for (const property of schema.getMethodProperties('constructor')) {
-            args.push(this.createFactoryProperty(classType, property, compiler, classTypeVar, args.length, 'constructorParameterNotFound'));
+            args.push(this.createFactoryProperty(this.optionsFromProperty(property), compiler, getClassName(classType), args.length, 'constructorParameterNotFound'));
         }
 
         for (const property of schema.getProperties()) {
             if (!('deepkit/inject' in property.data)) continue;
             if (property.methodName === 'constructor') continue;
-            propertyAssignment.push(`v.${property.name} = ${this.createFactoryProperty(classType, property, compiler, classTypeVar, -1, 'propertyParameterNotFound')};`);
+            propertyAssignment.push(`v.${property.name} = ${this.createFactoryProperty(this.optionsFromProperty(property), compiler, getClassName(classType), -1, 'propertyParameterNotFound')};`);
         }
 
         return `v = new ${classTypeVar}(${args.join(',')});\n${propertyAssignment.join('\n')}`;
@@ -412,8 +433,29 @@ export class Injector implements BasicInjector {
                 transient = provider.transient === true;
                 token = provider.provide;
 
-                const deps: any[] = (provider.deps || []).map(v => `frontInjector.get(${compiler.reserveVariable('dep', v)}, frontInjector)`);
-                factory = `v = ${compiler.reserveVariable('factory', provider.useFactory)}(${deps.join(', ')});`;
+                const args: string[] = [];
+                let i = 0;
+                for (const dep of provider.deps || []) {
+                    let optional = false
+                    let token = dep;
+
+                    if (isInjectDecorator(dep)) {
+                        optional = dep.options.optional;
+                        token = dep.options.token;
+                    }
+
+                    if (!token) {
+                        throw new Error(`No token defined for dependency ${i} in 'deps' of useFactory for ${tokenLabel(provider.provide)}`);
+                    }
+
+                    args.push(this.createFactoryProperty({
+                        name: i++,
+                        token,
+                        optional,
+                    }, compiler, 'useFactory', args.length, 'factoryDependencyNotFound'));
+                }
+
+                factory = `v = ${compiler.reserveVariable('factory', provider.useFactory)}(${args.join(', ')});`;
             } else if (isClass(provider)) {
                 token = provider;
                 factory = this.createFactory(compiler, provider);
@@ -494,6 +536,7 @@ export class Injector implements BasicInjector {
         compiler.context.set('throwCircularDependency', throwCircularDependency);
         compiler.context.set('CircularDetectorResets', CircularDetectorResets);
         compiler.context.set('constructorParameterNotFound', constructorParameterNotFound);
+        compiler.context.set('factoryDependencyNotFound', factoryDependencyNotFound);
         compiler.context.set('propertyParameterNotFound', propertyParameterNotFound);
 
         compiler.preCode = `
@@ -524,21 +567,32 @@ export class Injector implements BasicInjector {
     }
 }
 
-function constructorParameterNotFound(classType: ClassType, name: string, position: number, token: any) {
+function constructorParameterNotFound(ofName: string, name: string, position: number, token: any) {
     const argsCheck: string[] = [];
     for (let i = 0; i < position; i++) argsCheck.push('✓');
     argsCheck.push('?');
 
     for (const reset of CircularDetectorResets) reset();
     throw new DependenciesUnmetError(
-        `Unknown constructor argument '${name}: ${tokenLabel(token)}' of ${getClassName(classType)}(${argsCheck.join(', ')}). Make sure '${tokenLabel(token)}' is provided.`
+        `Unknown constructor argument '${name}: ${tokenLabel(token)}' of ${ofName}(${argsCheck.join(', ')}). Make sure '${tokenLabel(token)}' is provided.`
     );
 }
 
-function propertyParameterNotFound(classType: ClassType, name: string, position: number, token: any) {
+function factoryDependencyNotFound(ofName: string, name: string, position: number, token: any) {
+    const argsCheck: string[] = [];
+    for (let i = 0; i < position; i++) argsCheck.push('✓');
+    argsCheck.push('?');
+
     for (const reset of CircularDetectorResets) reset();
     throw new DependenciesUnmetError(
-        `Unknown property parameter ${name} of ${getClassName(classType)}. Make sure '${tokenLabel(token)}' is provided.`
+        `Unknown factory dependency argument '${tokenLabel(token)}' of ${ofName}(${argsCheck.join(', ')}). Make sure '${tokenLabel(token)}' is provided.`
+    );
+}
+
+function propertyParameterNotFound(ofName: string, name: string, position: number, token: any) {
+    for (const reset of CircularDetectorResets) reset();
+    throw new DependenciesUnmetError(
+        `Unknown property parameter ${name} of ${ofName}. Make sure '${tokenLabel(token)}' is provided.`
     );
 }
 
