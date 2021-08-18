@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { f, jsonSerializer } from '@deepkit/type';
+import { createClassToXFunction, createXToClassFunction, f, getClassSchema, jsonSerializer } from '@deepkit/type';
 import { BenchSuite } from '../../bench';
 
 class Model {
@@ -24,6 +24,7 @@ class Model {
     ) {
     }
 }
+
 const ModelSerializer = jsonSerializer.for(Model);
 
 export async function main() {
@@ -35,6 +36,16 @@ export async function main() {
         priority: 5,
         ready: true,
     };
+
+    const schema = getClassSchema(Model);
+
+    suite.add('JIT XToClass', () => {
+        createXToClassFunction(schema, jsonSerializer);
+    });
+
+    suite.add('JIT ClassToX', () => {
+        createClassToXFunction(schema, jsonSerializer);
+    });
 
     suite.add('deserialize', () => {
         ModelSerializer.deserialize(plain);

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Entity, f, jsonSerializer } from '@deepkit/type';
+import { createClassToXFunction, createXToClassFunction, Entity, f, getClassSchema, jsonSerializer } from '@deepkit/type';
 import { BenchSuite } from '../../bench';
 
 
@@ -83,6 +83,16 @@ export async function main() {
         childrenMap: { 'sub': { label: 'label' } },
         types: ['a', 'b', 'c']
     };
+
+    const schema = getClassSchema(Model);
+
+    suite.add('JIT XToClass', () => {
+        createXToClassFunction(schema, jsonSerializer);
+    });
+
+    suite.add('JIT ClassToX', () => {
+        createClassToXFunction(schema, jsonSerializer);
+    });
 
     suite.add('deserialize', () => {
         ModelSerializer.deserialize(plain);
