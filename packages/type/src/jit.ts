@@ -476,6 +476,7 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Se
 
     for (const property of constructorParameter) {
         assignedViaConstructor[property.name] = true;
+        if (schema.decorator && property.name !== schema.decorator) continue;
 
         if (schema.decorator && property.name === schema.decorator) {
             constructorArguments.push(`
@@ -498,6 +499,7 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Se
 
     for (const property of schema.getProperties()) {
         if (assignedViaConstructor[property.name]) continue;
+        if (schema.decorator && property.name !== schema.decorator) continue;
 
         if (isExcluded(schema, property.name, serializer.name)) continue;
 

@@ -2,6 +2,7 @@ import { expect, test } from '@jest/globals';
 import {
     arrayBufferFrom,
     ClassSchema,
+    classToPlain,
     DatabaseName,
     Entity,
     forwardRef,
@@ -17,6 +18,7 @@ import {
     isMapType,
     isRegisteredEntity,
     jsonSerializer,
+    plainToClass,
     PropertySchema,
     t,
 } from '../index';
@@ -819,3 +821,30 @@ test('bigint', () => {
 
     expect(getClassSchema(ExecuteTransaction).getProperty('nonce').type).toBe('bigint');
 })
+
+test('additional fields', () => {
+    class A {
+        @t public y: number = 0;
+
+        constructor(@t.decorated public x: number) {
+
+        }
+    }
+
+    class Wrapper {
+        constructor(@t.type(A) public a: A) {
+        }
+    }
+
+    const w = plainToClass(Wrapper, {a: 1});
+    expect(w.a).toBeInstanceOf(A);
+    expect(w.a.x).toBe(1);
+    expect(w.a.y).toBe(0);
+
+    const plain = classToPlain(Wrapper, w);
+    expect(plain).toEqual({a: 1});
+
+    const a = new A(1);
+    const aPlain = classToPlain(A, a);
+    expect(aPlain).toBe(1);
+});
