@@ -14,7 +14,6 @@ import { executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry 
 import { reserveVariable } from './serializer-compiler';
 import { JitStack, resolvePropertySchema } from './jit';
 
-const jitFunctions = new WeakMap<ClassSchema, any>();
 const CacheJitPropertyMap = new Map<PropertySchema, any>();
 const CacheValidatorInstances = new Map<ClassType<PropertyValidator>, PropertyValidator>();
 
@@ -272,7 +271,7 @@ export function jitValidateProperty(property: PropertySchema, classType?: ClassT
 export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>, jitStack: JitStack = new JitStack()): (value: any, path?: string, errors?: ValidationFailedItem[]) => ValidationFailedItem[] {
     schema = schema instanceof ClassSchema ? schema : getClassSchema(schema);
 
-    const jit = jitFunctions.get(schema);
+    const jit = schema.jit.validation;
     if (jit && jit.buildId === schema.buildId) return jit;
 
     const context = new Map<any, any>();
@@ -332,7 +331,7 @@ export function jitValidate<T>(schema: ClassType<T> | ClassSchema<T>, jitStack: 
     const fn = compiled.bind(undefined, ...context.values())();
     prepared(fn);
     fn.buildId = schema.buildId;
-    jitFunctions.set(schema, fn);
+    schema.jit.validation = fn;
 
     return fn;
 }

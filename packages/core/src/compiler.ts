@@ -37,8 +37,10 @@ export class CompilerContext {
 
     build(functionCode: string, ...args: string[]): any {
         functionCode = `
+            'use strict';
             ${this.preCode}
-            return function self(${args.join(', ')}){ 
+            return function self(${args.join(', ')}){
+                'use strict';
                 ${functionCode}
             };
         `;
@@ -51,8 +53,10 @@ export class CompilerContext {
 
     buildAsync(functionCode: string, ...args: string[]): Function {
         functionCode = `
+            'use strict';
             ${this.preCode}
-            return async function self(${args.join(', ')}){ 
+            return async function self(${args.join(', ')}){
+                'use strict';
                 ${functionCode}
             };
         `;

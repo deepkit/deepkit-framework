@@ -158,6 +158,7 @@ export function createPropertyClassToXFunction(
     const line = getDataConverterJS('result', '_value', property, serializer.fromClass, context, jitStack);
 
     const functionCode = `
+        'use strict';
         return function(_value, _options, _stack, _depth) {
             var result;
             //createJITConverterFromPropertySchema ${property.name} ${property.type}
@@ -183,6 +184,7 @@ export function createPropertyXToClassFunction(
     const line = getDataConverterJS('result', '_value', property, serializer.toClass, context, jitStack);
 
     const functionCode = `
+        'use strict';
         return function(_value, _parents, _options) {
             var result, _state;
             function getParents() {
@@ -267,6 +269,7 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
         const property = schema.getProperty(schema.decorator);
 
         functionCode = `
+        'use strict';
         return function(_instance, _options, _stack, _depth) {
             var result, _state;
             ${getDataConverterJS(`result`, `_instance.${schema.decorator}`, property, serializer.fromClass, context, jitStack)}
@@ -320,7 +323,9 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
         }
 
         functionCode = `
+        'use strict';
         return function self(_instance, _options, _stack, _depth) {
+            'use strict';
             ${circularCheckBeginning}
             var _data = {};
             _depth = !_depth ? 1 : _depth + 1;
@@ -530,7 +535,9 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Se
     }
 
     const functionCode = `
+        'use strict';
         return function(_data, _options, _parents, _state) {
+           'use strict';
             var _instance, parentsWithItem;
             _parents = _parents || (_options ? _options.parents : []);
             function getParents() {
@@ -619,6 +626,7 @@ export function createPartialXToClassFunction<T>(schema: ClassSchema<T>, seriali
     }
 
     const functionCode = `
+        'use strict';
         return function(_data, _options, _parents) {
             var _result = {}, _state;
             function getParents() {
@@ -660,6 +668,7 @@ export function createPartialClassToXFunction<T>(schema: ClassSchema<T>, seriali
     context.set('UnpopulatedCheckNone', UnpopulatedCheck.None);
 
     const functionCode = `
+        'use strict';
         return function(_data, _options, _stack, _depth) {
             var _result = {};
             _depth = !_depth ? 1 : _depth + 1;

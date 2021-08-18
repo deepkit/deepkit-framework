@@ -183,7 +183,7 @@ export class EventDispatcher {
                 if (isEventListenerContainerEntryCallback(listener)) {
                     const fnVar = compiler.reserveVariable('fn', listener.fn);
                     lines.push(`
-                        r = await ${fnVar}(event);
+                        await ${fnVar}(event);
                         if (event.isStopped()) return;
                     `);
                 } else if (isEventListenerContainerEntryService(listener)) {
@@ -220,7 +220,7 @@ export class EventDispatcher {
             if (isEventListenerContainerEntryCallback(listener)) {
                 const fnVar = compiler.reserveVariable('fn', listener.fn);
                 lines.push(`
-                    r = await ${fnVar}(event);
+                    await ${fnVar}(event);
                     if (event.isStopped()) return;
                 `);
             } else if (isEventListenerContainerEntryService(listener)) {
