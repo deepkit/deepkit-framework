@@ -21,8 +21,10 @@ Deepkit Framework is all about high-performance:
 The economic advantage of isomorphic TypeScript projects (frontend and backend written with TS) is enormous and Deepkit
 Framework wants to utilize this advantage to its fullest.
 
-**NOTE**: We have only recently started refactoring a huge portion of this project and work hard on the first release.
-**Website and docs will follow soon.**
+## Status
+Deepkit is currently in an alpha state but is already extremely feature rich and used in production. You are encouraged to start building applications with the framework but some public APIs are still subject to change. The team is working hard towards a stable beta release.
+
+Check out the [Deepkit Documentation](https://deepkit.io/documentation/framework) to get started.
 
 ## Packages
 
@@ -61,7 +63,7 @@ atomic app locks.
 
 **@deepkit/event**: Asynchronous event dispatcher for Typescript using decorators and classes..
 
-**@deepkit/http**: A workflow library to implement atomic workflow transitions with a dispatcher pattern.
+**@deepkit/http**: Powerful and fast http library for building server side applications
 
 **@deepkit/logger**: A logger library with support for colors, scopes, various transporter and formatter.
 
@@ -80,3 +82,7 @@ JSON. Uses @deepkit/type for schema definition.
 performance possible.
 
 **@deepkit/type-angular**: Use @deepkit/type schemas directly in Angular Forms, making form validation much easier.
+
+## Contributing
+
+If you are interested in contributing to the development of Deepkit, check out the [Development Docs](./DEVELOPMENT.md) to learn more about setting up your local development environment.
