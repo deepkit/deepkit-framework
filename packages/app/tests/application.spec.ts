@@ -1,5 +1,5 @@
 import { t } from '@deepkit/type';
-import { expect, test } from '@jest/globals';
+import { beforeEach, expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { CommandApplication } from '../src/application';
 import { inject } from '@deepkit/injector';
@@ -29,17 +29,32 @@ class Service {
     }
 }
 
+beforeEach(() => {
+    process.env = {};
+});
+
 test('loadConfigFromEnvVariables', async () => {
-    process.env.APP_token = 'changed1';
-    process.env.APP_base_db = 'changed2';
+    process.env.APP_TOKEN = 'fromBefore';
+    process.env.APP_BASE_DB = 'changed2';
     const app = new CommandApplication(new AppModule({ config, providers: [Service], imports: [baseModule] }));
-    app.loadConfigFromEnvVariables('APP_');
+    app.loadConfigFromEnv();
 
     const service = app.get(Service);
-    expect(service.token).toBe('changed1');
+    expect(service.token).toBe('fromBefore');
 
     const baseService = app.get(BaseService);
     expect(baseService.db).toBe('changed2');
+});
+
+test('loadConfigFromEnvFile', async () => {
+    const app = new CommandApplication(new AppModule({ config, providers: [Service], imports: [baseModule] }));
+    app.loadConfigFromEnv({ envFilePath: __dirname + '/test.env' });
+
+    const service = app.get(Service);
+    expect(service.token).toBe('changed5');
+
+    const baseService = app.get(BaseService);
+    expect(baseService.db).toBe('changed6');
 });
 
 test('loadConfigFromEnvVariable', async () => {
@@ -59,17 +74,6 @@ test('loadConfigFromEnvVariable', async () => {
     expect(baseService.db).toBe('changed4');
 });
 
-test('loadConfigFromEnvFile', async () => {
-    const app = new CommandApplication(new AppModule({ config, providers: [Service], imports: [baseModule] }));
-    app.loadConfigFromEnvFile(__dirname + '/test.env');
-
-    const service = app.get(Service);
-    expect(service.token).toBe('changed5');
-
-    const baseService = app.get(BaseService);
-    expect(baseService.db).toBe('changed6');
-});
-
 test('loadConfigFromEnvVariables non-root import', async () => {
     const baseConfig = new AppModuleConfig({
         db: t.string.default('notSet'),
@@ -82,8 +86,8 @@ test('loadConfigFromEnvVariables non-root import', async () => {
 
     const baseModule = new AppModule({ config: baseConfig, providers: [BaseService] }, 'base');
     const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
-    process.env.APP_base_db = 'changed2';
-    app.loadConfigFromEnvVariables('APP_');
+    process.env.APP_BASE_DB = 'changed2';
+    app.loadConfigFromEnv();
 
     const baseService = app.serviceContainer.getInjectorFor(baseModule).get(BaseService);
     expect(baseService.db).toBe('changed2');
@@ -121,7 +125,7 @@ test('validation fails when env is wrong', async () => {
     process.env['APP_log'] = 'asdf';
 
     const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
-    app.loadConfigFromEnvVariables('APP_');
+    app.loadConfigFromEnv();
     expect(() => app.serviceContainer.process()).toThrow('log needs to be true');
 });
 
@@ -154,18 +158,18 @@ test('required value can be set via env or setupConfig', async () => {
 
     {
         baseModule.clearConfig();
-        process.env['APP_log'] = '1';
+        process.env['APP_LOG'] = '1';
         const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
-        app.loadConfigFromEnvVariables('APP_');
+        app.loadConfigFromEnv();
         app.serviceContainer.process();
     }
 
     {
         baseModule.clearConfig();
-        process.env['APP_log'] = 'asdf';
+        process.env['APP_LOG'] = 'asdf';
 
         const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
-        app.loadConfigFromEnvVariables('APP_');
+        app.loadConfigFromEnv();
         expect(() => app.serviceContainer.process()).toThrow('log(invalid_boolean): No Boolean given');
     }
 
@@ -199,8 +203,8 @@ test('loadConfigFromEnvVariables() happens before setup() calls', async () => {
         });
 
     const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
-    process.env.APP_base_log = '1';
-    app.loadConfigFromEnvVariables('APP_');
+    process.env.APP_BASE_LOG = '1';
+    app.loadConfigFromEnv();
 
     app.serviceContainer.process();
 });
@@ -214,7 +218,7 @@ test('config uppercase naming strategy', async () => {
         expect(config.dbHost).toBe('mongodb://localhost');
     });
     process.env.APP_DB_HOST = 'mongodb://localhost';
-    app.loadConfigFromEnvVariables('APP_', 'upper');
+    app.loadConfigFromEnv();
 
     app.serviceContainer.process();
 });
@@ -228,7 +232,7 @@ test('config lowercase naming strategy', async () => {
         expect(config.dbHost).toBe('mongodb://localhost');
     });
     process.env.app_db_host = 'mongodb://localhost';
-    app.loadConfigFromEnvVariables('app_', 'lower');
+    app.loadConfigFromEnv({ namingStrategy: 'lower', prefix: 'app_' });
 
     app.serviceContainer.process();
 });

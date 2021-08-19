@@ -18,7 +18,7 @@ import { Main } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { buildOclifCommand } from './command';
 import { ClassSchema } from '@deepkit/type';
-import { EnvConfiguration } from './configuration';
+import { EnvConfiguration, resolveEnvFilePath } from './configuration';
 
 export function setPartialConfig(target: { [name: string]: any }, partial: { [name: string]: any }, incomingPath: string = '') {
     for (const i in partial) {
@@ -86,10 +86,54 @@ function parseEnv(
     }
 }
 
+/**
+ * Options for configuring an instance of the EnvConfigLoader
+ */
+ interface EnvConfigOptions {
+    /**
+     * A path or paths to optional .env files that will be processed and mapped to app/module config
+     */
+    envFilePath?: string | string[],
+    /**
+     * A naming strategy for converting env variables to app/module config. Defaults to 'upper'.
+     * For example, allows converting DB_HOST to dbHost
+     */
+    namingStrategy?: EnvNamingStrategy,
+    /**
+     * A prefix for environment variables that helps to avoid potential collisions
+     * By default this will be set to APP_
+     *
+     * Eg.
+     * APP_DATABASE_URL="mongodb://localhost/mydb" will be mapped to databaseUrl when using the upper
+     * naming strategy
+     *
+     */
+    prefix?: string
+}
+
+const defaultEnvConfigOptions: Required<EnvConfigOptions> = {
+    prefix: 'APP_',
+    envFilePath: ['.env'],
+    namingStrategy: 'upper'
+}
+
 class EnvConfigLoader {
-    public prefix: string = '';
-    public envFilePaths: string[] = [];
-    public namingStrategy: EnvNamingStrategy = 'same';
+    private readonly prefix: string;
+    private readonly envFilePaths: string[];
+    private readonly namingStrategy: EnvNamingStrategy;
+
+    constructor(options?: EnvConfigOptions) {
+        const normalizedOptions = {
+            ...defaultEnvConfigOptions,
+            ...options
+        };
+
+        const { prefix, envFilePath, namingStrategy } = normalizedOptions;
+
+        this.prefix = prefix;
+        this.envFilePaths = Array.isArray(envFilePath) ? envFilePath : [envFilePath];
+        this.namingStrategy = namingStrategy;
+    }
 
     load(moduleName: string, config: { [p: string]: any }, schema: ClassSchema) {
         const envConfiguration = new EnvConfiguration();
@@ -161,44 +205,30 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
     }
 
     /**
-     * Loads a .env file and sets its configuration value.
+     * Loads environment variables and optionally reads from .env files in order to find matching configuration options
+     * in your application and modules in order to set their values.
      *
-     * `path` is either an absolute or relative path. For relative paths the first
-     * folder with a package.json starting from process.cwd() upwards is picked.
-     *
-     * So if you use 'local.env' make sure a 'local.env' file is localed beside your 'package.json'.
-     *
-     * `path` can be an array of paths. First existing path is picked.
-     */
-    loadConfigFromEnvFile(path: string | string[]): this {
-        if (!this.envConfigLoader) {
-            this.envConfigLoader = new EnvConfigLoader;
-            this.addConfigLoader(this.envConfigLoader);
-        }
-        this.envConfigLoader.envFilePaths = isArray(path) ? path : [path];
-
-        return this;
-    }
-
-    /**
-     * Load all environment variables that start with given prefix and try to
-     * find matching configuration options and set its value.
-     *
+     * Prefixing ENV variables is encouraged to avoid collisions and by default a prefix of APP_ is used
      * Example:
      *
      * APP_databaseUrl="mongodb://localhost/mydb"
      *
      * Application.create({}).loadConfigFromEnvVariables('APP_').run();
+     *
+     *
+     * `envFilePath` can be either an absolute or relative path. For relative paths the first
+     * folder with a package.json starting from process.cwd() upwards is picked.
+     *
+     * So if you use 'local.env' make sure a 'local.env' file is located beside your 'package.json'.
+     *
+     * @param options Configuration options for retrieving configuration from env
+     * @returns
      */
-    loadConfigFromEnvVariables(prefix: string = 'APP_', namingStrategy: EnvNamingStrategy = 'same'): this {
-        if (!this.envConfigLoader) {
-            this.envConfigLoader = new EnvConfigLoader;
-            this.addConfigLoader(this.envConfigLoader);
-        }
-        this.envConfigLoader.prefix = prefix;
-        this.envConfigLoader.namingStrategy = namingStrategy;
+    loadConfigFromEnv(options?: EnvConfigOptions): this {
+        this.addConfigLoader(new EnvConfigLoader(options));
         return this;
     }
+
 
     /**
      * Loads a JSON encoded environment variable and applies its content to the configuration.

@@ -14,4 +14,4 @@ const appModule = new AppModule({
     ]
 });
 
-new Application(appModule).loadConfigFromEnvVariables('APP_').run(['server:start']);
+new Application(appModule).loadConfigFromEnv().run(['server:start']);

@@ -14,6 +14,13 @@ import { existsSync, readFileSync } from 'fs';
 class ConfigOptionNotFound extends Error {
 }
 
+export function resolveEnvFilePath(path: string): string | undefined {
+    const resolvedPath = isAbsolute(path) ? path : findFileUntilPackageRoot(path);
+    if (!resolvedPath || !existsSync(resolvedPath)) return undefined;
+
+    return resolvedPath;
+}
+
 function findFileUntilPackageRoot(fileName: string): string | undefined {
     let dir = process.cwd();
     while (true) {
@@ -35,10 +42,8 @@ export class EnvConfiguration {
      * Reads a .env file from given path, based to basePath.
      */
     public loadEnvFile(path: string): boolean {
-        const resolvedPath = isAbsolute(path) ? path : findFileUntilPackageRoot(path);
-
-        //search up folder until package.json root reached
-        if (!resolvedPath || !existsSync(resolvedPath)) return false;
+        const resolvedPath = resolveEnvFilePath(path);
+        if (!resolvedPath) return false
 
         const RE_INI_KEY_VAL = /^\s*([\w.-]+)\s*=\s*(.*)?\s*$/;
 
