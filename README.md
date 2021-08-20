@@ -38,7 +38,7 @@ simple classes.
 **@deepkit/framework**: High-Performance HTTP/RPC server, HTTP Router, typesafe module&configuration system, typesafe
 HTML template engine, Dependency-Injection, Debugger, CLI. Uses @deepkit/type for module configuration schema definition
 and router parameter/body schema definition.
-[Example application](https://github.com/deepkit/deepkit-framework/blob/master/packages/example-app/app.tsx).
+[Example application](https://github.com/deepkit/deepkit-framework/blob/master/packages/example-app/app.ts).
 
 **@deepkit/orm**: The fastest ORM for TypeScript with data-mapper/active-record pattern, UnitOfWork/IdentityMap,
 typesafe QueryBuilder, full returning/relations/join support, atomic patches, and SQL migrations. SQLite, PostgreSQL,
