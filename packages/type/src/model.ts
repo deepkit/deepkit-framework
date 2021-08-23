@@ -19,6 +19,7 @@ import {
     extractMethodBody,
     extractParameters,
     getClassName,
+    getObjectKeysSize,
     isClass,
     isConstructable,
     isFunction,
@@ -26,8 +27,9 @@ import {
     isPlainObject,
     toFastProperties
 } from '@deepkit/core';
-import { ExtractClassDefinition, PlainSchemaProps, t } from './decorators';
-import { FieldDecoratorResult } from './field-decorator';
+import type { ExtractClassDefinition, PlainSchemaProps } from './decorators';
+import { ExtractDefinition } from './decorators';
+import { FieldDecoratorResult, isFieldDecorator } from './field-decorator';
 import { findCommonDiscriminant, findCommonLiteral } from './inheritance';
 import { typedArrayMap, typedArrayNamesMap, Types } from './types';
 import { isArray } from './utils';
@@ -45,7 +47,7 @@ export enum UnpopulatedCheck {
 }
 
 export interface GlobalStore {
-    RegisteredEntities: { [name: string]: ClassType | ClassSchema };
+    RegisteredEntities: { [name: string]: ClassSchema };
     unpopulatedCheck: UnpopulatedCheck;
     /**
      * Per default, @deepkit/types tries to detect forward-ref by checking the type in the metadata or given in @t.type(x) to be a function.
@@ -102,6 +104,7 @@ export type IndexOptions = Partial<{
 
 export interface PropertySchemaSerialized {
     name: string;
+    description?: string;
     type: Types;
     literalValue?: string | number | boolean;
     extractedDefaultValue?: any;
@@ -120,8 +123,11 @@ export interface PropertySchemaSerialized {
     classTypeProperties?: PropertySchemaSerialized[];
     classTypeName?: string; //the getClassName() when the given classType is not registered using a @entity.name
     noValidation?: boolean;
+    data?: { [name: string]: any };
     isReference?: true;
     enum?: { [name: string]: any };
+    jsonType?: PropertySchemaSerialized;
+    hasDefaultValue?: true;
     backReference?: { via?: string, mappedBy?: string };
     autoIncrement?: true;
 }
@@ -224,11 +230,23 @@ export class PropertySchema {
     }
 
     /**
-     * Returns true when `undefined` or a missing value is allowed.
+     * Returns true when `undefined` or a missing value is allowed at the class itself.
      * This is now only true when `optional` is set, but also when type is `any`.
      */
     get isActualOptional(): boolean {
         return this.isOptional || this.type === 'any';
+    }
+
+    /**
+     * Whether a value is required from serialization point of view.
+     * If this property has for example a default value (set via constructor or manually via t.default),
+     * then the value is not required to instantiate the property value.
+     */
+    get isValueRequired(): boolean {
+        const hasDefault = this.hasDefaultValue || this.defaultValue !== undefined;
+        if (hasDefault) return false;
+
+        return !this.isOptional;
     }
 
     type: Types = 'any';
@@ -277,9 +295,12 @@ export class PropertySchema {
     isNullable: boolean = false;
 
     /**
-     * When the a property is defined as ! you have to manually use t.required.
+     * When t.optional or t.required was used explicitly. This disables the auto-detection of
+     * isOptional.
+     *
+     * (When the a property is defined as ! you have to manually use t.required)
      */
-    manuallySetToRequired: boolean = false;
+    manuallySetOptional: boolean = false;
 
     isDiscriminant: boolean = false;
 
@@ -381,18 +402,24 @@ export class PropertySchema {
      */
     deserialization = new Map<string, (v: any) => any>();
 
+    /**
+     * When set, it overwrite the default json types.
+     */
+    jsonType?: PropertySchema;
+
     constructor(public name: string, public parent?: PropertySchema) {
     }
 
-    setType(type: Types) {
+    setType(type: Types): this {
         this.type = type;
         this.typeSet = true;
+        return this;
     }
 
     getDefaultValue(): any {
         if (this.literalValue !== undefined) return this.literalValue;
 
-        if (this.defaultValue) {
+        if (this.defaultValue !== undefined) {
             this.lastGeneratedDefaultValue = this.defaultValue();
             return this.lastGeneratedDefaultValue;
         }
@@ -440,8 +467,15 @@ export class PropertySchema {
         throw new Error('No array or map type');
     }
 
-    setClassType(classType?: ClassType) {
+    setClassType(classType?: ClassType): this {
         this.classType = classType;
+        return this;
+    }
+
+    setOptional(optional: boolean): this {
+        this.isOptional = optional;
+        this.manuallySetOptional = true;
+        return this;
     }
 
     toJSON(): PropertySchemaSerialized {
@@ -450,6 +484,7 @@ export class PropertySchema {
             type: this.type
         };
 
+        if (this.description) props.description = this.description;
         if (this.literalValue !== undefined) props.literalValue = this.literalValue;
         if (this.extractedDefaultValue !== undefined) props.extractedDefaultValue = this.extractedDefaultValue;
         if (this.isDecorated) props.isDecorated = true;
@@ -464,9 +499,12 @@ export class PropertySchema {
         if (this.defaultValue) props.defaultValue = this.defaultValue();
         if (this.isReference) props.isReference = this.isReference;
         if (this.type === 'enum') props.enum = this.getResolvedClassType();
+        if (this.jsonType) props.jsonType = this.jsonType.toJSON();
+        if (this.hasDefaultValue) props.hasDefaultValue = true;
 
         if (this.isAutoIncrement) props.autoIncrement = true;
         props.noValidation = this.noValidation;
+        if (getObjectKeysSize(this.data) > 0) props.data = this.data;
 
         if (this.templateArgs.length) props.templateArgs = this.templateArgs.map(v => v.toJSON());
 
@@ -497,12 +535,18 @@ export class PropertySchema {
         return props;
     }
 
-    static fromJSON(props: PropertySchemaSerialized, parent?: PropertySchema, throwForInvalidClassType: boolean = true): PropertySchema {
+    static fromJSON(
+        props: PropertySchemaSerialized,
+        parent?: PropertySchema,
+        throwForInvalidClassType: boolean = true,
+        registry: { [name: string]: ClassSchema } = getGlobalStore().RegisteredEntities
+    ): PropertySchema {
         const p = new PropertySchema(props['name']);
         p.type = props['type'];
         p.literalValue = props.literalValue;
         p.extractedDefaultValue = props.extractedDefaultValue;
 
+        if (props.description) p.description = props.description;
         if (props.isDecorated) p.isDecorated = true;
         if (props.isParentReference) p.isParentReference = true;
         if (props.isDiscriminant) p.isDiscriminant = true;
@@ -516,38 +560,42 @@ export class PropertySchema {
         if (props.isReference) p.isReference = props.isReference;
         if (props.autoIncrement) p.isAutoIncrement = props.autoIncrement;
         if (props.enum) p.classType = props.enum as ClassType;
+        if (props.data) p.data = props.data;
+        if (props.hasDefaultValue) p.hasDefaultValue = props.hasDefaultValue;
+        if (props.jsonType) p.jsonType = PropertySchema.fromJSON(props.jsonType, undefined, throwForInvalidClassType, registry);
 
-        if (props.defaultValue) p.defaultValue = () => props.defaultValue;
+        if (props.defaultValue !== undefined) p.defaultValue = () => props.defaultValue;
 
         if (props.templateArgs) {
-            p.templateArgs = props.templateArgs.map(v => PropertySchema.fromJSON(v, p, throwForInvalidClassType));
+            p.templateArgs = props.templateArgs.map(v => PropertySchema.fromJSON(v, p, throwForInvalidClassType, registry));
         }
 
         if (props.backReference) {
             p.backReference = { mappedBy: props.backReference.mappedBy };
             if (props.backReference.via) {
-                const entity = getGlobalStore().RegisteredEntities[props.backReference.via];
+                const entity = registry[props.backReference.via];
                 if (entity) {
                     p.backReference.via = getClassSchema(entity).classType;
                 } else if (throwForInvalidClassType) {
-                    throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got entity name ${props.backReference.via} . ` +
-                        `Make sure given entity is loaded (imported at least once globally) and correctly annoated using @entity.name('${props.backReference.via}')`);
+                    throw new Error(`Could not deserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got entity name ${props.backReference.via} . ` +
+                        `Make sure given entity is loaded (imported at least once globally) and correctly annotated using @entity.name('${props.backReference.via}')`);
                 }
             }
         }
+
         if (props.classType) {
-            const entity = getGlobalStore().RegisteredEntities[props.classType];
+            const entity = registry[props.classType];
             if (entity) {
                 p.classType = getClassSchema(entity).classType;
             } else if (throwForInvalidClassType) {
-                throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got entity name ${props.classType} . ` +
-                    `Make sure given entity is loaded (imported at least once globally) and correctly annoated using @entity.name('${props.classType}')`);
+                throw new Error(`Could not deserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got entity name ${props.classType} . ` +
+                    `Make sure given entity is loaded (imported at least once globally) and correctly annotated using @entity.name('${props.classType}')`);
             }
             // } else if (p.type === 'class' && !props['classType']) {
             //     throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got class name ${props['classTypeName']}. ` +
             //         `Make sure this class has a @entity.name(name) decorator with a unique name assigned and given entity is loaded (imported at least once globally)`);
         } else if (props.classTypeProperties) {
-            const properties = props.classTypeProperties.map(v => PropertySchema.fromJSON(v, p, throwForInvalidClassType));
+            const properties = props.classTypeProperties.map(v => PropertySchema.fromJSON(v, p, throwForInvalidClassType, registry));
             const schema = createClassSchema();
             for (const property of properties) schema.registerProperty(property);
             p.classType = schema.classType;
@@ -571,11 +619,13 @@ export class PropertySchema {
         this.setFromJSType(value.constructor);
     }
 
-    setFromJSType(type: any, detectForwardRef = getGlobalStore().enableForwardRefDetection) {
-        if (type === undefined || type === null) return;
+    setFromJSType(type: any, detectForwardRef = getGlobalStore().enableForwardRefDetection): this {
+        if (type === undefined || type === null) return this;
 
         this.type = PropertySchema.getTypeFromJSType(type);
         this.typeSet = this.type !== 'any';
+
+        if (type === Promise) return this;
 
         if (type === Array) {
             //array doesnt have any other options, so we only know its an array
@@ -583,7 +633,7 @@ export class PropertySchema {
             this.type = 'array';
             this.typeSet = true;
             this.templateArgs[0] = new PropertySchema('0', this);
-            return;
+            return this;
         }
 
         const isCustomObject = !typedArrayMap.has(type)
@@ -607,6 +657,7 @@ export class PropertySchema {
             }
             this.typeSet = true;
         }
+        return this;
     }
 
     /**
@@ -622,14 +673,15 @@ export class PropertySchema {
         return getClassSchema(this.getResolvedClassType());
     }
 
-    clone(): PropertySchema {
-        const s = new PropertySchema(this.name, this.parent);
+    clone(to?: PropertySchema): PropertySchema {
+        const s = to || new PropertySchema(this.name, this.parent);
         for (const i of eachKey(this)) {
             (s as any)[i] = (this as any)[i];
         }
         s.data = { ...this.data };
         s.symbol = Symbol(this.name);
         s.classType = this.classType;
+        s.jsonType = this.jsonType ? this.jsonType.clone() : undefined;
         // s.classTypeResolved = undefined;
         s.templateArgs = this.templateArgs.slice(0);
         s.serialization = new Map(this.serialization);
@@ -639,6 +691,11 @@ export class PropertySchema {
 
     public getTemplateArg(position: number): PropertySchema | undefined {
         return this.templateArgs ? this.templateArgs[position] : undefined;
+    }
+
+    public setTemplateArgs(...properties: PropertySchema[]): this {
+        this.templateArgs = properties;
+        return this;
     }
 
     get resolveClassType(): ClassType | undefined {
@@ -810,6 +867,17 @@ export class ClassSchema<T = any> {
 
     getAssignedSingleTableInheritanceSubClassesByIdentifier(): { [id: string]: ClassSchema } | undefined {
         if (!this.subClasses.length) return;
+        if (this.assignedSingleTableInheritanceSubClassesByIdentifier) return this.assignedSingleTableInheritanceSubClassesByIdentifier;
+
+        let isBaseOfSingleTableEntity = false;
+        for (const schema of this.subClasses) {
+            if (schema.singleTableInheritance) {
+                isBaseOfSingleTableEntity = true;
+                break;
+            }
+        }
+
+        if (!isBaseOfSingleTableEntity) return;
 
         const discriminant = this.getSingleTableInheritanceDiscriminant();
 
@@ -820,7 +888,6 @@ export class ClassSchema<T = any> {
                 this.assignedSingleTableInheritanceSubClassesByIdentifier[value] = schema;
             }
         }
-        if (this.subClasses.length === 1) throw new Error('wat');
         return this.assignedSingleTableInheritanceSubClassesByIdentifier;
     }
 
@@ -939,10 +1006,10 @@ export class ClassSchema<T = any> {
     }
 
     public clone(classType?: ClassType): ClassSchema {
-        classType ||= class {
-        };
+        classType ||= class extends (this.classType as any) {};
         const s = new ClassSchema(classType);
         classType.prototype[classSchemaSymbol] = s;
+        Object.defineProperty(classType, 'name', {value: this.getClassName()});
         s.name = this.name;
         s.name = this.name;
         s.collectionName = this.collectionName;
@@ -1009,10 +1076,11 @@ export class ClassSchema<T = any> {
      * schema.addProperty('fieldName', f.string);
      * ```
      */
-    public addProperty(name: string, decorator: FieldDecoratorResult<any>) {
+    public addProperty<P extends FieldDecoratorResult<any>, N extends string>(name: N, decorator: P): ClassSchema<ExtractClassType<T> & {[K in N]: ExtractDefinition<P>}> {
         //apply decorator, which adds properties automatically
         decorator(this.classType, name);
         this.resetCache();
+        return this as any;
     }
 
     public removeProperty(name: string) {
@@ -1023,7 +1091,7 @@ export class ClassSchema<T = any> {
         arrayRemoveItem(this.propertyNames, name);
     }
 
-    public registerProperty(property: PropertySchema) {
+    public registerProperty(property: PropertySchema): this {
         if (this.fromClass && !property.methodName) {
             property.hasDefaultValue = this.detectedDefaultValueProperties.includes(property.name);
 
@@ -1031,7 +1099,7 @@ export class ClassSchema<T = any> {
                 property.extractedDefaultValue = this.extractedDefaultValues[property.name];
             }
 
-            if (!property.manuallySetToRequired && !property.hasDefaultValue && !this.assignedInConstructor.includes(property.name)) {
+            if (!property.manuallySetOptional && !property.hasDefaultValue && !this.assignedInConstructor.includes(property.name)) {
                 //when we have no default value AND the property was never seen in the constructor, its
                 //a optional one.
                 property.isOptional = true;
@@ -1056,6 +1124,7 @@ export class ClassSchema<T = any> {
         }
         this.propertiesMap.set(property.name, property);
         this.properties.push(property);
+        return this;
     }
 
     /**
@@ -1103,6 +1172,11 @@ export class ClassSchema<T = any> {
         return this.methodProperties.get(name) || [];
     }
 
+    /**
+     * Returns the schema for the return type of the method.
+     *
+     * @throws Error when method is not found
+     */
     public getMethod(name: string): PropertySchema {
         this.initializeMethod(name);
 
@@ -1220,9 +1294,8 @@ export class ClassSchema<T = any> {
     }
 
     public exclude<K extends (keyof T & string)[]>(...properties: K): ClassSchema<Omit<T, K[number]>> {
-        const cloned = this.clone();
-        for (const name of properties) cloned.removeProperty(name);
-        return cloned as any;
+        //when we have excluded fields its important to reset set constructor properties from the super class
+        return getClassSchema(sliceClass(this.classType).exclude(...properties));
     }
 
     public include<K extends (keyof T & string)[]>(...properties: K): ClassSchema<Pick<T, K[number]>> {
@@ -1236,7 +1309,7 @@ export class ClassSchema<T = any> {
 
     public extend<E extends PlainSchemaProps>(props: E, options?: { name?: string, classType?: ClassType }): ClassSchema<T & ExtractClassDefinition<E>> {
         const cloned = this.clone();
-        const schema = t.schema(props);
+        const schema = createClassSchemaFromProp(props);
         for (const property of schema.properties) {
             cloned.registerProperty(property);
         }
@@ -1489,7 +1562,7 @@ export class ClassSlicer<T> {
     }
 
     public include<K extends (keyof T & string)[]>(...properties: K): ClassType<Pick<T, K[number]>> {
-        for (const property of this.schema.getProperties()) {
+        for (const property of this.schema.getProperties().slice(0)) {
             if (properties.includes(property.name as keyof T & string)) continue;
             this.schema.removeProperty(property.name);
         }
@@ -1498,7 +1571,7 @@ export class ClassSlicer<T> {
 
     public extend<E extends PlainSchemaProps>(props: E): ClassType<T & ExtractClassDefinition<E>> {
         //this changes this.schema.classType directly
-        t.schema(props, { classType: this.schema.classType });
+        createClassSchemaFromProp(props, { classType: this.schema.classType });
 
         return this.schema.classType as any;
     }
@@ -1518,8 +1591,7 @@ export function sliceClass<T>(classType: ClassType<T> | ClassSchema<T>): ClassSl
         }
     }
 
-    Class[deletedExcludedProperties].push('nix');
-    return new ClassSlicer(getClassSchema(base).clone(Class));
+    return new ClassSlicer(getClassSchema(Class) as any);
 }
 
 type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (x: infer R) => any ? R : never;
@@ -1728,4 +1800,46 @@ export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = 
     classSchema.fromClass = fromClass;
 
     return classSchema;
+}
+
+export function createClassSchemaFromProp<T extends FieldTypes<any>, E extends ClassSchema | ClassType>(props: PlainSchemaProps, options: { name?: string, collectionName?: string, classType?: ClassType } = {}, base?: E) {
+    let extendClazz: ClassType | undefined;
+    if (base) {
+        if (base instanceof ClassSchema) {
+            extendClazz = base.classType;
+        } else {
+            extendClazz = base as ClassType;
+        }
+    }
+
+    const clazz = extendClazz ? class extends extendClazz {
+    } : (options.classType ?? class {
+    });
+
+    const schema = createClassSchema(clazz, options.name);
+    schema.fromClass = false;
+    schema.collectionName = options.collectionName;
+
+    if (!props) throw new Error('No props given');
+
+    for (const [name, prop] of Object.entries(props!)) {
+        if ('string' === typeof prop || 'number' === typeof prop || 'boolean' === typeof prop) {
+            const propertySchema = new PropertySchema(name).setType('literal');
+            propertySchema.literalValue = prop;
+            schema.registerProperty(propertySchema);
+        } else if (isFieldDecorator(prop)) {
+            schema.addProperty(name, prop);
+        } else if (prop instanceof ClassSchema) {
+            const propertySchema = new PropertySchema(name).setType('class');
+            propertySchema.classType = prop.classType;
+            schema.registerProperty(propertySchema);
+        } else {
+            const subSchema = createClassSchemaFromProp(prop, { name });
+            const propertySchema = new PropertySchema(name).setType('class');
+            propertySchema.classType = subSchema.classType;
+            schema.registerProperty(propertySchema);
+        }
+    }
+
+    return schema;
 }

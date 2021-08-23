@@ -1,12 +1,11 @@
-import { ClassType } from '@deepkit/core';
 import { t } from './decorators';
-import { ClassSchema, createClassSchema, getGlobalStore, PropertySchema, PropertySchemaSerialized } from './model';
+import { ClassSchema, createClassSchema, getClassSchema, PropertySchema, PropertySchemaSerialized, resolveClassTypeOrForward } from './model';
 import { propertyDefinition } from './model-schema';
 
 
 export interface SerializedSchema {
     name?: string;
-    embeddedName?: string;
+    serializedName: string;
     className: string;
     collectionName?: string;
     properties: PropertySchemaSerialized[];
@@ -14,87 +13,88 @@ export interface SerializedSchema {
 
 export const serializedSchemaDefinition: ClassSchema<SerializedSchema> = t.schema({
     name: t.string.optional,
-    embeddedName: t.string.optional,
+    serializedName: t.string,
     className: t.string,
     collectionName: t.string.optional,
     properties: t.array(propertyDefinition),
 });
 
-export function deserializeSchemas(schemas: SerializedSchema[], registryPrefix: string): ClassSchema[] {
+export function deserializeSchemas(schemas: SerializedSchema[]): ClassSchema[] {
+    if (!schemas.length) return [];
+
     const result: ClassSchema[] = [];
 
-    function fixRelation(property: PropertySchemaSerialized) {
-        if (property.type === 'class') {
-            if (!property.classType) {
-                console.log('Property has invalid classType value', property);
-            }
-            property.classType = registryPrefix + property.classType;
-        }
-
-        if (property.backReference && property.backReference.via) {
-            property.backReference.via = registryPrefix + property.backReference.via;
-        }
-
-        if (property.templateArgs) for (const p of Object.values(property.templateArgs)) fixRelation(p);
-    }
-
-    const entities = getGlobalStore().RegisteredEntities;
-
-    for (const entity of schemas) {
-        for (const property of Object.values(entity.properties)) fixRelation(property);
-    }
+    //we do not add those classSchemas to the global entity registry
+    const registry: { [name: string]: ClassSchema } = {};
 
     for (const entity of schemas) {
         const schema = createClassSchema();
         Object.defineProperty(schema.classType, 'name', { value: entity.className });
-        schema.name = entity.name || entity.embeddedName;
+        schema.name = entity.name || entity.serializedName;
         schema.collectionName = entity.collectionName;
         result.push(schema);
-        entities[registryPrefix + (entity.embeddedName || entity.name)] = schema;
+        registry[entity.serializedName] = schema;
     }
 
     for (let i = 0; i < result.length; i++) {
         for (const property of Object.values(schemas[i].properties)) {
-            result[i].registerProperty(PropertySchema.fromJSON(property));
+            result[i].registerProperty(PropertySchema.fromJSON(property, undefined, true, registry));
         }
     }
 
     return result;
 }
 
-export function serializeSchemas(schemas: ClassSchema[]): SerializedSchema[] {
-    const result: SerializedSchema[] = [];
-    const embeddedName = new Map<ClassType, string>();
-    let nameId: number = 0;
+class SchemaSerializer {
+    protected serializedNames = new Map<ClassSchema, string>();
+    protected nameId: number = 0;
 
-    function fixProperty(property: PropertySchema, json: PropertySchemaSerialized) {
+    fixProperty(result: SerializedSchema[], property: PropertySchema, json: PropertySchemaSerialized) {
         if (json.type === 'class') {
-            if (!json.classType) {
-                let name = embeddedName.get(property.getResolvedClassType());
-                if (!name) {
-                    //this embedded is not known yet, we register and assign a random number
-                    // embedded.set(property.getResolvedClassType(), property.getResolvedClassSchema());
-                    name = '@:embedded/' + (++nameId);
-                    embeddedName.set(property.getResolvedClassType(), name);
-                    registerClassSchema(property.getResolvedClassSchema(), name);
-                }
-                json.classType = name;
-            }
+            //for all class types, we do not store the actual used name via @entity.name() because
+            //it could clash with entities already registered. So we generate a new name
+            const isSerialized = this.isSerialized(property.getResolvedClassSchema());
+            json.classType = this.getSerializedNameFromSchema(property.getResolvedClassSchema());
+            if (!isSerialized) this.registerClassSchema(result, property.getResolvedClassSchema());
+        }
+
+        if (property.backReference && property.backReference.via && json.backReference && json.backReference.via) {
+            const foreignSchema = getClassSchema(resolveClassTypeOrForward(property.backReference.via));
+            const isSerialized = this.isSerialized(foreignSchema);
+            json.backReference.via = this.getSerializedNameFromSchema(foreignSchema);
+            if (!isSerialized) this.registerClassSchema(result, foreignSchema);
         }
 
         if (json.templateArgs) {
             for (let i = 0; i < property.templateArgs.length; i++) {
-                fixProperty(property.templateArgs[i], json.templateArgs[i]);
+                this.fixProperty(result, property.templateArgs[i], json.templateArgs[i]);
             }
         }
     }
 
-    function registerClassSchema(schema: ClassSchema, embeddedName?: string) {
-        const properties = [...schema.getProperties()].map(v => serializeProperty(v));
+    protected isSerialized(schema: ClassSchema): boolean {
+        return this.serializedNames.has(schema);
+    }
+
+    protected getSerializedNameFromSchema(schema: ClassSchema) {
+        let name = this.serializedNames.get(schema);
+        //if the references class has no serialized name yet, we create one and add it to the result
+        if (!name) {
+            //this embedded is not known yet, we register and assign a random number
+            // embedded.set(property.getResolvedClassType(), property.getResolvedClassSchema());
+            name = '@:serialized/' + (++this.nameId);
+            this.serializedNames.set(schema, name);
+        }
+
+        return name;
+    }
+
+    registerClassSchema(result: SerializedSchema[], schema: ClassSchema) {
+        const properties = [...schema.getProperties()].map(v => this.serializeProperty(result, v));
 
         const serializedSchema: SerializedSchema = {
             name: schema.name,
-            embeddedName,
+            serializedName: this.getSerializedNameFromSchema(schema),
             className: schema.getClassName(),
             collectionName: schema.collectionName,
             properties,
@@ -103,23 +103,31 @@ export function serializeSchemas(schemas: ClassSchema[]): SerializedSchema[] {
         result.push(serializedSchema);
     }
 
-    function serializeProperty(property: PropertySchema): PropertySchemaSerialized {
+    serializeProperty(result: SerializedSchema[], property: PropertySchema): PropertySchemaSerialized {
         const json = property.toJSON();
 
-        fixProperty(property, json);
+        this.fixProperty(result, property, json);
 
         if (json.templateArgs) {
             for (let i = 0; i < property.templateArgs.length; i++) {
-                fixProperty(property.templateArgs[i], json.templateArgs[i]);
+                this.fixProperty(result, property.templateArgs[i], json.templateArgs[i]);
             }
         }
 
         return json;
     }
 
-    for (const schema of schemas) {
-        registerClassSchema(schema);
-    }
+    serialize(schemas: ClassSchema[]): SerializedSchema[] {
+        const result: SerializedSchema[] = [];
 
-    return result;
+        for (const schema of schemas) {
+            this.registerClassSchema(result, schema);
+        }
+
+        return result;
+    }
+}
+
+export function serializeSchemas(schemas: ClassSchema[]): SerializedSchema[] {
+    return new SchemaSerializer().serialize(schemas);
 }

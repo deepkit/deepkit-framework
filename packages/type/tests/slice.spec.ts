@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { getClassSchema, mixin, plainToClass, sliceClass, t } from '../index';
+import { getClassSchema, getXToClassFunction, jitValidate, jsonSerializer, mixin, plainToClass, sliceClass, t } from '../index';
 import 'reflect-metadata';
 
 test('slice exclude', () => {
@@ -29,6 +29,32 @@ test('slice exclude', () => {
         expect(instance.username).toBe('Peter');
         expect((instance as any).password).toBe(undefined);
     }
+
+    class Model {
+        @t id: number = 0;
+        @t created: Date = new Date;
+
+        constructor(@t public username: string) {
+        }
+    }
+
+    const model2Schema = getClassSchema(Model).exclude('id');
+    expect(model2Schema.propertyNames).toEqual(['created', 'username']);
+    expect(model2Schema.getPropertiesMap().has('created')).toBe(true);
+    expect(model2Schema.getPropertiesMap().has('username')).toBe(true);
+    expect(model2Schema.getPropertiesMap().size).toBe(2);
+    expect(model2Schema.getProperties().length).toBe(2);
+
+    expect(model2Schema.getMethodProperties('constructor').length).toBe(1);
+    expect(model2Schema.getMethodProperties('constructor')[0].name).toBe('username');
+
+    const v = jitValidate(model2Schema);
+    expect(v({username: 'Peter', created: new Date}).length).toBe(0);
+
+    const d = getXToClassFunction(model2Schema, jsonSerializer);
+    const instance = d({username: 'Peter', created: new Date});
+    expect(instance).toEqual({username: 'Peter', created: new Date});
+    expect(v(instance).length).toBe(0);
 });
 
 test('slice include', () => {
@@ -194,4 +220,32 @@ test('classSlicer mixin', () => {
         expect((user as any).createdAt).toBe(undefined);
         expect((user as any).id).toBe(undefined);
     }
+});
+
+test('slice include', () => {
+    class User {
+        @t.primary.autoIncrement id: number = 0;
+        @t created: Date = new Date;
+        @t image?: Uint8Array;
+
+        constructor(
+            @t.minLength(3) public username: string
+        ) {
+        }
+    }
+
+    class UploadedFile {
+    }
+
+    class AddUserDto extends sliceClass(User).include('username') {
+        @t imageUpload?: UploadedFile;
+    }
+
+    {
+        const schema = getClassSchema(AddUserDto);
+        expect(schema.getProperties().length).toBe(2);
+        expect(schema.getProperties()[0].name).toBe('username');
+        expect(schema.getProperties()[1].name).toBe('imageUpload');
+    }
+
 });

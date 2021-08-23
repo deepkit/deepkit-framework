@@ -413,9 +413,22 @@ export interface FieldDecoratorResultBase<T> {
     noValidation: this;
 
     /**
+     * Defines the JSON type. You should set this type when extracting API information (for e.g. Deepkit API Console),
+     * when you change the way how a field is serialized. For example, if you change the binary format to a string,
+     * you should mark it as such. For example:
+     *
+     * ```typescript
+     * @t.jsonType(t.string).serialize(v => v && v.data) binary: UintArray;
+     * ```
+     *
+     * All official supported types have an JSON type (the type that is used when plainToClass) automatically set.
+     */
+    jsonType<T extends string | ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): this;
+
+    /**
      * Creates a PropertySchema object from the given definition.
      */
-    buildPropertySchema(name?: string, parent?: PropertySchema): PropertySchema;
+    buildPropertySchema(nameOrProperty?: string | PropertySchema, parent?: PropertySchema): PropertySchema;
 
     /**
      * Sets field (column) options for MySQL.

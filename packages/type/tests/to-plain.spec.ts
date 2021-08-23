@@ -85,7 +85,14 @@ test('optional keeps undefined values', () => {
 
     const converter = getClassToXFunction(schema, jsonSerializer);
 
-    const plain = converter({v: undefined});
-    expect('v' in plain).toBe(true);
-    expect(plain.v).toBe(null);
+    {
+        const plain = converter({ v: undefined });
+        expect('v' in plain).toBe(true);
+        expect(plain.v).toBe(null);
+    }
+    {
+        const plain = converter({});
+        expect('v' in plain).toBe(false);
+        expect(plain.v).toBe(undefined);
+    }
 })

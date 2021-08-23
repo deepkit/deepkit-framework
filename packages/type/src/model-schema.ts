@@ -15,6 +15,7 @@ import { ClassSchema, PropertySchemaSerialized } from './model';
 
 export const propertyDefinition: ClassSchema<PropertySchemaSerialized> = t.schema({
     name: t.string,
+    description: t.string.optional,
     type: t.string as FieldDecoratorResult<Types>,
     literalValue: t.union(t.string, t.number, t.boolean).optional,
     isDecorated: t.literal(true).optional,
@@ -32,7 +33,10 @@ export const propertyDefinition: ClassSchema<PropertySchemaSerialized> = t.schem
     noValidation: t.boolean.optional,
     methodName: t.string.optional,
     enum: t.map(t.any).optional,
+    data: t.map(t.any).optional,
     groupNames: t.array(t.string).optional,
+    jsonType: t.type(() => propertyDefinition).optional,
+    hasDefaultValue: t.literal(true).optional,
     backReference: t.type({mappedBy: t.string.optional, via: t.string.optional},).optional,
     templateArgs: t.array((): any => propertyDefinition).optional,
     classTypeProperties: t.array((): any => propertyDefinition).optional,

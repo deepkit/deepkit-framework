@@ -5,6 +5,7 @@ import { isExcluded } from '../src/mapper';
 import {
     cloneClass,
     getClassSchema,
+    getClassToXFunction,
     getPropertyClassToXFunction,
     getPropertyXtoClassFunction,
     getXToClassFunction,
@@ -965,4 +966,27 @@ test('undefined triggers default value for nullable', () => {
     expect(converter({ v: undefined }).v).toBe('default');
     expect(converter({ v: null }).v).toBe(null);
     expect(converter({ v: 'asd' }).v).toBe('asd');
+});
+
+test('optional values are ignored when not set schema', () => {
+    const schema = t.schema({
+        v: t.string.optional
+    });
+
+    const converter = getXToClassFunction(schema, jsonSerializer);
+
+    expect('v' in converter({})).toBe(false);
+});
+
+test('optional values are ignored when not set class', () => {
+
+    class Model {
+        @t v?: string;
+    }
+
+    const deserializer = getXToClassFunction(getClassSchema(Model), jsonSerializer);
+    const serializer = getClassToXFunction(getClassSchema(Model), jsonSerializer);
+
+    expect('v' in deserializer({})).toBe(false);
+    expect('v' in serializer(deserializer({}))).toBe(false);
 });

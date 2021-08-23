@@ -848,3 +848,31 @@ test('additional fields', () => {
     const aPlain = classToPlain(A, a);
     expect(aPlain).toBe(1);
 });
+
+
+test('jsonType', () => {
+
+    class Model {
+        @t.jsonType(t.string).serialize(v => v.data) image?: Uint8Array;
+    }
+
+    const model = new Model();
+    model.image = new Uint8Array([1, 2, 3]);
+
+    const schema = getClassSchema(Model);
+    expect(schema.getProperty('image').jsonType).toBeInstanceOf(PropertySchema);
+    expect(schema.getProperty('image').jsonType!.type).toBe('string');
+
+    const plain = classToPlain(Model, model);
+    expect(plain.image).toBe('AQID');
+
+    const schema2 = schema.clone();
+    expect(schema2.getProperty('image').jsonType).toBeInstanceOf(PropertySchema);
+    expect(schema2.getProperty('image').jsonType!.type).toBe('string');
+
+
+    const property = schema.getProperty('image');
+    const propertyJson = property.toJSON();
+    expect(propertyJson.jsonType?.type).toBe('string');
+
+});

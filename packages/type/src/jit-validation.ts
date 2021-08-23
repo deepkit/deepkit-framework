@@ -9,14 +9,13 @@
  */
 
 import { ClassType, isPlainObject } from '@deepkit/core';
-import { ClassSchema, getClassSchema, getGlobalStore, PropertySchema, PropertyValidator, UnpopulatedCheck, unpopulatedSymbol } from './model';
+import { ClassSchema, createClassSchema, getClassSchema, getGlobalStore, PropertySchema, PropertyValidator, UnpopulatedCheck, unpopulatedSymbol } from './model';
 import { executeCheckerCompiler, TypeCheckerCompilerContext, validationRegistry } from './jit-validation-registry';
 import { reserveVariable } from './serializer-compiler';
 import { JitStack, resolvePropertySchema } from './jit';
 
 const CacheJitPropertyMap = new Map<PropertySchema, any>();
 const CacheValidatorInstances = new Map<ClassType<PropertyValidator>, PropertyValidator>();
-
 
 /**
  * The structure of a validation error.
@@ -45,6 +44,11 @@ export class ValidationFailedItem {
         return `${(prefix ? prefix + '.' : '') + this.path}(${this.code}): ${this.message}`;
     }
 }
+
+createClassSchema(ValidationFailedItem)
+    .registerProperty(new PropertySchema('path').setType('string'))
+    .registerProperty(new PropertySchema('code').setType('string'))
+    .registerProperty(new PropertySchema('message').setType('string'));
 
 export class PropertyValidatorError {
     constructor(

@@ -96,7 +96,7 @@ test('auto detect isOptional class required', () => {
     }
 
     const schema = getClassSchema(User);
-    expect(schema.getProperty('_id').manuallySetToRequired).toBe(true);
+    expect(schema.getProperty('_id').manuallySetOptional).toBe(true);
     expect(schema.getProperty('_id').isOptional).toBe(false);
 });
 

@@ -15,7 +15,7 @@ import { ClassDecoratorResult, createClassDecoratorContext } from './decorator-b
 import {
     BackReferenceOptions,
     ClassSchema,
-    createClassSchema,
+    createClassSchemaFromProp,
     FieldTypes,
     ForwardRef,
     ForwardRefFn,
@@ -70,7 +70,7 @@ export function Entity<T>(name: string, collectionName?: string) {
             via different imports.`);
         }
 
-        getGlobalStore().RegisteredEntities[name] = target;
+        getGlobalStore().RegisteredEntities[name] = getClassSchema(target);
         getOrCreateEntitySchema(target).name = name;
         getOrCreateEntitySchema(target).collectionName = collectionName;
     };
@@ -157,9 +157,11 @@ function createFieldDecoratorResult<T>(
         }
     }
 
-    function buildPropertySchema(target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any, parent?: PropertySchema): PropertySchema {
+    function buildPropertySchema(target: object, propertyOrMethodNameOrPropertySchema?: string | PropertySchema, parameterIndexOrDescriptor?: any, parent?: PropertySchema): PropertySchema {
         //anon properties
-        const propertySchema = new PropertySchema(propertyOrMethodName || String(parameterIndexOrDescriptor), parent);
+        const propertySchema = propertyOrMethodNameOrPropertySchema instanceof PropertySchema
+            ? propertyOrMethodNameOrPropertySchema
+            : new PropertySchema(parameterIndexOrDescriptor || String(propertyOrMethodNameOrPropertySchema), parent);
 
         for (const mod of modifier) {
             mod(target, propertySchema);
@@ -258,7 +260,7 @@ function createFieldDecoratorResult<T>(
 
         if (isMethod && propertyOrMethodName) {
             if (givenPropertyName && propertyOrMethodName !== givenPropertyName) {
-                throw new Error(`${propertyOrMethodName} asName not allowed on methods.`);
+                throw new Error(`${propertyOrMethodName} name() not allowed on methods.`);
             }
 
             if (!schema.methods[propertyOrMethodName]) {
@@ -289,7 +291,7 @@ function createFieldDecoratorResult<T>(
                             );
                         }
                         const constructorParamNames = extractParameters((target as any)[methodName]);
-                        const name = constructorParamNames[parameterIndexOrDescriptor] || String(parameterIndexOrDescriptor);
+                        const name = givenPropertyName || constructorParamNames[parameterIndexOrDescriptor] || String(parameterIndexOrDescriptor);
                         argumentsProperties[parameterIndexOrDescriptor] = new PropertySchema(name);
                         argumentsProperties[parameterIndexOrDescriptor].methodName = methodName;
                     }
@@ -320,7 +322,9 @@ function createFieldDecoratorResult<T>(
     Object.defineProperty(fn, 'name', {
         get: () => (name: string) => {
             resetIfNecessary();
-            return createFieldDecoratorResult(cb, name, modifier);
+            return createFieldDecoratorResult(cb, name, [...modifier, (target: object, property: PropertySchema) => {
+                property.name = name;
+            }]);
         }
     });
 
@@ -374,6 +378,14 @@ function createFieldDecoratorResult<T>(
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
             property.serialization.set(serializer, t);
             property.deserialization.set(serializer, t);
+        }]);
+    };
+
+    fn.jsonType = (type: any) => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+            property.jsonType ||= new PropertySchema('jsonType');
+            assignWideTypeToProperty(property.jsonType, type);
         }]);
     };
 
@@ -561,9 +573,7 @@ function createFieldDecoratorResult<T>(
                     const p = fRaw.literal(t).buildPropertySchema(name, property);
                     property.templateArgs.push(p);
                 } else if (isFieldDecorator(t)) {
-                    //its a decorator @f()
-                    //target: object, propertyOrMethodName?: string, parameterIndexOrDescriptor?: any
-                    const p = t.buildPropertySchema(name,);
+                    const p = t.buildPropertySchema(name);
                     property.templateArgs.push(p);
                 } else if (t instanceof ClassSchema) {
                     property.templateArgs.push(fRaw.type(t.classType).buildPropertySchema(name, property));
@@ -579,8 +589,8 @@ function createFieldDecoratorResult<T>(
         }]);
     };
 
-    fn.buildPropertySchema = function (name: string = 'unknown', parent?: PropertySchema) {
-        return buildPropertySchema(Object, name, undefined, parent);
+    fn.buildPropertySchema = function (nameOrProperty: string | PropertySchema = 'unknown', parent?: PropertySchema) {
+        return buildPropertySchema(Object, nameOrProperty, undefined, parent);
     };
 
     fn.toString = function () {
@@ -666,7 +676,7 @@ function IDField() {
  */
 function Optional() {
     return (target: object, property: PropertySchema) => {
-        property.isOptional = true;
+        property.setOptional(true);
     };
 }
 
@@ -675,8 +685,7 @@ function Optional() {
  */
 function Required() {
     return (target: object, property: PropertySchema) => {
-        property.isOptional = false;
-        property.manuallySetToRequired = true;
+        property.setOptional(false);
     };
 }
 
@@ -812,6 +821,25 @@ function Exclude(t: 'all' | string = 'all') {
     };
 }
 
+export function assignWideTypeToProperty(property: PropertySchema, type: string | ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>) {
+    if ('string' === typeof type) {
+        property.type = type as Types;
+        property.typeSet = true;
+    } else if (type instanceof ClassSchema) {
+        property.type = 'class';
+        property.classType = type.classType;
+        property.typeSet = true;
+    } else if (isFieldDecorator(type)) {
+        type.buildPropertySchema(property);
+    } else if (isPlainObject(type)) {
+        property.type = 'class';
+        property.classType = createClassSchemaFromProp(type as PlainSchemaProps).classType;
+        property.typeSet = true;
+    } else {
+        property.setFromJSType(type);
+    }
+}
+
 /**
  * Decorator to define a field for an entity.
  */
@@ -821,20 +849,7 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
 
         if (property.type === 'any' && !property.typeSet) {
             if (type) {
-                if ('string' === typeof type) {
-                    property.type = type as Types;
-                    property.typeSet = true;
-                } else if (type instanceof ClassSchema) {
-                    property.type = 'class';
-                    property.classType = type.classType;
-                    property.typeSet = true;
-                } else if (isPlainObject(type)) {
-                    property.type = 'class';
-                    property.classType = fRaw.schema(type).classType;
-                    property.typeSet = true;
-                } else {
-                    property.setFromJSType(type);
-                }
+                assignWideTypeToProperty(property, type);
             } else if (returnType !== Array) {
                 property.setFromJSType(returnType);
             }
@@ -898,39 +913,7 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
 const fRaw: any = Field();
 
 fRaw['schema'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(props: PlainSchemaProps, options: { name?: string, collectionName?: string, classType?: ClassType } = {}, base?: E): ClassSchema {
-    let extendClazz: ClassType | undefined;
-    if (base) {
-        if (base instanceof ClassSchema) {
-            extendClazz = base.classType;
-        } else {
-            extendClazz = base as ClassType;
-        }
-    }
-
-    const clazz = extendClazz ? class extends extendClazz {
-    } : (options.classType ?? class {
-    });
-
-    const schema = createClassSchema(clazz, options.name);
-    schema.fromClass = false;
-    schema.collectionName = options.collectionName;
-
-    if (!props) throw new Error('No props given');
-
-    for (const [name, prop] of Object.entries(props!)) {
-        if ('string' === typeof prop || 'number' === typeof prop || 'boolean' === typeof prop) {
-            schema.addProperty(name, fRaw.literal(prop));
-        } else if (isFieldDecorator(prop)) {
-            schema.addProperty(name, prop);
-        } else if (prop instanceof ClassSchema) {
-            schema.addProperty(name, fRaw.type(prop.classType));
-        } else {
-            const subSchema = fRaw.schema(prop, { name });
-            schema.addProperty(name, fRaw.type(subSchema.classType));
-        }
-    }
-
-    return schema;
+    return createClassSchemaFromProp(props, options, base);
 };
 
 fRaw['extendSchema'] = function <T extends FieldTypes<any>, E extends ClassSchema | ClassType>(base: E, props: PlainSchemaProps, options: { name?: string, classType?: ClassType } = {}): ClassSchema {
@@ -950,7 +933,10 @@ fRaw['array'] = function <T>(this: FieldDecoratorResult<any>, type: ClassType | 
 };
 
 fRaw['map'] = function <T extends ClassType | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T, keyType: FieldDecoratorResult<any> = fRaw.any): FieldDecoratorResult<{ [name: string]: ExtractType<T> }> {
-    return Field('map').template(keyType, type);
+    return Field('map').template(keyType, type).use((target, property) => {
+        property.templateArgs[0].name = 'key';
+        property.templateArgs[1].name = 'value';
+    });
 };
 
 fRaw['any'] = Field('any');
@@ -983,7 +969,7 @@ fRaw['partial'] = function <T extends ClassType | ForwardRefFn<any> | ClassSchem
     }
 
     for (const property of schema.getProperties()) {
-        property.isOptional = true; //a Partial<T> is defined in a way that makes all its properties optional
+        property.setOptional(true); //a Partial<T> is defined in a way that makes all its properties optional
     }
 
     return Field('partial').generic(schema);
@@ -1208,15 +1194,18 @@ export interface MainDecorator {
      *
      * ```typescript
      * class User {
-     *     @t.map(f.string)
+     *     @t.map(t.string)
+     *     tags: {[k: any]: string};
+     *
+     *     @t.map(t.string, f.string)
      *     tags: {[k: string]: string};
      *
      *     @t.map(@t.type(() => MyClass))
-     *     tags: {[k: string]: MyClass};
+     *     tags: {[k: any]: MyClass};
      * }
      * ```
      */
-    map<T extends ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<{ [name: string]: ExtractType<T> }>;
+    map<T extends ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>>(type: T, keyType?: FieldDecoratorResult<any>): FieldDecoratorResult<{ [name: string]: ExtractType<T> }>;
 }
 
 /**
@@ -1237,7 +1226,7 @@ export interface MainDecorator {
  *   @t.primary.uuid
  *   id: string = uuid();
  *
- *   @t.array(f.string)
+ *   @t.array(t.string)
  *   tags: string[] = [];
  *
  *   @t.type(ArrayBuffer).optional() //binary

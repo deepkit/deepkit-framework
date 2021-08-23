@@ -9,7 +9,7 @@
  */
 
 import { ClassType, CustomError } from '@deepkit/core';
-import { ClassSchema, getClassSchema, } from './model';
+import { ClassSchema, createClassSchema, getClassSchema, PropertySchema, } from './model';
 import { jitValidate, jitValidateProperty, ValidationFailedItem } from './jit-validation';
 import { ExtractClassType, PlainOrFullEntityFromClassTypeOrSchema } from './utils';
 
@@ -25,6 +25,10 @@ export class ValidationFailed extends CustomError {
         return new ValidationFailed(errors.map(v => new ValidationFailedItem(v.path, v.code || '', v.message)));
     }
 }
+
+createClassSchema(ValidationFailed)
+    .registerProperty(new PropertySchema('message').setType('string').setOptional(false))
+    .registerProperty(new PropertySchema('errors').setType('array').setTemplateArgs(new PropertySchema('v').setFromJSType(ValidationFailedItem)));
 
 /**
  * Validates a set of method arguments and returns the number of errors found.

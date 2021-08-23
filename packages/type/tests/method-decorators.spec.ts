@@ -466,7 +466,7 @@ test('hasMethod and templateArgs', () => {
     expect(s.getMethod('foo3').getTemplateArg(1)!.type).toBe('string');
 });
 
-test('short @f templateArgs', () => {
+test('short @t templateArgs', () => {
     class Observable<T> {
         constructor(protected cb: (observer: { next: (v: T) => void }) => void) {
 
@@ -659,7 +659,7 @@ test('set array result', () => {
     }
 
     {
-        expect(s.getMethod('items2').classType).toBe(Promise);
+        expect(s.getMethod('items2').type).toBe('any');
     }
 
     {
@@ -694,7 +694,6 @@ test('base class with constructor', () => {
         connections: number = 0;
     }
 
-
     const newProperty = new PropertySchema('v');
     newProperty.setFromJSValue(new User('asd'));
 
@@ -705,4 +704,35 @@ test('base class with constructor', () => {
     expect(args[0] === schema.getProperty('name')).toBe(true);
     expect(args[0].name).toBe('name');
     expect(args[0].type).toBe('string');
+});
+
+test('promise is any', () => {
+    class Controller {
+        @t
+        async action1() {
+            return '123';
+        }
+
+        @t.string
+        async action2() {
+            return '123';
+        }
+    }
+
+    const schema = getClassSchema(Controller);
+    expect(schema.getMethod('action1').type).toBe('any');
+    expect(schema.getMethod('action2').type).toBe('string');
+});
+
+test('custom parameter name', () => {
+    class Controller {
+        @t
+        async action1(@t.description('asd').name('first') a: string, @t second: string) {
+            return '123';
+        }
+    }
+
+    const schema = getClassSchema(Controller);
+    expect(schema.getMethodProperties('action1')[0].name).toBe('first');
+    expect(schema.getMethodProperties('action1')[1].name).toBe('second');
 });
