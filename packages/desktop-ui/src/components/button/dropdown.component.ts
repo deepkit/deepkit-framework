@@ -45,7 +45,10 @@ import { ButtonComponent } from './button.component';
             <div class="dui-body dui-dropdown" tabindex="1" #dropdown>
                 <!--                <div *ngIf="overlay !== false" class="dui-dropdown-arrow"></div>-->
                 <div class="content" [class.overlay-scrollbar-small]="scrollbars">
-                    <ng-content></ng-content>
+                    <ng-container *ngIf="!container">
+                        <ng-content></ng-content>
+                    </ng-container>
+                    <ng-container *ngIf="container" [ngTemplateOutlet]="container"></ng-container>
                 </div>
             </div>
         </ng-template>
@@ -103,6 +106,8 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     @ViewChild('dropdownTemplate', { static: false, read: TemplateRef }) dropdownTemplate!: TemplateRef<any>;
     @ViewChild('dropdown', { static: false, read: ElementRef }) dropdown!: ElementRef<HTMLElement>;
 
+    container?: TemplateRef<any> | undefined;
+
     protected lastOverlayStackItem?: OverlayStackItem;
 
     constructor(
@@ -145,6 +150,10 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         } else {
             this.open(target);
         }
+    }
+
+    public setContainer(container: TemplateRef<any> | undefined) {
+        this.container = container;
     }
 
     public open(target?: HTMLElement | ElementRef | MouseEvent | 'center') {
@@ -474,6 +483,28 @@ export class ContextDropdownDirective {
 export class DropdownSplitterComponent {
 }
 
+/**
+ * This directive is necessary if you want to load and render the dialog content
+ * only when opening the dialog. Without it, it is immediately rendered, which can cause
+ * performance and injection issues.
+ *
+ * ```typescript
+ * <dui-dropdown>
+ *     <ng-container *dropdownContainer>
+ *         Dynamically created upon dropdown instantiation.
+ *     </ng-container>
+ * </dui-dropdown>
+ *
+ * ```
+ */
+@Directive({
+    'selector': '[dropdownContainer]',
+})
+export class DropdownContainerDirective {
+    constructor(protected dropdown: DropdownComponent, public template: TemplateRef<any>) {
+        this.dropdown.setContainer(this.template);
+    }
+}
 
 @Component({
     selector: 'dui-dropdown-item',
