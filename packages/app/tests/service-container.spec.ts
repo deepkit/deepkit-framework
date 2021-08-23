@@ -71,7 +71,7 @@ test('deep', () => {
 
     const deepModule = new AppModule({
         providers: [DeepService]
-    });
+    }, 'deep');
 
     class Connection {
     }
@@ -83,7 +83,7 @@ test('deep', () => {
         providers: [Connection, HiddenDatabaseService],
         exports: [Connection],
         imports: [deepModule]
-    });
+    }, 'database');
 
     class MyService {
     }

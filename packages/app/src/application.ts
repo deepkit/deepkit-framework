@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, isArray, isFunction, isObject, setPathValue } from '@deepkit/core';
+import { ClassType, isFunction, isObject, setPathValue } from '@deepkit/core';
 import { ConfigLoader, ServiceContainer } from './service-container';
 import { ProviderWithScope } from '@deepkit/injector';
 import { AppModule, ModuleConfigOfOptions, ModuleOptions } from './module';
@@ -18,7 +18,7 @@ import { Main } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { buildOclifCommand } from './command';
 import { ClassSchema } from '@deepkit/type';
-import { EnvConfiguration, resolveEnvFilePath } from './configuration';
+import { EnvConfiguration } from './configuration';
 
 export function setPartialConfig(target: { [name: string]: any }, partial: { [name: string]: any }, incomingPath: string = '') {
     for (const i in partial) {
@@ -326,8 +326,10 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
 
         try {
             const config = new MyConfig({ root: __dirname });
+            const scopedInjectorContext = this.serviceContainer.getRootInjectorContext().createChildScope('cli');
+
             for (const [name, info] of this.serviceContainer.cliControllers.controllers.entries()) {
-                config.commandsMap[name] = buildOclifCommand(name, info.controller, this.serviceContainer.getRootInjectorContext().createChildScope('cli').getInjector(info.context.id));
+                config.commandsMap[name] = buildOclifCommand(name, info.controller, scopedInjectorContext.getInjectorForModule(info.module));
             }
 
             await Main.run(argv, config);

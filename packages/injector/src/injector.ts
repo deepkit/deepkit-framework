@@ -224,7 +224,7 @@ let CircularDetectorResets: (() => void)[] = [];
 
 export interface BasicInjector {
     get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: BasicInjector): R;
-    getInjector(contextId: number): BasicInjector;
+    getInjectorForModule(module: InjectorModule): BasicInjector;
 }
 
 export class Injector implements BasicInjector {
@@ -246,14 +246,14 @@ export class Injector implements BasicInjector {
         protected injectorContext: InjectorContext = new InjectorContext,
         protected configuredProviderRegistry: ConfiguredProviderRegistry | undefined = undefined,
         protected tagRegistry: TagRegistry = new TagRegistry(),
-        protected contextResolver?: { getInjector(contextId: number): BasicInjector }
+        protected contextResolver?: { getInjectorForModule(module: InjectorModule): BasicInjector }
     ) {
         if (!this.configuredProviderRegistry) this.configuredProviderRegistry = injectorContext.configuredProviderRegistry;
         if (this.providers.length) this.retriever = this.buildRetriever();
     }
 
-    getInjector(contextId: number): BasicInjector {
-        return this.contextResolver ? this.contextResolver.getInjector(contextId) : this;
+    getInjectorForModule(module: InjectorModule): BasicInjector {
+        return this.contextResolver ? this.contextResolver.getInjectorForModule(module) : this;
     }
 
     /**
@@ -647,7 +647,6 @@ export class ScopedContextScopeCaches {
     constructor(protected size: number) {
     }
 
-
     getCache(scope: string): ScopedContextCache {
         let cache = this.caches[scope];
 
@@ -794,6 +793,10 @@ export class InjectorContext implements BasicInjector {
         registry.set(0, context);
         context.providers.push(...providers);
         return new InjectorContext(registry);
+    }
+
+    public getInjectorForModule(module: InjectorModule): Injector {
+        return this.getInjector(module.contextId);
     }
 
     public getInjector(contextId: number): Injector {

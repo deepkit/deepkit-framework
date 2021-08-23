@@ -2,6 +2,8 @@ import { ClassType } from '@deepkit/core';
 import { ConfiguredProviderRegistry, ConfigureProvider, setupProvider } from './injector';
 
 export class InjectorModule<N extends string = string, C extends { [name: string]: any } = any> {
+    public contextId: number = 0;
+
     protected setupProviderRegistry = new ConfiguredProviderRegistry;
 
     constructor(

@@ -390,6 +390,16 @@ test('config deps and @inject() in FactoryProvider', async () => {
                 provide: 'configHost', deps: [config.token('host')], useFactory(host: string) {
                     return host;
                 }
+            },
+            {
+                provide: 'configHost2', deps: [config.all()], useFactory(c: typeof config.type) {
+                    return c.host
+                }
+            },
+            {
+                provide: 'configHost3', deps: [inject(config.all())], useFactory(c: typeof config.type) {
+                    return c.host
+                }
             }
         ]
     });
@@ -407,6 +417,10 @@ test('config deps and @inject() in FactoryProvider', async () => {
         expect(app.get('myToken4')).toEqual([false, true]);
 
         expect(app.get('configHost')).toEqual('0.0.0.0');
+
+        expect(app.get('configHost2')).toEqual('0.0.0.0');
+
+        expect(app.get('configHost3')).toEqual('0.0.0.0');
     }
 
     {
