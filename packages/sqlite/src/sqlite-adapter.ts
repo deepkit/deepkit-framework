@@ -9,7 +9,17 @@
  */
 
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
-import { DatabaseAdapter, DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
+import {
+    DatabaseAdapter,
+    DatabaseLogger,
+    DatabasePersistenceChangeSet,
+    DatabaseSession,
+    DatabaseTransaction,
+    DeleteResult,
+    Entity,
+    PatchResult,
+    UniqueConstraintFailure
+} from '@deepkit/orm';
 import {
     DefaultPlatform,
     SqlBuilder,
@@ -114,6 +124,14 @@ export class SQLiteConnection extends SQLConnection {
         return new SQLiteStatement(this.logger, sql, this.db.prepare(sql), this.stopwatch);
     }
 
+    protected handleError(error: Error | string): void {
+        const message = 'string' === typeof error ? error : error.message;
+        if (message.includes('UNIQUE constraint failed')) {
+            //todo: extract table name, column name, and find ClassSchema
+            throw new UniqueConstraintFailure();
+        }
+    }
+
     async run(sql: string, params: any[] = []) {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
@@ -123,6 +141,7 @@ export class SQLiteConnection extends SQLConnection {
             const result = stmt.run(...params);
             this.changes = result.changes;
         } catch (error) {
+            this.handleError(error);
             this.logger.failedQuery(error, sql, params);
             throw error;
         } finally {
@@ -137,6 +156,7 @@ export class SQLiteConnection extends SQLConnection {
             this.db.exec(sql);
             this.logger.logQuery(sql, []);
         } catch (error) {
+            this.handleError(error);
             this.logger.failedQuery(error, sql, []);
             throw error;
         } finally {

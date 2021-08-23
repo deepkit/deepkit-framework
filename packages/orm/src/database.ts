@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AbstractClassType, ClassType, CustomError, getClassName } from '@deepkit/core';
+import { AbstractClassType, ClassType, getClassName } from '@deepkit/core';
 import { ClassSchema, getClassSchema, getReferenceInfo, isReferenceHydrated, PrimaryKeyFields } from '@deepkit/type';
 import { DatabaseAdapter } from './database-adapter';
 import { DatabaseSession } from './database-session';
@@ -33,9 +33,6 @@ export async function hydrateEntity<T>(item: T): Promise<void> {
         return;
     }
     throw new Error(`Given object is not a reference from a database session and thus can not be hydrated.`);
-}
-
-export class DatabaseError extends CustomError {
 }
 
 /**

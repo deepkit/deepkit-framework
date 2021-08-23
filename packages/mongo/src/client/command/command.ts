@@ -11,7 +11,7 @@
 import { ClassSchema, ExtractClassType, getClassSchema, t } from '@deepkit/type';
 import { asyncOperation, ClassType } from '@deepkit/core';
 import { deserialize, getBSONDecoder } from '@deepkit/bson';
-import { MongoError } from '../error';
+import { handleErrorResponse, MongoError } from '../error';
 import { MongoClientConfig } from '../config';
 import { Host } from '../host';
 import { MongoDatabaseTransaction } from '../connection';
@@ -45,6 +45,7 @@ export const BaseResponse = t.schema({
     errmsg: t.string.optional,
     code: t.number.optional,
     codeName: t.string.optional,
+    writeErrors: t.array({index: t.number, code: t.number, errmsg: t.string}).optional
 });
 
 export abstract class Command {
@@ -67,11 +68,17 @@ export abstract class Command {
 
     abstract needsWritableHost(): boolean;
 
-    handleResponse(response: Uint8Array) {
+    handleResponse(response: Uint8Array): void {
         if (!this.current) throw new Error('Got handleResponse without active command');
-        const message = this.current.response ? getBSONDecoder(this.current.response)(response) : deserialize(response);
+        const deserializer = this.current.response ? getBSONDecoder(this.current.response) : deserialize;
+        const message = deserializer(response);
+        const error = handleErrorResponse(message);
+        if (error) {
+            this.current.reject(error);
+            return;
+        }
+
         if (!message.ok) {
-            // console.log('Mongo error', message);
             this.current.reject(new MongoError(message.errmsg, message.code));
         } else {
             this.current.resolve(message);

@@ -22,11 +22,19 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from '@deepkit/sql';
-import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
+import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, Entity, PatchResult, UniqueConstraintFailure } from '@deepkit/orm';
 import { MySQLPlatform } from './mysql-platform';
 import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, isArray, resolvePropertySchema } from '@deepkit/type';
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+
+function handleError(error: Error | string): void {
+    const message = 'string' === typeof error ? error : error.message;
+    if (message.includes('Duplicate entry')) {
+        //todo: extract table name, column name, and find ClassSchema
+        throw new UniqueConstraintFailure();
+    }
+}
 
 export class MySQLStatement extends SQLStatement {
     constructor(protected logger: DatabaseLogger, protected sql: string, protected connection: PoolConnection, protected stopwatch?: Stopwatch) {
@@ -36,7 +44,7 @@ export class MySQLStatement extends SQLStatement {
     async get(params: any[] = []) {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
-            if (frame) frame.data({sql: this.sql, sqlParams: params});
+            if (frame) frame.data({ sql: this.sql, sqlParams: params });
             //mysql/mariadb driver does not maintain error.stack when they throw errors, so
             //we have to manually convert it using asyncOperation.
             const rows = await asyncOperation<any[]>((resolve, reject) => {
@@ -45,6 +53,7 @@ export class MySQLStatement extends SQLStatement {
             this.logger.logQuery(this.sql, params);
             return rows[0];
         } catch (error) {
+            handleError(error);
             this.logger.failedQuery(error, this.sql, params);
             throw error;
         } finally {
@@ -55,7 +64,7 @@ export class MySQLStatement extends SQLStatement {
     async all(params: any[] = []) {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
-            if (frame) frame.data({sql: this.sql, sqlParams: params});
+            if (frame) frame.data({ sql: this.sql, sqlParams: params });
             //mysql/mariadb driver does not maintain error.stack when they throw errors, so
             //we have to manually convert it using asyncOperation.
             const rows = await asyncOperation<any[]>((resolve, reject) => {
@@ -64,6 +73,7 @@ export class MySQLStatement extends SQLStatement {
             this.logger.logQuery(this.sql, params);
             return rows;
         } catch (error) {
+            handleError(error);
             this.logger.failedQuery(error, this.sql, params);
             throw error;
         } finally {
@@ -98,11 +108,12 @@ export class MySQLConnection extends SQLConnection {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         //batch returns in reality a single UpsertResult if only one query is given
         try {
-            if (frame) frame.data({sql, sqlParams: params});
+            if (frame) frame.data({ sql, sqlParams: params });
             const res = (await this.connection.query(sql, params)) as UpsertResult[] | UpsertResult;
             this.logger.logQuery(sql, params);
             this.lastExecResult = isArray(res) ? res : [res];
         } catch (error) {
+            handleError(error);
             this.logger.failedQuery(error, sql, params);
             throw error;
         } finally {

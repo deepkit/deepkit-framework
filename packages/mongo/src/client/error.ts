@@ -9,6 +9,27 @@
  */
 
 import { CustomError } from '@deepkit/core';
+import { BaseResponse } from './command/command';
+import { DatabaseError, UniqueConstraintFailure } from '@deepkit/orm';
+
+
+/**
+ * Throws the correct ORM errors when responses returns an error
+ */
+export function handleErrorResponse(response: InstanceType<typeof BaseResponse.classType>): DatabaseError | undefined {
+    const message = response.errmsg || (response.writeErrors && response.writeErrors.length ? response.writeErrors[0].errmsg : undefined);
+    if (!message || 'string' !== typeof message) return;
+
+    if (message.includes('duplicate key error')) {
+        return new UniqueConstraintFailure();
+    }
+
+    if (message) {
+        return new DatabaseError(message);
+    }
+
+    return;
+}
 
 export class MongoError extends CustomError {
     constructor(message: string, public readonly code?: number) {

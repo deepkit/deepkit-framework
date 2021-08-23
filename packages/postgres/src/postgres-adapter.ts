@@ -21,13 +21,21 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from '@deepkit/sql';
-import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, Entity, PatchResult } from '@deepkit/orm';
+import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, Entity, PatchResult, UniqueConstraintFailure } from '@deepkit/orm';
 import { PostgresPlatform } from './postgres-platform';
 import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, PropertySchema, resolvePropertySchema } from '@deepkit/type';
 import type { Pool, PoolClient, PoolConfig } from 'pg';
 import pg from 'pg';
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+
+function handleError(error: Error | string): void {
+    const message = 'string' === typeof error ? error : error.message;
+    if (message.includes('violates unique constraint')) {
+        //todo: extract table name, column name, and find ClassSchema
+        throw new UniqueConstraintFailure();
+    }
+}
 
 export class PostgresStatement extends SQLStatement {
     protected released = false;
@@ -47,6 +55,7 @@ export class PostgresStatement extends SQLStatement {
             });
             return res.rows[0];
         } catch (error) {
+            handleError(error);
             this.logger.failedQuery(error, this.sql, params);
             throw error;
         } finally {
@@ -65,6 +74,7 @@ export class PostgresStatement extends SQLStatement {
             });
             return res.rows;
         } catch (error) {
+            handleError(error);
             this.logger.failedQuery(error, this.sql, params);
             throw error;
         } finally {
@@ -107,6 +117,7 @@ export class PostgresConnection extends SQLConnection {
             this.lastReturningRows = res.rows;
             this.changes = res.rowCount;
         } catch (error) {
+            handleError(error);
             this.logger.failedQuery(error, sql, params);
             throw error;
         } finally {
@@ -523,9 +534,6 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
                     patchResult.returning[i].push(aggregateFields[i].converted(returning[i]));
                 }
             }
-        } catch (error) {
-            console.log('changes', changes);
-            throw new Error(`Could not patch ${this.classSchema.getName()}: ${error.message}\nSQL: ${sql}\nParams: ${JSON.stringify(selectSQL.params)}`);
         } finally {
             connection.release();
         }
