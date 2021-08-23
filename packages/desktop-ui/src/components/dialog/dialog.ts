@@ -112,7 +112,7 @@ export class DuiDialog {
         inputs: { [name in keyof T]?: any } = {},
         dialogInputs: { [name: string]: any } = {},
         viewContainerRef: ViewContainerRef | null = null,
-    ): { dialog: DialogComponent, component: T } {
+    ): { dialog: DialogComponent, close: Promise<any>, component: T } {
         if (!viewContainerRef) {
             viewContainerRef = this.registry.getCurrentViewContainerRef();
         }
@@ -137,12 +137,16 @@ export class DuiDialog {
         comp.instance.show();
         comp.changeDetectorRef.detectChanges();
 
-        comp.instance.closed.subscribe(() => {
-            comp.destroy();
+        const close = new Promise((resolve) => {
+            comp.instance.closed.subscribe((v) => {
+                comp.destroy();
+                resolve(v);
+            });
         });
 
         return {
             dialog: comp.instance,
+            close,
             component: comp.instance.wrapperComponentRef!.instance!.renderComponentDirective!.component!.instance,
         };
     }
