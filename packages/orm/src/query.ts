@@ -247,6 +247,9 @@ export class BaseQuery<T extends Entity> {
 
     select<K extends (keyof Resolve<this>)[]>(...select: K): Replace<this, Pick<Resolve<this>, K[number]>> {
         const c = this.clone();
+        for (const field of select) {
+            if (!this.classSchema.hasProperty(field as string)) throw new Error(`Field ${field} unknown`);
+        }
         c.model.select = new Set([...select as string[]]);
         return c as any;
     }
