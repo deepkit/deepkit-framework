@@ -69,7 +69,6 @@ export class IconComponent implements OnInit, OnChanges {
         }
     }
 
-
     ngOnInit() {
     }
 }

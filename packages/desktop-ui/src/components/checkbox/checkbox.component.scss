@@ -1,6 +1,6 @@
 :host {
-    display: inline-block;
-    vertical-align: middle;
+    display: flex;
+    align-items: center;
     height: 20px;
     line-height: 20px;
     text-align: left;
@@ -22,7 +22,6 @@
     line-height: 14px;
     margin-right: 4px;
     vertical-align: top;
-    margin-top: 2px;
 
     background: white;
     border-top: 1px solid #a5a5a5;

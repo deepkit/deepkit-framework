@@ -8,25 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ApplicationRef,
-    Component,
-    Directive,
-    HostBinding,
-    Inject,
-    Injectable,
-    Input,
-    ModuleWithProviders,
-    NgModule,
-    Optional
-} from '@angular/core';
-import {
-    MenuCheckboxDirective,
-    MenuDirective,
-    MenuItemDirective,
-    MenuRadioDirective,
-    MenuSeparatorDirective
-} from './menu.component';
+import { ApplicationRef, Component, Directive, HostBinding, Inject, Injectable, Input, ModuleWithProviders, NgModule, Optional } from '@angular/core';
+import { MenuCheckboxDirective, MenuDirective, MenuItemDirective, MenuRadioDirective, MenuSeparatorDirective } from './menu.component';
 import { detectChangesNextFrame, OpenExternalDirective, ZonelessChangeDetector } from './utils';
 import { ViewDirective } from './dui-view.directive';
 import { CdCounterComponent } from './cd-counter.component';
@@ -155,16 +138,15 @@ export class DuiApp {
 
             const remote = Electron.getRemote();
 
-            let overwrittenDarkMode = localStorage.getItem('duiApp/darkMode');
-            if (overwrittenDarkMode) {
-                this.setDarkMode(JSON.parse(overwrittenDarkMode));
-            } else {
-                this.setDarkMode();
-            }
-
             this.setPlatform(remote.process.platform);
         } else {
             this.setPlatform('web');
+        }
+
+        let overwrittenDarkMode = localStorage.getItem('duiApp/darkMode');
+        if (overwrittenDarkMode) {
+            this.setDarkMode(JSON.parse(overwrittenDarkMode));
+        } else {
             this.setDarkMode();
         }
 
@@ -230,11 +212,11 @@ export class DuiApp {
         return this.platform;
     }
 
-    isDarkMode() {
-        return this.darkMode;
+    isDarkMode(): boolean {
+        return this.darkMode === true;
     }
 
-    setAutoDarkMode() {
+    setAutoDarkMode(): void {
         this.setDarkMode();
     }
 
@@ -255,11 +237,11 @@ export class DuiApp {
         this.setDarkMode(theme === 'dark');
     }
 
-    isDarkModeOverwritten() {
+    isDarkModeOverwritten(): boolean {
         return localStorage.getItem('duiApp/darkMode') !== null;
     }
 
-    setGlobalDarkMode(darkMode: boolean) {
+    setGlobalDarkMode(darkMode: boolean): void {
         if (Electron.isAvailable()) {
             const remote = Electron.getRemote();
             for (const win of remote.BrowserWindow.getAllWindows()) {
