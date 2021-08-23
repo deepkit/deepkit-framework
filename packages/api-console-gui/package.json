@@ -14,6 +14,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "files": [
+    "dist"
+  ],
   "devDependencies": {
     "@angular-devkit/build-angular": "~12.2.0",
     "@angular/animations": "~12.2.0",
