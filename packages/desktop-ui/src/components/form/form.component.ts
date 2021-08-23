@@ -15,7 +15,7 @@ import { detectChangesNextFrame } from '../app';
 @Component({
     selector: 'dui-form-row',
     template: `
-        <div class="label" [style.width.px]="labelWidth">{{label}}</div>
+        <div class="label" [style.width.px]="labelWidth">{{label}}<div class="description" *ngIf="description">{{description}}</div></div>
         <div class="field">
             <ng-content></ng-content>
 
@@ -32,6 +32,7 @@ import { detectChangesNextFrame } from '../app';
 })
 export class FormRowComponent {
     @Input() label: string = '';
+    @Input() description: string = '';
 
     @Input() labelWidth?: number;
     @Input() left: boolean | '' = false;
