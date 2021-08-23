@@ -52,7 +52,7 @@ import {
 import { rpcEncodeError, RpcMessage } from '../protocol';
 import { RpcMessageBuilder } from './kernel';
 import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security';
-import { BasicInjector } from '@deepkit/injector';
+import { BasicInjector, InjectorModule } from '@deepkit/injector';
 
 export type ActionTypes = {
     parameters: PropertySchema[],
@@ -96,7 +96,7 @@ export class RpcServerAction {
     } = {};
 
     constructor(
-        protected controllers: Map<string, {controller: ClassType, context: number}>,
+        protected controllers: Map<string, {controller: ClassType, module?: InjectorModule}>,
         protected injector: BasicInjector,
         protected security: RpcKernelSecurity,
         protected sessionState: SessionState,
@@ -306,7 +306,7 @@ export class RpcServerAction {
         const types = await this.loadTypes(body.controller, body.method);
         const value = message.parseBody(types.parameterSchema);
 
-        const controller = this.injector.getInjector(classType.context).get(classType.controller);
+        const controller = classType.module ? this.injector.getInjectorForModule(classType.module).get(classType.controller) : this.injector.get(classType.controller);
         const converted = types.parametersDeserialize(value.args);
         const errors = types.parametersValidate(converted);
 

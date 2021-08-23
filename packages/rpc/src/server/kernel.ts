@@ -31,7 +31,7 @@ import { RpcServerAction } from './action';
 import { RpcKernelSecurity, SessionState } from './security';
 import { RpcActionClient, RpcControllerState } from '../client/action';
 import { RemoteController } from '../client/client';
-import { BasicInjector, Injector, InjectorContext, MemoryInjector } from '@deepkit/injector';
+import { BasicInjector, Injector, InjectorContext, InjectorModule, MemoryInjector } from '@deepkit/injector';
 import { Logger, LoggerInterface } from '@deepkit/logger';
 
 export class RpcCompositeMessage {
@@ -306,7 +306,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
     constructor(
         writer: RpcConnectionWriter,
         connections: RpcKernelConnections,
-        protected controllers: Map<string, {controller: ClassType, context: number}>,
+        protected controllers: Map<string, {controller: ClassType, module?: InjectorModule}>,
         protected security = new RpcKernelSecurity(),
         protected injector: BasicInjector,
         protected peerExchange: RpcPeerExchange,
@@ -429,7 +429,7 @@ export type OnConnectionCallback = (connection: RpcKernelConnection, injector: B
  * and encode/send outgoing messages.
  */
 export class RpcKernel {
-    protected controllers = new Map<string, {controller: ClassType, context: number}>();
+    protected controllers = new Map<string, {controller: ClassType, module?: InjectorModule}>();
     protected peerExchange = new RpcPeerExchange;
     protected connections = new RpcKernelConnections;
     protected injector: BasicInjector | InjectorContext;
@@ -463,7 +463,7 @@ export class RpcKernel {
      * If you created a kernel with custom injector, you probably want to set addAsProvider to false.
      * Adding a provider is rather expensive, so you should prefer to create a kernel with pre-filled  injector.
      */
-    public registerController(id: string | ControllerDefinition<any>, controller: ClassType, addAsProvider: boolean = true, context: number = 0) {
+    public registerController(id: string | ControllerDefinition<any>, controller: ClassType, addAsProvider: boolean = true, module?: InjectorModule) {
         if (addAsProvider) {
             if (this.injector instanceof InjectorContext) {
                 this.injector.contextManager.get(0).providers.push({ provide: controller, scope: 'rpc' });
@@ -474,7 +474,7 @@ export class RpcKernel {
             }
         }
 
-        this.controllers.set('string' === typeof id ? id : id.path, {controller, context});
+        this.controllers.set('string' === typeof id ? id : id.path, {controller, module});
     }
 
     createConnection(writer: RpcConnectionWriter, injector?: BasicInjector): RpcKernelBaseConnection {

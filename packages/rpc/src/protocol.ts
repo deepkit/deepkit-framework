@@ -602,9 +602,9 @@ export function rpcDecodeError(error: EncodedError): Error {
             throw new Error(`Could not find an entity named ${error.classType} for an error thrown. ` +
                 `Make sure the class is loaded and correctly defined using @entity.name(${JSON.stringify(error.classType)})`);
         }
-        const classType = getClassSchema(entity).classType!;
+        const classType = getClassSchema(entity).classType! as ClassType<Error>;
         if (error.properties) {
-            const e = jsonSerializer.for(getClassSchema(entity)).deserialize(error.properties);
+            const e = jsonSerializer.for(getClassSchema(entity)).deserialize(error.properties) as Error;
             e.stack = error.stack + '\nat ___SERVER___';
             return e;
         }

@@ -109,7 +109,7 @@ test('controller', async () => {
                 get(classType: ClassType) {
                     return new classType(connection);
                 },
-                getInjector(contextId: number): BasicInjector {
+                getInjectorForModule(): BasicInjector {
                     return this;
                 }
             } as BasicInjector;

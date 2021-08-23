@@ -144,9 +144,10 @@ export class RpcClientTransporter {
 
         if (this.connected) {
             this.connection.next(false);
-            this.disconnected.next(this.connectionId);
-            this.connectionId++;
             this.connected = false;
+            const id = this.connectionId;
+            this.connectionId++;
+            this.disconnected.next(id);
         }
     }
 
