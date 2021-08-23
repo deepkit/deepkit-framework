@@ -331,8 +331,7 @@ export class SqlBuilder {
         this.appendWhereSQL(sql, schema, model);
 
         if (withRange) {
-            if (model.limit !== undefined) sql.append('LIMIT ' + this.platform.quoteValue(model.limit));
-            if (model.skip !== undefined) sql.append('OFFSET ' + this.platform.quoteValue(model.skip));
+            this.platform.applyLimitAndOffset(sql, model.limit, model.skip);
         }
 
         return sql;
@@ -386,10 +385,8 @@ export class SqlBuilder {
             sql.append(' ORDER BY ' + (order.join(', ')));
         }
 
-        if (model.limit !== undefined) sql.append('LIMIT ' + this.platform.quoteValue(model.limit));
-        if (model.skip !== undefined) sql.append('OFFSET ' + this.platform.quoteValue(model.skip));
+        this.platform.applyLimitAndOffset(sql, model.limit, model.skip);
 
         return sql;
     }
-
 }

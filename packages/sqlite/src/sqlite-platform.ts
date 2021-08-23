@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Column, DefaultPlatform, ForeignKey, isSet, parseType, Table, TableDiff } from '@deepkit/sql';
+import { Column, DefaultPlatform, ForeignKey, isSet, parseType, Sql, Table, TableDiff } from '@deepkit/sql';
 import { ClassSchema, isArray, PropertySchema, SqliteOptions } from '@deepkit/type';
 import { SQLiteSchemaParser } from './sqlite-schema-parser';
 import { SqliteSerializer } from './sqlite-serializer';
@@ -34,6 +34,14 @@ export class SQLitePlatform extends DefaultPlatform {
     quoteValue(value: any): string {
         if (isObject(value) || isArray(value)) return sqlstring.escape(JSON.stringify(value));
         return sqlstring.escape(value);
+    }
+
+    applyLimitAndOffset(sql: Sql, limit?: number, offset?: number) {
+        if (offset && !limit) {
+            limit = -1;
+        }
+
+        super.applyLimitAndOffset(sql, limit, offset);
     }
 
     createSqlFilterBuilder(schema: ClassSchema, tableName: string): SQLiteFilterBuilder {

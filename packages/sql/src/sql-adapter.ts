@@ -809,7 +809,6 @@ export class SQLPersistence extends DatabasePersistence {
         try {
             await (await this.getConnection()).run(sql, params);
         } catch (error) {
-            console.warn('Insert failed', sql, params.length, params, error);
             throw error;
         }
     }

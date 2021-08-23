@@ -15,6 +15,7 @@ import { ClassType, isObject } from '@deepkit/core';
 import { sqlSerializer } from '../serializer/sql-serializer';
 import { SchemaParser } from '../reverse/schema-parser';
 import { SQLFilterBuilder } from '../sql-filter-builder';
+import { Sql } from '../sql-builder';
 
 export function isSet(v: any): boolean {
     return v !== '' && v !== undefined && v !== null;
@@ -71,6 +72,11 @@ export abstract class DefaultPlatform {
         if (!type) return '';
 
         return '::' + type.sqlType;
+    }
+
+    applyLimitAndOffset(sql: Sql, limit?: number, offset?: number): void {
+        if (limit !== undefined) sql.append('LIMIT ' + this.quoteValue(limit));
+        if (offset) sql.append('OFFSET ' + this.quoteValue(offset));
     }
 
     createSqlFilterBuilder(schema: ClassSchema, tableName: string): SQLFilterBuilder {
