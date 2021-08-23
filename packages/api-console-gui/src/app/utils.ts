@@ -10,10 +10,12 @@ interface ToTSInterfaceOptions {
      */
     strictRequired?: true;
 
-    direction?: 'serialize' | 'deserialize';
+    direction?: 'serialize';
 }
 
 function isOptional(property: PropertySchema, options: ToTSInterfaceOptions) {
+    if (!options.direction && (property.isReference || property.backReference)) return true;
+
     return options.strictRequired ? property.isOptional : !property.isValueRequired;
 }
 

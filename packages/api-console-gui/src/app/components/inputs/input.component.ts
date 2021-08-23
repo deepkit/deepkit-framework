@@ -26,16 +26,16 @@ import { DataStructure } from '../../store';
             <div class="title">
                 <dui-checkbox [ngModel]="enabled"
                               (ngModelChange)="setEnabled($event)"
-                              *ngIf="!property.isValueRequired"
+                              *ngIf="!isValueRequired"
                 >{{property.name}}</dui-checkbox>
-                <div *ngIf="property.isValueRequired">{{property.name}}</div>
+                <div *ngIf="isValueRequired">{{property.name}}</div>
                 <dui-icon class="help-icon" clickable [openDropdown]="helpDropdown" name="help"></dui-icon>
             </div>
             <div class="description" *ngIf="property.description">{{property.description}}</div>
             <ng-container #container></ng-container>
         </div>
         <div *ngIf="!decoration" class="non-decoration">
-            <dui-checkbox *ngIf="!property.isValueRequired"
+            <dui-checkbox *ngIf="!isValueRequired"
                           [ngModel]="enabled"
                           (ngModelChange)="setEnabled($event)"></dui-checkbox>
             <ng-container #container></ng-container>
@@ -70,6 +70,8 @@ export class InputComponent implements OnDestroy, OnChanges, AfterViewInit {
      */
     @Input() type?: Types;
 
+    @Input() optional?: false;
+
     protected componentRef?: ComponentRef<any>;
 
     @unsubscribe()
@@ -86,12 +88,17 @@ export class InputComponent implements OnDestroy, OnChanges, AfterViewInit {
     ) {
     }
 
+    get isValueRequired(): boolean {
+        return this.optional === undefined ? this.property.isValueRequired : true;
+    }
+
     get propertyName(): string {
         return this.property.name === 'undefined' ? '' : this.property.name + ': ';
     }
 
     get enabled(): boolean {
-        if (this.property.isValueRequired) return true;
+        if (!this.decoration) return true;
+        if (this.isValueRequired) return true;
         return this.model.active;
     }
 
