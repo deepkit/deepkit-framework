@@ -8,19 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    AfterViewInit,
-    ChangeDetectorRef,
-    Component,
-    ElementRef,
-    EventEmitter,
-    HostBinding,
-    Injector,
-    Input,
-    Output,
-    SkipSelf,
-    ViewChild
-} from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostBinding, Injector, Input, Output, SkipSelf, ViewChild } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import { detectChangesNextFrame } from '../app';
 import { DatePipe } from '@angular/common';
@@ -187,6 +175,8 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
         } else if (dateTimeTypes.includes(this.type)) {
             if (super.innerValue instanceof Date) {
                 return this.datePipe.transform(super.innerValue, 'yyyy-MM-ddThh:mm:ss.SSS');
+            } else if ('string' === typeof super.innerValue) {
+                return this.datePipe.transform(new Date(super.innerValue), 'yyyy-MM-ddThh:mm:ss.SSS');
             }
         }
 
