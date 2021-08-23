@@ -76,6 +76,11 @@ interface AutoCrudOptions {
      * Per default max is 1000.
      */
     maxLimit?: number;
+
+    /**
+     * Per default limit is 30.
+     */
+    defaultLimit?: number;
 }
 
 function createController(schema: ClassSchema, options: AutoCrudOptions = {}): ClassType {
@@ -144,24 +149,24 @@ function createController(schema: ClassSchema, options: AutoCrudOptions = {}): C
             .description(`A list of ${schema.name}.`)
             .response(200, `List of ${schema.name}.`, t.array(schema))
             .response(400, `When parameter validation failed.`, ValidationFailed)
-        async readMany(@t.type(listQuery) @http.queries() options: ListQuery) {
-            options.limit = Math.min(100, options.limit); //max 100
+        async readMany(@t.type(listQuery) @http.queries() listQuery: ListQuery) {
+            listQuery.limit = Math.min(options.maxLimit || 1000, listQuery.limit || options.defaultLimit || 30);
             let query = this.getDatabase().query(schema);
 
-            if (options.joins) query = applyJoins(query, options.joins);
-            if (options.select) query = applySelect(query, options.select);
+            if (listQuery.joins) query = applyJoins(query, listQuery.joins);
+            if (listQuery.select) query = applySelect(query, listQuery.select);
 
-            if (getObjectKeysSize(options.orderBy) > 0) {
-                for (const field of Object.keys(options.orderBy)) {
+            if (getObjectKeysSize(listQuery.orderBy) > 0) {
+                for (const field of Object.keys(listQuery.orderBy)) {
                     if (!schema.hasProperty(field)) throw new Error(`Can not order by '${field}' since it does not exist.`);
                 }
-                query.model.sort = options.orderBy;
+                query.model.sort = listQuery.orderBy;
             }
 
             return await query
-                .filter(options.filter)
-                .limit(options.limit ? options.limit : undefined)
-                .skip(options.offset)
+                .filter(listQuery.filter)
+                .limit(listQuery.limit ? listQuery.limit : undefined)
+                .skip(listQuery.offset)
                 .find();
         }
 
