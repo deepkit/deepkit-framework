@@ -190,6 +190,26 @@ export class InjectToken {
     }
 }
 
+/**
+ * This decorator makes sure that meta-data is emitted by TypeScript from your constructor.
+ *
+ * This works in combination with the tsconfig setting "emitDecoratorMetadata".
+ *
+ * To have runtime type information available of constructor arguments, you have to use this
+ * decorator. While technically its not required for anything else (even if you have no
+ * constructor arguments at all), it is recommended to just add it to all services. This makes
+ * sure you don't get surprising behaviour when you add constructor arguments at a later time.
+ *
+ * ```typescript
+ * @injectable()
+ * class Service {}
+ *
+ * @injectable()
+ * class Service {
+ *     constructor(private other: OtherService) {}
+ * }
+ * ```
+ */
 export function injectable() {
     return (target: object) => {
         //don't do anything. This is just used to generate type metadata.
