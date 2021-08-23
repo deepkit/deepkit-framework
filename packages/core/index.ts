@@ -22,3 +22,4 @@ export * from './src/emitter';
 export * from './src/reactive';
 export * from './src/reflection';
 export * from './src/url';
+export * from './src/array';

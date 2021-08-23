@@ -296,13 +296,6 @@ export function isString(obj: any): obj is string {
 /**
  * @public
  */
-export function arrayHasItem<T>(array: T[], item: T): boolean {
-    return -1 !== array.indexOf(item);
-}
-
-/**
- * @public
- */
 export function indexOf<T>(array: T[], item: T): number {
     if (!array) {
         return -1;
@@ -421,30 +414,6 @@ export function last<T>(v: { [key: string]: T } | T[]): T | undefined {
         return v[key];
     }
     return;
-}
-
-/**
- * Clears the array so its empty. Returns the amount of removed items.
- *
- * @public
- */
-export function arrayClear<T>(array: T[]): number {
-    return array.splice(0, array.length).length;
-}
-
-/**
- * Removes on particular item by reference of an array.
- *
- * @public
- */
-export function arrayRemoveItem<T>(array: T[], item: T): boolean {
-    const index = array.indexOf(item);
-    if (-1 !== index) {
-        array.splice(index, 1);
-        return true;
-    }
-
-    return false;
 }
 
 /**
