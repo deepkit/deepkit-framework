@@ -13,7 +13,7 @@ import { AppModuleConfig } from '@deepkit/app';
 import { Session } from './session';
 
 export const kernelConfig = new AppModuleConfig({
-    host: t.string.default('localhost'), //binding to 127.0.0.1 is roughly 20% slower.
+    host: t.string.default('0.0.0.0'), //binding to localhost is roughly 20% faster.
     port: t.number.default(8080),
     httpsPort: t.number.optional.description('If httpsPort and ssl is defined, then the https server is started additional to the http-server.'),
     selfSigned: t.boolean.optional.description('If for ssl: true the certificate and key should be automatically generated.'),
