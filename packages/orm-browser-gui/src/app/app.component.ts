@@ -9,6 +9,7 @@
  */
 
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { DuiApp } from '@deepkit/desktop-ui';
 import { BrowserState } from './browser-state';
 import { ControllerClient } from './client';
 
@@ -33,6 +34,24 @@ import { ControllerClient } from './client';
                     </dui-button-group>
 
                     <dui-window-toolbar-container name="orm-browser"></dui-window-toolbar-container>
+
+                    <div class="top-right">
+                        <div class="connection-info">
+                            <div class="connected" *ngIf="client.client.transporter.connection|async as connected">
+                                Connected
+                            </div>
+                            <div class="disconnected" *ngIf="!(client.client.transporter.connection|async)">
+                                Disconnected
+                            </div>
+                        </div>
+
+                        <dui-icon clickable name="color-theme" [openDropdown]="darkModeDropdown"></dui-icon>
+                        <dui-dropdown #darkModeDropdown>
+                            <dui-dropdown-item (click)="duiApp.setDarkMode(undefined)" [selected]="!duiApp.isDarkModeOverwritten()">Auto</dui-dropdown-item>
+                            <dui-dropdown-item (click)="duiApp.setDarkMode(false)" [selected]="duiApp.isDarkModeOverwritten() && !duiApp.isDarkMode()">Light</dui-dropdown-item>
+                            <dui-dropdown-item (click)="duiApp.setDarkMode(true)" [selected]="duiApp.isDarkModeOverwritten() && duiApp.isDarkMode()">Dark</dui-dropdown-item>
+                        </dui-dropdown>
+                    </div>
                 </dui-window-toolbar>
             </dui-window-header>
             <dui-window-content [sidebarVisible]="sidebarVisible">
@@ -53,7 +72,8 @@ export class AppComponent implements OnInit, OnDestroy {
     sidebarVisible: boolean = true;
 
     constructor(
-        protected controllerClient: ControllerClient,
+        public duiApp: DuiApp,
+        public client: ControllerClient,
         protected cd: ChangeDetectorRef,
         public state: BrowserState,
     ) {

@@ -19,7 +19,7 @@ export class ControllerClient {
 
     public browser = this.client.controller(BrowserControllerInterface);
 
-    constructor(protected client: DeepkitClient) {
+    constructor(public client: DeepkitClient) {
     }
 
     static getServerHost(): string {
