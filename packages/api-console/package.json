@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/api-console",
-  "version": "1.0.1-alpha.48",
+  "version": "1.0.1-alpha.49",
   "description": "API Console",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -22,7 +22,7 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "dependencies": {
-    "@deepkit/api-console-module": "^1.0.1-alpha.48",
+    "@deepkit/api-console-module": "^1.0.1-alpha.49",
     "@deepkit/app": "^1.0.1-alpha.48",
     "@deepkit/broker": "^1.0.1-alpha.48",
     "@deepkit/bson": "^1.0.1-alpha.48",
@@ -30,7 +30,7 @@
     "@deepkit/core-rxjs": "^1.0.1-alpha.48",
     "@deepkit/crypto": "^1.0.1-alpha.35",
     "@deepkit/event": "^1.0.1-alpha.48",
-    "@deepkit/framework": "^1.0.1-alpha.48",
+    "@deepkit/framework": "^1.0.1-alpha.49",
     "@deepkit/http": "^1.0.1-alpha.48",
     "@deepkit/injector": "^1.0.1-alpha.48",
     "@deepkit/logger": "^1.0.1-alpha.48",
