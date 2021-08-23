@@ -277,16 +277,11 @@ dui-button-group {
     }
 
     .results {
-        display: none;
         word-break: break-all;
         overflow: hidden;
         max-height: 80%;
         padding: 5px;
         background-color: var(--dui-window-header-bg);
-
-        &.visible {
-            display: block;
-        }
 
         .request-info {
             font-size: 12px;

@@ -259,7 +259,7 @@
                 </div>
                 <dui-icon clickable (click)="removeRequest(i)" name="garbage"></dui-icon>
             </div>
-            <div class="results" [class.visible]="isOpen(r, i)">
+            <div class="results" *ngIf="isOpen(r, i)">
                 <div class="request-info">
                     Executed at {{r.created|date:'short'}} in {{r.took|number:'0.0-3'}} ms. <code>{{r.getHeader('content-type')}}</code>
                 </div>

@@ -291,9 +291,8 @@ export class HttpComponent implements OnInit, OnDestroy {
         const querySchema = route.getQuerySchema();
         if (querySchema) {
             const queryData: any = {};
-            for (const property of querySchema.getProperties()) {
-                queryData[property.name] = extractDataStructure(routeState.params.getProperty(property.name), property);
-            }
+            Object.assign(queryData, extractDataStructureFromSchema(routeState.params, querySchema));
+
             for (const [name, value] of Object.entries(queryData)) {
                 extract(name, value);
             }

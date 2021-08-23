@@ -11,5 +11,5 @@ export const ApiConsoleModule = new AppModule({
 
     const localPath = findParentPath('node_modules/@deepkit/api-console-gui/dist/api-console-gui', __dirname);
     if (!localPath) throw new Error('node_modules/@deepkit/api-console-gui not installed in ' + __dirname);
-    registerStaticHttpController(module, config.basePath, localPath, ['app-static']);
+    registerStaticHttpController(module, config.path, localPath, ['app-static']);
 });

@@ -51,16 +51,5 @@ export class AppComponent {
     sidebarVisible: boolean = true;
 
     constructor(public duiApp: DuiApp, public client: ControllerClient) {
-        client.client.transporter.disconnected.subscribe(() => {
-            this.tryToConnect();
-        });
-    }
-
-    tryToConnect() {
-        this.client.client.connect().catch(() => {
-            setTimeout(() => {
-                this.tryToConnect();
-            }, 1_000);
-        });
     }
 }

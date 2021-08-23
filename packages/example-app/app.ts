@@ -15,7 +15,7 @@ Application.create({
     imports: [
         createCrudRoutes([User], {identifier: 'username', identifierChangeable: true}),
         createCrudRoutes([Author, Book]),
-        ApiConsoleModule.configure({basePath: '/api'}),
+        ApiConsoleModule.configure({path: '/api'}),
         KernelModule.configure({
             debug: true, publicDir: 'public', httpLog: true,
             migrateOnStartup: true

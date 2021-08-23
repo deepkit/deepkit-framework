@@ -4,7 +4,7 @@ import { t } from '@deepkit/type';
 export const config = new AppModuleConfig({
     listen: t.boolean.default(true),
     excludeGroups: t.array(t.string).default(['app-static']),
-    basePath: t.string.default('/api'),
+    path: t.string.default('/api'),
     markdown: t.string.description('Markdown to display at the overview page')
         .default(`
         # API

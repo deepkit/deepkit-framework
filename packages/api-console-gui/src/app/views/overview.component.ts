@@ -1,9 +1,9 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ControllerClient } from '../client';
-import { Subscription } from 'rxjs';
-import { ApiDocument, ApiRoute } from '../../api';
+import { ApiRoute } from '../../api';
 import { filterAndSortRoutes } from './view-helper';
 import { classSchemaToTSInterface, headerStatusCodes, propertyToTSInterface, trackByIndex } from '../utils';
+import { Subscriptions } from '@deepkit/core-rxjs';
 
 @Component({
     templateUrl: './overview.component.html',
@@ -14,7 +14,6 @@ export class OverviewComponent implements OnDestroy, OnInit {
     propertyToTSInterface = propertyToTSInterface;
     classSchemaToTSInterface = classSchemaToTSInterface;
     headerStatusCodes = headerStatusCodes;
-    public routes: ApiRoute[] = [];
     public filteredRoutes: ApiRoute[] = [];
 
     groupBy: string = 'controller';
@@ -24,32 +23,30 @@ export class OverviewComponent implements OnDestroy, OnInit {
     public groups: string[] = [];
 
     showDetails: {[id: string]: boolean} = {};
-    protected reconnectedSub: Subscription;
 
-    public apiDocument = new ApiDocument();
-
+    public initiallyLoaded: boolean = false;
     public loading: boolean = true;
     public error: string = '';
 
+    protected subscriptions = new Subscriptions
+
     constructor(
-        protected client: ControllerClient,
+        public client: ControllerClient,
         public cd: ChangeDetectorRef,
     ) {
-        this.reconnectedSub = client.client.transporter.reconnected.subscribe(async () => {
-            await this.loadRoutes();
-        });
+        this.subscriptions.add = this.client.routes.subscribe(v => this.parseRouteInfo(v));
     }
 
     ngOnDestroy(): void {
-        this.reconnectedSub.unsubscribe();
+        this.subscriptions.unsubscribe();
     }
 
     async ngOnInit() {
         await this.loadRoutes();
     }
 
-    updateFilter() {
-        this.filteredRoutes = filterAndSortRoutes(this.routes, {
+    updateFilter(routes: ApiRoute[]) {
+        this.filteredRoutes = filterAndSortRoutes(routes, {
             filterCategory: '',
             filterMethod: '',
             filterGroup: '',
@@ -58,27 +55,30 @@ export class OverviewComponent implements OnDestroy, OnInit {
         });
     }
 
+    parseRouteInfo(routes: ApiRoute[]) {
+        const categories = new Set<string>();
+        const groups = new Set<string>();
+        for (const route of routes) {
+            if (route.category) categories.add(route.category);
+            for (const group of route.groups) if (group) groups.add(group);
+        }
+
+        this.categories = [...categories];
+        this.groups = [...groups];
+
+        this.updateFilter(routes);
+    }
+
     async loadRoutes() {
-        this.loading = true;
+        //only display loading bar when not already initially loaded
+        if (!this.initiallyLoaded) this.loading = true;
         this.error =  '';
         this.cd.detectChanges();
 
         try {
-            this.apiDocument = await this.client.api.getDocument();
-            this.routes = await this.client.api.getRoutes();
-
-            const categories = new Set<string>();
-            const groups = new Set<string>();
-            for (const route of this.routes) {
-                if (route.category) categories.add(route.category);
-                for (const group of route.groups) if (group) groups.add(group);
-            }
-
-
-            this.categories = [...categories];
-            this.groups = [...groups];
-
-            this.updateFilter();
+            //wait for the first initial load
+            await Promise.all([this.client.document.valueArrival, this.client.routes.valueArrival]);
+            this.initiallyLoaded = true;
         } catch (error) {
             this.error = error.message;
         } finally {

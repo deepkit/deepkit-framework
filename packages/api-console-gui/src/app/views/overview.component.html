@@ -8,7 +8,8 @@
 </div>
 
 <div class="wrapper" *ngIf="!loading && !error">
-    <div class="description text-selection">
+    <div class="description text-selection" *ngIf="client.document|async as apiDocument">
+        {{apiDocument.markdown}}
         <markdown [data]="apiDocument.markdown"></markdown>
     </div>
 
