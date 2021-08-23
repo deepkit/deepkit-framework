@@ -561,8 +561,7 @@ export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
         console.time('download');
 
         const trackFrames = ClientProgress.track();
-        const framesBuffer = await this.client.debug.getProfilerFrames();
-        const dataBuffer = await this.client.debug.getProfilerFrameData();
+        const [framesBuffer, dataBuffer] = await this.client.debug.getProfilerFrames();
 
         console.timeEnd('download');
 

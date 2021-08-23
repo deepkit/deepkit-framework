@@ -122,9 +122,7 @@ export interface DebugControllerInterface {
 
     getWorkflow(name: string): Workflow;
 
-    getProfilerFrames(): Uint8Array;
-
-    getProfilerFrameData(): Uint8Array;
+    getProfilerFrames(): [Uint8Array, Uint8Array];
 
     resetProfilerFrames(): void;
 

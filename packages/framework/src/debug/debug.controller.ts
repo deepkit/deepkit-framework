@@ -15,7 +15,7 @@ import { parseRouteControllerAction, Router } from '@deepkit/http';
 import { changeClass, getClassName } from '@deepkit/core';
 import { EventDispatcher, isEventListenerContainerEntryService } from '@deepkit/event';
 import { DatabaseAdapter, DatabaseRegistry } from '@deepkit/orm';
-import { readFileSync } from 'fs';
+import { readFileSync, statSync, truncateSync } from 'fs';
 import { join } from 'path';
 import { kernelConfig } from '../kernel.config';
 import { FileStopwatchStore } from './stopwatch/store';
@@ -39,6 +39,7 @@ export class DebugController implements DebugControllerInterface {
     ) {
     }
 
+    @rpc.action()
     async subscribeStopwatchFramesData(): Promise<Subject<Uint8Array>> {
         if (!this.stopwatchStore) throw new Error('not enabled');
 
@@ -75,17 +76,20 @@ export class DebugController implements DebugControllerInterface {
     }
 
     @rpc.action()
-    getProfilerFrames(): Uint8Array {
-        const path = join(this.config.varPath, this.config.debugStorePath);
+    @t.array(Uint8Array)
+    getProfilerFrames(): [Uint8Array, Uint8Array] {
+        const framesPath = join(this.config.varPath, this.config.debugStorePath, 'frames.bin');
+        const frameDataPath = join(this.config.varPath, this.config.debugStorePath, 'frames-data.bin');
+        const stat = statSync(framesPath);
+        if (stat.size > 1_000_000) {
+            //make sure that file is not too big
+            //todo: For the moment we simply reset the files. In the future we add a index file, and allow
+            // to operate on a huge file via fseek
+            truncateSync(framesPath);
+            truncateSync(frameDataPath);
+        }
 
-        return readFileSync(join(path, 'frames.bin'));
-    }
-
-    @rpc.action()
-    getProfilerFrameData(): Uint8Array {
-        const path = join(this.config.varPath, this.config.debugStorePath);
-
-        return readFileSync(join(path, 'frames-data.bin'));
+        return [readFileSync(framesPath), readFileSync(frameDataPath)];
     }
 
     @rpc.action()
