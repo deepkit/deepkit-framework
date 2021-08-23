@@ -2,7 +2,7 @@ import { expect } from '@jest/globals';
 import { entity, isReference, plainToClass, t } from '@deepkit/type';
 import { identifier, sql, SQLDatabaseAdapter } from '@deepkit/sql';
 import { DatabaseFactory } from './test';
-import { isDatabaseOf } from '@deepkit/orm';
+import { isDatabaseOf, UniqueConstraintFailure } from '@deepkit/orm';
 import { randomBytes } from 'crypto';
 
 Error.stackTraceLimit = 20;
@@ -278,5 +278,33 @@ export const variousTests = {
 
             });
         }
+    },
+    async uniqueConstraintFailure(databaseFactory: DatabaseFactory) {
+        @entity.collectionName('usersConstraints')
+        class User {
+            @t.primary.autoIncrement public id: number = 0;
+
+            constructor(@t.index({unique: true}) public username: string) {
+            }
+        }
+
+        const database = await databaseFactory([User]);
+
+        await database.persist(new User('Peter'));
+
+        await expect(async () => {
+            await database.persist(new User('Peter'));
+        }).rejects.toThrow(UniqueConstraintFailure);
+
+        await expect(async () => {
+            const session = database.createSession();
+            session.add(new User('Peter'));
+            await session.commit();
+        }).rejects.toThrow(UniqueConstraintFailure);
+
+        await expect(async () => {
+            await database.persist(new User('Peter2'));
+            await database.query(User).filter({username: 'Peter2'}).patchOne({username: 'Peter'});
+        }).rejects.toThrow(UniqueConstraintFailure);
     }
 };

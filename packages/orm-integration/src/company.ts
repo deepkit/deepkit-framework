@@ -68,14 +68,18 @@ export const companyTests = {
         expect(employees[1].id).toBe(4);
 
         const persons = await database.query(Person).find();
-        expect(persons[0]).toBeInstanceOf(Freelancer);
         expect(persons[0].id).toBe(1);
-        expect(persons[1]).toBeInstanceOf(Freelancer);
+        expect(persons[0].type).toBe('freelancer');
+        expect(persons[0]).toBeInstanceOf(Freelancer);
         expect(persons[1].id).toBe(2);
-        expect(persons[2]).toBeInstanceOf(Employee);
+        expect(persons[1].type).toBe('freelancer');
+        expect(persons[1]).toBeInstanceOf(Freelancer);
         expect(persons[2].id).toBe(3);
-        expect(persons[3]).toBeInstanceOf(Employee);
+        expect(persons[2].type).toBe('employee');
+        expect(persons[2]).toBeInstanceOf(Employee);
         expect(persons[3].id).toBe(4);
+        expect(persons[3].type).toBe('employee');
+        expect(persons[3]).toBeInstanceOf(Employee);
     },
 
     async tableLevelInheritanceJoins(databaseFactory: DatabaseFactory) {
