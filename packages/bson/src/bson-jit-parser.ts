@@ -39,7 +39,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
     //     property = property.getResolvedClassSchema().getDecoratedPropertySchema();
     // }
 
-    const propertyVar = '_property_' + property.name;
+    const propertyVar = compiler.reserveVariable('_property_' + property.name);
     compiler.context.set(propertyVar, property);
 
     if (property.type === 'string') {
@@ -218,7 +218,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
             `;
         }
 
-        const propertySchema = '_propertySchema_' + property.name;
+        const propertySchema = compiler.reserveVariable('_propertySchema_' + property.name);
         compiler.context.set('getRawBSONDecoder', getRawBSONDecoder);
         compiler.context.set(propertySchema, property.getResolvedClassSchema());
         let primaryKeyHandling = '';

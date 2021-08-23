@@ -192,10 +192,11 @@ describe('integration', () => {
             const bsonDeepkit = serializer(obj);
             // console.log(`types round-trip #${i} ${property.toString()}: ${value} back`, obj, deserialize(Buffer.from(bsonDeepkit)));
 
-            const decoded = getBSONDecoder(s)(bsonDeepkit);
+            const decoder = getBSONDecoder(s);
+            const decoded = decoder(bsonDeepkit);
             expect(decoded).toEqual(expectedObj);
 
-            expect(getBSONDecoder(s)(getBSONSerializer(s)({}))).toEqual({});
+            expect(decoder(serializer({}))).toEqual({});
 
             //optional
             // expect(getBSONDecoder(sOptional)(getBSONSerializer(sOptional)({}))).toEqual({});

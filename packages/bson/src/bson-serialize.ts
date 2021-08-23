@@ -241,7 +241,7 @@ function getPropertySizer(schema: ClassSchema, compiler: CompilerContext, proper
         size += 1; //null
         `;
     } else if (property.type === 'class') {
-        const sizer = '_sizer_' + property.name;
+        const sizer = compiler.reserveVariable('_sizer' + property.name);
         const forwardSchema = property.getResolvedClassSchema();
         const sizerFn = jitStack.getOrCreate(forwardSchema, () => createBSONSizer(property.getResolvedClassSchema(), jitStack));
         const unpopulatedSymbolVar = compiler.reserveVariable('unpopulatedSymbol', unpopulatedSymbol);
