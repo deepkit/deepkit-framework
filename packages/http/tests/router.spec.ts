@@ -2,14 +2,13 @@ import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { dotToUrlPath, RouteParameterResolverContext, Router } from '../src/router';
 import { http, httpClass } from '../src/decorator';
-import { t } from '@deepkit/type';
+import { getClassSchema, t } from '@deepkit/type';
 import { httpWorkflow, JSONResponse } from '../src/http';
 import { eventDispatcher } from '@deepkit/event';
 import { inject } from '@deepkit/injector';
 import { HttpRequest } from '../src/model';
 import { getClassName, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils';
-
 
 test('router', async () => {
     class Controller {
@@ -696,4 +695,29 @@ test('destructing params', async () => {
     const httpKernel = createHttpKernel([Controller]);
 
     expect((await httpKernel.request(HttpRequest.GET('/').json({name: 'Peter', title: 'CTO'}))).json).toEqual(['Peter', 'CTO']);
+});
+
+test('dynamic parameter name', async () => {
+    @http.controller()
+    class Controller {
+        @http.GET('first/:another')
+        first(@t.description('The identifier').name('another') id: string) {
+            return [id];
+        }
+
+        @http.GET('second/:another2')
+        second(@t.description('The identifier').name('another2') id: string, @http.query() second: string) {
+            return [id, second];
+        }
+    }
+
+    const schema = getClassSchema(Controller);
+    expect(schema.getMethodProperties('first')[0].name).toBe('another');
+    expect(schema.getMethodProperties('second')[0].name).toBe('another2');
+    expect(schema.getMethodProperties('second')[1].name).toBe('second');
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    expect((await httpKernel.request(HttpRequest.GET('/first/peter'))).json).toEqual(['peter']);
+    expect((await httpKernel.request(HttpRequest.GET('/second/peter?second=true'))).json).toEqual(['peter', 'true']);
 });

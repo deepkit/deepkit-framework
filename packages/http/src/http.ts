@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { asyncOperation, CustomError, getClassName } from '@deepkit/core';
+import { asyncOperation, ClassType, CustomError, getClassName } from '@deepkit/core';
 import { getClassTypeFromInstance, getPropertyClassToXFunction, isClassInstance, isRegisteredEntity, jsonSerializer, ValidationFailed } from '@deepkit/type';
 import { OutgoingHttpHeaders, ServerResponse } from 'http';
 import { eventDispatcher } from '@deepkit/event';
@@ -59,31 +59,27 @@ export class Redirect {
     }
 }
 
-export interface HttpError<T> {
-    new(...args: any[]): Error;
-
-    getHttpCode(): T;
+export class HttpError<T extends number> extends CustomError {
+    constructor(public message: string, public httpCode: T) {
+        super(message);
+    }
 }
 
-export function HttpError<T extends number>(code: T, defaultMessage: string = ''): HttpError<T> {
-    return class extends CustomError {
-        constructor(message: string = defaultMessage) {
-            super(message);
+export function createHttpError<T extends number>(code: T, defaultMessage: string = ''): ClassType<HttpError<T>> {
+    return class extends HttpError<T> {
+        constructor(public message: string = defaultMessage) {
+            super(message, code);
         }
-
-        static getHttpCode() {
-            return code;
-        }
-    };
+    } as any;
 }
 
-export class HttpNotFoundError extends HttpError(404, 'Not found') {
+export class HttpNotFoundError extends createHttpError(404, 'Not found') {
 }
 
-export class HttpBadRequestError extends HttpError(400, 'Bad request') {
+export class HttpBadRequestError extends createHttpError(400, 'Bad request') {
 }
 
-export class HttpAccessDeniedError extends HttpError(403, 'Access denied') {
+export class HttpAccessDeniedError extends createHttpError(403, 'Access denied') {
 }
 
 export class HttpWorkflowEvent {
@@ -303,11 +299,18 @@ export const httpWorkflow = createWorkflow('http', {
 });
 
 export class BaseResponse {
+    autoSerializing: boolean = true;
+
     constructor(public _statusCode?: number, public _headers: OutgoingHttpHeaders = {}) {
     }
 
     status(code: number): this {
         this._statusCode = code;
+        return this;
+    }
+
+    disableAutoSerializing() {
+        this.autoSerializing = false;
         return this;
     }
 
@@ -339,12 +342,122 @@ export class JSONResponse extends BaseResponse {
     }
 }
 
+export type SupportedHttpResult = undefined | null | number | string | JSONResponse | HtmlResponse | HttpResponse | ServerResponse | Redirect | Uint8Array | Error;
+
+export interface HttpResultFormatterContext {
+    request: HttpRequest;
+    response: HttpResponse;
+    route?: RouteConfig;
+}
+
+@injectable()
+export class HttpResultFormatter {
+    protected jsonContentType: string = 'application/json; charset=utf-8';
+    protected htmlContentType: string = 'text/html; charset=utf-8';
+
+    constructor(protected router: Router) {
+    }
+
+    protected setContentTypeIfNotSetAlready(response: HttpResponse, contentType: string): void {
+        if (response.hasHeader('Content-Type')) return;
+
+        response.setHeader('Content-Type', contentType);
+    }
+
+    handleError(error: Error, context: HttpResultFormatterContext): void {
+
+    }
+
+    handleUndefined(result: undefined | null, context: HttpResultFormatterContext): void {
+        context.response.end(result);
+    }
+
+    handleRedirect(result: Redirect, context: HttpResultFormatterContext): void {
+        if (result.routeName) {
+            context.response.writeHead(result.statusCode, {
+                Location: this.router.resolveUrl(result.routeName, result.routeParameters)
+            });
+        } else {
+            context.response.writeHead(result.statusCode, {
+                Location: result.url
+            });
+        }
+        context.response.end();
+    }
+
+    handleUnknown(result: any, context: HttpResultFormatterContext): void {
+        this.setContentTypeIfNotSetAlready(context.response, this.jsonContentType);
+
+        context.response.end(JSON.stringify(result));
+    }
+
+    handleHtmlResponse(result: HtmlResponse, context: HttpResultFormatterContext): void {
+        this.setContentTypeIfNotSetAlready(context.response, this.htmlContentType);
+        context.response.writeHead(result._statusCode || 200, result._headers);
+        context.response.end(result.html);
+    }
+
+    handleJSONResponse(result: JSONResponse, context: HttpResultFormatterContext): void {
+        this.setContentTypeIfNotSetAlready(context.response, this.jsonContentType);
+        context.response.writeHead(result._statusCode || 200, result._headers);
+        context.response.end(JSON.stringify(result.json));
+    }
+
+    handleTypeEntity<T>(classType: ClassType<T>, instance: T, context: HttpResultFormatterContext, route?: RouteConfig): void {
+        this.setContentTypeIfNotSetAlready(context.response, this.jsonContentType);
+
+        context.response.end(JSON.stringify(
+                (route && route?.serializer ? route.serializer : jsonSerializer)
+                    .for(classType).serialize(
+                    instance,
+                    route ? route.serializationOptions : undefined
+                )
+            )
+        );
+    }
+
+    handleBinary(result: Uint8Array, context: HttpResultFormatterContext): void {
+        context.response.end(result);
+    }
+
+    handleResponse(context: HttpResultFormatterContext) {
+    }
+
+    handle(result: SupportedHttpResult, context: HttpResultFormatterContext): void {
+        if (result === null || result === undefined) {
+            this.handleUndefined(result, context);
+        } else if (result instanceof Error) {
+            this.handleError(result, context);
+        } else if (result instanceof Redirect) {
+            this.handleRedirect(result, context);
+        } else if (result instanceof ServerResponse) {
+            this.handleResponse(context);
+        } else if (result instanceof HtmlResponse) {
+            this.handleHtmlResponse(result, context);
+        } else if (result instanceof Uint8Array) {
+            this.handleBinary(result, context);
+        } else if (result instanceof JSONResponse) {
+            this.handleJSONResponse(result, context);
+        } else {
+            if (isClassInstance(result)) {
+                const classType = getClassTypeFromInstance(result);
+                if (isRegisteredEntity(classType)) {
+                    this.handleTypeEntity(classType, result, context);
+                    return;
+                }
+            }
+
+            this.handleUnknown(result, context);
+        }
+    }
+}
 
 @injectable()
 export class HttpListener {
     constructor(
         protected router: Router,
         protected logger: Logger,
+        protected resultFormatter: HttpResultFormatter,
         @inject().optional protected stopwatch?: Stopwatch,
     ) {
     }
@@ -369,6 +482,7 @@ export class HttpListener {
             if (resolved) {
                 event.request.uploadedFiles = resolved.uploadedFiles;
 
+                //todo: embed that into the generated router code.
                 if (resolved.middlewares) {
                     const middlewares = resolved.middlewares(event.injectorContext);
                     if (middlewares.length) {
@@ -477,15 +591,15 @@ export class HttpListener {
         if (event.sent) return;
         if (event.hasNext()) return;
 
-        const injector = event.route.action.contextId ? event.injectorContext.getInjector(event.route.action.contextId) : event.injectorContext;
+        const injector = event.route.action.module ? event.injectorContext.getInjectorForModule(event.route.action.module) : event.injectorContext;
         const controllerInstance = injector.get(event.route.action.controller);
         const start = Date.now();
-        const frame = this.stopwatch ? this.stopwatch.start(getClassName(event.route.action.controller)+'.'+event.route.action.methodName, FrameCategory.httpController) : undefined;
+        const frame = this.stopwatch ? this.stopwatch.start(getClassName(event.route.action.controller) + '.' + event.route.action.methodName, FrameCategory.httpController) : undefined;
         try {
             const method = controllerInstance[event.route.action.methodName];
             let result = await method.apply(controllerInstance, event.parameters);
 
-            if (isElementStruct(result)){
+            if (isElementStruct(result)) {
                 const html = await getTemplateRender()(event.injectorContext, result, this.stopwatch ? this.stopwatch : undefined);
                 result = new HtmlResponse(html, 200).header('Content-Type', 'text/html; charset=utf-8');
             }
@@ -511,14 +625,14 @@ export class HttpListener {
         if (event.response.finished) return;
         if (event.sent) return;
 
-        this.logger.error('Controller parameter resolving error:', event.error);
-
         if (event.error instanceof ValidationFailed) {
             event.send(new JSONResponse({
                 message: event.error.message,
                 errors: event.error.errors
-            }, 500));
+            }, 400).disableAutoSerializing());
         } else {
+            this.logger.error('Controller parameter resolving error:', event.error);
+
             event.send(new HtmlResponse('Internal error', 500));
         }
     }
@@ -527,6 +641,19 @@ export class HttpListener {
     onControllerError(event: typeof httpWorkflow.onControllerError.event): void {
         if (event.response.finished) return;
         if (event.sent) return;
+
+        if (event.error instanceof ValidationFailed) {
+            event.send(new JSONResponse({
+                message: event.error.message,
+                errors: event.error.errors
+            }, 400).disableAutoSerializing());
+            return;
+        } else if (event.error instanceof HttpError) {
+            event.send(new JSONResponse({
+                message: event.error.message
+            }, event.error.httpCode).disableAutoSerializing());
+            return;
+        }
 
         this.logger.error('Controller error', event.error);
 
@@ -538,68 +665,33 @@ export class HttpListener {
      */
     @eventDispatcher.listen(httpWorkflow.onResponse, -100)
     async onResultSerialization(event: typeof httpWorkflow.onResponse.event) {
-        if (event.route && event.route.returnSchema && event.route.returnSchema.typeSet) {
-            if (event.result !== undefined || event.result !== null) {
-                if (event.result instanceof HtmlResponse || event.result instanceof ServerResponse || event.result instanceof Redirect) {
-                    // don't do anything
-                } else if (event.result instanceof JSONResponse) {
-                    event.result.json = getPropertyClassToXFunction(
-                        event.route.returnSchema,
-                        event.route && event.route?.serializer ? event.route.serializer : jsonSerializer
-                    )(event.result.json, event.route.serializationOptions);
-                } else {
-                    event.result = getPropertyClassToXFunction(
-                        event.route.returnSchema,
-                        event.route && event.route?.serializer ? event.route.serializer : jsonSerializer
-                    )(event.result, event.route.serializationOptions);
-                }
-            }
+        if (!event.route) return;
+        if (event.result === undefined || event.result === null) return;
+
+
+        if (event.result instanceof HtmlResponse || event.result instanceof ServerResponse || event.result instanceof Redirect) {
+            // don't do anything
+        } else if (event.result instanceof JSONResponse) {
+            const schema = (event.result._statusCode && event.route.getSchemaForResponse(event.result._statusCode)) || event.route.returnSchema;
+
+            if (!schema || !event.result.autoSerializing) return;
+
+            event.result.json = getPropertyClassToXFunction(
+                schema,
+                event.route && event.route.serializer ? event.route.serializer : jsonSerializer
+            )(event.result.json, event.route.serializationOptions);
+        } else if (event.route.returnSchema) {
+            event.result = getPropertyClassToXFunction(
+                event.route.returnSchema,
+                event.route && event.route.serializer ? event.route.serializer : jsonSerializer
+            )(event.result, event.route.serializationOptions);
         }
     }
 
     @eventDispatcher.listen(httpWorkflow.onResponse, 100)
     async onResponse(event: typeof httpWorkflow.onResponse.event) {
-        const response = event.result;
-
         if (event.response.headersSent) return;
 
-        if (response === null || response === undefined) {
-            event.response.end(response);
-        } else if (response instanceof Redirect) {
-            if (response.routeName) {
-                event.response.writeHead(response.statusCode, {
-                    Location: this.router.resolveUrl(response.routeName, response.routeParameters)
-                });
-            } else {
-                event.response.writeHead(response.statusCode, {
-                    Location: response.url
-                });
-            }
-            event.response.end();
-        } else if (response instanceof ServerResponse || response instanceof HttpResponse) {
-        } else if (response instanceof HtmlResponse) {
-            if (!event.response.hasHeader('Content-Type')) event.response.setHeader('Content-Type', 'text/html; charset=utf-8');
-            event.response.writeHead(response._statusCode || 200, response._headers);
-            event.response.end(response.html);
-        } else if (isClassInstance(response) && isRegisteredEntity(getClassTypeFromInstance(response))) {
-            event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
-            event.response.end(JSON.stringify(
-                    (event.route && event.route?.serializer ? event.route.serializer : jsonSerializer)
-                        .for(getClassTypeFromInstance(response)).serialize(
-                        response,
-                        event.route ? event.route.serializationOptions : undefined
-                    )
-                )
-            );
-        } else if (response instanceof Uint8Array) {
-            event.response.end(response);
-        } else if (response instanceof JSONResponse) {
-            if (!event.response.hasHeader('Content-Type')) event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
-            event.response.writeHead(response._statusCode || 200, response._headers);
-            event.response.end(JSON.stringify(response.json));
-        } else {
-            if (!event.response.hasHeader('Content-Type')) event.response.setHeader('Content-Type', 'application/json; charset=utf-8');
-            event.response.end(JSON.stringify(response));
-        }
+        this.resultFormatter.handle(event.result, event);
     }
 }

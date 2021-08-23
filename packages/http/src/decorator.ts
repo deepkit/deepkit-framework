@@ -11,14 +11,19 @@
 import { ClassType, isClass, urlJoin } from '@deepkit/core';
 import {
     ClassDecoratorResult,
+    ClassSchema,
     createClassDecoratorContext,
     createPropertyDecoratorContext,
+    FieldDecoratorResult,
     getClassSchema,
     isDecoratorContext,
+    isFieldDecorator,
     JitConverterOptions,
     mergeDecorator,
     PropertyDecoratorResult,
-    Serializer
+    PropertySchema,
+    Serializer,
+    t
 } from '@deepkit/type';
 import { RouteParameterResolver } from './router';
 import { httpMiddleware, HttpMiddleware, HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware';
@@ -35,7 +40,7 @@ function isMiddlewareClassTypeOrFn(v: HttpActionMiddleware): v is ClassType<Http
 
 class HttpController {
     baseUrl: string = '';
-    protected actions = new Set<HttpAction>();
+    actions = new Set<HttpAction>();
     groups: string[] = [];
 
     middlewares: (() => HttpMiddlewareConfig)[] = [];
@@ -61,6 +66,10 @@ class HttpController {
         return this.actions;
     }
 
+    removeAction(methodName: string): void {
+        this.actions.delete(this.getAction(methodName));
+    }
+
     getAction(methodName: string): HttpAction {
         for (const a of this.getActions()) {
             if (a.methodName === methodName) return a;
@@ -71,7 +80,7 @@ class HttpController {
 
 export class HttpActionParameter {
     name: string = '';
-    type?: 'body' | 'query';
+    type?: 'body' | 'query' | 'queries';
 
     /**
      * undefined = propertyName, '' === root, else given path
@@ -107,7 +116,7 @@ export class HttpAction {
      */
     data = new Map<any, any>();
 
-    throws: { errorType: ClassType, message?: string }[] = [];
+    responses: { statusCode: number, description: string, type?: PropertySchema }[] = [];
 }
 
 export class HttpDecorator {
@@ -308,8 +317,33 @@ export class HttpActionDecorator {
         if (path) this.t.path = path;
     }
 
-    throws(errorType: ClassType, message?: string) {
-        this.t.throws.push({ errorType, message });
+    /**
+     * Adds additional information about what HTTP status codes are available in this route.
+     * You can add additionally a description and a class type.
+     *
+     * The class type is used for serialization for responses with the given statusCode.
+     *
+     * Those information are available in Deepkit API console.
+     *
+     * classType can be a schema, class, or deepkit/type t.
+     *
+     * ```typescript
+     *
+     * @http.GET().response(200, 'All ok', t.boolean)
+     *
+     * class User {
+     *     @t username: string = '';
+     * }
+     * @http.GET().response(200, 'User object', User)
+     *
+     *
+     * const error = t.schema({error: t.string});
+     * @http.GET().response(500, 'Error', error)
+     * ```
+     */
+    response(statusCode: number, description: string = '', classType?: FieldDecoratorResult<any> | ClassType | ClassSchema,) {
+        const type = classType ? (isFieldDecorator(classType) ? classType.buildPropertySchema() : t.type(getClassSchema(classType)).buildPropertySchema()) : undefined;
+        this.t.responses.push({ statusCode, description, type });
     }
 
     /**
@@ -444,7 +478,7 @@ class HttpActionParameterDecorator {
      */
     queries(path: string = '') {
         this.t.typePath = path; //'' === root
-        this.t.type = 'query';
+        this.t.type = 'queries';
     }
 }
 

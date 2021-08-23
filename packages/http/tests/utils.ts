@@ -1,7 +1,7 @@
 import { ClassType, isClass } from '@deepkit/core';
 import { InjectorContext, ProviderWithScope, TagProvider, TagRegistry } from '@deepkit/injector';
 import { Router } from '../src/router';
-import { HttpListener } from '../src/http';
+import { HttpListener, HttpResultFormatter } from '../src/http';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { EventDispatcher } from '@deepkit/event';
 import { HttpKernel } from '../src/kernel';
@@ -31,6 +31,7 @@ export function createHttpKernel(controllers: (ClassType | {module: AppModule<an
         ...providers,
         ...listeners,
         HttpListener,
+        HttpResultFormatter,
         { provide: Logger, useValue: new Logger([new ConsoleTransport()]) }
     ]);
     const eventDispatcher = new EventDispatcher(injector);

@@ -10,6 +10,7 @@
 import 'reflect-metadata';
 import { asyncOperation, ClassType, CompilerContext, getClassName, isClass, urlJoin } from '@deepkit/core';
 import {
+    entity,
     getClassSchema,
     getPropertyXtoClassFunction,
     JitConverterOptions,
@@ -42,6 +43,7 @@ interface ResolvedController {
     middlewares?: (injector: BasicInjector) => { fn: HttpMiddlewareFn, timeout: number }[];
 }
 
+@entity.name('@deepkit/UploadedFile')
 export class UploadedFile {
     /**
      * The size of the uploaded file in bytes.
@@ -88,7 +90,7 @@ function parseBody(form: any, req: IncomingMessage, files: { [name: string]: Upl
 }
 
 export interface RouteControllerAction {
-    contextId?: number;
+    module?: AppModule<any, any>;
     controller: ClassType;
     methodName: string;
 }
@@ -98,7 +100,7 @@ function getRouterControllerActionName(action: RouteControllerAction): string {
 }
 
 export interface RouteParameterConfig {
-    type?: 'body' | 'query';
+    type?: 'body' | 'query' | 'queries';
     /**
      * undefined = propertyName, '' === root, else given path
      */
@@ -111,7 +113,9 @@ export interface RouteParameterConfig {
 export class RouteConfig {
     public baseUrl: string = '';
     public parameterRegularExpressions: { [name: string]: any } = {};
-    public throws: { errorType: ClassType, message?: string }[] = [];
+
+    public responses: { statusCode: number, description: string, type?: PropertySchema }[] = [];
+
     public description: string = '';
     public groups: string[] = [];
     public category: string = '';
@@ -149,7 +153,16 @@ export class RouteConfig {
         public readonly httpMethods: string[],
         public readonly path: string,
         public readonly action: RouteControllerAction,
+        public internal: boolean = false,
     ) {
+    }
+
+    getSchemaForResponse(statusCode: number): PropertySchema | undefined {
+        if (!this.responses.length) return;
+        for (const response of this.responses) {
+            if (response.statusCode === statusCode) return response.type;
+        }
+        return;
     }
 
     getFullPath(): string {
@@ -234,6 +247,10 @@ class ParsedRouteParameter {
 
     get query() {
         return this.config ? this.config.type === 'query' : false;
+    }
+
+    get queries() {
+        return this.config ? this.config.type === 'queries' : false;
     }
 
     get typePath() {
@@ -408,7 +425,7 @@ export class Router {
         private middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry,
     ) {
         for (const controller of controllers.controllers) {
-            this.addRouteForController(controller.controller, controller.contextId, controller.module);
+            this.addRouteForController(controller.controller, controller.module);
         }
     }
 
@@ -460,7 +477,7 @@ export class Router {
                 setParameters.push(`parameters.${parameter.property.name} = ${converterVar}(bodyFields);`);
                 parameterValidator.push(`${validatorVar}(parameters.${parameter.property.name}, ${JSON.stringify(parameter.typePath || '')}, bodyErrors);`);
                 parameterNames.push(`parameters.${parameter.property.name}`);
-            } else if (parameter.query) {
+            } else if (parameter.query || parameter.queries) {
                 const converted = parameter.property.type === 'any' ? (v: any) => v : getPropertyXtoClassFunction(parameter.property, jsonSerializer);
                 const validator = parameter.property.type === 'any' ? (v: any) => undefined : jitValidateProperty(parameter.property);
                 const converterVar = compiler.reserveVariable('argumentConverter', converted);
@@ -469,6 +486,7 @@ export class Router {
                 const queryPath = parameter.typePath === undefined ? parameter.property.name : parameter.typePath;
                 const accessor = queryPath ? `['` + (queryPath.replace(/\./g, `']['`)) + `']` : '';
                 const queryAccessor = queryPath ? `_query${accessor}` : '_query';
+
                 setParameters.push(`parameters.${parameter.property.name} = ${converterVar}(${queryAccessor});`);
                 parameterNames.push(`parameters.${parameter.property.name}`);
                 parameterValidator.push(`${validatorVar}(parameters.${parameter.property.name}, ${JSON.stringify(parameter.typePath)}, validationErrors);`);
@@ -652,7 +670,7 @@ export class Router {
         this.fn = undefined;
     }
 
-    public addRouteForController(controller: ClassType, contextId: number, module: AppModule<any>) {
+    public addRouteForController(controller: ClassType, module: AppModule<any>) {
         const data = httpClass._fetch(controller);
         if (!data) throw new Error(`Http controller class ${getClassName(controller)} has no @http.controller decorator.`);
         const schema = getClassSchema(controller);
@@ -660,12 +678,12 @@ export class Router {
         for (const action of data.getActions()) {
             const routeConfig = new RouteConfig(action.name, action.httpMethods, action.path, {
                 controller,
-                contextId,
+                module,
                 methodName: action.methodName
             });
             routeConfig.module = module;
             routeConfig.parameterRegularExpressions = action.parameterRegularExpressions;
-            routeConfig.throws = action.throws;
+            routeConfig.responses = action.responses;
             routeConfig.description = action.description;
             routeConfig.category = action.category;
             routeConfig.groups = action.groups;

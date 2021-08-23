@@ -19,14 +19,14 @@ import { injectable } from '@deepkit/injector';
 import { HttpRequest, HttpResponse } from './model';
 import send from 'send';
 import { eventDispatcher } from '@deepkit/event';
-import { RouteConfig } from './router';
+import { RouteConfig, Router } from './router';
 
 export function serveStaticListener(path: string, localPath: string = path): ClassType {
     @injectable()
     class HttpRequestStaticServingListener {
         serve(path: string, request: HttpRequest, response: HttpResponse) {
             return new Promise(resolve => {
-                const res = send(request, path, { root: localPath })
+                const res = send(request, path, { root: localPath });
                 response.once('finish', resolve);
                 res.pipe(response);
             });
@@ -73,25 +73,38 @@ function loadHtml(localPath: string, path: string): string {
 }
 
 /**
- * Serves files from a local directory at `path`. All paths without . are redirected to
- * ${localPath}/index.html.
+ * Serves an index file and allows to load asset files from the same folder. Can be used to serve an angular application
+ *
+ * All paths like <path>/*.* that don't match a file are redirected to ${localPath}/index.html.
+ * All paths like <path>/*.* that match a file resolve to the file.
  */
-export function registerStaticHttpController(module: AppModule<any, any>, path: string, localPath: string): void {
+export function registerStaticHttpController(module: AppModule<any, any>, path: string, localPath: string, groups: string[] = []): void {
     let indexHtml = '';
 
-    @http.controller(path)
     class StaticController {
-        @http.GET()
-        serviceApp() {
+        @http.GET().group(...groups)
+        serveIndex(request: HttpRequest, response: HttpResponse) {
             if (!indexHtml) indexHtml = loadHtml(localPath, normalizeDirectory(path));
             return indexHtml ? new HtmlResponse(indexHtml) : new HtmlResponse('Index not found', 404);
         }
-        @http.GET(':any').regexp('any', '[^\.]*')
-        serviceAppDeep(any: string) {
-            return this.serviceApp();
-        }
     }
 
-    module.addController(StaticController);
+    const route1 = new RouteConfig('static', ['GET'], normalizeDirectory(path), {
+        controller: StaticController,
+        module,
+        methodName: 'serveIndex'
+    });
+    route1.groups = groups;
+    module.setupProvider(Router).addRoute(route1);
+
+    const route2 = new RouteConfig('static', ['GET'], normalizeDirectory(path).slice(0, -1), {
+        controller: StaticController,
+        module,
+        methodName: 'serveIndex'
+    })
+    route2.groups = groups;
+    module.setupProvider(Router).addRoute(route2);
+
+    module.addProvider(StaticController);
     module.addListener(serveStaticListener(normalizeDirectory(path), localPath));
 }
