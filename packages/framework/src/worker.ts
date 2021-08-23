@@ -167,7 +167,7 @@ export class WebWorkerFactory {
         }
 
         for (const [name, info] of this.rpcControllers.controllers.entries()) {
-            kernel.registerController(name, info.controller, false, info.context.id);
+            kernel.registerController(name, info.controller, false, info.module);
         }
 
         return kernel;

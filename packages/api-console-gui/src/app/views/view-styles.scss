@@ -1,0 +1,64 @@
+.response-description {
+    padding: 3px 10px;
+    color: var(--text-light);
+}
+
+.box {
+    position: relative;
+    border: 1px solid var(--line-color-light);
+    border-radius: 3px;
+    background-color: var(--dui-window-header-bg);
+    margin: 20px 0;
+    padding-top: 10px;
+
+    .box-title {
+        position: absolute;
+        padding: 0 5px;
+        top: -9px;
+        left: 5px;
+        font-size: 12px;
+
+        > div {
+            position: relative;
+        }
+
+        &::before {
+            content: '';
+            position: absolute;
+            height: 2px;
+            left: 0;
+            right: 0;
+            top: 7px;
+            background-color: var(--dui-window-header-bg);
+        }
+    }
+
+    .box-info-text {
+        color: var(--text-light);
+        font-size: 12px;
+        text-align: center;
+        padding: 15px;
+    }
+}
+
+.ts {
+    padding: 5px 10px;
+}
+
+.labeled-values {
+    display: flex;
+    flex-wrap: wrap;
+
+    > div {
+        label {
+            display: block;
+            color: var(--text-light);
+            margin-bottom: 2px;
+            user-select: none;
+        }
+
+        user-select: text;
+        margin-bottom: 13px;
+        flex: 0 0 50%;
+    }
+}

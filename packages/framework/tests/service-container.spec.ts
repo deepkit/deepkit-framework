@@ -64,7 +64,7 @@ test('controller in module and overwrite service', () => {
         exports: [
             MyService
         ]
-    });
+    }, 'controller');
 
     {
         const myModule = new AppModule({
@@ -73,7 +73,7 @@ test('controller in module and overwrite service', () => {
 
         const serviceContainer = new ApplicationServiceContainer(myModule);
         const rpcScopedContext = serviceContainer.getRootInjectorContext().createChildScope('rpc');
-        const controller = rpcScopedContext.getInjector(serviceContainer.getContextFor(controllerModule).id).get(MyController);
+        const controller = rpcScopedContext.getInjectorForModule(controllerModule).get(MyController);
         expect(controller).toBeInstanceOf(MyController);
         expect(controller.foo()).toBe('hello');
     }
@@ -88,7 +88,7 @@ test('controller in module and overwrite service', () => {
 
         const serviceContainer = new ApplicationServiceContainer(myModule);
         const rpcScopedContext = serviceContainer.getRootInjectorContext().createChildScope('rpc');
-        const controller = rpcScopedContext.getInjector(serviceContainer.getContextFor(controllerModule).id).get(MyController);
+        const controller = rpcScopedContext.getInjectorForModule(controllerModule).get(MyController);
         expect(controller).toBeInstanceOf(MyController);
         expect(controller.foo()).toBe('different');
     }

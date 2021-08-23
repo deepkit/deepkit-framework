@@ -1,0 +1,142 @@
+<div class="wrapper" *ngIf="loading">
+    <div class="loading">Loading ...</div>
+</div>
+
+<div class="wrapper" *ngIf="error">
+    <h3>Could not load API information</h3>
+    <div class="error">{{error}}</div>
+</div>
+
+<div class="wrapper" *ngIf="!loading && !error">
+    <div class="description text-selection">
+        <markdown [data]="apiDocument.markdown"></markdown>
+    </div>
+
+    <div class="routes">
+        <ng-container *ngFor="let route of filteredRoutes; let i = index; trackBy: trackByIndex">
+            <ng-container *ngIf="groupBy === 'controller'">
+                <ng-container *ngIf="!filteredRoutes[i - 1] || filteredRoutes[i - 1].controller !== route.controller">
+                    <div class="title">
+                        {{route.controller}}
+                    </div>
+                </ng-container>
+
+            </ng-container>
+
+            <ng-container *ngIf="groupBy === 'method'">
+                <ng-container *ngIf="!filteredRoutes[i - 1] || filteredRoutes[i - 1].httpMethods[0] !== route.httpMethods[0]">
+                    <div class="title">
+                        {{route.httpMethods[0]}}
+                    </div>
+                </ng-container>
+
+            </ng-container>
+
+            <div class="text-selection route" (click)="showDetails[route.id] = !showDetails[route.id]">
+                <div class="title">
+                    <div class="path">{{route.path}}</div>
+                    <div class="method text-light {{m}}"
+                         *ngFor="let m of route.httpMethods; trackBy: trackByIndex">{{m}}</div>
+                </div>
+                <div *ngIf="route.description" class="description">
+                    {{route.description}}
+                </div>
+            </div>
+
+            <div class="route-details" *ngIf="showDetails[route.id]">
+
+                <div class="actions">
+                    <dui-button routerLink="/api/http" [queryParams]="{route: route.id}">Open console</dui-button>
+                </div>
+
+                <div class="box" style="padding: 10px;">
+                    <div class="labeled-values">
+                        <div>
+                            <label>Category</label>
+                            {{route.category || 'none'}}
+                        </div>
+                        <div>
+                            <label>Groups</label>
+                            {{route.groups.join(',') || 'none'}}
+                        </div>
+                        <div style="margin-top: 10px; flex: 2 1 auto;">
+                            <label>Description</label>
+                            {{route.description || 'none'}}
+                        </div>
+                    </div>
+                </div>
+
+
+                <ng-container *ngIf="route.getUrlSchema() as schema">
+                    <div class="box" style="margin-top: 5px; padding-top: 0;">
+                        <div class="box-title">
+                            <div>URL</div>
+                        </div>
+                        <div class="ts text-selection" style="margin-top: 10px">
+                            <div codeHighlight [code]="classSchemaToTSInterface(schema)"></div>
+                        </div>
+                    </div>
+                </ng-container>
+
+                <div class="box" style="margin-top: 5px; padding-top: 0;">
+                    <div class="box-title">
+                        <div>Query</div>
+                    </div>
+                    <ng-container *ngIf="!route.getQuerySchema()">
+                        <div class="box-info-text">This route has no query parameters defined.</div>
+                    </ng-container>
+
+                    <ng-container *ngIf="route.getQuerySchema() as schema">
+                        <div class="ts text-selection" style="margin-top: 10px">
+                            <div codeHighlight [code]="classSchemaToTSInterface(schema)"></div>
+                        </div>
+                    </ng-container>
+                </div>
+
+                <div class="box" style="margin-top: 5px; padding-top: 0;">
+                    <div class="box-title">
+                        <div>Body</div>
+                    </div>
+                    <ng-container *ngIf="!route.getBodySchema()">
+                        <div class="box-info-text">This route has no body defined.</div>
+                    </ng-container>
+
+                    <ng-container *ngIf="route.getBodySchema() as schema">
+                        <div class="ts text-selection" style="margin-top: 10px">
+                            <div codeHighlight [code]="classSchemaToTSInterface(schema)"></div>
+                        </div>
+                    </ng-container>
+                </div>
+
+                <div class="responses-title" *ngIf="route.responses.length || route.getResultSchema()">
+                    Available response types
+                </div>
+
+                <div class="box" *ngIf="route.getResultSchema() as schema">
+                    <div class="box-title">
+                        <div>Default response</div>
+                    </div>
+                    <div class="ts text-selection">
+                        <div codeHighlight [code]="propertyToTSInterface(schema.getProperty('v'), {strictRequired: true})"></div>
+                    </div>
+                </div>
+
+                <div class="box" *ngFor="let response of route.responses; trackBy: trackByIndex">
+                    <div class="box-title">
+                        <div>Response {{response.statusCode}} {{headerStatusCodes[response.statusCode + '']}}</div>
+                    </div>
+                    <div class="response-description">
+                        {{response.description}}
+                    </div>
+                    <ng-container *ngIf="response.getSchemas() as schemas">
+                        <ng-container *ngIf="schemas.length && schemas[schemas.length - 1] as s">
+                            <div class="ts text-selection" *ngIf="s.getProperty('v').type !== 'any'">
+                                <div codeHighlight  [code]="propertyToTSInterface(s.getProperty('v'), {strictRequired: true})"></div>
+                            </div>
+                        </ng-container>
+                    </ng-container>
+                </div>
+            </div>
+        </ng-container>
+    </div>
+</div>

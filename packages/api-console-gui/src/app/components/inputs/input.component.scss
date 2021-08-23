@@ -1,0 +1,47 @@
+:host {
+    display: block;
+}
+
+.title {
+    display: flex;
+    margin-bottom: 3px;
+    align-items: center;
+}
+
+dui-icon.help-icon {
+    opacity: 0.7;
+}
+
+.title dui-icon {
+    margin-left: auto;
+}
+
+:host .decoration {
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--line-color-light);
+}
+
+.description {
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.help-code {
+    padding: 5px 10px;
+}
+
+.non-decoration {
+    display: flex;
+    dui-icon {
+        margin-top: 2px;
+        margin-left: 2px;
+    }
+
+    ::ng-deep > * {
+        flex: 1;
+    }
+
+    > dui-checkbox {
+        flex: unset;
+    }
+}

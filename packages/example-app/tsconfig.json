@@ -21,55 +21,5 @@
   "includes": [
     "*.ts",
     "*.tsx"
-  ],
-  "references": [
-    {
-      "path": "../api-console-module/tsconfig.json"
-    },
-    {
-      "path": "../app/tsconfig.json"
-    },
-    {
-      "path": "../core/tsconfig.json"
-    },
-    {
-      "path": "../core-rxjs/tsconfig.json"
-    },
-    {
-      "path": "../event/tsconfig.json"
-    },
-    {
-      "path": "../framework/tsconfig.json"
-    },
-    {
-      "path": "../http/tsconfig.json"
-    },
-    {
-      "path": "../injector/tsconfig.json"
-    },
-    {
-      "path": "../logger/tsconfig.json"
-    },
-    {
-      "path": "../mongo/tsconfig.json"
-    },
-    {
-      "path": "../orm/tsconfig.json"
-    },
-    {
-      "path": "../rpc/tsconfig.json"
-    },
-    {
-      "path": "../sql/tsconfig.json"
-    },
-    {
-      "path": "../sqlite/tsconfig.json"
-    },
-    {
-      "path": "../template/tsconfig.json"
-    },
-    {
-      "path": "../type/tsconfig.json"
-    }
   ]
 }

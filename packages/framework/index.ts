@@ -19,6 +19,7 @@ export * from './src/orm-browser/controller';
 export * from './src/rpc';
 export * from './src/kernel.config';
 export * from './src/kernel';
+export * from './src/crud';
 export * from './src/testing';
 export * from './src/broker/broker';
 export * from './src/broker/broker.config';

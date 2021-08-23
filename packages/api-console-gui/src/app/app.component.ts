@@ -1,4 +1,6 @@
 import { Component } from '@angular/core';
+import { DuiApp } from '@deepkit/desktop-ui';
+import { ControllerClient } from './client';
 
 @Component({
     selector: 'app-root',
@@ -14,11 +16,28 @@ import { Component } from '@angular/core';
                         </div>
                     </dui-button-group>
 
-                    <dui-button-group>
-                    </dui-button-group>
-
                     <dui-window-toolbar-container name="main"></dui-window-toolbar-container>
-                    <dui-window-toolbar-container name="orm-browser"></dui-window-toolbar-container>
+                    <div class="top-right">
+                        <div>
+                            <a routerLink="/api">OVERVIEW</a>
+                        </div>
+
+                        <div class="connection-info">
+                            <div class="connected" *ngIf="client.client.transporter.connection|async as connected">
+                                Connected
+                            </div>
+                            <div class="disconnected" *ngIf="!(client.client.transporter.connection|async)">
+                                Disconnected
+                            </div>
+                        </div>
+
+                        <dui-icon clickable name="color-theme" [openDropdown]="darkModeDropdown"></dui-icon>
+                        <dui-dropdown #darkModeDropdown>
+                            <dui-dropdown-item (click)="duiApp.setDarkMode(undefined)" [selected]="!duiApp.isDarkModeOverwritten()">Auto</dui-dropdown-item>
+                            <dui-dropdown-item (click)="duiApp.setDarkMode(false)" [selected]="duiApp.isDarkModeOverwritten() && !duiApp.isDarkMode()">Light</dui-dropdown-item>
+                            <dui-dropdown-item (click)="duiApp.setDarkMode(true)" [selected]="duiApp.isDarkModeOverwritten() && duiApp.isDarkMode()">Dark</dui-dropdown-item>
+                        </dui-dropdown>
+                    </div>
                 </dui-window-toolbar>
             </dui-window-header>
             <dui-window-content [sidebarVisible]="sidebarVisible" class="no-padding">
@@ -26,18 +45,22 @@ import { Component } from '@angular/core';
             </dui-window-content>
         </dui-window>
     `,
-    styles: [`
-        .logo {
-            width: 16px;
-            vertical-align: text-bottom;
-            margin-left: 4px;
-        }
-
-        :host ::ng-deep dui-window-content.no-padding > .content {
-            padding: 0 !important;
-        }
-    `]
+    styleUrls: ['./app.component.scss']
 })
 export class AppComponent {
     sidebarVisible: boolean = true;
+
+    constructor(public duiApp: DuiApp, public client: ControllerClient) {
+        client.client.transporter.disconnected.subscribe(() => {
+            this.tryToConnect();
+        });
+    }
+
+    tryToConnect() {
+        this.client.client.connect().catch(() => {
+            setTimeout(() => {
+                this.tryToConnect();
+            }, 1_000);
+        });
+    }
 }

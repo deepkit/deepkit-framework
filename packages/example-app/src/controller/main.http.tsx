@@ -5,7 +5,7 @@ import { SQLiteDatabase, User } from '../database';
 import { sliceClass, t } from '@deepkit/type';
 import { UserList } from '../views/user-list';
 
-class AddUserDto extends sliceClass(User).exclude('id', 'created') {
+class AddUserDto extends sliceClass(User).include('username') {
     @t imageUpload?: UploadedFile;
 }
 

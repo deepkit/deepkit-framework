@@ -36,7 +36,7 @@ import { DeepkitClient } from '@deepkit/rpc';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { HttpRequestComponent } from './views/http/request/http-request.component';
 import { OrmBrowserModule } from '@deepkit/orm-browser-gui';
-import { RouterModule } from '@angular/router';
+import { ApiConsoleModule } from '@deepkit/api-console-gui';
 import { ProfileComponent } from './views/profile/profile.component';
 import { ProfileTimelineComponent } from './views/profile/timeline.component';
 
@@ -57,11 +57,11 @@ import { ProfileTimelineComponent } from './views/profile/timeline.component';
         BrowserModule,
         AppRoutingModule,
         FormsModule,
-        RouterModule.forRoot([]),
 
-        OrmBrowserModule.forRoot(),
         DuiAppModule.forRoot(),
         DuiWindowModule.forRoot(),
+        OrmBrowserModule.forRoot(),
+        ApiConsoleModule,
         OverlayModule,
 
         DuiCheckboxModule,

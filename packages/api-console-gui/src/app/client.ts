@@ -14,7 +14,7 @@ import { ApiConsoleApi } from '../api';
 
 @Injectable()
 export class ControllerClient {
-    constructor(protected client: DeepkitClient) {
+    constructor(public client: DeepkitClient) {
     }
 
     public readonly api = this.client.controller(ApiConsoleApi);

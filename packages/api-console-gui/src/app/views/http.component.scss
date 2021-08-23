@@ -1,3 +1,10 @@
+/* You can add global styles to this file, and also import other style files */
+@import "./view-styles";
+
+::ng-deep {
+    @import "../../style-code";
+}
+
 :host {
     display: flex;
     width: 100%;
@@ -6,29 +13,209 @@
 }
 
 .routes {
-    flex: 1 0 240px;
+    position: relative;
+    flex: 1 0 320px;
+    max-width: 50%;
     display: flex;
     flex-direction: column;
+    background-color: var(--dui-window-header-bg);
 
     dui-list {
         flex: 1;
     }
+
+    .list-description {
+        font-size: 12px;
+        color: var(--text-light);
+    }
+
+    .filter {
+        margin: 5px 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+
+        dui-button-group {
+            width: 100%;
+
+            dui-select {
+                flex: 1;
+            }
+        }
+
+        dui-input {
+            width: 100%;
+            margin-bottom: 6px;
+        }
+    }
+
+    .actions-bottom {
+        height: 27px;
+        padding: 3px 12px;
+        border-top: 1px solid var(--line-color-light);
+        display: flex;
+        align-items: center;
+        font-size: 12px;
+
+        .group-by {
+            display: flex;
+            margin-left: auto;
+            align-items: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: keep-all;
+            white-space: nowrap;
+        }
+
+        dui-checkbox {
+            display: flex;
+            align-items: center;
+
+        }
+    }
 }
 
 dui-button-group {
-    margin-right: 0px !important;
+    margin-right: 0 !important;
 }
 
 .form {
     flex: 1 1 50%;
     border-left: 1px solid var(--line-color-light);
     border-right: 1px solid var(--line-color-light);
-    padding: 12px;
+
+    display: flex;
+    flex-direction: column;
+
+    > .route {
+        flex: 1;
+        height: 100%;
+        overflow: hidden;
+
+        display: flex;
+        flex-direction: column;
+
+        .url-input-container {
+            margin: 12px;
+            margin-bottom: 0;
+
+            dui-button-group {
+                width: 100%;
+            }
+
+            .url {
+                height: 21px;
+                line-height: 21px;
+                display: flex;
+                align-items: center;
+                flex: 1;
+                padding: 0 5px;
+                border-top: 1px solid var(--line-color-light);
+                border-bottom: 1px solid var(--line-color-light);
+            }
+        }
+
+        .route-container {
+            padding: 12px;
+            padding-top: 0;
+            flex: 1;
+        }
+    }
+
+    > .code-generation {
+        overflow: hidden;
+        display: flex;
+        max-height: 27px;
+        flex-direction: column;
+        background-color: var(--dui-window-header-bg);
+
+        .actions {
+            flex: 0 0 28px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 3px 5px;
+            border-top: 1px solid var(--line-color-light);
+        }
+
+        .output {
+            flex: 1;
+            padding: 12px;
+        }
+
+        &.visible {
+            max-height: unset;
+            flex: 0 0 170px;
+
+            .actions {
+                border-bottom: 1px solid var(--line-color-light);
+            }
+        }
+    }
+}
+
+.code-generation-code pre {
+    word-break: break-all !important;
+    white-space: pre-line !important;
+}
+
+.actions-title {
+    font-size: 11px;
+    padding-left: 4px;
+    text-transform: uppercase;
+    margin-right: auto;
 }
 
 .right {
     flex: 1 1 50%;
-    padding: 0 6px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+
+    .server-stats {
+        overflow: hidden;
+        display: flex;
+        max-height: 27px;
+        flex-direction: column;
+        background-color: var(--dui-window-header-bg);
+
+        .actions {
+            flex: 0 0 28px;
+            display: flex;
+            align-items: center;
+            padding: 3px 5px;
+            font-size: 12px;
+            border-top: 1px solid var(--line-color-light);
+        }
+
+        .output {
+            flex: 1;
+            padding: 12px;
+        }
+
+        &.visible {
+            max-height: unset;
+            flex: 0 0 170px;
+            .actions {
+                border-bottom: 1px solid var(--line-color-light);
+            }
+        }
+    }
+
+    .requests {
+        flex: 1;
+        padding: 0 10px;
+
+        .no-requests {
+            padding: 25px;
+            color: var(--text-light);
+            text-align: center;
+
+            > div {
+                margin: 5px;
+            }
+        }
+    }
 }
 
 .request {
@@ -56,7 +243,10 @@ dui-button-group {
         .url {
             padding: 3px 5px;
             flex: 1;
-            word-break: break-all;
+            max-height: 41px;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            font-size: 12px;
         }
 
         .status {
@@ -64,15 +254,21 @@ dui-button-group {
             font-size: 11px;
         }
 
+        > dui-icon {
+            margin-right: 5px;
+        }
+
         .status-box {
             border: 1px solid var(--color-green);
             color: var(--color-green);
             border-radius: 3px;
             padding: 0px 5px;
+
             &.red {
                 color: var(--color-red);
                 border: 1px solid var(--color-red);
             }
+
             &.orange {
                 color: var(--color-orange);
                 border: 1px solid var(--color-orange);
@@ -91,21 +287,13 @@ dui-button-group {
         &.visible {
             display: block;
         }
+
+        .request-info {
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: var(--text-light);
+        }
     }
-}
-
-.filter {
-    margin: 2px 12px;
-    display: flex;
-    align-items: center;
-}
-
-.ts {
-    border: 1px solid var(--line-color-light);
-    border-radius: 3px;
-    background-color: var(--dui-window-header-bg);
-    padding: 5px;
-    margin: 5px 0;
 }
 
 .group-content {
@@ -120,7 +308,8 @@ dui-button-group {
     .path {
         flex: 1;
         overflow: hidden;
-        word-break: break-all;
+        word-break: keep-all;
+        text-overflow: ellipsis;
     }
 
     .method {
@@ -129,30 +318,7 @@ dui-button-group {
         font-weight: bold;
         padding: 0px 5px;
 
-        border: 1px solid var(--line-color-light);
+        border: 1px solid var(--line-color);
         border-radius: 3px;
     }
 }
-
-.url-input {
-    display: flex;
-    height: 21px;
-    flex: 1;
-    border: 1px solid var(--line-color-light);
-    background-color: var(--dui-window-header-bg);
-
-    .urlPart {
-        padding: 2px 4px;
-        display: flex;
-        line-height: 100%;
-        align-items: center;
-    }
-
-    dui-input {
-        border-radius: 3px;
-        border-top: 0;
-        border-bottom: 0;
-        height: 100%;
-    }
-}
-

@@ -9,7 +9,7 @@
  */
 
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { observe } from '@deepkit/desktop-ui';
+import { DuiApp, observe } from '@deepkit/desktop-ui';
 import { Database, DebugRequest } from '@deepkit/framework-debug-api';
 import { Collection } from '@deepkit/rpc';
 import { Observable } from 'rxjs';
@@ -23,7 +23,7 @@ import { Router } from '@angular/router';
             <dui-window-header size="small">
                 <dui-window-toolbar>
                     <dui-button-group>
-                        <div style="position: relative; top: -2px;">
+                        <div style="position: relative; top: -2px; margin-right: 5px;">
                             <img class="logo visible-for-dark-mode" src="assets/deepkit_white.svg"/>
                             <img class="logo visible-for-white-mode" theme-white src="assets/deepkit_black.svg"/>
                             <span style="margin-left: 8px; display: inline-block; color: var(--text-grey)">Framework Debugger</span>
@@ -37,9 +37,27 @@ import { Router } from '@angular/router';
 
                     <dui-window-toolbar-container name="main"></dui-window-toolbar-container>
                     <dui-window-toolbar-container name="orm-browser"></dui-window-toolbar-container>
+
+                    <div class="top-right">
+                        <div class="connection-info">
+                            <div class="connected" *ngIf="client.client.transporter.connection|async as connected">
+                                Connected
+                            </div>
+                            <div class="disconnected" *ngIf="!(client.client.transporter.connection|async)">
+                                Disconnected
+                            </div>
+                        </div>
+
+                        <dui-icon clickable name="color-theme" [openDropdown]="darkModeDropdown"></dui-icon>
+                        <dui-dropdown #darkModeDropdown>
+                            <dui-dropdown-item (click)="duiApp.setDarkMode(undefined)" [selected]="!duiApp.isDarkModeOverwritten()">Auto</dui-dropdown-item>
+                            <dui-dropdown-item (click)="duiApp.setDarkMode(false)" [selected]="duiApp.isDarkModeOverwritten() && !duiApp.isDarkMode()">Light</dui-dropdown-item>
+                            <dui-dropdown-item (click)="duiApp.setDarkMode(true)" [selected]="duiApp.isDarkModeOverwritten() && duiApp.isDarkMode()">Dark</dui-dropdown-item>
+                        </dui-dropdown>
+                    </div>
                 </dui-window-toolbar>
             </dui-window-header>
-            <dui-window-content [sidebarVisible]="sidebarVisible" [class.no-padding]="router.url.startsWith('/database/')">
+            <dui-window-content [sidebarVisible]="sidebarVisible" [class.no-padding]="router.url.startsWith('/database/') || router.url.startsWith('/api/')">
                 <dui-window-sidebar>
                     <dui-list>
                         <dui-list-title>Application</dui-list-title>
@@ -48,6 +66,7 @@ import { Router } from '@angular/router';
                         <dui-list-item routerLink="/rpc">RPC</dui-list-item>
                         <dui-list-item routerLink="/events">Events</dui-list-item>
                         <dui-list-item routerLink="/profiler">Profiler</dui-list-item>
+                        <dui-list-item routerLink="/api/http">API</dui-list-item>
 
                         <dui-list-title>Database</dui-list-title>
                         <orm-browser-list></orm-browser-list>
@@ -87,7 +106,8 @@ export class AppComponent implements OnInit, OnDestroy {
     requests?: Collection<DebugRequest>;
 
     constructor(
-        protected controllerClient: ControllerClient,
+        public duiApp: DuiApp,
+        public client: ControllerClient,
         protected cd: ChangeDetectorRef,
         public router: Router,
     ) {
@@ -110,7 +130,7 @@ export class AppComponent implements OnInit, OnDestroy {
     }
 
     async ngOnInit() {
-        this.databases = await this.controllerClient.debug.databases();
+        this.databases = await this.client.debug.databases();
         // this.requests = await this.controllerClient.getHttpRequests();
         this.cd.detectChanges();
     }

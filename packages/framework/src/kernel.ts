@@ -20,7 +20,7 @@ import { DebugDIController } from './cli/debug-di';
 import { ServerStartController } from './cli/server-start';
 import { DebugController } from './debug/debug.controller';
 import { registerDebugHttpController } from './debug/http-debug.controller';
-import { HttpKernel, HttpListener, HttpLogger, HttpModule, Router, serveStaticListener } from '@deepkit/http';
+import { HttpKernel, HttpListener, HttpLogger, HttpModule, HttpResultFormatter, Router, serveStaticListener } from '@deepkit/http';
 import { InjectorContext, injectorReference } from '@deepkit/injector';
 import { kernelConfig } from './kernel.config';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
@@ -47,6 +47,7 @@ export const KernelModule = new AppModule({
         ApplicationServer,
         Router,
         HttpKernel,
+        HttpResultFormatter,
         WebWorkerFactory,
         RpcServer,
         ConsoleTransport,
@@ -112,7 +113,8 @@ export const KernelModule = new AppModule({
         module.addController(OrmBrowserController);
         registerDebugHttpController(module, config.debugUrl);
 
-        module.addImport(ApiConsoleModule.configure({ listen: false }));
+        //only register the RPC controller
+        module.addImport(ApiConsoleModule.configure({ listen: false, markdown: '' }));
 
         //we start our own broker
         if (config.debugProfiler) {

@@ -1,190 +1,148 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ControllerClient } from '../client';
 import { ApiRoute } from '../../api';
-import { trackByIndex } from '../utils';
+import { classSchemaToTSInterface, headerStatusCodes, propertyToTSInterface, trackByIndex } from '../utils';
+import { ClassSchema } from '@deepkit/type';
+import { Environment, extractDataStructure, extractDataStructureFromSchema, Request, RouteState, Store } from '../store';
+import { copy, isArray, isObject } from '@deepkit/core';
+import { Subscription } from 'rxjs';
+import { DuiDialog } from '@deepkit/desktop-ui';
+import { EnvironmentDialogComponent } from '../components/environment-dialog.component';
+import { filterAndSortRoutes } from './view-helper';
+import { ActivatedRoute, Router } from '@angular/router';
 
-interface RouteState {
-    url: string;
-    method: string;
-}
-
-class Request {
-    result?: any;
-    json?: any;
-    headers: { name: string, value: string }[] = [];
-
-    status: number = 0;
-    statusText: string = '';
-
-    tab: string = 'body';
-
-    open?: boolean;
-
-    constructor(public method: string, public url: string) {
-    }
-}
 
 @Component({
-    template: `
-        <div class="routes">
-            <dui-button-group style="margin: 6px 12px;">
-                <dui-tab-button [active]="true">HTTP</dui-tab-button>
-                <dui-tab-button [active]="false">RPC</dui-tab-button>
-            </dui-button-group>
-
-            <div class="filter">
-                <dui-button-group padding="none">
-                    <dui-input round lightFocus placeholder="Filter ..." [(ngModel)]="filterPath" (ngModelChange)="updateFilter()"></dui-input>
-                    <dui-select style="width: 85px;" textured [(ngModel)]="filterMethod" (ngModelChange)="updateFilter()">
-                        <dui-option [value]="''">ALL</dui-option>
-                        <dui-option *ngFor="let m of methods; trackBy: trackByIndex"
-                                    [value]="m">{{m}}</dui-option>
-                    </dui-select>
-                </dui-button-group>
-            </div>
-
-            <dui-list [(ngModel)]="route" (ngModelChange)="setRoute($event)">
-                <dui-list-item [value]="route" *ngFor="let route of filteredRoutes">
-                    <div class="list-item">
-                        <div class="path">{{route.path}}</div>
-                        <div class="method text-light">{{route.httpMethods.join(', ')}}</div>
-                    </div>
-                </dui-list-item>
-            </dui-list>
-        </div>
-
-        <div class="form overlay-scrollbar-small">
-            <ng-container *ngIf="route && routeStates.get(route.id) as routeState">
-
-                <dui-button-group padding="none" style="width: 100%;">
-                    <dui-select style="width: 85px;" [(ngModel)]="routeState.method" textured>
-                        <dui-option *ngFor="let m of methods; trackBy: trackByIndex"
-                                    [value]="m"
-                                    [disabled]="!route.httpMethods.includes(m)">{{m}}</dui-option>
-                    </dui-select>
-                    <!--                    <div class="url-input">-->
-                    <!--                        <ng-container *ngFor="let s of segments; let i = index; trackBy: trackByIndex">-->
-                    <!--                            <ng-container *ngIf="isParameter(s)">-->
-                    <!--                                <dui-input lightFocus (enter)="execute()" [(ngModel)]="segmentValues[i]"></dui-input>-->
-                    <!--                            </ng-container>-->
-                    <!--                            <div class="urlPart" *ngIf="!isParameter(s)">{{s}}</div>-->
-                    <!--                        </ng-container>-->
-                    <!--                    </div>-->
-                    <dui-input style="flex: 1" lightFocus (enter)="execute(routeState)" [(ngModel)]="routeState.url"></dui-input>
-                    <dui-button icon="play" textured (click)="execute(routeState)"></dui-button>
-                </dui-button-group>
-
-                <div *ngFor="let p of route.parameters; trackBy: trackByIndex">
-                    {{p.type}} {{p.name}}
-                </div>
-
-                <div *ngIf="route.deserializedBodySchemas as bodies">
-                    <ng-container *ngIf="bodies.length">
-                        <h3>Request Body</h3>
-                        <ng-container *ngFor="let s of bodies; let last = last">
-                            <ng-container *ngIf="!last">
-                                <pre class="ts text-selection">{{s.toString()}}</pre>
-                            </ng-container>
-                            <ng-container *ngIf="last">
-                                <h4>Body</h4>
-                                <pre class="ts text-selection">{{s.toString()}}</pre>
-                            </ng-container>
-                        </ng-container>
-                    </ng-container>
-                </div>
-
-                <div *ngIf="route.getResultSchemas() as bodies">
-                    <ng-container *ngIf="bodies.length">
-                        <h3>Response Body</h3>
-                        <ng-container *ngFor="let s of bodies; let last = last">
-                            <ng-container *ngIf="!last">
-                                <pre class="ts text-selection">{{s.toString()}}</pre>
-                            </ng-container>
-                            <ng-container *ngIf="last">
-                                <pre class="ts text-selection">{{s.getProperty('v').getResolvedClassSchema().toString()}}</pre>
-                                <h4>Result</h4>
-                                <pre class="ts text-selection">{{s.getProperty('v').toString()}}</pre>
-                            </ng-container>
-                        </ng-container>
-                    </ng-container>
-                </div>
-
-
-                <h4>Category</h4>
-                <div class="group-content">
-                    {{route.category || 'none'}}
-                </div>
-
-                <h4>Groups</h4>
-                <div class="group-content">
-                    {{route.groups.join(',') || 'none'}}
-                </div>
-
-                <h4>Description</h4>
-                <div class="group-content">
-                    {{route.description || 'none'}}
-                </div>
-
-                <h4>Response Status Codes</h4>
-
-                <div class="group-content">
-                    {{route.description || 'none'}}
-                </div>
-
-            </ng-container>
-        </div>
-
-        <div class="right overlay-scrollbar-small">
-            <div class="request" *ngFor="let r of requests; let i = index; trackBy: trackByIndex">
-                <div class="line">
-                    <dui-icon clickable (click)="r.open = !isOpen(r, i)" [name]="isOpen(r, i) ? 'arrow_down' : 'arrow_right'"></dui-icon>
-                    <div class="method">{{r.method}}</div>
-                    <div class="url text-selection">{{r.url}}</div>
-                    <div class="status">
-                        <div class="status-box" [class.orange]="isOrange(r.status)" [class.red]="isRed(r.status)">
-                            {{r.status === 0 ? 'pending' : r.status}} {{r.statusText}}
-                        </div>
-                    </div>
-                </div>
-                <div class="results" [class.visible]="isOpen(r, i)">
-                    <dui-button-group style="margin-bottom: 5px;">
-                        <dui-tab-button (click)="r.tab = 'body'" [active]="r.tab === 'body'">Body</dui-tab-button>
-                        <dui-tab-button (click)="r.tab = 'header'" [active]="r.tab === 'header'">Header</dui-tab-button>
-                    </dui-button-group>
-
-                    <ng-container *ngIf="r.tab === 'header'">
-                        <dui-table [items]="r.headers" borderless noFocusOutline [autoHeight]="true">
-                            <dui-table-column name="name" [width]="180" class="text-selection"></dui-table-column>
-                            <dui-table-column name="value" [width]="280" class="text-selection"></dui-table-column>
-                        </dui-table>
-                    </ng-container>
-
-                    <ng-container *ngIf="r.tab === 'body'">
-                        <pre class="text-selection overlay-scrollbar-small" style="padding-bottom: 8px;">{{r.result}}</pre>
-                    </ng-container>
-                </div>
-            </div>
-        </div>
-    `,
+    templateUrl: './http.component.html',
     styleUrls: ['./http.component.scss']
 })
-export class HttpComponent implements OnInit {
+export class HttpComponent implements OnInit, OnDestroy {
+    headerStatusCodes = headerStatusCodes;
+    propertyToTSInterface = propertyToTSInterface;
+    classSchemaToTSInterface = classSchemaToTSInterface;
     trackByIndex = trackByIndex;
     public filteredRoutes: ApiRoute[] = [];
     public routes: ApiRoute[] = [];
 
-    public route?: ApiRoute;
+    public requests: Request[] = [];
 
-    // public method: string = 'GET';
-    // public path: string = '';
-    // public segments: string[] = [];
-    // public segmentValues: string[] = [];
+    routeTab: 'query' | 'body' | 'header' = 'query';
 
-    filterMethod: string = '';
-    filterPath: string = '';
+    routesWidth: number = 320;
+
+    codeGenerated: string = '';
+
+    codeGenerators: { [name: string]: (r: ApiRoute, s: RouteState) => string } = {
+        'curl': (r: ApiRoute, s: RouteState) => {
+            const args: string[] = [];
+            for (const h of s.fullHeaders) {
+                if (!h.name) continue;
+                args.push(`-H '${h.name}: ${h.value}'`);
+            }
+
+            if (s.resolvedBody) {
+                args.push(`-H 'Content-Type: application/json'`);
+                args.push(`-d '${JSON.stringify(s.resolvedBody)}'`);
+            }
+
+            if (s.method === 'GET') return `curl ${args.join(' ')} '${s.fullUrl}'`;
+            return `curl -X ${s.method} ${args.join(' ')}  '${s.fullUrl}'`;
+        },
+        'http': (r: ApiRoute, s: RouteState) => {
+            const headers: string[] = [];
+
+            for (const h of s.fullHeaders) {
+                if (!h.name) continue;
+                headers.push(`${h.name}: ${h.value}`);
+            }
+
+            let body = '';
+            if (s.resolvedBody) {
+                body = JSON.stringify(s.resolvedBody);
+            }
+
+            return `${s.method} ${s.fullUrl}${headers.length ? '\n' : ''}${headers.join('\n')}\n\n${body}`;
+        }
+    };
+
+    public methods: string[] = [
+        'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'
+    ];
+
+    public categories: string[] = [];
+    public groups: string[] = [];
+
+    protected reconnectedSub: Subscription;
+    protected routeParamsSub: Subscription;
+
+    constructor(
+        protected client: ControllerClient,
+        public store: Store,
+        public cd: ChangeDetectorRef,
+        public activatedRoute: ActivatedRoute,
+        protected dialog: DuiDialog,
+        protected router: Router,
+    ) {
+        this.reconnectedSub = client.client.transporter.reconnected.subscribe(async () => {
+            await this.loadRoutes();
+        });
+
+        this.routeParamsSub = this.activatedRoute.queryParams.subscribe(() => {
+            this.selectRouteFromRoute();
+        });
+    }
+
+    ngOnDestroy(): void {
+        this.reconnectedSub.unsubscribe();
+        this.routeParamsSub.unsubscribe();
+    }
+
+    async ngOnInit() {
+        await this.loadRoutes();
+    }
+
+    openRequest(r: Request) {
+        window.open(r.url, '_blank');
+    }
 
     isOpen(r: Request, i: number): boolean {
         return r.open === undefined ? i === 0 : r.open;
+    }
+
+    async newEnvironment() {
+        const a = await this.dialog.prompt('Environment name', '');
+        if (!a) return;
+        this.store.state.environments.push(new Environment(a));
+        this.store.state.environments = copy(this.store.state.environments);
+        this.store.state.activeEnvironmentIndex = this.store.state.environments.length - 1;
+    }
+
+    async openEnvironment() {
+        const environment = this.store.state.activeEnvironment;
+        if (!environment) return;
+        await this.dialog.open(EnvironmentDialogComponent, { environment }).close;
+        if (this.store.state.route) {
+            this.updateRouteState(this.store.state.route);
+        }
+    }
+
+    removeRequest(index: number): void {
+        this.store.set(state => {
+            const removed = state.requests.splice(index, 1);
+            for (const r of removed) {
+                localStorage.removeItem('@deepkit/api-console/request/result/' + r.bodyStoreId);
+                localStorage.removeItem('@deepkit/api-console/request/json/' + r.bodyStoreId);
+            }
+        });
+
+        this.updateRequests();
+    }
+
+    filterBodies(bodies: ClassSchema[]): ClassSchema[] {
+        return bodies.filter(v => {
+            if (v.name === '@deepkit/UploadedFile') return false;
+            return true;
+        });
     }
 
     isOrange(status: number): boolean {
@@ -195,80 +153,239 @@ export class HttpComponent implements OnInit {
         return status >= 500;
     }
 
-    public methods: string[] = [
-        'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'
-    ];
-
-    public routeStates = new Map<string, RouteState>();
-
-    public requests: Request[] = [];
-
     isParameter(s: string): boolean {
         return s[0] === ':';
     }
 
-    constructor(protected client: ControllerClient) {
+    switchViewRequest(view: 'all' | 'selected'): void {
+        this.store.set(state => {
+            state.viewHttp.viewRequests = view;
+        });
+
+        this.updateRequests();
+    }
+
+    consoleInputKeyDown(event: KeyboardEvent, route: ApiRoute) {
+        if (event.key.toLowerCase() === 'enter') {
+            this.execute(route);
+        }
+    }
+
+    updateRequests() {
+        if (this.store.state.viewHttp.viewRequests === 'all') {
+            this.requests = this.store.state.requests;
+        } else {
+            const route = this.store.state.route;
+            if (route) {
+                this.requests = this.store.state.requests.filter(r => {
+                    return route.id === r.id;
+                });
+            } else {
+                if (this.requests.length > 0) this.requests = [];
+            }
+        }
+    }
+
+    toggleServerStatsVisibility() {
+        this.store.set(state => {
+            state.viewHttp.serverStatsVisible = !state.viewHttp.serverStatsVisible;
+        });
+    }
+
+    toggleCodeGenerationVisibility() {
+        this.store.set(state => {
+            state.viewHttp.codeGenerationVisible = !state.viewHttp.codeGenerationVisible;
+        });
     }
 
     updateFilter() {
-        this.filteredRoutes = this.routes.filter(v => {
-            if (this.filterMethod && !v.httpMethods.includes(this.filterMethod)) return false;
-            if (this.filterPath && !v.path.includes(this.filterPath)) return false;
-            return true;
-        });
-
-        this.filteredRoutes.sort((a, b) => {
-            if (a.path > b.path) return +1;
-            if (a.path < b.path) return -1;
-            return 0;
-        });
+        this.filteredRoutes = filterAndSortRoutes(this.routes, this.store.state.viewHttp);
+        this.store.store();
+        this.cd.detectChanges();
     }
 
-    setRoute(route: ApiRoute) {
-        let routeState: RouteState | undefined = this.routeStates.get(route.id);
-        if (!routeState) {
-            routeState = { url: route.path, method: 'GET' };
-            if (route.httpMethods.length) routeState.method = route.httpMethods[0];
-            this.routeStates.set(route.id, routeState);
+    navigateToRoute(route?: ApiRoute) {
+        this.router.navigate(['api/http'], { queryParams: { route: route?.id } });
+    }
+
+    setRoute(route?: ApiRoute) {
+        if (route) {
+            let routeState: RouteState | undefined = this.store.state.routeStates[route.id];
+            if (!routeState) {
+                routeState = new RouteState(route.id, 'GET');
+                if (route.httpMethods.length) routeState.method = route.httpMethods[0];
+                this.store.set(state => {
+                    state.routeStates[route.id] = routeState!;
+                });
+            }
+
+            this.updateRouteState(route);
         }
 
-        // this.segments = route.path.split(/(:\w+)/g);
-        // this.segmentValues = new Array(this.segments.length).fill('');
-        // if (this.segments[this.segments.length - 1] === '') this.segments.pop();
+        this.store.set(state => {
+            state.route = route;
+        });
+
+        this.updateRequests();
+        this.cd.detectChanges();
     }
 
-    async ngOnInit() {
+    async loadRoutes() {
         this.routes = await this.client.api.getRoutes();
+
+        const categories = new Set<string>();
+        const groups = new Set<string>();
+        for (const route of this.routes) {
+            if (route.category) categories.add(route.category);
+            for (const group of route.groups) if (group) groups.add(group);
+        }
+
+        this.selectRouteFromRoute();
+
+        this.categories = [...categories];
+        this.groups = [...groups];
+
+        console.log('this.routes', this.routes);
         this.updateFilter();
-        console.log('routes', this.routes);
+    }
+
+    protected selectRouteFromRoute() {
+        const selectedRoute = this.activatedRoute.snapshot.queryParams.route;
+        if (selectedRoute && (!this.store.state.route || this.store.state.route.id !== selectedRoute)) {
+            const route = this.routes.find(v => v.id === selectedRoute);
+            if (!route) return;
+            this.setRoute(route);
+        }
     }
 
     static getUrl(): string {
         return location.protocol + '//' + (location.port === '4200' ? location.hostname + ':8080' : location.host);
     }
 
-    async execute(routeState: RouteState) {
-        // const path = this.segments.map((v, i) => {
-        //     return this.isParameter(v) ? this.segmentValues[i] : v;
-        // }).join('');
-        const url = HttpComponent.getUrl() + routeState.url;
+    updateRouteState(route?: ApiRoute): void {
+        route = route || this.store.state.route;
+        if (!route) return;
+        const routeState = this.store.state.routeStates[route.id];
+        const environment = this.store.state.activeEnvironment;
+        if (!routeState) return;
 
-        const request = new Request(routeState.method, url);
+        let url = route.path;
 
-        this.requests.unshift(request);
+        const query: string[] = [];
 
-        const response = await fetch(url, { method: routeState.method });
-        request.status = response.status;
-        request.statusText = response.statusText;
-        for (const [name, value] of (response.headers as any)) {
-            request.headers.push({ name, value });
+        function extract(name: string, value: any) {
+            if (value === undefined || value === '') return;
+            if (isObject(value)) {
+                for (const [k, v] of Object.entries(value)) {
+                    extract(name + '[' + k + ']', v);
+                }
+            } else if (isArray(value)) {
+                for (const v of value) {
+                    extract(name + '[]', v);
+                }
+            } else {
+                query.push(`${name}=${encodeURIComponent(value)}`);
+            }
         }
 
-        request.result = await response.text();
-
-        const contentType = response.headers.get('content-type') || '';
-        if (contentType.startsWith('application/json')) {
-            request.result = JSON.stringify(JSON.parse(request.result), undefined, 4);
+        const querySchema = route.getQuerySchema();
+        if (querySchema) {
+            const queryData: any = {};
+            for (const property of querySchema.getProperties()) {
+                queryData[property.name] = extractDataStructure(routeState.params.getProperty(property.name), property);
+            }
+            for (const [name, value] of Object.entries(queryData)) {
+                extract(name, value);
+            }
         }
+
+        const urlSchema = route.getUrlSchema();
+        if (urlSchema) {
+            for (const property of urlSchema.getProperties()) {
+                const regexp = property.data['.deepkit/api-console/url-regex'] ||= new RegExp(`(:${property.name})([^\w]|$)`);
+                const v = extractDataStructure(routeState.urls.getProperty(property.name), property);
+                url = url.replace(regexp, function (a: any, b: any, c: any) {
+                    return String(v) + c;
+                });
+            }
+        }
+
+        if (query.length) {
+            if (url.includes('?')) {
+                url += '&' + query.join('&');
+            } else {
+                url += '?' + query.join('&');
+            }
+        }
+
+        const bodySchema = route.getBodySchema();
+        if (bodySchema) {
+            routeState.resolvedBody = extractDataStructureFromSchema(routeState.body, bodySchema);
+        }
+
+        if (environment) {
+            routeState.fullHeaders = [...environment.headers, ...routeState.headers];
+        } else {
+            routeState.fullHeaders = routeState.headers;
+        }
+
+        routeState.fullUrl = HttpComponent.getUrl() + url;
+        this.codeGenerated = this.codeGenerators[this.store.state.viewHttp.codeGenerationType](route, routeState);
+
+        this.store.store();
+    }
+
+    async execute(route: ApiRoute) {
+        const routeState = this.store.state.routeStates[route.id];
+        if (!routeState) return;
+
+        this.updateRouteState(route);
+        const request = new Request(routeState.id, routeState.method, routeState.fullUrl);
+
+        this.store.set(state => {
+            if (state.requests.length && state.requests[state.requests.length - 1].open === undefined) {
+                state.requests[state.requests.length - 1].open = false;
+            }
+            state.requests.unshift(request);
+            if (state.requests.length > 100) state.requests.splice(100);
+        });
+        this.updateRequests();
+
+        try {
+            const start = performance.now();
+            let body: any = undefined;
+            const headers: Record<any, any> = {};
+
+            Object.assign(headers, routeState.headers);
+            if (routeState.resolvedBody) {
+                body = JSON.stringify(routeState.resolvedBody);
+                headers['Content-Type'] = 'application/json';
+            }
+
+            this.cd.detectChanges();
+            const response = await fetch(routeState.fullUrl, { method: routeState.method, body, headers });
+            request.took = performance.now() - start;
+            request.status = response.status;
+            request.statusText = response.statusText;
+            for (const [name, value] of (response.headers as any)) {
+                request.headers.push({ name, value });
+            }
+
+            this.cd.detectChanges();
+            const result = await response.text();
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.startsWith('application/json')) {
+                request.json = JSON.stringify(JSON.parse(result), undefined, 4);
+            } else {
+                request.result = result;
+            }
+            this.cd.detectChanges();
+        } catch (error) {
+            request.error = error.message;
+        }
+
+        this.store.store();
+        this.cd.detectChanges();
     }
 }

@@ -274,7 +274,12 @@ export class OrmBrowserController implements BrowserControllerInterface {
     }
 
     @http.GET('_orm-browser/query')
-    @t.any
+    @t.type({
+        error: t.string.optional,
+        log: t.array(t.string),
+        executionTime: t.number,
+        result: t.any
+    })
     async httpQuery(@http.query() dbName: string, @http.query() entityName: string, @http.query() query: string): Promise<QueryResult> {
         const [, entity] = this.getDbEntity(dbName, entityName);
         const res = await this.query(dbName, entityName, query);

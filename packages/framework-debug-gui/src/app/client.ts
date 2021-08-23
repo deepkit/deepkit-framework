@@ -17,7 +17,7 @@ export class ControllerClient {
     protected requests?: Promise<Collection<DebugRequest>>;
     protected workflows: { [name: string]: Promise<Workflow> } = {};
 
-    constructor(protected client: DeepkitClient) {
+    constructor(public client: DeepkitClient) {
     }
 
     public readonly debug = this.client.controller(DebugControllerInterface);

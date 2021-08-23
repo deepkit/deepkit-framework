@@ -7,7 +7,7 @@ import { FrameCategory } from '@deepkit/stopwatch';
 
 class TimelineState {
     scrollX: number = 0;
-    zoom: number = 20;
+    zoom: number = 200;
     width: number = 500;
     height: number = 500;
 }
@@ -294,5 +294,7 @@ export class ProfileTimelineComponent implements AfterViewInit, OnChanges {
             event.preventDefault();
             this.update();
         });
+
+        this.cd.detectChanges();
     }
 }

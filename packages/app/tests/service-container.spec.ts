@@ -17,7 +17,7 @@ test('simple setup with import and overwrite', () => {
     const databaseModule = new AppModule({
         providers: [Connection, HiddenDatabaseService],
         exports: [Connection]
-    });
+    }, 'database');
 
     class MyService {
     }
@@ -135,7 +135,7 @@ test('for root with exported module', () => {
     const SharedModule = new AppModule({
         providers: [SharedService],
         exports: [SharedService]
-    });
+    }, 'shared');
 
     @injectable()
     class BaseHandler {
@@ -149,7 +149,7 @@ test('for root with exported module', () => {
             BaseHandler
         ],
         imports: [SharedModule],
-    });
+    }, 'base');
 
     const myModule = new AppModule({
         imports: [
@@ -187,11 +187,11 @@ test('module with config object', () => {
         exports: [
             ExchangeConfig,
         ]
-    });
+    }, 'exchange');
 
     const myBaseModule = new AppModule({
         imports: [exchangeModule]
-    });
+    }, 'base');
 
     {
         bootstrapMainCalledConfig = undefined;

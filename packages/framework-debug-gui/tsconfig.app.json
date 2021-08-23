@@ -13,6 +13,8 @@
     "src/**/*.d.ts",
     "node_modules/@deepkit/orm-browser-gui/index.ts",
     "node_modules/@deepkit/orm-browser-gui/src/**/*.ts",
+    "node_modules/@deepkit/api-console-gui/index.ts",
+    "node_modules/@deepkit/api-console-gui/src/**/*.ts",
     "node_modules/@deepkit/desktop-ui/index.ts",
     "node_modules/@deepkit/desktop-ui/src/**/*.ts"
   ]

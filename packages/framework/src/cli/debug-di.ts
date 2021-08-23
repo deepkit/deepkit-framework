@@ -34,8 +34,7 @@ export class DebugDIController implements Command {
 
         for (const module of modules) {
             console.log(`Module ${module.getName() || 'root'} DI retriever:`);
-            const context = this.serviceContainer.getContextFor(module);
-            console.log((injectorContext.getInjector(context.id) as any).retriever.toString());
+            console.log((injectorContext.getInjectorForModule(module) as any).retriever.toString());
         }
     }
 }

@@ -639,7 +639,7 @@ export class Router {
 
         const modify: string[] = [];
         for (const parameter of parsedRoute.getParameters()) {
-            if (parameter.query) {
+            if (parameter.query || parameter.queries) {
                 const queryPath = parameter.typePath === undefined ? parameter.property.name : parameter.typePath;
 
                 if (parameter.property.type === 'class') {

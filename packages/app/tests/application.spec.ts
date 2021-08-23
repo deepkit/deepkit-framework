@@ -134,7 +134,7 @@ test('required value can be set via env or setupConfig', async () => {
         log: t.boolean,
     });
 
-    const baseModule = new AppModule({ config: baseConfig, providers: [BaseService] })
+    const baseModule = new AppModule({ config: baseConfig, providers: [BaseService] }, 'base')
         .setup((module, config) => {
             if (!config.log) throw new Error('log needs to be true');
         })
@@ -158,7 +158,7 @@ test('required value can be set via env or setupConfig', async () => {
 
     {
         baseModule.clearConfig();
-        process.env['APP_LOG'] = '1';
+        process.env['APP_BASE_LOG'] = '1';
         const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
         app.loadConfigFromEnv();
         app.serviceContainer.process();
@@ -166,7 +166,7 @@ test('required value can be set via env or setupConfig', async () => {
 
     {
         baseModule.clearConfig();
-        process.env['APP_LOG'] = 'asdf';
+        process.env['APP_BASE_LOG'] = 'asdf';
 
         const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
         app.loadConfigFromEnv();
@@ -184,7 +184,7 @@ test('required value can be set via env or setupConfig', async () => {
 
     {
         baseModule.clearConfig();
-        process.env['APP_CONFIG'] = '{"log": true}';
+        process.env['APP_CONFIG'] = '{"base": {"log": true}}';
 
         const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
         app.loadConfigFromEnvVariable('APP_CONFIG');

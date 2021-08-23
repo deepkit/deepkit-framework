@@ -12,10 +12,10 @@ import { registerStaticHttpController } from '@deepkit/http';
 import { AppModule, findParentPath } from '@deepkit/app';
 
 export function registerDebugHttpController(module: AppModule<any, any>, path: string): void {
-    const localPath = findParentPath('framework-debug-gui/dist/framework-debug-gui', __dirname);
+    const localPath = findParentPath('node_modules/@deepkit/framework-debug-gui/dist/framework-debug-gui', __dirname);
     if (localPath) {
-        registerStaticHttpController(module, path, localPath);
+        registerStaticHttpController(module, path, localPath, ['app-static']);
     } else {
-        console.log('Warning: framework-debug-gui no build found.');
+        console.log('Warning: node_modules/@deepkit/framework-debug-gui no build found in ' + __dirname);
     }
 }

@@ -109,6 +109,7 @@ export class ApplicationServerListener {
 
             let lastController: any = undefined;
             for (const route of routes) {
+                if (route.internal) continue;
                 if (lastController !== route.action.controller) {
                     lastController = route.action.controller;
                     this.logger.log(`HTTP Controller <green>${getClassName(lastController)}</green>`);
