@@ -40,7 +40,7 @@ export class DatabaseInfo {
 
     getClassSchemas(): ClassSchema[] {
         if (!this.classSchemas) {
-            this.classSchemas = deserializeSchemas(this.serializedSchemas, '@orm-browser/' + this.name + '/');
+            this.classSchemas = deserializeSchemas(this.serializedSchemas);
         }
 
         return this.classSchemas;
