@@ -167,8 +167,6 @@ export class SQLitePlatform extends DefaultPlatform {
 
         //the default platform creates for each foreign key an index.
 
-        //todo, support composite pks where one is AUTOINCREMENT
-
         super.normalizeTables(tables);
     }
 

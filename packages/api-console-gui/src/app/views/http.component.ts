@@ -240,7 +240,7 @@ export class HttpComponent implements OnInit, OnDestroy {
             for (const group of route.groups) if (group) groups.add(group);
         }
 
-        this.selectRouteFromRoute();
+        this.selectRouteFromRoute(true);
 
         this.categories = [...categories];
         this.groups = [...groups];
@@ -249,9 +249,9 @@ export class HttpComponent implements OnInit, OnDestroy {
         this.updateFilter();
     }
 
-    protected selectRouteFromRoute() {
+    protected selectRouteFromRoute(force: boolean = false) {
         const selectedRoute = this.activatedRoute.snapshot.queryParams.route;
-        if (selectedRoute && (!this.store.state.route || this.store.state.route.id !== selectedRoute)) {
+        if (force || selectedRoute && (!this.store.state.route || this.store.state.route.id !== selectedRoute)) {
             const route = this.routes.find(v => v.id === selectedRoute);
             if (!route) return;
             this.setRoute(route);

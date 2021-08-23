@@ -11,8 +11,14 @@ import { DataStructure } from '../../store';
         </ng-container>
 
         <div class="box children" *ngIf="schema">
+            <dui-select textured style="width: 100%" [(ngModel)]="model.asReference" *ngIf="property.isReference || property.backReference">
+                <dui-option [value]="false">Create new {{schema.getClassName()}}</dui-option>
+                <dui-option [value]="true">Reference existing</dui-option>
+            </dui-select>
+
             <ng-container *ngFor="let p of schema.getProperties(); let last = last; trackBy: trackByIndex">
-                <api-console-input [decoration]="true" [class.last]="last"
+                <api-console-input *ngIf="!showOnlyPrimaryKey || p.isId"
+                                   [decoration]="true" [class.last]="last"
                                    [model]="model.getProperty(p.name)" [property]="p"
                                    (modelChange)="modelChange.emit(model)"></api-console-input>
             </ng-container>
@@ -43,6 +49,10 @@ export class ClassInputComponent implements OnChanges, OnInit {
 
     ngOnChanges(changes: SimpleChanges): void {
         this.init();
+    }
+
+    get showOnlyPrimaryKey(): boolean {
+        return (this.property.isReference || Boolean(this.property.backReference)) && this.model.asReference;
     }
 
     init() {

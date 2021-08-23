@@ -103,7 +103,7 @@
 
                     <ng-container *ngIf="route.getBodySchema() as schema">
                         <div class="ts text-selection" style="margin-top: 10px">
-                            <div codeHighlight [code]="classSchemaToTSInterface(schema)"></div>
+                            <div codeHighlight [code]="classSchemaToTSInterface(schema, {direction: 'serialize'})"></div>
                         </div>
                     </ng-container>
                 </div>

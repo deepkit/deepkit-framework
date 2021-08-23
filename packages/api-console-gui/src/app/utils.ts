@@ -9,6 +9,8 @@ interface ToTSInterfaceOptions {
      * When true `|undefined` is inferred from isOptional instead of !isValueRequired.
      */
     strictRequired?: true;
+
+    direction?: 'serialize' | 'deserialize';
 }
 
 function isOptional(property: PropertySchema, options: ToTSInterfaceOptions) {
@@ -17,16 +19,22 @@ function isOptional(property: PropertySchema, options: ToTSInterfaceOptions) {
 
 export function classSchemaToTSInterface(schema: ClassSchema, options: ToTSInterfaceOptions = {}, depth: number = 1): string {
     const name = schema.getClassName();
-    return `${name}${name ? ' ' : ''}{\n`
-        + schema.getProperties().map(v => '   '.repeat(depth) + v.name + (isOptional(v.jsonType || v, options) ? '?' : '') + ': ' + propertyToTSInterface(v, options, false, depth + 1, ';')).join('\n')
-        + '\n' + '   '.repeat(depth - 1) + '}';
+    const lines: string[] = [];
+    for (const v of schema.getProperties()) {
+        lines.push('   '.repeat(depth) + v.name + (isOptional(v.jsonType || v, options) ? '?' : '') + ': ' + propertyToTSInterface(v, options, false, depth + 1, ';'));
+    }
+
+    return `${name}${name ? ' ' : ''}{\n` + lines.join('\n') + '\n' + '   '.repeat(depth - 1) + '}';
 }
 
 export function propertyToTSInterface(property: PropertySchema, options: ToTSInterfaceOptions = {}, withOptional: boolean = true, depth: number = 1, affix: string = ''): string {
     if (property.jsonType) return propertyToTSInterface(property.jsonType, {}, withOptional, depth, affix) + ' //' + property.toString(false);
 
     if (property.type === 'class') {
-        return classSchemaToTSInterface(property.getResolvedClassSchema(), options, depth);
+        let pre = options.direction === 'serialize' && (property.isReference || property.backReference)
+            ? propertyToTSInterface(property.getResolvedClassSchema().getPrimaryField(), options, false, depth) + ' | '
+            : '';
+        return pre + classSchemaToTSInterface(property.getResolvedClassSchema(), options, depth);
     }
 
     if (withOptional && isOptional(property, options)) affix += '|undefined';
@@ -38,13 +46,13 @@ export function propertyToTSInterface(property: PropertySchema, options: ToTSInt
         return `Array<${propertyToTSInterface(property.templateArgs[0], options, true, depth, undefined)}>${affix}`;
     }
     if (property.type === 'map') {
-        return `Record<${propertyToTSInterface(property.templateArgs[0], {}, true, depth)}, ${propertyToTSInterface(property.templateArgs[1], options, false, depth, undefined)}>${affix}`;
+        return `Record<${propertyToTSInterface(property.templateArgs[0], {}, true, depth)}, ${propertyToTSInterface(property.templateArgs[1], options, true, depth, undefined)}>${affix}`;
     }
     if (property.type === 'partial') {
         return `Partial<${propertyToTSInterface(property.templateArgs[0], options, true, depth, undefined)}>${affix}`;
     }
     if (property.type === 'union') {
-        return property.templateArgs.map(v => propertyToTSInterface(v, options, false, depth, undefined)).join(' | ') + affix;
+        return property.templateArgs.map(v => propertyToTSInterface(v, options, true, depth, undefined)).join(' | ') + affix;
     }
     if (property.type === 'enum') return 'enum' + affix;
 

@@ -4,6 +4,7 @@ import { ClassSchema, classToPlain, plainToClass, PropertySchema, t } from '@dee
 
 export class DataStructure {
     @t active: boolean = false;
+    @t asReference: boolean = false;
 
     @t templateIndex: number = -1; //for unions
 
@@ -24,6 +25,11 @@ export class DataStructure {
 
 export function extractDataStructure(ds: DataStructure, property: PropertySchema): any {
     if (property.type === 'class' || property.type === 'partial') {
+        if ((property.isReference || property.backReference) && ds.asReference) {
+            const primary = property.getResolvedClassSchema().getPrimaryField();
+            return extractDataStructure(ds.properties[primary.name], primary);
+        }
+
         return extractDataStructureFromSchema(ds, property.getResolvedClassSchema());
     } else if (property.type === 'map') {
         const v: any = {};

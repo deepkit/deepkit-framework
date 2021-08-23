@@ -118,7 +118,7 @@
                                                    (modelChange)="updateRouteState(route)"></api-console-input>
                             </ng-container>
                             <div class="ts text-selection">
-                                <div codeHighlight [code]="classSchemaToTSInterface(schema)"></div>
+                                <div codeHighlight [code]="classSchemaToTSInterface(schema, {direction: 'serialize'})"></div>
                             </div>
                         </ng-container>
                     </div>

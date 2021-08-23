@@ -1295,7 +1295,7 @@ function Index(options?: IndexOptions, name?: string) {
             throw new Error('Index could not be used on method arguments.');
         }
 
-        name = name || property.name;
+        name = name || ''; //don't use the property.name as default as index names need to be unique
         options = options || {};
         const index = schema.indices.get(name);
         const fields: string[] = [];

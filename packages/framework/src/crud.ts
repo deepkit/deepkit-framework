@@ -18,7 +18,7 @@ function applyJoins(query: Query<any>, joins: { [name: string]: string }): Query
     for (const [field, projection] of Object.entries(joins)) {
         if (!query.classSchema.hasProperty(field)) throw new Error(`Join '${field}' does not exist`);
         let join = query.useJoinWith(field);
-        if (projection.length) {
+        if (projection.length && projection !== '*') {
             join = join.select(...projection.split(','));
         }
         query = join.end();
@@ -98,7 +98,7 @@ function createController(schema: ClassSchema, options: AutoCrudOptions = {}): C
 
     let listQuery = t.schema({
         filter: t.partial(schema).optional,
-        select: t.union(t.array(t.union(...selectNames)), t.string).description('List of or string of comma separated field names').optional,
+        select: t.union(t.array(t.union(...selectNames)), t.string.name('fields')).description('List of or string of comma separated field names').optional,
         orderBy: t.map(t.union('asc', 'desc'), t.union(...sortNames)).default({}),
         offset: t.number.default(0).positive(),
         limit: t.number.default(0).positive().maximum(options.maxLimit || 1000),
@@ -114,7 +114,7 @@ function createController(schema: ClassSchema, options: AutoCrudOptions = {}): C
     });
 
     if (joinNames.length) {
-        const joins = t.map(t.string, t.union(...joinNames)).description('Each entry with field names, comma separated').optional;
+        const joins = t.map(t.string, t.union(...joinNames)).description('Each entry with field names, comma separated, or all with *').optional;
         listQuery.addProperty('joins', joins);
         getQuery.addProperty('joins', joins);
     }
