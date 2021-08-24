@@ -9,9 +9,10 @@
  */
 
 import { ClassSchema, ExtractClassDefinition, FieldDecoratorWrapper, getClassSchema, jsonSerializer, PlainSchemaProps, PropertySchema, t } from '@deepkit/type';
-import { getProviders, isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider, Provider, ProviderWithScope, Tag, TagProvider, TagRegistry } from './provider';
-import { ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction, isPrototypeOfBase } from '@deepkit/core';
+import { isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider, Provider, ProviderWithScope, Tag, TagProvider, TagRegistry } from './provider';
+import { ClassType, CompilerContext, CustomError, getClassName, getClassTypeFromInstance, isClass, isFunction, isPrototypeOfBase } from '@deepkit/core';
 import { InjectorModule } from './module';
+import { InjectorContext } from './injector-context';
 
 
 export class ConfigToken<T extends {}> {
@@ -22,22 +23,22 @@ export class ConfigToken<T extends {}> {
 export class ConfigSlice<T extends {}> {
     public bag?: { [name: string]: any };
     public config!: ConfigDefinition<T>;
-    public names!: (keyof T & string)[];
+
+    // public names!: (keyof T & string)[];
 
     constructor(config: ConfigDefinition<T>, names: (keyof T & string)[]) {
         //we want that ConfigSlice acts as a regular plain object, which can be serialized at wish.
+        let bag: { [name: string]: any } = {};
+
         Object.defineProperties(this, {
-            config: { enumerable: false, value: config },
-            names: { enumerable: false, value: names },
-            bag: { enumerable: false, writable: true },
+            config: { enumerable: false, get: () => config },
+            bag: { enumerable: false, set: (v) => bag = v },
         });
 
         for (const name of names) {
             Object.defineProperty(this, name, {
                 enumerable: true,
-                get: () => {
-                    return this.bag ? this.bag[name] : undefined;
-                }
+                get: () => bag[name]
             });
         }
     }
@@ -48,7 +49,7 @@ export class ConfigSlice<T extends {}> {
 }
 
 export class ConfigDefinition<T extends {}> {
-    protected module?: InjectorModule;
+    protected moduleClass?: ClassType<InjectorModule>;
 
     public type!: T;
 
@@ -57,22 +58,21 @@ export class ConfigDefinition<T extends {}> {
     ) {
     }
 
-    setModule(module: InjectorModule) {
-        this.module = module;
+    setModuleClass(module: InjectorModule) {
+        this.moduleClass = getClassTypeFromInstance(module);
     }
 
-    hasModule(): boolean {
-        return this.module !== undefined;
+    hasModuleClass(): boolean {
+        return this.moduleClass !== undefined;
     }
 
-    getModule(): InjectorModule {
-        if (!this.module) throw new Error('ConfigDefinition module not set. Make sure your config is assigned to a single module. See createModule({config: x}).');
+    getModuleClass(): ClassType<InjectorModule> {
+        if (!this.moduleClass) throw new Error('Configuration is not assigned to a module. Make sure your config is assigned to a single module. See createModule({config: x}).');
 
-        return this.module;
+        return this.moduleClass;
     }
 
-    getConfigOrDefaults(): any {
-        if (this.module) return this.module.getConfig();
+    getDefaults(): any {
         return jsonSerializer.for(this.schema).validatedDeserialize({});
     }
 
@@ -85,7 +85,7 @@ export class ConfigDefinition<T extends {}> {
         } as any;
     }
 
-    slice<N extends (keyof T & string)[]>(names: N): ClassType<Pick<T, N[number]>> {
+    slice<N extends (keyof T & string)[]>(...names: N): ClassType<Pick<T, N[number]>> {
         const self = this;
         return class extends ConfigSlice<T> {
             constructor() {
@@ -125,7 +125,7 @@ export interface InjectDecorator {
      */
     readonly root: this;
 
-    readonly options: {token: any, optional: boolean, root: boolean};
+    readonly options: { token: any, optional: boolean, root: boolean };
 }
 
 export type InjectOptions = {
@@ -156,7 +156,7 @@ export function inject(token?: any | ForwardRef<any>): InjectDecorator {
         })(target, propertyOrMethodName, parameterIndexOrDescriptor);
     };
 
-    Object.defineProperty(fn, injectSymbol, {value: true, enumerable: false});
+    Object.defineProperty(fn, injectSymbol, { value: true, enumerable: false });
 
     Object.defineProperty(fn, 'optional', {
         get() {
@@ -244,6 +244,7 @@ let CircularDetectorResets: (() => void)[] = [];
 
 export interface BasicInjector {
     get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: BasicInjector): R;
+
     getInjectorForModule(module: InjectorModule): BasicInjector;
 }
 
@@ -266,7 +267,8 @@ export class Injector implements BasicInjector {
         protected injectorContext: InjectorContext = new InjectorContext,
         protected configuredProviderRegistry: ConfiguredProviderRegistry | undefined = undefined,
         protected tagRegistry: TagRegistry = new TagRegistry(),
-        protected contextResolver?: { getInjectorForModule(module: InjectorModule): BasicInjector }
+        protected contextResolver?: { getInjectorForModule(module: InjectorModule): BasicInjector },
+        protected context?: Context
     ) {
         if (!this.configuredProviderRegistry) this.configuredProviderRegistry = injectorContext.configuredProviderRegistry;
         if (this.providers.length) this.retriever = this.buildRetriever();
@@ -284,6 +286,7 @@ export class Injector implements BasicInjector {
         const injector = new Injector(undefined, parents || this.parents, injectorContext, this.configuredProviderRegistry, this.tagRegistry, this.contextResolver);
         injector.providers = this.providers;
         injector.retriever = this.retriever;
+        injector.context = this.context;
         return injector;
     }
 
@@ -303,36 +306,60 @@ export class Injector implements BasicInjector {
         return this.parents.length === 0;
     }
 
-    protected createFactoryProperty(options: {name: string | number, token: any, optional: boolean}, compiler: CompilerContext, ofName: string, argPosition: number, notFoundFunction: string) {
+    protected resolveModuleFromContextTree(moduleClass: ClassType<InjectorModule>): InjectorModule {
+        if (!this.context) {
+            throw new Error('Injector has no context assigned. Module configuration resolving can not be done.');
+        }
+
+        if (this.context.module instanceof moduleClass) return this.context.module;
+
+        for (const exported of this.context.exportedContexts) {
+            if (exported.module instanceof moduleClass) return exported.module;
+        }
+
+        throw new Error(
+            `Injector has no context assigned for ${getClassName(moduleClass)}. Context is for ${getClassName(this.context.module)}#${this.context.id}. ` +
+            `${this.context.exportedContexts.length} modules [${this.context.exportedContexts.map(v => getClassName(v.module) + '#' + v.id).join(', ')}] exported to this module. ` +
+            `Module configuration resolving can not be done.`
+        );
+    }
+
+    protected createFactoryProperty(options: { name: string | number, token: any, optional: boolean }, compiler: CompilerContext, ofName: string, argPosition: number, notFoundFunction: string) {
         const token = options.token;
 
         if (token instanceof ConfigDefinition) {
-            if (token.hasModule()) {
-                const module = this.injectorContext.getModule(token.getModule().getName());
+            if (token.hasModuleClass()) {
+                const module = this.resolveModuleFromContextTree(token.getModuleClass());
                 return compiler.reserveVariable('fullConfig', module.getConfig());
             } else {
-                return compiler.reserveVariable('fullConfig', token.getConfigOrDefaults());
+                return compiler.reserveVariable('fullConfig', token.getDefaults());
             }
         } else if (token instanceof ConfigToken) {
-            if (token.config.hasModule()) {
-                const module = this.injectorContext.getModule(token.config.getModule().getName());
-                const config = module.getConfig();
-                return compiler.reserveVariable(token.name, (config as any)[token.name]);
-            } else {
-                const config = token.config.getConfigOrDefaults();
-                return compiler.reserveVariable(token.name, (config as any)[token.name]);
+            try {
+                if (token.config.hasModuleClass()) {
+                    const module = this.resolveModuleFromContextTree(token.config.getModuleClass());
+                    const config = module.getConfig();
+                    return compiler.reserveVariable(token.name, (config as any)[token.name]);
+                } else {
+                    const config = token.config.getDefaults();
+                    return compiler.reserveVariable(token.name, (config as any)[token.name]);
+                }
+            } catch (error) {
+                throw new Error(`Could not resolve configuration token '${token.name}': ${error.message}`);
             }
         } else if (isClass(token) && (Object.getPrototypeOf(Object.getPrototypeOf(token)) === ConfigSlice || Object.getPrototypeOf(token) === ConfigSlice)) {
             const value: ConfigSlice<any> = new token;
-            if (!value.bag) {
-                if (value.config.hasModule()) {
-                    const module = this.injectorContext.getModule(value.config.getModule().getName());
+            try {
+                if (value.config.hasModuleClass()) {
+                    const module = this.resolveModuleFromContextTree(value.config.getModuleClass());
                     value.bag = module.getConfig();
                 } else {
-                    value.bag = value.config.getConfigOrDefaults();
+                    value.bag = value.config.getDefaults();
                 }
-                return compiler.reserveVariable('configSlice', value);
+            } catch (error) {
+                throw new Error(`Could not resolve configuration slice ${getClassName(token)}: ${error.message}`);
             }
+            return compiler.reserveVariable('configSlice', value);
         } else if (token === TagRegistry) {
             return compiler.reserveVariable('tagRegistry', this.tagRegistry);
         } else if (isPrototypeOfBase(token, Tag)) {
@@ -350,7 +377,7 @@ export class Injector implements BasicInjector {
                 }
 
                 throw new DependenciesUnmetError(
-                    `Undefined dependency '${options.name}: undefined' of ${of}. Dependency '${options.name}' has no type. Imported reflect-metadata correctly? `+
+                    `Undefined dependency '${options.name}: undefined' of ${of}. Dependency '${options.name}' has no type. Imported reflect-metadata correctly? ` +
                     `Use '@inject(PROVIDER) ${options.name}: T' if T is an interface. For circular references use @inject(() => T) ${options.name}: T.`
                 );
             }
@@ -363,7 +390,7 @@ export class Injector implements BasicInjector {
         return 'undefined';
     }
 
-    protected optionsFromProperty(property: PropertySchema): {token: any, name: string|number, optional: boolean} {
+    protected optionsFromProperty(property: PropertySchema): { token: any, name: string | number, optional: boolean } {
         const options = property.data['deepkit/inject'] as InjectOptions | undefined;
         let token: any = property.resolveClassType;
 
@@ -371,7 +398,7 @@ export class Injector implements BasicInjector {
             token = isFunction(options.token) ? options.token() : options.token;
         }
 
-        return {token, name: property.name, optional: !!options && options.optional};
+        return { token, name: property.name, optional: !!options && options.optional };
     }
 
     protected createFactory(compiler: CompilerContext, classType: ClassType): string {
@@ -382,13 +409,25 @@ export class Injector implements BasicInjector {
         const classTypeVar = compiler.reserveVariable('classType', classType);
 
         for (const property of schema.getMethodProperties('constructor')) {
-            args.push(this.createFactoryProperty(this.optionsFromProperty(property), compiler, getClassName(classType), args.length, 'constructorParameterNotFound'));
+            if (!property) {
+                console.log('Constructor arguments', schema.getMethodProperties('constructor'));
+                throw new Error(`Constructor arguments hole in ${getClassName(classType)}`);
+            }
+            // try {
+                args.push(this.createFactoryProperty(this.optionsFromProperty(property), compiler, getClassName(classType), args.length, 'constructorParameterNotFound'));
+            // } catch (error) {
+            //     throw new Error(`Could not resolve constructor injection token ${getClassName(classType)}.${property.name}: ${error.message}`);
+            // }
         }
 
         for (const property of schema.getProperties()) {
             if (!('deepkit/inject' in property.data)) continue;
             if (property.methodName === 'constructor') continue;
-            propertyAssignment.push(`v.${property.name} = ${this.createFactoryProperty(this.optionsFromProperty(property), compiler, getClassName(classType), -1, 'propertyParameterNotFound')};`);
+            try {
+                propertyAssignment.push(`v.${property.name} = ${this.createFactoryProperty(this.optionsFromProperty(property), compiler, getClassName(classType), -1, 'propertyParameterNotFound')};`);
+            } catch (error) {
+                throw new Error(`Could not resolve property injection token ${getClassName(classType)}.${property.name}: ${error.message}`);
+            }
         }
 
         return `v = new ${classTypeVar}(${args.join(',')});\n${propertyAssignment.join('\n')}`;
@@ -456,7 +495,7 @@ export class Injector implements BasicInjector {
                 const args: string[] = [];
                 let i = 0;
                 for (const dep of provider.deps || []) {
-                    let optional = false
+                    let optional = false;
                     let token = dep;
 
                     if (isInjectDecorator(dep)) {
@@ -648,6 +687,15 @@ export class MemoryInjector extends Injector {
 export class ContextRegistry {
     public contexts: Context[] = [];
 
+    /**
+     * Array with holes as lookup table.
+     *
+     * Key is AppModule.id (which is unique to each module instance), value is contextId.
+     *
+     * internal note: We can improve performance by not keeping holes.
+     */
+    contextLookup: number[] = [];
+
     get size(): number {
         return this.contexts.length;
     }
@@ -656,8 +704,14 @@ export class ContextRegistry {
         return this.contexts[id];
     }
 
-    set(id: number, value: Context) {
-        this.contexts[id] = value;
+    create(module: InjectorModule): Context {
+        const context = new Context(module, this.contexts.length);
+        this.add(context);
+        return context;
+    }
+
+    add(value: Context) {
+        this.contexts[value.id] = value;
     }
 }
 
@@ -696,6 +750,13 @@ export class ScopedContextCache {
 
 export class Context {
     providers: ProviderWithScope[] = [];
+
+    /**
+     * When a child context exports their providers to this context,
+     * then its context is stored in this array. This is necessary to
+     * be able to resolve the context later on.
+     */
+    exportedContexts: Context[] = [];
 
     constructor(
         public readonly module: InjectorModule,
@@ -738,120 +799,3 @@ export class ConfiguredProviderRegistry {
 }
 
 export type ConfigureProvider<T> = { [name in keyof T]: T[name] extends (...args: infer A) => any ? (...args: A) => ConfigureProvider<T> : T[name] };
-
-/**
- * Returns a configuration object that reflects the API of the given ClassType or token. Each call
- * is scheduled and executed once the provider has been created by the dependency injection container.
- */
-export function setupProvider<T extends ClassType<T> | any>(classTypeOrToken: T, registry: ConfiguredProviderRegistry, order: number): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
-    const proxy = new Proxy({}, {
-        get(target, prop) {
-            return (...args: any[]) => {
-                registry.add(classTypeOrToken, { type: 'call', methodName: prop, args: args, order });
-                return proxy;
-            };
-        },
-        set(target, prop, value) {
-            registry.add(classTypeOrToken, { type: 'property', property: prop, value: value, order });
-            return true;
-        }
-    });
-
-    return proxy as any;
-}
-
-export class InjectorContext implements BasicInjector {
-    protected injectors: (Injector | undefined)[] = new Array(this.contextManager.contexts.length);
-    public readonly scopeCaches: ScopedContextScopeCaches;
-    protected cache: ScopedContextCache;
-
-    constructor(
-        public readonly contextManager: ContextRegistry = new ContextRegistry,
-        public readonly scope: string = 'module',
-        public readonly configuredProviderRegistry: ConfiguredProviderRegistry = new ConfiguredProviderRegistry,
-        public readonly parent: InjectorContext | undefined = undefined,
-        public readonly additionalInjectorParent: Injector | undefined = undefined,
-        public readonly modules: { [name: string]: InjectorModule } = {},
-        scopeCaches?: ScopedContextScopeCaches,
-        public tagRegistry: TagRegistry = new TagRegistry(),
-    ) {
-        this.scopeCaches = scopeCaches || new ScopedContextScopeCaches(this.contextManager.size);
-        this.cache = this.scopeCaches.getCache(this.scope);
-    }
-
-    getModule(name: string): InjectorModule {
-        if (!this.modules[name]) throw new Error(`No Module with name ${name} registered`);
-        return this.modules[name];
-    }
-
-    registerModule(module: InjectorModule, config?: ConfigDefinition<any>) {
-        if (this.modules[module.getName()]) throw new Error(`Module ${module.getName()} already registered`);
-
-        if (config) config.setModule(module);
-        this.modules[module.getName()] = module;
-
-        for (const [provider, calls] of module.getConfiguredProviderRegistry().calls) {
-            this.configuredProviderRegistry.add(provider, ...calls);
-        }
-    }
-
-    /**
-     * Returns a configuration object that reflects the API of the given ClassType or token. Each call
-     * is scheduled and executed once the provider has been created by the dependency injection container.
-     */
-    setupProvider<T extends ClassType<T> | any>(classTypeOrToken: T, order: number = 0): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
-        return setupProvider(classTypeOrToken, this.configuredProviderRegistry, order);
-    }
-
-    getModuleNames(): string[] {
-        return Object.keys(this.modules);
-    }
-
-    static forProviders(providers: ProviderWithScope[]) {
-        const registry = new ContextRegistry();
-        const context = new Context(new InjectorModule('', {}), 0);
-        registry.set(0, context);
-        context.providers.push(...providers);
-        return new InjectorContext(registry);
-    }
-
-    public getInjectorForModule(module: InjectorModule): Injector {
-        return this.getInjector(module.contextId);
-    }
-
-    public getInjector(contextId: number): Injector {
-        let injector = this.injectors[contextId];
-        if (injector) return injector;
-
-        const parents: Injector[] = [];
-        parents.push(this.parent ? this.parent.getInjector(contextId) : new Injector());
-        if (this.additionalInjectorParent) parents.push(this.additionalInjectorParent.fork(undefined, this));
-
-        const context = this.contextManager.get(contextId);
-        if (context.parent) parents.push(this.getInjector(context.parent.id));
-
-        injector = this.cache.get(contextId);
-        if (injector) {
-            //we have one from cache. Clear it, and return
-            injector = injector.fork(parents, this);
-            return this.injectors[contextId] = injector;
-        }
-
-        const providers = getProviders(context.providers, this.scope);
-
-        injector = new Injector(providers, parents, this, this.configuredProviderRegistry, this.tagRegistry);
-        this.injectors[contextId] = injector;
-        this.cache.set(contextId, injector);
-
-        return injector;
-    }
-
-    public get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R {
-        const injector = this.getInjector(0);
-        return injector.get(token, frontInjector);
-    }
-
-    public createChildScope(scope: string, additionalInjectorParent?: Injector): InjectorContext {
-        return new InjectorContext(this.contextManager, scope, this.configuredProviderRegistry, this, additionalInjectorParent, this.modules, this.scopeCaches, this.tagRegistry);
-    }
-}

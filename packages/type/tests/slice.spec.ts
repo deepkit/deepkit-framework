@@ -52,8 +52,9 @@ test('slice exclude', () => {
     expect(v({username: 'Peter', created: new Date}).length).toBe(0);
 
     const d = getXToClassFunction(model2Schema, jsonSerializer);
-    const instance = d({username: 'Peter', created: new Date});
-    expect(instance).toMatchObject({username: 'Peter', created: new Date});
+    const date = new Date;
+    const instance = d({username: 'Peter', created: date});
+    expect(instance).toMatchObject({username: 'Peter', created: date});
     expect(v(instance).length).toBe(0);
 });
 

@@ -31,7 +31,6 @@ import { OrmBrowserController } from './orm-browser/controller';
 import { DatabaseListener } from './database/database-listener';
 import { DatabaseRegistry } from '@deepkit/orm';
 import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
-import { AppModule } from '@deepkit/app';
 import { FileStopwatchStore } from './debug/stopwatch/store';
 import { DebugDebugFramesCommand } from './cli/debug-debug-frames';
 import { RpcKernelSecurity } from '@deepkit/rpc';
@@ -39,8 +38,9 @@ import { AppConfigController } from './cli/app-config';
 import { Zone } from './zone';
 import { DebugBroker, DebugBrokerListener } from './debug/broker';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
+import { createModule } from '@deepkit/app';
 
-export const KernelModule = new AppModule({
+export class KernelModule extends createModule({
     config: kernelConfig,
     providers: [
         ProcessLocker,
@@ -82,55 +82,62 @@ export const KernelModule = new AppModule({
         MigrationCreateController,
     ],
     imports: [
-        BrokerModule,
-        HttpModule,
+        new BrokerModule().forRoot(),
+        new HttpModule().forRoot(),
     ],
-}, 'kernel').setup((module, config) => {
-    module.setupProvider(MigrationProvider).setMigrationDir(config.migrationDir);
-    module.setupProvider(DatabaseRegistry).setMigrateOnStartup(config.migrateOnStartup);
+}, 'kernel') {
+    //we export anything per default
+    root = true;
 
-    if (config.httpLog) {
-        module.addListener(HttpLogger);
-    }
+    process() {
+        this.forRoot();
 
-    if (config.publicDir) {
-        module.addListener(serveStaticListener('/', config.publicDir));
-    }
+        this.setupProvider(MigrationProvider).setMigrationDir(this.config.migrationDir);
+        this.setupProvider(DatabaseRegistry).setMigrateOnStartup(this.config.migrateOnStartup);
 
-    module.setupProvider(Logger).addTransport(injectorReference(ConsoleTransport));
-
-    if (config.debug) {
-        mkdirSync(join(config.varPath, config.debugStorePath), { recursive: true });
-
-        Zone.enable();
-
-        module.addProvider({
-            provide: OrmBrowserController,
-            deps: [DatabaseRegistry],
-            useFactory: (registry: DatabaseRegistry) => new OrmBrowserController(registry.getDatabases())
-        });
-        module.addController(DebugController);
-        module.addController(OrmBrowserController);
-        registerDebugHttpController(module, config.debugUrl);
-
-        //only register the RPC controller
-        module.addImport(ApiConsoleModule.configure({ listen: false, markdown: '' }));
-
-        //we start our own broker
-        if (config.debugProfiler) {
-            module.addListener(DebugBrokerListener);
-            module.addProvider(DebugBroker);
-
-            module.addProvider(FileStopwatchStore);
-            module.addProvider({
-                provide: Stopwatch,
-                deps: [FileStopwatchStore],
-                useFactory(store: FileStopwatchStore) {
-                    return new Stopwatch(store);
-                }
-            });
+        if (this.config.httpLog) {
+            this.addListener(HttpLogger);
         }
 
-        module.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
+        if (this.config.publicDir) {
+            this.addListener(serveStaticListener('/', this.config.publicDir));
+        }
+
+        this.setupProvider(Logger).addTransport(injectorReference(ConsoleTransport));
+
+        if (this.config.debug) {
+            mkdirSync(join(this.config.varPath, this.config.debugStorePath), { recursive: true });
+
+            Zone.enable();
+
+            this.addProvider({
+                provide: OrmBrowserController,
+                deps: [DatabaseRegistry],
+                useFactory: (registry: DatabaseRegistry) => new OrmBrowserController(registry.getDatabases())
+            });
+            this.addController(DebugController);
+            this.addController(OrmBrowserController);
+            registerDebugHttpController(this, this.config.debugUrl);
+
+            //only register the RPC controller
+            this.addImport(new ApiConsoleModule({ listen: false, markdown: '' }));
+
+            //we start our own broker
+            if (this.config.debugProfiler) {
+                this.addListener(DebugBrokerListener);
+                this.addProvider(DebugBroker);
+
+                this.addProvider(FileStopwatchStore);
+                this.addProvider({
+                    provide: Stopwatch,
+                    deps: [FileStopwatchStore],
+                    useFactory(store: FileStopwatchStore) {
+                        return new Stopwatch(store);
+                    }
+                });
+            }
+
+            this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
+        }
     }
-}).forRoot();
+}

@@ -23,7 +23,7 @@ import { Subject } from 'rxjs';
 import { unlink } from 'fs/promises';
 import { inject } from '@deepkit/injector';
 
-class DebugConfig extends kernelConfig.slice(['varPath', 'debugStorePath']) {
+class DebugConfig extends kernelConfig.slice('varPath', 'debugStorePath') {
 }
 
 @rpc.controller(DebugControllerInterface)

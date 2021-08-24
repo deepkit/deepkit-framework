@@ -9,7 +9,7 @@
  */
 
 import { AppLocker } from './app-locker';
-import { AppModule } from '@deepkit/app';
+import { createModule } from '@deepkit/app';
 import { injectable } from '@deepkit/injector';
 import { eventDispatcher } from '@deepkit/event';
 import { onServerMainBootstrap, onServerMainShutdown } from '../application-server';
@@ -17,7 +17,8 @@ import { brokerConfig } from './broker.config';
 import { Broker, BrokerServer } from './broker';
 import { Logger } from '@deepkit/logger';
 
-class BrokerStartConfig extends brokerConfig.slice(['startOnBootstrap', 'listen']) {}
+class BrokerStartConfig extends brokerConfig.slice('startOnBootstrap', 'listen') {
+}
 
 @injectable()
 export class BrokerListener {
@@ -46,7 +47,7 @@ export class BrokerListener {
     }
 }
 
-export const BrokerModule = new AppModule({
+export class BrokerModule extends createModule({
     listeners: [
         BrokerListener
     ],
@@ -61,4 +62,4 @@ export const BrokerModule = new AppModule({
         AppLocker,
         BrokerServer,
     ]
-}, 'broker').forRoot();
+}, 'broker') {}

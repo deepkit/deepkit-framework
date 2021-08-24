@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { injectable } from '@deepkit/injector';
-import { AppModule } from '../src/module';
+import { AppModule, createModule } from '../src/module';
 import { ServiceContainer } from '../src/service-container';
 
 test('simple setup with import and overwrite', () => {
@@ -250,39 +250,35 @@ test('exported module', () => {
     class DatabaseConnection {
     }
 
-    const databaseModule = new AppModule({
+    class DatabaseModule extends createModule({
         providers: [DatabaseConnection],
         exports: [
             DatabaseConnection
         ]
-    }, 'database');
+    }) {}
 
     class FSService {
     }
 
-    const FSModule = new AppModule({
+    class FSModule extends createModule({
         providers: [FSService],
-        imports: [databaseModule],
+        imports: [new DatabaseModule],
         exports: [
-            databaseModule
+            DatabaseModule
         ]
-    }, 'fs');
+    }) {}
 
     {
         const myModule = new AppModule({
-            imports: [FSModule]
-        }, 'myModule');
-
-        const copy = myModule.clone();
-        expect(copy.id).toBe(myModule.id);
-        expect(copy.getImports()[0].id).toBe(FSModule.id);
+            imports: [new FSModule]
+        });
 
         const serviceContainer = new ServiceContainer(myModule);
         const rootInjector = serviceContainer.getRootInjectorContext().getInjector(0);
 
         expect(rootInjector.get(DatabaseConnection)).toBeInstanceOf(DatabaseConnection);
 
-        const databaseModuleInjector = serviceContainer.getInjectorFor(databaseModule);
+        const databaseModuleInjector = serviceContainer.getInjectorForModuleClass(DatabaseModule);
         expect(databaseModuleInjector.get(DatabaseConnection)).toBeInstanceOf(DatabaseConnection);
         expect(databaseModuleInjector.get(DatabaseConnection)).toBe(rootInjector.get(DatabaseConnection));
     }

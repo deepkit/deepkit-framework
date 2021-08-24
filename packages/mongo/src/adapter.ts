@@ -119,7 +119,7 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
             }
 
             const createIndex: CreateIndex = {
-                name,
+                name: name || index.fields.join('_'),
                 key: fields,
                 unique: !!index.options.unique,
                 sparse: !!index.options.sparse,

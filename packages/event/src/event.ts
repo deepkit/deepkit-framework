@@ -9,7 +9,7 @@
  */
 
 import { ClassType, CompilerContext, isClass, isFunction } from '@deepkit/core';
-import { Context, InjectorContext } from '@deepkit/injector';
+import { ConfigSlice, ConfigToken, Context, InjectorContext } from '@deepkit/injector';
 import { createClassDecoratorContext, createPropertyDecoratorContext } from '@deepkit/type';
 
 export type EventListenerCallback<T> = (event: T) => void | Promise<void>;
@@ -240,7 +240,14 @@ export class EventDispatcher {
     }
 }
 
-export function createListener<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: (event: T['event'], ...deps: DEPS) => void | Promise<void>, ...deps: DEPS): ClassType<any> {
+export type ExtractDep<T> = T extends ClassType ? InstanceType<T> :
+    T extends ConfigSlice<infer V> ? V :
+        T extends ConfigToken<infer V> ? V :
+            T;
+
+export type ExtractDeps<T extends any[]> = {[K in keyof T]: ExtractDep<T[K]>}
+
+export function createListener<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: (event: T['event'], ...deps: ExtractDeps<DEPS>) => void | Promise<void>, ...deps: DEPS): ClassType<any> {
     class DynamicListener {
         @eventDispatcher.listen(eventToken)
         execute(event: T['event']) {

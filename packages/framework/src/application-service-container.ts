@@ -78,6 +78,7 @@ export class ApplicationServiceContainer<C extends ModuleOptions = ModuleOptions
 
         const httpConfig = httpClass._fetch(controller);
         if (httpConfig) {
+            console.log('registerController', module.getContextId());
             if (!isProvided(providers, controller)) providers.unshift({ provide: controller, scope: 'http' });
             this.httpControllers.add(controller, module);
         }

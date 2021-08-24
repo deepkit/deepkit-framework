@@ -8,10 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { KernelModule } from './kernel';
 import { ApplicationServiceContainer } from './application-service-container';
 import { AppModule, CommandApplication, ModuleOptions } from '@deepkit/app';
 import { ProviderWithScope } from '@deepkit/injector';
+import { KernelModule } from './kernel';
 
 export class Application<T extends ModuleOptions> extends CommandApplication<T> {
     constructor(
@@ -21,7 +21,7 @@ export class Application<T extends ModuleOptions> extends CommandApplication<T> 
     ) {
         if (!appModule.hasImport(KernelModule)) {
             if (!appModule.options.imports) appModule.options.imports = [];
-            appModule.options.imports.unshift(KernelModule);
+            appModule.options.imports.unshift(new KernelModule);
         }
         super(appModule, providers, imports, new ApplicationServiceContainer(appModule, providers, imports.slice(0)));
     }

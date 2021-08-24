@@ -7,8 +7,8 @@ import { ApiConsoleModule } from '@deepkit/api-console-module';
 
 const appModule = new AppModule({
     imports: [
-        ApiConsoleModule,
-        KernelModule.configure({
+        new ApiConsoleModule,
+        new KernelModule({
             port: 9080
         }),
     ]

@@ -174,7 +174,7 @@ export function stringifyValueWithType(value: any): string {
  *  model2 instanceof Model2; //true
  * ```
  */
-export function changeClass<T>(value: any, newClass: ClassType<T>): T {
+export function changeClass<T>(value: object, newClass: ClassType<T>): T {
     return Object.assign(Object.create(newClass.prototype), value);
 }
 

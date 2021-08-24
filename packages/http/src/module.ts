@@ -1,11 +1,11 @@
 import { httpWorkflow } from './http';
 import { config } from './module.config';
-import { AppModule } from '@deepkit/app';
+import { createModule } from '@deepkit/app';
 
 
-export const HttpModule = new AppModule({
+export class HttpModule extends createModule({
     config: config,
     workflows: [
         httpWorkflow
     ],
-}, 'http').forRoot();
+}, 'http') {}

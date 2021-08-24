@@ -7,7 +7,7 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import 'reflect-metadata';
 import { PropertyValidatorError } from './jit-validation';
 import { ClassType, eachPair, extractParameters, getClassName, getClassPropertyName, isFunction, isNumber, isPlainObject, } from '@deepkit/core';
 import { isArray } from './utils';

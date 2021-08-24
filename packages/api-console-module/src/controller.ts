@@ -6,7 +6,7 @@ import { ClassType, getClassName } from '@deepkit/core';
 import { config } from './module.config';
 import { readFile } from 'fs/promises';
 
-class Config extends config.slice(['excludeGroups', 'markdown', 'markdownFile']) {
+class Config extends config.slice('excludeGroups', 'markdown', 'markdownFile') {
 }
 
 @rpc.controller(ApiConsoleApi)

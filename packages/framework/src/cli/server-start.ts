@@ -9,9 +9,10 @@
  */
 
 import { ApplicationServer } from '../application-server';
-import { cli, Command, flag } from '@deepkit/app';
+import { AppModule, cli, Command, flag } from '@deepkit/app';
 import { InjectorContext } from '@deepkit/injector';
 import { DefaultFormatter, Logger } from '@deepkit/logger';
+import { KernelModule } from '../kernel';
 
 @cli.controller('server:start', {
     description: 'Starts the application server. If HTTP or RPC controllers or a publicDir are provided this will include an HTTP listener'
@@ -39,7 +40,7 @@ export class ServerStartController implements Command {
         if (ssl) overwrite.ssl = {};
         if (selfSigned) overwrite.selfSigned = selfSigned;
 
-        const kernel = this.injectorContext.getModule('kernel');
+        const kernel = this.injectorContext.getModuleForModuleClass(KernelModule) as AppModule<any, any>;
         kernel.setConfig(overwrite);
         const server = this.injectorContext.get(ApplicationServer);
 

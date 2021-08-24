@@ -135,7 +135,7 @@ class EnvConfigLoader {
         this.namingStrategy = namingStrategy;
     }
 
-    load(moduleName: string, config: { [p: string]: any }, schema: ClassSchema) {
+    load(module: AppModule, config: { [p: string]: any }, schema: ClassSchema) {
         const envConfiguration = new EnvConfiguration();
         for (const path of this.envFilePaths) {
             if (envConfiguration.loadEnvFile(path)) break;
@@ -143,7 +143,7 @@ class EnvConfigLoader {
         const env = Object.assign({}, envConfiguration.getAll());
         Object.assign(env, process.env);
 
-        parseEnv(config, this.prefix, schema, '', convertNameStrategy(this.namingStrategy, moduleName), this.namingStrategy, env);
+        parseEnv(config, this.prefix, schema, '', convertNameStrategy(this.namingStrategy, module.name), this.namingStrategy, env);
     }
 }
 
@@ -171,7 +171,9 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
     configure(config: ModuleConfigOfOptions<T>): this {
         const appConfig: any = {};
         const moduleConfigs: { [name: string]: any } = {};
-        const moduleNames = this.serviceContainer.getRootInjectorContext().getModuleNames();
+        const moduleNames: string[] = this.appModule.getImports()
+            .filter(v => v.name)
+            .map(v => v.name);
 
         for (const i in config) {
             let name = i;
@@ -243,11 +245,11 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
         if (!process.env[variableName]) return this;
 
         this.addConfigLoader({
-            load(moduleName: string, config: { [p: string]: any }, schema: ClassSchema) {
+            load(module: AppModule, config: { [p: string]: any }, schema: ClassSchema) {
                 try {
                     const jsonConfig = JSON.parse(process.env[variableName] || '');
 
-                    setPartialConfig(config, moduleName ? jsonConfig[moduleName] : jsonConfig);
+                    setPartialConfig(config, module.name ? jsonConfig[module.name] : jsonConfig);
                 } catch (error) {
                     throw new Error(`Invalid JSON in env variable ${variableName}. Parse error: ${error}`);
                 }

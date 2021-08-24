@@ -138,46 +138,103 @@ export class AppModuleConfig<T extends PlainSchemaProps> extends ConfigDefinitio
     }
 }
 
-export class AppModule<T extends ModuleOptions, NAME extends string = ''> extends InjectorModule<NAME, ExtractConfigOfDefinition<DefaultObject<T['config']>>> {
+export function createModuleConfig<T extends PlainSchemaProps>(config: T): AppModuleConfig<T> {
+    return new AppModuleConfig(config);
+}
+
+export interface AppModuleClass<T extends ModuleOptions, NAME extends string = ''> {
+    new(config?: ModuleConfigOfOptions<T>): AppModule<T, NAME>;
+}
+
+/**
+ * Creates a new module class type from which you can extend.
+ *
+ * name: The lowercase alphanumeric module name. This is used in the configuration system.
+ * Choose a short unique name for best usability. If you don't have any configuration
+ * or if you want that your configuration options are available without prefix, you can keep this undefined.
+ *
+ * ```typescript
+ * class MyModule extends createModule({}) {}
+ *
+ * class MyModule2 extends createModule({}, 'module2') {}
+ *
+ * //and used like this
+ * new CommandApplication({
+ *     imports: [new MyModule]
+ * });
+ *
+ * ```
+ */
+export function createModule<T extends ModuleOptions, NAME extends string = ''>(options: T, name: NAME = '' as NAME): AppModuleClass<T, NAME> {
+    return class AnonAppModule extends AppModule<T, NAME> {
+        constructor(config?: ModuleConfigOfOptions<T>) {
+            super(options, name);
+            if (config) {
+                this.configure(config);
+            }
+        }
+
+        clone(to?: AppModule<any, any>) {
+            return super.clone(new (this as any).constructor());
+        }
+    } as any;
+}
+
+export class AppModule<T extends ModuleOptions = any, NAME extends string = ''> extends InjectorModule<NAME, ExtractConfigOfDefinition<DefaultObject<T['config']>>> {
+    /**
+     * Whether this module is for the root module. All its providers are automatically exported and moved to the root level.
+     */
     public root: boolean = false;
     public parent?: AppModule<any, any>;
     protected configLoaded: boolean = false;
 
-    public setupConfigs: ((module: AppModule<T, NAME>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void)[] = [];
+    public setupConfigs: ((module: AppModule<any, any>, config: any) => void)[] = [];
+
+    /**
+     * @internal
+     * Note: We keep our own array since store clones.
+     */
+    public imports: AppModule<any, any>[] = [];
 
     constructor(
         public options: T,
-        /**
-         * The lowercase alphanumeric module name. This is used in the configuration system for example.
-         * Choose a short unique name for best usability.
-         */
         public name: NAME = '' as NAME,
         public configValues: { [path: string]: any } = {},
-        public setups: ((module: AppModule<T, NAME>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void)[] = [],
-        public readonly id: number = moduleId++,
+        public setups: ((module: AppModule<any, any>, config: any) => void)[] = [],
+        public id: number = moduleId++,
     ) {
-        super(name, {} as any);
+        super(name, {} as any, id);
         if (options.config instanceof ConfigDefinition) {
-            options.config.setModule(this as InjectorModule);
+            options.config.setModuleClass(this as InjectorModule);
         }
         if (this.options.imports) {
             for (const module of this.options.imports) {
-                module.setParent(this);
+                const copy = module.clone();
+                copy.setParent(this);
+                this.imports.push(copy);
             }
         }
     }
 
+    /**
+     * When all configuration loaders have been loaded, this method is called.
+     * It allows to further manipulate the module state depending on the final config.
+     */
+    process() {
+
+    }
+
     getImports(): AppModule<ModuleOptions, any>[] {
-        return this.options.imports || [];
+        return this.imports;
     }
 
     getExports() {
-        return this.options.exports || [];
+        return this.options.exports ||= [];
     }
 
-    hasImport(module: AppModule<any, any>): boolean {
+    hasImport(moduleClass: AppModuleClass<any, any>): boolean {
         for (const importModule of this.getImports()) {
-            if (importModule.id === module.id) return true;
+            if (importModule instanceof moduleClass) return true;
         }
         return false;
     }
@@ -187,9 +244,9 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
      */
     addImport(...modules: AppModule<any, any>[]): this {
         for (const module of modules) {
-            module.setParent(this);
-            if (!this.options.imports) this.options.imports = [];
-            this.options.imports.push(module);
+            const copied = module.clone();
+            copied.setParent(this);
+            this.imports.push(copied);
         }
         return this;
     }
@@ -200,22 +257,25 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
         this.options.controllers.push(...controller);
     }
 
-    addProvider(...provider: ProviderWithScope[]) {
+    addProvider(...provider: ProviderWithScope[]): this {
         if (!this.options.providers) this.options.providers = [];
 
         this.options.providers.push(...provider);
+        return this;
     }
 
-    addListener(...listener: (EventListener<any> | ClassType)[]) {
+    addListener(...listener: (EventListener<any> | ClassType)[]): this {
         if (!this.options.listeners) this.options.listeners = [];
 
         this.options.listeners.push(...listener);
+        return this;
     }
 
-    addMiddleware(...middlewares: MiddlewareFactory[]) {
+    addMiddleware(...middlewares: MiddlewareFactory[]): this {
         if (!this.options.middlewares) this.options.middlewares = [];
 
         this.options.middlewares.push(...middlewares);
+        return this;
     }
 
     private hasConfigOption(path: string): boolean {
@@ -239,6 +299,11 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
         this.configLoaded = false;
     }
 
+    invalidateConfigCache(): void {
+        this.configLoaded = false;
+        for (const module of this.getImports()) module.invalidateConfigCache();
+    }
+
     getConfig(): ExtractConfigOfDefinition<DefaultObject<T['config']>> {
         if (this.configLoaded) return this.config;
         const config: any = {};
@@ -246,6 +311,7 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
         this.configLoaded = true;
 
         for (const option of this.options.config.schema.getProperties()) {
+            //todo: supported nested
             const path = this.name ? this.name + '.' + option.name : option.name;
             config[option.name] = this.getConfigOption(path);
         }
@@ -254,22 +320,36 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
         return this.config;
     }
 
-    setParent(module: AppModule<any, any>) {
+    setParent(module: AppModule<any, any>): this {
         this.parent = module;
+        return this;
     }
 
-    clone(): AppModule<T, NAME> {
-        const m = new AppModule(cloneOptions(this.options), this.name, { ...this.configValues }, this.setups.slice(0), this.id);
+    clone(to?: AppModule<any, any>): AppModule<T, NAME> {
+        //its important to not clone AppModule.config, as we want that the actual config value is re-resolved upon next getConfig call
+        const m = to || new AppModule(cloneOptions(this.options), this.name, this.configValues, this.setups.slice(), this.id);
+        m.options = cloneOptions(this.options);
+
+        //its important to keep the id, as in the service-container we have only copies, not the real thing, and need a map from original to copy
+        m.id = this.id;
+
+        m.name = this.name;
+        m.configValues = this.configValues;
         m.root = this.root;
         m.parent = this.parent;
+        m.contextId = this.contextId;
+
+        m.setups = this.setups.slice();
         m.setupProviderRegistry = this.setupProviderRegistry.clone();
         m.setupConfigs = this.setupConfigs.slice(0);
 
         const imports = m.getImports();
         const exports = m.getExports();
+
         for (let i = 0; i < imports.length; i++) {
             const old = imports[i];
             imports[i] = old.clone();
+            imports[i].setParent(m);
             const index = exports.indexOf(old);
             if (index !== -1) exports[index] = imports[i];
         }
@@ -282,31 +362,25 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
 
     /**
      * Allows to change the module config before `setup` and bootstrap is called. This is the last step right before the config is validated.
-     *
-     * Returns a new forked module of this with the changes applied.
      */
-    setupConfig(callback: (module: AppModule<T, any>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void): AppModule<T, NAME> {
-        const m = this.clone();
-        m.setupConfigs.push(callback);
-        return m;
+    setupConfig(callback: (module: AppModule<T, any>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void): this {
+        this.setupConfigs.push(callback);
+        return this;
     }
 
     /**
      * Allows to change the module after the configuration has been loaded, right before the application bootstraps (thus loading all services/controllers/etc).
-     *
-     * Returns a new forked module of this with the changes applied.
      */
-    setup(callback: (module: AppModule<T, any>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void): AppModule<T, NAME> {
-        const m = this.clone();
-        m.setups.push(callback);
-        return m;
+    setup(callback: (module: AppModule<T, any>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void): this {
+        this.setups.push(callback);
+        return this;
     }
 
     /**
-     * Sets configured values that no longer are inherited from the parent.
-     * Returns a new forked module of this with the changes applied.
+     * Sets configured values. Those are no longer inherited from the parent.
      */
-    configure(config: ModuleConfigOfOptions<T>): AppModule<T, NAME> {
+    configure(config: ModuleConfigOfOptions<T>): this {
+        this.invalidateConfigCache();
         const configValues: { [path: string]: any } = { ...this.configValues };
 
         if (this.options.imports) {
@@ -329,9 +403,8 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
             }
         }
 
-        const m = this.clone();
-        m.configValues = configValues;
-        return m;
+        this.configValues = configValues;
+        return this;
     }
 
     /**
@@ -350,11 +423,9 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
 
     /**
      * Makes all the providers, controllers, etc available at the root module, basically exporting everything.
-     * Returns a new forked module of this with root enabled.
      */
-    forRoot(): AppModule<T, NAME> {
-        const m = this.clone();
-        m.root = true;
-        return m;
+    forRoot(): this {
+        this.root = true;
+        return this;
     }
 }

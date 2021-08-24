@@ -53,8 +53,9 @@ test('migration basic', async () => {
     expect(tableUser.getColumn('username').type).toBe('text');
     expect(tableUser.getColumn('username').isNotNull).toBe(true);
 
-    expect(tableUser.getIndex('username')).toBeInstanceOf(Index);
-    expect(tableUser.getIndex('username')!.hasColumn('username')).toBe(true);
+    const indexes = tableUser.getUnices();
+    expect(indexes[0]).toBeInstanceOf(Index);
+    expect(indexes[0]!.hasColumn('username')).toBe(true);
 
     expect(tablePost.foreignKeys.length).toBe(1);
     expect(tablePost.foreignKeys[0].foreign).toBe(tableUser);

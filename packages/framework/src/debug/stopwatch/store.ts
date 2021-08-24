@@ -11,7 +11,7 @@ import cluster from 'cluster';
 import { performance } from 'perf_hooks';
 import { DebugBroker } from '../broker';
 
-class Config extends kernelConfig.slice(['varPath', 'debugStorePath']) {
+class Config extends kernelConfig.slice('varPath', 'debugStorePath') {
 }
 
 @injectable()

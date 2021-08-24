@@ -1,15 +1,23 @@
-import { AppModule, findParentPath } from '@deepkit/app';
+import { createModule, findParentPath } from '@deepkit/app';
 import { registerStaticHttpController } from '@deepkit/http';
 import { ApiConsoleController } from './controller';
 import { config } from './module.config';
+import { ClassType } from '@deepkit/core';
 
-export const ApiConsoleModule = new AppModule({
+export class ApiConsoleModule extends createModule({
     config,
     controllers: [ApiConsoleController]
-}, 'apiModule').setup((module, config) => {
-    if (!config.listen) return;
+}, 'apiConsole') {
 
-    const localPath = findParentPath('node_modules/@deepkit/api-console-gui/dist/api-console-gui', __dirname);
-    if (!localPath) throw new Error('node_modules/@deepkit/api-console-gui not installed in ' + __dirname);
-    registerStaticHttpController(module, config.path, localPath, ['app-static']);
-});
+    forController(...controller: ClassType[]) {
+        // this.config.
+    }
+
+    process() {
+        if (!this.config.listen) return;
+
+        const localPath = findParentPath('node_modules/@deepkit/api-console-gui/dist/api-console-gui', __dirname);
+        if (!localPath) throw new Error('node_modules/@deepkit/api-console-gui not installed in ' + __dirname);
+        registerStaticHttpController(this, this.config.path, localPath, ['app-static']);
+    }
+}

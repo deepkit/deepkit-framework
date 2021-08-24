@@ -53,7 +53,7 @@ export class Book {
     }
 }
 
-class DbConfig extends config.slice(['dbPath']) {}
+class DbConfig extends config.slice('dbPath') {}
 
 @injectable()
 export class SQLiteDatabase extends Database {

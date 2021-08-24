@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { arrayRemoveItem, ClassType, isClass } from '@deepkit/core';
+import { arrayRemoveItem, ClassType, getClassName, isClass, isPrototypeOfBase } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
 import { AppModule, ConfigurationInvalidError, MiddlewareConfig, ModuleOptions } from './module';
 import { ConfiguredProviderRegistry, Context, ContextRegistry, Injector, InjectorContext, InjectorModule, ProviderWithScope, TagProvider, tokenLabel } from '@deepkit/injector';
@@ -57,7 +57,7 @@ export function isProvided(providers: ProviderWithScope[], token: any): boolean 
 }
 
 export interface ConfigLoader {
-    load(moduleName: string, config: { [name: string]: any }, schema: ClassSchema): void;
+    load(module: AppModule<any, any>, config: { [name: string]: any }, schema: ClassSchema): void;
 }
 
 export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
@@ -76,11 +76,14 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
 
     protected configLoaders: ConfigLoader[] = [];
 
+    public appModule: AppModule<any, any>;
+
     constructor(
-        public appModule: AppModule<any, any>,
+        appModule: AppModule<any, any>,
         protected providers: ProviderWithScope[] = [],
         protected imports: AppModule<any, any>[] = [],
     ) {
+        this.appModule = appModule.clone();
     }
 
     addConfigLoader(loader: ConfigLoader) {
@@ -113,7 +116,9 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         if (module.options.config) {
             const configSerializer = jsonSerializer.for(module.options.config.schema);
 
-            for (const loader of this.configLoaders) loader.load(module.name, config, module.options.config.schema);
+            for (const loader of this.configLoaders) {
+                loader.load(module, config, module.options.config.schema);
+            }
 
             //config loads can set arbitrary values (like string for numbers), so we try deserialize them automatically
             Object.assign(config, configSerializer.deserialize(config));
@@ -127,6 +132,8 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
                 throw new ConfigurationInvalidError(`Configuration for module ${module.getName() || 'root'} is invalid. Make sure the module is correctly configured. Error: ` + errorsMessage);
             }
         }
+
+        module.process();
 
         for (const setup of module.setups) setup(module, config);
 
@@ -146,12 +153,23 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
 
     public getInjectorFor(module: AppModule<any, any>): Injector {
         this.process();
-        return this.rootInjectorContext.getInjector(module.contextId);
+        return this.rootInjectorContext.getInjectorForModule(module);
     }
 
-    public getInjectorForContext(context: Context): Injector {
-        this.process();
-        return this.rootInjectorContext.getInjector(context.id);
+    public getModuleForModuleClass<T extends AppModule<any, any>>(moduleClass: ClassType<T>): T {
+        return this.getRootInjectorContext().getModuleForModuleClass(moduleClass) as T;
+    }
+
+    public getModuleForModule<T extends AppModule<any, any>>(module: T): T {
+        return this.getRootInjectorContext().getModuleForModule(module) as T;
+    }
+
+    public getInjectorForModuleClass(moduleClass: ClassType<AppModule<any, any>>): Injector {
+        return this.getRootInjectorContext().getInjectorForModuleClass(moduleClass);
+    }
+
+    public getInjectorForModule(module: AppModule<any, any>): Injector {
+        return this.getRootInjectorContext().getInjectorForModule(module);
     }
 
     public getRootInjector(): Injector {
@@ -172,10 +190,15 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
     }
 
     protected getNewContext(module: AppModule<any, any>, parent?: Context): Context {
+        if (this.contextManager.contextLookup[module.id] !== undefined) {
+            throw new Error(`Module ${getClassName(module)} already imported. You can not import the same module instance twice.`);
+        }
+
         const newId = this.currentIndexId++;
         const context = new Context(module, newId, parent);
-        module.contextId = newId;
-        this.contextManager.set(newId, context);
+        module.setContextId(newId);
+        this.contextManager.contextLookup[module.id] = newId;
+        this.contextManager.add(context);
 
         let contexts = this.moduleContexts.get(module);
         if (!contexts) {
@@ -193,19 +216,15 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         additionalProviders: ProviderWithScope[] = [],
         additionalImports: AppModule<any, any>[] = []
     ): Context {
-        if (!module.getName() && module !== this.appModule) {
-            throw new Error(`Module imported without name. Make sure that imported modules have always a name, e.g: new AppModule({}, 'myName');`);
-        }
-        this.rootInjectorContext.modules[module.getName()] = module;
         const exports = module.options.exports ? module.options.exports.slice(0) : [];
         const providers = module.options.providers ? module.options.providers.slice(0) : [];
         const controllers = module.options.controllers ? module.options.controllers.slice(0) : [];
-        const imports = module.options.imports ? module.options.imports.slice(0) : [];
+        let imports = module.imports ? module.imports.slice(0) : [];
         const listeners = module.options.listeners ? module.options.listeners.slice(0) : [];
         const middlewares = module.options.middlewares ? module.options.middlewares.slice(0) : [];
 
         providers.push(...additionalProviders);
-        imports.unshift(...additionalImports);
+        imports.unshift(...additionalImports.map(v => v.clone()));
 
         //we add the module to its own providers so it can depend on its module providers.
         //when we would add it to root it would have no access to its internal providers.
@@ -219,6 +238,7 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
 
         //we have to call getNewContext() either way to store this module in this.contexts.
         let context = this.getNewContext(module, parentContext);
+        const actualContext = context;
         if (forRootContext) {
             context = this.getContext(0);
         }
@@ -244,8 +264,19 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
             this.middlewares.configs.push({ config, module });
         }
 
-        for (const token of exports.slice(0)) {
-            // if (isModuleToken(token)) {
+        for (let token of exports.slice(0)) {
+            if (isClass(token) && isPrototypeOfBase(token, AppModule)) {
+                //exports: [ModuleClassType], so we need to find the correct import
+                for (const moduleImport of imports) {
+                    if (moduleImport instanceof token) {
+                        //we remove the export ClassType here, because we overwrite `token` in next line
+                        arrayRemoveItem(exports, token);
+                        token = moduleImport;
+                        break;
+                    }
+                }
+            }
+
             if (token instanceof AppModule) {
                 //exported modules will be removed from `imports`, so that
                 //the target context (root or parent) imports it
@@ -286,16 +317,25 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
 
         //if there are exported tokens, their providers will be added to the parent or root context
         //and removed from module providers.
-        const exportedProviders = forRootContext ? this.getContext(0).providers : (parentContext ? parentContext.providers : undefined);
-        if (exportedProviders) {
-            for (const token of exports) {
-                if (token instanceof AppModule) throw new Error('Should already be handled');
+        const exportToContext = forRootContext ? this.getContext(0) : parentContext;
+        if (exportToContext) {
+            if (exportToContext !== actualContext) {
+                exportToContext.exportedContexts.push(actualContext);
+            }
 
-                const provider = providers.findIndex(v => !(v instanceof TagProvider) ? token === (isClass(v) ? v : v.provide) : false);
+            for (const token of exports) {
+                if (token instanceof AppModule) throw new Error(`${getClassName(token)} should already be handled`);
+                if (isClass(token) && isPrototypeOfBase(token, AppModule)) throw new Error(`${getClassName(token)} should already be handled`);
+
+                const provider = providers.findIndex(v => {
+                    if (v instanceof TagProvider) return false;
+                    const providerToken = isClass(v) ? v : v.provide;
+                    return token === providerToken;
+                });
                 if (provider === -1) {
                     throw new Error(`Export ${tokenLabel(token)}, but not provided in providers.`);
                 }
-                exportedProviders.push(providers[provider]);
+                exportToContext.providers.push(providers[provider]);
                 providers.splice(provider, 1);
             }
         }

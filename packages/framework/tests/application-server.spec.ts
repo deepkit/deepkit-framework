@@ -78,7 +78,7 @@ describe('application-server', () => {
         const appModule = new AppModule({
             controllers: [MyController],
             imports: [
-                KernelModule.configure({
+                new KernelModule({
                     broker: {startOnBootstrap: false}
                 })
             ]
@@ -123,7 +123,7 @@ describe('application-server', () => {
         test('needed for publicDir', async () => {
             const testing = createTestingApp({
                 controllers: [],
-                imports: [KernelModule.configure({ publicDir: 'public' })]
+                imports: [new KernelModule({ publicDir: 'public' })]
             });
 
             await testing.startServer();

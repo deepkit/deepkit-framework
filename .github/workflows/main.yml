@@ -36,7 +36,8 @@ jobs:
             --ignore @deepkit/fs \
             --ignore @deepkit/framework-examples \
             --ignore @deepkit/benchmark \
-            --ignore @deepkit/mysql --ignore @deepkit/postgres \
+            --ignore @deepkit/mysql
+            --ignore @deepkit/postgres \
             --ignore @deepkit/orm-browser-example \
             --ignore @deepkit/orm-browser;
           ./node_modules/.bin/npm-local-development --no-watcher
@@ -44,12 +45,12 @@ jobs:
         run: |
           ./node_modules/.bin/tsc --build \
             packages/angular-universal/tsconfig.json \
+            packages/api-console-module/tsconfig.json \
             packages/broker/tsconfig.json \
             packages/bson/tsconfig.json \
             packages/core/tsconfig.json \
             packages/core-rxjs/tsconfig.json \
             packages/crypto/tsconfig.json \
-            deepkit/api-console-module/tsconfig.json \
             packages/framework/tsconfig.json \
             packages/framework-debug-api/tsconfig.json \
             packages/framework-integration/tsconfig.json \

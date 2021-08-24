@@ -20,7 +20,7 @@ const appModule = new AppModule({
     ],
 
     imports: [
-        KernelModule.configure({
+        new KernelModule({
             port: 9090
         })
     ]

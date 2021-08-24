@@ -1,15 +1,33 @@
-import { ClassType } from '@deepkit/core';
-import { ConfiguredProviderRegistry, ConfigureProvider, setupProvider } from './injector';
+import { ClassType, getClassName } from '@deepkit/core';
+import { ConfiguredProviderRegistry, ConfigureProvider } from './injector';
+import { setupProvider } from './injector-context';
+
+let moduleIds: number = 0;
 
 export class InjectorModule<N extends string = string, C extends { [name: string]: any } = any> {
-    public contextId: number = 0;
-
+    protected contextId: number = -1;
     protected setupProviderRegistry = new ConfiguredProviderRegistry;
 
     constructor(
         public name: N,
         public config: C,
+        public id: number = moduleIds++,
     ) {
+    }
+
+    setContextId(id: number) {
+        this.contextId = id;
+    }
+
+    hasContextId(): boolean {
+        return this.contextId !== -1;
+    }
+
+    getContextId(): number {
+        if (this.contextId === -1) {
+            throw new Error(`Requested context id of module ${getClassName(this.constructor)} but it was nowhere imported. Make sure you referenced the correct module instance.`);
+        }
+        return this.contextId;
     }
 
     getName(): N {

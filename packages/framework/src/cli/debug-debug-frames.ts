@@ -15,7 +15,7 @@ import { decodeFrameData, decodeFrames } from '@deepkit/framework-debug-api';
 import { kernelConfig } from '../kernel.config';
 import { Logger } from '@deepkit/logger';
 
-class Config extends kernelConfig.slice(['varPath', 'debugStorePath']) {
+class Config extends kernelConfig.slice('varPath', 'debugStorePath') {
 }
 
 @cli.controller('debug:debug:frames', {})

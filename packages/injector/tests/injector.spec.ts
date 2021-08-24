@@ -1,8 +1,9 @@
 import { expect, test } from '@jest/globals';
 import { getClassSchema, t } from '@deepkit/type';
 import 'reflect-metadata';
-import { CircularDependencyError, createConfig, inject, injectable, InjectOptions, Injector, InjectorContext } from '../src/injector';
+import { CircularDependencyError, createConfig, inject, injectable, InjectOptions, Injector } from '../src/injector';
 import { InjectorModule } from '../src/module';
+import { InjectorContext } from '../src/injector-context';
 
 export const a = 'asd';
 
@@ -312,7 +313,7 @@ test('injector config', () => {
         debug: t.boolean.default(false)
     });
 
-    class ServiceConfig extends FullConfig.slice(['debug']) {
+    class ServiceConfig extends FullConfig.slice('debug') {
     }
 
     @injectable()
@@ -333,7 +334,7 @@ test('injector config', () => {
         }
     }
 
-    class Slice extends FullConfig.slice(['debug']) {
+    class Slice extends FullConfig.slice('debug') {
     }
 
     @injectable()
@@ -353,8 +354,8 @@ test('injector config', () => {
     {
         const myModule = new InjectorModule('asd', { debug: true });
         const injectorContext = new InjectorContext();
-        injectorContext.registerModule(myModule, FullConfig);
-        const i1 = new Injector([MyService, MyService2, MyService3, MyService4], [], injectorContext);
+        const context = injectorContext.registerModule(myModule, FullConfig);
+        const i1 = new Injector([MyService, MyService2, MyService3, MyService4], [], injectorContext, undefined, undefined, undefined, context);
         expect(i1.get(MyService).config.debug).toBe(true);
         expect(i1.get(MyService2).config.debug).toBe(true);
         expect(i1.get(MyService3).config.debug).toBe(true);
@@ -445,5 +446,18 @@ test('constructor one with @inject', () => {
         expect(methods[2].name).toBe('stopwatch');
 
         expect((methods[2].data['deepkit/inject'] as InjectOptions).optional).toBe(true);
+    }
+
+    @injectable()
+    class Service {
+        constructor(public stopwatch: Stopwatch, @inject(Logger) public logger: any) {}
+    }
+
+    {
+        const schema = getClassSchema(Service);
+        const methods = schema.getMethodProperties('constructor');
+        expect(methods.length).toBe(2);
+        expect(methods[0].name).toBe('stopwatch');
+        expect(methods[1].name).toBe('logger');
     }
 });

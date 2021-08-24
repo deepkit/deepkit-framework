@@ -1,6 +1,7 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { injectable, InjectorContext } from '../src/injector';
+import { injectable } from '../src/injector';
+import { InjectorContext } from '../src/injector-context';
 
 
 test('context fork', () => {

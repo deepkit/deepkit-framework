@@ -3,7 +3,7 @@ import { beforeEach, expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { CommandApplication } from '../src/application';
 import { inject } from '@deepkit/injector';
-import { AppModule, AppModuleConfig } from '../src/module';
+import { AppModule, AppModuleConfig, createModule } from '../src/module';
 import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
 import { cli, Command } from '../src/command';
 
@@ -18,7 +18,9 @@ class BaseService {
     }
 }
 
-const baseModule = new AppModule({ config: baseConfig, providers: [BaseService] }, 'base').forRoot();
+class BaseModule extends createModule({ config: baseConfig, providers: [BaseService] }, 'base') {
+    root = true;
+}
 
 const config = new AppModuleConfig({
     token: t.string.default('notSet'),
@@ -36,18 +38,21 @@ beforeEach(() => {
 test('loadConfigFromEnvVariables', async () => {
     process.env.APP_TOKEN = 'fromBefore';
     process.env.APP_BASE_DB = 'changed2';
-    const app = new CommandApplication(new AppModule({ config, providers: [Service], imports: [baseModule] }));
+    const app = new CommandApplication(new AppModule({ config, providers: [Service], imports: [new BaseModule] }));
     app.loadConfigFromEnv();
 
     const service = app.get(Service);
     expect(service.token).toBe('fromBefore');
+
+    const baseModule = app.serviceContainer.getModuleForModuleClass(BaseModule);
+    expect(baseModule.getConfig()).toEqual({db: 'changed2'});
 
     const baseService = app.get(BaseService);
     expect(baseService.db).toBe('changed2');
 });
 
 test('loadConfigFromEnvFile', async () => {
-    const app = new CommandApplication(new AppModule({ config, providers: [Service], imports: [baseModule] }));
+    const app = new CommandApplication(new AppModule({ config, providers: [Service], imports: [new BaseModule] }));
     app.loadConfigFromEnv({ envFilePath: __dirname + '/test.env' });
 
     const service = app.get(Service);
@@ -64,7 +69,7 @@ test('loadConfigFromEnvVariable', async () => {
             db: 'changed4'
         }
     });
-    const app = new CommandApplication(new AppModule({ config, providers: [Service], imports: [baseModule] }));
+    const app = new CommandApplication(new AppModule({ config, providers: [Service], imports: [new BaseModule] }));
     app.loadConfigFromEnvVariable('APP_CONFIG');
 
     const service = app.get(Service);
@@ -134,22 +139,20 @@ test('required value can be set via env or setupConfig', async () => {
         log: t.boolean,
     });
 
-    const baseModule = new AppModule({ config: baseConfig, providers: [BaseService] }, 'base')
-        .setup((module, config) => {
-            if (!config.log) throw new Error('log needs to be true');
-        })
-    ;
+    class BaseModule extends createModule({ config: baseConfig, providers: [BaseService] }, 'base') {
+        process() {
+            if (!this.config.log) throw new Error('log needs to be true');
+        }
+    }
 
     {
-        baseModule.clearConfig();
-        const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
+        const app = new CommandApplication(new AppModule({ imports: [new BaseModule()] }));
         expect(() => app.serviceContainer.process()).toThrow('log(required): Required value is undefined');
     }
 
     {
-        baseModule.clearConfig();
         const app = new CommandApplication(new AppModule({
-            imports: [baseModule.setupConfig((module, config) => {
+            imports: [new BaseModule().setupConfig((module, config) => {
                 config.log = true;
             })]
         }));
@@ -157,36 +160,32 @@ test('required value can be set via env or setupConfig', async () => {
     }
 
     {
-        baseModule.clearConfig();
         process.env['APP_BASE_LOG'] = '1';
-        const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
+        const app = new CommandApplication(new AppModule({ imports: [new BaseModule()] }));
         app.loadConfigFromEnv();
         app.serviceContainer.process();
     }
 
     {
-        baseModule.clearConfig();
         process.env['APP_BASE_LOG'] = 'asdf';
 
-        const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
+        const app = new CommandApplication(new AppModule({ imports: [new BaseModule()] }));
         app.loadConfigFromEnv();
         expect(() => app.serviceContainer.process()).toThrow('log(invalid_boolean): No Boolean given');
     }
 
     {
-        baseModule.clearConfig();
         process.env['APP_CONFIG'] = '{}';
 
-        const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
+        const app = new CommandApplication(new AppModule({ imports: [new BaseModule()] }));
         app.loadConfigFromEnvVariable('APP_CONFIG');
         expect(() => app.serviceContainer.process()).toThrow('log(required): Required value is undefined');
     }
 
     {
-        baseModule.clearConfig();
         process.env['APP_CONFIG'] = '{"base": {"log": true}}';
 
-        const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
+        const app = new CommandApplication(new AppModule({ imports: [new BaseModule()] }));
         app.loadConfigFromEnvVariable('APP_CONFIG');
         app.serviceContainer.process();
     }
@@ -353,10 +352,11 @@ test('config deps and @inject() in FactoryProvider', async () => {
         }
     }
 
-    class MyClassConfig extends config.slice(['host']) {
+    class MyClassConfig extends config.slice('host') {
     }
 
-    class Unknown {}
+    class Unknown {
+    }
 
     const module = new AppModule({
         config,
@@ -393,12 +393,12 @@ test('config deps and @inject() in FactoryProvider', async () => {
             },
             {
                 provide: 'configHost2', deps: [config.all()], useFactory(c: typeof config.type) {
-                    return c.host
+                    return c.host;
                 }
             },
             {
                 provide: 'configHost3', deps: [inject(config.all())], useFactory(c: typeof config.type) {
-                    return c.host
+                    return c.host;
                 }
             }
         ]

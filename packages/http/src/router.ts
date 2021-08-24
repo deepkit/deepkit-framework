@@ -439,7 +439,7 @@ export class Router {
         middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry()
     ): Router {
         return new this(new HttpControllers(controllers.map(v => {
-            return isClass(v) ? { contextId: 0, controller: v, module: new AppModule({}) } : { ...v, contextId: 0 };
+            return isClass(v) ? { controller: v, module: new AppModule({}) } : v;
         })), new Logger([], []), tagRegistry, middlewareRegistry);
     }
 

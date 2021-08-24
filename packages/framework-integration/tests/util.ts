@@ -49,7 +49,7 @@ export function appModuleForControllers(controllers: ClassType[], entities: Clas
             { provide: BrokerServer, useClass: NetBrokerServer },
         ],
         imports: [
-            KernelModule
+            new KernelModule
         ]
     });
 }

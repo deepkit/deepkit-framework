@@ -317,8 +317,6 @@ test('middleware order changed', async () => {
 
 
 test('middleware for module', async () => {
-    const moduleA = new AppModule({}, 'a');
-    const moduleB = new AppModule({}, 'b');
 
     class MyControllerA {
         @http.GET('/a/:name')
@@ -333,6 +331,8 @@ test('middleware for module', async () => {
             return name;
         }
     }
+    const moduleA = new AppModule({providers: [MyControllerA]}, 'a');
+    const moduleB = new AppModule({providers: [MyControllerB]}, 'b');
 
     const httpKernel = createHttpKernel([
         { module: moduleA, controller: MyControllerA },
@@ -342,7 +342,7 @@ test('middleware for module', async () => {
             res.setHeader('middleware', '1');
             next();
         }).forModules(moduleB),
-    ]);
+    ], [moduleA, moduleB]);
 
     {
         const response = await httpKernel.request(HttpRequest.GET('/a/name1'));
@@ -359,19 +359,18 @@ test('middleware for module', async () => {
 
 
 test('middleware self module', async () => {
-    const moduleA = new AppModule({}, 'a');
-
     class MyControllerA {
         @http.GET('/a/:name')
         hello(name: string) {
             return name;
         }
     }
+    const moduleA = new AppModule({providers: [MyControllerA]}, 'a');
 
     const httpKernel = createHttpKernel([Controller, { controller: MyControllerA, module: moduleA }], [], [], [httpMiddleware.for((req, res, next) => {
         res.setHeader('middleware', '1');
         next();
-    }).forSelfModules()]);
+    }).forSelfModules()], [moduleA]);
 
     {
         const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
