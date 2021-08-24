@@ -42,6 +42,12 @@
       "path": "../crypto/tsconfig.json"
     },
     {
+      "path": "../injector/tsconfig.json"
+    },
+    {
+      "path": "../logger/tsconfig.json"
+    },
+    {
       "path": "../rpc/tsconfig.json"
     },
     {

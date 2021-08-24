@@ -30,13 +30,13 @@
   ],
   "references": [
     {
+      "path": "../api-console-module/tsconfig.json"
+    },
+    {
       "path": "../framework-debug-api/tsconfig.json"
     },
     {
       "path": "../orm-browser-api/tsconfig.json"
-    },
-    {
-      "path": "../api-console-module/tsconfig.json"
     },
     {
       "path": "../app/tsconfig.json"

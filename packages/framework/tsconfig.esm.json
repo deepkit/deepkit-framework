@@ -6,13 +6,13 @@
   },
   "references": [
     {
+      "path": "../api-console-module/tsconfig.esm.json"
+    },
+    {
       "path": "../framework-debug-api/tsconfig.esm.json"
     },
     {
       "path": "../orm-browser-api/tsconfig.esm.json"
-    },
-    {
-      "path": "../api-console-module/tsconfig.esm.json"
     },
     {
       "path": "../app/tsconfig.esm.json"

@@ -27,6 +27,9 @@
       "path": "../crypto/tsconfig.json"
     },
     {
+      "path": "../event/tsconfig.esm.json"
+    },
+    {
       "path": "../framework/tsconfig.esm.json"
     },
     {
@@ -39,22 +42,19 @@
       "path": "../logger/tsconfig.esm.json"
     },
     {
+      "path": "../orm/tsconfig.esm.json"
+    },
+    {
       "path": "../rpc/tsconfig.esm.json"
     },
     {
       "path": "../rpc-tcp/tsconfig.esm.json"
     },
     {
-      "path": "../type/tsconfig.esm.json"
+      "path": "../sql/tsconfig.esm.json"
     },
     {
-      "path": "../workflow/tsconfig.esm.json"
-    },
-    {
-      "path": "../event/tsconfig.esm.json"
-    },
-    {
-      "path": "../orm/tsconfig.esm.json"
+      "path": "../sqlite/tsconfig.esm.json"
     },
     {
       "path": "../stopwatch/tsconfig.esm.json"
@@ -63,10 +63,10 @@
       "path": "../template/tsconfig.esm.json"
     },
     {
-      "path": "../sql/tsconfig.esm.json"
+      "path": "../type/tsconfig.esm.json"
     },
     {
-      "path": "../sqlite/tsconfig.esm.json"
+      "path": "../workflow/tsconfig.esm.json"
     }
   ]
 }
