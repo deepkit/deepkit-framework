@@ -36,7 +36,7 @@ jobs:
             --ignore @deepkit/fs \
             --ignore @deepkit/framework-examples \
             --ignore @deepkit/benchmark \
-            --ignore @deepkit/mysql
+            --ignore @deepkit/mysql \
             --ignore @deepkit/postgres \
             --ignore @deepkit/orm-browser-example \
             --ignore @deepkit/orm-browser;
