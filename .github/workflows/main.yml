@@ -27,10 +27,10 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-all2-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm@6 && npm install
+        run: npm install -g npm@6 && npm ci
       - name: Lerna bootstrap
         run: |
-          npm run bootstrap -- \
+          npm run bootstrap:ci -- \
             --ignore @deepkit/mongo \
             --ignore @deepkit/example-app \
             --ignore @deepkit/fs \
