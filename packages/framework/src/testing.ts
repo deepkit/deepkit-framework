@@ -11,7 +11,7 @@
 import { BrokerKernel } from '@deepkit/broker';
 import { ClassType } from '@deepkit/core';
 import { ConsoleTransport, Logger, MemoryLoggerTransport } from '@deepkit/logger';
-import { Database, DatabaseRegistry } from '@deepkit/orm';
+import { Database, DatabaseRegistry, MemoryDatabaseAdapter } from '@deepkit/orm';
 import { ClassSchema } from '@deepkit/type';
 import { Application } from './application';
 import { ApplicationServer } from './application-server';
@@ -21,7 +21,6 @@ import { AppModule, ModuleOptions } from '@deepkit/app';
 import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker';
 import { HttpKernel, HttpResponse, RequestBuilder } from '@deepkit/http';
 import { RpcClient } from '@deepkit/rpc';
-import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 
 export class TestHttpResponse extends HttpResponse {
     public body: Buffer = Buffer.alloc(0);
@@ -123,7 +122,7 @@ export function createTestingApp<O extends ModuleOptions>(options: O, entities: 
     ];
 
     if (entities.length) {
-        providers.push({ provide: Database, useValue: new Database(new SQLiteDatabaseAdapter(':memory:'), entities) });
+        providers.push({ provide: Database, useValue: new Database(new MemoryDatabaseAdapter, entities) });
         module.setupProvider(DatabaseRegistry).addDatabase(Database, {}, module);
     }
 
