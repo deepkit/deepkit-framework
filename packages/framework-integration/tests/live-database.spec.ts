@@ -10,7 +10,7 @@ import { expect, test } from '@jest/globals';
 import { InjectorModule } from '@deepkit/injector';
 
 export function createTestingApp<O extends ModuleOptions>(options: O, entities?: (ClassType | ClassSchema)[]): TestingFacade<Application<O>> {
-    return createTestingAppOriginal(options, entities, (module: AppModule<any>) => {
+    return createTestingAppOriginal(options, [], (module: AppModule<any>) => {
         module.addProvider({ provide: Database, useValue: new Database(new SQLiteDatabaseAdapter('/tmp/live-database.sqlite'), entities) })
         module.setupProvider(DatabaseRegistry).addDatabase(Database, { migrateOnStartup: true }, new InjectorModule<any>('', 0));
     }) as any;
