@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, ExtractClassDefinition, FieldDecoratorWrapper, getClassSchema, jsonSerializer, PlainSchemaProps, PropertySchema, t } from '@deepkit/type';
+import { ClassSchema, ExtractClassDefinition, FieldDecoratorWrapper, getClassSchema, isFieldDecorator, jsonSerializer, PlainSchemaProps, PropertySchema, t } from '@deepkit/type';
 import { isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider, Provider, ProviderWithScope, Tag, TagProvider, TagRegistry } from './provider';
 import { ClassType, CompilerContext, CustomError, getClassName, getClassTypeFromInstance, isClass, isFunction, isPrototypeOfBase } from '@deepkit/core';
 import { InjectorModule } from './module';
@@ -23,8 +23,6 @@ export class ConfigToken<T extends {}> {
 export class ConfigSlice<T extends {}> {
     public bag?: { [name: string]: any };
     public config!: ConfigDefinition<T>;
-
-    // public names!: (keyof T & string)[];
 
     constructor(config: ConfigDefinition<T>, names: (keyof T & string)[]) {
         //we want that ConfigSlice acts as a regular plain object, which can be serialized at wish.
@@ -181,7 +179,27 @@ export function inject(token?: any | ForwardRef<any>): InjectDecorator {
     return fn as InjectDecorator;
 }
 
-export class InjectToken {
+/**
+ * A injector token for tokens that have no unique class name.
+ *
+ * ```typescript
+ *  export interface ServiceInterface {
+ *      doIt(): void;
+ *  }
+ *  export const Service = new InjectorToken<ServiceInterface>('service');
+ *
+ *  {
+ *      providers: [
+ *          {provide: Service, useFactory() => ... },
+ *      ]
+ *  }
+ *
+ *  //user side
+ *  const service = injector.get(Service);
+ *  service.doIt();
+ * ```
+ */
+export class InjectorToken<T> {
     constructor(public readonly name: string) {
     }
 
@@ -242,8 +260,10 @@ export interface ConfigContainer {
 let CircularDetector: any[] = [];
 let CircularDetectorResets: (() => void)[] = [];
 
+export type ResolveToken<T> = T extends ClassType<infer R> ? R : T extends InjectorToken<infer R> ? R : T;
+
 export interface BasicInjector {
-    get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: BasicInjector): R;
+    get<T>(token: T, frontInjector?: BasicInjector): ResolveToken<T>;
 
     getInjectorForModule(module: InjectorModule): BasicInjector;
 }
@@ -396,9 +416,13 @@ export class Injector implements BasicInjector {
 
         if (options && options.token) {
             token = isFunction(options.token) ? options.token() : options.token;
+        } else if (property.type === 'class') {
+            token = property.getResolvedClassType();
+        } else if (property.type === 'literal') {
+            token = property.literalValue;
         }
 
-        return { token, name: property.name, optional: !!options && options.optional };
+        return { token, name: property.name, optional: property.isOptional ? true : (!!options && options.optional) };
     }
 
     protected createFactory(compiler: CompilerContext, classType: ClassType): string {
@@ -410,14 +434,9 @@ export class Injector implements BasicInjector {
 
         for (const property of schema.getMethodProperties('constructor')) {
             if (!property) {
-                console.log('Constructor arguments', schema.getMethodProperties('constructor'));
                 throw new Error(`Constructor arguments hole in ${getClassName(classType)}`);
             }
-            // try {
-                args.push(this.createFactoryProperty(this.optionsFromProperty(property), compiler, getClassName(classType), args.length, 'constructorParameterNotFound'));
-            // } catch (error) {
-            //     throw new Error(`Could not resolve constructor injection token ${getClassName(classType)}.${property.name}: ${error.message}`);
-            // }
+            args.push(this.createFactoryProperty(this.optionsFromProperty(property), compiler, getClassName(classType), args.length, 'constructorParameterNotFound'));
         }
 
         for (const property of schema.getProperties()) {
@@ -483,7 +502,15 @@ export class Injector implements BasicInjector {
             } else if (isClassProvider(provider)) {
                 transient = provider.transient === true;
                 token = provider.provide;
-                factory = this.createFactory(compiler, provider.useClass || provider.provide);
+
+                let useClass = provider.useClass;
+                if (!useClass) {
+                    if (!isClass(provider.provide)) {
+                        throw new Error(`UseClassProvider needs to set either 'useClass' or 'provide' as a ClassType.`);
+                    }
+                    useClass = provider.provide;
+                }
+                factory = this.createFactory(compiler, useClass);
             } else if (isExistingProvider(provider)) {
                 transient = provider.transient === true;
                 token = provider.provide;
@@ -501,6 +528,14 @@ export class Injector implements BasicInjector {
                     if (isInjectDecorator(dep)) {
                         optional = dep.options.optional;
                         token = dep.options.token;
+                    }
+
+                    if (isFieldDecorator(dep)) {
+                        const propertySchema = dep.buildPropertySchema();
+                        optional = propertySchema.isOptional;
+                        if (propertySchema.type === 'literal' || propertySchema.type === 'class') {
+                            token = propertySchema.literalValue !== undefined ? propertySchema.literalValue : propertySchema.getResolvedClassType();
+                        }
                     }
 
                     if (!token) {
@@ -617,12 +652,13 @@ export class Injector implements BasicInjector {
         `, 'injector', 'token', 'frontInjector') as any;
     }
 
-    public get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R {
+    public get<T>(token: T, frontInjector?: Injector): ResolveToken<T> {
         const v = this.retriever(this, token, frontInjector || this);
         if (v !== undefined) return v;
 
         for (const reset of CircularDetectorResets) reset();
-        throw new TokenNotFoundError(`Could not resolve injector token ${tokenLabel(token)}`);
+        const affix = this.context ? ` in ${getClassName(this.context.module)}.${this.context.module.name}` : '';
+        throw new TokenNotFoundError(`Could not resolve injector token ${tokenLabel(token)}${affix}`);
     }
 }
 
@@ -662,6 +698,9 @@ function throwCircularDependency() {
     throw new CircularDependencyError(`Circular dependency found ${path}`);
 }
 
+/**
+ * Only supports FactoryProvider (without deps) and ValueProvider.
+ */
 export class MemoryInjector extends Injector {
     constructor(protected providers: ({ provide: any, useValue: any } | { provide: any, useFactory: () => any })[]) {
         super();
@@ -677,7 +716,7 @@ export class MemoryInjector extends Injector {
         }
     }
 
-    public get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R {
+    public get<T>(token: T, frontInjector?: Injector): ResolveToken<T> {
         const result = this.retriever(this, token);
         if (result === undefined) throw new TokenNotFoundError(`Could not resolve injector token ${tokenLabel(token)}`);
         return result;

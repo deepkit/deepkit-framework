@@ -33,14 +33,14 @@
   },
   "dependencies": {
     "@types/estree": "^0.0.45",
+    "reflect-metadata": "^0.1.13",
     "abstract-syntax-tree": "^2.9.4"
   },
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.48",
     "@deepkit/injector": "^1.0.1-alpha.51",
     "@deepkit/stopwatch": "^1.0.1-alpha.51",
-    "@deepkit/type": "^1.0.1-alpha.51",
-    "reflect-metadata": "^0.1.13"
+    "@deepkit/type": "^1.0.1-alpha.51"
   },
   "jest": {
     "transform": {

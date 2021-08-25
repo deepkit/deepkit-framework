@@ -1,11 +1,93 @@
+import 'reflect-metadata';
 import { entity, getClassSchema, t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { DirectClient } from '../src/client/client-direct';
-import { rpc } from '../src/decorators';
+import { getActions, rpc } from '../src/decorators';
 import { RpcKernel, RpcKernelConnection } from '../src/server/kernel';
 import { injectable } from '@deepkit/injector';
 import { Session, SessionState } from '../src/server/security';
+
+test('decorator', async () => {
+    @rpc.controller('name')
+    class Controller {
+        @rpc.action()
+        action(): void {
+        }
+
+        @rpc.action().group('a')
+        second(): void {
+        }
+    }
+
+    {
+        const actions = getActions(Controller);
+        expect(actions.size).toBe(2);
+        expect(actions.get('action')!.name).toBe('action');
+        expect(actions.get('action')!.groups).toEqual([]);
+        expect(actions.get('second')!.name).toBe('second');
+        expect(actions.get('second')!.groups).toEqual(['a']);
+    }
+});
+
+test('inheritance', async () => {
+    class User {}
+
+    @rpc.controller('name')
+    class Controller {
+        @rpc.action()
+        @t.type(User).optional
+        action(): User | undefined {
+            return new User();
+        }
+
+        @rpc.action().group('a')
+        second(): User {
+            return new User();
+        }
+    }
+
+    @rpc.controller('different')
+    class Extended extends Controller {
+        @rpc.action().group('extended')
+        second() {
+            return super.second();
+        }
+
+        @rpc.action().group('b')
+        third(): void {
+        }
+    }
+
+    {
+        const actions = getActions(Controller);
+        expect(actions.size).toBe(2);
+        expect(actions.get('action')!.name).toBe('action');
+        expect(actions.get('action')!.groups).toEqual([]);
+        expect(actions.get('second')!.name).toBe('second');
+        expect(actions.get('second')!.groups).toEqual(['a']);
+
+        const resultProperty = getClassSchema(Controller).getMethod('action');
+        expect(resultProperty.type).toBe('class');
+        expect(resultProperty.classType).toBe(User);
+    }
+
+    {
+        const actions = getActions(Extended);
+        expect(actions.size).toBe(3);
+        expect(actions.get('action')!.name).toBe('action');
+        expect(actions.get('action')!.groups).toEqual([]);
+
+        expect(actions.get('second')!.name).toBe('second');
+        expect(actions.get('second')!.groups).toEqual(['a', 'extended']);
+
+        expect(actions.get('third')!.name).toBe('third');
+        expect(actions.get('third')!.groups).toEqual(['b']);
+
+        const resultProperty = getClassSchema(Extended).getMethod('action');
+        expect(resultProperty.type).toBe('class');
+        expect(resultProperty.classType).toBe(User);
+    }
+});
 
 test('basics', async () => {
     @entity.name('model/basics')
@@ -259,9 +341,9 @@ test('types', async () => {
     @injectable()
     class Controller {
         @rpc.action()
-        @t.type({total: t.number, items: t.array(Model)})
+        @t.type({ total: t.number, items: t.array(Model) })
         test(): { total: number, items: Model[] } {
-            return {total: 5, items: [new Model]};
+            return { total: 5, items: [new Model] };
         }
     }
 

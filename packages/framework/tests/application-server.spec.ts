@@ -2,14 +2,14 @@ import { rpc } from '@deepkit/rpc';
 import { afterEach, describe, expect, jest, test } from '@jest/globals';
 import 'reflect-metadata';
 import { Application } from '../src/application';
-import { AppModule } from '@deepkit/app';
 import { InjectorContext } from '@deepkit/injector';
 import { createTestingApp } from '../src/testing';
 import { ApplicationServer } from '../src/application-server';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
-import { KernelModule } from '../src/kernel';
+import { FrameworkModule } from '../src/module';
 import { RpcServer, RpcServerInterface, WebWorker } from '../src/worker';
 import { HttpRequest } from '@deepkit/http';
+import { BrokerModule } from '../src/broker/broker.module';
 
 jest.mock('ws', () => {
     const on = jest.fn();
@@ -40,7 +40,8 @@ describe('application-server', () => {
     test('testing app api', async () => {
         @rpc.controller('test')
         class MyController {
-            constructor(protected logger: Logger) { }
+            constructor(protected logger: Logger) {
+            }
 
             @rpc.action()
             foo() {
@@ -75,16 +76,15 @@ describe('application-server', () => {
             }
         }
 
-        const appModule = new AppModule({
+        const app = new Application({
             controllers: [MyController],
             imports: [
-                new KernelModule({
-                    broker: {startOnBootstrap: false}
-                })
+                new FrameworkModule()
+                    .setup((module) => {
+                        module.getImportedModuleByClass(BrokerModule).configure({ startOnBootstrap: false });
+                    })
             ]
         });
-
-        const app = new Application(appModule);
         const applicationServer = app.get(ApplicationServer);
         const injectorContext = app.get(InjectorContext);
         const controller = injectorContext.createChildScope('rpc').get(MyController);
@@ -123,14 +123,14 @@ describe('application-server', () => {
         test('needed for publicDir', async () => {
             const testing = createTestingApp({
                 controllers: [],
-                imports: [new KernelModule({ publicDir: 'public' })]
+                imports: [new FrameworkModule({ publicDir: 'public' })]
             });
 
             await testing.startServer();
             const applicationServer = testing.app.get(ApplicationServer);
             expect(applicationServer.getWorker()).toBeInstanceOf(WebWorker);
             await testing.stopServer();
-        })
+        });
 
         test('not needed without controllers or publicDir', async () => {
             const testing = createTestingApp({
@@ -141,8 +141,8 @@ describe('application-server', () => {
             const applicationServer = testing.app.get(ApplicationServer);
             expect(() => applicationServer.getWorker()).toThrow();
             await testing.stopServer();
-        })
-    })
+        });
+    });
 
     describe('RpcServer', () => {
         test('should use custom implementation when provided', async () => {
@@ -161,14 +161,15 @@ describe('application-server', () => {
                         close: jest.fn(),
                         bufferedAmount: jest.fn(),
                         clientAddress: jest.fn(),
-                    })
+                    });
                 })),
             };
 
             @rpc.controller('test')
-            class MyController {}
+            class MyController {
+            }
 
-            const appModule = new AppModule({
+            const app = new Application({
                 controllers: [MyController],
                 providers: [
                     {
@@ -177,8 +178,6 @@ describe('application-server', () => {
                     }
                 ],
             });
-
-            const app = new Application(appModule);
             const applicationServer = app.get(ApplicationServer);
             await applicationServer.start();
 
@@ -192,13 +191,12 @@ describe('application-server', () => {
 
         test('should use default implementation via ws when not specified', async () => {
             @rpc.controller('test')
-            class MyController {}
+            class MyController {
+            }
 
-            const appModule = new AppModule({
+            const app = new Application({
                 controllers: [MyController],
             });
-
-            const app = new Application(appModule);
             const applicationServer = app.get(ApplicationServer);
             await applicationServer.start();
 

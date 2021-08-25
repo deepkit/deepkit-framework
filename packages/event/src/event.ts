@@ -9,7 +9,7 @@
  */
 
 import { ClassType, CompilerContext, isClass, isFunction } from '@deepkit/core';
-import { ConfigSlice, ConfigToken, Context, InjectorContext } from '@deepkit/injector';
+import { ConfigSlice, ConfigToken, InjectorContext, InjectorModule } from '@deepkit/injector';
 import { createClassDecoratorContext, createPropertyDecoratorContext } from '@deepkit/type';
 
 export type EventListenerCallback<T> = (event: T) => void | Promise<void>;
@@ -103,7 +103,7 @@ export const eventDispatcher = createPropertyDecoratorContext(
 
 
 export type EventListenerContainerEntryCallback = { order: number, fn: EventListenerCallback<any> };
-export type EventListenerContainerEntryService = { context?: Context, order: number, classType: ClassType, methodName: string };
+export type EventListenerContainerEntryService = { module: InjectorModule<any>, order: number, classType: ClassType, methodName: string };
 export type EventListenerContainerEntry = EventListenerContainerEntryCallback | EventListenerContainerEntryService;
 
 export function isEventListenerContainerEntryCallback(obj: any): obj is EventListenerContainerEntryCallback {
@@ -128,13 +128,13 @@ export class EventDispatcher {
     ) {
     }
 
-    public registerListener(listener: ClassType, context?: Context) {
+    public registerListener(listener: ClassType, module: InjectorModule) {
         if (this.registeredClassTypes.has(listener)) return;
         this.registeredClassTypes.add(listener);
         const config = eventClass._fetch(listener);
         if (!config) return;
         for (const entry of config.listeners) {
-            this.add(entry.eventToken, { context, classType: listener, methodName: entry.methodName, order: entry.order });
+            this.add(entry.eventToken, { module, classType: listener, methodName: entry.methodName, order: entry.order });
         }
     }
 

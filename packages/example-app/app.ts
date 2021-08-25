@@ -1,6 +1,6 @@
 #!/usr/bin/env ts-node-script
 import 'reflect-metadata';
-import { Application, createCrudRoutes, KernelModule, onServerMainBootstrapDone } from '@deepkit/framework';
+import { Application, createCrudRoutes, FrameworkModule, onServerMainBootstrapDone } from '@deepkit/framework';
 import { Author, Book, SQLiteDatabase, User } from './src/database';
 import { MainController } from './src/controller/main.http';
 import { UsersCommand } from './src/controller/users.cli';
@@ -8,13 +8,10 @@ import { ApiConsoleModule } from '@deepkit/api-console-module';
 import { config } from './src/config';
 import { JSONTransport, Logger } from '@deepkit/logger';
 import { createListener } from '@deepkit/event';
-import { ClassType } from '@deepkit/core';
 
-function log(logger: InstanceType<ClassType<Logger>>) {
-    logger.log()
-}
+const bookStoreCrud = createCrudRoutes([Author, Book]);
 
-Application.create({
+new Application({
     config: config,
     providers: [SQLiteDatabase],
     controllers: [MainController, UsersCommand],
@@ -25,9 +22,22 @@ Application.create({
     ],
     imports: [
         createCrudRoutes([User], { identifier: 'username', identifierChangeable: true }),
-        createCrudRoutes([Author, Book]),
-        new ApiConsoleModule({ path: '/api' }),
-        new KernelModule({
+        bookStoreCrud,
+
+        new ApiConsoleModule({ path: '/api' }).filter(filter => filter.excludeModules(bookStoreCrud)),
+        new ApiConsoleModule({
+            path: '/api/bookstore',
+            markdown: `
+             # Bookstore
+
+             Welcome to my little bookstore API. Feel free to manage the content.
+
+             Have fun
+            `
+        })
+            .filter(filter => filter.forModules(bookStoreCrud)),
+
+        new FrameworkModule({
             publicDir: 'public',
             httpLog: true,
             migrateOnStartup: true,
@@ -35,7 +45,7 @@ Application.create({
     ]
 }).setup((module, config) => {
     if (config.environment === 'development') {
-        //activate kernel debug=true
+        module.getImportedModuleByClass(FrameworkModule).configure({debug: true});
     }
 
     if (config.environment === 'production') {

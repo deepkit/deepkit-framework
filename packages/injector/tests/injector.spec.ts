@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { getClassSchema, t } from '@deepkit/type';
 import 'reflect-metadata';
-import { CircularDependencyError, createConfig, inject, injectable, InjectOptions, Injector } from '../src/injector';
+import { CircularDependencyError, createConfig, inject, injectable, InjectOptions, Injector, InjectorToken } from '../src/injector';
 import { InjectorModule } from '../src/module';
 import { InjectorContext } from '../src/injector-context';
 
@@ -193,6 +193,73 @@ test('injector optional dependency', () => {
         const injector = new Injector([MyServer]);
         expect(() => injector.get(Connection)).toThrow('Could not resolve injector token Connection');
         expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
+    }
+});
+
+test('injector via t.optional', () => {
+    class Connection {
+    }
+
+    @injectable()
+    class MyServer {
+        constructor(@t.optional private connection?: Connection) {
+            expect(connection).toBeUndefined();
+        }
+    }
+
+    {
+        const injector = new Injector([MyServer]);
+        expect(() => injector.get(Connection)).toThrow('Could not resolve injector token Connection');
+        expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
+    }
+});
+
+test('injector via t.type', () => {
+    interface ConnectionInterface {}
+    class Connection {
+    }
+
+    @injectable()
+    class MyServer {
+        constructor(@t.type(Connection) public connection: ConnectionInterface) {
+        }
+    }
+
+    {
+        const injector = new Injector([MyServer, Connection]);
+        expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
+        expect(injector.get(MyServer).connection).toBeInstanceOf(Connection);
+    }
+});
+
+test('injector via t.type string', () => {
+    interface ConnectionInterface {}
+    class Connection {
+    }
+
+    @injectable()
+    class MyServer {
+        constructor(@t.type('connection') public connection: ConnectionInterface) {
+        }
+    }
+
+    {
+        const injector = new Injector([MyServer, {provide: 'connection', useClass: Connection}]);
+        expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
+        expect(injector.get(MyServer).connection).toBeInstanceOf(Connection);
+    }
+});
+
+test('injector token', () => {
+    interface ConnectionInterface {
+        doIt(): string;
+    }
+
+    const Connection = new InjectorToken<ConnectionInterface>('connection');
+
+    {
+        const injector = new Injector([{provide: Connection, useValue: {doIt() {return 'hi'}}}]);
+        expect(injector.get(Connection).doIt()).toBe('hi');
     }
 });
 
@@ -433,7 +500,6 @@ test('constructor one with @inject', () => {
     }
 
     class SubService extends MyService {
-
     }
 
     {

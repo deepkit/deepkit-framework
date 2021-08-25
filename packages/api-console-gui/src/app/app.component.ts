@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ElementRef } from '@angular/core';
 import { DuiApp } from '@deepkit/desktop-ui';
 import { ControllerClient } from './client';
 
@@ -50,6 +50,14 @@ import { ControllerClient } from './client';
 export class AppComponent {
     sidebarVisible: boolean = true;
 
-    constructor(public duiApp: DuiApp, public client: ControllerClient) {
+    constructor(
+        public duiApp: DuiApp,
+        public client: ControllerClient,
+        public host: ElementRef<HTMLElement>,
+    ) {
+        const controller = host.nativeElement.getAttribute('controller');
+        if (controller && controller !== 'APP_CONTROLLER_NAME') {
+            this.client.setController(controller);
+        }
     }
 }

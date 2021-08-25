@@ -39,7 +39,7 @@ export class InjectorModule<N extends string = string, C extends { [name: string
     }
 
     setConfig(config: C) {
-        Object.assign(this.config, config);
+        this.config = config;
     }
 
     getConfiguredProviderRegistry(): ConfiguredProviderRegistry {

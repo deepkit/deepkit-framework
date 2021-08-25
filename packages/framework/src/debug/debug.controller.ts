@@ -10,29 +10,31 @@
 import { Config, ConfigOption, Database, DatabaseEntity, DebugControllerInterface, Event, Route, RpcAction, RpcActionParameter, Workflow } from '@deepkit/framework-debug-api';
 import { rpc, rpcClass } from '@deepkit/rpc';
 import { getClassSchema, t } from '@deepkit/type';
-import { ApplicationServiceContainer } from '../application-service-container';
 import { parseRouteControllerAction, Router } from '@deepkit/http';
 import { changeClass, getClassName } from '@deepkit/core';
 import { EventDispatcher, isEventListenerContainerEntryService } from '@deepkit/event';
 import { DatabaseAdapter, DatabaseRegistry } from '@deepkit/orm';
 import { readFileSync, statSync, truncateSync } from 'fs';
 import { join } from 'path';
-import { kernelConfig } from '../kernel.config';
+import { frameworkConfig } from '../module.config';
 import { FileStopwatchStore } from './stopwatch/store';
 import { Subject } from 'rxjs';
 import { unlink } from 'fs/promises';
 import { inject } from '@deepkit/injector';
+import { ServiceContainer } from '@deepkit/app';
+import { RpcControllers } from '../rpc';
 
-class DebugConfig extends kernelConfig.slice('varPath', 'debugStorePath') {
+class DebugConfig extends frameworkConfig.slice('varPath', 'debugStorePath') {
 }
 
 @rpc.controller(DebugControllerInterface)
 export class DebugController implements DebugControllerInterface {
     constructor(
-        protected serviceContainer: ApplicationServiceContainer,
+        protected serviceContainer: ServiceContainer,
         protected eventDispatcher: EventDispatcher,
         protected router: Router,
         protected config: DebugConfig,
+        protected rpcControllers: RpcControllers,
         protected databaseRegistry: DatabaseRegistry,
         @inject().optional protected stopwatchStore?: FileStopwatchStore,
         // protected liveDatabase: LiveDatabase,
@@ -225,7 +227,7 @@ export class DebugController implements DebugControllerInterface {
     actions(@t.optional peter?: string): RpcAction[] {
         const result: RpcAction[] = [];
 
-        for (const { controller } of this.serviceContainer.rpcControllers.controllers.values()) {
+        for (const { controller } of this.rpcControllers.controllers.values()) {
             const rpcConfig = rpcClass._fetch(controller);
             if (!rpcConfig) continue;
 

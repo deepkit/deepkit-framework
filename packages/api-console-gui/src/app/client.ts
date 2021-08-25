@@ -91,7 +91,12 @@ export class ControllerClient {
         });
     }
 
-    public readonly api = this.client.controller(ApiConsoleApi);
+    setController(name: string) {
+        console.log('setController', name);
+        this.api = this.client.controller<ApiConsoleApi>(name);
+    }
+
+    public api = this.client.controller(ApiConsoleApi);
 
     static getServerHost(): string {
         const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';

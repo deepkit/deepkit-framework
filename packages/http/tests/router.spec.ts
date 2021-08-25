@@ -91,14 +91,14 @@ test('router parameters', async () => {
 
     const httpKernel = createHttpKernel([Controller]);
 
-    expect(await httpKernel.handleRequestFor('GET', '/user/peter')).toBe('peter');
-    expect(await httpKernel.handleRequestFor('GET', '/user-id/123')).toBe(123);
-    expect(await httpKernel.handleRequestFor('GET', '/user-id/asd')).toMatchObject({ message: 'Validation failed: id(invalid_number): No valid number given, got NaN' });
-    expect(await httpKernel.handleRequestFor('GET', '/boolean/1')).toBe(true);
-    expect(await httpKernel.handleRequestFor('GET', '/boolean/false')).toBe(false);
+    expect((await httpKernel.request(HttpRequest.GET('/user/peter'))).json).toBe('peter');
+    expect((await httpKernel.request(HttpRequest.GET('/user-id/123'))).json).toBe(123);
+    expect((await httpKernel.request(HttpRequest.GET('/user-id/asd'))).json).toMatchObject({ message: 'Validation failed: id(invalid_number): No valid number given, got NaN' });
+    expect((await httpKernel.request(HttpRequest.GET('/boolean/1'))).json).toBe(true);
+    expect((await httpKernel.request(HttpRequest.GET('/boolean/false'))).json).toBe(false);
 
-    expect(await httpKernel.handleRequestFor('GET', '/any')).toBe('any');
-    expect(await httpKernel.handleRequestFor('GET', '/any/path')).toBe('any/path');
+    expect((await httpKernel.request(HttpRequest.GET('/any'))).json).toBe('any');
+    expect((await httpKernel.request(HttpRequest.GET('/any/path'))).json).toBe('any/path');
 });
 
 test('router HttpRequest', async () => {
@@ -111,7 +111,7 @@ test('router HttpRequest', async () => {
 
     const httpKernel = createHttpKernel([Controller]);
 
-    expect(await httpKernel.handleRequestFor('GET', '/req/any/path')).toEqual(['/req/any/path', 'req/any/path']);
+    expect((await httpKernel.request(HttpRequest.GET('/req/any/path'))).json).toEqual(['/req/any/path', 'req/any/path']);
 });
 
 test('router parameter resolver by class', async () => {
@@ -166,9 +166,9 @@ test('router parameter resolver by class', async () => {
 
     const httpKernel = createHttpKernel([Controller], [UserResolver, GroupResolver]);
 
-    expect(await httpKernel.handleRequestFor('GET', '/user/peter')).toEqual(['peter']);
-    expect(await httpKernel.handleRequestFor('GET', '/user/peter/group/a')).toEqual(['peter', 'a']);
-    expect(await httpKernel.handleRequestFor('GET', '/invalid')).toEqual('Internal error');
+    expect((await httpKernel.request(HttpRequest.GET('/user/peter'))).json).toEqual(['peter']);
+    expect((await httpKernel.request(HttpRequest.GET('/user/peter/group/a'))).json).toEqual(['peter', 'a']);
+    expect((await httpKernel.request(HttpRequest.GET('/invalid'))).bodyString).toEqual('Internal error');
 });
 
 test('router parameter resolver by name', async () => {
@@ -240,10 +240,10 @@ test('router parameter resolver by name', async () => {
 
     const httpKernel = createHttpKernel([Controller], [UserResolver, GroupResolver, AuthResolver]);
 
-    expect(await httpKernel.handleRequestFor('GET', '/user/peter')).toEqual(['peter']);
-    expect(await httpKernel.handleRequestFor('GET', '/user/peter/group/a')).toEqual(['peter', 'a']);
-    expect(await httpKernel.handleRequestFor('GET', '/invalid')).toEqual('Internal error');
-    expect(await httpKernel.handleRequestFor('GET', '/nonClass')).toEqual(['auth', 'MyAuth']);
+    expect((await httpKernel.request(HttpRequest.GET('/user/peter'))).json).toEqual(['peter']);
+    expect((await httpKernel.request(HttpRequest.GET('/user/peter/group/a'))).json).toEqual(['peter', 'a']);
+    expect((await httpKernel.request(HttpRequest.GET('/invalid'))).bodyString).toEqual('Internal error');
+    expect((await httpKernel.request(HttpRequest.GET('/nonClass'))).json).toEqual(['auth', 'MyAuth']);
 });
 
 test('router body', async () => {
@@ -260,7 +260,7 @@ test('router body', async () => {
 
     const httpKernel = createHttpKernel([Controller]);
 
-    expect(await httpKernel.handleRequestFor('POST', '/', { username: 'Peter' })).toEqual(['Peter', true, '/']);
+    expect((await httpKernel.request(HttpRequest.POST('/').json({ username: 'Peter' }))).json).toEqual(['Peter', true, '/']);
 });
 
 
@@ -288,7 +288,7 @@ test('router body double', async () => {
 
     const httpKernel = createHttpKernel([Controller]);
 
-    expect(await httpKernel.handleRequestFor('POST', '/', { username: 'Peter' })).toEqual(['Peter', true, '/']);
+    expect((await httpKernel.request(HttpRequest.POST('/').json({ username: 'Peter' }))).json).toEqual(['Peter', true, '/']);
 });
 
 test('router groups', async () => {
@@ -357,8 +357,8 @@ test('router query', async () => {
 
     const httpKernel = createHttpKernel([Controller]);
 
-    expect(await httpKernel.handleRequestFor('GET', '/my-action?test=123')).toEqual(123);
-    expect(await httpKernel.handleRequestFor('GET', '/my-action')).toEqual(undefined);
+    expect((await httpKernel.request(HttpRequest.GET('/my-action?test=123'))).json).toEqual(123);
+    expect((await httpKernel.request(HttpRequest.GET('/my-action'))).bodyString).toEqual('');
 });
 
 test('router query all', async () => {
@@ -377,9 +377,9 @@ test('router query all', async () => {
 
     const httpKernel = createHttpKernel([Controller]);
 
-    expect(await httpKernel.handleRequestFor('GET', '/my-action?test=123')).toEqual({ test: '123' });
-    expect(await httpKernel.handleRequestFor('GET', '/my-action')).toEqual({});
-    expect(await httpKernel.handleRequestFor('GET', '/my-action?filter=page&page=5')).toEqual({ filter: 'page', page: 5 });
+    expect((await httpKernel.request(HttpRequest.GET('/my-action?test=123'))).json).toEqual({ test: '123' });
+    expect((await httpKernel.request(HttpRequest.GET('/my-action'))).json).toEqual({});
+    expect((await httpKernel.request(HttpRequest.GET('/my-action?filter=page&page=5'))).json).toEqual({ filter: 'page', page: 5 });
 });
 
 test('serializer options', async () => {
@@ -398,7 +398,7 @@ test('serializer options', async () => {
 
     const httpKernel = createHttpKernel([Controller]);
 
-    expect(await httpKernel.handleRequestFor('GET', '/')).toEqual({ username: 'Peter' });
+    expect((await httpKernel.request(HttpRequest.GET('/'))).json).toEqual({ username: 'Peter' });
 });
 
 test('hook after serializer', async () => {
@@ -425,7 +425,7 @@ test('hook after serializer', async () => {
 
     const httpKernel = createHttpKernel([Controller], [], [Listener]);
 
-    const result = await httpKernel.handleRequestFor('GET', '/');
+    const result = (await httpKernel.request(HttpRequest.GET('/'))).json;
     expect(result.data).toEqual({ username: 'Peter' });
     expect(result.processingTime).toBeGreaterThanOrEqual(99);
 });
@@ -438,7 +438,7 @@ test('invalid route definition', async () => {
     }
 
     const httpKernel = createHttpKernel([Controller]);
-    expect(await httpKernel.handleRequestFor('GET', '/')).toEqual('Not found');
+    expect((await httpKernel.request(HttpRequest.GET('/'))).bodyString).toEqual('Not found');
 });
 
 
@@ -477,10 +477,10 @@ test('inject request storage ClassType', async () => {
         }
     ], [Listener]);
 
-    expect(await httpKernel.handleRequestFor('GET', '/', undefined, { authorization: 'yes' })).toEqual({ isUser: true, username: 'bar' });
-    expect(await httpKernel.handleRequestFor('GET', '/', undefined, { authorization: 'no' })).toEqual('Internal error');
+    expect((await httpKernel.request(HttpRequest.GET('/').headers({ authorization: 'yes' }))).json).toEqual({ isUser: true, username: 'bar' });
+    expect((await httpKernel.request(HttpRequest.GET('/').headers({ authorization: 'no' }))).bodyString).toEqual('Internal error');
 
-    expect(await httpKernel.handleRequestFor('GET', '/optional', undefined, { authorization: 'no' })).toEqual({ isUser: false });
+    expect((await httpKernel.request(HttpRequest.GET('/optional').headers({ authorization: 'no' }))).json).toEqual({ isUser: false });
 });
 
 
@@ -512,7 +512,7 @@ test('inject request storage @inject', async () => {
         }
     ], [Listener]);
 
-    const result = await httpKernel.handleRequestFor('GET', '/');
+    const result = (await httpKernel.request(HttpRequest.GET('/'))).json;
     expect(result.isUser).toBe(true);
     expect(result.username).toBe('bar');
 });
@@ -527,7 +527,7 @@ test('custom request handling', async () => {
     }
 
     const httpKernel = createHttpKernel([], [], [Listener]);
-    expect(await httpKernel.handleRequestFor('OPTIONS', '/')).toBe(true);
+    expect((await httpKernel.request(HttpRequest.OPTIONS('/'))).json).toBe(true);
 });
 
 test('race condition', async () => {
@@ -558,11 +558,11 @@ test('race condition', async () => {
     const httpKernel = createHttpKernel([Controller], [], [Listener]);
 
     const [a, b] = await Promise.all([
-        httpKernel.handleRequestFor('GET', '/one/a'),
-        httpKernel.handleRequestFor('GET', '/second/b'),
+        httpKernel.request(HttpRequest.GET('/one/a')),
+        httpKernel.request(HttpRequest.GET('/second/b')),
     ]);
-    expect(a).toBe('a');
-    expect(b).toBe('b');
+    expect(a.json).toBe('a');
+    expect(b.json).toBe('b');
 });
 
 test('multiple methods', async () => {
@@ -597,8 +597,8 @@ test('promise serializer', async () => {
 
     const httpKernel = createHttpKernel([Controller]);
 
-    expect(await httpKernel.handleRequestFor('GET', '/1')).toBe('test');
-    expect(await httpKernel.handleRequestFor('GET', '/2')).toBe('1');
+    expect((await httpKernel.request(HttpRequest.GET('/1'))).json).toBe('test');
+    expect((await httpKernel.request(HttpRequest.GET('/2'))).json).toBe('1');
 });
 
 
@@ -612,9 +612,9 @@ test('unions', async () => {
 
     const httpKernel = createHttpKernel([Controller]);
 
-    expect(await httpKernel.handleRequestFor('GET', '/list?page=1')).toEqual(1);
-    expect(await httpKernel.handleRequestFor('GET', '/list?page=2222')).toEqual(2222);
-    expect(await httpKernel.handleRequestFor('GET', '/list?page=false')).toEqual(false);
+    expect((await httpKernel.request(HttpRequest.GET('/list?page=1'))).json).toEqual(1);
+    expect((await httpKernel.request(HttpRequest.GET('/list?page=2222'))).json).toEqual(2222);
+    expect((await httpKernel.request(HttpRequest.GET('/list?page=false'))).json).toEqual(false);
 });
 
 test('router dotToUrlPath', () => {

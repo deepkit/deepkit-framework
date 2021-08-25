@@ -593,6 +593,7 @@ export class HttpListener {
 
         const injector = event.route.action.module ? event.injectorContext.getInjectorForModule(event.route.action.module) : event.injectorContext;
         const controllerInstance = injector.get(event.route.action.controller);
+
         const start = Date.now();
         const frame = this.stopwatch ? this.stopwatch.start(getClassName(event.route.action.controller) + '.' + event.route.action.methodName, FrameCategory.httpController) : undefined;
         try {

@@ -42,6 +42,7 @@
     "@deepkit/stopwatch": "^1.0.1-alpha.51",
     "@deepkit/type": "^1.0.1-alpha.51",
     "@deepkit/workflow": "^1.0.1-alpha.51",
+    "conditional-type-checks": "^1.0.5",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {

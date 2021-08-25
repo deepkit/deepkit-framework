@@ -21,6 +21,12 @@ import {
     RpcServerAction
 } from '@deepkit/rpc';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+import { ClassType } from '@deepkit/core';
+import { AppModule } from '@deepkit/app';
+
+export class RpcControllers {
+    public readonly controllers = new Map<string, {controller: ClassType, module: AppModule<any, any>}>();
+}
 
 export class RpcInjectorContext extends InjectorContext {
 }

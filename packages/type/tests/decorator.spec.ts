@@ -874,5 +874,23 @@ test('jsonType', () => {
     const property = schema.getProperty('image');
     const propertyJson = property.toJSON();
     expect(propertyJson.jsonType?.type).toBe('string');
+});
 
+
+test('t.type supports literals', () => {
+    {
+        const property = t.type('asd').buildPropertySchema();
+        expect(property.type).toBe('literal');
+        expect(property.literalValue).toBe('asd');
+    }
+    {
+        const property = t.type(0).buildPropertySchema();
+        expect(property.type).toBe('literal');
+        expect(property.literalValue).toBe(0);
+    }
+    {
+        const property = t.type(false).buildPropertySchema();
+        expect(property.type).toBe('literal');
+        expect(property.literalValue).toBe(false);
+    }
 });

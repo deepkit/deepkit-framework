@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, isFunction, isObject, setPathValue } from '@deepkit/core';
+import { isFunction, isObject, setPathValue } from '@deepkit/core';
 import { ConfigLoader, ServiceContainer } from './service-container';
-import { ProviderWithScope } from '@deepkit/injector';
+import { ProviderWithScope, ResolveToken } from '@deepkit/injector';
 import { AppModule, ModuleConfigOfOptions, ModuleOptions } from './module';
 import { Command, Config, Options } from '@oclif/config';
 import { basename, relative } from 'path';
@@ -36,6 +36,7 @@ type EnvNamingStrategy = 'same' | 'upper' | 'lower' | ((name: string) => string 
 function camelToUpperCase(str: string) {
     return str.replace(/[A-Z]+/g, (letter: string) => `_${letter.toUpperCase()}`).toUpperCase();
 }
+
 function camelToLowerCase(str: string) {
     return str.replace(/[A-Z]+/g, (letter: string) => `_${letter.toLowerCase()}`).toLowerCase();
 }
@@ -89,7 +90,7 @@ function parseEnv(
 /**
  * Options for configuring an instance of the EnvConfigLoader
  */
- interface EnvConfigOptions {
+interface EnvConfigOptions {
     /**
      * A path or paths to optional .env files that will be processed and mapped to app/module config
      */
@@ -115,7 +116,7 @@ const defaultEnvConfigOptions: Required<EnvConfigOptions> = {
     prefix: 'APP_',
     envFilePath: ['.env'],
     namingStrategy: 'upper'
-}
+};
 
 class EnvConfigLoader {
     private readonly prefix: string;
@@ -135,7 +136,7 @@ class EnvConfigLoader {
         this.namingStrategy = namingStrategy;
     }
 
-    load(module: AppModule, config: { [p: string]: any }, schema: ClassSchema) {
+    load(module: AppModule<any, any>, config: { [p: string]: any }, schema: ClassSchema) {
         const envConfiguration = new EnvConfiguration();
         for (const path of this.envFilePaths) {
             if (envConfiguration.loadEnvFile(path)) break;
@@ -147,15 +148,35 @@ class EnvConfigLoader {
     }
 }
 
-export class CommandApplication<T extends ModuleOptions, C extends ServiceContainer<T> = ServiceContainer<T>> {
+/**
+ * This is the smallest available application abstraction in Deepkit.
+ *
+ * It is based on a module and executes registered CLI controllers in `execute`.
+ *
+ * @deepkit/framework extends that with a more powerful Application class, that contains also HTTP and RPC controllers.
+ *
+ * You can use this class for more integrated unit-tests.
+ */
+export class App<T extends ModuleOptions, C extends ServiceContainer<T> = ServiceContainer<T>> {
     protected envConfigLoader?: EnvConfigLoader;
 
+    public readonly serviceContainer: ServiceContainer<T>;
+
+    public appModule: AppModule<T>;
+
     constructor(
-        public appModule: AppModule<T, any>,
+        appModuleOptions: T,
         providers: ProviderWithScope<any>[] = [],
-        imports: AppModule<any, any>[] = [],
-        public readonly serviceContainer: ServiceContainer<T> = new ServiceContainer(appModule, providers, imports.slice(0))
+        serviceContainer?: ServiceContainer<T>,
+        appModule?: AppModule<any, any>
     ) {
+        this.appModule = appModule || new AppModule(appModuleOptions) as any;
+
+        this.serviceContainer = serviceContainer || new ServiceContainer(this.appModule, providers);
+    }
+
+    static fromModule<T extends ModuleOptions>(module: AppModule<T, any>): App<T> {
+        return new App({} as T, undefined, undefined, module);
     }
 
     setup(...args: Parameters<this['appModule']['setup']>): this {
@@ -169,40 +190,7 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
     }
 
     configure(config: ModuleConfigOfOptions<T>): this {
-        const appConfig: any = {};
-        const moduleConfigs: { [name: string]: any } = {};
-        const moduleNames: string[] = this.appModule.getImports()
-            .filter(v => v.name)
-            .map(v => v.name);
-
-        for (const i in config) {
-            let name = i;
-            const separator = name.indexOf('_');
-            let module = '';
-            if (separator > 0) {
-                module = name.substr(0, separator);
-                name = name.substr(separator + 1);
-            }
-            if (module) {
-                if (!moduleConfigs[module]) moduleConfigs[module] = {};
-                moduleConfigs[module][name] = config[i as keyof typeof config];
-            } else {
-                if (moduleNames.includes(name)) {
-                    moduleConfigs[name] = config[i as keyof typeof config];
-                } else {
-                    appConfig[name] = config[i as keyof typeof config];
-                }
-            }
-        }
-
-        this.serviceContainer.appModule.setConfig(appConfig);
-
-        for (const i in moduleConfigs) {
-            for (const module of this.serviceContainer.getModulesForName(i)) {
-                module.setConfig(moduleConfigs[i]);
-            }
-        }
-
+        this.serviceContainer.appModule.configure(config);
         return this;
     }
 
@@ -245,7 +233,7 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
         if (!process.env[variableName]) return this;
 
         this.addConfigLoader({
-            load(module: AppModule, config: { [p: string]: any }, schema: ClassSchema) {
+            load(module: AppModule<any, any>, config: { [p: string]: any }, schema: ClassSchema) {
                 try {
                     const jsonConfig = JSON.parse(process.env[variableName] || '');
 
@@ -263,8 +251,8 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
         if (exitCode > 0) process.exit(exitCode);
     }
 
-    public get<T, R = T extends ClassType<infer R> ? R : T>(token: T): R {
-        return this.serviceContainer.getRootInjectorContext().getInjector(0).get(token);
+    public get<T>(token: T): ResolveToken<T> {
+        return this.serviceContainer.getInjectorContext().getInjector(0).get(token) as ResolveToken<T>;
     }
 
     public async execute(argv: string[], binPaths: string[] = []): Promise<number> {
@@ -328,7 +316,7 @@ export class CommandApplication<T extends ModuleOptions, C extends ServiceContai
 
         try {
             const config = new MyConfig({ root: __dirname });
-            const scopedInjectorContext = this.serviceContainer.getRootInjectorContext().createChildScope('cli');
+            const scopedInjectorContext = this.serviceContainer.getInjectorContext().createChildScope('cli');
 
             for (const [name, info] of this.serviceContainer.cliControllers.controllers.entries()) {
                 config.commandsMap[name] = buildOclifCommand(name, info.controller, scopedInjectorContext.getInjectorForModule(info.module));

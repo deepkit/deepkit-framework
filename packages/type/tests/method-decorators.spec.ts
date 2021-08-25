@@ -239,7 +239,7 @@ test('partial', () => {
     expect(config.getProperty('name').isOptional).toBe(false);
 
     expect(s.getProperty('config').isPartial).toBe(true);
-     //partial creates a new schema with all properties being optional
+    //partial creates a new schema with all properties being optional
     expect(s.getProperty('config').getSubType().getResolvedClassType()).not.toBe(Config);
     expect(s.getProperty('config').getSubType().getResolvedClassSchema().getProperty('name').isOptional).toBe(true);
 
@@ -291,7 +291,11 @@ test('argument partial', () => {
 
     expect(validateMethodArgs(User, 'foo2', [{}])).toEqual([{ 'code': 'required', 'message': 'Required value is undefined', 'path': '#0.name' }]);
     expect(validateMethodArgs(User, 'foo2', [{ name: 'asd', sub: undefined }])).toEqual([]);
-    expect(validateMethodArgs(User, 'foo2', [{ name: 'asd', sub: { peter: true } }])).toEqual([{ 'code': 'required', 'message': 'Required value is undefined', 'path': '#0.sub.name' }]);
+    expect(validateMethodArgs(User, 'foo2', [{ name: 'asd', sub: { peter: true } }])).toEqual([{
+        'code': 'required',
+        'message': 'Required value is undefined',
+        'path': '#0.sub.name'
+    }]);
 });
 
 test('argument convertion', () => {
@@ -677,7 +681,7 @@ test('set array result', () => {
 
 
 test('base class with constructor', () => {
-    class UserBase  {
+    class UserBase {
         @t.primary.uuid
         id: string = uuid();
 
@@ -735,4 +739,49 @@ test('custom parameter name', () => {
     const schema = getClassSchema(Controller);
     expect(schema.getMethodProperties('action1')[0].name).toBe('first');
     expect(schema.getMethodProperties('action1')[1].name).toBe('second');
+});
+
+
+test('inheritance', () => {
+    class User {
+    }
+
+    class Controller {
+        @t.type(User).optional
+        action1(a: string): User | undefined {
+            return new User;
+        }
+    }
+
+    class Extended extends Controller {
+        @t
+        action2(b: string): string {
+            return 'hello';
+        }
+    }
+
+    {
+        const schema = getClassSchema(Controller);
+        expect(schema.getMethod('action1').type).toBe('class');
+        expect(schema.getMethod('action1').classType).toBe(User);
+        expect(schema.getMethodProperties('action1')[0].name).toBe('a');
+    }
+
+    {
+        class E extends Controller {}
+        const clone = getClassSchema(Controller).clone(E);
+        expect(clone.getMethod('action1').type).toBe('class');
+    }
+
+    {
+        const schema = getClassSchema(Extended);
+        expect((schema as any).initializedMethods.has('action1')).toBe(false);
+
+        expect(schema.getMethod('action1').type).toBe('class');
+        expect(schema.getMethod('action1').classType).toBe(User);
+        expect(schema.getMethodProperties('action1')[0].name).toBe('a');
+
+        expect(schema.getMethod('action2').type).toBe('string');
+        expect(schema.getMethodProperties('action2')[0].name).toBe('b');
+    }
 });

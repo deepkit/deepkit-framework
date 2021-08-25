@@ -26,8 +26,8 @@ export class DatabaseListener {
     @eventDispatcher.listen(onServerMainBootstrap)
     async onMainBootstrap() {
         for (const databaseType of this.databases.getDatabaseTypes()) {
-            if (this.databases.isMigrateOnStartup(databaseType)) {
-                const database = this.databases.getDatabase(databaseType);
+            if (this.databases.isMigrateOnStartup(databaseType.classType)) {
+                const database = this.databases.getDatabase(databaseType.classType);
                 if (!database) throw new Error('Database not created');
                 this.logger.log(`Migrate database <yellow>${getClassName(database)} ${database.name}</yellow> (${getClassName(database.adapter)})`);
                 await database.migrate();

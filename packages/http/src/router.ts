@@ -90,6 +90,7 @@ function parseBody(form: any, req: IncomingMessage, files: { [name: string]: Upl
 }
 
 export interface RouteControllerAction {
+    //if not set, the root module is used
     module?: AppModule<any, any>;
     controller: ClassType;
     methodName: string;
@@ -334,7 +335,7 @@ export interface RouteParameterResolverContext {
     parameters: HttpRequestResolvedParameters;
 }
 
-function filterMiddlewaresForRoute(middlewareRawConfigs: MiddlewareRegistryEntry[], routeConfig: RouteConfig, fullPath: string) {
+function filterMiddlewaresForRoute(middlewareRawConfigs: MiddlewareRegistryEntry[], routeConfig: RouteConfig, fullPath: string): { config: HttpMiddlewareConfig, module: AppModule<any> }[] {
     const middlewares = middlewareRawConfigs.slice(0);
     middlewares.push(...routeConfig.middlewares);
 
@@ -352,11 +353,11 @@ function filterMiddlewaresForRoute(middlewareRawConfigs: MiddlewareRegistryEntry
         if (v.config.modules.length && (!routeConfig.module || !v.config.modules.includes(routeConfig.module))) {
             if (!routeConfig.module) return false;
             for (const module of v.config.modules) {
-                if (routeConfig.module.name !== module.name) return false;
+                if (routeConfig.module.id !== module.id) return false;
             }
         }
 
-        if (v.config.selfModule && v.module.name !== routeConfig.module?.name) return false;
+        if (v.config.selfModule && v.module.id !== routeConfig.module?.id) return false;
 
         if (v.config.routeNames.length) {
             for (const name of v.config.routeNames) {
@@ -396,11 +397,12 @@ function filterMiddlewaresForRoute(middlewareRawConfigs: MiddlewareRegistryEntry
         }
 
         return true;
-    }).map(v => v.config) as HttpMiddlewareConfig[];
+    }) as { config: HttpMiddlewareConfig, module: AppModule<any> }[];
 
     middlewareConfigs.sort((a, b) => {
-        return a.order - b.order;
+        return a.config.order - b.config.order;
     });
+
     return middlewareConfigs;
 }
 
@@ -436,10 +438,11 @@ export class Router {
     static forControllers(
         controllers: (ClassType | { module: AppModule<any, any>, controller: ClassType })[],
         tagRegistry: TagRegistry = new TagRegistry(),
-        middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry()
+        middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry(),
+        module: AppModule<any, any> = new AppModule({})
     ): Router {
         return new this(new HttpControllers(controllers.map(v => {
-            return isClass(v) ? { controller: v, module: new AppModule({}) } : v;
+            return isClass(v) ? { controller: v, module } : v;
         })), new Logger([], []), tagRegistry, middlewareRegistry);
     }
 
@@ -524,17 +527,24 @@ export class Router {
                     }
                 }
 
+                let injector = '_injector';
+                if (routeConfig.module) {
+                    const moduleVar = compiler.reserveVariable('module', routeConfig.module);
+                    injector = `_injector.getInjectorForModule(${moduleVar})`
+                }
+
                 if (resolver) {
                     const resolverProvideTokenVar = compiler.reserveVariable('resolverProvideToken', resolver);
                     requiresAsyncParameters = true;
                     const instance = compiler.reserveVariable('resolverInstance');
+
                     setParameters.push(`
                     //resolver ${getClassName(resolver)} for ${parameter.getName()}
-                    ${instance} = _injector.get(${resolverProvideTokenVar});
+                    ${instance} = ${injector}.get(${resolverProvideTokenVar});
                     if (!${parameterResolverFoundVar}) {
                         ${parameterResolverFoundVar} = true;
                         parameters.${parameter.property.name} = await ${instance}.resolve({
-                            token: ${injectorToken},
+                            token: ${injectorTokenVar},
                             routeConfig: ${routeConfigVar},
                             request: request,
                             name: ${JSON.stringify(parameter.property.name)},
@@ -553,9 +563,9 @@ export class Router {
                 }
 
                 if (!parameter.isPartOfPath()) {
-                    let injectorGet = `parameters.${parameter.property.name} = _injector.get(${injectorTokenVar});`;
+                    let injectorGet = `parameters.${parameter.property.name} = ${injector}.get(${injectorTokenVar});`;
                     if (injectorOptions && injectorOptions.optional) {
-                        injectorGet = `try {parameters.${parameter.property.name} = _injector.get(${injectorTokenVar}); } catch (e) {}`;
+                        injectorGet = `try {parameters.${parameter.property.name} = ${injector}.get(${injectorTokenVar}); } catch (e) {}`;
                     }
                     setParameters.push(`if (!${parameterResolverFoundVar}) ${injectorGet}`);
                 }
@@ -581,12 +591,18 @@ export class Router {
         if (middlewareConfigs.length) {
             const middlewareItems: string[] = [];
             for (const middlewareConfig of middlewareConfigs) {
-                for (const middleware of middlewareConfig.middlewares) {
+                let injector = '_injector';
+                if (middlewareConfig.module) {
+                    const moduleVar = compiler.reserveVariable('module', middlewareConfig.module);
+                    injector = `_injector.getInjectorForModule(${moduleVar})`
+                }
+
+                for (const middleware of middlewareConfig.config.middlewares) {
                     if (isClass(middleware)) {
                         const classVar = compiler.reserveVariable('middlewareClassType', middleware);
-                        middlewareItems.push(`{fn: function() {return _injector.get(${classVar}).execute(...arguments) }, timeout: ${middlewareConfig.timeout}}`);
+                        middlewareItems.push(`{fn: function() {return ${injector}.get(${classVar}).execute(...arguments) }, timeout: ${middlewareConfig.config.timeout}}`);
                     } else {
-                        middlewareItems.push(`{fn: ${compiler.reserveVariable('middlewareFn', middleware)}, timeout: ${middlewareConfig.timeout}}`);
+                        middlewareItems.push(`{fn: ${compiler.reserveVariable('middlewareFn', middleware)}, timeout: ${middlewareConfig.config.timeout}}`);
                     }
                 }
             }

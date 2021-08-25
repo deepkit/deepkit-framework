@@ -1,5 +1,5 @@
 import { arrayRemoveItem, ClassType, sleep } from '@deepkit/core';
-import { Application, ApplicationServer, Broker, BrokerServer, KernelModule, NetBroker, NetBrokerServer } from '@deepkit/framework';
+import { Application, ApplicationServer, Broker, BrokerServer, FrameworkModule, NetBroker, NetBrokerServer } from '@deepkit/framework';
 import { AppModule } from '@deepkit/app';
 import { Observable } from 'rxjs';
 import { createServer } from 'http';
@@ -49,7 +49,7 @@ export function appModuleForControllers(controllers: ClassType[], entities: Clas
             { provide: BrokerServer, useClass: NetBrokerServer },
         ],
         imports: [
-            new KernelModule
+            new FrameworkModule
         ]
     });
 }
@@ -75,9 +75,9 @@ export async function createServerClientPair(
         });
     });
 
-    const app = Application.create(
+    const app = Application.fromModule(
         AppModule.configure({
-            kernel: {
+            framework: {
                 server: server,
                 broker: { listen: exchangeSocketPath },
             }

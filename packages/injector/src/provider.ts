@@ -8,6 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { ClassType, isClass } from '@deepkit/core';
+import { InjectorToken } from './injector';
 
 export interface ProviderBase {
     /**
@@ -21,7 +22,7 @@ export interface ValueProvider<T> extends ProviderBase {
     /**
      * An injection token. (Typically an instance of `ClassType`, but can be `any`).
      */
-    provide: symbol | string | ClassType<T>;
+    provide: symbol | string | InjectorToken<T> | ClassType<T>;
 
     /**
      * The value to inject.
@@ -33,7 +34,7 @@ export interface ClassProvider<T> extends ProviderBase {
     /**
      * An injection token. (Typically an instance of `ClassType`, but can be `any`).
      */
-    provide: ClassType<T>;
+    provide: symbol | string | InjectorToken<T> | ClassType<T>;
 
     /**
      * Class to instantiate for the `token`.
@@ -45,7 +46,7 @@ export interface ExistingProvider<T> extends ProviderBase {
     /**
      * An injection token. (Typically an instance of `ClassType`, but can be `any`).
      */
-    provide: symbol | string | ClassType<T>;
+    provide: symbol | string  | InjectorToken<T> | ClassType<T>;
 
     /**
      * Existing `token` to return. (equivalent to `injector.get(useExisting)`)
@@ -57,7 +58,7 @@ export interface FactoryProvider<T> extends ProviderBase {
     /**
      * An injection token. (Typically an instance of `ClassType`, but can be `any`).
      */
-    provide: symbol | string | ClassType<T>;
+    provide: symbol | string | InjectorToken<T> | ClassType<T>;
 
     /**
      * A function to invoke to create a value for this `token`. The function is invoked with

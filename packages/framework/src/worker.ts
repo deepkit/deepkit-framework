@@ -16,8 +16,7 @@ import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions
 
 import { HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
 import { inject, injectable, Injector, InjectorContext, Provider } from '@deepkit/injector';
-import { RpcInjectorContext, RpcKernelWithStopwatch } from './rpc';
-import { RpcControllers } from './application-service-container';
+import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc';
 import { SecureContextOptions, TlsOptions } from 'tls';
 
 // @ts-ignore
@@ -210,7 +209,7 @@ export class WebWorker {
         public logger: Logger,
         public httpKernel: HttpKernel,
         public rpcKernel: RpcKernel,
-        protected rootScopedContext: InjectorContext,
+        protected injectorContext: InjectorContext,
         protected options: WebServerOptions,
         private rpcServer: RpcServer,
     ) {
@@ -273,7 +272,7 @@ export class WebWorker {
     private startRpc() {
         if (this.server) {
             this.rpcListener = this.rpcServer.start({ server: this.server }, (writer: RpcConnectionWriter, request?: HttpRequest) => {
-                return createRpcConnection(this.rootScopedContext, this.rpcKernel, writer, request);
+                return createRpcConnection(this.injectorContext, this.rpcKernel, writer, request);
             });
         }
     }

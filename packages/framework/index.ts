@@ -10,15 +10,14 @@
 
 export * from './src/session';
 export * from './src/application';
-export * from './src/application-service-container';
 export * from './src/application-server';
 export * from './src/worker';
 export * from './src/database/database-listener';
 export * from './src/database/live-database';
 export * from './src/orm-browser/controller';
 export * from './src/rpc';
-export * from './src/kernel.config';
-export * from './src/kernel';
+export * from './src/module.config';
+export * from './src/module';
 export * from './src/crud';
 export * from './src/testing';
 export * from './src/broker/broker';

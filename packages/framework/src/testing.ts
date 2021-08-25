@@ -124,8 +124,8 @@ export function createTestingApp<O extends ModuleOptions>(optionsOrModule: O, en
 
     if (entities) {
         providers.push({ provide: Database, useValue: new Database(new MemoryDatabaseAdapter, entities) });
-        module.setupProvider(DatabaseRegistry).addDatabase(Database);
+        module.setupProvider(DatabaseRegistry).addDatabase(Database, {}, module);
     }
 
-    return new TestingFacade(new Application(module, providers));
+    return new TestingFacade(Application.fromModule(module, providers));
 }

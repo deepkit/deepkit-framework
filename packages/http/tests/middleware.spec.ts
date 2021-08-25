@@ -331,12 +331,10 @@ test('middleware for module', async () => {
             return name;
         }
     }
-    const moduleA = new AppModule({providers: [MyControllerA]}, 'a');
-    const moduleB = new AppModule({providers: [MyControllerB]}, 'b');
+    const moduleA = new AppModule({controllers: [MyControllerA], providers: [MyControllerA]}, 'a');
+    const moduleB = new AppModule({controllers: [MyControllerB], providers: [MyControllerB]}, 'b');
 
     const httpKernel = createHttpKernel([
-        { module: moduleA, controller: MyControllerA },
-        { module: moduleB, controller: MyControllerB },
     ], [], [], [
         httpMiddleware.for((req, res, next) => {
             res.setHeader('middleware', '1');
@@ -365,9 +363,9 @@ test('middleware self module', async () => {
             return name;
         }
     }
-    const moduleA = new AppModule({providers: [MyControllerA]}, 'a');
+    const moduleA = new AppModule({controllers: [MyControllerA]});
 
-    const httpKernel = createHttpKernel([Controller, { controller: MyControllerA, module: moduleA }], [], [], [httpMiddleware.for((req, res, next) => {
+    const httpKernel = createHttpKernel([Controller], [], [], [httpMiddleware.for((req, res, next) => {
         res.setHeader('middleware', '1');
         next();
     }).forSelfModules()], [moduleA]);

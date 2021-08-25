@@ -14,10 +14,10 @@ import cluster from 'cluster';
 import { HttpControllers, Router } from '@deepkit/http';
 import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
 import { injectable, InjectorContext } from '@deepkit/injector';
-import { kernelConfig } from './kernel.config';
+import { frameworkConfig } from './module.config';
 import { Logger } from '@deepkit/logger';
-import { RpcControllers } from './application-service-container';
 import { createRpcConnection, WebWorker, WebWorkerFactory } from './worker';
+import { RpcControllers } from './rpc';
 
 export class ServerBootstrapEvent extends BaseEvent {
 }
@@ -75,7 +75,7 @@ export const onServerMainShutdown = new EventToken('server.main.shutdown', Serve
  */
 export const onServerWorkerShutdown = new EventToken('server.worker.shutdown', ServerBootstrapEvent);
 
-class ApplicationServerConfig extends kernelConfig.slice('server', 'port', 'host', 'httpsPort',
+class ApplicationServerConfig extends frameworkConfig.slice('server', 'port', 'host', 'httpsPort',
     'ssl', 'sslKey', 'sslCertificate', 'sslCa', 'sslCrl',
     'varPath', 'selfSigned', 'keepAliveTimeout', 'workers', 'publicDir',
     'debug', 'debugUrl') {

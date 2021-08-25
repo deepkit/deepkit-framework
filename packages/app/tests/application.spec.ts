@@ -1,11 +1,14 @@
 import { t } from '@deepkit/type';
 import { beforeEach, expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { CommandApplication } from '../src/application';
-import { inject } from '@deepkit/injector';
+import { App } from '../src/app';
+import { inject, ProviderWithScope } from '@deepkit/injector';
 import { AppModule, AppModuleConfig, createModule } from '../src/module';
 import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
 import { cli, Command } from '../src/command';
+import { ClassType } from '../../core';
+import { isArray, isClass } from '@deepkit/core';
+import { ServiceContainer } from '../src/service-container';
 
 Error.stackTraceLimit = 100;
 
@@ -38,21 +41,21 @@ beforeEach(() => {
 test('loadConfigFromEnvVariables', async () => {
     process.env.APP_TOKEN = 'fromBefore';
     process.env.APP_BASE_DB = 'changed2';
-    const app = new CommandApplication(new AppModule({ config, providers: [Service], imports: [new BaseModule] }));
+    const app = new App({ config, providers: [Service], imports: [new BaseModule] });
     app.loadConfigFromEnv();
 
     const service = app.get(Service);
     expect(service.token).toBe('fromBefore');
 
     const baseModule = app.serviceContainer.getModuleForModuleClass(BaseModule);
-    expect(baseModule.getConfig()).toEqual({db: 'changed2'});
+    expect(baseModule.getConfig()).toEqual({ db: 'changed2' });
 
     const baseService = app.get(BaseService);
     expect(baseService.db).toBe('changed2');
 });
 
 test('loadConfigFromEnvFile', async () => {
-    const app = new CommandApplication(new AppModule({ config, providers: [Service], imports: [new BaseModule] }));
+    const app = new App({ config, providers: [Service], imports: [new BaseModule] });
     app.loadConfigFromEnv({ envFilePath: __dirname + '/test.env' });
 
     const service = app.get(Service);
@@ -69,7 +72,7 @@ test('loadConfigFromEnvVariable', async () => {
             db: 'changed4'
         }
     });
-    const app = new CommandApplication(new AppModule({ config, providers: [Service], imports: [new BaseModule] }));
+    const app = new App({ config, providers: [Service], imports: [new BaseModule] });
     app.loadConfigFromEnvVariable('APP_CONFIG');
 
     const service = app.get(Service);
@@ -90,7 +93,7 @@ test('loadConfigFromEnvVariables non-root import', async () => {
     }
 
     const baseModule = new AppModule({ config: baseConfig, providers: [BaseService] }, 'base');
-    const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
+    const app = new App({ imports: [baseModule] });
     process.env.APP_BASE_DB = 'changed2';
     app.loadConfigFromEnv();
 
@@ -112,7 +115,7 @@ test('validation fails when setupConfig sets wrong values', async () => {
         })
     ;
 
-    const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
+    const app = new App({ imports: [baseModule] });
     expect(() => app.serviceContainer.process()).toThrow('No Boolean given');
 });
 
@@ -129,7 +132,7 @@ test('validation fails when env is wrong', async () => {
 
     process.env['APP_log'] = 'asdf';
 
-    const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
+    const app = new App({ imports: [baseModule] });
     app.loadConfigFromEnv();
     expect(() => app.serviceContainer.process()).toThrow('log needs to be true');
 });
@@ -146,22 +149,22 @@ test('required value can be set via env or setupConfig', async () => {
     }
 
     {
-        const app = new CommandApplication(new AppModule({ imports: [new BaseModule()] }));
+        const app = new App({ imports: [new BaseModule()] });
         expect(() => app.serviceContainer.process()).toThrow('log(required): Required value is undefined');
     }
 
     {
-        const app = new CommandApplication(new AppModule({
+        const app = new App({
             imports: [new BaseModule().setupConfig((module, config) => {
                 config.log = true;
             })]
-        }));
+        });
         app.serviceContainer.process();
     }
 
     {
         process.env['APP_BASE_LOG'] = '1';
-        const app = new CommandApplication(new AppModule({ imports: [new BaseModule()] }));
+        const app = new App({ imports: [new BaseModule()] });
         app.loadConfigFromEnv();
         app.serviceContainer.process();
     }
@@ -169,7 +172,7 @@ test('required value can be set via env or setupConfig', async () => {
     {
         process.env['APP_BASE_LOG'] = 'asdf';
 
-        const app = new CommandApplication(new AppModule({ imports: [new BaseModule()] }));
+        const app = new App({ imports: [new BaseModule()] });
         app.loadConfigFromEnv();
         expect(() => app.serviceContainer.process()).toThrow('log(invalid_boolean): No Boolean given');
     }
@@ -177,7 +180,7 @@ test('required value can be set via env or setupConfig', async () => {
     {
         process.env['APP_CONFIG'] = '{}';
 
-        const app = new CommandApplication(new AppModule({ imports: [new BaseModule()] }));
+        const app = new App({ imports: [new BaseModule()] });
         app.loadConfigFromEnvVariable('APP_CONFIG');
         expect(() => app.serviceContainer.process()).toThrow('log(required): Required value is undefined');
     }
@@ -185,7 +188,7 @@ test('required value can be set via env or setupConfig', async () => {
     {
         process.env['APP_CONFIG'] = '{"base": {"log": true}}';
 
-        const app = new CommandApplication(new AppModule({ imports: [new BaseModule()] }));
+        const app = new App({ imports: [new BaseModule()] });
         app.loadConfigFromEnvVariable('APP_CONFIG');
         app.serviceContainer.process();
     }
@@ -201,7 +204,7 @@ test('loadConfigFromEnvVariables() happens before setup() calls', async () => {
             expect(config.log).toBe(true);
         });
 
-    const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
+    const app = new App({ imports: [baseModule] });
     process.env.APP_BASE_LOG = '1';
     app.loadConfigFromEnv();
 
@@ -213,7 +216,7 @@ test('config uppercase naming strategy', async () => {
         dbHost: t.string,
     });
 
-    const app = new CommandApplication(new AppModule({ config })).setup((module, config) => {
+    const app = new App({ config }).setup((module, config) => {
         expect(config.dbHost).toBe('mongodb://localhost');
     });
     process.env.APP_DB_HOST = 'mongodb://localhost';
@@ -227,7 +230,7 @@ test('config lowercase naming strategy', async () => {
         dbHost: t.string,
     });
 
-    const app = new CommandApplication(new AppModule({ config })).setup((module, config) => {
+    const app = new App({ config }).setup((module, config) => {
         expect(config.dbHost).toBe('mongodb://localhost');
     });
     process.env.app_db_host = 'mongodb://localhost';
@@ -247,7 +250,7 @@ test('loadConfigFromEnvVariable() happens before setup() calls', async () => {
         });
 
     {
-        const app = new CommandApplication(new AppModule({ imports: [baseModule] }));
+        const app = new App({ imports: [baseModule] });
         process.env.APP_CONFIG = '{"base": {"log": true}}';
         app.loadConfigFromEnvVariable('APP_CONFIG');
 
@@ -268,7 +271,7 @@ test('non-forRoot module with class listeners works without exports', async () =
     }
 
     const myModule = new AppModule({ listeners: [Listener] }, 'base');
-    const app = new CommandApplication(new AppModule({ imports: [myModule] }));
+    const app = new App({ imports: [myModule] });
     await app.get(EventDispatcher).dispatch(myEvent, new BaseEvent());
     expect(executed).toBe(true);
 });
@@ -282,7 +285,7 @@ test('non-forRoot module with fn listeners works without exports', async () => {
             executed = true;
         })]
     }, 'base');
-    const app = new CommandApplication(new AppModule({ imports: [myModule] }));
+    const app = new App({ imports: [myModule] });
     await app.get(EventDispatcher).dispatch(myEvent, new BaseEvent());
     expect(executed).toBe(true);
 });
@@ -308,13 +311,13 @@ test('cli controllers in sub modules are in correct injector context', async () 
         }
     }
 
-    const myModule = new AppModule({
+    class MyModule extends createModule({
         providers: [MyService, { provide: 'onlyInCLI', scope: 'cli', useValue: true }],
         controllers: [MyController],
-    }, 'base');
+    }, 'base') {}
 
     {
-        const app = new CommandApplication(new AppModule({ imports: [myModule] }));
+        const app = new App({ imports: [new MyModule] });
 
         {
             const res = await app.execute(['test']);
@@ -331,11 +334,11 @@ test('cli controllers in sub modules are in correct injector context', async () 
     }
 
     {
-        const app = new CommandApplication(new AppModule({
-            imports: [myModule.setup((module) => {
+        const app = new App({
+            imports: [new MyModule().setup((module) => {
                 module.addProvider({ provide: 'onlyInCLI', scope: 'cli', useValue: false });
             })]
-        }));
+        });
         const res = await app.execute(['test']);
         expect(res).toBe(10);
     }
@@ -405,7 +408,7 @@ test('config deps and @inject() in FactoryProvider', async () => {
     });
 
     {
-        const app = new CommandApplication(module);
+        const app = App.fromModule(module);
         expect(app.get(MyClass).host).toBe('0.0.0.0');
 
         expect(app.get('myToken')).toBe(false);
@@ -433,7 +436,70 @@ test('config deps and @inject() in FactoryProvider', async () => {
                 },
             ]
         });
-        const app = new CommandApplication(module);
+        const app = App.fromModule(module);
         expect(() => app.get('undefinedDep')).toThrow(`No token defined for dependency 0 in 'deps' of useFactory for undefinedDep`);
     }
+});
+
+
+test('service container hooks', () => {
+
+    class MyModule extends createModule({}) {
+        providersFound: ProviderWithScope[] = [];
+        controllersFound: ClassType[] = [];
+
+        handleController(module: AppModule<any, any>, controller: ClassType) {
+            expect(module).toBeInstanceOf(AppModule);
+            expect(isClass(controller)).toBe(true);
+            this.controllersFound.push(controller);
+        }
+
+        handleProviders(module: AppModule<any, any>, providers: ProviderWithScope[]) {
+            expect(module).toBeInstanceOf(AppModule);
+            expect(isArray(providers)).toBe(true);
+            this.providersFound.push(...providers);
+        }
+    }
+
+    {
+        const m = new MyModule;
+        const app = new ServiceContainer(new AppModule({ imports: [m] }));
+        app.process();
+        expect(m.providersFound.length).toBe(5); //5 is the default, as the ServiceContainer adds default services
+        expect(m.controllersFound.length).toBe(0);
+    }
+
+    {
+        class Controller {}
+        const m = new MyModule;
+        const app = new ServiceContainer(new AppModule({controllers: [Controller], imports: [m] }));
+        app.process();
+        expect(m.providersFound.length).toBe(5);
+        expect(m.controllersFound.length).toBe(1);
+    }
+
+    {
+        class Controller {}
+        const m = new MyModule;
+        const app = new ServiceContainer(new AppModule({providers: [Controller], imports: [m] }));
+        app.process();
+        expect(m.providersFound.length).toBe(6);
+        expect(m.controllersFound.length).toBe(0);
+    }
+
+    {
+        class Controller {}
+        class Service {}
+        const baseModule = new AppModule({
+            controllers: [Controller],
+            providers: [Service]
+        })
+
+        const m = new MyModule;
+        const app = new ServiceContainer(new AppModule({imports: [baseModule, m] }));
+        app.process();
+        expect(m.providersFound.length).toBe(6);
+        expect(m.controllersFound.length).toBe(1);
+    }
+
 });

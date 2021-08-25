@@ -88,5 +88,21 @@ export function getActionParameters<T>(target: ClassType<T>, method: string): Pr
 }
 
 export function getActions<T>(target: ClassType<T>): Map<string, RpcAction> {
-    return rpcClass._fetch(target)?.actions ?? new Map;
+    const parent = Object.getPrototypeOf(target);
+    const results = parent ? getActions(parent) : new Map<string, RpcAction>();
+
+    const data = rpcClass._fetch(target);
+    if (!data) return results;
+
+    for (const action of data.actions.values()) {
+        const existing = results.get(action.name)!;
+        if (existing) {
+            existing.groups.push(...action.groups);
+            Object.assign(existing.data, action.data);
+        } else {
+            results.set(action.name, action);
+        }
+    }
+
+    return results;
 }

@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { arrayRemoveItem, ClassType, getClassTypeFromInstance } from '@deepkit/core';
+import { ClassType, getClassTypeFromInstance } from '@deepkit/core';
 import { ClassSchema, getClassSchema } from '@deepkit/type';
-import { InjectorContext } from '@deepkit/injector';
+import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { Database } from './database';
 import { isAbsolute, join } from 'path';
 
@@ -25,11 +25,11 @@ export class DatabaseRegistry {
     protected initialized = false;
 
     constructor(
-        protected scopedContext: InjectorContext,
-        protected readonly databaseTypes: ClassType<Database<any>>[] = [],
+        protected injectorContext: InjectorContext,
+        protected readonly databaseTypes: {module: InjectorModule<any>, classType: ClassType<Database<any>>}[] = [],
         protected migrateOnStartup: boolean = false,
     ) {
-        if (!scopedContext) throw new Error('no scopedContext');
+        if (!injectorContext) throw new Error('no scopedContext');
     }
 
     setMigrateOnStartup(v: boolean) {
@@ -64,7 +64,7 @@ export class DatabaseRegistry {
             const classType = getClassTypeFromInstance(db);
             this.databaseNameMap.set(db.name, db);
             this.databaseMap.set(classType, db);
-            this.databaseTypes.push(classType);
+            this.databaseTypes.push({classType, module: new InjectorModule('', {})});
         }
     }
 
@@ -74,9 +74,9 @@ export class DatabaseRegistry {
         }
     }
 
-    public addDatabase(database: ClassType, options: { migrateOnStartup?: boolean } = {}) {
-        if (this.databaseTypes.indexOf(database) === -1) {
-            this.databaseTypes.push(database);
+    public addDatabase(database: ClassType, options: { migrateOnStartup?: boolean } = {}, module: InjectorModule<any>) {
+        if (!this.databaseTypes.find(v => v.classType === database)) {
+            this.databaseTypes.push({classType: database, module});
         }
         let o = this.databaseOptions.get(database);
         if (o) {
@@ -87,7 +87,8 @@ export class DatabaseRegistry {
     }
 
     public removeDatabase(database: ClassType) {
-        arrayRemoveItem(this.databaseTypes, database);
+        const index = this.databaseTypes.findIndex(v => v.classType === database);
+        if (index !== -1) this.databaseTypes.splice(index, 1);
         this.databaseOptions.delete(database);
     }
 
@@ -106,16 +107,16 @@ export class DatabaseRegistry {
         if (this.initialized) return;
 
         for (const databaseType of this.databaseTypes) {
-            if (this.databaseMap.has(databaseType)) continue;
+            if (this.databaseMap.has(databaseType.classType)) continue;
 
-            const database = this.scopedContext.get(databaseType);
+            const database = this.injectorContext.get(databaseType.classType);
 
             for (const classSchema of database.entities) {
                 classSchema.data['orm.database'] = database;
             }
 
             this.databaseNameMap.set(database.name, database);
-            this.databaseMap.set(databaseType, database);
+            this.databaseMap.set(databaseType.classType, database);
             this.databases.push(database);
         }
 

@@ -32,6 +32,10 @@ class MyModule extends createModule({
 const appModuleConfig = new AppModuleConfig({
     database: t.string.default('mongodb://localhost/my-app'),
     debug: t.boolean.default(false),
+    myModule: t.partial({
+        param1: t.string,
+        param2: t.number
+    }).optional
 });
 
 class MyServiceConfig extends appModuleConfig.slice('debug') {
@@ -62,30 +66,26 @@ class MyAppModule extends createModule({
         MyService,
         MyService2,
     ],
-    imports: [
-        new MyModule,
-    ],
     config: appModuleConfig,
 }) {
+    imports = [new MyModule()];
+
+    process() {
+        if (this.config.myModule) this.getImportedModuleByClass(MyModule).configure(this.config.myModule);
+    }
 }
 
 function getServiceOnNewServiceContainer<T>(module: AppModule<any>, service: ClassType<T>): T {
     const serviceContainer = new ServiceContainer(module);
-    return serviceContainer.getRootInjectorContext().get(service);
+    return serviceContainer.getInjectorContext().get(service);
 }
 
-test('loadConfig', () => {
-    // Application.create(AppModule).loadConfigFromEnvFile('.env').run();
-    // Application.create(AppModule).loadConfigFromEnvVariables().run();
-    // Application.create(AppModule).loadConfigFromEnvVariable('APP_CONFIG').run();
-});
-
 test('import', () => {
-    // {
-    //     expect(() => getMyServiceFor(new MyAppModule, ModuleService)).toThrow(
-    //         'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(required): Required value is undefined, myModule.param2(required): Required value is undefined'
-    //     );
-    // }
+    {
+        expect(() => getServiceOnNewServiceContainer(new MyAppModule, ModuleService)).toThrow(
+            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(required): Required value is undefined, myModule.param2(required): Required value is undefined'
+        );
+    }
 
     {
         expect(() => getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '23' } }), ModuleService)).toThrow(
@@ -127,36 +127,38 @@ test('basic configured', () => {
     expect(new MyService({ debug: true }).isDebug()).toBe(true);
     expect(new MyService({ debug: false }).isDebug()).toBe(false);
 
-    const myConfiguredApp = new MyAppModule({ myModule: { param1: '12345', param2: '100' } });
+    function createConfiguredApp() {
+        return new MyAppModule({ myModule: { param1: '12345', param2: '100' } });
+    }
 
     {
-        const myService = getServiceOnNewServiceContainer(myConfiguredApp, MyService);
+        const myService = getServiceOnNewServiceContainer(createConfiguredApp(), MyService);
         expect(myService.isDebug()).toBe(false);
     }
 
     {
-        const myService = getServiceOnNewServiceContainer(myConfiguredApp.configure({
+        const myService = getServiceOnNewServiceContainer(createConfiguredApp().configure({
             debug: false
         }), MyService);
         expect(myService.isDebug()).toBe(false);
     }
 
     {
-        const myService = getServiceOnNewServiceContainer(myConfiguredApp.configure({
+        const myService = getServiceOnNewServiceContainer(createConfiguredApp().configure({
             debug: true
         }), MyService);
         expect(myService.isDebug()).toBe(true);
     }
 
     {
-        const myService2 = getServiceOnNewServiceContainer(myConfiguredApp.configure({
+        const myService2 = getServiceOnNewServiceContainer(createConfiguredApp().configure({
             debug: false
         }), MyService2);
         expect(myService2.debug).toBe(false);
     }
 
     {
-        const myService2 = getServiceOnNewServiceContainer(myConfiguredApp.configure({
+        const myService2 = getServiceOnNewServiceContainer(createConfiguredApp().configure({
             debug: true
         }), MyService2);
         expect(myService2.debug).toBe(true);
@@ -184,7 +186,6 @@ test('config inheritance 1', () => {
 
 });
 
-
 test('config inheritance 2', () => {
     const appModule = new AppModule({
         providers: [
@@ -206,7 +207,6 @@ test('config inheritance 2', () => {
     expect(container.appModule.getImports()[0].getConfig()).toEqual({ param1: '12345', param2: 555 });
 });
 
-
 test('configured provider', () => {
     class Transporter {
 
@@ -226,17 +226,6 @@ test('configured provider', () => {
             Logger,
         ],
     });
-
-    {
-        const fork = new AppModule().clone();
-        fork.setupProvider(Logger).addTransport('first').addTransport('second');
-
-        expect(new AppModule().getConfiguredProviderRegistry().get(Logger).length).toBe(0);
-        expect(fork.getConfiguredProviderRegistry().get(Logger).length).toBe(2);
-
-        const clone = fork.clone();
-        expect(clone.getConfiguredProviderRegistry().get(Logger).length).toBe(2);
-    }
 
     {
         const module = new AppModule();
@@ -295,13 +284,13 @@ test('same module loaded twice', () => {
     {
         const app = new AppModule({ imports: [new ApiModule({ path: '/a' })] });
         const serviceContainer = new ServiceContainer(app);
-        expect(serviceContainer.getRootInjectorContext().getInjectorForModuleClass(ApiModule).get(Service).path).toBe('/a');
+        expect(serviceContainer.getInjectorContext().getInjectorForModuleClass(ApiModule).get(Service).path).toBe('/a');
     }
 
     {
         const app = new AppModule({ imports: [new ApiModule()] });
         const serviceContainer = new ServiceContainer(app);
-        expect(serviceContainer.getRootInjectorContext().getInjectorForModuleClass(ApiModule).get(Service).path).toBe('/api');
+        expect(serviceContainer.getInjectorContext().getInjectorForModuleClass(ApiModule).get(Service).path).toBe('/api');
     }
 
     {
@@ -316,11 +305,173 @@ test('same module loaded twice', () => {
         });
         const serviceContainer = new ServiceContainer(app);
 
-        expect(serviceContainer.getRootInjectorContext().getModuleForModuleClass(ApiModule).getConfig().path).toBe('/a');
-        expect(serviceContainer.getRootInjectorContext().getModuleForModule(a).getConfig().path).toBe('/a');
-        expect(serviceContainer.getRootInjectorContext().getModuleForModule(b).getConfig().path).toBe('/b');
+        expect(serviceContainer.getInjectorContext().getModuleForModuleClass(ApiModule).getConfig().path).toBe('/a');
+        expect(serviceContainer.getInjectorContext().getModuleForModule(a).getConfig().path).toBe('/a');
+        expect(serviceContainer.getInjectorContext().getModuleForModule(b).getConfig().path).toBe('/b');
         expect(serviceContainer.getInjectorFor(a).get(Service).path).toBe('/a');
         expect(serviceContainer.getInjectorFor(b).get(Service).path).toBe('/b');
+    }
+});
+
+test('non-exported providers can not be overwritten', () => {
+    class SubClass {
+    }
+
+    class Overwritten {
+    }
+
+    const sub = new AppModule({ providers: [SubClass] });
+    const app = new AppModule({
+        providers: [Overwritten, { provide: SubClass, useClass: Overwritten }],
+        imports: [
+            sub
+        ]
+    });
+
+    const serviceContainer = new ServiceContainer(app);
+
+    expect(serviceContainer.getInjectorFor(sub).get(SubClass)).toBeInstanceOf(SubClass);
+    expect(serviceContainer.getInjectorFor(app).get(SubClass)).toBeInstanceOf(Overwritten);
+});
+
+test('exported providers can not be overwritten', () => {
+    class SubClass {
+    }
+
+    class Overwritten {
+    }
+
+    const sub = new AppModule({ providers: [SubClass], exports: [SubClass] });
+    const app = new AppModule({
+        providers: [Overwritten, { provide: SubClass, useClass: Overwritten }],
+        imports: [
+            sub
+        ]
+    });
+
+    const serviceContainer = new ServiceContainer(app);
+
+    expect(serviceContainer.getInjectorFor(sub).get(SubClass)).toBeInstanceOf(Overwritten);
+    expect(serviceContainer.getInjectorFor(app).get(SubClass)).toBeInstanceOf(Overwritten);
+});
+
+test('instance is used as is', () => {
+    class Service {
+        constructor(public label: string) {
+        }
+    }
+
+    class ApiModule extends createModule({}) {
+        label: string = '';
+
+        set(label: string): this {
+            this.label = label;
+            return this;
+        }
+
+        process() {
+            this.addProvider({ provide: Service, useValue: new Service(this.label) });
+        }
+    }
+
+    const serviceContainer = new ServiceContainer(new AppModule({ imports: [new ApiModule().set('changed1')] }));
+    expect(serviceContainer.getInjectorForModuleClass(ApiModule).get(Service).label).toBe('changed1');
+});
+
+test('change config of a imported module dynamically', () => {
+    class Logger {
+    }
+
+    class Query {
+        constructor(@t.optional public logger?: Logger) {
+        }
+    }
+
+    class DatabaseModule extends createModule({
+        config: createModuleConfig({
+            logging: t.boolean.default(false)
+        }),
+        providers: [Query]
+    }) {
+        process() {
+            if (this.config.logging) {
+                this.addProvider(Logger);
+            }
+        }
+    }
+
+    class ApiModule extends createModule({
+        config: createModuleConfig({
+            debug: t.boolean.default(false)
+        })
+    }) {
+        imports = [new DatabaseModule({ logging: false })];
+
+        process() {
+            if (this.config.debug) {
+                const [database] = this.getImportedModulesByClass(DatabaseModule);
+                database.configure({ logging: true });
+            }
+        }
+    }
+
+    {
+        const api = new ApiModule();
+        expect(api.getImportedModuleByClass(DatabaseModule)).toBeInstanceOf(DatabaseModule);
+        expect(api.getImportedModulesByClass(DatabaseModule)[0]).toBeInstanceOf(DatabaseModule);
+    }
+
+    {
+        const serviceContainer = new ServiceContainer(new ApiModule());
+        expect(serviceContainer.getInjectorForModuleClass(DatabaseModule).get(Query).logger).toBe(undefined);
+    }
+
+
+    {
+        const serviceContainer = new ServiceContainer(new ApiModule({ debug: true }));
+        expect(serviceContainer.getInjectorForModuleClass(DatabaseModule).get(Query).logger).toBeInstanceOf(Logger);
+    }
+
+
+    {
+        const serviceContainer = new ServiceContainer(new ApiModule());
+        expect(serviceContainer.getInjectorForModuleClass(DatabaseModule).get(Query).logger).toBe(undefined);
+    }
+});
+
+test('scoped injector', () => {
+
+    let created = 0;
+
+    class Service {
+        constructor() {
+            created++;
+        }
+    }
+
+    const module = new AppModule({
+        providers: [{ provide: Service, scope: 'http' }]
+    });
+
+    const serviceContainer = new ServiceContainer(new AppModule({ imports: [module] }));
+
+    {
+        const scope = serviceContainer.getInjectorContext().createChildScope('http');
+        const injector = scope.getInjectorForModule(module);
+        expect(injector.get(Service)).toBeInstanceOf(Service);
+        expect(created).toBe(1);
+    }
+
+    {
+        const injector = serviceContainer.getInjectorForModule(module);
+        expect(() => injector.get(Service)).toThrow('Could not resolve injector token Service');
+    }
+
+    {
+        const scope = serviceContainer.getInjectorContext().createChildScope('http');
+        const injector = scope.getInjectorForModule(module);
+        expect(injector.get(Service)).toBeInstanceOf(Service);
+        expect(created).toBe(2);
     }
 
 });

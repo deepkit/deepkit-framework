@@ -3,7 +3,6 @@ import { Router } from './router';
 import { EventDispatcher } from '@deepkit/event';
 import { Logger } from '@deepkit/logger';
 import { HttpRequest, HttpResponse, MemoryHttpResponse, RequestBuilder } from './model';
-import { Socket } from 'net';
 import { HttpRequestEvent, httpWorkflow } from './http';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { unlink } from 'fs';
@@ -18,53 +17,6 @@ export class HttpKernel {
         @inject().optional protected stopwatch?: Stopwatch,
     ) {
 
-    }
-
-    async handleRequestFor(method: string, url: string, jsonBody?: any, header?: {[name: string]: string}): Promise<any> {
-        const body = Buffer.from(jsonBody ? JSON.stringify(jsonBody) : '');
-
-        const request = new (class extends HttpRequest {
-            url = url;
-            method = method;
-            position = 0;
-
-            headers = {
-                'content-type': 'application/json',
-                'content-length': String(body.byteLength),
-                ...header
-            };
-
-            done = false;
-
-            _read(size: number) {
-                if (this.done) {
-                    this.push(null);
-                } else {
-                    this.push(body);
-                    this.done = true;
-                }
-            }
-        })(new Socket());
-
-        let result: any = 'nothing';
-        const response = new (class extends HttpResponse {
-            end(chunk: any) {
-                result = chunk ? chunk.toString() : chunk;
-            }
-
-            write(chunk: any): boolean {
-                result = chunk ? chunk.toString() : chunk;
-                return true;
-            }
-        })(request);
-
-        await this.handleRequest(request, response);
-        if (result === '' || result === undefined || result === null) return result;
-        try {
-            return JSON.parse(result);
-        } catch (error) {
-            return result;
-        }
     }
 
     public async request(requestBuilder: RequestBuilder): Promise<MemoryHttpResponse> {

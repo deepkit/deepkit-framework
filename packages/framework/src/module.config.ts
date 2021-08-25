@@ -12,7 +12,7 @@ import { t } from '@deepkit/type';
 import { AppModuleConfig } from '@deepkit/app';
 import { Session } from './session';
 
-export const kernelConfig = new AppModuleConfig({
+export const frameworkConfig = new AppModuleConfig({
     host: t.string.default('0.0.0.0'), //binding to localhost is roughly 20% faster.
     port: t.number.default(8080),
     httpsPort: t.number.optional.description('If httpsPort and ssl is defined, then the https server is started additional to the http-server.'),
@@ -42,4 +42,4 @@ export const kernelConfig = new AppModuleConfig({
     migrationDir: t.string.default('migrations'),
 });
 
-export class KernelConfigAll extends kernelConfig.all() { }
+export class FrameworkConfigAll extends frameworkConfig.all() { }

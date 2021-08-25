@@ -11,9 +11,6 @@
       "path": "packages/crypto/tsconfig.json"
     },
     {
-      "path": "packages/api-console/tsconfig.json"
-    },
-    {
       "path": "packages/api-console-module/tsconfig.json"
     },
     {

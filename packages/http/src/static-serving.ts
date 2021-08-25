@@ -72,24 +72,61 @@ function loadHtml(localPath: string, path: string): string {
     }
 }
 
+export interface StaticHttpOptions {
+    /**
+     * The public URL path.
+     */
+    path: string;
+
+    /**
+     * The local path from the file system. Either relative or absolute.
+     */
+    localPath: string;
+
+    groups?: string[];
+
+    /**
+     * The controller name of the registered controller class. Is per default `StaticController`.
+     */
+    controllerName?: string;
+
+    /**
+     * Replaces strings in the served index.html file.
+     */
+    indexReplace?: { [name: string]: string };
+}
+
 /**
  * Serves an index file and allows to load asset files from the same folder. Can be used to serve an angular application
  *
  * All paths like <path>/*.* that don't match a file are redirected to ${localPath}/index.html.
  * All paths like <path>/*.* that match a file resolve to the file.
  */
-export function registerStaticHttpController(module: AppModule<any, any>, path: string, localPath: string, groups: string[] = []): void {
+export function registerStaticHttpController(module: AppModule<any, any>, options: StaticHttpOptions): void {
     let indexHtml = '';
+
+    const groups = options.groups || [];
 
     class StaticController {
         @http.GET().group(...groups)
         serveIndex(request: HttpRequest, response: HttpResponse) {
-            if (!indexHtml) indexHtml = loadHtml(localPath, normalizeDirectory(path));
+            if (!indexHtml) {
+                indexHtml = loadHtml(options.localPath, normalizeDirectory(options.path));
+                if (options.indexReplace) {
+                    for (const [k, v] of Object.entries(options.indexReplace)) {
+                        indexHtml = indexHtml.replace(k, v);
+                    }
+                }
+            }
             return indexHtml ? new HtmlResponse(indexHtml) : new HtmlResponse('Index not found', 404);
         }
     }
 
-    const route1 = new RouteConfig('static', ['GET'], normalizeDirectory(path), {
+    if (options.controllerName) {
+        Object.defineProperty(StaticController, 'name', { value: options.controllerName, writable: true });
+    }
+
+    const route1 = new RouteConfig('static', ['GET'], normalizeDirectory(options.path), {
         controller: StaticController,
         module,
         methodName: 'serveIndex'
@@ -97,14 +134,14 @@ export function registerStaticHttpController(module: AppModule<any, any>, path: 
     route1.groups = groups;
     module.setupProvider(Router).addRoute(route1);
 
-    const route2 = new RouteConfig('static', ['GET'], normalizeDirectory(path).slice(0, -1), {
+    const route2 = new RouteConfig('static', ['GET'], normalizeDirectory(options.path).slice(0, -1), {
         controller: StaticController,
         module,
         methodName: 'serveIndex'
-    })
+    });
     route2.groups = groups;
     module.setupProvider(Router).addRoute(route2);
 
     module.addProvider(StaticController);
-    module.addListener(serveStaticListener(normalizeDirectory(path), localPath));
+    module.addListener(serveStaticListener(normalizeDirectory(options.path), options.localPath));
 }

@@ -2,7 +2,7 @@ import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { createWorkflow, WorkflowEvent } from '../src/workflow';
 import { eventDispatcher, EventDispatcher, EventToken } from '@deepkit/event';
-import { injectable, InjectorContext } from '@deepkit/injector';
+import { injectable, InjectorContext, InjectorModule } from '@deepkit/injector';
 
 class EndEvent extends WorkflowEvent {
     test: string = 'hi';
@@ -78,10 +78,11 @@ test('workflow events listener', async () => {
         }
     }
 
-    const dispatcher = new EventDispatcher(InjectorContext.forProviders([Listener]));
+    const module = new InjectorModule('', {});
+    const dispatcher = new EventDispatcher(InjectorContext.forProviders([Listener], module));
     const w = workflow1.create('start', dispatcher);
 
-    dispatcher.registerListener(Listener);
+    dispatcher.registerListener(Listener, module);
 
     await w.apply('doIt');
 
@@ -141,13 +142,14 @@ test('workflow events apply injector', async () => {
         }
     }
 
+    const module = new InjectorModule('', {});
     const context = InjectorContext.forProviders([
         MyService, Listener
-    ]);
+    ], module);
     const dispatcher = new EventDispatcher(context);
     const w = workflow1.create('start', dispatcher);
 
-    dispatcher.registerListener(Listener);
+    dispatcher.registerListener(Listener, module);
     await w.apply('doIt');
 
     expect(context.get(MyService).data).toBe('changedData');

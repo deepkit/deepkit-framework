@@ -3,14 +3,22 @@ import { createModule, createModuleConfig } from '../src/module';
 import { getClassSchema, t } from '@deepkit/type';
 import { inject, injectable } from '@deepkit/injector';
 import { ServiceContainer } from '../src/service-container';
+import { assert, IsExact } from 'conditional-type-checks';
 
-test('clone', () => {
-    class RootApp extends createModule({}) {
+test('strict types config', () => {
+    const config = createModuleConfig({
+        host: t.string,
+    });
+
+    class MyModule extends createModule({
+        config
+    }) {
+        process() {
+            //at this point the validation happened and it can be assumed the config has the right types
+            const config = this.config;
+            assert<IsExact<{ host: string }, typeof config>>(true);
+        }
     }
-
-    const app = new RootApp;
-
-    expect(app !== app.clone()).toBe(true);
 });
 
 test('no config reference leak', () => {
@@ -22,12 +30,20 @@ test('no config reference leak', () => {
     }
 
     class RootApp extends createModule({
-        imports: [new ModuleA],
+        config: createModuleConfig({
+            value: t.string
+        })
     }) {
+        override imports = [new ModuleA];
+        override process() {
+            this.getImportedModuleByClass(ModuleA).configure({param1: this.config.value});
+        }
     }
 
-    // expect(new ModuleA().getConfig()).toMatchObject({ param1: undefined });
-    const app = new RootApp({ myModule: { param1: '1' } });
+    expect(new ModuleA().getConfig()).toMatchObject({ param1: undefined });
+
+    const app = new RootApp({value: '1'});
+    app.process();
     expect(new RootApp().getImports()[0] !== app.getImports()[0]).toBe(true);
 
     expect(app.getImports()[0].getConfig()).toMatchObject({ param1: '1' });
@@ -35,8 +51,6 @@ test('no config reference leak', () => {
     expect(new ModuleA().getConfig()).toMatchObject({ param1: undefined });
 
     expect(new RootApp().getImports()[0].getConfig()).toMatchObject({ param1: undefined });
-
-    expect(new RootApp({ myModule: { param1: '2' } }).getImports()[0].getConfig()).toMatchObject({ param1: '2' });
 
     expect(app.getImports()[0].getConfig()).toMatchObject({ param1: '1' });
 });
@@ -61,8 +75,8 @@ test('constructor argument hole', () => {
         expect(methods[0].name).toBe('stopwatch');
         expect(methods[1].name).toBe('logger');
     }
-
 });
+
 test('nested config', () => {
     const moduleAConfig = createModuleConfig({
         param1: t.string,
@@ -80,31 +94,27 @@ test('nested config', () => {
         }
     }
 
+    let moduleAProcessCalled = 0;
     class ModuleA extends createModule({
         config: moduleAConfig,
         providers: [
             Service
         ]
     }, 'moduleA') {
+        process() {
+            moduleAProcessCalled++;
+        }
     }
 
-    class RootApp extends createModule({
-        imports: [
-            new ModuleA({ param1: 'a', nested: { param2: 'b' } })
-        ],
-    }) {
+    class RootApp extends createModule({}) {
+        process() {
+            this.addImport(new ModuleA({ param1: 'a', nested: { param2: 'b' } }));
+        }
     }
 
-    expect(new ModuleA({ param1: 'a', nested: { param2: 'b' } }).getConfig()).toEqual({
-        param1: 'a', nested: { param2: 'b' }
-    });
-
-
-    expect(new RootApp({ moduleA: { param1: 'a', nested: { param2: 'b' } } }).getImports()[0].getConfig()).toEqual({
-        param1: 'a', nested: { param2: 'b' }
-    });
-
-    const serviceContainer = new ServiceContainer(new RootApp({ moduleA: { param1: 'a', nested: { param2: 'b' } } }));
+    const serviceContainer = new ServiceContainer(new RootApp());
+    serviceContainer.process();
+    expect(moduleAProcessCalled).toBe(1);
     expect(serviceContainer.getModuleForModuleClass(ModuleA).getConfig()).toEqual({
         param1: 'a', nested: { param2: 'b' }
     });

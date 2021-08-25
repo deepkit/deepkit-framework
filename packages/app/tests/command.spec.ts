@@ -1,8 +1,7 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { CommandApplication } from '../src/application';
+import { App } from '../src/app';
 import { arg, cli, Command } from '../src/command';
-import { AppModule } from '../src/module';
 import { ServiceContainer } from '../src/service-container';
 
 @cli.controller('my')
@@ -25,11 +24,9 @@ test('command simple', () => {
 });
 
 test('command execute', async () => {
-    const myModule = new AppModule({
+    const app = new App({
         controllers: [MyCli]
     });
-
-    const app = new CommandApplication(myModule);
     const serviceContainer = app.get(ServiceContainer);
     expect(serviceContainer.cliControllers.controllers.get('my')!.controller).toBe(MyCli);
 

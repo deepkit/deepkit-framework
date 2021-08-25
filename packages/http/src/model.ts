@@ -25,7 +25,7 @@ export type HttpRequestResolvedParameters = { [name: string]: any };
 
 export class RequestBuilder {
     protected contentBuffer: Buffer = Buffer.alloc(0);
-    protected headers: { [name: string]: string } = {};
+    protected _headers: { [name: string]: string } = {};
     protected queryPath?: string;
 
     constructor(
@@ -42,7 +42,7 @@ export class RequestBuilder {
     }
 
     build(): HttpRequest {
-        const headers = this.headers;
+        const headers = this._headers;
         const method = this.method;
         const url = this.getUrl();
         const bodyContent = this.contentBuffer;
@@ -76,15 +76,20 @@ export class RequestBuilder {
         return request;
     }
 
+    headers(headers: { [name: string]: string }): this {
+        this._headers = headers;
+        return this;
+    }
+
     header(name: string, value: string | number): this {
-        this.headers[name] = String(value);
+        this._headers[name] = String(value);
         return this;
     }
 
     json(body: object): this {
         this.contentBuffer = Buffer.from(JSON.stringify(body), 'utf8');
-        this.headers['content-type'] = 'application/json; charset=utf-8';
-        this.headers['content-length'] = String(this.contentBuffer.byteLength);
+        this._headers['content-type'] = 'application/json; charset=utf-8';
+        this._headers['content-length'] = String(this.contentBuffer.byteLength);
         return this;
     }
 
@@ -94,7 +99,7 @@ export class RequestBuilder {
         } else {
             this.contentBuffer = body;
         }
-        this.headers['content-length'] = String(this.contentBuffer.byteLength);
+        this._headers['content-length'] = String(this.contentBuffer.byteLength);
         return this;
     }
 
@@ -118,6 +123,10 @@ export class HttpRequest extends IncomingMessage {
 
     static POST(path: string): RequestBuilder {
         return new RequestBuilder(path, 'POST');
+    }
+
+    static OPTIONS(path: string): RequestBuilder {
+        return new RequestBuilder(path, 'OPTIONS');
     }
 
     static PATCH(path: string): RequestBuilder {

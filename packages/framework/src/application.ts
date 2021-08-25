@@ -8,35 +8,42 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ApplicationServiceContainer } from './application-service-container';
-import { AppModule, CommandApplication, ModuleOptions } from '@deepkit/app';
+import { App, AppModule, ModuleOptions, ServiceContainer } from '@deepkit/app';
 import { ProviderWithScope } from '@deepkit/injector';
-import { KernelModule } from './kernel';
+import { FrameworkModule } from './module';
 
-export class Application<T extends ModuleOptions> extends CommandApplication<T> {
+/**
+ * This is the main application class for a Deepkit Framework Application.
+ *
+ * It extends his brother `App` (from @deepkit/app).
+ *
+ * This class registers the FrameworkModule, if not manually imported.
+ * The FrameworkModule brings the actual framework features:
+ *    - It loads automatically the debugger interface when debug configuration is true.
+ *    - It registers all Database migration CLI commands
+ *    - It detects database classes automatically and makes them available in the migration CLI tools + the ORM Browser.
+ *    - It has multi-process worker abstraction
+ *    - Profiler
+ *    - Broker and AppLocker (needs broker.startOnBootstrap configuration to be true to start automatically)
+ *    - Various CLI tools to start and debug the application
+ *
+ *  Beside from that, it works exactly like the slightly smaller version `App`.
+ */
+export class Application<T extends ModuleOptions> extends App<T> {
     constructor(
-        appModule: AppModule<T, any>,
+        appModuleOptions: T,
         providers: ProviderWithScope<any>[] = [],
-        imports: AppModule<any, any>[] = [],
+        serviceContainer?: ServiceContainer<T>,
+        appModule?: AppModule<any, any>
     ) {
-        if (!appModule.hasImport(KernelModule)) {
-            if (!appModule.options.imports) appModule.options.imports = [];
-            appModule.options.imports.unshift(new KernelModule);
+        const module = appModule || new AppModule(appModuleOptions) as any;
+        if (!module.hasImport(FrameworkModule)) {
+            module.imports.unshift(new FrameworkModule);
         }
-        super(appModule, providers, imports, new ApplicationServiceContainer(appModule, providers, imports.slice(0)));
+        super(appModuleOptions, providers, undefined, module);
     }
 
-    static create<T extends AppModule<any, any> | ModuleOptions>(module: T): Application<T extends AppModule<infer K> ? K : T> {
-        if (module instanceof AppModule) {
-            return new Application(module as any);
-        } else {
-            //see: https://github.com/microsoft/TypeScript/issues/13995
-            const mod = module as any as ModuleOptions;
-            return new Application(new AppModule(mod) as any);
-        }
-    }
-
-    run(argv?: any[]): Promise<void> {
-        return super.run(argv);
+    static fromModule<T extends ModuleOptions>(module: AppModule<T, any>, providers: ProviderWithScope<any>[] = []): Application<T> {
+        return new Application({}, providers, undefined, module) as Application<T>;
     }
 }

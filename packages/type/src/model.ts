@@ -457,6 +457,7 @@ export class PropertySchema {
                 return this.classType ? getClassName(this.classType) + affix : '[not-loaded]' + affix;
             }
         }
+        if (this.type === 'literal') return JSON.stringify(this.literalValue) + affix;
         return `${this.type}${affix}`;
     }
 
@@ -1030,6 +1031,10 @@ export class ClassSchema<T = any> {
             s.properties.push(p);
         }
 
+        for (const [name, method] of Object.entries(this.methods)) {
+            s.methods[name] = method.clone();
+        }
+
         s.methodProperties = new Map();
         for (const [i, properties] of this.methodProperties.entries()) {
             const obj: PropertySchema[] = [];
@@ -1317,51 +1322,51 @@ export class ClassSchema<T = any> {
     }
 
     protected initializeMethod(name: string) {
-        if (!this.initializedMethods.has(name)) {
-            if (name === 'constructor' && this.superClass) {
-                const properties = this.superClass.getMethodProperties(name);
-                const obj: PropertySchema[] = [];
+        if (this.initializedMethods.has(name)) return;
 
-                this.methodProperties.set(name, obj);
+        if (name === 'constructor' && this.superClass) {
+            const properties = this.superClass.getMethodProperties(name);
+            const obj: PropertySchema[] = [];
 
-                for (let i =0; i < properties.length; i++) {
-                    obj[i] = (this.propertiesMap.get(properties[i].name) || properties[i].clone());
-                }
+            this.methodProperties.set(name, obj);
+
+            for (let i =0; i < properties.length; i++) {
+                obj[i] = (this.propertiesMap.get(properties[i].name) || properties[i].clone());
             }
-
-            if (name !== 'constructor' && (!Reflect.getMetadata || !Reflect.hasMetadata('design:returntype', this.classType.prototype, name))) {
-                throw new Error(`Method ${this.getClassPropertyName(name)} has no decorators used or is not defined, so reflection does not work. Use @t on the method or arguments. Is emitDecoratorMetadata enabled? Correctly 'reflect-metadata' imported? Return type annotated?`);
-            }
-
-            if (name !== 'constructor' && !this.methods[name]) {
-                const returnType = Reflect.getMetadata && Reflect.getMetadata('design:returntype', this.classType.prototype, name);
-                this.methods[name] = new PropertySchema(name);
-                this.methods[name].setFromJSType(returnType);
-                this.methods[name].typeSet = false;
-            }
-
-            const properties = this.getOrCreateMethodProperties(name);
-
-            const paramtypes = name === 'constructor'
-                ? Reflect.getMetadata && Reflect.getMetadata('design:paramtypes', this.classType)
-                : Reflect.getMetadata && Reflect.getMetadata('design:paramtypes', this.classType.prototype, name);
-
-            const names = extractParameters(this.classType.prototype[name]);
-
-            for (const [i, t] of eachPair(paramtypes)) {
-                if (names[i] && names[i].startsWith('...')) continue;
-
-                if (!properties[i]) {
-                    properties[i] = new PropertySchema(names[i] || String('parameter' + i));
-                    properties[i].methodName = name;
-                    if (paramtypes[i] !== Object) {
-                        properties[i].setFromJSType(t, false);
-                        properties[i].typeSet = false;
-                    }
-                }
-            }
-            this.initializedMethods.add(name);
         }
+
+        if (name !== 'constructor' && (!Reflect.getMetadata || !Reflect.hasMetadata('design:returntype', this.classType.prototype, name))) {
+            throw new Error(`Method ${this.getClassPropertyName(name)} has no decorators used or is not defined, so reflection does not work. Use @t on the method or arguments. Is emitDecoratorMetadata enabled? Correctly 'reflect-metadata' imported? Return type annotated?`);
+        }
+
+        if (name !== 'constructor' && !this.methods[name]) {
+            const returnType = Reflect.getMetadata && Reflect.getMetadata('design:returntype', this.classType.prototype, name);
+            this.methods[name] = new PropertySchema(name);
+            this.methods[name].setFromJSType(returnType);
+            this.methods[name].typeSet = false;
+        }
+
+        const properties = this.getOrCreateMethodProperties(name);
+
+        const paramtypes = name === 'constructor'
+            ? Reflect.getMetadata && Reflect.getMetadata('design:paramtypes', this.classType)
+            : Reflect.getMetadata && Reflect.getMetadata('design:paramtypes', this.classType.prototype, name);
+
+        const names = extractParameters(this.classType.prototype[name]);
+
+        for (const [i, t] of eachPair(paramtypes)) {
+            if (names[i] && names[i].startsWith('...')) continue;
+
+            if (!properties[i]) {
+                properties[i] = new PropertySchema(names[i] || String('parameter' + i));
+                properties[i].methodName = name;
+                if (paramtypes[i] !== Object) {
+                    properties[i].setFromJSType(t, false);
+                    properties[i].typeSet = false;
+                }
+            }
+        }
+        this.initializedMethods.add(name);
     }
 
     /**

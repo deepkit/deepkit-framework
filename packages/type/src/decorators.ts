@@ -381,7 +381,7 @@ function createFieldDecoratorResult<T>(
         }]);
     };
 
-    fn.jsonType = (type: any) => {
+    fn.jsonType = (type: WideTypes) => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
             property.jsonType ||= new PropertySchema('jsonType');
@@ -821,10 +821,13 @@ function Exclude(t: 'all' | string = 'all') {
     };
 }
 
-export function assignWideTypeToProperty(property: PropertySchema, type: string | ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>) {
-    if ('string' === typeof type) {
-        property.type = type as Types;
+export type WideTypes = string | boolean | number | ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>;
+
+export function assignWideTypeToProperty(property: PropertySchema, type: WideTypes) {
+    if ('string' === typeof type || 'number' === typeof type || 'boolean' === typeof type) {
+        property.type = 'literal';
         property.typeSet = true;
+        property.literalValue = type;
     } else if (type instanceof ClassSchema) {
         property.type = 'class';
         property.classType = type.classType;
@@ -849,7 +852,12 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
 
         if (property.type === 'any' && !property.typeSet) {
             if (type) {
-                assignWideTypeToProperty(property, type);
+                if ('string' === typeof type) {
+                    property.type = type as Types;
+                    property.typeSet = true;
+                } else {
+                    assignWideTypeToProperty(property, type);
+                }
             } else if (returnType !== Array) {
                 property.setFromJSType(returnType);
             }
@@ -941,8 +949,10 @@ fRaw['map'] = function <T extends ClassType | ForwardRefFn<T> | ClassSchema<T> |
 
 fRaw['any'] = Field('any');
 
-fRaw['type'] = function <T extends FieldTypes<any>>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
-    return Field(type);
+fRaw['type'] = function <T extends WideTypes>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
+    return Field().use((target, property) => {
+        assignWideTypeToProperty(property, type);
+    });
 };
 
 fRaw['literal'] = function <T extends number | string | boolean>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
@@ -1012,7 +1022,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    type<T extends string | ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>>(type: T): FieldDecoratorResult<ExtractType<T>>;
+    type<T extends WideTypes>(type: T): FieldDecoratorResult<ExtractType<T>>;
 
     /**
      * Defines a discriminated union type.

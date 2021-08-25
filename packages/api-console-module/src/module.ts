@@ -1,23 +1,51 @@
 import { createModule, findParentPath } from '@deepkit/app';
-import { registerStaticHttpController } from '@deepkit/http';
-import { ApiConsoleController } from './controller';
+import { HttpRouteFilter, registerStaticHttpController } from '@deepkit/http';
+import { ApiConsoleApi } from '@deepkit/api-console-gui/src/api';
 import { config } from './module.config';
-import { ClassType } from '@deepkit/core';
+import { rpc } from '@deepkit/rpc';
+import { ApiConsoleController } from './controller';
 
 export class ApiConsoleModule extends createModule({
     config,
-    controllers: [ApiConsoleController]
 }, 'apiConsole') {
+    protected routeFilter = new HttpRouteFilter().excludeRoutes({group: 'app-static'});
 
-    forController(...controller: ClassType[]) {
-        // this.config.
+    filter(cb: (filter: HttpRouteFilter) => any): this {
+        cb(this.routeFilter);
+        return this;
     }
 
     process() {
-        if (!this.config.listen) return;
+        this.addProvider({provide: HttpRouteFilter, useValue: this.routeFilter});
+
+        if (!this.config.listen) {
+            @rpc.controller(ApiConsoleApi)
+            class NamedController extends ApiConsoleController {
+            }
+
+            this.addController(NamedController);
+            return;
+        }
+
+        const controllerName = '.deepkit/api-console/' + this.config.path;
+
+        @rpc.controller(controllerName)
+        class NamedController extends ApiConsoleController {
+        }
+
+        this.addController(NamedController);
 
         const localPath = findParentPath('node_modules/@deepkit/api-console-gui/dist/api-console-gui', __dirname);
         if (!localPath) throw new Error('node_modules/@deepkit/api-console-gui not installed in ' + __dirname);
-        registerStaticHttpController(this, this.config.path, localPath, ['app-static']);
+
+        registerStaticHttpController(this, {
+            path: this.config.path,
+            localPath,
+            groups: ['app-static'],
+            controllerName: 'ApiConsoleController',
+            indexReplace: {
+                APP_CONTROLLER_NAME: controllerName
+            }
+        });
     }
 }

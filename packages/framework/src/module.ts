@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ProcessLocker } from '@deepkit/core';
+import { ClassType, isClass, isPrototypeOfBase, ProcessLocker } from '@deepkit/core';
 import { DebugRequest } from '@deepkit/framework-debug-api';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
@@ -20,34 +20,32 @@ import { DebugDIController } from './cli/debug-di';
 import { ServerStartController } from './cli/server-start';
 import { DebugController } from './debug/debug.controller';
 import { registerDebugHttpController } from './debug/http-debug.controller';
-import { HttpKernel, HttpListener, HttpLogger, HttpModule, HttpResultFormatter, Router, serveStaticListener } from '@deepkit/http';
-import { InjectorContext, injectorReference } from '@deepkit/injector';
-import { kernelConfig } from './kernel.config';
+import { HttpLogger, HttpModule, serveStaticListener } from '@deepkit/http';
+import { InjectorContext, injectorReference, ProviderWithScope, TagProvider } from '@deepkit/injector';
+import { frameworkConfig } from './module.config';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { SessionHandler } from './session';
 import { RpcServer, WebWorkerFactory } from './worker';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { OrmBrowserController } from './orm-browser/controller';
 import { DatabaseListener } from './database/database-listener';
-import { DatabaseRegistry } from '@deepkit/orm';
+import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
 import { FileStopwatchStore } from './debug/stopwatch/store';
 import { DebugDebugFramesCommand } from './cli/debug-debug-frames';
-import { RpcKernelSecurity } from '@deepkit/rpc';
+import { rpcClass, RpcKernelSecurity } from '@deepkit/rpc';
 import { AppConfigController } from './cli/app-config';
 import { Zone } from './zone';
 import { DebugBroker, DebugBrokerListener } from './debug/broker';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
-import { createModule } from '@deepkit/app';
+import { AppModule, createModule } from '@deepkit/app';
+import { RpcControllers } from './rpc';
 
-export class KernelModule extends createModule({
-    config: kernelConfig,
+export class FrameworkModule extends createModule({
+    config: frameworkConfig,
     providers: [
         ProcessLocker,
         ApplicationServer,
-        Router,
-        HttpKernel,
-        HttpResultFormatter,
         WebWorkerFactory,
         RpcServer,
         ConsoleTransport,
@@ -57,15 +55,12 @@ export class KernelModule extends createModule({
         DebugController,
         { provide: DatabaseRegistry, deps: [InjectorContext], useFactory: (ic) => new DatabaseRegistry(ic) },
         { provide: LiveDatabase, scope: 'rpc' },
-        { provide: HttpListener },
         { provide: SessionHandler, scope: 'http' },
     ],
     workflows: [
-        // httpWorkflow
         // rpcWorkflow,
     ],
     listeners: [
-        HttpListener,
         ApplicationServerListener,
         DatabaseListener,
     ],
@@ -81,16 +76,21 @@ export class KernelModule extends createModule({
         MigrationPendingCommand,
         MigrationCreateController,
     ],
-    imports: [
+}, 'framework') {
+    imports = [
         new BrokerModule().forRoot(),
-        new HttpModule().forRoot(),
-    ],
-}, 'kernel') {
+        new HttpModule(),
+    ];
+
     //we export anything per default
     root = true;
+    protected dbs: {module: AppModule<any>, classType: ClassType}[] = [];
+    protected rpcControllers = new RpcControllers;
 
     process() {
+        this.addImport();
         this.forRoot();
+        this.addProvider({ provide: RpcControllers, useValue: this.rpcControllers });
 
         this.setupProvider(MigrationProvider).setMigrationDir(this.config.migrationDir);
         this.setupProvider(DatabaseRegistry).setMigrateOnStartup(this.config.migrateOnStartup);
@@ -138,6 +138,43 @@ export class KernelModule extends createModule({
             }
 
             this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
+        }
+
+    }
+
+    postProcess() {
+        //all providers are known at this point
+        this.setupDatabase();
+    }
+
+    protected setupDatabase() {
+        for (const db of this.dbs) {
+            this.setupProvider(DatabaseRegistry).addDatabase(db.classType, {}, db.module);
+        }
+
+        if (this.config.debug && this.config.debugProfiler) {
+            for (const db of this.dbs) {
+                this.setupProvider(db.classType).stopwatch = injectorReference(Stopwatch);
+            }
+        }
+    }
+
+    handleProviders(module: AppModule<any, any>, providers: ProviderWithScope[]) {
+        for (const provider of providers) {
+            if (provider instanceof TagProvider) continue;
+            const provide = isClass(provider) ? provider : provider.provide;
+            if (!isClass(provide)) continue;
+            if (isPrototypeOfBase(provide, Database)) {
+                this.dbs.push({classType: provide, module});
+            }
+        }
+    }
+
+    handleController(module: AppModule<any>, controller: ClassType,) {
+        const rpcConfig = rpcClass._fetch(controller);
+        if (rpcConfig) {
+            if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'rpc' });
+            this.rpcControllers.controllers.set(rpcConfig.getPath(), { controller, module });
         }
     }
 }

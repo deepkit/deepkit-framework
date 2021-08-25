@@ -1,10 +1,10 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { http, HttpKernel, JSONResponse, RouteParameterResolverContext } from '@deepkit/http';
+import { http, HttpKernel, HttpRequest, JSONResponse, RouteParameterResolverContext } from '@deepkit/http';
 import { Application } from '../src/application';
 
 test('router parameters', async () => {
-    class Controller {
+    class Controller2 {
         @http.GET('/user/:name')
         string(name: string) {
             return new JSONResponse(name);
@@ -26,17 +26,17 @@ test('router parameters', async () => {
         }
     }
 
-    const app = Application.create({ controllers: [Controller] });
+    const app = new Application({ controllers: [Controller2] });
     const httpHandler = app.get(HttpKernel);
 
-    expect(await httpHandler.handleRequestFor('GET', '/user/peter')).toBe('peter');
-    expect(await httpHandler.handleRequestFor('GET', '/user-id/123')).toBe(123);
-    expect(await httpHandler.handleRequestFor('GET', '/user-id/asd')).toMatchObject({ message: 'Validation failed: id(invalid_number): No valid number given, got NaN' });
-    expect(await httpHandler.handleRequestFor('GET', '/boolean/1')).toBe(true);
-    expect(await httpHandler.handleRequestFor('GET', '/boolean/false')).toBe(false);
+    expect((await httpHandler.request(HttpRequest.GET('/user/peter'))).json).toBe('peter');
+    expect((await httpHandler.request(HttpRequest.GET('/user-id/123'))).json).toBe(123);
+    expect((await httpHandler.request(HttpRequest.GET('/user-id/asd'))).json).toMatchObject({ message: 'Validation failed: id(invalid_number): No valid number given, got NaN' });
+    expect((await httpHandler.request(HttpRequest.GET('/boolean/1'))).json).toBe(true);
+    expect((await httpHandler.request(HttpRequest.GET('/boolean/false'))).json).toBe(false);
 
-    expect(await httpHandler.handleRequestFor('GET', '/any')).toBe('any');
-    expect(await httpHandler.handleRequestFor('GET', '/any/path')).toBe('any/path');
+    expect((await httpHandler.request(HttpRequest.GET('/any'))).json).toBe('any');
+    expect((await httpHandler.request(HttpRequest.GET('/any/path'))).json).toBe('any/path');
 });
 
 
@@ -48,7 +48,9 @@ test('router parameterResolver', async () => {
 
     class MyRouteParameterResolver {
         resolve(context: RouteParameterResolverContext): any | Promise<any> {
-            if (!context.parameters.username) throw new Error('No :username specified');
+            if (!context.parameters.username) {
+                throw new Error('No :username specified');
+            }
             return new User(context.parameters.username);
         }
     }
@@ -66,13 +68,12 @@ test('router parameterResolver', async () => {
         }
     }
 
-
-    const app = Application.create({
+    const app = new Application({
         providers: [MyRouteParameterResolver],
         controllers: [Controller],
     });
     const httpHandler = app.get(HttpKernel);
 
-    expect(await httpHandler.handleRequestFor('GET', '/user/peter')).toEqual(['peter']);
-    expect(await httpHandler.handleRequestFor('GET', '/group')).toEqual('Internal error');
+    expect((await httpHandler.request(HttpRequest.GET('/user/peter'))).json).toEqual(['peter']);
+    expect((await httpHandler.request(HttpRequest.GET('/group'))).bodyString).toEqual('Internal error');
 });

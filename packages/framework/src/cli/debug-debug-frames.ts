@@ -12,10 +12,10 @@ import { cli, Command, flag } from '@deepkit/app';
 import { join } from 'path';
 import { readFileSync, unlinkSync } from 'fs';
 import { decodeFrameData, decodeFrames } from '@deepkit/framework-debug-api';
-import { kernelConfig } from '../kernel.config';
+import { frameworkConfig } from '../module.config';
 import { Logger } from '@deepkit/logger';
 
-class Config extends kernelConfig.slice('varPath', 'debugStorePath') {
+class Config extends frameworkConfig.slice('varPath', 'debugStorePath') {
 }
 
 @cli.controller('debug:debug:frames', {})

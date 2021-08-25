@@ -68,8 +68,8 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
     protected currentIndexId = 0;
 
     protected contextManager = new ContextRegistry();
-    protected rootInjectorContext = new InjectorContext(this.contextManager, 'module', new ConfiguredProviderRegistry);
-    protected eventListenerContainer = new EventDispatcher(this.rootInjectorContext);
+    protected injectorContext = new InjectorContext(this.contextManager, 'module', new ConfiguredProviderRegistry);
+    protected eventListenerContainer = new EventDispatcher(this.injectorContext);
 
     protected rootContext?: Context;
     protected moduleContexts = new Map<AppModule<ModuleOptions>, Context[]>();
@@ -78,12 +78,17 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
 
     public appModule: AppModule<any, any>;
 
+    /**
+     * All modules in the whole module tree.
+     * This is stored to call service container hooks like handleControllers/handleProviders.
+     */
+    protected modules = new Set<AppModule<any, any>>();
+
     constructor(
         appModule: AppModule<any, any>,
         protected providers: ProviderWithScope[] = [],
-        protected imports: AppModule<any, any>[] = [],
     ) {
-        this.appModule = appModule.clone();
+        this.appModule = appModule;
     }
 
     addConfigLoader(loader: ConfigLoader) {
@@ -94,20 +99,41 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         if (this.rootContext) return;
 
         this.setupHook(this.appModule);
+        this.findModules(this.appModule);
 
         this.providers.push({ provide: ServiceContainer, useValue: this });
         this.providers.push({ provide: EventDispatcher, useValue: this.eventListenerContainer });
         this.providers.push({ provide: CliControllers, useValue: this.cliControllers });
         this.providers.push({ provide: MiddlewareRegistry, useValue: this.middlewares });
-        this.providers.push({ provide: InjectorContext, useValue: this.rootInjectorContext });
+        this.providers.push({ provide: InjectorContext, useValue: this.injectorContext });
 
-        this.rootContext = this.processModule(this.appModule, undefined, this.providers, this.imports);
+        this.rootContext = this.processModule(this.appModule, undefined, this.providers);
+
+        this.postProcess();
         this.bootstrapModules();
     }
 
-    public getRootInjectorContext() {
+    protected postProcess() {
+        for (const m of this.modules) {
+            m.postProcess();
+            for (const [provider, calls] of m.getConfiguredProviderRegistry().calls) {
+                this.injectorContext.configuredProviderRegistry.add(provider, ...calls);
+            }
+        }
+    }
+
+    protected findModules(module: AppModule<any, any>) {
+        if (this.modules.has(module)) return;
+        this.modules.add(module);
+
+        for (const m of module.getImports()) {
+            this.findModules(m);
+        }
+    }
+
+    public getInjectorContext() {
         this.process();
-        return this.rootInjectorContext;
+        return this.injectorContext;
     }
 
     private setupHook(module: AppModule<any, any>) {
@@ -153,29 +179,29 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
 
     public getInjectorFor(module: AppModule<any, any>): Injector {
         this.process();
-        return this.rootInjectorContext.getInjectorForModule(module);
+        return this.injectorContext.getInjectorForModule(module);
     }
 
     public getModuleForModuleClass<T extends AppModule<any, any>>(moduleClass: ClassType<T>): T {
-        return this.getRootInjectorContext().getModuleForModuleClass(moduleClass) as T;
+        return this.getInjectorContext().getModuleForModuleClass(moduleClass) as T;
     }
 
     public getModuleForModule<T extends AppModule<any, any>>(module: T): T {
-        return this.getRootInjectorContext().getModuleForModule(module) as T;
+        return this.getInjectorContext().getModuleForModule(module) as T;
     }
 
     public getInjectorForModuleClass(moduleClass: ClassType<AppModule<any, any>>): Injector {
-        return this.getRootInjectorContext().getInjectorForModuleClass(moduleClass);
+        return this.getInjectorContext().getInjectorForModuleClass(moduleClass);
     }
 
     public getInjectorForModule(module: AppModule<any, any>): Injector {
-        return this.getRootInjectorContext().getInjectorForModule(module);
+        return this.getInjectorContext().getInjectorForModule(module);
     }
 
     public getRootInjector(): Injector {
         this.process();
         if (!this.rootContext) throw new Error('No root context set');
-        return this.rootInjectorContext.getInjector(this.rootContext.id);
+        return this.injectorContext.getInjector(this.rootContext.id);
     }
 
     protected getContext(id: number): Context {
@@ -214,17 +240,17 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         module: AppModule<ModuleOptions>,
         parentContext?: Context,
         additionalProviders: ProviderWithScope[] = [],
-        additionalImports: AppModule<any, any>[] = []
     ): Context {
-        const exports = module.options.exports ? module.options.exports.slice(0) : [];
-        const providers = module.options.providers ? module.options.providers.slice(0) : [];
+        if (module.hasContextId()) throw new Error(`Module ${getClassName(module)}.${module.name} was already imported. Can not re-use module instances.`);
+
+        const exports = module.getExports();
+        const providers = module.getProviders();
         const controllers = module.options.controllers ? module.options.controllers.slice(0) : [];
-        let imports = module.imports ? module.imports.slice(0) : [];
+        let imports = module.getImports();
         const listeners = module.options.listeners ? module.options.listeners.slice(0) : [];
         const middlewares = module.options.middlewares ? module.options.middlewares.slice(0) : [];
 
         providers.push(...additionalProviders);
-        imports.unshift(...additionalImports.map(v => v.clone()));
 
         //we add the module to its own providers so it can depend on its module providers.
         //when we would add it to root it would have no access to its internal providers.
@@ -248,7 +274,7 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
                 if (!isProvided(providers, provider)) {
                     providers.unshift(provider.provider);
                 }
-                this.rootInjectorContext.tagRegistry.tags.push(provider);
+                this.injectorContext.tagRegistry.tags.push(provider);
             }
         }
 
@@ -301,18 +327,14 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
                 //listeners needs to be exported, otherwise the EventDispatcher can't instantiate them, since
                 //we do not store the injector context yet.
                 exports.unshift(listener);
-                this.eventListenerContainer.registerListener(listener, context);
+                this.eventListenerContainer.registerListener(listener, module);
             } else {
                 this.eventListenerContainer.add(listener.eventToken, { fn: listener.callback, order: listener.order });
             }
         }
 
-        for (const [provider, calls] of module.getConfiguredProviderRegistry().calls) {
-            this.rootInjectorContext.configuredProviderRegistry.add(provider, ...calls);
-        }
-
         for (const controller of controllers) {
-            this.setupController(providers, controller, module);
+            this.handleController(module, controller);
         }
 
         //if there are exported tokens, their providers will be added to the parent or root context
@@ -347,14 +369,20 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
     }
 
     protected handleProviders(module: AppModule<any, any>, providers: ProviderWithScope[]) {
-
+        for (const m of this.modules) {
+            m.handleProviders(module, providers);
+        }
     }
 
-    protected setupController(providers: ProviderWithScope[], controller: ClassType, module: AppModule<any>) {
+    protected handleController(module: AppModule<any>, controller: ClassType) {
         const cliConfig = cli._fetch(controller);
         if (cliConfig) {
-            if (!isProvided(providers, controller)) providers.unshift({ provide: controller, scope: 'cli' });
+            if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'cli' });
             this.cliControllers.controllers.set(cliConfig.name, { controller, module });
+        }
+
+        for (const m of this.modules) {
+            m.handleController(module, controller);
         }
     }
 }

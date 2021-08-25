@@ -1,8 +1,10 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { ApplicationServiceContainer } from '../src/application-service-container';
 import { rpc } from '@deepkit/rpc';
-import { AppModule } from '@deepkit/app';
+import { AppModule, createModule, ServiceContainer } from '@deepkit/app';
+import { FrameworkModule } from '../src/module';
+import { Database, DatabaseRegistry, MemoryDatabaseAdapter } from '@deepkit/orm';
+import { Application } from '../src/application';
 
 test('controller', () => {
     class MyService {
@@ -28,11 +30,14 @@ test('controller', () => {
         const myModule = new AppModule({
             providers: [MyService],
             controllers: [MyController],
+            imports: [
+                new FrameworkModule()
+            ]
         });
 
-        const serviceContainer = new ApplicationServiceContainer(myModule);
-        const rpcScopedContext = serviceContainer.getRootInjectorContext().createChildScope('rpc');
-        const controller = rpcScopedContext.getInjector(0).get(MyController);
+        const serviceContainer = new ServiceContainer(myModule);
+        const rpcScopedContext = serviceContainer.getInjectorContext().createChildScope('rpc');
+        const controller = rpcScopedContext.getInjectorForModule(myModule).get(MyController);
         expect(controller).toBeInstanceOf(MyController);
         expect(controller.foo()).toBe('hello');
     }
@@ -58,22 +63,23 @@ test('controller in module and overwrite service', () => {
         }
     }
 
-    const controllerModule = new AppModule({
+    class ControllerModule extends createModule({
         providers: [MyService],
         controllers: [MyController],
         exports: [
             MyService
         ]
-    }, 'controller');
+    }, 'controller') {
+    }
 
     {
         const myModule = new AppModule({
-            imports: [controllerModule],
+            imports: [new ControllerModule, new FrameworkModule()],
         });
 
-        const serviceContainer = new ApplicationServiceContainer(myModule);
-        const rpcScopedContext = serviceContainer.getRootInjectorContext().createChildScope('rpc');
-        const controller = rpcScopedContext.getInjectorForModule(controllerModule).get(MyController);
+        const serviceContainer = new ServiceContainer(myModule);
+        const rpcScopedContext = serviceContainer.getInjectorContext().createChildScope('rpc');
+        const controller = rpcScopedContext.getInjectorForModuleClass(ControllerModule).get(MyController);
         expect(controller).toBeInstanceOf(MyController);
         expect(controller.foo()).toBe('hello');
     }
@@ -83,13 +89,29 @@ test('controller in module and overwrite service', () => {
             providers: [
                 { provide: MyService, useValue: new MyService('different') }
             ],
-            imports: [controllerModule],
+            imports: [new ControllerModule, new FrameworkModule()],
         });
 
-        const serviceContainer = new ApplicationServiceContainer(myModule);
-        const rpcScopedContext = serviceContainer.getRootInjectorContext().createChildScope('rpc');
-        const controller = rpcScopedContext.getInjectorForModule(controllerModule).get(MyController);
+        const serviceContainer = new ServiceContainer(myModule);
+        const rpcScopedContext = serviceContainer.getInjectorContext().createChildScope('rpc');
+        const controller = rpcScopedContext.getInjectorForModuleClass(ControllerModule).get(MyController);
         expect(controller).toBeInstanceOf(MyController);
         expect(controller.foo()).toBe('different');
     }
+});
+
+test('database auto-detection', () => {
+    class MyDatabase extends Database {
+        constructor() {
+            super(new MemoryDatabaseAdapter())
+        }
+    }
+
+    const app = new Application({
+        providers: [MyDatabase]
+    });
+
+    const registry = app.get(DatabaseRegistry);
+    expect(registry.getDatabases()).toHaveLength(1);
+
 });

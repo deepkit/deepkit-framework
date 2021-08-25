@@ -9,6 +9,7 @@ import {
     Context,
     ContextRegistry,
     Injector,
+    ResolveToken,
     ScopedContextCache,
     ScopedContextScopeCaches
 } from './injector';
@@ -141,9 +142,9 @@ export class InjectorContext implements BasicInjector {
         return injector;
     }
 
-    public get<T, R = T extends ClassType<infer R> ? R : T>(token: T, frontInjector?: Injector): R {
+    public get<T>(token: T, frontInjector?: Injector): ResolveToken<T> {
         const injector = this.getInjector(0);
-        return injector.get(token, frontInjector);
+        return injector.get(token, frontInjector) as ResolveToken<T>;
     }
 
     public createChildScope(scope: string, additionalInjectorParent?: Injector): InjectorContext {

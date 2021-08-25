@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import 'reflect-metadata';
 import { ClassType, getClassName, isClass } from '@deepkit/core';
 import { isArray } from '@deepkit/type';

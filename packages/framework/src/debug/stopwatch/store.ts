@@ -3,7 +3,7 @@ import { appendFile, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { decodeFrames, encodeFrameData, encodeFrames } from '@deepkit/framework-debug-api';
 import { asyncOperation, Mutex } from '@deepkit/core';
-import { kernelConfig } from '../../kernel.config';
+import { frameworkConfig } from '../../module.config';
 import { injectable } from '@deepkit/injector';
 import { t } from '@deepkit/type';
 import { Zone } from '../../zone';
@@ -11,7 +11,7 @@ import cluster from 'cluster';
 import { performance } from 'perf_hooks';
 import { DebugBroker } from '../broker';
 
-class Config extends kernelConfig.slice('varPath', 'debugStorePath') {
+class Config extends frameworkConfig.slice('varPath', 'debugStorePath') {
 }
 
 @injectable()
