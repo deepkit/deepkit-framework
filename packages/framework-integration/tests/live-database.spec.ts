@@ -7,16 +7,13 @@ import { Collection, IdInterface, rpc } from '@deepkit/rpc';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { ClassSchema, Entity, t, uuid } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
+import { InjectorModule } from '@deepkit/injector';
 
-export function createTestingApp<O extends ModuleOptions>(optionsOrModule: O, entities?: (ClassType | ClassSchema)[]): TestingFacade<Application<O>> {
-    const module = optionsOrModule instanceof AppModule ? optionsOrModule : new AppModule(optionsOrModule);
-
-    if (entities) {
+export function createTestingApp<O extends ModuleOptions>(options: O, entities?: (ClassType | ClassSchema)[]): TestingFacade<Application<O>> {
+    return createTestingAppOriginal(options, entities, (module: AppModule<any>) => {
         module.addProvider({ provide: Database, useValue: new Database(new SQLiteDatabaseAdapter('/tmp/live-database.sqlite'), entities) })
-        module.setupProvider(DatabaseRegistry).addDatabase(Database, { migrateOnStartup: true });
-    }
-
-    return createTestingAppOriginal(module) as any;
+        module.setupProvider(DatabaseRegistry).addDatabase(Database, { migrateOnStartup: true }, new InjectorModule<any>('', 0));
+    }) as any;
 }
 
 (global as any)['createTestingApp'] ||= createTestingApp;

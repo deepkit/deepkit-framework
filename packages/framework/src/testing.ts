@@ -11,7 +11,7 @@
 import { BrokerKernel } from '@deepkit/broker';
 import { ClassType } from '@deepkit/core';
 import { ConsoleTransport, Logger, MemoryLoggerTransport } from '@deepkit/logger';
-import { Database, DatabaseRegistry, MemoryDatabaseAdapter } from '@deepkit/orm';
+import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { ClassSchema } from '@deepkit/type';
 import { Application } from './application';
 import { ApplicationServer } from './application-server';
@@ -21,7 +21,7 @@ import { AppModule, ModuleOptions } from '@deepkit/app';
 import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker';
 import { HttpKernel, HttpResponse, RequestBuilder } from '@deepkit/http';
 import { RpcClient } from '@deepkit/rpc';
-
+import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 
 export class TestHttpResponse extends HttpResponse {
     public body: Buffer = Buffer.alloc(0);
@@ -105,8 +105,8 @@ export class BrokerMemoryServer extends BrokerServer {
  * Creates a new Application instance, but with kernel services in place that work in memory.
  * For example RPC/Broker/HTTP communication without TCP stack. Logger uses MemoryLogger.
  */
-export function createTestingApp<O extends ModuleOptions>(optionsOrModule: O, entities?: (ClassType | ClassSchema)[]): TestingFacade<Application<O>> {
-    const module = optionsOrModule instanceof AppModule ? optionsOrModule : new AppModule(optionsOrModule);
+export function createTestingApp<O extends ModuleOptions>(options: O, entities?: (ClassType | ClassSchema)[], setup?: (module: AppModule<any>) => void): TestingFacade<Application<O>> {
+    const module = new AppModule(options);
 
     module.setupProvider(Logger).removeTransport(injectorReference(ConsoleTransport));
     module.setupProvider(Logger).addTransport(injectorReference(MemoryLoggerTransport));
@@ -123,9 +123,11 @@ export function createTestingApp<O extends ModuleOptions>(optionsOrModule: O, en
     ];
 
     if (entities) {
-        providers.push({ provide: Database, useValue: new Database(new MemoryDatabaseAdapter, entities) });
+        providers.push({ provide: Database, useValue: new Database(new SQLiteDatabaseAdapter(':memory:'), entities) });
         module.setupProvider(DatabaseRegistry).addDatabase(Database, {}, module);
     }
+
+    if (setup) module.setup(setup as any);
 
     return new TestingFacade(Application.fromModule(module, providers));
 }
