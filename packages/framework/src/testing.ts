@@ -105,7 +105,7 @@ export class BrokerMemoryServer extends BrokerServer {
  * Creates a new Application instance, but with kernel services in place that work in memory.
  * For example RPC/Broker/HTTP communication without TCP stack. Logger uses MemoryLogger.
  */
-export function createTestingApp<O extends ModuleOptions>(options: O, entities?: (ClassType | ClassSchema)[], setup?: (module: AppModule<any>) => void): TestingFacade<Application<O>> {
+export function createTestingApp<O extends ModuleOptions>(options: O, entities: (ClassType | ClassSchema)[] = [], setup?: (module: AppModule<any>) => void): TestingFacade<Application<O>> {
     const module = new AppModule(options);
 
     module.setupProvider(Logger).removeTransport(injectorReference(ConsoleTransport));
@@ -122,7 +122,7 @@ export function createTestingApp<O extends ModuleOptions>(options: O, entities?:
         },
     ];
 
-    if (entities) {
+    if (entities.length) {
         providers.push({ provide: Database, useValue: new Database(new SQLiteDatabaseAdapter(':memory:'), entities) });
         module.setupProvider(DatabaseRegistry).addDatabase(Database, {}, module);
     }
