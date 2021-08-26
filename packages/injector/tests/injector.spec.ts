@@ -1,9 +1,9 @@
+import 'reflect-metadata';
 import { expect, test } from '@jest/globals';
 import { getClassSchema, t } from '@deepkit/type';
-import 'reflect-metadata';
-import { CircularDependencyError, createConfig, inject, injectable, InjectOptions, Injector, InjectorToken } from '../src/injector';
-import { InjectorModule } from '../src/module';
-import { InjectorContext } from '../src/injector-context';
+import { CircularDependencyError, Injector, InjectorModule } from '../src/injector';
+import { inject, injectable, InjectOptions, InjectorToken } from '../src/decorator';
+import { createConfig } from '../src/config';
 
 export const a = 'asd';
 
@@ -18,7 +18,7 @@ test('injector basics', () => {
         }
     }
 
-    const injector = new Injector([MyServer, Connection]);
+    const injector = Injector.from([MyServer, Connection]);
     expect(injector.get(Connection)).toBeInstanceOf(Connection);
     expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
 });
@@ -37,8 +37,7 @@ test('missing dep', () => {
         }
     }
 
-    const injector = new Injector([MyServer, Connection]);
-    expect(() => injector.get(MyServer)).toThrow(`Unknown constructor argument 'missing: Missing' of MyServer(✓, ?). Make sure 'Missing' is provided.`);
+    expect(() => Injector.from([MyServer, Connection])).toThrow(`Unknown dependency 'missing: Missing' of MyServer.missing`);
 });
 
 test('wrong dep 1', () => {
@@ -52,7 +51,7 @@ test('wrong dep 1', () => {
         }
     }
 
-    expect(() => new Injector([MyServer, Connection])).toThrow(`Undefined dependency 'missing: undefined' of MyServer(✓, ?).`);
+    expect(() => Injector.from([MyServer, Connection])).toThrow(`Undefined dependency 'missing: undefined' of MyServer(✓, ?).`);
 });
 
 test('wrong dep 2', () => {
@@ -62,7 +61,7 @@ test('wrong dep 2', () => {
         }
     }
 
-    expect(() => new Injector([MyServer])).toThrow(`Undefined dependency 'missing: undefined' of MyServer(?).`);
+    expect(() => Injector.from([MyServer])).toThrow(`Undefined dependency 'missing: undefined' of MyServer(?).`);
 });
 
 test('wrong dep 3', () => {
@@ -71,7 +70,7 @@ test('wrong dep 3', () => {
         @inject() private missing: any;
     }
 
-    expect(() => new Injector([MyServer])).toThrow(`Undefined dependency 'missing: undefined' of MyServer.missing.`);
+    expect(() => Injector.from([MyServer])).toThrow(`Undefined dependency 'missing: undefined' of MyServer.missing.`);
 });
 
 test('injector key', () => {
@@ -82,7 +81,7 @@ test('injector key', () => {
         }
     }
 
-    const injector = new Injector([MyServer, { provide: 'foo', useValue: 'bar' }]);
+    const injector = Injector.from([MyServer, { provide: 'foo', useValue: 'bar' }]);
     expect(injector.get('foo')).toBe('bar');
     expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
 });
@@ -99,7 +98,7 @@ test('injector transient', () => {
         }
     }
 
-    const injector = new Injector([MyServer, { provide: Connection, transient: true }]);
+    const injector = Injector.from([MyServer, { provide: Connection, transient: true }]);
     const c1 = injector.get(Connection);
     const c2 = injector.get(Connection);
     expect(c1).toBeInstanceOf(Connection);
@@ -133,7 +132,7 @@ test('injector property injection', () => {
         }
     }
 
-    const injector = new Injector([MyServer, Connection, { provide: 'name', useValue: 'peter' }]);
+    const injector = Injector.from([MyServer, Connection, { provide: 'name', useValue: 'peter' }]);
     const s = injector.get(MyServer);
     expect(s.connection).toBeInstanceOf(Connection);
     expect(s.name).toBe('peter');
@@ -154,7 +153,7 @@ test('injector overwrite token', () => {
     }
 
     {
-        const injector = new Injector([MyServer, Connection, Connection2]);
+        const injector = Injector.from([MyServer, Connection, Connection2]);
         expect(injector.get(Connection)).toBeInstanceOf(Connection);
         expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
     }
@@ -172,9 +171,24 @@ test('injector unmet dependency', () => {
     }
 
     {
-        const injector = new Injector([MyServer]);
-        expect(() => injector.get(Connection)).toThrow('Could not resolve injector token Connection');
-        expect(() => injector.get(MyServer)).toThrow(`Unknown constructor argument 'connection: Connection' of MyServer(?).`);
+        expect(() => Injector.from([MyServer])).toThrow(`Unknown dependency 'connection: Connection' of MyServer.connection`);
+    }
+});
+
+test('injector optional unmet dependency', () => {
+    class Connection {
+    }
+
+    @injectable()
+    class MyServer {
+        constructor(@t.optional private connection?: Connection) {
+            expect(connection).toBeUndefined();
+        }
+    }
+
+    {
+        const injector = Injector.from([MyServer]);
+        expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
     }
 });
 
@@ -190,8 +204,8 @@ test('injector optional dependency', () => {
     }
 
     {
-        const injector = new Injector([MyServer]);
-        expect(() => injector.get(Connection)).toThrow('Could not resolve injector token Connection');
+        const injector = Injector.from([MyServer]);
+        expect(() => injector.get(Connection)).toThrow(`Token 'Connection' in InjectorModule not found`);
         expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
     }
 });
@@ -208,8 +222,8 @@ test('injector via t.optional', () => {
     }
 
     {
-        const injector = new Injector([MyServer]);
-        expect(() => injector.get(Connection)).toThrow('Could not resolve injector token Connection');
+        const injector = Injector.from([MyServer]);
+        expect(() => injector.get(Connection)).toThrow(`Token 'Connection' in InjectorModule not found`);
         expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
     }
 });
@@ -226,7 +240,7 @@ test('injector via t.type', () => {
     }
 
     {
-        const injector = new Injector([MyServer, Connection]);
+        const injector = Injector.from([MyServer, Connection]);
         expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
         expect(injector.get(MyServer).connection).toBeInstanceOf(Connection);
     }
@@ -244,7 +258,7 @@ test('injector via t.type string', () => {
     }
 
     {
-        const injector = new Injector([MyServer, {provide: 'connection', useClass: Connection}]);
+        const injector = Injector.from([MyServer, {provide: 'connection', useClass: Connection}]);
         expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
         expect(injector.get(MyServer).connection).toBeInstanceOf(Connection);
     }
@@ -258,7 +272,7 @@ test('injector token', () => {
     const Connection = new InjectorToken<ConnectionInterface>('connection');
 
     {
-        const injector = new Injector([{provide: Connection, useValue: {doIt() {return 'hi'}}}]);
+        const injector = Injector.from([{provide: Connection, useValue: {doIt() {return 'hi'}}}]);
         expect(injector.get(Connection).doIt()).toBe('hi');
     }
 });
@@ -278,7 +292,7 @@ test('injector overwrite provider', () => {
     }
 
     {
-        const injector = new Injector([MyServer, {
+        const injector = Injector.from([MyServer, {
             provide: Connection, useClass: Connection2
         }]);
         expect(injector.get(Connection)).toBeInstanceOf(Connection2);
@@ -294,7 +308,7 @@ test('injector direct circular dependency', () => {
     }
 
     {
-        const injector = new Injector([MyServer]);
+        const injector = Injector.from([MyServer]);
         expect(() => injector.get(MyServer)).toThrow(CircularDependencyError as any);
     }
 });
@@ -318,7 +332,7 @@ test('injector circular dependency', () => {
     }
 
     {
-        const injector = new Injector([MyServer, Connection]);
+        const injector = Injector.from([MyServer, Connection]);
         expect(() => injector.get(MyServer)).toThrow(CircularDependencyError as any);
         expect(() => injector.get(MyServer)).toThrow('Circular dependency found MyServer -> Connection -> MyServer');
     }
@@ -330,7 +344,7 @@ test('injector factory', () => {
     }
 
     {
-        const injector = new Injector([{ provide: Service, useFactory: () => new Service() }]);
+        const injector = Injector.from([{ provide: Service, useFactory: () => new Service() }]);
 
         const s1 = injector.get(Service);
         expect(s1).toBeInstanceOf(Service);
@@ -341,46 +355,12 @@ test('injector factory', () => {
     }
 });
 
-
-test('injector stack parent', () => {
-    const i1 = new Injector([
-        { provide: 'level', deps: ['deep1'], useFactory: (d: any) => d },
-        { provide: 'level2', deps: ['deep2'], useFactory: (d: any) => d },
-    ]);
-
-    const i2 = new Injector([{ provide: 'deep1', useValue: 2 }], [i1]);
-    const i3 = new Injector([{ provide: 'deep2', useValue: 3 }], [i2]);
-
-    expect(i2.get('level')).toBe(2);
-    expect(i3.get('level')).toBe(2);
-
-    expect(() => i2.get('level2')).toThrow(`Unknown factory dependency argument 'deep2' of useFactory`);
-    expect(i3.get('level2')).toBe(3);
-});
-
-test('injector stack parent fork', () => {
-    const i1 = new Injector([
-        { provide: 'level', deps: ['deep1'], useFactory: (d: any) => d },
-        { provide: 'level2', deps: ['deep2'], useFactory: (d: any) => d },
-    ]);
-
-    const i2 = new Injector([{ provide: 'deep1', useValue: 2 }], [i1]).fork();
-    const i3 = new Injector([{ provide: 'deep2', useValue: 3 }], [i2]).fork();
-
-    expect(i2.get('level')).toBe(2);
-    expect(i3.get('level')).toBe(2);
-
-    expect(() => i2.get('level2')).toThrow(`Unknown factory dependency argument 'deep2' of useFactory`);
-    expect(i3.get('level2')).toBe(3);
-});
-
-
 test('injector config', () => {
-    const FullConfig = createConfig({
+    const moduleConfig = createConfig({
         debug: t.boolean.default(false)
     });
 
-    class ServiceConfig extends FullConfig.slice('debug') {
+    class ServiceConfig extends moduleConfig.slice('debug') {
     }
 
     @injectable()
@@ -391,17 +371,17 @@ test('injector config', () => {
 
     @injectable()
     class MyService2 {
-        constructor(@inject(FullConfig) public config: typeof FullConfig.type) {
+        constructor(@inject(moduleConfig) public config: typeof moduleConfig.type) {
         }
     }
 
     @injectable()
     class MyService3 {
-        constructor(@inject(FullConfig.all()) public config: typeof FullConfig.type) {
+        constructor(@inject(moduleConfig.all()) public config: typeof moduleConfig.type) {
         }
     }
 
-    class Slice extends FullConfig.slice('debug') {
+    class Slice extends moduleConfig.slice('debug') {
     }
 
     @injectable()
@@ -411,7 +391,8 @@ test('injector config', () => {
     }
 
     {
-        const i1 = new Injector([MyService, MyService2, MyService3, MyService4], []);
+        const i1 = new Injector(new InjectorModule([MyService, MyService2, MyService3, MyService4]));
+        i1.module.configure({debug: false});
         expect(i1.get(MyService).config.debug).toBe(false);
         expect(i1.get(MyService2).config.debug).toBe(false);
         expect(i1.get(MyService3).config.debug).toBe(false);
@@ -419,10 +400,8 @@ test('injector config', () => {
     }
 
     {
-        const myModule = new InjectorModule('asd', { debug: true });
-        const injectorContext = new InjectorContext();
-        const context = injectorContext.registerModule(myModule, FullConfig);
-        const i1 = new Injector([MyService, MyService2, MyService3, MyService4], [], injectorContext, undefined, undefined, undefined, context);
+        const i1 = Injector.from([MyService, MyService2, MyService3, MyService4]);
+        i1.module.configure({debug: true});
         expect(i1.get(MyService).config.debug).toBe(true);
         expect(i1.get(MyService2).config.debug).toBe(true);
         expect(i1.get(MyService3).config.debug).toBe(true);
@@ -440,43 +419,27 @@ test('setup provider', () => {
     }
 
     {
-        const injectorContext = new InjectorContext();
-        const i1 = new Injector([MyService], [], injectorContext);
+        const i1 = Injector.from([MyService]);
         expect(i1.get(MyService).transporter).toEqual([]);
     }
 
     {
-        const injectorContext = new InjectorContext();
-        injectorContext.setupProvider(MyService).addTransporter('a');
-        injectorContext.setupProvider(MyService).addTransporter('b');
-        expect(injectorContext.configuredProviderRegistry.get(MyService).length).toBe(2);
-        const i1 = new Injector([MyService], [], injectorContext);
+        const module = new InjectorModule([MyService]);
+        module.setupProvider(MyService).addTransporter('a');
+        module.setupProvider(MyService).addTransporter('b');
+        expect(module.setupProviderRegistry.get(MyService).length).toBe(2);
+        const i1 = new Injector(module);
         expect(i1.get(MyService).transporter).toEqual(['a', 'b']);
     }
 
     {
-        const injectorContext = new InjectorContext();
-        injectorContext.setupProvider(MyService).transporter = ['a'];
-        injectorContext.setupProvider(MyService).transporter = ['a', 'b', 'c'];
-        expect(injectorContext.configuredProviderRegistry.get(MyService).length).toBe(2);
-        const i1 = new Injector([MyService], [], injectorContext);
+        const module = new InjectorModule([MyService]);
+        module.setupProvider(MyService).transporter = ['a'];
+        module.setupProvider(MyService).transporter = ['a', 'b', 'c'];
+        expect(module.setupProviderRegistry.get(MyService).length).toBe(2);
+        const i1 = new Injector(module);
         expect(i1.get(MyService).transporter).toEqual(['a', 'b', 'c']);
     }
-});
-
-
-test('injector fork', () => {
-    class MyService {
-    }
-
-    const i1 = new Injector([MyService]);
-    const s1 = i1.get(MyService);
-    expect(s1).toBeInstanceOf(MyService);
-
-    const i2 = i1.fork();
-    const s2 = i2.get(MyService);
-    expect(s2).toBeInstanceOf(MyService);
-    expect(s2).not.toBe(s1);
 });
 
 test('constructor one with @inject', () => {

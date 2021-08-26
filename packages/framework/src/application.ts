@@ -34,7 +34,7 @@ export class Application<T extends ModuleOptions> extends App<T> {
         appModuleOptions: T,
         providers: ProviderWithScope<any>[] = [],
         serviceContainer?: ServiceContainer<T>,
-        appModule?: AppModule<any, any>
+        appModule?: AppModule<any>
     ) {
         const module = appModule || new AppModule(appModuleOptions) as any;
         if (!module.hasImport(FrameworkModule)) {
@@ -43,7 +43,7 @@ export class Application<T extends ModuleOptions> extends App<T> {
         super(appModuleOptions, providers, undefined, module);
     }
 
-    static fromModule<T extends ModuleOptions>(module: AppModule<T, any>, providers: ProviderWithScope<any>[] = []): Application<T> {
+    static fromModule<T extends ModuleOptions>(module: AppModule<T>, providers: ProviderWithScope<any>[] = []): Application<T> {
         return new Application({}, providers, undefined, module) as Application<T>;
     }
 }

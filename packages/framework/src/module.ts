@@ -84,7 +84,7 @@ export class FrameworkModule extends createModule({
 
     //we export anything per default
     root = true;
-    protected dbs: {module: AppModule<any>, classType: ClassType}[] = [];
+    protected dbs: { module: AppModule<any>, classType: ClassType }[] = [];
     protected rpcControllers = new RpcControllers;
 
     process() {
@@ -159,20 +159,22 @@ export class FrameworkModule extends createModule({
         }
     }
 
-    handleProviders(module: AppModule<any, any>, providers: ProviderWithScope[]) {
+    handleProviders(module: AppModule<any>, providers: ProviderWithScope[]) {
         for (const provider of providers) {
             if (provider instanceof TagProvider) continue;
             const provide = isClass(provider) ? provider : provider.provide;
             if (!isClass(provide)) continue;
             if (isPrototypeOfBase(provide, Database)) {
-                this.dbs.push({classType: provide, module});
+                this.dbs.push({ classType: provide, module });
             }
         }
     }
 
-    handleController(module: AppModule<any>, controller: ClassType,) {
-        const rpcConfig = rpcClass._fetch(controller);
-        if (rpcConfig) {
+    handleControllers(module: AppModule<any>, controllers: ClassType[]) {
+        for (const controller of controllers) {
+            const rpcConfig = rpcClass._fetch(controller);
+            if (!rpcConfig) continue;
+
             if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'rpc' });
             this.rpcControllers.controllers.set(rpcConfig.getPath(), { controller, module });
         }

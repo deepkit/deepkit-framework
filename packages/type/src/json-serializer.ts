@@ -242,8 +242,8 @@ jsonSerializer.fromClass.register('date', convertToPlainUsingToJson);
 
 
 export function convertArray(property: PropertySchema, state: CompilerState) {
-    const a = state.setVariable('a');
-    const l = state.setVariable('l');
+    const a = state.setVariable('a', 0);
+    const l = state.setVariable('l', 0);
     let setDefault = property.isOptional ? '' : `${state.setter} = [];`;
 
     //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
@@ -251,13 +251,13 @@ export function convertArray(property: PropertySchema, state: CompilerState) {
     if (${state.accessor}.length === undefined || 'string' === typeof ${state.accessor} || 'function' !== typeof ${state.accessor}.slice) {
         ${setDefault}
     } else {
-         let ${l} = ${state.accessor}.length;
-         let ${a} = ${state.accessor}.slice();
+         ${l} = ${state.accessor}.length;
+         ${a} = ${state.accessor}.slice();
          while (${l}--) {
             //make sure all elements have the correct type
             if (${state.accessor}[${l}] !== undefined && ${state.accessor}[${l}] !== null) {
                 let itemValue;
-                ${getDataConverterJS(`itemValue`, `${a}[${l}]`, property.getSubType(), state.serializerCompilers, state.rootContext, state.jitStack)}
+                ${getDataConverterJS(`itemValue`, `${a}[${l}]`, property.getSubType(), state.serializerCompilers, state.compilerContext, state.jitStack)}
                 if (${!property.getSubType().isOptional} && itemValue === undefined) {
                     ${a}.splice(${l}, 1);
                 } else {
@@ -279,15 +279,15 @@ function convertMap(property: PropertySchema, state: CompilerState) {
     let setDefault = property.isOptional ? '' : `${state.setter} = {};`;
 
     state.addCodeForSetter(`
-        let ${a} = {};
+        ${a} = {};
         //we make sure its a object and not an array
         if (${state.accessor} && 'object' === typeof ${state.accessor} && 'function' !== typeof ${state.accessor}.slice) {
-            for (let ${i} in ${state.accessor}) {
+            for (${i} in ${state.accessor}) {
                 if (!${state.accessor}.hasOwnProperty(${i})) continue;
                 if (${!property.getSubType().isOptional} && ${state.accessor}[${i}] === undefined) {
                     continue;
                 }
-                ${getDataConverterJS(`${a}[${i}]`, `${state.accessor}[${i}]`, property.getSubType(), state.serializerCompilers, state.rootContext, state.jitStack)}
+                ${getDataConverterJS(`${a}[${i}]`, `${state.accessor}[${i}]`, property.getSubType(), state.serializerCompilers, state.compilerContext, state.jitStack)}
             }
             ${state.setter} = ${a};
         } else {
@@ -312,7 +312,7 @@ jsonSerializer.fromClass.register('class', (property: PropertySchema, state: Com
     if (property.isReference && foreignClassSchema.hasPrimaryFields()) {
         serializeObject = `
         if (isReference(${state.accessor}) && !isReferenceHydrated(${state.accessor})) {
-            ${getDataConverterJS(state.setter, `${state.accessor}.${foreignClassSchema.getPrimaryField().name}`, foreignClassSchema.getPrimaryField(), state.serializerCompilers, state.rootContext, state.jitStack)}
+            ${getDataConverterJS(state.setter, `${state.accessor}.${foreignClassSchema.getPrimaryField().name}`, foreignClassSchema.getPrimaryField(), state.serializerCompilers, state.compilerContext, state.jitStack)}
         } else {
             ${state.setter} = ${classToX}.fn(${state.accessor}, _options, _stack, _depth);
         }
@@ -352,7 +352,7 @@ jsonSerializer.toClass.register('class', (property: PropertySchema, state) => {
         //if we
         primaryKeyHandling = `
             if (isObject(${state.accessor})) {
-                ${getDataConverterJS(state.setter, state.accessor, property.getResolvedClassSchema().getPrimaryField(), state.serializerCompilers, state.rootContext, state.jitStack)}
+                ${getDataConverterJS(state.setter, state.accessor, property.getResolvedClassSchema().getPrimaryField(), state.serializerCompilers, state.compilerContext, state.jitStack)}
             } else {
                 ${state.setter} = createReference(${referenceClassTypeVar}, {${foreignClassSchema.getPrimaryField().name}: ${state.accessor}});
             }
@@ -400,7 +400,7 @@ jsonSerializer.toClass.register('union', (property: PropertySchema, state) => {
         discriminator.push(`
                 //guard:${unionType.property.type}
                 else if (${guardVar}(${state.accessor})) {
-                    ${getDataConverterJS(state.setter, state.accessor, unionType.property, state.serializerCompilers, state.rootContext, state.jitStack)}
+                    ${getDataConverterJS(state.setter, state.accessor, unionType.property, state.serializerCompilers, state.compilerContext, state.jitStack)}
                 }
             `);
     }
@@ -436,7 +436,7 @@ jsonSerializer.fromClass.register('union', (property: PropertySchema, state) => 
         discriminator.push(`
                 //guard:${unionType.property.type}
                 else if (${guardVar}(${state.accessor})) {
-                    ${getDataConverterJS(state.setter, state.accessor, unionType.property, state.serializerCompilers, state.rootContext, state.jitStack)}
+                    ${getDataConverterJS(state.setter, state.accessor, unionType.property, state.serializerCompilers, state.compilerContext, state.jitStack)}
                 }
             `);
     }

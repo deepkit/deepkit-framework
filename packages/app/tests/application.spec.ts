@@ -448,13 +448,15 @@ test('service container hooks', () => {
         providersFound: ProviderWithScope[] = [];
         controllersFound: ClassType[] = [];
 
-        handleController(module: AppModule<any, any>, controller: ClassType) {
+        handleControllers(module: AppModule<any>, controllers: ClassType[]) {
             expect(module).toBeInstanceOf(AppModule);
-            expect(isClass(controller)).toBe(true);
-            this.controllersFound.push(controller);
+            for (const controller of controllers) {
+                expect(isClass(controller)).toBe(true);
+                this.controllersFound.push(controller);
+            }
         }
 
-        handleProviders(module: AppModule<any, any>, providers: ProviderWithScope[]) {
+        handleProviders(module: AppModule<any>, providers: ProviderWithScope[]) {
             expect(module).toBeInstanceOf(AppModule);
             expect(isArray(providers)).toBe(true);
             this.providersFound.push(...providers);

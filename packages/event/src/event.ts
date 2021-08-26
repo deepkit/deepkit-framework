@@ -245,7 +245,7 @@ export type ExtractDep<T> = T extends ClassType ? InstanceType<T> :
         T extends ConfigToken<infer V> ? V :
             T;
 
-export type ExtractDeps<T extends any[]> = {[K in keyof T]: ExtractDep<T[K]>}
+export type ExtractDeps<T extends any[]> = { [K in keyof T]: ExtractDep<T[K]> }
 
 export function createListener<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: (event: T['event'], ...deps: ExtractDeps<DEPS>) => void | Promise<void>, ...deps: DEPS): ClassType<any> {
     class DynamicListener {

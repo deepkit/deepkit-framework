@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { ClassType, isClass } from '@deepkit/core';
-import { InjectorToken } from './injector';
+import { InjectorToken } from './decorator';
 
 export interface ProviderBase {
     /**

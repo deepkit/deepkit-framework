@@ -102,7 +102,7 @@ export interface StaticHttpOptions {
  * All paths like <path>/*.* that don't match a file are redirected to ${localPath}/index.html.
  * All paths like <path>/*.* that match a file resolve to the file.
  */
-export function registerStaticHttpController(module: AppModule<any, any>, options: StaticHttpOptions): void {
+export function registerStaticHttpController(module: AppModule<any>, options: StaticHttpOptions): void {
     let indexHtml = '';
 
     const groups = options.groups || [];

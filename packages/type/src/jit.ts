@@ -10,8 +10,8 @@
 
 import { ClassSchema, getClassSchema, getGlobalStore, PropertySchema, UnpopulatedCheck } from './model';
 import { isExcluded } from './mapper';
-import { ClassType, toFastProperties } from '@deepkit/core';
-import { getDataConverterJS, reserveVariable } from './serializer-compiler';
+import { ClassType, CompilerContext, toFastProperties } from '@deepkit/core';
+import { getDataConverterJS } from './serializer-compiler';
 import { Serializer } from './serializer';
 
 /**
@@ -152,23 +152,19 @@ export function createPropertyClassToXFunction(
     property: PropertySchema,
     serializer: Serializer
 ): (value: any, parents?: any[]) => any {
-    const context = new Map<any, any>();
+    const compiler = new CompilerContext();
     const jitStack = new JitStack();
 
-    const line = getDataConverterJS('result', '_value', property, serializer.fromClass, context, jitStack);
+    const line = getDataConverterJS('result.v', '_value', property, serializer.fromClass, compiler, jitStack);
 
     const functionCode = `
-        'use strict';
-        return function(_value, _options, _stack, _depth) {
-            var result;
-            //createJITConverterFromPropertySchema ${property.name} ${property.type}
-            ${line}
-            return result;
-        }
-        `;
+        var result = {};
+        //createJITConverterFromPropertySchema ${property.name} ${property.type}
+        ${line}
+        return result.v;
+    `;
 
-    const compiled = new Function(...context.keys(), functionCode);
-    return compiled.bind(undefined, ...context.values())();
+    return compiler.build(functionCode, '_value', '_options', '_stack', '_depth');
 }
 
 /**
@@ -178,38 +174,33 @@ export function createPropertyXToClassFunction(
     property: PropertySchema,
     serializer: Serializer
 ): (value: any, parents?: any[], options?: JitConverterOptions) => any {
-    const context = new Map<any, any>();
+    const compiler = new CompilerContext();
     const jitStack = new JitStack();
 
-    const line = getDataConverterJS('result', '_value', property, serializer.toClass, context, jitStack);
+    const line = getDataConverterJS('result', '_value', property, serializer.toClass, compiler, jitStack);
 
     const functionCode = `
-        'use strict';
-        return function(_value, _parents, _options) {
-            var result, _state;
-            function getParents() {
-                return _parents;
-            }
-            if (!_parents) _parents = [];
-            //createJITConverterFromPropertySchema ${property.name} ${property.type}
-            ${line}
-            return result;
+        var result, _state;
+        function getParents() {
+            return _parents;
         }
-        `;
+        if (!_parents) _parents = [];
+        //createJITConverterFromPropertySchema ${property.name} ${property.type}
+        ${line}
+        return result;
+    `;
 
-    const compiled = new Function(...context.keys(), functionCode);
-    return compiled.bind(undefined, ...context.values())();
+    return compiler.build(functionCode, '_value', '_parents', '_options');
 }
 
 export function getParentResolverJS<T>(
     schema: ClassSchema<T>,
     setter: string,
     property: PropertySchema,
-    context: Map<string, any>
+    compiler: CompilerContext
 ): string {
-    context.set('findParent', findParent);
-    const varClassType = reserveVariable(context);
-    context.set(varClassType, property.resolveClassType);
+    compiler.context.set('findParent', findParent);
+    const varClassType = compiler.reserveVariable('resolveParentClassType', property.resolveClassType);
 
     const code = `${setter} = findParent(_parents, ${varClassType});`;
 
@@ -261,7 +252,7 @@ function isGroupAllowed(options: JitConverterOptions, groupNames: string[]): boo
 
 export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Serializer, jitStack: JitStack = new JitStack())
     : (instance: T, options?: JitConverterOptions) => any {
-    const context = new Map<string, any>();
+    const compiler = new CompilerContext();
     const prepared = jitStack.prepare(schema);
 
     let functionCode = '';
@@ -269,12 +260,9 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
         const property = schema.getProperty(schema.decorator);
 
         functionCode = `
-        'use strict';
-        return function(_instance, _options, _stack, _depth) {
-            var result, _state;
-            ${getDataConverterJS(`result`, `_instance.${schema.decorator}`, property, serializer.fromClass, context, jitStack)}
-            return result;
-        }
+        var result, _state;
+        ${getDataConverterJS(`result`, `_instance.${schema.decorator}`, property, serializer.fromClass, compiler, jitStack)}
+        return result;
         `;
     } else {
         const convertProperties: string[] = [];
@@ -286,7 +274,7 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
             let setDefault = '';
             if (property.hasManualDefaultValue() || property.type === 'literal') {
                 if (property.defaultValue !== undefined) {
-                    const defaultValue = reserveVariable(context, 'defaultValue', property.defaultValue);
+                    const defaultValue = compiler.reserveVariable('defaultValue', property.defaultValue);
                     setDefault = `_data.${property.name} = ${defaultValue}();`;
                 } else if (property.type === 'literal' && !property.isOptional) {
                     setDefault = `_data.${property.name} = ${JSON.stringify(property.literalValue)};`;
@@ -299,7 +287,7 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
             //${property.name}:${property.type}
             if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})){
                 if (${JSON.stringify(property.name)} in _instance) {
-                    ${getDataConverterJS(`_data.${property.name}`, `_instance.${property.name}`, property, serializer.fromClass, context, jitStack)}
+                    ${getDataConverterJS(`_data.${property.name}`, `_instance.${property.name}`, property, serializer.fromClass, compiler, jitStack)}
                 } else {
                     ${setDefault}
                 }
@@ -323,8 +311,6 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
         }
 
         functionCode = `
-        'use strict';
-        return function self(_instance, _options, _stack, _depth) {
             'use strict';
             ${circularCheckBeginning}
             var _data = {};
@@ -339,18 +325,16 @@ export function createClassToXFunction<T>(schema: ClassSchema<T>, serializer: Se
             ${circularCheckEnd}
 
             return _data;
-        }
         `;
     }
 
-    context.set('_classType', schema.classType);
-    context.set('_global', getGlobalStore());
-    context.set('UnpopulatedCheckNone', UnpopulatedCheck.None);
-    context.set('isGroupAllowed', isGroupAllowed);
+    compiler.context.set('_classType', schema.classType);
+    compiler.context.set('_global', getGlobalStore());
+    compiler.context.set('UnpopulatedCheckNone', UnpopulatedCheck.None);
+    compiler.context.set('isGroupAllowed', isGroupAllowed);
 
     try {
-        const compiled = new Function(...context.keys(), functionCode);
-        const fn = compiled(...context.values());
+        const fn = compiler.build(functionCode, '_instance', '_options', '_stack', '_depth');
         prepared(fn);
         return fn;
     } catch (error) {
@@ -427,11 +411,11 @@ export class JitStack {
     }
 }
 
-function getXToClassPropertyConverter(context: Map<string, any>, property: PropertySchema, setter: string, serializer: Serializer, jitStack: JitStack): string {
+function getXToClassPropertyConverter(compiler: CompilerContext, property: PropertySchema, setter: string, serializer: Serializer, jitStack: JitStack): string {
     let setDefault = '';
     if (property.hasManualDefaultValue() || property.type === 'literal') {
         if (property.defaultValue !== undefined) {
-            const defaultValue = reserveVariable(context, 'defaultValue', property.defaultValue);
+            const defaultValue = compiler.reserveVariable('defaultValue', property.defaultValue);
             setDefault = `${setter} = ${defaultValue}();`;
         } else if (property.type === 'literal' && !property.isOptional) {
             setDefault = `${setter} = ${JSON.stringify(property.literalValue)};`;
@@ -452,7 +436,7 @@ function getXToClassPropertyConverter(context: Map<string, any>, property: Prope
     return `
             if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})) {
                 if (${JSON.stringify(property.name)} in _data) {
-                    ${getDataConverterJS(`${setter}`, `_data[${JSON.stringify(property.name)}]`, property, serializer.toClass, context, jitStack)}
+                    ${getDataConverterJS(`${setter}`, `_data[${JSON.stringify(property.name)}]`, property, serializer.toClass, compiler, jitStack)}
                     ${setDefaultWhenUndefined}
                 } else {
                     ${setDefault}
@@ -464,7 +448,7 @@ function getXToClassPropertyConverter(context: Map<string, any>, property: Prope
 export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Serializer, jitStack: JitStack = new JitStack())
     : (data: any, options?: JitConverterOptions, parents?: any[], state?: ToClassState) => T {
 
-    const context = new Map<string, any>();
+    const compiler = new CompilerContext();
     const prepared = jitStack.prepare(schema);
 
     const setProperties: string[] = [];
@@ -482,15 +466,15 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Se
             constructorArguments.push(`
                 //constructor parameter ${property.name}, decorated
                 var c_${property.name} = _data;
-                ${getDataConverterJS(`c_${property.name}`, `c_${property.name}`, property, serializer.toClass, context, jitStack,)}
+                ${getDataConverterJS(`c_${property.name}`, `c_${property.name}`, property, serializer.toClass, compiler, jitStack,)}
             `);
         } else if (property.isParentReference) {
             //parent resolver
-            constructorArguments.push(`var c_${property.name}; ` + getParentResolverJS(schema, `c_${property.name}`, property, context));
+            constructorArguments.push(`var c_${property.name}; ` + getParentResolverJS(schema, `c_${property.name}`, property, compiler));
         } else {
             constructorArguments.push(`
             var c_${property.name};
-            ${getXToClassPropertyConverter(context, property, `c_${property.name}`, serializer, jitStack)}
+            ${getXToClassPropertyConverter(compiler, property, `c_${property.name}`, serializer, jitStack)}
             `);
         }
 
@@ -504,9 +488,9 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Se
         if (isExcluded(schema, property.name, serializer.name)) continue;
 
         if (property.isParentReference) {
-            setProperties.push(getParentResolverJS(schema, `_instance.${property.name}`, property, context));
+            setProperties.push(getParentResolverJS(schema, `_instance.${property.name}`, property, compiler));
         } else {
-            setProperties.push(getXToClassPropertyConverter(context, property, `_instance[${JSON.stringify(property.name)}]`, serializer, jitStack));
+            setProperties.push(getXToClassPropertyConverter(compiler, property, `_instance[${JSON.stringify(property.name)}]`, serializer, jitStack));
         }
     }
 
@@ -537,34 +521,30 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Se
     }
 
     const functionCode = `
-        'use strict';
-        return function(_data, _options, _parents, _state) {
-           'use strict';
-            var _instance, parentsWithItem;
-            _parents = _parents || (_options ? _options.parents : []);
-            function getParents() {
-                if (parentsWithItem) return parentsWithItem;
-                parentsWithItem = _parents ? _parents.slice(0) : [];
-                parentsWithItem.push(_instance);
-                return parentsWithItem;
-            }
-            ${fullLoadHookPre}
-            _state = _state || new ToClassState();
-            ${constructorArguments.join('\n')}
-            _instance = new _classType(${constructorArgumentNames.join(', ')});
-            ${setProperties.join('\n')}
-            ${registerLifeCircleEvents.join('\n')}
-            ${fullLoadHookPost}
-            return _instance;
+        var _instance, parentsWithItem;
+        _parents = _parents || (_options ? _options.parents : []);
+        function getParents() {
+            if (parentsWithItem) return parentsWithItem;
+            parentsWithItem = _parents ? _parents.slice(0) : [];
+            parentsWithItem.push(_instance);
+            return parentsWithItem;
         }
+        ${fullLoadHookPre}
+        _state = _state || new ToClassState();
+        ${constructorArguments.join('\n')}
+        _instance = new _classType(${constructorArgumentNames.join(', ')});
+        ${setProperties.join('\n')}
+        ${registerLifeCircleEvents.join('\n')}
+        ${fullLoadHookPost}
+        return _instance;
     `;
 
-    context.set('_classType', schema.classType);
-    context.set('ToClassState', ToClassState);
-    context.set('isGroupAllowed', isGroupAllowed);
+    compiler.context.set('_classType', schema.classType);
+    compiler.context.set('ToClassState', ToClassState);
+    compiler.context.set('isGroupAllowed', isGroupAllowed);
+
     try {
-        const compiled = new Function(...context.keys(), functionCode);
-        const fn = compiled(...context.values());
+        const fn = compiler.build(functionCode, '_data', '_options', '_parents', '_state');
         prepared(fn);
         return fn;
     } catch (error) {
@@ -607,9 +587,9 @@ export function getPartialClassToXFunction<T>(schema: ClassSchema<T>, serializer
 
 export function createPartialXToClassFunction<T>(schema: ClassSchema<T>, serializer: Serializer)
     : (data: any, options?: JitConverterOptions, parents?: any[]) => any {
-    const context = new Map<string, any>();
+    const compiler = new CompilerContext();
     const jitStack = new JitStack();
-    context.set('isGroupAllowed', isGroupAllowed);
+    compiler.context.set('isGroupAllowed', isGroupAllowed);
 
     const props: string[] = [];
 
@@ -620,7 +600,7 @@ export function createPartialXToClassFunction<T>(schema: ClassSchema<T>, seriali
         props.push(`
             if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})){
             if (_data.hasOwnProperty(${JSON.stringify(property.name)})) {
-                ${getDataConverterJS(`_result[${JSON.stringify(property.name)}]`, `_data[${JSON.stringify(property.name)}]`, property, serializer.toClass, context, jitStack)}
+                ${getDataConverterJS(`_result[${JSON.stringify(property.name)}]`, `_data[${JSON.stringify(property.name)}]`, property, serializer.toClass, compiler, jitStack)}
                 if (!_result.hasOwnProperty(${JSON.stringify(property.name)})) _result[${JSON.stringify(property.name)}] = undefined;
             }
             }
@@ -628,28 +608,24 @@ export function createPartialXToClassFunction<T>(schema: ClassSchema<T>, seriali
     }
 
     const functionCode = `
-        'use strict';
-        return function(_data, _options, _parents) {
-            var _result = {}, _state;
-            function getParents() {
-                return _parents;
-            }
-            if (!_parents) _parents = [];
-
-            ${props.join('\n')}
-            return _result;
+        var _result = {}, _state;
+        function getParents() {
+            return _parents;
         }
+        if (!_parents) _parents = [];
+
+        ${props.join('\n')}
+        return _result;
     `;
 
-    const compiled = new Function(...context.keys(), functionCode);
-    return compiled.bind(undefined, ...context.values())();
+    return compiler.build(functionCode, '_data', '_options', '_parents');
 }
 
 export function createPartialClassToXFunction<T>(schema: ClassSchema<T>, serializer: Serializer)
     : (data: any, options?: JitConverterOptions) => any {
-    const context = new Map<string, any>();
+    const compiler = new CompilerContext();
     const jitStack = new JitStack();
-    context.set('isGroupAllowed', isGroupAllowed);
+    compiler.context.set('isGroupAllowed', isGroupAllowed);
 
     const props: string[] = [];
 
@@ -660,31 +636,27 @@ export function createPartialClassToXFunction<T>(schema: ClassSchema<T>, seriali
         props.push(`
             if (!_options || isGroupAllowed(_options, ${JSON.stringify(property.groupNames)})){
             if (_data.hasOwnProperty(${JSON.stringify(property.name)})) {
-                ${getDataConverterJS(`_result.${property.name}`, `_data.${property.name}`, property, serializer.fromClass, context, jitStack)}
+                ${getDataConverterJS(`_result.${property.name}`, `_data.${property.name}`, property, serializer.fromClass, compiler, jitStack)}
             }
             }
         `);
     }
 
-    context.set('_global', getGlobalStore());
-    context.set('UnpopulatedCheckNone', UnpopulatedCheck.None);
+    compiler.context.set('_global', getGlobalStore());
+    compiler.context.set('UnpopulatedCheckNone', UnpopulatedCheck.None);
 
     const functionCode = `
-        'use strict';
-        return function(_data, _options, _stack, _depth) {
-            var _result = {};
-            _depth = !_depth ? 1 : _depth + 1;
+        var _result = {};
+        _depth = !_depth ? 1 : _depth + 1;
 
-            var _oldUnpopulatedCheck = _global.unpopulatedCheck;
-            _global.unpopulatedCheck = UnpopulatedCheckNone;
+        var _oldUnpopulatedCheck = _global.unpopulatedCheck;
+        _global.unpopulatedCheck = UnpopulatedCheckNone;
 
-            ${props.join('\n')}
+        ${props.join('\n')}
 
-            _global.unpopulatedCheck = _oldUnpopulatedCheck;
-            return _result;
-        }
+        _global.unpopulatedCheck = _oldUnpopulatedCheck;
+        return _result;
     `;
 
-    const compiled = new Function(...context.keys(), functionCode);
-    return compiled.bind(undefined, ...context.values())();
+    return compiler.build(functionCode, '_data', '_options', '_stack', '_depth');
 }

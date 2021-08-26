@@ -21,11 +21,11 @@ export class HttpRouteFilterModel {
     routeNames: string[] = [];
     excludeRouteNames: string[] = [];
 
-    modules: AppModule<any, any>[] = [];
-    excludeModules: AppModule<any, any>[] = [];
+    modules: AppModule<any>[] = [];
+    excludeModules: AppModule<any>[] = [];
 
-    moduleClasses: ClassType<AppModule<any, any>>[] = [];
-    excludeModuleClasses: ClassType<AppModule<any, any>>[] = [];
+    moduleClasses: ClassType<AppModule<any>>[] = [];
+    excludeModuleClasses: ClassType<AppModule<any>>[] = [];
 
     reset() {
         this.controllers = [];
@@ -198,22 +198,22 @@ export class HttpRouteFilter {
         return this;
     }
 
-    forModules(...modules: AppModule<any, any>[]): this {
+    forModules(...modules: AppModule<any>[]): this {
         this.model.modules.push(...modules);
         return this;
     }
 
-    excludeModules(...modules: AppModule<any, any>[]): this {
+    excludeModules(...modules: AppModule<any>[]): this {
         this.model.excludeModules.push(...modules);
         return this;
     }
 
-    forModuleClasses(...moduleClasses: ClassType<AppModule<any, any>>[]): this {
+    forModuleClasses(...moduleClasses: ClassType<AppModule<any>>[]): this {
         this.model.moduleClasses.push(...moduleClasses);
         return this;
     }
 
-    excludeModuleClasses(...moduleClasses: ClassType<AppModule<any, any>>[]): this {
+    excludeModuleClasses(...moduleClasses: ClassType<AppModule<any>>[]): this {
         this.model.excludeModuleClasses.push(...moduleClasses);
         return this;
     }

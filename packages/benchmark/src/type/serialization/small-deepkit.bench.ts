@@ -47,14 +47,19 @@ export async function main() {
         createClassToXFunction(schema, jsonSerializer);
     });
 
+    ModelSerializer.deserialize(plain);
     suite.add('deserialize', () => {
         ModelSerializer.deserialize(plain);
     });
 
     const item = jsonSerializer.for(Model).deserialize(plain);
+    ModelSerializer.serialize(item);
+
     suite.add('serialize', () => {
         ModelSerializer.serialize(item);
     });
 
     suite.run();
 }
+
+main();

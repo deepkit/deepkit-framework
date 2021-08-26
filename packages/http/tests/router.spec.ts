@@ -532,6 +532,7 @@ test('custom request handling', async () => {
 
 test('race condition', async () => {
     let call = 0;
+
     class Listener {
         @eventDispatcher.listen(httpWorkflow.onAuth)
         async onRouteNotFound(event: typeof httpWorkflow.onRouteNotFound.event) {
@@ -577,8 +578,8 @@ test('multiple methods', async () => {
 
     expect((await httpKernel.request(HttpRequest.GET('/one'))).json).toBe(true);
     expect((await httpKernel.request(HttpRequest.POST('/one'))).json).toBe(true);
-    expect((await httpKernel.request(HttpRequest.PATCH('/one'))).bodyString).toBe("Not found");
-    expect((await httpKernel.request(HttpRequest.PUT('/one'))).bodyString).toBe("Not found");
+    expect((await httpKernel.request(HttpRequest.PATCH('/one'))).bodyString).toBe('Not found');
+    expect((await httpKernel.request(HttpRequest.PUT('/one'))).bodyString).toBe('Not found');
 });
 
 test('promise serializer', async () => {
@@ -694,7 +695,7 @@ test('destructing params', async () => {
 
     const httpKernel = createHttpKernel([Controller]);
 
-    expect((await httpKernel.request(HttpRequest.GET('/').json({name: 'Peter', title: 'CTO'}))).json).toEqual(['Peter', 'CTO']);
+    expect((await httpKernel.request(HttpRequest.GET('/').json({ name: 'Peter', title: 'CTO' }))).json).toEqual(['Peter', 'CTO']);
 });
 
 test('dynamic parameter name', async () => {

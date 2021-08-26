@@ -9,6 +9,7 @@
  */
 
 import { performance } from 'perf_hooks';
+//@ts-ignore
 import Benchmark from 'benchmark';
 import { isAsyncFunction } from '@deepkit/core';
 
@@ -102,7 +103,7 @@ export class BenchSuite {
         });
     }
 
-    add(title: string, fn: () => void | Promise<void>, options: any = {}) {
+    add(title: string, fn: () => unknown | Promise<unknown>, options: any = {}) {
         if (isAsyncFunction(fn)) return this.addAsync(title, fn, options);
         options = Object.assign({ maxTime: this.maxTime }, options);
         this.suite.add(title, fn, options);
@@ -129,7 +130,7 @@ export class BenchSuite {
         print('Start benchmark', green(this.name));
         await new Promise(async (resolve, reject) => {
             this.suite.run({ async: true });
-            this.suite.on('error', (error) => {
+            this.suite.on('error', (error: any) => {
                 reject(error);
             });
             this.suite.on('complete', () => {

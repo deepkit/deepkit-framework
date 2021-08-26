@@ -24,6 +24,9 @@ export class HttpModule extends createModule({
     workflows: [
         httpWorkflow
     ],
+    exports: [
+        Logger
+    ]
 }) {
     root = true;
     protected httpControllers = new HttpControllers;
@@ -32,11 +35,13 @@ export class HttpModule extends createModule({
         this.addProvider({provide: HttpControllers, useValue: this.httpControllers});
     }
 
-    handleController(module: AppModule<any>, controller: ClassType) {
-        const httpConfig = httpClass._fetch(controller);
-        if (!httpConfig) return;
+    handleControllers(module: AppModule<any>, controllers: ClassType[]) {
+        for (const controller of controllers) {
+            const httpConfig = httpClass._fetch(controller);
+            if (!httpConfig) return;
 
-        if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'http' });
-        this.httpControllers.add(controller, module);
+            if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'http' });
+            this.httpControllers.add(controller, module);
+        }
     }
 }

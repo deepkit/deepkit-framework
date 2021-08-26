@@ -29,9 +29,11 @@
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.48",
     "@deepkit/type": "^1.0.1-alpha.51",
+    "benchmark": "^2.1.4",
     "reflect-metadata": "^0.1.13"
   },
   "jest": {
+    "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },

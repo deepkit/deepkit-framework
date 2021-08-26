@@ -12,6 +12,8 @@ export class CompilerContext {
     public readonly context = new Map<string, any>();
 
     public maxReservedVariable: number = 10_000;
+    protected reservedNames = new Set<string>();
+    protected variableContext: { [name: string]: any } = {};
 
     /**
      * Code that is executed in the context, but before the actual function is generated.
@@ -19,12 +21,26 @@ export class CompilerContext {
      */
     public preCode: string = '';
 
+    public initialiseVariables: string[] = [];
+
+    constructor() {
+        this.context.set('_context', this.variableContext);
+    }
+
     reserveVariable(name: string = 'var', value?: any): string {
         for (let i = 0; i < this.maxReservedVariable; i++) {
             const candidate = name + '_' + i;
-            if (!this.context.has(candidate)) {
-                this.context.set(candidate, value);
-                return candidate;
+            if (!this.reservedNames.has(candidate)) {
+                this.reservedNames.add(candidate);
+
+                if (value === undefined) {
+                    //to get monomorphic variables, we return a reference to an unassigned object property (which has no type per se)
+                    return '_context.' + candidate;
+                } else {
+                    //in case when the variable has a value, we simply store it, since it (hopefully) is monomorphic.
+                    this.context.set(candidate, value);
+                    return candidate;
+                }
             }
         }
 

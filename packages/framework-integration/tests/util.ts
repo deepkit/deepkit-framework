@@ -39,7 +39,7 @@ export async function closeAllCreatedServers() {
     }
 }
 
-export function appModuleForControllers(controllers: ClassType[], entities: ClassType[] = []): AppModule<any, any> {
+export function appModuleForControllers(controllers: ClassType[], entities: ClassType[] = []): AppModule<any> {
     const database = Database.createClass('default', new SQLiteDatabaseAdapter(), entities);
     return new AppModule({
         controllers: controllers,
@@ -56,7 +56,7 @@ export function appModuleForControllers(controllers: ClassType[], entities: Clas
 
 export async function createServerClientPair(
     name: string,
-    AppModule: AppModule<any, any>
+    AppModule: AppModule<any>
 ): Promise<{
     app: Application<any>,
     server: ApplicationServer,

@@ -91,7 +91,7 @@ function parseBody(form: any, req: IncomingMessage, files: { [name: string]: Upl
 
 export interface RouteControllerAction {
     //if not set, the root module is used
-    module?: AppModule<any, any>;
+    module?: AppModule<any>;
     controller: ClassType;
     methodName: string;
 }
@@ -436,10 +436,10 @@ export class Router {
     }
 
     static forControllers(
-        controllers: (ClassType | { module: AppModule<any, any>, controller: ClassType })[],
+        controllers: (ClassType | { module: AppModule<any>, controller: ClassType })[],
         tagRegistry: TagRegistry = new TagRegistry(),
         middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry(),
-        module: AppModule<any, any> = new AppModule({})
+        module: AppModule<any> = new AppModule({})
     ): Router {
         return new this(new HttpControllers(controllers.map(v => {
             return isClass(v) ? { controller: v, module } : v;

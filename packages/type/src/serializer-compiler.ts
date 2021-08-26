@@ -11,9 +11,9 @@
 import { PropertySchema } from './model';
 import { JitStack } from './jit';
 import { SerializerCompilers } from './serializer';
+import { CompilerContext } from '@deepkit/core';
 
 export type TypeConverterCompilerContext = Map<string, any>;
-export type ReserveVariable = (name?: string) => string;
 
 export class CompilerState {
     public template = '';
@@ -25,7 +25,7 @@ export class CompilerState {
     constructor(
         public originalSetter: string,
         public originalAccessor: string,
-        public readonly rootContext: TypeConverterCompilerContext,
+        public readonly compilerContext: CompilerContext,
         public readonly jitStack: JitStack,
         public readonly serializerCompilers: SerializerCompilers,
     ) {
@@ -46,18 +46,14 @@ export class CompilerState {
         this.ended = true;
     }
 
-    public setVariable(name?: string, value?: any): string {
-        name = reserveVariable(this.rootContext, name);
-        if (value !== undefined) {
-            this.rootContext.set(name, value);
-        }
-        return name;
+    public setVariable(name: string, value?: any): string {
+        return this.compilerContext.reserveVariable(name, value);
     }
 
     setContext(values: { [name: string]: any }) {
         for (const i in values) {
             if (!values.hasOwnProperty(i)) continue;
-            this.rootContext.set(i, values[i]);
+            this.compilerContext.context.set(i, values[i]);
         }
     }
 
@@ -97,7 +93,7 @@ export function reserveVariable(
 }
 
 export function executeCompiler(
-    rootContext: TypeConverterCompilerContext,
+    compilerContext: CompilerContext,
     jitStack: JitStack,
     compiler: TypeConverterCompiler,
     setter: string,
@@ -105,7 +101,7 @@ export function executeCompiler(
     property: PropertySchema,
     serializerCompilers: SerializerCompilers
 ): string {
-    const state = new CompilerState(setter, getter, rootContext, jitStack, serializerCompilers);
+    const state = new CompilerState(setter, getter, compilerContext, jitStack, serializerCompilers);
     compiler(property, state);
     return state.template;
 }
@@ -115,7 +111,7 @@ export function getDataConverterJS(
     accessor: string,
     property: PropertySchema,
     serializerCompilers: SerializerCompilers,
-    rootContext: TypeConverterCompilerContext,
+    compilerContext: CompilerContext,
     jitStack: JitStack,
     undefinedSetterCode: string = '',
     nullSetterCode: string = ''
@@ -123,13 +119,13 @@ export function getDataConverterJS(
     const undefinedCompiler = serializerCompilers.get('undefined');
     const nullCompiler = serializerCompilers.get('null');
 
-    undefinedSetterCode = undefinedSetterCode || (undefinedCompiler ? executeCompiler(rootContext, jitStack, undefinedCompiler, setter, accessor, property, serializerCompilers) : '');
-    nullSetterCode = nullSetterCode || (nullCompiler ? executeCompiler(rootContext, jitStack, nullCompiler, setter, accessor, property, serializerCompilers) : '');
+    undefinedSetterCode = undefinedSetterCode || (undefinedCompiler ? executeCompiler(compilerContext, jitStack, undefinedCompiler, setter, accessor, property, serializerCompilers) : '');
+    nullSetterCode = nullSetterCode || (nullCompiler ? executeCompiler(compilerContext, jitStack, nullCompiler, setter, accessor, property, serializerCompilers) : '');
 
     const compiler = serializerCompilers.get(property.type);
     let convert = '';
     if (compiler) {
-        convert = executeCompiler(rootContext, jitStack, compiler, setter, accessor, property, serializerCompilers);
+        convert = executeCompiler(compilerContext, jitStack, compiler, setter, accessor, property, serializerCompilers);
     } else {
         convert = `
         //no compiler for ${property.type}
@@ -144,8 +140,7 @@ export function getDataConverterJS(
     if (isSerialization) {
         const transformer = property.serialization.get(serializerCompilers.serializer.name) || property.serialization.get('all');
         if (transformer) {
-            const fnVar = reserveVariable(rootContext, 'transformer');
-            rootContext.set(fnVar, transformer);
+            const fnVar = compilerContext.reserveVariable('transformer', transformer);
             postTransform = `${setter} = ${fnVar}(${setter})`;
         }
     }
@@ -153,8 +148,7 @@ export function getDataConverterJS(
     if (isDeserialization) {
         const transformer = property.deserialization.get(serializerCompilers.serializer.name) || property.deserialization.get('all');
         if (transformer) {
-            const fnVar = reserveVariable(rootContext, 'transformer');
-            rootContext.set(fnVar, transformer);
+            const fnVar = compilerContext.reserveVariable('transformer', transformer);
             postTransform = `${setter} = ${fnVar}(${setter})`;
         }
     }
@@ -163,7 +157,7 @@ export function getDataConverterJS(
     // note: When the value is not defined (property.name in object === false), then this code will never run.
     let defaultValue = isSerialization ? 'null' : 'undefined';
     if (!property.hasDefaultValue && property.defaultValue !== undefined) {
-        defaultValue = `${reserveVariable(rootContext, 'defaultValue', property.defaultValue)}()`;
+        defaultValue = `${compilerContext.reserveVariable('defaultValue', property.defaultValue)}()`;
     } else if (!property.isOptional && property.isNullable ) {
         defaultValue = 'null';
     }

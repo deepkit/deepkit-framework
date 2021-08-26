@@ -40,7 +40,7 @@ export class ServerStartController implements Command {
         if (ssl) overwrite.ssl = {};
         if (selfSigned) overwrite.selfSigned = selfSigned;
 
-        const kernel = this.injectorContext.getModuleForModuleClass(FrameworkModule) as AppModule<any, any>;
+        const kernel = this.injectorContext.getModuleForModuleClass(FrameworkModule) as AppModule<any>;
         kernel.setConfig(overwrite);
         const server = this.injectorContext.get(ApplicationServer);
 

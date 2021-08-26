@@ -136,7 +136,7 @@ class EnvConfigLoader {
         this.namingStrategy = namingStrategy;
     }
 
-    load(module: AppModule<any, any>, config: { [p: string]: any }, schema: ClassSchema) {
+    load(module: AppModule<any>, config: { [p: string]: any }, schema: ClassSchema) {
         const envConfiguration = new EnvConfiguration();
         for (const path of this.envFilePaths) {
             if (envConfiguration.loadEnvFile(path)) break;
@@ -168,14 +168,14 @@ export class App<T extends ModuleOptions, C extends ServiceContainer<T> = Servic
         appModuleOptions: T,
         providers: ProviderWithScope<any>[] = [],
         serviceContainer?: ServiceContainer<T>,
-        appModule?: AppModule<any, any>
+        appModule?: AppModule<any>
     ) {
         this.appModule = appModule || new AppModule(appModuleOptions) as any;
 
         this.serviceContainer = serviceContainer || new ServiceContainer(this.appModule, providers);
     }
 
-    static fromModule<T extends ModuleOptions>(module: AppModule<T, any>): App<T> {
+    static fromModule<T extends ModuleOptions>(module: AppModule<T>): App<T> {
         return new App({} as T, undefined, undefined, module);
     }
 
@@ -233,7 +233,7 @@ export class App<T extends ModuleOptions, C extends ServiceContainer<T> = Servic
         if (!process.env[variableName]) return this;
 
         this.addConfigLoader({
-            load(module: AppModule<any, any>, config: { [p: string]: any }, schema: ClassSchema) {
+            load(module: AppModule<any>, config: { [p: string]: any }, schema: ClassSchema) {
                 try {
                     const jsonConfig = JSON.parse(process.env[variableName] || '');
 

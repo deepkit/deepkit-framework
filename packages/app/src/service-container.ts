@@ -11,7 +11,7 @@
 import { arrayRemoveItem, ClassType, getClassName, isClass, isPrototypeOfBase } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
 import { AppModule, ConfigurationInvalidError, MiddlewareConfig, ModuleOptions } from './module';
-import { ConfiguredProviderRegistry, Context, ContextRegistry, Injector, InjectorContext, InjectorModule, ProviderWithScope, TagProvider, tokenLabel } from '@deepkit/injector';
+import { Injector, InjectorContext, InjectorModule, ProviderWithScope, TagProvider, tokenLabel } from '@deepkit/injector';
 import { cli } from './command';
 import { WorkflowDefinition } from '@deepkit/workflow';
 import { ClassSchema, jsonSerializer, validate } from '@deepkit/type';
@@ -57,7 +57,7 @@ export function isProvided(providers: ProviderWithScope[], token: any): boolean 
 }
 
 export interface ConfigLoader {
-    load(module: AppModule<any, any>, config: { [name: string]: any }, schema: ClassSchema): void;
+    load(module: AppModule<any>, config: { [name: string]: any }, schema: ClassSchema): void;
 }
 
 export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
@@ -67,28 +67,23 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
 
     protected currentIndexId = 0;
 
-    protected contextManager = new ContextRegistry();
-    protected injectorContext = new InjectorContext(this.contextManager, 'module', new ConfiguredProviderRegistry);
-    protected eventListenerContainer = new EventDispatcher(this.injectorContext);
-
-    protected rootContext?: Context;
-    protected moduleContexts = new Map<AppModule<ModuleOptions>, Context[]>();
+    protected injectorContext: InjectorContext;
+    protected eventListenerContainer: EventDispatcher;
 
     protected configLoaders: ConfigLoader[] = [];
-
-    public appModule: AppModule<any, any>;
 
     /**
      * All modules in the whole module tree.
      * This is stored to call service container hooks like handleControllers/handleProviders.
      */
-    protected modules = new Set<AppModule<any, any>>();
+    protected modules = new Set<AppModule<any>>();
 
     constructor(
-        appModule: AppModule<any, any>,
+        public appModule: AppModule<any>,
         protected providers: ProviderWithScope[] = [],
     ) {
-        this.appModule = appModule;
+        this.injectorContext = new InjectorContext(appModule);
+        this.eventListenerContainer = new EventDispatcher(this.injectorContext);
     }
 
     addConfigLoader(loader: ConfigLoader) {
@@ -107,7 +102,7 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         this.providers.push({ provide: MiddlewareRegistry, useValue: this.middlewares });
         this.providers.push({ provide: InjectorContext, useValue: this.injectorContext });
 
-        this.rootContext = this.processModule(this.appModule, undefined, this.providers);
+        this.rootContext = this.processModule(this.appModule, this.providers);
 
         this.postProcess();
         this.bootstrapModules();
@@ -116,13 +111,16 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
     protected postProcess() {
         for (const m of this.modules) {
             m.postProcess();
+        }
+
+        for (const m of this.modules) {
             for (const [provider, calls] of m.getConfiguredProviderRegistry().calls) {
                 this.injectorContext.configuredProviderRegistry.add(provider, ...calls);
             }
         }
     }
 
-    protected findModules(module: AppModule<any, any>) {
+    protected findModules(module: AppModule<any>) {
         if (this.modules.has(module)) return;
         this.modules.add(module);
 
@@ -136,7 +134,7 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         return this.injectorContext;
     }
 
-    private setupHook(module: AppModule<any, any>) {
+    private setupHook(module: AppModule<any>) {
         let config = module.getConfig();
 
         if (module.options.config) {
@@ -177,24 +175,24 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         }
     }
 
-    public getInjectorFor(module: AppModule<any, any>): Injector {
+    public getInjectorFor(module: AppModule<any>): Injector {
         this.process();
         return this.injectorContext.getInjectorForModule(module);
     }
 
-    public getModuleForModuleClass<T extends AppModule<any, any>>(moduleClass: ClassType<T>): T {
+    public getModuleForModuleClass<T extends AppModule<any>>(moduleClass: ClassType<T>): T {
         return this.getInjectorContext().getModuleForModuleClass(moduleClass) as T;
     }
 
-    public getModuleForModule<T extends AppModule<any, any>>(module: T): T {
+    public getModuleForModule<T extends AppModule<any>>(module: T): T {
         return this.getInjectorContext().getModuleForModule(module) as T;
     }
 
-    public getInjectorForModuleClass(moduleClass: ClassType<AppModule<any, any>>): Injector {
+    public getInjectorForModuleClass(moduleClass: ClassType<AppModule<any>>): Injector {
         return this.getInjectorContext().getInjectorForModuleClass(moduleClass);
     }
 
-    public getInjectorForModule(module: AppModule<any, any>): Injector {
+    public getInjectorForModule(module: AppModule<any>): Injector {
         return this.getInjectorContext().getInjectorForModule(module);
     }
 
@@ -211,34 +209,13 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         return context;
     }
 
-    public getModulesForName(name: string): AppModule<any, any>[] {
+    public getModulesForName(name: string): AppModule<any>[] {
         return [...this.moduleContexts.keys()].filter(v => v.name === name);
     }
 
-    protected getNewContext(module: AppModule<any, any>, parent?: Context): Context {
-        if (this.contextManager.contextLookup[module.id] !== undefined) {
-            throw new Error(`Module ${getClassName(module)} already imported. You can not import the same module instance twice.`);
-        }
-
-        const newId = this.currentIndexId++;
-        const context = new Context(module, newId, parent);
-        module.setContextId(newId);
-        this.contextManager.contextLookup[module.id] = newId;
-        this.contextManager.add(context);
-
-        let contexts = this.moduleContexts.get(module);
-        if (!contexts) {
-            contexts = [];
-            this.moduleContexts.set(module, contexts);
-        }
-
-        contexts.push(context);
-        return context;
-    }
 
     protected processModule(
         module: AppModule<ModuleOptions>,
-        parentContext?: Context,
         additionalProviders: ProviderWithScope[] = [],
     ): Context {
         if (module.hasContextId()) throw new Error(`Module ${getClassName(module)}.${module.name} was already imported. Can not re-use module instances.`);
@@ -333,9 +310,7 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
             }
         }
 
-        for (const controller of controllers) {
-            this.handleController(module, controller);
-        }
+        this.handleControllers(module, controllers);
 
         //if there are exported tokens, their providers will be added to the parent or root context
         //and removed from module providers.
@@ -368,21 +343,23 @@ export class ServiceContainer<C extends ModuleOptions = ModuleOptions> {
         return context;
     }
 
-    protected handleProviders(module: AppModule<any, any>, providers: ProviderWithScope[]) {
+    protected handleProviders(module: AppModule<any>, providers: ProviderWithScope[]) {
         for (const m of this.modules) {
             m.handleProviders(module, providers);
         }
     }
 
-    protected handleController(module: AppModule<any>, controller: ClassType) {
-        const cliConfig = cli._fetch(controller);
-        if (cliConfig) {
-            if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'cli' });
-            this.cliControllers.controllers.set(cliConfig.name, { controller, module });
+    protected handleControllers(module: AppModule<any>, controllers: ClassType[]) {
+        for (const controller of controllers) {
+            const cliConfig = cli._fetch(controller);
+            if (cliConfig) {
+                if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'cli' });
+                this.cliControllers.controllers.set(cliConfig.name, { controller, module });
+            }
         }
 
         for (const m of this.modules) {
-            m.handleController(module, controller);
+            m.handleControllers(module, controllers);
         }
     }
 }
