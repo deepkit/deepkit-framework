@@ -47,7 +47,7 @@ test('loadConfigFromEnvVariables', async () => {
     const service = app.get(Service);
     expect(service.token).toBe('fromBefore');
 
-    const baseModule = app.serviceContainer.getModuleForModuleClass(BaseModule);
+    const baseModule = app.serviceContainer.getModule(BaseModule);
     expect(baseModule.getConfig()).toEqual({ db: 'changed2' });
 
     const baseService = app.get(BaseService);
@@ -97,7 +97,7 @@ test('loadConfigFromEnvVariables non-root import', async () => {
     process.env.APP_BASE_DB = 'changed2';
     app.loadConfigFromEnv();
 
-    const baseService = app.serviceContainer.getInjectorFor(baseModule).get(BaseService);
+    const baseService = app.serviceContainer.getInjector(baseModule).get(BaseService);
     expect(baseService.db).toBe('changed2');
 });
 
@@ -330,7 +330,7 @@ test('cli controllers in sub modules are in correct injector context', async () 
             expect(created).toBe(2);
         }
 
-        expect(() => app.get(MyService)).toThrow('Could not resolve injector token MyService');
+        expect(() => app.get(MyService)).toThrow('not found');
     }
 
     {
@@ -452,6 +452,7 @@ test('service container hooks', () => {
             expect(module).toBeInstanceOf(AppModule);
             for (const controller of controllers) {
                 expect(isClass(controller)).toBe(true);
+                module.addProvider(controller);
                 this.controllersFound.push(controller);
             }
         }
@@ -467,7 +468,7 @@ test('service container hooks', () => {
         const m = new MyModule;
         const app = new ServiceContainer(new AppModule({ imports: [m] }));
         app.process();
-        expect(m.providersFound.length).toBe(5); //5 is the default, as the ServiceContainer adds default services
+        expect(m.providersFound.length).toBe(4); //4 is the default, as the ServiceContainer adds default services
         expect(m.controllersFound.length).toBe(0);
     }
 
@@ -485,7 +486,7 @@ test('service container hooks', () => {
         const m = new MyModule;
         const app = new ServiceContainer(new AppModule({providers: [Controller], imports: [m] }));
         app.process();
-        expect(m.providersFound.length).toBe(6);
+        expect(m.providersFound.length).toBe(5);
         expect(m.controllersFound.length).toBe(0);
     }
 

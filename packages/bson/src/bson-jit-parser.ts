@@ -39,8 +39,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
     //     property = property.getResolvedClassSchema().getDecoratedPropertySchema();
     // }
 
-    const propertyVar = compiler.reserveVariable('_property_' + property.name);
-    compiler.context.set(propertyVar, property);
+    const propertyVar = compiler.reserveVariable('_property_' + property.name, property);
 
     if (property.type === 'string') {
         return `
@@ -218,9 +217,9 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
             `;
         }
 
-        const propertySchema = compiler.reserveVariable('_propertySchema_' + property.name);
+        const propertySchema = compiler.reserveVariable('_propertySchema_' + property.name, property.getResolvedClassSchema());
         compiler.context.set('getRawBSONDecoder', getRawBSONDecoder);
-        compiler.context.set(propertySchema, property.getResolvedClassSchema());
+
         let primaryKeyHandling = '';
         if (property.isReference) {
             primaryKeyHandling = createPropertyConverter(setter, property.getResolvedClassSchema().getPrimaryField(), compiler);
@@ -237,7 +236,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
             `;
     } else if (property.type === 'array') {
         compiler.context.set('digitByteSize', digitByteSize);
-        const v = compiler.reserveVariable('v');
+        const v = compiler.reserveName('v');
 
         return `
         if (elementType === ${BSONType.ARRAY}) {

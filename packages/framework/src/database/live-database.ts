@@ -10,7 +10,19 @@
 
 import { AsyncEventSubscription, asyncOperation, ClassType } from '@deepkit/core';
 import { AsyncSubscription } from '@deepkit/core-rxjs';
-import { BaseQuery, Database, DatabaseQueryModel, DatabaseRegistry, exportQueryFilterFieldNames, FilterQuery, QueryDatabaseDeleteEvent, replaceQueryFilterParameter, Sort, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from '@deepkit/orm';
+import {
+    BaseQuery,
+    Database,
+    DatabaseQueryModel,
+    DatabaseRegistry,
+    exportQueryFilterFieldNames,
+    FilterQuery,
+    QueryDatabaseDeleteEvent,
+    replaceQueryFilterParameter,
+    Sort,
+    UnitOfWorkEvent,
+    UnitOfWorkUpdateEvent
+} from '@deepkit/orm';
 import { Collection, CollectionSort, EntitySubject, IdVersionInterface, rpcEntityPatch, rpcEntityRemove, RpcKernelBaseConnection, RpcTypes } from '@deepkit/rpc';
 import { ClassSchema, getClassSchema, resolveClassTypeOrForward } from '@deepkit/type';
 import { Observable } from 'rxjs';
@@ -686,7 +698,7 @@ export class LiveQuery<T extends IdVersionInterface> extends BaseQuery<T> {
     }
 }
 
-@injectable()
+@injectable
 export class LiveDatabase {
     protected subscriptionHandler = new SubscriptionHandlers(this.connection, this.databases, this.broker);
     protected entitySubscriptions = new Map<ClassSchema, AsyncEventSubscription[]>();

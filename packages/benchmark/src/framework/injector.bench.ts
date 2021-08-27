@@ -17,7 +17,7 @@ export async function main() {
 
     class Database2 { }
 
-    @injectable()
+    @injectable
     class MyService {
         constructor(database: Database) {
         }

@@ -22,7 +22,7 @@ function optimiseFn(fn: Function): Function {
 }
 
 async function simpleRender(t: any): Promise<string> {
-    return await render(new Injector(), t);
+    return await render(Injector.from([]), t);
 }
 
 const tests: { t: Function, contains?: string, result: string }[] = [

@@ -11,6 +11,7 @@
 import { AppModule } from '@deepkit/app';
 import { AngularUniversalListener } from './listener';
 import { config } from './config';
+import '@deepkit/type';
 
 export const angularUniversalModule = new AppModule({
     config: config,

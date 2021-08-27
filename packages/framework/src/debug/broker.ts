@@ -6,7 +6,7 @@ import { NetTcpRpcClientAdapter, NetTcpRpcServer } from '@deepkit/rpc-tcp';
 import { BrokerKernel } from '@deepkit/broker';
 import { frameworkConfig } from '../module.config';
 
-@injectable()
+@injectable
 export class DebugBroker extends BaseBroker {
     constructor(
         @inject(frameworkConfig.token('debugBrokerHost')) brokerHost: string
@@ -15,7 +15,7 @@ export class DebugBroker extends BaseBroker {
     }
 }
 
-@injectable()
+@injectable
 export class DebugBrokerListener {
     protected kernel: BrokerKernel = new BrokerKernel;
     protected server = new NetTcpRpcServer(this.kernel, this.brokerHost);

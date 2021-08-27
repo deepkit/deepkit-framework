@@ -85,7 +85,7 @@ function needsHttpWorker(config: { publicDir?: string }, rpcControllers: RpcCont
     return Boolean(config.publicDir || rpcControllers.controllers.size || router.getRoutes().length);
 }
 
-@injectable()
+@injectable
 export class ApplicationServerListener {
     constructor(
         protected logger: Logger,
@@ -141,7 +141,7 @@ export class ApplicationServerListener {
     }
 }
 
-@injectable()
+@injectable
 export class ApplicationServer {
     protected httpWorker?: WebWorker;
     protected started = false;

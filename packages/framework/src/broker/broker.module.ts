@@ -20,7 +20,7 @@ import { Logger } from '@deepkit/logger';
 class BrokerStartConfig extends brokerConfig.slice('startOnBootstrap', 'listen') {
 }
 
-@injectable()
+@injectable
 export class BrokerListener {
     constructor(
         protected logger: Logger,

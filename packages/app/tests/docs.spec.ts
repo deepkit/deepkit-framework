@@ -19,7 +19,7 @@ test('controller instantiation', () => {
         }
     }
 
-    @injectable()
+    @injectable
     class Router {
         constructor(
             protected injectorContext: InjectorContext,
@@ -32,7 +32,7 @@ test('controller instantiation', () => {
             const controller = this.registry.get(classType);
 
             //get the dependency injection sub container for the module
-            const injector = this.injectorContext.getInjectorForModule(controller.module);
+            const injector = this.injectorContext.getInjector(controller.module);
 
             //here the controller will be instantiated. If it was already
             //instantiated, the old instanced will be returned.
@@ -47,7 +47,7 @@ test('controller instantiation', () => {
         protected registry = new Registry;
 
         process() {
-            this.addProvider({ provide: Registry, useValue: Registry });
+            this.addProvider({ provide: Registry, useValue: this.registry });
         }
 
         handleControllers(module: AppModule<any>, controllers: ClassType[]) {

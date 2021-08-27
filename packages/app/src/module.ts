@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ExtractClassDefinition, JSONPartial, jsonSerializer, PlainSchemaProps, t } from '@deepkit/type';
+import { ExtractClassDefinition, jsonSerializer, PlainSchemaProps, t } from '@deepkit/type';
 import { ConfigDefinition, InjectorModule, InjectorToken, ProviderWithScope } from '@deepkit/injector';
 import { ClassType, CustomError, getClassName } from '@deepkit/core';
 import { EventListener } from '@deepkit/event';
@@ -17,8 +17,8 @@ import { isProvided } from './service-container';
 
 export type DefaultObject<T> = T extends undefined ? {} : T;
 export type ExtractConfigOfDefinition<T> = T extends ConfigDefinition<infer C> ? C : {};
-export type ExtractPartialConfigOfDefinition<T> = T extends ConfigDefinition<infer C> ? JSONPartial<C> : {};
-export type ModuleConfigOfOptions<O extends ModuleOptions> = ExtractPartialConfigOfDefinition<DefaultObject<O['config']>>;
+// export type ExtractPartialConfigOfDefinition<T> = T extends ConfigDefinition<infer C> ? C : {};
+// export type ModuleConfigOfOptions<O extends ModuleOptions> = ExtractPartialConfigOfDefinition<DefaultObject<O['config']>>;
 
 export interface MiddlewareConfig {
     getClassTypes(): ClassType[];
@@ -26,7 +26,7 @@ export interface MiddlewareConfig {
 
 export type MiddlewareFactory = () => MiddlewareConfig;
 
-export interface ModuleOptions {
+export interface ModuleDefinition {
     /**
      * Providers.
      */
@@ -107,22 +107,33 @@ export interface ModuleOptions {
      * HTTP middlewares.
      */
     middlewares?: MiddlewareFactory[];
+}
 
+export interface CreateModuleDefinition extends ModuleDefinition {
+    /**
+     * Whether all services should be moved to the root module/application.
+     */
+    forRoot?: true;
+
+    /**
+     * Modules can not import other modules in the module definitions.
+     * Use instead:
+     *
+     * ```typescript
+     * class MyModule extends createModule({}) {
+     *     imports = [new AnotherModule];
+     * }
+     * ```
+     */
+    imports?: undefined;
+}
+
+
+export interface RootModuleDefinition extends ModuleDefinition {
     /**
      * Import another module.
      */
     imports?: AppModule<any>[];
-}
-
-function cloneOptions<T extends ModuleOptions>(options: T): T {
-    const copied = { ...options };
-    copied.imports = copied.imports?.slice(0);
-    copied.exports = copied.exports?.slice(0);
-    copied.providers = copied.providers?.slice(0);
-    copied.controllers = copied.controllers?.slice(0);
-    copied.listeners = copied.listeners?.slice(0);
-    copied.workflows = copied.workflows?.slice(0);
-    return copied;
 }
 
 export class ConfigurationInvalidError extends CustomError {
@@ -140,8 +151,8 @@ export function createModuleConfig<T extends PlainSchemaProps>(config: T): AppMo
     return new AppModuleConfig(config);
 }
 
-export interface AppModuleClass<T extends ModuleOptions> {
-    new(config?: ModuleConfigOfOptions<T>): AppModule<T>;
+export interface AppModuleClass<C> {
+    new(config?: Partial<C>): AppModule<any, C>;
 }
 
 /**
@@ -158,12 +169,11 @@ export interface AppModuleClass<T extends ModuleOptions> {
  * new App({
  *     imports: [new MyModule]
  * });
- *
  * ```
  */
-export function createModule<T extends Omit<ModuleOptions, 'imports'>,>(options: T, name: string = ''): AppModuleClass<T> {
+export function createModule<T extends CreateModuleDefinition>(options: T, name: string = ''): AppModuleClass<ExtractConfigOfDefinition<T['config']>> {
     return class AnonAppModule extends AppModule<T> {
-        constructor(config?: ModuleConfigOfOptions<T>) {
+        constructor(config?: Partial<ExtractConfigOfDefinition<T['config']>>) {
             super(options, name);
             if (config) {
                 this.configure(config);
@@ -172,17 +182,10 @@ export function createModule<T extends Omit<ModuleOptions, 'imports'>,>(options:
     } as any;
 }
 
-export class AppModule<T extends ModuleOptions> extends InjectorModule<ExtractConfigOfDefinition<DefaultObject<T['config']>>> {
-    /**
-     * Whether this module is for the root module. All its providers are automatically exported and moved to the root level.
-     */
-    public root: boolean = false;
-
+export class AppModule<T extends RootModuleDefinition, C extends ExtractConfigOfDefinition<T['config']> = any> extends InjectorModule<C> {
     public setupConfigs: ((module: AppModule<any>, config: any) => void)[] = [];
 
     public imports: AppModule<any>[] = [];
-
-    protected exports: (ClassType | InjectorToken<any> | string | AppModule<any>)[] = [];
 
     constructor(
         public options: T,
@@ -191,16 +194,20 @@ export class AppModule<T extends ModuleOptions> extends InjectorModule<ExtractCo
         public id: number = moduleId++,
     ) {
         super();
-        if (this.options.imports) this.imports.push(...this.options.imports);
+        if (this.options.imports) {
+            for (const m of this.options.imports) this.addImport(m);
+        }
         if (this.options.providers) this.providers.push(...this.options.providers);
         if (this.options.exports) this.exports.push(...this.options.exports);
 
+        if ('forRoot' in this.options) this.forRoot();
+
         if (this.options.config) {
             //apply defaults
-            const defaults = jsonSerializer.for(this.options.config.schema).deserialize({});
+            const defaults: any = jsonSerializer.for(this.options.config.schema).deserialize({});
             //we iterate over so we have the name available on the object, even if its undefined
             for (const property of this.options.config.schema.getProperties()) {
-                this.config[property.name] = defaults[property.name];
+                (this.config as any)[property.name] = defaults[property.name];
             }
         }
     }
@@ -246,7 +253,7 @@ export class AppModule<T extends ModuleOptions> extends InjectorModule<ExtractCo
 
     }
 
-    getImports(): AppModule<ModuleOptions>[] {
+    getImports(): AppModule<ModuleDefinition>[] {
         return this.imports;
     }
 
@@ -285,14 +292,15 @@ export class AppModule<T extends ModuleOptions> extends InjectorModule<ExtractCo
      * Modifies this module and adds a new import, returning the same module.
      */
     addImport(...modules: AppModule<any>[]): this {
+        this.assertInjectorNotBuilt();
         for (const module of modules) {
             module.setParent(this);
-            this.imports.push(module);
         }
         return this;
     }
 
     addController(...controller: ClassType[]) {
+        this.assertInjectorNotBuilt();
         if (!this.options.controllers) this.options.controllers = [];
 
         this.options.controllers.push(...controller);
@@ -303,6 +311,7 @@ export class AppModule<T extends ModuleOptions> extends InjectorModule<ExtractCo
     }
 
     addProvider(...provider: ProviderWithScope[]): this {
+        this.assertInjectorNotBuilt();
         this.providers.push(...provider);
         return this;
     }
@@ -312,6 +321,7 @@ export class AppModule<T extends ModuleOptions> extends InjectorModule<ExtractCo
     }
 
     addListener(...listener: (EventListener<any> | ClassType)[]): this {
+        this.assertInjectorNotBuilt();
         if (!this.options.listeners) this.options.listeners = [];
 
         this.options.listeners.push(...listener);
@@ -325,11 +335,6 @@ export class AppModule<T extends ModuleOptions> extends InjectorModule<ExtractCo
         return this;
     }
 
-    setParent(module: AppModule<any>): this {
-        this.parent = module;
-        return this;
-    }
-
     getName(): string {
         return this.name;
     }
@@ -337,15 +342,15 @@ export class AppModule<T extends ModuleOptions> extends InjectorModule<ExtractCo
     /**
      * Allows to change the module config before `setup` and bootstrap is called. This is the last step right before the config is validated.
      */
-    setupConfig(callback: (module: AppModule<T>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void): this {
-        this.setupConfigs.push(callback);
+    setupConfig(callback: (module: AppModule<T>, config: C) => void): this {
+        this.setupConfigs.push(callback as any);
         return this;
     }
 
     /**
      * Allows to change the module after the configuration has been loaded, right before the application bootstraps (thus loading all services/controllers/etc).
      */
-    setup(callback: (module: AppModule<T>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void): this {
+    setup(callback: (module: AppModule<T>, config: C) => void): this {
         this.setups.push(callback);
         return this;
     }
@@ -353,7 +358,7 @@ export class AppModule<T extends ModuleOptions> extends InjectorModule<ExtractCo
     /**
      * Sets configured values.
      */
-    configure(config: ModuleConfigOfOptions<T>): this {
+    configure(config: Partial<C>): this {
         for (const module of this.getImports()) {
             if (!module.getName()) continue;
             if (!(module.getName() in config)) continue;
@@ -366,22 +371,6 @@ export class AppModule<T extends ModuleOptions> extends InjectorModule<ExtractCo
             Object.assign(this.config, configNormalized);
         }
 
-        return this;
-    }
-
-    /**
-     * Makes all the providers, controllers, etc available at the root module, basically exporting everything.
-     */
-    forRoot(): this {
-        this.root = true;
-        return this;
-    }
-
-    /**
-     * Reverts the root default setting to false.
-     */
-    notForRoot(): this {
-        this.root = false;
         return this;
     }
 }

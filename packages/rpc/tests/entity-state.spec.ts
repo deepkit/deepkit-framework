@@ -5,9 +5,8 @@ import { EntitySubject, rpcEntityPatch, RpcTypes } from '../src/model';
 import { DirectClient } from '../src/client/client-direct';
 import { EntitySubjectStore } from '../src/client/entity-state';
 import { rpc } from '../src/decorators';
-import { RpcConnectionWriter, RpcKernel, RpcKernelConnection } from '../src/server/kernel';
-import { ClassType } from '@deepkit/core';
-import { BasicInjector } from '@deepkit/injector';
+import { RpcKernel, RpcKernelConnection } from '../src/server/kernel';
+import { injectable, InjectorContext } from '@deepkit/injector';
 
 test('EntitySubjectStore multi', () => {
     class MyModel {
@@ -69,6 +68,7 @@ test('controller', async () => {
         }
     }
 
+    @injectable
     class Controller {
         constructor(protected connection: RpcKernelConnection) {
 
@@ -102,21 +102,10 @@ test('controller', async () => {
         }
     }
 
-    const kernel = new class extends RpcKernel {
-        createConnection(writer: RpcConnectionWriter): RpcKernelConnection {
-            let connection: RpcKernelConnection;
-            const injector = {
-                get(classType: ClassType) {
-                    return new classType(connection);
-                },
-                getInjectorForModule(): BasicInjector {
-                    return this;
-                }
-            } as BasicInjector;
-            connection = new RpcKernelConnection(writer, this.connections, this.controllers, this.security, injector || this.injector, this.peerExchange);
-            return connection;
-        }
-    };
+    const kernel = new RpcKernel(InjectorContext.forProviders([
+        {provide: RpcKernelConnection, scope: 'rpc'},
+        {provide: Controller, scope: 'rpc'},
+    ]));
     kernel.registerController('myController', Controller);
 
     const client = new DirectClient(kernel);

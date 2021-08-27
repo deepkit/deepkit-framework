@@ -57,7 +57,7 @@ function match(routeConfig: RouteConfig, route: HttpRouteFilterRoute): boolean {
     return false;
 }
 
-@injectable()
+@injectable
 export class HttpRouterFilterResolver {
     constructor(protected router: Router) {
     }

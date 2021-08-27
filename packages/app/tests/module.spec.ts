@@ -14,7 +14,7 @@ const myModuleConfig = new AppModuleConfig({
 class MyModuleConfigFull extends myModuleConfig.all() {
 }
 
-@injectable()
+@injectable
 class ModuleService {
     constructor(public readonly config: MyModuleConfigFull) {
     }
@@ -45,7 +45,7 @@ const debugConfigToken = appModuleConfig.token('debug');
 
 expect(Object.getPrototypeOf(Object.getPrototypeOf(MyServiceConfig)) === ConfigSlice).toBe(true);
 
-@injectable()
+@injectable
 class MyService {
     constructor(private config: MyServiceConfig) {
     }
@@ -55,7 +55,7 @@ class MyService {
     }
 }
 
-@injectable()
+@injectable
 class MyService2 {
     constructor(@inject(debugConfigToken) public debug: boolean) {
     }
@@ -106,19 +106,7 @@ test('import', () => {
     }
 
     {
-        expect(() => getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '12345', param2: '55' } }), ModuleService)).toThrow(
-            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(minimum): Number needs to be greater than or equal to 100'
-        );
-    }
-
-    {
         const myService = getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '12345', param2: 100 } }), ModuleService);
-        expect(myService.config).toEqual({ param1: '12345', param2: 100 });
-    }
-
-    {
-        //@deepkit/type does automatically soft-type casting
-        const myService = getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '12345', param2: '100' } }), ModuleService);
         expect(myService.config).toEqual({ param1: '12345', param2: 100 });
     }
 });
@@ -128,7 +116,7 @@ test('basic configured', () => {
     expect(new MyService({ debug: false }).isDebug()).toBe(false);
 
     function createConfiguredApp() {
-        return new MyAppModule({ myModule: { param1: '12345', param2: '100' } });
+        return new MyAppModule({ myModule: { param1: '12345', param2: 100 } });
     }
 
     {
@@ -165,48 +153,6 @@ test('basic configured', () => {
     }
 });
 
-test('config inheritance 1', () => {
-    class AppModule extends createModule({
-        providers: [
-            MyService,
-            MyService2,
-        ],
-        imports: [
-            new MyModule({ param1: '12345' }),
-        ],
-        config: appModuleConfig,
-    }) {
-    }
-
-    expect(() => new ServiceContainer(new AppModule).process()).toThrow(
-        'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(required): Required value is undefined'
-    );
-
-    expect(new AppModule({ myModule: { param2: 555 } }).getImports()[0].getConfig()).toEqual({ param1: '12345', param2: 555 });
-
-});
-
-test('config inheritance 2', () => {
-    const appModule = new AppModule({
-        providers: [
-            MyService,
-            MyService2,
-        ],
-        imports: [
-            new MyModule({ param1: '12345' }),
-        ],
-        config: appModuleConfig,
-    });
-
-    expect(() => new ServiceContainer(appModule).process()).toThrow(
-        'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(required): Required value is undefined'
-    );
-
-    const container = new ServiceContainer(appModule.configure({ myModule: { param2: 555 } }));
-    container.process();
-    expect(container.appModule.getImports()[0].getConfig()).toEqual({ param1: '12345', param2: 555 });
-});
-
 test('configured provider', () => {
     class Transporter {
 
@@ -231,7 +177,7 @@ test('configured provider', () => {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
             module.setupProvider(Logger).addTransport('first').addTransport('second');
-        })).getInjectorFor(module).get(Logger);
+        })).getInjector(module).get(Logger);
         expect(logger.transporter).toEqual(['first', 'second']);
     }
 
@@ -239,7 +185,7 @@ test('configured provider', () => {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
             module.setupProvider(Logger).transporter = ['first', 'second', 'third'];
-        })).getInjectorFor(module).get(Logger);
+        })).getInjector(module).get(Logger);
         expect(logger.transporter).toEqual(['first', 'second', 'third']);
     }
 
@@ -247,7 +193,7 @@ test('configured provider', () => {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
             module.setupProvider(Logger).addTransport(new Transporter);
-        })).getInjectorFor(module).get(Logger);
+        })).getInjector(module).get(Logger);
         expect(logger.transporter[0] instanceof Transporter).toBe(true);
     }
 
@@ -255,13 +201,13 @@ test('configured provider', () => {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
             module.setupProvider(Logger).addTransport(injectorReference(Transporter));
-        })).getInjectorFor(module).get(Logger);
+        })).getInjector(module).get(Logger);
         expect(logger.transporter[0] instanceof Transporter).toBe(true);
     }
 
     {
         const module = new AppModule();
-        const logger = new ServiceContainer(module).getInjectorFor(module).get(Logger);
+        const logger = new ServiceContainer(module).getInjector(module).get(Logger);
         expect(logger.transporter).toEqual([]);
     }
 });
@@ -269,7 +215,7 @@ test('configured provider', () => {
 test('same module loaded twice', () => {
     const config = createModuleConfig({ path: t.string.default('/api') });
 
-    @injectable()
+    @injectable
     class Service {
         constructor(@inject(config.token('path')) public path: string) {
         }
@@ -284,13 +230,13 @@ test('same module loaded twice', () => {
     {
         const app = new AppModule({ imports: [new ApiModule({ path: '/a' })] });
         const serviceContainer = new ServiceContainer(app);
-        expect(serviceContainer.getInjectorContext().getInjectorForModuleClass(ApiModule).get(Service).path).toBe('/a');
+        expect(serviceContainer.getInjector(ApiModule).get(Service).path).toBe('/a');
     }
 
     {
         const app = new AppModule({ imports: [new ApiModule()] });
         const serviceContainer = new ServiceContainer(app);
-        expect(serviceContainer.getInjectorContext().getInjectorForModuleClass(ApiModule).get(Service).path).toBe('/api');
+        expect(serviceContainer.getInjector(ApiModule).get(Service).path).toBe('/api');
     }
 
     {
@@ -305,11 +251,11 @@ test('same module loaded twice', () => {
         });
         const serviceContainer = new ServiceContainer(app);
 
-        expect(serviceContainer.getInjectorContext().getModuleForModuleClass(ApiModule).getConfig().path).toBe('/a');
-        expect(serviceContainer.getInjectorContext().getModuleForModule(a).getConfig().path).toBe('/a');
-        expect(serviceContainer.getInjectorContext().getModuleForModule(b).getConfig().path).toBe('/b');
-        expect(serviceContainer.getInjectorFor(a).get(Service).path).toBe('/a');
-        expect(serviceContainer.getInjectorFor(b).get(Service).path).toBe('/b');
+        expect((serviceContainer.getModule(ApiModule).getConfig() as any).path).toBe('/a');
+        expect(a.getConfig().path).toBe('/a');
+        expect(b.getConfig().path).toBe('/b');
+        expect(serviceContainer.getInjector(a).get(Service).path).toBe('/a');
+        expect(serviceContainer.getInjector(b).get(Service).path).toBe('/b');
     }
 });
 
@@ -330,8 +276,8 @@ test('non-exported providers can not be overwritten', () => {
 
     const serviceContainer = new ServiceContainer(app);
 
-    expect(serviceContainer.getInjectorFor(sub).get(SubClass)).toBeInstanceOf(SubClass);
-    expect(serviceContainer.getInjectorFor(app).get(SubClass)).toBeInstanceOf(Overwritten);
+    expect(serviceContainer.getInjector(sub).get(SubClass)).toBeInstanceOf(SubClass);
+    expect(serviceContainer.getInjector(app).get(SubClass)).toBeInstanceOf(Overwritten);
 });
 
 test('exported providers can not be overwritten', () => {
@@ -351,8 +297,8 @@ test('exported providers can not be overwritten', () => {
 
     const serviceContainer = new ServiceContainer(app);
 
-    expect(serviceContainer.getInjectorFor(sub).get(SubClass)).toBeInstanceOf(Overwritten);
-    expect(serviceContainer.getInjectorFor(app).get(SubClass)).toBeInstanceOf(Overwritten);
+    expect(serviceContainer.getInjector(sub).get(SubClass)).toBeInstanceOf(Overwritten);
+    expect(serviceContainer.getInjector(app).get(SubClass)).toBeInstanceOf(Overwritten);
 });
 
 test('instance is used as is', () => {
@@ -375,7 +321,7 @@ test('instance is used as is', () => {
     }
 
     const serviceContainer = new ServiceContainer(new AppModule({ imports: [new ApiModule().set('changed1')] }));
-    expect(serviceContainer.getInjectorForModuleClass(ApiModule).get(Service).label).toBe('changed1');
+    expect(serviceContainer.getInjector(ApiModule).get(Service).label).toBe('changed1');
 });
 
 test('change config of a imported module dynamically', () => {
@@ -423,19 +369,19 @@ test('change config of a imported module dynamically', () => {
 
     {
         const serviceContainer = new ServiceContainer(new ApiModule());
-        expect(serviceContainer.getInjectorForModuleClass(DatabaseModule).get(Query).logger).toBe(undefined);
+        expect(serviceContainer.getInjector(DatabaseModule).get(Query).logger).toBe(undefined);
     }
 
 
     {
         const serviceContainer = new ServiceContainer(new ApiModule({ debug: true }));
-        expect(serviceContainer.getInjectorForModuleClass(DatabaseModule).get(Query).logger).toBeInstanceOf(Logger);
+        expect(serviceContainer.getInjector(DatabaseModule).get(Query).logger).toBeInstanceOf(Logger);
     }
 
 
     {
         const serviceContainer = new ServiceContainer(new ApiModule());
-        expect(serviceContainer.getInjectorForModuleClass(DatabaseModule).get(Query).logger).toBe(undefined);
+        expect(serviceContainer.getInjector(DatabaseModule).get(Query).logger).toBe(undefined);
     }
 });
 
@@ -457,20 +403,18 @@ test('scoped injector', () => {
 
     {
         const scope = serviceContainer.getInjectorContext().createChildScope('http');
-        const injector = scope.getInjectorForModule(module);
-        expect(injector.get(Service)).toBeInstanceOf(Service);
+        expect(scope.get(Service, module)).toBeInstanceOf(Service);
         expect(created).toBe(1);
     }
 
     {
-        const injector = serviceContainer.getInjectorForModule(module);
-        expect(() => injector.get(Service)).toThrow('Could not resolve injector token Service');
+        const injector = serviceContainer.getInjector(module);
+        expect(() => injector.get(Service)).toThrow('not found');
     }
 
     {
         const scope = serviceContainer.getInjectorContext().createChildScope('http');
-        const injector = scope.getInjectorForModule(module);
-        expect(injector.get(Service)).toBeInstanceOf(Service);
+        expect(scope.get(Service, module)).toBeInstanceOf(Service);
         expect(created).toBe(2);
     }
 

@@ -22,7 +22,7 @@ import { eventDispatcher } from '@deepkit/event';
 import { RouteConfig, Router } from './router';
 
 export function serveStaticListener(path: string, localPath: string = path): ClassType {
-    @injectable()
+    @injectable
     class HttpRequestStaticServingListener {
         serve(path: string, request: HttpRequest, response: HttpResponse) {
             return new Promise(resolve => {

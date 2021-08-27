@@ -8,10 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { isFunction, isObject, setPathValue } from '@deepkit/core';
+import { ClassType, isFunction, isObject, setPathValue } from '@deepkit/core';
 import { ConfigLoader, ServiceContainer } from './service-container';
-import { ProviderWithScope, ResolveToken } from '@deepkit/injector';
-import { AppModule, ModuleConfigOfOptions, ModuleOptions } from './module';
+import { InjectorContext, ResolveToken } from '@deepkit/injector';
+import { AppModule, ExtractConfigOfDefinition, RootModuleDefinition } from './module';
 import { Command, Config, Options } from '@oclif/config';
 import { basename, relative } from 'path';
 import { Main } from '@oclif/command';
@@ -157,26 +157,24 @@ class EnvConfigLoader {
  *
  * You can use this class for more integrated unit-tests.
  */
-export class App<T extends ModuleOptions, C extends ServiceContainer<T> = ServiceContainer<T>> {
+export class App<T extends RootModuleDefinition> {
     protected envConfigLoader?: EnvConfigLoader;
 
-    public readonly serviceContainer: ServiceContainer<T>;
+    public readonly serviceContainer: ServiceContainer;
 
     public appModule: AppModule<T>;
 
     constructor(
         appModuleOptions: T,
-        providers: ProviderWithScope<any>[] = [],
-        serviceContainer?: ServiceContainer<T>,
+        serviceContainer?: ServiceContainer,
         appModule?: AppModule<any>
     ) {
         this.appModule = appModule || new AppModule(appModuleOptions) as any;
-
-        this.serviceContainer = serviceContainer || new ServiceContainer(this.appModule, providers);
+        this.serviceContainer = serviceContainer || new ServiceContainer(this.appModule);
     }
 
-    static fromModule<T extends ModuleOptions>(module: AppModule<T>): App<T> {
-        return new App({} as T, undefined, undefined, module);
+    static fromModule<T>(module: AppModule<T>): App<T> {
+        return new App({} as T, undefined, module);
     }
 
     setup(...args: Parameters<this['appModule']['setup']>): this {
@@ -189,7 +187,7 @@ export class App<T extends ModuleOptions, C extends ServiceContainer<T> = Servic
         return this;
     }
 
-    configure(config: ModuleConfigOfOptions<T>): this {
+    configure(config: Partial<ExtractConfigOfDefinition<T['config']>>): this {
         this.serviceContainer.appModule.configure(config);
         return this;
     }
@@ -251,8 +249,12 @@ export class App<T extends ModuleOptions, C extends ServiceContainer<T> = Servic
         if (exitCode > 0) process.exit(exitCode);
     }
 
-    public get<T>(token: T): ResolveToken<T> {
-        return this.serviceContainer.getInjectorContext().getInjector(0).get(token) as ResolveToken<T>;
+    public get<T>(token: T, moduleOrClass?: AppModule<any> | ClassType<AppModule<any>>): ResolveToken<T> {
+        return this.serviceContainer.getInjector(moduleOrClass || this.appModule).get(token) as ResolveToken<T>;
+    }
+
+    public getInjectorContext(): InjectorContext {
+        return this.serviceContainer.getInjectorContext();
     }
 
     public async execute(argv: string[], binPaths: string[] = []): Promise<number> {
@@ -316,10 +318,10 @@ export class App<T extends ModuleOptions, C extends ServiceContainer<T> = Servic
 
         try {
             const config = new MyConfig({ root: __dirname });
-            const scopedInjectorContext = this.serviceContainer.getInjectorContext().createChildScope('cli');
+            const scopedInjectorContext = this.getInjectorContext().createChildScope('cli');
 
             for (const [name, info] of this.serviceContainer.cliControllers.controllers.entries()) {
-                config.commandsMap[name] = buildOclifCommand(name, info.controller, scopedInjectorContext.getInjectorForModule(info.module));
+                config.commandsMap[name] = buildOclifCommand(name, scopedInjectorContext, info.controller, info.module);
             }
 
             await Main.run(argv, config);

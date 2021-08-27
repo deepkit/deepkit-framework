@@ -1,9 +1,10 @@
-import { isFunction } from '@deepkit/core';
+import { ClassType, isFunction } from '@deepkit/core';
 import { FieldDecoratorWrapper } from '@deepkit/type';
+import { InjectorModule } from './injector';
 
 
 export class InjectorReference {
-    constructor(public readonly to: any) {
+    constructor(public readonly to: any, public module?: InjectorModule) {
     }
 }
 
@@ -122,17 +123,15 @@ export class InjectorToken<T> {
  * sure you don't get surprising behaviour when you add constructor arguments at a later time.
  *
  * ```typescript
- * @injectable()
+ * @injectable
  * class Service {}
  *
- * @injectable()
+ * @injectable
  * class Service {
  *     constructor(private other: OtherService) {}
  * }
  * ```
  */
-export function injectable() {
-    return (target: object) => {
-        //don't do anything. This is just used to generate type metadata.
-    };
+export function injectable(constructor: ClassType) {
+    //don't do anything. This is just used to generate type metadata.
 }

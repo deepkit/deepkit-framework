@@ -9,8 +9,7 @@
  */
 
 import { ApplicationServer } from '../application-server';
-import { AppModule, cli, Command, flag } from '@deepkit/app';
-import { InjectorContext } from '@deepkit/injector';
+import { AppModule, cli, Command, flag, ServiceContainer } from '@deepkit/app';
 import { DefaultFormatter, Logger } from '@deepkit/logger';
 import { FrameworkModule } from '../module';
 
@@ -20,7 +19,7 @@ import { FrameworkModule } from '../module';
 export class ServerStartController implements Command {
     constructor(
         protected logger: Logger,
-        protected injectorContext: InjectorContext,
+        protected serviceContainer: ServiceContainer,
     ) {
     }
 
@@ -40,9 +39,9 @@ export class ServerStartController implements Command {
         if (ssl) overwrite.ssl = {};
         if (selfSigned) overwrite.selfSigned = selfSigned;
 
-        const kernel = this.injectorContext.getModuleForModuleClass(FrameworkModule) as AppModule<any>;
-        kernel.setConfig(overwrite);
-        const server = this.injectorContext.get(ApplicationServer);
+        const kernel = this.serviceContainer.getModule(FrameworkModule) as AppModule<any>;
+        kernel.configure(overwrite);
+        const server = this.serviceContainer.getRootInjector().get(ApplicationServer);
 
         await server.start(true);
     }

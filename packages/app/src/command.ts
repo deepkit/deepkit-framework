@@ -27,7 +27,7 @@ import { Command as OclifCommandBase } from '@oclif/command';
 import { Command as OclifCommand } from '@oclif/config';
 import { args, flags } from '@oclif/parser';
 import { IBooleanFlag, IOptionFlag } from '@oclif/parser/lib/flags';
-import { Injector } from '@deepkit/injector';
+import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
 class ArgDefinitions {
@@ -152,7 +152,7 @@ export function isCommand(classType: ClassType<Command>) {
     return !!cli._fetch(classType);
 }
 
-export function buildOclifCommand(name: string, classType: ClassType<Command>, injector: Injector): OclifCommand.Plugin {
+export function buildOclifCommand(name: string, injector: InjectorContext, classType: ClassType<Command>, module: InjectorModule<any>): OclifCommand.Plugin {
     const oclifArgs: args.Input = [];
     const oclifFlags: { [name: string]: IBooleanFlag<any> | IOptionFlag<any> } = {};
     const argDefinitions = cli._fetch(classType);
@@ -213,7 +213,7 @@ export function buildOclifCommand(name: string, classType: ClassType<Command>, i
                     }
 
                     const { flags, args } = this.parse(Clazz);
-                    const instance = injector.get(classType);
+                    const instance = injector.get(classType, module);
                     const methodArgs: any[] = [];
 
                     for (const property of argDefinitions!.args) {

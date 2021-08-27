@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BasicInjector, InjectorContext } from '@deepkit/injector';
+import { InjectorContext } from '@deepkit/injector';
 import {
     rpcActionType,
     RpcConnectionWriter,
@@ -86,10 +86,10 @@ export class RpcKernelWithStopwatch extends RpcKernel {
 
     stopwatch?: Stopwatch;
 
-    createConnection(writer: RpcConnectionWriter, injector?: BasicInjector): RpcKernelBaseConnection {
+    createConnection(writer: RpcConnectionWriter, injector?: InjectorContext): RpcKernelBaseConnection {
         const connection = super.createConnection(writer, injector);
-        if (this.stopwatch) {
-            (connection as RpcKernelConnectionWithStopwatch).setStopwatch(this.stopwatch);
+        if (this.stopwatch && connection instanceof RpcKernelConnectionWithStopwatch) {
+            connection.setStopwatch(this.stopwatch);
         }
         return connection;
     }

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import 'reflect-metadata';
-import { Router, http } from '@deepkit/framework';
+import { http, Router } from '@deepkit/http';
 import { BenchSuite } from '../../bench';
 
 export async function main() {

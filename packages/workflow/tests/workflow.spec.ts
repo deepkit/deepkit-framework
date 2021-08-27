@@ -130,7 +130,7 @@ test('workflow events apply injector', async () => {
         data: string = 'myData';
     }
 
-    @injectable()
+    @injectable
     class Listener {
         constructor(private myService: MyService) {
         }

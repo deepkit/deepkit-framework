@@ -8,7 +8,7 @@ test('simple setup with import and overwrite', () => {
     class Connection {
     }
 
-    @injectable()
+    @injectable
     class HiddenDatabaseService {
         constructor(public connection: Connection) {
         }
@@ -29,15 +29,15 @@ test('simple setup with import and overwrite', () => {
 
     {
         const serviceContainer = new ServiceContainer(myModule);
-        const injector = serviceContainer.getInjectorContext().getInjector(0);
+        const injector = serviceContainer.getRootInjector();
 
         expect(injector.get(Connection)).toBeInstanceOf(Connection);
         expect(injector.get(MyService)).toBeInstanceOf(MyService);
 
-        expect(() => injector.get(HiddenDatabaseService)).toThrow('Could not resolve injector token HiddenDatabaseService');
+        expect(() => injector.get(HiddenDatabaseService)).toThrow('not found');
         expect(injector.get(MyService)).toBeInstanceOf(MyService);
 
-        const databaseModuleInjector = serviceContainer.getInjectorForModuleClass(DatabaseModule);
+        const databaseModuleInjector = serviceContainer.getInjector(DatabaseModule);
         expect(databaseModuleInjector.get(HiddenDatabaseService)).toBeInstanceOf(HiddenDatabaseService);
         expect(databaseModuleInjector.get(Connection)).toBe(injector.get(Connection));
 
@@ -58,7 +58,7 @@ test('simple setup with import and overwrite', () => {
         const serviceContainer = new ServiceContainer(myModuleOverwritten);
         expect(serviceContainer.getInjectorContext().get(Connection)).toBeInstanceOf(OverwrittenConnection);
 
-        const databaseModuleInjector = serviceContainer.getInjectorForModuleClass(DatabaseModule);
+        const databaseModuleInjector = serviceContainer.getInjector(DatabaseModule);
         const hiddenService = databaseModuleInjector.get(HiddenDatabaseService);
         expect(hiddenService.connection).toBeInstanceOf(OverwrittenConnection);
         expect(databaseModuleInjector.get(Connection)).toBeInstanceOf(OverwrittenConnection);
@@ -99,8 +99,8 @@ test('deep', () => {
     expect(injector.get(Connection)).toBeInstanceOf(Connection);
     expect(injector.get(MyService)).toBeInstanceOf(MyService);
 
-    expect(() => injector.get(HiddenDatabaseService)).toThrow('Could not resolve injector token HiddenDatabaseService');
-    expect(() => injector.get(DeepService)).toThrow('Could not resolve injector token DeepService');
+    expect(() => injector.get(HiddenDatabaseService)).toThrow('not found');
+    expect(() => injector.get(DeepService)).toThrow('not found');
     expect(injector.get(MyService)).toBeInstanceOf(MyService);
 });
 
@@ -119,7 +119,7 @@ test('scopes', () => {
     const serviceContainer = new ServiceContainer(myModule);
     const sessionInjector = serviceContainer.getInjectorContext().createChildScope('rpc');
 
-    expect(() => serviceContainer.getInjectorContext().get(SessionHandler)).toThrow('Could not resolve');
+    expect(() => serviceContainer.getInjectorContext().get(SessionHandler)).toThrow('not found');
     expect(sessionInjector.get(SessionHandler)).toBeInstanceOf(SessionHandler);
 
     expect(serviceContainer.getInjectorContext().get(MyService)).toBeInstanceOf(MyService);
@@ -137,7 +137,7 @@ test('for root with exported module', () => {
         exports: [SharedService]
     }, 'shared');
 
-    @injectable()
+    @injectable
     class BaseHandler {
         constructor(private sharedService: SharedService) {
             expect(sharedService).toBeInstanceOf(SharedService);
@@ -171,7 +171,7 @@ test('module with config object', () => {
 
     let bootstrapMainCalledConfig: any;
 
-    @injectable()
+    @injectable
     class ExchangeModuleBootstrap {
         constructor(protected config: ExchangeConfig) {
             bootstrapMainCalledConfig = this.config;
@@ -252,11 +252,12 @@ test('exported module', () => {
 
     class FSModule extends createModule({
         providers: [FSService],
-        imports: [new DatabaseModule],
         exports: [
             DatabaseModule
         ]
-    }) {}
+    }) {
+        imports = [new DatabaseModule]
+    }
 
     {
         const myModule = new AppModule({
@@ -264,11 +265,11 @@ test('exported module', () => {
         });
 
         const serviceContainer = new ServiceContainer(myModule);
-        const rootInjector = serviceContainer.getInjectorContext().getInjector(0);
+        const rootInjector = serviceContainer.getRootInjector();
 
         expect(rootInjector.get(DatabaseConnection)).toBeInstanceOf(DatabaseConnection);
 
-        const databaseModuleInjector = serviceContainer.getInjectorForModuleClass(DatabaseModule);
+        const databaseModuleInjector = serviceContainer.getInjector(DatabaseModule);
         expect(databaseModuleInjector.get(DatabaseConnection)).toBeInstanceOf(DatabaseConnection);
         expect(databaseModuleInjector.get(DatabaseConnection)).toBe(rootInjector.get(DatabaseConnection));
     }

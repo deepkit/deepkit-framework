@@ -9,6 +9,7 @@
  */
 import { ClassType, isClass } from '@deepkit/core';
 import { InjectorToken } from './decorator';
+import { InjectorModule } from './injector';
 
 export interface ProviderBase {
     /**
@@ -77,14 +78,27 @@ export type Provider<T = any> = ClassType | ValueProvider<T> | ClassProvider<T> 
 
 export type ProviderProvide<T = any> = ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>;
 
+interface TagRegistryEntry<T> {
+    tagProvider: TagProvider<T>;
+    module: InjectorModule;
+}
+
+export class ProviderIndex {
+
+}
+
 export class TagRegistry {
     constructor(
-        public tags: TagProvider<any>[] = []
+        public tags: TagRegistryEntry<any>[] = []
     ) {
     }
 
-    resolve<T extends ClassType<Tag<any>>>(tag: T): TagProvider<InstanceType<T>>[] {
-        return this.tags.filter(v => v.tag instanceof tag);
+    register(tagProvider: TagProvider<any>, module: InjectorModule) {
+        return this.tags.push({tagProvider, module});
+    }
+
+    resolve<T extends ClassType<Tag<any>>>(tag: T): TagRegistryEntry<InstanceType<T>>[] {
+        return this.tags.filter(v => v.tagProvider.tag instanceof tag);
     }
 }
 
@@ -155,6 +169,13 @@ export function isFactoryProvider(obj: any): obj is FactoryProvider<any> {
 export function isInjectionProvider(obj: any): obj is Provider<any> {
     return isValueProvider(obj) || isClassProvider(obj) || isExistingProvider(obj) || isFactoryProvider(obj);
 }
+
+export function isTransient(provider: ProviderWithScope): boolean {
+    if (isClass(provider)) return false;
+    if (provider instanceof TagProvider) return false;
+    return provider.transient === true;
+}
+
 
 export function getProviders(
     providers: ProviderWithScope[],

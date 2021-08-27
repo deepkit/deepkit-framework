@@ -31,7 +31,7 @@ import { RpcServerAction } from './action';
 import { RpcKernelSecurity, SessionState } from './security';
 import { RpcActionClient, RpcControllerState } from '../client/action';
 import { RemoteController } from '../client/client';
-import { BasicInjector, Injector, InjectorContext, InjectorModule, MemoryInjector } from '@deepkit/injector';
+import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { Logger, LoggerInterface } from '@deepkit/logger';
 
 export class RpcCompositeMessage {
@@ -308,7 +308,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
         connections: RpcKernelConnections,
         protected controllers: Map<string, {controller: ClassType, module?: InjectorModule}>,
         protected security = new RpcKernelSecurity(),
-        protected injector: BasicInjector,
+        protected injector: InjectorContext,
         protected peerExchange: RpcPeerExchange,
         protected logger: LoggerInterface = new Logger(),
     ) {
@@ -422,32 +422,26 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
     }
 }
 
-export type OnConnectionCallback = (connection: RpcKernelConnection, injector: BasicInjector, logger: LoggerInterface) => void;
+export type OnConnectionCallback = (connection: RpcKernelConnection, injector: InjectorContext, logger: LoggerInterface) => void;
 
 /**
  * The kernel is responsible for parsing the message header, redirecting to peer if necessary, loading the body parser,
  * and encode/send outgoing messages.
  */
 export class RpcKernel {
-    protected controllers = new Map<string, {controller: ClassType, module?: InjectorModule}>();
+    protected controllers = new Map<string, {controller: ClassType, module: InjectorModule}>();
     protected peerExchange = new RpcPeerExchange;
     protected connections = new RpcKernelConnections;
-    protected injector: BasicInjector | InjectorContext;
 
     protected RpcKernelConnection = RpcKernelConnection;
 
     protected onConnectionListeners: OnConnectionCallback[] = [];
 
     constructor(
-        injector?: BasicInjector,
+        public injector: InjectorContext = InjectorContext.forProviders([]),
         protected security = new RpcKernelSecurity(),
         protected logger: LoggerInterface = new Logger(),
     ) {
-        if (injector) {
-            this.injector = injector;
-        } else {
-            this.injector = InjectorContext.forProviders([]);
-        }
     }
 
     public onConnection(callback: OnConnectionCallback) {
@@ -463,38 +457,16 @@ export class RpcKernel {
      * If you created a kernel with custom injector, you probably want to set addAsProvider to false.
      * Adding a provider is rather expensive, so you should prefer to create a kernel with pre-filled  injector.
      */
-    public registerController(id: string | ControllerDefinition<any>, controller: ClassType, addAsProvider: boolean = true, module?: InjectorModule) {
-        if (addAsProvider) {
-            if (this.injector instanceof InjectorContext) {
-                this.injector.contextManager.get(0).providers.push({ provide: controller, scope: 'rpc' });
-            }
-
-            if (this.injector instanceof Injector) {
-                this.injector.addProviders(controller);
-            }
-        }
-
-        this.controllers.set('string' === typeof id ? id : id.path, {controller, module});
+    public registerController(id: string | ControllerDefinition<any>, controller: ClassType, module?: InjectorModule) {
+        // if (!module) module = new InjectorModule([controller], this.injector.rootModule);
+        this.controllers.set('string' === typeof id ? id : id.path, {controller, module: module || this.injector.rootModule});
     }
 
-    createConnection(writer: RpcConnectionWriter, injector?: BasicInjector): RpcKernelBaseConnection {
-        let connection: RpcKernelConnection;
+    createConnection(writer: RpcConnectionWriter, injector?: InjectorContext): RpcKernelBaseConnection {
+        if (!injector) injector = this.injector.createChildScope('rpc');
 
-        if (!injector) {
-            const subInjector = new MemoryInjector([
-                { provide: RpcKernelConnection, useFactory: () => connection },
-                { provide: SessionState, useFactory: () => connection.sessionState },
-            ]);
-
-            let parent = this.injector;
-            if (parent instanceof InjectorContext) {
-                parent = parent.createChildScope('rpc', subInjector);
-            }
-
-            injector = parent;
-        }
-
-        connection = new this.RpcKernelConnection(writer, this.connections, this.controllers, this.security, injector, this.peerExchange, this.logger);
+        const connection = new this.RpcKernelConnection(writer, this.connections, this.controllers, this.security, injector, this.peerExchange, this.logger);
+        injector.set(RpcKernelConnection, connection);
         for (const on of this.onConnectionListeners) on(connection, injector, this.logger);
         return connection;
     }

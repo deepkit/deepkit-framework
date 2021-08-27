@@ -8,7 +8,7 @@ import { t } from '@deepkit/type';
 
 
 test('back controller', async () => {
-    @injectable()
+    @injectable
     class Controller {
         constructor(protected connection: RpcKernelConnection) {
         }

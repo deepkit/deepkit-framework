@@ -14,7 +14,7 @@ import { AppModule } from '@deepkit/app';
 import { injectable } from '@deepkit/injector';
 import { DeepkitFile } from '@deepkit/framework-shared';
 
-@injectable()
+@injectable
 export class FsModuleBootstrap {
     constructor(database: Database<DatabaseAdapter>) {
         database.registerEntity(DeepkitFile);

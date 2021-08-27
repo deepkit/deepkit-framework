@@ -28,19 +28,19 @@ import { IncomingMessage } from 'http';
 import querystring from 'querystring';
 import { httpClass } from './decorator';
 import { HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters } from './model';
-import { BasicInjector, injectable, InjectOptions, TagRegistry } from '@deepkit/injector';
+import { injectable, InjectOptions, InjectorContext, TagRegistry } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { HttpControllers } from './controllers';
 import { AppModule, MiddlewareRegistry, MiddlewareRegistryEntry } from '@deepkit/app';
 import { HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware';
 
-export type RouteParameterResolverForInjector = ((injector: BasicInjector) => any[] | Promise<any[]>);
+export type RouteParameterResolverForInjector = ((injector: InjectorContext) => any[] | Promise<any[]>);
 
 interface ResolvedController {
     parameters: RouteParameterResolverForInjector;
     routeConfig: RouteConfig;
     uploadedFiles: { [name: string]: UploadedFile };
-    middlewares?: (injector: BasicInjector) => { fn: HttpMiddlewareFn, timeout: number }[];
+    middlewares?: (injector: InjectorContext) => { fn: HttpMiddlewareFn, timeout: number }[];
 }
 
 @entity.name('@deepkit/UploadedFile')
@@ -406,7 +406,7 @@ function filterMiddlewaresForRoute(middlewareRawConfigs: MiddlewareRegistryEntry
     return middlewareConfigs;
 }
 
-@injectable()
+@injectable
 export class Router {
     protected fn?: (request: HttpRequest) => ResolvedController | undefined;
     protected resolveFn?: (name: string, parameters: { [name: string]: any }) => string;
@@ -530,7 +530,7 @@ export class Router {
                 let injector = '_injector';
                 if (routeConfig.module) {
                     const moduleVar = compiler.reserveVariable('module', routeConfig.module);
-                    injector = `_injector.getInjectorForModule(${moduleVar})`
+                    injector = `_injector.getInjectorForModule(${moduleVar})`;
                 }
 
                 if (resolver) {
@@ -594,7 +594,7 @@ export class Router {
                 let injector = '_injector';
                 if (middlewareConfig.module) {
                     const moduleVar = compiler.reserveVariable('module', middlewareConfig.module);
-                    injector = `_injector.getInjectorForModule(${moduleVar})`
+                    injector = `_injector.getInjectorForModule(${moduleVar})`;
                 }
 
                 for (const middleware of middlewareConfig.config.middlewares) {
@@ -730,7 +730,7 @@ export class Router {
         }
     }
 
-    protected build(): any {
+    protected build(): (request: HttpRequest) => ResolvedController | undefined {
         const compiler = new CompilerContext;
         compiler.context.set('ValidationFailed', ValidationFailed);
         compiler.context.set('qs', require('qs'));
@@ -782,7 +782,7 @@ export class Router {
             this.fn = this.build();
         }
 
-        return this.fn!(request);
+        return this.fn(request);
     }
 
     public resolve(method: string, url: string): ResolvedController | undefined {

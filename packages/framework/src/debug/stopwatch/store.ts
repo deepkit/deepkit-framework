@@ -14,7 +14,7 @@ import { DebugBroker } from '../broker';
 class Config extends frameworkConfig.slice('varPath', 'debugStorePath') {
 }
 
-@injectable()
+@injectable
 export class FileStopwatchStore extends StopwatchStore {
     protected lastSync?: any;
     protected syncMutex = new Mutex;

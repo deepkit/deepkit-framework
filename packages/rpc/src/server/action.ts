@@ -52,7 +52,7 @@ import {
 import { rpcEncodeError, RpcMessage } from '../protocol';
 import { RpcMessageBuilder } from './kernel';
 import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security';
-import { BasicInjector, InjectorModule } from '@deepkit/injector';
+import { InjectorContext, InjectorModule } from '@deepkit/injector';
 
 export type ActionTypes = {
     parameters: PropertySchema[],
@@ -97,7 +97,7 @@ export class RpcServerAction {
 
     constructor(
         protected controllers: Map<string, {controller: ClassType, module?: InjectorModule}>,
-        protected injector: BasicInjector,
+        protected injector: InjectorContext,
         protected security: RpcKernelSecurity,
         protected sessionState: SessionState,
     ) {
@@ -306,7 +306,8 @@ export class RpcServerAction {
         const types = await this.loadTypes(body.controller, body.method);
         const value = message.parseBody(types.parameterSchema);
 
-        const controller = classType.module ? this.injector.getInjectorForModule(classType.module).get(classType.controller) : this.injector.get(classType.controller);
+        const controller = this.injector.get(classType.controller, classType.module);
+        console.log('controller', controller);
         if (!controller) {
             response.error(new Error(`No instance of ${getClassName(classType.controller)} found.`));
         }

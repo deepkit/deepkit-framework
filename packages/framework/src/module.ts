@@ -20,7 +20,7 @@ import { DebugDIController } from './cli/debug-di';
 import { ServerStartController } from './cli/server-start';
 import { DebugController } from './debug/debug.controller';
 import { registerDebugHttpController } from './debug/http-debug.controller';
-import { HttpLogger, HttpModule, serveStaticListener } from '@deepkit/http';
+import { HttpLogger, HttpModule, HttpRequest, serveStaticListener } from '@deepkit/http';
 import { InjectorContext, injectorReference, ProviderWithScope, TagProvider } from '@deepkit/injector';
 import { frameworkConfig } from './module.config';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
@@ -33,13 +33,13 @@ import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
 import { FileStopwatchStore } from './debug/stopwatch/store';
 import { DebugDebugFramesCommand } from './cli/debug-debug-frames';
-import { rpcClass, RpcKernelSecurity } from '@deepkit/rpc';
+import { ConnectionWriter, rpcClass, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
 import { AppConfigController } from './cli/app-config';
 import { Zone } from './zone';
 import { DebugBroker, DebugBrokerListener } from './debug/broker';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
 import { AppModule, createModule } from '@deepkit/app';
-import { RpcControllers } from './rpc';
+import { RpcControllers, RpcInjectorContext } from './rpc';
 
 export class FrameworkModule extends createModule({
     config: frameworkConfig,
@@ -54,8 +54,16 @@ export class FrameworkModule extends createModule({
         MigrationProvider,
         DebugController,
         { provide: DatabaseRegistry, deps: [InjectorContext], useFactory: (ic) => new DatabaseRegistry(ic) },
-        { provide: LiveDatabase, scope: 'rpc' },
+
+        //move to HttpModule?
         { provide: SessionHandler, scope: 'http' },
+
+        { provide: LiveDatabase, scope: 'rpc' },
+        { provide: HttpRequest, scope: 'rpc' },
+        { provide: RpcInjectorContext, scope: 'rpc' },
+        { provide: SessionState, scope: 'rpc' },
+        { provide: RpcKernelConnection, scope: 'rpc' },
+        { provide: ConnectionWriter, scope: 'rpc' },
     ],
     workflows: [
         // rpcWorkflow,

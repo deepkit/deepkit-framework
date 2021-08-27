@@ -225,8 +225,9 @@ export class EventDispatcher {
                 `);
             } else if (isEventListenerContainerEntryService(listener)) {
                 const classTypeVar = compiler.reserveVariable('classType', listener.classType);
+                const moduleVar = compiler.reserveVariable('module', listener.module);
                 lines.push(`
-                    await scopedContext.get(${classTypeVar}).${listener.methodName}(event);
+                    await scopedContext.get(${classTypeVar}, ${moduleVar}).${listener.methodName}(event);
                 `);
             }
         }

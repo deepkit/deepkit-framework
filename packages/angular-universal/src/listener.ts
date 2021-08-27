@@ -21,7 +21,7 @@ import domino from 'domino';
 (global as any).window = global;
 Object.assign(global, domino.createWindow());
 
-@injectable()
+@injectable
 export class AngularUniversalListener {
     protected serverModule: any;
     protected renderModule: any;

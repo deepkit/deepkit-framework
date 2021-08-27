@@ -256,7 +256,7 @@ test('wrong arguments', async () => {
 });
 
 test('di', async () => {
-    @injectable()
+    @injectable
     class Controller {
         constructor(protected connection: RpcKernelConnection, protected sessionState: SessionState) {
         }
@@ -283,7 +283,7 @@ test('di', async () => {
 });
 
 test('connect disconnect', async () => {
-    @injectable()
+    @injectable
     class Controller {
         constructor(protected connection: RpcKernelConnection) {
 
@@ -338,7 +338,7 @@ test('types', async () => {
 
     }
 
-    @injectable()
+    @injectable
     class Controller {
         @rpc.action()
         @t.type({ total: t.number, items: t.array(Model) })

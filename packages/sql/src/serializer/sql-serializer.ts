@@ -109,7 +109,7 @@ sqlSerializer.toClass.prepend('class', (property: PropertySchema, state: Compile
 
     if (property.isReference) {
         const primary = classSchema.getPrimaryField();
-        state.addCodeForSetter(getDataConverterJS(state.setter, state.accessor, primary, state.serializerCompilers, state.rootContext, state.jitStack));
+        state.addCodeForSetter(getDataConverterJS(state.setter, state.accessor, primary, state.serializerCompilers, state.compilerContext, state.jitStack));
         state.forceEnd();
     }
 
@@ -123,15 +123,15 @@ sqlSerializer.fromClass.prepend('class', (property: PropertySchema, state: Compi
 
     if (property.isReference) {
         const classType = state.setVariable('classType', property.resolveClassType);
-        state.rootContext.set('isObject', isObject);
+        state.compilerContext.context.set('isObject', isObject);
         const primary = classSchema.getPrimaryField();
 
         state.addCodeForSetter(`
             if (isObject(${state.accessor})) {
-                ${getDataConverterJS(state.setter, `${state.accessor}.${primary.name}`, primary, state.serializerCompilers, state.rootContext, state.jitStack)}
+                ${getDataConverterJS(state.setter, `${state.accessor}.${primary.name}`, primary, state.serializerCompilers, state.compilerContext, state.jitStack)}
             } else {
                 //we treat the input as if the user gave the primary key directly
-                ${getDataConverterJS(state.setter, `${state.accessor}`, primary, state.serializerCompilers, state.rootContext, state.jitStack)}
+                ${getDataConverterJS(state.setter, `${state.accessor}`, primary, state.serializerCompilers, state.compilerContext, state.jitStack)}
             }
             `
         );
@@ -160,7 +160,7 @@ sqlSerializer.toClass.prepend('class', (property: PropertySchema, state: Compile
 
     if (property.isReference) {
         const primary = classSchema.getPrimaryField();
-        state.addCodeForSetter(getDataConverterJS(state.setter, state.accessor, primary, state.serializerCompilers, state.rootContext, state.jitStack));
+        state.addCodeForSetter(getDataConverterJS(state.setter, state.accessor, primary, state.serializerCompilers, state.compilerContext, state.jitStack));
         state.forceEnd();
     }
 

@@ -350,7 +350,7 @@ export interface HttpResultFormatterContext {
     route?: RouteConfig;
 }
 
-@injectable()
+@injectable
 export class HttpResultFormatter {
     protected jsonContentType: string = 'application/json; charset=utf-8';
     protected htmlContentType: string = 'text/html; charset=utf-8';
@@ -452,7 +452,7 @@ export class HttpResultFormatter {
     }
 }
 
-@injectable()
+@injectable
 export class HttpListener {
     constructor(
         protected router: Router,
@@ -591,7 +591,7 @@ export class HttpListener {
         if (event.sent) return;
         if (event.hasNext()) return;
 
-        const injector = event.route.action.module ? event.injectorContext.getInjectorForModule(event.route.action.module) : event.injectorContext;
+        const injector = event.route.action.module ? event.injectorContext.getInjector(event.route.action.module) : event.injectorContext;
         const controllerInstance = injector.get(event.route.action.controller);
 
         const start = Date.now();
@@ -601,7 +601,7 @@ export class HttpListener {
             let result = await method.apply(controllerInstance, event.parameters);
 
             if (isElementStruct(result)) {
-                const html = await getTemplateRender()(event.injectorContext, result, this.stopwatch ? this.stopwatch : undefined);
+                const html = await getTemplateRender()(event.injectorContext.getRootInjector(), result, this.stopwatch ? this.stopwatch : undefined);
                 result = new HtmlResponse(html, 200).header('Content-Type', 'text/html; charset=utf-8');
             }
             if (frame) frame.end();

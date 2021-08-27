@@ -107,7 +107,7 @@ test('onAuthenticate controllers', async () => {
         }
     }
 
-    @injectable()
+    @injectable
     class Controller {
         constructor(protected connection: RpcKernelConnection) {
         }

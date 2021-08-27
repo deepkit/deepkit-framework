@@ -11,7 +11,7 @@ test('injector basics', () => {
     class Connection {
     }
 
-    @injectable()
+    @injectable
     class MyServer {
         constructor(private connection: Connection) {
             expect(connection).toBeInstanceOf(Connection);
@@ -30,7 +30,7 @@ test('missing dep', () => {
     class Missing {
     }
 
-    @injectable()
+    @injectable
     class MyServer {
         constructor(private connection: Connection, private missing: Missing) {
             expect(connection).toBeInstanceOf(Connection);
@@ -44,7 +44,7 @@ test('wrong dep 1', () => {
     class Connection {
     }
 
-    @injectable()
+    @injectable
     class MyServer {
         constructor(private connection: Connection, private missing: any) {
             expect(connection).toBeInstanceOf(Connection);
@@ -55,7 +55,7 @@ test('wrong dep 1', () => {
 });
 
 test('wrong dep 2', () => {
-    @injectable()
+    @injectable
     class MyServer {
         constructor(private missing: any) {
         }
@@ -65,7 +65,7 @@ test('wrong dep 2', () => {
 });
 
 test('wrong dep 3', () => {
-    @injectable()
+    @injectable
     class MyServer {
         @inject() private missing: any;
     }
@@ -74,7 +74,7 @@ test('wrong dep 3', () => {
 });
 
 test('injector key', () => {
-    @injectable()
+    @injectable
     class MyServer {
         constructor(@inject('foo') private foo: string) {
             expect(foo).toBe('bar');
@@ -91,7 +91,7 @@ test('injector transient', () => {
     class Connection {
     }
 
-    @injectable()
+    @injectable
     class MyServer {
         constructor(public connection: Connection) {
             expect(connection).toBeInstanceOf(Connection);
@@ -123,7 +123,7 @@ test('injector property injection', () => {
     class Connection {
     }
 
-    @injectable()
+    @injectable
     class MyServer {
         @inject()
         public connection!: Connection;
@@ -145,7 +145,7 @@ test('injector overwrite token', () => {
     class Connection2 extends Connection {
     }
 
-    @injectable()
+    @injectable
     class MyServer {
         constructor(@inject(Connection2) private connection: Connection) {
             expect(connection).toBeInstanceOf(Connection2);
@@ -163,7 +163,7 @@ test('injector unmet dependency', () => {
     class Connection {
     }
 
-    @injectable()
+    @injectable
     class MyServer {
         constructor(private connection?: Connection) {
             expect(connection).toBeUndefined();
@@ -179,7 +179,7 @@ test('injector optional unmet dependency', () => {
     class Connection {
     }
 
-    @injectable()
+    @injectable
     class MyServer {
         constructor(@t.optional private connection?: Connection) {
             expect(connection).toBeUndefined();
@@ -196,7 +196,7 @@ test('injector optional dependency', () => {
     class Connection {
     }
 
-    @injectable()
+    @injectable
     class MyServer {
         constructor(@inject().optional private connection?: Connection) {
             expect(connection).toBeUndefined();
@@ -214,7 +214,7 @@ test('injector via t.optional', () => {
     class Connection {
     }
 
-    @injectable()
+    @injectable
     class MyServer {
         constructor(@t.optional private connection?: Connection) {
             expect(connection).toBeUndefined();
@@ -233,7 +233,7 @@ test('injector via t.type', () => {
     class Connection {
     }
 
-    @injectable()
+    @injectable
     class MyServer {
         constructor(@t.type(Connection) public connection: ConnectionInterface) {
         }
@@ -251,7 +251,7 @@ test('injector via t.type string', () => {
     class Connection {
     }
 
-    @injectable()
+    @injectable
     class MyServer {
         constructor(@t.type('connection') public connection: ConnectionInterface) {
         }
@@ -284,7 +284,7 @@ test('injector overwrite provider', () => {
     class Connection2 extends Connection {
     }
 
-    @injectable()
+    @injectable
     class MyServer {
         constructor(private connection: Connection) {
             expect(connection).toBeInstanceOf(Connection2);
@@ -301,7 +301,7 @@ test('injector overwrite provider', () => {
 });
 
 test('injector direct circular dependency', () => {
-    @injectable()
+    @injectable
     class MyServer {
         constructor(private myServer: MyServer) {
         }
@@ -315,7 +315,7 @@ test('injector direct circular dependency', () => {
 
 
 test('injector circular dependency', () => {
-    @injectable()
+    @injectable
     class Connection {
         constructor(@inject(() => MyServer) myServer: any) {
             expect(myServer).not.toBeUndefined();
@@ -323,7 +323,7 @@ test('injector circular dependency', () => {
         }
     }
 
-    @injectable()
+    @injectable
     class MyServer {
         constructor(connection: Connection) {
             expect(connection).not.toBeUndefined();
@@ -363,19 +363,19 @@ test('injector config', () => {
     class ServiceConfig extends moduleConfig.slice('debug') {
     }
 
-    @injectable()
+    @injectable
     class MyService {
         constructor(public config: ServiceConfig) {
         }
     }
 
-    @injectable()
+    @injectable
     class MyService2 {
         constructor(@inject(moduleConfig) public config: typeof moduleConfig.type) {
         }
     }
 
-    @injectable()
+    @injectable
     class MyService3 {
         constructor(@inject(moduleConfig.all()) public config: typeof moduleConfig.type) {
         }
@@ -384,14 +384,14 @@ test('injector config', () => {
     class Slice extends moduleConfig.slice('debug') {
     }
 
-    @injectable()
+    @injectable
     class MyService4 {
         constructor(public config: Slice) {
         }
     }
 
     {
-        const i1 = new Injector(new InjectorModule([MyService, MyService2, MyService3, MyService4]));
+        const i1 = Injector.fromModule(new InjectorModule([MyService, MyService2, MyService3, MyService4]));
         i1.module.configure({debug: false});
         expect(i1.get(MyService).config.debug).toBe(false);
         expect(i1.get(MyService2).config.debug).toBe(false);
@@ -428,7 +428,7 @@ test('setup provider', () => {
         module.setupProvider(MyService).addTransporter('a');
         module.setupProvider(MyService).addTransporter('b');
         expect(module.setupProviderRegistry.get(MyService).length).toBe(2);
-        const i1 = new Injector(module);
+        const i1 = Injector.fromModule(module);
         expect(i1.get(MyService).transporter).toEqual(['a', 'b']);
     }
 
@@ -437,7 +437,7 @@ test('setup provider', () => {
         module.setupProvider(MyService).transporter = ['a'];
         module.setupProvider(MyService).transporter = ['a', 'b', 'c'];
         expect(module.setupProviderRegistry.get(MyService).length).toBe(2);
-        const i1 = new Injector(module);
+        const i1 = Injector.fromModule(module);
         expect(i1.get(MyService).transporter).toEqual(['a', 'b', 'c']);
     }
 });
@@ -452,7 +452,7 @@ test('constructor one with @inject', () => {
     class Stopwatch {
     }
 
-    @injectable()
+    @injectable
     class MyService {
         constructor(
             protected httpKernel: HttpKernel,
@@ -477,7 +477,7 @@ test('constructor one with @inject', () => {
         expect((methods[2].data['deepkit/inject'] as InjectOptions).optional).toBe(true);
     }
 
-    @injectable()
+    @injectable
     class Service {
         constructor(public stopwatch: Stopwatch, @inject(Logger) public logger: any) {}
     }

@@ -9,7 +9,7 @@
  */
 
 import 'reflect-metadata';
-import { FrameworkModule, } from '@deepkit/framework';
+import { FrameworkModule } from '@deepkit/framework';
 import { BenchSuite } from '../bench';
 import { Socket } from 'net';
 import { AppModule, ServiceContainer } from '@deepkit/app';
@@ -30,12 +30,12 @@ export async function main() {
     const app = new AppModule({
         controllers: [Controller],
         imports: [
-            FrameworkModule.configure({ httpLog: false })
+            new FrameworkModule({ httpLog: false })
         ]
     });
 
     const serviceContainer = new ServiceContainer(app);
-    const httpKernel = serviceContainer.getInjectorFor(app).get(HttpKernel);
+    const httpKernel = serviceContainer.getRootInjector().get(HttpKernel);
 
     // const logger = new Logger();
     //

@@ -56,7 +56,7 @@ class ApiController {
     }
 }
 
-@injectable()
+@injectable
 class AuthListener {
     constructor(protected logger: Logger) {}
 

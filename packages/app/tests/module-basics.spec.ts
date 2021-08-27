@@ -62,7 +62,7 @@ test('constructor argument hole', () => {
     class Stopwatch {
     }
 
-    @injectable()
+    @injectable
     class Service {
         constructor(public stopwatch: Stopwatch, @inject(Logger) public logger: any) {
         }
@@ -85,7 +85,7 @@ test('nested config', () => {
         }
     });
 
-    @injectable()
+    @injectable
     class Service {
         constructor(
             @inject(moduleAConfig.token('nested')) public settings: typeof moduleAConfig.config['nested'],
@@ -115,11 +115,11 @@ test('nested config', () => {
     const serviceContainer = new ServiceContainer(new RootApp());
     serviceContainer.process();
     expect(moduleAProcessCalled).toBe(1);
-    expect(serviceContainer.getModuleForModuleClass(ModuleA).getConfig()).toEqual({
+    expect(serviceContainer.getModule(ModuleA).getConfig()).toEqual({
         param1: 'a', nested: { param2: 'b' }
     });
-    expect(serviceContainer.getInjectorForModuleClass(ModuleA).get(Service).param1).toEqual('a');
+    expect(serviceContainer.getInjector(ModuleA).get(Service).param1).toEqual('a');
 
-    const nested = serviceContainer.getInjectorForModuleClass(ModuleA).get(Service).settings;
+    const nested = serviceContainer.getInjector(ModuleA).get(Service).settings;
     expect(nested).toEqual({ param2: 'b' });
 });
