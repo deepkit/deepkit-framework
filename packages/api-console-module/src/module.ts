@@ -20,20 +20,20 @@ export class ApiConsoleModule extends createModule({
 
         if (!this.config.listen) {
             @rpc.controller(ApiConsoleApi)
-            class NamedController extends ApiConsoleController {
+            class NamedApiConsoleController extends ApiConsoleController {
             }
 
-            this.addController(NamedController);
+            this.addController(NamedApiConsoleController);
             return;
         }
 
         const controllerName = '.deepkit/api-console/' + this.config.path;
 
         @rpc.controller(controllerName)
-        class NamedController extends ApiConsoleController {
+        class NamedApiConsoleController extends ApiConsoleController {
         }
 
-        this.addController(NamedController);
+        this.addController(NamedApiConsoleController);
 
         const localPath = findParentPath('node_modules/@deepkit/api-console-gui/dist/api-console-gui', __dirname);
         if (!localPath) throw new Error('node_modules/@deepkit/api-console-gui not installed in ' + __dirname);

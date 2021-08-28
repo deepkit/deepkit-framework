@@ -528,10 +528,7 @@ export class Router {
                 }
 
                 let injector = '_injector';
-                if (routeConfig.module) {
-                    const moduleVar = compiler.reserveVariable('module', routeConfig.module);
-                    injector = `_injector.getInjectorForModule(${moduleVar})`;
-                }
+                const moduleVar = routeConfig.module ? ', ' + compiler.reserveConst(routeConfig.module, 'module') : '';
 
                 if (resolver) {
                     const resolverProvideTokenVar = compiler.reserveVariable('resolverProvideToken', resolver);
@@ -540,7 +537,7 @@ export class Router {
 
                     setParameters.push(`
                     //resolver ${getClassName(resolver)} for ${parameter.getName()}
-                    ${instance} = ${injector}.get(${resolverProvideTokenVar});
+                    ${instance} = ${injector}.get(${resolverProvideTokenVar}${moduleVar});
                     if (!${parameterResolverFoundVar}) {
                         ${parameterResolverFoundVar} = true;
                         parameters.${parameter.property.name} = await ${instance}.resolve({
@@ -591,16 +588,12 @@ export class Router {
         if (middlewareConfigs.length) {
             const middlewareItems: string[] = [];
             for (const middlewareConfig of middlewareConfigs) {
-                let injector = '_injector';
-                if (middlewareConfig.module) {
-                    const moduleVar = compiler.reserveVariable('module', middlewareConfig.module);
-                    injector = `_injector.getInjectorForModule(${moduleVar})`;
-                }
+                const moduleVar = middlewareConfig.module ? ', ' + compiler.reserveVariable('module', middlewareConfig.module): '';
 
                 for (const middleware of middlewareConfig.config.middlewares) {
                     if (isClass(middleware)) {
                         const classVar = compiler.reserveVariable('middlewareClassType', middleware);
-                        middlewareItems.push(`{fn: function() {return ${injector}.get(${classVar}).execute(...arguments) }, timeout: ${middlewareConfig.config.timeout}}`);
+                        middlewareItems.push(`{fn: function() {return _injector.get(${classVar}${moduleVar}).execute(...arguments) }, timeout: ${middlewareConfig.config.timeout}}`);
                     } else {
                         middlewareItems.push(`{fn: ${compiler.reserveVariable('middlewareFn', middleware)}, timeout: ${middlewareConfig.config.timeout}}`);
                     }

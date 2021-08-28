@@ -307,7 +307,6 @@ export class RpcServerAction {
         const value = message.parseBody(types.parameterSchema);
 
         const controller = this.injector.get(classType.controller, classType.module);
-        console.log('controller', controller);
         if (!controller) {
             response.error(new Error(`No instance of ${getClassName(classType.controller)} found.`));
         }

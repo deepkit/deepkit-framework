@@ -121,7 +121,7 @@ export function createTestingApp<O extends RootModuleDefinition>(options: O, ent
 
     if (entities.length) {
         module.addProvider({ provide: Database, useValue: new Database(new MemoryDatabaseAdapter, entities) });
-        module.setupProvider(DatabaseRegistry).addDatabase(Database, {}, module);
+        module.setupGlobalProvider(DatabaseRegistry).addDatabase(Database, {}, module);
     }
 
     if (setup) module.setup(setup as any);

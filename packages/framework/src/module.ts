@@ -33,7 +33,7 @@ import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
 import { FileStopwatchStore } from './debug/stopwatch/store';
 import { DebugDebugFramesCommand } from './cli/debug-debug-frames';
-import { ConnectionWriter, rpcClass, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
+import { ConnectionWriter, rpcClass, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
 import { AppConfigController } from './cli/app-config';
 import { Zone } from './zone';
 import { DebugBroker, DebugBrokerListener } from './debug/broker';
@@ -62,6 +62,7 @@ export class FrameworkModule extends createModule({
         { provide: HttpRequest, scope: 'rpc' },
         { provide: RpcInjectorContext, scope: 'rpc' },
         { provide: SessionState, scope: 'rpc' },
+        { provide: RpcKernelBaseConnection, scope: 'rpc' },
         { provide: RpcKernelConnection, scope: 'rpc' },
         { provide: ConnectionWriter, scope: 'rpc' },
     ],
@@ -147,7 +148,6 @@ export class FrameworkModule extends createModule({
 
             this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
         }
-
     }
 
     postProcess() {
@@ -184,6 +184,9 @@ export class FrameworkModule extends createModule({
             if (!rpcConfig) continue;
 
             if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'rpc' });
+            if (this.rpcControllers.controllers.has(rpcConfig.getPath())) {
+                throw new Error(`Already an RPC controller with the name ${rpcConfig.getPath()} registered.`);
+            }
             this.rpcControllers.controllers.set(rpcConfig.getPath(), { controller, module });
         }
     }

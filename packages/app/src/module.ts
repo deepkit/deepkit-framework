@@ -10,21 +10,20 @@
 
 import { ExtractClassDefinition, jsonSerializer, PlainSchemaProps, t } from '@deepkit/type';
 import { ConfigDefinition, InjectorModule, InjectorToken, ProviderWithScope } from '@deepkit/injector';
-import { ClassType, CustomError, getClassName } from '@deepkit/core';
+import { ClassType, CustomError, getClassName, isClass } from '@deepkit/core';
 import { EventListener } from '@deepkit/event';
 import type { WorkflowDefinition } from '@deepkit/workflow';
-import { isProvided } from './service-container';
 
 export type DefaultObject<T> = T extends undefined ? {} : T;
 export type ExtractConfigOfDefinition<T> = T extends ConfigDefinition<infer C> ? C : {};
-// export type ExtractPartialConfigOfDefinition<T> = T extends ConfigDefinition<infer C> ? C : {};
-// export type ModuleConfigOfOptions<O extends ModuleOptions> = ExtractPartialConfigOfDefinition<DefaultObject<O['config']>>;
 
 export interface MiddlewareConfig {
     getClassTypes(): ClassType[];
 }
 
 export type MiddlewareFactory = () => MiddlewareConfig;
+
+export type ExportType = ClassType | InjectorToken<any> | string | AppModule<any>;
 
 export interface ModuleDefinition {
     /**
@@ -35,7 +34,7 @@ export interface ModuleDefinition {
     /**
      * Export providers (its token `provide` value) or modules you imported first.
      */
-    exports?: (ClassType | InjectorToken<any> | string | AppModule<any>)[];
+    exports?: ExportType[];
 
     /**
      * Module bootstrap class. This class is instantiated on bootstrap and can
@@ -182,10 +181,16 @@ export function createModule<T extends CreateModuleDefinition>(options: T, name:
     } as any;
 }
 
+export type ListenerType = EventListener<any> | ClassType;
+
 export class AppModule<T extends RootModuleDefinition, C extends ExtractConfigOfDefinition<T['config']> = any> extends InjectorModule<C> {
     public setupConfigs: ((module: AppModule<any>, config: any) => void)[] = [];
 
     public imports: AppModule<any>[] = [];
+    public controllers: ClassType[] = [];
+    public workflows: WorkflowDefinition<any>[] = [];
+    public listeners: ListenerType[] = [];
+    public middlewares: MiddlewareFactory[] = [];
 
     constructor(
         public options: T,
@@ -194,15 +199,18 @@ export class AppModule<T extends RootModuleDefinition, C extends ExtractConfigOf
         public id: number = moduleId++,
     ) {
         super();
-        if (this.options.imports) {
-            for (const m of this.options.imports) this.addImport(m);
-        }
+        if (this.options.imports) for (const m of this.options.imports) this.addImport(m);
         if (this.options.providers) this.providers.push(...this.options.providers);
         if (this.options.exports) this.exports.push(...this.options.exports);
+        if (this.options.controllers) this.controllers.push(...this.options.controllers);
+        if (this.options.workflows) this.workflows.push(...this.options.workflows);
+        if (this.options.listeners) this.listeners.push(...this.options.listeners);
+        if (this.options.middlewares) this.middlewares.push(...this.options.middlewares);
 
         if ('forRoot' in this.options) this.forRoot();
 
         if (this.options.config) {
+            this.configDefinition = this.options.config;
             //apply defaults
             const defaults: any = jsonSerializer.for(this.options.config.schema).deserialize({});
             //we iterate over so we have the name available on the object, even if its undefined
@@ -299,39 +307,42 @@ export class AppModule<T extends RootModuleDefinition, C extends ExtractConfigOf
         return this;
     }
 
-    addController(...controller: ClassType[]) {
-        this.assertInjectorNotBuilt();
-        if (!this.options.controllers) this.options.controllers = [];
-
-        this.options.controllers.push(...controller);
+    getListeners(): ListenerType[] {
+        return this.listeners;
     }
 
-    isProvided(classType: ClassType): boolean {
-        return isProvided(this.getProviders(), classType);
+    getWorkflows(): WorkflowDefinition<any>[] {
+        return this.workflows;
     }
 
-    addProvider(...provider: ProviderWithScope[]): this {
+    getMiddlewares(): MiddlewareFactory[] {
+        return this.middlewares;
+    }
+
+    getControllers(): ClassType[] {
+        return this.controllers;
+    }
+
+    addController(...controller: ClassType[]): this {
         this.assertInjectorNotBuilt();
-        this.providers.push(...provider);
+        this.controllers.push(...controller);
         return this;
-    }
-
-    getProviders(): ProviderWithScope[] {
-        return this.providers;
     }
 
     addListener(...listener: (EventListener<any> | ClassType)[]): this {
         this.assertInjectorNotBuilt();
-        if (!this.options.listeners) this.options.listeners = [];
 
-        this.options.listeners.push(...listener);
+        for (const l of listener) {
+            if (!isClass(l)) continue;
+            if (this.isProvided(l)) continue;
+            this.addProvider(l);
+        }
+        this.listeners.push(...listener);
         return this;
     }
 
     addMiddleware(...middlewares: MiddlewareFactory[]): this {
-        if (!this.options.middlewares) this.options.middlewares = [];
-
-        this.options.middlewares.push(...middlewares);
+        this.middlewares.push(...middlewares);
         return this;
     }
 

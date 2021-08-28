@@ -27,6 +27,6 @@ export function createHttpKernel(
         middlewares,
     });
 
-    const app = new App({imports: [module]});
+    const app = App.fromModule(module);
     return app.get(HttpKernel);
 }

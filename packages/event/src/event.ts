@@ -102,8 +102,8 @@ export const eventDispatcher = createPropertyDecoratorContext(
 );
 
 
-export type EventListenerContainerEntryCallback = { order: number, fn: EventListenerCallback<any> };
-export type EventListenerContainerEntryService = { module: InjectorModule<any>, order: number, classType: ClassType, methodName: string };
+export type EventListenerContainerEntryCallback = { order: number, fn: EventListenerCallback<any>, module?: InjectorModule, };
+export type EventListenerContainerEntryService = { module: InjectorModule, order: number, classType: ClassType, methodName: string };
 export type EventListenerContainerEntry = EventListenerContainerEntryCallback | EventListenerContainerEntryService;
 
 export function isEventListenerContainerEntryCallback(obj: any): obj is EventListenerContainerEntryCallback {

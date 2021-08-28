@@ -11,7 +11,7 @@
 import { ClassType, getClassName, isClass } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
 import { AppModule, ConfigurationInvalidError, MiddlewareConfig, ModuleDefinition } from './module';
-import { Injector, InjectorContext, InjectorModule, ProviderWithScope, TagProvider } from '@deepkit/injector';
+import { Injector, InjectorContext, InjectorModule, isProvided, ProviderWithScope } from '@deepkit/injector';
 import { cli } from './command';
 import { WorkflowDefinition } from '@deepkit/workflow';
 import { ClassSchema, jsonSerializer, validate } from '@deepkit/type';
@@ -41,10 +41,6 @@ export class WorkflowRegistry {
     public add(workflow: WorkflowDefinition<any>) {
         this.workflows.push(workflow);
     }
-}
-
-export function isProvided(providers: ProviderWithScope[], token: any): boolean {
-    return providers.find(v => !(v instanceof TagProvider) ? token === (isClass(v) ? v : v.provide) : false) !== undefined;
 }
 
 export interface ConfigLoader {
@@ -204,17 +200,15 @@ export class ServiceContainer {
         if (module.injector) throw new Error(`Module ${getClassName(module)}.${module.name} was already imported. Can not re-use module instances.`);
 
         const providers = module.getProviders();
-        const controllers = module.options.controllers ? module.options.controllers.slice(0) : [];
-        const listeners = module.options.listeners ? module.options.listeners.slice(0) : [];
-        const middlewares = module.options.middlewares ? module.options.middlewares.slice(0) : [];
+        const controllers = module.getControllers();
+        const listeners = module.getListeners();
+        const middlewares = module.getMiddlewares();
 
         //we add the module to its own providers so it can depend on its module providers.
         //when we would add it to root it would have no access to its internal providers.
         if (module.options.bootstrap) providers.push(module.options.bootstrap);
 
-        if (module.options.workflows) {
-            for (const w of module.options.workflows) this.workflowRegistry.add(w);
-        }
+        for (const w of module.getWorkflows()) this.workflowRegistry.add(w);
 
         for (const middleware of middlewares) {
             const config = middleware();
@@ -255,10 +249,9 @@ export class ServiceContainer {
     protected handleControllers(module: AppModule<any>, controllers: ClassType[]) {
         for (const controller of controllers) {
             const cliConfig = cli._fetch(controller);
-            if (cliConfig) {
-                if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'cli' });
-                this.cliControllers.controllers.set(cliConfig.name, { controller, module });
-            }
+            if (!cliConfig) continue;
+            if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'cli' });
+            this.cliControllers.controllers.set(cliConfig.name, { controller, module });
         }
 
         for (const m of this.modules) {

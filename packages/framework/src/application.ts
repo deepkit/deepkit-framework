@@ -11,6 +11,8 @@
 import { App, AppModule, RootModuleDefinition } from '@deepkit/app';
 import { FrameworkModule } from './module';
 
+class RootAppModule extends AppModule<any> {}
+
 /**
  * This is the main application class for a Deepkit Framework Application.
  *
@@ -33,7 +35,10 @@ export class Application<T extends RootModuleDefinition> extends App<T> {
         appModuleOptions: T,
         appModule?: AppModule<any>
     ) {
-        const module = appModule || new AppModule(appModuleOptions) as any;
+        //increase the stack size for error messages.
+        if (Error.stackTraceLimit === 10) Error.stackTraceLimit = 50;
+
+        const module = appModule || new RootAppModule(appModuleOptions) as any;
         if (!module.hasImport(FrameworkModule)) {
             module.imports.unshift(new FrameworkModule);
         }

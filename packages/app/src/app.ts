@@ -217,7 +217,6 @@ export class App<T extends RootModuleDefinition> {
         return this;
     }
 
-
     /**
      * Loads a JSON encoded environment variable and applies its content to the configuration.
      *
@@ -258,7 +257,6 @@ export class App<T extends RootModuleDefinition> {
     }
 
     public async execute(argv: string[], binPaths: string[] = []): Promise<number> {
-        this.serviceContainer.process();
         let result: any;
 
         class MyConfig extends Config {

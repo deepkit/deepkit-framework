@@ -314,7 +314,8 @@ test('cli controllers in sub modules are in correct injector context', async () 
     class MyModule extends createModule({
         providers: [MyService, { provide: 'onlyInCLI', scope: 'cli', useValue: true }],
         controllers: [MyController],
-    }, 'base') {}
+    }, 'base') {
+    }
 
     {
         const app = new App({ imports: [new MyModule] });
@@ -345,7 +346,6 @@ test('cli controllers in sub modules are in correct injector context', async () 
 });
 
 test('config deps and @inject() in FactoryProvider', async () => {
-
     const config = new AppModuleConfig({
         host: t.string.default('0.0.0.0'),
     });
@@ -443,7 +443,6 @@ test('config deps and @inject() in FactoryProvider', async () => {
 
 
 test('service container hooks', () => {
-
     class MyModule extends createModule({}) {
         providersFound: ProviderWithScope[] = [];
         controllersFound: ClassType[] = [];
@@ -468,41 +467,48 @@ test('service container hooks', () => {
         const m = new MyModule;
         const app = new ServiceContainer(new AppModule({ imports: [m] }));
         app.process();
-        expect(m.providersFound.length).toBe(4); //4 is the default, as the ServiceContainer adds default services
+        expect(m.providersFound.length).toBe(5); //5 is the default, as the ServiceContainer adds default services
         expect(m.controllersFound.length).toBe(0);
     }
 
     {
-        class Controller {}
-        const m = new MyModule;
-        const app = new ServiceContainer(new AppModule({controllers: [Controller], imports: [m] }));
-        app.process();
-        expect(m.providersFound.length).toBe(5);
-        expect(m.controllersFound.length).toBe(1);
-    }
-
-    {
-        class Controller {}
-        const m = new MyModule;
-        const app = new ServiceContainer(new AppModule({providers: [Controller], imports: [m] }));
-        app.process();
-        expect(m.providersFound.length).toBe(5);
-        expect(m.controllersFound.length).toBe(0);
-    }
-
-    {
-        class Controller {}
-        class Service {}
-        const baseModule = new AppModule({
-            controllers: [Controller],
-            providers: [Service]
-        })
+        class Controller {
+        }
 
         const m = new MyModule;
-        const app = new ServiceContainer(new AppModule({imports: [baseModule, m] }));
+        const app = new ServiceContainer(new AppModule({ controllers: [Controller], imports: [m] }));
         app.process();
         expect(m.providersFound.length).toBe(6);
         expect(m.controllersFound.length).toBe(1);
     }
 
+    {
+        class Controller {
+        }
+
+        const m = new MyModule;
+        const app = new ServiceContainer(new AppModule({ providers: [Controller], imports: [m] }));
+        app.process();
+        expect(m.providersFound.length).toBe(6);
+        expect(m.controllersFound.length).toBe(0);
+    }
+
+    {
+        class Controller {
+        }
+
+        class Service {
+        }
+
+        const baseModule = new AppModule({
+            controllers: [Controller],
+            providers: [Service]
+        });
+
+        const m = new MyModule;
+        const app = new ServiceContainer(new AppModule({ imports: [baseModule, m] }));
+        app.process();
+        expect(m.providersFound.length).toBe(7);
+        expect(m.controllersFound.length).toBe(1);
+    }
 });

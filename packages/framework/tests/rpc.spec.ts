@@ -69,7 +69,7 @@ test('non-forRoot sub module lives in own injector scope for rpc controllers', a
         }
     }
 
-    const module = new AppModule({ providers: [MyService], controllers: [Controller] }, 'baseservice-container.spec.ts:7');
+    const module = new AppModule({ providers: [MyService], controllers: [Controller] }, 'base');
     const testing = createTestingApp({ imports: [module] });
     await testing.startServer();
 

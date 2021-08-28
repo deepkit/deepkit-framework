@@ -391,7 +391,7 @@ test('injector config', () => {
     }
 
     {
-        const i1 = Injector.fromModule(new InjectorModule([MyService, MyService2, MyService3, MyService4]));
+        const i1 = Injector.fromModule(new InjectorModule([MyService, MyService2, MyService3, MyService4]).setConfigDefinition(moduleConfig));
         i1.module.configure({debug: false});
         expect(i1.get(MyService).config.debug).toBe(false);
         expect(i1.get(MyService2).config.debug).toBe(false);
@@ -400,7 +400,7 @@ test('injector config', () => {
     }
 
     {
-        const i1 = Injector.from([MyService, MyService2, MyService3, MyService4]);
+        const i1 = Injector.fromModule(new InjectorModule([MyService, MyService2, MyService3, MyService4]).setConfigDefinition(moduleConfig));
         i1.module.configure({debug: true});
         expect(i1.get(MyService).config.debug).toBe(true);
         expect(i1.get(MyService2).config.debug).toBe(true);

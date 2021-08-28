@@ -306,7 +306,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
     constructor(
         writer: RpcConnectionWriter,
         connections: RpcKernelConnections,
-        protected controllers: Map<string, {controller: ClassType, module?: InjectorModule}>,
+        protected controllers: Map<string, { controller: ClassType, module?: InjectorModule }>,
         protected security = new RpcKernelSecurity(),
         protected injector: InjectorContext,
         protected peerExchange: RpcPeerExchange,
@@ -429,19 +429,33 @@ export type OnConnectionCallback = (connection: RpcKernelConnection, injector: I
  * and encode/send outgoing messages.
  */
 export class RpcKernel {
-    protected controllers = new Map<string, {controller: ClassType, module: InjectorModule}>();
+    protected controllers = new Map<string, { controller: ClassType, module: InjectorModule }>();
     protected peerExchange = new RpcPeerExchange;
     protected connections = new RpcKernelConnections;
 
     protected RpcKernelConnection = RpcKernelConnection;
 
     protected onConnectionListeners: OnConnectionCallback[] = [];
+    protected autoInjector: boolean = false;
+
+    public injector: InjectorContext;
 
     constructor(
-        public injector: InjectorContext = InjectorContext.forProviders([]),
+        injector?: InjectorContext,
         protected security = new RpcKernelSecurity(),
         protected logger: LoggerInterface = new Logger(),
     ) {
+        if (injector) {
+            this.injector = injector;
+        } else {
+            this.injector = InjectorContext.forProviders([
+                SessionState,
+
+                //will be provided when scope is created
+                {provide: RpcKernelConnection, scope: 'rpc', useValue: undefined},
+            ]);
+            this.autoInjector = true;
+        }
     }
 
     public onConnection(callback: OnConnectionCallback) {
@@ -458,8 +472,12 @@ export class RpcKernel {
      * Adding a provider is rather expensive, so you should prefer to create a kernel with pre-filled  injector.
      */
     public registerController(id: string | ControllerDefinition<any>, controller: ClassType, module?: InjectorModule) {
-        // if (!module) module = new InjectorModule([controller], this.injector.rootModule);
-        this.controllers.set('string' === typeof id ? id : id.path, {controller, module: module || this.injector.rootModule});
+        if (this.autoInjector) {
+            if (!this.injector.rootModule.isProvided(controller)) {
+                this.injector.rootModule.addProvider({ provide: controller, scope: 'rpc' });
+            }
+        }
+        this.controllers.set('string' === typeof id ? id : id.path, { controller, module: module || this.injector.rootModule });
     }
 
     createConnection(writer: RpcConnectionWriter, injector?: InjectorContext): RpcKernelBaseConnection {

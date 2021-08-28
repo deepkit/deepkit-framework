@@ -165,7 +165,7 @@ export class WebWorkerFactory {
         }
 
         for (const [name, info] of this.rpcControllers.controllers.entries()) {
-            kernel.registerController(name, info.controller);
+            kernel.registerController(name, info.controller, info.module);
         }
 
         return kernel;
@@ -186,6 +186,7 @@ export function createRpcConnection(rootScopedContext: InjectorContext, rpcKerne
     injector.set(RpcInjectorContext, injector);
     injector.set(SessionState, connection.sessionState);
     injector.set(RpcKernelConnection, connection);
+    injector.set(RpcKernelBaseConnection, connection);
     injector.set(ConnectionWriter, writer);
 
     return connection;

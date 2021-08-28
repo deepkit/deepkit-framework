@@ -242,8 +242,8 @@ jsonSerializer.fromClass.register('date', convertToPlainUsingToJson);
 
 
 export function convertArray(property: PropertySchema, state: CompilerState) {
-    const a = state.setVariable('a', 0);
-    const l = state.setVariable('l', 0);
+    const a = state.compilerContext.reserveName('a');
+    const l = state.compilerContext.reserveName('l');
     let setDefault = property.isOptional ? '' : `${state.setter} = [];`;
 
     //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
@@ -251,8 +251,8 @@ export function convertArray(property: PropertySchema, state: CompilerState) {
     if (${state.accessor}.length === undefined || 'string' === typeof ${state.accessor} || 'function' !== typeof ${state.accessor}.slice) {
         ${setDefault}
     } else {
-         ${l} = ${state.accessor}.length;
-         ${a} = ${state.accessor}.slice();
+         let ${l} = ${state.accessor}.length;
+         let ${a} = ${state.accessor}.slice();
          while (${l}--) {
             //make sure all elements have the correct type
             if (${state.accessor}[${l}] !== undefined && ${state.accessor}[${l}] !== null) {
@@ -274,15 +274,15 @@ jsonSerializer.fromClass.register('array', convertArray);
 jsonSerializer.toClass.register('array', convertArray);
 
 function convertMap(property: PropertySchema, state: CompilerState) {
-    const a = state.setVariable('a');
-    const i = state.setVariable('i');
+    const a = state.compilerContext.reserveName('a');
+    const i = state.compilerContext.reserveName('i');
     let setDefault = property.isOptional ? '' : `${state.setter} = {};`;
 
     state.addCodeForSetter(`
-        ${a} = {};
+        let ${a} = {};
         //we make sure its a object and not an array
         if (${state.accessor} && 'object' === typeof ${state.accessor} && 'function' !== typeof ${state.accessor}.slice) {
-            for (${i} in ${state.accessor}) {
+            for (let ${i} in ${state.accessor}) {
                 if (!${state.accessor}.hasOwnProperty(${i})) continue;
                 if (${!property.getSubType().isOptional} && ${state.accessor}[${i}] === undefined) {
                     continue;

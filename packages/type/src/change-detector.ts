@@ -84,7 +84,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
                     changes.${changedName} = item.${changedName};
                     ${onChanged}
                 } else {
-                    ${l} = ${last}.length;
+                    let ${l} = ${last}.length;
                     ${onChanged ? '' : 'root:'}
                     while (${l}--) {
                          ${getComparator(property.getSubType(), `${last}[${l}]`, `${current}[${l}]`, `${accessor}[${l}]`, changedName, 'break root;', jitStack)}

@@ -1,9 +1,10 @@
 import 'reflect-metadata';
 import { expect, test } from '@jest/globals';
 import { InjectorContext, InjectorModule } from '../src/injector';
-import { injectable } from '../src/decorator';
+import { inject, injectable } from '../src/decorator';
 import { getClassSchema, t } from '@deepkit/type';
 import { Tag } from '../src/provider';
+import { ConfigDefinition } from '../src/config';
 
 test('basic', () => {
     class Service {
@@ -297,7 +298,7 @@ test('exports have access to encapsulated module', () => {
 
         const module1 = new MiddleMan1([], root, {}, []);
 
-        const module2 = new MiddleMan2([], root, {}, []);
+        const module2 = new MiddleMan2([], module1, {}, []);
 
         const module3 = new ServiceModule([
             Service, ServiceHelper
@@ -371,24 +372,43 @@ test('useClass redirects and does not create 2 instances when its already provid
 
 test('scope merging', () => {
     class Request {
+        constructor(public id: number) {
+        }
     }
 
     const root = new InjectorModule([
-        { provide: Request, scope: 'rpc' },
-        { provide: Request, scope: 'http' },
+        { provide: Request, useValue: new Request(-1) },
+        { provide: Request, useValue: new Request(0), scope: 'rpc' },
+        { provide: Request, useValue: new Request(1), scope: 'http' },
+        { provide: Request, useValue: new Request(2), scope: 'http' },
     ]);
 
     const injector = new InjectorContext(root);
+    injector.getInjector(root); //trigger build
+    const preparedProvider = root.getPreparedProvider(Request);
+    expect(preparedProvider!.providers).toHaveLength(3);
+    expect(preparedProvider!.providers[0].scope).toBe('rpc');
+    expect(preparedProvider!.providers[1].scope).toBe('http');
+    expect(preparedProvider!.providers[2].scope).toBe(undefined);
 
     {
-        expect(injector.createChildScope('rpc').get(Request)).toBeInstanceOf(Request);
-        expect(injector.createChildScope('http').get(Request)).toBeInstanceOf(Request);
-        expect(() => injector.createChildScope('unknown').get(Request)).toThrow('not found');
+        const request1 = injector.createChildScope('rpc').get(Request);
+        expect(request1).toBeInstanceOf(Request);
+        expect(request1.id).toBe(0);
+
+        const request2 = injector.createChildScope('http').get(Request);
+        expect(request2).toBeInstanceOf(Request);
+        expect(request2.id).toBe(2); //last provider is used
+
+        const request3 = injector.createChildScope('unknown').get(Request);
+        expect(request3).toBeInstanceOf(Request);
+        expect(request3.id).toBe(-1); //unscoped
     }
 });
 
 test('forRoot', () => {
-    class Router {}
+    class Router {
+    }
 
     @injectable
     class Controller {
@@ -419,8 +439,7 @@ test('forRoot', () => {
             Controller,
         ]);
 
-        const module1 = new InjectorModule([
-        ], root, {}, []);
+        const module1 = new InjectorModule([], root, {}, []);
 
         const module2 = new InjectorModule([
             Router
@@ -437,7 +456,8 @@ test('forRoot', () => {
 });
 
 test('disableExports', () => {
-    class Router {}
+    class Router {
+    }
 
     @injectable
     class Controller {
@@ -465,7 +485,8 @@ test('disableExports', () => {
 });
 
 test('unscoped to scope dependency invalid', () => {
-    class HttpRequest {}
+    class HttpRequest {
+    }
 
     @injectable
     class Controller {
@@ -475,11 +496,318 @@ test('unscoped to scope dependency invalid', () => {
 
     {
         const root = new InjectorModule([
-            Controller, {provide: HttpRequest, scope: 'http'},
+            Controller, { provide: HttpRequest, scope: 'http' },
         ]);
 
         const injector = new InjectorContext(root);
+
         const scope = injector.createChildScope('http');
-        expect(() => scope.get(Controller)).toThrow('scope invalid');
+        expect(() => scope.get(Controller)).toThrow(`Dependency 'request: HttpRequest' of Controller.request can not be injected into no scope, since HttpRequest only exists in scope http`);
     }
+});
+
+test('non-exported dependencies can not be overwritten', () => {
+    class Encapsulated {
+    }
+
+    @injectable
+    class Service {
+        constructor(public encapsulated: Encapsulated) {
+        }
+    }
+
+    @injectable
+    class Controller {
+        constructor(public service: Service) {
+        }
+    }
+
+    {
+        const root = new InjectorModule([
+            Controller
+        ]);
+
+        const serviceModule = new InjectorModule([
+            Service, Encapsulated,
+        ], root, {}, [Service]);
+
+        const injector = new InjectorContext(root);
+
+        const controller = injector.get(Controller);
+        expect(controller.service).toBeInstanceOf(Service);
+        expect(controller.service.encapsulated).toBeInstanceOf(Encapsulated);
+    }
+
+    {
+        @injectable
+        class MyService {
+            constructor(public encapsulated: Encapsulated) {
+            }
+        }
+
+        const root = new InjectorModule([
+            Controller, { provide: Service, useClass: MyService }
+        ]);
+
+        const serviceModule = new InjectorModule([
+            Service, Encapsulated,
+        ], root, {}, [Service]);
+
+        const injector = new InjectorContext(root);
+
+        const controller = injector.get(Controller);
+        expect(controller.service).toBeInstanceOf(MyService);
+        expect(controller.service.encapsulated).toBeInstanceOf(Encapsulated);
+    }
+
+    {
+        class MyEncapsulated {
+        }
+
+        @injectable
+        class MyService {
+            constructor(public encapsulated: Encapsulated) {
+            }
+        }
+
+        const root = new InjectorModule([
+            Controller,
+            { provide: Service, useClass: MyService },
+            { provide: Encapsulated, useClass: MyEncapsulated },
+        ]);
+
+        const serviceModule = new InjectorModule([
+            Service, Encapsulated,
+        ], root, {}, [Service]);
+
+        const injector = new InjectorContext(root);
+
+        const controller = injector.get(Controller);
+        expect(controller.service).toBeInstanceOf(MyService);
+
+        //since Encapsulated was not exported, it can not be overwritten.
+        expect(controller.service.encapsulated).toBeInstanceOf(Encapsulated);
+    }
+});
+
+test('forRoot module keeps reference to config', () => {
+    const config = new ConfigDefinition(t.schema({
+        listen: t.string
+    }));
+
+    @injectable
+    class Service {
+        constructor(@inject(config.token('listen')) public listen: string) {
+        }
+    }
+
+    class MyModule extends InjectorModule {
+    }
+
+    const root = new InjectorModule([]);
+
+    const module = new MyModule([
+        Service
+    ], root, { listen: 'localhost' }).forRoot().setConfigDefinition(config);
+
+    const injector = new InjectorContext(root);
+
+    const service = injector.get(Service, module);
+
+    expect(service).toBeInstanceOf(Service);
+    expect(service.listen).toBe('localhost');
+});
+
+test('setup provider', () => {
+    class Service {
+        list: any[] = [];
+
+        add(item: any) {
+            this.list.push(item);
+        }
+    }
+
+    const root = new InjectorModule([Service]);
+
+    root.setupProvider(Service).add('a');
+    root.setupProvider(Service).add('b');
+
+    const injector = new InjectorContext(root);
+    const service = injector.get(Service);
+
+    expect(service.list).toEqual(['a', 'b']);
+});
+
+
+test('setup provider in sub module', () => {
+    class Service {
+        list: any[] = [];
+
+        add(item: any) {
+            this.list.push(item);
+        }
+    }
+
+    const root = new InjectorModule([]);
+    const module = new InjectorModule([Service], root);
+
+    module.setupProvider(Service).add('a');
+    module.setupProvider(Service).add('b');
+
+    const injector = new InjectorContext(root);
+    const service = injector.get(Service, module);
+
+    expect(service.list).toEqual(['a', 'b']);
+});
+
+test('setup provider in exported sub module', () => {
+    class Service {
+        list: any[] = [];
+
+        add(item: any) {
+            this.list.push(item);
+        }
+    }
+
+    const root = new InjectorModule([]);
+    const module = new InjectorModule([Service], root, {}, [Service]);
+
+    module.setupProvider(Service).add('a');
+    module.setupProvider(Service).add('b');
+
+    const injector = new InjectorContext(root);
+    const service = injector.get(Service);
+
+    expect(service.list).toEqual(['a', 'b']);
+});
+
+test('global setup provider', () => {
+    class Service {
+        list: any[] = [];
+
+        add(item: any) {
+            this.list.push(item);
+        }
+    }
+
+    const root = new InjectorModule([Service]);
+
+    const module = new InjectorModule([], root);
+
+    module.setupGlobalProvider(Service).add('a');
+    module.setupGlobalProvider(Service).add('b');
+
+    const injector = new InjectorContext(root);
+    const service = injector.get(Service);
+
+    expect(service.list).toEqual(['a', 'b']);
+});
+
+test('second forRoot modules overwrites first forRoot providers', () => {
+    class Service {
+    }
+
+    class NewService {
+    }
+
+    const root = new InjectorModule([]);
+
+    //the order in which imports are added is important. Last imports have higher importance.
+    const module1 = new InjectorModule([Service], root).forRoot();
+    const module2 = new InjectorModule([{ provide: Service, useClass: NewService }], root).forRoot();
+
+    const injector = new InjectorContext(root);
+    const service = injector.get(Service);
+
+    expect(service).toBeInstanceOf(NewService);
+});
+
+test('set service', () => {
+    class Service {
+    }
+
+    const injector = InjectorContext.forProviders([
+        { provide: Service, useValue: undefined },
+    ]);
+
+    const s = new Service;
+    injector.set(Service, s);
+
+    expect(injector.get(Service) === s).toBe(true);
+});
+
+test('set service in scope', () => {
+    class Service {
+    }
+
+    @injectable
+    class Connection {
+        constructor(public service: Service) {
+        }
+    }
+
+    class Request {
+    }
+
+    const injector = InjectorContext.forProviders([
+        Service,
+        { provide: Request, scope: 'tcp' },
+        { provide: Connection, scope: 'tcp' }
+    ]);
+
+    const s1 = injector.get(Service);
+
+    {
+        const scope = injector.createChildScope('tcp');
+
+        const c1 = new Connection(scope.get(Service));
+        scope.set(Connection, c1);
+
+        expect(scope.get(Connection) === c1).toBe(true);
+        expect(scope.get(Connection) === c1).toBe(true);
+        expect(scope.get(Connection).service === s1).toBe(true);
+    }
+
+    {
+        const scope = injector.createChildScope('tcp');
+
+        const c1 = new Connection(scope.get(Service));
+        scope.set(Connection, c1);
+
+        expect(scope.get(Connection) === c1).toBe(true);
+        expect(scope.get(Connection) === c1).toBe(true);
+        expect(scope.get(Connection).service === s1).toBe(true);
+    }
+});
+
+Error.stackTraceLimit = 30;
+
+test('global service from another module is available in sibling module', () => {
+    class HttpRequest {
+    }
+
+    const httpModule = new InjectorModule([{ provide: HttpRequest, scope: 'http' }]);
+
+    @injectable
+    class Controller {
+        constructor(public request: HttpRequest) {
+        }
+    }
+
+    const apiModule = new InjectorModule([{ provide: Controller, scope: 'http' }]);
+
+    const root = new InjectorModule();
+    httpModule.forRoot().setParent(root);
+    apiModule.setParent(root);
+
+    const properties = root.getPreparedProviders({} as any);
+    (root as any).handleExports({} as any);
+    expect(properties.has(HttpRequest)).toBe(true);
+
+    const injector = new InjectorContext(root);
+    const scope = injector.createChildScope('http');
+
+    const controller = scope.get(Controller, apiModule);
+    expect(controller).toBeInstanceOf(Controller);
+    expect(controller.request).toBeInstanceOf(HttpRequest);
 });

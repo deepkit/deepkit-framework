@@ -25,10 +25,10 @@ export function serveStaticListener(path: string, localPath: string = path): Cla
     @injectable
     class HttpRequestStaticServingListener {
         serve(path: string, request: HttpRequest, response: HttpResponse) {
-            return new Promise(resolve => {
+            return new Promise((resolve, reject) => {
                 const res = send(request, path, { root: localPath });
-                response.once('finish', resolve);
                 res.pipe(response);
+                res.on('end', resolve);
             });
         }
 
@@ -132,7 +132,7 @@ export function registerStaticHttpController(module: AppModule<any>, options: St
         methodName: 'serveIndex'
     });
     route1.groups = groups;
-    module.setupProvider(Router).addRoute(route1);
+    module.setupGlobalProvider(Router).addRoute(route1);
 
     const route2 = new RouteConfig('static', ['GET'], normalizeDirectory(options.path).slice(0, -1), {
         controller: StaticController,
@@ -140,7 +140,7 @@ export function registerStaticHttpController(module: AppModule<any>, options: St
         methodName: 'serveIndex'
     });
     route2.groups = groups;
-    module.setupProvider(Router).addRoute(route2);
+    module.setupGlobalProvider(Router).addRoute(route2);
 
     module.addProvider(StaticController);
     module.addListener(serveStaticListener(normalizeDirectory(options.path), options.localPath));

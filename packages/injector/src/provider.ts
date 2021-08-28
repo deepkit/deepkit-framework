@@ -7,7 +7,7 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { ClassType, isClass } from '@deepkit/core';
+import { AbstractClassType, ClassType, isClass } from '@deepkit/core';
 import { InjectorToken } from './decorator';
 import { InjectorModule } from './injector';
 
@@ -21,9 +21,9 @@ export interface ProviderBase {
 
 export interface ValueProvider<T> extends ProviderBase {
     /**
-     * An injection token. (Typically an instance of `ClassType`, but can be `any`).
+     * An injection token. Typically a class.
      */
-    provide: symbol | string | InjectorToken<T> | ClassType<T>;
+    provide: symbol | string | InjectorToken<T> | AbstractClassType<T>;
 
     /**
      * The value to inject.
@@ -33,9 +33,9 @@ export interface ValueProvider<T> extends ProviderBase {
 
 export interface ClassProvider<T> extends ProviderBase {
     /**
-     * An injection token. (Typically an instance of `ClassType`, but can be `any`).
+     * An injection token. Typically a class.
      */
-    provide: symbol | string | InjectorToken<T> | ClassType<T>;
+    provide: symbol | string | InjectorToken<T> | AbstractClassType<T>;
 
     /**
      * Class to instantiate for the `token`.
@@ -45,9 +45,9 @@ export interface ClassProvider<T> extends ProviderBase {
 
 export interface ExistingProvider<T> extends ProviderBase {
     /**
-     * An injection token. (Typically an instance of `ClassType`, but can be `any`).
+     * An injection token. Typically a class.
      */
-    provide: symbol | string  | InjectorToken<T> | ClassType<T>;
+    provide: symbol | string  | InjectorToken<T> | AbstractClassType<T>;
 
     /**
      * Existing `token` to return. (equivalent to `injector.get(useExisting)`)
@@ -57,9 +57,9 @@ export interface ExistingProvider<T> extends ProviderBase {
 
 export interface FactoryProvider<T> extends ProviderBase {
     /**
-     * An injection token. (Typically an instance of `ClassType`, but can be `any`).
+     * An injection token. Typically a class.
      */
-    provide: symbol | string | InjectorToken<T> | ClassType<T>;
+    provide: symbol | string | InjectorToken<T> | AbstractClassType<T>;
 
     /**
      * A function to invoke to create a value for this `token`. The function is invoked with
