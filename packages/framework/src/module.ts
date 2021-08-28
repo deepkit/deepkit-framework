@@ -20,8 +20,8 @@ import { DebugDIController } from './cli/debug-di';
 import { ServerStartController } from './cli/server-start';
 import { DebugController } from './debug/debug.controller';
 import { registerDebugHttpController } from './debug/http-debug.controller';
-import { HttpLogger, HttpModule, serveStaticListener } from '@deepkit/http';
-import { InjectorContext, injectorReference, ProviderWithScope, TagProvider } from '@deepkit/injector';
+import { HttpLogger, HttpModule, HttpRequest, serveStaticListener } from '@deepkit/http';
+import { InjectorContext, injectorReference, ProviderWithScope, Token } from '@deepkit/injector';
 import { frameworkConfig } from './module.config';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { SessionHandler } from './session';
@@ -33,13 +33,13 @@ import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
 import { FileStopwatchStore } from './debug/stopwatch/store';
 import { DebugDebugFramesCommand } from './cli/debug-debug-frames';
-import { rpcClass, RpcKernelSecurity } from '@deepkit/rpc';
+import { ConnectionWriter, rpcClass, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
 import { AppConfigController } from './cli/app-config';
 import { Zone } from './zone';
 import { DebugBroker, DebugBrokerListener } from './debug/broker';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
 import { AppModule, createModule } from '@deepkit/app';
-import { RpcControllers } from './rpc';
+import { RpcControllers, RpcInjectorContext } from './rpc';
 
 export class FrameworkModule extends createModule({
     config: frameworkConfig,
@@ -54,8 +54,17 @@ export class FrameworkModule extends createModule({
         MigrationProvider,
         DebugController,
         { provide: DatabaseRegistry, deps: [InjectorContext], useFactory: (ic) => new DatabaseRegistry(ic) },
-        { provide: LiveDatabase, scope: 'rpc' },
+
+        //move to HttpModule?
         { provide: SessionHandler, scope: 'http' },
+
+        { provide: LiveDatabase, scope: 'rpc' },
+        { provide: HttpRequest, scope: 'rpc' },
+        { provide: RpcInjectorContext, scope: 'rpc' },
+        { provide: SessionState, scope: 'rpc' },
+        { provide: RpcKernelBaseConnection, scope: 'rpc' },
+        { provide: RpcKernelConnection, scope: 'rpc' },
+        { provide: ConnectionWriter, scope: 'rpc' },
     ],
     workflows: [
         // rpcWorkflow,
@@ -84,7 +93,7 @@ export class FrameworkModule extends createModule({
 
     //we export anything per default
     root = true;
-    protected dbs: {module: AppModule<any>, classType: ClassType}[] = [];
+    protected dbs: { module: AppModule<any>, classType: ClassType }[] = [];
     protected rpcControllers = new RpcControllers;
 
     process() {
@@ -139,7 +148,6 @@ export class FrameworkModule extends createModule({
 
             this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
         }
-
     }
 
     postProcess() {
@@ -159,22 +167,21 @@ export class FrameworkModule extends createModule({
         }
     }
 
-    handleProviders(module: AppModule<any, any>, providers: ProviderWithScope[]) {
-        for (const provider of providers) {
-            if (provider instanceof TagProvider) continue;
-            const provide = isClass(provider) ? provider : provider.provide;
-            if (!isClass(provide)) continue;
-            if (isPrototypeOfBase(provide, Database)) {
-                this.dbs.push({classType: provide, module});
-            }
+    handleProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
+        if (!isClass(token)) return;
+        if (isPrototypeOfBase(token, Database)) {
+            this.dbs.push({ classType: token, module });
         }
     }
 
-    handleController(module: AppModule<any>, controller: ClassType,) {
+    handleController(module: AppModule<any>, controller: ClassType) {
         const rpcConfig = rpcClass._fetch(controller);
-        if (rpcConfig) {
-            if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'rpc' });
-            this.rpcControllers.controllers.set(rpcConfig.getPath(), { controller, module });
+        if (!rpcConfig) return;
+
+        if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'rpc' });
+        if (this.rpcControllers.controllers.has(rpcConfig.getPath())) {
+            throw new Error(`Already an RPC controller with the name ${rpcConfig.getPath()} registered.`);
         }
+        this.rpcControllers.controllers.set(rpcConfig.getPath(), { controller, module });
     }
 }

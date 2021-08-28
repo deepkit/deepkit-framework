@@ -28,7 +28,7 @@ test('command execute', async () => {
         controllers: [MyCli]
     });
     const serviceContainer = app.get(ServiceContainer);
-    expect(serviceContainer.cliControllers.controllers.get('my')!.controller).toBe(MyCli);
+    expect(serviceContainer.cliControllerRegistry.controllers.get('my')!.controller).toBe(MyCli);
 
     expect(await app.execute(['my', 'bar'])).toBe(0);
 });

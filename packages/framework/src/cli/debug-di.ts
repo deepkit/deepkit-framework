@@ -28,11 +28,10 @@ export class DebugDIController implements Command {
             console.log('For scope', scope);
             injectorContext = injectorContext.createChildScope(scope);
         }
-        console.log('injectorContext.configuredProviderRegistry', injectorContext.configuredProviderRegistry!.calls);
 
         for (const module of modules) {
             console.log(`Module ${module.getName() || 'root'} DI retriever:`);
-            console.log((injectorContext.getInjectorForModule(module) as any).retriever.toString());
+            console.log((injectorContext.getInjector(module) as any).resolver.toString());
         }
     }
 }

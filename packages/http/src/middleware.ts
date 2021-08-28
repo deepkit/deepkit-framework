@@ -100,7 +100,7 @@ export class HttpMiddlewareApi {
         this.t.order = order;
     }
 
-    forModules(...modules: AppModule<any, any>[]) {
+    forModules(...modules: AppModule<any>[]) {
         this.t.modules = modules;
     }
 

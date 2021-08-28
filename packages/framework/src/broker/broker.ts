@@ -136,7 +136,7 @@ export class DirectBroker extends BaseBroker {
     }
 }
 
-@injectable()
+@injectable
 export class BrokerServer extends TcpRpcServer {
     protected kernel: BrokerKernel = new BrokerKernel;
 
@@ -145,7 +145,7 @@ export class BrokerServer extends TcpRpcServer {
     }
 }
 
-@injectable()
+@injectable
 export class NetBrokerServer extends NetTcpRpcServer {
     protected kernel: BrokerKernel = new BrokerKernel;
 

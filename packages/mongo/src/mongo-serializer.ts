@@ -54,10 +54,10 @@ mongoSerializer.fromClass.register('class', (property: PropertySchema, state: Co
 
         state.addCodeForSetter(`
             if (${state.accessor} instanceof ${classType}) {
-                ${getDataConverterJS(state.setter, `${state.accessor}.${primary.name}`, primary, state.serializerCompilers, state.rootContext, state.jitStack)}
+                ${getDataConverterJS(state.setter, `${state.accessor}.${primary.name}`, primary, state.serializerCompilers, state.compilerContext, state.jitStack)}
             } else {
                 //we treat the input as if the user gave the primary key directly
-                ${getDataConverterJS(state.setter, `${state.accessor}`, primary, state.serializerCompilers, state.rootContext, state.jitStack)}
+                ${getDataConverterJS(state.setter, `${state.accessor}`, primary, state.serializerCompilers, state.compilerContext, state.jitStack)}
             }
             `
         );

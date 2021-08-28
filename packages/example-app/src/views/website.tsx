@@ -1,7 +1,7 @@
 import { injectable } from '@deepkit/injector';
 import { html } from '@deepkit/template';
 
-@injectable()
+@injectable
 export class Website {
     constructor(
         protected props: { title?: string },

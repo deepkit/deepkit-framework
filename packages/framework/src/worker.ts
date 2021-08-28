@@ -15,7 +15,7 @@ import https from 'https';
 import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions } from 'ws';
 
 import { HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
-import { inject, injectable, Injector, InjectorContext, Provider } from '@deepkit/injector';
+import { inject, injectable, InjectorContext } from '@deepkit/injector';
 import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc';
 import { SecureContextOptions, TlsOptions } from 'tls';
 
@@ -23,7 +23,6 @@ import { SecureContextOptions, TlsOptions } from 'tls';
 import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { Logger } from '@deepkit/logger';
-import { ClassType } from '@deepkit/core';
 import { Stopwatch } from '@deepkit/stopwatch';
 
 export interface WebServerOptions {
@@ -98,7 +97,7 @@ export interface RpcServerInterface {
     start(options: RpcServerOptions, createRpcConnection: RpcServerCreateConnection): void;
 }
 
-@injectable()
+@injectable
 export class RpcServer implements RpcServerInterface {
     start(options: RpcServerOptions, createRpcConnection: RpcServerCreateConnection): RpcServerListener {
         const ws = require('ws');
@@ -140,33 +139,33 @@ export class RpcServer implements RpcServerInterface {
 }
 
 
-@injectable()
+@injectable
 export class WebWorkerFactory {
     constructor(
         protected httpKernel: HttpKernel,
         public logger: Logger,
         protected rpcControllers: RpcControllers,
-        protected rootScopedContext: InjectorContext,
+        protected injectorContext: InjectorContext,
         protected rpcServer: RpcServer,
         @inject().optional protected stopwatch?: Stopwatch,
     ) {
     }
 
     create(id: number, options: WebServerOptions): WebWorker {
-        return new WebWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options, this.rpcServer);
+        return new WebWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.injectorContext, options, this.rpcServer);
     }
 
     createRpcKernel() {
-        const security = this.rootScopedContext.get(RpcKernelSecurity);
+        const security = this.injectorContext.get(RpcKernelSecurity);
         const classType = this.stopwatch ? RpcKernelWithStopwatch : RpcKernel;
-        const kernel = new classType(this.rootScopedContext, security, this.logger.scoped('rpc'));
+        const kernel: RpcKernel = new classType(this.injectorContext, security, this.logger.scoped('rpc'));
 
         if (kernel instanceof RpcKernelWithStopwatch) {
             kernel.stopwatch = this.stopwatch;
         }
 
         for (const [name, info] of this.rpcControllers.controllers.entries()) {
-            kernel.registerController(name, info.controller, false, info.module);
+            kernel.registerController(name, info.controller, info.module);
         }
 
         return kernel;
@@ -175,30 +174,25 @@ export class WebWorkerFactory {
 
 export class WebMemoryWorkerFactory extends WebWorkerFactory {
     create(id: number, options: WebServerOptions): WebMemoryWorker {
-        return new WebMemoryWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.rootScopedContext, options, this.rpcServer);
+        return new WebMemoryWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.injectorContext, options, this.rpcServer);
     }
 }
 
 export function createRpcConnection(rootScopedContext: InjectorContext, rpcKernel: RpcKernel, writer: RpcConnectionWriter, request?: HttpRequest) {
-    let rpcScopedContext: RpcInjectorContext;
-    let connection: RpcKernelBaseConnection;
+    const injector = rootScopedContext.createChildScope('rpc');
+    const connection = rpcKernel.createConnection(writer, injector);
 
-    const providers: Provider<any>[] = [
-        { provide: HttpRequest, useValue: request },
-        { provide: RpcInjectorContext, useFactory: () => rpcScopedContext },
-        { provide: SessionState, useFactory: () => connection.sessionState },
-        { provide: RpcKernelConnection, useFactory: () => connection },
-        { provide: RpcKernelBaseConnection as ClassType<any>, useFactory: () => connection },
-        { provide: ConnectionWriter, useValue: writer },
-    ];
-    const additionalInjector = new Injector(providers);
-    rpcScopedContext = rootScopedContext.createChildScope('rpc', additionalInjector);
+    injector.set(HttpRequest, request);
+    injector.set(RpcInjectorContext, injector);
+    injector.set(SessionState, connection.sessionState);
+    injector.set(RpcKernelConnection, connection);
+    injector.set(RpcKernelBaseConnection, connection);
+    injector.set(ConnectionWriter, writer);
 
-    connection = rpcKernel.createConnection(writer, rpcScopedContext);
     return connection;
 }
 
-@injectable()
+@injectable
 export class WebWorker {
     protected rpcListener?: RpcServerListener;
     protected server?: http.Server | https.Server;

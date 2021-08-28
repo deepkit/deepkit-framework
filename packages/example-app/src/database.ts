@@ -55,9 +55,10 @@ export class Book {
 
 class DbConfig extends config.slice('dbPath') {}
 
-@injectable()
+@injectable
 export class SQLiteDatabase extends Database {
     constructor(private config: DbConfig) {
+        // super(new MongoDatabaseAdapter('mongodb://localhost/example-app'), [User, Book, Author]);
         super(new SQLiteDatabaseAdapter(config.dbPath), [User, Book, Author]);
     }
 }

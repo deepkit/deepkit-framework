@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { empty, getObjectKeysSize } from '@deepkit/core';
+import { CompilerContext, empty, getObjectKeysSize } from '@deepkit/core';
 import { Changes, changeSetSymbol, ItemChanges } from './changes';
 import { JitStack } from './jit';
 import { ClassSchema, PropertySchema } from './model';
@@ -60,10 +60,10 @@ function genericEqual(a: any, b: any): boolean {
 }
 
 function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitStack = new JitStack()): (lastSnapshot: any, currentSnapshot: any) => ItemChanges<any> {
-    const context = new Map<any, any>();
+    const compiler = new CompilerContext();
     const prepared = jitStack.prepare(schema);
-    context.set('genericEqual', genericEqual);
-    context.set('empty', empty);
+    compiler.context.set('genericEqual', genericEqual);
+    compiler.context.set('empty', empty);
     const props: string[] = [];
 
     function has(accessor: string): string {
@@ -72,7 +72,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
 
     function getComparator(property: PropertySchema, last: string, current: string, accessor: string, changedName: string, onChanged: string, jitStack: JitStack): string {
         if (property.isArray) {
-            const l = reserveVariable(context, 'l');
+            const l = reserveVariable(compiler.context, 'l');
             return `
                 if (!${has(changedName)}) {
                 if (!${current} && !${last}) {
@@ -94,8 +94,8 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
             `;
 
         } else if (property.isMap || property.isPartial) {
-            context.set('getObjectKeysSize', getObjectKeysSize);
-            const i = reserveVariable(context, 'i');
+            compiler.context.set('getObjectKeysSize', getObjectKeysSize);
+            const i = reserveVariable(compiler.context, 'i');
             return `
                 if (!${has(changedName)}) {
                 if (!${current} && !${last}) {
@@ -139,8 +139,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
             }
 
             const classSchema = property.getResolvedClassSchema();
-            const jitChangeDetectorThis = reserveVariable(context, 'jitChangeDetector');
-            context.set(jitChangeDetectorThis, jitStack.getOrCreate(classSchema, () => createJITChangeDetectorForSnapshot(classSchema, jitStack)));
+            const jitChangeDetectorThis = compiler.reserveVariable('jitChangeDetector', jitStack.getOrCreate(classSchema, () => createJITChangeDetectorForSnapshot(classSchema, jitStack)));
 
             return `
                 if (!${has(changedName)}) {
@@ -187,24 +186,21 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
         props.push(getComparator(property, `last.${property.name}`, `current.${property.name}`, 'item.' + property.name, property.name, '', jitStack));
     }
 
-    context.set('changeSetSymbol', changeSetSymbol);
-    context.set('ItemChanges', ItemChanges);
+    compiler.context.set('changeSetSymbol', changeSetSymbol);
+    compiler.context.set('ItemChanges', ItemChanges);
 
     const functionCode = `
-        return function(last, current, item) {
-            var changeSet = item[changeSetSymbol] || new ItemChanges(undefined, item);
-            var changes = {};
-            ${props.join('\n')}
-            changeSet.mergeSet(changes);
-            return changeSet.empty ? undefined : changeSet;
-        }
+        var changeSet = item[changeSetSymbol] || new ItemChanges(undefined, item);
+        var changes = {};
+        ${props.join('\n')}
+        changeSet.mergeSet(changes);
+        return changeSet.empty ? undefined : changeSet;
         `;
 
     // console.log('functionCode', functionCode);
 
     try {
-        const compiled = new Function(...context.keys(), functionCode);
-        const fn = compiled(...context.values());
+        const fn = compiler.build(functionCode, 'last', 'current', 'item');
         prepared(fn);
         fn.buildId = schema.buildId;
         return fn;

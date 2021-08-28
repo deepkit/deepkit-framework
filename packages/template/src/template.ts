@@ -11,7 +11,7 @@ import 'reflect-metadata';
 import { ClassType, getClassName, isClass } from '@deepkit/core';
 import { isArray } from '@deepkit/type';
 import './optimize-tsx';
-import { BasicInjector } from '@deepkit/injector';
+import { Injector } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { escapeAttribute, escapeHtml, safeString } from './utils';
 
@@ -84,7 +84,7 @@ export function isSafeString(v: any): v is SafeString {
     return 'object' === typeof v && v.hasOwnProperty(safeString);
 }
 
-async function renderChildren(injector: BasicInjector, contents: ElementStructChildren[], stopwatch?: Stopwatch, autoEscape: boolean = true): Promise<string> {
+async function renderChildren(injector: Injector, contents: ElementStructChildren[], stopwatch?: Stopwatch, autoEscape: boolean = true): Promise<string> {
     let children = '';
     //this is 3x faster than contents.join('')
     // for (const content of struct.contents) {
@@ -110,7 +110,7 @@ async function renderChildren(injector: BasicInjector, contents: ElementStructCh
     return children;
 }
 
-export async function render(injector: BasicInjector, struct: ElementStruct | string | (ElementStruct | string)[], stopwatch?: Stopwatch): Promise<any> {
+export async function render(injector: Injector, struct: ElementStruct | string | (ElementStruct | string)[], stopwatch?: Stopwatch): Promise<any> {
     if ('string' === typeof struct) {
         return struct;
     } else if ((struct as any).htmlString) {

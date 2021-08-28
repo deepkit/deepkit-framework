@@ -16,8 +16,8 @@ import { ClassSchema } from '@deepkit/type';
 import { Application } from './application';
 import { ApplicationServer } from './application-server';
 import { Broker, BrokerServer, DirectBroker } from './broker/broker';
-import { injectorReference, Provider } from '@deepkit/injector';
-import { AppModule, ModuleOptions } from '@deepkit/app';
+import { injectorReference } from '@deepkit/injector';
+import { AppModule, RootModuleDefinition } from '@deepkit/app';
 import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker';
 import { HttpKernel, HttpResponse, RequestBuilder } from '@deepkit/http';
 import { RpcClient } from '@deepkit/rpc';
@@ -104,29 +104,27 @@ export class BrokerMemoryServer extends BrokerServer {
  * Creates a new Application instance, but with kernel services in place that work in memory.
  * For example RPC/Broker/HTTP communication without TCP stack. Logger uses MemoryLogger.
  */
-export function createTestingApp<O extends ModuleOptions>(options: O, entities: (ClassType | ClassSchema)[] = [], setup?: (module: AppModule<any>) => void): TestingFacade<Application<O>> {
+export function createTestingApp<O extends RootModuleDefinition>(options: O, entities: (ClassType | ClassSchema)[] = [], setup?: (module: AppModule<any>) => void): TestingFacade<Application<O>> {
     const module = new AppModule(options);
 
     module.setupProvider(Logger).removeTransport(injectorReference(ConsoleTransport));
     module.setupProvider(Logger).addTransport(injectorReference(MemoryLoggerTransport));
 
-    const providers: Provider<any>[] = [
-        { provide: WebWorkerFactory, useClass: WebMemoryWorkerFactory }, //don't start HTTP-server
-        { provide: BrokerServer, useClass: BrokerMemoryServer }, //don't start Broker TCP-server
-        MemoryLoggerTransport,
-        {
-            provide: Broker, deps: [BrokerServer], useFactory: (server: BrokerMemoryServer) => {
-                return new DirectBroker(server.kernel);
-            }
-        },
-    ];
+    module.addProvider({ provide: WebWorkerFactory, useClass: WebMemoryWorkerFactory }); //don't start HTTP-server
+    module.addProvider({ provide: BrokerServer, useClass: BrokerMemoryServer }); //don't start Broker TCP-server
+    module.addProvider(MemoryLoggerTransport);
+    module.addProvider({
+        provide: Broker, deps: [BrokerServer], useFactory: (server: BrokerMemoryServer) => {
+            return new DirectBroker(server.kernel);
+        }
+    });
 
     if (entities.length) {
-        providers.push({ provide: Database, useValue: new Database(new MemoryDatabaseAdapter, entities) });
-        module.setupProvider(DatabaseRegistry).addDatabase(Database, {}, module);
+        module.addProvider({ provide: Database, useValue: new Database(new MemoryDatabaseAdapter, entities) });
+        module.setupGlobalProvider(DatabaseRegistry).addDatabase(Database, {}, module);
     }
 
     if (setup) module.setup(setup as any);
 
-    return new TestingFacade(Application.fromModule(module, providers));
+    return new TestingFacade(Application.fromModule(module));
 }

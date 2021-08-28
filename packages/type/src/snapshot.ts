@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { toFastProperties } from '@deepkit/core';
+import { CompilerContext, toFastProperties } from '@deepkit/core';
 import { JitStack } from './jit';
 import { jsonSerializer } from './json-serializer';
 import { isExcluded } from './mapper';
@@ -23,7 +23,7 @@ function createJITConverterForSnapshot(
     properties: PropertySchema[],
     serializerCompilers: SerializerCompilers,
 ) {
-    const context = new Map<any, any>();
+    const compiler = new CompilerContext();
     const jitStack = new JitStack();
     const setProperties: string[] = [];
 
@@ -38,7 +38,7 @@ function createJITConverterForSnapshot(
             for (const pk of property.getResolvedClassSchema().getPrimaryFields()) {
                 referenceCode.push(`
                 //createJITConverterForSnapshot ${property.name}->${pk.name} class:snapshot:${property.type} reference
-                ${getDataConverterJS(`_result.${property.name}.${pk.name}`, `_value.${property.name}.${pk.name}`, pk, serializerCompilers, context, jitStack)}
+                ${getDataConverterJS(`_result.${property.name}.${pk.name}`, `_value.${property.name}.${pk.name}`, pk, serializerCompilers, compiler, jitStack)}
                 `);
             }
 
@@ -59,7 +59,7 @@ function createJITConverterForSnapshot(
         setProperties.push(`
             //createJITConverterForSnapshot ${property.name} class:snapshot:${property.type}
             ${getDataConverterJS(
-            `_result.${property.name}`, `_value.${property.name}`, property, serializerCompilers, context, jitStack,
+            `_result.${property.name}`, `_value.${property.name}`, property, serializerCompilers, compiler, jitStack,
             `_result.${property.name} = null`, `_result.${property.name} = null`,
         )}
             `);
@@ -81,23 +81,20 @@ function createJITConverterForSnapshot(
     }
 
     const functionCode = `
-        return function(_value, _parents, _options, _stack, _depth) {
-            ${circularCheckBeginning}
-            var _result = {};
-            var oldUnpopulatedCheck = _global.unpopulatedCheck;
-            _global.unpopulatedCheck = UnpopulatedCheckNone;
-            ${setProperties.join('\n')}
-            _global.unpopulatedCheck = oldUnpopulatedCheck;
-            ${circularCheckEnd}
-            return _result;
-        }
+        ${circularCheckBeginning}
+        var _result = {};
+        var oldUnpopulatedCheck = _global.unpopulatedCheck;
+        _global.unpopulatedCheck = UnpopulatedCheckNone;
+        ${setProperties.join('\n')}
+        _global.unpopulatedCheck = oldUnpopulatedCheck;
+        ${circularCheckEnd}
+        return _result;
         `;
 
-    context.set('_global', getGlobalStore());
-    context.set('UnpopulatedCheckNone', UnpopulatedCheck.None);
+    compiler.context.set('_global', getGlobalStore());
+    compiler.context.set('UnpopulatedCheckNone', UnpopulatedCheck.None);
 
-    const compiled = new Function(...context.keys(), functionCode);
-    const fn = compiled.bind(undefined, ...context.values())();
+    const fn = compiler.build(functionCode, '_value', '_parents', '_options', '_stack', '_depth');
     fn.buildId = schema.buildId;
     return fn;
 }
@@ -214,7 +211,7 @@ function createPrimaryKeyHashGenerator(
     schema: ClassSchema,
     serializer: Serializer
 ) {
-    const context = new Map<any, any>();
+    const context = new CompilerContext();
     const setProperties: string[] = [];
     const jitStack = new JitStack();
 
@@ -278,18 +275,15 @@ function createPrimaryKeyHashGenerator(
     }
 
     const functionCode = `
-        return function(_value, _stack) {
-            var _result = '';
-            var lastValue;
-            ${circularCheckBeginning}
-            ${setProperties.join('\n')}
-            ${circularCheckEnd}
-            return _result;
-        }
+        var _result = '';
+        var lastValue;
+        ${circularCheckBeginning}
+        ${setProperties.join('\n')}
+        ${circularCheckEnd}
+        return _result;
     `;
 
-    const compiled = new Function(...context.keys(), functionCode);
-    const fn = compiled.bind(undefined, ...context.values())();
+    const fn = context.build(functionCode, '_value', '_stack');
     fn.buildId = schema.buildId;
     return fn;
 }

@@ -22,13 +22,13 @@ import { eventDispatcher } from '@deepkit/event';
 import { RouteConfig, Router } from './router';
 
 export function serveStaticListener(path: string, localPath: string = path): ClassType {
-    @injectable()
+    @injectable
     class HttpRequestStaticServingListener {
         serve(path: string, request: HttpRequest, response: HttpResponse) {
-            return new Promise(resolve => {
+            return new Promise((resolve, reject) => {
                 const res = send(request, path, { root: localPath });
-                response.once('finish', resolve);
                 res.pipe(response);
+                res.on('end', resolve);
             });
         }
 
@@ -102,7 +102,7 @@ export interface StaticHttpOptions {
  * All paths like <path>/*.* that don't match a file are redirected to ${localPath}/index.html.
  * All paths like <path>/*.* that match a file resolve to the file.
  */
-export function registerStaticHttpController(module: AppModule<any, any>, options: StaticHttpOptions): void {
+export function registerStaticHttpController(module: AppModule<any>, options: StaticHttpOptions): void {
     let indexHtml = '';
 
     const groups = options.groups || [];
@@ -132,7 +132,7 @@ export function registerStaticHttpController(module: AppModule<any, any>, option
         methodName: 'serveIndex'
     });
     route1.groups = groups;
-    module.setupProvider(Router).addRoute(route1);
+    module.setupGlobalProvider(Router).addRoute(route1);
 
     const route2 = new RouteConfig('static', ['GET'], normalizeDirectory(options.path).slice(0, -1), {
         controller: StaticController,
@@ -140,7 +140,7 @@ export function registerStaticHttpController(module: AppModule<any, any>, option
         methodName: 'serveIndex'
     });
     route2.groups = groups;
-    module.setupProvider(Router).addRoute(route2);
+    module.setupGlobalProvider(Router).addRoute(route2);
 
     module.addProvider(StaticController);
     module.addListener(serveStaticListener(normalizeDirectory(options.path), options.localPath));

@@ -10,16 +10,16 @@
 
 import { RpcKernel } from '../server/kernel';
 import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client';
-import { Injector } from '@deepkit/injector';
+import { InjectorContext } from '@deepkit/injector';
 
 export class DirectClient extends RpcClient {
-    constructor(rpcKernel: RpcKernel, injector?: Injector) {
+    constructor(rpcKernel: RpcKernel, injector?: InjectorContext) {
         super(new RpcDirectClientAdapter(rpcKernel, injector));
     }
 }
 
 export class RpcDirectClientAdapter implements ClientTransportAdapter {
-    constructor(public rpcKernel: RpcKernel, protected injector?: Injector) {
+    constructor(public rpcKernel: RpcKernel, protected injector?: InjectorContext) {
     }
 
     public async connect(connection: TransportConnectionHooks) {
@@ -50,13 +50,13 @@ export class RpcDirectClientAdapter implements ClientTransportAdapter {
  * the communication asynchronous.
  */
 export class AsyncDirectClient extends RpcClient {
-    constructor(rpcKernel: RpcKernel, injector?: Injector) {
+    constructor(rpcKernel: RpcKernel, injector?: InjectorContext) {
         super(new RpcAsyncDirectClientAdapter(rpcKernel, injector));
     }
 }
 
 export class RpcAsyncDirectClientAdapter implements ClientTransportAdapter {
-    constructor(public rpcKernel: RpcKernel, protected injector?: Injector) {
+    constructor(public rpcKernel: RpcKernel, protected injector?: InjectorContext) {
     }
 
     public async connect(connection: TransportConnectionHooks) {

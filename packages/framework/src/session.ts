@@ -44,7 +44,7 @@ export class Session {
 /**
  *
  */
-@injectable()
+@injectable
 export class SessionHandler {
     protected session?: Session;
 

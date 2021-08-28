@@ -5,11 +5,11 @@ import { App, AppModule, MiddlewareFactory } from '@deepkit/app';
 import { HttpModule } from '../src/module';
 
 export function createHttpKernel(
-    controllers: (ClassType | { module: AppModule<any, any>, controller: ClassType })[],
+    controllers: (ClassType | { module: AppModule<any>, controller: ClassType })[],
     providers: ProviderWithScope[] = [],
     listeners: ClassType[] = [],
     middlewares: MiddlewareFactory[] = [],
-    modules: AppModule<any, any>[] = []
+    modules: AppModule<any>[] = []
 ) {
     const imports: AppModule<any>[] = modules.slice(0);
     imports.push(new HttpModule());
@@ -27,6 +27,6 @@ export function createHttpKernel(
         middlewares,
     });
 
-    const app = new App({imports: [module]});
+    const app = App.fromModule(module);
     return app.get(HttpKernel);
 }

@@ -6,6 +6,8 @@ import { HttpKernel } from './kernel';
 import { HttpRouterFilterResolver } from './filter';
 import { HttpControllers } from './controllers';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
+import { HttpRequest, HttpResponse } from './model';
+import '@deepkit/type';
 import { ClassType } from '@deepkit/core';
 import { httpClass } from './decorator';
 
@@ -16,7 +18,9 @@ export class HttpModule extends createModule({
         HttpKernel,
         HttpResultFormatter,
         HttpRouterFilterResolver,
-        {provide: Logger, useValue: new Logger([new ConsoleTransport()])},
+        { provide: HttpResponse, scope: 'http' },
+        { provide: HttpRequest, scope: 'http' },
+        { provide: Logger, useValue: new Logger([new ConsoleTransport()]) },
     ],
     listeners: [
         HttpListener,
@@ -24,12 +28,15 @@ export class HttpModule extends createModule({
     workflows: [
         httpWorkflow
     ],
+    exports: [
+        Logger
+    ]
 }) {
     root = true;
     protected httpControllers = new HttpControllers;
 
     process() {
-        this.addProvider({provide: HttpControllers, useValue: this.httpControllers});
+        this.addProvider({ provide: HttpControllers, useValue: this.httpControllers });
     }
 
     handleController(module: AppModule<any>, controller: ClassType) {

@@ -9,26 +9,26 @@ import { convertJsxCodeToCreateElement, optimizeJSX } from '../src/optimize-tsx'
 Error.stackTraceLimit = 200;
 
 test('template simple', async () => {
-    expect(await render(new Injector(), <div></div>)).toBe('<div></div>');
+    expect(await render(Injector.from([]), <div></div>)).toBe('<div></div>');
 
-    expect(await render(new Injector(), <div>Test</div>)).toBe('<div>Test</div>');
-    expect(await render(new Injector(), <div id="12"></div>)).toBe(`<div id="12"></div>`);
-    expect(await render(new Injector(), <div id="12">Test</div>)).toBe(`<div id="12">Test</div>`);
+    expect(await render(Injector.from([]), <div>Test</div>)).toBe('<div>Test</div>');
+    expect(await render(Injector.from([]), <div id="12"></div>)).toBe(`<div id="12"></div>`);
+    expect(await render(Injector.from([]), <div id="12">Test</div>)).toBe(`<div id="12">Test</div>`);
 
-    expect(await render(new Injector(), <div><a href="google.de">Link</a></div>)).toBe('<div><a href="google.de">Link</a></div>');
+    expect(await render(Injector.from([]), <div><a href="google.de">Link</a></div>)).toBe('<div><a href="google.de">Link</a></div>');
 
-    expect(await render(new Injector(), <div><b>Link2</b><strong>Link2</strong></div>)).toBe('<div><b>Link2</b><strong>Link2</strong></div>');
+    expect(await render(Injector.from([]), <div><b>Link2</b><strong>Link2</strong></div>)).toBe('<div><b>Link2</b><strong>Link2</strong></div>');
 });
 
 test('template html escape', async () => {
-    expect(await render(new Injector(), <div>{'<strong>MyHTML</strong>'}</div>)).toBe('<div>&lt;strong&gt;MyHTML&lt;/strong&gt;</div>');
+    expect(await render(Injector.from([]), <div>{'<strong>MyHTML</strong>'}</div>)).toBe('<div>&lt;strong&gt;MyHTML&lt;/strong&gt;</div>');
 
     const myVar = '<strong>MyHTML</strong>';
-    expect(await render(new Injector(), <div>{myVar}</div>)).toBe('<div>&lt;strong&gt;MyHTML&lt;/strong&gt;</div>');
+    expect(await render(Injector.from([]), <div>{myVar}</div>)).toBe('<div>&lt;strong&gt;MyHTML&lt;/strong&gt;</div>');
 
-    expect(await render(new Injector(), <div>{html(myVar)}</div>)).toBe('<div><strong>MyHTML</strong></div>');
+    expect(await render(Injector.from([]), <div>{html(myVar)}</div>)).toBe('<div><strong>MyHTML</strong></div>');
 
-    expect(await render(new Injector(), <div id={myVar}></div>)).toBe('<div id="<strong>MyHTML</strong>"></div>');
+    expect(await render(Injector.from([]), <div id={myVar}></div>)).toBe('<div id="<strong>MyHTML</strong>"></div>');
 });
 
 function normalize(string: string): string {
@@ -41,7 +41,7 @@ function optimiseFn(fn: Function): Function {
 }
 
 async function simpleRender(t: any): Promise<string> {
-    return await render(new Injector(), t);
+    return await render(Injector.from([]), t);
 }
 
 // function test1(props: {[name: string]: any} = {}) {
@@ -216,25 +216,25 @@ test('template jsx for cjs optimize', async () => {
 });
 
 test('template simple import', async () => {
-    expect(await render(new Injector(), simple1())).toBe('<div id="123">Test</div>');
-    expect(await render(new Injector(), simple2())).toBe('<div id="123"><b>strong</b></div>');
-    expect(await render(new Injector(), simple3())).toBe('<div id="123"><b>strong</b><b>strong2</b></div>');
-    expect(await render(new Injector(), simple4())).toBe('<div id="123" class="active"><div><b>strong</b><b>strong2</b></div></div>');
-    expect(await render(new Injector(), simpleHtmlInjected())).toBe('<div>&lt;strong&gt;MyHTML&lt;/strong&gt;</div>');
-    expect(await render(new Injector(), simpleHtmlInjectedValid())).toBe('<div><strong>MyHTML</strong></div>');
+    expect(await render(Injector.from([]), simple1())).toBe('<div id="123">Test</div>');
+    expect(await render(Injector.from([]), simple2())).toBe('<div id="123"><b>strong</b></div>');
+    expect(await render(Injector.from([]), simple3())).toBe('<div id="123"><b>strong</b><b>strong2</b></div>');
+    expect(await render(Injector.from([]), simple4())).toBe('<div id="123" class="active"><div><b>strong</b><b>strong2</b></div></div>');
+    expect(await render(Injector.from([]), simpleHtmlInjected())).toBe('<div>&lt;strong&gt;MyHTML&lt;/strong&gt;</div>');
+    expect(await render(Injector.from([]), simpleHtmlInjectedValid())).toBe('<div><strong>MyHTML</strong></div>');
 });
 
 test('template render custom', async () => {
-    expect(await render(new Injector(), { render: 'div', attributes: { id: '123' }, children: 'Test' })).toBe('<div id="123">Test</div>');
-    expect(await render(new Injector(), { render: 'div', attributes: { id: '123' }, children: '<b>Test</b>' })).toBe('<div id="123">&lt;b&gt;Test&lt;/b&gt;</div>');
-    expect(await render(new Injector(), { render: 'div', attributes: { id: '123' }, children: html('Test') })).toBe('<div id="123">Test</div>');
-    expect(await render(new Injector(), { render: 'div', attributes: { id: '123' }, children: [html('Test')] })).toBe('<div id="123">Test</div>');
-    expect(await render(new Injector(), { render: 'div', attributes: { id: '123' }, children: [html('<b>Test</b>')] })).toBe('<div id="123"><b>Test</b></div>');
+    expect(await render(Injector.from([]), { render: 'div', attributes: { id: '123' }, children: 'Test' })).toBe('<div id="123">Test</div>');
+    expect(await render(Injector.from([]), { render: 'div', attributes: { id: '123' }, children: '<b>Test</b>' })).toBe('<div id="123">&lt;b&gt;Test&lt;/b&gt;</div>');
+    expect(await render(Injector.from([]), { render: 'div', attributes: { id: '123' }, children: html('Test') })).toBe('<div id="123">Test</div>');
+    expect(await render(Injector.from([]), { render: 'div', attributes: { id: '123' }, children: [html('Test')] })).toBe('<div id="123">Test</div>');
+    expect(await render(Injector.from([]), { render: 'div', attributes: { id: '123' }, children: [html('<b>Test</b>')] })).toBe('<div id="123"><b>Test</b></div>');
 
-    expect(await render(new Injector(), { render: 'div', attributes: { id: '123' }, children: ['Hi ', html('Test')] })).toBe('<div id="123">Hi Test</div>');
-    expect(await render(new Injector(), { render: 'div', attributes: '', children: ['Hi ', html('Test')] })).toBe('<div>Hi Test</div>');
+    expect(await render(Injector.from([]), { render: 'div', attributes: { id: '123' }, children: ['Hi ', html('Test')] })).toBe('<div id="123">Hi Test</div>');
+    expect(await render(Injector.from([]), { render: 'div', attributes: '', children: ['Hi ', html('Test')] })).toBe('<div>Hi Test</div>');
 
-    expect(await render(new Injector(), {
+    expect(await render(Injector.from([]), {
         render: 'div',
         attributes: '',
         children: ['Hi ', { render: 'div', attributes: '', children: html('Test') }]

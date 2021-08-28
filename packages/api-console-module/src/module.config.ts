@@ -2,7 +2,7 @@ import { AppModuleConfig } from '@deepkit/app';
 import { t } from '@deepkit/type';
 
 export const config = new AppModuleConfig({
-    listen: t.boolean.default(true),
+    listen: t.boolean.default(true).description('If true serves the application at given URL path.'),
     path: t.string.default('/api'),
     markdown: t.string.description('Markdown to display at the overview page')
         .default(`

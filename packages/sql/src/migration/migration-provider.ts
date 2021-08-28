@@ -15,7 +15,7 @@ import { basename, join } from 'path';
 import { injectable } from '@deepkit/injector';
 import { Migration } from './migration';
 
-@injectable()
+@injectable
 export class MigrationProvider {
     protected databaseMap = new Map<string, Database<any>>();
     protected migrationDir: string = 'migrations/';

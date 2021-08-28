@@ -5,7 +5,8 @@
   "sideEffects": false,
   "private": true,
   "scripts": {
-    "benchmark": "../../node_modules/.bin/ts-node index.ts",
+    "benchmark": "node --allow-natives-syntax -r ts-node/register index.ts",
+    "benchmark:deopt": "node --allow-natives-syntax --trace_deopt -r ts-node/register index.ts",
     "benchmark-inspect": "node --inspect-brk --require ts-node/register index.ts",
     "setup": "sh setup.sh"
   },
@@ -57,7 +58,8 @@
     "sequelize": "^6.6.2",
     "sqlite3": "^5.0.1",
     "turbo-net": "1.4.0",
-    "typeorm": "^0.2.26"
+    "typeorm": "^0.2.26",
+    "v8-profiler-next": "^1.4.2"
   },
   "devDependencies": {
     "@types/node-fetch": "^2.5.7",

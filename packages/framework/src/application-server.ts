@@ -18,6 +18,7 @@ import { frameworkConfig } from './module.config';
 import { Logger } from '@deepkit/logger';
 import { createRpcConnection, WebWorker, WebWorkerFactory } from './worker';
 import { RpcControllers } from './rpc';
+import '@deepkit/type';
 
 export class ServerBootstrapEvent extends BaseEvent {
 }
@@ -85,7 +86,7 @@ function needsHttpWorker(config: { publicDir?: string }, rpcControllers: RpcCont
     return Boolean(config.publicDir || rpcControllers.controllers.size || router.getRoutes().length);
 }
 
-@injectable()
+@injectable
 export class ApplicationServerListener {
     constructor(
         protected logger: Logger,
@@ -141,7 +142,7 @@ export class ApplicationServerListener {
     }
 }
 
-@injectable()
+@injectable
 export class ApplicationServer {
     protected httpWorker?: WebWorker;
     protected started = false;

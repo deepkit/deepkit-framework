@@ -165,7 +165,7 @@ function getPropertySizer(schema: ClassSchema, compiler: CompilerContext, proper
         const isArrayVar = compiler.reserveVariable('isArray', isArray);
         const unpopulatedSymbolVar = compiler.reserveVariable('unpopulatedSymbol', unpopulatedSymbol);
 
-        const i = compiler.reserveVariable('i');
+        const i = compiler.reserveName('i');
         code = `
         if (${accessor} && ${accessor} !== ${unpopulatedSymbolVar} && ${isArrayVar}(${accessor})) {
             size += 4; //array size
@@ -229,10 +229,10 @@ function getPropertySizer(schema: ClassSchema, compiler: CompilerContext, proper
         `;
     } else if (property.type === 'map') {
         compiler.context.set('stringByteLength', stringByteLength);
-        const i = compiler.reserveVariable('i');
+        const i = compiler.reserveName('i');
         code = `
         size += 4; //object size
-        for (${i} in ${accessor}) {
+        for (let ${i} in ${accessor}) {
             if (!${accessor}.hasOwnProperty(${i})) continue;
             size += 1; //element type
             size += stringByteLength(${i}) + 1; //element name + null;
@@ -241,12 +241,11 @@ function getPropertySizer(schema: ClassSchema, compiler: CompilerContext, proper
         size += 1; //null
         `;
     } else if (property.type === 'class') {
-        const sizer = compiler.reserveVariable('_sizer' + property.name);
         const forwardSchema = property.getResolvedClassSchema();
         const sizerFn = jitStack.getOrCreate(forwardSchema, () => createBSONSizer(property.getResolvedClassSchema(), jitStack));
+        const sizer = compiler.reserveVariable('_sizer' + property.name, sizerFn);
         const unpopulatedSymbolVar = compiler.reserveVariable('unpopulatedSymbol', unpopulatedSymbol);
         compiler.context.set('isObject', isObject);
-        compiler.context.set(sizer, sizerFn);
         compiler.context.set('UUIDSymbol', UUIDSymbol);
         compiler.context.set('ObjectIdSymbol', ObjectIdSymbol);
 
@@ -967,7 +966,7 @@ function getPropertySerializerCode(
             }
         `;
     } else if (property.type === 'array') {
-        const i = compiler.reserveVariable('i');
+        const i = compiler.reserveName('i');
         const isArrayVar = compiler.reserveVariable('isArray', isArray);
         const unpopulatedSymbolVar = compiler.reserveVariable('unpopulatedSymbol', unpopulatedSymbol);
 
@@ -989,7 +988,7 @@ function getPropertySerializerCode(
         }
         `;
     } else if (property.type === 'map') {
-        const i = compiler.reserveVariable('i');
+        const i = compiler.reserveName('i');
         code = `
             writer.writeByte(${BSONType.OBJECT});
             ${nameWriter}

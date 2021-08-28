@@ -2,12 +2,12 @@ import { t } from '@deepkit/type';
 import { beforeEach, expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { App } from '../src/app';
-import { inject, ProviderWithScope } from '@deepkit/injector';
+import { inject, ProviderWithScope, Token } from '@deepkit/injector';
 import { AppModule, AppModuleConfig, createModule } from '../src/module';
 import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
 import { cli, Command } from '../src/command';
 import { ClassType } from '../../core';
-import { isArray, isClass } from '@deepkit/core';
+import { isClass } from '@deepkit/core';
 import { ServiceContainer } from '../src/service-container';
 
 Error.stackTraceLimit = 100;
@@ -47,7 +47,7 @@ test('loadConfigFromEnvVariables', async () => {
     const service = app.get(Service);
     expect(service.token).toBe('fromBefore');
 
-    const baseModule = app.serviceContainer.getModuleForModuleClass(BaseModule);
+    const baseModule = app.serviceContainer.getModule(BaseModule);
     expect(baseModule.getConfig()).toEqual({ db: 'changed2' });
 
     const baseService = app.get(BaseService);
@@ -97,7 +97,7 @@ test('loadConfigFromEnvVariables non-root import', async () => {
     process.env.APP_BASE_DB = 'changed2';
     app.loadConfigFromEnv();
 
-    const baseService = app.serviceContainer.getInjectorFor(baseModule).get(BaseService);
+    const baseService = app.serviceContainer.getInjector(baseModule).get(BaseService);
     expect(baseService.db).toBe('changed2');
 });
 
@@ -314,7 +314,8 @@ test('cli controllers in sub modules are in correct injector context', async () 
     class MyModule extends createModule({
         providers: [MyService, { provide: 'onlyInCLI', scope: 'cli', useValue: true }],
         controllers: [MyController],
-    }, 'base') {}
+    }, 'base') {
+    }
 
     {
         const app = new App({ imports: [new MyModule] });
@@ -330,7 +331,7 @@ test('cli controllers in sub modules are in correct injector context', async () 
             expect(created).toBe(2);
         }
 
-        expect(() => app.get(MyService)).toThrow('Could not resolve injector token MyService');
+        expect(() => app.get(MyService)).toThrow('not found');
     }
 
     {
@@ -345,7 +346,6 @@ test('cli controllers in sub modules are in correct injector context', async () 
 });
 
 test('config deps and @inject() in FactoryProvider', async () => {
-
     const config = new AppModuleConfig({
         host: t.string.default('0.0.0.0'),
     });
@@ -443,21 +443,20 @@ test('config deps and @inject() in FactoryProvider', async () => {
 
 
 test('service container hooks', () => {
-
     class MyModule extends createModule({}) {
         providersFound: ProviderWithScope[] = [];
         controllersFound: ClassType[] = [];
 
-        handleController(module: AppModule<any, any>, controller: ClassType) {
+        handleController(module: AppModule<any>, controller: ClassType) {
             expect(module).toBeInstanceOf(AppModule);
             expect(isClass(controller)).toBe(true);
+            module.addProvider(controller);
             this.controllersFound.push(controller);
         }
 
-        handleProviders(module: AppModule<any, any>, providers: ProviderWithScope[]) {
+        handleProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
             expect(module).toBeInstanceOf(AppModule);
-            expect(isArray(providers)).toBe(true);
-            this.providersFound.push(...providers);
+            this.providersFound.push(provider);
         }
     }
 
@@ -470,36 +469,43 @@ test('service container hooks', () => {
     }
 
     {
-        class Controller {}
+        class Controller {
+        }
+
         const m = new MyModule;
-        const app = new ServiceContainer(new AppModule({controllers: [Controller], imports: [m] }));
+        const app = new ServiceContainer(new AppModule({ controllers: [Controller], imports: [m] }));
         app.process();
-        expect(m.providersFound.length).toBe(5);
+        expect(m.providersFound.length).toBe(6);
         expect(m.controllersFound.length).toBe(1);
     }
 
     {
-        class Controller {}
+        class Controller {
+        }
+
         const m = new MyModule;
-        const app = new ServiceContainer(new AppModule({providers: [Controller], imports: [m] }));
+        const app = new ServiceContainer(new AppModule({ providers: [Controller], imports: [m] }));
         app.process();
         expect(m.providersFound.length).toBe(6);
         expect(m.controllersFound.length).toBe(0);
     }
 
     {
-        class Controller {}
-        class Service {}
+        class Controller {
+        }
+
+        class Service {
+        }
+
         const baseModule = new AppModule({
             controllers: [Controller],
             providers: [Service]
-        })
+        });
 
         const m = new MyModule;
-        const app = new ServiceContainer(new AppModule({imports: [baseModule, m] }));
+        const app = new ServiceContainer(new AppModule({ imports: [baseModule, m] }));
         app.process();
-        expect(m.providersFound.length).toBe(6);
+        expect(m.providersFound.length).toBe(7);
         expect(m.controllersFound.length).toBe(1);
     }
-
 });

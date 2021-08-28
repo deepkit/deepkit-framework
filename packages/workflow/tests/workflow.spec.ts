@@ -78,8 +78,8 @@ test('workflow events listener', async () => {
         }
     }
 
-    const module = new InjectorModule('', {});
-    const dispatcher = new EventDispatcher(InjectorContext.forProviders([Listener], module));
+    const module = new InjectorModule([Listener]);
+    const dispatcher = new EventDispatcher(new InjectorContext(module));
     const w = workflow1.create('start', dispatcher);
 
     dispatcher.registerListener(Listener, module);
@@ -130,7 +130,7 @@ test('workflow events apply injector', async () => {
         data: string = 'myData';
     }
 
-    @injectable()
+    @injectable
     class Listener {
         constructor(private myService: MyService) {
         }
@@ -142,10 +142,8 @@ test('workflow events apply injector', async () => {
         }
     }
 
-    const module = new InjectorModule('', {});
-    const context = InjectorContext.forProviders([
-        MyService, Listener
-    ], module);
+    const module = new InjectorModule([MyService, Listener]);
+    const context = new InjectorContext(module);
     const dispatcher = new EventDispatcher(context);
     const w = workflow1.create('start', dispatcher);
 

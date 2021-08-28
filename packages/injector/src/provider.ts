@@ -7,8 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { ClassType, isClass } from '@deepkit/core';
-import { InjectorToken } from './injector';
+import { AbstractClassType, ClassType, isClass } from '@deepkit/core';
+import { InjectorToken } from './decorator';
+import { InjectorModule } from './module';
 
 export interface ProviderBase {
     /**
@@ -18,11 +19,13 @@ export interface ProviderBase {
     transient?: true;
 }
 
+export type Token<T = any> = symbol | string | InjectorToken<T> | AbstractClassType<T>;
+
 export interface ValueProvider<T> extends ProviderBase {
     /**
-     * An injection token. (Typically an instance of `ClassType`, but can be `any`).
+     * An injection token. Typically a class.
      */
-    provide: symbol | string | InjectorToken<T> | ClassType<T>;
+    provide: Token<T>;
 
     /**
      * The value to inject.
@@ -32,9 +35,9 @@ export interface ValueProvider<T> extends ProviderBase {
 
 export interface ClassProvider<T> extends ProviderBase {
     /**
-     * An injection token. (Typically an instance of `ClassType`, but can be `any`).
+     * An injection token. Typically a class.
      */
-    provide: symbol | string | InjectorToken<T> | ClassType<T>;
+    provide: Token<T>;
 
     /**
      * Class to instantiate for the `token`.
@@ -44,9 +47,9 @@ export interface ClassProvider<T> extends ProviderBase {
 
 export interface ExistingProvider<T> extends ProviderBase {
     /**
-     * An injection token. (Typically an instance of `ClassType`, but can be `any`).
+     * An injection token. Typically a class.
      */
-    provide: symbol | string  | InjectorToken<T> | ClassType<T>;
+    provide: Token<T>;
 
     /**
      * Existing `token` to return. (equivalent to `injector.get(useExisting)`)
@@ -56,9 +59,9 @@ export interface ExistingProvider<T> extends ProviderBase {
 
 export interface FactoryProvider<T> extends ProviderBase {
     /**
-     * An injection token. (Typically an instance of `ClassType`, but can be `any`).
+     * An injection token. Typically a class.
      */
-    provide: symbol | string | InjectorToken<T> | ClassType<T>;
+    provide: Token<T>;
 
     /**
      * A function to invoke to create a value for this `token`. The function is invoked with
@@ -77,14 +80,23 @@ export type Provider<T = any> = ClassType | ValueProvider<T> | ClassProvider<T> 
 
 export type ProviderProvide<T = any> = ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>;
 
+interface TagRegistryEntry<T> {
+    tagProvider: TagProvider<T>;
+    module: InjectorModule;
+}
+
 export class TagRegistry {
     constructor(
-        public tags: TagProvider<any>[] = []
+        public tags: TagRegistryEntry<any>[] = []
     ) {
     }
 
-    resolve<T extends ClassType<Tag<any>>>(tag: T): TagProvider<InstanceType<T>>[] {
-        return this.tags.filter(v => v.tag instanceof tag);
+    register(tagProvider: TagProvider<any>, module: InjectorModule) {
+        return this.tags.push({tagProvider, module});
+    }
+
+    resolve<T extends ClassType<Tag<any>>>(tag: T): TagRegistryEntry<InstanceType<T>>[] {
+        return this.tags.filter(v => v.tagProvider.tag instanceof tag);
     }
 }
 
@@ -155,6 +167,13 @@ export function isFactoryProvider(obj: any): obj is FactoryProvider<any> {
 export function isInjectionProvider(obj: any): obj is Provider<any> {
     return isValueProvider(obj) || isClassProvider(obj) || isExistingProvider(obj) || isFactoryProvider(obj);
 }
+
+export function isTransient(provider: ProviderWithScope): boolean {
+    if (isClass(provider)) return false;
+    if (provider instanceof TagProvider) return false;
+    return provider.transient === true;
+}
+
 
 export function getProviders(
     providers: ProviderWithScope[],

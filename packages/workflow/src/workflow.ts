@@ -123,7 +123,6 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
         compiler.context.set('getClassName', getClassName);
 
         const lines: string[] = [];
-        const varName = new Map<any, string>();
 
         for (const [place, eventType] of Object.entries(this.places)) {
             const stateString = JSON.stringify(place);
@@ -150,17 +149,14 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
                         }
                     `);
                 } else if (isEventListenerContainerEntryService(listener)) {
-                    let classTypeVar = varName.get(listener.classType);
-                    if (!classTypeVar) {
-                        classTypeVar = compiler.reserveVariable('classType', listener.classType);
-                        varName.set(listener.classType, classTypeVar);
-                    }
-                    const resolvedVar = classTypeVar + '_resolved';
+                    const classTypeVar = compiler.reserveVariable('classType', listener.classType);
+                    const moduleVar = listener.module ? ', ' + compiler.reserveVariable('module', listener.module) : '';
+                    const resolvedVar = compiler.reserveVariable('resolved');
 
                     listenerCode.push(`
                     //${getClassName(listener.classType)}.${listener.methodName}
                     if (!event.isStopped()) {
-                        if (!${resolvedVar}) ${resolvedVar} = scopedContext.get(${classTypeVar});
+                        if (!${resolvedVar}) ${resolvedVar} = scopedContext.get(${classTypeVar}${moduleVar});
                         await ${resolvedVar}.${listener.methodName}(event);
                     }
                 `);
@@ -186,12 +182,7 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
         `);
         }
 
-        const pre: string[] = [];
-        for (const name of varName.values()) pre.push(`let ${name}_resolved;`);
-
         return compiler.buildAsync(`
-            ${pre.join('\n')}
-
             while (true) {
                 const currentState = state.get();
                 switch (nextState) {
@@ -238,7 +229,8 @@ export class WorkflowStateSubject<T extends WorkflowPlaces> implements WorkflowS
     }
 }
 
-export class WorkflowError extends CustomError { }
+export class WorkflowError extends CustomError {
+}
 
 export class Workflow<T extends WorkflowPlaces> {
     protected events: { [name in keyof T]?: Function } = {};

@@ -35,7 +35,7 @@ const FSCacheMessage = t.schema({
     md5: t.string.optional,
 });
 
-@injectable()
+@injectable
 export class FS<T extends DeepkitFile> {
     constructor(
         public readonly fileType: FileType<T>,

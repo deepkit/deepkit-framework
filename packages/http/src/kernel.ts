@@ -1,4 +1,4 @@
-import { inject, injectable, InjectorContext, MemoryInjector } from '@deepkit/injector';
+import { inject, injectable, InjectorContext } from '@deepkit/injector';
 import { Router } from './router';
 import { EventDispatcher } from '@deepkit/event';
 import { Logger } from '@deepkit/logger';
@@ -7,7 +7,7 @@ import { HttpRequestEvent, httpWorkflow } from './http';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { unlink } from 'fs';
 
-@injectable()
+@injectable
 export class HttpKernel {
     constructor(
         protected router: Router,
@@ -28,10 +28,9 @@ export class HttpKernel {
     }
 
     async handleRequest(req: HttpRequest, res: HttpResponse) {
-        const httpInjectorContext = this.injectorContext.createChildScope('http', new MemoryInjector([
-            { provide: HttpRequest, useValue: req },
-            { provide: HttpResponse, useValue: res },
-        ]));
+        const httpInjectorContext = this.injectorContext.createChildScope('http');
+        httpInjectorContext.set(HttpRequest, req);
+        httpInjectorContext.set(HttpResponse, res);
 
         const frame = this.stopwatch ? this.stopwatch.start(req.method + ' ' + req.getUrl(), FrameCategory.http, true) : undefined;
         const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext, this.stopwatch);

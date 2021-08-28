@@ -17,6 +17,7 @@ export type EventListenerCallback<T> = (event: T) => void | Promise<void>;
 export interface EventListener<T> {
     eventToken: EventToken<any>;
     callback: EventListenerCallback<T>;
+    module?: InjectorModule,
     order: number;
 }
 
@@ -35,8 +36,8 @@ export class EventToken<T extends BaseEvent = BaseEvent> {
     ) {
     }
 
-    listen(callback: (event: T) => void, order: number = 0): EventListener<T> {
-        return { eventToken: this, callback, order: order };
+    listen(callback: (event: T) => void, order: number = 0, module?: InjectorModule): EventListener<T> {
+        return { eventToken: this, callback, order: order, module };
     }
 }
 
@@ -102,8 +103,8 @@ export const eventDispatcher = createPropertyDecoratorContext(
 );
 
 
-export type EventListenerContainerEntryCallback = { order: number, fn: EventListenerCallback<any> };
-export type EventListenerContainerEntryService = { module: InjectorModule<any>, order: number, classType: ClassType, methodName: string };
+export type EventListenerContainerEntryCallback = { order: number, fn: EventListenerCallback<any>, module?: InjectorModule, };
+export type EventListenerContainerEntryService = { module: InjectorModule, order: number, classType: ClassType, methodName: string };
 export type EventListenerContainerEntry = EventListenerContainerEntryCallback | EventListenerContainerEntryService;
 
 export function isEventListenerContainerEntryCallback(obj: any): obj is EventListenerContainerEntryCallback {
@@ -225,8 +226,9 @@ export class EventDispatcher {
                 `);
             } else if (isEventListenerContainerEntryService(listener)) {
                 const classTypeVar = compiler.reserveVariable('classType', listener.classType);
+                const moduleVar = compiler.reserveVariable('module', listener.module);
                 lines.push(`
-                    await scopedContext.get(${classTypeVar}).${listener.methodName}(event);
+                    await scopedContext.get(${classTypeVar}, ${moduleVar}).${listener.methodName}(event);
                 `);
             }
         }
@@ -245,7 +247,7 @@ export type ExtractDep<T> = T extends ClassType ? InstanceType<T> :
         T extends ConfigToken<infer V> ? V :
             T;
 
-export type ExtractDeps<T extends any[]> = {[K in keyof T]: ExtractDep<T[K]>}
+export type ExtractDeps<T extends any[]> = { [K in keyof T]: ExtractDep<T[K]> }
 
 export function createListener<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: (event: T['event'], ...deps: ExtractDeps<DEPS>) => void | Promise<void>, ...deps: DEPS): ClassType<any> {
     class DynamicListener {

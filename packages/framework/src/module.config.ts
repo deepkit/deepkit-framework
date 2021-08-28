@@ -41,5 +41,3 @@ export const frameworkConfig = new AppModuleConfig({
     migrateOnStartup: t.boolean.default(false).description('Whether all registered database should be migrated automatically on startup.'),
     migrationDir: t.string.default('migrations'),
 });
-
-export class FrameworkConfigAll extends frameworkConfig.all() { }

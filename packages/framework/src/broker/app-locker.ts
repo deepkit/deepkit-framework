@@ -25,7 +25,7 @@ export class AppLock {
  * An global application lock (across workers, processes, and nodes).
  * It provides a way to acquire locks on the central broker process atomically.
 */
-@injectable()
+@injectable
 export class AppLocker {
     constructor(protected broker: Broker) {
     }

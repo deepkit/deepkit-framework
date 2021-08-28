@@ -8,20 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ExtractClassDefinition, JSONPartial, jsonSerializer, PlainSchemaProps, t } from '@deepkit/type';
-import { ConfigDefinition, InjectorModule, InjectorToken, ProviderWithScope } from '@deepkit/injector';
-import { ClassType, CustomError, getClassName } from '@deepkit/core';
+import { ExtractClassDefinition, jsonSerializer, PlainSchemaProps, t } from '@deepkit/type';
+import { ConfigDefinition, InjectorModule, InjectorToken, ProviderWithScope, Token } from '@deepkit/injector';
+import { ClassType, CustomError, isClass } from '@deepkit/core';
 import { EventListener } from '@deepkit/event';
 import type { WorkflowDefinition } from '@deepkit/workflow';
-import { isProvided } from './service-container';
 
 export type DefaultObject<T> = T extends undefined ? {} : T;
-export type ExtractAppModuleName<T extends AppModule<any, any>> = T extends AppModule<any, infer NAME> ? NAME : never;
-export type ExtractImportConfigs<T extends Array<AppModule<any, any>> | undefined> = T extends Array<any> ? { [M in T[number] as (ExtractAppModuleName<M> & string)]?: ExtractPartialConfigOfDefinition<DefaultObject<ExtractModuleOptions<M>['config']>> } : {};
 export type ExtractConfigOfDefinition<T> = T extends ConfigDefinition<infer C> ? C : {};
-export type ExtractPartialConfigOfDefinition<T> = T extends ConfigDefinition<infer C> ? JSONPartial<C> : {};
-export type ExtractModuleOptions<T extends AppModule<any, any>> = T extends AppModule<infer O, any> ? O : never;
-export type ModuleConfigOfOptions<O extends ModuleOptions> = ExtractImportConfigs<O['imports']> & ExtractPartialConfigOfDefinition<DefaultObject<O['config']>>;
 
 export interface MiddlewareConfig {
     getClassTypes(): ClassType[];
@@ -29,7 +23,9 @@ export interface MiddlewareConfig {
 
 export type MiddlewareFactory = () => MiddlewareConfig;
 
-export interface ModuleOptions {
+export type ExportType = ClassType | InjectorToken<any> | string | AppModule<any>;
+
+export interface ModuleDefinition {
     /**
      * Providers.
      */
@@ -38,7 +34,7 @@ export interface ModuleOptions {
     /**
      * Export providers (its token `provide` value) or modules you imported first.
      */
-    exports?: (ClassType | InjectorToken<any> | string | AppModule<any, any>)[];
+    exports?: ExportType[];
 
     /**
      * Module bootstrap class. This class is instantiated on bootstrap and can
@@ -51,13 +47,14 @@ export interface ModuleOptions {
      *
      * @example
      * ```typescript
+     * import {createModule, createModuleConfig} from '@deepkit/app';
      * import {t} from '@deepkit/type';
      *
-     * const myModuleConfig = new AppModuleConfig({
+     * const myModuleConfig = createModuleConfig({
      *     debug: t.boolean.default(false),
      * });
      *
-     * const myModule = new AppModule({
+     * class MyModule extends createModule({
      *     config: myModuleConfig
      * });
      * ```
@@ -110,22 +107,33 @@ export interface ModuleOptions {
      * HTTP middlewares.
      */
     middlewares?: MiddlewareFactory[];
+}
 
+export interface CreateModuleDefinition extends ModuleDefinition {
+    /**
+     * Whether all services should be moved to the root module/application.
+     */
+    forRoot?: true;
+
+    /**
+     * Modules can not import other modules in the module definitions.
+     * Use instead:
+     *
+     * ```typescript
+     * class MyModule extends createModule({}) {
+     *     imports = [new AnotherModule];
+     * }
+     * ```
+     */
+    imports?: undefined;
+}
+
+
+export interface RootModuleDefinition extends ModuleDefinition {
     /**
      * Import another module.
      */
-    imports?: AppModule<any, any>[];
-}
-
-function cloneOptions<T extends ModuleOptions>(options: T): T {
-    const copied = { ...options };
-    copied.imports = copied.imports?.slice(0);
-    copied.exports = copied.exports?.slice(0);
-    copied.providers = copied.providers?.slice(0);
-    copied.controllers = copied.controllers?.slice(0);
-    copied.listeners = copied.listeners?.slice(0);
-    copied.workflows = copied.workflows?.slice(0);
-    return copied;
+    imports?: AppModule<any>[];
 }
 
 export class ConfigurationInvalidError extends CustomError {
@@ -143,8 +151,8 @@ export function createModuleConfig<T extends PlainSchemaProps>(config: T): AppMo
     return new AppModuleConfig(config);
 }
 
-export interface AppModuleClass<T extends ModuleOptions, NAME extends string = ''> {
-    new(config?: ModuleConfigOfOptions<T>): AppModule<T, NAME>;
+export interface AppModuleClass<C> {
+    new(config?: Partial<C>): AppModule<any, C>;
 }
 
 /**
@@ -161,12 +169,11 @@ export interface AppModuleClass<T extends ModuleOptions, NAME extends string = '
  * new App({
  *     imports: [new MyModule]
  * });
- *
  * ```
  */
-export function createModule<T extends Omit<ModuleOptions, 'imports'>, NAME extends string = ''>(options: T, name: NAME = '' as NAME): AppModuleClass<T, NAME> {
-    return class AnonAppModule extends AppModule<T, NAME> {
-        constructor(config?: ModuleConfigOfOptions<T>) {
+export function createModule<T extends CreateModuleDefinition>(options: T, name: string = ''): AppModuleClass<ExtractConfigOfDefinition<T['config']>> {
+    return class AnonAppModule extends AppModule<T> {
+        constructor(config?: Partial<ExtractConfigOfDefinition<T['config']>>) {
             super(options, name);
             if (config) {
                 this.configure(config);
@@ -175,40 +182,41 @@ export function createModule<T extends Omit<ModuleOptions, 'imports'>, NAME exte
     } as any;
 }
 
-export class AppModule<T extends ModuleOptions, NAME extends string = ''> extends InjectorModule<NAME, ExtractConfigOfDefinition<DefaultObject<T['config']>>> {
-    /**
-     * Whether this module is for the root module. All its providers are automatically exported and moved to the root level.
-     */
-    public root: boolean = false;
-    public parent?: AppModule<any, any>;
+export type ListenerType = EventListener<any> | ClassType;
 
-    public setupConfigs: ((module: AppModule<any, any>, config: any) => void)[] = [];
+export class AppModule<T extends RootModuleDefinition, C extends ExtractConfigOfDefinition<T['config']> = any> extends InjectorModule<C, AppModule<any>> {
+    public setupConfigs: ((module: AppModule<any>, config: any) => void)[] = [];
 
-    public imports: AppModule<any, any>[] = [];
-
-    protected providers: ProviderWithScope[] = [];
-    protected exports: (ClassType | InjectorToken<any> | string | AppModule<any, any>)[] = [];
+    public imports: AppModule<any>[] = [];
+    public controllers: ClassType[] = [];
+    public workflows: WorkflowDefinition<any>[] = [];
+    public listeners: ListenerType[] = [];
+    public middlewares: MiddlewareFactory[] = [];
 
     constructor(
         public options: T,
-        public name: NAME = '' as NAME,
-        public setups: ((module: AppModule<any, any>, config: any) => void)[] = [],
+        public name: string = '',
+        public setups: ((module: AppModule<any>, config: any) => void)[] = [],
         public id: number = moduleId++,
     ) {
-        super(name, {} as any, id);
-        if (options.config instanceof ConfigDefinition) {
-            options.config.setModuleClass(this as InjectorModule);
-        }
-        if (this.options.imports) this.imports.push(...this.options.imports);
+        super();
+        if (this.options.imports) for (const m of this.options.imports) this.addImport(m);
         if (this.options.providers) this.providers.push(...this.options.providers);
         if (this.options.exports) this.exports.push(...this.options.exports);
+        if (this.options.controllers) this.controllers.push(...this.options.controllers);
+        if (this.options.workflows) this.workflows.push(...this.options.workflows);
+        if (this.options.listeners) this.listeners.push(...this.options.listeners);
+        if (this.options.middlewares) this.middlewares.push(...this.options.middlewares);
+
+        if ('forRoot' in this.options) this.forRoot();
 
         if (this.options.config) {
+            this.configDefinition = this.options.config;
             //apply defaults
-            const defaults = jsonSerializer.for(this.options.config.schema).deserialize({});
+            const defaults: any = jsonSerializer.for(this.options.config.schema).deserialize({});
             //we iterate over so we have the name available on the object, even if its undefined
             for (const property of this.options.config.schema.getProperties()) {
-                this.config[property.name] = defaults[property.name];
+                (this.config as any)[property.name] = defaults[property.name];
             }
         }
     }
@@ -218,6 +226,20 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
      * It allows to further manipulate the module state depending on the final config.
      */
     process() {
+
+    }
+
+    /**
+     * A hook point to the service container. Allows to react on a registered provider in some module.
+     */
+    handleProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
+
+    }
+
+    /**
+     * A hook point to the service container. Allows to react on a registered controller in some module.
+     */
+    handleController(module: AppModule<any>, controller: ClassType) {
 
     }
 
@@ -233,127 +255,81 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
     }
 
     /**
-     * A hook point to the service container. Allows to react on controllers registered in some module.
+     * Renames this module instance.
      */
-    handleController(module: AppModule<any, any>, controller: ClassType) {
-
-    }
-
-    /**
-     * A hook point to the service container. Allows to react on providers registered in some module.
-     */
-    handleProviders(module: AppModule<any, any>, providers: ProviderWithScope[]) {
-
-    }
-
-    getImports(): AppModule<ModuleOptions, any>[] {
-        return this.imports;
-    }
-
-    getImportedModulesByClass<T extends AppModule<any, any>>(classType: ClassType<T>): T[] {
-        return this.getImports().filter(v => v instanceof classType) as T[];
-    }
-
-    getImportedModuleByClass<T extends AppModule<any, any>>(classType: ClassType<T>): T {
-        const v = this.getImports().find(v => v instanceof classType);
-        if (!v) {
-            throw new Error(`No module ${getClassName(classType)} in ${getClassName(this)}#${this.id} imported.`);
-        }
-        return v as T;
-    }
-
-    getImportedModule<T extends AppModule<any, any>>(module: T): T {
-        const v = this.getImports().find(v => v.id === module.id);
-        if (!v) {
-            throw new Error(`No module ${getClassName(module)}#${module.id} in ${getClassName(this)}#${this.id} imported.`);
-        }
-        return v as T;
-    }
-
-    getExports() {
-        return this.exports;
-    }
-
-    hasImport(moduleClass: AppModuleClass<any, any>): boolean {
-        for (const importModule of this.getImports()) {
-            if (importModule instanceof moduleClass) return true;
-        }
-        return false;
-    }
-
-    /**
-     * Modifies this module and adds a new import, returning the same module.
-     */
-    addImport(...modules: AppModule<any, any>[]): this {
-        for (const module of modules) {
-            module.setParent(this);
-            this.imports.push(module);
-        }
+    rename(name: string): this {
+        this.name = name;
         return this;
     }
 
-    addController(...controller: ClassType[]) {
-        if (!this.options.controllers) this.options.controllers = [];
-
-        this.options.controllers.push(...controller);
+    getListeners(): ListenerType[] {
+        return this.listeners;
     }
 
-    isProvided(classType: ClassType): boolean {
-        return isProvided(this.getProviders(), classType);
+    getWorkflows(): WorkflowDefinition<any>[] {
+        return this.workflows;
     }
 
-    addProvider(...provider: ProviderWithScope[]): this {
-        this.providers.push(...provider);
+    getMiddlewares(): MiddlewareFactory[] {
+        return this.middlewares;
+    }
+
+    getControllers(): ClassType[] {
+        return this.controllers;
+    }
+
+    addController(...controller: ClassType[]): this {
+        this.assertInjectorNotBuilt();
+        this.controllers.push(...controller);
         return this;
-    }
-
-    getProviders(): ProviderWithScope[] {
-        return this.providers;
     }
 
     addListener(...listener: (EventListener<any> | ClassType)[]): this {
-        if (!this.options.listeners) this.options.listeners = [];
+        this.assertInjectorNotBuilt();
 
-        this.options.listeners.push(...listener);
+        for (const l of listener) {
+            if (!isClass(l)) continue;
+            if (this.isProvided(l)) continue;
+            this.addProvider(l);
+        }
+        this.listeners.push(...listener);
         return this;
     }
 
     addMiddleware(...middlewares: MiddlewareFactory[]): this {
-        if (!this.options.middlewares) this.options.middlewares = [];
-
-        this.options.middlewares.push(...middlewares);
-        return this;
-    }
-
-    setParent(module: AppModule<any, any>): this {
-        this.parent = module;
-        return this;
-    }
-
-    getName(): NAME {
-        return this.name;
-    }
-
-    /**
-     * Allows to change the module config before `setup` and bootstrap is called. This is the last step right before the config is validated.
-     */
-    setupConfig(callback: (module: AppModule<T, any>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void): this {
-        this.setupConfigs.push(callback);
+        this.middlewares.push(...middlewares);
         return this;
     }
 
     /**
-     * Allows to change the module after the configuration has been loaded, right before the application bootstraps (thus loading all services/controllers/etc).
+     * Allows to change the module config before `setup` and bootstrap is called.
+     * This is the last step right before the config is validated.
      */
-    setup(callback: (module: AppModule<T, any>, config: ExtractConfigOfDefinition<DefaultObject<T['config']>>) => void): this {
+    setupConfig(callback: (module: AppModule<T>, config: C) => void): this {
+        this.setupConfigs.push(callback as any);
+        return this;
+    }
+
+    /**
+     * Allows to change the module after the configuration has been loaded, right before the application bootstraps.
+     */
+    setup(callback: (module: AppModule<T>, config: C) => void): this {
         this.setups.push(callback);
         return this;
+    }
+
+    getImports(): AppModule<any>[] {
+        return super.getImports() as AppModule<any>[];
+    }
+
+    getName(): string {
+        return this.name;
     }
 
     /**
      * Sets configured values.
      */
-    configure(config: ModuleConfigOfOptions<T>): this {
+    configure(config: Partial<C>): this {
         for (const module of this.getImports()) {
             if (!module.getName()) continue;
             if (!(module.getName() in config)) continue;
@@ -366,22 +342,6 @@ export class AppModule<T extends ModuleOptions, NAME extends string = ''> extend
             Object.assign(this.config, configNormalized);
         }
 
-        return this;
-    }
-
-    /**
-     * Makes all the providers, controllers, etc available at the root module, basically exporting everything.
-     */
-    forRoot(): this {
-        this.root = true;
-        return this;
-    }
-
-    /**
-     * Reverts the root default setting to false.
-     */
-    notForRoot(): this {
-        this.root = false;
         return this;
     }
 }

@@ -11,7 +11,7 @@ import { injectable } from '@deepkit/injector';
 class Config extends config.slice('markdown', 'markdownFile') {
 }
 
-@injectable()
+@injectable
 export class ApiConsoleController implements ApiConsoleApi {
     constructor(
         protected config: Config,

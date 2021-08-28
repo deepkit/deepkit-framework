@@ -8,9 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { App, AppModule, ModuleOptions, ServiceContainer } from '@deepkit/app';
-import { ProviderWithScope } from '@deepkit/injector';
+import { App, AppModule, RootModuleDefinition } from '@deepkit/app';
 import { FrameworkModule } from './module';
+
+class RootAppModule extends AppModule<any> {}
 
 /**
  * This is the main application class for a Deepkit Framework Application.
@@ -29,21 +30,22 @@ import { FrameworkModule } from './module';
  *
  *  Beside from that, it works exactly like the slightly smaller version `App`.
  */
-export class Application<T extends ModuleOptions> extends App<T> {
+export class Application<T extends RootModuleDefinition> extends App<T> {
     constructor(
         appModuleOptions: T,
-        providers: ProviderWithScope<any>[] = [],
-        serviceContainer?: ServiceContainer<T>,
-        appModule?: AppModule<any, any>
+        appModule?: AppModule<any>
     ) {
-        const module = appModule || new AppModule(appModuleOptions) as any;
+        //increase the stack size for error messages.
+        if (Error.stackTraceLimit === 10) Error.stackTraceLimit = 50;
+
+        const module = appModule || new RootAppModule(appModuleOptions) as any;
         if (!module.hasImport(FrameworkModule)) {
             module.imports.unshift(new FrameworkModule);
         }
-        super(appModuleOptions, providers, undefined, module);
+        super(appModuleOptions, undefined, module);
     }
 
-    static fromModule<T extends ModuleOptions>(module: AppModule<T, any>, providers: ProviderWithScope<any>[] = []): Application<T> {
-        return new Application({}, providers, undefined, module) as Application<T>;
+    static fromModule<T extends RootModuleDefinition>(module: AppModule<T>): Application<T> {
+        return new Application({}, module) as Application<T>;
     }
 }

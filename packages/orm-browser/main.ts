@@ -8,7 +8,7 @@ import { registerStaticHttpController } from '@deepkit/http';
 import { InjectorContext } from '@deepkit/injector';
 
 Database.registry = [];
-const databaseRegistry = new DatabaseRegistry(new InjectorContext());
+const databaseRegistry = new DatabaseRegistry(InjectorContext.forProviders([]));
 databaseRegistry.readDatabase(process.argv.slice(2));
 
 const appModule = new AppModule({

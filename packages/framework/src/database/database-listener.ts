@@ -15,7 +15,7 @@ import { Logger } from '@deepkit/logger';
 import { DatabaseRegistry } from '@deepkit/orm';
 import { getClassName } from '@deepkit/core';
 
-@injectable()
+@injectable
 export class DatabaseListener {
     constructor(
         protected databases: DatabaseRegistry,

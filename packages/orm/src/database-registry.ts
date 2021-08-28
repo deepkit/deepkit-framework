@@ -64,7 +64,7 @@ export class DatabaseRegistry {
             const classType = getClassTypeFromInstance(db);
             this.databaseNameMap.set(db.name, db);
             this.databaseMap.set(classType, db);
-            this.databaseTypes.push({classType, module: new InjectorModule('', {})});
+            this.databaseTypes.push({classType, module: new InjectorModule()});
         }
     }
 

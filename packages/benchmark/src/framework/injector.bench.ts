@@ -9,7 +9,7 @@
  */
 
 import 'reflect-metadata';
-import { injectable, Injector, InjectorContext } from '@deepkit/framework';
+import { injectable, Injector, InjectorContext } from '@deepkit/injector';
 import { BenchSuite } from '../bench';
 
 export async function main() {
@@ -17,7 +17,7 @@ export async function main() {
 
     class Database2 { }
 
-    @injectable()
+    @injectable
     class MyService {
         constructor(database: Database) {
         }
@@ -71,25 +71,31 @@ export async function main() {
     // bench.add('fork', () => {
     //     root.fork();
     // });
-    //
-    // const context = InjectorContext.forProviders([Database, MyService, {provide: Database2, scope: 'http'}]);
-    // const context2 = context.createChildScope('http');
-    // context2.getInjector(0);
-    //
-    // bench.add('context.createChildScope', () => {
-    //     const context2 = context.createChildScope('http');
-    // });
-    //
-    // bench.add('context.createChildScope + getInjector', () => {
-    //     const context2 = context.createChildScope('http');
-    //     context2.getInjector(0);
-    // });
+
+    const context = InjectorContext.forProviders([Database, MyService, {provide: Database2, scope: 'http'}]);
+    const context2 = context.createChildScope('http');
+    context2.getInjector(0);
+
+    bench.add('context.createChildScope', () => {
+        const context2 = context.createChildScope('http');
+    });
+
+    bench.add('context.createChildScope + getInjector', () => {
+        const context2 = context.createChildScope('http');
+        context2.getInjector(0);
+    });
+
+
+    bench.add('context.createChildScope + getInjector + context.get(Database2)', () => {
+        const context2 = context.createChildScope('http');
+        context2.getInjector(0).get(Database2);
+    });
 
     bench.add('new Database', () => {
         new Database();
     });
 
-    bench.add('root db', () => {
+    bench.add('root.get(Database)', () => {
         root.get(Database);
     });
 
