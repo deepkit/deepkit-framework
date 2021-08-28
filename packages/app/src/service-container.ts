@@ -11,12 +11,12 @@
 import { ClassType, getClassName, isClass } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
 import { AppModule, ConfigurationInvalidError, MiddlewareConfig, ModuleDefinition } from './module';
-import { Injector, InjectorContext, InjectorModule, isProvided, ProviderWithScope } from '@deepkit/injector';
+import { Injector, InjectorContext, InjectorModule, isProvided, ProviderWithScope, resolveToken, Token } from '@deepkit/injector';
 import { cli } from './command';
 import { WorkflowDefinition } from '@deepkit/workflow';
 import { ClassSchema, jsonSerializer, validate } from '@deepkit/type';
 
-export class CliControllers {
+export class CliControllerRegistry {
     public readonly controllers = new Map<string, { controller: ClassType, module: InjectorModule }>();
 }
 
@@ -48,12 +48,14 @@ export interface ConfigLoader {
 }
 
 export class ServiceContainer {
-    public readonly cliControllers = new CliControllers;
-    public readonly middlewares = new MiddlewareRegistry;
+    public readonly cliControllerRegistry = new CliControllerRegistry;
+    public readonly middlewareRegistry = new MiddlewareRegistry;
     public readonly workflowRegistry = new WorkflowRegistry([]);
 
     protected injectorContext?: InjectorContext;
-    protected eventListenerContainer: EventDispatcher;
+
+    //todo: move that to EventModule
+    protected eventDispatcher: EventDispatcher;
 
     protected configLoaders: ConfigLoader[] = [];
 
@@ -66,7 +68,7 @@ export class ServiceContainer {
     constructor(
         public appModule: AppModule<any>
     ) {
-        this.eventListenerContainer = new EventDispatcher(this.injectorContext);
+        this.eventDispatcher = new EventDispatcher(this.injectorContext);
     }
 
     addConfigLoader(loader: ConfigLoader) {
@@ -80,9 +82,9 @@ export class ServiceContainer {
         this.findModules(this.appModule);
 
         this.appModule.addProvider({ provide: ServiceContainer, useValue: this });
-        this.appModule.addProvider({ provide: EventDispatcher, useValue: this.eventListenerContainer });
-        this.appModule.addProvider({ provide: CliControllers, useValue: this.cliControllers });
-        this.appModule.addProvider({ provide: MiddlewareRegistry, useValue: this.middlewares });
+        this.appModule.addProvider({ provide: EventDispatcher, useValue: this.eventDispatcher });
+        this.appModule.addProvider({ provide: CliControllerRegistry, useValue: this.cliControllerRegistry });
+        this.appModule.addProvider({ provide: MiddlewareRegistry, useValue: this.middlewareRegistry });
         this.appModule.addProvider({ provide: InjectorContext, useFactory: () => this.injectorContext! });
 
         this.processModule(this.appModule);
@@ -176,11 +178,6 @@ export class ServiceContainer {
         throw new Error(`No module loaded from type ${getClassName(moduleClass)}`);
     }
 
-    public getModulesForName(name: string): AppModule<any>[] {
-        this.process();
-        return [...this.modules.values()].filter(v => v.name === name);
-    }
-
     /**
      * Returns all known instantiated modules.
      */
@@ -204,9 +201,9 @@ export class ServiceContainer {
         const listeners = module.getListeners();
         const middlewares = module.getMiddlewares();
 
-        //we add the module to its own providers so it can depend on its module providers.
-        //when we would add it to root it would have no access to its internal providers.
-        if (module.options.bootstrap) providers.push(module.options.bootstrap);
+        if (module.options.bootstrap && !module.isProvided(module.options.bootstrap)) {
+            providers.push(module.options.bootstrap);
+        }
 
         for (const w of module.getWorkflows()) this.workflowRegistry.add(w);
 
@@ -219,43 +216,47 @@ export class ServiceContainer {
                     providers.unshift(fnOrClassTye);
                 }
             }
-            this.middlewares.configs.push({ config, module });
+            this.middlewareRegistry.configs.push({ config, module });
+        }
+
+        for (const listener of listeners) {
+            if (isClass(listener)) {
+                providers.unshift({ provide: listener });
+                this.eventDispatcher.registerListener(listener, module);
+            } else {
+                this.eventDispatcher.add(listener.eventToken, { fn: listener.callback, order: listener.order, module: listener.module });
+            }
+        }
+
+        for (const controller of controllers) {
+            this.handleController(module, controller);
+        }
+
+        for (const provider of providers) {
+            this.handleProvider(module, resolveToken(provider), provider);
         }
 
         for (const imp of module.getImports()) {
             if (!imp) continue;
             this.processModule(imp);
         }
-
-        for (const listener of listeners) {
-            if (isClass(listener)) {
-                providers.unshift({ provide: listener });
-                this.eventListenerContainer.registerListener(listener, module);
-            } else {
-                this.eventListenerContainer.add(listener.eventToken, { fn: listener.callback, order: listener.order });
-            }
-        }
-
-        this.handleControllers(module, controllers);
-        this.handleProviders(module, providers);
     }
 
-    protected handleProviders(module: AppModule<any>, providers: ProviderWithScope[]) {
-        for (const m of this.modules) {
-            m.handleProviders(module, providers);
-        }
-    }
-
-    protected handleControllers(module: AppModule<any>, controllers: ClassType[]) {
-        for (const controller of controllers) {
-            const cliConfig = cli._fetch(controller);
-            if (!cliConfig) continue;
+    protected handleController(module: AppModule<any>, controller: ClassType) {
+        const cliConfig = cli._fetch(controller);
+        if (cliConfig) {
             if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'cli' });
-            this.cliControllers.controllers.set(cliConfig.name, { controller, module });
+            this.cliControllerRegistry.controllers.set(cliConfig.name, { controller, module });
         }
 
         for (const m of this.modules) {
-            m.handleControllers(module, controllers);
+            m.handleController(module, controller);
+        }
+    }
+
+    protected handleProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
+        for (const m of this.modules) {
+            m.handleProvider(module, token, provider);
         }
     }
 }

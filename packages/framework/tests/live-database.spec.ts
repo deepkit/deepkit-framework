@@ -11,7 +11,7 @@ import { Broker, DirectBroker } from '../src/broker/broker';
 import { LiveDatabase } from '../src/database/live-database';
 import { createTestingApp as createTestingAppOriginal } from '../src/testing';
 
-// make it overwrideable
+// make it overwriteable
 declare var createTestingApp: typeof createTestingAppOriginal;
 global['createTestingApp'] ||= createTestingAppOriginal;
 

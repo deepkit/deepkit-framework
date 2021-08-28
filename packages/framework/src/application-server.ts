@@ -18,6 +18,7 @@ import { frameworkConfig } from './module.config';
 import { Logger } from '@deepkit/logger';
 import { createRpcConnection, WebWorker, WebWorkerFactory } from './worker';
 import { RpcControllers } from './rpc';
+import '@deepkit/type';
 
 export class ServerBootstrapEvent extends BaseEvent {
 }

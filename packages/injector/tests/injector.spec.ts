@@ -1,9 +1,10 @@
 import 'reflect-metadata';
 import { expect, test } from '@jest/globals';
 import { getClassSchema, t } from '@deepkit/type';
-import { CircularDependencyError, Injector, InjectorModule } from '../src/injector';
+import { CircularDependencyError, Injector } from '../src/injector';
 import { inject, injectable, InjectOptions, InjectorToken } from '../src/decorator';
 import { createConfig } from '../src/config';
+import { InjectorModule } from '../src/module';
 
 export const a = 'asd';
 

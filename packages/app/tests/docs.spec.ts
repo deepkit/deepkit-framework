@@ -50,12 +50,10 @@ test('controller instantiation', () => {
             this.addProvider({ provide: Registry, useValue: this.registry });
         }
 
-        handleControllers(module: AppModule<any>, controllers: ClassType[]) {
-            for (const controller of controllers) {
-                //controllers need to be put into the module's providers by the controller consumer
-                if (!module.isProvided(controller)) module.addProvider(controller);
-                this.registry.register(module, controller);
-            }
+        handleController(module: AppModule<any>, controller: ClassType) {
+            //controllers need to be put into the module's providers by the controller consumer
+            if (!module.isProvided(controller)) module.addProvider(controller);
+            this.registry.register(module, controller);
         }
     }
 

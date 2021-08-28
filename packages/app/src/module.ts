@@ -9,8 +9,8 @@
  */
 
 import { ExtractClassDefinition, jsonSerializer, PlainSchemaProps, t } from '@deepkit/type';
-import { ConfigDefinition, InjectorModule, InjectorToken, ProviderWithScope } from '@deepkit/injector';
-import { ClassType, CustomError, getClassName, isClass } from '@deepkit/core';
+import { ConfigDefinition, InjectorModule, InjectorToken, ProviderWithScope, Token } from '@deepkit/injector';
+import { ClassType, CustomError, isClass } from '@deepkit/core';
 import { EventListener } from '@deepkit/event';
 import type { WorkflowDefinition } from '@deepkit/workflow';
 
@@ -47,13 +47,14 @@ export interface ModuleDefinition {
      *
      * @example
      * ```typescript
+     * import {createModule, createModuleConfig} from '@deepkit/app';
      * import {t} from '@deepkit/type';
      *
-     * const myModuleConfig = new AppModuleConfig({
+     * const myModuleConfig = createModuleConfig({
      *     debug: t.boolean.default(false),
      * });
      *
-     * const myModule = new AppModule({
+     * class MyModule extends createModule({
      *     config: myModuleConfig
      * });
      * ```
@@ -183,7 +184,7 @@ export function createModule<T extends CreateModuleDefinition>(options: T, name:
 
 export type ListenerType = EventListener<any> | ClassType;
 
-export class AppModule<T extends RootModuleDefinition, C extends ExtractConfigOfDefinition<T['config']> = any> extends InjectorModule<C> {
+export class AppModule<T extends RootModuleDefinition, C extends ExtractConfigOfDefinition<T['config']> = any> extends InjectorModule<C, AppModule<any>> {
     public setupConfigs: ((module: AppModule<any>, config: any) => void)[] = [];
 
     public imports: AppModule<any>[] = [];
@@ -229,6 +230,20 @@ export class AppModule<T extends RootModuleDefinition, C extends ExtractConfigOf
     }
 
     /**
+     * A hook point to the service container. Allows to react on a registered provider in some module.
+     */
+    handleProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
+
+    }
+
+    /**
+     * A hook point to the service container. Allows to react on a registered controller in some module.
+     */
+    handleController(module: AppModule<any>, controller: ClassType) {
+
+    }
+
+    /**
      * After `process` and when all modules have been processed by the service container.
      * This is also after `handleController` and `handleProviders` have been called and the full
      * final module tree is known. Adding now new providers or modules doesn't have any effect.
@@ -240,70 +255,10 @@ export class AppModule<T extends RootModuleDefinition, C extends ExtractConfigOf
     }
 
     /**
-     * A hook point to the service container. Allows to react on controllers registered in some module.
-     */
-    handleControllers(module: AppModule<any>, controllers: ClassType[]) {
-
-    }
-
-    /**
      * Renames this module instance.
      */
     rename(name: string): this {
         this.name = name;
-        return this;
-    }
-
-    /**
-     * A hook point to the service container. Allows to react on providers registered in some module.
-     */
-    handleProviders(module: AppModule<any>, providers: ProviderWithScope[]) {
-
-    }
-
-    getImports(): AppModule<ModuleDefinition>[] {
-        return this.imports;
-    }
-
-    getImportedModulesByClass<T extends AppModule<any>>(classType: ClassType<T>): T[] {
-        return this.getImports().filter(v => v instanceof classType) as T[];
-    }
-
-    getImportedModuleByClass<T extends AppModule<any>>(classType: ClassType<T>): T {
-        const v = this.getImports().find(v => v instanceof classType);
-        if (!v) {
-            throw new Error(`No module ${getClassName(classType)} in ${getClassName(this)}#${this.id} imported.`);
-        }
-        return v as T;
-    }
-
-    getImportedModule<T extends AppModule<any>>(module: T): T {
-        const v = this.getImports().find(v => v.id === module.id);
-        if (!v) {
-            throw new Error(`No module ${getClassName(module)}#${module.id} in ${getClassName(this)}#${this.id} imported.`);
-        }
-        return v as T;
-    }
-
-    getExports() {
-        return this.exports;
-    }
-
-    hasImport(moduleClass: AppModuleClass<any>): boolean {
-        for (const importModule of this.getImports()) {
-            if (importModule instanceof moduleClass) return true;
-        }
-        return false;
-    }
-
-    /**
-     * Modifies this module and adds a new import, returning the same module.
-     */
-    addImport(...modules: AppModule<any>[]): this {
-        this.assertInjectorNotBuilt();
-        for (const module of modules) {
-            module.setParent(this);
-        }
         return this;
     }
 
@@ -346,12 +301,9 @@ export class AppModule<T extends RootModuleDefinition, C extends ExtractConfigOf
         return this;
     }
 
-    getName(): string {
-        return this.name;
-    }
-
     /**
-     * Allows to change the module config before `setup` and bootstrap is called. This is the last step right before the config is validated.
+     * Allows to change the module config before `setup` and bootstrap is called.
+     * This is the last step right before the config is validated.
      */
     setupConfig(callback: (module: AppModule<T>, config: C) => void): this {
         this.setupConfigs.push(callback as any);
@@ -359,11 +311,19 @@ export class AppModule<T extends RootModuleDefinition, C extends ExtractConfigOf
     }
 
     /**
-     * Allows to change the module after the configuration has been loaded, right before the application bootstraps (thus loading all services/controllers/etc).
+     * Allows to change the module after the configuration has been loaded, right before the application bootstraps.
      */
     setup(callback: (module: AppModule<T>, config: C) => void): this {
         this.setups.push(callback);
         return this;
+    }
+
+    getImports(): AppModule<any>[] {
+        return super.getImports() as AppModule<any>[];
+    }
+
+    getName(): string {
+        return this.name;
     }
 
     /**

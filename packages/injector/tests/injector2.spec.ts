@@ -1,10 +1,11 @@
 import 'reflect-metadata';
 import { expect, test } from '@jest/globals';
-import { InjectorContext, InjectorModule } from '../src/injector';
-import { inject, injectable } from '../src/decorator';
+import { InjectorContext } from '../src/injector';
+import { inject, injectable, injectorReference } from '../src/decorator';
 import { getClassSchema, t } from '@deepkit/type';
 import { Tag } from '../src/provider';
 import { ConfigDefinition } from '../src/config';
+import { InjectorModule } from '../src/module';
 
 test('basic', () => {
     class Service {
@@ -810,4 +811,45 @@ test('global service from another module is available in sibling module', () => 
     const controller = scope.get(Controller, apiModule);
     expect(controller).toBeInstanceOf(Controller);
     expect(controller.request).toBeInstanceOf(HttpRequest);
+});
+
+test('string reference manually type', () => {
+    class Service {
+        add() {
+        }
+    }
+
+    const root = new InjectorModule([{ provide: 'service', useClass: Service }]);
+    const injector = new InjectorContext(root);
+
+    const service = injector.get<Service>('service');
+    service.add();
+    expect(service).toBeInstanceOf(Service);
+});
+
+test('injectorReference from other module', () => {
+    class Service {
+    }
+
+    class Registry {
+        services: any[] = [];
+
+        register(service: any) {
+            this.services.push(service);
+        }
+    }
+
+    const module1 = new InjectorModule([Service]);
+    const module2 = new InjectorModule([Registry]);
+
+    module2.setupProvider(Registry).register(injectorReference(Service, module1));
+
+    const root = new InjectorModule([]).addImport(module1, module2);
+    const injector = new InjectorContext(root);
+
+    {
+        const registry = injector.get(Registry, module2);
+        expect(registry.services).toHaveLength(1);
+        expect(registry.services[0]).toBeInstanceOf(Service);
+    }
 });

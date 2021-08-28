@@ -17,6 +17,7 @@ export type EventListenerCallback<T> = (event: T) => void | Promise<void>;
 export interface EventListener<T> {
     eventToken: EventToken<any>;
     callback: EventListenerCallback<T>;
+    module?: InjectorModule,
     order: number;
 }
 
@@ -35,8 +36,8 @@ export class EventToken<T extends BaseEvent = BaseEvent> {
     ) {
     }
 
-    listen(callback: (event: T) => void, order: number = 0): EventListener<T> {
-        return { eventToken: this, callback, order: order };
+    listen(callback: (event: T) => void, order: number = 0, module?: InjectorModule): EventListener<T> {
+        return { eventToken: this, callback, order: order, module };
     }
 }
 

@@ -21,7 +21,7 @@ import { ServerStartController } from './cli/server-start';
 import { DebugController } from './debug/debug.controller';
 import { registerDebugHttpController } from './debug/http-debug.controller';
 import { HttpLogger, HttpModule, HttpRequest, serveStaticListener } from '@deepkit/http';
-import { InjectorContext, injectorReference, ProviderWithScope, TagProvider } from '@deepkit/injector';
+import { InjectorContext, injectorReference, ProviderWithScope, Token } from '@deepkit/injector';
 import { frameworkConfig } from './module.config';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { SessionHandler } from './session';
@@ -167,27 +167,21 @@ export class FrameworkModule extends createModule({
         }
     }
 
-    handleProviders(module: AppModule<any>, providers: ProviderWithScope[]) {
-        for (const provider of providers) {
-            if (provider instanceof TagProvider) continue;
-            const provide = isClass(provider) ? provider : provider.provide;
-            if (!isClass(provide)) continue;
-            if (isPrototypeOfBase(provide, Database)) {
-                this.dbs.push({ classType: provide, module });
-            }
+    handleProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
+        if (!isClass(token)) return;
+        if (isPrototypeOfBase(token, Database)) {
+            this.dbs.push({ classType: token, module });
         }
     }
 
-    handleControllers(module: AppModule<any>, controllers: ClassType[]) {
-        for (const controller of controllers) {
-            const rpcConfig = rpcClass._fetch(controller);
-            if (!rpcConfig) continue;
+    handleController(module: AppModule<any>, controller: ClassType) {
+        const rpcConfig = rpcClass._fetch(controller);
+        if (!rpcConfig) return;
 
-            if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'rpc' });
-            if (this.rpcControllers.controllers.has(rpcConfig.getPath())) {
-                throw new Error(`Already an RPC controller with the name ${rpcConfig.getPath()} registered.`);
-            }
-            this.rpcControllers.controllers.set(rpcConfig.getPath(), { controller, module });
+        if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'rpc' });
+        if (this.rpcControllers.controllers.has(rpcConfig.getPath())) {
+            throw new Error(`Already an RPC controller with the name ${rpcConfig.getPath()} registered.`);
         }
+        this.rpcControllers.controllers.set(rpcConfig.getPath(), { controller, module });
     }
 }

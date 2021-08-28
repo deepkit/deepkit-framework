@@ -9,7 +9,7 @@
  */
 import { AbstractClassType, ClassType, isClass } from '@deepkit/core';
 import { InjectorToken } from './decorator';
-import { InjectorModule } from './injector';
+import { InjectorModule } from './module';
 
 export interface ProviderBase {
     /**
@@ -19,11 +19,13 @@ export interface ProviderBase {
     transient?: true;
 }
 
+export type Token<T = any> = symbol | string | InjectorToken<T> | AbstractClassType<T>;
+
 export interface ValueProvider<T> extends ProviderBase {
     /**
      * An injection token. Typically a class.
      */
-    provide: symbol | string | InjectorToken<T> | AbstractClassType<T>;
+    provide: Token<T>;
 
     /**
      * The value to inject.
@@ -35,7 +37,7 @@ export interface ClassProvider<T> extends ProviderBase {
     /**
      * An injection token. Typically a class.
      */
-    provide: symbol | string | InjectorToken<T> | AbstractClassType<T>;
+    provide: Token<T>;
 
     /**
      * Class to instantiate for the `token`.
@@ -47,7 +49,7 @@ export interface ExistingProvider<T> extends ProviderBase {
     /**
      * An injection token. Typically a class.
      */
-    provide: symbol | string  | InjectorToken<T> | AbstractClassType<T>;
+    provide: Token<T>;
 
     /**
      * Existing `token` to return. (equivalent to `injector.get(useExisting)`)
@@ -59,7 +61,7 @@ export interface FactoryProvider<T> extends ProviderBase {
     /**
      * An injection token. Typically a class.
      */
-    provide: symbol | string | InjectorToken<T> | AbstractClassType<T>;
+    provide: Token<T>;
 
     /**
      * A function to invoke to create a value for this `token`. The function is invoked with
@@ -81,10 +83,6 @@ export type ProviderProvide<T = any> = ValueProvider<T> | ClassProvider<T> | Exi
 interface TagRegistryEntry<T> {
     tagProvider: TagProvider<T>;
     module: InjectorModule;
-}
-
-export class ProviderIndex {
-
 }
 
 export class TagRegistry {

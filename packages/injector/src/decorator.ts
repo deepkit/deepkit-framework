@@ -1,6 +1,6 @@
 import { ClassType, isFunction } from '@deepkit/core';
 import { FieldDecoratorWrapper } from '@deepkit/type';
-import { InjectorModule } from './injector';
+import { InjectorModule } from './module';
 
 
 export class InjectorReference {
@@ -8,8 +8,8 @@ export class InjectorReference {
     }
 }
 
-export function injectorReference<T>(classTypeOrToken: T): any {
-    return new InjectorReference(classTypeOrToken);
+export function injectorReference<T>(classTypeOrToken: T, module?: InjectorModule): any {
+    return new InjectorReference(classTypeOrToken, module);
 }
 
 export interface InjectDecorator {

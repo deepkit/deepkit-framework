@@ -318,7 +318,7 @@ export class App<T extends RootModuleDefinition> {
             const config = new MyConfig({ root: __dirname });
             const scopedInjectorContext = this.getInjectorContext().createChildScope('cli');
 
-            for (const [name, info] of this.serviceContainer.cliControllers.controllers.entries()) {
+            for (const [name, info] of this.serviceContainer.cliControllerRegistry.controllers.entries()) {
                 config.commandsMap[name] = buildOclifCommand(name, scopedInjectorContext, info.controller, info.module);
             }
 

@@ -2,12 +2,12 @@ import { t } from '@deepkit/type';
 import { beforeEach, expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { App } from '../src/app';
-import { inject, ProviderWithScope } from '@deepkit/injector';
+import { inject, ProviderWithScope, Token } from '@deepkit/injector';
 import { AppModule, AppModuleConfig, createModule } from '../src/module';
 import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
 import { cli, Command } from '../src/command';
 import { ClassType } from '../../core';
-import { isArray, isClass } from '@deepkit/core';
+import { isClass } from '@deepkit/core';
 import { ServiceContainer } from '../src/service-container';
 
 Error.stackTraceLimit = 100;
@@ -447,19 +447,16 @@ test('service container hooks', () => {
         providersFound: ProviderWithScope[] = [];
         controllersFound: ClassType[] = [];
 
-        handleControllers(module: AppModule<any>, controllers: ClassType[]) {
+        handleController(module: AppModule<any>, controller: ClassType) {
             expect(module).toBeInstanceOf(AppModule);
-            for (const controller of controllers) {
-                expect(isClass(controller)).toBe(true);
-                module.addProvider(controller);
-                this.controllersFound.push(controller);
-            }
+            expect(isClass(controller)).toBe(true);
+            module.addProvider(controller);
+            this.controllersFound.push(controller);
         }
 
-        handleProviders(module: AppModule<any>, providers: ProviderWithScope[]) {
+        handleProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
             expect(module).toBeInstanceOf(AppModule);
-            expect(isArray(providers)).toBe(true);
-            this.providersFound.push(...providers);
+            this.providersFound.push(provider);
         }
     }
 
