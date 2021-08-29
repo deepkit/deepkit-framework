@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { expect, test } from '@jest/globals';
 import { InjectorContext } from '../src/injector';
-import { inject, injectable, injectorReference } from '../src/decorator';
+import { inject, injectable, injectorReference, InjectorToken } from '../src/decorator';
 import { getClassSchema, t } from '@deepkit/type';
 import { Tag } from '../src/provider';
 import { ConfigDefinition } from '../src/config';
@@ -825,6 +825,25 @@ test('string reference manually type', () => {
     const service = injector.get<Service>('service');
     service.add();
     expect(service).toBeInstanceOf(Service);
+});
+
+test('InjectorToken reference with interface', () => {
+    interface Service {
+        add(): void;
+    }
+
+    const serviceToken = new InjectorToken<Service>('service');
+
+    const root = new InjectorModule([{
+        provide: serviceToken, useClass: class {
+            add() {
+            }
+        }
+    }]);
+    const injector = new InjectorContext(root);
+
+    const service = injector.get(serviceToken);
+    service.add();
 });
 
 test('injectorReference from other module', () => {

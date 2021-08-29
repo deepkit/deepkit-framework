@@ -19,6 +19,7 @@ import { ExitError } from '@oclif/errors';
 import { buildOclifCommand } from './command';
 import { ClassSchema } from '@deepkit/type';
 import { EnvConfiguration } from './configuration';
+import { Token } from '../../injector/src/provider';
 
 export function setPartialConfig(target: { [name: string]: any }, partial: { [name: string]: any }, incomingPath: string = '') {
     for (const i in partial) {
@@ -248,7 +249,7 @@ export class App<T extends RootModuleDefinition> {
         if (exitCode > 0) process.exit(exitCode);
     }
 
-    public get<T>(token: T, moduleOrClass?: AppModule<any> | ClassType<AppModule<any>>): ResolveToken<T> {
+    public get<T>(token: T | Token, moduleOrClass?: AppModule<any> | ClassType<AppModule<any>>): ResolveToken<T> {
         return this.serviceContainer.getInjector(moduleOrClass || this.appModule).get(token) as ResolveToken<T>;
     }
 

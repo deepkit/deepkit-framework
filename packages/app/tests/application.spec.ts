@@ -509,3 +509,21 @@ test('service container hooks', () => {
         expect(m.controllersFound.length).toBe(1);
     }
 });
+
+test('App.get generic', () => {
+    interface Service {
+        add(): void;
+    }
+
+    const app = new App({
+        providers: [{
+            provide: 'service', useClass: class {
+                add() {
+                }
+            }
+        }]
+    });
+
+    const service = app.get<Service>('service');
+    service.add();
+});
