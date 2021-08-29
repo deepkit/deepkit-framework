@@ -29,7 +29,7 @@ export const frameworkConfig = new AppModuleConfig({
     server: t.any, //todo: change to t.classType(Server)
     maxPayload: t.number.optional,
     publicDir: t.string.optional.description('A path to a folder that should be served per default. Relative to cwd.'),
-    publicDirPrefix: t.string.default('/').description('Per default the folder specified ind publicDir is available under /. Change that to a URL prefix of your choice'),
+    publicDirPrefix: t.string.default('/').description('Per default the folder specified in publicDir is available under /. Change that to a URL prefix of your choice'),
     debug: t.boolean.default(false),
     debugUrl: t.string.default('_debug'),
     debugProfiler: t.boolean.default(true),
