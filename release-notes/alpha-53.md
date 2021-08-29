@@ -1,6 +1,6 @@
 ## Version alpha-53
 
-With this version a big refactor of the module system was done: New features and a few breaking changes added.
+This version introduces a rather big refactor of the module system: New features and a few breaking changes were added.
 
 What has changed?
 
@@ -35,6 +35,11 @@ export class MyModule extends createModule({
 }) {
     imports = [new OtherModule()];
 }
+
+//imported as. The app can still use `imports: []`.
+new App({
+    imports: [new MyModule()]
+})
 ```
 
 `Module.setup` has been moved to `process`. In the `process` hook you can now dynamically change the
@@ -90,11 +95,10 @@ class MyService {}
 ```
 
 
-The module system has now new hooks `process`, `handleController`, `handleProvider`, and `postProcess`.
+The module system has now new hooks `process`, `processController`, `processProvider`, and `postProcess`.
 More explained in the new docs. https://deepkit.io/documentation/framework/modules
 
-
-Previously, `deepkit/framework` had a `KernelModule` and `Application` class had overwritten how the ServiceContainer works 
+Previously, `deepkit/framework` had a `KernelModule` and the `Application` class had overwritten how the ServiceContainer works 
 to allow reading controllers and more. The `KernelModule` has been changed to `FrameworkModule`.
 
 Since the ServiceContainer has now hooks for that, the `deepkit/framework` is now just a regular module without any additional magic.
@@ -155,3 +159,6 @@ new Server(
     console.log('listen at 8080');
 });
 ```
+
+However, such a setup would be rather rare. Since the FrameworkModule provides a ApplicationServer with http server, 
+most people would still use the FrameworkModule with its `server:start` command.
