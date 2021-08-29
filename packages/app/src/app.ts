@@ -10,7 +10,7 @@
 
 import { ClassType, isFunction, isObject, setPathValue } from '@deepkit/core';
 import { ConfigLoader, ServiceContainer } from './service-container';
-import { InjectorContext, ResolveToken } from '@deepkit/injector';
+import { InjectorContext, ResolveToken, Token } from '@deepkit/injector';
 import { AppModule, ExtractConfigOfDefinition, RootModuleDefinition } from './module';
 import { Command, Config, Options } from '@oclif/config';
 import { basename, relative } from 'path';
@@ -19,7 +19,6 @@ import { ExitError } from '@oclif/errors';
 import { buildOclifCommand } from './command';
 import { ClassSchema } from '@deepkit/type';
 import { EnvConfiguration } from './configuration';
-import { Token } from '../../injector/src/provider';
 
 export function setPartialConfig(target: { [name: string]: any }, partial: { [name: string]: any }, incomingPath: string = '') {
     for (const i in partial) {
