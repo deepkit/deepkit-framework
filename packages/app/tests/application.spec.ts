@@ -142,7 +142,7 @@ test('required value can be set via env or setupConfig', async () => {
         log: t.boolean,
     });
 
-    class BaseModule extends createModule({ config: baseConfig, providers: [BaseService] }, 'base') {
+    class BaseModule extends createModule({ config: baseConfig }, 'base') {
         process() {
             if (!this.config.log) throw new Error('log needs to be true');
         }
@@ -199,7 +199,7 @@ test('loadConfigFromEnvVariables() happens before setup() calls', async () => {
         log: t.boolean.default(false),
     });
 
-    const baseModule = new AppModule({ config: baseConfig, providers: [BaseService] }, 'base')
+    const baseModule = new AppModule({ config: baseConfig }, 'base')
         .setup((module, config) => {
             expect(config.log).toBe(true);
         });
@@ -244,7 +244,7 @@ test('loadConfigFromEnvVariable() happens before setup() calls', async () => {
         log: t.boolean.default(false),
     });
 
-    const baseModule = new AppModule({ config: baseConfig, providers: [BaseService] }, 'base')
+    const baseModule = new AppModule({ config: baseConfig }, 'base')
         .setup((module, config) => {
             expect(config.log).toBe(true);
         });

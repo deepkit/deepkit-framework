@@ -419,21 +419,34 @@ export class Injector implements InjectorInterface {
         notFoundFunction: string
     ): string {
         const token = options.token;
+        let of = `${ofName}.${options.name}`;
 
         //regarding configuration values: the attached module is not necessarily in resolveDependenciesFrom[0]
         //if the parent module overwrites its, then the parent module is at 0th position.
         if (token instanceof ConfigDefinition) {
-            const module = findModuleForConfig(token, resolveDependenciesFrom);
-            return compiler.reserveVariable('fullConfig', module.getConfig());
+            try {
+                const module = findModuleForConfig(token, resolveDependenciesFrom);
+                return compiler.reserveVariable('fullConfig', module.getConfig());
+            } catch (error) {
+                throw new DependenciesUnmetError(`Undefined configuration dependency '${options.name}' of ${of}. ${error.message}`);
+            }
         } else if (token instanceof ConfigToken) {
-            const module = findModuleForConfig(token.config, resolveDependenciesFrom);
-            const config = module.getConfig();
-            return compiler.reserveVariable(token.name, (config as any)[token.name]);
+            try {
+                const module = findModuleForConfig(token.config, resolveDependenciesFrom);
+                const config = module.getConfig();
+                return compiler.reserveVariable(token.name, (config as any)[token.name]);
+            } catch (error) {
+                throw new DependenciesUnmetError(`Undefined configuration dependency '${options.name}' of ${of}. ${error.message}`);
+            }
         } else if (isClass(token) && (Object.getPrototypeOf(Object.getPrototypeOf(token)) === ConfigSlice || Object.getPrototypeOf(token) === ConfigSlice)) {
-            const value: ConfigSlice<any> = new token;
-            const module = findModuleForConfig(value.config, resolveDependenciesFrom);
-            value.bag = module.getConfig();
-            return compiler.reserveVariable('configSlice', value);
+            try {
+                const value: ConfigSlice<any> = new token;
+                const module = findModuleForConfig(value.config, resolveDependenciesFrom);
+                value.bag = module.getConfig();
+                return compiler.reserveVariable('configSlice', value);
+            } catch (error) {
+                throw new DependenciesUnmetError(`Undefined configuration dependency '${options.name}' of ${of}. ${error.message}`);
+            }
         } else if (token === TagRegistry) {
             return compiler.reserveVariable('tagRegistry', this.buildContext.tagRegistry);
         } else if (isPrototypeOfBase(token, Tag)) {
@@ -446,7 +459,6 @@ export class Injector implements InjectorInterface {
             }
             return `new ${tokenVar}(${resolvedVar} || (${resolvedVar} = [${args.join(', ')}]))`;
         } else {
-            let of = `${ofName}.${options.name}`;
             if (token === undefined) {
                 if (argPosition >= 0) {
                     const argsCheck: string[] = [];

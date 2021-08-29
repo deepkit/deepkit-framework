@@ -84,7 +84,7 @@ export function findModuleForConfig(config: ConfigDefinition<any>, modules: Inje
         if (m.configDefinition === config) return m;
     }
 
-    throw new Error(`No module found for configuration ${config.schema.toString()}. Did you attach it to a module?`);
+    throw new Error(`No module found for configuration ${config.schema.toString().replace(/\n/g, ' ').replace(/\s+/g, ' ')}. Did you attach the configuration to a module?`);
 }
 
 export type ExportType = ClassType | InjectorToken<any> | string | InjectorModule;
