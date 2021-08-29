@@ -92,6 +92,7 @@ export class ServiceContainer {
         this.postProcess();
 
         this.injectorContext = new InjectorContext(this.appModule);
+        this.injectorContext.getRootInjector(); //trigger all injector builds
         this.bootstrapModules();
     }
 
