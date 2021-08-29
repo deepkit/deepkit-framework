@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/orm-browser",
-  "version": "1.0.1-alpha.54",
+  "version": "1.0.1-alpha.55",
   "description": "Deepkit ORM Data Browser",
   "type": "commonjs",
   "sideEffects": false,
@@ -19,7 +19,7 @@
     "@deepkit/bson": "^1.0.1-alpha.52",
     "@deepkit/core": "^1.0.1-alpha.52",
     "@deepkit/crypto": "^1.0.1-alpha.35",
-    "@deepkit/framework": "^1.0.1-alpha.54",
+    "@deepkit/framework": "^1.0.1-alpha.55",
     "@deepkit/http": "^1.0.1-alpha.54",
     "@deepkit/injector": "^1.0.1-alpha.54",
     "@deepkit/logger": "^1.0.1-alpha.52",
