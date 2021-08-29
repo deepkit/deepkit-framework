@@ -46,7 +46,7 @@ export class SQLiteStatement extends SQLStatement {
     async get(params: any[] = []): Promise<any> {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
-            if (frame) frame.data({sql: this.sql, sqlParams: params});
+            if (frame) frame.data({ sql: this.sql, sqlParams: params });
             const res = this.stmt.get(...params);
             this.logger.logQuery(this.sql, params);
             return res;
@@ -61,7 +61,7 @@ export class SQLiteStatement extends SQLStatement {
     async all(params: any[] = []): Promise<any[]> {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
-            if (frame) frame.data({sql: this.sql, sqlParams: params});
+            if (frame) frame.data({ sql: this.sql, sqlParams: params });
             const res = this.stmt.all(...params);
             this.logger.logQuery(this.sql, params);
             return res;
@@ -109,14 +109,17 @@ export class SQLiteConnection extends SQLConnection {
     protected changes: number = 0;
     public db: sqlite3.Database;
 
-    constructor(connectionPool: SQLConnectionPool,
-                protected dbPath: string,
-                logger?: DatabaseLogger,
-                transaction?: DatabaseTransaction,
-                stopwatch?: Stopwatch,
+    static DatabaseConstructor: any = sqlite3;
+
+    constructor(
+        connectionPool: SQLConnectionPool,
+        protected dbPath: string,
+        logger?: DatabaseLogger,
+        transaction?: DatabaseTransaction,
+        stopwatch?: Stopwatch,
     ) {
         super(connectionPool, logger, transaction, stopwatch);
-        this.db = new sqlite3(this.dbPath);
+        this.db = new SQLiteConnection.DatabaseConstructor(this.dbPath);
         this.db.exec('PRAGMA foreign_keys=ON');
     }
 
@@ -135,7 +138,7 @@ export class SQLiteConnection extends SQLConnection {
     async run(sql: string, params: any[] = []) {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
-            if (frame) frame.data({sql, sqlParams: params});
+            if (frame) frame.data({ sql, sqlParams: params });
             const stmt = this.db.prepare(sql);
             this.logger.logQuery(sql, params);
             const result = stmt.run(...params);
@@ -145,14 +148,14 @@ export class SQLiteConnection extends SQLConnection {
             this.logger.failedQuery(error, sql, params);
             throw error;
         } finally {
-            if (frame) frame.end()
+            if (frame) frame.end();
         }
     }
 
     async exec(sql: string) {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
-            if (frame) frame.data({sql});
+            if (frame) frame.data({ sql });
             this.db.exec(sql);
             this.logger.logQuery(sql, []);
         } catch (error) {
@@ -160,7 +163,7 @@ export class SQLiteConnection extends SQLConnection {
             this.logger.failedQuery(error, sql, []);
             throw error;
         } finally {
-            if (frame) frame.end()
+            if (frame) frame.end();
         }
     }
 
@@ -185,6 +188,10 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
         if (this.firstConnection) this.firstConnection.db.close();
     }
 
+    protected createConnection(logger?: DatabaseLogger, transaction?: SQLiteDatabaseTransaction, stopwatch?: Stopwatch): SQLiteConnection {
+        return new SQLiteConnection(this, this.dbPath, logger, transaction, stopwatch);
+    }
+
     async getConnection(logger?: DatabaseLogger, transaction?: SQLiteDatabaseTransaction, stopwatch?: Stopwatch): Promise<SQLiteConnection> {
         //when a transaction object is given, it means we make the connection sticky exclusively to that transaction
         //and only release the connection when the transaction is commit/rollback is executed.
@@ -200,7 +207,7 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
                 ? await asyncOperation<SQLiteConnection>((resolve) => {
                     this.queue.push(resolve);
                 })
-                : new SQLiteConnection(this, this.dbPath, logger, transaction, stopwatch);
+                : this.createConnection(logger, transaction, stopwatch);
 
         if (!this.firstConnection) this.firstConnection = connection;
         connection.released = false;
