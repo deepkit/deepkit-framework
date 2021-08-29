@@ -239,12 +239,6 @@ export class Injector implements InjectorInterface {
         this.resolver = resolver;
     }
 
-    protected resolveSetupProviderCalls(token: any): SetupProviderCalls[] {
-        //todo: if token is exported, use also the provider calls from the origin module
-
-        return this.module.setupProviderRegistry.get(token) || [];
-    }
-
     protected buildProvider(
         buildContext: BuildContext,
         compiler: CompilerContext,

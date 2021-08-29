@@ -21,7 +21,7 @@ import send from 'send';
 import { eventDispatcher } from '@deepkit/event';
 import { RouteConfig, Router } from './router';
 
-export function serveStaticListener(path: string, localPath: string = path): ClassType {
+export function serveStaticListener(module: AppModule<any>, path: string, localPath: string = path): ClassType {
     @injectable
     class HttpRequestStaticServingListener {
         serve(path: string, request: HttpRequest, response: HttpResponse) {
@@ -48,6 +48,7 @@ export function serveStaticListener(path: string, localPath: string = path): Cla
                         event.routeFound(
                             new RouteConfig('static', ['GET'], event.url, {
                                 controller: HttpRequestStaticServingListener,
+                                module,
                                 methodName: 'serve'
                             }),
                             () => [relativePath, event.request, event.response]
@@ -143,5 +144,5 @@ export function registerStaticHttpController(module: AppModule<any>, options: St
     module.setupGlobalProvider(Router).addRoute(route2);
 
     module.addProvider(StaticController);
-    module.addListener(serveStaticListener(normalizeDirectory(options.path), options.localPath));
+    module.addListener(serveStaticListener(module, normalizeDirectory(options.path), options.localPath));
 }

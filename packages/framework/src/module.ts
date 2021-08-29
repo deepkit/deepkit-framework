@@ -109,7 +109,7 @@ export class FrameworkModule extends createModule({
         }
 
         if (this.config.publicDir) {
-            this.addListener(serveStaticListener('/', this.config.publicDir));
+            this.addListener(serveStaticListener(this, '/', this.config.publicDir));
         }
 
         this.setupProvider(Logger).addTransport(injectorReference(ConsoleTransport));
