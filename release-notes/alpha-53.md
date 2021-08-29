@@ -1,4 +1,4 @@
-## Version alpha-53
+## Version alpha-53+
 
 This version introduces a rather big refactor of the module system: New features and a few breaking changes were added.
 
@@ -108,8 +108,12 @@ much fewer dependencies involved.
 
 Previously
 ```typescript
-import { Application } from '@deepkit/framework';
-new Application().run();
+import { Application, KernelModule } from '@deepkit/framework';
+new Application({
+    imports: [
+        KernelModule.configure({port: 9090})
+    ]
+}).run();
 ```
 
 Now:
@@ -117,7 +121,28 @@ Now:
 ```typescript
 import { App } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
-new App({imports: [new FrameworkBundle]}).run();
+
+new App({
+    imports: [
+        new FrameworkBundle({port: 9090})
+    ]
+}).run();
+```
+
+FrameworkBundle configuration options can still be overwritten via environment variables, but the module name has changed 
+from `kernel` to `framework`. The new method name is `loadConfigFromEnv`:
+
+```typescript
+import { App } from '@deepkit/app';
+import { FrameworkModule } from '@deepkit/framework';
+new App({imports: [new FrameworkModule]}).loadConfigFromEnv().run();
+```
+
+`loadConfigFromEnv`: prefix is per default now APP_, and naming strategy is per default `upper`. 
+An example environment variable looks like that:
+
+```bash
+APP_FRAMEWORK_PORT=8080 ts-node app.ts
 ```
 
 If you for example only have http controllers, and don't need anything from the feature-rich framework bundle, you can just
