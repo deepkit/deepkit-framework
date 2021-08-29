@@ -98,6 +98,8 @@ dui-button-group {
         .url-input-container {
             margin: 12px;
             margin-bottom: 0;
+            max-width: 100%;
+            overflow: hidden;
 
             dui-button-group {
                 width: 100%;
@@ -108,10 +110,16 @@ dui-button-group {
                 line-height: 21px;
                 display: flex;
                 align-items: center;
+                overflow: hidden;
                 flex: 1;
                 padding: 0 5px;
                 border-top: 1px solid var(--line-color-light);
                 border-bottom: 1px solid var(--line-color-light);
+                > div {
+                    overflow: hidden;
+                    white-space: nowrap;
+                    text-overflow: ellipsis;
+                }
             }
         }
 

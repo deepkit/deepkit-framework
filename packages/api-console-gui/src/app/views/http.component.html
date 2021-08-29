@@ -94,7 +94,7 @@
                                         [value]="m"
                                         [disabled]="!route.httpMethods.includes(m)">{{m}}</dui-option>
                         </dui-select>
-                        <div class="url text-selection">{{route.path}}</div>
+                        <div class="url text-selection"><div>{{route.path}}</div></div>
                         <dui-button icon="play" textured (click)="execute(route)"></dui-button>
                     </dui-button-group>
                 </div>
