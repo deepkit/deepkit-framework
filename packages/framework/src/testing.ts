@@ -13,14 +13,14 @@ import { ClassType } from '@deepkit/core';
 import { ConsoleTransport, Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { Database, DatabaseRegistry, MemoryDatabaseAdapter } from '@deepkit/orm';
 import { ClassSchema } from '@deepkit/type';
-import { Application } from './application';
 import { ApplicationServer } from './application-server';
 import { Broker, BrokerServer, DirectBroker } from './broker/broker';
 import { injectorReference } from '@deepkit/injector';
-import { AppModule, RootModuleDefinition } from '@deepkit/app';
+import { App, AppModule, RootModuleDefinition } from '@deepkit/app';
 import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker';
 import { HttpKernel, HttpResponse, RequestBuilder } from '@deepkit/http';
 import { RpcClient } from '@deepkit/rpc';
+import { FrameworkModule } from './module';
 
 export class TestHttpResponse extends HttpResponse {
     public body: Buffer = Buffer.alloc(0);
@@ -66,7 +66,7 @@ export class TestHttpResponse extends HttpResponse {
     }
 }
 
-export class TestingFacade<A extends Application<any>> {
+export class TestingFacade<A extends App<any>> {
     constructor(public app: A) {
     }
 
@@ -101,10 +101,10 @@ export class BrokerMemoryServer extends BrokerServer {
 }
 
 /**
- * Creates a new Application instance, but with kernel services in place that work in memory.
+ * Creates a new App instance, but with kernel services in place that work in memory.
  * For example RPC/Broker/HTTP communication without TCP stack. Logger uses MemoryLogger.
  */
-export function createTestingApp<O extends RootModuleDefinition>(options: O, entities: (ClassType | ClassSchema)[] = [], setup?: (module: AppModule<any>) => void): TestingFacade<Application<O>> {
+export function createTestingApp<O extends RootModuleDefinition>(options: O, entities: (ClassType | ClassSchema)[] = [], setup?: (module: AppModule<any>) => void): TestingFacade<App<O>> {
     const module = new AppModule(options);
 
     module.setupProvider(Logger).removeTransport(injectorReference(ConsoleTransport));
@@ -119,6 +119,8 @@ export function createTestingApp<O extends RootModuleDefinition>(options: O, ent
         }
     });
 
+    if (!module.hasImport(FrameworkModule)) module.addImportAtBeginning(new FrameworkModule)
+
     if (entities.length) {
         module.addProvider({ provide: Database, useValue: new Database(new MemoryDatabaseAdapter, entities) });
         module.setupGlobalProvider(DatabaseRegistry).addDatabase(Database, {}, module);
@@ -126,5 +128,5 @@ export function createTestingApp<O extends RootModuleDefinition>(options: O, ent
 
     if (setup) module.setup(setup as any);
 
-    return new TestingFacade(Application.fromModule(module));
+    return new TestingFacade(App.fromModule(module));
 }

@@ -232,20 +232,20 @@ export class AppModule<T extends RootModuleDefinition, C extends ExtractConfigOf
     /**
      * A hook point to the service container. Allows to react on a registered provider in some module.
      */
-    handleProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
+    processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
 
     }
 
     /**
      * A hook point to the service container. Allows to react on a registered controller in some module.
      */
-    handleController(module: AppModule<any>, controller: ClassType) {
+    processController(module: AppModule<any>, controller: ClassType) {
 
     }
 
     /**
      * After `process` and when all modules have been processed by the service container.
-     * This is also after `handleController` and `handleProviders` have been called and the full
+     * This is also after `processController` and `processProvider` have been called and the full
      * final module tree is known. Adding now new providers or modules doesn't have any effect.
      *
      * Last chance to setup the injector context, via this.setupProvider().

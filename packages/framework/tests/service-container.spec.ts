@@ -1,10 +1,9 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { rpc } from '@deepkit/rpc';
-import { AppModule, createModule, ServiceContainer } from '@deepkit/app';
+import { App, AppModule, createModule, ServiceContainer } from '@deepkit/app';
 import { FrameworkModule } from '../src/module';
 import { Database, DatabaseRegistry, MemoryDatabaseAdapter } from '@deepkit/orm';
-import { Application } from '../src/application';
 
 test('controller', () => {
     class MyService {
@@ -107,8 +106,9 @@ test('database auto-detection', () => {
         }
     }
 
-    const app = new Application({
-        providers: [MyDatabase]
+    const app = new App({
+        providers: [MyDatabase],
+        imports: [new FrameworkModule()]
     });
 
     const registry = app.get(DatabaseRegistry);

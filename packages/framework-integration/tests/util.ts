@@ -1,6 +1,6 @@
 import { arrayRemoveItem, ClassType, sleep } from '@deepkit/core';
-import { Application, ApplicationServer, Broker, BrokerServer, FrameworkModule, NetBroker, NetBrokerServer } from '@deepkit/framework';
-import { AppModule } from '@deepkit/app';
+import { ApplicationServer, Broker, BrokerServer, FrameworkModule, NetBroker, NetBrokerServer } from '@deepkit/framework';
+import { App, AppModule } from '@deepkit/app';
 import { Observable } from 'rxjs';
 import { createServer } from 'http';
 import { DeepkitClient, RemoteController } from '@deepkit/rpc';
@@ -58,7 +58,7 @@ export async function createServerClientPair(
     name: string,
     AppModule: AppModule<any>
 ): Promise<{
-    app: Application<any>,
+    app: App<any>,
     server: ApplicationServer,
     client: DeepkitClient,
     close: () => Promise<void>,
@@ -75,7 +75,7 @@ export async function createServerClientPair(
         });
     });
 
-    const app = Application.fromModule(
+    const app = App.fromModule(
         AppModule.configure({
             framework: {
                 server: server,

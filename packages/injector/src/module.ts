@@ -261,12 +261,25 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
     }
 
     /**
-     * Modifies this module and adds a new import, returning the same module.
+     * Adds a new import at the end.
      */
     addImport(...modules: InjectorModule<any>[]): this {
         this.assertInjectorNotBuilt();
         for (const module of modules) {
             module.setParent(this);
+        }
+        return this;
+    }
+
+    /**
+     * Adds a new import at the beginning. Since import order matters, it might be useful to import a module first
+     * so its exported providers can be overwritten by imports following this module.
+     */
+    addImportAtBeginning(...modules: InjectorModule<any>[]): this {
+        this.assertInjectorNotBuilt();
+        for (const module of modules) {
+            module.parent = this;
+            this.imports.unshift(module);
         }
         return this;
     }

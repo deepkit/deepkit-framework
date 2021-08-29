@@ -1,6 +1,6 @@
 #!/usr/bin/env ts-node-script
 import 'reflect-metadata';
-import { Application, createCrudRoutes, FrameworkModule, onServerMainBootstrapDone } from '@deepkit/framework';
+import { createCrudRoutes, FrameworkModule, onServerMainBootstrapDone } from '@deepkit/framework';
 import { Author, Book, SQLiteDatabase, User } from './src/database';
 import { MainController } from './src/controller/main.http';
 import { UsersCommand } from './src/controller/users.cli';
@@ -8,10 +8,11 @@ import { ApiConsoleModule } from '@deepkit/api-console-module';
 import { config } from './src/config';
 import { JSONTransport, Logger } from '@deepkit/logger';
 import { createListener } from '@deepkit/event';
+import { App } from '@deepkit/app';
 
 const bookStoreCrud = createCrudRoutes([Author, Book]);
 
-new Application({
+new App({
     config: config,
     providers: [SQLiteDatabase],
     controllers: [MainController, UsersCommand],

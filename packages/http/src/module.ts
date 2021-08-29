@@ -39,7 +39,7 @@ export class HttpModule extends createModule({
         this.addProvider({ provide: HttpControllers, useValue: this.httpControllers });
     }
 
-    handleController(module: AppModule<any>, controller: ClassType) {
+    processController(module: AppModule<any>, controller: ClassType) {
         const httpConfig = httpClass._fetch(controller);
         if (!httpConfig) return;
 

@@ -201,7 +201,7 @@ export class App<T extends RootModuleDefinition> {
      *
      * APP_databaseUrl="mongodb://localhost/mydb"
      *
-     * Application.create({}).loadConfigFromEnvVariables('APP_').run();
+     * new App({}).loadConfigFromEnvVariables('APP_').run();
      *
      *
      * `envFilePath` can be either an absolute or relative path. For relative paths the first
@@ -224,7 +224,7 @@ export class App<T extends RootModuleDefinition> {
      *
      * APP_CONFIG={'databaseUrl": "mongodb://localhost/mydb", "moduleA": {"foo": "bar'}}
      *
-     * Application.run().loadConfigFromEnvVariable('APP_CONFIG').run();
+     * new App().run().loadConfigFromEnvVariable('APP_CONFIG').run();
      */
     loadConfigFromEnvVariable(variableName: string = 'APP_CONFIG'): this {
         if (!process.env[variableName]) return this;

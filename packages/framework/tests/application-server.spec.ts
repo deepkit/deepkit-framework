@@ -1,7 +1,6 @@
 import { rpc } from '@deepkit/rpc';
 import { afterEach, describe, expect, jest, test } from '@jest/globals';
 import 'reflect-metadata';
-import { Application } from '../src/application';
 import { InjectorContext } from '@deepkit/injector';
 import { createTestingApp } from '../src/testing';
 import { ApplicationServer } from '../src/application-server';
@@ -10,6 +9,7 @@ import { FrameworkModule } from '../src/module';
 import { RpcServer, RpcServerInterface, WebWorker } from '../src/worker';
 import { HttpRequest } from '@deepkit/http';
 import { BrokerModule } from '../src/broker/broker.module';
+import { App } from '@deepkit/app';
 
 jest.mock('ws', () => {
     const on = jest.fn();
@@ -76,7 +76,7 @@ describe('application-server', () => {
             }
         }
 
-        const app = new Application({
+        const app = new App({
             controllers: [MyController],
             imports: [
                 new FrameworkModule()
@@ -169,7 +169,7 @@ describe('application-server', () => {
             class MyController {
             }
 
-            const app = new Application({
+            const app = new App({
                 controllers: [MyController],
                 providers: [
                     {
@@ -177,6 +177,7 @@ describe('application-server', () => {
                         useValue: rpcServerMock,
                     }
                 ],
+                imports: [new FrameworkModule()]
             });
             const applicationServer = app.get(ApplicationServer);
             await applicationServer.start();
@@ -194,8 +195,9 @@ describe('application-server', () => {
             class MyController {
             }
 
-            const app = new Application({
+            const app = new App({
                 controllers: [MyController],
+                imports: [new FrameworkModule()]
             });
             const applicationServer = app.get(ApplicationServer);
             await applicationServer.start();

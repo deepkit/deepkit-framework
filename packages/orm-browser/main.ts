@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import 'reflect-metadata';
-import { Application, FrameworkModule, OrmBrowserController } from '@deepkit/framework';
-import { AppModule, findParentPath } from '@deepkit/app';
+import { FrameworkModule, OrmBrowserController } from '@deepkit/framework';
+import { App, AppModule, findParentPath } from '@deepkit/app';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { registerStaticHttpController } from '@deepkit/http';
 import { InjectorContext } from '@deepkit/injector';
@@ -18,7 +18,6 @@ const appModule = new AppModule({
     controllers: [
         OrmBrowserController
     ],
-
     imports: [
         new FrameworkModule({
             port: 9090
@@ -30,4 +29,4 @@ const appModule = new AppModule({
     registerStaticHttpController(module, {path: '/', localPath, controllerName: 'OrmBrowserController'});
 });
 
-Application.fromModule(appModule).loadConfigFromEnv({prefix: 'ORM_BROWSER_'}).run(['server:start']);
+App.fromModule(appModule).loadConfigFromEnv({prefix: 'ORM_BROWSER_'}).run(['server:start']);

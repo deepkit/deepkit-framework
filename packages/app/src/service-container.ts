@@ -61,7 +61,7 @@ export class ServiceContainer {
 
     /**
      * All modules in the whole module tree.
-     * This is stored to call service container hooks like handleControllers/handleProviders.
+     * This is stored to call service container hooks like processController/processProvider.
      */
     protected modules = new Set<AppModule<any>>();
 
@@ -230,11 +230,11 @@ export class ServiceContainer {
         }
 
         for (const controller of controllers) {
-            this.handleController(module, controller);
+            this.processController(module, controller);
         }
 
         for (const provider of providers) {
-            this.handleProvider(module, resolveToken(provider), provider);
+            this.processProvider(module, resolveToken(provider), provider);
         }
 
         for (const imp of module.getImports()) {
@@ -243,7 +243,7 @@ export class ServiceContainer {
         }
     }
 
-    protected handleController(module: AppModule<any>, controller: ClassType) {
+    protected processController(module: AppModule<any>, controller: ClassType) {
         const cliConfig = cli._fetch(controller);
         if (cliConfig) {
             if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'cli' });
@@ -251,13 +251,13 @@ export class ServiceContainer {
         }
 
         for (const m of this.modules) {
-            m.handleController(module, controller);
+            m.processController(module, controller);
         }
     }
 
-    protected handleProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
+    protected processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
         for (const m of this.modules) {
-            m.handleProvider(module, token, provider);
+            m.processProvider(module, token, provider);
         }
     }
 }

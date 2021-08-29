@@ -8,14 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AppModule } from '@deepkit/app';
+import { createModule } from '@deepkit/app';
 import { AngularUniversalListener } from './listener';
 import { config } from './config';
 import '@deepkit/type';
 
-export const angularUniversalModule = new AppModule({
-    config: config,
-    listeners: [
-        AngularUniversalListener
-    ]
-}, 'angular-universal').forRoot();
+export class AngularUniversalModule extends createModule({
+    config,
+    listeners: [AngularUniversalListener]
+}) {
+}

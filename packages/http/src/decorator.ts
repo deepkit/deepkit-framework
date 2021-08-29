@@ -153,7 +153,7 @@ export class HttpDecorator {
      *     }
      * }
      *
-     * Application.create({providers: [UserResolver]}).run();
+     * new App({providers: [UserResolver]}).run();
      * ```
      */
     resolveParameter(classType: ClassType | string | any, resolver: ClassType<RouteParameterResolver>) {
@@ -179,7 +179,7 @@ export class HttpDecorator {
      *     }
      * }
      *
-     * Application.create({providers: [UserResolver]}).run();
+     * new App({providers: [UserResolver]}).run();
      * ```
      */
     resolveParameterByName(name: string, resolver: ClassType<RouteParameterResolver>) {
@@ -364,7 +364,7 @@ export class HttpActionDecorator {
      *     }
      * }
      *
-     * Application.create({providers: [UserResolver]}).run();
+     * new App({providers: [UserResolver]}).run();
      * ```
      */
     resolveParameter(classType: ClassType | string | any, resolver: ClassType<RouteParameterResolver>) {
@@ -389,7 +389,7 @@ export class HttpActionDecorator {
      *     }
      * }
      *
-     * Application.create({providers: [UserResolver]}).run();
+     * new App({providers: [UserResolver]}).run();
      * ```
      */
     resolveParameterByName(name: string, resolver: ClassType<RouteParameterResolver>) {

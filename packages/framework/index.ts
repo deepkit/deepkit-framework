@@ -9,7 +9,6 @@
  */
 
 export * from './src/session';
-export * from './src/application';
 export * from './src/application-server';
 export * from './src/worker';
 export * from './src/database/database-listener';

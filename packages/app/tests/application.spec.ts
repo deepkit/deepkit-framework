@@ -447,14 +447,14 @@ test('service container hooks', () => {
         providersFound: ProviderWithScope[] = [];
         controllersFound: ClassType[] = [];
 
-        handleController(module: AppModule<any>, controller: ClassType) {
+        processController(module: AppModule<any>, controller: ClassType) {
             expect(module).toBeInstanceOf(AppModule);
             expect(isClass(controller)).toBe(true);
             module.addProvider(controller);
             this.controllersFound.push(controller);
         }
 
-        handleProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
+        processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
             expect(module).toBeInstanceOf(AppModule);
             this.providersFound.push(provider);
         }

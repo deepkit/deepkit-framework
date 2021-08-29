@@ -1,14 +1,14 @@
 import 'reflect-metadata';
 import { ClassType } from '@deepkit/core';
-import { Application, createTestingApp as createTestingAppOriginal, LiveDatabase, TestingFacade } from '@deepkit/framework';
-import { AppModule, RootModuleDefinition } from '@deepkit/app';
+import { createTestingApp as createTestingAppOriginal, LiveDatabase, TestingFacade } from '@deepkit/framework';
+import { App, AppModule, RootModuleDefinition } from '@deepkit/app';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { Collection, IdInterface, rpc } from '@deepkit/rpc';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { ClassSchema, Entity, t, uuid } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 
-export function createTestingApp<O extends RootModuleDefinition>(options: O, entities?: (ClassType | ClassSchema)[]): TestingFacade<Application<O>> {
+export function createTestingApp<O extends RootModuleDefinition>(options: O, entities?: (ClassType | ClassSchema)[]): TestingFacade<App<O>> {
     return createTestingAppOriginal(options, [], (module: AppModule<any>) => {
         module.addProvider({ provide: Database, useValue: new Database(new SQLiteDatabaseAdapter('/tmp/live-database.sqlite'), entities) })
         module.setupGlobalProvider(DatabaseRegistry).addDatabase(Database, { migrateOnStartup: true }, module);

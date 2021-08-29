@@ -167,14 +167,14 @@ export class FrameworkModule extends createModule({
         }
     }
 
-    handleProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
+    processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
         if (!isClass(token)) return;
         if (isPrototypeOfBase(token, Database)) {
             this.dbs.push({ classType: token, module });
         }
     }
 
-    handleController(module: AppModule<any>, controller: ClassType) {
+    processController(module: AppModule<any>, controller: ClassType) {
         const rpcConfig = rpcClass._fetch(controller);
         if (!rpcConfig) return;
 
