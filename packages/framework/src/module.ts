@@ -40,6 +40,7 @@ import { DebugBroker, DebugBrokerListener } from './debug/broker';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
 import { AppModule, createModule } from '@deepkit/app';
 import { RpcControllers, RpcInjectorContext } from './rpc';
+import { normalizeDirectory } from './utils';
 
 export class FrameworkModule extends createModule({
     config: frameworkConfig,
@@ -109,7 +110,7 @@ export class FrameworkModule extends createModule({
         }
 
         if (this.config.publicDir) {
-            this.addListener(serveStaticListener(this, '/', this.config.publicDir));
+            this.addListener(serveStaticListener(this, normalizeDirectory(this.config.publicDirPrefix), this.config.publicDir));
         }
 
         this.setupProvider(Logger).addTransport(injectorReference(ConsoleTransport));
