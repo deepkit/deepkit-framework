@@ -872,3 +872,32 @@ test('injectorReference from other module', () => {
         expect(registry.services[0]).toBeInstanceOf(Service);
     }
 });
+
+test('inject its own module', () => {
+    class Service {
+        constructor(@inject(() => ApiModule) public module: any) {
+        }
+    }
+
+    class ApiModule extends InjectorModule {
+
+    }
+
+    {
+        const module1 = new ApiModule([Service]);
+        const root = new InjectorModule([]).addImport(module1);
+        const injector = new InjectorContext(root);
+
+        const service = injector.get(Service, module1);
+        expect(service.module).toBeInstanceOf(ApiModule);
+    }
+
+    {
+        const module1 = new ApiModule([Service]).addExport(Service);
+        const root = new InjectorModule([]).addImport(module1);
+        const injector = new InjectorContext(root);
+
+        const service = injector.get(Service, module1);
+        expect(service.module).toBeInstanceOf(ApiModule);
+    }
+});

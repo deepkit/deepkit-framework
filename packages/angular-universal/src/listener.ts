@@ -17,6 +17,7 @@ import { join } from 'path';
 import { readFileSync } from 'fs';
 import { Router } from '@angular/router';
 import domino from 'domino';
+import { AngularUniversalModule } from './module';
 
 (global as any).window = global;
 Object.assign(global, domino.createWindow());
@@ -36,6 +37,7 @@ export class AngularUniversalListener {
     protected router?: Router;
 
     constructor(
+        @inject(() => AngularUniversalModule) protected module: AngularUniversalModule,
         protected logger: Logger,
         @inject(config) protected fullConfig: typeof config.type,
     ) {
@@ -119,7 +121,7 @@ export class AngularUniversalListener {
         }
 
         event.routeFound(
-            new RouteConfig('angular', ['GET'], event.url, { controller: AngularUniversalListener, methodName: 'render' }),
+            new RouteConfig('angular', ['GET'], event.url, { controller: AngularUniversalListener, module: this.module, methodName: 'render' }),
             () => [event.url]
         );
     }

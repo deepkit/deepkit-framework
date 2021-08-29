@@ -15,6 +15,8 @@ import '@deepkit/type';
 
 export class AngularUniversalModule extends createModule({
     config,
-    listeners: [AngularUniversalListener]
 }) {
+    process() {
+        this.addListener(AngularUniversalListener);
+    }
 }

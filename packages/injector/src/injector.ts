@@ -423,7 +423,9 @@ export class Injector implements InjectorInterface {
 
         //regarding configuration values: the attached module is not necessarily in resolveDependenciesFrom[0]
         //if the parent module overwrites its, then the parent module is at 0th position.
-        if (token instanceof ConfigDefinition) {
+        if (isClass(token) && resolveDependenciesFrom[0] instanceof token) {
+            return compiler.reserveConst(resolveDependenciesFrom[0], 'module');
+        } else if (token instanceof ConfigDefinition) {
             try {
                 const module = findModuleForConfig(token, resolveDependenciesFrom);
                 return compiler.reserveVariable('fullConfig', module.getConfig());
