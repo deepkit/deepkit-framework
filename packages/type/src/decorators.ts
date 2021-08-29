@@ -60,6 +60,7 @@ export type ExtractClassDefinition<T extends PlainSchemaProps> = MakeUndefinedOp
  *
  * deepkit/type's database abstraction uses this name to generate the collection name / table name.
  *
+ * @deprecated use `@entity.name()` instead
  * @category Decorator
  */
 export function Entity<T>(name: string, collectionName?: string) {
