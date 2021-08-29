@@ -31,12 +31,9 @@ test('controller instantiation', () => {
             //find classType and module for given controller classType
             const controller = this.registry.get(classType);
 
-            //get the dependency injection sub container for the module
-            const injector = this.injectorContext.getInjector(controller.module);
-
             //here the controller will be instantiated. If it was already
             //instantiated, the old instanced will be returned.
-            return injector.get(controller.classType);
+            return this.injectorContext.get(controller.classType, controller.module);
         }
     }
 
@@ -50,7 +47,7 @@ test('controller instantiation', () => {
             this.addProvider({ provide: Registry, useValue: this.registry });
         }
 
-        handleController(module: AppModule<any>, controller: ClassType) {
+        processController(module: AppModule<any>, controller: ClassType) {
             //controllers need to be put into the module's providers by the controller consumer
             if (!module.isProvided(controller)) module.addProvider(controller);
             this.registry.register(module, controller);
