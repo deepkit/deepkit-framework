@@ -86,20 +86,41 @@ export class FrameworkModule extends createModule({
         MigrationPendingCommand,
         MigrationCreateController,
     ],
+    exports: [
+        ProcessLocker,
+        ApplicationServer,
+        WebWorkerFactory,
+        RpcServer,
+        ConsoleTransport,
+        Logger,
+        RpcKernelSecurity,
+        MigrationProvider,
+
+        DatabaseRegistry,
+        SessionHandler,
+
+        LiveDatabase,
+        HttpRequest,
+        RpcInjectorContext,
+        SessionState,
+        RpcKernelConnection,
+        RpcKernelBaseConnection,
+        ConnectionWriter,
+
+        BrokerModule,
+        HttpModule,
+    ]
 }, 'framework') {
     imports = [
-        new BrokerModule().forRoot(),
+        new BrokerModule(),
         new HttpModule(),
     ];
 
-    //we export anything per default
-    root = true;
     protected dbs: { module: AppModule<any>, classType: ClassType }[] = [];
     protected rpcControllers = new RpcControllers;
 
     process() {
         this.addImport();
-        this.forRoot();
         this.addProvider({ provide: RpcControllers, useValue: this.rpcControllers });
 
         this.setupProvider(MigrationProvider).setMigrationDir(this.config.migrationDir);
@@ -145,6 +166,7 @@ export class FrameworkModule extends createModule({
                         return new Stopwatch(store);
                     }
                 });
+                this.addExport(Stopwatch);
             }
 
             this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);

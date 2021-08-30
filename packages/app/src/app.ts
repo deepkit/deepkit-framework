@@ -148,6 +148,8 @@ class EnvConfigLoader {
     }
 }
 
+export class RootAppModule<T> extends AppModule<T> {}
+
 /**
  * This is the smallest available application abstraction in Deepkit.
  *
@@ -169,7 +171,7 @@ export class App<T extends RootModuleDefinition> {
         serviceContainer?: ServiceContainer,
         appModule?: AppModule<any>
     ) {
-        this.appModule = appModule || new AppModule(appModuleOptions) as any;
+        this.appModule = appModule || new RootAppModule(appModuleOptions) as any;
         this.serviceContainer = serviceContainer || new ServiceContainer(this.appModule);
     }
 

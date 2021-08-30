@@ -3,5 +3,4 @@ import { AppModuleConfig } from '@deepkit/app';
 
 export const config = new AppModuleConfig({
     debug: t.boolean.default(false),
-    middlewares: t.array(t.any).default([]),
 });

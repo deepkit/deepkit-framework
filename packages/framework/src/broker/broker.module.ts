@@ -16,6 +16,8 @@ import { onServerMainBootstrap, onServerMainShutdown } from '../application-serv
 import { brokerConfig } from './broker.config';
 import { Broker, BrokerServer } from './broker';
 import { Logger } from '@deepkit/logger';
+import '@deepkit/core';
+import '@deepkit/type';
 
 class BrokerStartConfig extends brokerConfig.slice('startOnBootstrap', 'listen') {
 }

@@ -7,11 +7,25 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { Config, ConfigOption, Database, DatabaseEntity, DebugControllerInterface, Event, Route, RpcAction, RpcActionParameter, Workflow } from '@deepkit/framework-debug-api';
+import {
+    Config,
+    ConfigOption,
+    Database,
+    DatabaseEntity,
+    DebugControllerInterface,
+    Event,
+    ModuleApi,
+    ModuleImportedService,
+    ModuleService,
+    Route,
+    RpcAction,
+    RpcActionParameter,
+    Workflow
+} from '@deepkit/framework-debug-api';
 import { rpc, rpcClass } from '@deepkit/rpc';
-import { getClassSchema, t } from '@deepkit/type';
+import { getClassSchema, serializeSchemas, t } from '@deepkit/type';
 import { parseRouteControllerAction, Router } from '@deepkit/http';
-import { changeClass, getClassName } from '@deepkit/core';
+import { changeClass, getClassName, isClass } from '@deepkit/core';
 import { EventDispatcher, isEventListenerContainerEntryService } from '@deepkit/event';
 import { DatabaseAdapter, DatabaseRegistry } from '@deepkit/orm';
 import { readFileSync, statSync, truncateSync } from 'fs';
@@ -20,8 +34,8 @@ import { frameworkConfig } from '../module.config';
 import { FileStopwatchStore } from './stopwatch/store';
 import { Subject } from 'rxjs';
 import { unlink } from 'fs/promises';
-import { inject } from '@deepkit/injector';
-import { ServiceContainer } from '@deepkit/app';
+import { getScope, inject, InjectorToken, resolveToken, Token } from '@deepkit/injector';
+import { AppModule, ServiceContainer } from '@deepkit/app';
 import { RpcControllers } from '../rpc';
 
 class DebugConfig extends frameworkConfig.slice('varPath', 'debugStorePath') {
@@ -29,6 +43,9 @@ class DebugConfig extends frameworkConfig.slice('varPath', 'debugStorePath') {
 
 @rpc.controller(DebugControllerInterface)
 export class DebugController implements DebugControllerInterface {
+    protected reservedTokenIds = new Map<Token, number>();
+    protected idToTokenMap = new Map<number, Token>();
+
     constructor(
         protected serviceContainer: ServiceContainer,
         protected eventDispatcher: EventDispatcher,
@@ -265,4 +282,76 @@ export class DebugController implements DebugControllerInterface {
     // httpRequests(): Promise<Collection<DebugRequest>> {
     //     return this.liveDatabase.query(DebugRequest).find();
     // }
+
+    @rpc.action()
+    @t.type(ModuleApi)
+    modules(): ModuleApi {
+        const injectorContext = this.serviceContainer.getInjectorContext();
+
+        const getTokenId = (token: Token): number => {
+            const found = this.reservedTokenIds.get(token);
+            if (found === undefined) {
+                const id = this.reservedTokenIds.size;
+                this.idToTokenMap.set(id, token);
+                this.reservedTokenIds.set(token, id);
+                return id;
+            }
+            return found;
+        };
+
+        function getTokenLabel(token: Token): string {
+            if (isClass(token)) return getClassName(token);
+            if (token instanceof InjectorToken) return `InjectorToken('${token.name}')`;
+
+            return String(token);
+        }
+
+        function extract(module: AppModule<any>): ModuleApi {
+            const moduleApi = new ModuleApi(module.name, module.id, getClassName(module));
+            moduleApi.config = module.getConfig();
+            if (module.configDefinition) {
+                moduleApi.configSchemas = serializeSchemas([module.configDefinition.schema]);
+            }
+
+            for (const provider of module.getProviders()) {
+                const token = resolveToken(provider);
+                const service = new ModuleService(getTokenId(token), getTokenLabel(token));
+                service.scope = getScope(provider);
+                service.instantiations = injectorContext.instantiationCount(token);
+
+                if (isClass(token) && module.controllers.includes(token)) {
+                    service.type = 'controller';
+                } else if (isClass(token) && module.listeners.includes(token)) {
+                    service.type = 'listener';
+                }
+
+                moduleApi.services.push(service);
+
+                service.exported = module.isExported(token);
+                service.forRoot = module.root;
+            }
+
+            const builtPreparedProviders = module.getBuiltPreparedProviders();
+            if (builtPreparedProviders) {
+                for (const [token, preparedProvider] of builtPreparedProviders.entries()) {
+                    //We want to know which token has been imported by whom
+                    if (preparedProvider.modules[0] !== module) {
+                        //was imported from originally preparedProvider.modules[0]
+                        moduleApi.importedServices.push(new ModuleImportedService(getTokenId(token), getTokenLabel(token), getClassName(preparedProvider.modules[0])));
+                    } else if (preparedProvider.modules.length > 1) {
+                        //was imported and overwritten by this module
+                        moduleApi.importedServices.push(new ModuleImportedService(getTokenId(token), getTokenLabel(token), getClassName(preparedProvider.modules[1])));
+                    }
+                }
+            }
+
+            for (const m of module.getImports()) {
+                moduleApi.imports.push(extract(m));
+            }
+
+            return moduleApi;
+        }
+
+        return extract(this.serviceContainer.appModule);
+    }
 }

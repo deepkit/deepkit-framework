@@ -22,6 +22,8 @@ jest.mock('ws', () => {
     };
 });
 
+Error.stackTraceLimit = 50;
+
 jest.mock('http', () => ({
     ...jest.requireActual('http') as any,
     Server: jest.fn(() => ({

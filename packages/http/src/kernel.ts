@@ -31,6 +31,7 @@ export class HttpKernel {
         const httpInjectorContext = this.injectorContext.createChildScope('http');
         httpInjectorContext.set(HttpRequest, req);
         httpInjectorContext.set(HttpResponse, res);
+        httpInjectorContext.get(HttpRequest);
 
         const frame = this.stopwatch ? this.stopwatch.start(req.method + ' ' + req.getUrl(), FrameCategory.http, true) : undefined;
         const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext, this.stopwatch);

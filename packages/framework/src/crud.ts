@@ -256,13 +256,15 @@ function createController(schema: ClassSchema, options: AutoCrudOptions = {}): C
     return RestController;
 }
 
+export class CrudAppModule<T> extends AppModule<T> {}
+
 /**
  * Create a module that provides CRUD routes for given entities.
  */
 export function createCrudRoutes(schemas: (ClassType | ClassSchema)[], options: AutoCrudOptions = {}) {
     const controllers = schemas.map(getClassSchema).map(v => createController(v, options));
 
-    return new AppModule({
+    return new CrudAppModule({
         controllers: controllers
     }, 'autoCrud');
 }

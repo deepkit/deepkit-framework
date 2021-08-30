@@ -16,7 +16,7 @@ import { ClassSchema } from '@deepkit/type';
 import { ApplicationServer } from './application-server';
 import { Broker, BrokerServer, DirectBroker } from './broker/broker';
 import { injectorReference } from '@deepkit/injector';
-import { App, AppModule, RootModuleDefinition } from '@deepkit/app';
+import { App, AppModule, RootAppModule, RootModuleDefinition } from '@deepkit/app';
 import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker';
 import { HttpKernel, HttpResponse, RequestBuilder } from '@deepkit/http';
 import { RpcClient } from '@deepkit/rpc';
@@ -105,7 +105,7 @@ export class BrokerMemoryServer extends BrokerServer {
  * For example RPC/Broker/HTTP communication without TCP stack. Logger uses MemoryLogger.
  */
 export function createTestingApp<O extends RootModuleDefinition>(options: O, entities: (ClassType | ClassSchema)[] = [], setup?: (module: AppModule<any>) => void): TestingFacade<App<O>> {
-    const module = new AppModule(options);
+    const module = new RootAppModule(options);
 
     module.setupProvider(Logger).removeTransport(injectorReference(ConsoleTransport));
     module.setupProvider(Logger).addTransport(injectorReference(MemoryLoggerTransport));

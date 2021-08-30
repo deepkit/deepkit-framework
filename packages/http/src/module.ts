@@ -29,10 +29,16 @@ export class HttpModule extends createModule({
         httpWorkflow
     ],
     exports: [
-        Logger
+        Router,
+        HttpKernel,
+        HttpResultFormatter,
+        HttpRouterFilterResolver,
+        HttpResponse,
+        HttpRequest,
+        HttpControllers,
+        Logger,
     ]
 }) {
-    root = true;
     protected httpControllers = new HttpControllers;
 
     process() {

@@ -10,7 +10,7 @@
 
 import { ExtractClassDefinition, jsonSerializer, PlainSchemaProps, t } from '@deepkit/type';
 import { ConfigDefinition, InjectorModule, InjectorToken, ProviderWithScope, Token } from '@deepkit/injector';
-import { ClassType, CustomError, isClass } from '@deepkit/core';
+import { AbstractClassType, ClassType, CustomError, isClass } from '@deepkit/core';
 import { EventListener } from '@deepkit/event';
 import type { WorkflowDefinition } from '@deepkit/workflow';
 
@@ -23,7 +23,7 @@ export interface MiddlewareConfig {
 
 export type MiddlewareFactory = () => MiddlewareConfig;
 
-export type ExportType = ClassType | InjectorToken<any> | string | AppModule<any>;
+export type ExportType = AbstractClassType | InjectorToken<any> | string | AppModule<any>;
 
 export interface ModuleDefinition {
     /**
