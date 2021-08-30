@@ -1,23 +1,21 @@
 ## Version alpha-53+
 
-This version introduces a rather big refactor of the module system: New features and a few breaking changes were added.
+This version introduces a rather big refactor of the module system. New features and a few breaking changes were added.
 
-How to update?
+#### How to update?
 
 ```
 npx update-by-scope @deepkit
 ```
 
-What has changed?
+#### What has changed?
 
 Previously a lot of the module dependency injection behaviour was in deepkit/app’s `ServiceContainer`. 
 It handled the export and import of modules for example. This was moved to deepkit/injector. 
-The injector library does now statically analyse the dependencies and throw early more meaningful 
-error messages. It can now also be used much better standalone. This change separated the code better
-and allowed to gain a performance boost.
+The injector library now statically analyzes the dependencies and throws more meaningful 
+error messages earlier. It can now also be used much easier in a standalone context. This change allowed better separation of concerns in the code and also provided a performance boost.
 
-
-### Changes
+### Breaking Changes
 
 Modules are now regular classes, its module definition has changed to use a different API and can no longer import other
 modules in the module definition object.
@@ -80,7 +78,7 @@ new Application({
 
 Please note: while regular modules can not import other modules in the module definition object anymore 
 (as it would become a global instance in a deeper nested import tree), a `new Application({imports: []})` or `new App({imports: []})`,
-can still do that (as it would not become a global instance).
+can still do so (as it would not become a global instance).
 
 Modules are now stateful, which means they need to be instantiated when importing.
 Its configuration options can be changed via the first argument.
@@ -99,7 +97,6 @@ new Application({
 @injectable
 class MyService {}
 ```
-
 
 The module system has now new hooks `process`, `processController`, `processProvider`, and `postProcess`.
 More explained in the new docs. https://deepkit.io/documentation/framework/modules
@@ -130,12 +127,12 @@ import { FrameworkModule } from '@deepkit/framework';
 
 new App({
     imports: [
-        new FrameworkBundle({port: 9090})
+        new FrameworkModule({port: 9090})
     ]
 }).run();
 ```
 
-FrameworkBundle configuration options can still be overwritten via environment variables, but the module name has changed 
+FrameworkModule configuration options can still be overwritten via environment variables, but the module name has changed 
 from `kernel` to `framework`. The new method name is `loadConfigFromEnv`:
 
 ```typescript
@@ -151,7 +148,7 @@ An example environment variable looks like that:
 APP_FRAMEWORK_PORT=8080 ts-node app.ts
 ```
 
-If you for example only have http controllers, and don't need anything from the feature-rich framework bundle, you can just
+If you for example only have http controllers, and don't need anything from the feature-rich framework module, you can just
 
 ```
 const app = new App({
