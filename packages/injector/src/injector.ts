@@ -20,7 +20,7 @@ export function tokenLabel(token: any): string {
     if (token === undefined) return 'undefined';
     if (token instanceof TagProvider) return 'Tag(' + getClassName(token.provider.provide) + ')';
     if (isClass(token)) return getClassName(token);
-    if (isFunction(token.toString)) return token.toString();
+    if (isFunction(token.toString)) return token.name;
 
     return token + '';
 }

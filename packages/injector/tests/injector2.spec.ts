@@ -901,3 +901,17 @@ test('inject its own module', () => {
         expect(service.module).toBeInstanceOf(ApiModule);
     }
 });
+
+test('provider with function as token', () => {
+    function MyOldClass() {
+        return 'hi';
+    }
+
+    //in es5 code, classes are actual functions and not detectable as class
+    const root = new InjectorModule([{ provide: MyOldClass as any, useValue: MyOldClass }]);
+    const injector = new InjectorContext(root);
+
+    const fn = injector.get(MyOldClass);
+
+    expect(fn()).toBe('hi');
+});
