@@ -2,6 +2,12 @@
 
 This version introduces a rather big refactor of the module system: New features and a few breaking changes were added.
 
+How to update?
+
+```
+npx update-by-scope @deepkit
+```
+
 What has changed?
 
 Previously a lot of the module dependency injection behaviour was in deepkit/app’s `ServiceContainer`. 
