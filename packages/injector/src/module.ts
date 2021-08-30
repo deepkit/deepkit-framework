@@ -84,7 +84,9 @@ export function findModuleForConfig(config: ConfigDefinition<any>, modules: Inje
         if (m.configDefinition === config) return m;
     }
 
-    throw new Error(`No module found for configuration ${config.schema.toString().replace(/\n/g, ' ').replace(/\s+/g, ' ')}. Did you attach the configuration to a module?`);
+    const searchedIn = modules.map(v => getClassName(v));
+
+    throw new Error(`No module found for configuration ${config.schema.toString().replace(/\n/g, ' ').replace(/\s+/g, ' ')}. Searched in ${searchedIn.join(', ')}. Did you attach the configuration to a module?`);
 }
 
 export type ExportType = AbstractClassType | InjectorToken<any> | string | symbol | InjectorModule;
@@ -424,7 +426,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
             //so its able to inject our encapsulated services.
             if (parentProvider) {
                 //we add our module as additional source for potential dependencies
-                parentProvider.modules.push(this);
+                parentProvider.modules.push(...preparedProvider.modules);
             } else {
                 parentProviders.set(token, { modules: [this], providers: preparedProvider.providers.slice() });
             }
@@ -459,7 +461,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
                             //so its able to inject our encapsulated services.
                             if (parentProvider) {
                                 //we add our module as additional source for potential dependencies
-                                parentProvider.modules.push(this);
+                                parentProvider.modules.push(...preparedProvider.modules);
                             } else {
                                 parentProviders.set(token, { modules: [this, ...preparedProvider.modules], providers: preparedProvider.providers.slice() });
                             }

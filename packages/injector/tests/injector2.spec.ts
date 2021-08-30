@@ -951,7 +951,7 @@ test('instantiatedCount scope', () => {
     class Request {
     }
 
-    const module1 = new InjectorModule([{provide: Request, scope: 'http'}]);
+    const module1 = new InjectorModule([{ provide: Request, scope: 'http' }]);
 
     const root = new InjectorModule([]).addImport(module1);
     const injector = new InjectorContext(root);
@@ -963,4 +963,53 @@ test('instantiatedCount scope', () => {
         injector.createChildScope('http').get(Request, module1);
         expect(injector.createChildScope('http').instantiationCount(Request, module1)).toBe(2);
     }
+});
+
+
+test('configuration work in deeply nested imports with overridden service', () => {
+    const brokerConfig = new ConfigDefinition(t.schema({
+        listen: t.string
+    }));
+
+    class BrokerServer {
+        constructor(@inject(brokerConfig.token('listen')) public listen: string) {
+        }
+    }
+
+    class BrokerModule extends InjectorModule {
+    }
+
+    @injectable
+    class ApplicationServer {
+        constructor(public broker: BrokerServer) {
+        }
+    }
+
+    class FrameworkModule extends InjectorModule {
+    }
+
+    const brokerModule = new BrokerModule([BrokerServer], undefined, { listen: '0.0.0.0' }).addExport(BrokerServer).setConfigDefinition(brokerConfig);
+
+    const frameworkModule = new FrameworkModule([ApplicationServer]).addImport(brokerModule).addExport(BrokerModule, ApplicationServer);
+
+    class Broker {
+        constructor(public server: BrokerServer) {
+        }
+    }
+
+    class BrokerMemoryServer extends BrokerServer {
+    }
+
+    const root = new InjectorModule([
+        { provide: BrokerServer, useClass: BrokerMemoryServer }
+    ]).addImport(frameworkModule);
+
+    const injector = new InjectorContext(root);
+    const applicationServer = injector.get(ApplicationServer);
+    expect(applicationServer.broker.listen).toBe('0.0.0.0');
+    expect(applicationServer.broker).toBeInstanceOf(BrokerMemoryServer);
+
+    const brokerServer = injector.get(BrokerServer);
+    expect(brokerServer).toBeInstanceOf(BrokerMemoryServer);
+    expect(brokerServer.listen).toBe('0.0.0.0');
 });
