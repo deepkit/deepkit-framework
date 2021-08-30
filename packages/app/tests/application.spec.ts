@@ -437,7 +437,7 @@ test('config deps and @inject() in FactoryProvider', async () => {
             ]
         });
         const app = App.fromModule(module);
-        expect(() => app.get('undefinedDep')).toThrow(`No token defined for dependency 0 in 'deps' of useFactory for undefinedDep`);
+        expect(() => app.get('undefinedDep')).toThrow(`No token defined for dependency 0 in 'deps' of useFactory for undefined`);
     }
 });
 

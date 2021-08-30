@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { createModule, createModuleConfig } from '../src/module';
+import { createModule, createModuleConfig, ExtractConfigOfDefinition } from '../src/module';
 import { getClassSchema, t } from '@deepkit/type';
 import { inject, injectable } from '@deepkit/injector';
 import { ServiceContainer } from '../src/service-container';
@@ -21,6 +21,76 @@ test('strict types config', () => {
     }
 });
 
+test('strict types config with defaults', () => {
+    const config = createModuleConfig({
+        host: t.string.default('0.0.0.0'),
+    });
+
+    class MyModule extends createModule({
+        config
+    }) {
+        process() {
+            //at this point the validation happened and it can be assumed the config has the right types
+            const config = this.config;
+            assert<IsExact<{ host: string }, typeof config>>(true);
+        }
+    }
+});
+
+test('nested options are optional as well for constructor, but strict in process()', () => {
+    const config = createModuleConfig({
+        host: t.string.default('0.0.0.0'),
+        secret: t.string,
+        nested: t.type({
+            enabled: t.boolean,
+            type: t.string.default('all'),
+        }).optional,
+    });
+
+    assert<IsExact<{ host: string, secret: string, nested?: { enabled: boolean, type: string } }, ExtractConfigOfDefinition<typeof config>>>(true);
+
+    class MyModule extends createModule({
+        config
+    }) {
+        process() {
+            const config = this.config;
+            if (config.nested) {
+                const nested = config.nested;
+                assert<IsExact<string, typeof nested['type']>>(true);
+            }
+        }
+    }
+
+    new MyModule({ host: '0.0.0.0', nested: { enabled: true } });
+});
+
+test('partial nested options are optional as well for constructor, but strict in process()', () => {
+    const config = createModuleConfig({
+        host: t.string.default('0.0.0.0'),
+        secret: t.string,
+        nested: t.partial({
+            enabled: t.boolean,
+            type: t.string.default('all'),
+        }).optional,
+    });
+
+    assert<IsExact<{ host: string, secret: string, nested?: { enabled?: boolean, type?: string } }, ExtractConfigOfDefinition<typeof config>>>(true);
+
+    class MyModule extends createModule({
+        config
+    }) {
+        process() {
+            const config = this.config;
+            if (config.nested) {
+                const nested = config.nested;
+                assert<IsExact<string | undefined, typeof nested['type']>>(true);
+            }
+        }
+    }
+
+    new MyModule({ host: '0.0.0.0', nested: { enabled: true } });
+});
+
 test('no config reference leak', () => {
     class ModuleA extends createModule({
         config: createModuleConfig({
@@ -35,14 +105,15 @@ test('no config reference leak', () => {
         })
     }) {
         override imports = [new ModuleA];
+
         override process() {
-            this.getImportedModuleByClass(ModuleA).configure({param1: this.config.value});
+            this.getImportedModuleByClass(ModuleA).configure({ param1: this.config.value });
         }
     }
 
     expect(new ModuleA().getConfig()).toMatchObject({ param1: undefined });
 
-    const app = new RootApp({value: '1'});
+    const app = new RootApp({ value: '1' });
     app.process();
     expect(new RootApp().getImports()[0] !== app.getImports()[0]).toBe(true);
 
@@ -95,6 +166,7 @@ test('nested config', () => {
     }
 
     let moduleAProcessCalled = 0;
+
     class ModuleA extends createModule({
         config: moduleAConfig,
         providers: [
