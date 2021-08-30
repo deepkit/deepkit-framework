@@ -16,6 +16,7 @@ import { RpcComponent } from './views/rpc/rpc.component';
 import { EventsComponent } from './views/events/events.component';
 import { HttpRequestComponent } from './views/http/request/http-request.component';
 import { ProfileComponent } from './views/profile/profile.component';
+import { ModulesComponent } from './views/modules/modules.component';
 
 const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'configuration' },
@@ -23,6 +24,7 @@ const routes: Routes = [
   { path: 'http', component: HttpComponent },
   { path: 'rpc', component: RpcComponent },
   { path: 'profiler', component: ProfileComponent },
+  { path: 'modules', component: ModulesComponent },
   { path: 'events', component: EventsComponent },
   { path: 'http/request/:id', component: HttpRequestComponent },
 ];

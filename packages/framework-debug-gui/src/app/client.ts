@@ -17,14 +17,25 @@ export class ControllerClient {
     protected requests?: Promise<Collection<DebugRequest>>;
     protected workflows: { [name: string]: Promise<Workflow> } = {};
 
-    constructor(public client: DeepkitClient) {
-    }
-
     public readonly debug = this.client.controller(DebugControllerInterface);
 
     static getServerHost(): string {
         const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
         return proto + (location.port === '4200' ? location.hostname + ':8080' : location.host);
+    }
+
+    constructor(public client: DeepkitClient) {
+        client.transporter.disconnected.subscribe(() => {
+            this.tryToConnect();
+        });
+    }
+
+    tryToConnect() {
+        this.client.connect().catch(() => {
+            setTimeout(() => {
+                this.tryToConnect();
+            }, 1_000);
+        });
     }
 
     public getWorkflow(name: string): Promise<Workflow> {

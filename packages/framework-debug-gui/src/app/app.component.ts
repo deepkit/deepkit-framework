@@ -40,10 +40,10 @@ import { Router } from '@angular/router';
 
                     <div class="top-right">
                         <div class="connection-info">
-                            <div class="connected" *ngIf="client.client.transporter.connection|async as connected">
+                            <div class="connected" *ngIf="client.client.transporter.connection|asyncRender as connected">
                                 Connected
                             </div>
-                            <div class="disconnected" *ngIf="!(client.client.transporter.connection|async)">
+                            <div class="disconnected" *ngIf="!(client.client.transporter.connection|asyncRender)">
                                 Disconnected
                             </div>
                         </div>
@@ -65,6 +65,7 @@ import { Router } from '@angular/router';
                         <dui-list-item routerLink="/http" [routerLinkExact]="true">HTTP</dui-list-item>
                         <dui-list-item routerLink="/rpc">RPC</dui-list-item>
                         <dui-list-item routerLink="/events">Events</dui-list-item>
+                        <dui-list-item routerLink="/modules">Modules</dui-list-item>
                         <dui-list-item routerLink="/profiler">Profiler</dui-list-item>
                         <dui-list-item routerLink="/api/http">API</dui-list-item>
 

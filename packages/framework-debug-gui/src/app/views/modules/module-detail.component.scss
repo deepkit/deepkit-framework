@@ -1,0 +1,115 @@
+:host {
+    display: block;
+}
+
+.module {
+    padding: 12px;
+    margin: 0;
+}
+
+.name, .config {
+    margin: 5px 0;
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+:host-context(.dui-theme-light) .module {
+    //todo: colors for light mode
+    border: 1px solid #dadada;
+    background: #f1f1f1;
+}
+
+.imported-services {
+    margin-top: 12px;
+    font-size: 12px;
+
+    .description {
+        color: var(--text-light);
+    }
+
+    .imported-services-grid {
+        columns: 200px auto;
+
+        > div {
+            padding: 0 3px;
+            color: var(--color-imported);
+            white-space: nowrap;
+
+            .module-name {
+                color: var(--text-light);
+            }
+
+            &:hover {
+                border-radius: 3px;
+                background-color: rgba(128, 128, 128, 0.24);
+            }
+        }
+    }
+}
+
+.imports {
+    padding-left: 55px;
+    position: relative;
+    padding-top: 35px;
+
+    .line-top {
+        position: absolute;
+        top: 0;
+        left: 24px;
+        height: 100%;
+        border-right: 1px solid var(--line-color-light);
+    }
+
+    .last {
+        margin-bottom: 0;
+    }
+
+    .import {
+        padding-bottom: 25px;
+    }
+}
+
+.import {
+    position: relative;
+
+    .line-left {
+        position: absolute;
+        top: 13px;
+        left: -30px;
+        width: 30px;
+        border-top: 1px solid var(--line-color-light);
+    }
+
+    .line-left-last {
+        position: absolute;
+        left: -32px;
+        bottom: 0;
+        top: 14px;
+        width: 5px;
+        background-color: var(--dui-window-content-bg);
+    }
+}
+
+.sections {
+    display: grid;
+    grid-gap: 25px;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+
+    .section-title {
+        font-size: 12px;
+        color: var(--text-light);
+        margin-bottom: 3px;
+    }
+
+    .entries {
+        columns: 200px auto;
+        overflow: hidden;
+    }
+
+    .no-entries {
+        text-align: center;
+        padding: 15px;
+        font-size: 12px;
+        color: var(--text-light);
+    }
+}

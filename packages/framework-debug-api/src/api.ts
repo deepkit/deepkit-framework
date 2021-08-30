@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { entity, PropertySchema, PropertySchemaSerialized, t } from '@deepkit/type';
+import { ClassSchema, deserializeSchemas, entity, PropertySchema, PropertySchemaSerialized, SerializedSchema, serializedSchemaDefinition, t } from '@deepkit/type';
 import { ControllerSymbol } from '@deepkit/rpc';
 import { DebugRequest } from './model';
 import { Subject } from 'rxjs';
@@ -107,16 +107,102 @@ export class Event {
     @t priority!: number;
 }
 
+// @entity.name('.deepkit/debugger/module/controller')
+// export class ModuleController {
+//     @t scope: string = '';
+//     @t exported: boolean = false;
+//
+//     constructor(
+//         @t.name('id') public id: number,
+//         @t.name('token') public token: string,
+//     ) {
+//     }
+// }
+//
+// @entity.name('.deepkit/debugger/module/listener')
+// export class ModuleListener {
+//     @t scope: string = '';
+//     @t exported: boolean = false;
+//
+//     constructor(
+//         @t.name('id') public id: number,
+//         @t.name('token') public token: string,
+//     ) {
+//     }
+// }
+
+
+@entity.name('.deepkit/debugger/module/service')
+export class ModuleService {
+    @t instantiations: number = 0;
+    @t scope: string = '';
+    @t exported: boolean = false;
+    @t forRoot: boolean = false;
+    @t type: 'service' | 'controller' | 'listener' = 'service';
+
+    constructor(
+        @t.name('id') public id: number,
+        @t.name('token') public token: string,
+    ) {
+    }
+}
+
+@entity.name('.deepkit/debugger/module/importedService')
+export class ModuleImportedService {
+    constructor(
+        @t.name('id') public id: number,
+        @t.name('token') public token: string,
+        @t.name('fromModule') public fromModule: string,
+    ) {
+    }
+}
+
+@entity.name('.deepkit/debugger/module')
+export class ModuleApi {
+    public deserializedConfigSchema?: ClassSchema;
+
+    @t.array(serializedSchemaDefinition) public configSchemas: SerializedSchema[] = [];
+
+    @t.map(t.any) config: Record<string, any> = {};
+
+    @t.array(ModuleService) services: ModuleService[] = [];
+    // @t.array(ModuleController) controllers: ModuleController[] = [];
+    // @t.array(ModuleListener) listeners: ModuleListener[] = [];
+
+    @t.array(ModuleApi) imports: ModuleApi[] = [];
+
+    @t.array(ModuleImportedService) importedServices: ModuleImportedService[] = [];
+
+    constructor(
+        @t.name('name') public name: string,
+        @t.name('id') public id: number,
+        @t.name('className') public className: string,
+    ) {
+    }
+
+    getConfigSchema(): ClassSchema | undefined {
+        if (!this.deserializedConfigSchema && this.configSchemas.length > 0) {
+            this.deserializedConfigSchema = deserializeSchemas(this.configSchemas)[0];
+        }
+
+        return this.deserializedConfigSchema;
+    }
+}
+
 export const DebugControllerInterface = ControllerSymbol<DebugControllerInterface>('deepkit/debug/controller', [Config, Database, Route, RpcAction, Workflow, Event, DebugRequest]);
+
 export interface DebugControllerInterface {
     configuration(): Config;
 
     subscribeStopwatchFrames(): Promise<Subject<Uint8Array>>;
+
     subscribeStopwatchFramesData(): Promise<Subject<Uint8Array>>;
 
     databases(): Database[];
 
     routes(): Route[];
+
+    modules(): ModuleApi;
 
     actions(): RpcAction[];
 

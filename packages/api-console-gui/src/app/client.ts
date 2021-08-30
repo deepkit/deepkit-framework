@@ -73,14 +73,6 @@ export class ControllerClient {
         this.api.getDocument().then(v => subject.next(v));
     });
 
-    tryToConnect() {
-        this.client.connect().catch(() => {
-            setTimeout(() => {
-                this.tryToConnect();
-            }, 1_000);
-        });
-    }
-
     constructor(public client: DeepkitClient) {
         client.transporter.reconnected.subscribe(() => {
             this.routes.reload();
@@ -88,6 +80,14 @@ export class ControllerClient {
         });
         client.transporter.disconnected.subscribe(() => {
             this.tryToConnect();
+        });
+    }
+
+    tryToConnect() {
+        this.client.connect().catch(() => {
+            setTimeout(() => {
+                this.tryToConnect();
+            }, 1_000);
         });
     }
 

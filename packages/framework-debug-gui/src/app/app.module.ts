@@ -39,6 +39,9 @@ import { OrmBrowserModule } from '@deepkit/orm-browser-gui';
 import { ApiConsoleModule } from '@deepkit/api-console-gui';
 import { ProfileComponent } from './views/profile/profile.component';
 import { ProfileTimelineComponent } from './views/profile/timeline.component';
+import { ModulesComponent } from './views/modules/modules.component';
+import { ModuleDetailComponent, ModuleDetailServiceComponent } from './views/modules/module-detail.component';
+import { DeepkitUIModule } from '@deepkit/ui-library';
 
 @NgModule({
     declarations: [
@@ -52,6 +55,9 @@ import { ProfileTimelineComponent } from './views/profile/timeline.component';
         WorkflowCardComponent,
         EventsComponent,
         HttpRequestComponent,
+        ModulesComponent,
+        ModuleDetailComponent,
+        ModuleDetailServiceComponent,
     ],
     imports: [
         BrowserModule,
@@ -64,6 +70,7 @@ import { ProfileTimelineComponent } from './views/profile/timeline.component';
         ApiConsoleModule,
         OverlayModule,
 
+        DeepkitUIModule,
         DuiCheckboxModule,
         DuiButtonModule,
         DuiInputModule,

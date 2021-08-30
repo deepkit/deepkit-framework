@@ -39,6 +39,7 @@
             "styles": [
               "node_modules/@deepkit/desktop-ui/src/scss/all.scss",
               "node_modules/@deepkit/desktop-ui/src/scss/icon.scss",
+              "node_modules/@deepkit/ui-library/src/styles/style-code.scss",
               "src/styles.scss"
             ],
             "scripts": [],
