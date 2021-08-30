@@ -482,8 +482,6 @@ class HttpActionParameterDecorator {
     }
 }
 
-createPropertyDecoratorContext(HttpActionDecorator);
-
 export const httpAction: PropertyDecoratorResult<typeof HttpActionDecorator> = createPropertyDecoratorContext(HttpActionDecorator);
 
 export const httpActionParameter: PropertyDecoratorResult<typeof HttpActionParameterDecorator> = createPropertyDecoratorContext(HttpActionParameterDecorator);

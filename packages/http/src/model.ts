@@ -65,10 +65,11 @@ export class RequestBuilder {
             done = false;
 
             _read(size: number) {
-                if (this.done) {
-                    this.push(null);
-                } else {
+                if (!this.done) {
                     this.push(bodyContent);
+                    process.nextTick(() => {
+                        this.emit('end');
+                    })
                     this.done = true;
                 }
             }
