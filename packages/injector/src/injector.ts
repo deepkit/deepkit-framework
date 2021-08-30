@@ -239,18 +239,21 @@ export class Injector implements InjectorInterface {
         }
 
         this.instantiations = instantiationCompiler.build(`
+            //for ${getClassName(this.module)}
             switch (token) {
                 ${instantiationLines.join('\n')}
             }
         `, 'token');
 
         this.setter = setterCompiler.build(`
+            //for ${getClassName(this.module)}
             switch (token) {
                 ${setterLines.join('\n')}
             }
         `, 'token', 'value', 'scope');
 
         this.resolver = resolverCompiler.raw(`
+            //for ${getClassName(this.module)}
             ${creating.join('\n')};
 
             CircularDetectorResets.push(() => {
@@ -382,7 +385,7 @@ export class Injector implements InjectorInterface {
         const circularDependencyCheckEnd = factory.dependencies ? `${creatingVar} = false;` : '';
 
         return `
-            //${tokenLabel(token)}
+            //${tokenLabel(token)}, from ${resolveDependenciesFrom.map(getClassName).join(', ')}
             case token === ${tokenVar}${scopeCheck}: {
                 ${!transient ? `if (${accessor} !== undefined) return ${accessor};` : ''}
                 CircularDetector.push(${tokenVar});

@@ -1013,3 +1013,33 @@ test('configuration work in deeply nested imports with overridden service', () =
     expect(brokerServer).toBeInstanceOf(BrokerMemoryServer);
     expect(brokerServer.listen).toBe('0.0.0.0');
 });
+
+
+test('exported scoped can be replaced for another scope', () => {
+    class HttpRequest {
+    }
+
+    class HttpModule extends InjectorModule {
+    }
+
+    const httpModule = new HttpModule([{ provide: HttpRequest, scope: 'http' }]).addExport(HttpRequest);
+
+    class FrameworkModule extends InjectorModule {
+    }
+
+    const frameworkModule = new FrameworkModule([{ provide: HttpRequest, scope: 'rpc' }]).addImport(httpModule).addExport(HttpModule, HttpRequest);
+
+    const root = new InjectorModule().addImport(frameworkModule);
+
+    const injector = new InjectorContext(root);
+    expect(() => injector.get(HttpRequest)).toThrow('not found');
+
+    const scopeHttp = injector.createChildScope('http');
+    const httpRequest1 = scopeHttp.get(HttpRequest);
+    expect(httpRequest1).toBeInstanceOf(HttpRequest);
+
+    const scopeRpc = injector.createChildScope('rpc');
+    const httpRequest2 = scopeRpc.get(HttpRequest);
+    expect(httpRequest2).toBeInstanceOf(HttpRequest);
+    expect(httpRequest2 !== httpRequest1).toBe(true);
+});

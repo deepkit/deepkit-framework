@@ -56,10 +56,14 @@ export interface PreparedProvider {
     resolveFrom?: InjectorModule;
 }
 
-function registerPreparedProvider(map: Map<any, PreparedProvider>, modules: InjectorModule[], providers: NormalizedProvider[]) {
+function registerPreparedProvider(map: Map<any, PreparedProvider>, modules: InjectorModule[], providers: NormalizedProvider[], replaceExistingScope: boolean = true) {
     const token = providers[0].provide;
     const preparedProvider = map.get(token);
     if (preparedProvider) {
+        for (const m of modules) {
+            if (preparedProvider.modules.includes(m)) continue;
+            preparedProvider.modules.push(m);
+        }
         for (const provider of providers) {
             const scope = getScope(provider);
             //check if given provider has a unknown scope, if so set it.
@@ -68,7 +72,7 @@ function registerPreparedProvider(map: Map<any, PreparedProvider>, modules: Inje
             if (knownProvider === -1) {
                 //scope not known, add it
                 preparedProvider.providers.push(provider);
-            } else {
+            } else if (replaceExistingScope) {
                 //scope already known, replace it
                 preparedProvider.providers.splice(knownProvider, 1, provider);
             }
@@ -426,7 +430,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
             //so its able to inject our encapsulated services.
             if (parentProvider) {
                 //we add our module as additional source for potential dependencies
-                parentProvider.modules.push(...preparedProvider.modules);
+                registerPreparedProvider(parentProviders, preparedProvider.modules, preparedProvider.providers, false);
             } else {
                 parentProviders.set(token, { modules: [this], providers: preparedProvider.providers.slice() });
             }
@@ -461,7 +465,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
                             //so its able to inject our encapsulated services.
                             if (parentProvider) {
                                 //we add our module as additional source for potential dependencies
-                                parentProvider.modules.push(...preparedProvider.modules);
+                                registerPreparedProvider(parentProviders, preparedProvider.modules, preparedProvider.providers, false);
                             } else {
                                 parentProviders.set(token, { modules: [this, ...preparedProvider.modules], providers: preparedProvider.providers.slice() });
                             }
