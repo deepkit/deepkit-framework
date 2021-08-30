@@ -29,7 +29,7 @@ import {
     ReferenceActions,
     SingleTableInheritance
 } from './model';
-import { PartialField, Types } from './types';
+import { Types } from './types';
 import { validators } from './validation-decorator';
 import { FieldDecoratorResult, isFieldDecorator, MySQLOptions, PostgresOptions, SqliteOptions, ValidatorFn } from './field-decorator';
 
@@ -1184,11 +1184,11 @@ export interface MainDecorator {
      *
      * class User {
      *     @t.partial(Config)
-     *     config: PartialField<Config> = {};
+     *     config: Partial<Config> = {};
      * }
      * ```
      */
-    partial<T extends ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps>(type: T): FieldDecoratorResult<PartialField<ExtractType<T>>>;
+    partial<T extends ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps>(type: T): FieldDecoratorResult<Partial<ExtractType<T>>>;
 
     // /**
     //  * Partial type. Allows deep dot-style paths.
