@@ -52,6 +52,7 @@
     "projects": [
       "packages/core",
       "packages/core-rxjs",
+      "packages/ui-library",
       "packages/type",
       "packages/app",
       "packages/event",
