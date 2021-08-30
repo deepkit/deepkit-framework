@@ -1,6 +1,6 @@
 import { ConfigDefinition } from './config';
 import { NormalizedProvider, ProviderWithScope, TagProvider, Token } from './provider';
-import { arrayRemoveItem, ClassType, getClassName, isClass, isPrototypeOfBase } from '@deepkit/core';
+import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, isClass, isPrototypeOfBase } from '@deepkit/core';
 import { InjectorToken } from './decorator';
 import { BuildContext, Injector, SetupProviderRegistry } from './injector';
 
@@ -87,7 +87,7 @@ export function findModuleForConfig(config: ConfigDefinition<any>, modules: Inje
     throw new Error(`No module found for configuration ${config.schema.toString().replace(/\n/g, ' ').replace(/\s+/g, ' ')}. Did you attach the configuration to a module?`);
 }
 
-export type ExportType = ClassType | InjectorToken<any> | string | InjectorModule;
+export type ExportType = AbstractClassType | InjectorToken<any> | string | symbol | InjectorModule;
 
 export function isProvided(providers: ProviderWithScope[], token: any): boolean {
     return providers.find(v => !(v instanceof TagProvider) ? token === (isClass(v) ? v : v.provide) : false) !== undefined;
@@ -200,6 +200,10 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
         this.assertInjectorNotBuilt();
         this.exports.push(...controller);
         return this;
+    }
+
+    isExported(token: Token): boolean {
+        return this.exports.includes(token);
     }
 
     isProvided(classType: ClassType): boolean {
@@ -338,6 +342,10 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
         if (this.preparedProviders.has(token)) return this;
         if (this.parent) return this.parent.resolveToken(token);
         return;
+    }
+
+    getBuiltPreparedProviders(): Map<any, PreparedProvider> | undefined {
+        return this.preparedProviders;
     }
 
     /**

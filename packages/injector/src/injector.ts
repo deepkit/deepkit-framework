@@ -126,11 +126,13 @@ export interface InjectorInterface {
 export class Injector implements InjectorInterface {
     private resolver?: (token: any, scope?: Scope) => any;
     private setter?: (token: any, value: any, scope?: Scope) => any;
+    private instantiations?: (token: any) => number;
 
     /**
      * All unscoped provider instances. Scoped instances are attached to `Scope`.
      */
     private instances: { [name: string]: any } = {};
+    private instantiated: { [name: string]: number } = {};
 
     constructor(
         public readonly module: InjectorModule,
@@ -158,6 +160,11 @@ export class Injector implements InjectorInterface {
         this.setter(token, value, scope);
     }
 
+    instantiationCount<T>(token: any): number {
+        if (!this.instantiations) throw new Error('Injector was not built');
+        return this.instantiations(token);
+    }
+
     clear() {
         this.instances = {};
     }
@@ -173,6 +180,10 @@ export class Injector implements InjectorInterface {
         const lines: string[] = [];
         const resets: string[] = [];
         const creating: string[] = [];
+
+        const instantiationCompiler = new CompilerContext();
+        instantiationCompiler.context.set('injector', this);
+        const instantiationLines: string[] = [];
 
         const setterCompiler = new CompilerContext();
         setterCompiler.context.set('injector', this);
@@ -194,6 +205,9 @@ export class Injector implements InjectorInterface {
                 const accessor = scope ? 'scope.instances.' + name : 'injector.instances.' + name;
 
                 setterLines.push(`case ${setterCompiler.reserveVariable('token', token)}: {
+                    if (${accessor} === undefined) {
+                        injector.instantiated.${name} = injector.instantiated.${name} ? injector.instantiated.${name} + 1 : 1;
+                    }
                     ${accessor} = value;
                     break;
                 }`);
@@ -201,25 +215,42 @@ export class Injector implements InjectorInterface {
                 if (prepared.resolveFrom) {
                     //its a redirect
                     lines.push(`
-                    case token === ${resolverCompiler.reserveConst(token)}: {
-                        return ${resolverCompiler.reserveConst(prepared.resolveFrom)}.injector.resolver(${resolverCompiler.reserveConst(token)}, scope);
+                    case token === ${resolverCompiler.reserveConst(token, 'token')}: {
+                        return ${resolverCompiler.reserveConst(prepared.resolveFrom, 'resolveFrom')}.injector.resolver(${resolverCompiler.reserveConst(token, 'token')}, scope);
                     }
-                `);
+                    `);
 
+                    instantiationLines.push(`
+                    case ${instantiationCompiler.reserveConst(token, 'token')}: {
+                        return ${instantiationCompiler.reserveConst(prepared.resolveFrom, 'resolveFrom')}.injector.instantiations(${instantiationCompiler.reserveConst(token, 'token')});
+                    }
+                    `)
                 } else {
                     //we own and instantiate the service
                     lines.push(this.buildProvider(buildContext, resolverCompiler, name, accessor, scope, provider, prepared.modules));
+
+                    instantiationLines.push(`
+                    case ${instantiationCompiler.reserveConst(token, 'token')}: {
+                        return injector.instantiated.${name} || 0;
+                    }
+                    `)
                 }
             }
         }
 
-        const setter = setterCompiler.build(`
+        this.instantiations = instantiationCompiler.build(`
+            switch (token) {
+                ${instantiationLines.join('\n')}
+            }
+        `, 'token');
+
+        this.setter = setterCompiler.build(`
             switch (token) {
                 ${setterLines.join('\n')}
             }
         `, 'token', 'value', 'scope');
 
-        const resolver = resolverCompiler.raw(`
+        this.resolver = resolverCompiler.raw(`
             ${creating.join('\n')};
 
             CircularDetectorResets.push(() => {
@@ -234,9 +265,6 @@ export class Injector implements InjectorInterface {
                 tokenNotfoundError(token, '${getClassName(this.module)}');
             }
         `) as any;
-
-        this.setter = setter;
-        this.resolver = resolver;
     }
 
     protected buildProvider(
@@ -359,6 +387,7 @@ export class Injector implements InjectorInterface {
                 ${!transient ? `if (${accessor} !== undefined) return ${accessor};` : ''}
                 CircularDetector.push(${tokenVar});
                 ${circularDependencyCheckStart}
+                injector.instantiated.${name} = injector.instantiated.${name} ? injector.instantiated.${name} + 1 : 1;
                 ${factory.code}
                 ${circularDependencyCheckEnd}
                 CircularDetector.pop();
@@ -582,6 +611,10 @@ export class InjectorContext {
 
     get<T>(token: T | Token, module?: InjectorModule): ResolveToken<T> {
         return this.getInjector(module || this.rootModule).get(token, this.scope);
+    }
+
+    instantiationCount(token: Token, module?: InjectorModule): number {
+        return this.getInjector(module || this.rootModule).instantiationCount(token);
     }
 
     set<T>(token: T, value: any, module?: InjectorModule): void {

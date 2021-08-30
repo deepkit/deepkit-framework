@@ -915,3 +915,52 @@ test('provider with function as token', () => {
 
     expect(fn()).toBe('hi');
 });
+
+
+test('instantiatedCount singleton', () => {
+    class Service {
+    }
+
+    class Registry {
+    }
+
+    const module1 = new InjectorModule([Service]);
+    const module2 = new InjectorModule([Registry]).addExport(Registry);
+
+    const root = new InjectorModule([]).addImport(module1, module2);
+    const injector = new InjectorContext(root);
+
+    {
+        expect(injector.instantiationCount(Service, module1)).toBe(0);
+        injector.get(Service, module1);
+        expect(injector.instantiationCount(Service, module1)).toBe(1);
+        injector.get(Service, module1);
+        expect(injector.instantiationCount(Service, module1)).toBe(1);
+    }
+
+    {
+        expect(injector.instantiationCount(Registry, module2)).toBe(0);
+        injector.get(Registry, module2);
+        expect(injector.instantiationCount(Registry, module2)).toBe(1);
+        injector.get(Registry, module2);
+        expect(injector.instantiationCount(Registry, module2)).toBe(1);
+    }
+});
+
+test('instantiatedCount scope', () => {
+    class Request {
+    }
+
+    const module1 = new InjectorModule([{provide: Request, scope: 'http'}]);
+
+    const root = new InjectorModule([]).addImport(module1);
+    const injector = new InjectorContext(root);
+
+    {
+        expect(injector.createChildScope('http').instantiationCount(Request, module1)).toBe(0);
+        injector.createChildScope('http').get(Request, module1);
+        expect(injector.createChildScope('http').instantiationCount(Request, module1)).toBe(1);
+        injector.createChildScope('http').get(Request, module1);
+        expect(injector.createChildScope('http').instantiationCount(Request, module1)).toBe(2);
+    }
+});
