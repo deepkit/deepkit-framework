@@ -96,7 +96,9 @@ typedArrayMap.set(String, 'string');
 typedArrayMap.set(Number, 'number');
 typedArrayMap.set(Date, 'date');
 typedArrayMap.set(Boolean, 'boolean');
-typedArrayMap.set(BigInt, 'bigint');
+if (typeof BigInt !== 'undefined') {
+    typedArrayMap.set(BigInt, 'bigint');
+}
 typedArrayMap.set(Int8Array, 'Int8Array');
 typedArrayMap.set(Buffer, 'Uint8Array');
 typedArrayMap.set(Uint8Array, 'Uint8Array');
