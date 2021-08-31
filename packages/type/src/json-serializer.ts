@@ -299,6 +299,14 @@ function convertMap(property: PropertySchema, state: CompilerState) {
 jsonSerializer.fromClass.register('map', convertMap);
 jsonSerializer.toClass.register('map', convertMap);
 
+jsonSerializer.fromClass.register('promise', (property: PropertySchema, state: CompilerState) => {
+    state.addCodeForSetter(getDataConverterJS(state.setter, state.accessor, property.templateArgs[0] || new PropertySchema(property.name).setType('any'), state.serializerCompilers, state.compilerContext, state.jitStack));
+});
+
+jsonSerializer.toClass.register('promise', (property: PropertySchema, state: CompilerState) => {
+    state.addCodeForSetter(getDataConverterJS(state.setter, state.accessor, property.templateArgs[0] || new PropertySchema(property.name).setType('any'), state.serializerCompilers, state.compilerContext, state.jitStack));
+});
+
 jsonSerializer.fromClass.register('class', (property: PropertySchema, state: CompilerState) => {
     const foreignClassSchema = getClassSchema(property.resolveClassType!);
     const classToX = state.setVariable('classToX', state.jitStack.getOrCreate(foreignClassSchema, () => getClassToXFunction(foreignClassSchema, state.serializerCompilers.serializer, state.jitStack)));

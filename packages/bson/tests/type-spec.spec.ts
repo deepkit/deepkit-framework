@@ -238,7 +238,7 @@ test('bigint', () => {
 
 test('propertyDefinition', () => {
     const property = t.string.optional.default('asd').buildPropertySchema();
-    const json = property.toJSON();
+    const json = property.toJSONNonReference();
     expect(roundTrip(propertyDefinition, json)).toEqual(json);
 });
 
@@ -951,4 +951,13 @@ test('omit circular reference 3', () => {
         const plain = serializeToJson(User, user);
         expect(plain.images.length).toBe(0);
     }
+});
+
+test('promise', () => {
+    //make sure promise is automatically forward to its first generic type
+    expect(serializeToJson(t.promise(t.string), "1" as any)).toBe("1");
+
+    expect(deserializeFromJson(t.promise(t.string), "1" as any)).toBe("1");
+
+    expect(roundTrip(t.promise(t.string), "1" as any)).toBe("1");
 });

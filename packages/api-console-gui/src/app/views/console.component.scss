@@ -1,0 +1,166 @@
+/* You can add global styles to this file, and also import other style files */
+@import "./view-styles";
+
+::ng-deep {
+    @import "../../style-code";
+}
+
+:host {
+    display: flex;
+    width: 100%;
+    overflow: hidden;
+    height: 100%;
+}
+
+.routes {
+    position: relative;
+    flex: 0 0 320px;
+    overflow: hidden;
+    max-width: 50%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--dui-window-header-bg);
+
+    dui-list {
+        flex: 1;
+    }
+
+    .list-description {
+        font-size: 12px;
+        color: var(--text-light);
+    }
+
+    .filter {
+        margin: 5px 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+
+        dui-button-group {
+            width: 100%;
+
+            dui-select {
+                flex: 1;
+            }
+        }
+
+        dui-input {
+            width: 100%;
+            margin-bottom: 6px;
+        }
+    }
+
+    .actions-bottom {
+        height: 27px;
+        padding: 3px 12px;
+        border-top: 1px solid var(--line-color-light);
+        display: flex;
+        align-items: center;
+        font-size: 12px;
+
+        .group-by {
+            display: flex;
+            margin-left: auto;
+            align-items: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: keep-all;
+            white-space: nowrap;
+        }
+
+        dui-checkbox {
+            display: flex;
+            align-items: center;
+
+        }
+    }
+}
+
+dui-button-group {
+    margin-right: 0 !important;
+}
+
+.rpc-form {
+    flex: 1;
+    border-left: 1px solid var(--line-color-light);
+    border-right: 1px solid var(--line-color-light);
+}
+
+.http-form {
+    flex: 1 1 50%;
+    border-left: 1px solid var(--line-color-light);
+    border-right: 1px solid var(--line-color-light);
+}
+
+.code-generation-code pre {
+    word-break: break-all !important;
+    white-space: pre-line !important;
+}
+
+.actions-title {
+    font-size: 11px;
+    padding-left: 4px;
+    text-transform: uppercase;
+    margin-right: auto;
+}
+
+dui-list-title {
+    display: flex;
+    align-items: center;
+}
+
+dui-list-title.action {
+    white-space: nowrap;
+    word-break: keep-all;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    .path {
+        margin-left: 3px;
+        color: var(--text-light);
+        font-weight: 500;
+        white-space: nowrap;
+        word-break: keep-all;
+    }
+}
+
+dui-list-item.action {
+    white-space: nowrap;
+    word-break: keep-all;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    .signature {
+        opacity: 0.5;
+        white-space: nowrap;
+        word-break: keep-all;
+    }
+}
+
+.group-content {
+    margin-bottom: 10px;
+}
+
+.list-item {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+
+    .path {
+        flex: 1;
+        overflow: hidden;
+        word-break: keep-all;
+        text-overflow: ellipsis;
+    }
+
+    .method {
+        text-align: right;
+        font-size: 11px;
+        font-weight: bold;
+        padding: 0px 5px;
+
+        border: 1px solid var(--line-color);
+        border-radius: 3px;
+    }
+}

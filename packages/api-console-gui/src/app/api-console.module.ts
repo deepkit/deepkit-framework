@@ -18,7 +18,7 @@ import {
     DuiWindowModule
 } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
-import { HttpComponent } from './views/http.component';
+import { ConsoleComponent } from './views/console.component';
 import { DeepkitClient } from '@deepkit/rpc';
 import { ControllerClient } from './client';
 import { Store } from './store';
@@ -39,10 +39,14 @@ import { EnvironmentDialogComponent } from './components/environment-dialog.comp
 import { RouterModule } from '@angular/router';
 import { OverviewComponent } from './views/overview.component';
 import { MarkdownModule } from 'ngx-markdown';
+import { DeepkitUIModule } from '@deepkit/ui-library';
+import { HttpRouteDetailComponent } from './views/http/route-detail.component';
+import { HttpRequestsComponent } from './views/http/results.component';
+import { RpcDetailComponent } from './views/rpc/rpc-detail.component';
 
 @NgModule({
     declarations: [
-        HttpComponent,
+        ConsoleComponent,
         OverviewComponent,
         CodeHighlightComponent,
         StringInputComponent,
@@ -57,14 +61,18 @@ import { MarkdownModule } from 'ngx-markdown';
         MapInputComponent,
         UnionInputComponent,
         EnvironmentDialogComponent,
+        HttpRouteDetailComponent,
+        HttpRequestsComponent,
+        RpcDetailComponent,
     ],
     imports: [
         BrowserModule,
         RouterModule.forChild([
             { path: '', pathMatch: 'full', redirectTo: 'api' },
             { path: 'api', component: OverviewComponent },
-            { path: 'api/http', component: HttpComponent },
+            { path: 'api/console', component: ConsoleComponent },
         ]),
+        DeepkitUIModule,
         FormsModule,
         OverlayModule,
         DuiAppModule,

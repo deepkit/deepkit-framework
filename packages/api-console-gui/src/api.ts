@@ -31,21 +31,66 @@ export class ApiDocument {
     @t markdown?: string;
 }
 
+@entity.name('.deepkit/api-console/action')
+export class ApiAction {
+    protected deserializedResultSchemas?: ClassSchema[];
+    protected deserializedParameterSchemas?: ClassSchema[];
+
+    //last entry is the actual schema, all other dependencies
+    @t.array(serializedSchemaDefinition) public parameterSchemas: SerializedSchema[] = [];
+
+    //last entry is the actual schema, all other dependencies
+    @t.array(serializedSchemaDefinition) public resultSchemas: SerializedSchema[] = [];
+
+    public parameterSignature: string = '';
+    public returnSignature: string = '';
+
+    constructor(
+        @t.name('controllerClassName') public controllerClassName: string,
+        @t.name('controllerPath') public controllerPath: string,
+        @t.name('methodName') public methodName: string,
+        @t.name('description') public description: string,
+        @t.array(t.string).name('groups') public groups: string[],
+        @t.string.name('category') public category: string,
+    ) {
+    }
+
+    getParametersSchemas(): ClassSchema[] {
+        if (!this.deserializedParameterSchemas) {
+            this.deserializedParameterSchemas = deserializeSchemas(this.parameterSchemas);
+        }
+        return this.deserializedParameterSchemas;
+    }
+
+    getResultsSchemas(): ClassSchema[] {
+        if (!this.deserializedResultSchemas) {
+            this.deserializedResultSchemas = deserializeSchemas(this.resultSchemas);
+        }
+        return this.deserializedResultSchemas;
+    }
+
+    get id(): string {
+        return this.controllerPath + '.' + this.methodName;
+    }
+}
+
 @entity.name('.deepkit/api-console/route')
 export class ApiRoute {
     public deserializedBodySchemas: ClassSchema[] = [];
     public deserializedQuerySchema?: ClassSchema;
     public deserializedUrlSchema?: ClassSchema;
+    protected parsedResultSchemas: ClassSchema[] = [];
 
+    //last entry is the actual schema, all other dependencies
     @t.array(serializedSchemaDefinition) public querySchemas: SerializedSchema[] = [];
 
+    //last entry is the actual schema, all other dependencies
     @t.array(serializedSchemaDefinition) public resultSchemas: SerializedSchema[] = [];
 
+    //last entry is the actual schema, all other dependencies
     @t.array(serializedSchemaDefinition) public urlSchemas: SerializedSchema[] = [];
 
     @t.array(ApiRouteResponse) responses: ApiRouteResponse[] = [];
-
-    protected parsedResultSchemas: ClassSchema[] = [];
 
     constructor(
         @t.name('path') public path: string,
@@ -96,9 +141,16 @@ export class ApiRoute {
     }
 }
 
-export const ApiConsoleApi = ControllerSymbol<ApiConsoleApi>('.deepkit/api-console', [ApiRoute,  ApiDocument]);
+
+export class ApiEntryPoints {
+    @t.array(ApiRoute) httpRoutes: ApiRoute[] = [];
+    @t.array(ApiAction) rpcActions: ApiAction[] = [];
+}
+
+export const ApiConsoleApi = ControllerSymbol<ApiConsoleApi>('.deepkit/api-console', [ApiRoute, ApiDocument]);
 
 export interface ApiConsoleApi {
-    getRoutes(): ApiRoute[];
+    getEntryPoints(): ApiEntryPoints;
+
     getDocument(): Promise<ApiDocument>;
 }

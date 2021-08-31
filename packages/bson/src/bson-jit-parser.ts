@@ -20,6 +20,9 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
     const defaultValue = !property.hasDefaultValue && property.defaultValue !== undefined ?
         `${compiler.reserveVariable('defaultValue', property.defaultValue)}()`
         : 'undefined';
+    if (property.type === 'promise') {
+        property = property.templateArgs[0] || new PropertySchema(property.name);
+    }
 
     const nullCheck = `
     if (elementType === ${BSONType.UNDEFINED}) {

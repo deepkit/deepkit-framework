@@ -8,35 +8,14 @@ import { ControllerClient } from './client';
         <dui-window>
             <dui-window-header size="small">
                 <dui-window-toolbar>
-                    <dui-button-group>
-                        <div style="position: relative; top: -2px;">
-                            <img class="logo visible-for-dark-mode" src="assets/deepkit_white.svg"/>
-                            <img class="logo visible-for-white-mode" theme-white src="assets/deepkit_black.svg"/>
-                            <span style="margin-left: 8px; display: inline-block; color: var(--text-grey)">API Console</span>
-                        </div>
-                    </dui-button-group>
+                    <deepkit-header-logo title="API Console"></deepkit-header-logo>
 
                     <dui-window-toolbar-container name="main"></dui-window-toolbar-container>
                     <div class="top-right">
                         <div>
                             <a routerLink="/api">OVERVIEW</a>
                         </div>
-
-                        <div class="connection-info">
-                            <div class="connected" *ngIf="client.client.transporter.connection|async as connected">
-                                Connected
-                            </div>
-                            <div class="disconnected" *ngIf="!(client.client.transporter.connection|async)">
-                                Disconnected
-                            </div>
-                        </div>
-
-                        <dui-icon clickable name="color-theme" [openDropdown]="darkModeDropdown"></dui-icon>
-                        <dui-dropdown #darkModeDropdown>
-                            <dui-dropdown-item (click)="duiApp.setDarkMode(undefined)" [selected]="!duiApp.isDarkModeOverwritten()">Auto</dui-dropdown-item>
-                            <dui-dropdown-item (click)="duiApp.setDarkMode(false)" [selected]="duiApp.isDarkModeOverwritten() && !duiApp.isDarkMode()">Light</dui-dropdown-item>
-                            <dui-dropdown-item (click)="duiApp.setDarkMode(true)" [selected]="duiApp.isDarkModeOverwritten() && duiApp.isDarkMode()">Dark</dui-dropdown-item>
-                        </dui-dropdown>
+                        <deepkit-header-status-bar></deepkit-header-status-bar>
                     </div>
                 </dui-window-toolbar>
             </dui-window-header>

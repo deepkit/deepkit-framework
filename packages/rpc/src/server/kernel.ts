@@ -429,7 +429,8 @@ export type OnConnectionCallback = (connection: RpcKernelConnection, injector: I
  * and encode/send outgoing messages.
  */
 export class RpcKernel {
-    protected controllers = new Map<string, { controller: ClassType, module: InjectorModule }>();
+    public readonly controllers = new Map<string, { controller: ClassType, module: InjectorModule }>();
+
     protected peerExchange = new RpcPeerExchange;
     protected connections = new RpcKernelConnections;
 

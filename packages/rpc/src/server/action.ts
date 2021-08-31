@@ -108,8 +108,8 @@ export class RpcServerAction {
         const types = await this.loadTypes(body.controller, body.method);
 
         response.reply(RpcTypes.ResponseActionType, rpcResponseActionType, {
-            parameters: types.parameters.map(v => v.toJSON()),
-            result: types.resultSchema.getProperty('v').toJSON(),
+            parameters: types.parameters.map(v => v.toJSONNonReference()),
+            result: types.resultSchema.getProperty('v').toJSONNonReference(),
         });
     }
 
@@ -235,7 +235,7 @@ export class RpcServerAction {
                         if (types.resultPropertyChanged === 10) {
                             console.warn(`The emitted next value of the Observable of method ${getClassPropertyName(classType, method)} changed 10 times. You should add a @t.union() annotation to improve serialization performance.`);
                         }
-                        response.reply(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSON());
+                        response.reply(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSONNonReference());
                     }
 
                     if (!sub.active) return;
@@ -327,7 +327,7 @@ export class RpcServerAction {
                     types.resultSchema.registerProperty(newProperty);
                     types.resultProperty = newProperty;
                     types.resultPropertyChanged++;
-                    response.reply(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSON());
+                    response.reply(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSONNonReference());
                 }
                 response.reply(RpcTypes.ResponseEntity, types.resultSchema, { v: result.value });
             } else if (isCollection(result)) {
@@ -348,7 +348,7 @@ export class RpcServerAction {
                 types.resultPropertyChanged++;
 
                 response.composite(RpcTypes.ResponseActionCollection)
-                    .add(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSON())
+                    .add(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSONNonReference())
                     .add(RpcTypes.ResponseActionCollectionModel, CollectionQueryModel, collection.model)
                     .add(RpcTypes.ResponseActionCollectionState, CollectionState, collection.state)
                     .add(RpcTypes.ResponseActionCollectionSet, types.collectionSchema, { v: collection.all() })
@@ -425,7 +425,7 @@ export class RpcServerAction {
                                 if (types.resultPropertyChanged === 10) {
                                     console.warn(`The emitted next value of the Observable of method ${getClassPropertyName(classType, body.method)} changed 10 times. You should add a @t.union() annotation to improve serialization performance.`);
                                 }
-                                response.reply(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSON());
+                                response.reply(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSONNonReference());
                             }
 
                             response.reply(RpcTypes.ResponseActionObservableNext, types.observableNextSchema, {
@@ -461,7 +461,8 @@ export class RpcServerAction {
                     types.resultProperty = newProperty;
                     types.resultPropertyChanged++;
                     const composite = response.composite(RpcTypes.ResponseActionResult);
-                    composite.add(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSON());
+                    const propertyJson = newProperty.toJSON();
+                    composite.add(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSONNonReference());
                     composite.add(RpcTypes.ResponseActionSimple, types.resultSchema, { v: result });
                     composite.send();
                 } else {

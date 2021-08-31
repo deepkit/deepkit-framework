@@ -10,7 +10,7 @@
 
 import { Injectable } from '@angular/core';
 import { DeepkitClient } from '@deepkit/rpc';
-import { ApiConsoleApi, ApiDocument, ApiRoute } from '../api';
+import { ApiConsoleApi, ApiDocument, ApiEntryPoints } from '../api';
 import { Subject, Subscriber, Subscription, SubscriptionLike } from 'rxjs';
 import { first } from 'rxjs/operators';
 
@@ -65,8 +65,8 @@ export class LiveSubject<T> extends Subject<T> {
 
 @Injectable()
 export class ControllerClient {
-    public routes = new LiveSubject<ApiRoute[]>((subject) => {
-        this.api.getRoutes().then(v => subject.next(v));
+    public entryPoints = new LiveSubject<ApiEntryPoints>((subject) => {
+        this.api.getEntryPoints().then(v => subject.next(v));
     });
 
     public document = new LiveSubject<ApiDocument>((subject) => {
@@ -75,7 +75,7 @@ export class ControllerClient {
 
     constructor(public client: DeepkitClient) {
         client.transporter.reconnected.subscribe(() => {
-            this.routes.reload();
+            this.entryPoints.reload();
             this.document.reload();
         });
         client.transporter.disconnected.subscribe(() => {
@@ -92,7 +92,6 @@ export class ControllerClient {
     }
 
     setController(name: string) {
-        console.log('setController', name);
         this.api = this.client.controller<ApiConsoleApi>(name);
     }
 
@@ -100,6 +99,6 @@ export class ControllerClient {
 
     static getServerHost(): string {
         const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
-        return proto + (location.port === '4200' ? location.hostname + ':8080' : location.host);
+        return proto + (location.port === '4200' ? location.hostname + ':8080' : location.host) + location.pathname;
     }
 }

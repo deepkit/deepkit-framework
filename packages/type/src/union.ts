@@ -14,6 +14,7 @@ import { Types } from './types';
 //sort by type group (literal, type, generic primitive, any)
 const sorts: { [type in Types]: number } = {
     literal: 1,
+    promise: 1,
 
     Uint16Array: 2,
     arrayBuffer: 2,

@@ -31,7 +31,8 @@
     "@deepkit/injector": "^1.0.1-alpha.43",
     "@deepkit/logger": "^1.0.1-alpha.43",
     "@deepkit/rpc": "^1.0.1-alpha.43",
-    "@deepkit/type": "^1.0.1-alpha.43"
+    "@deepkit/type": "^1.0.1-alpha.43",
+    "rxjs": "~6.6.0"
   },
   "dependencies": {
     "@deepkit/api-console-gui": "^1.0.1-alpha.57"
@@ -47,7 +48,8 @@
     "@deepkit/logger": "^1.0.1-alpha.52",
     "@deepkit/rpc": "^1.0.1-alpha.57",
     "@deepkit/type": "^1.0.1-alpha.56",
-    "reflect-metadata": "^0.1.13"
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "~6.6.0"
   },
   "jest": {
     "transform": {

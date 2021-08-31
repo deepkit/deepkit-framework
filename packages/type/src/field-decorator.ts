@@ -12,7 +12,7 @@ import { ClassType } from '@deepkit/core';
 import { BackReferenceOptions, ClassSchema, ForwardRefFn, IndexOptions, PropertySchema, PropertyValidator, ReferenceActions } from './model';
 import { BackReference, PrimaryKey, Reference } from './types';
 import { FlattenIfArray } from './utils';
-import { PlainSchemaProps, WideTypes } from './decorators';
+import { ExtractType, PlainSchemaProps, WideTypes } from './decorators';
 import validator from 'validator';
 
 /**
@@ -424,6 +424,11 @@ export interface FieldDecoratorResultBase<T> {
      * All official supported types have an JSON type (the type that is used when plainToClass) automatically set.
      */
     jsonType<T extends WideTypes>(type: T): this;
+
+    /**
+     * Marks a field as Promise<T>. This is mainly used for decorating methods.
+     */
+    promise<T extends WideTypes>(type: T): FieldDecoratorResult<Promise<ExtractType<T>>>;
 
     /**
      * Creates a PropertySchema object from the given definition.

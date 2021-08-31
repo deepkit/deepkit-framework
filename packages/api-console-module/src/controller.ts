@@ -1,6 +1,6 @@
 import 'reflect-metadata';
-import { ApiConsoleApi, ApiDocument, ApiRoute, ApiRouteResponse } from '@deepkit/api-console-gui/src/api';
-import { rpc } from '@deepkit/rpc';
+import { ApiAction, ApiConsoleApi, ApiDocument, ApiEntryPoints, ApiRoute, ApiRouteResponse } from '@deepkit/api-console-gui/src/api';
+import { getActionParameters, getActions, rpc, RpcKernel } from '@deepkit/rpc';
 import { HttpRouteFilter, HttpRouterFilterResolver, parseRouteControllerAction } from '@deepkit/http';
 import { createClassSchema, getClassSchema, SerializedSchema, serializeSchemas, t } from '@deepkit/type';
 import { ClassType, getClassName } from '@deepkit/core';
@@ -11,17 +11,40 @@ import { injectable } from '@deepkit/injector';
 class Config extends config.slice('markdown', 'markdownFile') {
 }
 
+class ControllerNameGenerator {
+    controllers = new Map<ClassType, string>();
+    controllerNames = new Set<string>();
+
+    getName(controller: ClassType): string {
+        let controllerName = this.controllers.get(controller);
+        if (!controllerName) {
+            controllerName = getClassName(controller);
+            let candidate = controllerName;
+            let i = 2;
+            while (this.controllerNames.has(candidate)) {
+                candidate = controllerName + '#' + i++;
+            }
+
+            controllerName = candidate;
+            this.controllers.set(controller, controllerName);
+            this.controllerNames.add(controllerName);
+        }
+        return controllerName;
+    }
+}
+
 @injectable
 export class ApiConsoleController implements ApiConsoleApi {
     constructor(
         protected config: Config,
         protected filterResolver: HttpRouterFilterResolver,
         protected filter: HttpRouteFilter,
+        @t.optional protected rpcKernel?: RpcKernel,
     ) {
     }
 
     @rpc.action()
-    @t.type(ApiDocument)
+    @t.generic(ApiDocument)
     async getDocument(): Promise<ApiDocument> {
         const document = new ApiDocument();
 
@@ -35,29 +58,92 @@ export class ApiConsoleController implements ApiConsoleApi {
     }
 
     @rpc.action()
-    @t.array(ApiRoute)
-    getRoutes(): ApiRoute[] {
+    @t.type(ApiEntryPoints)
+    getEntryPoints(): ApiEntryPoints {
+        const entryPoints = new ApiEntryPoints;
+        entryPoints.httpRoutes = this.getHttpRoutes();
+        entryPoints.rpcActions = this.getRpcActions();
+        return entryPoints;
+    }
+
+    protected getRpcActions() {
+        if (!this.rpcKernel) return [];
+
+        const rpcActions: ApiAction[] = [];
+        const nameGenerator = new ControllerNameGenerator;
+
+        for (const [path, controller] of this.rpcKernel.controllers.entries()) {
+            const actions = getActions(controller.controller);
+            for (const [methodName, action] of actions.entries()) {
+
+                const rpcAction = new ApiAction(
+                    nameGenerator.getName(controller.controller),
+                    path,
+                    methodName,
+                    action.description,
+                    action.groups,
+                    action.category
+                );
+
+                let resultProperty = getClassSchema(controller.controller).getMethod(methodName).clone();
+
+                if (resultProperty.classType) {
+                    // if (isPrototypeOfBase(resultProperty.classType, Promise)) {
+                    //     resultProperty.type = 'any';
+                    //     resultProperty.typeSet = false; //to signal type wasn't set
+                    // } else if ((isPrototypeOfBase(resultProperty.classType, Observable)
+                    //         || isPrototypeOfBase(resultProperty.classType, Collection)
+                    //         || isPrototypeOfBase(resultProperty.classType, Promise))
+                    //     || isPrototypeOfBase(resultProperty.classType, EntitySubject)
+                    // ) {
+                    //     resultProperty.classTypeName = 'Promise';
+                    //     if (!resultProperty.templateArgs[0]) {
+                    //         resultProperty.templateArgs[0] = new PropertySchema('T');
+                    //         resultProperty.templateArgs[0].type = 'any';
+                    //     }
+                    // }
+                }
+
+                const of = `${getClassName(controller.controller)}.${methodName}`;
+
+                try {
+                    const resultSchema = createClassSchema();
+                    resultSchema.registerProperty(resultProperty);
+                    rpcAction.resultSchemas = serializeSchemas([resultSchema]);
+                } catch (error) {
+                    console.log(`Could not serialize result type of ${of}: ${error.message}`);
+                }
+
+                try {
+                    const parameters = getActionParameters(controller.controller, methodName);
+                    if (parameters.length) {
+                        const argSchema = createClassSchema();
+                        for (let i = 0; i < parameters.length; i++) {
+                            argSchema.registerProperty(parameters[i]);
+                        }
+                        rpcAction.parameterSchemas = serializeSchemas([argSchema]);
+                    }
+                } catch (error) {
+                    console.log(`Could not serialize parameter types of ${of}: ${error.message}`);
+                }
+
+                rpcActions.push(rpcAction);
+            }
+        }
+
+        return rpcActions;
+    }
+
+    protected getHttpRoutes() {
         const routes: ApiRoute[] = [];
 
-        const controllers = new Map<ClassType, string>();
-        const controllerNames = new Set<string>();
+        const nameGenerator = new ControllerNameGenerator;
 
         for (const route of this.filterResolver.resolve(this.filter.model)) {
             if (route.internal) continue;
 
-            let controllerName = controllers.get(route.action.controller);
-            if (!controllerName) {
-                controllerName = getClassName(route.action.controller);
-                let candidate = controllerName;
-                let i = 2;
-                while (controllerNames.has(candidate)) {
-                    candidate = controllerName + '#' + i;
-                }
+            const controllerName = nameGenerator.getName(route.action.controller);
 
-                controllerName = candidate;
-                controllers.set(route.action.controller, controllerName);
-                controllerNames.add(controllerName);
-            }
             const routeD = new ApiRoute(
                 route.getFullPath(), route.httpMethods,
                 controllerName,

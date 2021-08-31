@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { ApiRoute } from '../api';
+import { ApiAction, ApiRoute } from '../api';
 import { ClassSchema, classToPlain, plainToClass, PropertySchema, t } from '@deepkit/type';
 
 export class DataStructure {
@@ -175,8 +175,22 @@ export class ViewHttp {
     @t viewRequests: 'all' | 'selected' = 'selected';
 
     @t groupBy: 'none' | 'controller' | 'method' = 'controller';
+
+    @t.map(t.boolean) closed: {[name: string]: boolean} = {};
 }
 
+export class ViewRpc {
+    @t showDescription: boolean = false;
+    @t filterCategory: string = '';
+    @t filterGroup: string = '';
+    @t filterPath: string = '';
+
+    @t viewRequests: 'all' | 'selected' = 'selected';
+
+    @t groupBy: 'none' | 'controller' = 'controller';
+
+    @t.map(t.boolean) closed: {[name: string]: boolean} = {};
+}
 export class Environment {
     @t.array(t.any) headers: { name: string, value: string }[] = [];
 
@@ -191,6 +205,7 @@ export class StoreValue {
 
     @t selectedRoute?: string;
 
+    @t viewRpc: ViewRpc = new ViewRpc;
     @t viewHttp: ViewHttp = new ViewHttp;
 
     @t.array(Environment) environments: Environment[] = [new Environment('default')];
@@ -205,6 +220,7 @@ export class StoreValue {
     }
 
     route?: ApiRoute;
+    action?: ApiAction;
 }
 
 export class Store {

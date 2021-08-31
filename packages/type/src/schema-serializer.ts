@@ -49,7 +49,9 @@ class SchemaSerializer {
     protected serializedNames = new Map<ClassSchema, string>();
     protected nameId: number = 0;
 
-    fixProperty(result: SerializedSchema[], property: PropertySchema, json: PropertySchemaSerialized) {
+    fixProperty(result: SerializedSchema[], property: PropertySchema, json: PropertySchemaSerialized | number) {
+        if ('number' == typeof json) return;
+
         if (json.type === 'class') {
             //for all class types, we do not store the actual used name via @entity.name() because
             //it could clash with entities already registered. So we generate a new name
@@ -104,7 +106,7 @@ class SchemaSerializer {
     }
 
     serializeProperty(result: SerializedSchema[], property: PropertySchema): PropertySchemaSerialized {
-        const json = property.toJSON();
+        const json = property.toJSONNonReference();
 
         this.fixProperty(result, property, json);
 
@@ -121,6 +123,7 @@ class SchemaSerializer {
         const result: SerializedSchema[] = [];
 
         for (const schema of schemas) {
+            if (this.isSerialized(schema)) continue;
             this.registerClassSchema(result, schema);
         }
 

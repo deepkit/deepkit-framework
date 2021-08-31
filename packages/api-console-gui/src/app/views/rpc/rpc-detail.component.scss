@@ -1,0 +1,31 @@
+:host {
+}
+
+.wrapper {
+    margin: 12px;
+}
+
+.method {
+    width: 100%;
+    overflow: hidden;
+
+    .name  {
+        height: 21px;
+        line-height: 21px;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+        padding: 0 5px;
+        border-left: 1px solid var(--line-color-light);
+        border-top: 1px solid var(--line-color-light);
+        border-bottom: 1px solid var(--line-color-light);
+    }
+}
+
+.signature {
+    opacity: 0.5;
+    white-space: nowrap;
+    word-break: keep-all;
+}

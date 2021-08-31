@@ -21,7 +21,7 @@ import { ServerStartController } from './cli/server-start';
 import { DebugController } from './debug/debug.controller';
 import { registerDebugHttpController } from './debug/http-debug.controller';
 import { HttpLogger, HttpModule, HttpRequest, serveStaticListener } from '@deepkit/http';
-import { InjectorContext, injectorReference, ProviderWithScope, Token } from '@deepkit/injector';
+import { inject, InjectorContext, injectorReference, ProviderWithScope, Token } from '@deepkit/injector';
 import { frameworkConfig } from './module.config';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { SessionHandler } from './session';
@@ -33,13 +33,13 @@ import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
 import { FileStopwatchStore } from './debug/stopwatch/store';
 import { DebugDebugFramesCommand } from './cli/debug-debug-frames';
-import { ConnectionWriter, rpcClass, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
+import { ConnectionWriter, rpcClass, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
 import { AppConfigController } from './cli/app-config';
 import { Zone } from './zone';
 import { DebugBroker, DebugBrokerListener } from './debug/broker';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
 import { AppModule, createModule } from '@deepkit/app';
-import { RpcControllers, RpcInjectorContext } from './rpc';
+import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc';
 import { normalizeDirectory } from './utils';
 
 export class FrameworkModule extends createModule({
@@ -55,6 +55,25 @@ export class FrameworkModule extends createModule({
         MigrationProvider,
         DebugController,
         { provide: DatabaseRegistry, deps: [InjectorContext], useFactory: (ic) => new DatabaseRegistry(ic) },
+
+        {
+            provide: RpcKernel,
+            deps: [RpcControllers, InjectorContext, RpcKernelSecurity, Logger, inject(Stopwatch).optional],
+            useFactory(rpcControllers: RpcControllers, injectorContext: InjectorContext, rpcKernelSecurity: RpcKernelSecurity, logger: Logger, stopwatch?: Stopwatch) {
+                const classType = stopwatch ? RpcKernelWithStopwatch : RpcKernel;
+                const kernel: RpcKernel = new classType(injectorContext, rpcKernelSecurity, logger.scoped('rpc'));
+
+                if (kernel instanceof RpcKernelWithStopwatch) {
+                    kernel.stopwatch = stopwatch;
+                }
+
+                for (const [name, info] of rpcControllers.controllers.entries()) {
+                    kernel.registerController(name, info.controller, info.module);
+                }
+
+                return kernel;
+            }
+        },
 
         //move to HttpModule?
         { provide: SessionHandler, scope: 'http' },
@@ -94,6 +113,7 @@ export class FrameworkModule extends createModule({
         ConsoleTransport,
         Logger,
         RpcKernelSecurity,
+        RpcKernel,
         MigrationProvider,
 
         DatabaseRegistry,
@@ -151,7 +171,7 @@ export class FrameworkModule extends createModule({
             registerDebugHttpController(this, this.config.debugUrl);
 
             //only register the RPC controller
-            this.addImport(new ApiConsoleModule({ listen: false, markdown: '' }));
+            this.addImport(new ApiConsoleModule({ listen: false, markdown: '' }).rename('internalApi'));
 
             //we start our own broker
             if (this.config.debugProfiler) {

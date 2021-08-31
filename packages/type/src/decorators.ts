@@ -390,6 +390,15 @@ function createFieldDecoratorResult<T>(
         }]);
     };
 
+    fn.promise = (type: WideTypes) => {
+        resetIfNecessary();
+        return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
+            property.type = 'promise';
+            property.templateArgs[0] = new PropertySchema('T');
+            assignWideTypeToProperty(property.templateArgs[0], type);
+        }]);
+    };
+
     fn.serialize = (t: (v: any) => any, serializer: string = 'all') => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
@@ -997,10 +1006,10 @@ fRaw['enum'] = function <T>(this: FieldDecoratorResult<T>, clazz: T, allowLabels
 type EnumValue<T> = T[keyof T];
 
 //this separation is necessary to support older TS version and avoid "error TS2315: Type 'ExtractType' is not generic."
-type ExtractType<T> = T extends ForwardRef<infer K> ? ExtractSimpleType<K> :
+export type ExtractType<T> = T extends ForwardRef<infer K> ? ExtractSimpleType<K> :
     T extends () => infer K ? ExtractSimpleType<K> : ExtractSimpleType<T>;
 
-type ExtractSimpleType<T> = T extends ClassType<infer K> ? K :
+export type ExtractSimpleType<T> = T extends ClassType<infer K> ? K :
     T extends ClassSchema<infer K> ? K :
         T extends PlainSchemaProps ? ExtractClassDefinition<T> :
             T extends FieldDecoratorResult<any> ? ExtractDefinition<T> : T;

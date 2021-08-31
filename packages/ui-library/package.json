@@ -15,6 +15,7 @@
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13",
     "@deepkit/desktop-ui": "^1.0.1-alpha.48",
+    "@deepkit/rpc": "^1.0.1-alpha.57",
     "@angular/core": "~12.2.0",
     "@angular/common": "~12.2.0",
     "rxjs": "~6.6.0"
@@ -26,6 +27,7 @@
     "@deepkit/core": "^1.0.1-alpha.52",
     "@deepkit/type": "^1.0.1-alpha.52",
     "@deepkit/desktop-ui": "^1.0.1-alpha.48",
+    "@deepkit/rpc": "^1.0.1-alpha.57",
     "@angular/core": "~12.2.0",
     "@angular/common": "~12.2.0",
     "rxjs": "~6.6.0",

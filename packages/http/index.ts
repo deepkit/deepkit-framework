@@ -10,3 +10,4 @@ export * from './src/module.config';
 export * from './src/controllers';
 export * from './src/middleware';
 export * from './src/filter';
+export * from './src/utils';

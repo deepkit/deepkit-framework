@@ -46,7 +46,7 @@
             <div class="route-details" *ngIf="showDetails[route.id]">
 
                 <div class="actions">
-                    <dui-button routerLink="/api/http" [queryParams]="{route: route.id}">Open console</dui-button>
+                    <dui-button routerLink="/api/console" [queryParams]="{view: 'http', route: route.id}">Open console</dui-button>
                 </div>
 
                 <div class="box" style="padding: 10px;">

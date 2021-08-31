@@ -155,6 +155,8 @@ function getPropertySizer(schema: ClassSchema, compiler: CompilerContext, proper
     if (property.type === 'class' && property.getResolvedClassSchema().decorator) {
         property = property.getResolvedClassSchema().getDecoratedPropertySchema();
         accessor = `(${accessor} && ${accessor}.${property.name})`;
+    } else if (property.type === 'promise') {
+        property = property.templateArgs[0] || new PropertySchema(property.name);
     }
 
     compiler.context.set('getValueSize', getValueSize);
@@ -789,9 +791,13 @@ function getPropertySerializerCode(
         writer.writeAsciiString(${nameAccessor});
         writer.writeByte(0);
     `;
-
     if (!nameAccessor) {
         nameWriter = getNameWriterCode(property);
+    }
+
+    //important to happen after the nameWriter
+    if (property.type === 'promise') {
+        property = property.templateArgs[0] || new PropertySchema(property.name);
     }
 
     let undefinedWriter = `

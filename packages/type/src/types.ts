@@ -61,7 +61,9 @@ export type Types =
     | 'Uint32Array'
     | 'Float32Array'
     | 'Float64Array'
-    | 'arrayBuffer';
+    | 'arrayBuffer'
+    | 'promise'
+;
 
 /**
  * Type for @t.partial().
@@ -110,6 +112,7 @@ typedArrayMap.set(Uint32Array, 'Uint32Array');
 typedArrayMap.set(Float32Array, 'Float32Array');
 typedArrayMap.set(Float64Array, 'Float64Array');
 typedArrayMap.set(ArrayBuffer, 'arrayBuffer');
+typedArrayMap.set(Promise, 'promise');
 
 export type TypedArrays = Uint8Array | Uint16Array | Uint32Array | Int8Array | Int16Array | Int32Array | Uint8ClampedArray | Float32Array | Float64Array;
 

@@ -16,7 +16,7 @@ import { unsubscribe } from '@deepkit/desktop-ui';
 import { PropertySchema, Types } from '@deepkit/type';
 import { Subscription } from 'rxjs';
 import { InputRegistry } from './registry';
-import { propertyToTSInterface } from '../../utils';
+import { propertyToTSJSONInterface } from '../../utils';
 import { DataStructure } from '../../store';
 
 @Component({
@@ -53,7 +53,7 @@ import { DataStructure } from '../../store';
     styleUrls: ['./input.component.scss']
 })
 export class InputComponent implements OnDestroy, OnChanges, AfterViewInit {
-    propertyToTSInterface = propertyToTSInterface;
+    propertyToTSInterface = propertyToTSJSONInterface;
     /**
      * Whether name and description is displayed as well, or only the input field.
      */

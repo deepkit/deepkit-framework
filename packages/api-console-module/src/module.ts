@@ -1,5 +1,5 @@
 import { createModule, findParentPath } from '@deepkit/app';
-import { HttpRouteFilter, registerStaticHttpController } from '@deepkit/http';
+import { HttpRouteFilter, normalizeDirectory, registerStaticHttpController } from '@deepkit/http';
 import { ApiConsoleApi } from '@deepkit/api-console-gui/src/api';
 import { config } from './module.config';
 import { rpc } from '@deepkit/rpc';
@@ -27,7 +27,7 @@ export class ApiConsoleModule extends createModule({
             return;
         }
 
-        const controllerName = '.deepkit/api-console/' + this.config.path;
+        const controllerName = '.deepkit/api-console' + normalizeDirectory(this.config.path);
 
         @rpc.controller(controllerName)
         class NamedApiConsoleController extends ApiConsoleController {

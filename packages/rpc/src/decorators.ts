@@ -36,6 +36,9 @@ export class RpcAction {
     name!: string;
     classType!: ClassType;
 
+    category: string = '';
+    description: string = '';
+
     groups: string[] = [];
     data: { [name: string]: any } = {};
 }
@@ -68,6 +71,14 @@ class RpcProperty {
     }
 
     action() {
+    }
+
+    category(name: string) {
+        this.t.category = name;
+    }
+
+    description(text: string) {
+        this.t.description = text;
     }
 
     group(...groups: string[]) {

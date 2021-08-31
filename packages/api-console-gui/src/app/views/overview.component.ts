@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ControllerClient } from '../client';
 import { ApiRoute } from '../../api';
 import { filterAndSortRoutes } from './view-helper';
-import { classSchemaToTSInterface, headerStatusCodes, propertyToTSInterface, trackByIndex } from '../utils';
+import { classSchemaToTSJSONInterface, headerStatusCodes, propertyToTSJSONInterface, trackByIndex } from '../utils';
 import { Subscriptions } from '@deepkit/core-rxjs';
 
 @Component({
@@ -11,8 +11,8 @@ import { Subscriptions } from '@deepkit/core-rxjs';
 })
 export class OverviewComponent implements OnDestroy, OnInit {
     trackByIndex = trackByIndex;
-    propertyToTSInterface = propertyToTSInterface;
-    classSchemaToTSInterface = classSchemaToTSInterface;
+    propertyToTSInterface = propertyToTSJSONInterface;
+    classSchemaToTSInterface = classSchemaToTSJSONInterface;
     headerStatusCodes = headerStatusCodes;
     public filteredRoutes: ApiRoute[] = [];
 
@@ -34,7 +34,7 @@ export class OverviewComponent implements OnDestroy, OnInit {
         public client: ControllerClient,
         public cd: ChangeDetectorRef,
     ) {
-        this.subscriptions.add = this.client.routes.subscribe(v => this.parseRouteInfo(v));
+        this.subscriptions.add = this.client.entryPoints.subscribe(v => this.parseRouteInfo(v.httpRoutes));
     }
 
     ngOnDestroy(): void {
@@ -77,7 +77,7 @@ export class OverviewComponent implements OnDestroy, OnInit {
 
         try {
             //wait for the first initial load
-            await Promise.all([this.client.document.valueArrival, this.client.routes.valueArrival]);
+            await Promise.all([this.client.document.valueArrival, this.client.entryPoints.valueArrival]);
             this.initiallyLoaded = true;
         } catch (error) {
             this.error = error.message;

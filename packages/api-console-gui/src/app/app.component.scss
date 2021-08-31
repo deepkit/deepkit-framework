@@ -1,9 +1,4 @@
 
-.logo {
-    width: 16px;
-    vertical-align: text-bottom;
-    margin-left: 4px;
-}
 
 :host ::ng-deep dui-window-content.no-padding > .content {
     padding: 0 !important;
@@ -25,20 +20,6 @@
         margin-right: 5px;
         border-radius: 3px;
 
-    }
-
-    .connection-info {
-        margin-right: 3px;
-        font-size: 10px;
-        text-transform: uppercase;
-
-        .connected {
-            color: var(--color-green);
-        }
-
-        .disconnected {
-            color: var(--color-red);
-        }
     }
 }
 

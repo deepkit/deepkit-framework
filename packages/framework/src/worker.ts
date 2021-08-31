@@ -8,22 +8,21 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
+import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, SessionState } from '@deepkit/rpc';
 import http, { Server } from 'http';
 import https from 'https';
 
 import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions } from 'ws';
 
 import { HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
-import { inject, injectable, InjectorContext } from '@deepkit/injector';
-import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc';
+import { injectable, InjectorContext } from '@deepkit/injector';
+import { RpcControllers, RpcInjectorContext } from './rpc';
 import { SecureContextOptions, TlsOptions } from 'tls';
 
 // @ts-ignore
 import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { Logger } from '@deepkit/logger';
-import { Stopwatch } from '@deepkit/stopwatch';
 
 export interface WebServerOptions {
     host: string;
@@ -147,34 +146,18 @@ export class WebWorkerFactory {
         protected rpcControllers: RpcControllers,
         protected injectorContext: InjectorContext,
         protected rpcServer: RpcServer,
-        @inject().optional protected stopwatch?: Stopwatch,
+        protected rpcKernel: RpcKernel,
     ) {
     }
 
     create(id: number, options: WebServerOptions): WebWorker {
-        return new WebWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.injectorContext, options, this.rpcServer);
-    }
-
-    createRpcKernel() {
-        const security = this.injectorContext.get(RpcKernelSecurity);
-        const classType = this.stopwatch ? RpcKernelWithStopwatch : RpcKernel;
-        const kernel: RpcKernel = new classType(this.injectorContext, security, this.logger.scoped('rpc'));
-
-        if (kernel instanceof RpcKernelWithStopwatch) {
-            kernel.stopwatch = this.stopwatch;
-        }
-
-        for (const [name, info] of this.rpcControllers.controllers.entries()) {
-            kernel.registerController(name, info.controller, info.module);
-        }
-
-        return kernel;
+        return new WebWorker(id, this.logger, this.httpKernel, this.rpcKernel, this.injectorContext, options, this.rpcServer);
     }
 }
 
 export class WebMemoryWorkerFactory extends WebWorkerFactory {
     create(id: number, options: WebServerOptions): WebMemoryWorker {
-        return new WebMemoryWorker(id, this.logger, this.httpKernel, this.createRpcKernel(), this.injectorContext, options, this.rpcServer);
+        return new WebMemoryWorker(id, this.logger, this.httpKernel, this.rpcKernel, this.injectorContext, options, this.rpcServer);
     }
 }
 

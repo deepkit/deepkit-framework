@@ -663,7 +663,7 @@ test('set array result', () => {
     }
 
     {
-        expect(s.getMethod('items2').type).toBe('any');
+        expect(s.getMethod('items2').type).toBe('promise');
     }
 
     {
@@ -784,4 +784,20 @@ test('inheritance', () => {
         expect(schema.getMethod('action2').type).toBe('string');
         expect(schema.getMethodProperties('action2')[0].name).toBe('b');
     }
+});
+
+
+test('Promise', () => {
+   class Controller {
+       @t.generic(t.string)
+       async action(): Promise<string> {
+           return '';
+       }
+   }
+
+   const schema = getClassSchema(Controller);
+   const property = schema.getMethod('action');
+
+   expect(property.type).toBe('promise');
+   expect(property.templateArgs[0].type).toBe('string');
 });

@@ -59,6 +59,7 @@ export class DebugController implements DebugControllerInterface {
     }
 
     @rpc.action()
+    @t.generic(t.type(Subject).generic(Uint8Array))
     async subscribeStopwatchFramesData(): Promise<Subject<Uint8Array>> {
         if (!this.stopwatchStore) throw new Error('not enabled');
 
@@ -73,6 +74,7 @@ export class DebugController implements DebugControllerInterface {
     }
 
     @rpc.action()
+    @t.generic(t.type(Subject).generic(Uint8Array))
     async subscribeStopwatchFrames(): Promise<Subject<Uint8Array>> {
         if (!this.stopwatchStore) throw new Error('not enabled');
 
@@ -171,7 +173,7 @@ export class DebugController implements DebugControllerInterface {
             for (const parameter of parsedRoute.getParameters()) {
                 if (parameter === parsedRoute.customValidationErrorHandling) continue;
                 if (parameter.body) {
-                    routeD.bodySchema = parameter.property.toJSON();
+                    routeD.bodySchema = parameter.property.toJSONNonReference();
                 } else if (parameter.query) {
                     routeD.parameters.push({
                         name: parameter.getName(),
@@ -317,7 +319,7 @@ export class DebugController implements DebugControllerInterface {
                 const token = resolveToken(provider);
                 const service = new ModuleService(getTokenId(token), getTokenLabel(token));
                 service.scope = getScope(provider);
-                service.instantiations = injectorContext.instantiationCount(token);
+                service.instantiations = injectorContext.instantiationCount(token, module, service.scope);
 
                 if (isClass(token) && module.controllers.includes(token)) {
                     service.type = 'controller';
