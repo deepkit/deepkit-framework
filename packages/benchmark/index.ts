@@ -6,6 +6,7 @@ import fetch from 'node-fetch';
 import { classToPlain, getGlobalStore } from '@deepkit/type';
 import { BenchmarkRun } from './model';
 import * as si from 'systeminformation';
+import { execSync } from 'child_process';
 
 const fg = require('fast-glob');
 
@@ -72,6 +73,10 @@ async function main() {
         benchmarkRun.cpuClock = cpu.speed;
         benchmarkRun.cpuCores = cpu.cores;
         benchmarkRun.memoryTotal = mem.total;
+
+        const os = await si.osInfo();
+        benchmarkRun.os = `${os.platform} ${os.distro} ${os.release} ${os.kernel} ${os.arch}`;
+        benchmarkRun.commit = execSync('git rev-parse HEAD').toString('utf8').trim();
 
         await fetch(sendResultsTo, {
             method: 'POST',

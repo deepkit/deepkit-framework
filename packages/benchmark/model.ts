@@ -16,6 +16,9 @@ export class BenchmarkRun {
     @t cpuCores: number = 0;
     @t memoryTotal: number = 0;
 
+    @t os: string = '';
+    @t commit: string = '';
+
     @t.map(t.map(BenchmarkEntry))
     data: { [fileName: string]: { [method: string]: BenchmarkEntry } } = {};
 }
