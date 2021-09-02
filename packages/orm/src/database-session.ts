@@ -45,9 +45,9 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 
     constructor(
         protected session: DatabaseSession<any>,
-        protected identityMap: IdentityMap,
         protected emitter: UnitOfWorkDatabaseEmitter,
         public logger: DatabaseLogger,
+        protected identityMap?: IdentityMap,
     ) {
 
     }
@@ -139,7 +139,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
             }
 
             await persistence.remove(classSchema, items);
-            this.identityMap.deleteMany(classSchema, items);
+            if (this.identityMap) this.identityMap.deleteMany(classSchema, items);
 
             if (this.emitter.onDeletePost.hasSubscriptions()) {
                 const event = new UnitOfWorkEvent(classSchema, this.session, items);
@@ -156,7 +156,6 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         getGlobalStore().unpopulatedCheck = UnpopulatedCheck.None;
 
         try {
-            // const start = performance.now();
             for (const item of this.addQueue.values()) {
                 const classSchema = getClassSchema(getClassTypeFromInstance(item));
                 sorter.add(item, classSchema, this.getReferenceDependencies(item));
@@ -164,7 +163,6 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 
             sorter.sort();
             const groups = sorter.getGroups();
-            // console.log('dependency resolution of', items.length, 'items took', performance.now() - start, 'ms');
 
             for (const group of groups) {
                 const inserts: Entity[] = [];
@@ -227,7 +225,16 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                     }
                 }
 
-                this.identityMap.storeMany(group.type, group.items);
+                if (this.identityMap) {
+                    this.identityMap.storeMany(group.type, group.items);
+                    // current definition is that only a DatabaseSession is able to track changes.
+                    // this gives room for the regular Database to insert/delete faster.
+                    // } else {
+                    //     for (const item of group.items) {
+                    //         const state = getInstanceState(classState, item);
+                    //         state.markAsPersisted();
+                    //     }
+                }
             }
         } finally {
             getGlobalStore().unpopulatedCheck = unpopulatedCheck;
@@ -416,7 +423,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     }
 
     protected enterNewRound() {
-        this.rounds.push(new DatabaseSessionRound(this, this.identityMap, this.unitOfWorkEmitter, this.logger));
+        this.rounds.push(new DatabaseSessionRound(this, this.unitOfWorkEmitter, this.logger, this.withIdentityMap ? this.identityMap : undefined));
     }
 
     /**
@@ -503,9 +510,11 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
 
         //make sure all stuff in the identity-map is known
         const round = this.getCurrentRound();
-        for (const map of this.identityMap.registry.values()) {
-            for (const item of map.values()) {
-                round.add(item.ref);
+        if (this.withIdentityMap) {
+            for (const map of this.identityMap.registry.values()) {
+                for (const item of map.values()) {
+                    round.add(item.ref);
+                }
             }
         }
 

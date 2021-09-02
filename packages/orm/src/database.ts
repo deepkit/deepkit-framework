@@ -292,6 +292,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      */
     public async persist(...items: Entity[]) {
         const session = this.createSession();
+        session.withIdentityMap = false;
         session.add(...items);
         await session.commit();
     }
@@ -306,6 +307,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      */
     public async remove(...items: Entity[]) {
         const session = this.createSession();
+        session.withIdentityMap = false;
         session.remove(...items);
         await session.commit();
     }
