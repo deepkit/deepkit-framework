@@ -315,7 +315,6 @@ jsonSerializer.fromClass.register('class', (property: PropertySchema, state: Com
     let serializeObject = `
         ${state.setter} = ${classToX}.fn(${state.accessor}, _options, _stack, _depth);
     `;
-    let serialize
 
     if (property.isReference && foreignClassSchema.hasPrimaryFields()) {
         serializeObject = `
