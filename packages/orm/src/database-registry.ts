@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, getClassTypeFromInstance } from '@deepkit/core';
+import { ClassType, getClassName, getClassTypeFromInstance } from '@deepkit/core';
 import { ClassSchema, getClassSchema } from '@deepkit/type';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { Database } from './database';
@@ -62,6 +62,12 @@ export class DatabaseRegistry {
         for (const db of Database.registry) {
             this.databases.push(db);
             const classType = getClassTypeFromInstance(db);
+            if (this.databaseNameMap.has(db.name)) {
+                throw new Error(
+                    `Database class ${getClassName(db)} has a name '${db.name}' that is already registered. ` +
+                    `Choose a different name via class ${getClassName(db)} {\n  name = 'anotherName';\n    }`
+                )
+            }
             this.databaseNameMap.set(db.name, db);
             this.databaseMap.set(classType, db);
             this.databaseTypes.push({classType, module: new InjectorModule()});
@@ -75,6 +81,7 @@ export class DatabaseRegistry {
     }
 
     public addDatabase(database: ClassType, options: { migrateOnStartup?: boolean } = {}, module: InjectorModule<any>) {
+
         if (!this.databaseTypes.find(v => v.classType === database)) {
             this.databaseTypes.push({classType: database, module});
         }
@@ -113,6 +120,14 @@ export class DatabaseRegistry {
 
             for (const classSchema of database.entities) {
                 classSchema.data['orm.database'] = database;
+            }
+
+
+            if (this.databaseNameMap.has(database.name)) {
+                throw new Error(
+                    `Database class ${getClassName(database)} has a name '${database.name}' that is already registered. ` +
+                    `Choose a different name via class ${getClassName(database)} {\n  name = 'anotherName';\n}`
+                )
             }
 
             this.databaseNameMap.set(database.name, database);
