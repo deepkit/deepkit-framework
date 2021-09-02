@@ -719,7 +719,6 @@ export class SQLPersistence extends DatabasePersistence {
     async insert<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
         await this.prepareAutoIncrement(classSchema, items.length);
         await this.doInsert(classSchema, items);
-        await this.populateAutoIncrementFields(classSchema, items);
     }
 
     async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
@@ -739,9 +738,12 @@ export class SQLPersistence extends DatabasePersistence {
 
         if (batchSize > items.length) {
             await this.batchInsert(classSchema, items);
+            await this.populateAutoIncrementFields(classSchema, items);
         } else {
             for (let i = 0; i < items.length; i += batchSize) {
-                await this.batchInsert(classSchema, items.slice(i, i + batchSize));
+                const batched = items.slice(i, i + batchSize);
+                await this.batchInsert(classSchema, batched);
+                await this.populateAutoIncrementFields(classSchema, batched);
             }
         }
     }
