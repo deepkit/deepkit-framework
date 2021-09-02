@@ -19,8 +19,6 @@ export class MikroModel {
 
     @Property() ready?: boolean;
 
-    // @Property() tags: string[] = [];
-
     @Property() priority: number = 0;
 
     @Property()
@@ -44,10 +42,11 @@ export async function main() {
     await orm.getSchemaGenerator().dropSchema();
     await orm.getSchemaGenerator().createSchema();
 
+    const bench = new BenchSuite('mikro-orm');
+
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
         await orm.em.nativeDelete(MikroModel, {});
-        const bench = new BenchSuite('mikro-orm');
 
         await bench.runAsyncFix(1, 'insert', async () => {
             for (let i = 1; i <= count; i++) {
@@ -55,16 +54,22 @@ export async function main() {
                 user.id = i;
                 user.ready = true;
                 user.priority = 5;
-                // user.tags = ['a', 'b', 'c'];
                 await orm.em.persist(user);
             }
 
             await orm.em.flush();
         });
 
-        await bench.runAsyncFix(10, 'fetch', async () => {
+        await bench.runAsyncFix(30, 'fetch', async () => {
             await orm.em.find(MikroModel, {}, {
                 disableIdentityMap: true
+            });
+        });
+
+        await bench.runAsyncFix(50, 'fetch-1', async () => {
+            await orm.em.find(MikroModel, {}, {
+                disableIdentityMap: true,
+                limit: 1
             });
         });
 

@@ -36,7 +36,7 @@ export class Model {
     type: number = 0;
     yesNo: boolean = false;
 
-    @Transform(v => Plan[v])
+    @Transform(v => Plan[v as any])
     plan: Plan = Plan.DEFAULT;
 
     @Type(() => Date)

@@ -117,6 +117,10 @@ export class BenchSuite {
 
     async runAsyncFix(count: number, title: string, fn: () => Promise<void>) {
         const took = await bench(count, title, fn);
+        if (this.fixResult[title]) {
+            //we don't report slower results as it might be an outliner
+            if (this.fixResult[title].mean < took/count) return;
+        }
         this.fixResult[title] = {
             hz: (1000 / took) * count,
             elapsed: took,

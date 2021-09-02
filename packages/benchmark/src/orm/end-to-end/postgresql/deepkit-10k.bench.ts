@@ -10,13 +10,14 @@
 
 import 'reflect-metadata';
 import { Entity, t } from '@deepkit/type';
-import { atomicChange, Database } from '@deepkit/orm';
+import { Database } from '@deepkit/orm';
 import { PostgresDatabaseAdapter } from '@deepkit/postgres';
 import { BenchSuite } from '../../../bench';
+import { Model } from '../mongo/deepkit-10k.bench';
 
 @Entity('deepkit')
 export class DeepkitModel {
-    @t.primary.autoIncrement public id?: number;
+    @t.primary.autoIncrement public id: number = 0;
 
     @t ready?: boolean;
 
@@ -36,45 +37,51 @@ export async function main() {
     database.registerEntity(DeepkitModel);
     await database.adapter.createTables([...database.entities]);
 
+    const bench = new BenchSuite('deepkit');
+
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
-        const session = database.createSession();
-        await session.query(DeepkitModel).deleteMany();
-        const bench = new BenchSuite('deepkit');
+        await database.query(DeepkitModel).deleteMany();
+
+        const users: Model[] = [];
+        for (let i = 1; i <= count; i++) {
+            const user = new DeepkitModel('Peter ' + i);
+            user.id = i;
+            user.ready = true;
+            user.priority = 5;
+            // user.tags = ['a', 'b', 'c'];
+            users.push(user);
+        }
 
         await bench.runAsyncFix(1, 'insert', async () => {
-            for (let i = 1; i <= count; i++) {
-                const user = new DeepkitModel('Peter ' + i);
-                user.ready = true;
-                user.priority = 5;
-                // user.tags = ['a', 'b', 'c'];
-                session.add(user);
-            }
-
-            await session.commit();
+            await database.persist(...users);
         });
 
-        await bench.runAsyncFix(10, 'fetch', async () => {
-            await session.query(DeepkitModel).disableIdentityMap().find();
+        await bench.runAsyncFix(100, 'fetch', async () => {
+            await database.query(DeepkitModel).disableChangeDetection().find();
         });
 
-        const dbItems = await session.query(DeepkitModel).find();
-        for (const item of dbItems) {
-            item.priority++;
-        }
-        atomicChange(dbItems[0]).increase('priority', 2);
-
-        await bench.runAsyncFix(1, 'update', async () => {
-            await session.commit();
+        await bench.runAsyncFix(500, 'fetch-1', async () => {
+            await database.query(DeepkitModel).disableChangeDetection().findOne();
         });
-
-        await bench.runAsyncFix(1, 'remove', async () => {
-            for (const item of dbItems) {
-                session.remove(item);
-            }
-
-            await session.commit();
-        });
+        //
+        // const dbItems = await session.query(DeepkitModel).find();
+        // for (const item of dbItems) {
+        //     item.priority++;
+        // }
+        // atomicChange(dbItems[0]).increase('priority', 2);
+        //
+        // await bench.runAsyncFix(1, 'update', async () => {
+        //     await session.commit();
+        // });
+        //
+        // await bench.runAsyncFix(1, 'remove', async () => {
+        //     for (const item of dbItems) {
+        //         session.remove(item);
+        //     }
+        //
+        //     await session.commit();
+        // });
     }
 
     database.disconnect();

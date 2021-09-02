@@ -40,11 +40,11 @@ export async function main() {
         metadataProvider: ReflectMetadataProvider
     });
     await orm.getSchemaGenerator().createSchema();
+    const bench = new BenchSuite('mikro-orm');
 
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
         await orm.em.nativeDelete(MikroModel, {});
-        const bench = new BenchSuite('mikro-orm');
 
         await bench.runAsyncFix(1, 'insert', async () => {
             for (let i = 1; i <= count; i++) {
@@ -62,6 +62,14 @@ export async function main() {
         await bench.runAsyncFix(10, 'fetch', async () => {
             await orm.em.find(MikroModel, {}, {
                 disableIdentityMap: true
+            });
+        });
+
+
+        await bench.runAsyncFix(100, 'fetch-1', async () => {
+            await orm.em.find(MikroModel, {}, {
+                disableIdentityMap: true,
+                limit: 1
             });
         });
 

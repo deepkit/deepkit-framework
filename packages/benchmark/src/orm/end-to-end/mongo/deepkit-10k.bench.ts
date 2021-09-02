@@ -19,8 +19,6 @@ export class Model {
     @t.mongoId.primary public _id?: string;
     @t ready?: boolean;
 
-    @t.array(t.string) tags: string[] = [];
-
     @t priority: number = 0;
 
     constructor(
@@ -35,23 +33,21 @@ export async function main() {
     const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/bench-small-deepkit'));
     await database.migrate();
     await database.adapter.client.connect();
+    const bench = new BenchSuite('deepkit');
 
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
-        const session = database.createSession();
-        await session.query(Model).deleteMany();
-        const bench = new BenchSuite('deepkit');
+        await database.query(Model).deleteMany();
+        const users: Model[] = [];
+        for (let i = 1; i <= count; i++) {
+            const user = new Model(i, 'Peter ' + i);
+            user.ready = true;
+            user.priority = 5;
+            users.push(user);
+        }
 
         await bench.runAsyncFix(1, 'insert', async () => {
-            for (let i = 1; i <= count; i++) {
-                const user = new Model(i, 'Peter ' + i);
-                user.ready = true;
-                user.priority = 5;
-                user.tags = ['a', 'b', 'c'];
-                session.add(user);
-            }
-
-            await session.commit();
+            await database.persist(...users);
         });
 
         await bench.runAsyncFix(10, 'fetch', async () => {

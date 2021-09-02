@@ -9,14 +9,13 @@
  */
 
 import 'reflect-metadata';
-import bson from 'bson';
-import BSON from 'bson-ext';
+import * as bson from 'bson';
+import * as bsonExt from 'bson-ext';
 import { BenchSuite } from '../bench';
 import { t } from '@deepkit/type';
-import { getBSONDecoder, parseObject, ParserV2, BaseParser, ParserV3 } from '@deepkit/bson';
-const { deserialize, ObjectId, serialize } = bson;
+import { BaseParser, getBSONDecoder, parseObject, ParserV2, ParserV3 } from '@deepkit/bson';
 
-const bsonNative = new BSON([BSON.Binary, BSON.Code, BSON.DBRef, BSON.Decimal128, BSON.Double, BSON.Int32, BSON.Long, BSON.Map, BSON.MaxKey, BSON.MinKey, BSON.ObjectId, BSON.BSONRegExp, BSON.Symbol, BSON.Timestamp]);
+const { deserialize, ObjectId, serialize } = bson;
 
 class Obj {
     @t.mongoId id!: string;
@@ -75,28 +74,28 @@ export async function main() {
     const parser = getBSONDecoder(schema);
     parser(bson);
 
-    suite.add('_deepkit/bson JS JIT', () => {
+    suite.add('deepkit/bson', () => {
         const items = parser(bson);
     });
 
-    suite.add('_deepkit/bson JS generic ParserV1, decodeUTF8', () => {
+    suite.add('deepkit/bson generic ParserV1, decodeUTF8', () => {
         const items = parseObject(new BaseParser(bson));
     });
 
-    suite.add('_deepkit/bson JS generic ParserV2, assume ASCII prop names', () => {
+    suite.add('deepkit/bson generic ParserV2, assume ASCII prop names', () => {
         const items = parseObject(new ParserV2(bson));
     });
 
-    suite.add('_deepkit/bson JS generic ParserV3, TextDecoder', () => {
+    suite.add('deepkit/bson generic ParserV3, TextDecoder', () => {
         const items = parseObject(new ParserV3(bson));
     });
 
-    suite.add('official js-bson parser', () => {
+    suite.add('official-js-bson', () => {
         const items = deserialize(bson);
     });
 
-    suite.add('official bson-ext, c++ native', () => {
-        const items = bsonNative.deserialize(bson);
+    suite.add('official-bson-ext', () => {
+        const items = bsonExt.deserialize(bson);
     });
 
     suite.add('JSON.parse()', () => {
@@ -105,7 +104,7 @@ export async function main() {
 
     const parserItem = getBSONDecoder(itemSchema);
     const bsonOneItem = serialize(items[0]);
-    suite.add('_deepkit/bson JIT 1 item', () => {
+    suite.add('deepkit/bson JIT 1 item', () => {
         const items = parserItem(bsonOneItem);
     });
 

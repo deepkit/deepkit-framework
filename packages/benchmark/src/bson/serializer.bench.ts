@@ -9,12 +9,14 @@
  */
 
 import 'reflect-metadata';
-import bson from 'bson';
-const { calculateObjectSize, serialize } = bson;
-// import BSON from 'bson-ext';
+import * as bson from 'bson';
+import * as bsonExt from 'bson-ext';
 import { BenchSuite } from '../bench';
 import { t } from '@deepkit/type';
 import { createBSONSizer, getBSONSerializer } from '@deepkit/bson';
+
+const { calculateObjectSize, serialize } = bson;
+
 // const bsonNative = new BSON([BSON.Binary, BSON.Code, BSON.DBRef, BSON.Decimal128, BSON.Double, BSON.Int32, BSON.Long, BSON.Map, BSON.MaxKey, BSON.MinKey, BSON.ObjectId, BSON.BSONRegExp, BSON.Symbol, BSON.Timestamp]);
 
 export async function main() {
@@ -107,19 +109,19 @@ export async function main() {
         serialize(items[0]);
     });
 
-    suite.add('deepkit/bson stringify 10k', () => {
+    suite.add('deepkit/bson', () => {
         serializer(data);
     });
 
-    suite.add('BSON js serialize 10k', () => {
+    suite.add('official-js-bson', () => {
         serialize(data);
     });
 
-    // suite.add('BSON native serialize 10k', () => {
-    //     bsonNative.serialize(data);
-    // });
+    suite.add('official-bson-ext', () => {
+        bsonExt.serialize(data);
+    });
 
-    suite.add('JSON.stringify 10k', () => {
+    suite.add('JSON.stringify()', () => {
         Buffer.from(JSON.stringify(data), 'utf8');
     });
 

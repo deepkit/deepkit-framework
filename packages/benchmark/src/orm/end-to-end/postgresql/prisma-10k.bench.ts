@@ -15,39 +15,32 @@ import { spawnSync } from 'child_process';
 export async function main() {
     const count = 10_000;
 
-    throw new Error('Not supported yet');
-
-    spawnSync(`./node_modules/.bin/prisma generate --schema src/orm/end-to-end/mongo/model.prisma`, { stdio: 'inherit', shell: true });
-    // spawnSync(`./node_modules/.bin/prisma db push --schema=src/orm/end-to-end/mongo/model.prisma --force-reset`, {stdio: 'inherit', shell: true});
+    spawnSync(`./node_modules/.bin/prisma generate --schema src/orm/end-to-end/postgresql/model.prisma`, {stdio: 'inherit', shell: true});
+    spawnSync(`./node_modules/.bin/prisma db push --schema=src/orm/end-to-end/postgresql/model.prisma --force-reset`, {stdio: 'inherit', shell: true});
 
     const {PrismaClient} = await import('@prisma/client');
     const prisma = new PrismaClient();
 
     const bench = new BenchSuite('prisma');
-    let created = false;
+
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
 
-        if (!created) {
-            created = true;
-            await prisma.model.deleteMany({});
-            const items: any[] = [];
-            for (let i = 1; i <= count; i++) {
-                items.push({
-                    username: 'Peter ' + i,
-                    tags: 'a,b,c',
-                    priority: 5,
-                    ready: true,
-                });
-            }
+        await prisma.model.deleteMany({});
 
-            await bench.runAsyncFix(1, 'insert', async () => {
-                await prisma.model.createMany({ data: items });
+        const data: any[] = [];
+        for (let i = 1; i <= count; i++) {
+            data.push({
+                username: 'Peter ' + i,
+                priority: 5,
+                ready: true,
             });
         }
+        await bench.runAsyncFix(1, 'insert', async () => {
+            await (prisma.model as any).createMany({ data });
+        });
 
         await bench.runAsyncFix(10, 'fetch', async () => {
-            //Prisma crashes when we go beyond 100 ...
             const users = await prisma.model.findMany();
         });
 

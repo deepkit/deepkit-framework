@@ -15,7 +15,7 @@ import { BenchSuite } from '../../../bench';
 @MikroEntity({ collection: 'mikro' })
 export class MikroModel {
     @PrimaryKey()
-    _id!: any;
+    id!: number;
 
     @Property() ready?: boolean;
 
@@ -33,11 +33,15 @@ export async function main() {
     const count = 10_000;
     const orm = await MikroORM.init({
         entities: [MikroModel],
-        dbName: 'mikro-orm-bench',
-        type: 'mongo',
-        metadataProvider: ReflectMetadataProvider,
-        clientUrl: 'mongodb://localhost:27017'
+        dbName: 'postgres',
+        user: 'postgres',
+        type: 'postgresql',
+        metadataProvider: ReflectMetadataProvider
     });
+    await orm.getSchemaGenerator().ensureDatabase();
+    await orm.getSchemaGenerator().dropSchema();
+    await orm.getSchemaGenerator().createSchema();
+
     const bench = new BenchSuite('mikro-orm');
 
     for (let i = 0; i < 5; i++) {
@@ -47,22 +51,26 @@ export async function main() {
         await bench.runAsyncFix(1, 'insert', async () => {
             for (let i = 1; i <= count; i++) {
                 const user = new MikroModel('Peter ' + i);
+                user.id = i;
                 user.ready = true;
                 user.priority = 5;
-                orm.em.persist(user);
+                await orm.em.persist(user);
             }
 
             await orm.em.flush();
         });
 
         await bench.runAsyncFix(10, 'fetch', async () => {
-            orm.em.clear();
-            await orm.em.find(MikroModel, {});
+            await orm.em.find(MikroModel, {}, {
+                disableIdentityMap: true
+            });
         });
 
-        await bench.runAsyncFix(10, 'fetch-1', async () => {
-            orm.em.clear();
-            await orm.em.findOne(MikroModel, {id: {$gt: 0}});
+        await bench.runAsyncFix(50, 'fetch-1', async () => {
+            await orm.em.find(MikroModel, {}, {
+                disableIdentityMap: true,
+                limit: 1
+            });
         });
 
         const dbItems = await orm.em.find(MikroModel, {});

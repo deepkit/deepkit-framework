@@ -8,11 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    rpc,
-    RpcClient,
-    RpcKernel
-} from '@deepkit/rpc';
+import { rpc, RpcClient, RpcKernel } from '@deepkit/rpc';
 import { TcpRpcClientAdapter, TcpRpcServer } from '@deepkit/rpc-tcp';
 import 'reflect-metadata';
 import { BenchSuite } from '../bench';
@@ -22,11 +18,10 @@ export async function main() {
         sayHello(value: string): string;
     }
 
-
     let called = 0;
 
     class Controller implements ControllerInterface {
-        @rpc.action()
+        @(rpc as any).action()
         sayHello(value: string): string {
             called++;
             return 'Hello ' + value;

@@ -18,18 +18,19 @@ export async function main() {
     const client = await MongoClient.connect('mongodb://localhost/bench-small-mongo');
     const db = client.db('bench-small-mongo');
     const collection = db.collection('model');
+    const bench = new BenchSuite('mongoose');
 
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
-        const bench = new BenchSuite('mongoose');
         await collection.deleteMany({});
 
         const items: any[] = [];
         for (let i = 1; i <= count; i++) {
             items.push({
-                id: i, name: 'Peter ' + i,
-                ready: true, priority: 1,
-                tags: ['a', 'b', 'c']
+                id: i,
+                name: 'Peter ' + i,
+                ready: true,
+                priority: 1,
             })
         }
 

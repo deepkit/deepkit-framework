@@ -11,6 +11,7 @@
 import 'reflect-metadata';
 import { BenchSuite } from '../../../bench';
 import mongoose from 'mongoose';
+
 const { Schema } = mongoose;
 
 const modelSchema = new Schema({
@@ -26,10 +27,10 @@ const Model = mongoose.model('mongoose-Model', modelSchema);
 export async function main() {
     const count = 10_000;
     const m = await mongoose.connect('mongodb://localhost/bench-small-mongoose');
+    const bench = new BenchSuite('mongoose');
 
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
-        const bench = new BenchSuite('mongoose');
         await Model.deleteMany();
 
         const items: any[] = [];
@@ -50,12 +51,12 @@ export async function main() {
             await Model.insertMany(items, { lean: true });
         });
 
-        await bench.runAsyncFix(10, 'fetch-1', async () => {
-            await Model.findOne();
-        });
-
         await bench.runAsyncFix(10, 'fetch', async () => {
             await Model.find();
+        });
+
+        await bench.runAsyncFix(10, 'fetch-1', async () => {
+            await Model.findOne();
         });
 
         await bench.runAsyncFix(10, 'fetch (lean)', async () => {

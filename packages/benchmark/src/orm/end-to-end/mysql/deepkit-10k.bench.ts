@@ -10,9 +10,10 @@
 
 import 'reflect-metadata';
 import { Entity, t } from '@deepkit/type';
-import { atomicChange, Database } from '@deepkit/orm';
+import { Database } from '@deepkit/orm';
 import { MySQLDatabaseAdapter } from '@deepkit/mysql';
 import { BenchSuite } from '../../../bench';
+import { Model } from '../mongo/deepkit-10k.bench';
 
 @Entity('deepkit')
 export class DeepkitModel {
@@ -35,27 +36,30 @@ export async function main() {
     const database = new Database(new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default' }));
     database.registerEntity(DeepkitModel);
     await database.adapter.createTables([...database.entities]);
+    const bench = new BenchSuite('deepkit');
 
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
-        const session = database.createSession();
-        await session.query(DeepkitModel).deleteMany();
-        const bench = new BenchSuite('deepkit');
+        await database.query(DeepkitModel).deleteMany();
+
+        const users: Model[] = [];
+        for (let i = 1; i <= count; i++) {
+            const user = new DeepkitModel('Peter ' + i);
+            user.id = i;
+            user.ready = true;
+            user.priority = 5;
+            // user.tags = ['a', 'b', 'c'];
+            users.push(user);
+        }
 
         await bench.runAsyncFix(1, 'insert', async () => {
-            for (let i = 1; i <= count; i++) {
-                const user = new DeepkitModel('Peter ' + i);
-                user.id = i;
-                user.ready = true;
-                user.priority = 5;
-                // user.tags = ['a', 'b', 'c'];
-                session.add(user);
-            }
-
-            await session.commit();
+            await database.persist(...users);
         });
 
-        await bench.runAsyncFix(10, 'fetch', async () => {
+        const items = await database.query(DeepkitModel).disableChangeDetection().find();
+        if (items.length !== count) throw new Error('Wrong result count');
+
+        await bench.runAsyncFix(100, 'fetch', async () => {
             await database.query(DeepkitModel).disableChangeDetection().find();
         });
 
@@ -63,23 +67,23 @@ export async function main() {
             await database.query(DeepkitModel).disableChangeDetection().findOne();
         });
 
-        const dbItems = await session.query(DeepkitModel).find();
-        for (const item of dbItems) {
-            item.priority++;
-        }
-        atomicChange(dbItems[0]).increase('priority', 2);
-
-        await bench.runAsyncFix(1, 'update', async () => {
-            await session.commit();
-        });
-
-        await bench.runAsyncFix(1, 'remove', async () => {
-            for (const item of dbItems) {
-                session.remove(item);
-            }
-
-            await session.commit();
-        });
+        // const dbItems = await session.query(DeepkitModel).find();
+        // for (const item of dbItems) {
+        //     item.priority++;
+        // }
+        // atomicChange(dbItems[0]).increase('priority', 2);
+        //
+        // await bench.runAsyncFix(1, 'update', async () => {
+        //     await session.commit();
+        // });
+        //
+        // await bench.runAsyncFix(1, 'remove', async () => {
+        //     for (const item of dbItems) {
+        //         session.remove(item);
+        //     }
+        //
+        //     await session.commit();
+        // });
     }
 
     database.disconnect();

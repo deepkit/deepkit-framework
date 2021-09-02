@@ -35,12 +35,12 @@ export async function main() {
     const database = new Database(new SQLiteDatabaseAdapter(':memory:'));
     database.registerEntity(DeepkitModel);
     await database.adapter.createTables([...database.entities]);
+    const bench = new BenchSuite('deepkit');
 
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
         const session = database.createSession();
         await session.query(DeepkitModel).deleteMany();
-        const bench = new BenchSuite('deepkit');
 
         await bench.runAsyncFix(1, 'insert', async () => {
             for (let i = 1; i <= count; i++) {

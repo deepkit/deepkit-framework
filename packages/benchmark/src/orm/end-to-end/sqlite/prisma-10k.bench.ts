@@ -9,11 +9,8 @@
  */
 
 import 'reflect-metadata';
-import { PrismaClient } from '@prisma/client';
 import { BenchSuite } from '../../../bench';
 import { spawnSync } from 'child_process';
-
-const prisma = new PrismaClient();
 
 export async function main() {
     const count = 10_000;
@@ -21,10 +18,12 @@ export async function main() {
     spawnSync(`./node_modules/.bin/prisma generate --schema src/orm/end-to-end/sqlite/model.prisma`, {stdio: 'inherit', shell: true});
     spawnSync(`./node_modules/.bin/prisma db push --schema=src/orm/end-to-end/sqlite/model.prisma --force-reset`, {stdio: 'inherit', shell: true});
 
+    const {PrismaClient} = await import('@prisma/client');
+    const prisma = new PrismaClient();
+    const bench = new BenchSuite('prisma');
     let created = false;
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
-        const bench = new BenchSuite('prisma');
 
         if (!created) {
             created = true;
@@ -34,7 +33,6 @@ export async function main() {
                     await prisma.model.create({
                         data: {
                             username: 'Peter ' + i,
-                            tags: 'a,b,c',
                             priority: 5,
                             ready: true,
                         }

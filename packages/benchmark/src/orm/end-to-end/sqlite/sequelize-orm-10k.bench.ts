@@ -27,11 +27,11 @@ User.init({
 export async function main() {
     const count = 10_000;
     await sequelize.sync();
+    const bench = new BenchSuite('sequelize');
 
     for (let i = 0; i < 5; i++) {
         console.log('round', i);
         await User.truncate();
-        const bench = new BenchSuite('sequelize');
 
         await bench.runAsyncFix(1, 'insert', async () => {
             const items: any[] = [];
@@ -49,7 +49,7 @@ export async function main() {
             await User.findAll();
         });
 
-        await bench.runAsyncFix(10, 'fetch-1', async () => {
+        await bench.runAsyncFix(100, 'fetch-1', async () => {
             await User.findOne();
         });
     }

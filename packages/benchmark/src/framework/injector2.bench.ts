@@ -9,7 +9,7 @@
  */
 
 import 'reflect-metadata';
-import { injectable, InjectorContext, InjectorModule } from '@deepkit/injector';
+import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { BenchSuite } from '../bench';
 import { GetOptimizationStatus } from '../utils';
 
@@ -64,56 +64,56 @@ export async function main() {
         });
     }
 
-    {
-        class Router {
-        }
-
-        @injectable
-        class Controller {
-            constructor(public router: Router) {
-            }
-        }
-
-        const module1 = new InjectorModule([Router]);
-        const module2 = new InjectorModule([{ provide: Controller, scope: 'http' }], module1);
-
-        const context = new InjectorContext(module1);
-
-        const scope = context.createChildScope('http');
-
-        const injector1 = context.getInjector(module1);
-        const injector2 = context.getInjector(module2);
-        // console.log((injector1 as any).resolver.toString());
-        // console.log((injector2 as any).resolver.toString());
-
-        bench.add('get(Router) ', () => {
-            const s = scope.get(Router);
-        });
-
-        const router = scope.get(Router);
-        bench.add('new Controller(router)', () => {
-            const s = new Controller(router);
-        });
-
-        bench.add('createChildScope', () => {
-            const scope = context.createChildScope('http');
-        });
-
-        bench.add('new Controller', () => {
-            const scope = {name: 'http', instances: {}};
-            const c = new Controller(injector1.get(Router, scope));
-            (scope.instances as any).i2 = c;
-        });
-
-        bench.add('get(Controller), new scope manually', () => {
-            const c = context.getInjector(module2).get(Controller, {name: 'http', instances: {}});
-        });
-
-        bench.add('createChildScope().get(Controller)', () => {
-            const scope = context.createChildScope('http');
-            const c = scope.get(Controller, module2);
-        });
-    }
+    // {
+    //     class Router {
+    //     }
+    //
+    //     @injectable
+    //     class Controller {
+    //         constructor(public router: Router) {
+    //         }
+    //     }
+    //
+    //     const module1 = new InjectorModule([Router]);
+    //     const module2 = new InjectorModule([{ provide: Controller, scope: 'http' }], module1);
+    //
+    //     const context = new InjectorContext(module1);
+    //
+    //     const scope = context.createChildScope('http');
+    //
+    //     const injector1 = context.getInjector(module1);
+    //     const injector2 = context.getInjector(module2);
+    //     // console.log((injector1 as any).resolver.toString());
+    //     // console.log((injector2 as any).resolver.toString());
+    //
+    //     bench.add('get(Router) ', () => {
+    //         const s = scope.get(Router);
+    //     });
+    //
+    //     const router: Router = scope.get(Router);
+    //     bench.add('new Controller(router)', () => {
+    //         const s = new Controller(router);
+    //     });
+    //
+    //     bench.add('createChildScope', () => {
+    //         const scope = context.createChildScope('http');
+    //     });
+    //
+    //     bench.add('new Controller', () => {
+    //         const scope = { name: 'http', instances: {} };
+    //         const c = new Controller(injector1.get(Router, scope));
+    //         (scope.instances as any).i2 = c;
+    //     });
+    //
+    //     bench.add('get(Controller), new scope manually', () => {
+    //         const c = context.getInjector(module2).get(Controller, { name: 'http', instances: {} });
+    //     });
+    //
+    //     bench.add('createChildScope().get(Controller)', () => {
+    //         const scope = context.createChildScope('http');
+    //         const c = scope.get(Controller, module2);
+    //     });
+    // }
 
     //
     // bench.add('new Service()', () => {
