@@ -6,6 +6,7 @@ import { getActions, rpc } from '../src/decorators';
 import { RpcKernel, RpcKernelConnection } from '../src/server/kernel';
 import { injectable } from '@deepkit/injector';
 import { Session, SessionState } from '../src/server/security';
+import { BehaviorSubject } from 'rxjs';
 
 test('decorator', async () => {
     @rpc.controller('name')
@@ -197,6 +198,23 @@ test('promise', async () => {
         async createModel(value: string): Promise<MyModel> {
             return new MyModel(value);
         }
+
+        @rpc.action()
+        @t.type(MyModel)
+        async createModel2(value: string): Promise<MyModel> {
+            return new MyModel(value);
+        }
+
+        @rpc.action()
+        @t.generic(MyModel)
+        async createModel3(value: string): Promise<MyModel> {
+            return new MyModel(value);
+        }
+
+        @rpc.action()
+        async createModel4(value: string): Promise<BehaviorSubject<MyModel>> {
+            return new BehaviorSubject<MyModel>(new MyModel(value));
+        }
     }
 
     const kernel = new RpcKernel();
@@ -213,6 +231,22 @@ test('promise', async () => {
     {
         const model = await controller.createModel('foo');
         expect(model).toBeInstanceOf(MyModel);
+    }
+
+    {
+        const model = await controller.createModel2('foo');
+        expect(model).toBeInstanceOf(MyModel);
+    }
+
+    {
+        const model = await controller.createModel3('foo');
+        expect(model).toBeInstanceOf(MyModel);
+    }
+
+    {
+        const value = await controller.createModel4('foo');
+        expect(value).toBeInstanceOf(BehaviorSubject);
+        expect(value.value).toBeInstanceOf(MyModel);
     }
 });
 

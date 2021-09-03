@@ -169,17 +169,17 @@ export class RpcServerAction {
 
         let resultProperty = getClassSchema(classType.controller).getMethod(method).clone();
 
-        if (resultProperty.classType) {
+        if (resultProperty.type === 'class' && resultProperty.classType) {
             const generic = resultProperty.templateArgs[0];
 
             if (generic) {
                 resultProperty = generic.clone();
             } else {
-                //if its Promise, Observable, Collection, EntitySubject, we simply assume any, because sending those types as resultProperty is definitely wrong
+                //if its Observable, Collection, EntitySubject, we simply assume any, because sending those types as resultProperty is definitely wrong
                 //and result in weird errors when `undefined` is returned in the actual action (since from undefined we don't infer an actual type)
-                if ((isPrototypeOfBase(resultProperty.classType, Observable)
+                if (isPrototypeOfBase(resultProperty.classType, Observable)
                     || isPrototypeOfBase(resultProperty.classType, Collection)
-                    || isPrototypeOfBase(resultProperty.classType, Promise))
+                    || isPrototypeOfBase(resultProperty.classType, Promise)
                     || isPrototypeOfBase(resultProperty.classType, EntitySubject)
                 ) {
                     resultProperty.type = 'any';
@@ -300,15 +300,15 @@ export class RpcServerAction {
     public async handleAction(message: RpcMessage, response: RpcMessageBuilder) {
         const body = message.parseBody(rpcActionType);
 
-        const classType = this.controllers.get(body.controller);
-        if (!classType) throw new Error(`No controller registered for id ${body.controller}`);
+        const controller = this.controllers.get(body.controller);
+        if (!controller) throw new Error(`No controller registered for id ${body.controller}`);
 
         const types = await this.loadTypes(body.controller, body.method);
         const value = message.parseBody(types.parameterSchema);
 
-        const controller = this.injector.get(classType.controller, classType.module);
-        if (!controller) {
-            response.error(new Error(`No instance of ${getClassName(classType.controller)} found.`));
+        const controllerClassType = this.injector.get(controller.controller, controller.module);
+        if (!controllerClassType) {
+            response.error(new Error(`No instance of ${getClassName(controller.controller)} found.`));
         }
         const converted = types.parametersDeserialize(value.args);
         const errors = types.parametersValidate(converted);
@@ -318,7 +318,11 @@ export class RpcServerAction {
         }
 
         try {
-            const result = await controller[body.method](...Object.values(value.args));
+            let result = controllerClassType[body.method](...Object.values(value.args));
+            const isPromise = result instanceof Promise;
+            if (isPromise) {
+                result = await result;
+            }
 
             if (isEntitySubject(result)) {
                 const newProperty = createNewPropertySchemaIfNecessary(result.value, types.resultProperty);
@@ -399,7 +403,7 @@ export class RpcServerAction {
                 };
 
             } else if (isObservable(result)) {
-                this.observables[message.id] = { observable: result, subscriptions: {}, types, classType: classType.controller, method: body.method };
+                this.observables[message.id] = { observable: result, subscriptions: {}, types, classType: controller.controller, method: body.method };
 
                 let type: ActionObservableTypes = ActionObservableTypes.observable;
                 if (isSubject(result)) {
@@ -411,7 +415,7 @@ export class RpcServerAction {
                         subscription: result.subscribe((next) => {
                             if (types.resultProperty.type === 'class' && types.resultProperty.classType && next && !(next instanceof types.resultProperty.classType)) {
                                 console.warn(
-                                    `The subject in action ${getClassPropertyName(classType, body.method)} has a class type assigned of ${getClassName(types.resultProperty.classType)}` +
+                                    `The subject in action ${getClassPropertyName(controllerClassType, body.method)} has a class type assigned of ${getClassName(types.resultProperty.classType)}` +
                                     ` but emitted something different of type ${stringifyValueWithType(next)}. Either annotate the method with t.union() or make sure it emits the correct type.`
                                 );
                                 return;
@@ -423,7 +427,7 @@ export class RpcServerAction {
                                 types.resultProperty = newProperty;
                                 types.resultPropertyChanged++;
                                 if (types.resultPropertyChanged === 10) {
-                                    console.warn(`The emitted next value of the Observable of method ${getClassPropertyName(classType, body.method)} changed 10 times. You should add a @t.union() annotation to improve serialization performance.`);
+                                    console.warn(`The emitted next value of the Observable of method ${getClassPropertyName(controllerClassType, body.method)} changed 10 times. You should add a @t.union() annotation to improve serialization performance.`);
                                 }
                                 response.reply(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSONNonReference());
                             }
@@ -451,9 +455,9 @@ export class RpcServerAction {
 
                 response.reply(RpcTypes.ResponseActionObservable, rpcResponseActionObservable, { type });
             } else {
-                const newProperty = createNewPropertySchemaIfNecessary(result, types.resultProperty);
+                const newProperty = createNewPropertySchemaIfNecessary(result, types.resultProperty, isPromise);
                 if (newProperty) {
-                    console.warn(`The result type of method ${getClassPropertyName(classType, body.method)} changed from ${types.resultProperty.toString()} to ${newProperty.toString()}. ` +
+                    console.warn(`The result type of method ${getClassPropertyName(controllerClassType, body.method)} changed from ${types.resultProperty.toString()} to ${newProperty.toString()}. ` +
                     `You should add a @t annotation to improve serialization performance.`);
 
                     types.resultSchema = createClassSchema();
@@ -461,7 +465,6 @@ export class RpcServerAction {
                     types.resultProperty = newProperty;
                     types.resultPropertyChanged++;
                     const composite = response.composite(RpcTypes.ResponseActionResult);
-                    const propertyJson = newProperty.toJSON();
                     composite.add(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSONNonReference());
                     composite.add(RpcTypes.ResponseActionSimple, types.resultSchema, { v: result });
                     composite.send();
@@ -475,10 +478,16 @@ export class RpcServerAction {
     }
 }
 
-export function createNewPropertySchemaIfNecessary(result: any, property: PropertySchema): PropertySchema | undefined {
+export function createNewPropertySchemaIfNecessary(result: any, property: PropertySchema, fromPromise: boolean = false): PropertySchema | undefined {
     if (isResultTypeDifferent(result, property)) {
         const newProperty = new PropertySchema('v');
-        newProperty.setFromJSValue(result);
+        if (fromPromise) {
+            newProperty.type = 'promise';
+            newProperty.templateArgs[0] = new PropertySchema('t');
+            newProperty.templateArgs[0].setFromJSValue(result);
+        } else {
+            newProperty.setFromJSValue(result);
+        }
         return newProperty;
     }
     return undefined;
@@ -499,8 +508,13 @@ export function isResultTypeDifferent(result: any, property: PropertySchema): bo
     if (property.type === 'map' && !isPlainObject(result)) return true;
     if (property.type === 'array' && !isArray(result)) return true;
 
+    if (property.type === 'promise' && !property.templateArgs[0]) {
+        //no t.generic was set for promise, so we try to infer it from runtime type
+        return true;
+    }
+
     if (property.type === 'any' && !property.typeSet) {
-        //type is inferred as Promise, Observable, Collection, EntitySubject, so we should try to infer
+        //type is inferred as Observable, Collection, EntitySubject, so we should try to infer
         //from the result now
         return true;
     }
