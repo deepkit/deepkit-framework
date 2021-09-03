@@ -134,14 +134,45 @@ export interface PropertySchemaSerialized {
 }
 
 export interface PropertyValidator {
+    name?: string;
+    options?: any[];
+
     /**
      * @throws PropertyValidatorError when validation invalid
      */
     validate<T>(value: any, property: PropertySchema, classType?: ClassType,): void;
 }
 
-export function isPropertyValidator(object: any): object is ClassType<PropertyValidator> {
+type ValidatorFn = (value: any, property: PropertySchema, classType?: ClassType) => void;
+type ValidatorFactoryFn = (...args: any[]) => ValidatorFn;
+
+export function decorateValidator<T extends any[], FN extends ValidatorFn | ValidatorFactoryFn>(
+    name: string,
+    fn: FN
+): FN extends ValidatorFactoryFn ? (...args: Parameters<FN>) => ValidatorFn : ValidatorFn {
+    function val(...args: any[]) {
+        if (args[1] instanceof PropertySchema) {
+            //regular validator
+            return (fn as ValidatorFn)(...(args as Parameters<ValidatorFn>));
+        } else {
+            //its a factory
+            const validator = (fn as ValidatorFactoryFn)(...(args as Parameters<ValidatorFactoryFn>));
+            Object.defineProperty(validator, 'name', { value: name });
+            Object.defineProperty(validator, 'options', { value: args });
+            return validator;
+        }
+    }
+
+    Object.defineProperty(val, 'name', { value: name });
+    return val as any;
+}
+
+export function isPropertyValidatorClass(object: any): object is ClassType<PropertyValidator> {
     return isClass(object);
+}
+
+export function isPropertyValidatorInstance(object: any): object is PropertyValidator {
+    return isClassInstance(object) && 'function' === typeof object.validate;
 }
 
 export type FieldTypes<T> = string | ClassType | ForwardRefFn<T>;
@@ -207,6 +238,7 @@ class DeserializerStack {
     set(propertyId: number, property: PropertySchema): void {
         this.properties.set(propertyId, property);
     }
+
     get(propertyId: number): PropertySchema | undefined {
         return this.properties.get(propertyId);
     }
@@ -335,7 +367,7 @@ export class PropertySchema {
 
     isParentReference: boolean = false;
 
-    validators: ClassType<PropertyValidator>[] = [];
+    validators: PropertyValidator[] = [];
 
     /**
      * Whether its a owning reference.
@@ -451,6 +483,10 @@ export class PropertySchema {
         }
 
         return this.extractedDefaultValue;
+    }
+
+    validatorsToString(): string {
+        return this.validators.map(v => `${v.name || 'unnamed'}:${v.options ? v.options.join(',') : '[]'}`).join(', ');
     }
 
     toString(optionalAffix = true): string {

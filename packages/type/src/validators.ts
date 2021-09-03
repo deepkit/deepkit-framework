@@ -10,7 +10,6 @@
 
 import { isArray } from '@deepkit/core';
 import { PropertyValidatorError } from './jit-validation';
-import validator from 'validator';
 
 export const validators = {
     pattern(regex: RegExp) {
@@ -21,18 +20,20 @@ export const validators = {
         };
     },
 
-    alpha(locale: validator.AlphaLocale = 'en-US') {
+    alpha() {
         return (value: any) => {
             if ('string' !== typeof value) return;
-            if (validator.isAlpha(value, locale)) return;
+            if (value.length === 0) return;
+            if (/^[A-Z]+$/i.test(value)) return;
             throw new PropertyValidatorError('alpha', 'Not alpha');
         };
     },
 
-    alphanumeric(locale: validator.AlphanumericLocale = 'en-US') {
+    alphanumeric() {
         return (value: any) => {
             if ('string' !== typeof value) return;
-            if (validator.isAlphanumeric(value, locale)) return;
+            if (value.length === 0) return;
+            if (/^[0-9A-Z]+$/i.test(value)) return;
             throw new PropertyValidatorError('alphanumeric', 'Not alphanumeric');
         };
     },
@@ -40,7 +41,8 @@ export const validators = {
     ascii() {
         return (value: any) => {
             if ('string' !== typeof value) return;
-            if (validator.isAscii(value)) return;
+            if (value.length === 0) return;
+            if (/^[\x00-\x7F]+$/.test(value)) return;
             throw new PropertyValidatorError('ascii', 'Not ASCII');
         };
     },
@@ -48,16 +50,17 @@ export const validators = {
     dataURI() {
         return (value: any) => {
             if ('string' !== typeof value) return;
-            if (validator.isDataURI(value)) return;
+            if (/^(data:)([\w\/\+-]*)(;charset=[\w-]+|;base64){0,1},(.*)/gi.test(value)) return;
             throw new PropertyValidatorError('dataURI', 'Not a data URI');
         };
     },
 
-    decimal(options?: validator.IsDecimalOptions) {
+    decimal(minDigits: number = 1, maxDigits: number = 100) {
+        const regexp = new RegExp('^-?\\d+\\.\\d{' + minDigits + ',' + maxDigits + '}$');
         return (value: any) => {
             if ('string' !== typeof value) return;
-            if (validator.isDecimal(value, options)) return;
-            throw new PropertyValidatorError('decimal', 'Not a decimal');
+            if (regexp.test(value)) return;
+            throw new PropertyValidatorError('decimal', `Not a decimal(x.${minDigits}-${maxDigits})`);
         };
     },
 

@@ -1,6 +1,6 @@
-import { expect, test } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { validate, t } from '../index';
+import { FieldDecoratorResult, t, validate } from '../index';
 
 test('string includes', () => {
     const schema = t.schema({
@@ -246,4 +246,57 @@ test('number multipleOf', () => {
     expect(validate(schema, { value: 10 })).toEqual([]);
     expect(validate(schema, { value: 1 })).toEqual([{ code: 'multipleOf', message: 'Not a multiple of 10', path: 'value' }]);
     expect(validate(schema, { value: 22 })).toEqual([{ code: 'multipleOf', message: 'Not a multiple of 10', path: 'value' }]);
+});
+
+describe('validators', () => {
+    type Errors = {code?: string, message?: string}[];
+    const tests: [type: FieldDecoratorResult<any>, value: any, errors: Errors][] = [
+        [t.number, 123, []],
+        [t.number, '123', [{code: 'invalid_number'}]],
+        [t.string, '123', []],
+        [t.string, 123, [{code: 'invalid_string'}]],
+        [t.string.decimal(), '123.0', []],
+        [t.string.decimal(), '123', [{code: 'decimal'}]],
+        [t.string.decimal(10), '123.1234567890', []],
+        [t.string.decimal(0, 3), '123.1', []],
+        [t.string.decimal(0, 3), '123.12', []],
+        [t.string.decimal(0, 3), '123.123', []],
+        [t.string.decimal(0, 3), '123.1234', [{code: 'decimal'}]],
+        [t.string.alpha(), 'abc', []],
+        [t.string.alpha(), 'abc2', [{code: 'alpha'}]],
+        [t.string.alpha(), '34', [{code: 'alpha'}]],
+        [t.string.alpha(), '', []],
+        [t.string.alphanumeric(), 'abc', []],
+        [t.string.alphanumeric(), '123', []],
+        [t.string.alphanumeric(), 'abc123', []],
+        [t.string.alphanumeric(), 'abc123$', [{code: 'alphanumeric'}]],
+        [t.string.alphanumeric(), '', []],
+        [t.string.alphanumeric(), ' ', [{code: 'alphanumeric'}]],
+        [t.string.ascii(), ' ', []],
+        [t.string.ascii(), '1234abcdCBBZ', []],
+        [t.string.ascii(), '!@#$%^&*()', []],
+        [t.string.ascii(), '😱', [{code: 'ascii'}]],
+        [t.string.dataURI(), 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==', []],
+        [t.string.dataURI(), 'data:text/html;charset=utf-8,<!DOCTYPE%20html><html%20lang%3D"en"><head><title>Embedded%20Window<%2Ftitle><%2Fhead><body><h1>42<%2Fh1><%2Fbody><%2Fhtml>', []],
+        [t.string.dataURI(), 'data:image/svg+xml;base64', [{code: 'dataURI'}]],
+        [t.string.dataURI(), 'data:image/svg+xml;PD94bWwgdmVyzeiBNMyw2djJoMThWNkgzeiIvPjwvZz4KPC9zdmc+Cgo=', [{code: 'dataURI'}]],
+        [t.string.dataURI(), 'data:image;base64,PD94bWwgdmVyzeiBNMyw2djJoMThWNkgzeiIvPjwvZz4KPC9zdmc+Cgo=', []],
+        [t.string.dataURI(), 'data:', [{code: 'dataURI'}]],
+        [t.string.dataURI(), 'data:', [{code: 'dataURI'}]],
+        [t.string.dataURI(), '12345', [{code: 'dataURI'}]],
+    ];
+
+    for (let i = 0; i < tests.length; i++) {
+        const [decorator, value, expectedErrors] = tests[i];
+        const property = decorator.buildPropertySchema('test_' + i);
+
+        test(`types round-trip #${i} ${property.toString()} ${property.validatorsToString()}: ${value}`, () => {
+            const s = t.schema({
+                v: decorator
+            });
+
+            const errors = validate(s, { v: value });
+            expect(errors).toMatchObject(expectedErrors);
+        });
+    }
 });

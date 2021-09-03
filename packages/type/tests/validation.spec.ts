@@ -1,6 +1,7 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import {
+    decorateValidator,
     getClassSchema,
     getXToClassFunction,
     jsonSerializer,
@@ -18,6 +19,55 @@ import {
 } from '../index';
 import { CustomError, isPlainObject } from '@deepkit/core';
 import { fail } from 'assert';
+
+test('decorated validator', () => {
+    const exactly = decorateValidator('exactly', (x: number) => {
+        return (value: any) => {
+            if (value !== x) throw new PropertyValidatorError('exactly', `Must be ${x}`);
+        };
+    });
+
+    const exactly10 = decorateValidator('exactly10', (value: any) => {
+        if (value !== 10) throw new PropertyValidatorError('exactly', `Must be 10`);
+    });
+
+    //no options
+    function equal10(value: any) {
+        if (value !== 10) throw new PropertyValidatorError('exactly', `Must be 10`);
+    }
+
+    //with options
+    function equal(x: number) {
+        return function equal(value: any) {
+            if (value !== x) throw new PropertyValidatorError('exactly', `Must be ${x}`);
+        };
+    }
+
+    class Entity {
+        @t.validator(equal10) x1!: number;
+        @t.validator(equal(10)) x2!: number;
+        @t.validator(exactly(5)) x3!: number;
+        @t.validator(exactly10) x4!: number;
+        @t.maximum(6) x5!: number;
+    }
+
+    const schema = getClassSchema(Entity);
+
+    expect(schema.getProperty('x1').validators[0].name).toBe('equal10');
+    expect(schema.getProperty('x1').validators[0].options).toBe(undefined);
+
+    expect(schema.getProperty('x2').validators[0].name).toBe('equal');
+    expect(schema.getProperty('x2').validators[0].options).toBe(undefined);
+
+    expect(schema.getProperty('x3').validators[0].name).toBe('exactly');
+    expect(schema.getProperty('x3').validators[0].options).toEqual([5]);
+
+    expect(schema.getProperty('x4').validators[0].name).toBe('exactly10');
+    expect(schema.getProperty('x4').validators[0].options).toBe(undefined);
+
+    expect(schema.getProperty('x5').validators[0].name).toBe('maximum');
+    expect(schema.getProperty('x5').validators[0].options).toEqual([6]);
+});
 
 test('test simple', async () => {
     class Page {
@@ -475,7 +525,7 @@ test('test number', async () => {
         id: number = 2;
     }
 
-    const convert = getXToClassFunction(getClassSchema(Model), jsonSerializer)
+    const convert = getXToClassFunction(getClassSchema(Model), jsonSerializer);
 
     expect(getClassSchema(Model).getProperty('id').isOptional).toBe(false);
     expect(getClassSchema(Model).getProperty('id').hasDefaultValue).toBe(true);
@@ -495,7 +545,7 @@ test('test number', async () => {
 
     expect(validate(ModelOptional, { id: 3 })).toEqual([]);
     expect(validate(ModelOptional, { id: '3' })).toEqual([{ code: 'invalid_number', message: 'No number given', path: 'id' }]);
-    expect(validate(ModelOptional, { id: 'a' })).toEqual([{ code: 'invalid_number', message: 'No number given',  path: 'id' }]);
+    expect(validate(ModelOptional, { id: 'a' })).toEqual([{ code: 'invalid_number', message: 'No number given', path: 'id' }]);
     expect(validate(ModelOptional, { id: NaN })).toEqual([{ code: 'invalid_number', message: 'No valid number given, got NaN', path: 'id' }]);
     expect(validate(ModelOptional, { id: null })).toEqual([{ code: 'required', message: 'Required value is null', path: 'id' }]);
     expect(validate(ModelOptional, { id: undefined })).toEqual([]);
@@ -864,10 +914,10 @@ test('defaults are used when wrong value are provided', async () => {
 
     const c = getXToClassFunction(schema, jsonSerializer);
 
-    expect(c({log: 'asd'}).log).toBe(false);
+    expect(c({ log: 'asd' }).log).toBe(false);
 
-    expect(jsonSerializer.for(schema).validatedDeserialize({log: 'asda'} as any).log).toBe(false);
-    expect(validatedPlainToClass(schema, {log: 'asda'} as any).log).toBe(false);
+    expect(jsonSerializer.for(schema).validatedDeserialize({ log: 'asda' } as any).log).toBe(false);
+    expect(validatedPlainToClass(schema, { log: 'asda' } as any).log).toBe(false);
 });
 
 test('optional defaults can be undefined', async () => {
@@ -878,9 +928,9 @@ test('optional defaults can be undefined', async () => {
     const c = getXToClassFunction(schema, jsonSerializer);
 
     expect(c({}).log).toBe(false);
-    expect(c({log: null}).log).toBe(false);
-    expect(c({log: undefined}).log).toBe(false);
-    expect(c({log: true}).log).toBe(true);
+    expect(c({ log: null }).log).toBe(false);
+    expect(c({ log: undefined }).log).toBe(false);
+    expect(c({ log: true }).log).toBe(true);
 });
 
 test('invalid types on class item', async () => {
@@ -888,7 +938,7 @@ test('invalid types on class item', async () => {
         count: t.number,
     });
 
-    const item = plainToClass(schema, { count: 5});
+    const item = plainToClass(schema, { count: 5 });
     expect(validates(schema, item)).toBe(true);
     (item as any).count = '4';
     expect(validates(schema, item)).toBe(false);
@@ -899,11 +949,11 @@ test('invalid literal', async () => {
         v: t.literal('abc'),
     });
 
-    expect(validates(schema, {v: 'abc'})).toBe(true);
-    expect(validates(schema, {v: 'abc2'})).toBe(false);
-    expect(validates(schema, {v: undefined})).toBe(false);
+    expect(validates(schema, { v: 'abc' })).toBe(true);
+    expect(validates(schema, { v: 'abc2' })).toBe(false);
+    expect(validates(schema, { v: undefined })).toBe(false);
     expect(validates(schema, {})).toBe(false);
-    expect(validates(schema, {v: null})).toBe(false);
+    expect(validates(schema, { v: null })).toBe(false);
 });
 
 test('literal with defaeult', async () => {
@@ -913,21 +963,21 @@ test('literal with defaeult', async () => {
 
     const serializer = jsonSerializer.for(schema);
 
-    expect(validates(schema, {v: 'local'})).toBe(true);
+    expect(validates(schema, { v: 'local' })).toBe(true);
     expect(validates(schema, {})).toBe(false);
-    expect(validates(schema, {v: undefined})).toBe(false);
-    expect(validates(schema, {v: ''})).toBe(false);
-    expect(validates(schema, {v: null})).toBe(false);
+    expect(validates(schema, { v: undefined })).toBe(false);
+    expect(validates(schema, { v: '' })).toBe(false);
+    expect(validates(schema, { v: null })).toBe(false);
 
-    expect(serializer.deserialize({v: 'local'}).v).toBe('local');
+    expect(serializer.deserialize({ v: 'local' }).v).toBe('local');
     expect(serializer.deserialize({}).v).toBe('majority');
-    expect(serializer.deserialize({v: undefined}).v).toBe('majority');
-    expect(serializer.deserialize({v: null}).v).toBe('majority');
-    expect(serializer.deserialize({v: ''}).v).toBe('majority');
+    expect(serializer.deserialize({ v: undefined }).v).toBe('majority');
+    expect(serializer.deserialize({ v: null }).v).toBe('majority');
+    expect(serializer.deserialize({ v: '' }).v).toBe('majority');
 
-    expect(validates(schema, serializer.deserialize({v: 'local'}))).toBe(true);
+    expect(validates(schema, serializer.deserialize({ v: 'local' }))).toBe(true);
     expect(validates(schema, serializer.deserialize({}))).toBe(true);
-    expect(validates(schema, serializer.deserialize({v: undefined}))).toBe(true);
-    expect(validates(schema, serializer.deserialize({v: ''}))).toBe(true);
-    expect(validates(schema, serializer.deserialize({v: null}))).toBe(true);
+    expect(validates(schema, serializer.deserialize({ v: undefined }))).toBe(true);
+    expect(validates(schema, serializer.deserialize({ v: '' }))).toBe(true);
+    expect(validates(schema, serializer.deserialize({ v: null }))).toBe(true);
 });

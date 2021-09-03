@@ -15,7 +15,6 @@ import { reserveVariable } from './serializer-compiler';
 import { JitStack, resolvePropertySchema } from './jit';
 
 const CacheJitPropertyMap = new Map<PropertySchema, any>();
-const CacheValidatorInstances = new Map<ClassType<PropertyValidator>, PropertyValidator>();
 
 /**
  * The structure of a validation error.
@@ -101,14 +100,8 @@ export function getDataCheckerJS(
         const checks: string[] = [];
 
         for (const validator of property.validators) {
-            let instance = CacheValidatorInstances.get(validator);
-            if (!instance) {
-                instance = new validator;
-                CacheValidatorInstances.set(validator, instance);
-            }
-
             const validatorsVar = reserveVariable(rootContext, 'validator');
-            rootContext.set(validatorsVar, instance);
+            rootContext.set(validatorsVar, validator);
             checks.push(`
             try {
                 ${validatorsVar}.validate(${accessor}, ${propertySchemaVar}, _classType);

@@ -13,7 +13,6 @@ import { BackReferenceOptions, ClassSchema, ForwardRefFn, IndexOptions, Property
 import { BackReference, PrimaryKey, Reference } from './types';
 import { FlattenIfArray } from './utils';
 import { ExtractType, PlainSchemaProps, WideTypes } from './decorators';
-import validator from 'validator';
 
 /**
  * @throws PropertyValidatorError when validation invalid
@@ -22,11 +21,11 @@ export type ValidatorFn = (value: any, property: PropertySchema, classType?: Cla
 
 export interface FieldDecoratorResult<T> extends FieldDecoratorResultBase<T> {
     pattern(regex: RegExp): this;
-    alpha(locale?: validator.AlphaLocale): this;
-    alphanumeric(locale?: validator.AlphanumericLocale): this;
+    alpha(): this;
+    alphanumeric(): this;
     ascii(): this;
     dataURI(): this;
-    decimal(options?: validator.IsDecimalOptions): this;
+    decimal(minDigits?: number, maxDigits?: number): this;
     multipleOf(num: any): this;
     minLength(length: number): this;
     maxLength(length: number): this;

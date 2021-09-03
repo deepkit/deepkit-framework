@@ -16,6 +16,7 @@ import {
     BackReferenceOptions,
     ClassSchema,
     createClassSchemaFromProp,
+    decorateValidator,
     FieldTypes,
     ForwardRef,
     ForwardRefFn,
@@ -23,14 +24,15 @@ import {
     getGlobalStore,
     getOrCreateEntitySchema,
     IndexOptions,
-    isPropertyValidator,
+    isPropertyValidatorClass,
+    isPropertyValidatorInstance,
     PropertySchema,
     PropertyValidator,
     ReferenceActions,
     SingleTableInheritance
 } from './model';
 import { Types } from './types';
-import { validators } from './validation-decorator';
+import { validators } from './validators';
 import { FieldDecoratorResult, isFieldDecorator, MySQLOptions, PostgresOptions, SqliteOptions, ValidatorFn } from './field-decorator';
 
 export type PlainSchemaProps = { [name: string]: FieldDecoratorResult<any> | PlainSchemaProps | ClassSchema | string | number | boolean };
@@ -136,7 +138,9 @@ export function DatabaseName<T>(name: string) {
 }
 
 export function createValidatorFromFunction(validator: ValidatorFn) {
-    return class implements PropertyValidator {
+    return new class implements PropertyValidator {
+        name = validator.name;
+        options = (validator as {options?: any[]}).options;
         validate<T>(value: any, property: PropertySchema, classType?: ClassType): PropertyValidatorError | undefined | void {
             return validator(value, property, classType);
         }
@@ -334,7 +338,8 @@ function createFieldDecoratorResult<T>(
             get: () => (...args: any[]) => {
                 resetIfNecessary();
                 return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
-                    property.validators.push(createValidatorFromFunction((validatorFn as any)(...args)));
+                    const decorated = decorateValidator(validatorName, validatorFn);
+                    property.validators.push(createValidatorFromFunction((decorated as any)(...args)));
                 }]);
             }
         });
@@ -630,10 +635,12 @@ function createFieldDecoratorResult<T>(
 
     fn.validator = (...validators: (ClassType<PropertyValidator> | ValidatorFn)[]) => {
         resetIfNecessary();
-        const validatorClasses: ClassType<PropertyValidator>[] = [];
+        const validatorClasses: PropertyValidator[] = [];
 
         for (const validator of validators) {
-            if (isPropertyValidator(validator)) {
+            if (isPropertyValidatorClass(validator)) {
+                validatorClasses.push(new validator);
+            } else if (isPropertyValidatorInstance(validator)) {
                 validatorClasses.push(validator);
             } else {
                 validatorClasses.push(createValidatorFromFunction(validator));
