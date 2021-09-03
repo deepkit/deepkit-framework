@@ -1001,3 +1001,25 @@ test('decorator metadata are exposed', () => {
     expect(eValidator.name).toBe('FooValidator');
     expect(eValidator.options).toBeUndefined();
 });
+
+test('createValidator result can be validated', () => {
+
+    function xValidator(value: number, property: PropertySchema, classType: ClassType | undefined, x: number) {
+        if (value !== x) throw new PropertyValidatorError('must_be_given_value', `Must be ${x}`);
+    }
+
+    const validator = createValidator('test', xValidator);
+
+    class Model {
+        @t.validator(validator(10))
+        prop: number = 2;
+    }
+
+    expect(validate(Model, { prop: 5 })).toMatchObject([
+        {
+            path: 'prop',
+            code: 'must_be_given_value',
+            message: 'Must be 10'
+        }
+    ]);
+});
