@@ -20,6 +20,7 @@ import {
     jsonSerializer,
     plainToClass,
     PropertySchema,
+    PropertySchemaSerialized,
     t,
 } from '../index';
 import 'reflect-metadata';
@@ -872,8 +873,8 @@ test('jsonType', () => {
 
 
     const property = schema.getProperty('image');
-    const propertyJson = property.toJSON();
-    expect(propertyJson.jsonType?.type).toBe('string');
+    const propertyJson = property.toJSONNonReference();
+    expect((propertyJson.jsonType as PropertySchemaSerialized).type).toBe('string');
 });
 
 

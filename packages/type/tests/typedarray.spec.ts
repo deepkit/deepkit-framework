@@ -153,7 +153,7 @@ test('Buffer compat', () => {
 
     expect(p.type).toBe('Uint8Array');
     const transport = {
-        encoding: p.toJSON(),
+        encoding: p.toJSONNonReference(),
         value: getPropertyClassToXFunction(p, jsonSerializer)(v)
     };
 

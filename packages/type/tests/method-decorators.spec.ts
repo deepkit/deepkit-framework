@@ -710,7 +710,7 @@ test('base class with constructor', () => {
     expect(args[0].type).toBe('string');
 });
 
-test('promise is any', () => {
+test('promise is correct detected', () => {
     class Controller {
         @t
         async action1() {
@@ -724,7 +724,7 @@ test('promise is any', () => {
     }
 
     const schema = getClassSchema(Controller);
-    expect(schema.getMethod('action1').type).toBe('any');
+    expect(schema.getMethod('action1').type).toBe('promise');
     expect(schema.getMethod('action2').type).toBe('string');
 });
 

@@ -71,7 +71,7 @@ test('test propertySchema serialization classTypeName', () => {
 
     const schema = getClassSchema(Page);
     const p1 = schema.getProperty('config');
-    const j = p1.toJSON();
+    const j = p1.toJSONNonReference();
     expect(j.classTypeName).toBe('Config');
 });
 
@@ -136,7 +136,7 @@ test('test propertySchema serialization', () => {
 
     {
         const p1 = schema.getProperty('user');
-        expect(p1.toJSON().isReference).toBe(true);
+        expect(p1.toJSONNonReference().isReference).toBe(true);
     }
 
     {
