@@ -327,6 +327,10 @@ export class PropertySchema {
         return this.type === 'array';
     }
 
+    get isPromise() {
+        return this.type === 'promise';
+    }
+
     get isMap() {
         return this.type === 'map';
     }
@@ -541,6 +545,7 @@ export class PropertySchema {
         if (this.type === 'partial') return this.templateArgs[0]!;
         if (this.type === 'array') return this.templateArgs[0]!;
         if (this.type === 'map') return this.templateArgs[1]!;
+        if (this.type === 'promise') return this.templateArgs[0]!;
         throw new Error('No array or map type');
     }
 
@@ -818,7 +823,7 @@ export class PropertySchema {
     }
 
     getResolvedClassType(): ClassType {
-        if (this.isArray || this.isMap || this.isPartial) return this.getSubType().getResolvedClassType();
+        if (this.isArray || this.isMap || this.isPartial || this.isPromise) return this.getSubType().getResolvedClassType();
 
         if (this.classTypeResolved) {
             return this.classTypeResolved;

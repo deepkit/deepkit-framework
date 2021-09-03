@@ -118,6 +118,10 @@ class EntityApi {
         this.t.collectionName = name;
     }
 
+    databaseSchema(schemaName: string) {
+        this.t.databaseSchemaName = schemaName;
+    }
+
     singleTableInheritance(options: SingleTableInheritance = {}) {
         this.t.singleTableInheritance = options;
     }
@@ -129,6 +133,7 @@ export const entity: ClassDecoratorResult<typeof EntityApi> = createClassDecorat
  * Used to define a database name for an entity. Per default deepkit's database abstraction
  * uses the default database, but you can change that using this decorator.
  *
+ * @deprecated use @entity.databaseSchema() instead
  * @category Decorator
  */
 export function DatabaseName<T>(name: string) {
