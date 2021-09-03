@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { arrayBufferFrom, Entity, getClassSchema, getEntityName, jsonSerializer, nodeBufferToArrayBuffer, PropertySchema, t, uuid, } from '@deepkit/type';
+import { arrayBufferFrom, entity, Entity, getClassSchema, getEntityName, jsonSerializer, nodeBufferToArrayBuffer, PropertySchema, t, uuid, } from '@deepkit/type';
 import { getInstanceStateFromItem } from '@deepkit/orm';
 import { SimpleModel, SuperSimple } from './entities';
 import { createDatabase } from './utils';
@@ -304,38 +304,34 @@ test('test super simple model', async () => {
     }
 });
 
-// test('test databaseName', async () => {
-//     const session = await createDatabase('testing-databaseName');
-//     await (await session.adapter.connection.connect()).db('testing2').dropDatabase();
-//
-//     @Entity('DifferentDataBase', 'differentCollection')
-//     @DatabaseName('testing2')
-//     class DifferentDataBase {
-//         @t.primary.mongoId
-//         _id?: string;
-//
-//         @t
-//         name?: string;
-//     }
-//
-//     const instance = jsonSerializer.for(DifferentDataBase).deserialize({
-//         name: 'myName',
-//     });
-//
-//     expect(getDatabaseName(DifferentDataBase)).toBe('testing2');
-//     expect(session.adapter.connection.resolveCollectionName(getClassSchema(DifferentDataBase))).toBe('differentCollection');
-//
-//     expect(instance._id).toBeUndefined();
-//     await db.persist(instance);
-//     expect(instance._id).not.toBeUndefined();
-//
-//     const collection = await session.adapter.connection.getCollection(getClassSchema(DifferentDataBase));
-//     expect(await collection.countDocuments({})).toBe(1);
-//
-//     const items = await session.query(DifferentDataBase).find();
-//     expect(items[0]._id).toBe(instance._id);
-//     expect(items[0].name).toBe(instance.name);
-// });
+test('test databaseName', async () => {
+    const database = await createDatabase('testing-databaseName');
+    await database.adapter.client.dropDatabase('testing2');
+
+    @entity.name('DifferentDataBase').collectionName('differentCollection').databaseSchema('testing2')
+    class DifferentDatabase {
+        @t.primary.mongoId
+        _id?: string;
+
+        @t
+        name?: string;
+    }
+
+    const instance = jsonSerializer.for(DifferentDatabase).deserialize({
+        name: 'myName',
+    });
+
+    const schema = getClassSchema(DifferentDatabase);
+    expect(schema.databaseSchemaName).toBe('testing2');
+
+    expect(instance._id).toBeUndefined();
+
+    await database.persist(instance);
+
+    const items = await database.query(DifferentDatabase).find();
+    expect(items[0]._id).toBe(instance._id);
+    expect(items[0].name).toBe(instance.name);
+});
 
 test('no id', async () => {
     const db = await createDatabase('testing');
@@ -353,7 +349,8 @@ test('no id', async () => {
         name: 'myName',
     });
 
-    await expect(db.persist(instance)).rejects.toThrow('has no primary field');
+    //works as mongodb doesn't need any primary key to work correctly: for the moment
+    await db.persist(instance);
 });
 
 

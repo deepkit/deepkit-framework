@@ -1,7 +1,7 @@
-import {afterEach} from '@jest/globals';
-import {Database} from '@deepkit/orm';
-import {MongoDatabaseAdapter} from '../src/adapter';
-import {performance} from 'perf_hooks';
+import { afterEach } from '@jest/globals';
+import { Database } from '@deepkit/orm';
+import { MongoDatabaseAdapter } from '../src/adapter';
+import { performance } from 'perf_hooks';
 
 /**
  * Executes given exec() method 3 times and averages the consumed time.
@@ -20,7 +20,7 @@ export async function bench(times: number, title: string, exec: (i: number) => P
 
 const databases: Database<MongoDatabaseAdapter>[] = [];
 
-export async function createDatabase(dbName: string = 'testing') {
+export async function createDatabase(dbName: string = 'testing'): Promise<Database<MongoDatabaseAdapter>> {
     dbName = dbName.replace(/\s+/g, '-');
     const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/' + dbName));
     await database.adapter.client.dropDatabase(dbName);
