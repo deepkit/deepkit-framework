@@ -227,13 +227,11 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 
                 if (this.identityMap) {
                     this.identityMap.storeMany(group.type, group.items);
-                    // current definition is that only a DatabaseSession is able to track changes.
-                    // this gives room for the regular Database to insert/delete faster.
-                    // } else {
-                    //     for (const item of group.items) {
-                    //         const state = getInstanceState(classState, item);
-                    //         state.markAsPersisted();
-                    //     }
+                } else {
+                    for (const item of group.items) {
+                        const state = getInstanceState(classState, item);
+                        state.markAsPersisted();
+                    }
                 }
             }
         } finally {
