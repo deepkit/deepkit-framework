@@ -133,6 +133,8 @@ export interface PropertySchemaSerialized {
 }
 
 export interface PropertyValidator {
+    name?: string;
+    options?: any[];
     /**
      * @throws PropertyValidatorError when validation invalid
      */

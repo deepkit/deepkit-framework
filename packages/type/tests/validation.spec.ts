@@ -16,8 +16,9 @@ import {
     ValidationFailed,
     ValidationFailedItem
 } from '../index';
-import { CustomError, isPlainObject } from '@deepkit/core';
+import { ClassType, CustomError, isPlainObject } from '@deepkit/core';
 import { fail } from 'assert';
+import { createValidator } from '../src/decorators';
 
 test('test simple', async () => {
     class Page {
@@ -930,4 +931,73 @@ test('literal with defaeult', async () => {
     expect(validates(schema, serializer.deserialize({v: undefined}))).toBe(true);
     expect(validates(schema, serializer.deserialize({v: ''}))).toBe(true);
     expect(validates(schema, serializer.deserialize({v: null}))).toBe(true);
+});
+
+test('decorator metadata are exposed', () => {
+    function validatorFn(value: string, property: PropertySchema) {
+        if (value !== 'foo') throw new PropertyValidatorError('only_foo', 'Must be foo');
+    }
+
+    function xValidator(value: number, property: PropertySchema, classType: ClassType | undefined, x: number) {
+        if (value !== x) throw new PropertyValidatorError('must_be_given_value', `Must be ${x}`);
+    }
+
+    class MyValidator implements PropertyValidator {
+        validate<T>(value: any) {
+            if (value.length > 5) {
+                throw new PropertyValidatorError('too_long', 'Too long');
+            }
+        }
+    }
+
+    class NamedValidator implements PropertyValidator {
+        name = 'FooValidator';
+        validate<T>(value: any) {
+            if (value.length > 5) {
+                throw new PropertyValidatorError('too_long', 'Too long');
+            }
+        }
+    }
+
+    const validator = createValidator('test', xValidator);
+
+    class Model {
+        @t.maximum(5)
+        a!: number;
+
+        @t.validator(validatorFn)
+        b!: string;
+
+        @t.validator(MyValidator)
+        c!: string;
+
+        @t.validator(validator(10))
+        d!: number;
+
+        @t.validator(NamedValidator)
+        e!: number;
+    }
+
+    const schema = getClassSchema(Model);
+    const aSchema = schema.getProperty('a');
+    const bSchema = schema.getProperty('b');
+    const cSchema = schema.getProperty('c');
+    const dSchema = schema.getProperty('d');
+    const eSchema = schema.getProperty('e');
+    const aValidator = new aSchema.validators[0];
+    const bValidator = new bSchema.validators[0];
+    const cValidator = new cSchema.validators[0];
+    const dValidator = new dSchema.validators[0];
+    const eValidator = new eSchema.validators[0];
+
+    expect(aValidator.name).toBe('maximum');
+    expect(aValidator.options).toMatchObject([5]);
+    expect(bValidator.name).toBe('validatorFn');
+    expect(bValidator.options).toBeUndefined();
+    expect(cValidator.name).toBeUndefined();
+    expect(cValidator.options).toBeUndefined();
+    expect(dValidator.name).toBe('test');
+    expect(dValidator.options).toMatchObject([10]);
+    expect(eValidator.name).toBe('FooValidator');
+    expect(eValidator.options).toBeUndefined();
 });

@@ -18,7 +18,7 @@ import validator from 'validator';
 /**
  * @throws PropertyValidatorError when validation invalid
  */
-export type ValidatorFn = (value: any, property: PropertySchema, classType?: ClassType) => void;
+export type ValidatorFn = (value: any, property: PropertySchema, classType?: ClassType, ...args: any[]) => void;
 
 export interface FieldDecoratorResult<T> extends FieldDecoratorResultBase<T> {
     pattern(regex: RegExp): this;

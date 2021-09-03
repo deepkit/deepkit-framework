@@ -135,11 +135,33 @@ export function DatabaseName<T>(name: string) {
     };
 }
 
-export function createValidatorFromFunction(validator: ValidatorFn) {
+export function createValidatorFromFunction(validator: ValidatorFn, name:string = validator.name, options?: any[]): ClassType<PropertyValidator> {
     return class implements PropertyValidator {
+        name = name;
+        options = options;
         validate<T>(value: any, property: PropertySchema, classType?: ClassType): PropertyValidatorError | undefined | void {
             return validator(value, property, classType);
         }
+    };
+}
+
+export function createValidator(fn: ValidatorFn): (...options: any[]) => ClassType<PropertyValidator>
+export function createValidator(name: string, fn: ValidatorFn): (...options: any[]) => ClassType<PropertyValidator>
+export function createValidator(nameOrFn: string | ValidatorFn, fnOrNothing?: ValidatorFn): (...options: any[]) => ClassType<PropertyValidator> {
+    let fn: ValidatorFn;
+    let name: string;
+    if (typeof nameOrFn === 'function') {
+        fn = nameOrFn;
+        name = fn.name;
+    } else if(typeof fnOrNothing === 'function'){
+        fn = fnOrNothing;
+        name = nameOrFn;
+    }
+    return (...options: any[]) => {
+        const invoker: ValidatorFn = (value: any, propertySchema, classType) => {
+            return fn(value, propertySchema, classType, ...options);
+        }
+        return createValidatorFromFunction(invoker, name, options);
     };
 }
 
@@ -334,7 +356,7 @@ function createFieldDecoratorResult<T>(
             get: () => (...args: any[]) => {
                 resetIfNecessary();
                 return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
-                    property.validators.push(createValidatorFromFunction((validatorFn as any)(...args)));
+                    property.validators.push(createValidatorFromFunction((validatorFn as any)(...args), validatorName, args));
                 }]);
             }
         });
