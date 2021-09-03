@@ -71,7 +71,7 @@ jobs:
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
         run: |
-          npm run test \
+          npm run test:coverage \
             packages/angular-universal/ \
             packages/broker/ \
             packages/bson/ \
@@ -138,7 +138,7 @@ jobs:
           ./node_modules/.bin/npm-local-development --no-watcher
 
       - name: Test
-        run: npm run test packages/postgres/
+        run: npm run test:coverage packages/postgres/
       - name: Send coverage
         run: ./node_modules/.bin/codecov -f coverage/*.json
 
@@ -184,7 +184,7 @@ jobs:
           ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
-        run: npm run test packages/mysql/
+        run: npm run test:coverage packages/mysql/
       - name: Send coverage
         run: ./node_modules/.bin/codecov -f coverage/*.json
 
@@ -220,7 +220,7 @@ jobs:
           ./node_modules/.bin/tsc --build packages/sqlite/tsconfig.json
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
-        run: npm run test packages/sqlite/
+        run: npm run test:coverage packages/sqlite/
       - name: Send coverage
         run: ./node_modules/.bin/codecov -f coverage/*.json
 
@@ -269,7 +269,7 @@ jobs:
           ./node_modules/.bin/tsc --build packages/mongo/tsconfig.json
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
-        run: npm run test packages/mongo/
+        run: npm run test:coverage packages/mongo/
       - name: Send coverage
         run: ./node_modules/.bin/codecov -f coverage/*.json
 

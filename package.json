@@ -5,7 +5,8 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "test": "node --max_old_space_size=2048 node_modules/jest/bin/jest.js --coverage --forceExit",
+    "test": "node --max_old_space_size=2048 node_modules/jest/bin/jest.js --forceExit",
+    "test:coverage": "node --max_old_space_size=2048 node_modules/jest/bin/jest.js --coverage --forceExit",
     "bootstrap": "lerna bootstrap --no-ci",
     "bootstrap:ci": "lerna bootstrap",
     "link": "npm-local-development --no-watcher",
