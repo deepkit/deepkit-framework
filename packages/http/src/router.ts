@@ -626,7 +626,7 @@ export class Router {
         let methodCheck = '';
         if (routeConfig.httpMethods.length) {
             methodCheck = '(' + routeConfig.httpMethods.map(v => {
-                return `_method === '${v.toLowerCase()}'`;
+                return `_method === '${v.toUpperCase()}'`;
             }).join(' || ') + ') && ';
         }
 
@@ -736,8 +736,8 @@ export class Router {
 
         return compiler.build(`
             let _match;
-            const _method = request.getMethod().toLowerCase();
-            const _url = request.getUrl();
+            const _method = request.method || 'GET';
+            const _url = request.url || '/';
             const _qPosition = _url.indexOf('?');
             let uploadedFiles = {};
             const _path = _qPosition === -1 ? _url : _url.substr(0, _qPosition);
@@ -779,13 +779,7 @@ export class Router {
     }
 
     public resolve(method: string, url: string): ResolvedController | undefined {
-        return this.resolveRequest({
-            getUrl() {
-                return url;
-            },
-            getMethod() {
-                return method;
-            },
-        } as any);
+        method = method.toUpperCase();
+        return this.resolveRequest({url, method} as any);
     }
 }

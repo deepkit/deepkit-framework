@@ -722,3 +722,39 @@ test('dynamic parameter name', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/first/peter'))).json).toEqual(['peter']);
     expect((await httpKernel.request(HttpRequest.GET('/second/peter?second=true'))).json).toEqual(['peter', 'true']);
 });
+
+
+test('use http.response for serialization', async () => {
+    const schemaString = t.schema({
+        title: t.string
+    });
+
+    const errorSchema = t.schema({
+        message: t.string
+    });
+
+    class Controller {
+        @http.GET('/action1')
+        @t.array(schemaString)
+        action1() {
+            return [{title: 'a'}, {title: 1}];
+        }
+
+        @http.GET('/action2').response(200, `List`, t.array(schemaString))
+        action2() {
+            return [{title: 'a'}, {title: 1}];
+        }
+
+        @http.GET('/action3')
+            .response(200, `List`, t.array(schemaString))
+            .response(400, `Error`, t.array(errorSchema))
+        action3() {
+            return new JSONResponse([{message: 'error'}, {message: 1}]).status(400);
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    expect((await httpKernel.request(HttpRequest.GET('/action1'))).json).toEqual([{title: 'a'}, {title: '1'}]);
+    expect((await httpKernel.request(HttpRequest.GET('/action2'))).json).toEqual([{title: 'a'}, {title: '1'}]);
+    expect((await httpKernel.request(HttpRequest.GET('/action3'))).json).toEqual([{message: 'error'}, {message: '1'}]);
+});

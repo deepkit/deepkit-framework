@@ -603,7 +603,6 @@ export class HttpListener {
                 const html = await getTemplateRender()(event.injectorContext.getRootInjector(), result, this.stopwatch ? this.stopwatch : undefined);
                 result = new HtmlResponse(html, 200).header('Content-Type', 'text/html; charset=utf-8');
             }
-            if (frame) frame.end();
             const responseEvent = new HttpResponseEvent(event.injectorContext, event.request, event.response, result, event.route);
             responseEvent.controllerActionTime = Date.now() - start;
             event.next('response', responseEvent);
@@ -617,6 +616,7 @@ export class HttpListener {
                 event.next('controllerError', errorEvent);
             }
         } finally {
+            if (frame) frame.end();
         }
     }
 
@@ -666,8 +666,8 @@ export class HttpListener {
     @eventDispatcher.listen(httpWorkflow.onResponse, -100)
     async onResultSerialization(event: typeof httpWorkflow.onResponse.event) {
         if (!event.route) return;
+        if (event.response.headersSent) return;
         if (event.result === undefined || event.result === null) return;
-
 
         if (event.result instanceof HtmlResponse || event.result instanceof ServerResponse || event.result instanceof Redirect) {
             // don't do anything
@@ -680,12 +680,20 @@ export class HttpListener {
                 schema,
                 event.route && event.route.serializer ? event.route.serializer : jsonSerializer
             )(event.result.json, event.route.serializationOptions);
-        } else if (event.route.returnSchema) {
+        } else if (event.route.returnSchema && (!event.route.returnSchema.isPromise || event.route.returnSchema.getSubType())) {
             event.result = getPropertyClassToXFunction(
                 event.route.returnSchema,
                 event.route && event.route.serializer ? event.route.serializer : jsonSerializer
             )(event.result, event.route.serializationOptions);
+        } else {
+            const schema = event.route.getSchemaForResponse(200);
+            if (!schema) return;
+            event.result = getPropertyClassToXFunction(
+                schema,
+                event.route && event.route.serializer ? event.route.serializer : jsonSerializer
+            )(event.result, event.route.serializationOptions);
         }
+
     }
 
     @eventDispatcher.listen(httpWorkflow.onResponse, 100)

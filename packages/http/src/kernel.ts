@@ -31,7 +31,6 @@ export class HttpKernel {
         const httpInjectorContext = this.injectorContext.createChildScope('http');
         httpInjectorContext.set(HttpRequest, req);
         httpInjectorContext.set(HttpResponse, res);
-        httpInjectorContext.get(HttpRequest);
 
         const frame = this.stopwatch ? this.stopwatch.start(req.method + ' ' + req.getUrl(), FrameCategory.http, true) : undefined;
         const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext, this.stopwatch);
@@ -53,8 +52,10 @@ export class HttpKernel {
                 });
             }
 
-            frame?.data({ responseStatus: res.statusCode });
-            frame?.end();
+            if (frame) {
+                frame.data({ responseStatus: res.statusCode });
+                frame.end();
+            }
         }
     }
 }
