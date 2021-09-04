@@ -11,7 +11,10 @@
 import { ClassType } from '@deepkit/core';
 import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client';
 
-export class DeepkitClient extends RpcClient {
+/**
+ * A RpcClient that connects via WebSocket transport.
+ */
+export class RpcWebSocketClient extends RpcClient {
     constructor(url: string) {
         super(new RpcWebSocketClientAdapter(url));
     }
@@ -21,6 +24,11 @@ export class DeepkitClient extends RpcClient {
         return new (this as any)(`${ws}://${location.host}/${baseUrl}`);
     }
 }
+
+/**
+ * @deprecated use RpcWebSocketClient instead
+ */
+export class DeepkitClient extends RpcWebSocketClient {}
 
 declare var require: (module: string) => any;
 
