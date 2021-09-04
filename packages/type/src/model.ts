@@ -502,7 +502,7 @@ export class PropertySchema {
             return `${this.templateArgs[0]}[]${affix}`;
         }
         if (this.type === 'map') {
-            return `Map<${this.templateArgs[0]}, ${this.templateArgs[1]}>${affix}`;
+            return `Record<${this.templateArgs[0]}, ${this.templateArgs[1]}>${affix}`;
         }
         if (this.type === 'partial') {
             return `Partial<${this.templateArgs[0]}>${affix}`;
