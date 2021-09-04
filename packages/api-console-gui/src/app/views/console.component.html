@@ -49,7 +49,8 @@
         </ng-container>
     </div>
 
-    <dui-list [ngModel]="store.state.action" (ngModelChange)="navigateToAction($event)" *ngIf="view === 'rpc'">
+    <dui-list [class.group-by-controller]="store.state.viewRpc.groupBy === 'controller'"
+              [ngModel]="store.state.action" (ngModelChange)="navigateToAction($event)" *ngIf="view === 'rpc'">
         <ng-container *ngFor="let action of filteredActions; let i = index; trackBy: trackByIndex">
             <ng-container *ngIf="store.state.viewRpc.groupBy === 'controller'">
                 <ng-container *ngIf="!filteredActions[i - 1] || filteredActions[i - 1].controllerClassName !== action.controllerClassName">
@@ -70,7 +71,8 @@
         </ng-container>
     </dui-list>
 
-    <dui-list [ngModel]="store.state.route" (ngModelChange)="navigateToRoute($event)" *ngIf="view === 'http'">
+    <dui-list [class.group-by-controller]="store.state.viewHttp.groupBy === 'controller'"
+              [ngModel]="store.state.route" (ngModelChange)="navigateToRoute($event)" *ngIf="view === 'http'">
         <ng-container *ngFor="let route of filteredRoutes; let i = index; trackBy: trackByIndex">
 
             <ng-container *ngIf="store.state.viewHttp.groupBy === 'controller'">

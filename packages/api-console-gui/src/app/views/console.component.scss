@@ -125,6 +125,10 @@ dui-list-title.action {
     }
 }
 
+dui-list.group-by-controller dui-list-item {
+    padding-left: 27px;
+}
+
 dui-list-item.action {
     white-space: nowrap;
     word-break: keep-all;

@@ -189,7 +189,7 @@ export class ModuleApi {
     }
 }
 
-export const DebugControllerInterface = ControllerSymbol<DebugControllerInterface>('deepkit/debug/controller', [Config, Database, Route, RpcAction, Workflow, Event, DebugRequest]);
+export const DebugControllerInterface = ControllerSymbol<DebugControllerInterface>('.deepkit/debug/controller', [Config, Database, Route, RpcAction, Workflow, Event, DebugRequest]);
 
 export interface DebugControllerInterface {
     configuration(): Config;

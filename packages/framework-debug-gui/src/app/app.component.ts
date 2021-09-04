@@ -12,7 +12,6 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { DuiApp, observe } from '@deepkit/desktop-ui';
 import { Database, DebugRequest } from '@deepkit/framework-debug-api';
 import { Collection } from '@deepkit/rpc';
-import { Observable } from 'rxjs';
 import { ControllerClient } from './client';
 import { Router } from '@angular/router';
 
@@ -67,7 +66,7 @@ import { Router } from '@angular/router';
                         <dui-list-item routerLink="/events">Events</dui-list-item>
                         <dui-list-item routerLink="/modules">Modules</dui-list-item>
                         <dui-list-item routerLink="/profiler">Profiler</dui-list-item>
-                        <dui-list-item routerLink="/api/http">API</dui-list-item>
+                        <dui-list-item routerLink="/api/console">API</dui-list-item>
 
                         <dui-list-title>Database</dui-list-title>
                         <orm-browser-list></orm-browser-list>
@@ -126,9 +125,9 @@ export class AppComponent implements OnInit, OnDestroy {
         return requests.slice(0, 10);
     }
 
-    get requestObservable(): Observable<DebugRequest[]> | undefined {
-        return this.requests;
-    }
+    // get requestObservable(): Observable<DebugRequest[]> | undefined {
+    //     return this.requests;
+    // }
 
     async ngOnInit() {
         this.databases = await this.client.debug.databases();
