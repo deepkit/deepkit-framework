@@ -768,7 +768,9 @@ test('inheritance', () => {
     }
 
     {
-        class E extends Controller {}
+        class E extends Controller {
+        }
+
         const clone = getClassSchema(Controller).clone(E);
         expect(clone.getMethod('action1').type).toBe('class');
     }
@@ -787,17 +789,33 @@ test('inheritance', () => {
 });
 
 
-test('Promise', () => {
-   class Controller {
-       @t.generic(t.string)
-       async action(): Promise<string> {
-           return '';
-       }
-   }
+test('Promise generic', () => {
+    class Controller {
+        @t.generic(t.string)
+        async action(): Promise<string> {
+            return '';
+        }
+    }
 
-   const schema = getClassSchema(Controller);
-   const property = schema.getMethod('action');
+    const schema = getClassSchema(Controller);
+    const property = schema.getMethod('action');
 
-   expect(property.type).toBe('promise');
-   expect(property.templateArgs[0].type).toBe('string');
+    expect(property.type).toBe('promise');
+    expect(property.templateArgs[0].type).toBe('string');
+});
+
+
+test('Promise type manually should work as well', () => {
+    //we basically ignore the fact that its a promise and define its type easier
+    class Controller {
+        @t.string
+        async action(): Promise<string> {
+            return '';
+        }
+    }
+
+    const schema = getClassSchema(Controller);
+    const property = schema.getMethod('action');
+
+    expect(property.type).toBe('string');
 });
