@@ -36,6 +36,13 @@ export class CodeHighlightComponent implements OnInit, OnChanges, AfterViewInit,
     }
 
     ngAfterViewInit() {
+        if (!this.elementRef.nativeElement.parentNode) {
+            //try again next tick
+            setTimeout(() => {
+                return this.render();
+            });
+            return;
+        }
         this.render();
     }
 
@@ -77,8 +84,13 @@ export class CodeHighlightComponent implements OnInit, OnChanges, AfterViewInit,
             this.renderer.addClass(this.pre, 'language-' + this.codeHighlight);
             this.renderer.addClass(this.pre, 'overlay-scrollbar-small');
             this.renderer.setAttribute(this.pre, 'title', this.title || '');
-            this.renderer.insertBefore(this.elementRef.nativeElement.parentNode, this.pre, this.elementRef.nativeElement);
-            this.renderer.removeChild(this.elementRef.nativeElement.parentNode, this.elementRef.nativeElement);
+            if (this.elementRef.nativeElement instanceof HTMLTextAreaElement) {
+                //the textarea is replaced with the pre element
+                this.renderer.insertBefore(this.elementRef.nativeElement.parentNode, this.pre, this.elementRef.nativeElement);
+                this.renderer.removeChild(this.elementRef.nativeElement.parentNode, this.elementRef.nativeElement);
+            } else {
+                this.renderer.appendChild(this.elementRef.nativeElement, this.pre);
+            }
         }
 
         if (!this.code) return;

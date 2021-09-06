@@ -6,10 +6,10 @@ import { DeepkitClient } from '@deepkit/rpc';
     selector: 'deepkit-header-status-bar',
     template: `
         <div class="connection-info">
-            <div class="connected" *ngIf="client.transporter.connection|async as connected">
+            <div class="connected" *ngIf="client.transporter.connection|asyncRender as connected">
                 Connected
             </div>
-            <div class="disconnected" *ngIf="!(client.transporter.connection|async)">
+            <div class="disconnected" *ngIf="!(client.transporter.connection|asyncRender)">
                 Disconnected
             </div>
         </div>

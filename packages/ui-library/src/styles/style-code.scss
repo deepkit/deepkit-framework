@@ -23,20 +23,6 @@ pre[class*="language-"] {
 }
 
 .dui-theme-dark {
-    code[class*="language-"]::-moz-selection,
-    pre[class*="language-"]::-moz-selection,
-    code[class*="language-"] ::-moz-selection,
-    pre[class*="language-"] ::-moz-selection {
-        background: #363636;
-    }
-
-    code[class*="language-"]::selection,
-    pre[class*="language-"]::selection,
-    code[class*="language-"] ::selection,
-    pre[class*="language-"] ::selection {
-        background: #363636;
-    }
-
     :not(pre) > code[class*="language-"] {
         white-space: normal;
         border-radius: 0.2em;
@@ -222,20 +208,6 @@ pre[class*="language-"] {
         -moz-hyphens: none;
         -ms-hyphens: none;
         hyphens: none;
-    }
-
-    pre[class*="language-"]::-moz-selection,
-    pre[class*="language-"] ::-moz-selection,
-    code[class*="language-"]::-moz-selection,
-    code[class*="language-"] ::-moz-selection {
-        background: #8da1b9;
-    }
-
-    pre[class*="language-"]::selection,
-    pre[class*="language-"] ::selection,
-    code[class*="language-"]::selection,
-    code[class*="language-"] ::selection {
-        background: #8da1b9;
     }
 
     /* Code blocks */

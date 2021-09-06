@@ -4,7 +4,7 @@ import { Component, Input } from '@angular/core';
     selector: 'deepkit-box',
     template: `
         <div class="box">
-            <div class="box-title" *ngIf="title" (click)="open = !open">
+            <div class="box-title" *ngIf="title" (click)="toggleOpen()">
                 <div>
                     <dui-icon *ngIf="toggleAble" clickable [name]="open ? 'arrow_down' : 'arrow_right'"></dui-icon>
                     {{title}}
@@ -23,4 +23,9 @@ export class DeepkitBoxComponent {
     @Input() toggleAble: boolean = false;
 
     open = true;
+
+    toggleOpen() {
+        if (!this.toggleAble) return;
+        this.open = !this.open;
+    }
 }
