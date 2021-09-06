@@ -455,8 +455,7 @@ export function createXToClassFunction<T>(schema: ClassSchema<T>, serializer: Se
     const constructorArguments: string[] = [];
     const constructorArgumentNames: string[] = [];
     const assignedViaConstructor: { [propertyName: string]: boolean } = {};
-    const constructorParameter = schema.getMethodProperties('constructor');
-
+    const constructorParameter = schema.isCustomClass() ? schema.getMethodProperties('constructor') : [];
 
     for (const property of constructorParameter) {
         assignedViaConstructor[property.name] = true;
