@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { BodyValidation, HtmlResponse, http, HttpResponse, Redirect, UploadedFile } from '@deepkit/http';
 import { Logger } from '@deepkit/logger';
 import { readFile } from 'fs/promises';
@@ -55,12 +56,12 @@ export class MainController {
     async add(@http.body() body: AddUserDto, bodyValidation: BodyValidation) {
         if (bodyValidation.hasErrors()) return <UserList error={bodyValidation.getErrorMessageForPath('username')}/>;
 
-        this.logger.log('New user!');
         const user = new User(body.username);
         if (body.imageUpload) {
             //alternatively, move the file to `var/` and store its path into `user.image` (change it to a string)
             user.image = await readFile(body.imageUpload.path);
         }
+        this.logger.log('New user!', user);
         await this.database.persist(user);
 
         return Redirect.toRoute('startPage');

@@ -9,13 +9,14 @@ import { config } from './src/config';
 import { JSONTransport, Logger } from '@deepkit/logger';
 import { createListener } from '@deepkit/event';
 import { App } from '@deepkit/app';
+import { RpcController } from './src/controller/rpc.controller';
 
 const bookStoreCrud = createCrudRoutes([Author, Book]);
 
 new App({
     config: config,
-    providers: [SQLiteDatabase],
-    controllers: [MainController, UsersCommand],
+    providers: [SQLiteDatabase, MainController],
+    controllers: [MainController, UsersCommand, RpcController],
     listeners: [
         createListener(onServerMainBootstrapDone, (event, logger, environment) => {
             logger.log(`Environment <yellow>${environment}</yellow>`);
@@ -35,8 +36,7 @@ new App({
 
              Have fun
             `
-        })
-            .filter(filter => filter.forModules(bookStoreCrud)),
+        }).filter(filter => filter.forModules(bookStoreCrud)),
 
         new FrameworkModule({
             publicDir: 'public',

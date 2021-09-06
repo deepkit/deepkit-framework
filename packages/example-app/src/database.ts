@@ -8,7 +8,7 @@ import { injectable } from '@deepkit/injector';
 export class User {
     @t.primary.autoIncrement id: number = 0;
     @t created: Date = new Date;
-    @t.jsonType(t.string.optional).serialize(v => v && v.data) image?: Uint8Array;
+    @t.jsonType(t.string.optional).serialize(v => v && v.data, 'json') image?: Uint8Array;
 
     constructor(
         @t.minLength(3).index({unique: true}) public username: string
