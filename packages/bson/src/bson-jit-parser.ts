@@ -377,8 +377,8 @@ function createSchemaDecoder(schema: ClassSchema): DecoderFn {
     }
 
     let instantiate = '';
+    compiler.context.set('_classType', schema.classType);
     if (schema.isCustomClass()) {
-        compiler.context.set('_classType', schema.classType);
         instantiate = `
             _instance = new _classType(${constructorArgumentNames.join(', ')});
             ${setProperties.join('\n')}
@@ -387,7 +387,8 @@ function createSchemaDecoder(schema: ClassSchema): DecoderFn {
     }
 
     const functionCode = `
-        var object = {};
+        var object = ${schema.isCustomClass() ? '{}' : 'new _classType'};
+
         ${schema.isCustomClass() ? 'var _instance;' : ''}
         const end = parser.eatUInt32() + parser.offset;
 
