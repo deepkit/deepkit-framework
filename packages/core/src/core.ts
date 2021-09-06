@@ -645,3 +645,16 @@ declare var v8debug: any;
 export function inDebugMode() {
     return typeof v8debug === 'object' || /--debug|--inspect/.test(process.execArgv.join(' '));
 }
+
+/**
+ * Create a new class with the given name.
+ * This is currently the only know way to make it workable in browsers too.
+ */
+export function createDynamicClass(name: string, base?: ClassType): ClassType {
+    if (base) {
+        let baseName = getClassName(base);
+        if (baseName === name) baseName += 'Base';
+        return new Function(baseName, `return class ${name} extends ${baseName} {}`)(base);
+    }
+    return new Function(`return class ${name} {}`)();
+}

@@ -3,6 +3,7 @@ import {
     asyncOperation,
     changeClass,
     collectForMicrotask,
+    createDynamicClass,
     getClassName,
     getClassTypeFromInstance,
     getObjectKeysSize,
@@ -494,4 +495,19 @@ test('isClassInstance', async () => {
     expect(changeClass(model1, Model2) instanceof Base).toBe(true);
     expect(changeClass(model1, Model2) instanceof Model1).toBe(false);
     expect(changeClass(model1, Model2).model2()).toBe(true);
+});
+
+test('createDynamicClass', () => {
+    const class1 = createDynamicClass('Model');
+    expect(getClassName(class1)).toBe('Model');
+    expect(getClassName(new class1)).toBe('Model');
+    expect(class1.toString()).toBe('class Model {}');
+
+    class Base {}
+
+    const class2 = createDynamicClass('Model2', Base);
+    expect(getClassName(class2)).toBe('Model2');
+    expect(getClassName(new class2)).toBe('Model2');
+    expect(new class2).toBeInstanceOf(Base);
+    expect(class2.toString()).toBe('class Model2 extends Base {}');
 });
