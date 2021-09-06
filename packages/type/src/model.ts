@@ -1914,7 +1914,7 @@ export function getClassSchema<T>(classTypeIn: AbstractClassType<T> | Object | C
 export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = '', baseClass?: ClassType): ClassSchema<T> {
     const fromClass = clazz !== undefined;
 
-    const c = clazz || (name ? createDynamicClass(name, baseClass) : class {});
+    const c = clazz || (name ? createDynamicClass(name, baseClass) : baseClass ? class extends baseClass{} : class {});
 
     const classSchema = getOrCreateEntitySchema(c);
     classSchema.name = name;

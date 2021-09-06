@@ -250,3 +250,19 @@ test('slice include', () => {
     }
 
 });
+
+
+test('extendClass', () => {
+    const base = t.schema({
+        ok: t.number,
+    })
+
+    class Sub extends t.extendClass(base, {
+        yes: t.boolean,
+    }) {
+    }
+
+    const schema = getClassSchema(Sub);
+    expect(schema.hasProperty('yes')).toBe(true);
+    expect(schema.hasProperty('ok')).toBe(true);
+});
