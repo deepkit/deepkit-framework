@@ -45,6 +45,19 @@ export interface FieldDecoratorResultBase<T> {
     /**
      * Sets the name of this property. Important for cases where the actual name is lost during compilation.
      * This is only necessary in constructor arguments.
+     *
+     * Note: This is not to remap a property key! Rather its ONLY for use-cases where
+     * parameter names get minified (like in Angular).
+     *
+     * ```typescript
+     * class Entity {
+     *     @t age: number = 0;
+     *
+     *     constructor(
+     *         @t.name('title') public title:string,
+     *     ) {}
+     * }
+     * ```
      */
     name(name: string): this;
 
