@@ -1,4 +1,7 @@
 import { ClassSchema, PropertySchema } from '@deepkit/type';
+//@ts-ignore
+import objectInspect from 'object-inspect';
+import { getClassName } from '@deepkit/core';
 
 export function trackByIndex(index: number) {
     return index;
@@ -69,6 +72,34 @@ export function propertyToTSJSONInterface(property: PropertySchema, options: ToT
     return `${property.type}${affix}`;
 }
 
+function toHex(number: number): string {
+    const v = number.toString(16);
+    if (v.length === 1) return '0' + v;
+    return v;
+}
+
+function inspectBytes(this: any) {
+    return `${getClassName(this)} '${[...this].map(toHex).join('')}'`;
+}
+
+(ArrayBuffer.prototype as any).inspect = inspectBytes;
+(Uint8Array.prototype as any).inspect = inspectBytes;
+(Uint8ClampedArray.prototype as any).inspect = inspectBytes;
+(Int8Array.prototype as any).inspect = inspectBytes;
+(Uint16Array.prototype as any).inspect = inspectBytes;
+(Int16Array.prototype as any).inspect = inspectBytes;
+(Int32Array.prototype as any).inspect = inspectBytes;
+(Uint32Array.prototype as any).inspect = inspectBytes;
+(Float32Array.prototype as any).inspect = inspectBytes;
+(Float64Array.prototype as any).inspect = inspectBytes;
+
+export function inspect(obj: any) {
+    return objectInspect(obj, {
+        maxStringLength: 512,
+        indent: 4,
+        depth: 25,
+    });
+}
 
 export const methods: string[] = [
     'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'

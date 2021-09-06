@@ -5,36 +5,6 @@
     flex-direction: column;
 }
 
-.server-stats {
-    overflow: hidden;
-    display: flex;
-    max-height: 27px;
-    flex-direction: column;
-    background-color: var(--dui-window-header-bg);
-
-    .actions {
-        flex: 0 0 28px;
-        display: flex;
-        align-items: center;
-        padding: 3px 5px;
-        font-size: 12px;
-        border-top: 1px solid var(--line-color-light);
-    }
-
-    .output {
-        flex: 1;
-        padding: 12px;
-    }
-
-    &.visible {
-        max-height: unset;
-        flex: 0 0 170px;
-        .actions {
-            border-bottom: 1px solid var(--line-color-light);
-        }
-    }
-}
-
 .requests {
     flex: 1;
     padding: 0 10px;
@@ -49,6 +19,7 @@
         }
     }
 }
+
 .request {
     display: block;
     margin-top: 6px;

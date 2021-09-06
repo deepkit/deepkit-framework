@@ -49,40 +49,10 @@
     }
 }
 
-.actions-title {
-    font-size: 11px;
-    padding-left: 4px;
-    text-transform: uppercase;
-    margin-right: auto;
+.code-generation-code {
+    height: 100%;
+    > pre {
+        padding: 5px 12px;
+        overflow: unset;
+    }
 }
-
-.code-generation {
-     overflow: hidden;
-     display: flex;
-     max-height: 27px;
-     flex-direction: column;
-     background-color: var(--dui-window-header-bg);
-
-     .actions {
-         flex: 0 0 28px;
-         display: flex;
-         justify-content: flex-end;
-         align-items: center;
-         padding: 3px 5px;
-         border-top: 1px solid var(--line-color-light);
-     }
-
-     .output {
-         flex: 1;
-         padding: 12px;
-     }
-
-     &.visible {
-         max-height: unset;
-         flex: 0 0 170px;
-
-         .actions {
-             border-bottom: 1px solid var(--line-color-light);
-         }
-     }
- }

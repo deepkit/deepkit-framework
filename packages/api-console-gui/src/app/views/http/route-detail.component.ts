@@ -117,24 +117,19 @@ import { classSchemaToTSJSONInterface, headerStatusCodes, methods, propertyToTSJ
                 </deepkit-box>
             </div>
         </div>
-        <div class="code-generation" [class.visible]="store.state.viewHttp.codeGenerationVisible">
-            <div class="actions">
-                <dui-icon clickable (click)="toggleCodeGenerationVisibility()"
-                          [name]="store.state.viewHttp.codeGenerationVisible ? 'arrow_down' : 'arrow_right'"></dui-icon>
 
-                <div class="actions-title" (click)="toggleCodeGenerationVisibility()">
-                    Code generation
-                </div>
-
+        <deepkit-toggle-box title="Code-generation" [(visible)]="store.state.viewHttp.codeGenerationVisible" (visibleChange)="store.store()">
+            <ng-container header>
                 <dui-select textured small [(ngModel)]="store.state.viewHttp.codeGenerationType" (ngModelChange)="updateRouteState(route)">
                     <dui-option value="curl">cURL</dui-option>
                     <dui-option value="http">HTTP</dui-option>
                 </dui-select>
-            </div>
-            <div *ngIf="store.state.viewHttp.codeGenerationVisible" class="output code-generation-code overlay-scrollbar-small">
-                <div codeHighlight="bash" [code]="codeGenerated"></div>
-            </div>
-        </div>
+            </ng-container>
+
+            <ng-container *ngIf="store.state.viewHttp.codeGenerationVisible">
+                <div class="code-generation-code overlay-scrollbar-small" codeHighlight="bash" [code]="codeGenerated"></div>
+            </ng-container>
+        </deepkit-toggle-box>
     `,
     styleUrls: ['./route-detail.component.scss']
 })

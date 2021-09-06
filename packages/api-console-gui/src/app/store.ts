@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 import { ApiAction, ApiRoute } from '../api';
 import { ClassSchema, classToPlain, plainToClass, PropertySchema, t } from '@deepkit/type';
+import { RemoteController, RpcClient, RpcClientEventIncomingMessage, RpcClientEventOutgoingMessage } from '@deepkit/rpc';
+import { Observable, Subject, Subscription } from 'rxjs';
 
 export class DataStructure {
     @t active: boolean = false;
@@ -39,7 +41,7 @@ export function extractDataStructure(ds: DataStructure, property: PropertySchema
         for (const childDs of ds.children) {
             if (!childDs.properties[keyProperty.name]) continue;
             if (!childDs.properties[valueProperty.name]) continue;
-            v[extractDataStructure(childDs.properties[keyProperty.name], keyProperty)] = extractDataStructure(childDs.properties[valueProperty.name], valueProperty)
+            v[extractDataStructure(childDs.properties[keyProperty.name], keyProperty)] = extractDataStructure(childDs.properties[valueProperty.name], valueProperty);
         }
 
         return v;
@@ -176,7 +178,7 @@ export class ViewHttp {
 
     @t groupBy: 'none' | 'controller' | 'method' = 'controller';
 
-    @t.map(t.boolean) closed: {[name: string]: boolean} = {};
+    @t.map(t.boolean) closed: { [name: string]: boolean } = {};
 }
 
 export class ViewRpc {
@@ -186,11 +188,14 @@ export class ViewRpc {
     @t filterPath: string = '';
 
     @t viewRequests: 'all' | 'selected' = 'selected';
+    @t displayClients: boolean = false;
+    @t displayClientsHeight: number = 170;
 
     @t groupBy: 'none' | 'controller' = 'controller';
 
-    @t.map(t.boolean) closed: {[name: string]: boolean} = {};
+    @t.map(t.boolean) closed: { [name: string]: boolean } = {};
 }
+
 export class Environment {
     @t.array(t.any) headers: { name: string, value: string }[] = [];
 
@@ -198,10 +203,96 @@ export class Environment {
     }
 }
 
+export type RpcExecutionSubscription = {id: number, emitted: any[], unsubscribed: boolean, unsubscribe: () => void, completed: boolean, error?: any, sub: Subscription};
+
+export class RpcExecution {
+    @t created: Date = new Date();
+
+    //we don't store a reference because the client could be deleted anytime.
+    @t clientName: string = '';
+
+    @t open?: boolean;
+
+    @t address?: string;
+    @t took: number = -1;
+
+    @t.any error?: any;
+
+    protected _result?: any;
+
+    @t type: 'subject' | 'observable' | 'static' = 'static';
+
+    isObservable(): boolean {
+        return this.type === 'subject' || this.type === 'observable';
+    }
+
+    public subject?: Subject<any>;
+    public observable?: Observable<any>;
+
+    public subscriptionsId: number = 0;
+    public subscriptions: RpcExecutionSubscription[] = [];
+
+    get result() {
+        if (this._result === undefined) {
+            const json = localStorage.getItem('@deepkit/api-console/rpcExecution/result/' + this.bodyStoreId);
+            if (json) {
+                this._result = JSON.parse(json);
+            }
+        }
+        return this._result || undefined;
+    }
+
+    set result(v: any | undefined) {
+        this._result = v;
+        if (v) localStorage.setItem('@deepkit/api-console/rpcExecution/result/' + this.bodyStoreId, JSON.stringify(v));
+    }
+
+    get bodyStoreId(): string {
+        return this.controllerPath + '-' + this.method + '_' + this.created.getTime();
+    }
+
+    constructor(
+        @t.name('controllerClassName') public controllerClassName: string,
+        @t.name('controllerPath') public controllerPath: string,
+        @t.name('method') public method: string,
+        @t.array(t.any).name('args') public args: any[],
+    ) {
+    }
+
+    actionId() {
+        return this.controllerPath + '.' + this.method;
+    }
+}
+
+export class RpcActionState {
+    constructor(
+        @t.name('id') public id: string,
+    ) {
+    }
+
+    @t params: DataStructure = new DataStructure(undefined);
+}
+
+export class RpcClientConfiguration {
+    public client?: RpcClient;
+
+    controller: {[path: string]: RemoteController<any>} = {};
+
+    incomingMessages: RpcClientEventIncomingMessage[] = [];
+    outgoingMessages: RpcClientEventOutgoingMessage[] = [];
+
+    constructor(
+        @t.name('name') public name: string,
+    ) {
+    }
+}
+
 export class StoreValue {
     @t.map(RouteState) routeStates: { [name: string]: RouteState } = {};
+    @t.map(RpcActionState) rpcActionStates: { [name: string]: RpcActionState } = {};
 
     @t.array(Request) requests: Request[] = [];
+    @t.array(RpcExecution) rpcExecutions: RpcExecution[] = [];
 
     @t selectedRoute?: string;
 
@@ -211,12 +302,34 @@ export class StoreValue {
     @t.array(Environment) environments: Environment[] = [new Environment('default')];
     @t activeEnvironmentIndex: number = 0;
 
+    @t.array(RpcClientConfiguration) rpcClients: RpcClientConfiguration[] = [new RpcClientConfiguration('Client 1')];
+    @t activeRpcClientIndex: number = 0;
+
+    @t activeDebugRpcClientIndex: number = 0;
+
+    get rpcClient(): RpcClientConfiguration | undefined {
+        return this.rpcClients[this.activeRpcClientIndex];
+    }
+
+    set rpcClient(v: RpcClientConfiguration | undefined) {
+        this.activeRpcClientIndex = v ? this.rpcClients.indexOf(v) : -1;
+    }
+
     get activeEnvironment(): Environment | undefined {
         return this.environments[this.activeEnvironmentIndex];
     }
 
     set activeEnvironment(e: Environment | undefined) {
         this.activeEnvironmentIndex = e ? this.environments.indexOf(e) : -1;
+    }
+
+    getRpcActionState(action: ApiAction): RpcActionState {
+        let rpcState: RpcActionState | undefined = this.rpcActionStates[action.id];
+        if (!rpcState) {
+            rpcState = new RpcActionState(action.id);
+            this.rpcActionStates[action.id] = rpcState!;
+        }
+        return rpcState;
     }
 
     route?: ApiRoute;

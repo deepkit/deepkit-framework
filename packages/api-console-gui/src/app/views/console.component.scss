@@ -1,10 +1,6 @@
 /* You can add global styles to this file, and also import other style files */
 @import "./view-styles";
 
-::ng-deep {
-    @import "../../style-code";
-}
-
 :host {
     display: flex;
     width: 100%;
@@ -17,6 +13,7 @@
     flex: 0 0 320px;
     overflow: hidden;
     max-width: 50%;
+    min-width: 180px;
     display: flex;
     flex-direction: column;
     background-color: var(--dui-window-header-bg);

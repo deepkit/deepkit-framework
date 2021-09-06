@@ -172,21 +172,19 @@ export class ConsoleComponent implements OnInit, OnDestroy {
         this.entryPoints = await this.client.api.getEntryPoints();
 
         for (const action of this.entryPoints.rpcActions) {
-            const schemas = action.getParametersSchemas();
-            if (schemas.length) {
-                const last = schemas[schemas.length - 1];
+            const schema = action.getParametersSchema();
+            if (schema) {
                 const args: string[] = [];
-                for (const property of last.getProperties()) {
-                    args.push(property.name + (property.isReference ? '?' : '') + ': ' + property.toString(false));
+                for (const property of schema.getProperties()) {
+                    args.push(property.name + (property.isOptional ? '?' : '') + ': ' + property.toString(false));
                 }
 
                 action.parameterSignature = args.join(', ');
             }
 
-            const resultSchemas = action.getResultsSchemas();
-            if (resultSchemas.length) {
-                const last = resultSchemas[resultSchemas.length - 1];
-                let type = last.getProperties()[0];
+            const resultSchema = action.getResultsSchema();
+            if (resultSchema) {
+                let type = resultSchema.getProperty('v');
                 if (type.type === 'promise') type = type.templateArgs[0];
                 if (type) {
                     action.returnSignature = type.toString(false) + (type.isOptional ? '|undefined' : '');

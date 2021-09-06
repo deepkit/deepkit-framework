@@ -55,18 +55,18 @@ export class ApiAction {
     ) {
     }
 
-    getParametersSchemas(): ClassSchema[] {
+    getParametersSchema(): ClassSchema | undefined {
         if (!this.deserializedParameterSchemas) {
             this.deserializedParameterSchemas = deserializeSchemas(this.parameterSchemas);
         }
-        return this.deserializedParameterSchemas;
+        return this.deserializedParameterSchemas[this.deserializedParameterSchemas.length - 1];
     }
 
-    getResultsSchemas(): ClassSchema[] {
+    getResultsSchema(): ClassSchema | undefined {
         if (!this.deserializedResultSchemas) {
             this.deserializedResultSchemas = deserializeSchemas(this.resultSchemas);
         }
-        return this.deserializedResultSchemas;
+        return this.deserializedResultSchemas[this.deserializedResultSchemas.length - 1];
     }
 
     get id(): string {

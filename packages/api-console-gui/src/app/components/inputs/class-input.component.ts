@@ -15,8 +15,8 @@ import { DataStructure } from '../../store';
                         [(ngModel)]="model.asReference" *ngIf="property.isReference || property.backReference"
                         (ngModelChange)="modelChange.emit(model)"
             >
-                <dui-option [value]="false">Create new {{schema.getClassName()}}</dui-option>
-                <dui-option [value]="true">Reference existing</dui-option>
+                <dui-option [value]="false">{{schema.getClassName()}}</dui-option>
+                <dui-option [value]="true">Reference</dui-option>
             </dui-select>
 
             <div style="padding: 4px;" *ngIf="showOnlyPrimaryKey && schema.getPrimaryField() as p">

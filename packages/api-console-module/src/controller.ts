@@ -108,6 +108,7 @@ export class ApiConsoleController implements ApiConsoleApi {
 
                 try {
                     const resultSchema = createClassSchema();
+                    resultProperty.name = 'v';
                     resultSchema.registerProperty(resultProperty);
                     rpcAction.resultSchemas = serializeSchemas([resultSchema]);
                 } catch (error) {

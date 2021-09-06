@@ -36,7 +36,7 @@ import { ApiRoute } from '../../../api';
 
             <div class="request" *ngFor="let r of requests; let i = index; trackBy: trackByIndex">
                 <div class="line">
-                    <dui-icon clickable (click)="r.open = !isRequestOpen(r, i)" [name]="isRequestOpen(r, i) ? 'arrow_down' : 'arrow_right'"></dui-icon>
+                    <dui-icon clickable (click)="r.open = !isOpen(r, i)" [name]="isOpen(r, i) ? 'arrow_down' : 'arrow_right'"></dui-icon>
                     <div class="method">{{r.method}}</div>
                     <div class="url text-selection">
                         {{r.url}}
@@ -47,9 +47,9 @@ import { ApiRoute } from '../../../api';
                             {{r.status === 0 ? r.error ? 'ERROR' : 'pending' : r.status}} {{r.statusText}}
                         </div>
                     </div>
-                    <dui-icon clickable (click)="removeRequest(i)" name="garbage"></dui-icon>
+                    <dui-icon clickable (click)="remove(i)" name="garbage"></dui-icon>
                 </div>
-                <div class="results" *ngIf="isRequestOpen(r, i)">
+                <div class="results" *ngIf="isOpen(r, i)">
                     <div class="request-info">
                         Executed at {{r.created|date:'short'}} in {{r.took|number:'0.0-3'}} ms. <code>{{r.getHeader('content-type')}}</code>
                     </div>
@@ -81,21 +81,12 @@ import { ApiRoute } from '../../../api';
             </div>
         </div>
 
-        <div class="server-stats" [class.visible]="store.state.viewHttp.serverStatsVisible">
-            <div class="actions">
-                <dui-icon clickable (click)="toggleServerStatsVisibility()"
-                          [name]="store.state.viewHttp.serverStatsVisible ? 'arrow_down' : 'arrow_right'"></dui-icon>
-                <div class="actions-title" (click)="toggleServerStatsVisibility()">
-                    Stats
-                </div>
-                <div style="margin-left: auto;">
-                    {{requests.length}}/{{store.state.requests.length}} requests
-                </div>
-            </div>
-            <div *ngIf="store.state.viewHttp.serverStatsVisible" class="output overlay-scrollbar-small">
-                stats
-            </div>
-        </div>
+        <deepkit-toggle-box title="Stats" [(visible)]="store.state.viewHttp.serverStatsVisible" (visibleChange)="store.store()">
+            <ng-container header>
+                {{requests.length}}/{{store.state.requests.length}} requests
+            </ng-container>
+            TODO
+        </deepkit-toggle-box>
     `,
     styleUrls: ['./results.component.scss']
 })
@@ -128,7 +119,7 @@ export class HttpRequestsComponent {
         return status >= 500;
     }
 
-    isRequestOpen(r: Request, i: number): boolean {
+    isOpen(r: Request, i: number): boolean {
         return r.open === undefined ? i === 0 : r.open;
     }
 
@@ -148,7 +139,7 @@ export class HttpRequestsComponent {
         this.cd.detectChanges();
     }
 
-    removeRequest(index: number): void {
+    remove(index: number): void {
         this.store.set(state => {
             const removed = state.requests.splice(index, 1);
             for (const r of removed) {

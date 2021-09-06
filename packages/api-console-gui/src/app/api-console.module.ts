@@ -22,7 +22,6 @@ import { ConsoleComponent } from './views/console.component';
 import { DeepkitClient } from '@deepkit/rpc';
 import { ControllerClient } from './client';
 import { Store } from './store';
-import { CodeHighlightComponent } from './components/code-highlight.component';
 import { InputRegistry } from './components/inputs/registry';
 import { StringInputComponent } from './components/inputs/string-input.component';
 import { InputComponent } from './components/inputs/input.component';
@@ -43,12 +42,12 @@ import { DeepkitUIModule } from '@deepkit/ui-library';
 import { HttpRouteDetailComponent } from './views/http/route-detail.component';
 import { HttpRequestsComponent } from './views/http/results.component';
 import { RpcDetailComponent } from './views/rpc/rpc-detail.component';
+import { RpcInspectMessageComponent } from './views/rpc/rpc-inspect-message.component';
 
 @NgModule({
     declarations: [
         ConsoleComponent,
         OverviewComponent,
-        CodeHighlightComponent,
         StringInputComponent,
         InputComponent,
         ArrayInputComponent,
@@ -64,6 +63,7 @@ import { RpcDetailComponent } from './views/rpc/rpc-detail.component';
         HttpRouteDetailComponent,
         HttpRequestsComponent,
         RpcDetailComponent,
+        RpcInspectMessageComponent,
     ],
     imports: [
         BrowserModule,

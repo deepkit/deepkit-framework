@@ -1,9 +1,5 @@
 @import "./view-styles";
 
-::ng-deep {
-    @import "../../style-code";
-}
-
 .error, .loading {
     padding: 50px;
     text-align: center;
