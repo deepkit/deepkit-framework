@@ -13,6 +13,7 @@ import {
     arrayRemoveItem,
     capitalize,
     ClassType,
+    createDynamicClass,
     eachKey,
     eachPair,
     ExtractClassType,
@@ -516,6 +517,9 @@ export class PropertySchema {
         if (this.type === 'enum') {
             return 'enum' + affix;
         }
+        if (this.type === 'date') {
+            return 'Date' + affix;
+        }
         if (this.type === 'class') {
             if (this.classTypeName) {
                 if (this.templateArgs.length) {
@@ -560,13 +564,13 @@ export class PropertySchema {
         return this;
     }
 
-    toJSONNonReference(stack: SerializerStack = new SerializerStack): PropertySchemaSerialized {
-        const property = this.toJSON(stack);
+    toJSONNonReference(stack: SerializerStack = new SerializerStack, disableTypeReuse: boolean = false): PropertySchemaSerialized {
+        const property = this.toJSON(stack, disableTypeReuse);
         if ('number' === typeof property) throw new Error(`No reference allowed as PropertySchema in ${this.name}`);
         return property;
     }
 
-    toJSON(stack: SerializerStack = new SerializerStack): PropertySchemaSerialized | number {
+    toJSON(stack: SerializerStack = new SerializerStack, disableTypeReuse: boolean = false): PropertySchemaSerialized | number {
         const id = stack.get(this);
         if (id !== undefined) {
             return id;
@@ -593,14 +597,14 @@ export class PropertySchema {
         if (this.defaultValue) props.defaultValue = this.defaultValue();
         if (this.isReference) props.isReference = this.isReference;
         if (this.type === 'enum') props.enum = this.getResolvedClassType();
-        if (this.jsonType) props.jsonType = this.jsonType.toJSON(stack);
+        if (this.jsonType) props.jsonType = this.jsonType.toJSON(stack, disableTypeReuse);
         if (this.hasDefaultValue) props.hasDefaultValue = true;
 
         if (this.isAutoIncrement) props.autoIncrement = true;
         if (props.noValidation) this.noValidation = true;
         if (getObjectKeysSize(this.data) > 0) props.data = this.data;
 
-        if (this.templateArgs.length) props.templateArgs = this.templateArgs.map(v => v.toJSON(stack));
+        if (this.templateArgs.length) props.templateArgs = this.templateArgs.map(v => v.toJSON(stack, disableTypeReuse));
 
         if (this.backReference) {
             let via = '';
@@ -616,13 +620,12 @@ export class PropertySchema {
         const resolved = this.getResolvedClassTypeForValidType();
         if (resolved) {
             const name = getClassSchema(resolved).name;
-            if (!name) {
+            if (name) props.classType = name;
+            if (disableTypeReuse || !props.classType) {
                 props.classTypeName = getClassName(resolved);
-                if (this.type === 'class') {
-                    props.classTypeProperties = getClassSchema(resolved).getProperties().map(v => v.toJSON(stack));
+                if (this.type === 'class' || this.type === 'partial') {
+                    props.classTypeProperties = getClassSchema(resolved).getProperties().map(v => v.toJSON(stack, disableTypeReuse));
                 }
-            } else {
-                props.classType = name;
             }
         }
 
@@ -634,7 +637,7 @@ export class PropertySchema {
         parent?: PropertySchema,
         throwForInvalidClassType: boolean = true,
         registry: { [name: string]: ClassSchema } = getGlobalStore().RegisteredEntities,
-        stack: DeserializerStack = new DeserializerStack
+        stack: DeserializerStack = new DeserializerStack,
     ): PropertySchema {
         if ('number' === typeof props) {
             const p = stack.get(props);
@@ -689,19 +692,24 @@ export class PropertySchema {
             const entity = registry[props.classType];
             if (entity) {
                 p.classType = getClassSchema(entity).classType;
-            } else if (throwForInvalidClassType) {
-                throw new Error(`Could not deserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got entity name ${props.classType} . ` +
-                    `Make sure given entity is loaded (imported at least once globally) and correctly annotated using @entity.name('${props.classType}')`);
+            } else {
+                props.classType = undefined; //so class construction is triggered
+
+                if (throwForInvalidClassType) {
+                    throw new Error(`Could not deserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got entity name ${props.classType} . ` +
+                        `Make sure given entity is loaded (imported at least once globally) and correctly annotated using @entity.name('${props.classType}')`);
+                }
             }
-            // } else if (p.type === 'class' && !props['classType']) {
-            //     throw new Error(`Could not unserialize type information for ${p.methodName ? p.methodName + '.' : ''}${p.name}, got class name ${props['classTypeName']}. ` +
-            //         `Make sure this class has a @entity.name(name) decorator with a unique name assigned and given entity is loaded (imported at least once globally)`);
-        } else if (props.classTypeProperties) {
+        }
+
+        //class construction from type information
+        if (!props.classType && props.classTypeProperties) {
             const properties = props.classTypeProperties.map(v => PropertySchema.fromJSON(v, p, throwForInvalidClassType, registry, stack));
-            const schema = createClassSchema();
+            const schema = createClassSchema(undefined, props.classTypeName);
             for (const property of properties) schema.registerProperty(property);
             p.classType = schema.classType;
         }
+
         p.classTypeName = props.classTypeName;
 
         return p;
@@ -956,7 +964,7 @@ export class ClassSchema<T = any> {
      * Whether this schema annotated an actual custom class.
      */
     public isCustomClass(): boolean {
-        return (this.classType as any) !== Object;
+        return this.fromClass && (this.classType as any) !== Object;
     }
 
     toString() {
@@ -1424,6 +1432,20 @@ export class ClassSchema<T = any> {
     protected initializeMethod(name: string) {
         if (this.initializedMethods.has(name)) return;
 
+        if (!this.fromClass) {
+            //all properties have been manually registered. Probably from ClassSchemaSerializer.
+            if (!this.methodProperties.has(name)) {
+                const obj: PropertySchema[] = [];
+                this.methodProperties.set(name, obj);
+                for (const property of this.properties) {
+                    if (property.methodName === name) {
+                        obj.push(property);
+                    }
+                }
+            }
+            return;
+        }
+
         if (name === 'constructor' && this.superClass) {
             const properties = this.superClass.getMethodProperties(name);
             const obj: PropertySchema[] = [];
@@ -1889,16 +1911,10 @@ export function getClassSchema<T>(classTypeIn: AbstractClassType<T> | Object | C
  * });
  * ```
  */
-export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = ''): ClassSchema<T> {
+export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = '', baseClass?: ClassType): ClassSchema<T> {
     const fromClass = clazz !== undefined;
 
-    const c = clazz || class {
-    };
-
-
-    if (name) {
-        Object.defineProperty(c, 'name', { value: name });
-    }
+    const c = clazz || (name ? createDynamicClass(name, baseClass) : class {});
 
     const classSchema = getOrCreateEntitySchema(c);
     classSchema.name = name;
@@ -1908,20 +1924,16 @@ export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = 
 }
 
 export function createClassSchemaFromProp<T extends FieldTypes<any>, E extends ClassSchema | ClassType>(props: PlainSchemaProps, options: { name?: string, collectionName?: string, classType?: ClassType } = {}, base?: E) {
-    let extendClazz: ClassType | undefined;
+    let baseClass: ClassType | undefined;
     if (base) {
         if (base instanceof ClassSchema) {
-            extendClazz = base.classType;
+            baseClass = base.classType;
         } else {
-            extendClazz = base as ClassType;
+            baseClass = base as ClassType;
         }
     }
 
-    const clazz = extendClazz ? class extends extendClazz {
-    } : (options.classType ?? class {
-    });
-
-    const schema = createClassSchema(clazz, options.name);
+    const schema = createClassSchema(options.classType, options.name, baseClass);
     schema.fromClass = false;
     schema.collectionName = options.collectionName;
 

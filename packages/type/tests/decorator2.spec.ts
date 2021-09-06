@@ -332,7 +332,7 @@ test('test invalid @f', () => {
             @t.map(() => undefined)
             sub?: Config;
         }
-    }).toThrowError('Model::sub type mismatch. Given Map<any, ForwardedRef>?, but declared is Config.');
+    }).toThrowError('Model::sub type mismatch. Given Record<any, ForwardedRef>?, but declared is Config.');
 
     expect(() => {
         class Model {
@@ -340,7 +340,7 @@ test('test invalid @f', () => {
             sub?: Config[];
         }
 
-    }).toThrowError('Model::sub type mismatch. Given Map<any, Config>?, but declared is Array.');
+    }).toThrowError('Model::sub type mismatch. Given Record<any, Config>?, but declared is Array.');
 
     {
         //works
