@@ -243,7 +243,7 @@ export class DebugController implements DebugControllerInterface {
 
     @rpc.action()
     @t.array(RpcAction)
-    actions(@t.optional peter?: string): RpcAction[] {
+    actions(): RpcAction[] {
         const result: RpcAction[] = [];
 
         for (const { controller } of this.rpcControllers.controllers.values()) {
