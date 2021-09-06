@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { entity, getClassSchema, t } from '@deepkit/type';
+import { entity, getClassSchema, getGlobalStore, PropertySchema, t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { DirectClient } from '../src/client/client-direct';
 import { getActions, rpc } from '../src/decorators';
@@ -7,6 +7,9 @@ import { RpcKernel, RpcKernelConnection } from '../src/server/kernel';
 import { injectable } from '@deepkit/injector';
 import { Session, SessionState } from '../src/server/security';
 import { BehaviorSubject } from 'rxjs';
+import { getBSONSerializer } from '../../bson';
+import { getBSONDecoder } from '@deepkit/bson';
+import { getClassName } from '@deepkit/core';
 
 test('decorator', async () => {
     @rpc.controller('name')
@@ -392,5 +395,78 @@ test('types', async () => {
         expect(res.total).toBe(5);
         expect(res.items.length).toBe(1);
         expect(res.items[0]).toBeInstanceOf(Model);
+    }
+});
+
+
+test('disable type reuse', async () => {
+    //per default its tried to reuse models that have an entity name set. with disableTypeReuse this can be disabled
+
+    @entity.name('type/reuse')
+    class Model {
+        @t child?: Model;
+
+        constructor(@t public title: string) {
+        }
+    }
+
+    delete getGlobalStore().RegisteredEntities['type/reuse'];
+
+    const schema = getClassSchema(Model);
+    expect(schema.getProperty('child').type).toBe('class');
+    expect(schema.getProperty('child').getResolvedClassType()).toBe(Model);
+
+    const c = class {};
+    Object.defineProperty(c, 'name', {value: 'Model'});
+    expect(getClassName(c)).toBe('Model');
+    expect(getClassName(new c)).toBe('Model');
+
+
+    const props = schema.getProperty('child').toJSONNonReference(undefined, true);
+    const property = PropertySchema.fromJSON(props, undefined, false);
+    const schema2 = property.getResolvedClassSchema();
+    expect(getClassName(schema2.classType)).toBe('Model');
+    expect(getClassName(new schema2.classType)).toBe('Model');
+
+    expect(schema2.getClassName()).toBe('Model');
+    const encoder = getBSONSerializer(schema2);
+    const decoder = getBSONDecoder(schema2);
+    const bson = encoder({title: 'asd'});
+    const back = decoder(bson);
+    expect(back).toEqual({title: 'asd'});
+    expect(getClassName(back)).toBe('Model');
+
+    @injectable
+    class Controller {
+        @rpc.action()
+        test(): Model {
+            return new Model('123');
+        }
+
+        @rpc.action()
+        @t.type({ total: t.number, items: t.array(Model) })
+        testDeep(): { total: number, items: Model[] } {
+            return { total: 5, items: [new Model('123')] };
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController('myController', Controller);
+
+    const client = new DirectClient(kernel);
+    client.disableTypeReuse();
+    const controller = client.controller<Controller>('myController');
+
+    {
+        const res = await controller.test();
+        expect(res).not.toBeInstanceOf(Model);
+        expect(res).toEqual({title: '123'});
+        expect(getClassName(res)).toBe('Model');
+    }
+
+    {
+        const res = await controller.testDeep();
+        expect(res.items[0]).not.toBeInstanceOf(Model);
+        expect(res.items[0]).toEqual({title: '123'});
     }
 });

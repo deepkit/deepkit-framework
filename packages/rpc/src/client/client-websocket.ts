@@ -19,9 +19,10 @@ export class RpcWebSocketClient extends RpcClient {
         super(new RpcWebSocketClientAdapter(url));
     }
 
-    static fromCurrentHost<T extends ClassType<DeepkitClient>>(this: T, baseUrl: string = ''): InstanceType<T> {
+    static fromCurrentHost<T extends ClassType<RpcClient>>(this: T, baseUrl: string = ''): InstanceType<T> {
         const ws = location.protocol.startsWith('https') ? 'wss' : 'ws';
-        return new (this as any)(`${ws}://${location.host}/${baseUrl}`);
+        if (baseUrl.length && baseUrl[0] !== '/') baseUrl = '/' + baseUrl;
+        return new (this as any)(`${ws}://${location.host}${baseUrl}`);
     }
 }
 

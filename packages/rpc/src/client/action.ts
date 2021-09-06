@@ -89,7 +89,7 @@ export class RpcActionClient {
     constructor(protected client: WritableClient) {
     }
 
-    public action<T>(controller: RpcControllerState, method: string, args: any[], options: { timeout?: number, dontWaitForConnection?: true } = {}) {
+    public action<T>(controller: RpcControllerState, method: string, args: any[], options: { timeout?: number, dontWaitForConnection?: true, typeReuseDisabled?: boolean } = {}) {
         const progress = ClientProgress.getNext();
 
         return asyncOperation<any>(async (resolve, reject) => {
@@ -226,6 +226,12 @@ export class RpcActionClient {
                                             }
                                         };
                                     });
+                                    (observable as any).disconnect = () => {
+                                        for (const sub of Object.values(subscribers)) {
+                                            sub.complete();
+                                        }
+                                        subject.send(RpcTypes.ActionObservableDisconnect);
+                                    };
                                     resolve(observable);
                                 } else if (body.type === ActionObservableTypes.subject) {
                                     observableSubject = new Subject<any>();
@@ -412,9 +418,11 @@ export class RpcActionClient {
         collection.loaded();
     }
 
-    public async loadActionTypes(controller: RpcControllerState, method: string, options: { timeout?: number, dontWaitForConnection?: true } = {}): Promise<ControllerStateActionTypes> {
+    public async loadActionTypes(controller: RpcControllerState, method: string, options: { timeout?: number, dontWaitForConnection?: true, typeReuseDisabled?: boolean } = {}): Promise<ControllerStateActionTypes> {
         const state = controller.getState(method);
         if (state.types) return state.types;
+
+        const typeReuseDisabled = options ? options.typeReuseDisabled === true : false;
 
         if (state.promise) {
             return state.promise;
@@ -425,6 +433,7 @@ export class RpcActionClient {
                 const parsed = await this.client.sendMessage(RpcTypes.ActionType, rpcActionType, {
                     controller: controller.controller,
                     method: method,
+                    disableTypeReuse: typeReuseDisabled
                 }, {
                     peerId: controller.peerId,
                     dontWaitForConnection: options.dontWaitForConnection,
@@ -439,13 +448,15 @@ export class RpcActionClient {
                     parameters.push(propertyJson.name);
                 }
 
-                const resultProperty = PropertySchema.fromJSON(parsed.result);
+                const resultProperty = PropertySchema.fromJSON(parsed.result, undefined, !typeReuseDisabled);
                 resultProperty.name = 'v';
                 const resultSchema = createClassSchema();
                 resultSchema.registerProperty(resultProperty);
 
                 const observableNextSchema = rpcActionObservableSubscribeId.clone();
-                observableNextSchema.registerProperty(resultProperty);
+                if (parsed.next) {
+                    observableNextSchema.registerProperty(PropertySchema.fromJSON(parsed.next, undefined, !typeReuseDisabled));
+                }
 
                 const collectionSchema = createClassSchema();
                 const v = new PropertySchema('v');

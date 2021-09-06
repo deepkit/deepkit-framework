@@ -8,17 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ClassType,
-    collectForMicrotask,
-    getClassName,
-    getClassPropertyName,
-    isArray,
-    isPlainObject,
-    isPrototypeOfBase,
-    stringifyValueWithType,
-    toFastProperties
-} from '@deepkit/core';
+import { ClassType, collectForMicrotask, getClassName, getClassPropertyName, isArray, isPlainObject, isPrototypeOfBase, toFastProperties } from '@deepkit/core';
 import { isBehaviorSubject, isSubject } from '@deepkit/core-rxjs';
 import {
     ClassSchema,
@@ -91,12 +81,12 @@ export class RpcServerAction {
             classType: ClassType,
             method: string,
             types: ActionTypes,
-            subscriptions: { [id: number]: { sub?: Subscription, active: boolean } },
+            subscriptions: { [id: number]: { sub?: Subscription, active: boolean, complete: () => void } },
         }
     } = {};
 
     constructor(
-        protected controllers: Map<string, {controller: ClassType, module?: InjectorModule}>,
+        protected controllers: Map<string, { controller: ClassType, module?: InjectorModule }>,
         protected injector: InjectorContext,
         protected security: RpcKernelSecurity,
         protected sessionState: SessionState,
@@ -108,8 +98,9 @@ export class RpcServerAction {
         const types = await this.loadTypes(body.controller, body.method);
 
         response.reply(RpcTypes.ResponseActionType, rpcResponseActionType, {
-            parameters: types.parameters.map(v => v.toJSONNonReference()),
-            result: types.resultSchema.getProperty('v').toJSONNonReference(),
+            parameters: types.parameters.map(v => v.toJSONNonReference(undefined, body.disableTypeReuse)),
+            result: types.resultSchema.getProperty('v').toJSONNonReference(undefined, body.disableTypeReuse),
+            next: types.observableNextSchema.getProperty('v').toJSONNonReference(undefined, body.disableTypeReuse),
         });
     }
 
@@ -179,7 +170,6 @@ export class RpcServerAction {
                 //and result in weird errors when `undefined` is returned in the actual action (since from undefined we don't infer an actual type)
                 if (isPrototypeOfBase(resultProperty.classType, Observable)
                     || isPrototypeOfBase(resultProperty.classType, Collection)
-                    || isPrototypeOfBase(resultProperty.classType, Promise)
                     || isPrototypeOfBase(resultProperty.classType, EntitySubject)
                 ) {
                     resultProperty.type = 'any';
@@ -192,7 +182,18 @@ export class RpcServerAction {
         resultProperty.isOptional = true;
 
         const observableNextSchema = rpcActionObservableSubscribeId.clone();
-        observableNextSchema.registerProperty(resultProperty);
+        let nextProperty = resultProperty;
+
+        if (nextProperty.type === 'promise' && nextProperty.getSubType()) {
+            nextProperty = resultProperty.getSubType().clone();
+            nextProperty.name = 'v';
+        }
+        if (nextProperty.type === 'class' && nextProperty.templateArgs[0]) {
+            nextProperty = nextProperty.templateArgs[0].clone();
+            nextProperty.name = 'v';
+        }
+
+        observableNextSchema.registerProperty(nextProperty);
 
         const resultSchema = createClassSchema();
         resultSchema.registerProperty(resultProperty);
@@ -222,7 +223,16 @@ export class RpcServerAction {
                 const body = message.parseBody(rpcActionObservableSubscribeId);
                 if (observable.subscriptions[body.id]) return response.error(new Error('Subscription already created'));
 
-                const sub: { active: boolean, sub?: Subscription } = { active: true };
+                const sub: { active: boolean, sub?: Subscription, complete: () => void} = {
+                    active: true,
+                    complete: () => {
+                        sub.active = false;
+                        if (sub.sub) sub.sub.unsubscribe();
+                        response.reply(RpcTypes.ResponseActionObservableComplete, rpcActionObservableSubscribeId, {
+                            id: body.id
+                        });
+                    }
+                };
                 observable.subscriptions[body.id] = sub;
 
                 sub.sub = observable.observable.subscribe((next) => {
@@ -274,7 +284,7 @@ export class RpcServerAction {
 
             case RpcTypes.ActionObservableUnsubscribe: {
                 const observable = this.observables[message.id];
-                if (!observable) return response.error(new Error('No observable found'));
+                if (!observable) return response.error(new Error('No observable to unsubscribe found'));
                 const body = message.parseBody(rpcActionObservableSubscribeId);
                 const sub = observable.subscriptions[body.id];
                 if (!sub) return response.error(new Error('No subscription found'));
@@ -286,9 +296,19 @@ export class RpcServerAction {
                 break;
             }
 
+            case RpcTypes.ActionObservableDisconnect: {
+                const observable = this.observables[message.id];
+                if (!observable) return response.error(new Error('No observable to disconnect found'));
+                for (const sub of Object.values(observable.subscriptions)) {
+                    sub.complete(); //we send all active subscriptions it was completed
+                }
+                delete this.observables[message.id];
+                break;
+            }
+
             case RpcTypes.ActionObservableSubjectUnsubscribe: { //aka completed
                 const subject = this.observableSubjects[message.id];
-                if (!subject) return response.error(new Error('No observable found'));
+                if (!subject) return response.error(new Error('No subject to unsubscribe found'));
                 subject.completedByClient = true;
                 subject.subject.complete();
                 delete this.observableSubjects[message.id];
@@ -413,22 +433,15 @@ export class RpcServerAction {
                         subject: result,
                         completedByClient: false,
                         subscription: result.subscribe((next) => {
-                            if (types.resultProperty.type === 'class' && types.resultProperty.classType && next && !(next instanceof types.resultProperty.classType)) {
-                                console.warn(
-                                    `The subject in action ${getClassPropertyName(controllerClassType, body.method)} has a class type assigned of ${getClassName(types.resultProperty.classType)}` +
-                                    ` but emitted something different of type ${stringifyValueWithType(next)}. Either annotate the method with t.union() or make sure it emits the correct type.`
-                                );
-                                return;
-                            }
-                            const newProperty = createNewPropertySchemaIfNecessary(next, types.resultProperty);
+                            const newProperty = createNewPropertySchemaIfNecessary(next, types.observableNextSchema.getProperty('v'));
                             if (newProperty) {
+                                console.warn(`The emitted next value of method ${getClassPropertyName(controllerClassType, body.method)} changed from ${types.observableNextSchema.getProperty('v').toString()} to ${newProperty.toString()}. ` +
+                                    `You should add a @t.generic(T) annotation to improve serialization performance.`);
                                 types.observableNextSchema = rpcActionObservableSubscribeId.clone();
                                 types.observableNextSchema.registerProperty(newProperty);
                                 types.resultProperty = newProperty;
                                 types.resultPropertyChanged++;
-                                if (types.resultPropertyChanged === 10) {
-                                    console.warn(`The emitted next value of the Observable of method ${getClassPropertyName(controllerClassType, body.method)} changed 10 times. You should add a @t.union() annotation to improve serialization performance.`);
-                                }
+
                                 response.reply(RpcTypes.ResponseActionReturnType, propertyDefinition, newProperty.toJSONNonReference());
                             }
 
@@ -458,7 +471,7 @@ export class RpcServerAction {
                 const newProperty = createNewPropertySchemaIfNecessary(result, types.resultProperty, isPromise);
                 if (newProperty) {
                     console.warn(`The result type of method ${getClassPropertyName(controllerClassType, body.method)} changed from ${types.resultProperty.toString()} to ${newProperty.toString()}. ` +
-                    `You should add a @t annotation to improve serialization performance.`);
+                        `You should add a @t annotation to improve serialization performance.`);
 
                     types.resultSchema = createClassSchema();
                     types.resultSchema.registerProperty(newProperty);

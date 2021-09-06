@@ -116,6 +116,55 @@ test('Subject', async () => {
     }
 });
 
+test('promise Subject', async () => {
+    class Controller {
+        @rpc.action()
+        async strings(): Promise<Subject<string>> {
+            const subject = new Subject<string>();
+            (async () => {
+                await sleep(0.1);
+                subject.next('first');
+                subject.next('second');
+                subject.complete();
+            })();
+            return subject;
+        }
+
+        @rpc.action()
+        @t.generic(t.type(Subject).generic(t.string))
+        async stringsExplicit(): Promise<Subject<string>> {
+            const subject = new Subject<string>();
+            (async () => {
+                await sleep(0.1);
+                subject.next('first');
+                subject.next('second');
+                subject.complete();
+            })();
+            return subject;
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController('myController', Controller);
+
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    {
+        const o = await controller.strings();
+        expect(o).toBeInstanceOf(Subject);
+        const lastValue = await o.toPromise();
+        expect(lastValue).toBe('second');
+    }
+
+    {
+        const o = await controller.stringsExplicit();
+        expect(o).toBeInstanceOf(Subject);
+        const lastValue = await o.toPromise();
+        expect(lastValue).toBe('second');
+    }
+});
+
 test('subject completes automatically when connection closes', async () => {
     let unsubscribed = false;
 
@@ -297,7 +346,7 @@ test('observable different next type', async () => {
 
         @rpc.action()
         triggerPlain(): void {
-            this.subject.next({ id: 2 });
+            this.subject.next({ id: 3 });
         }
 
         @rpc.action()
@@ -324,14 +373,14 @@ test('observable different next type', async () => {
         const subject = await controller.getSubject();
         expect(subject.value).toBe(undefined);
         await controller.triggerPlain();
-        expect(subject.value).toEqual(undefined);
+        expect(subject.value).toEqual({ id: 3 });
     }
 
     {
         const subject = await controller.getSubject();
         expect(subject.value).toBe(undefined);
         await controller.triggerWrongModel();
-        expect(subject.value).toEqual(undefined);
+        expect(subject.value).toEqual({ id: 0 });
     }
 });
 

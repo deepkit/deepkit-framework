@@ -299,6 +299,7 @@ export enum RpcTypes {
 
     ActionObservableSubscribe,
     ActionObservableUnsubscribe,
+    ActionObservableDisconnect, //removed a stored Observable instance so it can not longer create new observers and unsubscribe all subscriptions
     ActionObservableSubjectUnsubscribe,
 
     ResponseActionObservable,
@@ -381,11 +382,13 @@ export const rpcAction = t.schema({
 export const rpcActionType = t.schema({
     controller: t.string,
     method: t.string,
+    disableTypeReuse: t.boolean.optional,
 });
 
 export const rpcResponseActionType = t.schema({
     parameters: t.array(propertyDefinition),
     result: t.type(propertyDefinition),
+    next: t.type(propertyDefinition).optional,
 });
 
 export const rpcPeerRegister = t.schema({

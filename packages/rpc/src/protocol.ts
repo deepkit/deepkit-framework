@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { getBSONDecoder, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
+import { deserialize, getBSONDecoder, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
 import { ClassType } from '@deepkit/core';
 import { ClassSchema, getClassSchema, getGlobalStore, jsonSerializer } from '@deepkit/type';
 import { rpcChunk, rpcError, RpcTypes } from './model';
@@ -88,6 +88,21 @@ export class RpcMessage {
     ) {
     }
 
+    debug() {
+        return {
+            type: this.type,
+            id: this.id,
+            date: new Date,
+            composite: this.composite,
+            body: this.bodySize ? this.parseGenericBody() : undefined,
+            messages: this.composite ? this.getBodies().map(message => {
+            return {
+                id: message.id, type: message.type, date: new Date, body: message.bodySize ? message.parseGenericBody() : undefined,
+            };
+        }) : [],
+        }
+    }
+
     getBuffer(): Uint8Array {
         if (!this.buffer) throw new Error('No buffer');
         return this.buffer;
@@ -125,6 +140,14 @@ export class RpcMessage {
 
     isError(): boolean {
         return this.type === RpcTypes.Error;
+    }
+
+    parseGenericBody(): object {
+        if (!this.bodySize) throw new Error('Message has no body');
+        if (!this.buffer) throw new Error('No buffer');
+        if (this.composite) throw new Error('Composite message can not be read directly');
+
+        return deserialize(this.buffer, this.bodyOffset);
     }
 
     parseBody<T>(schema: ClassSchema<T>): T {
