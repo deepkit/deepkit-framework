@@ -29,6 +29,7 @@
   "include": [
     "src",
     "test",
+    "install-transformer.ts",
     "index.ts"
   ],
   "references": [

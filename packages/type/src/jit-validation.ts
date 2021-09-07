@@ -67,7 +67,7 @@ export function handleCustomValidator<T>(
 ) {
     try {
         validator.validate(value, propSchema, classType);
-    } catch (error) {
+    } catch (error: any) {
         if (error instanceof PropertyValidatorError) {
             errors.push(new ValidationFailedItem(propertyPath, error.code, error.message || String(error)));
         } else {

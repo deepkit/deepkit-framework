@@ -12,12 +12,16 @@
       "default": "./dist/esm/index.js"
     }
   },
+  "bin": {
+    "deepkit-type-install": "./dist/install-transformer.js"
+  },
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json",
+    "install": "node ./dist/cjs/install-transformer.js || exit 0"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -35,6 +39,7 @@
   },
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.58",
+    "@types/node": "14.14.28",
     "@types/clone": "^0.1.30"
   },
   "jest": {

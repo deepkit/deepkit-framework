@@ -57,7 +57,7 @@ export function plainToClass<T extends ClassType | ClassSchema>(
     data: PlainOrFullEntityFromClassTypeOrSchema<ExtractClassType<T>>,
     options?: JitConverterOptions
 ): ExtractClassType<T> {
-    return getXToClassFunction(getClassSchema(classTypeOrSchema), jsonSerializer)(data, options);
+    return getXToClassFunction(getClassSchema(classTypeOrSchema), jsonSerializer)(data, options) as ExtractClassType<T>;
 }
 
 /**
