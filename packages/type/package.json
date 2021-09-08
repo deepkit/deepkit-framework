@@ -13,7 +13,7 @@
     }
   },
   "bin": {
-    "deepkit-type-install": "./dist/install-transformer.js"
+    "deepkit-type-install": "./dist/cjs/install-transformer.js"
   },
   "sideEffects": false,
   "publishConfig": {
