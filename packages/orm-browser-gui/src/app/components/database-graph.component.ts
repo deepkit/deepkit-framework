@@ -150,7 +150,7 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
     }
 
     function addEdge(entity: ClassSchema, rootProperty: PropertySchema, property: PropertySchema) {
-      if (property.type === 'partial' || property.type === 'array' || property.type === 'map') {
+      if (property.type === 'partial' || property.type === 'array' || property.type === 'map' || property.type === 'record') {
         addEdge(entity, rootProperty, property.getSubType());
       } else if (property.type === 'class') {
         g.setEdge(entity.getName(), property.getResolvedClassSchema().getName());
@@ -215,7 +215,7 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
     }
 
     const extractEdges = (i: number, node: DKNode, rootProperty: PropertySchema, property: PropertySchema) => {
-      if (property.type === 'array' || property.type === 'map' || property.type === 'partial') {
+      if (property.type === 'array' || property.type === 'map' || property.type === 'record' || property.type === 'partial') {
         extractEdges(i, node, rootProperty, property.getSubType());
       }
       if (property.type === 'class') {

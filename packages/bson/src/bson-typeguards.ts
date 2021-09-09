@@ -129,7 +129,7 @@ registerBSONTypeGuard('array', (property: PropertySchema) => {
     };
 });
 
-registerBSONTypeGuard('map', (property: PropertySchema) => {
+registerBSONTypeGuard('record', (property: PropertySchema) => {
     return (elementType: BSONType, parser: BaseParser) => {
         return elementType === BSONType.OBJECT;
     };

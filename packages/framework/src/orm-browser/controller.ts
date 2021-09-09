@@ -171,7 +171,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
                     }
 
                     return callback(res);
-                } else if (property.isMap) {
+                } else if (property.isRecord) {
                     const res: { [name: string]: any } = {};
                     if (!propSeed.map) return res;
                     const map = propSeed.map;

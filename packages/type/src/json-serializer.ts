@@ -273,7 +273,7 @@ export function convertArray(property: PropertySchema, state: CompilerState) {
 jsonSerializer.fromClass.register('array', convertArray);
 jsonSerializer.toClass.register('array', convertArray);
 
-function convertMap(property: PropertySchema, state: CompilerState) {
+function convertRecord(property: PropertySchema, state: CompilerState) {
     const a = state.compilerContext.reserveName('a');
     const i = state.compilerContext.reserveName('i');
     let setDefault = property.isOptional ? '' : `${state.setter} = {};`;
@@ -296,8 +296,8 @@ function convertMap(property: PropertySchema, state: CompilerState) {
     `);
 }
 
-jsonSerializer.fromClass.register('map', convertMap);
-jsonSerializer.toClass.register('map', convertMap);
+jsonSerializer.fromClass.register('record', convertRecord);
+jsonSerializer.toClass.register('record', convertRecord);
 
 jsonSerializer.fromClass.register('promise', (property: PropertySchema, state: CompilerState) => {
     state.addCodeForSetter(getDataConverterJS(state.setter, state.accessor, property.templateArgs[0] || new PropertySchema(property.name).setType('any'), state.serializerCompilers, state.compilerContext, state.jitStack));

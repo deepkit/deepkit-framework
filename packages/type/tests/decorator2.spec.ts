@@ -36,16 +36,16 @@ test('test @f', () => {
 
     const schema = getClassSchema(Page);
 
-    expect(schema.getProperty('name').isMap).toBe(false);
+    expect(schema.getProperty('name').isRecord).toBe(false);
     expect(schema.getProperty('name').isArray).toBe(false);
     expect(schema.getProperty('name').type).toBe('string');
 
-    expect(schema.getProperty('tags').isMap).toBe(false);
+    expect(schema.getProperty('tags').isRecord).toBe(false);
     expect(schema.getProperty('tags').isArray).toBe(true);
     expect(schema.getProperty('tags').getSubType().type).toBe('string');
 
-    expect(schema.getProperty('map').type).toBe('map');
-    expect(schema.getProperty('map').isMap).toBe(true);
+    expect(schema.getProperty('map').type).toBe('record');
+    expect(schema.getProperty('map').isRecord).toBe(true);
     expect(schema.getProperty('map').getSubType().type).toBe('class');
     expect(schema.getProperty('map').getSubType().getResolvedClassType()).toBe(Config);
     expect(schema.getProperty('map').getSubType().isArray).toBe(false);
@@ -54,7 +54,7 @@ test('test @f', () => {
     expect(schema.getProperty('configArray').isArray).toBe(true);
     expect(schema.getProperty('configArray').getSubType().type).toBe('class');
     expect(schema.getProperty('configArray').getSubType().getResolvedClassType()).toBe(Config);
-    expect(schema.getProperty('configArray').getSubType().isMap).toBe(false);
+    expect(schema.getProperty('configArray').getSubType().isRecord).toBe(false);
     expect(schema.getProperty('configArray').getSubType().isArray).toBe(false);
 });
 
@@ -106,7 +106,7 @@ test('test propertySchema serialization', () => {
             'name',
             'type',
             'isArray',
-            'isMap',
+            'isRecord',
             'isOptional',
             'isDecorated',
             'isParentReference',
@@ -153,7 +153,7 @@ test('test propertySchema serialization', () => {
         const p1 = schema.getProperty('map');
         const p2 = PropertySchema.fromJSON(p1.toJSON());
         expect(p1.name).toBe('map');
-        expect(p1.isMap).toBe(true);
+        expect(p1.isRecord).toBe(true);
         expect(p1.isId).toBe(false);
         expect(p1.getSubType().getResolvedClassType()).toBe(Config);
         expect(p1.getSubType().getResolvedClassTypeForValidType()).toBe(Config);
@@ -166,7 +166,7 @@ test('test propertySchema serialization', () => {
         const p2 = PropertySchema.fromJSON(p1.toJSON());
         expect(p1.name).toBe('map2');
         expect(p1.isId).toBe(false);
-        expect(p1.isMap).toBe(true);
+        expect(p1.isRecord).toBe(true);
         expect(p1.getSubType().getResolvedClassType()).toBe(Config);
         expect(p1.getSubType().getResolvedClassTypeForValidType()).toBe(Config);
         expect(p1.templateArgs![0].type).toEqual('string');

@@ -73,7 +73,7 @@ test('partial document', () => {
         expect(prop.resolveClassType).toBe(undefined);
         expect(prop.isPartial).toBe(false);
         expect(prop.isArray).toBe(false);
-        expect(prop.isMap).toBe(false);
+        expect(prop.isRecord).toBe(false);
     }
 
     {
@@ -82,7 +82,7 @@ test('partial document', () => {
         expect(prop.resolveClassType).toBe(PageClass.PageCollection);
         expect(prop.isPartial).toBe(false);
         expect(prop.isArray).toBe(false);
-        expect(prop.isMap).toBe(false);
+        expect(prop.isRecord).toBe(false);
     }
 
     {
@@ -91,7 +91,7 @@ test('partial document', () => {
         expect(prop.resolveClassType).toBe(undefined);
         expect(prop.isPartial).toBe(false);
         expect(prop.isArray).toBe(false);
-        expect(prop.isMap).toBe(false);
+        expect(prop.isRecord).toBe(false);
     }
 });
 

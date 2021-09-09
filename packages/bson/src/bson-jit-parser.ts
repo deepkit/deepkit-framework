@@ -260,7 +260,7 @@ function createPropertyConverter(setter: string, property: PropertySchema, compi
             ${nullOrSeek}
         }
         `;
-    } else if (property.type === 'map') {
+    } else if (property.type === 'record') {
         const name = compiler.reserveVariable('propertyName');
 
         return `

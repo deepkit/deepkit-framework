@@ -41,6 +41,7 @@ export type Types =
     | 'literal'
     | 'class'
     | 'map'
+    | 'record'
     | 'partial'
     | 'patch'
     | 'array'

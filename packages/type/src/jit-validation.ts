@@ -146,7 +146,7 @@ export function getDataCheckerJS(
                 ${getCustomValidatorCode(`${accessor}`, `${path}`)}
             }
         `;
-    } else if (property.isMap) {
+    } else if (property.isRecord) {
         return `
             //property ${property.name}, ${property.type}
             if (${accessor} === unpopulatedSymbol) {

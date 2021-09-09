@@ -34,8 +34,8 @@ test('new api', async () => {
     expect(schema.getProperty('names').isArray).toBe(true);
     expect(schema.getProperty('names').templateArgs[0]!.type).toBe('string');
 
-    expect(schema.getProperty('nameMap').type).toBe('map');
-    expect(schema.getProperty('nameMap').isMap).toBe(true);
+    expect(schema.getProperty('nameMap').type).toBe('record');
+    expect(schema.getProperty('nameMap').isRecord).toBe(true);
     expect(schema.getProperty('nameMap').templateArgs[0]!.type).toBe('any');
     expect(schema.getProperty('nameMap').templateArgs[1]!.type).toBe('number');
 });

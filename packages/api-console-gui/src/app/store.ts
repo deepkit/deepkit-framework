@@ -33,7 +33,7 @@ export function extractDataStructure(ds: DataStructure, property: PropertySchema
         }
 
         return extractDataStructureFromSchema(ds, property.getResolvedClassSchema());
-    } else if (property.type === 'map') {
+    } else if (property.type === 'record') {
         const v: any = {};
         const keyProperty = property.templateArgs[0];
         const valueProperty = property.templateArgs[1];

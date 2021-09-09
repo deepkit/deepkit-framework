@@ -145,7 +145,8 @@ export function DatabaseName<T>(name: string) {
 export function createValidatorFromFunction(validator: ValidatorFn) {
     return new class implements PropertyValidator {
         name = validator.name;
-        options = (validator as {options?: any[]}).options;
+        options = (validator as { options?: any[] }).options;
+
         validate<T>(value: any, property: PropertySchema, classType?: ClassType): PropertyValidatorError | undefined | void {
             return validator(value, property, classType);
         }
@@ -512,7 +513,7 @@ function createFieldDecoratorResult<T>(
     fn.reference = (options?: { onDelete?: ReferenceActions, onUpdate?: ReferenceActions }) => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
-            if (property.isArray || property.isMap) throw new Error('Reference can not be of type array or map. Inverse the relation, or use backReference()');
+            if (property.isArray || property.isRecord) throw new Error('Reference can not be of type array or map. Inverse the relation, or use backReference()');
             property.isReference = true;
             if (options && options.onDelete) property.referenceOptions.onDelete = options.onDelete;
             if (options && options.onUpdate) property.referenceOptions.onUpdate = options.onUpdate;
@@ -902,7 +903,7 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
             return getClassName(t);
         }
 
-        if (returnType !== Promise && returnType !== undefined && type !== 'any') {
+        if (returnType !== Promise && returnType !== undefined && property.type !== 'any') {
             //we don't want to check for type mismatch when returnType is a Promise.
 
             if (property.typeSet && property.isArray && returnType !== Array) {
@@ -916,7 +917,7 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
                     `Please use @t.array(MyType) or @t.array(() => MyType), e.g. @t.array(String) for '${propertyName}: string[]'.`);
             }
 
-            if (property.typeSet && property.isMap && returnType !== Object) {
+            if (property.typeSet && property.isRecord && returnType !== Object) {
                 throw new Error(`${id} type mismatch. Given ${property}, but declared is ${getTypeName(returnType)}. ` +
                     `Please use the correct type in @t.type(TYPE).`);
             }
@@ -959,11 +960,18 @@ fRaw['extendClass'] = function <T extends FieldTypes<any>, E extends ClassSchema
 };
 
 fRaw['array'] = function <T>(this: FieldDecoratorResult<any>, type: ClassType | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>): FieldDecoratorResult<ExtractType<T>[]> {
-    return Field('array').template(type);
+    return Field('array').generic(type);
 };
 
 fRaw['map'] = function <T extends ClassType | ForwardRefFn<T> | ClassSchema<T> | PlainSchemaProps | FieldDecoratorResult<any>>(type: T, keyType: FieldDecoratorResult<any> = fRaw.any): FieldDecoratorResult<{ [name: string]: ExtractType<T> }> {
-    return Field('map').template(keyType, type).use((target, property) => {
+    return Field('record').generic(keyType, type).use((target, property) => {
+        property.templateArgs[0].name = 'key';
+        property.templateArgs[1].name = 'value';
+    });
+};
+
+fRaw['record'] = function (keyType: WideTypes, valueType: WideTypes): FieldDecoratorResult<any> {
+    return Field('record').generic(valueType, valueType).use((target, property) => {
         property.templateArgs[0].name = 'key';
         property.templateArgs[1].name = 'value';
     });
@@ -1236,8 +1244,27 @@ export interface MainDecorator {
      *     tags: {[k: any]: MyClass};
      * }
      * ```
+     *
+     * @deprecated use t.record(t.string, t.string) instead. This will be soon replaced with JavaScript's Map.
      */
     map<T extends ClassType | ForwardRefFn<any> | ClassSchema | PlainSchemaProps | FieldDecoratorResult<any>>(type: T, keyType?: FieldDecoratorResult<any>): FieldDecoratorResult<{ [name: string]: ExtractType<T> }>;
+
+    /**
+     * Marks a field as record.
+     *
+     * ```typescript
+     * class User {
+     *     @t.map(t.any, t.string)
+     *     tags: {[k: any]: string};
+     *     tags: Record<any, string>;
+     *
+     *     @t.map(t.string, @t.type(() => MyClass))
+     *     tags: {[k: string]: MyClass};
+     *     tags: Record<string, string>;
+     * }
+     * ```
+     */
+    record<T extends WideTypes>(keyType: WideTypes, valueType: T): FieldDecoratorResult<{ [name: string]: ExtractType<T> }>;
 }
 
 /**

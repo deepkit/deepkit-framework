@@ -185,7 +185,7 @@ sqlSerializer.toClass.prepend('array', (property: PropertySchema, state: Compile
     state.addSetter(`'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor}`);
 });
 
-sqlSerializer.fromClass.append('map', (property: PropertySchema, state: CompilerState) => {
+sqlSerializer.fromClass.append('record', (property: PropertySchema, state: CompilerState) => {
     //we don't stringify non-root properties
     if (property.parent) return;
 
@@ -195,7 +195,7 @@ sqlSerializer.fromClass.append('map', (property: PropertySchema, state: Compiler
     state.addSetter(`_depth === 1 ? stringify(${state.accessor}) : ${state.accessor}`);
 });
 
-sqlSerializer.toClass.prepend('map', (property: PropertySchema, state: CompilerState) => {
+sqlSerializer.toClass.prepend('record', (property: PropertySchema, state: CompilerState) => {
     if (property.parent) return;
 
     state.addSetter(`'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor}`);

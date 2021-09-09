@@ -37,6 +37,7 @@ export class MySQLPlatform extends DefaultPlatform {
         this.addType('union', 'json');
         this.addType('partial', 'json');
         this.addType('map', 'json');
+        this.addType('record', 'json');
         this.addType('patch', 'json');
         this.addType('enum', 'json');
 

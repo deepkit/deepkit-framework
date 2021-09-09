@@ -41,6 +41,7 @@ const sorts: { [type in Types]: number } = {
     partial: 4,
     union: 4,
     map: 4,
+    record: 4,
     array: 4,
     any: 5,
 };
@@ -60,6 +61,7 @@ export function getSortedUnionTypes<T>(property: PropertySchema, guards: Map<Uni
 
     const hasOnlyOneClassType = sorted.filter(v => v.type === 'class').length === 1
         && sorted.filter(v => v.type === 'map').length === 0
+        && sorted.filter(v => v.type === 'record').length === 0
         && sorted.filter(v => v.type === 'patch').length === 0
         && sorted.filter(v => v.type === 'partial').length === 0;
 
@@ -70,7 +72,7 @@ export function getSortedUnionTypes<T>(property: PropertySchema, guards: Map<Uni
         if (type.type === 'class' && hasOnlyOneClassType) {
             //for simple union like string|MyClass we don't need a custom discriminator
             //we just use the 'map' guard
-            guardFactory = guards.get('map');
+            guardFactory = guards.get('record');
         }
 
         if (!guardFactory) {

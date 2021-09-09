@@ -65,7 +65,7 @@ export function resolvePropertySchema<T>(schema: ClassSchema<T>, propertyPath: s
             prop = foreignSchema.getProperty(foreignSchema.decorator!);
         }
 
-        if (prop.isMap || prop.isArray) {
+        if (prop.isRecord || prop.isArray) {
             if (prop.getSubType().type === 'class') {
                 if (names[i + 2]) {
                     return cache[propertyPath] = resolvePropertySchema(

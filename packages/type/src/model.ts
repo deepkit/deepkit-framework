@@ -332,8 +332,8 @@ export class PropertySchema {
         return this.type === 'promise';
     }
 
-    get isMap() {
-        return this.type === 'map';
+    get isRecord() {
+        return this.type === 'record';
     }
 
     get isPatch() {
@@ -502,7 +502,7 @@ export class PropertySchema {
         if (this.type === 'array') {
             return `${this.templateArgs[0]}[]${affix}`;
         }
-        if (this.type === 'map') {
+        if (this.type === 'record') {
             return `Record<${this.templateArgs[0]}, ${this.templateArgs[1]}>${affix}`;
         }
         if (this.type === 'partial') {
@@ -549,6 +549,7 @@ export class PropertySchema {
         if (this.type === 'partial') return this.templateArgs[0]!;
         if (this.type === 'array') return this.templateArgs[0]!;
         if (this.type === 'map') return this.templateArgs[1]!;
+        if (this.type === 'record') return this.templateArgs[1]!;
         if (this.type === 'promise') return this.templateArgs[0]!;
         throw new Error('No array or map type');
     }
@@ -831,7 +832,7 @@ export class PropertySchema {
     }
 
     getResolvedClassType(): ClassType {
-        if (this.isArray || this.isMap || this.isPartial || this.isPromise) return this.getSubType().getResolvedClassType();
+        if (this.isArray || this.isRecord || this.isPartial || this.isPromise) return this.getSubType().getResolvedClassType();
 
         if (this.classTypeResolved) {
             return this.classTypeResolved;
@@ -1346,6 +1347,7 @@ export class ClassSchema<T = any> {
         for (const property of this.properties) {
             if (property.type === 'partial' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
             if (property.type === 'map' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
+            if (property.type === 'record' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
             if (property.type === 'array' && property.getSubType().type === 'class' && property.getSubType().getResolvedClassSchema().hasCircularReference(stack)) return true;
             if (property.type === 'class' && property.getResolvedClassSchema().hasCircularReference(stack)) return true;
         }

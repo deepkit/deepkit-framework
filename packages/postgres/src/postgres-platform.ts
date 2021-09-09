@@ -71,6 +71,7 @@ export class PostgresPlatform extends DefaultPlatform {
         this.addType('union', 'jsonb');
         this.addType('partial', 'jsonb');
         this.addType('map', 'jsonb');
+        this.addType('record', 'jsonb');
         this.addType('patch', 'jsonb');
         this.addType('enum', 'jsonb');
 

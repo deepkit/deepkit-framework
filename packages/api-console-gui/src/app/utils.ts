@@ -54,7 +54,7 @@ export function propertyToTSJSONInterface(property: PropertySchema, options: ToT
         if (property.templateArgs[0]) return propertyToTSJSONInterface(property.templateArgs[0], options, true, depth, undefined);
         return 'any';
     }
-    if (property.type === 'map') {
+    if (property.type === 'record') {
         return `Record<${propertyToTSJSONInterface(property.templateArgs[0], {}, true, depth)}, ${propertyToTSJSONInterface(property.templateArgs[1], options, true, depth, undefined)}>${affix}`;
     }
     if (property.type === 'partial') {

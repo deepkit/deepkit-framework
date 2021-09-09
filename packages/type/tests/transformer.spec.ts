@@ -4,21 +4,14 @@ import {
     createCompilerHost,
     createProgram,
     createSourceFile,
-    Declaration,
-    isEnumDeclaration,
-    isPropertyDeclaration,
+    CustomTransformerFactory,
     ModuleKind,
-    Node,
     ScriptKind,
     ScriptTarget,
     SourceFile,
-    TransformationContext,
-    TransformerFactory,
-    transpileModule,
-    visitEachChild,
-    visitNode
+    transpileModule
 } from 'typescript';
-import { DeepkitTransformer, transformer } from '../src/transformer';
+import { transformer } from '../src/transformer';
 
 Error.stackTraceLimit = 200;
 
@@ -29,7 +22,7 @@ const options: CompilerOptions = {
     target: ScriptTarget.ES2020,
 };
 
-function transpile(source: string | { [file: string]: string }, useTransformer: TransformerFactory<SourceFile> = transformer) {
+function transpile(source: string | { [file: string]: string }, useTransformer: CustomTransformerFactory = transformer) {
     if ('string' === typeof source) {
         return transpileModule(source, {
             compilerOptions: options,
@@ -65,38 +58,66 @@ test('transpile single', () => {
     expect(transpile(`const p: string = '';`).trim()).toBe(`const p = '';`);
 });
 
-test('transpile transformer', () => {
-    let foundDeclaration: Declaration | undefined;
-    const transformer: TransformerFactory<SourceFile> = (context: TransformationContext) => {
-        const deepkitTransformer = new DeepkitTransformer(context);
-        return (sourceFile) => {
-            deepkitTransformer.sourceFile = sourceFile;
-            const visitor = (node: Node): Node => {
-                if (isPropertyDeclaration(node) && node.type) {
-                    const symbol = deepkitTransformer.findSymbol(node.type);
-                    if (symbol) {
-                        foundDeclaration = deepkitTransformer.findDeclaration(symbol);
-                    }
-                }
-                return visitEachChild(node, visitor, context);
-            };
-            return visitNode(sourceFile, visitor);
-        };
-    };
-    transpile({
-            app: `import {MyEnum} from './module'; class Controller {p: MyEnum;}`,
-            module: `export const enum MyEnum {}`
-        },
-        transformer
-    );
-    expect(foundDeclaration && isEnumDeclaration(foundDeclaration)).toBe(true);
-});
+// test('transpile transformer', () => {
+//     let foundDeclaration: Declaration | undefined;
+//     const transformer: CustomTransformerFactory = (context: TransformationContext) => {
+//         const deepkitTransformer = new DeepkitTransformer(context);
+//         return (sourceFile) => {
+//             deepkitTransformer.sourceFile = sourceFile;
+//             const visitor = (node: Node): Node => {
+//                 if (isPropertyDeclaration(node) && node.type) {
+//                     const symbol = deepkitTransformer.findSymbol(node.type);
+//                     if (symbol) {
+//                         foundDeclaration = deepkitTransformer.findDeclaration(symbol);
+//                     }
+//                 }
+//                 return visitEachChild(node, visitor, context);
+//             };
+//             return visitNode(sourceFile, visitor);
+//         };
+//     };
+//     transpile({
+//             app: `import {MyEnum} from './module'; class Controller {p: MyEnum;}`,
+//             module: `export const enum MyEnum {}`
+//         },
+//         transformer
+//     );
+//     expect(foundDeclaration && isEnumDeclaration(foundDeclaration)).toBe(true);
+// });
 
-const tests: [code: string | { [file: string]: string }, contains: string][] = [
+const tests: [code: string | { [file: string]: string }, contains: string | string[]][] = [
     [`import {t} from '@deepkit/type'; class Entity { @t p(): number {}}`, 'type_1.t.number'],
     [`import {t} from '@deepkit/type'; class Entity { @t p(param: string): number {}}`, `type_1.t.number`],
     [`import {t} from '@deepkit/type'; class Entity { @t p(param: string): number {}}`, `type_1.t.string.name('param')`],
+    [`import {t} from '@deepkit/type'; @t class Entity { constructor(param: string) {}}`, `type_1.t.string.name('param')`],
+    [`import {bla} from 'module'; @injectable class Entity { constructor(param: string) {}}`, `type_1.t.string.name('param')`],
+
+    [`import {t} from '@deepkit/type'; class Entity { @t p(param: string): number {}}`, `type_1.t.string.name('param')`],
+    [`import {t} from '@deepkit/type'; class Entity { @t p(param: string) {} }`, `type_1.t.string.name('param')`],
+    [`class Entity { @rpc p(param: string) {} }`, `type_1.t.string.name('param')`],
+    [`class Entity { p(param: string) {} }`, `!type_1.t.string.name('param')`],
+
     [`import {t} from '@deepkit/type'; class Entity { @t p: number;}`, 'type_1.t.number'],
+
+    //erasable types will be kept
+    [{
+        app: `import {Model} from './model'; class Entity { @t p: Model[];}`,
+        model: `export class Model {}`
+    }, ['type_1.t.type(model_1.Model)', `const model_1 =`]],
+
+    // manually defined @t stops emitting auto types
+    [`import {t} from '@deepkit/type'; class Entity { @t.map() p: number;}`, '!type_1.t.number'],
+    [`import {t} from '@deepkit/type'; class Entity { @t.string p: number;}`, '!type_1.t.number'],
+    [`import {t} from '@deepkit/type'; class Entity { @(t.string) p: number;}`, '!type_1.t.number'],
+    [`import {t} from '@deepkit/type'; class Entity { @t.number p: string;}`, '!type_1.t.string'],
+    [`import {t} from '@deepkit/type'; class Entity { @t.literal('asd') p: number;}`, '!type_1.t.number'],
+    [`import {t} from '@deepkit/type'; class Entity { @t.union('a') p: number;}`, '!type_1.t.number'],
+    [`import {t} from '@deepkit/type'; class Entity { @t.boolean p: number;}`, '!type_1.t.number'],
+    [`import {t} from '@deepkit/type'; class Entity { @t.map() p(): number;}`, '!type_1.t.number'],
+    [`import {t} from '@deepkit/type'; class Entity { @t.string p(): number;}`, '!type_1.t.number'],
+    [`import {t} from '@deepkit/type'; class Entity { @(t.string) p(): number;}`, '!type_1.t.number'],
+    [`import {t} from '@deepkit/type'; class Entity { @t.map(t.any).optional p?: FilterQuery<T>;}`, '!FilterQuery'],
+
     [`import {t} from '@deepkit/type'; class Entity { @t p?: number;}`, 'type_1.t.number.optional'],
     [`import {t} from '@deepkit/type'; class Entity { @t p: string;}`, 'type_1.t.string'],
     [`import {t} from '@deepkit/type'; class Entity { @t p: boolean;}`, 'type_1.t.boolean'],
@@ -140,7 +161,14 @@ describe('transformer', () => {
         const [code, contains] = entry;
         const label = 'string' === typeof code ? code : code['app.ts'] || '';
         test(`${contains}: ${label.slice(-40)}`, () => {
-            expect(transpile(code)).toContain(contains);
+            const e = expect(transpile(code));
+            for (const c of (Array.isArray(contains) ? contains : [contains])) {
+                if (c.startsWith('!')) {
+                    e.not.toContain(c.substr(1));
+                } else {
+                    e.toContain(c);
+                }
+            }
         });
     }
 });

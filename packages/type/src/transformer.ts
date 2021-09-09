@@ -1,28 +1,40 @@
 import {
     __String,
+    Bundle,
+    ConstructorDeclaration,
+    CustomTransformerFactory,
     Declaration,
     Decorator,
     Expression,
     Identifier,
+    ImportSpecifier,
     isArrayTypeNode,
+    isCallExpression,
+    isConstructorDeclaration,
     isEnumDeclaration,
     isIdentifier,
     isImportDeclaration,
     isImportSpecifier,
     isIndexSignatureDeclaration,
+    isInterfaceDeclaration,
     isLiteralTypeNode,
     isMethodDeclaration,
     isNamedImports,
     isParameter,
+    isParenthesizedExpression,
     isParenthesizedTypeNode,
+    isPrivateIdentifier,
+    isPropertyAccessExpression,
     isPropertyDeclaration,
-    isSourceFile,
+    isQualifiedName,
     isStringLiteral,
+    isTypeAliasDeclaration,
     isTypeLiteralNode,
     isTypeReferenceNode,
     isUnionTypeNode,
     MethodDeclaration,
     Node,
+    NodeArray,
     NodeFactory,
     ParameterDeclaration,
     PropertyAccessExpression,
@@ -34,11 +46,11 @@ import {
     SymbolTable,
     SyntaxKind,
     TransformationContext,
-    TransformerFactory,
     TypeNode,
     visitEachChild,
     visitNode
 } from 'typescript';
+import { Types } from './types';
 
 // function getTypeExpressions(f: NodeFactory, t: Identifier, types: NodeArray<TypeNode>): Expression[] {
 //     const args: Expression[] = [];
@@ -65,64 +77,206 @@ export class DeepkitTransformer {
         this.host = (context as any).getEmitHost() as ScriptReferenceHost;
     }
 
-    transform<T extends Node>(sourceFile: T): T {
-        // const importT = context.factory.createImportDeclaration(
-        //     undefined, undefined,
-        //     context.factory.createImportClause(false, context.factory.createIdentifier('t'), undefined),
-        //     context.factory.createIdentifier('@deepkit/type')
-        // );
-        // context.factory.updateSourceFile(fileNode, [
-        //     importT,
-        //     ...fileNode.statements,
-        // ]);
-        let importT: Identifier | undefined = undefined;
-        if (isSourceFile(sourceFile)) {
-            this.sourceFile = sourceFile;
-            for (const statement of sourceFile.statements) {
-                if (isImportDeclaration(statement) && statement.importClause) {
-                    if (isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === '@deepkit/type') {
-                        if (statement.importClause.namedBindings && isNamedImports(statement.importClause.namedBindings)) {
-                            for (const element of statement.importClause.namedBindings.elements) {
-                                if (element.name.text === 't') {
-                                    importT = element.name;
-                                }
+    protected findTFromImports() {
+        for (const statement of this.sourceFile.statements) {
+            if (isImportDeclaration(statement) && statement.importClause) {
+                if (isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === '@deepkit/type') {
+                    if (statement.importClause.namedBindings && isNamedImports(statement.importClause.namedBindings)) {
+                        for (const element of statement.importClause.namedBindings.elements) {
+                            if (element.name.text === 't') {
+                                return element.name;
                             }
                         }
                     }
                 }
             }
-        } else {
-            return sourceFile;
+        }
+        return;
+    }
+
+    findOrCreateImportT(): Identifier {
+        const t = this.findTFromImports();
+        if (t) return t;
+
+        {
+            const t = this.f.createIdentifier('t'); //Identifier = 78
+            const is = this.f.createImportSpecifier(undefined, t); //ImportSpecifier = 266, has symbol, with itself
+            (t as any).parent = is;
+            //this binds the `t` to the actual import. This is important when another transformer transforms the imports (like for commonjs)
+            //so that this transformer is renamed as well.
+            //See the internal Type of ts.Identifier for more information.
+            (t as any).generatedImportReference = is;
+
+            //NamedImports = 265, no symbol
+            const ni = this.f.createNamedImports([is]);
+            (is as any).parent = ni;
+
+            //ImportClause=263
+            const ic = this.f.createImportClause(false, undefined, ni);
+            (ni as any).parent = ic;
+
+            //ImportDeclaration=262
+            const importDeclaration = this.f.createImportDeclaration(
+                undefined, undefined,
+                ic,
+                this.f.createStringLiteral('@deepkit/type', true)
+            );
+            (ic as any).parent = importDeclaration;
+
+            this.sourceFile = this.f.updateSourceFile(this.sourceFile, [
+                importDeclaration,
+                ...this.sourceFile.statements
+            ]) as any;
+            (importDeclaration as any).parent = this.sourceFile;
+            return t;
+        }
+    }
+
+    extractName(node: Node): string {
+        if (isIdentifier(node)) return node.escapedText as string;
+        if (isPrivateIdentifier(node)) return node.escapedText as string;
+        return '';
+    }
+
+    extractPropertyAccesses(e: Expression, res: string[] = []): string[] {
+        if (isCallExpression(e)) {
+            this.extractPropertyAccesses(e.expression, res);
+        } else if (isParenthesizedExpression(e)) {
+            this.extractPropertyAccesses(e.expression, res);
+        } else if (isPropertyAccessExpression(e)) {
+            res.push(this.extractName(e.name));
+            this.extractPropertyAccesses(e.expression, res);
+        }
+        return res;
+    }
+
+    isManuallyTyped(decorators?: NodeArray<Decorator>): boolean {
+        if (!decorators) return false;
+
+        const mainDecoratorNames: (Types | string)[] = [
+            'string', 'number', 'boolean', 'literal',
+            'map', 'record', 'array', 'union',
+            'type', 'any'
+        ];
+
+        for (const decorator of decorators) {
+            const names = this.extractPropertyAccesses(decorator.expression);
+            for (const name of names) {
+                if (mainDecoratorNames.includes(name)) return true;
+            }
         }
 
-        if (!importT) return sourceFile;
+        return false;
+    }
+
+    hasValidDecorator(node: Node) {
+        if (isPropertyDeclaration(node) && !this.isManuallyTyped(node.decorators)) return !!node.decorators;
+        if (isMethodDeclaration(node) && !this.isManuallyTyped(node.decorators)) return !!node.decorators;
+
+        if (isParameter(node) && !this.isManuallyTyped(node.decorators)) {
+            if (isConstructorDeclaration(node.parent)) {
+                return !!node.parent.parent.decorators;
+            } else {
+                return !!node.parent.decorators;
+            }
+        }
+
+        if (isConstructorDeclaration(node)) return !!node.parent.decorators;
+
+        return false;
+    }
+
+    transformBundle(node: Bundle): Bundle {
+        return node;
+    }
+
+    transformSourceFile(sourceFile: SourceFile): SourceFile {
+        const deepkitType = this.host.getSourceFile('@deepkit/type');
+        if (!deepkitType) return sourceFile;
+
+        this.sourceFile = sourceFile;
+        let typeDecorated = false;
+
+        const visitorNeedsDecorator = (node: Node): Node => {
+            if (isConstructorDeclaration(node) && this.hasValidDecorator(node)) {
+                typeDecorated = true;
+            }
+
+            if ((isPropertyDeclaration(node) || isMethodDeclaration(node)) && this.hasValidDecorator(node)) {
+                typeDecorated = true;
+            }
+            return visitEachChild(node, visitorNeedsDecorator, this.context);
+        };
+
+        visitNode(sourceFile, visitorNeedsDecorator);
+        if (!typeDecorated) return sourceFile;
+
+        const t = this.findOrCreateImportT();
 
         const visitor = (node: Node): Node => {
-            if ((isPropertyDeclaration(node) || isMethodDeclaration(node)) && node.type && node.decorators) {
-                const typeDecorator = this.getDecoratorFromType(importT!, node);
+            if (isConstructorDeclaration(node) && this.hasValidDecorator(node)) {
+                return {
+                    ...node,
+                    parameters: this.f.createNodeArray(node.parameters.map(parameter => {
+                        if (!parameter.type) return parameter;
+                        if (!this.hasValidDecorator(parameter)) return parameter;
+                        return {
+                            ...parameter,
+                            decorators: this.f.createNodeArray([...(parameter.decorators || []), this.getDecoratorFromType(t, parameter)])
+                        };
+                    }))
+                } as ConstructorDeclaration;
+            }
+
+            if ((isPropertyDeclaration(node) || isMethodDeclaration(node)) && this.hasValidDecorator(node)) {
+                const typeDecorator = node.type ? this.getDecoratorFromType(t, node) : undefined;
                 if (isMethodDeclaration(node)) {
                     return {
                         ...node,
-                        decorators: this.f.createNodeArray([...node.decorators, typeDecorator]),
+                        decorators: typeDecorator ? this.f.createNodeArray([...(node.decorators || []), typeDecorator]) : node.decorators,
                         parameters: this.f.createNodeArray(node.parameters.map(parameter => {
                             if (!parameter.type) return parameter;
-                            return { ...parameter, decorators: this.f.createNodeArray([...(parameter.decorators || []), this.getDecoratorFromType(importT!, parameter)]) };
+                            if (!this.hasValidDecorator(parameter)) return parameter;
+                            return {
+                                ...parameter,
+                                decorators: this.f.createNodeArray([...(parameter.decorators || []), this.getDecoratorFromType(t, parameter)])
+                            };
                         }))
                     } as MethodDeclaration;
                 }
-                return { ...node, decorators: this.f.createNodeArray([...node.decorators, typeDecorator]) };
+                return { ...node, decorators: typeDecorator ? this.f.createNodeArray([...(node.decorators || []), typeDecorator]) : node.decorators };
             }
             return visitEachChild(node, visitor, this.context);
         };
-        return visitNode(sourceFile, visitor);
+        this.sourceFile = visitNode(this.sourceFile as any, visitor);
+
+        if (this.touchImportSpecifiers.length) {
+            const visitorTouchImports = (node: Node): Node => {
+                if (isImportSpecifier(node) && this.touchImportSpecifiers.includes(node)) {
+                    //we have to make a copy from used imports so TS does no ellision on it.
+                    return {...node, original: node} as any;
+                }
+
+                return visitEachChild(node, visitorTouchImports, this.context);
+            };
+            this.sourceFile = visitNode(this.sourceFile as any, visitorTouchImports);
+        }
+
+        return this.sourceFile;
     }
 
-
-    resolveEntityName(e: QualifiedName): PropertyAccessExpression {
+    createAccessorForEntityName(e: QualifiedName): PropertyAccessExpression {
         return this.f.createPropertyAccessExpression(
-            isIdentifier(e.left) ? e.left : this.resolveEntityName(e.left),
+            isIdentifier(e.left) ? e.left : this.createAccessorForEntityName(e.left),
             e.right,
         );
+    }
+
+    resolveName(node: Node): string {
+        if (isIdentifier(node)) return node.escapedText as string;
+        if (isQualifiedName(node)) return node.getText();
+        if (isTypeReferenceNode(node)) return this.resolveName(node.typeName);
+        return '';
     }
 
     isNodeWithLocals(node: Node): node is (Node & { locals: SymbolTable | undefined }) {
@@ -131,7 +285,8 @@ export class DeepkitTransformer {
 
     findSymbol(type: TypeNode): Symbol | undefined {
         let current = type.parent;
-        const name = isIdentifier(type) ? type.text : type.getText();
+        const name = this.resolveName(type);
+        if (!name) return;
         do {
             if (this.isNodeWithLocals(current) && current.locals) {
                 //check if its here
@@ -164,6 +319,8 @@ export class DeepkitTransformer {
         }
         return;
     }
+
+    protected touchImportSpecifiers: ImportSpecifier[] = [];
 
     getTypeExpression(t: Identifier, type: TypeNode, options: { allowShort?: boolean } = {}): Expression {
         if (isParenthesizedTypeNode(type)) return this.getTypeExpression(t, type.type);
@@ -255,10 +412,22 @@ export class DeepkitTransformer {
 
             const symbol = this.findSymbol(type);
             if (symbol) {
+                const incomingDeclaration = symbol.declarations ? symbol.declarations[0] : undefined;
+                if (incomingDeclaration && isImportSpecifier(incomingDeclaration)) {
+                    this.touchImportSpecifiers.push(incomingDeclaration);
+                }
+
                 const declaration = this.findDeclaration(symbol);
-                if (declaration && isEnumDeclaration(declaration)) {
+                if (!declaration) {
+                    //non existing references are ignored
+                    return wrap(this.f.createPropertyAccessExpression(t, 'any'));
+                }
+                if (isInterfaceDeclaration(declaration) || isTypeAliasDeclaration(declaration)) {
+                    return wrap(this.f.createPropertyAccessExpression(t, 'any'));
+                }
+                if (isEnumDeclaration(declaration)) {
                     return wrap(this.f.createCallExpression(this.f.createPropertyAccessExpression(t, 'enum'), [], [
-                        isIdentifier(type.typeName) ? type.typeName : this.resolveEntityName(type.typeName)
+                        isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName)
                     ]));
                 }
             }
@@ -270,11 +439,19 @@ export class DeepkitTransformer {
             }
 
             if (options?.allowShort && !type.typeArguments) {
-                return isIdentifier(type.typeName) ? type.typeName : this.resolveEntityName(type.typeName);
+                return isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName);
+            }
+
+            const parent = this.sourceFile;
+
+            function copy(node: Identifier) {
+                node = { ...node, parent: parent };
+                (node as any).original = undefined;
+                return node;
             }
 
             let e: Expression = this.f.createCallExpression(this.f.createPropertyAccessExpression(t, 'type'), [], [
-                isIdentifier(type.typeName) ? type.typeName : this.resolveEntityName(type.typeName)
+                isIdentifier(type.typeName) ? copy(type.typeName) : this.createAccessorForEntityName(type.typeName)
             ]);
 
             if (type.typeArguments) {
@@ -294,7 +471,7 @@ export class DeepkitTransformer {
 
         let e = this.getTypeExpression(t, node.type);
 
-        if (isParameter(node) && isIdentifier(node.name)) {
+        if (isParameter(node) && isIdentifier(node.name) && node.name.text) {
             e = this.f.createCallExpression(this.f.createPropertyAccessExpression(e, 'name'), [], [this.f.createStringLiteral(node.name.text, true)]);
         }
 
@@ -302,9 +479,6 @@ export class DeepkitTransformer {
     }
 }
 
-export const transformer: TransformerFactory<SourceFile> = (context) => {
-    const deepkitTransformer = new DeepkitTransformer(context);
-    return <T extends Node>(sourceFile: T): T => {
-        return deepkitTransformer.transform(sourceFile);
-    };
+export const transformer: CustomTransformerFactory = (context) => {
+    return new DeepkitTransformer(context);
 };

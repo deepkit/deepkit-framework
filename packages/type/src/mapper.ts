@@ -22,7 +22,7 @@ export function isArrayType<T>(classType: ClassType<T>, property: string): boole
  * @hidden
  */
 export function isMapType<T>(classType: ClassType<T>, property: string): boolean {
-    return getClassSchema(classType).getProperty(property).isMap;
+    return getClassSchema(classType).getProperty(property).isRecord;
 }
 
 /**

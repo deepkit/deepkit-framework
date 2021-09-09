@@ -60,7 +60,7 @@ test('short @f 2', () => {
         expect(props.length).toBe(1);
         expect(props[0].name).toBe('bar');
         expect(props[0].getSubType().type).toBe('string');
-        expect(props[0].isMap).toBe(true);
+        expect(props[0].isRecord).toBe(true);
     }
     {
         const errors = validateMethodArgs(Controller, 'foo', []);

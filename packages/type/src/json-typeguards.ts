@@ -112,7 +112,7 @@ registerJSONTypeGuard('array', (property: PropertySchema) => {
     };
 });
 
-registerJSONTypeGuard('map', (property: PropertySchema) => {
+registerJSONTypeGuard('record', (property: PropertySchema) => {
     return (v: any) => {
         return v && 'object' === typeof v && 'function' !== typeof v.slice;
     };

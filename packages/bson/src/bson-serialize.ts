@@ -229,7 +229,7 @@ function getPropertySizer(schema: ClassSchema, compiler: CompilerContext, proper
             size += 1;
         }
         `;
-    } else if (property.type === 'map') {
+    } else if (property.type === 'record') {
         compiler.context.set('stringByteLength', stringByteLength);
         const i = compiler.reserveName('i');
         code = `
@@ -993,7 +993,7 @@ function getPropertySerializerCode(
             ${undefinedWriter}
         }
         `;
-    } else if (property.type === 'map') {
+    } else if (property.type === 'record') {
         const i = compiler.reserveName('i');
         code = `
             writer.writeByte(${BSONType.OBJECT});

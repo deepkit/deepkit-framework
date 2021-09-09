@@ -23,7 +23,7 @@ test('test createClassSchema', async () => {
     expect(schema.getProperty('id').type).toEqual('string');
     expect(schema.getProperty('lists').isArray).toEqual(true);
     expect(schema.getProperty('lists').getSubType().type).toEqual('number');
-    expect(schema.getProperty('map').isMap).toEqual(true);
+    expect(schema.getProperty('map').isRecord).toEqual(true);
     expect(schema.getProperty('map').getSubType().type).toEqual('number');
 
     const obj = jsonSerializer.for(ExternalClass).deserialize({

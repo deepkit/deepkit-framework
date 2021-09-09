@@ -33,26 +33,26 @@ test('test partial @f.map(any) on class', async () => {
     expect(schema.getProperty('strings').getSubType().type).toBe('string');
     expect(schema.getProperty('array').isArray).toBe(true);
     expect(schema.getProperty('array').getSubType().type).toBe('any');
-    expect(schema.getProperty('values').isMap).toBe(true);
+    expect(schema.getProperty('values').isRecord).toBe(true);
     expect(schema.getProperty('values').getSubType().type).toBe('any');
     expect(schema.getProperty('any').type).toBe('any');
 
     {
         const p = resolvePropertySchema(schema, 'values');
         expect(p.name).toBe('values');
-        expect(p.isMap).toBe(true);
+        expect(p.isRecord).toBe(true);
         expect(p.getSubType().type).toBe('any');
     }
 
     {
         const p = resolvePropertySchema(schema, 'values.peter');
-        expect(p.isMap).toBe(false);
+        expect(p.isRecord).toBe(false);
         expect(p.type).toBe('any');
     }
 
     {
         const p = resolvePropertySchema(schema, 'values.peter.deep');
-        expect(p.isMap).toBe(false);
+        expect(p.isRecord).toBe(false);
         expect(p.type).toBe('any');
     }
 

@@ -105,7 +105,7 @@ export class SQLFilterBuilder {
                         for (let item of value) {
                             params.push(this.placeholderStrategy.getPlaceholder());
 
-                            if (!property.isReference && !property.backReference && (property.type === 'class' || property.type === 'map' || property.type === 'array')) {
+                            if (!property.isReference && !property.backReference && (property.type === 'class' || property.type === 'map' || property.type === 'record' || property.type === 'array')) {
                                 item = JSON.stringify(item);
                             }
                             this.params.push(this.bindValue(item));
@@ -115,7 +115,7 @@ export class SQLFilterBuilder {
                 } else {
                     rvalue = this.placeholderStrategy.getPlaceholder();
 
-                    if (!property.isReference && !property.backReference && (property.type === 'class' || property.type === 'map' || property.type === 'array')) {
+                    if (!property.isReference && !property.backReference && (property.type === 'class' || property.type === 'map' || property.type === 'record' || property.type === 'array')) {
                         value = JSON.stringify(value);
                     }
                     this.params.push(this.bindValue(value));

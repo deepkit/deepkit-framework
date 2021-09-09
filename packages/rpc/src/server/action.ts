@@ -518,7 +518,7 @@ export function isResultTypeDifferent(result: any, property: PropertySchema): bo
     if (property.type === 'boolean' && (typeof result !== 'boolean')) return true;
     if (property.type === 'date' && !(result instanceof Date)) return true;
     if (property.type === 'arrayBuffer' && !(result instanceof ArrayBuffer)) return true;
-    if (property.type === 'map' && !isPlainObject(result)) return true;
+    if (property.type === 'record' && !isPlainObject(result)) return true;
     if (property.type === 'array' && !isArray(result)) return true;
 
     if (property.type === 'promise' && !property.templateArgs[0]) {

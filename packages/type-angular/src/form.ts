@@ -101,7 +101,7 @@ function createControl<T>(
     if (prop.isArray) {
         conditionalValidators[prop.name + '_0'] = conditionalValidators[prop.name];
         control = new TypedFormArray(propPath, prop.getSubType(), limitControls, conditionalValidators);
-    } else if (prop.isMap) {
+    } else if (prop.isRecord) {
         throw new Error('Map not supported');
     } else {
         if (prop.type === 'class') {

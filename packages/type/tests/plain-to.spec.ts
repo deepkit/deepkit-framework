@@ -13,15 +13,15 @@ test('resolvePropertySchema simple', () => {
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'plan')!.type).toBe('enum');
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'plan')!.resolveClassType).toBe(Plan);
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'plan')!.isArray).toBe(false);
-    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'plan')!.isMap).toBe(false);
+    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'plan')!.isRecord).toBe(false);
 
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'children')!.isArray).toBe(true);
-    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'children')!.isMap).toBe(false);
+    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'children')!.isRecord).toBe(false);
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'children')!.getSubType().type).toBe('class');
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'children')!.getSubType().resolveClassType).toBe(SubModel);
 
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap')!.isArray).toBe(false);
-    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap')!.isMap).toBe(true);
+    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap')!.isRecord).toBe(true);
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap')!.getSubType().type).toBe('class');
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap')!.getSubType().resolveClassType).toBe(SubModel);
 });
@@ -30,12 +30,12 @@ test('resolvePropertySchema deep', () => {
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'children.0.label')!.type).toBe('string');
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'children.0.label')!.resolveClassType).toBeUndefined();
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'children.0.label')!.isArray).toBe(false);
-    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'children.0.label')!.isMap).toBe(false);
+    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'children.0.label')!.isRecord).toBe(false);
 
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap.foo.label')!.type).toBe('string');
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap.foo.label')!.resolveClassType).toBeUndefined();
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap.foo.label')!.isArray).toBe(false);
-    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap.foo.label')!.isMap).toBe(false);
+    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap.foo.label')!.isRecord).toBe(false);
 
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap.foo.queue.added')).not.toBeUndefined();
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap.foo.queue.added')!.type).toBe('date');
@@ -57,13 +57,13 @@ test('resolvePropertySchema deep', () => {
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap.foo')!.type).toBe('class');
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap.foo')!.resolveClassType).toBe(SubModel);
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap.foo')!.isArray).toBe(false);
-    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap.foo')!.isMap).toBe(false);
+    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenMap.foo')!.isRecord).toBe(false);
 
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenCollection.0')).not.toBeUndefined();
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenCollection.0')!.type).toBe('class');
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenCollection.0')!.resolveClassType).toBe(SubModel);
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenCollection.0')!.isArray).toBe(false);
-    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenCollection.0')!.isMap).toBe(false);
+    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'childrenCollection.0')!.isRecord).toBe(false);
 });
 
 
@@ -75,14 +75,14 @@ test('resolvePropertySchema decorator string', () => {
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'stringChildrenCollection')!.type).toBe('class');
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'stringChildrenCollection')!.resolveClassType).toBe(StringCollectionWrapper);
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'stringChildrenCollection')!.isArray).toBe(false);
-    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'stringChildrenCollection')!.isMap).toBe(false);
+    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'stringChildrenCollection')!.isRecord).toBe(false);
 });
 
 test('resolvePropertySchema deep decorator string', () => {
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'stringChildrenCollection.0')!.type).toBe('string');
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'stringChildrenCollection.0')!.resolveClassType).toBeUndefined();
     expect(resolvePropertySchema(getClassSchema(SimpleModel), 'stringChildrenCollection.0')!.isArray).toBe(false);
-    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'stringChildrenCollection.0')!.isMap).toBe(false);
+    expect(resolvePropertySchema(getClassSchema(SimpleModel), 'stringChildrenCollection.0')!.isRecord).toBe(false);
 });
 
 test('plain-to test simple model', () => {

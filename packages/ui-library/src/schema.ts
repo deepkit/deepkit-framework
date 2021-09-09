@@ -63,7 +63,7 @@ export function propertyToTSInterface(property: PropertySchema, options: ToTSInt
             return `Promise<${propertyToTSInterface(property.templateArgs[0], nextOptions, true, depth, undefined)}>${affix}`;
         }
 
-        if (property.type === 'map') {
+        if (property.type === 'record') {
             return `Record<${propertyToTSInterface(property.templateArgs[0], {}, true, depth)}, ${propertyToTSInterface(property.templateArgs[1], nextOptions, true, depth, undefined)}>${affix}`;
         }
         if (property.type === 'partial') {

@@ -253,12 +253,12 @@ test('test decorator circular', () => {
             sub?: { [l: string]: Sub };
         }
 
-        expect(getClassSchema(Model).getProperty('sub').type).toBe('map');
+        expect(getClassSchema(Model).getProperty('sub').type).toBe('record');
         expect(getClassSchema(Model).getProperty('sub').getSubType().type).toBe('class');
         expect(getClassSchema(Model).getProperty('sub').getSubType().resolveClassType).toBe(Sub);
 
         expect(resolvePropertySchema(getClassSchema(Model), 'sub')).toMatchObject({
-            type: 'map',
+            type: 'record',
         });
         expect(resolvePropertySchema(getClassSchema(Model), 'sub.foo')).toMatchObject({
             type: 'class',

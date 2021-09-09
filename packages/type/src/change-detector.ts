@@ -93,7 +93,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
                 }
             `;
 
-        } else if (property.isMap || property.isPartial) {
+        } else if (property.isRecord || property.isPartial) {
             compiler.context.set('getObjectKeysSize', getObjectKeysSize);
             const i = reserveVariable(compiler.context, 'i');
             return `
