@@ -43,8 +43,14 @@ function injectTransformerForTypescript(deepkitDistPath: string, code: string): 
 
 const typeScriptPath = dirname(require.resolve('typescript', {paths: [cwd()]}));
 const deepkitDistPath = relative(typeScriptPath, __dirname);
+{
+    const tscContent = readFileSync(join(typeScriptPath, 'tsc.js'), 'utf8');
+    writeFileSync(join(typeScriptPath, 'tsc.js'), injectTransformerForTsc(deepkitDistPath, tscContent));
+}
 
-const tscContent = readFileSync(join(typeScriptPath, 'typescript.js'), 'utf8');
-writeFileSync(join(typeScriptPath, 'typescript.js'), injectTransformerForTypescript(deepkitDistPath, tscContent));
+{
+    const tscContent = readFileSync(join(typeScriptPath, 'typescript.js'), 'utf8');
+    writeFileSync(join(typeScriptPath, 'typescript.js'), injectTransformerForTypescript(deepkitDistPath, tscContent));
+}
 
 console.log('Deepkit Type: Injected TypeScript transformer at', typeScriptPath);

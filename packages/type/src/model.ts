@@ -411,6 +411,11 @@ export class PropertySchema {
     classType?: ClassType;
 
     /**
+     * The value side of an expression like `typeof c`. In this case whatever `c` is.
+     */
+    typeValue?: any;
+
+    /**
      * Whether its a back reference.
      */
     backReference?: BackReferenceOptions<any>;
@@ -732,6 +737,13 @@ export class PropertySchema {
 
     setFromJSType(type: any, detectForwardRef = getGlobalStore().enableForwardRefDetection): this {
         if (type === undefined || type === null) return this;
+
+        if (type instanceof ForwardRef) {
+            const forwarded = type.forwardRef();
+            if (typedArrayMap.has(forwarded)) {
+                type = forwarded;
+            }
+        }
 
         this.type = PropertySchema.getTypeFromJSType(type);
         this.typeSet = this.type !== 'any';
@@ -1458,10 +1470,10 @@ export class ClassSchema<T = any> {
                 obj[i] = (this.propertiesMap.get(properties[i].name) || properties[i].clone());
             }
         }
-
-        if (name !== 'constructor' && (!Reflect.getMetadata || !Reflect.hasMetadata('design:returntype', this.classType.prototype, name))) {
-            throw new Error(`Method ${this.getClassPropertyName(name)} has no decorators used or is not defined, so reflection does not work. Use @t on the method or arguments. Is emitDecoratorMetadata enabled? Correctly 'reflect-metadata' imported? Return type annotated?`);
-        }
+        //
+        // if (name !== 'constructor' && (!Reflect.getMetadata || !Reflect.hasMetadata('design:returntype', this.classType.prototype, name))) {
+        //     throw new Error(`Method ${this.getClassPropertyName(name)} has no decorators used or is not defined, so reflection does not work. Use @t on the method or arguments. Is emitDecoratorMetadata enabled? Correctly 'reflect-metadata' imported? Return type annotated?`);
+        // }
 
         if (name !== 'constructor' && !this.methods[name]) {
             const returnType = Reflect.getMetadata && Reflect.getMetadata('design:returntype', this.classType.prototype, name);
@@ -1916,7 +1928,9 @@ export function getClassSchema<T>(classTypeIn: AbstractClassType<T> | Object | C
 export function createClassSchema<T = any>(clazz?: ClassType<T>, name: string = '', baseClass?: ClassType): ClassSchema<T> {
     const fromClass = clazz !== undefined;
 
-    const c = clazz || (name ? createDynamicClass(name, baseClass) : baseClass ? class extends baseClass{} : class {});
+    const c = clazz || (name ? createDynamicClass(name, baseClass) : baseClass ? class extends baseClass {
+    } : class {
+    });
 
     const classSchema = getOrCreateEntitySchema(c);
     classSchema.name = name;

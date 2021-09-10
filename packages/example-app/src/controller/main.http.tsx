@@ -21,14 +21,12 @@ export class MainController {
     }
 
     @http.GET('/api/users')
-    @t.array(User)
-    async users() {
+    async users(): Promise<User[]> {
         return await this.database.query(User).find();
     }
 
     @http.GET('/api/user/:id')
-    @t.type(User)
-    async user(id: number) {
+    async user(id: number): Promise<User> {
         return await this.database.query(User).filter({id}).findOne();
     }
 

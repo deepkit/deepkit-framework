@@ -1,11 +1,11 @@
 import {
     __String,
     Bundle,
-    ConstructorDeclaration,
     CustomTransformerFactory,
     Declaration,
     Decorator,
     Expression,
+    getJSDocTags,
     Identifier,
     ImportSpecifier,
     isArrayTypeNode,
@@ -30,6 +30,7 @@ import {
     isStringLiteral,
     isTypeAliasDeclaration,
     isTypeLiteralNode,
+    isTypeQueryNode,
     isTypeReferenceNode,
     isUnionTypeNode,
     MethodDeclaration,
@@ -51,6 +52,9 @@ import {
     visitNode
 } from 'typescript';
 import { Types } from './types';
+import { dirname, join, resolve } from 'path';
+import { existsSync, readFileSync } from 'fs';
+import stripJsonComments from 'strip-json-comments';
 
 // function getTypeExpressions(f: NodeFactory, t: Identifier, types: NodeArray<TypeNode>): Expression[] {
 //     const args: Expression[] = [];
@@ -63,6 +67,8 @@ import { Types } from './types';
 //     }
 //     return args;
 // }
+
+const reflectionModes = ['always', 'default', 'never'] as const;
 
 export class DeepkitTransformer {
     protected host!: ScriptReferenceHost;
@@ -77,13 +83,13 @@ export class DeepkitTransformer {
         this.host = (context as any).getEmitHost() as ScriptReferenceHost;
     }
 
-    protected findTFromImports() {
+    protected findTFromImports(t: string = 't', moduleName: string = '@deepkit/type') {
         for (const statement of this.sourceFile.statements) {
             if (isImportDeclaration(statement) && statement.importClause) {
-                if (isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === '@deepkit/type') {
+                if (isStringLiteral(statement.moduleSpecifier) && (!moduleName || statement.moduleSpecifier.text === moduleName)) {
                     if (statement.importClause.namedBindings && isNamedImports(statement.importClause.namedBindings)) {
                         for (const element of statement.importClause.namedBindings.elements) {
-                            if (element.name.text === 't') {
+                            if (element.name.text === t) {
                                 return element.name;
                             }
                         }
@@ -94,8 +100,8 @@ export class DeepkitTransformer {
         return;
     }
 
-    findOrCreateImportT(): Identifier {
-        const t = this.findTFromImports();
+    findOrCreateImportT(module: string): Identifier {
+        const t = this.findTFromImports('t', module);
         if (t) return t;
 
         {
@@ -119,7 +125,7 @@ export class DeepkitTransformer {
             const importDeclaration = this.f.createImportDeclaration(
                 undefined, undefined,
                 ic,
-                this.f.createStringLiteral('@deepkit/type', true)
+                this.f.createStringLiteral(module, true)
             );
             (ic as any).parent = importDeclaration;
 
@@ -169,19 +175,26 @@ export class DeepkitTransformer {
         return false;
     }
 
-    hasValidDecorator(node: Node) {
-        if (isPropertyDeclaration(node) && !this.isManuallyTyped(node.decorators)) return !!node.decorators;
-        if (isMethodDeclaration(node) && !this.isManuallyTyped(node.decorators)) return !!node.decorators;
+    /**
+     * If a decorator like @t.string found where a type is manually defined,
+     * then this return false. For all other property/method/method or constructor parameters it returns true;
+     */
+    shouldExtractType(node: Node) {
+        const reflection = this.findReflection(node);
+        if (reflection.mode === 'never') return false;
+
+        if (isPropertyDeclaration(node) && !this.isManuallyTyped(node.decorators)) return true;
+        if (isMethodDeclaration(node) && !this.isManuallyTyped(node.decorators)) return true;
 
         if (isParameter(node) && !this.isManuallyTyped(node.decorators)) {
             if (isConstructorDeclaration(node.parent)) {
-                return !!node.parent.parent.decorators;
+                return true;
             } else {
-                return !!node.parent.decorators;
+                return true;
             }
         }
 
-        if (isConstructorDeclaration(node)) return !!node.parent.decorators;
+        if (isConstructorDeclaration(node)) return true;
 
         return false;
     }
@@ -190,19 +203,88 @@ export class DeepkitTransformer {
         return node;
     }
 
-    transformSourceFile(sourceFile: SourceFile): SourceFile {
-        const deepkitType = this.host.getSourceFile('@deepkit/type');
-        if (!deepkitType) return sourceFile;
+    protected parseReflectionMode(mode?: typeof reflectionModes[number] | '' | boolean): typeof reflectionModes[number] {
+        if ('boolean' === typeof mode) return mode ? 'default' : 'never';
+        return mode || 'never';
+    }
 
+    protected resolvedTsConfig: { [path: string]: Record<string, any> } = {};
+
+    findReflection(node: Node): { mode: typeof reflectionModes[number], import: string } {
+        let current: Node | undefined = node;
+        let reflection: typeof reflectionModes[number] | undefined;
+        let reflectionImport: string | undefined;
+
+        do {
+            const tags = getJSDocTags(current);
+            for (const tag of tags) {
+                if (!reflection && tag.tagName.text === 'reflection' && 'string' === typeof tag.comment) {
+                    reflection = this.parseReflectionMode(tag.comment as any);
+                }
+                if (!reflectionImport && tag.tagName.text === 'reflectionImport' && 'string' === typeof tag.comment) {
+                    reflectionImport = this.parseReflectionMode(tag.comment as any);
+                }
+            }
+            current = current.parent;
+        } while (current);
+
+        //nothing found, look in tsconfig.json
+        let currentDir = dirname(this.sourceFile.fileName);
+
+        while (currentDir) {
+            const exists = existsSync(join(currentDir, 'tsconfig.json'));
+            if (exists) {
+                const tsconfigPath = join(currentDir, 'tsconfig.json');
+                try {
+                    let tsConfig: Record<string, any> = {};
+                    if (this.resolvedTsConfig[tsconfigPath]) {
+                        tsConfig = this.resolvedTsConfig[tsconfigPath];
+                    } else {
+                        let content = readFileSync(tsconfigPath, 'utf8');
+                        content = stripJsonComments(content);
+                        tsConfig = JSON.parse(content);
+                    }
+
+                    if (!reflection && tsConfig.reflection !== undefined) {
+                        reflection = this.parseReflectionMode(tsConfig.reflection);
+                    }
+
+                    if (!reflectionImport && tsConfig.reflectionImport !== undefined) {
+                        reflectionImport = tsConfig.reflectionImport;
+                    }
+                    if (reflection && reflectionImport) break;
+                } catch (error: any) {
+                    console.warn(`Could not parse ${tsconfigPath}: ${error}`);
+                }
+            }
+            const next = join(currentDir, '..');
+            if (resolve(next) === resolve(currentDir)) break; //we are at root
+            currentDir = next;
+        }
+
+        return { mode: reflection || 'never', import: reflectionImport || '@deepkit/type' };
+    }
+
+    transformSourceFile(sourceFile: SourceFile): SourceFile {
         this.sourceFile = sourceFile;
+        if (!sourceFile.statements.length) return sourceFile;
+        const reflection = this.findReflection(sourceFile);
+
+        if (reflection.mode === 'never') {
+            return sourceFile;
+        } else if (reflection.mode === 'default' && reflection.import === '@deepkit/type') {
+            // const deepkitType = this.host.getSourceFile('@deepkit/type');
+            // if (!deepkitType) return sourceFile;
+        }
+
         let typeDecorated = false;
 
         const visitorNeedsDecorator = (node: Node): Node => {
-            if (isConstructorDeclaration(node) && this.hasValidDecorator(node)) {
+            if (isConstructorDeclaration(node) && this.shouldExtractType(node)) {
                 typeDecorated = true;
             }
 
-            if ((isPropertyDeclaration(node) || isMethodDeclaration(node)) && this.hasValidDecorator(node)) {
+            if ((isPropertyDeclaration(node) || isMethodDeclaration(node)) && this.shouldExtractType(node)) {
                 typeDecorated = true;
             }
             return visitEachChild(node, visitorNeedsDecorator, this.context);
@@ -211,40 +293,51 @@ export class DeepkitTransformer {
         visitNode(sourceFile, visitorNeedsDecorator);
         if (!typeDecorated) return sourceFile;
 
-        const t = this.findOrCreateImportT();
+        const t = this.findOrCreateImportT(reflection.import);
+        if (!t) return sourceFile;
 
         const visitor = (node: Node): Node => {
-            if (isConstructorDeclaration(node) && this.hasValidDecorator(node)) {
-                return {
-                    ...node,
-                    parameters: this.f.createNodeArray(node.parameters.map(parameter => {
+            if (isConstructorDeclaration(node) && this.shouldExtractType(node)) {
+                return this.f.updateConstructorDeclaration(
+                    node,
+                    node.decorators, node.modifiers,
+                    this.f.createNodeArray(node.parameters.map(parameter => {
                         if (!parameter.type) return parameter;
-                        if (!this.hasValidDecorator(parameter)) return parameter;
-                        return {
-                            ...parameter,
-                            decorators: this.f.createNodeArray([...(parameter.decorators || []), this.getDecoratorFromType(t, parameter)])
-                        };
-                    }))
-                } as ConstructorDeclaration;
+                        if (!this.shouldExtractType(parameter)) return parameter;
+                        return this.f.updateParameterDeclaration(
+                            parameter,
+                            this.f.createNodeArray([...(parameter.decorators || []), this.getDecoratorFromType(t, parameter)]),
+                            parameter.modifiers,
+                            parameter.dotDotDotToken,
+                            parameter.name, parameter.questionToken, parameter.type, parameter.initializer
+                        );
+                    })),
+                    node.body
+                );
             }
 
-            if ((isPropertyDeclaration(node) || isMethodDeclaration(node)) && this.hasValidDecorator(node)) {
+            if ((isPropertyDeclaration(node) || isMethodDeclaration(node)) && this.shouldExtractType(node)) {
                 const typeDecorator = node.type ? this.getDecoratorFromType(t, node) : undefined;
                 if (isMethodDeclaration(node)) {
-                    return {
-                        ...node,
-                        decorators: typeDecorator ? this.f.createNodeArray([...(node.decorators || []), typeDecorator]) : node.decorators,
-                        parameters: this.f.createNodeArray(node.parameters.map(parameter => {
-                            if (!parameter.type) return parameter;
-                            if (!this.hasValidDecorator(parameter)) return parameter;
-                            return {
-                                ...parameter,
-                                decorators: this.f.createNodeArray([...(parameter.decorators || []), this.getDecoratorFromType(t, parameter)])
-                            };
-                        }))
-                    } as MethodDeclaration;
+                    const decorators = typeDecorator ? this.f.createNodeArray([...(node.decorators || []), typeDecorator]) : node.decorators;
+                    const parameters = this.f.createNodeArray(node.parameters.map(parameter => {
+                        if (!parameter.type) return parameter;
+                        if (!this.shouldExtractType(parameter)) return parameter;
+                        return this.f.updateParameterDeclaration(
+                            parameter,
+                            this.f.createNodeArray([...(parameter.decorators || []), this.getDecoratorFromType(t, parameter)]),
+                            parameter.modifiers,
+                            parameter.dotDotDotToken,
+                            parameter.name, parameter.questionToken, parameter.type, parameter.initializer
+                        );
+                    }));
+                    return this.f.updateMethodDeclaration(node, decorators, node.modifiers, node.asteriskToken, node.name, node.questionToken, node.typeParameters, parameters, node.type, node.body);
                 }
-                return { ...node, decorators: typeDecorator ? this.f.createNodeArray([...(node.decorators || []), typeDecorator]) : node.decorators };
+                return this.f.updatePropertyDeclaration(
+                    node,
+                    typeDecorator ? this.f.createNodeArray([...(node.decorators || []), typeDecorator]) : node.decorators,
+                    node.modifiers, node.name, node.questionToken, node.type, node.initializer
+                );
             }
             return visitEachChild(node, visitor, this.context);
         };
@@ -254,7 +347,7 @@ export class DeepkitTransformer {
             const visitorTouchImports = (node: Node): Node => {
                 if (isImportSpecifier(node) && this.touchImportSpecifiers.includes(node)) {
                     //we have to make a copy from used imports so TS does no ellision on it.
-                    return {...node, original: node} as any;
+                    return { ...node, original: node } as any;
                 }
 
                 return visitEachChild(node, visitorTouchImports, this.context);
@@ -283,7 +376,7 @@ export class DeepkitTransformer {
         return 'locals' in node;
     }
 
-    findSymbol(type: TypeNode): Symbol | undefined {
+    findSymbol(type: TypeNode | Identifier): Symbol | undefined {
         let current = type.parent;
         const name = this.resolveName(type);
         if (!name) return;
@@ -322,6 +415,15 @@ export class DeepkitTransformer {
 
     protected touchImportSpecifiers: ImportSpecifier[] = [];
 
+    /**
+     * Wraps t as `t.forwardRef(() => t)` to make sure we don't run into circular references or access identifiers that are not yet initialized.
+     */
+    protected forwardRef(t: Identifier, e: Expression) {
+        return this.f.createCallExpression(this.f.createPropertyAccessExpression(t, 'forwardRef'), [], [
+            this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, e)
+        ]);
+    }
+
     getTypeExpression(t: Identifier, type: TypeNode, options: { allowShort?: boolean } = {}): Expression {
         if (isParenthesizedTypeNode(type)) return this.getTypeExpression(t, type.type);
         let markAsOptional: boolean = !!type.parent && isPropertyDeclaration(type.parent) && !!type.parent.questionToken;
@@ -350,6 +452,14 @@ export class DeepkitTransformer {
 
         if (isArrayTypeNode(type)) {
             return wrap(this.f.createCallExpression(this.f.createPropertyAccessExpression(t, 'array'), [], [this.getTypeExpression(t, type.elementType)]));
+        }
+
+        if (isTypeQueryNode(type)) {
+            //typeof c
+            return wrap(this.f.createCallExpression(this.f.createPropertyAccessExpression(t, 'type'), [], [
+                this.f.createPropertyAccessExpression(t, 'any'),
+                this.forwardRef(t, isIdentifier(type.exprName) ? type.exprName : this.createAccessorForEntityName(type.exprName)),
+            ]));
         }
 
         if (isTypeLiteralNode(type)) {
@@ -427,7 +537,7 @@ export class DeepkitTransformer {
                 }
                 if (isEnumDeclaration(declaration)) {
                     return wrap(this.f.createCallExpression(this.f.createPropertyAccessExpression(t, 'enum'), [], [
-                        isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName)
+                        this.forwardRef(t, isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName))
                     ]));
                 }
             }
@@ -438,9 +548,9 @@ export class DeepkitTransformer {
                 ));
             }
 
-            if (options?.allowShort && !type.typeArguments) {
-                return isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName);
-            }
+            // if (options?.allowShort && !type.typeArguments) {
+            //     return isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName);
+            // }
 
             const parent = this.sourceFile;
 
@@ -451,7 +561,7 @@ export class DeepkitTransformer {
             }
 
             let e: Expression = this.f.createCallExpression(this.f.createPropertyAccessExpression(t, 'type'), [], [
-                isIdentifier(type.typeName) ? copy(type.typeName) : this.createAccessorForEntityName(type.typeName)
+                this.forwardRef(t, isIdentifier(type.typeName) ? copy(type.typeName) : this.createAccessorForEntityName(type.typeName))
             ]);
 
             if (type.typeArguments) {
@@ -479,6 +589,11 @@ export class DeepkitTransformer {
     }
 }
 
+let loaded = false;
 export const transformer: CustomTransformerFactory = (context) => {
+    if (!loaded) {
+        process.stderr.write('@deepkit/type transformer loaded\n');
+        loaded = true;
+    }
     return new DeepkitTransformer(context);
 };

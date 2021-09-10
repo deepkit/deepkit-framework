@@ -266,18 +266,17 @@ test('test inheritance', async () => {
 
 
 test('test invalid @f', () => {
-    class Config {
-        @t.optional name?: string;
-    }
-
     expect(() => {
         class User1 {
             @t
                 // @ts-ignore
             notDefined;
         }
-    }).toThrowError('User1::notDefined type mismatch. Given any?, but declared is Object or undefined.');
+    }).toThrowError('User1.notDefined type mismatch. Given any?, but declared is Object or undefined.');
 
+    class Config {
+        @t.optional name?: string;
+    }
     expect(() => {
         // @ts-ignore
         var NOTEXIST;
@@ -288,28 +287,28 @@ test('test invalid @f', () => {
                 // @ts-ignore
             notDefined;
         }
-    }).toThrowError('User2::notDefined type mismatch. Given any?, but declared is Object or undefined.');
+    }).toThrowError('User2.notDefined type mismatch. Given any?, but declared is Object or undefined.');
 
     expect(() => {
         class User3 {
             @t
             created = new Date;
         }
-    }).toThrowError('User3::created type mismatch. Given any, but declared is Object or undefined.');
+    }).toThrowError('User3.created type mismatch. Given any, but declared is Object or undefined.');
 
     expect(() => {
         class User4 {
             @t.type(Config)
             config: Config[] = [];
         }
-    }).toThrowError('User4::config type mismatch. Given Config, but declared is Array.');
+    }).toThrowError('User4.config type mismatch. Given Config, but declared is Array.');
 
     expect(() => {
         class User5 {
             @t.array(Config).required
             config!: Config;
         }
-    }).toThrowError('User5::config type mismatch. Given Config[], but declared is Config.');
+    }).toThrowError('User5.config type mismatch. Given Config[], but declared is Config.');
 
     expect(() => {
         class Model {
@@ -317,7 +316,7 @@ test('test invalid @f', () => {
             sub!: Config;
         }
 
-    }).toThrowError('Model::sub type mismatch. Given Config[], but declared is Config.');
+    }).toThrowError('Model.sub type mismatch. Given Config[], but declared is Config.');
 
     expect(() => {
         class Model {
@@ -325,14 +324,14 @@ test('test invalid @f', () => {
             sub?: Config;
         }
 
-    }).toThrowError('Model::sub type mismatch. Given ForwardedRef[]?, but declared is Config.');
+    }).toThrowError('Model.sub type mismatch. Given ForwardedRef[]?, but declared is Config.');
 
     expect(() => {
         class Model {
             @t.map(() => undefined)
             sub?: Config;
         }
-    }).toThrowError('Model::sub type mismatch. Given Record<any, ForwardedRef>?, but declared is Config.');
+    }).toThrowError('Model.sub type mismatch. Given Record<any, ForwardedRef>?, but declared is Config.');
 
     expect(() => {
         class Model {
@@ -340,7 +339,7 @@ test('test invalid @f', () => {
             sub?: Config[];
         }
 
-    }).toThrowError('Model::sub type mismatch. Given Record<any, Config>?, but declared is Array.');
+    }).toThrowError('Model.sub type mismatch. Given Record<any, Config>?, but declared is Array.');
 
     {
         //works

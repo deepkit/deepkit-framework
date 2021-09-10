@@ -886,7 +886,7 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
             }
         }
 
-        const id = getClassName(target) + (property.methodName ? '::' + property.methodName : '') + '::' + propertyName;
+        const id = getClassName(target) + (property.methodName ? '.' + property.methodName : '') + '.' + propertyName;
 
         function getTypeName(t: any): string {
             if (t === Object) return 'Object';
@@ -903,16 +903,16 @@ function Field(type?: FieldTypes<any> | Types | PlainSchemaProps | ClassSchema):
             return getClassName(t);
         }
 
-        if (returnType !== Promise && returnType !== undefined && property.type !== 'any') {
+        if (returnType !== Promise && returnType !== undefined) {
             //we don't want to check for type mismatch when returnType is a Promise.
 
-            if (property.typeSet && property.isArray && returnType !== Array) {
+            if (property.type !== 'any' && property.typeSet && property.isArray && returnType !== Array) {
                 throw new Error(`${id} type mismatch. Given ${property}, but declared is ${getTypeName(returnType)}. ` +
                     `Please use the correct type in @t.type(T).`
                 );
             }
 
-            if (property.typeSet && !property.isArray && returnType === Array) {
+            if (property.type !== 'any' && property.typeSet && !property.isArray && returnType === Array) {
                 throw new Error(`${id} type mismatch. Given ${property}, but declared is ${getTypeName(returnType)}. ` +
                     `Please use @t.array(MyType) or @t.array(() => MyType), e.g. @t.array(String) for '${propertyName}: string[]'.`);
             }
@@ -977,11 +977,16 @@ fRaw['record'] = function (keyType: WideTypes, valueType: WideTypes): FieldDecor
     });
 };
 
+fRaw['forwardRef'] = function (forward: () => WideTypes): ForwardRef<any> {
+    return new ForwardRef(forward);
+};
+
 fRaw['any'] = Field('any');
 
-fRaw['type'] = function <T extends WideTypes>(this: FieldDecoratorResult<any>, type: T): FieldDecoratorResult<T> {
+fRaw['type'] = function <T extends WideTypes>(this: FieldDecoratorResult<any>, type: T, value?: any): FieldDecoratorResult<T> {
     return Field().use((target, property) => {
         assignWideTypeToProperty(property, type);
+        property.typeValue = value instanceof ForwardRef ? value.forwardRef() : value;
     });
 };
 
@@ -1052,7 +1057,7 @@ export interface MainDecorator {
      * }
      * ```
      */
-    type<T extends WideTypes>(type: T): FieldDecoratorResult<ExtractType<T>>;
+    type<T extends WideTypes>(type: T, typeValue?: any): FieldDecoratorResult<ExtractType<T>>;
 
     /**
      * Defines a discriminated union type.
@@ -1265,6 +1270,11 @@ export interface MainDecorator {
      * ```
      */
     record<T extends WideTypes>(keyType: WideTypes, valueType: T): FieldDecoratorResult<{ [name: string]: ExtractType<T> }>;
+
+    /**
+     * Creates a forward ref, necessary for example for circular references.
+     */
+    forwardRef<T extends WideTypes>(forward: () => T): ForwardRef<T>;
 }
 
 /**

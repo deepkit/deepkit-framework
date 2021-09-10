@@ -102,7 +102,7 @@ test('short @t unmet array definition', () => {
             public foo(@t bar: string[]) {
             }
         }
-    }).toThrow('Controller::foo::bar type mismatch. Given nothing, but declared is Array');
+    }).toThrow('Controller.foo.bar type mismatch. Given nothing, but declared is Array');
 });
 
 test('short @f no index on arg', () => {
@@ -197,20 +197,6 @@ test('short @f multi', () => {
         expect(props[1].type).toBe('number');
         expect(props[1].isArray).toBe(false);
     }
-});
-
-
-test('no decorators', () => {
-    expect(() => {
-        class Controller {
-            public foo(bar: string, nothing: boolean) {
-            }
-        }
-
-        const s = getClassSchema(Controller);
-        s.getMethodProperties('foo');
-
-    }).toThrow('Method Controller.foo has no decorators used');
 });
 
 test('partial', () => {

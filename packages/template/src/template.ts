@@ -9,7 +9,7 @@
  */
 import 'reflect-metadata';
 import { ClassType, getClassName, isClass } from '@deepkit/core';
-import { isArray } from '@deepkit/type';
+import { getClassSchema, isArray } from '@deepkit/type';
 import './optimize-tsx';
 import { Injector } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
@@ -169,11 +169,15 @@ export async function render(injector: Injector, struct: ElementStruct | string 
 
     if (isClass(struct.render)) {
         const element = struct.render;
-        const args = [struct.attributes || {}, html(children)];
-        const types = Reflect.getMetadata('design:paramtypes', element);
-        if (types) {
-            for (let i = 2; i < types.length; i++) {
-                args.push(injector.get(types[i]));
+        const args: any = [struct.attributes || {}, html(children)];
+        const schema = getClassSchema(struct.render);
+        const types = schema.getMethodProperties('constructor');
+        for (let i = 2; i < types.length; i++) {
+            const token = (types[i].type === 'class') ? types[i].getResolvedClassType() : types[i].literalValue || types[i].typeValue;
+            if (token === undefined) {
+                args.push(undefined);
+            } else {
+                args.push(injector.get(token));
             }
         }
         const instance = new element(...args);

@@ -296,7 +296,7 @@ export function parseRouteControllerAction(routeConfig: RouteConfig): ParsedRout
 
         if (decoratorData && decoratorData.optional) property.isOptional = true;
 
-        if (property.type === 'class' && property.classType === BodyValidation) {
+        if (property.type === 'class' && property.getResolvedClassType() === BodyValidation) {
             parsedRoute.customValidationErrorHandling = parsedParameter;
         }
         parsedParameter.regexPosition = parsedPath.parameterNames[property.name];

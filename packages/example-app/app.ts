@@ -1,5 +1,4 @@
 #!/usr/bin/env ts-node-script
-import 'reflect-metadata';
 import { createCrudRoutes, FrameworkModule, onServerMainBootstrapDone } from '@deepkit/framework';
 import { Author, Book, SQLiteDatabase, User } from './src/database';
 import { MainController } from './src/controller/main.http';

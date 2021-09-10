@@ -30,7 +30,6 @@ import { PageClass } from './document-scenario/PageClass';
 import { DocumentClass } from './document-scenario/DocumentClass';
 import { resolvePropertySchema } from '../src/jit';
 
-
 test('getClassSchemaByName', async () => {
     @Entity('getClassSchemaByName')
     class Test {

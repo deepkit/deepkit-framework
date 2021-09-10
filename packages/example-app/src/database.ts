@@ -2,7 +2,6 @@ import { entity, t } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { config } from './config';
-import { injectable } from '@deepkit/injector';
 
 @entity.name('user')
 export class User {
@@ -55,7 +54,6 @@ export class Book {
 
 class DbConfig extends config.slice('dbPath') {}
 
-@injectable
 export class SQLiteDatabase extends Database {
     constructor(private config: DbConfig) {
         // super(new MongoDatabaseAdapter('mongodb://localhost/example-app'), [User, Book, Author]);

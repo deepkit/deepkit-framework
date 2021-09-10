@@ -1,7 +1,0 @@
-{
-  "ignoreRoot": [
-    ".git",
-    "node_modules/!(@deepkit)/**/*"
-  ],
-  "ext": "js json ts tsx"
-}
