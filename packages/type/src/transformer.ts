@@ -4,14 +4,19 @@ import {
     CustomTransformerFactory,
     Declaration,
     Decorator,
+    ExportDeclaration,
     Expression,
     getJSDocTags,
     Identifier,
-    ImportSpecifier,
+    ImportCall,
+    ImportDeclaration,
+    ImportEqualsDeclaration,
+    ImportTypeNode,
     isArrayTypeNode,
     isCallExpression,
     isConstructorDeclaration,
     isEnumDeclaration,
+    isExportDeclaration,
     isIdentifier,
     isImportDeclaration,
     isImportSpecifier,
@@ -19,6 +24,7 @@ import {
     isInterfaceDeclaration,
     isLiteralTypeNode,
     isMethodDeclaration,
+    isNamedExports,
     isNamedImports,
     isParameter,
     isParenthesizedExpression,
@@ -34,9 +40,11 @@ import {
     isTypeReferenceNode,
     isUnionTypeNode,
     MethodDeclaration,
+    ModuleDeclaration,
     Node,
     NodeArray,
     NodeFactory,
+    NodeFlags,
     ParameterDeclaration,
     PropertyAccessExpression,
     PropertyDeclaration,
@@ -56,22 +64,22 @@ import { dirname, join, resolve } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import stripJsonComments from 'strip-json-comments';
 
-// function getTypeExpressions(f: NodeFactory, t: Identifier, types: NodeArray<TypeNode>): Expression[] {
-//     const args: Expression[] = [];
-//     for (const subType of types) {
-//         if (isLiteralTypeNode(subType)) {
-//             args.push(subType.literal);
-//         } else {
-//             args.push(getTypeExpression(f, t, subType));
-//         }
-//     }
-//     return args;
-// }
-
 const reflectionModes = ['always', 'default', 'never'] as const;
+
+/**
+ * An internal helper that has not yet exposed to transformers.
+ */
+interface EmitResolver {
+    getReferencedValueDeclaration(reference: Identifier): Declaration | undefined;
+
+    getReferencedImportDeclaration(nodeIn: Identifier): Declaration | undefined;
+
+    getExternalModuleFileFromDeclaration(declaration: ImportEqualsDeclaration | ImportDeclaration | ExportDeclaration | ModuleDeclaration | ImportTypeNode | ImportCall): SourceFile | undefined;
+}
 
 export class DeepkitTransformer {
     protected host!: ScriptReferenceHost;
+    protected resolver!: EmitResolver;
     protected f: NodeFactory;
 
     sourceFile!: SourceFile;
@@ -81,6 +89,7 @@ export class DeepkitTransformer {
     ) {
         this.f = context.factory;
         this.host = (context as any).getEmitHost() as ScriptReferenceHost;
+        this.resolver = (context as any).getEmitResolver() as EmitResolver;
     }
 
     protected findTFromImports(t: string = 't', moduleName: string = '@deepkit/type') {
@@ -187,9 +196,7 @@ export class DeepkitTransformer {
         if (isMethodDeclaration(node) && !this.isManuallyTyped(node.decorators)) return true;
 
         if (isParameter(node) && !this.isManuallyTyped(node.decorators)) {
-            if (isConstructorDeclaration(node.parent)) {
-                return true;
-            } else {
+            if (node.parent && (isConstructorDeclaration(node.parent) || isMethodDeclaration(node.parent))) {
                 return true;
             }
         }
@@ -343,18 +350,6 @@ export class DeepkitTransformer {
         };
         this.sourceFile = visitNode(this.sourceFile as any, visitor);
 
-        if (this.touchImportSpecifiers.length) {
-            const visitorTouchImports = (node: Node): Node => {
-                if (isImportSpecifier(node) && this.touchImportSpecifiers.includes(node)) {
-                    //we have to make a copy from used imports so TS does no ellision on it.
-                    return { ...node, original: node } as any;
-                }
-
-                return visitEachChild(node, visitorTouchImports, this.context);
-            };
-            this.sourceFile = visitNode(this.sourceFile as any, visitorTouchImports);
-        }
-
         return this.sourceFile;
     }
 
@@ -391,29 +386,53 @@ export class DeepkitTransformer {
         return;
     }
 
-    findDeclaration(symbol: Symbol): Declaration | undefined {
-        if (symbol && symbol.declarations && symbol.declarations[0]) {
-            const declaration = symbol.declarations[0];
-            if (!declaration) return;
-            if (isImportSpecifier(declaration)) {
-                const declarationName = declaration.name.text;
-                const imp = declaration.parent.parent.parent;
-                if (isImportDeclaration(imp) && isStringLiteral(imp.moduleSpecifier)) {
-                    let fromFile = imp.moduleSpecifier.text;
-                    if (!fromFile.endsWith('.js') && !fromFile.endsWith('.ts')) fromFile += '.ts';
-                    const source = this.host.getSourceFile(fromFile.startsWith('./') ? this.sourceFile.fileName + '/.' + fromFile : fromFile);
-                    if (source && this.isNodeWithLocals(source) && source.locals) {
-                        const declarationSymbol = source.locals.get(declarationName as __String);
-                        if (declarationSymbol && declarationSymbol.declarations) return declarationSymbol.declarations[0];
-                    }
-                }
+    findDeclarationInFile(sourceFile: SourceFile, declarationName: string): Declaration | undefined {
+        if (this.isNodeWithLocals(sourceFile) && sourceFile.locals) {
+            const declarationSymbol = sourceFile.locals.get(declarationName as __String);
+            if (declarationSymbol && declarationSymbol.declarations && declarationSymbol.declarations[0]) {
+                return declarationSymbol.declarations[0];
             }
-            return declaration;
         }
         return;
     }
 
-    protected touchImportSpecifiers: ImportSpecifier[] = [];
+    resolveImportSpecifier(declarationName: string, importOrExport: ExportDeclaration | ImportDeclaration): Node | undefined {
+        if (!importOrExport.moduleSpecifier) return;
+        if (!isStringLiteral(importOrExport.moduleSpecifier)) return;
+
+        const source = this.resolver.getExternalModuleFileFromDeclaration(importOrExport);
+        if (!source) return;
+
+        const declaration = this.findDeclarationInFile(source, declarationName);
+        if (declaration) return declaration;
+
+        //not found, look in exports
+        for (const statement of source.statements) {
+            if (!isExportDeclaration(statement)) continue;
+
+            if (statement.exportClause) {
+                //export {y} from 'x'
+                if (isNamedExports(statement.exportClause)) {
+                    for (const element of statement.exportClause.elements) {
+                        //see if declarationName is exported
+                        if (element.name.escapedText === declarationName) {
+                            const found = this.resolveImportSpecifier(element.propertyName ? element.propertyName.escapedText as string : declarationName, statement);
+                            if (found) return found;
+                        }
+                    }
+                }
+            } else {
+                //export * from 'x'
+                //see if `x` exports declarationName (or one of its exports * from 'y')
+                const found = this.resolveImportSpecifier(declarationName, statement);
+                if (found) {
+                    return found;
+                }
+            }
+        }
+
+        return;
+    }
 
     /**
      * Wraps t as `t.forwardRef(() => t)` to make sure we don't run into circular references or access identifiers that are not yet initialized.
@@ -476,7 +495,7 @@ export class DeepkitTransformer {
             }
         }
 
-        if (isTypeReferenceNode(type) && isIdentifier(type.typeName) && type.typeName.text === 'Record' && type.typeArguments && type.typeArguments.length === 2) {
+        if (isTypeReferenceNode(type) && isIdentifier(type.typeName) && type.typeName.escapedText === 'Record' && type.typeArguments && type.typeArguments.length === 2) {
             //Record<string, number> => t.record(t.string, t.number)
             const [key, value] = type.typeArguments;
             return wrap(this.f.createCallExpression(this.f.createPropertyAccessExpression(t, 'record'), [], [
@@ -485,8 +504,8 @@ export class DeepkitTransformer {
             ]));
         }
 
-        if (isTypeReferenceNode(type) && isIdentifier(type.typeName) && type.typeName.text === 'Partial' && type.typeArguments && type.typeArguments.length === 1) {
-            //Record<string, number> => t.record(t.string, t.number)
+        if (isTypeReferenceNode(type) && isIdentifier(type.typeName) && type.typeName.escapedText === 'Partial' && type.typeArguments && type.typeArguments.length === 1) {
+            //partial<T> => t.partial(T)
             const [T] = type.typeArguments;
             return wrap(this.f.createCallExpression(this.f.createPropertyAccessExpression(t, 'partial'), [], [
                 this.getTypeExpression(t, T, { allowShort: true }),
@@ -518,50 +537,67 @@ export class DeepkitTransformer {
         }
 
         if (isTypeReferenceNode(type)) {
-            if (isIdentifier(type.typeName) && type.typeName.text === 'Date') return wrap(this.f.createPropertyAccessExpression(t, 'date'));
-
-            const symbol = this.findSymbol(type);
-            if (symbol) {
-                const incomingDeclaration = symbol.declarations ? symbol.declarations[0] : undefined;
-                if (incomingDeclaration && isImportSpecifier(incomingDeclaration)) {
-                    this.touchImportSpecifiers.push(incomingDeclaration);
-                }
-
-                const declaration = this.findDeclaration(symbol);
-                if (!declaration) {
-                    //non existing references are ignored
-                    return wrap(this.f.createPropertyAccessExpression(t, 'any'));
-                }
-                if (isInterfaceDeclaration(declaration) || isTypeAliasDeclaration(declaration)) {
-                    return wrap(this.f.createPropertyAccessExpression(t, 'any'));
-                }
-                if (isEnumDeclaration(declaration)) {
-                    return wrap(this.f.createCallExpression(this.f.createPropertyAccessExpression(t, 'enum'), [], [
-                        this.forwardRef(t, isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName))
-                    ]));
-                }
+            if (isIdentifier(type.typeName) && type.typeName.escapedText === 'Date') return wrap(this.f.createPropertyAccessExpression(t, 'date'));
+            const knownGlobals = [
+                'Int8Array', 'Uint8Array', 'Uint8Array', 'Uint8ClampedArray',
+                'Int16Array', 'Uint16Array', 'Int32Array', 'Uint32Array', 'Float32Array', 'Float64Array',
+                'ArrayBuffer', 'BigInt64Array',
+                'String', 'Number', 'BigInt', 'Boolean',
+            ];
+            if (isIdentifier(type.typeName) && knownGlobals.includes(type.typeName.escapedText as string)) {
+                return wrap(this.f.createCallExpression(
+                    this.f.createPropertyAccessExpression(t, 'type'), [],
+                    [type.typeName]
+                ));
             }
-            if (isIdentifier(type.typeName) && type.typeName.text === 'Promise') {
+            if (isIdentifier(type.typeName) && type.typeName.escapedText === 'Promise') {
                 return wrap(this.f.createCallExpression(
                     this.f.createPropertyAccessExpression(t, 'promise'), [],
                     type.typeArguments ? type.typeArguments.map(T => this.getTypeExpression(t, T)) : []
                 ));
             }
 
-            // if (options?.allowShort && !type.typeArguments) {
-            //     return isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName);
-            // }
+            let declaration: Node | undefined = isIdentifier(type.typeName) ? this.resolver.getReferencedValueDeclaration(type.typeName) : undefined;
+            if (!declaration && isIdentifier(type.typeName)) {
+                declaration = this.findDeclarationInFile(this.sourceFile, type.typeName.escapedText as string);
+                if (declaration && isImportSpecifier(declaration)) declaration = undefined;
+            }
 
-            const parent = this.sourceFile;
+            if (isIdentifier(type.typeName)) {
+                const referencedImport = this.resolver.getReferencedImportDeclaration(type.typeName);
+                if (referencedImport && isImportSpecifier(referencedImport)) {
+                    if (!declaration) {
+                        declaration = this.resolveImportSpecifier(type.typeName.escapedText as string, referencedImport.parent.parent.parent);
+                    }
 
-            function copy(node: Identifier) {
-                node = { ...node, parent: parent };
-                (node as any).original = undefined;
-                return node;
+                    //for imports that can removed (like a class import used only used as type only, like `p: Model[]`) we have
+                    //to modify the import so TS does not remove it
+                    if (declaration && (!isInterfaceDeclaration(declaration) && !isTypeAliasDeclaration(declaration))) {
+                        //make synthetic. Let the TS compiler keep this import
+                        (referencedImport as any).flags |= NodeFlags.Synthesized;
+                    }
+                }
+            }
+
+            if (!declaration) {
+                //non existing references are ignored.
+                //todo: we could search in the generics of type.parent is a ClassDeclaration.
+                // console.log('No type reference found for', this.sourceFile.fileName.slice(-128), type.parent.getText(), isIdentifier(type.typeName) ? type.typeName.escapedText : this.createAccessorForEntityName(type.typeName));
+                return wrap(this.f.createPropertyAccessExpression(t, 'any'));
+            }
+
+            if (isInterfaceDeclaration(declaration) || isTypeAliasDeclaration(declaration)) {
+                return wrap(this.f.createPropertyAccessExpression(t, 'any'));
+            }
+
+            if (isEnumDeclaration(declaration)) {
+                return wrap(this.f.createCallExpression(this.f.createPropertyAccessExpression(t, 'enum'), [], [
+                    this.forwardRef(t, isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName))
+                ]));
             }
 
             let e: Expression = this.f.createCallExpression(this.f.createPropertyAccessExpression(t, 'type'), [], [
-                this.forwardRef(t, isIdentifier(type.typeName) ? copy(type.typeName) : this.createAccessorForEntityName(type.typeName))
+                this.forwardRef(t, isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName))
             ]);
 
             if (type.typeArguments) {
@@ -581,8 +617,8 @@ export class DeepkitTransformer {
 
         let e = this.getTypeExpression(t, node.type);
 
-        if (isParameter(node) && isIdentifier(node.name) && node.name.text) {
-            e = this.f.createCallExpression(this.f.createPropertyAccessExpression(e, 'name'), [], [this.f.createStringLiteral(node.name.text, true)]);
+        if (isParameter(node) && isIdentifier(node.name) && node.name.escapedText) {
+            e = this.f.createCallExpression(this.f.createPropertyAccessExpression(e, 'name'), [], [this.f.createStringLiteral(node.name.escapedText, true)]);
         }
 
         return this.f.createDecorator(e);

@@ -739,10 +739,12 @@ export class PropertySchema {
         if (type === undefined || type === null) return this;
 
         if (type instanceof ForwardRef) {
-            const forwarded = type.forwardRef();
-            if (typedArrayMap.has(forwarded)) {
-                type = forwarded;
-            }
+            try {
+                const forwarded = type.forwardRef();
+                if (typedArrayMap.has(forwarded)) {
+                    type = forwarded;
+                }
+            } catch {}
         }
 
         this.type = PropertySchema.getTypeFromJSType(type);
