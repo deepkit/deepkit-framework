@@ -18,7 +18,7 @@ function getPatchId(id: string): string{
 function getCode(deepkitDistPath: string, varName: string, id: string): string {
     return `
         //${getPatchId(id)}
-        var typeTransformer = require('${deepkitDistPath}/src/transformer');
+        var typeTransformer = require('${deepkitDistPath}/src/reflection');
         if (typeTransformer) {
             if (!${varName}) ${varName} = {};
             if (!${varName}.before) ${varName}.before = [];

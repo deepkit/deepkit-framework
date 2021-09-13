@@ -1,7 +1,18 @@
 /** @reflection never */
 import { describe, expect, test } from '@jest/globals';
-import { CompilerOptions, createCompilerHost, createProgram, createSourceFile, CustomTransformerFactory, ModuleKind, ScriptTarget, SourceFile, transpileModule } from 'typescript';
-import { pack, ReflectionOp, transformer } from '../../src/reflection';
+import {
+    CompilerOptions,
+    createCompilerHost,
+    createProgram,
+    createSourceFile,
+    CustomTransformerFactory,
+    ModuleKind,
+    ScriptTarget,
+    SourceFile,
+    TransformationContext,
+    transpileModule
+} from 'typescript';
+import { pack, ReflectionOp, ReflectionTransformer, transformer } from '../../src/reflection';
 
 Error.stackTraceLimit = 200;
 
@@ -17,7 +28,7 @@ function transpile(source: string | { [file: string]: string }, useTransformer: 
         return transpileModule(source, {
             fileName: __dirname + '/module.ts',
             compilerOptions: options,
-            transformers: { before: [transformer] }
+            transformers: { before: [(context: TransformationContext) =>  new ReflectionTransformer(context).withReflectionMode('always')]}
         }).outputText;
     }
 
@@ -47,7 +58,7 @@ function transpile(source: string | { [file: string]: string }, useTransformer: 
     };
 
     const program = createProgram(Object.keys(files), options, host);
-    program.emit(files[appPath], undefined, undefined, undefined, { before: [useTransformer] });
+    program.emit(files[appPath], undefined, undefined, undefined, { before: [(context: TransformationContext) =>  new ReflectionTransformer(context).withReflectionMode('always')] });
     return appTs;
 }
 
@@ -77,7 +88,7 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
     [`class Entity { p(param: string): any }`, `{ p: ${pack([ReflectionOp.function, ReflectionOp.string, ReflectionOp.any])}`],
     [`class Entity { p(param: string, size: number): void }`, `{ p: ${pack([ReflectionOp.function, ReflectionOp.string, ReflectionOp.number, ReflectionOp.void])}`],
 
-    [`function() {enum MyEnum {}; class Entity { p: MyEnum;} }`, `{ p: [() => MyEnum, ${pack([ReflectionOp.enum])}]`],
+    [`function f() {enum MyEnum {}; class Entity { p: MyEnum;} }`, `{ p: [() => MyEnum, ${pack([ReflectionOp.enum])}]`],
     [`class Entity { p: Uint8Array;}`, `{ p: ${pack([ReflectionOp.uint8Array])}`],
     [`class Entity { p: ArrayBuffer;}`, `{ p: ${pack([ReflectionOp.arrayBuffer])}`],
     [`class Model {} class Entity { p: Model;}`, `{ p: [() => Model, ${pack([ReflectionOp.class])}]`],
@@ -179,15 +190,17 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
 
     [`const fn = (param: string): void {}`, `const fn = Object.assign((param) => { }, { __type: ${pack([ReflectionOp.function, ReflectionOp.string, ReflectionOp.void])} })`],
     [`const fn = (param: string) {}`, `const fn = Object.assign((param) => { }, { __type: ${pack([ReflectionOp.function, ReflectionOp.string, ReflectionOp.any])} })`],
-    [`const fn = () {}`, `const fn = Object.assign(() => { }, { __type: ${pack([ReflectionOp.function, ReflectionOp.any])} })`],
+    [`const fn = () {}`, `!__type:`],
+    [`const fn = (): any {}`, `const fn = Object.assign(() => { }, { __type: ${pack([ReflectionOp.function, ReflectionOp.any])} })`],
 
-    [`const fn = function () {}`, `const fn = Object.assign(function () { }, { __type: ${pack([ReflectionOp.function, ReflectionOp.any])} })`],
-    [`function createFn() { return function() {} }`, `return Object.assign(function () { }, { __type: ${pack([ReflectionOp.function, ReflectionOp.any])} })`],
+    [`const fn = function () {}`, `!__type`],
+    [`const fn = function (): any {}`, `const fn = Object.assign(function () { }, { __type: ${pack([ReflectionOp.function, ReflectionOp.any])} })`],
+    [`function createFn() { return function() {} }`, `!__type`],
+    [`function createFn() { return function(): any {} }`, `return Object.assign(function () { }, { __type: ${pack([ReflectionOp.function, ReflectionOp.any])} })`],
 
     [`class Entity { createFn() { return function(param: string) {} }}`,  `return Object.assign(function (param) { }, { __type: ${pack([ReflectionOp.function, ReflectionOp.string, ReflectionOp.any])} })`],
 
-    [`function name() {}`, `function name() { }\nname.__type = ${pack([ReflectionOp.function, ReflectionOp.any])};`],
-
+    [`function name(): any {}`, `function name() { }\nname.__type = ${pack([ReflectionOp.function, ReflectionOp.any])};`],
 ];
 
 describe('transformer', () => {
@@ -206,3 +219,19 @@ describe('transformer', () => {
         });
     }
 });
+
+test('no double __type', () => {
+    expect(transpile(`function f() {enum MyEnum {}; class Entity { p: MyEnum;} }`)).toBe(`function f() { let MyEnum; (function (MyEnum) {
+})(MyEnum || (MyEnum = {}));  ; class Entity {
+} Entity.__type = { p: [() => MyEnum, 29] }; }\n`)
+});
+
+test('type reference reflection', () => {
+    expect(transpile(`
+        class Model {}
+
+        class A {
+            b: Partial<Model>;
+        }
+    `)).toContain('todo');
+})

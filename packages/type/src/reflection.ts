@@ -62,8 +62,11 @@ import { existsSync, readFileSync } from 'fs';
 import stripJsonComments from 'strip-json-comments';
 import { ClassType, isArray } from '@deepkit/core';
 
+/**
+ * Not more than `packSize` elements are allowed (can be stored).
+ */
 export enum ReflectionOp {
-    end,
+    end, //requires to be 0. not used explicitly, but a placeholder to detect when the ops are done
     any,
     void,
     string,
@@ -74,6 +77,8 @@ export enum ReflectionOp {
     undefined,
     literal,
     function,
+    property,
+    method,
 
     //delimiter to signal the current definition is done (e.g. after an union for example, to signal the union is defined)
     //needed for genericClass and union.
@@ -93,10 +98,21 @@ export enum ReflectionOp {
     arrayBuffer,
     promise,
 
-    class, //Custom class references, e.g. MyClass
-    genericClass, //Custom class references, with template arguments, e.g. MyClass<string>
+    /**
+     * Custom class references, e.g. MyClass.
+     * Uses one stack entry for the class reference.
+     */
+    class,
+
+    /**
+     * Custom class references, with template arguments, e.g. MyClass<string>
+     * Uses one stack entry for the class reference.
+     */
+    genericClass,
     enum,
+
     union,
+    intersection,
 
     set,
     map,
@@ -108,10 +124,19 @@ export enum ReflectionOp {
     partial,
     pick,
     exclude,
+
     typeAlias, //Partial, Pick, Exclude,
 
-    template,
+    keyof,
+
     optional,
+    // public, its implicit always public if not otherwise defined
+    private,
+    protected,
+    abstract,
+    /**
+     * Uses one stack entry.
+     */
     defaultValue,
 }
 
@@ -130,22 +155,19 @@ export const maxOpsPerPack: number = Math.floor(Math.log(Number.MAX_SAFE_INTEGER
  * string = ReflectionOp.string
  * number = ReflectionOp.number
  * boolean = ReflectionOp.boolean
- * ?string = [ReflectionOp.string, ReflectionOp.optional]
- * string | null = [ReflectionOp.string, ReflectionOp.nullable]
- * ?string | null = [ReflectionOp.string, ReflectionOp.optional, ReflectionOp.nullable]
+ * ?: string = [ReflectionOp.string, ReflectionOp.optional]
+ * string | null = [ReflectionOp.union, ReflectionOp.string, ReflectionOp.undefined]
+ * ?: string | null = [ReflectionOp.union, ReflectionOp.optional, ReflectionOp.string, ReflectionOp.null]
  *
  * Config = [ReflectionOp.class, () => Config]
  *
  * Config<string> = [ReflectionOp.genericClass, () => Config, ReflectionOp.string]
  *
- * ?Config<string> = [ReflectionOp.genericClass, () => Config, ReflectionOp.optional, ReflectionOp.template, ReflectionOp.string]
- * ?Config<string | undefined> = [ReflectionOp.genericClass, () => Config, ReflectionOp.optional, ReflectionOp.union, ReflectionOp.string, ReflectionOp.undefined, Reflection.up]
+ * string | number = [ReflectionOp.union, ReflectionOp.string, ReflectionOp.number]
  *
- * string | number = [ReflectionOp.string, ReflectionOp.number]
+ * Config<string> | string = [ReflectionOp.union, ReflectionOp.genericClass, () => Config, ReflectionOp.string, Reflection.up, ReflectionOp.string]
  *
- * Config<string> | string = [ReflectionOp.genericClass, () => Config, ReflectionOp.optional, ReflectionOp.string, Reflection.up, ReflectionOp.string]
- *
- * action(param: string|number, size: number): void = [Reflection.function, Reflection.union, Reflection.string, Reflection.number, Reflection.up, Reflection.string, Reflection.void]
+ * action(param: string|number, size: number): void = ['param', 'size', Reflection.function, Reflection.union, Reflection.string, Reflection.number, Reflection.up, Reflection.string, Reflection.void]
  */
 
 /**
@@ -187,7 +209,7 @@ export function pack(packOrOps: PackStruct | ReflectionOp[]): Packed {
     return opNumbers;
 }
 
-export type StackEntry = Expression | ClassType | (() => ClassType) | string | number | boolean;
+export type StackEntry = Expression | (() => ClassType | Object) | string | number | boolean;
 
 export type Packed = number | string | [...StackEntry[], number | string];
 
@@ -208,8 +230,11 @@ function unpackOps(ops: ReflectionOp[], opsNumber: number | string): void {
 }
 
 export class PackStruct {
-    ops: ReflectionOp[] = [];
-    stack: StackEntry[] = [];
+    constructor(
+        public ops: ReflectionOp[] = [],
+        public stack: StackEntry[] = [],
+    ) {
+    }
 }
 
 export function unpack(pack: Packed): PackStruct {
@@ -254,6 +279,7 @@ export class ReflectionTransformer {
     protected host!: ScriptReferenceHost;
     protected resolver!: EmitResolver;
     protected f: NodeFactory;
+    protected reflectionMode?: typeof reflectionModes[number];
 
     constructor(
         protected context: TransformationContext,
@@ -263,6 +289,11 @@ export class ReflectionTransformer {
         this.resolver = (context as any).getEmitResolver() as EmitResolver;
     }
 
+    withReflectionMode(mode: typeof reflectionModes[number]): this {
+        this.reflectionMode = mode;
+        return this;
+    }
+
     transformBundle(node: Bundle): Bundle {
         return node;
     }
@@ -270,7 +301,7 @@ export class ReflectionTransformer {
     transformSourceFile(sourceFile: SourceFile): SourceFile {
         this.sourceFile = sourceFile;
 
-        const visitor = (node: Node) => {
+        const visitor = (node: Node): any => {
             node = visitEachChild(node, visitor, this.context);
 
             if (isClassDeclaration(node)) {
@@ -282,8 +313,12 @@ export class ReflectionTransformer {
             } else if (isArrowFunction(node)) {
                 return this.decorateArrow(node);
             }
+            // if (isFunctionDeclaration(node)) {
+            //     return this.decorateFunctionDeclaration(node);
+            // }
 
             return node;
+            // return visitEachChild(node, visitor, this.context);
         };
 
         this.sourceFile = visitNode(sourceFile, visitor);
@@ -291,43 +326,39 @@ export class ReflectionTransformer {
         return this.sourceFile;
     }
 
-    protected extractPackStructOfType(node: TypeNode | Declaration, ops: ReflectionOp[], stack: StackEntry[]): void {
-        if (isParenthesizedTypeNode(node)) return this.extractPackStructOfType(node.type, ops, stack);
-        let markAsOptional: boolean = !!node.parent && isPropertyDeclaration(node.parent) && !!node.parent.questionToken;
+    protected extractPackStructOfType(node: TypeNode | Declaration, ops: ReflectionOp[], stack: StackEntry[], modifier: () => void = () => {}): void {
+        if (isParenthesizedTypeNode(node)) return this.extractPackStructOfType(node.type, ops, stack, modifier);
 
         const reflection = this.findReflectionConfig(node);
         if (reflection.mode === 'never') return;
 
-        function addModifiers() {
-            if (markAsOptional) ops.push(ReflectionOp.optional);
-        }
-
         if (node.kind === SyntaxKind.StringKeyword) {
             ops.push(ReflectionOp.string);
-            addModifiers();
+            modifier();
         } else if (node.kind === SyntaxKind.NumberKeyword) {
             ops.push(ReflectionOp.number);
-            addModifiers();
+            modifier();
         } else if (node.kind === SyntaxKind.BooleanKeyword) {
             ops.push(ReflectionOp.boolean);
-            addModifiers();
+            modifier();
         } else if (node.kind === SyntaxKind.BigIntKeyword) {
             ops.push(ReflectionOp.bigint);
-            addModifiers();
+            modifier();
         } else if (node.kind === SyntaxKind.VoidKeyword) {
             ops.push(ReflectionOp.void);
-            addModifiers();
+            modifier();
         } else if (node.kind === SyntaxKind.NullKeyword) {
             ops.push(ReflectionOp.null);
-            addModifiers();
+            modifier();
         } else if (node.kind === SyntaxKind.UndefinedKeyword) {
             ops.push(ReflectionOp.undefined);
-            addModifiers();
+            modifier();
         } else if (isTypeLiteralNode(node)) {
             //{[name: string]: number} => t.record(t.string, t.number)
             const [first] = node.members;
             //has always two sub types
             ops.push(ReflectionOp.record);
+            modifier();
             if (first && isIndexSignatureDeclaration(first) && first.parameters[0] && first.parameters[0].type) {
                 this.extractPackStructOfType(first.parameters[0].type, ops, stack);
                 this.extractPackStructOfType(first.type, ops, stack);
@@ -339,20 +370,24 @@ export class ReflectionTransformer {
             //Record<string, number> => t.record(t.string, t.number)
             const [key, value] = node.typeArguments;
             ops.push(ReflectionOp.record);
+            modifier();
             this.extractPackStructOfType(key, ops, stack);
             this.extractPackStructOfType(value, ops, stack);
 
         } else if (isTypeReferenceNode(node)) {
-            this.extractPackStructOfTypeReference(node, ops, stack);
+            this.extractPackStructOfTypeReference(node, ops, stack, modifier);
         } else if (isArrayTypeNode(node)) {
             ops.push(ReflectionOp.array);
-            addModifiers();
+            modifier();
             this.extractPackStructOfType(node.elementType, ops, stack);
         } else if (isPropertyDeclaration(node) && node.type) {
-            this.extractPackStructOfType(node.type, ops, stack);
+            this.extractPackStructOfType(node.type, ops, stack, () => {
+                if (node.questionToken) ops.push(ReflectionOp.optional);
+            });
         } else if (isMethodDeclaration(node) || isConstructorDeclaration(node) || isArrowFunction(node) || isFunctionExpression(node) || isFunctionDeclaration(node)) {
+            if (node.parameters.length === 0 && !node.type) return;
             ops.push(ReflectionOp.function);
-            addModifiers();
+            modifier();
             for (const parameter of node.parameters) {
                 if (parameter.type) {
                     this.extractPackStructOfType(parameter.type, ops, stack);
@@ -368,20 +403,22 @@ export class ReflectionTransformer {
         } else if (isLiteralTypeNode(node)) {
             if (node.literal.kind === SyntaxKind.NullKeyword) {
                 ops.push(ReflectionOp.null);
-                addModifiers();
+                modifier();
             } else {
                 ops.push(ReflectionOp.literal);
+                modifier();
                 stack.push(node.literal);
-                addModifiers();
             }
         } else if (isUnionTypeNode(node)) {
             ops.push(ReflectionOp.union);
-            addModifiers();
+            modifier();
             for (const subType of node.types) {
                 this.extractPackStructOfType(subType, ops, stack);
             }
+            ops.push(ReflectionOp.up);
         } else {
             ops.push(ReflectionOp.any);
+            modifier();
         }
     }
 
@@ -404,11 +441,13 @@ export class ReflectionTransformer {
         'Boolean': ReflectionOp.boolean,
     };
 
-    protected extractPackStructOfTypeReference(type: TypeReferenceNode, ops: ReflectionOp[], stack: StackEntry[]) {
+    protected extractPackStructOfTypeReference(type: TypeReferenceNode, ops: ReflectionOp[], stack: StackEntry[], modifier: () => void) {
         if (isIdentifier(type.typeName) && this.knownClasses[type.typeName.escapedText as string]) {
             ops.push(this.knownClasses[type.typeName.escapedText as string]);
+            modifier();
         } else if (isIdentifier(type.typeName) && type.typeName.escapedText === 'Promise') {
             ops.push(ReflectionOp.promise);
+            modifier();
             //promise has always one sub type
             if (type.typeArguments && type.typeArguments[0]) {
                 this.extractPackStructOfType(type.typeArguments[0], ops, stack);
@@ -443,21 +482,26 @@ export class ReflectionTransformer {
                 //todo: we could search in the generics of type.parent is a ClassDeclaration.
                 //console.log('No type reference found for', this.sourceFile.fileName.slice(-128), type.parent.getText(), isIdentifier(type.typeName) ? type.typeName.escapedText : this.createAccessorForEntityName(type.typeName));
                 ops.push(ReflectionOp.any);
+                modifier();
                 return;
             }
 
             if (isInterfaceDeclaration(declaration)) {
                 ops.push(ReflectionOp.interface);
+                modifier();
                 return;
             } else if (isTypeAliasDeclaration(declaration)) {
                 ops.push(ReflectionOp.typeAlias);
+                modifier();
                 return;
             } else if (isEnumDeclaration(declaration)) {
                 ops.push(ReflectionOp.enum);
+                modifier();
                 stack.push(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName)));
                 return;
             } else {
                 ops.push(type.typeArguments ? ReflectionOp.genericClass : ReflectionOp.class);
+                modifier();
                 stack.push(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName)));
 
                 if (type.typeArguments) {
@@ -564,6 +608,11 @@ export class ReflectionTransformer {
             const name = property.name ? property.name : isConstructorDeclaration(property) ? 'constructor' : '';
             if (!name) continue;
 
+            //already decorated
+            if ('string' === typeof name ? false : isIdentifier(name) ? name.text === '__type' : false) {
+                return classDeclaration;
+            }
+
             const encodedType = this.getTypeOfType(property);
             if (!encodedType) continue;
             elements.push(this.f.createPropertyAssignment(name, encodedType));
@@ -607,15 +656,12 @@ export class ReflectionTransformer {
         const encodedType = this.getTypeOfType(declaration);
         if (!encodedType) return declaration;
 
-        let statements: Statement[] = [declaration];
+        const statements: Statement[] = [declaration];
 
         statements.push(this.f.createExpressionStatement(
             this.f.createAssignment(this.f.createPropertyAccessExpression(declaration.name!, '__type'), encodedType)
         ));
         return statements;
-        // return this.f.createCallExpression(this.f.createPropertyAccessExpression(this.f.createIdentifier('Object'), 'assign'), undefined, [
-        //     declaration, __type
-        // ]);
     }
 
     /**
@@ -650,13 +696,14 @@ export class ReflectionTransformer {
             const tags = getJSDocTags(current);
             for (const tag of tags) {
                 if (!reflection && tag.tagName.text === 'reflection' && 'string' === typeof tag.comment) {
-                    reflection = this.parseReflectionMode(tag.comment as any || true);
+                    return {mode: this.parseReflectionMode(tag.comment as any || true)};
                 }
             }
             current = current.parent;
         } while (current);
 
         //nothing found, look in tsconfig.json
+        if (this.reflectionMode) return { mode: this.reflectionMode };
         let currentDir = dirname(this.sourceFile.fileName);
 
         while (currentDir) {
@@ -674,7 +721,7 @@ export class ReflectionTransformer {
                     }
 
                     if (!reflection && tsConfig.reflection !== undefined) {
-                        reflection = this.parseReflectionMode(tsConfig.reflection);
+                        return {mode: this.parseReflectionMode(tsConfig.reflection)};
                     }
                 } catch (error: any) {
                     console.warn(`Could not parse ${tsconfigPath}: ${error}`);
