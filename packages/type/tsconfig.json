@@ -23,7 +23,7 @@
       "DOM"
     ]
   },
-  "reflection": "never",
+  "reflection": false,
   "include": [
     "src",
     "test",

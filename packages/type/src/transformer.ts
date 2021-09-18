@@ -184,6 +184,20 @@ export class DeepkitTransformer {
         return false;
     }
 
+    shouldAddDecorator(node: Node) {
+        const reflection = this.findReflection(node);
+        if (reflection.mode === 'never') return false;
+        if (isPropertyDeclaration(node)) return true;
+        if (isMethodDeclaration(node)) return true;
+        if (isParameter(node)) {
+            if (node.parent && (isConstructorDeclaration(node.parent) || isMethodDeclaration(node.parent))) {
+                return true;
+            }
+        }
+
+        return true;
+    }
+
     /**
      * If a decorator like @t.string found where a type is manually defined,
      * then this return false. For all other property/method/method or constructor parameters it returns true;
@@ -200,8 +214,6 @@ export class DeepkitTransformer {
                 return true;
             }
         }
-
-        if (isConstructorDeclaration(node)) return true;
 
         return false;
     }
@@ -226,7 +238,7 @@ export class DeepkitTransformer {
             const tags = getJSDocTags(current);
             for (const tag of tags) {
                 if (!reflection && tag.tagName.text === 'reflection' && 'string' === typeof tag.comment) {
-                    reflection = this.parseReflectionMode(tag.comment as any);
+                    reflection = this.parseReflectionMode(tag.comment as any || true);
                 }
                 if (!reflectionImport && tag.tagName.text === 'reflectionImport' && 'string' === typeof tag.comment) {
                     reflectionImport = this.parseReflectionMode(tag.comment as any);
@@ -273,6 +285,10 @@ export class DeepkitTransformer {
     }
 
     transformSourceFile(sourceFile: SourceFile): SourceFile {
+
+        //without experimentalDecorators we can emit decorators
+        if (!this.context.getCompilerOptions().experimentalDecorators) return sourceFile;
+
         this.sourceFile = sourceFile;
         if (!sourceFile.statements.length) return sourceFile;
         const reflection = this.findReflection(sourceFile);
@@ -287,11 +303,11 @@ export class DeepkitTransformer {
         let typeDecorated = false;
 
         const visitorNeedsDecorator = (node: Node): Node => {
-            if (isConstructorDeclaration(node) && this.shouldExtractType(node)) {
+            if (isConstructorDeclaration(node) && this.shouldAddDecorator(node)) {
                 typeDecorated = true;
             }
 
-            if ((isPropertyDeclaration(node) || isMethodDeclaration(node)) && this.shouldExtractType(node)) {
+            if ((isPropertyDeclaration(node) || isMethodDeclaration(node)) && this.shouldAddDecorator(node)) {
                 typeDecorated = true;
             }
             return visitEachChild(node, visitorNeedsDecorator, this.context);
@@ -304,13 +320,13 @@ export class DeepkitTransformer {
         if (!t) return sourceFile;
 
         const visitor = (node: Node): Node => {
-            if (isConstructorDeclaration(node) && this.shouldExtractType(node)) {
+            if (isConstructorDeclaration(node) && this.shouldAddDecorator(node)) {
                 return this.f.updateConstructorDeclaration(
                     node,
                     node.decorators, node.modifiers,
                     this.f.createNodeArray(node.parameters.map(parameter => {
                         if (!parameter.type) return parameter;
-                        if (!this.shouldExtractType(parameter)) return parameter;
+                        if (!this.shouldAddDecorator(parameter)) return parameter;
                         return this.f.updateParameterDeclaration(
                             parameter,
                             this.f.createNodeArray([...(parameter.decorators || []), this.getDecoratorFromType(t, parameter)]),
@@ -323,13 +339,13 @@ export class DeepkitTransformer {
                 );
             }
 
-            if ((isPropertyDeclaration(node) || isMethodDeclaration(node)) && this.shouldExtractType(node)) {
+            if ((isPropertyDeclaration(node) || isMethodDeclaration(node)) && this.shouldAddDecorator(node)) {
                 const typeDecorator = node.type ? this.getDecoratorFromType(t, node) : undefined;
                 if (isMethodDeclaration(node)) {
                     const decorators = typeDecorator ? this.f.createNodeArray([...(node.decorators || []), typeDecorator]) : node.decorators;
                     const parameters = this.f.createNodeArray(node.parameters.map(parameter => {
                         if (!parameter.type) return parameter;
-                        if (!this.shouldExtractType(parameter)) return parameter;
+                        if (!this.shouldAddDecorator(parameter)) return parameter;
                         return this.f.updateParameterDeclaration(
                             parameter,
                             this.f.createNodeArray([...(parameter.decorators || []), this.getDecoratorFromType(t, parameter)]),
@@ -448,12 +464,14 @@ export class DeepkitTransformer {
         let markAsOptional: boolean = !!type.parent && isPropertyDeclaration(type.parent) && !!type.parent.questionToken;
         let markAsNullable = false;
         let wrap = (e: Expression) => {
+            if (isParameter(type.parent) && isIdentifier(type.parent.name) && type.parent.name.escapedText) {
+                e = this.f.createCallExpression(this.f.createPropertyAccessExpression(e, 'name'), [], [this.f.createStringLiteral(type.parent.name.escapedText, true)]);
+            }
+
             if (markAsOptional) {
-                //its optional
                 e = this.f.createPropertyAccessExpression(e, 'optional');
             }
             if (markAsNullable) {
-                //its optional
                 e = this.f.createPropertyAccessExpression(e, 'nullable');
             }
             return e;
@@ -582,7 +600,7 @@ export class DeepkitTransformer {
             if (!declaration) {
                 //non existing references are ignored.
                 //todo: we could search in the generics of type.parent is a ClassDeclaration.
-                // console.log('No type reference found for', this.sourceFile.fileName.slice(-128), type.parent.getText(), isIdentifier(type.typeName) ? type.typeName.escapedText : this.createAccessorForEntityName(type.typeName));
+                //console.log('No type reference found for', this.sourceFile.fileName.slice(-128), type.parent.getText(), isIdentifier(type.typeName) ? type.typeName.escapedText : this.createAccessorForEntityName(type.typeName));
                 return wrap(this.f.createPropertyAccessExpression(t, 'any'));
             }
 
@@ -615,13 +633,15 @@ export class DeepkitTransformer {
     getDecoratorFromType(t: Identifier, node: PropertyDeclaration | MethodDeclaration | ParameterDeclaration): Decorator {
         if (!node.type) throw new Error('No type given');
 
-        let e = this.getTypeExpression(t, node.type);
-
-        if (isParameter(node) && isIdentifier(node.name) && node.name.escapedText) {
-            e = this.f.createCallExpression(this.f.createPropertyAccessExpression(e, 'name'), [], [this.f.createStringLiteral(node.name.escapedText, true)]);
+        if (this.shouldExtractType(node)) {
+            return this.f.createDecorator(this.getTypeExpression(t, node.type));
+        } else {
+            if (isParameter(node) && isIdentifier(node.name) && node.name.escapedText) {
+                return this.f.createDecorator(this.f.createCallExpression(this.f.createPropertyAccessExpression(t, 'name'), [], [this.f.createStringLiteral(node.name.escapedText, true)]));
+            } else {
+                return this.f.createDecorator(t);
+            }
         }
-
-        return this.f.createDecorator(e);
     }
 }
 
