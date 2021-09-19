@@ -71,13 +71,13 @@ export class MyModule extends createModule({
 
 
 //imported as 
-new Application({
+new App({
     imports: [new MyModule({enabled: true})]
 })
 ```
 
 Please note: while regular modules can not import other modules in the module definition object anymore 
-(as it would become a global instance in a deeper nested import tree), a `new Application({imports: []})` or `new App({imports: []})`,
+(as it would become a global instance in a deeper nested import tree), a `new App({imports: []})`,
 can still do so (as it would not become a global instance).
 
 Modules are now stateful, which means they need to be instantiated when importing.
@@ -85,7 +85,7 @@ Its configuration options can be changed via the first argument.
 
 ```typescript
 new Application({
-    Imports: [
+    imports: [
         new MyModule({configValue: true})
     ]
 }).run();
