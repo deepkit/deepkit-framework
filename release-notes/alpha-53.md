@@ -84,7 +84,7 @@ Modules are now stateful, which means they need to be instantiated when importin
 Its configuration options can be changed via the first argument.
 
 ```typescript
-new Application({
+new App({
     imports: [
         new MyModule({configValue: true})
     ]
