@@ -35,3 +35,6 @@ export * from './src/changes';
 export * from './src/snapshot';
 export * from './src/reference';
 export * from './src/inheritance';
+export * from './src/reflection/type';
+export * from './src/reflection/compiler';
+export * from './src/reflection/processor';

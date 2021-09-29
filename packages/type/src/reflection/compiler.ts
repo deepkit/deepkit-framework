@@ -75,7 +75,7 @@ import stripJsonComments from 'strip-json-comments';
  * The instruction set.
  * Not more than `packSize` elements are allowed (can be stored).
  */
-export enum ReflectionOp {
+export const enum ReflectionOp {
     end, //requires to be 0. not used explicitly, but a placeholder to detect when the ops are done
 
     any,
@@ -173,6 +173,7 @@ export enum ReflectionOp {
     mappedType,
 
     frame, //creates a new stack frame
+    return,
 
     //special instructions that exist to emit less output
     date,
@@ -189,9 +190,15 @@ export enum ReflectionOp {
     arrayBuffer,
     promise,
 
-    push, //push a reference to the stack
+    pointer, //parameter is a number referencing an entry in the stack, relative to the very beginning (0). pushes that entry onto the stack.
+    arg, //parameter is a number referencing an entry in the stack, relative to the beginning of the current frame, *-1. pushes that entry onto the stack. this is related to the calling convention.
+
     query, //T['string'], 2 items on the stack
+
     condition,
+    jump, //jump to an address
+    call, //has one parameter, the next program address. creates a new stack frame with current program address as first stack entry, and jumps back to that + 1.
+    jumpCondition,
     extends, //X extends Y, XY popped from the stack, pushes boolean on the stack
 }
 
@@ -210,7 +217,7 @@ export const packSize: number = 2 ** packSizeByte; //64
 export type StackEntry = Expression | (() => ClassType | Object) | string | number | boolean;
 export type RuntimeStackEntry = Object | (() => ClassType | Object) | string | number | boolean;
 
-export type Packed = string | [...StackEntry[], string];
+export type Packed = string | (StackEntry|string)[];
 
 function unpackOps(decodedOps: ReflectionOp[], encodedOPs: string): void {
     //the number was so big that it could not handle Number.MAX_SAFE_INTEGER, so it was stored as hex string.
@@ -248,7 +255,7 @@ export function pack(packOrOps: PackStruct | ReflectionOp[]): Packed {
 
     if (!isArray(packOrOps)) {
         if (packOrOps.stack.length) {
-            return [...packOrOps.stack, opNumbers];
+            return [...packOrOps.stack as StackEntry[], opNumbers];
         }
     }
 
@@ -307,7 +314,8 @@ function debugPackStruct(pack: PackStruct): void {
     for (let i = 0; i < pack.ops.length; i++) {
         const op = pack.ops[i];
         const opInfo = OPs[op];
-        items.push(ReflectionOp[op]);
+        // items.push(ReflectionOp[op]);
+        items.push(op);
         if (opInfo && opInfo.params > 0) {
             for (let j = 0; j < opInfo.params; j++) {
                 const address = pack.ops[++i];

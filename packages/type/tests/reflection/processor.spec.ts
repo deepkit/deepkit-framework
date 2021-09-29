@@ -1,6 +1,6 @@
 /** @reflection never */
 import { expect, test } from '@jest/globals';
-import { executeType } from '../../src/reflection/processor';
+import { Processor } from '../../src/reflection/processor';
 import { ReflectionKind, ReflectionVisibility, Type } from '../../src/reflection/type';
 import { ReflectionOp, RuntimeStackEntry } from '../../src/reflection/compiler';
 import { isArray, isObject } from '@deepkit/core';
@@ -8,7 +8,8 @@ import { isArray, isObject } from '@deepkit/core';
 Error.stackTraceLimit = 200;
 
 function expectType(pack: ReflectionOp[] | { ops: ReflectionOp[], stack: RuntimeStackEntry[] }, expectObject: Partial<Type> | number | string | boolean): void {
-    const type = executeType(isArray(pack) ? pack : pack.ops, isArray(pack) ? [] : pack.stack);
+    const processor = new Processor();
+    const type = processor.run(isArray(pack) ? pack : pack.ops, isArray(pack) ? [] : pack.stack);
     if (isObject(expectObject)) {
         expect(type).toMatchObject(expectObject);
     } else {
@@ -21,37 +22,95 @@ enum MyEnum {
 }
 
 test('query', () => {
-    expectType({ ops: [ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.push, 0, ReflectionOp.query], stack: ['a']}, {
+    expectType({ ops: [ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.pointer, 0, ReflectionOp.query], stack: ['a'] }, {
         kind: ReflectionKind.number
     });
 });
 
 test('extends', () => {
-    expectType({ ops: [ReflectionOp.number, ReflectionOp.number, ReflectionOp.extends], stack: []}, true);
-    expectType({ ops: [ReflectionOp.push, 0, ReflectionOp.number, ReflectionOp.extends], stack: [1]}, true);
-    expectType({ ops: [ReflectionOp.push, 0, ReflectionOp.number, ReflectionOp.extends], stack: ['asd']}, false);
-    expectType({ ops: [ReflectionOp.string, ReflectionOp.number, ReflectionOp.extends], stack: []}, false);
+    expectType({ ops: [ReflectionOp.number, ReflectionOp.number, ReflectionOp.extends], stack: [] }, true);
+    expectType({ ops: [ReflectionOp.pointer, 0, ReflectionOp.number, ReflectionOp.extends], stack: [1] }, true);
+    expectType({ ops: [ReflectionOp.pointer, 0, ReflectionOp.number, ReflectionOp.extends], stack: ['asd'] }, false);
+    expectType({ ops: [ReflectionOp.string, ReflectionOp.number, ReflectionOp.extends], stack: [] }, false);
 
-    expectType({ ops: [ReflectionOp.string, ReflectionOp.string, ReflectionOp.extends], stack: []}, true);
-    expectType({ ops: [ReflectionOp.push, 0, ReflectionOp.string, ReflectionOp.extends], stack: ['asd']}, true);
+    expectType({ ops: [ReflectionOp.string, ReflectionOp.string, ReflectionOp.extends], stack: [] }, true);
+    expectType({ ops: [ReflectionOp.pointer, 0, ReflectionOp.string, ReflectionOp.extends], stack: ['asd'] }, true);
+});
+
+test('arg', () => {
+    //after initial stack, an implicit frame is created. arg references always relative to the current frame.
+    expectType({ ops: [ReflectionOp.arg, 0], stack: ['a'] }, 'a');
+    expectType({ ops: [ReflectionOp.pointer, 0, ReflectionOp.arg, 0], stack: ['a'] }, 'a');
+
+    //frame is started automatically when a sub routine is called, but we do it here manually to make sure arg works correctly
+    expectType({ ops: [ReflectionOp.pointer, 1, ReflectionOp.pointer, 0, ReflectionOp.frame, ReflectionOp.arg, 0], stack: ['a', 'b'] }, 'a');
+    expectType({ ops: [ReflectionOp.pointer, 1, ReflectionOp.pointer, 0, ReflectionOp.frame, ReflectionOp.arg, 1], stack: ['a', 'b'] }, 'b');
+    expectType({ ops: [ReflectionOp.pointer, 0, ReflectionOp.pointer, 0, ReflectionOp.frame, ReflectionOp.arg, 1], stack: ['a', 'b'] }, 'a');
+});
+
+test('call sub routine', () => {
+    expectType({ ops: [ReflectionOp.jump, 4, ReflectionOp.string, ReflectionOp.return, ReflectionOp.call, 2], stack: [] }, { kind: ReflectionKind.string });
+    expectType({ ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.call, 2], stack: [] }, { kind: ReflectionKind.number });
+    expectType({ ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.call, 2, ReflectionOp.union], stack: [] }, {
+        kind: ReflectionKind.union,
+        types: [{ kind: ReflectionKind.number }], //only number, since `return` returns only latest stack entry, not all
+    });
+    expectType({
+        ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.call, 2, ReflectionOp.undefined, ReflectionOp.union],
+        stack: []
+    }, {
+        kind: ReflectionKind.union,
+        types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
+    });
+    expectType({
+        ops: [ReflectionOp.string, ReflectionOp.jump, 6, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.call, 2, ReflectionOp.undefined, ReflectionOp.union],
+        stack: []
+    }, {
+        kind: ReflectionKind.union,
+        types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
+    });
 });
 
 test('type argument', () => {
-    // expectType({ ops: [ReflectionOp.t, ReflectionOp.number, ReflectionOp.extends], stack: []}, true);
+    //type A<T> = T extends string;
+    expectType({ ops: [ReflectionOp.pointer, 0, ReflectionOp.arg, 0, ReflectionOp.string, ReflectionOp.extends], stack: ['a'] }, true);
 });
 
 test('conditional', () => {
-    expectType({ ops: [ReflectionOp.push, 0, ReflectionOp.string, ReflectionOp.number, ReflectionOp.condition], stack: [1]}, {
+    //1 ? string : number
+    expectType({ ops: [ReflectionOp.pointer, 0, ReflectionOp.string, ReflectionOp.number, ReflectionOp.condition], stack: [1] }, {
         kind: ReflectionKind.string
     });
 
-    expectType({ ops: [ReflectionOp.push, 0, ReflectionOp.string, ReflectionOp.number, ReflectionOp.condition], stack: [0]}, {
+    //0 ? string : number
+    expectType({ ops: [ReflectionOp.pointer, 0, ReflectionOp.string, ReflectionOp.number, ReflectionOp.condition], stack: [0] }, {
         kind: ReflectionKind.number
     });
 });
 
+test('jump conditional', () => {
+    //1 ? string : number
+    expectType({ ops: [ReflectionOp.string, ReflectionOp.return, ReflectionOp.number, ReflectionOp.return, ReflectionOp.pointer, 0, ReflectionOp.jumpCondition, 0, 2], stack: [1] }, {
+        kind: ReflectionKind.string
+    });
+
+    //0 ? string : number
+    expectType({ ops: [ReflectionOp.string, ReflectionOp.return, ReflectionOp.number, ReflectionOp.return, ReflectionOp.pointer, 0, ReflectionOp.jumpCondition, 0, 2], stack: [0] }, {
+        kind: ReflectionKind.number
+    });
+
+    //(0 ? string : number) | undefined
+    expectType({ ops: [ReflectionOp.string, ReflectionOp.return, ReflectionOp.number, ReflectionOp.return, ReflectionOp.pointer, 0, ReflectionOp.jumpCondition, 0, 2, ReflectionOp.undefined, ReflectionOp.union], stack: [0] }, {
+        kind: ReflectionKind.union,
+        types: [{kind: ReflectionKind.number}, {kind: ReflectionKind.undefined}]
+    });
+});
+
 test('object literal', () => {
-    expectType({ ops: [ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.string, ReflectionOp.propertySignature, 1, ReflectionOp.objectLiteral], stack: ['a', 'b'] }, {
+    expectType({
+        ops: [ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.string, ReflectionOp.propertySignature, 1, ReflectionOp.objectLiteral],
+        stack: ['a', 'b']
+    }, {
         kind: ReflectionKind.objectLiteral,
         members: [
             { kind: ReflectionKind.propertySignature, type: { kind: ReflectionKind.number }, name: 'a' },
@@ -66,7 +125,10 @@ test('object literal', () => {
         ]
     });
 
-    expectType({ ops: [ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.string, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral], stack: ['a']}, {
+    expectType({
+        ops: [ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.string, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral],
+        stack: ['a']
+    }, {
         kind: ReflectionKind.objectLiteral,
         members: [
             { kind: ReflectionKind.propertySignature, type: { kind: ReflectionKind.number }, name: 'a' },
