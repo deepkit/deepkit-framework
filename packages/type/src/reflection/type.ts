@@ -1,4 +1,14 @@
-import { ClassType } from '../../../core';
+/*
+ * Deepkit Framework
+ * Copyright Deepkit UG, Marc J. Schmidt
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License.
+ *
+ * You should have received a copy of the MIT License along with this program.
+ */
+
+import { ClassType } from '@deepkit/core';
 
 export enum ReflectionVisibility {
     public,
@@ -7,6 +17,7 @@ export enum ReflectionVisibility {
 }
 
 export enum ReflectionKind {
+    never,
     any,
     void,
     string,
@@ -27,6 +38,7 @@ export enum ReflectionKind {
      */
     class,
 
+    template,
     enum,
     union,
 
@@ -36,6 +48,12 @@ export enum ReflectionKind {
     indexSignature,
     propertySignature,
     methodSignature,
+
+    infer,
+}
+
+export interface TypeNever {
+    kind: ReflectionKind.never,
 }
 
 export interface TypeAny {
@@ -72,7 +90,7 @@ export interface TypeUndefined {
 
 export interface TypeLiteral {
     kind: ReflectionKind.literal,
-    literal: string | number | boolean;
+    literal: symbol | string | number | boolean;
 }
 
 export interface TypeLiteralMember {
@@ -102,6 +120,7 @@ export interface TypeProperty extends TypeLiteralMember {
 
 export interface TypeFunction {
     kind: ReflectionKind.function,
+    name?: string,
     parameters: Type[];
     return: Type;
 }
@@ -117,7 +136,12 @@ export interface TypeClass {
     /**
      * When class has generic template arguments, e.g. MyClass<string>
      */
-    types: Type[];
+    types?: Type[];
+
+    /**
+     * properties/methods.
+     */
+    members: Type[];
 }
 
 export interface TypeEnum {
@@ -125,9 +149,14 @@ export interface TypeEnum {
     enumType: object;
 }
 
+export interface TypeTemplate {
+    kind: ReflectionKind.template,
+    name: string,
+}
+
 export interface TypeUnion {
     kind: ReflectionKind.union,
-    types: Type[];
+    members: Type[];
 }
 
 export interface TypeArray {
@@ -162,11 +191,22 @@ export interface TypeIndexSignature {
     type: Type;
 }
 
-export type Type = TypeAny | TypeVoid | TypeString | TypeNumber | TypeBoolean | TypeBigInt | TypeNull | TypeUndefined | TypeLiteral
+export interface TypeInfer {
+    kind: ReflectionKind.infer,
+    set(type: Type): void;
+}
+
+export type Type = TypeNever | TypeAny | TypeVoid | TypeString | TypeNumber | TypeBoolean | TypeBigInt | TypeNull | TypeUndefined | TypeLiteral
     | TypeFunction | TypeMethod | TypeProperty | TypePromise | TypeClass | TypeEnum | TypeUnion | TypeArray
-    | TypeObjectLiteral | TypeIndexSignature | TypePropertySignature | TypeMethodSignature
+    | TypeObjectLiteral | TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeTemplate | TypeInfer
     ;
 
 export function isType(entry: any): entry is Type {
     return 'object' === typeof entry && 'kind' in entry;
+}
+
+type FindType<K extends Type['kind'], T = Type> = T extends { kind: K } ? T : never;
+
+export function assertType<K extends Type['kind'], T>(t: Type, kind: K): asserts t is FindType<K> {
+    if (t.kind !== kind) throw new Error(`Invalid type ${t.kind}, expected ${kind}`);
 }

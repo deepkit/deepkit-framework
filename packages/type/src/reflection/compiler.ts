@@ -1,9 +1,20 @@
+/*
+ * Deepkit Framework
+ * Copyright Deepkit UG, Marc J. Schmidt
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License.
+ *
+ * You should have received a copy of the MIT License along with this program.
+ */
+
 import {
     __String,
     ArrowFunction,
     Bundle,
     ClassDeclaration,
     ClassElement,
+    ClassExpression,
     createCompilerHost,
     createProgram,
     CustomTransformerFactory,
@@ -21,7 +32,10 @@ import {
     InterfaceDeclaration,
     isArrayTypeNode,
     isArrowFunction,
+    isCallExpression,
     isClassDeclaration,
+    isClassExpression,
+    isConditionalTypeNode,
     isConstructorDeclaration,
     isEnumDeclaration,
     isExportDeclaration,
@@ -49,7 +63,6 @@ import {
     NodeFactory,
     NodeFlags,
     PropertyAccessExpression,
-    PropertyAssignment,
     QualifiedName,
     ScriptReferenceHost,
     SourceFile,
@@ -70,14 +83,14 @@ import { getNameAsString, hasModifier } from './reflection-ast';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import stripJsonComments from 'strip-json-comments';
+import { Type } from './type';
 
 /**
  * The instruction set.
  * Not more than `packSize` elements are allowed (can be stored).
  */
-export const enum ReflectionOp {
-    end, //requires to be 0. not used explicitly, but a placeholder to detect when the ops are done
-
+export enum ReflectionOp {
+    never,
     any,
     void,
 
@@ -133,6 +146,11 @@ export const enum ReflectionOp {
     class,
 
     /**
+     * This OP has 1 parameter, the stack entry to the actual class symbol.
+     */
+    classReference,
+
+    /**
      * Marks the last entry in the stack as optional. Used for method|property. Equal to the QuestionMark operator in a property assignment.
      */
     optional,
@@ -163,14 +181,12 @@ export const enum ReflectionOp {
     array,
 
     union, //pops frame. requires frame start when stack can be dirty.
-    // union2, //pops last 2 types and use as union
-    // union3, //pops last 2 types and use as union
-    // frameUnion, //pops all types on the current stack frame
     intersection,
 
     indexSignature,
     objectLiteral,
     mappedType,
+    in,
 
     frame, //creates a new stack frame
     return,
@@ -191,9 +207,14 @@ export const enum ReflectionOp {
     promise,
 
     pointer, //parameter is a number referencing an entry in the stack, relative to the very beginning (0). pushes that entry onto the stack.
-    arg, //parameter is a number referencing an entry in the stack, relative to the beginning of the current frame, *-1. pushes that entry onto the stack. this is related to the calling convention.
+    arg, //@deprecated. parameter is a number referencing an entry in the stack, relative to the beginning of the current frame, *-1. pushes that entry onto the stack. this is related to the calling convention.
+    template, //template argument, e.g. T in a generic. has 1 parameter: reference to the name.
+    var, //reserve a new variable in the stack
+    loads, //pushes to the stack a referenced value in the stack. has 2 parameters: <frame> <index>, frame is a negative offset to the frame, and index the index of the stack entry withing the referenced frame
 
     query, //T['string'], 2 items on the stack
+    keyof, //keyof operator
+    infer, //2 params, like `loads`
 
     condition,
     jump, //jump to an address
@@ -201,11 +222,6 @@ export const enum ReflectionOp {
     jumpCondition,
     extends, //X extends Y, XY popped from the stack, pushes boolean on the stack
 }
-
-const OPs: { [op in ReflectionOp]?: { params: number } } = {
-    [ReflectionOp.literal]: { params: 1 },
-    [ReflectionOp.propertySignature]: { params: 1 },
-};
 
 export const packSizeByte: number = 6;
 
@@ -215,20 +231,13 @@ export const packSizeByte: number = 6;
 export const packSize: number = 2 ** packSizeByte; //64
 
 export type StackEntry = Expression | (() => ClassType | Object) | string | number | boolean;
-export type RuntimeStackEntry = Object | (() => ClassType | Object) | string | number | boolean;
+export type RuntimeStackEntry = Type | Object | (() => ClassType | Object) | string | number | boolean;
 
-export type Packed = string | (StackEntry|string)[];
+export type Packed = string | (StackEntry | string)[];
 
 function unpackOps(decodedOps: ReflectionOp[], encodedOPs: string): void {
-    //the number was so big that it could not handle Number.MAX_SAFE_INTEGER, so it was stored as hex string.
-    while (encodedOPs) {
-        encodedOPs = encodedOPs.slice(0, -12);
-        const ops = parseInt(encodedOPs.slice(-12), 36);
-        for (let i = 0; ; i++) {
-            const op = (ops / 2 ** (packSizeByte * i)) & (packSize - 1);
-            if (op === 0) break;
-            decodedOps.push(op);
-        }
+    for (let i = 0; i < encodedOPs.length; i++) {
+        decodedOps.push(encodedOPs.charCodeAt(i) - 33);
     }
 }
 
@@ -245,24 +254,18 @@ export class PackStruct {
  */
 export function pack(packOrOps: PackStruct | ReflectionOp[]): Packed {
     const ops = isArray(packOrOps) ? packOrOps : packOrOps.ops;
-
-    let packedOp = BigInt(0);
-    for (let i = 0; i < ops.length; i++) {
-        packedOp += BigInt(ops[i]) * (BigInt(packSize) ** BigInt(i));
-    }
-
-    const opNumbers = packedOp.toString(36);
+    const encodedOps = ops.map(v => String.fromCharCode(v + 33)).join('');
 
     if (!isArray(packOrOps)) {
         if (packOrOps.stack.length) {
-            return [...packOrOps.stack as StackEntry[], opNumbers];
+            return [...packOrOps.stack as StackEntry[], encodedOps];
         }
     }
 
-    return opNumbers;
+    return encodedOps;
 }
 
-export function unpack(pack: Packed): { ops: ReflectionOp[], stack: RuntimeStackEntry[] } {
+export function unpack(pack: Packed): PackStruct {
     const ops: ReflectionOp[] = [];
     const stack: StackEntry[] = [];
 
@@ -274,7 +277,7 @@ export function unpack(pack: Packed): { ops: ReflectionOp[], stack: RuntimeStack
     const encodedOPs = pack[pack.length - 1];
 
     //the end has always to be a string
-    if ('string' !== encodedOPs) return { ops: [], stack: [] };
+    if ('string' !== typeof encodedOPs) return { ops: [], stack: [] };
 
     if (pack.length > 1) {
         stack.push(...pack.slice(0, -1) as StackEntry[]);
@@ -301,39 +304,101 @@ const reflectionModes = ['always', 'default', 'never'] as const;
 /**
  * Returns the index of the `entry` in the stack, if already exists. If not, add it, and return that new index.
  */
-function findOrAddStackEntry(stack: StackEntry[], entry: any): number {
-    const index = stack.indexOf(entry);
+function findOrAddStackEntry(program: CompilerProgram, entry: any): number {
+    const index = program.stack.indexOf(entry);
     if (index !== -1) return index;
-    stack.push(entry);
-    return stack.length - 1;
+    return program.pushStack(entry);
 }
 
-function debugPackStruct(pack: PackStruct): void {
+const OPs: { [op in ReflectionOp]?: { params: number } } = {
+    [ReflectionOp.literal]: { params: 1 },
+    [ReflectionOp.pointer]: { params: 1 },
+    [ReflectionOp.arg]: { params: 1 },
+    [ReflectionOp.classReference]: { params: 1 },
+    [ReflectionOp.propertySignature]: { params: 1 },
+    [ReflectionOp.property]: { params: 1 },
+    [ReflectionOp.enum]: { params: 1 },
+    [ReflectionOp.template]: { params: 1 },
+};
+
+export function debugPackStruct(pack: PackStruct): void {
     const items: any[] = [];
 
     for (let i = 0; i < pack.ops.length; i++) {
         const op = pack.ops[i];
         const opInfo = OPs[op];
-        // items.push(ReflectionOp[op]);
-        items.push(op);
+        items.push(ReflectionOp[op]);
+        // items.push(op);
         if (opInfo && opInfo.params > 0) {
             for (let j = 0; j < opInfo.params; j++) {
                 const address = pack.ops[++i];
-                const entry = pack.stack[address];
-                if ('object' === typeof entry && 'getText' in entry) {
-                    items.push(entry.getText());
-                } else {
-                    items.push(entry);
-                }
+                items.push(address);
             }
         }
     }
 
-    console.log(...items);
+    console.log(pack.stack, '|', ...items);
 }
 
 function isNodeWithLocals(node: Node): node is (Node & { locals: SymbolTable | undefined }) {
     return 'locals' in node;
+}
+
+interface Frame {
+    variables: { name: string, index: number }[],
+    previous?: Frame;
+}
+
+function findVariable(frame: Frame, name: string, frameOffset: number = 0): { frameOffset: number, stackIndex: number } | undefined {
+    const variable = frame.variables.find(v => v.name === name);
+    if (variable) {
+        return { frameOffset, stackIndex: variable.index };
+    }
+
+    if (frame.previous) return findVariable(frame.previous, name, frameOffset + 1);
+
+    return;
+}
+
+class CompilerProgram {
+    ops: ReflectionOp[] = [];
+    stack: StackEntry[] = [];
+
+    stackPosition: number = 0;
+
+    frame: Frame = { variables: [] };
+
+    pushStack(item: StackEntry): number {
+        this.stack.push(item);
+        return this.stackPosition++;
+    }
+
+    /**
+     * To make room for a stack entry expected on the stack as input for example.
+     */
+    increaseStackPosition(): number {
+        return this.stackPosition++;
+    }
+
+    pushFrame() {
+        this.ops.push(ReflectionOp.frame);
+        this.frame = { previous: this.frame, variables: [] };
+    }
+
+    popFrame() {
+        if (this.frame.previous) this.frame = this.frame.previous;
+    }
+
+    pushVariable(name: string): void {
+        this.frame.variables.push({
+            index: this.frame.variables.length,
+            name,
+        });
+    }
+
+    findVariable(name: string) {
+        return findVariable(this.frame, name);
+    }
 }
 
 /**
@@ -388,12 +453,30 @@ export class ReflectionTransformer {
 
             if (isClassDeclaration(node)) {
                 return this.decorateClass(node);
+            } else if (isClassExpression(node)) {
+                return this.decorateClass(node);
             } else if (isFunctionExpression(node)) {
                 return this.decorateFunctionExpression(node);
             } else if (isFunctionDeclaration(node)) {
                 return this.decorateFunctionDeclaration(node);
             } else if (isArrowFunction(node)) {
                 return this.decorateArrow(node);
+            } else if (isCallExpression(node) && node.typeArguments) {
+                const autoTypeFunctions = ['valuesOf', 'propertiesOf', 'typeOf'];
+                if (isIdentifier(node.expression) && autoTypeFunctions.includes(node.expression.escapedText as string)) {
+                    const args: Expression[] = [...node.arguments];
+
+                    if (!args.length) {
+                        args.push(this.f.createArrayLiteralExpression());
+                    }
+
+                    const type = this.getTypeOfType(node.typeArguments[0]);
+                    if (!type) return node;
+                    args.push(type);
+
+                    return this.f.updateCallExpression(node, node.expression, node.typeArguments, this.f.createNodeArray(args))
+                }
+                return node;
             }
 
             return node;
@@ -404,23 +487,56 @@ export class ReflectionTransformer {
         return this.sourceFile;
     }
 
-    protected extractPackStructOfType(node: TypeNode | Declaration, ops: ReflectionOp[], stack: StackEntry[]): void {
-        if (isParenthesizedTypeNode(node)) return this.extractPackStructOfType(node.type, ops, stack);
+    protected extractPackStructOfType(node: TypeNode | Declaration, program: CompilerProgram): void {
+        if (isParenthesizedTypeNode(node)) return this.extractPackStructOfType(node.type, program);
 
         if (node.kind === SyntaxKind.StringKeyword) {
-            ops.push(ReflectionOp.string);
+            program.ops.push(ReflectionOp.string);
         } else if (node.kind === SyntaxKind.NumberKeyword) {
-            ops.push(ReflectionOp.number);
+            program.ops.push(ReflectionOp.number);
         } else if (node.kind === SyntaxKind.BooleanKeyword) {
-            ops.push(ReflectionOp.boolean);
+            program.ops.push(ReflectionOp.boolean);
         } else if (node.kind === SyntaxKind.BigIntKeyword) {
-            ops.push(ReflectionOp.bigint);
+            program.ops.push(ReflectionOp.bigint);
         } else if (node.kind === SyntaxKind.VoidKeyword) {
-            ops.push(ReflectionOp.void);
+            program.ops.push(ReflectionOp.void);
         } else if (node.kind === SyntaxKind.NullKeyword) {
-            ops.push(ReflectionOp.null);
+            program.ops.push(ReflectionOp.null);
+        } else if (node.kind === SyntaxKind.NeverKeyword) {
+            program.ops.push(ReflectionOp.never);
         } else if (node.kind === SyntaxKind.UndefinedKeyword) {
-            ops.push(ReflectionOp.undefined);
+            program.ops.push(ReflectionOp.undefined);
+        } else if (isClassDeclaration(node) || isClassExpression(node)) {
+            const members: ClassElement[] = [];
+            if (node.typeParameters) {
+                if (program.ops.length) program.pushFrame();
+
+                for (const typeParameter of node.typeParameters) {
+                    const name = getNameAsString(typeParameter.name);
+                    program.pushVariable(name);
+                    program.ops.push(ReflectionOp.template, findOrAddStackEntry(program, name));
+                }
+            }
+
+            for (const member of node.members) {
+                const name = getNameAsString(member.name);
+                if (name) {
+                    const has = members.some(v => getNameAsString(v.name) === name);
+                    if (has) continue;
+                }
+                members.push(member);
+
+                this.extractPackStructOfType(member, program);
+            }
+
+            program.ops.push(ReflectionOp.class);
+            if (program.ops.length) program.popFrame();
+
+            return;
+        } else if (isMappedTypeNode(node)) {
+            //<Type>{[Property in keyof Type]: boolean;};
+            //todo: how do we serialize that? We need to calculate the actual type and serialize that as ObjectLiteral
+            program.ops.push(ReflectionOp.mappedType);
         } else if (isInterfaceDeclaration(node) || isTypeLiteralNode(node)) {
             //interface X {name: string, [indexName: string]: string}
             //{name: string, [indexName: string]: string};
@@ -438,7 +554,7 @@ export class ReflectionTransformer {
                         if (has) continue;
                     }
                     members.push(member);
-                    this.extractPackStructOfType(member, ops, stack);
+                    this.extractPackStructOfType(member, program);
                 }
 
                 if (isInterfaceDeclaration(declaration) && declaration.heritageClauses) {
@@ -460,88 +576,104 @@ export class ReflectionTransformer {
 
             extractMembers(node);
 
-            // ops.push(isInterfaceDeclaration(node) ? ReflectionOp.interface : ReflectionOp.objectLiteral);
-            ops.push(ReflectionOp.objectLiteral);
+            // program.ops.push(isInterfaceDeclaration(node) ? ReflectionOp.interface : ReflectionOp.objectLiteral);
+            program.ops.push(ReflectionOp.objectLiteral);
             return;
         } else if (isTypeReferenceNode(node)) {
-            this.extractPackStructOfTypeReference(node, ops, stack);
+            this.extractPackStructOfTypeReference(node, program);
         } else if (isArrayTypeNode(node)) {
-            this.extractPackStructOfType(node.elementType, ops, stack);
-            ops.push(ReflectionOp.array);
+            this.extractPackStructOfType(node.elementType, program);
+            program.ops.push(ReflectionOp.array);
         } else if (isPropertySignature(node) && node.type) {
-            this.extractPackStructOfType(node.type, ops, stack);
+            this.extractPackStructOfType(node.type, program);
             const name = getNameAsString(node.name);
-            ops.push(ReflectionOp.propertySignature, findOrAddStackEntry(stack, name));
+            program.ops.push(ReflectionOp.propertySignature, findOrAddStackEntry(program, name));
 
-        } else if (isConstructorDeclaration(node) && node.type) {
-            this.extractPackStructOfType(node.type, ops, stack);
-            ops.push(ReflectionOp.constructor);
+            // } else if (isConstructorDeclaration(node) && node.type) {
+            //     this.extractPackStructOfType(node.type, program);
+            //     program.ops.push(ReflectionOp.constructor);
 
+        } else if (isConditionalTypeNode(node)) {
+            this.extractPackStructOfType(node.checkType, program);
+            this.extractPackStructOfType(node.extendsType, program);
+            program.ops.push(ReflectionOp.extends);
+            this.extractPackStructOfType(node.trueType, program);
+            this.extractPackStructOfType(node.falseType, program);
+            program.ops.push(ReflectionOp.condition);
         } else if (isPropertyDeclaration(node) && node.type) {
-            this.extractPackStructOfType(node.type, ops, stack);
+            const config = this.findReflectionConfig(node);
+            if (config.mode === 'never') return;
 
-            if (node.questionToken) ops.push(ReflectionOp.optional);
-            if (hasModifier(node, SyntaxKind.PrivateKeyword)) ops.push(ReflectionOp.private);
-            if (hasModifier(node, SyntaxKind.ProtectedKeyword)) ops.push(ReflectionOp.protected);
-            if (hasModifier(node, SyntaxKind.AbstractKeyword)) ops.push(ReflectionOp.abstract);
+            this.extractPackStructOfType(node.type, program);
+            const name = getNameAsString(node.name);
+            program.ops.push(ReflectionOp.property, findOrAddStackEntry(program, name));
+
+            if (node.questionToken) program.ops.push(ReflectionOp.optional);
+            if (hasModifier(node, SyntaxKind.PrivateKeyword)) program.ops.push(ReflectionOp.private);
+            if (hasModifier(node, SyntaxKind.ProtectedKeyword)) program.ops.push(ReflectionOp.protected);
+            if (hasModifier(node, SyntaxKind.AbstractKeyword)) program.ops.push(ReflectionOp.abstract);
 
         } else if (isMethodDeclaration(node) || isConstructorDeclaration(node) || isArrowFunction(node) || isFunctionExpression(node) || isFunctionDeclaration(node)) {
+            const config = this.findReflectionConfig(node);
+            if (config.mode === 'never') return;
+
             if (node.parameters.length === 0 && !node.type) return;
             for (const parameter of node.parameters) {
                 if (parameter.type) {
-                    this.extractPackStructOfType(parameter.type, ops, stack);
+                    this.extractPackStructOfType(parameter.type, program);
                 }
             }
 
             if (node.type) {
-                this.extractPackStructOfType(node.type, ops, stack);
+                this.extractPackStructOfType(node.type, program);
             } else {
-                ops.push(ReflectionOp.any);
+                program.ops.push(ReflectionOp.any);
             }
-            ops.push(isMethodDeclaration(node) || isConstructorDeclaration(node) ? ReflectionOp.method : ReflectionOp.function);
+
+            const name = isConstructorDeclaration(node) ? 'constructor' : getNameAsString(node.name);
+            program.ops.push(isMethodDeclaration(node) || isConstructorDeclaration(node) ? ReflectionOp.method : ReflectionOp.function, findOrAddStackEntry(program, name));
+
             if (isMethodDeclaration(node)) {
-                if (hasModifier(node, SyntaxKind.PrivateKeyword)) ops.push(ReflectionOp.private);
-                if (hasModifier(node, SyntaxKind.ProtectedKeyword)) ops.push(ReflectionOp.protected);
-                if (hasModifier(node, SyntaxKind.AbstractKeyword)) ops.push(ReflectionOp.abstract);
+                if (hasModifier(node, SyntaxKind.PrivateKeyword)) program.ops.push(ReflectionOp.private);
+                if (hasModifier(node, SyntaxKind.ProtectedKeyword)) program.ops.push(ReflectionOp.protected);
+                if (hasModifier(node, SyntaxKind.AbstractKeyword)) program.ops.push(ReflectionOp.abstract);
             }
         } else if (isLiteralTypeNode(node)) {
             if (node.literal.kind === SyntaxKind.NullKeyword) {
-                ops.push(ReflectionOp.null);
+                program.ops.push(ReflectionOp.null);
             } else {
-                ops.push(ReflectionOp.literal, findOrAddStackEntry(stack, node.literal));
+                program.ops.push(ReflectionOp.literal, findOrAddStackEntry(program, node.literal));
             }
         } else if (isUnionTypeNode(node)) {
-
             if (node.types.length === 0) {
                 //nothing to emit
                 return;
             } else if (node.types.length === 1) {
                 //only emit the type
-                this.extractPackStructOfType(node.types[0], ops, stack);
+                this.extractPackStructOfType(node.types[0], program);
             } else {
-                if (ops.length) {
-                    ops.push(ReflectionOp.frame);
-                }
+                if (program.ops.length) program.pushFrame();
 
                 for (const subType of node.types) {
-                    this.extractPackStructOfType(subType, ops, stack);
+                    this.extractPackStructOfType(subType, program);
                 }
 
-                ops.push(ReflectionOp.union);
+                program.ops.push(ReflectionOp.union);
+                if (program.ops.length) program.popFrame();
             }
         } else if (isIndexSignatureDeclaration(node)) {
             //node.parameters = first item is {[name: string]: number} => 'name: string'
             if (node.parameters[0].type) {
-                this.extractPackStructOfType(node.parameters[0].type, ops, stack);
+                this.extractPackStructOfType(node.parameters[0].type, program);
             } else {
-                ops.push(ReflectionOp.any);
+                program.ops.push(ReflectionOp.any);
             }
 
             //node.type = first item is {[name: string]: number} => 'number'
-            this.extractPackStructOfType(node.type, ops, stack);
-            ops.push(ReflectionOp.indexSignature);
+            this.extractPackStructOfType(node.type, program);
+            program.ops.push(ReflectionOp.indexSignature);
         } else {
-            ops.push(ReflectionOp.any);
+            program.ops.push(ReflectionOp.any);
         }
     }
 
@@ -589,18 +721,27 @@ export class ReflectionTransformer {
         return { declaration, importSpecifier };
     }
 
-    protected extractPackStructOfTypeReference(type: TypeReferenceNode, ops: ReflectionOp[], stack: StackEntry[]) {
+    protected extractPackStructOfTypeReference(type: TypeReferenceNode, program: CompilerProgram) {
         if (isIdentifier(type.typeName) && this.knownClasses[type.typeName.escapedText as string]) {
-            ops.push(this.knownClasses[type.typeName.escapedText as string]);
+            program.ops.push(this.knownClasses[type.typeName.escapedText as string]);
         } else if (isIdentifier(type.typeName) && type.typeName.escapedText === 'Promise') {
             //promise has always one sub type
             if (type.typeArguments && type.typeArguments[0]) {
-                this.extractPackStructOfType(type.typeArguments[0], ops, stack);
+                this.extractPackStructOfType(type.typeArguments[0], program);
             } else {
-                ops.push(ReflectionOp.any);
+                program.ops.push(ReflectionOp.any);
             }
-            ops.push(ReflectionOp.promise);
+            program.ops.push(ReflectionOp.promise);
         } else {
+            //check if it references a variable
+            if (isIdentifier(type.typeName)) {
+                const variable = program.findVariable(type.typeName.escapedText as string);
+                if (variable) {
+                    program.ops.push(ReflectionOp.loads, variable.frameOffset, variable.stackIndex);
+                    return;
+                }
+            }
+
             const resolved = this.resolveDeclaration(type.typeName);
             if (!resolved) {
                 //we don't resolve yet global identifiers as it's not clear how to resolve them efficiently.
@@ -619,7 +760,7 @@ export class ReflectionTransformer {
                 }
 
                 //non existing references are ignored.
-                ops.push(ReflectionOp.any);
+                program.ops.push(ReflectionOp.any);
                 return;
             }
 
@@ -639,35 +780,35 @@ export class ReflectionTransformer {
             if (isTypeAliasDeclaration(declaration)) {
                 //type X = y;
                 //we just use the actual value and remove the fact that it came from an alias.
-                this.extractPackStructOfType(declaration.type, ops, stack);
+                this.extractPackStructOfType(declaration.type, program);
             } else if (isMappedTypeNode(declaration)) {
                 //<Type>{[Property in keyof Type]: boolean;};
-                //todo: how do we serialize that? We need to calculate the actual type and serialize that as ObjectLiteral
-                // ops.push(ReflectionOp.mappedType);
+                this.extractPackStructOfType(declaration, program);
                 return;
             } else if (isEnumDeclaration(declaration)) {
                 ensureImportIsEmitted();
                 //enum X {}
                 const arrow = this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName));
-                ops.push(ReflectionOp.enum, findOrAddStackEntry(stack, arrow));
+                program.ops.push(ReflectionOp.enum, findOrAddStackEntry(program, arrow));
                 return;
             } else if (isClassDeclaration(declaration)) {
                 ensureImportIsEmitted();
-                // ops.push(type.typeArguments ? ReflectionOp.genericClass : ReflectionOp.class);
+                // program.ops.push(type.typeArguments ? ReflectionOp.genericClass : ReflectionOp.class);
                 //
                 // //todo: this needs a better logic to also resolve references that are not yet imported.
                 // // this can happen when a type alias is imported which itself references to a type from another import.
-                stack.push(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName)));
 
                 if (type.typeArguments) {
                     for (const template of type.typeArguments) {
-                        this.extractPackStructOfType(template, ops, stack);
+                        this.extractPackStructOfType(template, program);
                     }
                 }
 
-                ops.push(ReflectionOp.class);
+                const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName)));
+                program.ops.push(ReflectionOp.classReference);
+                program.ops.push(index);
             } else {
-                this.extractPackStructOfType(declaration, ops, stack);
+                this.extractPackStructOfType(declaration, program);
             }
         }
     }
@@ -728,15 +869,15 @@ export class ReflectionTransformer {
         const reflection = this.findReflectionConfig(type);
         if (reflection.mode === 'never') return;
 
-        const packStruct = new PackStruct;
-        this.extractPackStructOfType(type, packStruct.ops, packStruct.stack);
-        return this.packOpsAndStack(packStruct);
+        const program = new CompilerProgram();
+        this.extractPackStructOfType(type, program);
+        return this.packOpsAndStack({ ops: program.ops, stack: program.stack });
     }
 
     protected packOpsAndStack(packStruct: PackStruct) {
         if (packStruct.ops.length === 0) return;
         const packed = pack(packStruct);
-        debugPackStruct(packStruct);
+        // debugPackStruct(packStruct);
         return this.valueToExpression(packed);
     }
 
@@ -756,34 +897,21 @@ export class ReflectionTransformer {
      *     title: string;
      * }
      */
-    protected decorateClass(classDeclaration: ClassDeclaration): ClassDeclaration {
-        const reflection = this.findReflectionConfig(classDeclaration);
-        if (reflection.mode === 'never') return classDeclaration;
-
-        const elements: PropertyAssignment[] = [];
-
-        for (const property of classDeclaration.members) {
-            const name = property.name ? property.name : isConstructorDeclaration(property) ? 'constructor' : '';
-            if (!name) continue;
-
-            //already decorated
-            if ('string' === typeof name ? false : isIdentifier(name) ? name.text === '__type' : false) {
-                return classDeclaration;
-            }
-
-            const encodedType = this.getTypeOfType(property);
-            if (!encodedType) continue;
-            elements.push(this.f.createPropertyAssignment(name, encodedType));
+    protected decorateClass(node: ClassDeclaration | ClassExpression): Node {
+        const reflection = this.findReflectionConfig(node);
+        if (reflection.mode === 'never') return node;
+        const type = this.getTypeOfType(node);
+        const __type = this.f.createPropertyDeclaration(undefined, this.f.createModifiersFromModifierFlags(ModifierFlags.Static), '__type', undefined, undefined, type);
+        if (isClassDeclaration(node)) {
+            return this.f.updateClassDeclaration(node, node.decorators, node.modifiers,
+                node.name, node.typeParameters, node.heritageClauses,
+                this.f.createNodeArray<ClassElement>([...node.members, __type])
+            );
         }
 
-        if (elements.length === 0) return classDeclaration;
-
-        const types = this.f.createObjectLiteralExpression(elements);
-        const __type = this.f.createPropertyDeclaration(undefined, this.f.createModifiersFromModifierFlags(ModifierFlags.Static), '__type', undefined, undefined, types);
-
-        return this.f.updateClassDeclaration(classDeclaration, classDeclaration.decorators, classDeclaration.modifiers,
-            classDeclaration.name, classDeclaration.typeParameters, classDeclaration.heritageClauses,
-            this.f.createNodeArray<ClassElement>([...classDeclaration.members, __type])
+        return this.f.updateClassExpression(node, node.decorators, node.modifiers,
+            node.name, node.typeParameters, node.heritageClauses,
+            this.f.createNodeArray<ClassElement>([...node.members, __type])
         );
     }
 

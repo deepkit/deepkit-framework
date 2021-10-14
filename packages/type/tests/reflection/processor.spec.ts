@@ -1,15 +1,16 @@
 /** @reflection never */
 import { expect, test } from '@jest/globals';
 import { Processor } from '../../src/reflection/processor';
-import { ReflectionKind, ReflectionVisibility, Type } from '../../src/reflection/type';
+import { ReflectionKind, ReflectionVisibility, Type, TypeObjectLiteral, TypeUnion } from '../../src/reflection/type';
 import { ReflectionOp, RuntimeStackEntry } from '../../src/reflection/compiler';
 import { isArray, isObject } from '@deepkit/core';
+import { isExtendable } from '../../src/reflection/extends';
 
 Error.stackTraceLimit = 200;
 
-function expectType(pack: ReflectionOp[] | { ops: ReflectionOp[], stack: RuntimeStackEntry[] }, expectObject: Partial<Type> | number | string | boolean): void {
+function expectType(pack: ReflectionOp[] | { ops: ReflectionOp[], stack: RuntimeStackEntry[], inputs?: RuntimeStackEntry[] }, expectObject: Partial<Type> | number | string | boolean): void {
     const processor = new Processor();
-    const type = processor.run(isArray(pack) ? pack : pack.ops, isArray(pack) ? [] : pack.stack);
+    const type = processor.run(isArray(pack) ? pack : pack.ops, isArray(pack) ? [] : pack.stack, isArray(pack) ? [] : pack.inputs);
     if (isObject(expectObject)) {
         expect(type).toMatchObject(expectObject);
     } else {
@@ -27,7 +28,7 @@ test('query', () => {
     });
 });
 
-test('extends', () => {
+test('extends primitive', () => {
     expectType({ ops: [ReflectionOp.number, ReflectionOp.number, ReflectionOp.extends], stack: [] }, true);
     expectType({ ops: [ReflectionOp.pointer, 0, ReflectionOp.number, ReflectionOp.extends], stack: [1] }, true);
     expectType({ ops: [ReflectionOp.pointer, 0, ReflectionOp.number, ReflectionOp.extends], stack: ['asd'] }, false);
@@ -35,6 +36,25 @@ test('extends', () => {
 
     expectType({ ops: [ReflectionOp.string, ReflectionOp.string, ReflectionOp.extends], stack: [] }, true);
     expectType({ ops: [ReflectionOp.pointer, 0, ReflectionOp.string, ReflectionOp.extends], stack: ['asd'] }, true);
+    expect(isExtendable({ kind: ReflectionKind.boolean }, { kind: ReflectionKind.boolean })).toBe(true);
+    expect(isExtendable({ kind: ReflectionKind.literal, literal: true }, { kind: ReflectionKind.boolean })).toBe(true);
+});
+
+test('extends fn', () => {
+    expect(isExtendable(
+        { kind: ReflectionKind.function, return: { kind: ReflectionKind.boolean }, parameters: [] },
+        { kind: ReflectionKind.function, return: { kind: ReflectionKind.boolean }, parameters: [] }
+    )).toBe(true);
+
+    expect(isExtendable(
+        { kind: ReflectionKind.function, return: { kind: ReflectionKind.string }, parameters: [] },
+        { kind: ReflectionKind.function, return: { kind: ReflectionKind.boolean }, parameters: [] }
+    )).toBe(false);
+
+    expect(isExtendable(
+        { kind: ReflectionKind.function, return: { kind: ReflectionKind.literal, literal: true }, parameters: [] },
+        { kind: ReflectionKind.function, return: { kind: ReflectionKind.boolean }, parameters: [] }
+    )).toBe(true);
 });
 
 test('arg', () => {
@@ -53,21 +73,21 @@ test('call sub routine', () => {
     expectType({ ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.call, 2], stack: [] }, { kind: ReflectionKind.number });
     expectType({ ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.call, 2, ReflectionOp.union], stack: [] }, {
         kind: ReflectionKind.union,
-        types: [{ kind: ReflectionKind.number }], //only number, since `return` returns only latest stack entry, not all
+        members: [{ kind: ReflectionKind.number }], //only number, since `return` returns only latest stack entry, not all
     });
     expectType({
         ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.call, 2, ReflectionOp.undefined, ReflectionOp.union],
         stack: []
     }, {
         kind: ReflectionKind.union,
-        types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
+        members: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
     });
     expectType({
         ops: [ReflectionOp.string, ReflectionOp.jump, 6, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.call, 2, ReflectionOp.undefined, ReflectionOp.union],
         stack: []
     }, {
         kind: ReflectionKind.union,
-        types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
+        members: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
     });
 });
 
@@ -90,19 +110,28 @@ test('conditional', () => {
 
 test('jump conditional', () => {
     //1 ? string : number
-    expectType({ ops: [ReflectionOp.string, ReflectionOp.return, ReflectionOp.number, ReflectionOp.return, ReflectionOp.pointer, 0, ReflectionOp.jumpCondition, 0, 2], stack: [1] }, {
+    expectType({
+        ops: [ReflectionOp.string, ReflectionOp.return, ReflectionOp.number, ReflectionOp.return, ReflectionOp.pointer, 0, ReflectionOp.jumpCondition, 0, 2],
+        stack: [1]
+    }, {
         kind: ReflectionKind.string
     });
 
     //0 ? string : number
-    expectType({ ops: [ReflectionOp.string, ReflectionOp.return, ReflectionOp.number, ReflectionOp.return, ReflectionOp.pointer, 0, ReflectionOp.jumpCondition, 0, 2], stack: [0] }, {
+    expectType({
+        ops: [ReflectionOp.string, ReflectionOp.return, ReflectionOp.number, ReflectionOp.return, ReflectionOp.pointer, 0, ReflectionOp.jumpCondition, 0, 2],
+        stack: [0]
+    }, {
         kind: ReflectionKind.number
     });
 
     //(0 ? string : number) | undefined
-    expectType({ ops: [ReflectionOp.string, ReflectionOp.return, ReflectionOp.number, ReflectionOp.return, ReflectionOp.pointer, 0, ReflectionOp.jumpCondition, 0, 2, ReflectionOp.undefined, ReflectionOp.union], stack: [0] }, {
+    expectType({
+        ops: [ReflectionOp.string, ReflectionOp.return, ReflectionOp.number, ReflectionOp.return, ReflectionOp.pointer, 0, ReflectionOp.jumpCondition, 0, 2, ReflectionOp.undefined, ReflectionOp.union],
+        stack: [0]
+    }, {
         kind: ReflectionKind.union,
-        types: [{kind: ReflectionKind.number}, {kind: ReflectionKind.undefined}]
+        members: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }]
     });
 });
 
@@ -142,7 +171,7 @@ test('object literal', () => {
             {
                 kind: ReflectionKind.indexSignature,
                 index: { kind: ReflectionKind.string },
-                type: { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }] }
+                type: { kind: ReflectionKind.union, members: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }] }
             }
         ]
     });
@@ -229,6 +258,247 @@ test('property', () => {
     });
 });
 
+test('class', () => {
+    class MyClass {}
+
+    expectType({
+        ops: [ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.number, ReflectionOp.property, 1, ReflectionOp.class],
+        stack: ['name', 'id']
+    }, {
+        kind: ReflectionKind.class,
+        classType: Object,
+        members: [{
+            kind: ReflectionKind.property,
+            name: 'name',
+            visibility: ReflectionVisibility.public,
+            type: { kind: ReflectionKind.string }
+        }, {
+            kind: ReflectionKind.property,
+            name: 'id',
+            visibility: ReflectionVisibility.public,
+            type: { kind: ReflectionKind.number }
+        }]
+    });
+});
+
+test('mapped type simple', () => {
+    type A<T extends string> = { [P in T]: boolean };
+    type B = { [P in 'a' | 'b']: boolean };
+    type B1 = A<'a' | 'b'>;
+
+    expectType({
+        ops: [
+            ReflectionOp.template, 0,
+            ReflectionOp.jump, 6,
+            ReflectionOp.boolean, ReflectionOp.return,
+            ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.mappedType, 4
+        ],
+        stack: ['T'],
+        inputs: [{ kind: ReflectionKind.union, members: [{ kind: ReflectionKind.literal, literal: 'a' }, { kind: ReflectionKind.literal, literal: 'b' }] } as TypeUnion]
+    }, {
+        kind: ReflectionKind.objectLiteral,
+        members: [{
+            kind: ReflectionKind.propertySignature,
+            name: 'a',
+            type: { kind: ReflectionKind.boolean }
+        }, {
+            kind: ReflectionKind.propertySignature,
+            name: 'b',
+            type: { kind: ReflectionKind.boolean }
+        }]
+    });
+});
+
+test('mapped type keyof and query', () => {
+    type A<T> = { [P in keyof T]: T[P] };
+    type B1 = A<{ a: number, b: string }>;
+
+    expectType({
+        ops: [
+            ReflectionOp.template, 0,
+            ReflectionOp.jump, 12,
+            ReflectionOp.loads, 2, 0, ReflectionOp.loads, 1, 0, ReflectionOp.query, ReflectionOp.return,
+            ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.keyof, ReflectionOp.mappedType, 4
+        ],
+        stack: ['T'],
+        inputs: [{
+            kind: ReflectionKind.objectLiteral, members: [{
+                kind: ReflectionKind.propertySignature,
+                name: 'a',
+                type: { kind: ReflectionKind.number }
+            }, {
+                kind: ReflectionKind.propertySignature,
+                name: 'b',
+                type: { kind: ReflectionKind.string }
+            }]
+        } as TypeObjectLiteral]
+    }, {
+        kind: ReflectionKind.objectLiteral,
+        members: [{
+            kind: ReflectionKind.propertySignature,
+            name: 'a',
+            type: { kind: ReflectionKind.number }
+        }, {
+            kind: ReflectionKind.propertySignature,
+            name: 'b',
+            type: { kind: ReflectionKind.string }
+        }]
+    });
+});
+
+test('mapped type keyof and fixed', () => {
+    type A<T> = { [P in keyof T]: boolean };
+    type B1 = A<{ a: number, b: string }>;
+
+    expectType({
+        ops: [
+            ReflectionOp.template, 0,
+            ReflectionOp.jump, 6,
+            ReflectionOp.boolean, ReflectionOp.return,
+            ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.keyof, ReflectionOp.mappedType, 4
+        ],
+        stack: ['T'],
+        inputs: [{
+            kind: ReflectionKind.objectLiteral, members: [{
+                kind: ReflectionKind.propertySignature,
+                name: 'a',
+                type: { kind: ReflectionKind.number }
+            }, {
+                kind: ReflectionKind.propertySignature,
+                name: 'b',
+                type: { kind: ReflectionKind.string }
+            }]
+        } as TypeObjectLiteral]
+    }, {
+        kind: ReflectionKind.objectLiteral,
+        members: [{
+            kind: ReflectionKind.propertySignature,
+            name: 'a',
+            type: { kind: ReflectionKind.boolean }
+        }, {
+            kind: ReflectionKind.propertySignature,
+            name: 'b',
+            type: { kind: ReflectionKind.boolean }
+        }]
+    });
+});
+
+test('mapped type keyof and conditional', () => {
+    type A<T> = { [P in keyof T]: T[P] extends number ? boolean : never };
+    type B1 = A<{ a: number, b: string }>;
+
+    expectType({
+        ops: [
+            ReflectionOp.template, 0,
+            ReflectionOp.jump, 17,
+            ReflectionOp.loads, 2, 0, ReflectionOp.loads, 1, 0, ReflectionOp.query, ReflectionOp.number, ReflectionOp.extends, ReflectionOp.boolean, ReflectionOp.never, ReflectionOp.condition, ReflectionOp.return,
+            ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.keyof, ReflectionOp.mappedType, 4
+        ],
+        stack: ['T'],
+        inputs: [{
+            kind: ReflectionKind.objectLiteral, members: [{
+                kind: ReflectionKind.propertySignature,
+                name: 'a',
+                type: { kind: ReflectionKind.number }
+            }, {
+                kind: ReflectionKind.propertySignature,
+                name: 'b',
+                type: { kind: ReflectionKind.string }
+            }]
+        } as TypeObjectLiteral]
+    }, {
+        kind: ReflectionKind.objectLiteral,
+        members: [{
+            kind: ReflectionKind.propertySignature,
+            name: 'a',
+            type: { kind: ReflectionKind.boolean }
+        }, {
+            kind: ReflectionKind.propertySignature,
+            name: 'b',
+            type: { kind: ReflectionKind.never }
+        }]
+    });
+});
+
+test('infer property signature', () => {
+    type A<T> = T extends { a: infer K } ? K : never;
+    type B1 = A<{ a: number }>;
+
+    expectType({
+        ops: [
+            ReflectionOp.template, 0,
+            ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.frame, ReflectionOp.infer, 1, 0, ReflectionOp.propertySignature, 1, ReflectionOp.objectLiteral, ReflectionOp.extends,
+            ReflectionOp.loads, 0, 0, ReflectionOp.never, ReflectionOp.condition,
+        ],
+        stack: ['T', 'a'],
+        inputs: [{
+            kind: ReflectionKind.objectLiteral, members: [{
+                kind: ReflectionKind.propertySignature,
+                name: 'a',
+                type: { kind: ReflectionKind.number }
+            }]
+        }]
+    }, { kind: ReflectionKind.number });
+});
+
+// test('infer function parameters', () => {
+//     type A<T> = T extends (...args: infer K) => any ? K : never;
+//     type B1 = A<(a: string, b: number) => void>;
+//
+//     expectType({
+//         ops: [],
+//         stack: ['T'],
+//         inputs: []
+//     }, {});
+// });
+//
+// test('infer index signature', () => {
+//     type A<T> = T extends { [name: string]: infer K } ? K : never;
+//     type B1 = A<{ a: number, b: string }>;
+//
+//     expectType({
+//         ops: [],
+//         stack: ['T'],
+//         inputs: []
+//     }, {});
+// });
+
+
+test('generic class', () => {
+    class MyClass<T> {
+        name!: T;
+    }
+
+    expectType({
+        ops: [ReflectionOp.template, 0, ReflectionOp.loads, 0, 0, ReflectionOp.property, 1, ReflectionOp.class],
+        stack: ['T', 'name'],
+        inputs: [{ kind: ReflectionKind.string }]
+    }, {
+        kind: ReflectionKind.class,
+        classType: Object,
+        members: [{
+            kind: ReflectionKind.property,
+            name: 'name',
+            visibility: ReflectionVisibility.public,
+            type: { kind: ReflectionKind.string }
+        }]
+    });
+
+    expectType({
+        ops: [ReflectionOp.template, 0, ReflectionOp.loads, 0, 0, ReflectionOp.property, 1, ReflectionOp.class],
+        stack: ['T', 'name']
+    }, {
+        kind: ReflectionKind.class,
+        classType: Object,
+        members: [{
+            kind: ReflectionKind.property,
+            name: 'name',
+            visibility: ReflectionVisibility.public,
+            type: { kind: ReflectionKind.template, name: 'T' }
+        }]
+    });
+});
+
 test('basic types', () => {
     expectType([ReflectionOp.string], { kind: ReflectionKind.string });
     expectType([ReflectionOp.number], { kind: ReflectionKind.number });
@@ -245,39 +515,29 @@ test('more advances types', () => {
 
     expectType([ReflectionOp.undefined, ReflectionOp.string, ReflectionOp.union], {
         kind: ReflectionKind.union,
-        types: [{ kind: ReflectionKind.undefined }, { kind: ReflectionKind.string }]
+        members: [{ kind: ReflectionKind.undefined }, { kind: ReflectionKind.string }]
     });
 
     expectType([ReflectionOp.number, ReflectionOp.undefined, ReflectionOp.string, ReflectionOp.union], {
         kind: ReflectionKind.union,
-        types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }, { kind: ReflectionKind.string }]
+        members: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }, { kind: ReflectionKind.string }]
     });
 
-    expectType({ ops: [ReflectionOp.class, 0], stack: [() => Entity] }, { kind: ReflectionKind.class, classType: Entity, types: [] });
-    expectType([ReflectionOp.date], { kind: ReflectionKind.class, classType: Date, types: [] });
-    expectType([ReflectionOp.uint8Array], { kind: ReflectionKind.class, classType: Uint8Array, types: [] });
-    expectType([ReflectionOp.int8Array], { kind: ReflectionKind.class, classType: Int8Array, types: [] });
-    expectType([ReflectionOp.uint8ClampedArray], { kind: ReflectionKind.class, classType: Uint8ClampedArray, types: [] });
-    expectType([ReflectionOp.uint16Array], { kind: ReflectionKind.class, classType: Uint16Array, types: [] });
-    expectType([ReflectionOp.int16Array], { kind: ReflectionKind.class, classType: Int16Array, types: [] });
-    expectType([ReflectionOp.uint32Array], { kind: ReflectionKind.class, classType: Uint32Array, types: [] });
-    expectType([ReflectionOp.int32Array], { kind: ReflectionKind.class, classType: Int32Array, types: [] });
-    expectType([ReflectionOp.float32Array], { kind: ReflectionKind.class, classType: Float32Array, types: [] });
-    expectType([ReflectionOp.float64Array], { kind: ReflectionKind.class, classType: Float64Array, types: [] });
-    expectType([ReflectionOp.bigInt64Array], { kind: ReflectionKind.class, classType: BigInt64Array, types: [] });
-    expectType([ReflectionOp.arrayBuffer], { kind: ReflectionKind.class, classType: ArrayBuffer, types: [] });
+    expectType([ReflectionOp.date], { kind: ReflectionKind.class, classType: Date, members: [] });
+    expectType([ReflectionOp.uint8Array], { kind: ReflectionKind.class, classType: Uint8Array, members: [] });
+    expectType([ReflectionOp.int8Array], { kind: ReflectionKind.class, classType: Int8Array, members: [] });
+    expectType([ReflectionOp.uint8ClampedArray], { kind: ReflectionKind.class, classType: Uint8ClampedArray, members: [] });
+    expectType([ReflectionOp.uint16Array], { kind: ReflectionKind.class, classType: Uint16Array, members: [] });
+    expectType([ReflectionOp.int16Array], { kind: ReflectionKind.class, classType: Int16Array, members: [] });
+    expectType([ReflectionOp.uint32Array], { kind: ReflectionKind.class, classType: Uint32Array, members: [] });
+    expectType([ReflectionOp.int32Array], { kind: ReflectionKind.class, classType: Int32Array, members: [] });
+    expectType([ReflectionOp.float32Array], { kind: ReflectionKind.class, classType: Float32Array, members: [] });
+    expectType([ReflectionOp.float64Array], { kind: ReflectionKind.class, classType: Float64Array, members: [] });
+    expectType([ReflectionOp.bigInt64Array], { kind: ReflectionKind.class, classType: BigInt64Array, members: [] });
+    expectType([ReflectionOp.arrayBuffer], { kind: ReflectionKind.class, classType: ArrayBuffer, members: [] });
 
     expectType([ReflectionOp.string, ReflectionOp.promise], { kind: ReflectionKind.promise, type: { kind: ReflectionKind.string } });
 
-    expectType({ ops: [ReflectionOp.string, ReflectionOp.class, 0], stack: [() => Entity] }, {
-        kind: ReflectionKind.class, classType: Entity, types: [{ kind: ReflectionKind.string }]
-    });
-
-    expectType({ ops: [ReflectionOp.string, ReflectionOp.class, 0], stack: [() => Entity] }, {
-        kind: ReflectionKind.class,
-        classType: Entity,
-        types: [{ kind: ReflectionKind.string }]
-    });
     expectType({ ops: [ReflectionOp.enum, 0], stack: [() => MyEnum] }, { kind: ReflectionKind.enum, enumType: MyEnum });
     expectType([ReflectionOp.string, ReflectionOp.set], { kind: ReflectionKind.class, classType: Set, types: [{ kind: ReflectionKind.string }] });
     expectType([ReflectionOp.string, ReflectionOp.number, ReflectionOp.map], {
@@ -286,7 +546,7 @@ test('more advances types', () => {
 
     expectType([ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union], {
         kind: ReflectionKind.union,
-        types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }]
+        members: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }]
     });
 
     expectType([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.void, ReflectionOp.function], {
@@ -303,7 +563,7 @@ test('more advances types', () => {
 
     expectType([ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.void, ReflectionOp.function], {
         kind: ReflectionKind.function,
-        parameters: [{ kind: ReflectionKind.union, types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }] }],
+        parameters: [{ kind: ReflectionKind.union, members: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }] }],
         return: { kind: ReflectionKind.void },
     });
 
@@ -314,19 +574,15 @@ test('more advances types', () => {
     ], {
         kind: ReflectionKind.function,
         parameters: [
-            { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }] },
-            { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }] },
+            { kind: ReflectionKind.union, members: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }] },
+            { kind: ReflectionKind.union, members: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }] },
         ],
         return: { kind: ReflectionKind.void },
     });
 
     expectType([ReflectionOp.string, ReflectionOp.array], { kind: ReflectionKind.array, elementType: { kind: ReflectionKind.string } });
     expectType([ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.array], {
-        kind: ReflectionKind.array, elementType: { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }] },
-    });
-
-    expectType({ ops: [ReflectionOp.class, 0, ReflectionOp.array], stack: [() => Uint32Array] }, {
-        kind: ReflectionKind.array, elementType: { kind: ReflectionKind.class, classType: Uint32Array, types: [] }
+        kind: ReflectionKind.array, elementType: { kind: ReflectionKind.union, members: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }] },
     });
 
     expectType([ReflectionOp.string, ReflectionOp.array, ReflectionOp.void, ReflectionOp.function], {

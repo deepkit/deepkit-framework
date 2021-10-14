@@ -1,17 +1,30 @@
-import { ReflectionOp, RuntimeStackEntry } from './compiler';
+/*
+ * Deepkit Framework
+ * Copyright Deepkit UG, Marc J. Schmidt
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License.
+ *
+ * You should have received a copy of the MIT License along with this program.
+ */
+
+import { ReflectionOp, RuntimeStackEntry, unpack } from './compiler';
 import {
     isType,
     ReflectionKind,
     ReflectionVisibility,
     Type,
     TypeIndexSignature,
+    TypeInfer,
+    TypeLiteral,
     TypeLiteralMember,
     TypeMethod,
     TypeMethodSignature,
     TypeProperty,
-    TypePropertySignature
+    TypePropertySignature,
+    TypeUnion
 } from './type';
-import { isAssignable } from './extends';
+import { isExtendable } from './extends';
 
 
 type StackEntry = RuntimeStackEntry | Type;
@@ -24,27 +37,60 @@ function newArray<T>(init: T, items: number): T[] {
     return a;
 }
 
+export function resolveRuntimeType(o: any, args: any[] = []): Type {
+    if ('__type' in o) {
+        const pack = unpack(o.__type);
+        const processor = new Processor();
+        // debugPackStruct(pack);
+        const type = processor.run(pack.ops, pack.stack, args);
+        if (type.kind === ReflectionKind.class) {
+            type.classType = o;
+        }
+        return type;
+    }
+    throw new Error('No valid runtime type given');
+}
+
 interface Frame {
     startIndex: number; //when the frame started, index of the stack
+    variables: number;
+    inputs: RuntimeStackEntry[];
     previous?: Frame;
+    mappedType?: MappedType;
+}
+
+class MappedType {
+    private members: Type[] = [];
+    private i: number = 0;
+
+    constructor(private fromType: Type) {
+        if (fromType.kind === ReflectionKind.union) {
+            this.members = fromType.members;
+        }
+    }
+
+    next(): Type | undefined {
+        return this.members[this.i++];
+    }
 }
 
 export class Processor {
     stack: (RuntimeStackEntry | Type)[] = newArray({ kind: ReflectionKind.any }, 128);
     stackPointer = -1; //pointer to the stack
-    frame: Frame = { startIndex: -1 };
+    frame: Frame = { startIndex: -1, inputs: [], variables: 0 };
     program: number = 0;
 
-    run(ops: ReflectionOp[], references: RuntimeStackEntry[]) {
+    run(ops: ReflectionOp[], initialStack: RuntimeStackEntry[], initialInputs: RuntimeStackEntry[] = []) {
         // if (ops.length === 1 && ops[0] === ReflectionOp.string) return { kind: ReflectionKind.string };
 
-        for (let i = 0; i < references.length; i++) {
-            this.stack[i] = references[i];
+        for (let i = 0; i < initialStack.length; i++) {
+            this.stack[i] = initialStack[i];
         }
 
-        this.stackPointer = references.length - 1;
+        this.stackPointer = initialStack.length - 1;
         this.frame.startIndex = this.stackPointer;
         this.frame.previous = undefined;
+        this.frame.inputs = initialInputs;
 
         const s = ops.length;
         for (this.program = 0; this.program < s; this.program++) {
@@ -62,6 +108,9 @@ export class Processor {
                 case ReflectionOp.void:
                     this.pushType({ kind: ReflectionKind.void });
                     break;
+                case ReflectionOp.never:
+                    this.pushType({ kind: ReflectionKind.never });
+                    break;
                 case ReflectionOp.undefined:
                     this.pushType({ kind: ReflectionKind.undefined });
                     break;
@@ -73,75 +122,99 @@ export class Processor {
                     break;
                 case ReflectionOp.literal: {
                     const ref = this.eatParameter(ops) as number;
-                    this.pushType({ kind: ReflectionKind.literal, literal: references[ref] as string | number | boolean });
+                    this.pushType({ kind: ReflectionKind.literal, literal: initialStack[ref] as string | number | boolean });
                     break;
                 }
                 case ReflectionOp.date:
-                    this.pushType({ kind: ReflectionKind.class, classType: Date, types: [] });
+                    this.pushType({ kind: ReflectionKind.class, classType: Date, members: [] });
                     break;
                 case ReflectionOp.uint8Array:
-                    this.pushType({ kind: ReflectionKind.class, classType: Uint8Array, types: [] });
+                    this.pushType({ kind: ReflectionKind.class, classType: Uint8Array, members: [] });
                     break;
                 case ReflectionOp.int8Array:
-                    this.pushType({ kind: ReflectionKind.class, classType: Int8Array, types: [] });
+                    this.pushType({ kind: ReflectionKind.class, classType: Int8Array, members: [] });
                     break;
                 case ReflectionOp.uint8ClampedArray:
-                    this.pushType({ kind: ReflectionKind.class, classType: Uint8ClampedArray, types: [] });
+                    this.pushType({ kind: ReflectionKind.class, classType: Uint8ClampedArray, members: [] });
                     break;
                 case ReflectionOp.uint16Array:
-                    this.pushType({ kind: ReflectionKind.class, classType: Uint16Array, types: [] });
+                    this.pushType({ kind: ReflectionKind.class, classType: Uint16Array, members: [] });
                     break;
                 case ReflectionOp.int16Array:
-                    this.pushType({ kind: ReflectionKind.class, classType: Int16Array, types: [] });
+                    this.pushType({ kind: ReflectionKind.class, classType: Int16Array, members: [] });
                     break;
                 case ReflectionOp.uint32Array:
-                    this.pushType({ kind: ReflectionKind.class, classType: Uint32Array, types: [] });
+                    this.pushType({ kind: ReflectionKind.class, classType: Uint32Array, members: [] });
                     break;
                 case ReflectionOp.int32Array:
-                    this.pushType({ kind: ReflectionKind.class, classType: Int32Array, types: [] });
+                    this.pushType({ kind: ReflectionKind.class, classType: Int32Array, members: [] });
                     break;
                 case ReflectionOp.float32Array:
-                    this.pushType({ kind: ReflectionKind.class, classType: Float32Array, types: [] });
+                    this.pushType({ kind: ReflectionKind.class, classType: Float32Array, members: [] });
                     break;
                 case ReflectionOp.float64Array:
-                    this.pushType({ kind: ReflectionKind.class, classType: Float64Array, types: [] });
+                    this.pushType({ kind: ReflectionKind.class, classType: Float64Array, members: [] });
                     break;
                 case ReflectionOp.bigInt64Array:
-                    this.pushType({ kind: ReflectionKind.class, classType: 'undefined' !== typeof BigInt64Array ? BigInt64Array : class BigInt64ArrayNotAvailable {}, types: [] });
+                    this.pushType({
+                        kind: ReflectionKind.class,
+                        classType: 'undefined' !== typeof BigInt64Array ? BigInt64Array : class BigInt64ArrayNotAvailable {},
+                        members: []
+                    });
                     break;
                 case ReflectionOp.arrayBuffer:
-                    this.pushType({ kind: ReflectionKind.class, classType: ArrayBuffer, types: [] });
+                    this.pushType({ kind: ReflectionKind.class, classType: ArrayBuffer, members: [] });
                     break;
                 case ReflectionOp.class: {
+                    this.pushType({ kind: ReflectionKind.class, classType: Object, members: this.popFrame() as Type[] });
+                    break;
+                }
+                case ReflectionOp.classReference: {
                     const ref = this.eatParameter(ops) as number;
-                    this.pushType({ kind: ReflectionKind.class, classType: (references[ref] as Function)(), types: this.popFrame() as Type[] });
+                    const classType = (initialStack[ref] as Function)();
+                    const args = this.popFrame() as Type[];
+                    this.pushType(resolveRuntimeType(classType, args));
                     break;
                 }
                 case ReflectionOp.enum: {
                     const ref = this.eatParameter(ops) as number;
-                    this.pushType({ kind: ReflectionKind.enum, enumType: (references[ref] as Function)() });
+                    this.pushType({ kind: ReflectionKind.enum, enumType: (initialStack[ref] as Function)() });
+                    break;
+                }
+                case ReflectionOp.template: {
+                    const nameRef = this.eatParameter(ops) as number;
+                    const type = this.frame.inputs[this.frame.variables++];
+
+                    if (type === undefined) {
+                        //generic not instantiated
+                        this.pushType({ kind: ReflectionKind.template, name: initialStack[nameRef] as string });
+                    } else {
+                        this.pushType(type as Type);
+                    }
                     break;
                 }
                 case ReflectionOp.set:
-                    this.pushType({ kind: ReflectionKind.class, classType: Set, types: [this.pop() as Type] });
+                    this.pushType({ kind: ReflectionKind.class, classType: Set, types: [this.pop() as Type], members: [] });
                     break;
                 case ReflectionOp.map:
                     const value = this.pop() as Type;
                     const key = this.pop() as Type;
-                    this.pushType({ kind: ReflectionKind.class, classType: Map, types: [key, value] });
+                    this.pushType({ kind: ReflectionKind.class, classType: Map, types: [key, value], members: [] });
                     break;
                 case ReflectionOp.promise:
                     this.pushType({ kind: ReflectionKind.promise, type: this.pop() as Type });
                     break;
                 case ReflectionOp.union: {
-                    const types = this.popFrame() as Type[];
-                    this.pushType({ kind: ReflectionKind.union, types });
+                    const members = this.popFrame() as Type[];
+                    this.pushType({ kind: ReflectionKind.union, members });
                     break;
                 }
                 case ReflectionOp.function: {
                     const types = this.popFrame() as Type[];
+                    const name = initialStack[this.eatParameter(ops) as number] as string;
                     this.pushType({
                         kind: ReflectionKind.function,
+                        name: name || undefined,
                         return: types.length > 0 ? types[types.length - 1] : { kind: ReflectionKind.any },
                         parameters: types.length > 1 ? types.slice(0, -1) : []
                     });
@@ -151,18 +224,18 @@ export class Processor {
                     this.pushType({ kind: ReflectionKind.array, elementType: this.pop() as Type });
                     break;
                 case ReflectionOp.property: {
-                    const name = references[this.eatParameter(ops) as number] as number | string | symbol;
+                    const name = initialStack[this.eatParameter(ops) as number] as number | string | symbol;
                     this.pushType({ kind: ReflectionKind.property, type: this.pop() as Type, visibility: ReflectionVisibility.public, name });
                     break;
                 }
                 case ReflectionOp.propertySignature: {
-                    const name = references[this.eatParameter(ops) as number] as number | string | symbol;
+                    const name = initialStack[this.eatParameter(ops) as number] as number | string | symbol;
                     this.pushType({ kind: ReflectionKind.propertySignature, type: this.pop() as Type, name });
                     break;
                 }
                 case ReflectionOp.method:
                 case ReflectionOp.methodSignature: {
-                    const name = references[this.eatParameter(ops) as number] as number | string | symbol;
+                    const name = initialStack[this.eatParameter(ops) as number] as number | string | symbol;
                     const types = this.popFrame() as Type[];
                     const returnType: Type = types.length > 0 ? types[types.length - 1] : { kind: ReflectionKind.any };
                     const parameters = types.length > 1 ? types.slice(0, -1) : [];
@@ -205,7 +278,7 @@ export class Processor {
                     break;
                 }
                 case ReflectionOp.pointer: {
-                    this.push(references[this.eatParameter(ops) as number]);
+                    this.push(initialStack[this.eatParameter(ops) as number]);
                     break;
                 }
                 case ReflectionOp.condition: {
@@ -221,16 +294,33 @@ export class Processor {
                     const condition = this.pop() as number | boolean;
                     this.call();
                     if (condition) {
-                        this.program = leftProgram - 1;
+                        this.program = leftProgram - 1; //-1 because next iteration does program++
                     } else {
-                        this.program = rightProgram - 1;
+                        this.program = rightProgram - 1; //-1 because next iteration does program++
                     }
+                    break;
+                }
+                case ReflectionOp.infer: {
+                    const frameOffset = this.eatParameter(ops) as number;
+                    const stackEntryIndex = this.eatParameter(ops) as number;
+                    const frame = this.frame;
+                    this.push({
+                        kind: ReflectionKind.infer, set: (type: Type) => {
+                            if (frameOffset === 0) {
+                                this.stack[frame.startIndex + 1 + stackEntryIndex] = type;
+                            } else if (frameOffset === 1) {
+                                this.stack[frame.previous!.startIndex + 1 + stackEntryIndex] = type;
+                            } else if (frameOffset === 2) {
+                                this.stack[frame.previous!.previous!.startIndex + 1 + stackEntryIndex] = type;
+                            }
+                        }
+                    } as TypeInfer);
                     break;
                 }
                 case ReflectionOp.extends: {
                     const right = this.pop() as string | number | boolean | Type;
                     const left = this.pop() as string | number | boolean | Type;
-                    this.push(isAssignable(left, right));
+                    this.push(isExtendable(left, right));
                     break;
                 }
                 case ReflectionOp.query: {
@@ -258,6 +348,66 @@ export class Processor {
                         } else {
                             this.pushType({ kind: ReflectionKind.any });
                         }
+                    } else {
+                        this.push({ kind: ReflectionKind.never });
+                    }
+                    break;
+                }
+                case ReflectionOp.keyof: {
+                    const type = this.pop() as Type;
+                    const union = { kind: ReflectionKind.union, members: [] } as TypeUnion;
+                    this.push(union);
+                    if (type.kind === ReflectionKind.objectLiteral) {
+                        for (const member of type.members) {
+                            if (member.kind === ReflectionKind.propertySignature) {
+                                union.members.push({ kind: ReflectionKind.literal, literal: member.name } as TypeLiteral);
+                            } else if (member.kind === ReflectionKind.methodSignature) {
+                                union.members.push({ kind: ReflectionKind.literal, literal: member.name } as TypeLiteral);
+                            }
+                        }
+                    }
+                    break;
+                }
+                case ReflectionOp.var: {
+                    this.push({ kind: ReflectionKind.never });
+                    this.frame.variables++;
+                    break;
+                }
+                case ReflectionOp.mappedType: {
+                    const functionPointer = this.eatParameter(ops) as number;
+                    if (this.frame.mappedType) {
+                        const type = this.pop();
+                        let index: Type | string | boolean | symbol | number = this.stack[this.frame.startIndex + 1] as Type;
+                        if (index.kind === ReflectionKind.literal) {
+                            index = index.literal;
+                        }
+                        this.push({ kind: ReflectionKind.propertySignature, name: index, type });
+
+                    } else {
+                        this.frame.mappedType = new MappedType(this.pop() as Type);
+                    }
+
+                    const next = this.frame.mappedType.next();
+                    if (next === undefined) {
+                        //end
+                        const types = this.popFrame();
+                        this.push({ kind: ReflectionKind.objectLiteral, members: types });
+                    } else {
+                        this.stack[this.frame.startIndex + 1] = next;
+                        this.call(-1);
+                        this.program = functionPointer - 1; //-1 because next iteration does program++
+                    }
+                    break;
+                }
+                case ReflectionOp.loads: {
+                    const frameOffset = this.eatParameter(ops) as number;
+                    const stackEntryIndex = this.eatParameter(ops) as number;
+                    if (frameOffset === 0) {
+                        this.push(this.stack[this.frame.startIndex + 1 + stackEntryIndex]);
+                    } else if (frameOffset === 1) {
+                        this.push(this.stack[this.frame.previous!.startIndex + 1 + stackEntryIndex]);
+                    } else if (frameOffset === 2) {
+                        this.push(this.stack[this.frame.previous!.previous!.startIndex + 1 + stackEntryIndex]);
                     }
                     break;
                 }
@@ -282,7 +432,7 @@ export class Processor {
                 }
                 case ReflectionOp.jump: {
                     const arg = this.eatParameter(ops) as number;
-                    this.program = arg - 1;
+                    this.program = arg - 1; //-1 because next iteration does program++
                     break;
                 }
             }
@@ -305,11 +455,13 @@ export class Processor {
         this.frame = {
             startIndex: this.stackPointer,
             previous: this.frame,
+            variables: 0,
+            inputs: [],
         };
     }
 
     popFrame(): StackEntry[] {
-        const result = this.stack.slice(this.frame.startIndex + 1, this.stackPointer + 1);
+        const result = this.stack.slice(this.frame.startIndex + this.frame.variables + 1, this.stackPointer + 1);
         this.stackPointer = this.frame.startIndex;
         if (this.frame.previous) this.frame = this.frame.previous;
         return result;

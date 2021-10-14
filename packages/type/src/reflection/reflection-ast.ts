@@ -1,3 +1,13 @@
+/*
+ * Deepkit Framework
+ * Copyright Deepkit UG, Marc J. Schmidt
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License.
+ *
+ * You should have received a copy of the MIT License along with this program.
+ */
+
 import { ComputedPropertyName, Identifier, NumericLiteral, PrivateIdentifier, StringLiteral } from 'typescript/lib/tsserverlibrary';
 import { isComputedPropertyName, isIdentifier, isNumericLiteral, isPrivateIdentifier, isStringLiteral, ModifiersArray, SyntaxKind } from 'typescript';
 
