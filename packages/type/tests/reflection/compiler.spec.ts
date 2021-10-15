@@ -311,7 +311,7 @@ test('external object literal', () => {
     return class Container {data: o}`;
     const js = transpile(code);
 
-    expect(js).toContain(`var __Ωo = ['a', 'b', '$/!%/"?'];`);
+    expect(js).toContain(`var __Ωo = `);
 
     const clazz = transpileAndReturn(code);
 
@@ -449,6 +449,143 @@ test('resolve partial', () => {
                     ]
                 } as TypeUnion
             },
+        ]
+    });
+});
+
+test('resolve partial 2', () => {
+    const code = `
+    type Partial2<T> = {
+        [P in keyof T]?: T[P];
+    }
+
+    type o = { a: string };
+    type p = Partial2<o>;
+
+    return typeOf<p>();`;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+
+    expect(type).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        members: [
+            {
+                kind: ReflectionKind.propertySignature,
+                optional: true,
+                name: 'a',
+                type: { kind: ReflectionKind.string }
+            },
+        ]
+    });
+});
+
+test('conditional simple', () => {
+    const code = `
+    type Conditional = string extends string ? true : false;
+
+    return typeOf<Conditional>();`;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+
+    expect(type).toEqual({
+        kind: ReflectionKind.literal,
+        literal: true,
+    });
+});
+
+test('conditional map', () => {
+    const code = `
+    type IsString<T> = {
+        [P in keyof T]: T[P] extends string ? true : false;
+    }
+
+    type o = { a: string, b: number };
+    type p = IsString<o>;
+    return typeOf<p>()`;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+
+    expect(type).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        members: [
+            { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.literal, literal: true, } },
+            { kind: ReflectionKind.propertySignature, name: 'b', type: { kind: ReflectionKind.literal, literal: false, } },
+        ]
+    });
+});
+
+test('conditional infer', () => {
+    const code = `
+    type Conditional = {t: string} extends {t: infer K} ? K : never;
+
+    return typeOf<Conditional>();`;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+
+    expect(type).toEqual({
+        kind: ReflectionKind.string
+    });
+});
+
+test('nested object literal', () => {
+    const code = `
+    type o = { a: {t: string}, b: {t: number} };
+    return typeOf<o>();`;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+
+    expect(type).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        members: [
+            {
+                kind: ReflectionKind.propertySignature, name: 'a', type: {
+                    kind: ReflectionKind.objectLiteral, members: [
+                        {
+                            kind: ReflectionKind.propertySignature, name: 't', type: { kind: ReflectionKind.string }
+                        }
+                    ]
+                }
+            },
+            {
+                kind: ReflectionKind.propertySignature, name: 'b', type: {
+                    kind: ReflectionKind.objectLiteral, members: [
+                        {
+                            kind: ReflectionKind.propertySignature, name: 't', type: { kind: ReflectionKind.number }
+                        }
+                    ]
+                }
+            },
+        ]
+    });
+});
+
+test('map conditional infer', () => {
+    const code = `
+    type Conditional<T> = {
+        [P in keyof T]: T[P] extends {t: infer K} ? K : never;
+    }
+    type o = { a: {t: string}, b: {t: number} };
+    return typeOf<Conditional<o>>();`;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+
+    expect(type).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        members: [
+            { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string, } },
+            { kind: ReflectionKind.propertySignature, name: 'b', type: { kind: ReflectionKind.number, } },
         ]
     });
 });

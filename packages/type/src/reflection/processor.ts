@@ -251,9 +251,11 @@ export class Processor {
                     }
                     break;
                 }
-
                 case ReflectionOp.optional:
                     (this.stack[this.stackPointer] as TypeLiteralMember).optional = true;
+                    break;
+                case ReflectionOp.readonly:
+                    (this.stack[this.stackPointer] as TypeLiteralMember).readonly = true;
                     break;
                 case ReflectionOp.protected:
                     (this.stack[this.stackPointer] as TypeLiteralMember).visibility = ReflectionVisibility.protected;
@@ -289,6 +291,7 @@ export class Processor {
                     const right = this.pop() as Type;
                     const left = this.pop() as Type;
                     const condition = this.pop() as number | boolean;
+                    this.popFrame();
                     condition ? this.pushType(left) : this.pushType(right);
                     break;
                 }
@@ -432,6 +435,8 @@ export class Processor {
                         this.push(this.stack[this.frame.previous!.startIndex + 1 + stackEntryIndex]);
                     } else if (frameOffset === 2) {
                         this.push(this.stack[this.frame.previous!.previous!.startIndex + 1 + stackEntryIndex]);
+                    } else if (frameOffset === 3) {
+                        this.push(this.stack[this.frame.previous!.previous!.previous!.startIndex + 1 + stackEntryIndex]);
                     }
                     break;
                 }

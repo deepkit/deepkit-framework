@@ -24,6 +24,15 @@ export function valuesOf<T>(args: any[] = [], p?: Packed): (string | number | sy
             return v;
         }) as (string | number | symbol | Type)[];
     }
+    if (type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.class) {
+        return type.members.map(v => {
+            if (v.kind === ReflectionKind.method) return v;
+            if (v.kind === ReflectionKind.property) return v.type;
+            if (v.kind === ReflectionKind.propertySignature) return v.type;
+            if (v.kind === ReflectionKind.methodSignature) return v;
+            return v;
+        }) as (string | number | symbol | Type)[];
+    }
     return [];
 }
 

@@ -97,6 +97,7 @@ export interface TypeLiteralMember {
     visibility: ReflectionVisibility,
     abstract?: true;
     optional?: true,
+    readonly?: true;
 }
 
 export interface TypeMethod extends TypeLiteralMember {

@@ -37,6 +37,7 @@ import {
     ImportTypeNode,
     IndexedAccessTypeNode,
     IndexSignatureDeclaration,
+    InferTypeNode,
     InterfaceDeclaration,
     isArrowFunction,
     isCallExpression,
@@ -160,6 +161,7 @@ export enum ReflectionOp {
      * Marks the last entry in the stack as optional. Used for method|property. Equal to the QuestionMark operator in a property assignment.
      */
     optional,
+    readonly,
 
     //modifiers for property|method
     private,
@@ -223,12 +225,12 @@ export enum ReflectionOp {
     infer, //2 params, like `loads`
 
     condition,
+    jumpCondition, //used when INFER is used in `extends` conditional branch
     jump, //jump to an address
     call, //has one parameter, the next program address. creates a new stack frame with current program address as first stack entry, and jumps back to that + 1.
     inline,
     inlineCall,
 
-    jumpCondition,
 
     extends, //X extends Y, XY popped from the stack, pushes boolean on the stack
 }
@@ -331,8 +333,9 @@ const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.mappedType]: { params: 2 },
     [ReflectionOp.call]: { params: 1 },
     [ReflectionOp.inline]: { params: 1 },
-    [ReflectionOp.inlineCall]: { params: 1 },
+    [ReflectionOp.inlineCall]: { params: 2 },
     [ReflectionOp.loads]: { params: 2 },
+    [ReflectionOp.infer]: { params: 2 },
 };
 
 export function debugPackStruct(pack: PackStruct): void {
@@ -360,6 +363,8 @@ function isNodeWithLocals(node: Node): node is (Node & { locals: SymbolTable | u
 
 interface Frame {
     variables: { name: string, index: number }[],
+    opIndex: number;
+    conditional?: true;
     previous?: Frame;
 }
 
@@ -374,6 +379,13 @@ function findVariable(frame: Frame, name: string, frameOffset: number = 0): { fr
     return;
 }
 
+function findConditionalFrame(frame: Frame): Frame | undefined {
+    if (frame.conditional) return frame;
+    if (frame.previous) return findConditionalFrame(frame.previous);
+
+    return;
+}
+
 class CompilerProgram {
     protected ops: ReflectionOp[] = [];
     protected stack: StackEntry[] = [];
@@ -381,7 +393,7 @@ class CompilerProgram {
 
     protected stackPosition: number = 0;
 
-    protected frame: Frame = { variables: [] };
+    protected frame: Frame = { variables: [], opIndex: 0 };
 
     protected activeCoRoutines: { ops: ReflectionOp[] }[] = [];
     protected coRoutines: { ops: ReflectionOp[] }[] = [];
@@ -404,6 +416,11 @@ class CompilerProgram {
 
     isEmpty(): boolean {
         return this.ops.length === 0;
+    }
+
+    pushConditionalFrame(): void {
+        const frame = this.pushFrame();
+        frame.conditional = true;
     }
 
     pushStack(item: StackEntry): number {
@@ -439,6 +456,15 @@ class CompilerProgram {
         this.ops.push(...ops);
     }
 
+    pushOpAtFrame(frame: Frame, ...ops: ReflectionOp[]): void {
+        if (this.activeCoRoutines.length) {
+            this.activeCoRoutines[this.activeCoRoutines.length - 1].ops.splice(frame.opIndex, 0, ...ops);
+            return;
+        }
+
+        this.ops.splice(frame.opIndex, 0, ...ops);
+    }
+
     /**
      * Returns the index of the `entry` in the stack, if already exists. If not, add it, and return that new index.
      */
@@ -456,21 +482,27 @@ class CompilerProgram {
     }
 
     pushFrame(implicit: boolean = false) {
-        if (!implicit) this.ops.push(ReflectionOp.frame);
-        this.frame = { previous: this.frame, variables: [] };
+        if (!implicit) this.pushOp(ReflectionOp.frame);
+        const opIndex = this.activeCoRoutines.length ? this.activeCoRoutines[this.activeCoRoutines.length - 1].ops.length : this.ops.length;
+        this.frame = { previous: this.frame, variables: [], opIndex };
+        return this.frame;
+    }
+
+    findConditionalFrame() {
+        return findConditionalFrame(this.frame);
     }
 
     popFrame() {
         if (this.frame.previous) this.frame = this.frame.previous;
     }
 
-    pushVariable(name: string): number {
-        this.pushOp(ReflectionOp.var);
-        this.frame.variables.push({
+    pushVariable(name: string, frame: Frame = this.frame): number {
+        this.pushOpAtFrame(frame, ReflectionOp.var);
+        frame.variables.push({
             index: this.frame.variables.length,
             name,
         });
-        return this.frame.variables.length - 1;
+        return frame.variables.length - 1;
     }
 
     pushTemplateParameter(name: string): number {
@@ -576,6 +608,7 @@ export class ReflectionTransformer {
 
             if (isTypeAliasDeclaration(node) && this.compileDeclarations.has(node)) {
                 const d = this.compileDeclarations.get(node)!;
+                this.compileDeclarations.delete(node);
                 const typeProgram = new CompilerProgram();
 
                 if (node.typeParameters) {
@@ -603,7 +636,10 @@ export class ReflectionTransformer {
 
             return node;
         };
-        this.sourceFile = visitNode(this.sourceFile, compileDeclarations);
+
+        while (this.compileDeclarations.size > 0) {
+            this.sourceFile = visitNode(this.sourceFile, compileDeclarations);
+        }
 
         return this.sourceFile;
     }
@@ -774,8 +810,10 @@ export class ReflectionTransformer {
                     }
                 };
 
+                program.pushFrame();
                 extractMembers(narrowed);
                 program.pushOp(ReflectionOp.objectLiteral);
+                program.popFrame();
                 break;
             }
             case SyntaxKind.TypeReference: {
@@ -794,6 +832,8 @@ export class ReflectionTransformer {
                     this.extractPackStructOfType(narrowed.type, program);
                     const name = getNameAsString(narrowed.name);
                     program.pushOp(ReflectionOp.propertySignature, program.findOrAddStackEntry(name));
+                    if (narrowed.questionToken) program.pushOp(ReflectionOp.optional);
+                    if (hasModifier(narrowed, SyntaxKind.ReadonlyKeyword)) program.pushOp(ReflectionOp.readonly);
                 }
                 break;
             }
@@ -810,6 +850,7 @@ export class ReflectionTransformer {
                     program.pushOp(ReflectionOp.property, program.findOrAddStackEntry(name));
 
                     if (narrowed.questionToken) program.pushOp(ReflectionOp.optional);
+                    if (hasModifier(narrowed, SyntaxKind.ReadonlyKeyword)) program.pushOp(ReflectionOp.readonly);
                     if (hasModifier(narrowed, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
                     if (hasModifier(narrowed, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
                     if (hasModifier(narrowed, SyntaxKind.AbstractKeyword)) program.pushOp(ReflectionOp.abstract);
@@ -819,12 +860,36 @@ export class ReflectionTransformer {
             case SyntaxKind.ConditionalType: {
                 //TypeScript does not narrow types down
                 const narrowed = node as ConditionalTypeNode;
+
+                program.pushConditionalFrame();
+
                 this.extractPackStructOfType(narrowed.checkType, program);
                 this.extractPackStructOfType(narrowed.extendsType, program);
+
                 program.pushOp(ReflectionOp.extends);
+
                 this.extractPackStructOfType(narrowed.trueType, program);
                 this.extractPackStructOfType(narrowed.falseType, program);
                 program.pushOp(ReflectionOp.condition);
+                program.popFrame();
+                break;
+            }
+            case SyntaxKind.InferType: {
+                //TypeScript does not narrow types down
+                const narrowed = node as InferTypeNode;
+
+                const frame = program.findConditionalFrame();
+                if (frame) {
+                    let variable = program.findVariable(narrowed.typeParameter.name.escapedText as string);
+                    if (!variable) {
+                        program.pushVariable(narrowed.typeParameter.name.escapedText as string, frame);
+                        variable = program.findVariable(narrowed.typeParameter.name.escapedText as string);
+                        if (!variable) throw new Error('Could not find inserted infer variable');
+                    }
+                    program.pushOp(ReflectionOp.infer, variable.frameOffset, variable.stackIndex);
+                } else {
+                    program.pushOp(ReflectionOp.never);
+                }
                 break;
             }
             case SyntaxKind.MethodDeclaration:
