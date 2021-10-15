@@ -67,7 +67,7 @@ const deepkitDistPath = relative(typeScriptPath, __dirname);
 
 {
     let tscContent = readFileSync(join(typeScriptPath, 'typescript.js'), 'utf8');
-    tscContent = patchGetScriptTransformers(deepkitDistPath, tscContent)
+    // tscContent = patchGetScriptTransformers(deepkitDistPath, tscContent) //this breaks source-maps, since ts-jest loads the transformer then twice
     tscContent = patchCustomTransformers(deepkitDistPath, tscContent)
     writeFileSync(join(typeScriptPath, 'typescript.js'), tscContent);
 }

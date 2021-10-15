@@ -1,6 +1,6 @@
 /*
  * Deepkit Framework
- * Copyright Deepkit UG, Marc J. Schmidt
+ * Copyright (c) Deepkit UG, Marc J. Schmidt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the MIT License.
@@ -10,32 +10,38 @@
 
 import {
     __String,
+    ArrayTypeNode,
     ArrowFunction,
     Bundle,
     ClassDeclaration,
     ClassElement,
     ClassExpression,
+    ConditionalTypeNode,
+    ConstructorDeclaration,
     createCompilerHost,
     createProgram,
     CustomTransformerFactory,
     Declaration,
+    EntityName,
     ExportDeclaration,
     Expression,
     FunctionDeclaration,
     FunctionExpression,
+    FunctionTypeNode,
+    getEffectiveConstraintOfTypeParameter,
     getJSDocTags,
     ImportCall,
     ImportDeclaration,
     ImportEqualsDeclaration,
     ImportSpecifier,
     ImportTypeNode,
+    IndexedAccessTypeNode,
+    IndexSignatureDeclaration,
     InterfaceDeclaration,
-    isArrayTypeNode,
     isArrowFunction,
     isCallExpression,
     isClassDeclaration,
     isClassExpression,
-    isConditionalTypeNode,
     isConstructorDeclaration,
     isEnumDeclaration,
     isExportDeclaration,
@@ -43,26 +49,24 @@ import {
     isFunctionExpression,
     isIdentifier,
     isImportSpecifier,
-    isIndexSignatureDeclaration,
     isInterfaceDeclaration,
-    isLiteralTypeNode,
     isMappedTypeNode,
     isMethodDeclaration,
     isNamedExports,
     isParenthesizedTypeNode,
-    isPropertyDeclaration,
-    isPropertySignature,
     isStringLiteral,
     isTypeAliasDeclaration,
-    isTypeLiteralNode,
-    isTypeReferenceNode,
-    isUnionTypeNode,
+    LiteralTypeNode,
+    MappedTypeNode,
+    MethodDeclaration,
     ModifierFlags,
     ModuleDeclaration,
     Node,
     NodeFactory,
     NodeFlags,
     PropertyAccessExpression,
+    PropertyDeclaration,
+    PropertySignature,
     QualifiedName,
     ScriptReferenceHost,
     SourceFile,
@@ -70,13 +74,15 @@ import {
     SymbolTable,
     SyntaxKind,
     TransformationContext,
+    TypeAliasDeclaration,
     TypeChecker,
     TypeElement,
     TypeLiteralNode,
-    TypeNode,
+    TypeOperatorNode,
     TypeReferenceNode,
+    UnionTypeNode,
     visitEachChild,
-    visitNode
+    visitNode,
 } from 'typescript';
 import { ClassType, isArray } from '@deepkit/core';
 import { getNameAsString, hasModifier } from './reflection-ast';
@@ -219,8 +225,19 @@ export enum ReflectionOp {
     condition,
     jump, //jump to an address
     call, //has one parameter, the next program address. creates a new stack frame with current program address as first stack entry, and jumps back to that + 1.
+    inline,
+    inlineCall,
+
     jumpCondition,
+
     extends, //X extends Y, XY popped from the stack, pushes boolean on the stack
+}
+
+export const enum MappedModifier {
+    optional = 1 << 0,
+    removeOptional = 1 << 1,
+    readonly = 1 << 2,
+    removeReadonly = 1 << 3,
 }
 
 export const packSizeByte: number = 6;
@@ -301,15 +318,6 @@ interface EmitResolver {
 
 const reflectionModes = ['always', 'default', 'never'] as const;
 
-/**
- * Returns the index of the `entry` in the stack, if already exists. If not, add it, and return that new index.
- */
-function findOrAddStackEntry(program: CompilerProgram, entry: any): number {
-    const index = program.stack.indexOf(entry);
-    if (index !== -1) return index;
-    return program.pushStack(entry);
-}
-
 const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.literal]: { params: 1 },
     [ReflectionOp.pointer]: { params: 1 },
@@ -317,8 +325,14 @@ const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.classReference]: { params: 1 },
     [ReflectionOp.propertySignature]: { params: 1 },
     [ReflectionOp.property]: { params: 1 },
+    [ReflectionOp.jump]: { params: 1 },
     [ReflectionOp.enum]: { params: 1 },
     [ReflectionOp.template]: { params: 1 },
+    [ReflectionOp.mappedType]: { params: 2 },
+    [ReflectionOp.call]: { params: 1 },
+    [ReflectionOp.inline]: { params: 1 },
+    [ReflectionOp.inlineCall]: { params: 1 },
+    [ReflectionOp.loads]: { params: 2 },
 };
 
 export function debugPackStruct(pack: PackStruct): void {
@@ -361,16 +375,77 @@ function findVariable(frame: Frame, name: string, frameOffset: number = 0): { fr
 }
 
 class CompilerProgram {
-    ops: ReflectionOp[] = [];
-    stack: StackEntry[] = [];
+    protected ops: ReflectionOp[] = [];
+    protected stack: StackEntry[] = [];
+    protected mainOffset: number = 0;
 
-    stackPosition: number = 0;
+    protected stackPosition: number = 0;
 
-    frame: Frame = { variables: [] };
+    protected frame: Frame = { variables: [] };
+
+    protected activeCoRoutines: { ops: ReflectionOp[] }[] = [];
+    protected coRoutines: { ops: ReflectionOp[] }[] = [];
+
+    buildPackStruct() {
+        const ops: ReflectionOp[] = [...this.ops];
+
+        if (this.coRoutines.length) {
+            for (let i = this.coRoutines.length - 1; i >= 0; i--) {
+                ops.unshift(...this.coRoutines[i].ops);
+            }
+        }
+
+        if (this.mainOffset) {
+            ops.unshift(ReflectionOp.jump, this.mainOffset);
+        }
+
+        return new PackStruct(ops, this.stack);
+    }
+
+    isEmpty(): boolean {
+        return this.ops.length === 0;
+    }
 
     pushStack(item: StackEntry): number {
         this.stack.push(item);
         return this.stackPosition++;
+    }
+
+    pushCoRoutine(): void {
+        this.pushFrame(true); //co-routines have implicit stack frames due to call convention
+        this.activeCoRoutines.push({ ops: [] });
+    }
+
+    popCoRoutine(): number {
+        const coRoutine = this.activeCoRoutines.pop();
+        if (!coRoutine) throw new Error('No active co routine found');
+        this.popFrame();
+        if (this.mainOffset === 0) {
+            this.mainOffset = 2; //we add JUMP + index when building the program
+        }
+        const startIndex = this.mainOffset;
+        coRoutine.ops.push(ReflectionOp.return);
+        this.coRoutines.push(coRoutine);
+        this.mainOffset += coRoutine.ops.length;
+        return startIndex;
+    }
+
+    pushOp(...ops: ReflectionOp[]): void {
+        if (this.activeCoRoutines.length) {
+            this.activeCoRoutines[this.activeCoRoutines.length - 1].ops.push(...ops);
+            return;
+        }
+
+        this.ops.push(...ops);
+    }
+
+    /**
+     * Returns the index of the `entry` in the stack, if already exists. If not, add it, and return that new index.
+     */
+    findOrAddStackEntry(entry: any): number {
+        const index = this.stack.indexOf(entry);
+        if (index !== -1) return index;
+        return this.pushStack(entry);
     }
 
     /**
@@ -380,8 +455,8 @@ class CompilerProgram {
         return this.stackPosition++;
     }
 
-    pushFrame() {
-        this.ops.push(ReflectionOp.frame);
+    pushFrame(implicit: boolean = false) {
+        if (!implicit) this.ops.push(ReflectionOp.frame);
         this.frame = { previous: this.frame, variables: [] };
     }
 
@@ -389,11 +464,22 @@ class CompilerProgram {
         if (this.frame.previous) this.frame = this.frame.previous;
     }
 
-    pushVariable(name: string): void {
+    pushVariable(name: string): number {
+        this.pushOp(ReflectionOp.var);
         this.frame.variables.push({
             index: this.frame.variables.length,
             name,
         });
+        return this.frame.variables.length - 1;
+    }
+
+    pushTemplateParameter(name: string): number {
+        this.pushOp(ReflectionOp.template, this.findOrAddStackEntry(name));
+        this.frame.variables.push({
+            index: this.frame.variables.length,
+            name,
+        });
+        return this.frame.variables.length - 1;
     }
 
     findVariable(name: string) {
@@ -470,210 +556,383 @@ export class ReflectionTransformer {
                         args.push(this.f.createArrayLiteralExpression());
                     }
 
+                    // const resolvedType = this.resolveType(node.typeArguments[0]);
                     const type = this.getTypeOfType(node.typeArguments[0]);
                     if (!type) return node;
                     args.push(type);
 
-                    return this.f.updateCallExpression(node, node.expression, node.typeArguments, this.f.createNodeArray(args))
+                    return this.f.updateCallExpression(node, node.expression, node.typeArguments, this.f.createNodeArray(args));
                 }
                 return node;
             }
 
             return node;
         };
+        this.sourceFile = visitNode(this.sourceFile, visitor);
 
-        this.sourceFile = visitNode(sourceFile, visitor);
+        //externalize type aliases
+        const compileDeclarations = (node: Node): any => {
+            node = visitEachChild(node, compileDeclarations, this.context);
+
+            if (isTypeAliasDeclaration(node) && this.compileDeclarations.has(node)) {
+                const d = this.compileDeclarations.get(node)!;
+                const typeProgram = new CompilerProgram();
+
+                if (node.typeParameters) {
+                    for (const param of node.typeParameters) {
+                        typeProgram.pushTemplateParameter(param.name.escapedText as string);
+                    }
+                }
+                this.extractPackStructOfType(node.type, typeProgram);
+                const typeProgramExpression = this.packOpsAndStack(typeProgram.buildPackStruct());
+                const statements: Statement[] = [node];
+
+                statements.push(this.f.createVariableStatement(
+                    undefined,
+                    this.f.createVariableDeclarationList([
+                        this.f.createVariableDeclaration(
+                            this.getDeclarationVariableName(d.name),
+                            undefined,
+                            undefined,
+                            typeProgramExpression,
+                        )
+                    ])
+                ));
+                return statements;
+            }
+
+            return node;
+        };
+        this.sourceFile = visitNode(this.sourceFile, compileDeclarations);
 
         return this.sourceFile;
     }
 
-    protected extractPackStructOfType(node: TypeNode | Declaration, program: CompilerProgram): void {
+    protected extractPackStructOfType(node: Node | Declaration | ClassDeclaration | ClassExpression, program: CompilerProgram): void {
         if (isParenthesizedTypeNode(node)) return this.extractPackStructOfType(node.type, program);
 
-        if (node.kind === SyntaxKind.StringKeyword) {
-            program.ops.push(ReflectionOp.string);
-        } else if (node.kind === SyntaxKind.NumberKeyword) {
-            program.ops.push(ReflectionOp.number);
-        } else if (node.kind === SyntaxKind.BooleanKeyword) {
-            program.ops.push(ReflectionOp.boolean);
-        } else if (node.kind === SyntaxKind.BigIntKeyword) {
-            program.ops.push(ReflectionOp.bigint);
-        } else if (node.kind === SyntaxKind.VoidKeyword) {
-            program.ops.push(ReflectionOp.void);
-        } else if (node.kind === SyntaxKind.NullKeyword) {
-            program.ops.push(ReflectionOp.null);
-        } else if (node.kind === SyntaxKind.NeverKeyword) {
-            program.ops.push(ReflectionOp.never);
-        } else if (node.kind === SyntaxKind.UndefinedKeyword) {
-            program.ops.push(ReflectionOp.undefined);
-        } else if (isClassDeclaration(node) || isClassExpression(node)) {
-            const members: ClassElement[] = [];
-            if (node.typeParameters) {
-                if (program.ops.length) program.pushFrame();
-
-                for (const typeParameter of node.typeParameters) {
-                    const name = getNameAsString(typeParameter.name);
-                    program.pushVariable(name);
-                    program.ops.push(ReflectionOp.template, findOrAddStackEntry(program, name));
-                }
+        switch (node.kind) {
+            case SyntaxKind.StringKeyword: {
+                program.pushOp(ReflectionOp.string);
+                break;
             }
-
-            for (const member of node.members) {
-                const name = getNameAsString(member.name);
-                if (name) {
-                    const has = members.some(v => getNameAsString(v.name) === name);
-                    if (has) continue;
-                }
-                members.push(member);
-
-                this.extractPackStructOfType(member, program);
+            case SyntaxKind.NumberKeyword: {
+                program.pushOp(ReflectionOp.number);
+                break;
             }
+            case SyntaxKind.BooleanKeyword: {
+                program.pushOp(ReflectionOp.boolean);
+                break;
+            }
+            case SyntaxKind.BigIntKeyword: {
+                program.pushOp(ReflectionOp.bigint);
+                break;
+            }
+            case SyntaxKind.VoidKeyword: {
+                program.pushOp(ReflectionOp.void);
+                break;
+            }
+            case SyntaxKind.NullKeyword: {
+                program.pushOp(ReflectionOp.null);
+                break;
+            }
+            case SyntaxKind.NeverKeyword: {
+                program.pushOp(ReflectionOp.never);
+                break;
+            }
+            case SyntaxKind.AnyKeyword: {
+                program.pushOp(ReflectionOp.any);
+                break;
+            }
+            case SyntaxKind.UndefinedKeyword: {
+                program.pushOp(ReflectionOp.undefined);
+                break;
+            }
+            case SyntaxKind.TrueKeyword: {
+                program.pushOp(ReflectionOp.literal, program.pushStack(this.f.createTrue()));
+                break;
+            }
+            case SyntaxKind.FalseKeyword: {
+                program.pushOp(ReflectionOp.literal, program.pushStack(this.f.createFalse()));
+                break;
+            }
+            case SyntaxKind.ClassDeclaration:
+            case SyntaxKind.ClassExpression: {
+                //TypeScript does not narrow types down
+                const narrowed = node as ClassDeclaration | ClassExpression;
 
-            program.ops.push(ReflectionOp.class);
-            if (program.ops.length) program.popFrame();
+                if (narrowed as ClassDeclaration) {
+                    const members: ClassElement[] = [];
+                    const empty = program.isEmpty();
+                    if (!empty) program.pushFrame();
 
-            return;
-        } else if (isMappedTypeNode(node)) {
-            //<Type>{[Property in keyof Type]: boolean;};
-            //todo: how do we serialize that? We need to calculate the actual type and serialize that as ObjectLiteral
-            program.ops.push(ReflectionOp.mappedType);
-        } else if (isInterfaceDeclaration(node) || isTypeLiteralNode(node)) {
-            //interface X {name: string, [indexName: string]: string}
-            //{name: string, [indexName: string]: string};
-            //for the moment we just serialize the whole structure directly. It's not very efficient if the same interface is used multiple times.
-            //In the future we could create a unique variable with that serialized type and reference to it, so its more efficient.
-
-            //extract all members + from all parents
-            const members: TypeElement[] = [];
-
-            const extractMembers = (declaration: InterfaceDeclaration | TypeLiteralNode) => {
-                for (const member of declaration.members) {
-                    const name = getNameAsString(member.name);
-                    if (name) {
-                        const has = members.some(v => getNameAsString(v.name) === name);
-                        if (has) continue;
+                    if (narrowed.typeParameters) {
+                        for (const typeParameter of narrowed.typeParameters) {
+                            const name = getNameAsString(typeParameter.name);
+                            program.pushTemplateParameter(name);
+                        }
                     }
-                    members.push(member);
-                    this.extractPackStructOfType(member, program);
+
+                    for (const member of narrowed.members) {
+                        const name = getNameAsString(member.name);
+                        if (name) {
+                            const has = members.some(v => getNameAsString(v.name) === name);
+                            if (has) continue;
+                        }
+                        members.push(member);
+
+                        this.extractPackStructOfType(member, program);
+                    }
+
+                    program.pushOp(ReflectionOp.class);
+                    if (!empty) program.popFrame();
+                }
+                break;
+            }
+            case SyntaxKind.MappedType: {
+                //TypeScript does not narrow types down
+                const narrowed = node as MappedTypeNode;
+
+                //<Type>{[Property in keyof Type]: boolean;};
+                program.pushFrame();
+                program.pushVariable(narrowed.typeParameter.name.escapedText as string);
+
+                const constraint = getEffectiveConstraintOfTypeParameter(narrowed.typeParameter);
+                if (constraint) {
+                    this.extractPackStructOfType(constraint, program);
+                } else {
+                    program.pushOp(ReflectionOp.never);
                 }
 
-                if (isInterfaceDeclaration(declaration) && declaration.heritageClauses) {
-                    for (const heritage of declaration.heritageClauses) {
-                        if (heritage.token === SyntaxKind.ExtendsKeyword) {
-                            for (const extendType of heritage.types) {
-                                if (isIdentifier(extendType.expression)) {
-                                    const resolved = this.resolveDeclaration(extendType.expression);
-                                    if (!resolved) continue;
-                                    if (isInterfaceDeclaration(resolved.declaration)) {
-                                        extractMembers(resolved.declaration);
+                program.pushCoRoutine();
+                let modifier = 0;
+                if (narrowed.questionToken) {
+                    if (narrowed.questionToken.kind === SyntaxKind.QuestionToken) {
+                        modifier |= MappedModifier.optional;
+                    }
+                    if (narrowed.questionToken.kind === SyntaxKind.MinusToken) {
+                        modifier |= MappedModifier.removeOptional;
+                    }
+                }
+                if (narrowed.readonlyToken) {
+                    if (narrowed.readonlyToken.kind === SyntaxKind.ReadonlyKeyword) {
+                        modifier |= MappedModifier.readonly;
+                    }
+                    if (narrowed.readonlyToken.kind === SyntaxKind.MinusToken) {
+                        modifier |= MappedModifier.removeReadonly;
+                    }
+                }
+                if (narrowed.type) {
+                    this.extractPackStructOfType(narrowed.type, program);
+                } else {
+                    program.pushOp(ReflectionOp.never);
+                }
+                const coRoutineIndex = program.popCoRoutine();
+
+                program.pushOp(ReflectionOp.mappedType, coRoutineIndex, modifier);
+                program.popFrame();
+                break;
+            }
+            case SyntaxKind.TypeLiteral:
+            case SyntaxKind.InterfaceDeclaration: {
+                //TypeScript does not narrow types down
+                const narrowed = node as TypeLiteralNode | InterfaceDeclaration;
+
+                //interface X {name: string, [indexName: string]: string}
+                //{name: string, [indexName: string]: string};
+                //for the moment we just serialize the whole structure directly. It's not very efficient if the same interface is used multiple times.
+                //In the future we could create a unique variable with that serialized type and reference to it, so its more efficient.
+
+                //extract all members + from all parents
+                const members: TypeElement[] = [];
+
+                const extractMembers = (declaration: InterfaceDeclaration | TypeLiteralNode) => {
+                    for (const member of declaration.members) {
+                        const name = getNameAsString(member.name);
+                        if (name) {
+                            const has = members.some(v => getNameAsString(v.name) === name);
+                            if (has) continue;
+                        }
+                        members.push(member);
+                        this.extractPackStructOfType(member, program);
+                    }
+
+                    if (isInterfaceDeclaration(declaration) && declaration.heritageClauses) {
+                        for (const heritage of declaration.heritageClauses) {
+                            if (heritage.token === SyntaxKind.ExtendsKeyword) {
+                                for (const extendType of heritage.types) {
+                                    if (isIdentifier(extendType.expression)) {
+                                        const resolved = this.resolveDeclaration(extendType.expression);
+                                        if (!resolved) continue;
+                                        if (isInterfaceDeclaration(resolved.declaration)) {
+                                            extractMembers(resolved.declaration);
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+                };
+
+                extractMembers(narrowed);
+                program.pushOp(ReflectionOp.objectLiteral);
+                break;
+            }
+            case SyntaxKind.TypeReference: {
+                this.extractPackStructOfTypeReference(node as TypeReferenceNode, program);
+                break;
+            }
+            case SyntaxKind.ArrayType: {
+                this.extractPackStructOfType((node as ArrayTypeNode).elementType, program);
+                program.pushOp(ReflectionOp.array);
+                break;
+            }
+            case SyntaxKind.PropertySignature: {
+                //TypeScript does not narrow types down
+                const narrowed = node as PropertySignature;
+                if (narrowed.type) {
+                    this.extractPackStructOfType(narrowed.type, program);
+                    const name = getNameAsString(narrowed.name);
+                    program.pushOp(ReflectionOp.propertySignature, program.findOrAddStackEntry(name));
                 }
-            };
+                break;
+            }
+            case SyntaxKind.PropertyDeclaration: {
+                //TypeScript does not narrow types down
+                const narrowed = node as PropertyDeclaration;
 
-            extractMembers(node);
+                if (narrowed.type) {
+                    const config = this.findReflectionConfig(narrowed);
+                    if (config.mode === 'never') return;
 
-            // program.ops.push(isInterfaceDeclaration(node) ? ReflectionOp.interface : ReflectionOp.objectLiteral);
-            program.ops.push(ReflectionOp.objectLiteral);
-            return;
-        } else if (isTypeReferenceNode(node)) {
-            this.extractPackStructOfTypeReference(node, program);
-        } else if (isArrayTypeNode(node)) {
-            this.extractPackStructOfType(node.elementType, program);
-            program.ops.push(ReflectionOp.array);
-        } else if (isPropertySignature(node) && node.type) {
-            this.extractPackStructOfType(node.type, program);
-            const name = getNameAsString(node.name);
-            program.ops.push(ReflectionOp.propertySignature, findOrAddStackEntry(program, name));
+                    this.extractPackStructOfType(narrowed.type, program);
+                    const name = getNameAsString(narrowed.name);
+                    program.pushOp(ReflectionOp.property, program.findOrAddStackEntry(name));
 
-            // } else if (isConstructorDeclaration(node) && node.type) {
-            //     this.extractPackStructOfType(node.type, program);
-            //     program.ops.push(ReflectionOp.constructor);
-
-        } else if (isConditionalTypeNode(node)) {
-            this.extractPackStructOfType(node.checkType, program);
-            this.extractPackStructOfType(node.extendsType, program);
-            program.ops.push(ReflectionOp.extends);
-            this.extractPackStructOfType(node.trueType, program);
-            this.extractPackStructOfType(node.falseType, program);
-            program.ops.push(ReflectionOp.condition);
-        } else if (isPropertyDeclaration(node) && node.type) {
-            const config = this.findReflectionConfig(node);
-            if (config.mode === 'never') return;
-
-            this.extractPackStructOfType(node.type, program);
-            const name = getNameAsString(node.name);
-            program.ops.push(ReflectionOp.property, findOrAddStackEntry(program, name));
-
-            if (node.questionToken) program.ops.push(ReflectionOp.optional);
-            if (hasModifier(node, SyntaxKind.PrivateKeyword)) program.ops.push(ReflectionOp.private);
-            if (hasModifier(node, SyntaxKind.ProtectedKeyword)) program.ops.push(ReflectionOp.protected);
-            if (hasModifier(node, SyntaxKind.AbstractKeyword)) program.ops.push(ReflectionOp.abstract);
-
-        } else if (isMethodDeclaration(node) || isConstructorDeclaration(node) || isArrowFunction(node) || isFunctionExpression(node) || isFunctionDeclaration(node)) {
-            const config = this.findReflectionConfig(node);
-            if (config.mode === 'never') return;
-
-            if (node.parameters.length === 0 && !node.type) return;
-            for (const parameter of node.parameters) {
-                if (parameter.type) {
-                    this.extractPackStructOfType(parameter.type, program);
+                    if (narrowed.questionToken) program.pushOp(ReflectionOp.optional);
+                    if (hasModifier(narrowed, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
+                    if (hasModifier(narrowed, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
+                    if (hasModifier(narrowed, SyntaxKind.AbstractKeyword)) program.pushOp(ReflectionOp.abstract);
                 }
+                break;
             }
-
-            if (node.type) {
-                this.extractPackStructOfType(node.type, program);
-            } else {
-                program.ops.push(ReflectionOp.any);
+            case SyntaxKind.ConditionalType: {
+                //TypeScript does not narrow types down
+                const narrowed = node as ConditionalTypeNode;
+                this.extractPackStructOfType(narrowed.checkType, program);
+                this.extractPackStructOfType(narrowed.extendsType, program);
+                program.pushOp(ReflectionOp.extends);
+                this.extractPackStructOfType(narrowed.trueType, program);
+                this.extractPackStructOfType(narrowed.falseType, program);
+                program.pushOp(ReflectionOp.condition);
+                break;
             }
+            case SyntaxKind.MethodDeclaration:
+            case SyntaxKind.Constructor:
+            case SyntaxKind.ArrowFunction:
+            case SyntaxKind.FunctionExpression:
+            case SyntaxKind.FunctionType:
+            case SyntaxKind.FunctionDeclaration: {
+                //TypeScript does not narrow types down
+                const narrowed = node as MethodDeclaration | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
 
-            const name = isConstructorDeclaration(node) ? 'constructor' : getNameAsString(node.name);
-            program.ops.push(isMethodDeclaration(node) || isConstructorDeclaration(node) ? ReflectionOp.method : ReflectionOp.function, findOrAddStackEntry(program, name));
+                const config = this.findReflectionConfig(narrowed);
+                if (config.mode === 'never') return;
 
-            if (isMethodDeclaration(node)) {
-                if (hasModifier(node, SyntaxKind.PrivateKeyword)) program.ops.push(ReflectionOp.private);
-                if (hasModifier(node, SyntaxKind.ProtectedKeyword)) program.ops.push(ReflectionOp.protected);
-                if (hasModifier(node, SyntaxKind.AbstractKeyword)) program.ops.push(ReflectionOp.abstract);
-            }
-        } else if (isLiteralTypeNode(node)) {
-            if (node.literal.kind === SyntaxKind.NullKeyword) {
-                program.ops.push(ReflectionOp.null);
-            } else {
-                program.ops.push(ReflectionOp.literal, findOrAddStackEntry(program, node.literal));
-            }
-        } else if (isUnionTypeNode(node)) {
-            if (node.types.length === 0) {
-                //nothing to emit
-                return;
-            } else if (node.types.length === 1) {
-                //only emit the type
-                this.extractPackStructOfType(node.types[0], program);
-            } else {
-                if (program.ops.length) program.pushFrame();
-
-                for (const subType of node.types) {
-                    this.extractPackStructOfType(subType, program);
+                if (narrowed.parameters.length === 0 && !narrowed.type) return;
+                for (const parameter of narrowed.parameters) {
+                    if (parameter.type) {
+                        this.extractPackStructOfType(parameter.type, program);
+                    }
                 }
 
-                program.ops.push(ReflectionOp.union);
-                if (program.ops.length) program.popFrame();
-            }
-        } else if (isIndexSignatureDeclaration(node)) {
-            //node.parameters = first item is {[name: string]: number} => 'name: string'
-            if (node.parameters[0].type) {
-                this.extractPackStructOfType(node.parameters[0].type, program);
-            } else {
-                program.ops.push(ReflectionOp.any);
-            }
+                if (narrowed.type) {
+                    this.extractPackStructOfType(narrowed.type, program);
+                } else {
+                    program.pushOp(ReflectionOp.any);
+                }
 
-            //node.type = first item is {[name: string]: number} => 'number'
-            this.extractPackStructOfType(node.type, program);
-            program.ops.push(ReflectionOp.indexSignature);
-        } else {
-            program.ops.push(ReflectionOp.any);
+                const name = isConstructorDeclaration(narrowed) ? 'constructor' : getNameAsString(narrowed.name);
+                program.pushOp(isMethodDeclaration(narrowed) || isConstructorDeclaration(narrowed) ? ReflectionOp.method : ReflectionOp.function, program.findOrAddStackEntry(name));
+
+                if (isMethodDeclaration(narrowed)) {
+                    if (hasModifier(narrowed, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
+                    if (hasModifier(narrowed, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
+                    if (hasModifier(narrowed, SyntaxKind.AbstractKeyword)) program.pushOp(ReflectionOp.abstract);
+                }
+                break;
+            }
+            case SyntaxKind.LiteralType: {
+                //TypeScript does not narrow types down
+                const narrowed = node as LiteralTypeNode;
+
+                if (narrowed.literal.kind === SyntaxKind.NullKeyword) {
+                    program.pushOp(ReflectionOp.null);
+                } else {
+                    program.pushOp(ReflectionOp.literal, program.findOrAddStackEntry(narrowed.literal));
+                }
+                break;
+            }
+            case SyntaxKind.UnionType: {
+                //TypeScript does not narrow types down
+                const narrowed = node as UnionTypeNode;
+
+                if (narrowed.types.length === 0) {
+                    //nothing to emit
+                } else if (narrowed.types.length === 1) {
+                    //only emit the type
+                    this.extractPackStructOfType(narrowed.types[0], program);
+                } else {
+                    const empty = program.isEmpty();
+                    if (!empty) program.pushFrame();
+
+                    for (const subType of narrowed.types) {
+                        this.extractPackStructOfType(subType, program);
+                    }
+
+                    program.pushOp(ReflectionOp.union);
+                    if (!empty) program.popFrame();
+                }
+                break;
+            }
+            case SyntaxKind.IndexSignature: {
+                //TypeScript does not narrow types down
+                const narrowed = node as IndexSignatureDeclaration;
+
+                //node.parameters = first item is {[name: string]: number} => 'name: string'
+                if (narrowed.parameters[0].type) {
+                    this.extractPackStructOfType(narrowed.parameters[0].type, program);
+                } else {
+                    program.pushOp(ReflectionOp.any);
+                }
+
+                //node.type = first item is {[name: string]: number} => 'number'
+                this.extractPackStructOfType(narrowed.type, program);
+                program.pushOp(ReflectionOp.indexSignature);
+                break;
+            }
+            case SyntaxKind.TypeOperator: {
+                //TypeScript does not narrow types down
+                const narrowed = node as TypeOperatorNode;
+
+                if (narrowed.operator === SyntaxKind.KeyOfKeyword) {
+                    this.extractPackStructOfType(narrowed.type, program);
+                    program.pushOp(ReflectionOp.keyof);
+                }
+                break;
+            }
+            case SyntaxKind.IndexedAccessType: {
+                //TypeScript does not narrow types down
+                const narrowed = node as IndexedAccessTypeNode;
+
+                this.extractPackStructOfType(narrowed.objectType, program);
+                this.extractPackStructOfType(narrowed.indexType, program);
+                program.pushOp(ReflectionOp.query);
+                break;
+            }
+            default: {
+                program.pushOp(ReflectionOp.any);
+            }
         }
     }
 
@@ -697,7 +956,7 @@ export class ReflectionTransformer {
     };
 
     protected resolveDeclaration(e: Node): { declaration: Declaration, importSpecifier?: ImportSpecifier } | undefined {
-        if (!isIdentifier(e)) return;
+        // if (!isIdentifier(e)) return;
 
         const typeChecker = this.getTypeCheckerForSource();
         //this resolves the symbol the typeName from the current file. Either the type declaration itself or the import
@@ -721,23 +980,58 @@ export class ReflectionTransformer {
         return { declaration, importSpecifier };
     }
 
+    // protected resolveType(node: TypeNode): Declaration | Node {
+    //     // if (isTypeReferenceNode(node)) {
+    //     //     const resolved = this.resolveDeclaration(node.typeName);
+    //     //     if (resolved) return resolved.declaration;
+    //     //     // } else if (isIndexedAccessTypeNode(node)) {
+    //     //     //     const resolved = this.resolveDeclaration(node);
+    //     //     //     if (resolved) return resolved.declaration;
+    //     // }
+    //
+    //     const typeChecker = this.getTypeCheckerForSource();
+    //     const type = typeChecker.getTypeFromTypeNode(node);
+    //     if (type.symbol) {
+    //         const declaration: Declaration | undefined = type.symbol && type.symbol.declarations ? type.symbol.declarations[0] : undefined;
+    //         if (declaration) return declaration;
+    //     } else {
+    //         return tsTypeToNode(this.f, type);
+    //     }
+    //     return node;
+    // }
+
+    protected compileDeclarations = new Map<TypeAliasDeclaration | InterfaceDeclaration, { name: EntityName }>();
+
+    protected getDeclarationVariableName(typeName: EntityName) {
+        if (isIdentifier(typeName)) {
+            return this.f.createIdentifier('__Ω' + typeName.escapedText);
+        }
+
+        function joinQualifiedName(name: EntityName): string {
+            if (isIdentifier(name)) return name.escapedText as string;
+            return joinQualifiedName(name.left) + '_' + name.right.escapedText;
+        }
+
+        return '__Ω' + joinQualifiedName(typeName);
+    }
+
     protected extractPackStructOfTypeReference(type: TypeReferenceNode, program: CompilerProgram) {
         if (isIdentifier(type.typeName) && this.knownClasses[type.typeName.escapedText as string]) {
-            program.ops.push(this.knownClasses[type.typeName.escapedText as string]);
+            program.pushOp(this.knownClasses[type.typeName.escapedText as string]);
         } else if (isIdentifier(type.typeName) && type.typeName.escapedText === 'Promise') {
             //promise has always one sub type
             if (type.typeArguments && type.typeArguments[0]) {
                 this.extractPackStructOfType(type.typeArguments[0], program);
             } else {
-                program.ops.push(ReflectionOp.any);
+                program.pushOp(ReflectionOp.any);
             }
-            program.ops.push(ReflectionOp.promise);
+            program.pushOp(ReflectionOp.promise);
         } else {
             //check if it references a variable
             if (isIdentifier(type.typeName)) {
                 const variable = program.findVariable(type.typeName.escapedText as string);
                 if (variable) {
-                    program.ops.push(ReflectionOp.loads, variable.frameOffset, variable.stackIndex);
+                    program.pushOp(ReflectionOp.loads, variable.frameOffset, variable.stackIndex);
                     return;
                 }
             }
@@ -745,22 +1039,22 @@ export class ReflectionTransformer {
             const resolved = this.resolveDeclaration(type.typeName);
             if (!resolved) {
                 //we don't resolve yet global identifiers as it's not clear how to resolve them efficiently.
-                if (isIdentifier(type.typeName)) {
-                    if (type.typeName.escapedText === 'Partial') {
-                        //type Partial<T> = {
-                        //    [P in keyof T]?: T[P]
-                        //};
-                        //type Partial<T> = {
-                        //    [P in keyof T]?: {[index: string]: T}
-                        //};
-                        //type Partial<T extends string> = {
-                        //    [P in T]: number
-                        //};
-                    }
-                }
+                // if (isIdentifier(type.typeName)) {
+                //     if (type.typeName.escapedText === 'Partial') {
+                //         //type Partial<T> = {
+                //         //    [P in keyof T]?: T[P]
+                //         //};
+                //         //type Partial<T> = {
+                //         //    [P in keyof T]?: {[index: string]: T}
+                //         //};
+                //         //type Partial<T extends string> = {
+                //         //    [P in T]: number
+                //         //};
+                //     }
+                // }
 
                 //non existing references are ignored.
-                program.ops.push(ReflectionOp.any);
+                program.pushOp(ReflectionOp.any);
                 return;
             }
 
@@ -778,9 +1072,18 @@ export class ReflectionTransformer {
             const declaration = resolved.declaration;
 
             if (isTypeAliasDeclaration(declaration)) {
-                //type X = y;
-                //we just use the actual value and remove the fact that it came from an alias.
-                this.extractPackStructOfType(declaration.type, program);
+                //store its declaration in its own definition program
+                const index = program.pushStack(this.getDeclarationVariableName(type.typeName));
+                this.compileDeclarations.set(declaration, { name: type.typeName });
+
+                if (type.typeArguments) {
+                    for (const argument of type.typeArguments) {
+                        this.extractPackStructOfType(argument, program);
+                    }
+                    program.pushOp(ReflectionOp.inlineCall, index, type.typeArguments.length);
+                } else {
+                    program.pushOp(ReflectionOp.inline, index);
+                }
             } else if (isMappedTypeNode(declaration)) {
                 //<Type>{[Property in keyof Type]: boolean;};
                 this.extractPackStructOfType(declaration, program);
@@ -789,11 +1092,11 @@ export class ReflectionTransformer {
                 ensureImportIsEmitted();
                 //enum X {}
                 const arrow = this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName));
-                program.ops.push(ReflectionOp.enum, findOrAddStackEntry(program, arrow));
+                program.pushOp(ReflectionOp.enum, program.findOrAddStackEntry(arrow));
                 return;
             } else if (isClassDeclaration(declaration)) {
                 ensureImportIsEmitted();
-                // program.ops.push(type.typeArguments ? ReflectionOp.genericClass : ReflectionOp.class);
+                // program.pushOp(type.typeArguments ? ReflectionOp.genericClass : ReflectionOp.class);
                 //
                 // //todo: this needs a better logic to also resolve references that are not yet imported.
                 // // this can happen when a type alias is imported which itself references to a type from another import.
@@ -805,8 +1108,8 @@ export class ReflectionTransformer {
                 }
 
                 const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName)));
-                program.ops.push(ReflectionOp.classReference);
-                program.ops.push(index);
+                program.pushOp(ReflectionOp.classReference);
+                program.pushOp(index);
             } else {
                 this.extractPackStructOfType(declaration, program);
             }
@@ -865,19 +1168,19 @@ export class ReflectionTransformer {
         return;
     }
 
-    protected getTypeOfType(type: TypeNode | Declaration): Expression | undefined {
+    protected getTypeOfType(type: Node | Declaration): Expression | undefined {
         const reflection = this.findReflectionConfig(type);
         if (reflection.mode === 'never') return;
 
         const program = new CompilerProgram();
         this.extractPackStructOfType(type, program);
-        return this.packOpsAndStack({ ops: program.ops, stack: program.stack });
+        return this.packOpsAndStack(program.buildPackStruct());
     }
 
     protected packOpsAndStack(packStruct: PackStruct) {
         if (packStruct.ops.length === 0) return;
         const packed = pack(packStruct);
-        // debugPackStruct(packStruct);
+        debugPackStruct(packStruct);
         return this.valueToExpression(packed);
     }
 

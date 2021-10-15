@@ -1,6 +1,6 @@
 /*
  * Deepkit Framework
- * Copyright Deepkit UG, Marc J. Schmidt
+ * Copyright (c) Deepkit UG, Marc J. Schmidt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the MIT License.
@@ -12,7 +12,7 @@ import { Packed, unpack } from './compiler';
 import { Processor, resolveRuntimeType } from './processor';
 import { ReflectionKind, Type } from './type';
 
-export function reflect(o: any, args: any[] = []): Type {
+export function reflect(o: any, ...args: any[]): Type {
     return resolveRuntimeType(o, args);
 }
 

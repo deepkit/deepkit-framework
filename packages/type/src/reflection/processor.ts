@@ -1,6 +1,6 @@
 /*
  * Deepkit Framework
- * Copyright Deepkit UG, Marc J. Schmidt
+ * Copyright (c) Deepkit UG, Marc J. Schmidt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the MIT License.
@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ReflectionOp, RuntimeStackEntry, unpack } from './compiler';
+import { MappedModifier, Packed, ReflectionOp, RuntimeStackEntry, unpack } from './compiler';
 import {
     isType,
     ReflectionKind,
@@ -90,6 +90,7 @@ export class Processor {
         this.stackPointer = initialStack.length - 1;
         this.frame.startIndex = this.stackPointer;
         this.frame.previous = undefined;
+        this.frame.variables = 0;
         this.frame.inputs = initialInputs;
 
         const s = ops.length;
@@ -120,9 +121,12 @@ export class Processor {
                 case ReflectionOp.null:
                     this.pushType({ kind: ReflectionKind.null });
                     break;
+                case ReflectionOp.any:
+                    this.pushType({ kind: ReflectionKind.any });
+                    break;
                 case ReflectionOp.literal: {
                     const ref = this.eatParameter(ops) as number;
-                    this.pushType({ kind: ReflectionKind.literal, literal: initialStack[ref] as string | number | boolean });
+                    this.pushType({ kind: ReflectionKind.literal, literal: initialStack[ref] as string | number | boolean | bigint });
                     break;
                 }
                 case ReflectionOp.date:
@@ -375,14 +379,34 @@ export class Processor {
                 }
                 case ReflectionOp.mappedType: {
                     const functionPointer = this.eatParameter(ops) as number;
+                    const modifier = this.eatParameter(ops) as number;
+
                     if (this.frame.mappedType) {
-                        const type = this.pop();
-                        let index: Type | string | boolean | symbol | number = this.stack[this.frame.startIndex + 1] as Type;
+                        const type = this.pop() as Type;
+                        let index: Type | string | boolean | symbol | number | bigint = this.stack[this.frame.startIndex + 1] as Type;
                         if (index.kind === ReflectionKind.literal) {
                             index = index.literal;
                         }
-                        this.push({ kind: ReflectionKind.propertySignature, name: index, type });
 
+                        const property: TypeProperty | TypePropertySignature = type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property
+                            ? type
+                            : { kind: ReflectionKind.propertySignature, name: index, type } as TypePropertySignature;
+
+                        if (modifier !== 0) {
+                            if (modifier & MappedModifier.optional) {
+                                property.optional = true;
+                            }
+                            if (modifier & MappedModifier.removeOptional && property.optional) {
+                                property.optional = undefined;
+                            }
+                            if (modifier & MappedModifier.readonly) {
+                                property.readonly = true;
+                            }
+                            if (modifier & MappedModifier.removeReadonly && property.readonly) {
+                                property.readonly = undefined;
+                            }
+                        }
+                        this.push(property);
                     } else {
                         this.frame.mappedType = new MappedType(this.pop() as Type);
                     }
@@ -394,7 +418,7 @@ export class Processor {
                         this.push({ kind: ReflectionKind.objectLiteral, members: types });
                     } else {
                         this.stack[this.frame.startIndex + 1] = next;
-                        this.call(-1);
+                        this.call(-2);
                         this.program = functionPointer - 1; //-1 because next iteration does program++
                     }
                     break;
@@ -433,6 +457,29 @@ export class Processor {
                 case ReflectionOp.jump: {
                     const arg = this.eatParameter(ops) as number;
                     this.program = arg - 1; //-1 because next iteration does program++
+                    break;
+                }
+                case ReflectionOp.inline: {
+                    const pPosition = this.eatParameter(ops) as number;
+                    const p = initialStack[pPosition] as Packed;
+                    const pack = unpack(p);
+                    const processor = new Processor();
+                    const type = processor.run(pack.ops, pack.stack);
+                    this.push(type);
+                    break;
+                }
+                case ReflectionOp.inlineCall: {
+                    const pPosition = this.eatParameter(ops) as number;
+                    const argumentSize = this.eatParameter(ops) as number;
+                    const inputs: any[] = [];
+                    for (let i = 0; i < argumentSize; i++) {
+                        inputs.push(this.pop());
+                    }
+                    const p = initialStack[pPosition] as Packed;
+                    const pack = unpack(p);
+                    const processor = new Processor();
+                    const type = processor.run(pack.ops, pack.stack, inputs);
+                    this.push(type);
                     break;
                 }
             }

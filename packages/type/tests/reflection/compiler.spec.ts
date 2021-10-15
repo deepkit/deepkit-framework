@@ -14,8 +14,8 @@ import {
     transpileModule
 } from 'typescript';
 import { pack, ReflectionOp, ReflectionTransformer, transformer } from '../../src/reflection/compiler';
-import { reflect } from '../../src/reflection/reflection';
-import { assertType, ReflectionKind, ReflectionVisibility } from '../../src/reflection/type';
+import { reflect, typeOf as typeOf2 } from '../../src/reflection/reflection';
+import { assertType, ReflectionKind, ReflectionVisibility, TypeFunction, TypeObjectLiteral, TypeUnion } from '../../src/reflection/type';
 
 Error.stackTraceLimit = 200;
 
@@ -145,21 +145,20 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
         model: `export class Model {}`
     }, `[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
 
-    [`export interface MyInterface {id: number}; class Controller { public p: MyInterface[] = [];}`,
-        [`!RpcExecutionSubscription`, `['id', 'p', ${packString([ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.class])}]`]
-    ],
-
-    [`interface Base {title: string} interface MyInterface extends Base {id: number} class Controller { public p: MyInterface[] = [];}`,
-        [`!MyInterface`, `!Base`, `['id', 'title', 'p', ${packString([ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.string, ReflectionOp.propertySignature, 1, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 2, ReflectionOp.class])}]`]
-    ],
-
-    [`export type RpcExecutionSubscription = {id: number}; class Controller { public p: RpcExecutionSubscription[] = [];}`,
-        [`!RpcExecutionSubscription`, `['id', 'p', ${packString([ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.class])}]`]
-    ],
-
-    [`export type MyAlias = string; class Controller { public p: MyAlias[] = [];}`,
-        [`!MyAlias`, `['p', ${packString([ReflectionOp.string, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class])}]`]
-    ],
+    // [`export interface MyInterface {id: number}; class Controller { public p: MyInterface[] = [];}`,
+    //     [`! RpcExecutionSubscription`, `['id', 'p', ${packString([ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.class])}]`]
+    // ],
+    //
+    // [`interface Base {title: string} interface MyInterface extends Base {id: number} class Controller { public p: MyInterface[] = [];}`,
+    //     [`!MyInterface`, `!Base`, `['id', 'title', 'p', ${packString([ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.string, ReflectionOp.propertySignature, 1, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 2, ReflectionOp.class])}]`]
+    // ],
+    //
+    // [`export type RpcExecutionSubscription = {id: number}; class Controller { public p: RpcExecutionSubscription[] = [];}`,
+    //     [`! RpcExecutionSubscription`, `['id', 'p', ${packString([ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.class])}]`]
+    // ],
+    // [`export type MyAlias = string; class Controller { public p: MyAlias[] = [];}`,
+    //     [`! MyAlias`, `['p', ${packString([ReflectionOp.string, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class])}]`]
+    // ],
 
     [`
     /** @reflection never */
@@ -182,12 +181,12 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
         model: `export type Type = {title: string}`
     }, ['!Type', `!./model`, `!import {Type} from './model'`]],
 
-    [{
-        app: `import {Message, Model} from './model'; class Entity { p: Message[]; m: Model[];}`,
-        model: `export type Message = number; export class Model {};`
-    }, ['!Message', `import { Model } from './model'`, `['p', () => Model, 'm', ${packString([
-        ReflectionOp.number, ReflectionOp.array, ReflectionOp.property, 0,
-        ReflectionOp.classReference, 1, ReflectionOp.array, ReflectionOp.property, 2, ReflectionOp.class])}]`]],
+    // [{
+    //     app: `import {Message, Model} from './model'; class Entity { p: Message[]; m: Model[];}`,
+    //     model: `export type Message = number; export class Model {};`
+    // }, ['!Message', `import { Model } from './model'`, `['p', () => Model, 'm', ${packString([
+    //     ReflectionOp.number, ReflectionOp.array, ReflectionOp.property, 0,
+    //     ReflectionOp.classReference, 1, ReflectionOp.array, ReflectionOp.property, 2, ReflectionOp.class])}]`]],
 
     [{
         app: `import {Type} from './model'; class Entity { p: Type[];}`,
@@ -248,7 +247,7 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
     [`function createFn() { return function() {} }`, `!__type`],
     [`function createFn() { return function(): any {} }`, `return Object.assign(function () { }, { __type: ['', ${packString([ReflectionOp.any, ReflectionOp.function, 0])}] })`],
 
-    [`class Entity { createFn() { return function(param: string) {} }}`,  `return Object.assign(function (param) { }, { __type: ['', ${packString([ReflectionOp.string, ReflectionOp.any, ReflectionOp.function, 0])}] })`],
+    [`class Entity { createFn() { return function(param: string) {} }}`, `return Object.assign(function (param) { }, { __type: ['', ${packString([ReflectionOp.string, ReflectionOp.any, ReflectionOp.function, 0])}] })`],
 
     [`function name(): any {}`, `function name() { }\nname.__type = ['name', ${packString([ReflectionOp.any, ReflectionOp.function, 0])}];`],
 ];
@@ -271,12 +270,13 @@ describe('transformer', () => {
 });
 
 function transpileAndReturn(source: string): { [name: string]: any } {
-    const js = transpile(`(() => { return ${source}; })()`);
+    const js = transpile(`(() => { ${source} })()`);
+    const typeOf = typeOf2;
     return eval(js);
 }
 
 test('class', () => {
-    const clazz = transpileAndReturn(`class User {id: number; username: string}`);
+    const clazz = transpileAndReturn(`return class User {id: number; username: string}`);
     const type = reflect(clazz);
     assertType(type, ReflectionKind.class);
     expect(type.classType).toBe(clazz);
@@ -289,8 +289,10 @@ test('class', () => {
 });
 
 test('generic class', () => {
-    const clazz = transpileAndReturn(`class Container<T> {data: T}`);
-    const type = reflect(clazz, [{kind: ReflectionKind.string}]);
+    const code = `return class Container<T> {data: T}`;
+    const js = transpile(code);
+    const clazz = transpileAndReturn(code);
+    const type = reflect(clazz, { kind: ReflectionKind.string });
     expect(type).toMatchObject({
         kind: ReflectionKind.class,
         classType: clazz,
@@ -300,5 +302,153 @@ test('generic class', () => {
             visibility: ReflectionVisibility.public,
             type: { kind: ReflectionKind.string }
         }]
+    });
+});
+
+test('external object literal', () => {
+    const code = `
+    type o = { a: string, b: number };
+    return class Container {data: o}`;
+    const js = transpile(code);
+
+    expect(js).toContain(`var __Ωo = ['a', 'b', '$/!%/"?'];`);
+
+    const clazz = transpileAndReturn(code);
+
+    expect(reflect(clazz)).toEqual({
+        kind: ReflectionKind.class,
+        classType: clazz,
+        members: [{
+            kind: ReflectionKind.property,
+            name: 'data',
+            visibility: ReflectionVisibility.public,
+            type: {
+                kind: ReflectionKind.objectLiteral,
+                members: [
+                    {
+                        kind: ReflectionKind.propertySignature,
+                        type: { kind: ReflectionKind.string },
+                        name: 'a',
+                    },
+                    {
+                        kind: ReflectionKind.propertySignature,
+                        type: { kind: ReflectionKind.number },
+                        name: 'b',
+                    }
+                ]
+            } as TypeObjectLiteral
+        }]
+    });
+});
+
+test('partial', () => {
+    const code = `
+    type Partial<T> = {
+        [P in keyof T]?: T[P];
+    }
+    type o = { a: string, b: number };
+    return class Container {data: Partial<o>}`;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const clazz = transpileAndReturn(code);
+
+    expect(reflect(clazz)).toEqual({
+        kind: ReflectionKind.class,
+        classType: clazz,
+        members: [{
+            kind: ReflectionKind.property,
+            name: 'data',
+            visibility: ReflectionVisibility.public,
+            type: {
+                kind: ReflectionKind.objectLiteral,
+                members: [
+                    {
+                        kind: ReflectionKind.propertySignature,
+                        type: { kind: ReflectionKind.string },
+                        name: 'a',
+                        optional: true,
+                    },
+                    {
+                        kind: ReflectionKind.propertySignature,
+                        type: { kind: ReflectionKind.number },
+                        name: 'b',
+                        optional: true,
+                    }
+                ]
+            } as TypeObjectLiteral
+        }]
+    });
+});
+
+test('function type', () => {
+    const type = transpileAndReturn(`
+    type fn = (a: string) => void;
+    return typeOf<fn>();`);
+
+    expect(type).toEqual({
+        kind: ReflectionKind.function,
+        parameters: [
+            { kind: ReflectionKind.string }
+        ],
+        return: { kind: ReflectionKind.void },
+        name: undefined
+    } as TypeFunction);
+});
+
+test('boolean type', () => {
+    const type = transpileAndReturn(`
+    return typeOf<boolean>();`);
+
+    expect(type).toEqual({ kind: ReflectionKind.boolean });
+});
+
+test('resolve query string', () => {
+    const type = transpileAndReturn(`
+    type o = { a: string };
+    return typeOf<o['a']>();`);
+
+    expect(type).toEqual({
+        kind: ReflectionKind.string
+    });
+});
+
+test('resolve query union', () => {
+    const type = transpileAndReturn(`
+    type o = { a: string | true };
+    return typeOf<o['a']>();`);
+
+    expect(type).toEqual({
+        kind: ReflectionKind.union,
+        members: [
+            { kind: ReflectionKind.string },
+            { kind: ReflectionKind.literal, literal: true },
+        ]
+    });
+});
+
+test('resolve partial', () => {
+    const type = transpileAndReturn(`
+    type Partial2<T> = {
+        [P in keyof T]?: T[P];
+    }
+    type o = { a: true | string };
+    return typeOf<Partial2<o>>();`);
+
+    expect(type).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        members: [
+            {
+                kind: ReflectionKind.propertySignature,
+                optional: true,
+                name: 'a',
+                type: {
+                    kind: ReflectionKind.union, members: [
+                        { kind: ReflectionKind.literal, literal: true },
+                        { kind: ReflectionKind.string },
+                    ]
+                } as TypeUnion
+            },
+        ]
     });
 });

@@ -1,6 +1,6 @@
 /*
  * Deepkit Framework
- * Copyright Deepkit UG, Marc J. Schmidt
+ * Copyright (c) Deepkit UG, Marc J. Schmidt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the MIT License.

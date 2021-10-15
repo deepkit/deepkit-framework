@@ -2,7 +2,7 @@
 import { expect, test } from '@jest/globals';
 import { Processor } from '../../src/reflection/processor';
 import { ReflectionKind, ReflectionVisibility, Type, TypeObjectLiteral, TypeUnion } from '../../src/reflection/type';
-import { ReflectionOp, RuntimeStackEntry } from '../../src/reflection/compiler';
+import { MappedModifier, ReflectionOp, RuntimeStackEntry } from '../../src/reflection/compiler';
 import { isArray, isObject } from '@deepkit/core';
 import { isExtendable } from '../../src/reflection/extends';
 
@@ -288,10 +288,9 @@ test('mapped type simple', () => {
 
     expectType({
         ops: [
-            ReflectionOp.template, 0,
-            ReflectionOp.jump, 6,
+            ReflectionOp.jump, 4,
             ReflectionOp.boolean, ReflectionOp.return,
-            ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.mappedType, 4
+            ReflectionOp.template, 0, ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.mappedType, 2, 0
         ],
         stack: ['T'],
         inputs: [{ kind: ReflectionKind.union, members: [{ kind: ReflectionKind.literal, literal: 'a' }, { kind: ReflectionKind.literal, literal: 'b' }] } as TypeUnion]
@@ -309,6 +308,35 @@ test('mapped type simple', () => {
     });
 });
 
+test('mapped type optional simple', () => {
+    type A<T extends string> = { [P in T]: boolean };
+    type B = { [P in 'a' | 'b']: boolean };
+    type B1 = A<'a' | 'b'>;
+
+    expectType({
+        ops: [
+            ReflectionOp.jump, 4,
+            ReflectionOp.boolean, ReflectionOp.return,
+            ReflectionOp.template, 0, ReflectionOp.var, ReflectionOp.loads, 0, 0, ReflectionOp.mappedType, 2, 0 | MappedModifier.optional
+        ],
+        stack: ['T'],
+        inputs: [{ kind: ReflectionKind.union, members: [{ kind: ReflectionKind.literal, literal: 'a' }, { kind: ReflectionKind.literal, literal: 'b' }] } as TypeUnion]
+    }, {
+        kind: ReflectionKind.objectLiteral,
+        members: [{
+            kind: ReflectionKind.propertySignature,
+            name: 'a',
+            type: { kind: ReflectionKind.boolean },
+            optional: true,
+        }, {
+            kind: ReflectionKind.propertySignature,
+            name: 'b',
+            type: { kind: ReflectionKind.boolean },
+            optional: true,
+        }]
+    });
+});
+
 test('mapped type keyof and query', () => {
     type A<T> = { [P in keyof T]: T[P] };
     type B1 = A<{ a: number, b: string }>;
@@ -318,7 +346,7 @@ test('mapped type keyof and query', () => {
             ReflectionOp.template, 0,
             ReflectionOp.jump, 12,
             ReflectionOp.loads, 2, 0, ReflectionOp.loads, 1, 0, ReflectionOp.query, ReflectionOp.return,
-            ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.keyof, ReflectionOp.mappedType, 4
+            ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.keyof, ReflectionOp.mappedType, 4, 0
         ],
         stack: ['T'],
         inputs: [{

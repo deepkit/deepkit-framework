@@ -1,6 +1,6 @@
 /*
  * Deepkit Framework
- * Copyright Deepkit UG, Marc J. Schmidt
+ * Copyright (c) Deepkit UG, Marc J. Schmidt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the MIT License.
@@ -90,7 +90,7 @@ export interface TypeUndefined {
 
 export interface TypeLiteral {
     kind: ReflectionKind.literal,
-    literal: symbol | string | number | boolean;
+    literal: symbol | string | number | boolean | bigint;
 }
 
 export interface TypeLiteralMember {
@@ -114,6 +114,7 @@ export interface TypeProperty extends TypeLiteralMember {
     visibility: ReflectionVisibility,
     name?: number | string | symbol;
     optional?: true,
+    readonly?: true;
     abstract?: true;
     type: Type;
 }
@@ -168,6 +169,7 @@ export interface TypePropertySignature {
     kind: ReflectionKind.propertySignature,
     name?: number | string | symbol;
     optional?: true;
+    readonly?: true;
     type: Type;
 }
 
