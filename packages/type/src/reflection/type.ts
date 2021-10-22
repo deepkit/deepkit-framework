@@ -31,6 +31,8 @@ export enum ReflectionKind {
     property,
     method,
     function,
+    parameter,
+
     promise,
 
     /**
@@ -41,6 +43,7 @@ export enum ReflectionKind {
     template,
     enum,
     union,
+    intersection,
 
     array,
 
@@ -68,8 +71,15 @@ export interface TypeString {
     kind: ReflectionKind.string,
 }
 
+export const enum TypeNumberBrand {
+    integer,
+    int8,
+    int16,
+}
+
 export interface TypeNumber {
     kind: ReflectionKind.number,
+    brand?: TypeNumberBrand;
 }
 
 export interface TypeBoolean {
@@ -100,11 +110,23 @@ export interface TypeLiteralMember {
     readonly?: true;
 }
 
+export interface TypeParameter {
+    kind: ReflectionKind.parameter,
+    name: string;
+    rest?: true,
+    type: Type;
+
+    //parameter could be a property as well if visibility is set
+    visibility?: ReflectionVisibility,
+    readonly?: true;
+    optional?: true,
+}
+
 export interface TypeMethod extends TypeLiteralMember {
     kind: ReflectionKind.method,
     visibility: ReflectionVisibility,
-    name?: number | string | symbol;
-    parameters: Type[];
+    name: number | string | symbol;
+    parameters: TypeParameter[];
     optional?: true,
     abstract?: true;
     return: Type;
@@ -113,17 +135,19 @@ export interface TypeMethod extends TypeLiteralMember {
 export interface TypeProperty extends TypeLiteralMember {
     kind: ReflectionKind.property,
     visibility: ReflectionVisibility,
-    name?: number | string | symbol;
+    name: number | string | symbol;
     optional?: true,
     readonly?: true;
     abstract?: true;
+    description?: string;
     type: Type;
+    default?: () => any
 }
 
 export interface TypeFunction {
     kind: ReflectionKind.function,
     name?: string,
-    parameters: Type[];
+    parameters: TypeParameter[];
     return: Type;
 }
 
@@ -138,12 +162,12 @@ export interface TypeClass {
     /**
      * When class has generic template arguments, e.g. MyClass<string>
      */
-    types?: Type[];
+    arguments?: Type[];
 
     /**
      * properties/methods.
      */
-    members: Type[];
+    types: Type[];
 }
 
 export interface TypeEnum {
@@ -158,34 +182,39 @@ export interface TypeTemplate {
 
 export interface TypeUnion {
     kind: ReflectionKind.union,
-    members: Type[];
+    types: Type[];
+}
+
+export interface TypeIntersection {
+    kind: ReflectionKind.intersection,
+    types: Type[];
 }
 
 export interface TypeArray {
     kind: ReflectionKind.array,
-    elementType: Type;
+    type: Type;
 }
 
 export interface TypePropertySignature {
     kind: ReflectionKind.propertySignature,
-    name?: number | string | symbol;
+    name: number | string | symbol;
     optional?: true;
     readonly?: true;
+    description?: string;
     type: Type;
 }
 
 export interface TypeMethodSignature {
     kind: ReflectionKind.methodSignature,
-    name?: number | string | symbol;
+    name: number | string | symbol;
     optional?: true;
-    parameters: Type[];
+    parameters: TypeParameter[];
     return: Type;
 }
 
 export interface TypeObjectLiteral {
     kind: ReflectionKind.objectLiteral,
-    //todo: TypeProperty -> TypePropertySignature, TypeMethod -> TypeMethodSignature
-    members: (TypeIndexSignature | TypePropertySignature | TypeMethodSignature)[];
+    types: (TypeIndexSignature | TypePropertySignature | TypeMethodSignature)[];
 }
 
 export interface TypeIndexSignature {
@@ -196,11 +225,12 @@ export interface TypeIndexSignature {
 
 export interface TypeInfer {
     kind: ReflectionKind.infer,
+
     set(type: Type): void;
 }
 
 export type Type = TypeNever | TypeAny | TypeVoid | TypeString | TypeNumber | TypeBoolean | TypeBigInt | TypeNull | TypeUndefined | TypeLiteral
-    | TypeFunction | TypeMethod | TypeProperty | TypePromise | TypeClass | TypeEnum | TypeUnion | TypeArray
+    | TypeParameter | TypeFunction | TypeMethod | TypeProperty | TypePromise | TypeClass | TypeEnum | TypeUnion | TypeIntersection | TypeArray
     | TypeObjectLiteral | TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeTemplate | TypeInfer
     ;
 
@@ -213,3 +243,23 @@ type FindType<K extends Type['kind'], T = Type> = T extends { kind: K } ? T : ne
 export function assertType<K extends Type['kind'], T>(t: Type, kind: K): asserts t is FindType<K> {
     if (t.kind !== kind) throw new Error(`Invalid type ${t.kind}, expected ${kind}`);
 }
+
+export type integer = number;
+export type int8 = number;
+export type uint8 = number;
+export type int16 = number;
+export type uint16 = number;
+export type int32 = number;
+export type uint32 = number;
+export type float = number;
+export type float32 = number;
+export type float64 = number;
+
+export const ReferenceSymbol = Symbol('reference');
+export type Reference = { [ReferenceSymbol]?: true };
+
+export const PrimaryKeySymbol = Symbol('primaryKey');
+export type PrimaryKey = { [PrimaryKeySymbol]?: true };
+
+export const BackReferenceSymbol = Symbol('backReference');
+export type BackReference<T = any, VIA extends keyof T = any> = T & { [BackReferenceSymbol]?: true };

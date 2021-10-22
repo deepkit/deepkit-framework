@@ -1,6 +1,6 @@
 /*
  * Deepkit Framework
- * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
+ * Copyright (c) Deepkit UG, Marc J. Schmidt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the MIT License.
@@ -8,389 +8,377 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, getClassSchema, PropertySchema } from './model';
-import { TypeConverterCompiler } from './serializer-compiler';
-import { ClassType } from '@deepkit/core';
-import {
-    getClassToXFunction,
-    getPartialClassToXFunction,
-    getPartialXToClassFunction,
-    getPropertyClassToXFunction,
-    getPropertyXtoClassFunction,
-    getXToClassFunction,
-    JitConverterOptions,
-    resolvePropertySchema
-} from './jit';
-import { AnyEntity, ExtractClassType, PlainOrFullEntityFromClassTypeOrSchema } from './utils';
-import { validate, ValidationFailed } from './validation';
-import { binaryTypes, Types } from './types';
+import { ClassType, CompilerContext } from '@deepkit/core';
+import { ReflectionKind, Type, TypeClass, TypeObjectLiteral, TypeProperty, TypePropertySignature } from './reflection/type';
+import { ReceiveType, ReflectionClass, ReflectionProperty } from './reflection/reflection';
+import { JSONSingle } from './utils';
+import { resolvePacked } from './reflection/processor';
 
-type CompilerTypes = Types | 'undefined' | 'null';
+export function cast<T>(data: JSONSingle<T>, serializer = jsonSerializer, type?: ReceiveType<T>): T {
+    const fn = createSerializeFunction(resolvePacked(type!), serializer.deserializeRegistry);
+    return fn(data) as T;
+}
 
-export class SerializerCompilers {
-    public compilers = new Map<string, TypeConverterCompiler>();
-
-    constructor(public serializer: Serializer, public parent?: SerializerCompilers) {
-    }
-
-    append(type: CompilerTypes, compiler: TypeConverterCompiler) {
-        const old = this.get(type);
-
-        this.compilers.set(type, (property, compilerState) => {
-            if (compilerState.ended) return;
-
-            if (old) {
-                old(property, compilerState);
-                if (compilerState.ended) return;
-                compiler(property, compilerState);
-                return;
-            }
-
-            const parent = this.parent?.get(type);
-
-            if (parent) {
-                parent(property, compilerState);
-                if (compilerState.ended) return;
-                compiler(property, compilerState);
-            } else {
-                if (compilerState.ended) return;
-                compiler(property, compilerState);
-                return;
-            }
-        });
-    }
-
-    prepend(type: CompilerTypes, compiler: TypeConverterCompiler) {
-        const old = this.get(type);
-
-        this.compilers.set(type, (property, compilerState) => {
-            compiler(property, compilerState);
-            if (compilerState.ended) return;
-
-            if (old) {
-                old(property, compilerState);
-                return;
-            }
-
-            const parent = this.parent?.get(type);
-            if (!parent) {
-                if (compilerState.ended) return;
-                compiler(property, compilerState);
-                return;
-            }
-
-            parent(property, compilerState);
-        });
-    }
-
-    /**
-     * Registers a new compiler template for a certain type in certain direction
-     * (for example: plain to class or class to plain).
-     *
-     * Note: Don't handle isArray/isMap/isPartial or isOptional at `property` as those are already handled before
-     * your compiler code is called. Focus on marshalling the given type as fast and clear as possible.
-     * The value you can access via `accessor` is at this stage never undefined and never null.
-     *
-     * Note: When you come from `class` to x (fromClass.register) then values additionally are
-     * guaranteed to have certain value types since the TS system enforces it.
-     * If a user overwrites with `as any` its not our business to convert them implicitly.
-     *
-     * Warning: Context is shared across types, so make sure either your assigned names are unique or generate new variable
-     * name using `reserveVariable`.
-     *
-     * INTERNAL WARNING: Coming from `plain` to `x` the property values usually come from user input which makes
-     * it necessary to check the type and convert it if necessary. This is extremely important to not
-     * introduce security issues. Serializing from plain to your target format is made by calling first jsonSerializer.deserialize()
-     * and then yourSerializer.serialize() with the result, deepkit/type is fast enough to buy this convenience
-     * (of not having to declare too many compiler templates).
-     */
-    register(type: CompilerTypes, compiler: TypeConverterCompiler) {
-        this.compilers.set(type, compiler);
-    }
-
-    /**
-     * Removes a compiler. If the serializer has a parent, then parent's serializer code is used.
-     * Use `noop` to remove an existing serializer code.
-     */
-    reset(type: CompilerTypes) {
-        this.compilers.delete(type);
-    }
-
-    /**
-     * Sets a noop compiler, basically disabling serialization for this type.
-     */
-    noop(type: CompilerTypes) {
-        this.compilers.set(type, (property, state) => {
-            state.addSetter(`${state.accessor}`);
-        });
-    }
-
-    /**
-     * Adds a compiler template all typed arrays (Uint8Array, ...) and ArrayBuffer.
-     */
-    registerForBinary(compiler: TypeConverterCompiler) {
-        for (const type of binaryTypes) this.register(type, compiler);
-    }
-
-    fork(serializer: Serializer) {
-        return new SerializerCompilers(serializer, this);
-    }
-
-    get(type: CompilerTypes): TypeConverterCompiler | undefined {
-        const t = this.compilers.get(type);
-        if (t) return t;
-
-        return this.parent ? this.parent.get(type) : undefined;
-    }
-
-    has(type: CompilerTypes): boolean {
-        if (this.compilers.has(type)) return true;
-
-        return this.parent ? this.parent.has(type) : false;
+export class NamingStrategy {
+    getPropertyName(type: TypeProperty | TypePropertySignature): string | number | symbol | undefined {
+        return type.name;
     }
 }
 
-export class Serializer {
-    /**
-     * Serializer compiler for serializing from the serializer format to the class instance. Used in .for().deserialize().
-     */
-    public toClass = new SerializerCompilers(this);
+export function createSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy()): (data: any) => any {
+    const compiler = new CompilerContext();
 
-    /**
-     * Serializer compiler for serializing from the class instance to the serializer format. Used in .for().serialize().
-     */
-    public fromClass = new SerializerCompilers(this);
+    const templates = registry.get(type.kind);
+    if (!templates.length) return (data: any) => data;
 
-    public toClassSymbol: symbol;
-    public fromClassSymbol: symbol;
-    public partialToClassSymbol: symbol;
-    public partialFromClassSymbol: symbol;
+    const state = new TemplateState('result', 'data', compiler, registry, namingStrategy);
+
+    for (const template of templates) {
+        template(type, state);
+        if (state.ended) break;
+    }
+
+    //todo: what decides result initial value?
+    //result = {}
+    //result = [];
+    //result = new type.classType
+    const code = `
+        var result;
+        ${state.template}
+        return result;
+    `;
+    return compiler.build(code, 'data');
+}
+
+type FindType<T extends Type, LOOKUP extends ReflectionKind> = { [P in keyof T]: T[P] extends LOOKUP ? T : never }[keyof T]
+
+class TemplateState {
+    public template = '';
+
+    public ended = false;
+    public setter = '';
+    public accessor = '';
 
     constructor(
-        public readonly name: string
+        public originalSetter: string,
+        public originalAccessor: string,
+        public readonly compilerContext: CompilerContext,
+        public readonly registry: TemplateRegistry,
+        public readonly namingStrategy: NamingStrategy
     ) {
-        this.toClassSymbol = Symbol('toClass-' + name);
-        this.fromClassSymbol = Symbol('fromClass-' + name);
-        this.partialToClassSymbol = Symbol('partialToClass-' + name);
-        this.partialFromClassSymbol = Symbol('partialFromClass-' + name);
+        this.setter = originalSetter;
+        this.accessor = originalAccessor;
     }
 
-    fork(name: string): ClassType<Serializer> {
-        const self = this;
+    /**
+     * Adds template code for setting the `this.setter` variable. The expression evaluated in `code` is assigned to `this.setter`.
+     * `this.accessor` will point now to `this.setter`.
+     */
+    addSetter(code: string) {
+        this.template += `\n${this.setter} = ${code};`;
+        this.accessor = this.setter;
+    }
 
-        abstract class Res extends Serializer {
-            constructor() {
-                super(name);
-                this.toClass = self.toClass.fork(this);
-                this.fromClass = self.fromClass.fork(this);
+    /**
+     * Stop executing next templates.
+     */
+    stop() {
+        this.ended = true;
+    }
+
+    setVariable(name: string, value?: any): string {
+        return this.compilerContext.reserveVariable(name, value);
+    }
+
+    setContext(values: { [name: string]: any }) {
+        for (const i in values) {
+            if (!values.hasOwnProperty(i)) continue;
+            this.compilerContext.context.set(i, values[i]);
+        }
+    }
+
+    /**
+     * Adds template code for setting the `this.setter` variable manually, so use `${this.setter} = value`.
+     * `this.accessor` will point now to `this.setter`.
+     */
+    addCodeForSetter(code: string) {
+        this.template += '\n' + code;
+        this.accessor = this.setter;
+    }
+
+    hasSetterCode(): boolean {
+        return !!this.template;
+    }
+}
+
+type Template<T extends Type> = (type: T, state: TemplateState) => void;
+
+class TemplateRegistry {
+    protected templates: { [kind in ReflectionKind]?: Template<any>[] } = {};
+
+    constructor(public serializer: Serializer) {}
+
+    get(kind: ReflectionKind): Template<any>[] {
+        return this.templates[kind] || [];
+    }
+
+    register<T extends ReflectionKind>(kind: T, template: Template<FindType<Type, T>>) {
+        this.templates[kind] = [template];
+    }
+
+    prepend<T extends ReflectionKind>(kind: T, template: Template<FindType<Type, T>>) {
+        this.templates[kind] ||= [];
+        this.templates[kind]!.unshift(template);
+    }
+
+    append<T extends ReflectionKind>(kind: T, template: Template<FindType<Type, T>>) {
+        this.templates[kind] ||= [];
+        this.templates[kind]!.push(template);
+    }
+
+    prependClass(classType: ClassType, template: Template<FindType<Type, ReflectionKind.class>>) {
+        this.prepend(ReflectionKind.class, (type, state) => {
+            if (type.classType === classType) {
+                template(type, state);
+                state.stop();
             }
-        }
-
-        return Res as any;
-    }
-
-    public for<T extends ClassType | ClassSchema>(schemaOrType: T): ScopedSerializer<ClassSchema<ExtractClassType<T>>> {
-        return new ScopedSerializer(this, getClassSchema(schemaOrType));
-    }
-
-    /**
-     * Serializes given class instance value to the serializer format.
-     */
-    serializeProperty(property: PropertySchema, value: any): any {
-        return getPropertyClassToXFunction(property, this)(value);
-    }
-
-    /**
-     * Converts serialized value to class type.
-     */
-    deserializeProperty(property: PropertySchema, value: any): any {
-        return getPropertyXtoClassFunction(property, this)(value);
-    }
-
-    /**
-     * Converts given serialized data to the class instance.
-     */
-    deserializeMethodResult(property: PropertySchema, value: any): any {
-        return getPropertyXtoClassFunction(property, this)(value);
+        });
     }
 }
 
-type FirstParameter<T> = T extends ((a: infer A) => any) ? A : never;
-
-export class ScopedSerializer<T extends ClassSchema> {
-    protected _serialize?: (instance: ExtractClassType<T>, options?: JitConverterOptions) => any = undefined;
-    protected _deserialize?: (data: any, options?: JitConverterOptions, parents?: any[]) => ExtractClassType<T> = undefined;
-
-    protected _partialSerialize?: (instance: { [name: string]: any }, options?: JitConverterOptions) => any = undefined;
-    protected _partialDeserialize?: <P extends { [name: string]: any }>(
-        data: P,
-        options?: JitConverterOptions
-    ) => Pick<ExtractClassType<T>, keyof P> = undefined;
-
-    constructor(public readonly serializer: Serializer, protected schema: T) {
+export function executeTemplates(
+    compilerContext: CompilerContext,
+    registry: TemplateRegistry,
+    namingStrategy: NamingStrategy,
+    templates: Template<any>[],
+    setter: string,
+    getter: string,
+    type: Type
+): string {
+    const state = new TemplateState(setter, getter, compilerContext, registry, namingStrategy);
+    for (const template of templates) {
+        template(type, state);
+        if (state.ended) break;
     }
-
-    from<S extends Serializer, SC extends ReturnType<S['for']>>(serializer: S, ...args: Parameters<SC['deserialize']>): ReturnType<this['serialize']> {
-        return this.serialize((serializer.for(this.schema).deserialize as any)(...args)) as any;
-    }
-
-    to<S extends Serializer, SC extends ReturnType<S['for']>>(serializer: S, ...args: Parameters<this['deserialize']>): ReturnType<SC['serialize']> {
-        return serializer.for(this.schema).serialize((this.deserialize as any)(...args)) as any;
-    }
-
-    fromPartial<S extends Serializer, SC extends ReturnType<S['for']>>(serializer: S, a: FirstParameter<ReturnType<S['for']>['partialDeserialize']>, options?: JitConverterOptions) {
-        return this.partialSerialize(serializer.for(this.schema).partialDeserialize(a, options));
-    }
-
-    toPartial<S extends Serializer, SC extends ReturnType<S['for']>, A extends FirstParameter<this['partialDeserialize']>>(serializer: S, a: A): ReturnType<SC['partialSerialize']> {
-        return serializer.for(this.schema).partialSerialize((this.partialDeserialize as any)(a)) as any;
-    }
-
-    fromPatch<S extends Serializer>(serializer: S, a: FirstParameter<ReturnType<S['for']>['patchDeserialize']>, options?: JitConverterOptions) {
-        return this.patchSerialize(serializer.for(this.schema).patchDeserialize(a, options));
-    }
-
-    toPatch<S extends Serializer, SC extends ReturnType<S['for']>>(serializer: S, ...args: Parameters<this['patchDeserialize']>) {
-        return serializer.for(this.schema).patchSerialize((this.patchDeserialize as any)(...args));
-    }
-
-    /**
-     * Serializes given class instance to the serialization format.
-     * -> class to serializer.
-     */
-    serialize(instance: ExtractClassType<T>, options?: JitConverterOptions): any {
-        if (!this._serialize) this._serialize = getClassToXFunction(this.schema, this.serializer);
-        return this._serialize(instance, options);
-    }
-
-    /**
-     * Same as `deserialize` but with validation after creating the class instance.
-     *
-     * ```typescript
-     * try {
-     *     const entity = jsonSerializer.for(MyEntity).validatedDeserialize({field1: 'value'});
-     *     entity instanceof MyEntity; //true
-     * } catch (error) {
-     *     if (error instanceof ValidationFailed) {
-     *         //handle that case.
-     *     }
-     * }
-     * ```
-     * @throws ValidationFailed
-     */
-    validatedDeserialize(
-        data: PlainOrFullEntityFromClassTypeOrSchema<T>,
-        options?: JitConverterOptions
-    ): ExtractClassType<T> {
-        if (!this._deserialize) this._deserialize = getXToClassFunction(this.schema, this.serializer);
-        const item = this._deserialize(data, options);
-        const errors = validate(this.schema, item);
-        if (errors.length) throw new ValidationFailed(errors);
-        return item;
-    }
-
-    /**
-     * Converts given data in form of this serialization format to the target (default JS primitive/class) type.
-     * -> serializer to class.
-     */
-    deserialize(
-        data: PlainOrFullEntityFromClassTypeOrSchema<T>,
-        options?: JitConverterOptions,
-        parents?: any[]
-    ): ExtractClassType<T> {
-        if (!this._deserialize) this._deserialize = getXToClassFunction(this.schema, this.serializer);
-        return this._deserialize(data, options, parents);
-    }
-
-    /**
-     * Serialized one property value from class instance to serialization target.
-     *
-     * Property name is either a property name or a deep path (e.g. config.value)
-     */
-    serializeProperty(name: (keyof ExtractClassType<T> & string) | string, value: any): any {
-        const property = this.schema.getPropertiesMap().get(name) ?? resolvePropertySchema(this.schema, name);
-        return getPropertyClassToXFunction(property, this.serializer)(value);
-    }
-
-    /**
-     * Converts given data in form of this serialization format to the target (default JS primitive/class) type.
-     *
-     * Property name is either a property name or a deep path (e.g. config.value)
-     */
-    deserializeProperty(name: (keyof ExtractClassType<T> & string) | string, value: any) {
-        const property = this.schema.getPropertiesMap().get(name) ?? resolvePropertySchema(this.schema, name);
-        return getPropertyXtoClassFunction(property, this.serializer)(value);
-    }
-
-    serializeMethodArgument(methodName: string, property: number, value: any): ReturnType<this['serializeProperty']> {
-        return getPropertyClassToXFunction(this.schema.getMethodProperties(methodName)[property], this.serializer)(value);
-    }
-
-    deserializeMethodArgument(methodName: string, property: number, value: any) {
-        return getPropertyXtoClassFunction(this.schema.getMethodProperties(methodName)[property], this.serializer)(value);
-    }
-
-    serializeMethodResult(methodName: string, value: any): ReturnType<this['serializeProperty']> {
-        return getPropertyClassToXFunction(this.schema.getMethod(methodName), this.serializer)(value);
-    }
-
-    deserializeMethodResult(methodName: string, value: any) {
-        return getPropertyXtoClassFunction(this.schema.getMethod(methodName), this.serializer)(value);
-    }
-
-    /**
-     * Serialized a partial instance to the serialization format.
-     */
-    partialSerialize<R extends { [name: string]: any }>(
-        data: R,
-        options?: JitConverterOptions
-    ): AnyEntity<R> {
-        if (!this._partialSerialize) this._partialSerialize = getPartialClassToXFunction(this.schema, this.serializer);
-        return this._partialSerialize(data, options);
-    }
-
-    /**
-     * Converts data in form of this serialization format to the same partial target (default JS primitive/class) type.
-     */
-    partialDeserialize<P extends { [name: string]: any }>(
-        data: P,
-        options?: JitConverterOptions
-    ): Pick<ExtractClassType<T>, keyof P> {
-        if (!this._partialDeserialize) this._partialDeserialize = getPartialXToClassFunction(this.schema, this.serializer);
-        return this._partialDeserialize(data, options);
-    }
-
-    public patchDeserialize<R extends { [name: string]: any }>(
-        partial: R,
-        options?: JitConverterOptions
-    ): { [F in keyof R]?: any } {
-        const result: Partial<{ [F in keyof R]: any }> = {};
-        for (const i in partial) {
-            if (!partial.hasOwnProperty(i)) continue;
-            const property = this.schema.getPropertiesMap().get(i) ?? resolvePropertySchema(this.schema, i);
-            result[i] = getPropertyXtoClassFunction(property, this.serializer)(partial[i], options?.parents ?? [], options);
-        }
-
-        return result;
-    }
-
-    public patchSerialize<T, R extends object>(
-        partial: R,
-        options?: JitConverterOptions
-    ): { [F in keyof R]?: any } {
-        const result: Partial<{ [F in keyof R]: any }> = {};
-        for (const i in partial) {
-            if (!partial.hasOwnProperty(i)) continue;
-            const property = this.schema.getPropertiesMap().get(i) ?? resolvePropertySchema(this.schema, i);
-            result[i] = getPropertyClassToXFunction(property, this.serializer)(partial[i], options);
-        }
-
-        return result;
-    }
+    return state.template;
 }
 
-export const emptySerializer = new class extends Serializer {
+export function createConverterJSForType(
+    setter: string,
+    accessor: string,
+    type: Type,
+    registry: TemplateRegistry,
+    compilerContext: CompilerContext,
+    namingStrategy: NamingStrategy
+): string {
+    const templates = registry.get(type.kind);
+    let convert = '';
+    if (templates.length) {
+        convert = executeTemplates(compilerContext, registry, namingStrategy, templates, setter, accessor, type);
+    } else {
+        convert = `
+        //no compiler for ${type.kind}
+        ${setter} = ${accessor};`;
+    }
+
+    return convert;
+}
+
+export function createConverterJSForProperty(
+    setter: string,
+    accessor: string,
+    reflection: ReflectionProperty,
+    registry: TemplateRegistry,
+    compilerContext: CompilerContext,
+    namingStrategy: NamingStrategy,
+    undefinedSetterCode: string = '',
+    nullSetterCode: string = ''
+): string {
+    const undefinedCompiler = registry.get(ReflectionKind.undefined);
+    const nullCompiler = registry.get(ReflectionKind.null);
+
+    undefinedSetterCode = undefinedSetterCode || (undefinedCompiler ? executeTemplates(compilerContext, registry, namingStrategy, undefinedCompiler, setter, accessor, reflection.type) : '');
+    nullSetterCode = nullSetterCode || (nullCompiler ? executeTemplates(compilerContext, registry, namingStrategy, nullCompiler, setter, accessor, reflection.type) : '');
+
+    const templates = registry.get(reflection.type.kind);
+    let convert = '';
+    if (templates.length) {
+        convert = executeTemplates(compilerContext, registry, namingStrategy, templates, setter, accessor, reflection.type);
+    } else {
+        convert = `
+        //no compiler for ${reflection.type.kind}
+        ${setter} = ${accessor};`;
+    }
+
+    let postTransform = '';
+
+    const isSerialization = registry.serializer.serializeRegistry === registry;
+    const isDeserialization = registry.serializer.deserializeRegistry === registry;
+
+    return convert;
+    // if (isSerialization) {
+    //     const transformer = type.serialization.get(registry.serializer.name) || type.serialization.get('all');
+    //     if (transformer) {
+    //         const fnVar = compilerContext.reserveVariable('transformer', transformer);
+    //         postTransform = `${setter} = ${fnVar}(${setter})`;
+    //     }
+    // }
+    //
+    // if (isDeserialization) {
+    //     const transformer = type.deserialization.get(registry.serializer.name) || type.deserialization.get('all');
+    //     if (transformer) {
+    //         const fnVar = compilerContext.reserveVariable('transformer', transformer);
+    //         postTransform = `${setter} = ${fnVar}(${setter})`;
+    //     }
+    // }
+
+    // since JSON does not support undefined, we emulate it via using null for serialization, and convert that back to undefined when deserialization happens.
+    // note: When the value is not defined (property.name in object === false), then this code will never run.
+    // let defaultValue = isSerialization ? 'null' : 'undefined';
+    // if (!type.hasDefaultValue && type.defaultValue !== undefined) {
+    //     defaultValue = `${compilerContext.reserveVariable('defaultValue', type.defaultValue)}()`;
+    // } else if (!type.isOptional && type.isNullable) {
+    //     defaultValue = 'null';
+    // }
+    //
+    // return `
+    //     if (${accessor} === undefined) {
+    //         if (${!type.hasDefaultValue || type.isOptional}) ${setter} = ${defaultValue};
+    //         ${undefinedSetterCode}
+    //     } else if (${accessor} === null) {
+    //         //null acts on transport layer as telling an explicitly set undefined
+    //         //this is to support actual undefined as value across a transport layer. Otherwise it
+    //         //would be impossible to set a already set value to undefined back (since JSON.stringify() omits that information)
+    //         if (${type.isNullable}) {
+    //             ${setter} = null;
+    //             ${nullSetterCode}
+    //         } else {
+    //             if (${type.isOptional}) ${setter} = ${defaultValue};
+    //             ${undefinedSetterCode}
+    //         }
+    //     } else {
+    //         ${convert}
+    //         ${postTransform}
+    //     }
+    // `;
+}
+
+function deserializeClass(type: TypeClass, state: TemplateState) {
+    const preLines: string[] = [];
+    const lines: string[] = [];
+    const clazz = new ReflectionClass(type);
+
+    const constructor = clazz.getConstructor();
+    const constructorArguments: string[] = [];
+    if (constructor) {
+        const parameters = constructor.getParameters();
+
+        for (let i = 0; i < parameters.length; i++) {
+            const parameter = parameters[i];
+            if (parameter.visibility === undefined) continue;
+            const reflection = clazz.getProperty(parameter.name);
+            if (!reflection) continue;
+
+            preLines.push(`
+                var c_${i};
+                ${createConverterJSForProperty(`c_${i}`, `${state.accessor}[${JSON.stringify(parameter.name)}]`, reflection, state.registry, state.compilerContext, state.namingStrategy)}
+            `);
+            constructorArguments.push(`c_${i}`);
+        }
+    }
+
+    for (const member of type.types) {
+        if (member.kind === ReflectionKind.indexSignature) {
+
+        }
+
+        if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
+            lines.push(createConverterJSForType(
+                `${state.setter}[${JSON.stringify(member.name)}]`,
+                `${state.accessor}[${JSON.stringify(state.namingStrategy.getPropertyName(member))}]`,
+                member.type,
+                state.registry,
+                state.compilerContext,
+                state.namingStrategy
+            ));
+        }
+    }
+
+    const classType = state.compilerContext.reserveConst(type.classType);
+
+    state.addCodeForSetter(`
+        ${preLines.join('\n')}
+        ${state.setter} = new ${classType}(${constructorArguments.join(', ')});
+        ${lines.join('\n')}
+    `);
+}
+
+function deserializeObjectLiteral(type: TypeObjectLiteral, state: TemplateState) {
+    const lines: string[] = [];
+
+    for (const member of type.types) {
+        if (member.kind === ReflectionKind.indexSignature) {
+        }
+
+        if (member.kind === ReflectionKind.propertySignature) {
+            lines.push(createConverterJSForType(
+                `${state.setter}[${JSON.stringify(member.name)}]`,
+                `${state.accessor}[${JSON.stringify(member.name)}]`,
+                member.type,
+                state.registry,
+                state.compilerContext,
+                state.namingStrategy,
+            ));
+        }
+    }
+
+    state.addCodeForSetter(`
+        ${state.setter} = {};
+        ${lines.join('\n')}
+    `);
+}
+
+class Serializer {
+    serializeRegistry = new TemplateRegistry(this);
+    deserializeRegistry = new TemplateRegistry(this);
+
     constructor() {
-        super('empty');
+        this.deserializeRegistry.register(ReflectionKind.class, deserializeClass);
+        this.deserializeRegistry.register(ReflectionKind.objectLiteral, deserializeObjectLiteral);
     }
-};
+
+    public serialize<T, D extends T>(data: D) {
+
+    }
+}
+
+class JSONSerializer extends Serializer {
+    constructor() {
+        super();
+
+        this.serializeRegistry.prependClass(Date, (type, state) => {
+            state.addSetter(`${state.accessor}.toJSON()`);
+        });
+
+        this.deserializeRegistry.prependClass(Date, (type, state) => {
+            state.setContext({ Date });
+            state.addSetter(`new Date(${state.accessor})`);
+        });
+
+        this.deserializeRegistry.register(ReflectionKind.string, (type, state) => {
+            state.addSetter(`'string' !== typeof ${state.accessor} ? ${state.accessor}+'' : ${state.accessor}`);
+        });
+
+        this.deserializeRegistry.register(ReflectionKind.number, (type, state) => {
+            if (type.brand === 0) {
+                state.addSetter(`Math.trunc(${state.accessor})`);
+            } else {
+                state.setContext({ Number });
+                state.addSetter(`'number' !== typeof ${state.accessor} ? Number(${state.accessor}) : ${state.accessor}`);
+            }
+        });
+    }
+}
+
+export const jsonSerializer = new JSONSerializer;
+

@@ -1,6 +1,6 @@
 /*
  * Deepkit Framework
- * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
+ * Copyright (c) Deepkit UG, Marc J. Schmidt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the MIT License.
@@ -304,7 +304,7 @@ export function createPropertyDecoratorContext<API extends APIProperty<any>, T =
     return fn as any;
 }
 
-export type FreeDecoratorFn<API> = { (): ExtractApiDataType<API> };
+export type FreeDecoratorFn<API> = { (target?: any, property?: string, parameterIndexOrDescriptor?: any): void };
 
 export type FreeFluidDecorator<API> = {
     [name in keyof ExtractClass<API>]: ExtractClass<API>[name] extends (...args: infer K) => any
@@ -317,7 +317,7 @@ export type FreeDecoratorResult<API extends APIClass<any>> = FreeFluidDecorator<
 export function createFreeDecoratorContext<API extends APIClass<any>, T = ExtractApiDataType<API>>(
     apiType: API
 ): FreeDecoratorResult<API> {
-    function collapse(modifier: { name: string, args?: any }[]) {
+    function collapse(modifier: { name: string, args?: any }[], target?: any, property?: string, parameterIndexOrDescriptor?: any) {
         const api = new apiType;
 
         for (const fn of modifier) {
@@ -328,6 +328,8 @@ export function createFreeDecoratorContext<API extends APIClass<any>, T = Extrac
                 (api as any)[fn.name];
             }
         }
+
+        if (api.onDecorator && target) api.onDecorator(target, property, parameterIndexOrDescriptor);
 
         return api.t;
     }

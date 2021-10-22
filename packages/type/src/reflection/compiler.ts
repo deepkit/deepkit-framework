@@ -39,6 +39,7 @@ import {
     IndexSignatureDeclaration,
     InferTypeNode,
     InterfaceDeclaration,
+    IntersectionTypeNode,
     isArrowFunction,
     isCallExpression,
     isClassDeclaration,
@@ -57,6 +58,7 @@ import {
     isParenthesizedTypeNode,
     isStringLiteral,
     isTypeAliasDeclaration,
+    isTypeReferenceNode,
     LiteralTypeNode,
     MappedTypeNode,
     MethodDeclaration,
@@ -86,11 +88,11 @@ import {
     visitNode,
 } from 'typescript';
 import { ClassType, isArray } from '@deepkit/core';
-import { getNameAsString, hasModifier } from './reflection-ast';
+import { extractJSDocAttribute, getNameAsString, getPropertyName, hasModifier } from './reflection-ast';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import stripJsonComments from 'strip-json-comments';
-import { Type } from './type';
+import { Type, TypeNumberBrand } from './type';
 
 /**
  * The instruction set.
@@ -103,6 +105,7 @@ export enum ReflectionOp {
 
     string,
     number,
+    numberBrand,
     boolean,
     bigint,
 
@@ -135,6 +138,8 @@ export enum ReflectionOp {
     method,
     methodSignature, //has 1 parameter, reference to stack for its property name
 
+    parameter,
+
     /**
      * This OP pops the latest type entry on the stack.
      *
@@ -164,9 +169,12 @@ export enum ReflectionOp {
     readonly,
 
     //modifiers for property|method
+    public,
     private,
     protected,
     abstract,
+    defaultValue,
+    description,
 
     /**
      * This OP has 1 parameter. The next byte is the absolute address of a enum entry on the stack.
@@ -336,6 +344,11 @@ const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.inlineCall]: { params: 2 },
     [ReflectionOp.loads]: { params: 2 },
     [ReflectionOp.infer]: { params: 2 },
+    [ReflectionOp.defaultValue]: { params: 1 },
+    [ReflectionOp.parameter]: { params: 1 },
+    [ReflectionOp.method]: { params: 1 },
+    [ReflectionOp.description]: { params: 1 },
+    [ReflectionOp.numberBrand]: { params: 1 },
 };
 
 export function debugPackStruct(pack: PackStruct): void {
@@ -581,7 +594,7 @@ export class ReflectionTransformer {
                 return this.decorateArrow(node);
             } else if (isCallExpression(node) && node.typeArguments) {
                 const autoTypeFunctions = ['valuesOf', 'propertiesOf', 'typeOf'];
-                if (isIdentifier(node.expression) && autoTypeFunctions.includes(node.expression.escapedText as string)) {
+                if (isIdentifier(node.expression) && autoTypeFunctions.includes(node.expression.text)) {
                     const args: Expression[] = [...node.arguments];
 
                     if (!args.length) {
@@ -594,6 +607,42 @@ export class ReflectionTransformer {
                     args.push(type);
 
                     return this.f.updateCallExpression(node, node.expression, node.typeArguments, this.f.createNodeArray(args));
+                } else {
+                    // const typeChecker = this.getTypeCheckerForSource();
+                    // const symbol = typeChecker.getSymbolAtLocation(node.expression);
+                    const found = this.resolveDeclaration(node.expression);
+                    const type = found && found.declaration;
+                    if (type && isFunctionDeclaration(type) && type.typeParameters) {
+                        const args: Expression[] = [...node.arguments];
+                        let replaced = false;
+
+                        for (let i = 0; i < type.parameters.length; i++) {
+                            // for (const parameter of type.valueDeclaration.parameters) {
+                            const parameter = type.parameters[i];
+                            if (!args[i]) {
+                                args[i] = this.f.createIdentifier('undefined');
+                            }
+                            if (parameter.type && isTypeReferenceNode(parameter.type) && isIdentifier(parameter.type.typeName)
+                                && parameter.type.typeName.text === 'ReceiveType' && parameter.type.typeArguments) {
+                                const first = parameter.type.typeArguments[0];
+                                if (first && isTypeReferenceNode(first) && isIdentifier(first.typeName)) {
+                                    const name = first.typeName.text;
+                                    //find type parameter position
+                                    const index = type.typeParameters.findIndex(v => v.name.text === name);
+                                    if (index !== -1) {
+                                        const type = this.getTypeOfType(node.typeArguments[index]);
+                                        if (!type) return node;
+                                        args[i] = type;
+                                        replaced = true;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (replaced) {
+                            return this.f.updateCallExpression(node, node.expression, node.typeArguments, this.f.createNodeArray(args));
+                        }
+                    }
                 }
                 return node;
             }
@@ -606,17 +655,21 @@ export class ReflectionTransformer {
         const compileDeclarations = (node: Node): any => {
             node = visitEachChild(node, compileDeclarations, this.context);
 
-            if (isTypeAliasDeclaration(node) && this.compileDeclarations.has(node)) {
+            if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && this.compileDeclarations.has(node)) {
                 const d = this.compileDeclarations.get(node)!;
                 this.compileDeclarations.delete(node);
                 const typeProgram = new CompilerProgram();
 
                 if (node.typeParameters) {
                     for (const param of node.typeParameters) {
-                        typeProgram.pushTemplateParameter(param.name.escapedText as string);
+                        typeProgram.pushTemplateParameter(param.name.text);
                     }
                 }
-                this.extractPackStructOfType(node.type, typeProgram);
+                if (isTypeAliasDeclaration(node)) {
+                    this.extractPackStructOfType(node.type, typeProgram);
+                } else {
+                    this.extractPackStructOfType(node, typeProgram);
+                }
                 const typeProgramExpression = this.packOpsAndStack(typeProgram.buildPackStruct());
                 const statements: Statement[] = [node];
 
@@ -697,7 +750,7 @@ export class ReflectionTransformer {
                 //TypeScript does not narrow types down
                 const narrowed = node as ClassDeclaration | ClassExpression;
 
-                if (narrowed as ClassDeclaration) {
+                if (node) {
                     const members: ClassElement[] = [];
                     const empty = program.isEmpty();
                     if (!empty) program.pushFrame();
@@ -725,13 +778,27 @@ export class ReflectionTransformer {
                 }
                 break;
             }
+            case SyntaxKind.IntersectionType: {
+                //TypeScript does not narrow types down
+                const narrowed = node as IntersectionTypeNode;
+
+                const empty = program.isEmpty();
+                if (!empty) program.pushFrame();
+
+                for (const type of narrowed.types) {
+                    this.extractPackStructOfType(type, program);
+                }
+
+                program.pushOp(ReflectionOp.intersection);
+                break;
+            }
             case SyntaxKind.MappedType: {
                 //TypeScript does not narrow types down
                 const narrowed = node as MappedTypeNode;
 
                 //<Type>{[Property in keyof Type]: boolean;};
                 program.pushFrame();
-                program.pushVariable(narrowed.typeParameter.name.escapedText as string);
+                program.pushVariable(narrowed.typeParameter.name.text);
 
                 const constraint = getEffectiveConstraintOfTypeParameter(narrowed.typeParameter);
                 if (constraint) {
@@ -830,10 +897,13 @@ export class ReflectionTransformer {
                 const narrowed = node as PropertySignature;
                 if (narrowed.type) {
                     this.extractPackStructOfType(narrowed.type, program);
-                    const name = getNameAsString(narrowed.name);
+                    const name = getPropertyName(this.f, narrowed.name);
                     program.pushOp(ReflectionOp.propertySignature, program.findOrAddStackEntry(name));
                     if (narrowed.questionToken) program.pushOp(ReflectionOp.optional);
                     if (hasModifier(narrowed, SyntaxKind.ReadonlyKeyword)) program.pushOp(ReflectionOp.readonly);
+
+                    const description = extractJSDocAttribute(narrowed, 'description');
+                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
                 }
                 break;
             }
@@ -846,7 +916,7 @@ export class ReflectionTransformer {
                     if (config.mode === 'never') return;
 
                     this.extractPackStructOfType(narrowed.type, program);
-                    const name = getNameAsString(narrowed.name);
+                    const name = getPropertyName(this.f, narrowed.name);
                     program.pushOp(ReflectionOp.property, program.findOrAddStackEntry(name));
 
                     if (narrowed.questionToken) program.pushOp(ReflectionOp.optional);
@@ -854,6 +924,13 @@ export class ReflectionTransformer {
                     if (hasModifier(narrowed, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
                     if (hasModifier(narrowed, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
                     if (hasModifier(narrowed, SyntaxKind.AbstractKeyword)) program.pushOp(ReflectionOp.abstract);
+
+                    if (narrowed.initializer) {
+                        program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, narrowed.initializer)));
+                    }
+
+                    const description = extractJSDocAttribute(narrowed, 'description');
+                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
                 }
                 break;
             }
@@ -880,10 +957,10 @@ export class ReflectionTransformer {
 
                 const frame = program.findConditionalFrame();
                 if (frame) {
-                    let variable = program.findVariable(narrowed.typeParameter.name.escapedText as string);
+                    let variable = program.findVariable(narrowed.typeParameter.name.text);
                     if (!variable) {
-                        program.pushVariable(narrowed.typeParameter.name.escapedText as string, frame);
-                        variable = program.findVariable(narrowed.typeParameter.name.escapedText as string);
+                        program.pushVariable(narrowed.typeParameter.name.text, frame);
+                        variable = program.findVariable(narrowed.typeParameter.name.text);
                         if (!variable) throw new Error('Could not find inserted infer variable');
                     }
                     program.pushOp(ReflectionOp.infer, variable.frameOffset, variable.stackIndex);
@@ -904,11 +981,25 @@ export class ReflectionTransformer {
                 const config = this.findReflectionConfig(narrowed);
                 if (config.mode === 'never') return;
 
-                if (narrowed.parameters.length === 0 && !narrowed.type) return;
+                if (!program.isEmpty()) program.pushFrame();
+
                 for (const parameter of narrowed.parameters) {
+                    //we support at the moment only identifier as name
+                    if (!isIdentifier(parameter.name)) continue;
+
                     if (parameter.type) {
                         this.extractPackStructOfType(parameter.type, program);
+                    } else {
+                        program.pushOp(ReflectionOp.any);
                     }
+
+                    program.pushOp(ReflectionOp.parameter, program.findOrAddStackEntry(getNameAsString(parameter.name)));
+
+                    if (parameter.questionToken) program.pushOp(ReflectionOp.optional);
+                    if (hasModifier(parameter, SyntaxKind.PublicKeyword)) program.pushOp(ReflectionOp.public);
+                    if (hasModifier(parameter, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
+                    if (hasModifier(parameter, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
+                    if (hasModifier(narrowed, SyntaxKind.ReadonlyKeyword)) program.pushOp(ReflectionOp.readonly);
                 }
 
                 if (narrowed.type) {
@@ -917,7 +1008,7 @@ export class ReflectionTransformer {
                     program.pushOp(ReflectionOp.any);
                 }
 
-                const name = isConstructorDeclaration(narrowed) ? 'constructor' : getNameAsString(narrowed.name);
+                const name = isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
                 program.pushOp(isMethodDeclaration(narrowed) || isConstructorDeclaration(narrowed) ? ReflectionOp.method : ReflectionOp.function, program.findOrAddStackEntry(name));
 
                 if (isMethodDeclaration(narrowed)) {
@@ -1036,7 +1127,7 @@ export class ReflectionTransformer {
             if (resolvedType && resolvedType.symbol && resolvedType.symbol.declarations && resolvedType.symbol.declarations[0]) {
                 declaration = resolvedType.symbol.declarations[0];
             } else if (declaration && isImportSpecifier(declaration)) {
-                declaration = this.resolveImportSpecifier('Message', declaration.parent.parent.parent);
+                declaration = this.resolveImportSpecifier(symbol.name, declaration.parent.parent.parent);
             }
         }
 
@@ -1069,21 +1160,21 @@ export class ReflectionTransformer {
 
     protected getDeclarationVariableName(typeName: EntityName) {
         if (isIdentifier(typeName)) {
-            return this.f.createIdentifier('__Ω' + typeName.escapedText);
+            return this.f.createIdentifier('__Ω' + typeName.text);
         }
 
         function joinQualifiedName(name: EntityName): string {
-            if (isIdentifier(name)) return name.escapedText as string;
-            return joinQualifiedName(name.left) + '_' + name.right.escapedText;
+            if (isIdentifier(name)) return name.text;
+            return joinQualifiedName(name.left) + '_' + name.right.text;
         }
 
         return '__Ω' + joinQualifiedName(typeName);
     }
 
     protected extractPackStructOfTypeReference(type: TypeReferenceNode, program: CompilerProgram) {
-        if (isIdentifier(type.typeName) && this.knownClasses[type.typeName.escapedText as string]) {
-            program.pushOp(this.knownClasses[type.typeName.escapedText as string]);
-        } else if (isIdentifier(type.typeName) && type.typeName.escapedText === 'Promise') {
+        if (isIdentifier(type.typeName) && this.knownClasses[type.typeName.text]) {
+            program.pushOp(this.knownClasses[type.typeName.text]);
+        } else if (isIdentifier(type.typeName) && type.typeName.text === 'Promise') {
             //promise has always one sub type
             if (type.typeArguments && type.typeArguments[0]) {
                 this.extractPackStructOfType(type.typeArguments[0], program);
@@ -1091,10 +1182,16 @@ export class ReflectionTransformer {
                 program.pushOp(ReflectionOp.any);
             }
             program.pushOp(ReflectionOp.promise);
+        } else if (isIdentifier(type.typeName) && type.typeName.text === 'integer') {
+            program.pushOp(ReflectionOp.numberBrand, TypeNumberBrand.integer as number);
+        } else if (isIdentifier(type.typeName) && type.typeName.text === 'int8') {
+            program.pushOp(ReflectionOp.numberBrand, TypeNumberBrand.int8 as number);
+        } else if (isIdentifier(type.typeName) && type.typeName.text === 'int16') {
+            program.pushOp(ReflectionOp.numberBrand, TypeNumberBrand.int16 as number);
         } else {
             //check if it references a variable
             if (isIdentifier(type.typeName)) {
-                const variable = program.findVariable(type.typeName.escapedText as string);
+                const variable = program.findVariable(type.typeName.text);
                 if (variable) {
                     program.pushOp(ReflectionOp.loads, variable.frameOffset, variable.stackIndex);
                     return;
@@ -1136,7 +1233,7 @@ export class ReflectionTransformer {
 
             const declaration = resolved.declaration;
 
-            if (isTypeAliasDeclaration(declaration)) {
+            if (isTypeAliasDeclaration(declaration) || isInterfaceDeclaration(declaration)) {
                 //store its declaration in its own definition program
                 const index = program.pushStack(this.getDeclarationVariableName(type.typeName));
                 this.compileDeclarations.set(declaration, { name: type.typeName });
@@ -1214,8 +1311,8 @@ export class ReflectionTransformer {
                 if (isNamedExports(statement.exportClause)) {
                     for (const element of statement.exportClause.elements) {
                         //see if declarationName is exported
-                        if (element.name.escapedText === declarationName) {
-                            const found = this.resolveImportSpecifier(element.propertyName ? element.propertyName.escapedText as string : declarationName, statement);
+                        if (element.name.text === declarationName) {
+                            const found = this.resolveImportSpecifier(element.propertyName ? element.propertyName.text : declarationName, statement);
                             if (found) return found;
                         }
                     }

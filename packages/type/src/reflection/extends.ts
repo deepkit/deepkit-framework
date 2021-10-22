@@ -82,9 +82,9 @@ export function isExtendable(left: AssignableType, right: AssignableType): boole
             if (rightType.kind !== ReflectionKind.objectLiteral) return false;
 
             //{a: number} extends {a: number, b: string}
-            for (const member of leftType.members) {
+            for (const member of leftType.types) {
                 if (member.kind === ReflectionKind.propertySignature) {
-                    const rightMember = rightType.members.find(v => v.kind === ReflectionKind.propertySignature && v.name === member.name);
+                    const rightMember = rightType.types.find(v => v.kind === ReflectionKind.propertySignature && v.name === member.name);
                     if (!rightMember) return false;
                     if (!isExtendable(member, rightMember)) return false;
                 }
@@ -94,7 +94,7 @@ export function isExtendable(left: AssignableType, right: AssignableType): boole
 
     }
 
-    if (rightType && rightType.kind === ReflectionKind.union) return rightType.members.some(v => isExtendable(left, v));
+    if (rightType && rightType.kind === ReflectionKind.union) return rightType.types.some(v => isExtendable(left, v));
 
     return false;
 }

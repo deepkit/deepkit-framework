@@ -9,8 +9,9 @@
  */
 
 import { expect, test } from '@jest/globals';
-import { propertiesOf, reflect, typeOf, valuesOf } from '../../../src/reflection/reflection';
-import { ReflectionKind, ReflectionVisibility, TypeClass, TypeIndexSignature, TypeObjectLiteral } from '../../../src/reflection/type';
+import { propertiesOf, reflect, ReflectionClass, ReflectionFunction, typeOf, valuesOf } from '../../../src/reflection/reflection';
+import { integer, PrimaryKey, ReflectionKind, ReflectionVisibility, Type, TypeClass, TypeIndexSignature, TypeObjectLiteral } from '../../../src/reflection/type';
+import { t } from '../../../src/decorator';
 
 test('class', () => {
     class Entity {
@@ -30,6 +31,54 @@ test('class', () => {
             }
         ]
     });
+});
+
+test('class constructor', () => {
+    class Entity1 {
+        constructor(title: string) {}
+    }
+
+    class Entity2 {
+        constructor(public title: string) {}
+    }
+
+    expect(reflect(Entity1)).toEqual({
+        kind: ReflectionKind.class,
+        classType: Entity1,
+        types: [
+            {
+                kind: ReflectionKind.method,
+                visibility: ReflectionVisibility.public,
+                name: 'constructor',
+                parameters: [
+                    { kind: ReflectionKind.parameter, name: 'title', type: { kind: ReflectionKind.string } }
+                ],
+                return: { kind: ReflectionKind.any }
+            }
+        ]
+    } as Type);
+
+    expect(reflect(Entity2)).toEqual({
+        kind: ReflectionKind.class,
+        classType: Entity2,
+        types: [
+            {
+                kind: ReflectionKind.method,
+                visibility: ReflectionVisibility.public,
+                name: 'constructor',
+                parameters: [
+                    { kind: ReflectionKind.parameter, name: 'title', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }
+                ],
+                return: { kind: ReflectionKind.any }
+            },
+            {
+                kind: ReflectionKind.property,
+                visibility: ReflectionVisibility.public,
+                name: 'title',
+                type: { kind: ReflectionKind.string }
+            },
+        ]
+    } as Type);
 });
 
 test('interface', () => {
@@ -86,11 +135,11 @@ test('object literal index signature', () => {
     type t = { [name: string]: string | number, a: string, };
     expect(typeOf<t>()).toEqual({
         kind: ReflectionKind.objectLiteral,
-        members: [
+        types: [
             {
                 kind: ReflectionKind.indexSignature,
                 index: { kind: ReflectionKind.string },
-                type: { kind: ReflectionKind.union, members: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.number }] }
+                type: { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.number }] }
             } as TypeIndexSignature,
             {
                 kind: ReflectionKind.propertySignature,
@@ -118,7 +167,7 @@ test('propertiesOf class', () => {
 test('typeof object literal', () => {
     expect(typeOf<{ a: string }>()).toEqual({
         kind: ReflectionKind.objectLiteral,
-        members: [{ kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string } }]
+        types: [{ kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string } }]
     } as TypeObjectLiteral);
 });
 
@@ -128,13 +177,13 @@ test('typeof class', () => {
     expect(typeOf<Entity>()).toEqual({
         kind: ReflectionKind.class,
         classType: Entity,
-        members: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
+        types: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
     } as TypeClass);
 
     expect(reflect(Entity)).toEqual({
         kind: ReflectionKind.class,
         classType: Entity,
-        members: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
+        types: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
     } as TypeClass);
 });
 
@@ -144,13 +193,13 @@ test('typeof generic class', () => {
     expect(typeOf<Entity<string>>()).toEqual({
         kind: ReflectionKind.class,
         classType: Entity,
-        members: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
+        types: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
     } as TypeClass);
 
     expect(reflect(Entity, typeOf<string>())).toEqual({
         kind: ReflectionKind.class,
         classType: Entity,
-        members: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
+        types: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
     } as TypeClass);
 });
 
@@ -164,8 +213,8 @@ test('function', () => {
         kind: ReflectionKind.function,
         name: 'pad',
         parameters: [
-            { kind: ReflectionKind.string },
-            { kind: ReflectionKind.number },
+            { kind: ReflectionKind.parameter, name: 'text', type: { kind: ReflectionKind.string } },
+            { kind: ReflectionKind.parameter, name: 'size', type: { kind: ReflectionKind.number } },
         ],
         return: { kind: ReflectionKind.string }
     });
@@ -177,8 +226,8 @@ test('type function', () => {
     expect(typeOf<pad>()).toEqual({
         kind: ReflectionKind.function,
         parameters: [
-            { kind: ReflectionKind.string },
-            { kind: ReflectionKind.number },
+            { kind: ReflectionKind.parameter, name: 'text', type: { kind: ReflectionKind.string } },
+            { kind: ReflectionKind.parameter, name: 'size', type: { kind: ReflectionKind.number } },
         ],
         return: { kind: ReflectionKind.string }
     });
@@ -316,6 +365,226 @@ test('type alias infer', () => {
         ]
     });
 });
+
+test('user interface', () => {
+    interface User {
+        username: string;
+        created: Date;
+    }
+
+    const type = typeOf<User>();
+    console.log((type as any).types);
+    expect(type).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            {
+                kind: ReflectionKind.propertySignature, name: 'username',
+                type: { kind: ReflectionKind.string }
+            },
+            {
+                kind: ReflectionKind.propertySignature, name: 'created',
+                type: { kind: ReflectionKind.class, classType: Date, types: [] }
+            },
+        ]
+    });
+});
+
+test('generic static', () => {
+    interface Request<T> {
+        body: T;
+    }
+
+    interface Body {
+        title: string;
+    }
+
+    const type = typeOf<Request<Body>>();
+    expect(type).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            {
+                kind: ReflectionKind.propertySignature, name: 'body',
+                type: {
+                    kind: ReflectionKind.objectLiteral, types: [
+                        { kind: ReflectionKind.propertySignature, name: 'title', type: { kind: ReflectionKind.string } }
+                    ]
+                }
+            },
+        ]
+    });
+
+    expect(typeOf<Request<string>>()).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            {
+                kind: ReflectionKind.propertySignature, name: 'body',
+                type: { kind: ReflectionKind.string }
+            },
+        ]
+    });
+});
+
+test('generic dynamic', () => {
+    interface Request<T extends object> {
+        body: T;
+    }
+
+    interface Body {
+        title: string;
+    }
+
+    const type = typeOf<Request<any>>([typeOf<Body>()]);
+    expect(type).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            {
+                kind: ReflectionKind.propertySignature, name: 'body',
+                type: {
+                    kind: ReflectionKind.objectLiteral, types: [
+                        { kind: ReflectionKind.propertySignature, name: 'title', type: { kind: ReflectionKind.string } }
+                    ]
+                }
+            },
+        ]
+    });
+
+    expect(typeOf<Request<any>>([typeOf<string>()])).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            {
+                kind: ReflectionKind.propertySignature, name: 'body',
+                type: { kind: ReflectionKind.string }
+            },
+        ]
+    });
+});
+
+test('reflection class', () => {
+    class User {
+        created: Date = new Date;
+
+        constructor(public username: string) {}
+
+        say(text: string): void {
+            console.log(`${this.username}: ${text}`);
+        }
+    }
+
+    const reflection = ReflectionClass.from(User);
+    expect(reflection.getMethodNames()).toEqual(['constructor', 'say']);
+
+    const sayMethod = reflection.getMethod('say')!;
+    expect(sayMethod.getParameterNames()).toEqual(['text']);
+    expect(sayMethod.getParameter('text')!.kind).toBe(ReflectionKind.parameter);
+    expect(sayMethod.getParameterType('text')!.kind).toBe(ReflectionKind.string);
+    expect(sayMethod.getReturnType().kind).toEqual(ReflectionKind.void);
+
+    expect(reflection.getPropertyNames()).toEqual(['created', 'username']);
+    expect(reflection.getProperty('username')!.type).toEqual({ kind: ReflectionKind.string }); //string
+    expect(reflection.getProperty('username')!.isPublic()).toBe(true); //true
+});
+
+test('reflection function', () => {
+    function say(text: string): void {
+        console.log(`Text: ${text}`);
+    }
+
+    const reflection = ReflectionFunction.from(say);
+    reflection.getParameters(); //[text: string]
+    reflection.getReturnType(); //[void]
+
+    expect(reflection.getParameterNames()).toEqual(['text']);
+    expect(reflection.getParameter('text')!.kind).toBe(ReflectionKind.parameter);
+    expect(reflection.getParameterType('text')!.kind).toBe(ReflectionKind.string);
+
+    expect(reflection.getReturnType().kind).toBe(ReflectionKind.void);
+});
+
+test('primaryKey', () => {
+    class User {
+        id: integer & PrimaryKey = 0;
+    }
+
+    const type = reflect(User);
+    console.log(type);
+})
+
+test('decorate class', () => {
+});
+
+test('decorate interface', () => {
+    function decorate<T>(decorate: { [P in keyof T]?: any }): any {}
+
+    interface User {
+        /**
+         * @description Hello what up?
+         * asdasd
+         *
+         * das
+         */
+        username: string;
+    }
+
+    decorate<User>({
+        username: t.validate(() => 0)
+    });
+});
+
+// test('class generic instance', () => {
+//     class Request<T> {
+//         fetch(): T {
+//             return {} as any;
+//         }
+//     }
+//
+//     const r = new Request<string>();
+//
+//     reflect(r);
+// });
+//
+// test('interface generic instance', () => {
+//     interface Request<T> {
+//         fetch(): T;
+//     }
+//
+//     const r = { fetch() { return '';} } as Request<string>;
+//
+//     reflect(r);
+// });
+
+// test('pass type to function', () => {
+//     function receiver<T>() {
+//         return typeOf<T>();
+//     }
+//
+//     const type1 = receiver<string>();
+//     const type2 = receiver<number>();
+// });
+//
+// test('infer type to function', () => {
+//     function receiver<T>(type: T) {
+//         return typeOf<T>();
+//     }
+//
+//     const type1 = receiver('asd');
+//     const type2 = receiver(123);
+// });
+//
+// test('infer from function call return', () => {
+//     class Response {
+//         constructor(public success: boolean) {}
+//     }
+//
+//     class StreamApiResponseClass<T> {
+//         constructor(public response: T) {}
+//     }
+//
+//     function StreamApiResponse<T>(responseBodyClass: ClassType<T>): ClassType<StreamApiResponseClass<T>> {
+//         return class extends StreamApiResponseClass<T> {};
+//     }
+//
+//     const t = StreamApiResponse(Response);
+// });
 
 // test('typeof T in function', () => {
 //     //todo: should this be supported?
