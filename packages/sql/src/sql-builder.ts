@@ -157,10 +157,10 @@ export class SqlBuilder {
             }
         }
 
+        const forJoinIndex = this.joins.length - 1;
         for (const join of model.joins) {
             if (join.populate) {
                 join.as = refName + '__' + join.propertySchema.name;
-                const forJoinIndex = this.joins.length - 1;
                 const joinMap = {
                     join,
                     forJoinIndex: forJoinIndex,
