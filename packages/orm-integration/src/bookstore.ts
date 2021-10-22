@@ -649,6 +649,45 @@ export const bookstoreTests = {
         }
     },
 
+    async multipleJoins(databaseFactory: DatabaseFactory) {
+        const database = await databaseFactory(entities);
+
+        const group = new Group('admins');
+        const user = new User('Peter');
+        const userGroup = new UserGroup(user, group);
+        const book = new Book(user, 'Great');
+        const review = new Review(user, book);
+        review.status = ReviewStatus.hidden;
+        await database.persist(user, book, review, userGroup);
+
+        {
+            const review = await database.query(Review)
+                .innerJoinWith('book')
+                .innerJoinWith('user')
+                .findOne();
+            expect(review.user.id).toBe(user.id);
+            expect(review.book.id).toBe(book.id);
+            expect(review.user.name).toBe('Peter');
+            expect(review.book.title).toBe('Great');
+            expect(review.status).toBe(ReviewStatus.hidden);
+        }
+
+        {
+            const review = await database.query(Review)
+                .innerJoinWith('book')
+                .useInnerJoinWith('user').innerJoinWith('groups').end()
+                .findOne();
+            expect(review.user.id).toBe(user.id);
+            expect(review.book.id).toBe(book.id);
+            expect(review.user.name).toBe('Peter');
+            expect(review.user.groups.length).toBe(1);
+            expect(review.user.groups[0]).toBeInstanceOf(Group);
+            expect(review.user.groups[0].name).toBe('admins');
+            expect(review.book.title).toBe('Great');
+            expect(review.status).toBe(ReviewStatus.hidden);
+        }
+    },
+
     async enum(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
 
