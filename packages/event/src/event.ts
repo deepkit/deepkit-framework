@@ -11,6 +11,7 @@
 import { ClassType, CompilerContext, isClass, isFunction } from '@deepkit/core';
 import { ConfigSlice, ConfigToken, InjectorContext, InjectorModule } from '@deepkit/injector';
 import { createClassDecoratorContext, createPropertyDecoratorContext } from '@deepkit/type';
+import '@deepkit/type';
 
 export type EventListenerCallback<T> = (event: T) => void | Promise<void>;
 
