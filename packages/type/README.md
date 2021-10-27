@@ -10,7 +10,7 @@ and then use it everywhere: frontend, backend, CLI, database records, http-trans
 
 ## Features
 
-* [Fastest serialization and validation](#benchmark) thanks to a JIT engine. It's the the by far fastest serialization library for both, Nodejs and browsers.
+* [Fastest serialization and validation](#benchmark) thanks to a JIT engine. It's by far the fastest serialization library for both, Nodejs and browsers.
 * Supported types: String, Number, Boolean, Date, Moment.js, ArrayBuffer (binary), custom classes, Array, object maps, any.
 * Typed arrays: Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array, Int32Array, Uint32Array, Float32Array, Float64Array
 * Cross referencing/Circular references using `@t.type(() => MyClass)`
@@ -22,5 +22,5 @@ and then use it everywhere: frontend, backend, CLI, database records, http-trans
 * Support declaring method arguments and return type for method serialization
 * Implicit type detection as far as Typescript allows it technically
 * Supports getters
-* One decorator for all. Best and mist efficient UX possible, with full type hinting support
+* One decorator for all. Best and most efficient UX possible, with full type hinting support
 * Soft type castings (so implicit cast from number -> string, if necessary)
