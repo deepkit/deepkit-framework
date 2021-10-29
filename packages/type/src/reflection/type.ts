@@ -255,11 +255,8 @@ export type float = number;
 export type float32 = number;
 export type float64 = number;
 
-export const ReferenceSymbol = Symbol('reference');
-export type Reference = { [ReferenceSymbol]?: true };
+export const meta = Symbol.for('deepkit/meta');
 
-export const PrimaryKeySymbol = Symbol('primaryKey');
-export type PrimaryKey = { [PrimaryKeySymbol]?: true };
-
-export const BackReferenceSymbol = Symbol('backReference');
-export type BackReference<T = any, VIA extends keyof T = any> = T & { [BackReferenceSymbol]?: true };
+export type Reference = { [meta]?: 'reference' };
+export type PrimaryKey<T> = T & { meta?: 'primaryKey' };
+export type BackReference<T = any, VIA extends keyof T = any> = T & { [meta]?: 'backReference', backReference?: { class: T, via: VIA } };

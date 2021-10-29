@@ -910,3 +910,28 @@ test('brand intersection', () => {
         ]
     } as Type);
 });
+
+
+test('brand intersection symbol', () => {
+    const code = `
+    const meta = Symbol.for('deepkit/meta');
+    type PrimaryKey = { [meta]?: 'primaryKey' };
+
+    return typeOf<string & PrimaryKey>();
+    `;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+    expect(type).toEqual({
+        kind: ReflectionKind.intersection,
+        types: [
+            { kind: ReflectionKind.string },
+            {
+                kind: ReflectionKind.objectLiteral, types: [
+                    { kind: ReflectionKind.propertySignature, name: Symbol.for('deepkit/meta'), type: { kind: ReflectionKind.literal, literal: 'primaryKey' }, optional: true }
+                ]
+            },
+        ]
+    } as Type);
+});

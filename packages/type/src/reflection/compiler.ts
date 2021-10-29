@@ -58,6 +58,7 @@ import {
     isParenthesizedTypeNode,
     isStringLiteral,
     isTypeAliasDeclaration,
+    isTypeLiteralNode,
     isTypeReferenceNode,
     LiteralTypeNode,
     MappedTypeNode,
@@ -660,7 +661,7 @@ export class ReflectionTransformer {
                 this.compileDeclarations.delete(node);
                 const typeProgram = new CompilerProgram();
 
-                if (node.typeParameters) {
+                if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && node.typeParameters) {
                     for (const param of node.typeParameters) {
                         typeProgram.pushTemplateParameter(param.name.text);
                     }
@@ -671,6 +672,7 @@ export class ReflectionTransformer {
                     this.extractPackStructOfType(node, typeProgram);
                 }
                 const typeProgramExpression = this.packOpsAndStack(typeProgram.buildPackStruct());
+
                 const statements: Statement[] = [node];
 
                 statements.push(this.f.createVariableStatement(
@@ -692,6 +694,10 @@ export class ReflectionTransformer {
 
         while (this.compileDeclarations.size > 0) {
             this.sourceFile = visitNode(this.sourceFile, compileDeclarations);
+        }
+
+        if (this.embedDeclarations.size) {
+
         }
 
         return this.sourceFile;
@@ -1157,6 +1163,7 @@ export class ReflectionTransformer {
     // }
 
     protected compileDeclarations = new Map<TypeAliasDeclaration | InterfaceDeclaration, { name: EntityName }>();
+    protected embedDeclarations = new Map<Node, { name: EntityName }>();
 
     protected getDeclarationVariableName(typeName: EntityName) {
         if (isIdentifier(typeName)) {
@@ -1234,9 +1241,14 @@ export class ReflectionTransformer {
             const declaration = resolved.declaration;
 
             if (isTypeAliasDeclaration(declaration) || isInterfaceDeclaration(declaration)) {
-                //store its declaration in its own definition program
+                // store its declaration in its own definition program
                 const index = program.pushStack(this.getDeclarationVariableName(type.typeName));
-                this.compileDeclarations.set(declaration, { name: type.typeName });
+
+                if (resolved!.importSpecifier) {
+                    this.embedDeclarations.set(declaration, { name: type.typeName });
+                } else {
+                    this.compileDeclarations.set(declaration, { name: type.typeName });
+                }
 
                 if (type.typeArguments) {
                     for (const argument of type.typeArguments) {
@@ -1246,6 +1258,9 @@ export class ReflectionTransformer {
                 } else {
                     program.pushOp(ReflectionOp.inline, index);
                 }
+            } else if (isTypeLiteralNode(declaration)) {
+                this.embedDeclarations.set(declaration, { name: type.typeName });
+
             } else if (isMappedTypeNode(declaration)) {
                 //<Type>{[Property in keyof Type]: boolean;};
                 this.extractPackStructOfType(declaration, program);
