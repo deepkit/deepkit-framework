@@ -79,12 +79,12 @@ export class SqlBuilder {
         }
     }
 
-    protected appendHavingSQL(sql: Sql, schema: ClassSchema, model: DatabaseQueryModel<any>, tableName?: string) {
+    protected appendHavingSQL(sql: Sql, schema: ClassSchema, model: DatabaseQueryModel<any>, tableName: string) {
         if (!model.having) return;
 
         // tableName = tableName || this.platform.getTableIdentifier(schema);
         const filter = getSqlFilter(schema, model.having, model.parameters, this.platform.serializer);
-        const builder = this.platform.createSqlFilterBuilder(schema, '');
+        const builder = this.platform.createSqlFilterBuilder(schema, tableName);
         builder.placeholderStrategy.offset = sql.params.length;
         const whereClause = builder.convert(filter);
 
@@ -361,10 +361,12 @@ export class SqlBuilder {
             }
         }
 
+        const tableName = this.platform.getTableIdentifier(schema);
+
         const order: string[] = [];
         if (model.sort) {
             for (const [name, sort] of Object.entries(model.sort)) {
-                order.push(`${this.platform.quoteIdentifier(name)} ${sort}`);
+                order.push(`${tableName}.${this.platform.quoteIdentifier(name)} ${sort}`);
             }
         }
 
@@ -373,13 +375,13 @@ export class SqlBuilder {
         if (model.groupBy.size) {
             const groupBy: string[] = [];
             for (const g of model.groupBy.values()) {
-                groupBy.push(this.platform.quoteIdentifier(g));
+                groupBy.push(`${tableName}.${this.platform.quoteIdentifier(g)}`);
             }
 
             sql.append('GROUP BY ' + groupBy.join(', '));
         }
 
-        this.appendHavingSQL(sql, schema, model);
+        this.appendHavingSQL(sql, schema, model, tableName);
 
         if (order.length) {
             sql.append(' ORDER BY ' + (order.join(', ')));
