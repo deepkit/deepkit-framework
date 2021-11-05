@@ -253,6 +253,16 @@ export class SQLitePersistence extends SQLPersistence {
         super(platform, connectionPool, database);
     }
 
+    protected getInsertSQL(classSchema: ReflectionClass<any>, fields: string[], values: string[]): string {
+        if (fields.length === 0) {
+            const pkName = this.platform.quoteIdentifier(classSchema.getPrimary().name);
+            fields.push(pkName);
+            values.fill('NULL');
+        }
+
+        return super.getInsertSQL(classSchema, fields, values);
+    }
+
     async batchUpdate<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         const partialSerialize = getPartialSerializeFunction(classSchema.type, this.platform.serializer.serializeRegistry);
         const tableName = this.platform.getTableIdentifier(classSchema);

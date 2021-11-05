@@ -312,5 +312,15 @@ export const variousTests = {
             await database.query(User).filter({ username: 'Peter2' }).patchOne({ username: 'Peter' });
         }).rejects.toThrow(UniqueConstraintFailure);
         database.disconnect();
+    },
+    async emptyEntity(databaseFactory: DatabaseFactory) {
+        @entity.name('empty-entity')
+        class EmptyEntity {
+            id: number & PrimaryKey & AutoIncrement = 0;
+        }
+
+        const database = await databaseFactory([EmptyEntity]);
+
+        await expect(database.persist(new EmptyEntity())).resolves.not.toThrow();
     }
 };
