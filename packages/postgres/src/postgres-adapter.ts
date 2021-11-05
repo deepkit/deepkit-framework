@@ -394,6 +394,12 @@ export class PostgresPersistence extends SQLPersistence {
         const autoIncrement = classSchema.getAutoIncrementField();
         const returning = autoIncrement ? ` RETURNING ${this.platform.quoteIdentifier(autoIncrement.name)}` : '';
 
+        if (fields.length === 0) {
+            const pkName = this.platform.quoteIdentifier(classSchema.getPrimaryFieldName());
+            fields.push(pkName);
+            values.fill('DEFAULT');
+        }
+
         return `INSERT INTO ${this.platform.getTableIdentifier(classSchema)} (${fields.join(', ')}) VALUES (${values.join('), (')}) ${returning}`;
     }
 

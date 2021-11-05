@@ -306,5 +306,15 @@ export const variousTests = {
             await database.persist(new User('Peter2'));
             await database.query(User).filter({username: 'Peter2'}).patchOne({username: 'Peter'});
         }).rejects.toThrow(UniqueConstraintFailure);
+    },
+    async emptyEntity(databaseFactory: DatabaseFactory) {
+        @entity.name('empty-entity')
+        class EmptyEntity {
+            @t.primary.autoIncrement id: number = 0;
+        }
+
+        const database = await databaseFactory([EmptyEntity]);
+
+        await expect(database.persist(new EmptyEntity())).resolves.not.toThrow();
     }
 };
