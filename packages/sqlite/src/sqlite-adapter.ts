@@ -253,6 +253,16 @@ export class SQLitePersistence extends SQLPersistence {
         super(platform, connectionPool, database);
     }
 
+    protected getInsertSQL(classSchema: ClassSchema, fields: string[], values: string[]): string {
+        if (fields.length === 0) {
+            const pkName = this.platform.quoteIdentifier(classSchema.getPrimaryFieldName());
+            fields.push(pkName);
+            values.fill('NULL');
+        }
+
+        return super.getInsertSQL(classSchema, fields, values);
+    }
+
     async batchUpdate<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         const scopeSerializer = this.platform.serializer.for(classSchema);
         const tableName = this.platform.getTableIdentifier(classSchema);
