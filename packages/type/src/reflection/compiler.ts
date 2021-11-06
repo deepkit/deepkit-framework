@@ -88,12 +88,12 @@ import {
     visitEachChild,
     visitNode,
 } from 'typescript';
-import { ClassType, isArray } from '@deepkit/core';
-import { extractJSDocAttribute, getNameAsString, getPropertyName, hasModifier } from './reflection-ast';
-import { existsSync, readFileSync } from 'fs';
-import { dirname, join, resolve } from 'path';
+import {ClassType, isArray} from '@deepkit/core';
+import {extractJSDocAttribute, getNameAsString, getPropertyName, hasModifier} from './reflection-ast';
+import {existsSync, readFileSync} from 'fs';
+import {dirname, join, resolve} from 'path';
 import stripJsonComments from 'strip-json-comments';
-import { Type, TypeNumberBrand } from './type';
+import {Type, TypeNumberBrand} from './type';
 
 /**
  * The instruction set.
@@ -299,13 +299,13 @@ export function unpack(pack: Packed): PackStruct {
 
     if ('string' === typeof pack) {
         unpackOps(ops, pack);
-        return { ops, stack };
+        return {ops, stack};
     }
 
     const encodedOPs = pack[pack.length - 1];
 
     //the end has always to be a string
-    if ('string' !== typeof encodedOPs) return { ops: [], stack: [] };
+    if ('string' !== typeof encodedOPs) return {ops: [], stack: []};
 
     if (pack.length > 1) {
         stack.push(...pack.slice(0, -1) as StackEntry[]);
@@ -313,7 +313,7 @@ export function unpack(pack: Packed): PackStruct {
 
     unpackOps(ops, encodedOPs);
 
-    return { ops, stack };
+    return {ops, stack};
 }
 
 /**
@@ -330,26 +330,26 @@ interface EmitResolver {
 const reflectionModes = ['always', 'default', 'never'] as const;
 
 const OPs: { [op in ReflectionOp]?: { params: number } } = {
-    [ReflectionOp.literal]: { params: 1 },
-    [ReflectionOp.pointer]: { params: 1 },
-    [ReflectionOp.arg]: { params: 1 },
-    [ReflectionOp.classReference]: { params: 1 },
-    [ReflectionOp.propertySignature]: { params: 1 },
-    [ReflectionOp.property]: { params: 1 },
-    [ReflectionOp.jump]: { params: 1 },
-    [ReflectionOp.enum]: { params: 1 },
-    [ReflectionOp.template]: { params: 1 },
-    [ReflectionOp.mappedType]: { params: 2 },
-    [ReflectionOp.call]: { params: 1 },
-    [ReflectionOp.inline]: { params: 1 },
-    [ReflectionOp.inlineCall]: { params: 2 },
-    [ReflectionOp.loads]: { params: 2 },
-    [ReflectionOp.infer]: { params: 2 },
-    [ReflectionOp.defaultValue]: { params: 1 },
-    [ReflectionOp.parameter]: { params: 1 },
-    [ReflectionOp.method]: { params: 1 },
-    [ReflectionOp.description]: { params: 1 },
-    [ReflectionOp.numberBrand]: { params: 1 },
+    [ReflectionOp.literal]: {params: 1},
+    [ReflectionOp.pointer]: {params: 1},
+    [ReflectionOp.arg]: {params: 1},
+    [ReflectionOp.classReference]: {params: 1},
+    [ReflectionOp.propertySignature]: {params: 1},
+    [ReflectionOp.property]: {params: 1},
+    [ReflectionOp.jump]: {params: 1},
+    [ReflectionOp.enum]: {params: 1},
+    [ReflectionOp.template]: {params: 1},
+    [ReflectionOp.mappedType]: {params: 2},
+    [ReflectionOp.call]: {params: 1},
+    [ReflectionOp.inline]: {params: 1},
+    [ReflectionOp.inlineCall]: {params: 2},
+    [ReflectionOp.loads]: {params: 2},
+    [ReflectionOp.infer]: {params: 2},
+    [ReflectionOp.defaultValue]: {params: 1},
+    [ReflectionOp.parameter]: {params: 1},
+    [ReflectionOp.method]: {params: 1},
+    [ReflectionOp.description]: {params: 1},
+    [ReflectionOp.numberBrand]: {params: 1},
 };
 
 export function debugPackStruct(pack: PackStruct): void {
@@ -385,7 +385,7 @@ interface Frame {
 function findVariable(frame: Frame, name: string, frameOffset: number = 0): { frameOffset: number, stackIndex: number } | undefined {
     const variable = frame.variables.find(v => v.name === name);
     if (variable) {
-        return { frameOffset, stackIndex: variable.index };
+        return {frameOffset, stackIndex: variable.index};
     }
 
     if (frame.previous) return findVariable(frame.previous, name, frameOffset + 1);
@@ -407,7 +407,7 @@ class CompilerProgram {
 
     protected stackPosition: number = 0;
 
-    protected frame: Frame = { variables: [], opIndex: 0 };
+    protected frame: Frame = {variables: [], opIndex: 0};
 
     protected activeCoRoutines: { ops: ReflectionOp[] }[] = [];
     protected coRoutines: { ops: ReflectionOp[] }[] = [];
@@ -444,7 +444,7 @@ class CompilerProgram {
 
     pushCoRoutine(): void {
         this.pushFrame(true); //co-routines have implicit stack frames due to call convention
-        this.activeCoRoutines.push({ ops: [] });
+        this.activeCoRoutines.push({ops: []});
     }
 
     popCoRoutine(): number {
@@ -498,7 +498,7 @@ class CompilerProgram {
     pushFrame(implicit: boolean = false) {
         if (!implicit) this.pushOp(ReflectionOp.frame);
         const opIndex = this.activeCoRoutines.length ? this.activeCoRoutines[this.activeCoRoutines.length - 1].ops.length : this.ops.length;
-        this.frame = { previous: this.frame, variables: [], opIndex };
+        this.frame = {previous: this.frame, variables: [], opIndex};
         return this.frame;
     }
 
@@ -560,7 +560,7 @@ export class ReflectionTransformer {
         const sourceFile: SourceFile = this.sourceFile;
         if ((sourceFile as any)._typeChecker) return (sourceFile as any)._typeChecker;
         const host = createCompilerHost(this.context.getCompilerOptions());
-        const program = createProgram([sourceFile.fileName], this.context.getCompilerOptions(), { ...host, ...this.host });
+        const program = createProgram([sourceFile.fileName], this.context.getCompilerOptions(), {...host, ...this.host});
         return (sourceFile as any)._typeChecker = program.getTypeChecker();
     }
 
@@ -659,34 +659,7 @@ export class ReflectionTransformer {
             if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && this.compileDeclarations.has(node)) {
                 const d = this.compileDeclarations.get(node)!;
                 this.compileDeclarations.delete(node);
-                const typeProgram = new CompilerProgram();
-
-                if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && node.typeParameters) {
-                    for (const param of node.typeParameters) {
-                        typeProgram.pushTemplateParameter(param.name.text);
-                    }
-                }
-                if (isTypeAliasDeclaration(node)) {
-                    this.extractPackStructOfType(node.type, typeProgram);
-                } else {
-                    this.extractPackStructOfType(node, typeProgram);
-                }
-                const typeProgramExpression = this.packOpsAndStack(typeProgram.buildPackStruct());
-
-                const statements: Statement[] = [node];
-
-                statements.push(this.f.createVariableStatement(
-                    undefined,
-                    this.f.createVariableDeclarationList([
-                        this.f.createVariableDeclaration(
-                            this.getDeclarationVariableName(d.name),
-                            undefined,
-                            undefined,
-                            typeProgramExpression,
-                        )
-                    ])
-                ));
-                return statements;
+                return [node, this.createProgramVarFromNode(node, d.name)];
             }
 
             return node;
@@ -697,10 +670,45 @@ export class ReflectionTransformer {
         }
 
         if (this.embedDeclarations.size) {
-
+            const embeded: Statement[] = [];
+            for (const [node, d] of this.embedDeclarations.entries()) {
+                embeded.push(this.createProgramVarFromNode(node, d.name));
+            }
+            return this.f.updateSourceFile(this.sourceFile, [...embeded, ...this.sourceFile.statements],
+                this.sourceFile.isDeclarationFile, this.sourceFile.referencedFiles, this.sourceFile.typeReferenceDirectives, this.sourceFile.hasNoDefaultLib,
+                this.sourceFile.libReferenceDirectives
+            );
         }
 
         return this.sourceFile;
+    }
+
+    protected createProgramVarFromNode(node: Node, name: EntityName) {
+        const typeProgram = new CompilerProgram();
+
+        if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && node.typeParameters) {
+            for (const param of node.typeParameters) {
+                typeProgram.pushTemplateParameter(param.name.text);
+            }
+        }
+        if (isTypeAliasDeclaration(node)) {
+            this.extractPackStructOfType(node.type, typeProgram);
+        } else {
+            this.extractPackStructOfType(node, typeProgram);
+        }
+        const typeProgramExpression = this.packOpsAndStack(typeProgram.buildPackStruct());
+
+        return this.f.createVariableStatement(
+            undefined,
+            this.f.createVariableDeclarationList([
+                this.f.createVariableDeclaration(
+                    this.getDeclarationVariableName(name),
+                    undefined,
+                    undefined,
+                    typeProgramExpression,
+                )
+            ])
+        );
     }
 
     protected extractPackStructOfType(node: Node | Declaration | ClassDeclaration | ClassExpression, program: CompilerProgram): void {
@@ -989,6 +997,9 @@ export class ReflectionTransformer {
 
                 if (!program.isEmpty()) program.pushFrame();
 
+                const name = isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
+                if (!narrowed.type && narrowed.parameters.length === 0 && !name) return;
+
                 for (const parameter of narrowed.parameters) {
                     //we support at the moment only identifier as name
                     if (!isIdentifier(parameter.name)) continue;
@@ -1014,7 +1025,6 @@ export class ReflectionTransformer {
                     program.pushOp(ReflectionOp.any);
                 }
 
-                const name = isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
                 program.pushOp(isMethodDeclaration(narrowed) || isConstructorDeclaration(narrowed) ? ReflectionOp.method : ReflectionOp.function, program.findOrAddStackEntry(name));
 
                 if (isMethodDeclaration(narrowed)) {
@@ -1139,7 +1149,7 @@ export class ReflectionTransformer {
 
         if (!declaration) return;
 
-        return { declaration, importSpecifier };
+        return {declaration, importSpecifier};
     }
 
     // protected resolveType(node: TypeNode): Declaration | Node {
@@ -1162,7 +1172,16 @@ export class ReflectionTransformer {
     //     return node;
     // }
 
+    /**
+     * Types added to this map will get a type program directly under it.
+     * This is for types used in the very same file.
+     */
     protected compileDeclarations = new Map<TypeAliasDeclaration | InterfaceDeclaration, { name: EntityName }>();
+
+    /**
+     * Types added to this map will get a type program at the top root level of the program.
+     * This is for imported types, which need to be inline into the current file, as we do not emit type imports (TS will omit them).
+     */
     protected embedDeclarations = new Map<Node, { name: EntityName }>();
 
     protected getDeclarationVariableName(typeName: EntityName) {
@@ -1207,20 +1226,26 @@ export class ReflectionTransformer {
 
             const resolved = this.resolveDeclaration(type.typeName);
             if (!resolved) {
-                //we don't resolve yet global identifiers as it's not clear how to resolve them efficiently.
-                // if (isIdentifier(type.typeName)) {
-                //     if (type.typeName.escapedText === 'Partial') {
-                //         //type Partial<T> = {
-                //         //    [P in keyof T]?: T[P]
-                //         //};
-                //         //type Partial<T> = {
-                //         //    [P in keyof T]?: {[index: string]: T}
-                //         //};
-                //         //type Partial<T extends string> = {
-                //         //    [P in T]: number
-                //         //};
-                //     }
-                // }
+                //if a global well-known type is not available, we try to check its name and infer from it the actual type.
+                if (isIdentifier(type.typeName)) {
+                    if (type.typeName.escapedText === 'Omit') {
+                    }
+                    if (type.typeName.escapedText === 'Exclude') {
+                    }
+                    if (type.typeName.escapedText === 'Record') {
+                        if (type.typeArguments && type.typeArguments.length === 2) {
+                            for (const argument of type.typeArguments) {
+                                this.extractPackStructOfType(argument, program);
+                            }
+                            program.pushOp(ReflectionOp.indexSignature);
+                            program.pushOp(ReflectionOp.objectLiteral);
+                            return;
+                        }
+                    }
+                    if (type.typeName.escapedText === 'Partial') {
+                        console.log(type);
+                    }
+                }
 
                 //non existing references are ignored.
                 program.pushOp(ReflectionOp.any);
@@ -1245,9 +1270,9 @@ export class ReflectionTransformer {
                 const index = program.pushStack(this.getDeclarationVariableName(type.typeName));
 
                 if (resolved!.importSpecifier) {
-                    this.embedDeclarations.set(declaration, { name: type.typeName });
+                    this.embedDeclarations.set(declaration, {name: type.typeName});
                 } else {
-                    this.compileDeclarations.set(declaration, { name: type.typeName });
+                    this.compileDeclarations.set(declaration, {name: type.typeName});
                 }
 
                 if (type.typeArguments) {
@@ -1259,8 +1284,8 @@ export class ReflectionTransformer {
                     program.pushOp(ReflectionOp.inline, index);
                 }
             } else if (isTypeLiteralNode(declaration)) {
-                this.embedDeclarations.set(declaration, { name: type.typeName });
-
+                this.extractPackStructOfType(declaration, program);
+                return;
             } else if (isMappedTypeNode(declaration)) {
                 //<Type>{[Property in keyof Type]: boolean;};
                 this.extractPackStructOfType(declaration, program);
@@ -1452,7 +1477,7 @@ export class ReflectionTransformer {
         return mode || 'never';
     }
 
-    protected resolvedTsConfig: { [path: string]: Record<string, any> } = {};
+    protected resolvedTsConfig: { [path: string]: { data: Record<string, any>, exists: boolean } } = {};
 
     protected findReflectionConfig(node: Node): { mode: typeof reflectionModes[number] } {
         let current: Node | undefined = node;
@@ -1462,43 +1487,45 @@ export class ReflectionTransformer {
             const tags = getJSDocTags(current);
             for (const tag of tags) {
                 if (!reflection && tag.tagName.text === 'reflection' && 'string' === typeof tag.comment) {
-                    return { mode: this.parseReflectionMode(tag.comment as any || true) };
+                    return {mode: this.parseReflectionMode(tag.comment as any || true)};
                 }
             }
             current = current.parent;
         } while (current);
 
         //nothing found, look in tsconfig.json
-        if (this.reflectionMode !== undefined) return { mode: this.reflectionMode };
+        if (this.reflectionMode !== undefined) return {mode: this.reflectionMode};
         let currentDir = dirname(this.sourceFile.fileName);
 
         while (currentDir) {
-            const exists = existsSync(join(currentDir, 'tsconfig.json'));
-            if (exists) {
-                const tsconfigPath = join(currentDir, 'tsconfig.json');
-                try {
-                    let tsConfig: Record<string, any> = {};
-                    if (this.resolvedTsConfig[tsconfigPath]) {
-                        tsConfig = this.resolvedTsConfig[tsconfigPath];
-                    } else {
+            const tsconfigPath = join(currentDir, 'tsconfig.json');
+            let tsConfig: Record<string, any> = {};
+            const cache = this.resolvedTsConfig[tsconfigPath];
+            if (cache) {
+                tsConfig = this.resolvedTsConfig[tsconfigPath].data;
+            } else {
+                const exists = existsSync(tsconfigPath);
+                this.resolvedTsConfig[tsconfigPath] = {exists, data: {}};
+                if (exists) {
+                    try {
                         let content = readFileSync(tsconfigPath, 'utf8');
                         content = stripJsonComments(content);
                         tsConfig = JSON.parse(content);
+                        this.resolvedTsConfig[tsconfigPath].data = tsConfig;
+                    } catch (error: any) {
+                        console.warn(`Could not parse ${tsconfigPath}: ${error}`);
                     }
-
-                    if (reflection === undefined && tsConfig.reflection !== undefined) {
-                        return { mode: this.parseReflectionMode(tsConfig.reflection) };
-                    }
-                } catch (error: any) {
-                    console.warn(`Could not parse ${tsconfigPath}: ${error}`);
                 }
+            }
+            if (reflection === undefined && tsConfig.reflection !== undefined) {
+                return {mode: this.parseReflectionMode(tsConfig.reflection)};
             }
             const next = join(currentDir, '..');
             if (resolve(next) === resolve(currentDir)) break; //we are at root
             currentDir = next;
         }
 
-        return { mode: reflection || 'never' };
+        return {mode: reflection || 'never'};
     }
 }
 

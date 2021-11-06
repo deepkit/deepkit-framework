@@ -1,5 +1,5 @@
 /** @reflection never */
-import { describe, expect, test } from '@jest/globals';
+import {describe, expect, test} from '@jest/globals';
 import {
     CompilerOptions,
     createCompilerHost,
@@ -13,10 +13,10 @@ import {
     TransformationContext,
     transpileModule
 } from 'typescript';
-import { pack, ReflectionOp, ReflectionTransformer, transformer } from '../../src/reflection/compiler';
-import { reflect, reflect as reflect2, ReflectionClass, typeOf as typeOf2 } from '../../src/reflection/reflection';
-import { assertType, ReflectionKind, ReflectionVisibility, Type, TypeClass, TypeFunction, TypeObjectLiteral, TypeProperty, TypeUnion } from '../../src/reflection/type';
-import { ClassType } from '@deepkit/core';
+import {pack, ReflectionOp, ReflectionTransformer, transformer} from '../../src/reflection/compiler';
+import {reflect, reflect as reflect2, ReflectionClass, typeOf as typeOf2} from '../../src/reflection/reflection';
+import {assertType, ReflectionKind, ReflectionVisibility, Type, TypeClass, TypeFunction, TypeObjectLiteral, TypeProperty, TypeUnion} from '../../src/reflection/type';
+import {ClassType} from '@deepkit/core';
 
 Error.stackTraceLimit = 200;
 
@@ -32,7 +32,7 @@ function transpile(source: string | { [file: string]: string }, useTransformer: 
         return transpileModule(source, {
             fileName: __dirname + '/module.ts',
             compilerOptions: options,
-            transformers: { before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflectionMode('always')] }
+            transformers: {before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflectionMode('always')]}
         }).outputText;
     }
 
@@ -53,7 +53,7 @@ function transpile(source: string | { [file: string]: string }, useTransformer: 
         if (fileName.endsWith('app.js')) appTs = data;
     };
 
-    const ori = { ...host };
+    const ori = {...host};
     host.getSourceFile = (fileName: string, languageVersion: ScriptTarget) => {
         return files[fileName] || ori.getSourceFile(fileName, languageVersion);
     };
@@ -62,7 +62,7 @@ function transpile(source: string | { [file: string]: string }, useTransformer: 
     };
 
     const program = createProgram(Object.keys(files), options, host);
-    program.emit(files[appPath], undefined, undefined, undefined, { before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflectionMode('always')] });
+    program.emit(files[appPath], undefined, undefined, undefined, {before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflectionMode('always')]});
     return appTs;
 }
 
@@ -97,7 +97,7 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
 
     [
         `class Container<T> {data: T extends boolean ? number : never}`,
-        `Container.__type = ['T', 'data', ${packString([ReflectionOp.template, 0, ReflectionOp.loads, 0, 0, ReflectionOp.boolean, ReflectionOp.extends, ReflectionOp.number, ReflectionOp.never, ReflectionOp.condition, ReflectionOp.property, 1, ReflectionOp.class])}]`
+        `Container.__type = ['T', 'data', ${packString([ReflectionOp.template, 0, ReflectionOp.frame, ReflectionOp.loads, 1, 0, ReflectionOp.boolean, ReflectionOp.extends, ReflectionOp.number, ReflectionOp.never, ReflectionOp.condition, ReflectionOp.property, 1, ReflectionOp.class])}]`
     ],
 
     [
@@ -111,10 +111,10 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
     [`class Entity { p: Uint8Array }`, `['p', ${packString([ReflectionOp.uint8Array, ReflectionOp.property, 0, ReflectionOp.class])}]`],
     [`class Model{}; class Entity { p: Model }`, `[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
 
-    [`class Entity { constructor(param: string) {} }`, `['constructor', ${packString([ReflectionOp.string, ReflectionOp.any, ReflectionOp.method, 0, ReflectionOp.class])}]`],
-    [`class Entity { p(param: string): void }`, `['p', ${packString([ReflectionOp.string, ReflectionOp.void, ReflectionOp.method, 0, ReflectionOp.class])}]`],
-    [`class Entity { p(param: string): any }`, `['p', ${packString([ReflectionOp.string, ReflectionOp.any, ReflectionOp.method, 0, ReflectionOp.class])}]`],
-    [`class Entity { p(param: string, size: number): void }`, `['p', ${packString([ReflectionOp.string, ReflectionOp.number, ReflectionOp.void, ReflectionOp.method, 0, ReflectionOp.class])}]`],
+    [`class Entity { constructor(param: string) {} }`, `['param', 'constructor', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.any, ReflectionOp.method, 1, ReflectionOp.class])}]`],
+    [`class Entity { p(param: string): void }`, `['param', 'p', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.method, 1, ReflectionOp.class])}]`],
+    [`class Entity { p(param: string): any }`, `['param', 'p', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.any, ReflectionOp.method, 1, ReflectionOp.class])}]`],
+    [`class Entity { p(param: string, size: number): void }`, `['param', 'size', 'p', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.number, ReflectionOp.parameter, 1, ReflectionOp.void, ReflectionOp.method, 2, ReflectionOp.class])}]`],
 
     [`function f() {enum MyEnum {}; class Entity { p: MyEnum;} }`, `[() => MyEnum, 'p', ${packString([ReflectionOp.enum, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
 
@@ -127,14 +127,13 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
     [`class Entity { p: 'a' | 'b' | null;}`, `['a', 'b', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.literal, 1, ReflectionOp.null, ReflectionOp.union, ReflectionOp.property, 2, ReflectionOp.class])}]`],
     [`class Entity { p: ('a' | 'b')[];}`, `['a', 'b', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.literal, 1, ReflectionOp.union, ReflectionOp.array, ReflectionOp.property, 2, ReflectionOp.class])}]`],
     [`class Entity { p?: ('a' | 'b')[];}`, `['a', 'b', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.literal, 1, ReflectionOp.union, ReflectionOp.array, ReflectionOp.property, 2, ReflectionOp.optional, ReflectionOp.class])}]`],
-    [`class Entity { p: {[name: string]: number};}`, `['p', ${packString([ReflectionOp.string, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { p: {[name: string]: number|undefined};}`, `['p', ${packString([ReflectionOp.string, ReflectionOp.frame, ReflectionOp.number, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { p: {[name: number]: number};}`, `['p', ${packString([ReflectionOp.number, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { p: {[name: string]: number};}`, `['p', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { p: {[name: string]: number|undefined};}`, `['p', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.frame, ReflectionOp.number, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { p: {[name: number]: number};}`, `['p', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
 
-    // todo: Record is just an alias to an indexSignature in a ObjectLiteral
-    // [`class Entity { p: Record<string, number>; }`, `{ p: ${packString([ReflectionOp.objectLiteral, ReflectionOp.indexSignature, ReflectionOp.string, ReflectionOp.number])}`],
-    // [`class Entity { p: Record<string, number|undefined>;}`, `{ p: ${packString([ReflectionOp.objectLiteral, ReflectionOp.indexSignature, ReflectionOp.string, ReflectionOp.union, ReflectionOp.number, ReflectionOp.undefined])}`],
-    // [`class Entity { p: Record<number, number>;`, `{ p: ${packString([ReflectionOp.objectLiteral, ReflectionOp.indexSignature, ReflectionOp.number, ReflectionOp.number])}`],
+    [`class Entity { p: Record<string, number>; }`, `['p', ${packString([ReflectionOp.string, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { p: Record<string, number|undefined>; }`, `['p', ${packString([ReflectionOp.string, ReflectionOp.frame, ReflectionOp.number, ReflectionOp.undefined,ReflectionOp.union, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { p: Record<number, number>; }`, `['p', ${packString([ReflectionOp.number, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
 
     [{
         app: `import {MyEnum} from './enum'; class Entity { p: MyEnum;}`,
@@ -146,20 +145,26 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
         model: `export class Model {}`
     }, `[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
 
-    // [`export interface MyInterface {id: number}; class Controller { public p: MyInterface[] = [];}`,
-    //     [`! RpcExecutionSubscription`, `['id', 'p', ${packString([ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.class])}]`]
-    // ],
-    //
-    // [`interface Base {title: string} interface MyInterface extends Base {id: number} class Controller { public p: MyInterface[] = [];}`,
-    //     [`!MyInterface`, `!Base`, `['id', 'title', 'p', ${packString([ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.string, ReflectionOp.propertySignature, 1, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 2, ReflectionOp.class])}]`]
-    // ],
-    //
-    // [`export type RpcExecutionSubscription = {id: number}; class Controller { public p: RpcExecutionSubscription[] = [];}`,
-    //     [`! RpcExecutionSubscription`, `['id', 'p', ${packString([ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.class])}]`]
-    // ],
-    // [`export type MyAlias = string; class Controller { public p: MyAlias[] = [];}`,
-    //     [`! MyAlias`, `['p', ${packString([ReflectionOp.string, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class])}]`]
-    // ],
+    [`export interface MyInterface {id: number}; class Controller { public p: MyInterface[] = [];}`,
+        [
+            `['id', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral])}]`,
+            `[__ΩMyInterface, 'p', () => [], ${packString([ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.defaultValue, 2, ReflectionOp.class])}]`
+        ]
+    ],
+
+    [`interface Base {title: string}; interface MyInterface extends Base {id: number}; class Controller { public p: MyInterface[] = [];}`,
+        [
+            `['id', 'title', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.string, ReflectionOp.propertySignature, 1, ReflectionOp.objectLiteral])}]`,
+            `[__ΩMyInterface, 'p', () => [], ${packString([ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.defaultValue, 2, ReflectionOp.class])}]`
+        ]
+    ],
+
+    [`export type MyAlias = string; class Controller { public p: MyAlias[] = [];}`,
+        [
+            `${packString([ReflectionOp.string])}`,
+            `[__ΩMyAlias, 'p', () => [], ${packString([ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.defaultValue, 2, ReflectionOp.class])}]`,
+        ]
+    ],
 
     [`
     /** @reflection never */
@@ -176,48 +181,48 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
         }
     }`, `['p2', ${packString([ReflectionOp.number, ReflectionOp.property, 0, ReflectionOp.class])}]`],
 
-    // Imported interfaces/types will be erased
+    // Imported interfaces/types will be erased and inlined
     [{
         app: `import {Type} from './model'; class Entity { p: Type[];}`,
         model: `export type Type = {title: string}`
-    }, ['!Type', `!./model`, `!import {Type} from './model'`]],
+    }, [
+        `!./model`, `!import {Type} from './model'`,
+        `['title', 'p', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.class])}]`,
+    ]],
 
-    // [{
-    //     app: `import {Message, Model} from './model'; class Entity { p: Message[]; m: Model[];}`,
-    //     model: `export type Message = number; export class Model {};`
-    // }, ['!Message', `import { Model } from './model'`, `['p', () => Model, 'm', ${packString([
-    //     ReflectionOp.number, ReflectionOp.array, ReflectionOp.property, 0,
-    //     ReflectionOp.classReference, 1, ReflectionOp.array, ReflectionOp.property, 2, ReflectionOp.class])}]`]],
+    [{
+        app: `import {Message, Model} from './model'; class Entity { p: Message[]; m: Model[];}`,
+        model: `export type Message = number; export class Model {};`
+    }, [`import { Model } from './model'`, `[__ΩMessage, 'p', () => Model, 'm', ${packString([
+        ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1,
+        ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
 
     [{
         app: `import {Type} from './model'; class Entity { p: Type[];}`,
         model: `export interface Type {title: string}`
-    }, ['!Type', `!./model`, `!import {Type} from './model'`]],
+    }, [`!./model`, `!import {Type} from './model'`]],
 
     // multiple exports can be resolved
     [{
         app: `import {Type, Model} from './myPackage'; class Entity { p: Type[]; p2: Model[]};`,
         myPackage: `export * from './myPackageModel';`,
         myPackageModel: `export interface Type {title: string}; export class Model {}`
-    }, ['!Type', `import { Model } from './myPackage'`, `['title', 'p', () => Model, 'p2', ${packString([
-        ReflectionOp.string, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 1,
-        ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
+    }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
+        ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
 
     [{
         app: `import {Type, Model} from './myPackage'; class Entity { p: Type[]; p2: Model[]};`,
         myPackage: `export {Model, Type} from './myPackageModel';`,
         myPackageModel: `export interface Type {title: string}; export class Model {}`
-    }, ['!Type', `import { Model } from './myPackage'`, `['title', 'p', () => Model, 'p2', ${packString([
-        ReflectionOp.string, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 1,
-        ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
+    }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
+        ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
 
     [{
         app: `import {Type, Model} from './myPackage'; class Entity { p: Type[]; p2: Model[]};`,
         myPackage: `export {MM as Model, TT as Type} from './myPackageModel';`,
         myPackageModel: `export interface TT {title: string}; export class MM {}`
-    }, ['!Type', `import { Model } from './myPackage'`, `['title', 'p', () => Model, 'p2', ${packString([
-        ReflectionOp.string, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 1,
-        ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
+    }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
+        ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
 
     [`
     /** @reflection never */
@@ -238,17 +243,16 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
     }, [`[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.class])}]`, `import { Model } from './model';`]],
 
     //functions
-    [`const fn = (param: string): void {}`, `const fn = Object.assign((param) => { }, { __type: ['', ${packString([ReflectionOp.string, ReflectionOp.void, ReflectionOp.function, 0])}] })`],
-    [`const fn = (param: string) {}`, `const fn = Object.assign((param) => { }, { __type: ['', ${packString([ReflectionOp.string, ReflectionOp.any, ReflectionOp.function, 0])}] })`],
+    [`const fn = (param: string): void {}`, `const fn = Object.assign((param) => { }, { __type: ['param', '', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.function, 1])}] })`],
+    [`const fn = (param: string) {}`, `const fn = Object.assign((param) => { }, { __type: ['param', '', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.any, ReflectionOp.function, 1])}] })`],
     [`const fn = () {}`, `!__type:`],
     [`const fn = (): any {}`, `const fn = Object.assign(() => { }, { __type: ['', ${packString([ReflectionOp.any, ReflectionOp.function, 0])}] })`],
 
     [`const fn = function () {}`, `!__type`],
     [`const fn = function (): any {}`, `const fn = Object.assign(function () { }, { __type: ['', ${packString([ReflectionOp.any, ReflectionOp.function, 0])}] })`],
-    [`function createFn() { return function() {} }`, `!__type`],
     [`function createFn() { return function(): any {} }`, `return Object.assign(function () { }, { __type: ['', ${packString([ReflectionOp.any, ReflectionOp.function, 0])}] })`],
 
-    [`class Entity { createFn() { return function(param: string) {} }}`, `return Object.assign(function (param) { }, { __type: ['', ${packString([ReflectionOp.string, ReflectionOp.any, ReflectionOp.function, 0])}] })`],
+    [`class Entity { createFn() { return function(param: string) {} }}`, `return Object.assign(function (param) { }, { __type: ['param', '', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.any, ReflectionOp.function, 1])}] })`],
 
     [`function name(): any {}`, `function name() { }\nname.__type = ['name', ${packString([ReflectionOp.any, ReflectionOp.function, 0])}];`],
 ];
@@ -299,7 +303,7 @@ test('generic class', () => {
     const code = `return class Container<T> {data: T}`;
     const js = transpile(code);
     const clazz = transpileAndReturn(code);
-    const type = reflect(clazz, { kind: ReflectionKind.string });
+    const type = reflect(clazz, {kind: ReflectionKind.string});
     expect(type).toMatchObject({
         kind: ReflectionKind.class,
         classType: clazz,
@@ -307,7 +311,7 @@ test('generic class', () => {
             kind: ReflectionKind.property,
             name: 'data',
             visibility: ReflectionVisibility.public,
-            type: { kind: ReflectionKind.string }
+            type: {kind: ReflectionKind.string}
         }]
     });
 });
@@ -326,11 +330,11 @@ test('class constructor', () => {
             name: 'constructor',
             visibility: ReflectionVisibility.public,
             parameters: [
-                { kind: ReflectionKind.parameter, name: 'title', type: { kind: ReflectionKind.string }, visibility: ReflectionVisibility.public }
+                {kind: ReflectionKind.parameter, name: 'title', type: {kind: ReflectionKind.string}, visibility: ReflectionVisibility.public}
             ],
-            return: { kind: ReflectionKind.any }
+            return: {kind: ReflectionKind.any}
         },
-            { kind: ReflectionKind.property, name: 'title', type: { kind: ReflectionKind.string }, visibility: ReflectionVisibility.public }
+            {kind: ReflectionKind.property, name: 'title', type: {kind: ReflectionKind.string}, visibility: ReflectionVisibility.public}
         ]
     } as Type);
 });
@@ -374,12 +378,12 @@ test('external object literal', () => {
                 types: [
                     {
                         kind: ReflectionKind.propertySignature,
-                        type: { kind: ReflectionKind.string },
+                        type: {kind: ReflectionKind.string},
                         name: 'a',
                     },
                     {
                         kind: ReflectionKind.propertySignature,
-                        type: { kind: ReflectionKind.number },
+                        type: {kind: ReflectionKind.number},
                         name: 'b',
                     }
                 ]
@@ -412,13 +416,13 @@ test('partial', () => {
                 types: [
                     {
                         kind: ReflectionKind.propertySignature,
-                        type: { kind: ReflectionKind.string },
+                        type: {kind: ReflectionKind.string},
                         name: 'a',
                         optional: true,
                     },
                     {
                         kind: ReflectionKind.propertySignature,
-                        type: { kind: ReflectionKind.number },
+                        type: {kind: ReflectionKind.number},
                         name: 'b',
                         optional: true,
                     }
@@ -436,9 +440,9 @@ test('function type', () => {
     expect(type).toEqual({
         kind: ReflectionKind.function,
         parameters: [
-            { kind: ReflectionKind.parameter, name: 'a', type: { kind: ReflectionKind.string } }
+            {kind: ReflectionKind.parameter, name: 'a', type: {kind: ReflectionKind.string}}
         ],
-        return: { kind: ReflectionKind.void },
+        return: {kind: ReflectionKind.void},
         name: undefined
     } as TypeFunction);
 });
@@ -447,7 +451,7 @@ test('boolean type', () => {
     const type = transpileAndReturn(`
     return typeOf<boolean>();`);
 
-    expect(type).toEqual({ kind: ReflectionKind.boolean });
+    expect(type).toEqual({kind: ReflectionKind.boolean});
 });
 
 test('resolve query string', () => {
@@ -468,8 +472,8 @@ test('resolve query union', () => {
     expect(type).toEqual({
         kind: ReflectionKind.union,
         types: [
-            { kind: ReflectionKind.string },
-            { kind: ReflectionKind.literal, literal: true },
+            {kind: ReflectionKind.string},
+            {kind: ReflectionKind.literal, literal: true},
         ]
     });
 });
@@ -491,8 +495,8 @@ test('resolve partial', () => {
                 name: 'a',
                 type: {
                     kind: ReflectionKind.union, types: [
-                        { kind: ReflectionKind.literal, literal: true },
-                        { kind: ReflectionKind.string },
+                        {kind: ReflectionKind.literal, literal: true},
+                        {kind: ReflectionKind.string},
                     ]
                 } as TypeUnion
             },
@@ -522,7 +526,7 @@ test('resolve partial 2', () => {
                 kind: ReflectionKind.propertySignature,
                 optional: true,
                 name: 'a',
-                type: { kind: ReflectionKind.string }
+                type: {kind: ReflectionKind.string}
             },
         ]
     });
@@ -561,8 +565,8 @@ test('conditional map', () => {
     expect(type).toEqual({
         kind: ReflectionKind.objectLiteral,
         types: [
-            { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.literal, literal: true, } },
-            { kind: ReflectionKind.propertySignature, name: 'b', type: { kind: ReflectionKind.literal, literal: false, } },
+            {kind: ReflectionKind.propertySignature, name: 'a', type: {kind: ReflectionKind.literal, literal: true,}},
+            {kind: ReflectionKind.propertySignature, name: 'b', type: {kind: ReflectionKind.literal, literal: false,}},
         ]
     });
 });
@@ -597,14 +601,14 @@ test('nested object literal', () => {
             {
                 kind: ReflectionKind.propertySignature, name: 'a', type: {
                     kind: ReflectionKind.objectLiteral, types: [
-                        { kind: ReflectionKind.propertySignature, name: 't', type: { kind: ReflectionKind.string } }
+                        {kind: ReflectionKind.propertySignature, name: 't', type: {kind: ReflectionKind.string}}
                     ]
                 }
             },
             {
                 kind: ReflectionKind.propertySignature, name: 'b', type: {
                     kind: ReflectionKind.objectLiteral, types: [
-                        { kind: ReflectionKind.propertySignature, name: 't', type: { kind: ReflectionKind.number } }
+                        {kind: ReflectionKind.propertySignature, name: 't', type: {kind: ReflectionKind.number}}
                     ]
                 }
             },
@@ -623,10 +627,10 @@ test('branded type', () => {
     expect(type).toEqual({
         kind: ReflectionKind.intersection,
         types: [
-            { kind: ReflectionKind.string },
+            {kind: ReflectionKind.string},
             {
                 kind: ReflectionKind.objectLiteral, types: [
-                    { kind: ReflectionKind.propertySignature, type: { kind: ReflectionKind.literal, literal: true }, optional: true, name: '__primaryKey' }
+                    {kind: ReflectionKind.propertySignature, type: {kind: ReflectionKind.literal, literal: true}, optional: true, name: '__primaryKey'}
                 ]
             },
         ]
@@ -644,7 +648,7 @@ test('ReceiveType', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code);
-    expect(type).toEqual({ kind: ReflectionKind.string });
+    expect(type).toEqual({kind: ReflectionKind.string});
 });
 
 test('generic static', () => {
@@ -670,7 +674,7 @@ test('generic static', () => {
 
                     kind: ReflectionKind.objectLiteral,
                     types: [
-                        { kind: ReflectionKind.propertySignature, name: 'title', type: { kind: ReflectionKind.string } },
+                        {kind: ReflectionKind.propertySignature, name: 'title', type: {kind: ReflectionKind.string}},
                     ]
                 }
             },
@@ -697,7 +701,7 @@ test('generic dynamic', () => {
         kind: ReflectionKind.objectLiteral,
         types: [
             {
-                kind: ReflectionKind.propertySignature, name: 'body', type: { kind: ReflectionKind.string },
+                kind: ReflectionKind.propertySignature, name: 'body', type: {kind: ReflectionKind.string},
             }
         ]
     });
@@ -718,8 +722,8 @@ test('map conditional infer', () => {
     expect(type).toEqual({
         kind: ReflectionKind.objectLiteral,
         types: [
-            { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string, } },
-            { kind: ReflectionKind.propertySignature, name: 'b', type: { kind: ReflectionKind.number, } },
+            {kind: ReflectionKind.propertySignature, name: 'a', type: {kind: ReflectionKind.string,}},
+            {kind: ReflectionKind.propertySignature, name: 'b', type: {kind: ReflectionKind.number,}},
         ]
     });
 });
@@ -743,28 +747,28 @@ test('class with constructor', () => {
 
     const type = reflect(classType);
 
-    expect(type).toEqual({
+    expect(type).toMatchObject({
         kind: ReflectionKind.class,
         classType: classType,
         types: [
             {
                 kind: ReflectionKind.property,
                 name: 'created',
-                default: () => new Date,
+                // default: () => new Date,
                 visibility: ReflectionVisibility.public,
-                type: { kind: ReflectionKind.class, classType: Date, types: [] }
+                type: {kind: ReflectionKind.class, classType: Date, types: []}
             },
             {
                 kind: ReflectionKind.method,
                 name: 'constructor',
                 visibility: ReflectionVisibility.public,
-                return: { kind: ReflectionKind.any },
+                return: {kind: ReflectionKind.any},
                 parameters: [
                     {
                         kind: ReflectionKind.parameter,
                         name: 'username',
                         visibility: ReflectionVisibility.public,
-                        type: { kind: ReflectionKind.string }
+                        type: {kind: ReflectionKind.string}
                     }
                 ]
             },
@@ -772,12 +776,12 @@ test('class with constructor', () => {
                 kind: ReflectionKind.method,
                 name: 'say',
                 visibility: ReflectionVisibility.public,
-                return: { kind: ReflectionKind.void },
+                return: {kind: ReflectionKind.void},
                 parameters: [
                     {
                         kind: ReflectionKind.parameter,
                         name: 'text',
-                        type: { kind: ReflectionKind.string }
+                        type: {kind: ReflectionKind.string}
                     }
                 ]
             },
@@ -785,10 +789,10 @@ test('class with constructor', () => {
                 kind: ReflectionKind.property,
                 name: 'username',
                 visibility: ReflectionVisibility.public,
-                type: { kind: ReflectionKind.string }
+                type: {kind: ReflectionKind.string}
             },
         ]
-    } as TypeClass);
+    } as TypeClass as Record<any, any>);
 });
 
 test('description', () => {
@@ -814,7 +818,7 @@ test('description', () => {
     expect(type).toEqual({
         kind: ReflectionKind.objectLiteral,
         types: [
-            { kind: ReflectionKind.propertySignature, name: 'username', description: 'Hello what up?\nasdasd\n\ndas', type: { kind: ReflectionKind.string } }
+            {kind: ReflectionKind.propertySignature, name: 'username', description: 'Hello what up?\nasdasd\n\ndas', type: {kind: ReflectionKind.string}}
         ]
     } as TypeObjectLiteral);
 });
@@ -832,10 +836,10 @@ test('brand with symbol property', () => {
     expect(type).toEqual({
         kind: ReflectionKind.intersection,
         types: [
-            { kind: ReflectionKind.string },
+            {kind: ReflectionKind.string},
             {
                 kind: ReflectionKind.objectLiteral, types: [
-                    { kind: ReflectionKind.propertySignature, name: Symbol.for('computedType1'), type: { kind: ReflectionKind.literal, literal: true }, optional: true }
+                    {kind: ReflectionKind.propertySignature, name: Symbol.for('computedType1'), type: {kind: ReflectionKind.literal, literal: true}, optional: true}
                 ]
             },
         ]
@@ -855,10 +859,10 @@ test('intersection with symbol property', () => {
     expect(type).toEqual({
         kind: ReflectionKind.intersection,
         types: [
-            { kind: ReflectionKind.string },
+            {kind: ReflectionKind.string},
             {
                 kind: ReflectionKind.objectLiteral, types: [
-                    { kind: ReflectionKind.propertySignature, name: Symbol.for('computedType1'), type: { kind: ReflectionKind.literal, literal: true }, optional: true }
+                    {kind: ReflectionKind.propertySignature, name: Symbol.for('computedType1'), type: {kind: ReflectionKind.literal, literal: true}, optional: true}
                 ]
             },
         ]
@@ -878,10 +882,10 @@ test('branded type', () => {
     expect(type).toEqual({
         kind: ReflectionKind.intersection,
         types: [
-            { kind: ReflectionKind.string },
+            {kind: ReflectionKind.string},
             {
                 kind: ReflectionKind.objectLiteral, types: [
-                    { kind: ReflectionKind.propertySignature, name: '__type', type: { kind: ReflectionKind.literal, literal: 'primaryKey' }, optional: true }
+                    {kind: ReflectionKind.propertySignature, name: '__type', type: {kind: ReflectionKind.literal, literal: 'primaryKey'}, optional: true}
                 ]
             },
         ]
@@ -901,10 +905,10 @@ test('brand intersection', () => {
     expect(type).toEqual({
         kind: ReflectionKind.intersection,
         types: [
-            { kind: ReflectionKind.string },
+            {kind: ReflectionKind.string},
             {
                 kind: ReflectionKind.objectLiteral, types: [
-                    { kind: ReflectionKind.propertySignature, name: '__type', type: { kind: ReflectionKind.literal, literal: 'primaryKey' }, optional: true }
+                    {kind: ReflectionKind.propertySignature, name: '__type', type: {kind: ReflectionKind.literal, literal: 'primaryKey'}, optional: true}
                 ]
             },
         ]
@@ -926,10 +930,10 @@ test('brand intersection symbol', () => {
     expect(type).toEqual({
         kind: ReflectionKind.intersection,
         types: [
-            { kind: ReflectionKind.string },
+            {kind: ReflectionKind.string},
             {
                 kind: ReflectionKind.objectLiteral, types: [
-                    { kind: ReflectionKind.propertySignature, name: Symbol.for('deepkit/meta'), type: { kind: ReflectionKind.literal, literal: 'primaryKey' }, optional: true }
+                    {kind: ReflectionKind.propertySignature, name: Symbol.for('deepkit/meta'), type: {kind: ReflectionKind.literal, literal: 'primaryKey'}, optional: true}
                 ]
             },
         ]
