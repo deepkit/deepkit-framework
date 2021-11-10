@@ -1114,12 +1114,14 @@ export class ClassSchema<T = any> {
     }
 
     public clone(classType?: ClassType): ClassSchema {
-        classType ||= class extends (this.classType as any) {
-        };
+        if (!classType) {
+            classType = class extends (this.classType as any) {
+            };
+            Object.defineProperty(classType, 'name', { value: this.getClassName() });
+        }
+
         const s = new ClassSchema(classType);
         classType.prototype[classSchemaSymbol] = s;
-        Object.defineProperty(classType, 'name', { value: this.getClassName() });
-        s.name = this.name;
         s.name = this.name;
         s.collectionName = this.collectionName;
         s.databaseSchemaName = this.databaseSchemaName;
