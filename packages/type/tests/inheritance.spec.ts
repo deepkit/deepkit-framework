@@ -3,6 +3,7 @@ import { expect, test } from '@jest/globals';
 import { entity, t } from '../src/decorators';
 import { getClassSchema } from '../src/model';
 import { findCommonDiscriminant, findCommonLiteral } from '../src/inheritance';
+import { getClassName } from '../../core';
 
 
 test('overwrite', () => {
@@ -213,4 +214,18 @@ test('super class discriminant', () => {
     expect(findCommonDiscriminant([getClassSchema(Employee), getClassSchema(Freelancer)])).toBe('type');
 
     expect(getClassSchema(Person).getSingleTableInheritanceDiscriminant().name).toBe('type');
+});
+
+test('classType name', () => {
+    class BaseClass {
+        @t hello: string = 'world';
+    }
+
+    class Clazz extends BaseClass {
+        @t foo: string = 'bar';
+    }
+
+    expect(getClassName(Clazz)).toBe('Clazz');
+    expect(getClassSchema(Clazz).getClassName()).toBe('Clazz');
+    expect(getClassSchema(Clazz).clone().getClassName()).toBe('Clazz');
 });
