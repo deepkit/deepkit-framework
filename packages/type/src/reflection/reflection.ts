@@ -8,10 +8,23 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Packed, unpack } from './compiler';
-import { Processor, resolveRuntimeType } from './processor';
-import { ReflectionKind, ReflectionVisibility, Type, TypeClass, TypeFunction, TypeMethod, TypeMethodSignature, TypeParameter, TypeProperty, TypePropertySignature } from './type';
-import { ClassType } from '@deepkit/core';
+import {
+    isType,
+    ReflectionKind,
+    ReflectionVisibility,
+    Type,
+    TypeClass,
+    TypeFunction,
+    TypeMethod,
+    TypeMethodSignature,
+    TypeObjectLiteral,
+    TypeParameter,
+    TypeProperty,
+    TypePropertySignature
+} from './type';
+import { AbstractClassType, ClassType } from '@deepkit/core';
+import { FreeDecoratorFn } from '../decorator-builder';
+import { Packed, resolveRuntimeType } from './processor';
 
 export type ReceiveType<T> = Packed;
 
@@ -55,41 +68,99 @@ export function propertiesOf<T>(args: any[] = [], p?: Packed): (string | number 
 
 export function typeOf<T>(args: any[] = [], p?: Packed): Type {
     if (p) {
-        const pack = unpack(p);
-        const processor = new Processor();
-        // debugPackStruct(pack);
-        const type = processor.run(pack.ops, pack.stack, args);
-        return type;
+        return resolveRuntimeType(p, args);
     }
 
     throw new Error('No type given');
 }
 
-export class ReflectionMethod {
-    constructor(
-        public readonly method: TypeMethod | TypeMethodSignature,
-        public readonly reflectionClass: ReflectionClass,
-    ) {}
+export class ReflectionParameter {
+    type: Type;
 
-    getParameterNames(): (string)[] {
-        return this.getParameters().map(v => v.name);
+    constructor(
+        public readonly parameter: TypeParameter,
+        public readonly reflectionMethod: ReflectionMethod,
+    ) {
+        this.type = this.parameter.type;
     }
 
-    getParameter(name: string | number | symbol): TypeParameter | undefined {
+    getType(): Type {
+        return this.type;
+    }
+
+    getName(): string {
+        return this.parameter.name;
+    }
+
+    applyDecorator(t: TData) {
+        if (t.type) {
+            this.type = resolveRuntimeType(t.type);
+            if (this.getVisibility() !== undefined) {
+                this.reflectionMethod.reflectionClass.getProperty(this.getName())!.setType(this.type);
+            }
+        }
+    }
+
+    getVisibility(): ReflectionVisibility | undefined {
+        return this.parameter.visibility;
+    }
+
+    isPublic(): boolean {
+        return this.parameter.visibility === ReflectionVisibility.public;
+    }
+
+    isProtected(): boolean {
+        return this.parameter.visibility === ReflectionVisibility.protected;
+    }
+
+    isPrivate(): boolean {
+        return this.parameter.visibility === ReflectionVisibility.private;
+    }
+}
+
+export class ReflectionMethod {
+    parameters: ReflectionParameter[] = [];
+
+    constructor(
+        public method: TypeMethod | TypeMethodSignature,
+        public reflectionClass: ReflectionClass<any>,
+    ) {
+        this.setType(method);
+    }
+
+    setType(method: TypeMethod | TypeMethodSignature) {
+        this.method = method;
+        this.parameters = [];
+        for (const p of this.method.parameters) {
+            this.parameters.push(new ReflectionParameter(p, this));
+        }
+    }
+
+    clone(reflectionClass?: ReflectionClass<any>, method?: TypeMethod | TypeMethodSignature): ReflectionMethod {
+        const c = new ReflectionMethod(method || this.method, reflectionClass || this.reflectionClass);
+        //todo, clone parameter
+        return c;
+    }
+
+    getParameterNames(): (string)[] {
+        return this.getParameters().map(v => v.getName());
+    }
+
+    getParameter(name: string | number | symbol): ReflectionParameter | undefined {
         for (const property of this.getParameters()) {
-            if (property.name === name) return property;
+            if (property.getName() === name) return property;
         }
         return;
     }
 
     getParameterType(name: string | number | symbol): Type | undefined {
         const parameter = this.getParameter(name);
-        if (parameter) return parameter.type;
+        if (parameter) return parameter.getType();
         return;
     }
 
-    getParameters(): TypeParameter[] {
-        return this.method.parameters;
+    getParameters(): ReflectionParameter[] {
+        return this.parameters;
     }
 
     getReturnType(): Type {
@@ -108,7 +179,8 @@ export class ReflectionMethod {
 export class ReflectionFunction {
     constructor(
         public readonly type: TypeFunction,
-    ) {}
+    ) {
+    }
 
     static from(fn: Function): ReflectionFunction {
         const type = reflect(fn);
@@ -180,7 +252,6 @@ export type IndexOptions = Partial<{
 export type ReferenceActions = 'RESTRICT' | 'NO ACTION' | 'CASCADE' | 'SET NULL' | 'SET DEFAULT';
 
 export class ReflectionProperty {
-    description: string = '';
     data: { [name: string]: any } = {};
 
     autoIncrement?: true;
@@ -204,19 +275,70 @@ export class ReflectionProperty {
      */
     backReference?: BackReferenceOptions<any>;
 
+    serializer?: SerializerFn;
+    deserializer?: SerializerFn;
+    excludeSerializerNames?: string[];
+
     index?: IndexOptions;
 
     type: Type;
 
     constructor(
-        public readonly property: TypeProperty | TypePropertySignature,
-        public readonly reflectionClass: ReflectionClass,
+        public property: TypeProperty | TypePropertySignature,
+        public reflectionClass: ReflectionClass<any>,
     ) {
         this.type = property.type;
     }
 
+    setType(type: Type) {
+        this.type = type;
+    }
+
+    clone(reflectionClass?: ReflectionClass<any>, property?: TypeProperty | TypePropertySignature): ReflectionProperty {
+        const c = new ReflectionProperty(property || this.property, reflectionClass || this.reflectionClass);
+        c.data = { ...this.data };
+        c.autoIncrement = this.autoIncrement;
+        c.primaryKey = this.primaryKey;
+        c.jsonType = this.jsonType;
+        c.groups = this.groups.slice();
+        c.reference = this.reference;
+        c.serializer = this.serializer;
+        c.deserializer = this.deserializer;
+        if (this.referenceOptions) c.referenceOptions = { ...this.referenceOptions };
+        if (this.backReference) c.backReference = { ...this.backReference };
+        if (this.index) c.index = { ...this.index };
+        return c;
+    }
+
+    applyDecorator(data: TData) {
+        Object.assign(this.data, data.data);
+        if (data.groups) this.groups.push(...data.groups);
+        this.serializer = data.serializer;
+        this.deserializer = data.deserializer;
+        this.excludeSerializerNames = data.excludeSerializerNames;
+        if (data.referenceOptions) {
+            this.reference = true;
+            this.referenceOptions = data.referenceOptions;
+        }
+        if (data.backReference) {
+            this.backReference = data.backReference;
+        }
+    }
+
     getName(): number | string | symbol {
         return this.property.name;
+    }
+
+    getKind(): ReflectionKind {
+        return this.type.kind;
+    }
+
+    getType(): Type {
+        return this.type;
+    }
+
+    getDescription(): string {
+        return this.property.description || '';
     }
 
     /**
@@ -242,11 +364,11 @@ export class ReflectionProperty {
      * If the property is actual optional or is an union with undefined in it.
      */
     isOptional(): boolean {
-        return this.property.optional === true || (this.property.type.kind === ReflectionKind.union && this.property.type.types.some(v => v.kind === ReflectionKind.undefined));
+        return this.property.optional === true || (this.type.kind === ReflectionKind.union && this.type.types.some(v => v.kind === ReflectionKind.undefined));
     }
 
     isNullable(): boolean {
-        return (this.property.type.kind === ReflectionKind.union && this.property.type.types.some(v => v.kind === ReflectionKind.null));
+        return (this.type.kind === ReflectionKind.union && this.type.types.some(v => v.kind === ReflectionKind.null));
     }
 
     isReadonly(): boolean {
@@ -267,6 +389,17 @@ export class ReflectionProperty {
         }
     }
 
+    getDefaultValueFunction(): (() => any) | undefined {
+        if (this.property.kind === ReflectionKind.property && this.property.default !== undefined) {
+            return this.property.default;
+        }
+        return;
+    }
+
+    getVisibility(): ReflectionVisibility | undefined {
+        return this.property.kind === ReflectionKind.property ? this.property.visibility : undefined;
+    }
+
     isPublic(): boolean {
         return this.property.kind === ReflectionKind.property ? this.property.visibility === ReflectionVisibility.public : true;
     }
@@ -280,24 +413,125 @@ export class ReflectionProperty {
     }
 }
 
-export class ReflectionClass {
-    description: string = '';
+const reflectionClassSymbol = Symbol('reflectionClass');
 
+export interface ValidatorFn {
+    (value: any, property: ReflectionProperty): any;
+}
+
+export interface SerializerFn {
+    (value: any, property: ReflectionProperty): any;
+}
+
+export class TData {
+    validators: ValidatorFn[] = [];
+    type?: Packed | ClassType;
     data: { [name: string]: any } = {};
+    serializer?: SerializerFn;
+    deserializer?: SerializerFn;
+    excludeSerializerNames?: string[];
+    groups?: string[];
+    referenceOptions?: { onDelete: ReferenceActions, onUpdate: ReferenceActions };
+    backReference?: BackReferenceOptions<any>;
 
+    //todo: index
+}
+
+export class ReflectionClass<T> {
+    description: string = '';
+    data: { [name: string]: any } = {};
     jit: { [name: string]: any } = {};
 
-    protected properties?: ReflectionProperty[];
-    protected methods?: ReflectionMethod[];
+    protected propertyNames: (number | string | symbol)[] = [];
+    protected methodNames: (number | string | symbol)[] = [];
+    protected properties: ReflectionProperty[] = [];
+    protected methods: ReflectionMethod[] = [];
 
-    constructor(public type: TypeClass) {}
+    public groups: string[] = [];
+    public type: TypeClass | TypeObjectLiteral;
 
-    static from(classType: ClassType, ...args: any[]): ReflectionClass {
-        const type = reflect(classType, ...args);
-        if (type.kind !== ReflectionKind.class) {
-            throw new Error(`Given class is not a class ${classType}`);
+    constructor(type: Type, public parent?: ReflectionClass<any>) {
+        if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) throw new Error('Only class, interface, or object literal type possible');
+
+        this.type = type;
+        if (parent) {
+            for (const member of parent.getProperties()) {
+                this.addProperty(member.clone(this));
+            }
+            for (const member of parent.getMethods()) {
+                this.addMethod(member.clone(this));
+            }
         }
-        return new ReflectionClass(type);
+
+        for (const member of type.types) {
+            this.add(member);
+        }
+    }
+
+    addProperty(property: ReflectionProperty) {
+        this.properties.push(property);
+        this.propertyNames.push(property.getName());
+    }
+
+    addMethod(method: ReflectionMethod) {
+        this.methods.push(method);
+        this.methodNames.push(method.getName());
+    }
+
+    add(member: Type) {
+        if (member.kind === ReflectionKind.property || member.kind === ReflectionKind.propertySignature) {
+            const existing = this.getProperty(member.name);
+            if (existing) {
+                existing.setType(member);
+            } else {
+                this.addProperty(new ReflectionProperty(member, this));
+            }
+        }
+
+        if (member.kind === ReflectionKind.method || member.kind === ReflectionKind.methodSignature) {
+            const existing = this.getMethod(member.name);
+            if (existing) {
+                existing.setType(member);
+            } else {
+                this.addMethod(new ReflectionMethod(member, this));
+            }
+        }
+    }
+
+    applyDecorator(data: TData) {
+        Object.assign(this.data, data.data);
+        if (data.groups) this.groups = data.groups;
+    }
+
+    static from<T>(classTypeIn: AbstractClassType<T> | Type, ...args: any[]): ReflectionClass<T> {
+        if (isType(classTypeIn)) {
+            return new ReflectionClass(classTypeIn);
+        }
+
+        const classType = (classTypeIn as any)['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
+
+        if (!classType.prototype.hasOwnProperty(reflectionClassSymbol)) {
+            Object.defineProperty(classType.prototype, reflectionClassSymbol, { writable: true, enumerable: false });
+        }
+
+        if (!classType.prototype[reflectionClassSymbol]) {
+            const type = '__type' in classType ? reflect(classType, ...args) : { kind: ReflectionKind.class, classType, types: [] } as TypeClass;
+            if (type.kind !== ReflectionKind.class) {
+                throw new Error(`Given class is not a class ${classType}`);
+            }
+
+            const parentProto = Object.getPrototypeOf(classType.prototype);
+            const parentReflectionClass: ReflectionClass<any> | undefined = parentProto ? ReflectionClass.from(parentProto) : undefined;
+
+            const reflectionClass = new ReflectionClass(type, parentReflectionClass);
+            if (args.length === 0) {
+                classType.prototype[reflectionClassSymbol] = reflectionClass;
+            } else {
+                return reflectionClass;
+            }
+        }
+
+        return classType.prototype[reflectionClassSymbol];
     }
 
     getIndexSignatures() {
@@ -305,32 +539,18 @@ export class ReflectionClass {
     }
 
     getPropertyNames(): (string | number | symbol)[] {
-        return this.getProperties().map(v => v.getName());
+        return this.propertyNames;
     }
 
     getProperties(): ReflectionProperty[] {
-        if (this.properties) return this.properties;
-        this.properties = [];
-        for (const member of this.type.types) {
-            if (member.kind === ReflectionKind.property || member.kind === ReflectionKind.propertySignature) {
-                this.properties.push(new ReflectionProperty(member, this));
-            }
-        }
         return this.properties;
     }
 
     getMethodNames(): (string | number | symbol)[] {
-        return this.getMethods().map(v => v.getName());
+        return this.methodNames;
     }
 
     getMethods(): ReflectionMethod[] {
-        if (this.methods) return this.methods;
-        this.methods = [];
-        for (const member of this.type.types) {
-            if (member.kind === ReflectionKind.method || member.kind === ReflectionKind.methodSignature) {
-                this.methods.push(new ReflectionMethod(member, this));
-            }
-        }
         return this.methods;
     }
 
@@ -338,17 +558,34 @@ export class ReflectionClass {
         return this.getMethod('constructor');
     }
 
-    getProperty(name: string): ReflectionProperty | undefined {
+    getProperty(name: string | number | symbol): ReflectionProperty | undefined {
         for (const property of this.getProperties()) {
             if (property.getName() === name) return property;
         }
         return;
     }
 
-    getMethod(name: string): ReflectionMethod | undefined {
+    getMethod(name: string | number | symbol): ReflectionMethod | undefined {
         for (const method of this.getMethods()) {
             if (method.getName() === name) return method;
         }
         return;
     }
+}
+
+export function decorate<T>(decorate: { [P in keyof T]?: FreeDecoratorFn }, p?: ReceiveType<T>): ReflectionClass<T> {
+    const type = typeOf([], p);
+    if (type.kind === ReflectionKind.objectLiteral) {
+        const classType = class {
+        };
+        const reflection = new ReflectionClass({ kind: ReflectionKind.class, classType, types: type.types });
+        (classType as any).prototype[reflectionClassSymbol] = reflection;
+
+        for (const [p, fn] of Object.entries(decorate)) {
+            (fn as FreeDecoratorFn)(classType, p);
+        }
+
+        return reflection;
+    }
+    throw new Error('Decorate is only possible on object literal/interfaces.');
 }

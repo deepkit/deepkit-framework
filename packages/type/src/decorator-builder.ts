@@ -11,7 +11,7 @@
 import { AbstractClassType, ClassType, getClassName } from '@deepkit/core';
 
 export type ClassDecoratorFn = (classType: AbstractClassType, property?: string, parameterIndexOrDescriptor?: any) => void;
-export type PropertyDecoratorFn = (prototype: object, property?: string, parameterIndexOrDescriptor?: any) => void;
+export type PropertyDecoratorFn = (prototype: object, property?: number | string | symbol, parameterIndexOrDescriptor?: any) => void;
 
 export type FluidDecorator<T, D extends Function> = {
     [name in keyof T]: T[name] extends (...args: infer K) => any ? (...args: K) => D & FluidDecorator<T, D>
@@ -304,13 +304,13 @@ export function createPropertyDecoratorContext<API extends APIProperty<any>, T =
     return fn as any;
 }
 
-export type FreeDecoratorFn<API> = { (target?: any, property?: string, parameterIndexOrDescriptor?: any): void };
+export type FreeDecoratorFn = { (target?: any, property?: number | string | symbol, parameterIndexOrDescriptor?: any): void };
 
 export type FreeFluidDecorator<API> = {
     [name in keyof ExtractClass<API>]: ExtractClass<API>[name] extends (...args: infer K) => any
         ? (...args: K) => FreeFluidDecorator<API>
         : FreeFluidDecorator<API>
-} & FreeDecoratorFn<API>;
+} & FreeDecoratorFn;
 
 export type FreeDecoratorResult<API extends APIClass<any>> = FreeFluidDecorator<API> & { _fluidFunctionSymbol: symbol };
 
@@ -336,7 +336,7 @@ export function createFreeDecoratorContext<API extends APIClass<any>, T = Extrac
 
     const fluidFunctionSymbol = Symbol('fluidFunctionSymbol');
 
-    const fn = createFluidDecorator(apiType, [], collapse, true, fluidFunctionSymbol);
+    const fn = createFluidDecorator(apiType, [], collapse, false, fluidFunctionSymbol);
 
     Object.defineProperty(fn, '_fluidFunctionSymbol', {
         configurable: true,

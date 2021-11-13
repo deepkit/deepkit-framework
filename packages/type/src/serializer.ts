@@ -9,13 +9,18 @@
  */
 
 import { ClassType, CompilerContext } from '@deepkit/core';
-import { ReflectionKind, Type, TypeClass, TypeObjectLiteral, TypeProperty, TypePropertySignature } from './reflection/type';
+import { isNullable, isOptional, ReflectionKind, Type, TypeClass, TypeNumberBrand, TypeObjectLiteral, TypeProperty, TypePropertySignature, TypeTuple } from './reflection/type';
 import { ReceiveType, ReflectionClass, ReflectionProperty } from './reflection/reflection';
-import { JSONSingle } from './utils';
+import { JSONPartial } from './utils';
 import { resolvePacked } from './reflection/processor';
 
-export function cast<T>(data: JSONSingle<T>, serializer = jsonSerializer, type?: ReceiveType<T>): T {
+export function cast<T>(data: JSONPartial<T>, serializer = jsonSerializer, type?: ReceiveType<T>): T {
     const fn = createSerializeFunction(resolvePacked(type!), serializer.deserializeRegistry);
+    return fn(data) as T;
+}
+
+export function serialize<T>(data: T, serializer = jsonSerializer, type?: ReceiveType<T>): T {
+    const fn = createSerializeFunction(resolvePacked(type!), serializer.serializeRegistry);
     return fn(data) as T;
 }
 
@@ -116,7 +121,8 @@ type Template<T extends Type> = (type: T, state: TemplateState) => void;
 class TemplateRegistry {
     protected templates: { [kind in ReflectionKind]?: Template<any>[] } = {};
 
-    constructor(public serializer: Serializer) {}
+    constructor(public serializer: Serializer) {
+    }
 
     get(kind: ReflectionKind): Template<any>[] {
         return this.templates[kind] || [];
@@ -163,6 +169,15 @@ export function executeTemplates(
     return state.template;
 }
 
+export function createConverterJSForTypeForState(
+    setter: string,
+    accessor: string,
+    type: Type,
+    state: TemplateState,
+) {
+    return createConverterJSForType(setter, accessor, type, state.registry, state.compilerContext, state.namingStrategy);
+}
+
 export function createConverterJSForType(
     setter: string,
     accessor: string,
@@ -187,7 +202,7 @@ export function createConverterJSForType(
 export function createConverterJSForProperty(
     setter: string,
     accessor: string,
-    reflection: ReflectionProperty,
+    property: ReflectionProperty,
     registry: TemplateRegistry,
     compilerContext: CompilerContext,
     namingStrategy: NamingStrategy,
@@ -197,16 +212,16 @@ export function createConverterJSForProperty(
     const undefinedCompiler = registry.get(ReflectionKind.undefined);
     const nullCompiler = registry.get(ReflectionKind.null);
 
-    undefinedSetterCode = undefinedSetterCode || (undefinedCompiler ? executeTemplates(compilerContext, registry, namingStrategy, undefinedCompiler, setter, accessor, reflection.type) : '');
-    nullSetterCode = nullSetterCode || (nullCompiler ? executeTemplates(compilerContext, registry, namingStrategy, nullCompiler, setter, accessor, reflection.type) : '');
+    undefinedSetterCode = undefinedSetterCode || (undefinedCompiler ? executeTemplates(compilerContext, registry, namingStrategy, undefinedCompiler, setter, accessor, property.type) : '');
+    nullSetterCode = nullSetterCode || (nullCompiler ? executeTemplates(compilerContext, registry, namingStrategy, nullCompiler, setter, accessor, property.type) : '');
 
-    const templates = registry.get(reflection.type.kind);
+    const templates = registry.get(property.type.kind);
     let convert = '';
     if (templates.length) {
-        convert = executeTemplates(compilerContext, registry, namingStrategy, templates, setter, accessor, reflection.type);
+        convert = executeTemplates(compilerContext, registry, namingStrategy, templates, setter, accessor, property.type);
     } else {
         convert = `
-        //no compiler for ${reflection.type.kind}
+        //no compiler for ${property.type.kind}
         ${setter} = ${accessor};`;
     }
 
@@ -215,58 +230,59 @@ export function createConverterJSForProperty(
     const isSerialization = registry.serializer.serializeRegistry === registry;
     const isDeserialization = registry.serializer.deserializeRegistry === registry;
 
-    return convert;
-    // if (isSerialization) {
-    //     const transformer = type.serialization.get(registry.serializer.name) || type.serialization.get('all');
-    //     if (transformer) {
-    //         const fnVar = compilerContext.reserveVariable('transformer', transformer);
-    //         postTransform = `${setter} = ${fnVar}(${setter})`;
-    //     }
-    // }
-    //
-    // if (isDeserialization) {
-    //     const transformer = type.deserialization.get(registry.serializer.name) || type.deserialization.get('all');
-    //     if (transformer) {
-    //         const fnVar = compilerContext.reserveVariable('transformer', transformer);
-    //         postTransform = `${setter} = ${fnVar}(${setter})`;
-    //     }
-    // }
+    if (isSerialization) {
+        if (property.serializer) {
+            const fnVar = compilerContext.reserveVariable('transformer', property.serializer);
+            postTransform = `${setter} = ${fnVar}(${setter}, ${compilerContext.reserveConst(property)})`;
+        }
+    }
+
+    if (isDeserialization) {
+        if (property.deserializer) {
+            const fnVar = compilerContext.reserveVariable('transformer', property.deserializer);
+            postTransform = `${setter} = ${fnVar}(${setter}, ${compilerContext.reserveConst(property)})`;
+        }
+    }
+
+    const optional = property.isOptional();
+    const nullable = isNullable(property.type);
 
     // since JSON does not support undefined, we emulate it via using null for serialization, and convert that back to undefined when deserialization happens.
     // note: When the value is not defined (property.name in object === false), then this code will never run.
-    // let defaultValue = isSerialization ? 'null' : 'undefined';
-    // if (!type.hasDefaultValue && type.defaultValue !== undefined) {
-    //     defaultValue = `${compilerContext.reserveVariable('defaultValue', type.defaultValue)}()`;
-    // } else if (!type.isOptional && type.isNullable) {
-    //     defaultValue = 'null';
-    // }
-    //
-    // return `
-    //     if (${accessor} === undefined) {
-    //         if (${!type.hasDefaultValue || type.isOptional}) ${setter} = ${defaultValue};
-    //         ${undefinedSetterCode}
-    //     } else if (${accessor} === null) {
-    //         //null acts on transport layer as telling an explicitly set undefined
-    //         //this is to support actual undefined as value across a transport layer. Otherwise it
-    //         //would be impossible to set a already set value to undefined back (since JSON.stringify() omits that information)
-    //         if (${type.isNullable}) {
-    //             ${setter} = null;
-    //             ${nullSetterCode}
-    //         } else {
-    //             if (${type.isOptional}) ${setter} = ${defaultValue};
-    //             ${undefinedSetterCode}
-    //         }
-    //     } else {
-    //         ${convert}
-    //         ${postTransform}
-    //     }
-    // `;
+    let defaultValue = isSerialization ? 'null' : 'undefined';
+    // if (property.hasDefault()) {
+    //     defaultValue = `${compilerContext.reserveVariable('defaultValueGetter', property.getDefaultValueFunction())}()`;
+    // } else
+    if (!optional && nullable) {
+        defaultValue = 'null';
+    }
+
+    return `
+        if (${accessor} === undefined) {
+            if (${!property.hasDefault() || optional}) ${setter} = ${defaultValue};
+            ${undefinedSetterCode}
+        } else if (${accessor} === null) {
+            //null acts on transport layer as telling an explicitly set undefined
+            //this is to support actual undefined as value across a transport layer. Otherwise it
+            //would be impossible to set a already set value to undefined back or override default value (since JSON.stringify() omits that information)
+            if (${nullable}) {
+                ${setter} = null;
+                ${nullSetterCode}
+            } else {
+                if (${optional}) ${setter} = ${defaultValue};
+                ${undefinedSetterCode}
+            }
+        } else {
+            ${convert}
+            ${postTransform}
+        }
+    `;
 }
 
 function deserializeClass(type: TypeClass, state: TemplateState) {
     const preLines: string[] = [];
     const lines: string[] = [];
-    const clazz = new ReflectionClass(type);
+    const clazz = ReflectionClass.from(type.classType);
 
     const constructor = clazz.getConstructor();
     const constructorArguments: string[] = [];
@@ -275,32 +291,39 @@ function deserializeClass(type: TypeClass, state: TemplateState) {
 
         for (let i = 0; i < parameters.length; i++) {
             const parameter = parameters[i];
-            if (parameter.visibility === undefined) continue;
-            const reflection = clazz.getProperty(parameter.name);
+            if (parameter.getVisibility() === undefined) continue;
+            const reflection = clazz.getProperty(parameter.getName());
             if (!reflection) continue;
 
+            const name = JSON.stringify(parameter.getName());
             preLines.push(`
                 var c_${i};
-                ${createConverterJSForProperty(`c_${i}`, `${state.accessor}[${JSON.stringify(parameter.name)}]`, reflection, state.registry, state.compilerContext, state.namingStrategy)}
+                if (${name} in ${state.accessor}) {
+                    ${createConverterJSForProperty(`c_${i}`, `${state.accessor}[${name}]`, reflection, state.registry, state.compilerContext, state.namingStrategy)}
+                }
             `);
             constructorArguments.push(`c_${i}`);
         }
     }
 
+    for (const property of clazz.getProperties()) {
+        const name = JSON.stringify(state.namingStrategy.getPropertyName(property.property));
+
+        lines.push(`
+            if (${name} in ${state.accessor}) {
+                ${createConverterJSForProperty(
+            `${state.setter}[${JSON.stringify(property.getName())}]`,
+            `${state.accessor}[${name}]`,
+            property,
+            state.registry, state.compilerContext, state.namingStrategy
+        )}
+            }
+        `);
+    }
+
     for (const member of type.types) {
         if (member.kind === ReflectionKind.indexSignature) {
 
-        }
-
-        if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
-            lines.push(createConverterJSForType(
-                `${state.setter}[${JSON.stringify(member.name)}]`,
-                `${state.accessor}[${JSON.stringify(state.namingStrategy.getPropertyName(member))}]`,
-                member.type,
-                state.registry,
-                state.compilerContext,
-                state.namingStrategy
-            ));
         }
     }
 
@@ -321,13 +344,13 @@ function deserializeObjectLiteral(type: TypeObjectLiteral, state: TemplateState)
         }
 
         if (member.kind === ReflectionKind.propertySignature) {
-            lines.push(createConverterJSForType(
+            const name = JSON.stringify(state.namingStrategy.getPropertyName(member));
+
+            lines.push(createConverterJSForTypeForState(
                 `${state.setter}[${JSON.stringify(member.name)}]`,
-                `${state.accessor}[${JSON.stringify(member.name)}]`,
+                `${state.accessor}[${name}]`,
                 member.type,
-                state.registry,
-                state.compilerContext,
-                state.namingStrategy,
+                state
             ));
         }
     }
@@ -338,6 +361,136 @@ function deserializeObjectLiteral(type: TypeObjectLiteral, state: TemplateState)
     `);
 }
 
+function serializeArray(elementType: Type, state: TemplateState) {
+    const a = state.compilerContext.reserveName('a');
+    const l = state.compilerContext.reserveName('l');
+
+    const optional = isOptional(elementType);
+
+    //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
+    state.addCodeForSetter(`
+         let ${l} = ${state.accessor}.size;
+         let ${a} = ${state.accessor}.slice();
+         while (${l}--) {
+            //make sure all elements have the correct type
+            if (${state.accessor}[${l}] !== undefined && ${state.accessor}[${l}] !== null) {
+                let itemValue;
+                ${createConverterJSForTypeForState(`itemValue`, `${a}[${l}]`, elementType, state)}
+                if (${!optional} && itemValue === undefined) {
+                    ${a}.splice(${l}, 1);
+                } else {
+                    ${a}[${l}] = itemValue;
+                }
+            }
+         }
+         ${state.setter} = ${a};
+    `);
+}
+
+/**
+ * Set is simply serialized as array.
+ */
+function deserializeTypeClassSet(type: TypeClass, state: TemplateState) {
+    if (!type.arguments || type.arguments.length !== 1) return;
+
+    state.setContext({ Array });
+    serializeArray(type.arguments[0], state);
+    state.addSetter(`new Set(${state.accessor})`);
+}
+
+/**
+ * Set is simply serialized as array.
+ */
+function serializeTypeClassSet(type: TypeClass, state: TemplateState) {
+    if (!type.arguments || type.arguments.length !== 1) return;
+
+    state.setContext({ Array });
+    state.addSetter(`Array.from(${state.accessor})`);
+
+    serializeArray(type.arguments[0], state);
+}
+
+function deserializeTypeClassMap(type: TypeClass, state: TemplateState) {
+    if (!type.arguments || type.arguments.length !== 2) return;
+    state.setContext({ Array });
+    serializeArray({
+        kind: ReflectionKind.tuple, types: [
+            { kind: ReflectionKind.tupleMember, type: type.arguments[0] },
+            { kind: ReflectionKind.tupleMember, type: type.arguments[1] },
+        ]
+    }, state);
+    state.addSetter(`new Map(${state.accessor})`);
+}
+
+/**
+ * Map is simply serialized as array of tuples.
+ */
+function serializeTypeClassMap(type: TypeClass, state: TemplateState) {
+    if (!type.arguments || type.arguments.length !== 2) return;
+
+    state.setContext({ Array });
+    state.addSetter(`Array.from(${state.accessor})`);
+
+    serializeArray({
+        kind: ReflectionKind.tuple, types: [
+            { kind: ReflectionKind.tupleMember, type: type.arguments[0] },
+            { kind: ReflectionKind.tupleMember, type: type.arguments[1] },
+        ]
+    }, state);
+}
+
+function deserializeTypeTuple(type: TypeTuple, state: TemplateState) {
+    //[string, number], easy
+    //[...string, number], easy
+    //[number, ...string], easy
+    //[number, ...string, number, string], medium
+    const lines: string[] = [];
+    let restEndOffset = 0;
+
+    for (let i = 0; i < type.types.length; i++) {
+        if (type.types[i].type.kind === ReflectionKind.rest) {
+            restEndOffset = type.types.length - (i + 1);
+            break;
+        }
+    }
+
+    for (const member of type.types) {
+        if (member.type.kind === ReflectionKind.rest) {
+            lines.push(`
+            for (; i < ${state.accessor}.length - ${restEndOffset}; i++) {
+                _ = undefined;
+                ${createConverterJSForTypeForState(`_`, `${state.accessor}[i]`, member.type.type, state)}
+                if (_ !== undefined) {
+                    ${state.setter}.push(_);
+                } else if (${member.optional || isOptional(member.type)}) {
+                    ${state.setter}.push(undefined);
+                }
+            }
+            `);
+        } else {
+            lines.push(`
+            _ = undefined;
+            ${createConverterJSForTypeForState(`_`, `${state.accessor}[i]`, member.type, state)}
+            if (_ !== undefined) {
+                ${state.setter}.push(_);
+            } else if (${member.optional || isOptional(member.type)}) {
+                ${state.setter}.push(undefined);
+            }
+            i++;
+            `);
+        }
+    }
+
+    state.addCodeForSetter(`
+        {
+            let _;
+            let i = 0;
+            ${state.setter} = [];
+            ${lines.join('\n')}
+        }
+    `);
+}
+
 class Serializer {
     serializeRegistry = new TemplateRegistry(this);
     deserializeRegistry = new TemplateRegistry(this);
@@ -345,6 +498,11 @@ class Serializer {
     constructor() {
         this.deserializeRegistry.register(ReflectionKind.class, deserializeClass);
         this.deserializeRegistry.register(ReflectionKind.objectLiteral, deserializeObjectLiteral);
+        this.serializeRegistry.prependClass(Set, serializeTypeClassSet);
+        this.serializeRegistry.prependClass(Map, serializeTypeClassMap);
+
+        this.deserializeRegistry.prependClass(Set, deserializeTypeClassSet);
+        this.deserializeRegistry.prependClass(Map, deserializeTypeClassMap);
     }
 
     public serialize<T, D extends T>(data: D) {
@@ -360,21 +518,57 @@ class JSONSerializer extends Serializer {
             state.addSetter(`${state.accessor}.toJSON()`);
         });
 
+        this.serializeRegistry.register(ReflectionKind.bigint, (type, state) => {
+            state.addSetter(`${state.accessor}.toString()`);
+        });
+
+
         this.deserializeRegistry.prependClass(Date, (type, state) => {
             state.setContext({ Date });
             state.addSetter(`new Date(${state.accessor})`);
         });
 
+        this.deserializeRegistry.register(ReflectionKind.tuple, deserializeTypeTuple);
+
         this.deserializeRegistry.register(ReflectionKind.string, (type, state) => {
             state.addSetter(`'string' !== typeof ${state.accessor} ? ${state.accessor}+'' : ${state.accessor}`);
         });
 
+        this.deserializeRegistry.register(ReflectionKind.boolean, (type, state) => {
+            state.addSetter(`'boolean' !== typeof ${state.accessor} ? ${state.accessor} == 1 : ${state.accessor}`);
+        });
+
+        this.deserializeRegistry.register(ReflectionKind.bigint, (type, state) => {
+            state.setContext({ BigInt });
+            state.addSetter(`'bigint' !== typeof ${state.accessor} ? BigInt(${state.accessor}) : ${state.accessor}`);
+        });
+
+        this.deserializeRegistry.register(ReflectionKind.enum, (type, state) => {
+            throw new Error('Enum not implemented');
+        });
+
         this.deserializeRegistry.register(ReflectionKind.number, (type, state) => {
-            if (type.brand === 0) {
+            if (type.brand !== undefined && type.brand < TypeNumberBrand.float) {
                 state.addSetter(`Math.trunc(${state.accessor})`);
+                if (type.brand === TypeNumberBrand.uint8) {
+                    state.addSetter(`${state.accessor} > 255 ? 255 : ${state.accessor} < 0 ? 0 : ${state.accessor}`);
+                } else if (type.brand === TypeNumberBrand.uint16) {
+                    state.addSetter(`${state.accessor} > 65535 ? 65535 : ${state.accessor} < 0 ? 0 : ${state.accessor}`);
+                } else if (type.brand === TypeNumberBrand.uint32) {
+                    state.addSetter(`${state.accessor} > 4294967295 ? 4294967295 : ${state.accessor} < 0 ? 0 : ${state.accessor}`);
+                } else if (type.brand === TypeNumberBrand.int8) {
+                    state.addSetter(`${state.accessor} > 128 ? 128 : ${state.accessor} < -127 ? -127 : ${state.accessor}`);
+                } else if (type.brand === TypeNumberBrand.int16) {
+                    state.addSetter(`${state.accessor} > 32767 ? 32767 : ${state.accessor} < -32768 ? -32768 : ${state.accessor}`);
+                } else if (type.brand === TypeNumberBrand.int32) {
+                    state.addSetter(`${state.accessor} > 2147483647 ? 2147483647 : ${state.accessor} < -2147483648 ? -2147483648 : ${state.accessor}`);
+                }
             } else {
                 state.setContext({ Number });
                 state.addSetter(`'number' !== typeof ${state.accessor} ? Number(${state.accessor}) : ${state.accessor}`);
+                if (type.brand === TypeNumberBrand.uint8) {
+                    state.addSetter(`${state.accessor} > 3.40282347e+38 ? 3.40282347e+38 : ${state.accessor} < -3.40282347e+38 ? -3.40282347e+38 : ${state.accessor}`);
+                }
             }
         });
     }

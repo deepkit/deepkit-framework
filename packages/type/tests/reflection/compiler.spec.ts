@@ -915,7 +915,6 @@ test('brand intersection', () => {
     } as Type);
 });
 
-
 test('brand intersection symbol', () => {
     const code = `
     const meta = Symbol.for('deepkit/meta');
@@ -938,4 +937,67 @@ test('brand intersection symbol', () => {
             },
         ]
     } as Type);
+});
+
+test('circular 1', () => {
+    const code = `
+    type Page = {
+        title: string;
+        children: Page[]
+    }
+    return typeOf<Page>();
+    `;
+
+    const js = transpile(code);
+    console.log('js', js);
+    // const type = transpileAndReturn(code);
+    // expect(type).toEqual({
+    //     kind: ReflectionKind.intersection,
+    //     types: [
+    //         {kind: ReflectionKind.string},
+    //         {
+    //             kind: ReflectionKind.objectLiteral, types: [
+    //                 {kind: ReflectionKind.propertySignature, name: Symbol.for('deepkit/meta'), type: {kind: ReflectionKind.literal, literal: 'primaryKey'}, optional: true}
+    //             ]
+    //         },
+    //     ]
+    // } as Type);
+});
+
+
+test('circular 2', () => {
+    const code = `
+    type Document = {
+        title: string;
+        root: Node;
+    }
+
+    type Node = {
+        children: Node[]
+    }
+
+    return typeOf<Document>();
+    `;
+
+    const js = transpile(code);
+    console.log('js', js);
+});
+
+test('circular class 2', () => {
+    const code = `
+    class Document {
+        title!: string;
+        root!: Node;
+    }
+
+    class Node {
+    }
+
+    return typeOf<Document>();
+    `;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+    console.log('type', type);
 });

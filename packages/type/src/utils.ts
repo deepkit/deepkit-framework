@@ -32,18 +32,17 @@ export function stringifyUuid(buffer: Uint8Array, offset: number = 0): string {
     return stringify(buffer, offset);
 }
 
-//
-// export type JSONPartialSingle<T> = T extends Date ? string :
-//     T extends Array<infer K> ? Array<JSONPartialSingle<K>> :
-//     T extends TypedArrays ? string :
-//     T extends ArrayBuffer ? string :
-//     T extends object ? JSONPartial<T> :
-//     T extends string ? number | T :
-//     T extends boolean ? number | string | T :
-//     T extends number ? T | string : T;
-//
-// export type JSONPartial<T> = { [name in keyof T & string]?: JSONPartialSingle<ExtractPrimaryKeyOrReferenceType<T[name]>> };
-//
+export type JSONPartialSingle<T> = T extends Date ? string :
+    T extends Array<infer K> ? Array<JSONPartialSingle<K>> :
+    // T extends TypedArrays ? string :
+    T extends ArrayBuffer ? string :
+    T extends object ? JSONPartial<T> :
+    T extends string ? number | T :
+    T extends boolean ? number | string | T :
+    T extends number ? T | string : T;
+
+export type JSONPartial<T> = { [name in keyof T & string]?: JSONPartialSingle<T[name]> | null };
+
 export type JSONSingle<T> = T extends Date ? string | Date :
     T extends Array<infer K> ? Array<JSONSingle<K>> :
     // T extends TypedArrays ? string :

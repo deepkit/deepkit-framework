@@ -12,6 +12,7 @@ import {
     __String,
     ArrayTypeNode,
     ArrowFunction,
+    BigIntLiteral,
     Bundle,
     ClassDeclaration,
     ClassElement,
@@ -39,7 +40,7 @@ import {
     IndexSignatureDeclaration,
     InferTypeNode,
     InterfaceDeclaration,
-    IntersectionTypeNode,
+    IntersectionTypeNode, isArrayTypeNode,
     isArrowFunction,
     isCallExpression,
     isClassDeclaration,
@@ -55,6 +56,8 @@ import {
     isMappedTypeNode,
     isMethodDeclaration,
     isNamedExports,
+    isNamedTupleMember,
+    isOptionalTypeNode,
     isParenthesizedTypeNode,
     isStringLiteral,
     isTypeAliasDeclaration,
@@ -68,16 +71,19 @@ import {
     Node,
     NodeFactory,
     NodeFlags,
+    NumericLiteral,
     PropertyAccessExpression,
     PropertyDeclaration,
     PropertySignature,
     QualifiedName,
+    RestTypeNode,
     ScriptReferenceHost,
     SourceFile,
     Statement,
-    SymbolTable,
-    SyntaxKind,
+    StringLiteral,
+    SymbolTable, SyntaxKind,
     TransformationContext,
+    TupleTypeNode,
     TypeAliasDeclaration,
     TypeChecker,
     TypeElement,
@@ -88,168 +94,12 @@ import {
     visitEachChild,
     visitNode,
 } from 'typescript';
-import {ClassType, isArray} from '@deepkit/core';
-import {extractJSDocAttribute, getNameAsString, getPropertyName, hasModifier} from './reflection-ast';
-import {existsSync, readFileSync} from 'fs';
-import {dirname, join, resolve} from 'path';
+import { isArray } from '@deepkit/core';
+import { extractJSDocAttribute, getNameAsString, getPropertyName, hasModifier } from './reflection-ast';
+import { existsSync, readFileSync } from 'fs';
+import { dirname, join, resolve } from 'path';
 import stripJsonComments from 'strip-json-comments';
-import {Type, TypeNumberBrand} from './type';
-
-/**
- * The instruction set.
- * Not more than `packSize` elements are allowed (can be stored).
- */
-export enum ReflectionOp {
-    never,
-    any,
-    void,
-
-    string,
-    number,
-    numberBrand,
-    boolean,
-    bigint,
-
-    null,
-    undefined,
-
-    /**
-     * The literal type of string, number, or boolean.
-     *
-     * This OP has 1 parameter. The next byte is the absolute address of the literal on the stack, which is the actual literal value.
-     *
-     * Pushes a function type.
-     */
-    literal,
-
-    /**
-     * This OP pops all types on the current stack frame.
-     *
-     * This OP has 1 parameter. The next byte is the absolute address of a string|number|symbol entry on the stack.
-     *
-     * Pushes a function type.
-     */
-    function,
-
-    /**
-     * This OP pops all types on the current stack frame.
-     *
-     * Pushes a method type.
-     */
-    method,
-    methodSignature, //has 1 parameter, reference to stack for its property name
-
-    parameter,
-
-    /**
-     * This OP pops the latest type entry on the stack.
-     *
-     * Pushes a property type.
-     */
-    property,
-    propertySignature, //has 1 parameter, reference to stack for its property name
-
-    constructor,
-
-    /**
-     * This OP pops all types on the current stack frame. Those types should be method|property.
-     *
-     * Pushes a class type.
-     */
-    class,
-
-    /**
-     * This OP has 1 parameter, the stack entry to the actual class symbol.
-     */
-    classReference,
-
-    /**
-     * Marks the last entry in the stack as optional. Used for method|property. Equal to the QuestionMark operator in a property assignment.
-     */
-    optional,
-    readonly,
-
-    //modifiers for property|method
-    public,
-    private,
-    protected,
-    abstract,
-    defaultValue,
-    description,
-
-    /**
-     * This OP has 1 parameter. The next byte is the absolute address of a enum entry on the stack.
-     */
-    enum,
-
-    set,
-    map,
-
-    /**
-     * This OP pops all members on the stack frame and pushes a new enum type.
-     */
-    constEnum,
-
-    /**
-     * Pops the latest stack entry and uses it as T for an array type.
-     *
-     * Pushes an array type.
-     */
-    array,
-
-    union, //pops frame. requires frame start when stack can be dirty.
-    intersection,
-
-    indexSignature,
-    objectLiteral,
-    mappedType,
-    in,
-
-    frame, //creates a new stack frame
-    return,
-
-    //special instructions that exist to emit less output
-    date,
-    int8Array,
-    uint8ClampedArray,
-    uint8Array,
-    int16Array,
-    uint16Array,
-    int32Array,
-    uint32Array,
-    float32Array,
-    float64Array,
-    bigInt64Array,
-    arrayBuffer,
-    promise,
-
-    pointer, //parameter is a number referencing an entry in the stack, relative to the very beginning (0). pushes that entry onto the stack.
-    arg, //@deprecated. parameter is a number referencing an entry in the stack, relative to the beginning of the current frame, *-1. pushes that entry onto the stack. this is related to the calling convention.
-    template, //template argument, e.g. T in a generic. has 1 parameter: reference to the name.
-    var, //reserve a new variable in the stack
-    loads, //pushes to the stack a referenced value in the stack. has 2 parameters: <frame> <index>, frame is a negative offset to the frame, and index the index of the stack entry withing the referenced frame
-
-    query, //T['string'], 2 items on the stack
-    keyof, //keyof operator
-    infer, //2 params, like `loads`
-
-    condition,
-    jumpCondition, //used when INFER is used in `extends` conditional branch
-    jump, //jump to an address
-    call, //has one parameter, the next program address. creates a new stack frame with current program address as first stack entry, and jumps back to that + 1.
-    inline,
-    inlineCall,
-
-
-    extends, //X extends Y, XY popped from the stack, pushes boolean on the stack
-}
-
-export const enum MappedModifier {
-    optional = 1 << 0,
-    removeOptional = 1 << 1,
-    readonly = 1 << 2,
-    removeReadonly = 1 << 3,
-}
+import { MappedModifier, ReflectionOp, TypeNumberBrand } from './type';
 
 export const packSizeByte: number = 6;
 
@@ -258,62 +108,12 @@ export const packSizeByte: number = 6;
  */
 export const packSize: number = 2 ** packSizeByte; //64
 
-export type StackEntry = Expression | (() => ClassType | Object) | string | number | boolean;
-export type RuntimeStackEntry = Type | Object | (() => ClassType | Object) | string | number | boolean;
+type StackEntry = Expression | string | number | boolean;
+type PackExpression = Expression | string | number | boolean | bigint;
 
-export type Packed = string | (StackEntry | string)[];
-
-function unpackOps(decodedOps: ReflectionOp[], encodedOPs: string): void {
-    for (let i = 0; i < encodedOPs.length; i++) {
-        decodedOps.push(encodedOPs.charCodeAt(i) - 33);
-    }
-}
-
-export class PackStruct {
-    constructor(
-        public ops: ReflectionOp[] = [],
-        public stack: StackEntry[] = [],
-    ) {
-    }
-}
-
-/**
- * Pack a pack structure (op instructions + pre-defined stack) and create a encoded version of it.
- */
-export function pack(packOrOps: PackStruct | ReflectionOp[]): Packed {
-    const ops = isArray(packOrOps) ? packOrOps : packOrOps.ops;
-    const encodedOps = ops.map(v => String.fromCharCode(v + 33)).join('');
-
-    if (!isArray(packOrOps)) {
-        if (packOrOps.stack.length) {
-            return [...packOrOps.stack as StackEntry[], encodedOps];
-        }
-    }
-
-    return encodedOps;
-}
-
-export function unpack(pack: Packed): PackStruct {
-    const ops: ReflectionOp[] = [];
-    const stack: StackEntry[] = [];
-
-    if ('string' === typeof pack) {
-        unpackOps(ops, pack);
-        return {ops, stack};
-    }
-
-    const encodedOPs = pack[pack.length - 1];
-
-    //the end has always to be a string
-    if ('string' !== typeof encodedOPs) return {ops: [], stack: []};
-
-    if (pack.length > 1) {
-        stack.push(...pack.slice(0, -1) as StackEntry[]);
-    }
-
-    unpackOps(ops, encodedOPs);
-
-    return {ops, stack};
+interface PackStruct {
+    ops: ReflectionOp[],
+    stack: PackExpression[]
 }
 
 /**
@@ -330,29 +130,29 @@ interface EmitResolver {
 const reflectionModes = ['always', 'default', 'never'] as const;
 
 const OPs: { [op in ReflectionOp]?: { params: number } } = {
-    [ReflectionOp.literal]: {params: 1},
-    [ReflectionOp.pointer]: {params: 1},
-    [ReflectionOp.arg]: {params: 1},
-    [ReflectionOp.classReference]: {params: 1},
-    [ReflectionOp.propertySignature]: {params: 1},
-    [ReflectionOp.property]: {params: 1},
-    [ReflectionOp.jump]: {params: 1},
-    [ReflectionOp.enum]: {params: 1},
-    [ReflectionOp.template]: {params: 1},
-    [ReflectionOp.mappedType]: {params: 2},
-    [ReflectionOp.call]: {params: 1},
-    [ReflectionOp.inline]: {params: 1},
-    [ReflectionOp.inlineCall]: {params: 2},
-    [ReflectionOp.loads]: {params: 2},
-    [ReflectionOp.infer]: {params: 2},
-    [ReflectionOp.defaultValue]: {params: 1},
-    [ReflectionOp.parameter]: {params: 1},
-    [ReflectionOp.method]: {params: 1},
-    [ReflectionOp.description]: {params: 1},
-    [ReflectionOp.numberBrand]: {params: 1},
+    [ReflectionOp.literal]: { params: 1 },
+    // [ReflectionOp.pointer]: { params: 1 },
+    // [ReflectionOp.arg]: { params: 1 },
+    [ReflectionOp.classReference]: { params: 1 },
+    [ReflectionOp.propertySignature]: { params: 1 },
+    [ReflectionOp.property]: { params: 1 },
+    [ReflectionOp.jump]: { params: 1 },
+    [ReflectionOp.enum]: { params: 1 },
+    [ReflectionOp.template]: { params: 1 },
+    [ReflectionOp.mappedType]: { params: 2 },
+    [ReflectionOp.call]: { params: 1 },
+    [ReflectionOp.inline]: { params: 1 },
+    [ReflectionOp.inlineCall]: { params: 2 },
+    [ReflectionOp.loads]: { params: 2 },
+    [ReflectionOp.infer]: { params: 2 },
+    [ReflectionOp.defaultValue]: { params: 1 },
+    [ReflectionOp.parameter]: { params: 1 },
+    [ReflectionOp.method]: { params: 1 },
+    [ReflectionOp.description]: { params: 1 },
+    [ReflectionOp.numberBrand]: { params: 1 },
 };
 
-export function debugPackStruct(pack: PackStruct): void {
+export function debugPackStruct(pack: { ops: ReflectionOp[], stack: PackExpression[] }): void {
     const items: any[] = [];
 
     for (let i = 0; i < pack.ops.length; i++) {
@@ -371,6 +171,22 @@ export function debugPackStruct(pack: PackStruct): void {
     console.log(pack.stack, '|', ...items);
 }
 
+/**
+ * Pack a pack structure (op instructions + pre-defined stack) and create a encoded version of it.
+ */
+export function pack(packOrOps: PackStruct | ReflectionOp[]): PackExpression[] {
+    const ops = isArray(packOrOps) ? packOrOps : packOrOps.ops;
+    const encodedOps = ops.map(v => String.fromCharCode(v + 33)).join('');
+
+    if (!isArray(packOrOps)) {
+        if (packOrOps.stack.length) {
+            return [...packOrOps.stack as StackEntry[], encodedOps];
+        }
+    }
+
+    return [encodedOps];
+}
+
 function isNodeWithLocals(node: Node): node is (Node & { locals: SymbolTable | undefined }) {
     return 'locals' in node;
 }
@@ -385,7 +201,7 @@ interface Frame {
 function findVariable(frame: Frame, name: string, frameOffset: number = 0): { frameOffset: number, stackIndex: number } | undefined {
     const variable = frame.variables.find(v => v.name === name);
     if (variable) {
-        return {frameOffset, stackIndex: variable.index};
+        return { frameOffset, stackIndex: variable.index };
     }
 
     if (frame.previous) return findVariable(frame.previous, name, frameOffset + 1);
@@ -407,10 +223,13 @@ class CompilerProgram {
 
     protected stackPosition: number = 0;
 
-    protected frame: Frame = {variables: [], opIndex: 0};
+    protected frame: Frame = { variables: [], opIndex: 0 };
 
     protected activeCoRoutines: { ops: ReflectionOp[] }[] = [];
     protected coRoutines: { ops: ReflectionOp[] }[] = [];
+
+    constructor(public forNode: Node) {
+    }
 
     buildPackStruct() {
         const ops: ReflectionOp[] = [...this.ops];
@@ -425,7 +244,7 @@ class CompilerProgram {
             ops.unshift(ReflectionOp.jump, this.mainOffset);
         }
 
-        return new PackStruct(ops, this.stack);
+        return { ops, stack: this.stack };
     }
 
     isEmpty(): boolean {
@@ -444,7 +263,7 @@ class CompilerProgram {
 
     pushCoRoutine(): void {
         this.pushFrame(true); //co-routines have implicit stack frames due to call convention
-        this.activeCoRoutines.push({ops: []});
+        this.activeCoRoutines.push({ ops: [] });
     }
 
     popCoRoutine(): number {
@@ -498,7 +317,7 @@ class CompilerProgram {
     pushFrame(implicit: boolean = false) {
         if (!implicit) this.pushOp(ReflectionOp.frame);
         const opIndex = this.activeCoRoutines.length ? this.activeCoRoutines[this.activeCoRoutines.length - 1].ops.length : this.ops.length;
-        this.frame = {previous: this.frame, variables: [], opIndex};
+        this.frame = { previous: this.frame, variables: [], opIndex };
         return this.frame;
     }
 
@@ -560,7 +379,7 @@ export class ReflectionTransformer {
         const sourceFile: SourceFile = this.sourceFile;
         if ((sourceFile as any)._typeChecker) return (sourceFile as any)._typeChecker;
         const host = createCompilerHost(this.context.getCompilerOptions());
-        const program = createProgram([sourceFile.fileName], this.context.getCompilerOptions(), {...host, ...this.host});
+        const program = createProgram([sourceFile.fileName], this.context.getCompilerOptions(), { ...host, ...this.host });
         return (sourceFile as any)._typeChecker = program.getTypeChecker();
     }
 
@@ -659,6 +478,7 @@ export class ReflectionTransformer {
             if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && this.compileDeclarations.has(node)) {
                 const d = this.compileDeclarations.get(node)!;
                 this.compileDeclarations.delete(node);
+                this.compiledDeclarations.add(node);
                 return [node, this.createProgramVarFromNode(node, d.name)];
             }
 
@@ -671,6 +491,9 @@ export class ReflectionTransformer {
 
         if (this.embedDeclarations.size) {
             const embeded: Statement[] = [];
+            for (const node of this.embedDeclarations.keys()) {
+                this.compiledDeclarations.add(node);
+            }
             for (const [node, d] of this.embedDeclarations.entries()) {
                 embeded.push(this.createProgramVarFromNode(node, d.name));
             }
@@ -684,7 +507,7 @@ export class ReflectionTransformer {
     }
 
     protected createProgramVarFromNode(node: Node, name: EntityName) {
-        const typeProgram = new CompilerProgram();
+        const typeProgram = new CompilerProgram(node);
 
         if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && node.typeParameters) {
             for (const param of node.typeParameters) {
@@ -904,6 +727,46 @@ export class ReflectionTransformer {
             case SyntaxKind.ArrayType: {
                 this.extractPackStructOfType((node as ArrayTypeNode).elementType, program);
                 program.pushOp(ReflectionOp.array);
+                break;
+            }
+            case SyntaxKind.RestType: {
+                let type = (node as RestTypeNode).type;
+                if (isArrayTypeNode(type)) {
+                    type = type.elementType;
+                }
+                this.extractPackStructOfType(type, program);
+                program.pushOp(ReflectionOp.rest);
+                break;
+            }
+            case SyntaxKind.TupleType: {
+                program.pushFrame();
+                for (const element of (node as TupleTypeNode).elements) {
+                    if (isOptionalTypeNode(element)) {
+                        this.extractPackStructOfType(element.type, program);
+                        program.pushOp(ReflectionOp.tupleMember);
+                        program.pushOp(ReflectionOp.optional);
+                    } else if (isNamedTupleMember(element)) {
+                        if (element.dotDotDotToken) {
+                            let type = element.type;
+                            if (isArrayTypeNode(type)) {
+                                type = type.elementType;
+                            }
+                            this.extractPackStructOfType(type, program);
+                            program.pushOp(ReflectionOp.rest);
+                        } else {
+                            this.extractPackStructOfType(element.type, program);
+                        }
+                        const index = program.findOrAddStackEntry(element.name.text);
+                        program.pushOp(ReflectionOp.namedTupleMember, index);
+                        if (element.questionToken) {
+                            program.pushOp(ReflectionOp.optional);
+                        }
+                    } else {
+                        this.extractPackStructOfType(element, program);
+                    }
+                }
+                program.pushOp(ReflectionOp.tuple);
+                program.popFrame();
                 break;
             }
             case SyntaxKind.PropertySignature: {
@@ -1149,7 +1012,7 @@ export class ReflectionTransformer {
 
         if (!declaration) return;
 
-        return {declaration, importSpecifier};
+        return { declaration, importSpecifier };
     }
 
     // protected resolveType(node: TypeNode): Declaration | Node {
@@ -1177,6 +1040,7 @@ export class ReflectionTransformer {
      * This is for types used in the very same file.
      */
     protected compileDeclarations = new Map<TypeAliasDeclaration | InterfaceDeclaration, { name: EntityName }>();
+    protected compiledDeclarations = new Set<Node>();
 
     /**
      * Types added to this map will get a type program at the top root level of the program.
@@ -1194,7 +1058,7 @@ export class ReflectionTransformer {
             return joinQualifiedName(name.left) + '_' + name.right.text;
         }
 
-        return '__Ω' + joinQualifiedName(typeName);
+        return this.f.createIdentifier('__Ω' + joinQualifiedName(typeName));
     }
 
     protected extractPackStructOfTypeReference(type: TypeReferenceNode, program: CompilerProgram) {
@@ -1210,10 +1074,8 @@ export class ReflectionTransformer {
             program.pushOp(ReflectionOp.promise);
         } else if (isIdentifier(type.typeName) && type.typeName.text === 'integer') {
             program.pushOp(ReflectionOp.numberBrand, TypeNumberBrand.integer as number);
-        } else if (isIdentifier(type.typeName) && type.typeName.text === 'int8') {
-            program.pushOp(ReflectionOp.numberBrand, TypeNumberBrand.int8 as number);
-        } else if (isIdentifier(type.typeName) && type.typeName.text === 'int16') {
-            program.pushOp(ReflectionOp.numberBrand, TypeNumberBrand.int16 as number);
+        } else if (isIdentifier(type.typeName) && TypeNumberBrand[type.typeName.text as any] !== undefined) {
+            program.pushOp(ReflectionOp.numberBrand, TypeNumberBrand[type.typeName.text as any] as any);
         } else {
             //check if it references a variable
             if (isIdentifier(type.typeName)) {
@@ -1266,13 +1128,41 @@ export class ReflectionTransformer {
             const declaration = resolved.declaration;
 
             if (isTypeAliasDeclaration(declaration) || isInterfaceDeclaration(declaration)) {
-                // store its declaration in its own definition program
-                const index = program.pushStack(this.getDeclarationVariableName(type.typeName));
+                //Set/Map are interface declarations
+                const name = getNameAsString(type.typeName);
+                if (name === 'Set') {
+                    if (type.typeArguments && type.typeArguments[0]) {
+                        this.extractPackStructOfType(type.typeArguments[0], program);
+                    } else {
+                        program.pushOp(ReflectionOp.any);
+                    }
+                    program.pushOp(ReflectionOp.set);
+                    return;
+                } else if (name === 'Map') {
+                    if (type.typeArguments && type.typeArguments[0]) {
+                        this.extractPackStructOfType(type.typeArguments[0], program);
+                    } else {
+                        program.pushOp(ReflectionOp.any);
+                    }
+                    if (type.typeArguments && type.typeArguments[1]) {
+                        this.extractPackStructOfType(type.typeArguments[1], program);
+                    } else {
+                        program.pushOp(ReflectionOp.any);
+                    }
+                    program.pushOp(ReflectionOp.map);
+                    return;
+                }
 
-                if (resolved!.importSpecifier) {
-                    this.embedDeclarations.set(declaration, {name: type.typeName});
-                } else {
-                    this.compileDeclarations.set(declaration, {name: type.typeName});
+                // store its declaration in its own definition program
+                const index = program.pushStack(program.forNode === declaration ? 0 : this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, this.getDeclarationVariableName(type.typeName)));
+
+                //to break recursion, we track which declaration has already been compiled
+                if (!this.compiledDeclarations.has(declaration)) {
+                    if (resolved!.importSpecifier) {
+                        this.embedDeclarations.set(declaration, { name: type.typeName });
+                    } else {
+                        this.compileDeclarations.set(declaration, { name: type.typeName });
+                    }
                 }
 
                 if (type.typeArguments) {
@@ -1298,10 +1188,7 @@ export class ReflectionTransformer {
                 return;
             } else if (isClassDeclaration(declaration)) {
                 ensureImportIsEmitted();
-                // program.pushOp(type.typeArguments ? ReflectionOp.genericClass : ReflectionOp.class);
-                //
-                // //todo: this needs a better logic to also resolve references that are not yet imported.
-                // // this can happen when a type alias is imported which itself references to a type from another import.
+                program.pushFrame();
 
                 if (type.typeArguments) {
                     for (const template of type.typeArguments) {
@@ -1312,6 +1199,7 @@ export class ReflectionTransformer {
                 const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName)));
                 program.pushOp(ReflectionOp.classReference);
                 program.pushOp(index);
+                program.popFrame();
             } else {
                 this.extractPackStructOfType(declaration, program);
             }
@@ -1374,7 +1262,7 @@ export class ReflectionTransformer {
         const reflection = this.findReflectionConfig(type);
         if (reflection.mode === 'never') return;
 
-        const program = new CompilerProgram();
+        const program = new CompilerProgram(type);
         this.extractPackStructOfType(type, program);
         return this.packOpsAndStack(program.buildPackStruct());
     }
@@ -1386,10 +1274,24 @@ export class ReflectionTransformer {
         return this.valueToExpression(packed);
     }
 
-    protected valueToExpression(value: any): Expression {
-        if (isArray(value)) return this.f.createArrayLiteralExpression(value.map(v => this.valueToExpression(v)));
+    /**
+     *
+     * Note: We have to duplicate the expressions as it can be that incoming expression are from another file and contain wrong pos/end properties,
+     * so the code generation is then broken when we simply reuse them. Wrong code like ``User.__type = [.toEqual({`` is then generated.
+     * This function is probably not complete, but we add new copies when required.
+     */
+    protected valueToExpression(value: PackExpression | PackExpression[]): Expression {
+        if (isArray(value)) return this.f.createArrayLiteralExpression(this.f.createNodeArray(value.map(v => this.valueToExpression(v))));
         if ('string' === typeof value) return this.f.createStringLiteral(value, true);
         if ('number' === typeof value) return this.f.createNumericLiteral(value);
+        if ('bigint' === typeof value) return this.f.createBigIntLiteral(String(value));
+        if ('boolean' === typeof value) return value ? this.f.createTrue() : this.f.createFalse();
+
+        if (value.kind === SyntaxKind.StringLiteral) return this.f.createStringLiteral((value as StringLiteral).text, true);
+        if (value.kind === SyntaxKind.NumericLiteral) return this.f.createNumericLiteral((value as NumericLiteral).text);
+        if (value.kind === SyntaxKind.BigIntLiteral) return this.f.createBigIntLiteral((value as BigIntLiteral).text);
+        if (value.kind === SyntaxKind.TrueKeyword) return this.f.createTrue();
+        if (value.kind === SyntaxKind.FalseKeyword) return this.f.createFalse();
 
         return value;
     }
@@ -1408,6 +1310,7 @@ export class ReflectionTransformer {
         const type = this.getTypeOfType(node);
         const __type = this.f.createPropertyDeclaration(undefined, this.f.createModifiersFromModifierFlags(ModifierFlags.Static), '__type', undefined, undefined, type);
         if (isClassDeclaration(node)) {
+            // return node;
             return this.f.updateClassDeclaration(node, node.decorators, node.modifiers,
                 node.name, node.typeParameters, node.heritageClauses,
                 this.f.createNodeArray<ClassElement>([...node.members, __type])
@@ -1487,14 +1390,14 @@ export class ReflectionTransformer {
             const tags = getJSDocTags(current);
             for (const tag of tags) {
                 if (!reflection && tag.tagName.text === 'reflection' && 'string' === typeof tag.comment) {
-                    return {mode: this.parseReflectionMode(tag.comment as any || true)};
+                    return { mode: this.parseReflectionMode(tag.comment as any || true) };
                 }
             }
             current = current.parent;
         } while (current);
 
         //nothing found, look in tsconfig.json
-        if (this.reflectionMode !== undefined) return {mode: this.reflectionMode};
+        if (this.reflectionMode !== undefined) return { mode: this.reflectionMode };
         let currentDir = dirname(this.sourceFile.fileName);
 
         while (currentDir) {
@@ -1505,7 +1408,7 @@ export class ReflectionTransformer {
                 tsConfig = this.resolvedTsConfig[tsconfigPath].data;
             } else {
                 const exists = existsSync(tsconfigPath);
-                this.resolvedTsConfig[tsconfigPath] = {exists, data: {}};
+                this.resolvedTsConfig[tsconfigPath] = { exists, data: {} };
                 if (exists) {
                     try {
                         let content = readFileSync(tsconfigPath, 'utf8');
@@ -1518,14 +1421,14 @@ export class ReflectionTransformer {
                 }
             }
             if (reflection === undefined && tsConfig.reflection !== undefined) {
-                return {mode: this.parseReflectionMode(tsConfig.reflection)};
+                return { mode: this.parseReflectionMode(tsConfig.reflection) };
             }
             const next = join(currentDir, '..');
             if (resolve(next) === resolve(currentDir)) break; //we are at root
             currentDir = next;
         }
 
-        return {mode: reflection || 'never'};
+        return { mode: reflection || 'never' };
     }
 }
 

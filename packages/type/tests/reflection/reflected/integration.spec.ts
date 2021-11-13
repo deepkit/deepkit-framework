@@ -9,9 +9,24 @@
  */
 
 import { expect, test } from '@jest/globals';
-import { propertiesOf, reflect, ReflectionClass, ReflectionFunction, typeOf, valuesOf } from '../../../src/reflection/reflection';
-import { integer, PrimaryKey, ReflectionKind, ReflectionVisibility, Type, TypeClass, TypeIndexSignature, TypeObjectLiteral } from '../../../src/reflection/type';
 import { t } from '../../../src/decorator';
+import { decorate, propertiesOf, reflect, ReflectionClass, ReflectionFunction, typeOf, valuesOf } from '../../../src/reflection/reflection';
+import {
+    BackReference,
+    integer,
+    PrimaryKey,
+    Reference,
+    ReflectionKind,
+    ReflectionVisibility,
+    Type,
+    TypeClass,
+    TypeIndexSignature,
+    TypeNumber,
+    TypeNumberBrand,
+    TypeObjectLiteral,
+    TypeTuple
+} from '../../../src/reflection/type';
+import { ClassType } from '@deepkit/core';
 
 test('class', () => {
     class Entity {
@@ -22,12 +37,54 @@ test('class', () => {
     expect(type).toEqual({
         kind: ReflectionKind.class,
         classType: Entity,
-        members: [
+        types: [
             {
                 kind: ReflectionKind.property,
                 visibility: ReflectionVisibility.public,
                 name: 'tags',
-                type: { kind: ReflectionKind.array, elementType: { kind: ReflectionKind.string } }
+                type: { kind: ReflectionKind.array, type: { kind: ReflectionKind.string } }
+            }
+        ]
+    });
+});
+
+test('class optional question mark', () => {
+    class Entity {
+        title?: string;
+    }
+
+    const type = reflect(Entity);
+    expect(type).toEqual({
+        kind: ReflectionKind.class,
+        classType: Entity,
+        types: [
+            {
+                kind: ReflectionKind.property,
+                visibility: ReflectionVisibility.public,
+                name: 'title',
+                optional: true,
+                type: { kind: ReflectionKind.string }
+            }
+        ]
+    });
+});
+
+test('class optional union', () => {
+    class Entity {
+        title: string | undefined;
+    }
+
+    const type = reflect(Entity);
+    expect(type).toEqual({
+        kind: ReflectionKind.class,
+        classType: Entity,
+        types: [
+            {
+                kind: ReflectionKind.property,
+                visibility: ReflectionVisibility.public,
+                name: 'title',
+                optional: true,
+                type: { kind: ReflectionKind.string }
             }
         ]
     });
@@ -35,11 +92,13 @@ test('class', () => {
 
 test('class constructor', () => {
     class Entity1 {
-        constructor(title: string) {}
+        constructor(title: string) {
+        }
     }
 
     class Entity2 {
-        constructor(public title: string) {}
+        constructor(public title: string) {
+        }
     }
 
     expect(reflect(Entity1)).toEqual({
@@ -89,14 +148,102 @@ test('interface', () => {
     const type = typeOf<Entity>();
     expect(type).toEqual({
         kind: ReflectionKind.objectLiteral,
-        members: [
+        types: [
             {
                 kind: ReflectionKind.propertySignature,
                 name: 'tags',
-                type: { kind: ReflectionKind.array, elementType: { kind: ReflectionKind.string } }
+                type: { kind: ReflectionKind.array, type: { kind: ReflectionKind.string } }
             }
         ]
     });
+});
+
+test('tuple', () => {
+    {
+        const type = typeOf<[string]>();
+        expect(type).toEqual({
+            kind: ReflectionKind.tuple,
+            types: [
+                { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.string } }
+            ]
+        } as TypeTuple);
+    }
+    {
+        const type = typeOf<[string, number]>();
+        expect(type).toEqual({
+            kind: ReflectionKind.tuple,
+            types: [
+                { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.string } },
+                { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.number } }
+            ]
+        } as TypeTuple);
+    }
+});
+
+test('named tuple', () => {
+    {
+        const type = typeOf<[title: string]>();
+        expect(type).toEqual({
+            kind: ReflectionKind.tuple,
+            types: [
+                { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.string }, name: 'title' }
+            ]
+        } as TypeTuple);
+    }
+    {
+        const type = typeOf<[title: string, prio: number]>();
+        expect(type).toEqual({
+            kind: ReflectionKind.tuple,
+            types: [
+                { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.string }, name: 'title' },
+                { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.number }, name: 'prio' }
+            ]
+        } as TypeTuple);
+    }
+});
+
+test('rest tuple', () => {
+    {
+        const type = typeOf<[...string[]]>();
+        expect(type).toEqual({
+            kind: ReflectionKind.tuple,
+            types: [
+                { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.string } } }
+            ]
+        } as TypeTuple);
+    }
+    {
+        const type = typeOf<[...string[], number]>();
+        expect(type).toEqual({
+            kind: ReflectionKind.tuple,
+            types: [
+                { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.string } } },
+                { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.number }  }
+            ]
+        } as TypeTuple);
+    }
+});
+
+test('rest named tuple', () => {
+    {
+        const type = typeOf<[...title: string[]]>();
+        expect(type).toEqual({
+            kind: ReflectionKind.tuple,
+            types: [
+                { kind: ReflectionKind.tupleMember, name: 'title', type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.string } } }
+            ]
+        } as TypeTuple);
+    }
+    {
+        const type = typeOf<[...title: string[], prio: number]>();
+        expect(type).toEqual({
+            kind: ReflectionKind.tuple,
+            types: [
+                { kind: ReflectionKind.tupleMember, name: 'title', type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.string } } },
+                { kind: ReflectionKind.tupleMember, name: 'prio', type: { kind: ReflectionKind.number } },
+            ]
+        } as TypeTuple);
+    }
 });
 
 test('typeof primitives', () => {
@@ -113,7 +260,7 @@ test('typeof primitives', () => {
 
 test('typeof union', () => {
     type t = 'a' | 'b';
-    expect(typeOf<t>()).toEqual({ kind: ReflectionKind.union, members: [{ kind: ReflectionKind.literal, literal: 'a' }, { kind: ReflectionKind.literal, literal: 'b' }] });
+    expect(typeOf<t>()).toEqual({ kind: ReflectionKind.union, types: [{ kind: ReflectionKind.literal, literal: 'a' }, { kind: ReflectionKind.literal, literal: 'b' }] });
 });
 
 test('valuesOf union', () => {
@@ -172,7 +319,9 @@ test('typeof object literal', () => {
 });
 
 test('typeof class', () => {
-    class Entity {a!: string;}
+    class Entity {
+        a!: string;
+    }
 
     expect(typeOf<Entity>()).toEqual({
         kind: ReflectionKind.class,
@@ -188,16 +337,20 @@ test('typeof class', () => {
 });
 
 test('typeof generic class', () => {
-    class Entity<T> {a!: T;}
+    class Entity<T> {
+        a!: T;
+    }
 
     expect(typeOf<Entity<string>>()).toEqual({
         kind: ReflectionKind.class,
         classType: Entity,
+        arguments: [typeOf<string>()],
         types: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
     } as TypeClass);
 
     expect(reflect(Entity, typeOf<string>())).toEqual({
         kind: ReflectionKind.class,
+        arguments: [typeOf<string>()],
         classType: Entity,
         types: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
     } as TypeClass);
@@ -238,7 +391,7 @@ test('query', () => {
 
     expect(typeOf<o['a']>()).toEqual({
         kind: ReflectionKind.union,
-        members: [
+        types: [
             { kind: ReflectionKind.string },
             { kind: ReflectionKind.number },
         ]
@@ -255,7 +408,7 @@ test('type alias partial', () => {
 
     expect(typeOf<p>()).toEqual({
         kind: ReflectionKind.objectLiteral,
-        members: [{ kind: ReflectionKind.propertySignature, name: 'a', optional: true, type: { kind: ReflectionKind.string } }]
+        types: [{ kind: ReflectionKind.propertySignature, name: 'a', optional: true, type: { kind: ReflectionKind.string } }]
     });
 });
 
@@ -269,7 +422,7 @@ test('type alias required', () => {
 
     expect(typeOf<p>()).toEqual({
         kind: ReflectionKind.objectLiteral,
-        members: [{ kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string } }]
+        types: [{ kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string } }]
     });
 });
 
@@ -283,21 +436,21 @@ test('type alias partial readonly', () => {
 
     expect(typeOf<p>()).toEqual({
         kind: ReflectionKind.objectLiteral,
-        members: [{ kind: ReflectionKind.propertySignature, name: 'a', readonly: true, optional: true, type: { kind: ReflectionKind.string } }]
+        types: [{ kind: ReflectionKind.propertySignature, name: 'a', readonly: true, optional: true, type: { kind: ReflectionKind.string } }]
     });
 });
 
 test('object literal optional', () => {
     expect(typeOf<{ a?: string }>()).toEqual({
         kind: ReflectionKind.objectLiteral,
-        members: [{ kind: ReflectionKind.propertySignature, name: 'a', optional: true, type: { kind: ReflectionKind.string } }]
+        types: [{ kind: ReflectionKind.propertySignature, name: 'a', optional: true, type: { kind: ReflectionKind.string } }]
     });
 });
 
 test('object literal readonly', () => {
     expect(typeOf<{ readonly a: string }>()).toEqual({
         kind: ReflectionKind.objectLiteral,
-        members: [{ kind: ReflectionKind.propertySignature, name: 'a', readonly: true, type: { kind: ReflectionKind.string } }]
+        types: [{ kind: ReflectionKind.propertySignature, name: 'a', readonly: true, type: { kind: ReflectionKind.string } }]
     });
 });
 
@@ -311,7 +464,7 @@ test('type alias partial remove readonly', () => {
 
     expect(typeOf<p>()).toEqual({
         kind: ReflectionKind.objectLiteral,
-        members: [{ kind: ReflectionKind.propertySignature, name: 'a', optional: true, type: { kind: ReflectionKind.string } }]
+        types: [{ kind: ReflectionKind.propertySignature, name: 'a', optional: true, type: { kind: ReflectionKind.string } }]
     });
 });
 
@@ -325,7 +478,7 @@ test('type alias all string', () => {
 
     expect(typeOf<p>()).toEqual({
         kind: ReflectionKind.objectLiteral,
-        members: [
+        types: [
             { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string } },
             { kind: ReflectionKind.propertySignature, name: 'b', type: { kind: ReflectionKind.string } }
         ]
@@ -342,7 +495,7 @@ test('type alias conditional type', () => {
 
     expect(typeOf<p>()).toEqual({
         kind: ReflectionKind.objectLiteral,
-        members: [
+        types: [
             { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.literal, literal: true, } },
             { kind: ReflectionKind.propertySignature, name: 'b', type: { kind: ReflectionKind.literal, literal: false, } },
         ]
@@ -359,7 +512,7 @@ test('type alias infer', () => {
 
     expect(typeOf<p>()).toEqual({
         kind: ReflectionKind.objectLiteral,
-        members: [
+        types: [
             { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string } },
             { kind: ReflectionKind.propertySignature, name: 'b', type: { kind: ReflectionKind.number } },
         ]
@@ -463,7 +616,8 @@ test('reflection class', () => {
     class User {
         created: Date = new Date;
 
-        constructor(public username: string) {}
+        constructor(public username: string) {
+        }
 
         say(text: string): void {
             console.log(`${this.username}: ${text}`);
@@ -475,7 +629,6 @@ test('reflection class', () => {
 
     const sayMethod = reflection.getMethod('say')!;
     expect(sayMethod.getParameterNames()).toEqual(['text']);
-    expect(sayMethod.getParameter('text')!.kind).toBe(ReflectionKind.parameter);
     expect(sayMethod.getParameterType('text')!.kind).toBe(ReflectionKind.string);
     expect(sayMethod.getReturnType().kind).toEqual(ReflectionKind.void);
 
@@ -502,95 +655,352 @@ test('reflection function', () => {
 
 test('primaryKey', () => {
     class User {
-        id: integer & PrimaryKey = 0;
+        id: number & PrimaryKey = 0;
     }
 
-    const type = reflect(User);
-    console.log(type);
-})
+    const reflection = ReflectionClass.from(User);
+    const property = reflection.getProperty('id')!;
+    expect(property.getType().kind).toBe(ReflectionKind.number);
+    const brands = (property.getType() as TypeNumber).brands;
+    expect(brands![0]).toEqual(typeOf<{ __meta?: 'primaryKey' }>());
+});
+
+test('Reference', () => {
+    interface User {
+        id: number & PrimaryKey;
+
+        pages: Page[] & BackReference; //could also be Page & BackReference for 1-to-1
+    }
+
+    interface Page {
+        //how do we detect that Reference is a brand?
+        owner: User & Reference;
+    }
+
+    const reflection = ReflectionClass.from(typeOf<Page>());
+    const property = reflection.getProperty('owner')!;
+    expect(property.getType().kind).toBe(ReflectionKind.intersection);
+});
+
+test('built in numeric type', () => {
+    class User {
+        id: integer = 0;
+    }
+
+    const reflection = ReflectionClass.from(User);
+    const property = reflection.getProperty('id')!;
+    expect(property.getType().kind).toBe(ReflectionKind.number);
+    expect((property.getType() as TypeNumber).brand).toBe(TypeNumberBrand.integer);
+});
+
+test('custom brands', () => {
+    type Username = string & { __brand: 'username' };
+
+    class User {
+        username: Username = '' as Username;
+    }
+
+    const reflection = ReflectionClass.from(User);
+    const property = reflection.getProperty('username')!;
+    expect(property.getType().kind).toBe(ReflectionKind.string);
+    expect((property.getType() as TypeNumber).brands![0]).toEqual(typeOf<{ __brand: 'username' }>());
+});
 
 test('decorate class', () => {
+    @t.group('a')
+    class User {
+        username: string = '';
+    }
+
+    const reflection = ReflectionClass.from(User);
+    expect(reflection.groups).toEqual(['a']);
+});
+
+test('decorate class property', () => {
+    class User {
+        @t.group('a')
+        username: string = '';
+    }
+
+    const reflection = ReflectionClass.from(User);
+    const username = reflection.getProperty('username');
+    expect(username!.groups).toEqual(['a']);
+});
+
+test('decorate class inheritance', () => {
+    class Timestamp {
+        @t.group('base')
+        created: Date = new Date;
+    }
+
+    class User extends Timestamp {
+        @t.group('a')
+        username: string = '';
+    }
+
+    const reflection = ReflectionClass.from(User);
+    const username = reflection.getProperty('username');
+    expect(username!.groups).toEqual(['a']);
+
+    const created = reflection.getProperty('created');
+    expect(created!.groups).toEqual(['base']);
+});
+
+test('decorate class inheritance override decorator data', () => {
+    class Timestamp {
+        @t.group('base')
+        created: Date = new Date;
+    }
+
+    class User extends Timestamp {
+        @t.group('a')
+        created: Date = new Date;
+    }
+
+    const reflection = ReflectionClass.from(User);
+    const created = reflection.getProperty('created');
+    expect(created!.groups).toEqual(['base', 'a']);
 });
 
 test('decorate interface', () => {
-    function decorate<T>(decorate: { [P in keyof T]?: any }): any {}
-
     interface User {
         /**
-         * @description Hello what up?
-         * asdasd
-         *
-         * das
+         * @description test
          */
         username: string;
     }
 
-    decorate<User>({
-        username: t.validate(() => 0)
+    const reflection = decorate<User>({
+        username: t.group('a')
     });
+
+    const username = reflection.getProperty('username')!;
+    expect(username.getKind()).toBe(ReflectionKind.string);
+    expect(username.groups).toEqual(['a']);
+    expect(username.getDescription()).toEqual('test');
 });
 
-// test('class generic instance', () => {
-//     class Request<T> {
-//         fetch(): T {
-//             return {} as any;
-//         }
-//     }
-//
-//     const r = new Request<string>();
-//
-//     reflect(r);
-// });
-//
-// test('interface generic instance', () => {
-//     interface Request<T> {
-//         fetch(): T;
-//     }
-//
-//     const r = { fetch() { return '';} } as Request<string>;
-//
-//     reflect(r);
-// });
+test('set constructor parameter manually', () => {
+    class Response {
+        constructor(public success: boolean) {
+        }
+    }
 
-// test('pass type to function', () => {
-//     function receiver<T>() {
-//         return typeOf<T>();
-//     }
-//
-//     const type1 = receiver<string>();
-//     const type2 = receiver<number>();
-// });
-//
-// test('infer type to function', () => {
-//     function receiver<T>(type: T) {
-//         return typeOf<T>();
-//     }
-//
-//     const type1 = receiver('asd');
-//     const type2 = receiver(123);
-// });
-//
-// test('infer from function call return', () => {
-//     class Response {
-//         constructor(public success: boolean) {}
-//     }
-//
-//     class StreamApiResponseClass<T> {
-//         constructor(public response: T) {}
-//     }
-//
-//     function StreamApiResponse<T>(responseBodyClass: ClassType<T>): ClassType<StreamApiResponseClass<T>> {
-//         return class extends StreamApiResponseClass<T> {};
-//     }
-//
-//     const t = StreamApiResponse(Response);
-// });
+    class StreamApiResponseClass<T> {
+        constructor(public response: T) {
+        }
+    }
 
-// test('typeof T in function', () => {
-//     //todo: should this be supported?
-//     function t<T>(a: T) {
-//         return typeOf<T>();
-//     }
-//
-//     const type = t('asd');
-// });
+    function StreamApiResponse<T>(responseBodyClass: ClassType<T>) {
+        class A extends StreamApiResponseClass<T> {
+            constructor(@t.type(responseBodyClass) public response: T) {
+                super(response);
+            }
+        }
+
+        return A;
+    }
+
+    {
+        const classType = StreamApiResponse(Response);
+        const reflection = ReflectionClass.from(classType);
+        expect(reflection.getMethods().length).toBe(1);
+        expect(reflection.getProperties().length).toBe(1);
+        expect(reflection.getMethod('constructor')!.getParameters().length).toBe(1);
+        expect(reflection.getMethod('constructor')!.getParameter('response')!.getType().kind).toBe(ReflectionKind.class);
+        expect(reflection.getMethods()[0].getName()).toBe('constructor');
+        const responseType = reflection.getProperty('response')!.getType();
+        expect(responseType.kind).toBe(ReflectionKind.class);
+        if (responseType.kind === ReflectionKind.class) {
+            expect(responseType.classType).toBe(Response);
+        }
+    }
+
+    {
+        const type = typeOf<StreamApiResponseClass<Response>>();
+        const reflection = ReflectionClass.from(type);
+        if (type.kind === ReflectionKind.class) {
+            const t1 = type.arguments![0] as TypeClass;
+            expect(t1.kind).toBe(ReflectionKind.class);
+            expect(t1.classType).toBe(Response);
+        }
+        expect(reflection.getMethods().length).toBe(1);
+        expect(reflection.getProperties().length).toBe(1);
+        expect(reflection.getMethod('constructor')!.getParameters().length).toBe(1);
+        expect(reflection.getMethod('constructor')!.getParameter('response')!.getType().kind).toBe(ReflectionKind.class);
+        const responseType = reflection.getProperty('response')!.getType();
+        expect(responseType.kind).toBe(ReflectionKind.class);
+        if (responseType.kind === ReflectionKind.class) {
+            expect(responseType.classType).toBe(Response);
+        }
+
+        expect(reflection.getMethods()[0].getName()).toBe('constructor');
+    }
+});
+
+test('circular type 1', () => {
+    type Page = {
+        title: string;
+        children: Page[]
+    }
+
+    const type = typeOf<Page>();
+
+    expect(type.kind).toBe(ReflectionKind.objectLiteral);
+    if (type.kind === ReflectionKind.objectLiteral) {
+        const c = type.types[1];
+        expect(c.kind).toBe(ReflectionKind.propertySignature);
+        if (c.kind === ReflectionKind.propertySignature) {
+            const cType = c.type;
+            expect(cType.kind).toBe(ReflectionKind.array);
+            if (cType.kind === ReflectionKind.array) {
+                expect(cType.type.kind).toBe(ReflectionKind.objectLiteral);
+                expect(cType.type === type).toBe(true);
+            }
+        }
+    }
+});
+
+test('circular type 2', () => {
+    type Document = {
+        title: string;
+        root: Node;
+    }
+
+    type Node = {
+        children: Node[]
+    }
+
+    const type = typeOf<Document>();
+
+    expect(type.kind).toBe(ReflectionKind.objectLiteral);
+
+    if (type.kind === ReflectionKind.objectLiteral) {
+        const rootProperty = type.types[1];
+        expect(rootProperty.kind).toBe(ReflectionKind.propertySignature);
+        if (rootProperty.kind === ReflectionKind.propertySignature) {
+            const rootType = rootProperty.type;
+            expect(rootType.kind).toBe(ReflectionKind.objectLiteral);
+            if (rootType.kind === ReflectionKind.objectLiteral) {
+                const childrenProperty = rootType.types[0];
+                expect(childrenProperty.kind).toBe(ReflectionKind.propertySignature);
+                if (childrenProperty.kind === ReflectionKind.propertySignature) {
+                    expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
+                    if (childrenProperty.type.kind === ReflectionKind.array) {
+                        expect(childrenProperty.type.type).toBe(rootType);
+                    }
+                }
+            }
+        }
+    }
+});
+
+test('circular interface 2', () => {
+    interface Document {
+        title: string;
+        root: Node;
+    }
+
+    interface Node {
+        children: Node[];
+    }
+
+    const type = typeOf<Document>();
+
+    expect(type.kind).toBe(ReflectionKind.objectLiteral);
+
+    if (type.kind === ReflectionKind.objectLiteral) {
+        const rootProperty = type.types[1];
+        expect(rootProperty.kind).toBe(ReflectionKind.propertySignature);
+        if (rootProperty.kind === ReflectionKind.propertySignature) {
+            const rootType = rootProperty.type;
+            expect(rootType.kind).toBe(ReflectionKind.objectLiteral);
+            if (rootType.kind === ReflectionKind.objectLiteral) {
+                const childrenProperty = rootType.types[0];
+                expect(childrenProperty.kind).toBe(ReflectionKind.propertySignature);
+                if (childrenProperty.kind === ReflectionKind.propertySignature) {
+                    expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
+                    if (childrenProperty.type.kind === ReflectionKind.array) {
+                        expect(childrenProperty.type.type).toBe(rootType);
+                    }
+                }
+            }
+        }
+    }
+});
+
+test('circular class 2', () => {
+    class Document {
+        title!: string;
+        root!: Node;
+    }
+
+    class Node {
+        children!: Node[];
+    }
+
+    const type = typeOf<Document>();
+
+    expect(type.kind).toBe(ReflectionKind.class);
+
+    if (type.kind === ReflectionKind.class) {
+        const rootProperty = type.types[1];
+        expect(rootProperty.kind).toBe(ReflectionKind.property);
+        if (rootProperty.kind === ReflectionKind.property) {
+            const rootType = rootProperty.type;
+            expect(rootType.kind).toBe(ReflectionKind.class);
+            if (rootType.kind === ReflectionKind.class) {
+                const childrenProperty = rootType.types[0];
+                expect(childrenProperty.kind).toBe(ReflectionKind.property);
+                if (childrenProperty.kind === ReflectionKind.property) {
+                    expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
+                    if (childrenProperty.type.kind === ReflectionKind.array) {
+                        expect(childrenProperty.type.type).toBe(rootType);
+                    }
+                }
+            }
+        }
+    }
+});
+
+test('circular class 3', () => {
+    class Document {
+        title!: string;
+        root!: Node;
+    }
+
+    class Node {
+        document!: Document;
+        children!: Node[];
+    }
+
+    const type = typeOf<Document>();
+
+    expect(type.kind).toBe(ReflectionKind.class);
+
+    if (type.kind === ReflectionKind.class) {
+        const rootProperty = type.types[1];
+        expect(rootProperty.kind).toBe(ReflectionKind.property);
+        if (rootProperty.kind === ReflectionKind.property) {
+            const rootType = rootProperty.type;
+            expect(rootType.kind).toBe(ReflectionKind.class);
+            if (rootType.kind === ReflectionKind.class) {
+                const documentProperty = rootType.types[0];
+                expect(documentProperty.kind).toBe(ReflectionKind.property);
+                if (documentProperty.kind === ReflectionKind.property) {
+                    expect(documentProperty.type.kind).toBe(ReflectionKind.class);
+                    expect(documentProperty.type).toBe(type);
+                }
+
+                const childrenProperty = rootType.types[1];
+                expect(childrenProperty.kind).toBe(ReflectionKind.property);
+                if (childrenProperty.kind === ReflectionKind.property) {
+                    expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
+                    if (childrenProperty.type.kind === ReflectionKind.array) {
+                        expect(childrenProperty.type.type).toBe(rootType);
+                    }
+                }
+            }
+        }
+    }
+});

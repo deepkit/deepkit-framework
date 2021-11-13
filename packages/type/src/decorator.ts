@@ -10,32 +10,35 @@
 
 import { createFreeDecoratorContext } from './decorator-builder';
 import { Type } from './reflection/type';
-import { BackReferenceOptions, ReferenceActions } from './reflection/reflection';
-
-interface ValidatorFn {
-    (value: any, type: Type): any;
-}
-
-interface SerializerFn {
-    (value: any, type: Type): any;
-}
-
-class TData {
-    validators: ValidatorFn[] = [];
-    data: { [name: string]: any } = {};
-    serializer?: SerializerFn;
-    deserializer?: SerializerFn;
-    excludeSerializerNames?: string[];
-    groups?: string[];
-    referenceOptions?: { onDelete: ReferenceActions, onUpdate: ReferenceActions };
-    backReference?: BackReferenceOptions<any>;
-}
+import { BackReferenceOptions, ReceiveType, ReferenceActions, ReflectionClass, SerializerFn, TData, ValidatorFn } from './reflection/reflection';
+import { ClassType } from '@deepkit/core';
 
 class TDecorator {
     t = new TData();
 
     onDecorator(target?: any, property?: string, parameterIndexOrDescriptor?: any) {
+        if (undefined === target) return;
 
+        const reflection = ReflectionClass.from(target);
+
+        if (property === undefined && parameterIndexOrDescriptor === undefined) {
+            reflection.applyDecorator(this.t);
+        } else if (property !== undefined && parameterIndexOrDescriptor === undefined) {
+
+            //todo, could also be a method
+            const reflectionProperty = reflection.getProperty(property);
+            if (reflectionProperty) reflectionProperty.applyDecorator(this.t);
+
+        } else if (parameterIndexOrDescriptor !== undefined) {
+            const reflectionMethod = reflection.getMethod(property || 'constructor');
+            if (reflectionMethod) reflectionMethod.getParameters()[parameterIndexOrDescriptor].applyDecorator(this.t);
+        }
+    }
+
+    //todo: index
+
+    type<T>(type: ReceiveType<T> | ClassType) {
+        this.t.type = type;
     }
 
     validate(...validators: ValidatorFn[]) {
@@ -58,14 +61,14 @@ class TDecorator {
         this.t.excludeSerializerNames = serializerNames;
     }
 
-    groups(...groups: string[]) {
+    group(...groups: string[]) {
         if (!this.t.groups) this.t.groups = [];
         this.t.groups.push(...groups);
     }
 
-    reference(options?: { onDelete: ReferenceActions, onUpdate: ReferenceActions }) {
-        this.t.referenceOptions = options;
-    }
+    // reference(options?: { onDelete: ReferenceActions, onUpdate: ReferenceActions }) {
+    //     this.t.referenceOptions = options;
+    // }
 
     backReference(backReference?: BackReferenceOptions<any>) {
         this.t.backReference = backReference;
@@ -73,11 +76,3 @@ class TDecorator {
 }
 
 export const t = createFreeDecoratorContext(TDecorator);
-
-@t.data('name', 1)
-class U {
-    @t.data('name', 1)
-    name!: string;
-
-    constructor(@t.data('name', 1) param: string) {}
-}

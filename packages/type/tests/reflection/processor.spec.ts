@@ -9,7 +9,7 @@ import { isExtendable } from '../../src/reflection/extends';
 Error.stackTraceLimit = 200;
 
 function expectType(pack: ReflectionOp[] | { ops: ReflectionOp[], stack: RuntimeStackEntry[], inputs?: RuntimeStackEntry[] }, expectObject: Partial<Type> | number | string | boolean): void {
-    const processor = new Processor();
+    const processor = new Processor([]);
     const type = processor.run(isArray(pack) ? pack : pack.ops, isArray(pack) ? [] : pack.stack, isArray(pack) ? [] : pack.inputs);
     if (isObject(expectObject)) {
         expect(type).toMatchObject(expectObject);
@@ -171,7 +171,7 @@ test('object literal', () => {
             {
                 kind: ReflectionKind.indexSignature,
                 index: { kind: ReflectionKind.string },
-                type: { kind: ReflectionKind.union, members: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }] }
+                type: { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }] }
             }
         ]
     });
@@ -185,26 +185,29 @@ test('method', () => {
         parameters: [],
         return: { kind: ReflectionKind.string }
     });
-    expectType({ ops: [ReflectionOp.string, ReflectionOp.string, ReflectionOp.method, 0], stack: ['name'] }, {
+    expectType({ ops: [ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.string, ReflectionOp.method, 1], stack: ['param', 'name'] }, {
         kind: ReflectionKind.method,
         name: 'name',
         visibility: ReflectionVisibility.public,
-        parameters: [{ kind: ReflectionKind.string }],
+        parameters: [{ kind: ReflectionKind.parameter, name: 'param', type: { kind: ReflectionKind.string } }],
         return: { kind: ReflectionKind.string }
     });
-    expectType({ ops: [ReflectionOp.string, ReflectionOp.number, ReflectionOp.method, 0, ReflectionOp.protected], stack: ['name'] }, {
+    expectType({ ops: [ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.number, ReflectionOp.method, 1, ReflectionOp.protected], stack: ['param', 'name'] }, {
         kind: ReflectionKind.method,
         name: 'name',
         visibility: ReflectionVisibility.protected,
-        parameters: [{ kind: ReflectionKind.string }],
+        parameters: [{ kind: ReflectionKind.parameter, name: 'param', type: { kind: ReflectionKind.string } }],
         return: { kind: ReflectionKind.number }
     });
-    expectType({ ops: [ReflectionOp.string, ReflectionOp.number, ReflectionOp.method, 0, ReflectionOp.protected, ReflectionOp.abstract,], stack: ['name'] }, {
+    expectType({
+        ops: [ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.number, ReflectionOp.method, 1, ReflectionOp.protected, ReflectionOp.abstract],
+        stack: ['param', 'name']
+    }, {
         kind: ReflectionKind.method,
         name: 'name',
         visibility: ReflectionVisibility.protected,
         abstract: true,
-        parameters: [{ kind: ReflectionKind.string }],
+        parameters: [{ kind: ReflectionKind.parameter, name: 'param', type: { kind: ReflectionKind.string } }],
         return: { kind: ReflectionKind.number }
     });
 });
@@ -259,7 +262,8 @@ test('property', () => {
 });
 
 test('class', () => {
-    class MyClass {}
+    class MyClass {
+    }
 
     expectType({
         ops: [ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.number, ReflectionOp.property, 1, ReflectionOp.class],
@@ -460,12 +464,12 @@ test('infer property signature', () => {
         ],
         stack: ['T', 'a'],
         inputs: [{
-            kind: ReflectionKind.objectLiteral, members: [{
+            kind: ReflectionKind.objectLiteral, types: [{
                 kind: ReflectionKind.propertySignature,
                 name: 'a',
                 type: { kind: ReflectionKind.number }
             }]
-        }]
+        } as TypeObjectLiteral]
     }, { kind: ReflectionKind.number });
 });
 
@@ -539,7 +543,8 @@ test('basic types', () => {
 });
 
 test('more advances types', () => {
-    class Entity {}
+    class Entity {
+    }
 
     expectType([ReflectionOp.undefined, ReflectionOp.string, ReflectionOp.union], {
         kind: ReflectionKind.union,
@@ -577,46 +582,52 @@ test('more advances types', () => {
         types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }]
     });
 
-    expectType([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.void, ReflectionOp.function], {
+    expectType({ ops: [ReflectionOp.frame, ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.function], stack: ['param'] }, {
         kind: ReflectionKind.function,
-        parameters: [{ kind: ReflectionKind.string }],
+        parameters: [{ kind: ReflectionKind.parameter, name: 'param', type: { kind: ReflectionKind.string } }],
         return: { kind: ReflectionKind.void },
     });
 
-    expectType([ReflectionOp.string, ReflectionOp.void, ReflectionOp.function], {
+    expectType({ ops: [ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.function], stack: ['param'] }, {
         kind: ReflectionKind.function,
-        parameters: [{ kind: ReflectionKind.string }],
+        parameters: [{ kind: ReflectionKind.parameter, name: 'param', type: { kind: ReflectionKind.string } }],
         return: { kind: ReflectionKind.void },
     });
 
-    expectType([ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.void, ReflectionOp.function], {
+    expectType({ ops: [ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.function], stack: ['param'] }, {
         kind: ReflectionKind.function,
-        parameters: [{ kind: ReflectionKind.union, members: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }] }],
+        parameters: [{
+            kind: ReflectionKind.parameter,
+            name: 'param',
+            type: { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }] }
+        }],
         return: { kind: ReflectionKind.void },
     });
 
-    expectType([
-        ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union,
-        ReflectionOp.frame, ReflectionOp.number, ReflectionOp.undefined, ReflectionOp.union,
-        ReflectionOp.void, ReflectionOp.function
-    ], {
+    expectType({
+        ops: [
+            ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.parameter, 0,
+            ReflectionOp.frame, ReflectionOp.number, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.parameter, 1,
+            ReflectionOp.void, ReflectionOp.function
+        ], stack: ['param', 'param2']
+    }, {
         kind: ReflectionKind.function,
         parameters: [
-            { kind: ReflectionKind.union, members: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }] },
-            { kind: ReflectionKind.union, members: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }] },
+            { kind: ReflectionKind.parameter, name: 'param', type: { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }] } },
+            { kind: ReflectionKind.parameter, name: 'param2', type: { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }] } },
         ],
         return: { kind: ReflectionKind.void },
     });
 
     expectType([ReflectionOp.string, ReflectionOp.array], { kind: ReflectionKind.array, type: { kind: ReflectionKind.string } });
     expectType([ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.array], {
-        kind: ReflectionKind.array, type: { kind: ReflectionKind.union, members: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }] },
+        kind: ReflectionKind.array, type: { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }] },
     });
 
-    expectType([ReflectionOp.string, ReflectionOp.array, ReflectionOp.void, ReflectionOp.function], {
+    expectType({ ops: [ReflectionOp.string, ReflectionOp.array, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.function], stack: ['param'] }, {
         kind: ReflectionKind.function,
         parameters: [
-            { kind: ReflectionKind.array, elementType: { kind: ReflectionKind.string } },
+            { kind: ReflectionKind.parameter, name: 'param', type: { kind: ReflectionKind.array, type: { kind: ReflectionKind.string } } },
         ],
         return: { kind: ReflectionKind.void },
     });
