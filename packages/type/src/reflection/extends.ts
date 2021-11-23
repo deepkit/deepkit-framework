@@ -20,6 +20,9 @@ export function isExtendable(left: AssignableType, right: AssignableType): boole
         left = leftType.literal;
     }
 
+    if (leftType && leftType.kind === ReflectionKind.any) return true;
+    if (rightType && rightType.kind === ReflectionKind.any) return true;
+
     if ('string' === typeof left && rightType && rightType.kind === ReflectionKind.string) return true;
     if ('number' === typeof left && rightType && rightType.kind === ReflectionKind.number) return true;
     if ('boolean' === typeof left && rightType && rightType.kind === ReflectionKind.boolean) return true;
@@ -41,20 +44,23 @@ export function isExtendable(left: AssignableType, right: AssignableType): boole
 
         if (leftType.kind === ReflectionKind.function && rightType) {
             if (rightType.kind === ReflectionKind.objectLiteral) {
-                //todo: members contains a call signature
+                //todo: members maybe contain a call signature
 
                 return true;
             }
 
             if (rightType.kind === ReflectionKind.function) {
-                if (!isExtendable(leftType.return, rightType.return)) return false;
+                const returnValid = isExtendable(leftType.return, rightType.return);
+                if (!returnValid) return false;
 
                 for (let i = 0; i < leftType.parameters.length; i++) {
                     const leftParam = leftType.parameters[i];
                     const rightParam = rightType.parameters[i];
                     if (!rightParam) return false;
+                    if (leftParam.kind !== ReflectionKind.parameter || rightParam.kind !== ReflectionKind.parameter) return false;
 
-                    if (!isExtendable(leftParam, rightParam)) return false;
+                    const valid = isExtendable(leftParam.type, rightParam.type);
+                    if (!valid) return false;
                 }
 
                 return true;
@@ -70,7 +76,7 @@ export function isExtendable(left: AssignableType, right: AssignableType): boole
         if (leftType.kind === rightType.kind &&
             (
                 leftType.kind === ReflectionKind.string || leftType.kind === ReflectionKind.number || leftType.kind === ReflectionKind.boolean ||
-                leftType.kind === ReflectionKind.bigint || leftType.kind === ReflectionKind.undefined || leftType.kind === ReflectionKind.any ||
+                leftType.kind === ReflectionKind.bigint || leftType.kind === ReflectionKind.undefined ||
                 leftType.kind === ReflectionKind.null || leftType.kind === ReflectionKind.void
             )
         ) {

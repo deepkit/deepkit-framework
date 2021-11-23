@@ -23,6 +23,7 @@ export enum ReflectionKind {
     string,
     number,
     boolean,
+    symbol,
     bigint,
     null,
     undefined,
@@ -48,6 +49,7 @@ export enum ReflectionKind {
     array,
     tuple,
     tupleMember,
+    enumMember,
 
     rest,
 
@@ -84,6 +86,10 @@ export interface TypeString extends TypeBrandable {
     kind: ReflectionKind.string,
 }
 
+/**
+ * note: Checks are based on range checks (>, <, etc), so when adding
+ * new types a check is required for all code using `TypeNumberBrand`.
+ */
 export enum TypeNumberBrand {
     integer,
 
@@ -111,6 +117,10 @@ export interface TypeBoolean extends TypeBrandable {
 
 export interface TypeBigInt extends TypeBrandable {
     kind: ReflectionKind.bigint,
+}
+
+export interface TypeSymbol extends TypeBrandable {
+    kind: ReflectionKind.symbol,
 }
 
 export interface TypeNull extends TypeBrandable {
@@ -168,7 +178,7 @@ export interface TypeProperty extends TypeLiteralMember {
 
 export interface TypeFunction {
     kind: ReflectionKind.function,
-    name?: string,
+    name?: number | string | symbol,
     parameters: TypeParameter[];
     return: Type;
 }
@@ -195,7 +205,14 @@ export interface TypeClass {
 
 export interface TypeEnum {
     kind: ReflectionKind.enum,
-    enumType: object;
+    enum: { [name: string]: string | number | undefined | null },
+    values: (string | number | undefined | null)[]
+}
+
+export interface TypeEnumMember {
+    kind: ReflectionKind.enumMember,
+    name: string;
+    default?: () => string | number;
 }
 
 export interface TypeTemplate {
@@ -269,39 +286,90 @@ export interface TypeRest {
     type: Type
 }
 
-export type Type = TypeNever | TypeAny | TypeVoid | TypeString | TypeNumber | TypeBoolean | TypeBigInt | TypeNull | TypeUndefined | TypeLiteral
-    | TypeParameter | TypeFunction | TypeMethod | TypeProperty | TypePromise | TypeClass | TypeEnum | TypeUnion | TypeIntersection | TypeArray
+export type Type = TypeNever | TypeAny | TypeVoid | TypeString | TypeNumber | TypeBoolean | TypeBigInt | TypeSymbol | TypeNull | TypeUndefined | TypeLiteral
+    | TypeParameter | TypeFunction | TypeMethod | TypeProperty | TypePromise | TypeClass | TypeEnum | TypeEnumMember | TypeUnion | TypeIntersection | TypeArray
     | TypeObjectLiteral | TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeTemplate | TypeInfer | TypeTuple | TypeTupleMember
     | TypeRest
     ;
+
+export type FindType<T extends Type, LOOKUP extends ReflectionKind> = { [P in keyof T]: T[P] extends LOOKUP ? T : never }[keyof T]
 
 export function isType(entry: any): entry is Type {
     return 'object' === typeof entry && entry.constructor === Object && 'kind' in entry;
 }
 
-type FindType<K extends Type['kind'], T = Type> = T extends { kind: K } ? T : never;
-
-export function assertType<K extends Type['kind'], T>(t: Type, kind: K): asserts t is FindType<K> {
+export function assertType<K extends Type['kind'], T>(t: Type, kind: K): asserts t is FindType<Type, K> {
     if (t.kind !== kind) throw new Error(`Invalid type ${t.kind}, expected ${kind}`);
 }
 
+/**
+ * Checks whether `undefined` is allowed as type.
+ */
 export function isOptional(type: Type): boolean {
     return type.kind === ReflectionKind.undefined || (type.kind === ReflectionKind.union && type.types.some(v => v.kind === ReflectionKind.undefined));
 }
 
+/**
+ * Checks whether `null` is allowed as type.
+ */
 export function isNullable(type: Type): boolean {
     return type.kind === ReflectionKind.null || (type.kind === ReflectionKind.union && type.types.some(v => v.kind === ReflectionKind.null));
 }
 
+/**
+ * Integer
+ */
 export type integer = number;
+
+/**
+ * Integer 8 bit.
+ * Min value -127, max value 128
+ */
 export type int8 = number;
+
+/**
+ * Unsigned integer 8 bit.
+ * Min value 0, max value 255
+ */
 export type uint8 = number;
+
+/**
+ * Integer 16 bit.
+ * Min value 0, max value 65535
+ */
 export type int16 = number;
+
+/**
+ * Unsigned integer 16 bit.
+ * Min value -32768, max value 32767
+ */
 export type uint16 = number;
+
+/**
+ * Integer 8 bit.
+ * Min value -2147483648, max value 2147483647
+ */
 export type int32 = number;
+
+/**
+ * Unsigned integer 32 bit.
+ * Min value 0, max value 4294967295
+ */
 export type uint32 = number;
+
+/**
+ * Float (same as number, but different semantic for databases).
+ */
 export type float = number;
+
+/**
+ * Float 32 bit.
+ */
 export type float32 = number;
+
+/**
+ * Float 64 bit.
+ */
 export type float64 = number;
 
 export type Reference = { __meta?: 'reference' };
@@ -330,6 +398,7 @@ export enum ReflectionOp {
     boolean,
     bigint,
 
+    symbol,
     null,
     undefined,
 
@@ -398,15 +467,8 @@ export enum ReflectionOp {
     description,
     rest,
 
-    /**
-     * This OP has 1 parameter. The next byte is the absolute address of a enum entry on the stack.
-     */
     enum,
-
-    /**
-     * This OP pops all members on the stack frame and pushes a new enum type.
-     */
-    constEnum,
+    enumMember, //has one argument, the name.
 
     set,
     map,
@@ -419,7 +481,7 @@ export enum ReflectionOp {
     array,
     tuple,
     tupleMember,
-    namedTupleMember, //has one argument
+    namedTupleMember, //has one argument, the name.
 
     union, //pops frame. requires frame start when stack can be dirty.
     intersection,
@@ -458,7 +520,7 @@ export enum ReflectionOp {
     infer, //2 params, like `loads`
 
     condition,
-    jumpCondition, //used when INFER is used in `extends` conditional branch
+    jumpCondition, //used when INFER is used in `extends` conditional branch. 2 args: left program, right program
     jump, //jump to an address
     call, //has one parameter, the next program address. creates a new stack frame with current program address as first stack entry, and jumps back to that + 1.
     inline,

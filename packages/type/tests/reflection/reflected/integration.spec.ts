@@ -218,7 +218,7 @@ test('rest tuple', () => {
             kind: ReflectionKind.tuple,
             types: [
                 { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.string } } },
-                { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.number }  }
+                { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.number } }
             ]
         } as TypeTuple);
     }
@@ -725,6 +725,64 @@ test('decorate class property', () => {
     const reflection = ReflectionClass.from(User);
     const username = reflection.getProperty('username');
     expect(username!.groups).toEqual(['a']);
+});
+
+test('enum const', () => {
+    const enum MyEnum {
+        a, b, c
+    }
+
+    const type = typeOf<MyEnum>();
+    expect(type).toEqual({
+        kind: ReflectionKind.enum,
+        enum: { a: 0, b: 1, c: 2 },
+        values: [0, 1, 2]
+    });
+});
+
+test('enum default', () => {
+    enum MyEnum {
+        a, b, c
+    }
+
+    const type = typeOf<MyEnum>();
+
+    expect(type).toEqual({
+        kind: ReflectionKind.enum,
+        enum: { a: 0, b: 1, c: 2 },
+        values: [0, 1, 2]
+    });
+});
+
+test('enum initializer 1', () => {
+    enum MyEnum {
+        a = 3, b, c
+    }
+
+    const type = typeOf<MyEnum>();
+
+    expect(type).toEqual({
+        kind: ReflectionKind.enum,
+        enum: { a: 3, b: 4, c: 5 },
+        values: [3, 4, 5]
+    });
+});
+
+test('enum initializer 2', () => {
+    enum MyEnum {
+        a = 0,
+        b = 1 << 0,
+        c = 1 << 1,
+        d = 1 << 2,
+    }
+
+    const type = typeOf<MyEnum>();
+
+    expect(type).toEqual({
+        kind: ReflectionKind.enum,
+        enum: { a: 0, b: 1, c: 2, d: 4 },
+        values: [0, 1, 2, 4]
+    });
 });
 
 test('decorate class inheritance', () => {

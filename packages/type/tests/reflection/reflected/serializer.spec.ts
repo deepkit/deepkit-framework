@@ -8,9 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { expect, test } from '@jest/globals';
-import { reflect, typeOf } from '../../../src/reflection/reflection';
+import { reflect } from '../../../src/reflection/reflection';
 import { integer } from '../../../src/reflection/type';
-import { cast, createSerializeFunction, jsonSerializer, serialize } from '../../../src/serializer';
+import { createSerializeFunction } from '../../../src/serializer';
+import { cast, serialize } from '../../../src/serializer-facade';
+import { jsonSerializer } from '../../../src/serializer-json';
 
 test('serializer', () => {
     class User {
@@ -174,6 +176,10 @@ test('set', () => {
         expect(value).toEqual(new Set(['a', 'b']));
     }
     {
+        const value = cast<Set<string>>(['a', 2, 'b']);
+        expect(value).toEqual(new Set(['a', '2', 'b']));
+    }
+    {
         const value = serialize<Set<string>>(new Set(['a', 'b']));
         expect(value).toEqual(['a', 'b']);
     }
@@ -185,8 +191,30 @@ test('map', () => {
         expect(value).toEqual(new Map([['a', 2], ['b', 3]]));
     }
     {
+        const value = cast<Map<string, number>>([['a', 1], [2, '2'], ['b', 3]]);
+        expect(value).toEqual(new Map([['a', 1], ['2', 2], ['b', 3]]));
+    }
+    {
         const value = serialize<Map<string, number>>(new Map([['a', 2], ['b', 3]]));
         expect(value).toEqual([['a', 2], ['b', 3]]);
     }
 });
 
+test('union', () => {
+    expect(cast<string | number>('a')).toEqual('a');
+    expect(cast<string | number>(2)).toEqual(2);
+
+    expect(cast<string | integer>(2)).toEqual(2);
+
+    //todo: to make this work, we need to register a different type of type-guard for `integer` brand.
+    // the default one is a exact type guard, but we need a loose one too, as the cast should convert data types when necessary.
+    // cases where we need that:
+    //   - string (number to string)
+    //   - integer (string to int)
+    //   - date (string/number to date)
+    //   - set/map (array to set/map)
+    // it overlaps massively with jsonSerializer.
+    //   - Those guards are only necessary for casts.
+    //     unionTypeGuard forces `state.registry.serializer.typeGuards`. it should probably use the loose type guards, `serializer.castTypeGuards`?
+    expect(cast<string | integer>(2.2)).toEqual(2);
+});

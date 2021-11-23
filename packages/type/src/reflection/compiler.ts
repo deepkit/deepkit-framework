@@ -24,6 +24,7 @@ import {
     CustomTransformerFactory,
     Declaration,
     EntityName,
+    EnumDeclaration,
     ExportDeclaration,
     Expression,
     FunctionDeclaration,
@@ -40,7 +41,8 @@ import {
     IndexSignatureDeclaration,
     InferTypeNode,
     InterfaceDeclaration,
-    IntersectionTypeNode, isArrayTypeNode,
+    IntersectionTypeNode,
+    isArrayTypeNode,
     isArrowFunction,
     isCallExpression,
     isClassDeclaration,
@@ -81,7 +83,8 @@ import {
     SourceFile,
     Statement,
     StringLiteral,
-    SymbolTable, SyntaxKind,
+    SymbolTable,
+    SyntaxKind,
     TransformationContext,
     TupleTypeNode,
     TypeAliasDeclaration,
@@ -475,7 +478,7 @@ export class ReflectionTransformer {
         const compileDeclarations = (node: Node): any => {
             node = visitEachChild(node, compileDeclarations, this.context);
 
-            if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && this.compileDeclarations.has(node)) {
+            if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node) || isEnumDeclaration(node)) && this.compileDeclarations.has(node)) {
                 const d = this.compileDeclarations.get(node)!;
                 this.compileDeclarations.delete(node);
                 this.compiledDeclarations.add(node);
@@ -556,6 +559,10 @@ export class ReflectionTransformer {
             }
             case SyntaxKind.VoidKeyword: {
                 program.pushOp(ReflectionOp.void);
+                break;
+            }
+            case SyntaxKind.SymbolKeyword: {
+                program.pushOp(ReflectionOp.symbol);
                 break;
             }
             case SyntaxKind.NullKeyword: {
@@ -930,6 +937,22 @@ export class ReflectionTransformer {
                 }
                 break;
             }
+            case SyntaxKind.EnumDeclaration: {
+                //TypeScript does not narrow types down
+                const narrowed = node as EnumDeclaration;
+                program.pushFrame();
+
+                for (const type of narrowed.members) {
+                    const name = getPropertyName(this.f, type.name);
+                    program.pushOp(ReflectionOp.enumMember, program.findOrAddStackEntry(name));
+                    if (type.initializer) {
+                        program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, type.initializer)));
+                    }
+                }
+                program.pushOp(ReflectionOp.enum);
+                program.popFrame();
+                break;
+            }
             case SyntaxKind.IndexSignature: {
                 //TypeScript does not narrow types down
                 const narrowed = node as IndexSignatureDeclaration;
@@ -1039,7 +1062,7 @@ export class ReflectionTransformer {
      * Types added to this map will get a type program directly under it.
      * This is for types used in the very same file.
      */
-    protected compileDeclarations = new Map<TypeAliasDeclaration | InterfaceDeclaration, { name: EntityName }>();
+    protected compileDeclarations = new Map<TypeAliasDeclaration | InterfaceDeclaration | EnumDeclaration, { name: EntityName }>();
     protected compiledDeclarations = new Set<Node>();
 
     /**
@@ -1127,7 +1150,7 @@ export class ReflectionTransformer {
 
             const declaration = resolved.declaration;
 
-            if (isTypeAliasDeclaration(declaration) || isInterfaceDeclaration(declaration)) {
+            if (isTypeAliasDeclaration(declaration) || isInterfaceDeclaration(declaration) || isEnumDeclaration(declaration)) {
                 //Set/Map are interface declarations
                 const name = getNameAsString(type.typeName);
                 if (name === 'Set') {
@@ -1179,12 +1202,6 @@ export class ReflectionTransformer {
             } else if (isMappedTypeNode(declaration)) {
                 //<Type>{[Property in keyof Type]: boolean;};
                 this.extractPackStructOfType(declaration, program);
-                return;
-            } else if (isEnumDeclaration(declaration)) {
-                ensureImportIsEmitted();
-                //enum X {}
-                const arrow = this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName));
-                program.pushOp(ReflectionOp.enum, program.findOrAddStackEntry(arrow));
                 return;
             } else if (isClassDeclaration(declaration)) {
                 ensureImportIsEmitted();

@@ -287,6 +287,37 @@ export function isNumber(obj: any): obj is number {
 }
 
 /**
+ * Returns true if given value is strictly a numeric string value (or a number).
+ *
+ * ```typescript
+ * isNumeric(12); //true
+ * isNumeric('12'); //true
+ * isNumeric('12.3'); //true
+ * isNumeric('12.3 '); //false
+ * isNumeric('12px'); //false
+ * ```
+ * @public
+ */
+export function isNumeric(s: string | number): boolean {
+    if ('number' === typeof s) return true;
+    let points = 0;
+    for (let i = s.length - 1; i >= 0; i--) {
+        const d = s.charCodeAt(i);
+        if (d === 46) {
+            //46 = .
+            if (points++ > 0) return false;
+            continue;
+        }
+        if (d < 48 || d > 57) return false;
+    }
+    return true;
+}
+
+export const isInteger: (obj: any) => obj is number = Number.isInteger as any || function (obj: any) {
+    return (obj % 1) === 0;
+};
+
+/**
  * @public
  */
 export function isString(obj: any): obj is string {

@@ -15,7 +15,7 @@ import {
     ReflectionVisibility,
     Type,
     TypeBrandable,
-    TypeClass,
+    TypeClass, TypeEnumMember,
     TypeIndexSignature,
     TypeInfer,
     TypeLiteral,
@@ -212,6 +212,9 @@ export class Processor {
                 case ReflectionOp.bigint:
                     this.pushType({ kind: ReflectionKind.bigint });
                     break;
+                case ReflectionOp.symbol:
+                    this.pushType({ kind: ReflectionKind.symbol });
+                    break;
                 case ReflectionOp.null:
                     this.pushType({ kind: ReflectionKind.null });
                     break;
@@ -306,8 +309,30 @@ export class Processor {
                     break;
                 }
                 case ReflectionOp.enum: {
-                    const ref = this.eatParameter(ops) as number;
-                    this.pushType({ kind: ReflectionKind.enum, enumType: (initialStack[ref] as Function)() });
+                    const types = this.popFrame() as TypeEnumMember[];
+                    const enumType: { [name: string]: string | number } = {};
+
+                    let i = 0;
+                    for (const type of types) {
+                        if (type.default) {
+                            const v = type.default();
+                            enumType[type.name] = v;
+                            if ('number' === typeof v) {
+                                i = v + 1;
+                            }
+                        } else {
+                            enumType[type.name] = i++;
+                        }
+                    }
+                    this.pushType({ kind: ReflectionKind.enum, enum: enumType, values: Object.values(enumType) });
+                    break;
+                }
+                case ReflectionOp.enumMember: {
+                    const name = initialStack[this.eatParameter(ops) as number] as string | (() => string);
+                    this.pushType({
+                        kind: ReflectionKind.enumMember,
+                        name: isFunction(name) ? name() : name
+                    });
                     break;
                 }
                 case ReflectionOp.tuple: {
@@ -462,7 +487,7 @@ export class Processor {
                     (this.stack[this.stackPointer] as TypeLiteralMember).abstract = true;
                     break;
                 case ReflectionOp.defaultValue:
-                    (this.stack[this.stackPointer] as TypeProperty).default = initialStack[this.eatParameter(ops) as number] as () => any;
+                    (this.stack[this.stackPointer] as TypeProperty | TypeEnumMember).default = initialStack[this.eatParameter(ops) as number] as () => any;
                     break;
                 case ReflectionOp.description:
                     (this.stack[this.stackPointer] as TypeProperty).description = initialStack[this.eatParameter(ops) as number] as string;
@@ -645,11 +670,11 @@ export class Processor {
                     }
                     break;
                 }
-                // case ReflectionOp.arg: {
-                //     const arg = this.eatParameter(ops) as number;
-                //     this.push(this.stack[this.frame.startIndex - arg]);
-                //     break;
-                // }
+                case ReflectionOp.arg: {
+                    const arg = this.eatParameter(ops) as number;
+                    this.push(this.stack[this.frame.startIndex - arg]);
+                    break;
+                }
                 case ReflectionOp.return: {
                     this.returnFrame();
                     break;

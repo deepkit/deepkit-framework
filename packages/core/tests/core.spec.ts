@@ -14,6 +14,7 @@ import {
     isClassInstance,
     isConstructable,
     isFunction,
+    isNumeric,
     isObject,
     isPlainObject,
     isPromise,
@@ -511,3 +512,12 @@ test('createDynamicClass', () => {
     expect(new class2).toBeInstanceOf(Base);
     expect(class2.toString()).toBe('class Model2 extends Base {}');
 });
+
+test('isNumeric', () => {
+    expect(isNumeric(12)).toBe(true);
+    expect(isNumeric(12.2)).toBe(true);
+    expect(isNumeric('12')).toBe(true);
+    expect(isNumeric('12.2')).toBe(true);
+    expect(isNumeric('12.2 ')).toBe(false);
+    expect(isNumeric('12..2')).toBe(false);
+})
