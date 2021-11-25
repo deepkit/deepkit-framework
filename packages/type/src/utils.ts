@@ -12,7 +12,7 @@ import { stringify, v4 } from 'uuid';
 
 /**
  * Returns a new UUID v4 as string.
-*/
+ */
 export function uuid(): string {
     return v4();
 }
@@ -32,26 +32,28 @@ export function stringifyUuid(buffer: Uint8Array, offset: number = 0): string {
     return stringify(buffer, offset);
 }
 
-export type JSONPartialSingle<T> = T extends Date ? string :
-    T extends Array<infer K> ? Array<JSONPartialSingle<K>> :
-    // T extends TypedArrays ? string :
-    T extends ArrayBuffer ? string :
-    T extends object ? JSONPartial<T> :
-    T extends string ? number | T :
-    T extends boolean ? number | string | T :
-    T extends number ? T | string : T;
+export type JSONPartial<T> = T extends Date ? string :
+    T extends Array<infer K> ? Array<JSONPartial<K>> :
+        // T extends TypedArrays ? string :
+        T extends ArrayBuffer ? string :
+            T extends object ? JSONPartialObject<T> :
+                T extends string ? number | T :
+                    T extends boolean ? number | string | T :
+                        T extends bigint ? number | string | T :
+                            T extends number ? bigint | string | T :
+                                T;
 
-export type JSONPartial<T> = { [name in keyof T & string]?: JSONPartialSingle<T[name]> | null };
+export type JSONPartialObject<T> = { [name in keyof T]?: T[name] | null };
 
 export type JSONSingle<T> = T extends Date ? string | Date :
     T extends Array<infer K> ? Array<JSONSingle<K>> :
-    // T extends TypedArrays ? string :
-    T extends ArrayBuffer ? string :
-    T extends object ? JSONEntity<T> :
-    T extends string ? string | number | boolean | undefined :
-    T extends boolean ? T | number | string :
-    T extends number ? T | string : T;
-export type JSONEntity<T> = { [name in keyof T & string]: JSONSingle<T[name]> };
+        // T extends TypedArrays ? string :
+        T extends ArrayBuffer ? string :
+            T extends object ? JSONEntity<T> :
+                T extends string ? string | number | boolean | undefined :
+                    T extends boolean ? T | number | string :
+                        T extends number ? T | string : T;
+export type JSONEntity<T> = { [name in keyof T]: JSONSingle<T[name]> };
 
 // export type AnyEntitySingle<T> =
 //     T extends Array<infer K> ? Array<AnyEntitySingle<K>> :

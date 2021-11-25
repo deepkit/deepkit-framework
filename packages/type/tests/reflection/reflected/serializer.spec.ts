@@ -9,8 +9,8 @@
  */
 import { expect, test } from '@jest/globals';
 import { reflect } from '../../../src/reflection/reflection';
-import { integer } from '../../../src/reflection/type';
-import { createSerializeFunction } from '../../../src/serializer';
+import { int8, integer, PrimaryKey } from '../../../src/reflection/type';
+import { createSerializeFunction, SerializationError } from '../../../src/serializer';
 import { cast, serialize } from '../../../src/serializer-facade';
 import { jsonSerializer } from '../../../src/serializer-json';
 
@@ -45,7 +45,8 @@ test('cast class', () => {
     class User {
         created: Date = new Date;
 
-        constructor(public username: string) {}
+        constructor(public username: string) {
+        }
     }
 
     const user = cast<User>({ username: 'Peter', created: '2021-10-19T00:22:58.257Z' });
@@ -71,7 +72,7 @@ test('default value', () => {
     }
 
     {
-        const user = cast<User>({logins: 2});
+        const user = cast<User>({ logins: 2 });
         expect(user).toEqual({
             logins: 2
         });
@@ -91,7 +92,7 @@ test('optional value', () => {
     }
 
     {
-        const user = cast<User>({logins: 2});
+        const user = cast<User>({ logins: 2 });
         expect(user).toEqual({
             logins: 2
         });
@@ -111,21 +112,21 @@ test('optional default value', () => {
     }
 
     {
-        const user = cast<User>({logins: 2});
+        const user = cast<User>({ logins: 2 });
         expect(user).toEqual({
             logins: 2
         });
     }
 
     {
-        const user = cast<User>({logins: null});
+        const user = cast<User>({ logins: null });
         expect(user).toEqual({
             logins: undefined
         });
     }
 
     {
-        const user = cast<User>({logins: undefined});
+        const user = cast<User>({ logins: undefined });
         expect(user).toEqual({
             logins: undefined
         });
@@ -142,8 +143,8 @@ test('cast primitives', () => {
 });
 
 test('cast integer', () => {
-    const value = cast<integer>(123.456);
-    expect(value).toBe(123);
+    expect(cast<integer>(123.456)).toBe(123);
+    expect(cast<int8>(1000)).toBe(128);
 });
 
 test('tuple 2', () => {
@@ -200,21 +201,189 @@ test('map', () => {
     }
 });
 
-test('union', () => {
+test('number', () => {
+    expect(cast<number>(1)).toBe(1);
+    expect(cast<number>(-1)).toBe(-1);
+    expect(cast<number>(true)).toBe(1);
+    expect(cast<number>(false)).toBe(0);
+    expect(cast<number>('1')).toBe(1);
+    expect(cast<number>('-1')).toBe(-1);
+});
+
+test('union string number', () => {
     expect(cast<string | number>('a')).toEqual('a');
     expect(cast<string | number>(2)).toEqual(2);
 
     expect(cast<string | integer>(2)).toEqual(2);
+    expect(cast<string | integer>('3')).toEqual('3');
 
-    //todo: to make this work, we need to register a different type of type-guard for `integer` brand.
-    // the default one is a exact type guard, but we need a loose one too, as the cast should convert data types when necessary.
-    // cases where we need that:
-    //   - string (number to string)
-    //   - integer (string to int)
-    //   - date (string/number to date)
-    //   - set/map (array to set/map)
-    // it overlaps massively with jsonSerializer.
-    //   - Those guards are only necessary for casts.
-    //     unionTypeGuard forces `state.registry.serializer.typeGuards`. it should probably use the loose type guards, `serializer.castTypeGuards`?
     expect(cast<string | integer>(2.2)).toEqual(2);
+    expect(cast<string | integer>('2.2')).toEqual('2.2');
+
+    expect(cast<string | integer>(false)).toEqual('false');
+    expect(cast<string | integer>(true)).toEqual('true');
+});
+
+test('union boolean number', () => {
+    expect(cast<boolean | number>(2)).toEqual(2);
+    expect(cast<boolean | number>(1)).toEqual(1);
+    expect(cast<boolean | number>(0)).toEqual(0);
+    expect(cast<boolean | number>(false)).toEqual(false);
+    expect(cast<boolean | number>(true)).toEqual(true);
+});
+
+test('union loose string number', () => {
+    expect(cast<string | number>('a', { loosely: true })).toEqual('a');
+    expect(cast<string | number>(2, { loosely: true })).toEqual(2);
+    expect(cast<string | number>(-2, { loosely: true })).toEqual(-2);
+
+    expect(cast<string | integer>(2, { loosely: true })).toEqual(2);
+    expect(cast<string | integer>('3', { loosely: true })).toEqual(3);
+
+    expect(cast<string | integer>(2.2, { loosely: true })).toEqual(2);
+    expect(cast<string | integer>(-2.2, { loosely: true })).toEqual(-2);
+    expect(cast<string | integer>('2.2', { loosely: true })).toEqual(2);
+    expect(cast<string | integer>(false)).toEqual('false');
+    expect(cast<string | integer>(true)).toEqual('true');
+});
+
+test('union loose string boolean', () => {
+    expect(cast<string | boolean>('a', { loosely: true })).toEqual('a');
+    expect(cast<string | boolean>(1, { loosely: true })).toEqual(true);
+    expect(cast<string | boolean>(0, { loosely: true })).toEqual(false);
+    expect(cast<string | boolean>(-1, { loosely: true })).toEqual('-1');
+    expect(cast<string | boolean>(2, { loosely: true })).toEqual('2');
+    expect(cast<string | boolean>('true', { loosely: true })).toEqual(true);
+    expect(cast<string | boolean>('true2', { loosely: true })).toEqual('true2');
+});
+
+test('union loose number boolean', () => {
+    expect(cast<number | boolean>('a', { loosely: true })).toEqual(undefined);
+    expect(cast<number | boolean>(1, { loosely: true })).toEqual(true);
+    expect(cast<number | boolean>('1', { loosely: true })).toEqual(true);
+    expect(cast<number | boolean>('1')).toEqual(1);
+    expect(cast<number | boolean>(0, { loosely: true })).toEqual(false);
+    expect(cast<number | boolean>(-1, { loosely: true })).toEqual(-1);
+    expect(cast<number | boolean>(2, { loosely: true })).toEqual(2);
+    expect(cast<number | boolean>('2', { loosely: true })).toEqual(2);
+    expect(cast<number | boolean>('true', { loosely: true })).toEqual(true);
+    expect(cast<number | boolean>('true')).toEqual(undefined);
+    expect(cast<number | boolean>('true2', { loosely: true })).toEqual(undefined);
+});
+
+test('union string date', () => {
+    expect(cast<string | Date>('a')).toEqual('a');
+    expect(cast<string | Date>('2021-11-24T16:21:13.425Z')).toBeInstanceOf(Date);
+    expect(cast<string | Date>(1637781902866)).toBeInstanceOf(Date);
+    expect(cast<string | Date>('1637781902866')).toBe('1637781902866');
+});
+
+test('union string bigint', () => {
+    expect(cast<string | bigint>('a')).toEqual('a');
+    expect(cast<string | bigint>(2n)).toEqual(2n);
+    expect(cast<string | bigint>(2)).toEqual(2n);
+    expect(cast<string | bigint>('2')).toEqual('2');
+    expect(cast<string | bigint>('2a')).toEqual('2a');
+});
+
+test('union loose string bigint', () => {
+    expect(cast<string | bigint>('a', { loosely: true })).toEqual('a');
+    expect(cast<string | bigint>(2n, { loosely: true })).toEqual(2n);
+    expect(cast<string | bigint>(2, { loosely: true })).toEqual(2n);
+    expect(cast<string | bigint>('2', { loosely: true })).toEqual(2n);
+    expect(cast<string | bigint>('2a', { loosely: true })).toEqual('2a');
+});
+
+test('literal', () => {
+    expect(cast<'a'>('a')).toEqual('a');
+    expect(cast<'a'>('b')).toEqual('a');
+    expect(cast<'a'>(123)).toEqual('a');
+    expect(cast<1>(123)).toEqual(1);
+    expect(cast<1>('123')).toEqual(1);
+    expect(cast<true>('123')).toEqual(true);
+    expect(cast<1n>('123')).toEqual(1n);
+    expect(cast<1n>('123')).toEqual(1n);
+});
+
+test('union literal', () => {
+    expect(cast<'a' | number>('a')).toEqual('a');
+    expect(cast<'a' | number>(23)).toEqual(23);
+
+    expect(cast<3 | number>(23)).toEqual(23);
+    expect(cast<3 | number>(3)).toEqual(3);
+
+    expect(cast<3 | boolean>(3)).toEqual(3);
+    expect(cast<true | boolean>(true)).toEqual(true);
+    expect(cast<true | boolean>(false)).toEqual(false);
+    expect(cast<false | boolean>(true)).toEqual(true);
+    expect(cast<false | boolean>(false)).toEqual(false);
+});
+
+test('union primitive and class', () => {
+    class User {
+        id!: number;
+    }
+
+    expect(cast<number | User>(2)).toEqual(2);
+    expect(cast<number | User>('2')).toEqual(2);
+    expect(cast<number | User>({ id: 23 })).toEqual({ id: 23 });
+    expect(cast<number | User>({ id: 23 })).toBeInstanceOf(User);
+    expect(cast<number | User>('2asd')).toEqual(undefined);
+});
+
+test('union multiple classes', () => {
+    class User {
+        id!: number;
+        username!: string;
+    }
+
+    class Picture {
+        id!: number;
+        path!: string;
+    }
+
+    expect(cast<Picture | User>({ id: 23, username: 'peter' })).toEqual({ id: 23, username: 'peter' });
+    expect(cast<Picture | User>({ id: 23, username: 'peter' })).toBeInstanceOf(User);
+
+    expect(cast<Picture | User>({ id: 23, path: 'src/path' })).toEqual({ id: 23, path: 'src/path' });
+    expect(cast<Picture | User>({ id: 23, path: 'src/path' })).toBeInstanceOf(Picture);
+
+    expect(cast<number | User>(23)).toEqual(23);
+    expect(cast<number | User>({ id: 23, username: 'peter' })).toBeInstanceOf(User);
+});
+
+test('brands', () => {
+    expect(cast<number & PrimaryKey>(2)).toEqual(2);
+    expect(cast<number & PrimaryKey>('2')).toEqual(2);
+});
+
+test('throw', () => {
+    expect(() => cast<number>('123abc')).toThrow('Cannot convert 123abc to number');
+    expect(() => cast<{ a: string }>(false)).toThrow('Cannot convert false to {a: string}');
+    expect(() => cast<{ a: number }>({ a: 'abc' })).toThrow('a: Cannot convert abc to number');
+    expect(() => cast<{ a: { b: number } }>({ a: 'abc' })).toThrow('a: Cannot convert abc to {b: number}');
+    expect(() => cast<{ a: { b: number } }>({ a: { b: 'abc' } })).toThrow('a.b: Cannot convert abc to number');
+});
+
+test('index signature ', () => {
+    interface BagOfNumbers {
+        [name: string]: number;
+    }
+
+    interface BagOfStrings {
+        [name: string]: string;
+    }
+
+    expect(cast<BagOfNumbers>({ a: 1 })).toEqual({ a: 1 });
+    expect(cast<BagOfNumbers>({ a: 1, b: 2 })).toEqual({ a: 1, b: 2 });
+    expect(() => cast<BagOfNumbers>({ a: 'b' })).toThrow(SerializationError as any);
+    expect(() => cast<BagOfNumbers>({ a: 'b' })).toThrow('a: ');
+    expect(cast<BagOfNumbers>({ a: '1' })).toEqual({ a: 1 });
+    expect(() => cast<BagOfNumbers>({ a: 'b', b: 'c' })).toThrow(SerializationError as any);
+    expect(() => cast<BagOfNumbers>({ a: 'b', b: 'c' })).toThrow('a: ');
+
+    expect(cast<BagOfStrings>({ a: 1 })).toEqual({ a: '1' });
+    expect(cast<BagOfStrings>({ a: 1, b: 2 })).toEqual({ a: '1', b: '2' });
+    expect(cast<BagOfStrings>({ a: 'b' })).toEqual({ a: 'b' });
+    expect(cast<BagOfStrings>({ a: 'b', b: 'c' })).toEqual({ a: 'b', b: 'c' });
 });

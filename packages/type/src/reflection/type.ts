@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType } from '@deepkit/core';
+import { ClassType, getClassName } from '@deepkit/core';
 
 export enum ReflectionVisibility {
     public,
@@ -381,6 +381,74 @@ export const enum MappedModifier {
     removeOptional = 1 << 1,
     readonly = 1 << 2,
     removeReadonly = 1 << 3,
+}
+
+export function stringifyType(type: Type): string {
+    switch (type.kind) {
+        case ReflectionKind.never:
+            return `never`;
+        case ReflectionKind.any:
+            return `any`;
+        case ReflectionKind.void:
+            return `void`;
+        case ReflectionKind.undefined:
+            return `undefined`;
+        case ReflectionKind.null:
+            return `null`;
+        case ReflectionKind.string:
+            return 'string';
+        case ReflectionKind.number:
+            return 'number';
+        case ReflectionKind.bigint:
+            return 'bigint';
+        case ReflectionKind.boolean:
+            return 'boolean';
+        case ReflectionKind.literal:
+            return JSON.stringify(type.literal);
+        case ReflectionKind.promise:
+            return `Promise<${stringifyType(type.type)}>`;
+        case ReflectionKind.class:
+            return `${getClassName(type.classType)}`;
+        case ReflectionKind.union:
+            return type.types.map(stringifyType).join(' | ');
+        case ReflectionKind.intersection:
+            return type.types.map(stringifyType).join(' | ');
+        case ReflectionKind.parameter: {
+            const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
+            return `${type.readonly ? 'readonly ' : ''}${visibility}${type.name}${type.optional ? '?' : ''}: ${stringifyType(type.type)}`;
+        }
+        case ReflectionKind.function:
+            return `(${type.parameters.map(stringifyType).join(', ')}) => ${stringifyType(type.return)}`;
+        case ReflectionKind.enum:
+            return `enum todo`;
+        case ReflectionKind.array:
+            return `${stringifyType(type.type)}[]`;
+        case ReflectionKind.rest:
+            return `...${stringifyType(type.type)}[]`;
+        case ReflectionKind.tupleMember:
+            if (type.name) return `${type.name}${type.optional ? '?' : ''}: ${stringifyType(type.type)}`;
+            return `${stringifyType(type.type)}${type.optional ? '?' : ''}`;
+        case ReflectionKind.tuple:
+            return `[${type.types.map(stringifyType).join(', ')}]`;
+        case ReflectionKind.objectLiteral:
+            return `{${type.types.map(stringifyType).join(';\n')}}`;
+        case ReflectionKind.indexSignature:
+            return `{[index: ${stringifyType(type.index)}]: ${stringifyType(type.type)}`;
+        case ReflectionKind.propertySignature:
+            return `${type.readonly ? 'readonly ' : ''}${String(type.name)}${type.optional ? '?' : ''}: ${stringifyType(type.type)}`;
+        case ReflectionKind.property: {
+            const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
+            return `${type.readonly ? 'readonly ' : ''}${visibility}${String(type.name)}${type.optional ? '?' : ''}: ${stringifyType(type.type)}`;
+        }
+        case ReflectionKind.methodSignature:
+            return `${String(type.name)}${type.optional ? '?' : ''}(${type.parameters.map(stringifyType).join(', ')}): ${stringifyType(type.return)}`;
+        case ReflectionKind.method: {
+            const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
+            return `${type.abstract ? 'abstract ' : ''}${visibility}${String(type.name)}${type.optional ? '?' : ''}(${type.parameters.map(stringifyType).join(', ')}): ${stringifyType(type.return)}`;
+        }
+    }
+
+    return type.kind + '';
 }
 
 /**

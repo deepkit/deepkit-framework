@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { expect, test } from '@jest/globals';
-import { float, int8, integer } from '../../../src/reflection/type';
+import { float, int8, integer, PrimaryKey } from '../../../src/reflection/type';
 import { is } from '../../../src/typeguard';
 
 test('primitive string', () => {
@@ -152,6 +152,14 @@ test('union', () => {
     expect(is<string | number>(false)).toEqual(false);
 });
 
+test('deep union', () => {
+    expect(is<string | (number | bigint)[]>(1)).toEqual(false);
+    expect(is<string | (number | bigint)[]>('1')).toEqual(true);
+    expect(is<string | (number | bigint)[]>([1])).toEqual(true);
+    expect(is<string | (number | bigint)[]>([1n])).toEqual(true);
+    expect(is<string | (number | bigint)[]>(['1'])).toEqual(false);
+});
+
 test('object literal', () => {
     expect(is<{ a: string }>({ a: 'abc' })).toEqual(true);
     expect(is<{ a: string }>({ a: 123 })).toEqual(false);
@@ -167,13 +175,16 @@ test('class', () => {
     class A {
         a!: string;
     }
+
     class A2 {
         a?: string;
     }
+
     class A3 {
         a!: string;
         b!: number;
     }
+
     expect(is<A>({ a: 'abc' })).toEqual(true);
     expect(is<A>({ a: 123 })).toEqual(false);
     expect(is<A>({})).toEqual(false);
@@ -213,4 +224,50 @@ test('multiple index signature', () => {
     expect(is<{ [name: string]: string | number, [name: number]: number }>({ a: 123 })).toEqual(true);
     expect(is<{ [name: string]: string | number, [name: number]: number }>({ 1: 123 })).toEqual(true);
     expect(is<{ [name: string]: string | number, [name: number]: number }>({ 1: 'abc' })).toEqual(false);
+});
+
+test('brands', () => {
+    expect(is<number & PrimaryKey>(2)).toEqual(true);
+    expect(is<number & PrimaryKey>('2')).toEqual(false);
+});
+
+
+test('generic interface', () => {
+    interface List<T> {
+        items: T[];
+    }
+
+    expect(is<List<number>>({ items: [1] })).toEqual(true);
+    expect(is<List<string>>({ items: [1] })).toEqual(false);
+    expect(is<List<string>>({ items: null })).toEqual(false);
+    expect(is<List<string>>({ items: ['abc'] })).toEqual(true);
+});
+
+test('generic alias', () => {
+    type List<T> = T[];
+
+    expect(is<List<number>>([1])).toEqual(true);
+    expect(is<List<string>>([1])).toEqual(false);
+    expect(is<List<string>>(null)).toEqual(false);
+    expect(is<List<string>>(['abc'])).toEqual(true);
+});
+
+test('index signature ', () => {
+    interface BagOfNumbers {
+        [name: string]: number;
+    }
+
+    interface BagOfStrings {
+        [name: string]: string;
+    }
+
+    expect(is<BagOfNumbers>({ a: 1 })).toEqual(true);
+    expect(is<BagOfNumbers>({ a: 1, b: 2 })).toEqual(true);
+    expect(is<BagOfNumbers>({ a: 'b' })).toEqual(false);
+    expect(is<BagOfNumbers>({ a: 'b', b: 'c' })).toEqual(false);
+
+    expect(is<BagOfStrings>({ a: 1 })).toEqual(false);
+    expect(is<BagOfStrings>({ a: 1, b: 2 })).toEqual(false);
+    expect(is<BagOfStrings>({ a: 'b' })).toEqual(true);
+    expect(is<BagOfStrings>({ a: 'b', b: 'c' })).toEqual(true);
 });

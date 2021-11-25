@@ -33,7 +33,7 @@ import { ClassType, isArray, isFunction } from '@deepkit/core';
 
 export type RuntimeStackEntry = Type | Object | (() => ClassType | Object) | string | number | boolean | bigint;
 
-export type Packed = string | (RuntimeStackEntry | string)[];
+export type Packed = (RuntimeStackEntry | string)[] & {__is?: (data: any) => boolean};
 
 export class PackStruct {
     constructor(
@@ -52,11 +52,6 @@ function unpackOps(decodedOps: ReflectionOp[], encodedOPs: string): void {
 export function unpack(pack: Packed): PackStruct {
     const ops: ReflectionOp[] = [];
     const stack: RuntimeStackEntry[] = [];
-
-    if ('string' === typeof pack) {
-        unpackOps(ops, pack);
-        return { ops, stack };
-    }
 
     const encodedOPs = pack[pack.length - 1];
 
