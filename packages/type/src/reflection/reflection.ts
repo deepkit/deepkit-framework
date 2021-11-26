@@ -15,6 +15,7 @@ import {
     Type,
     TypeClass,
     TypeFunction,
+    TypeIntersection,
     TypeMethod,
     TypeMethodSignature,
     TypeObjectLiteral,
@@ -25,6 +26,7 @@ import {
 import { AbstractClassType, ClassType } from '@deepkit/core';
 import { FreeDecoratorFn } from '../decorator-builder';
 import { Packed, resolveRuntimeType } from './processor';
+import { isExtendable } from './extends';
 
 export type ReceiveType<T> = Packed;
 
@@ -74,6 +76,132 @@ export function typeOf<T>(args: any[] = [], p?: Packed): Type {
     throw new Error('No type given');
 }
 
+type TypeDecorator = (type: Type) => boolean;
+
+export const typeDecorators: TypeDecorator[] = [
+    (type: Type) => {
+        if (type.kind === ReflectionKind.objectLiteral) {
+            return hasMember(type, '__meta', {
+                    kind: ReflectionKind.union,
+                    types: [
+                        { kind: ReflectionKind.literal, literal: 'reference' },
+                        { kind: ReflectionKind.literal, literal: 'autoIncrement' },
+                        { kind: ReflectionKind.literal, literal: 'primaryKey' },
+                        { kind: ReflectionKind.literal, literal: 'backReference' }
+                    ]
+                }
+            );
+        }
+        return false;
+    }
+];
+
+export function registerTypeDecorator(decorator: TypeDecorator) {
+    typeDecorators.push(decorator);
+}
+
+export function isTypeDecorator(type: Type): boolean {
+    return typeDecorators.some(v => v(type));
+}
+
+export function isMember(v: Type): v is TypeProperty | TypePropertySignature | TypeMethodSignature | TypeMethod {
+    return v.kind === ReflectionKind.property || v.kind === ReflectionKind.propertySignature || v.kind === ReflectionKind.methodSignature || v.kind === ReflectionKind.method;
+}
+
+export function hasMember(type: TypeObjectLiteral | TypeClass, memberName: number | string | symbol, memberType?: Type): boolean {
+    return type.types.some(v => isMember(v) && v.name === memberName && (!memberType || isExtendable(v.kind === ReflectionKind.propertySignature || v.kind === ReflectionKind.property ? v.type : v, memberType)));
+}
+
+export function toSignature(type: TypeProperty | TypeMethod | TypePropertySignature | TypeMethodSignature): TypePropertySignature | TypeMethodSignature {
+    if (type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.methodSignature) return type;
+    if (type.kind === ReflectionKind.property) {
+        return { ...type, kind: ReflectionKind.propertySignature };
+    }
+
+    return { ...type, kind: ReflectionKind.methodSignature };
+}
+
+export function merge(types: (TypeObjectLiteral | TypeClass)[]): TypeObjectLiteral {
+    const type: TypeObjectLiteral = { kind: ReflectionKind.objectLiteral, types: [] };
+
+    for (const subType of types) {
+        for (const member of subType.types) {
+            if (!isMember(member)) continue;
+            if (!hasMember(type, member.name)) {
+                type.types.push(toSignature(member));
+            }
+        }
+    }
+    return type;
+}
+
+export function resolveIntersection(type: TypeIntersection): { resolved: Type, decorations: Type[] } {
+    const candidates: Type[] = [];
+    const decorations: Type[] = [];
+    for (let t of type.types) {
+        if (t.kind === ReflectionKind.intersection) {
+            const subResolved = resolveIntersection(t);
+            t = subResolved.resolved;
+            decorations.push(...subResolved.decorations);
+        }
+        if (isTypeDecorator(t)) {
+            decorations.push(t);
+        } else {
+            candidates.push(t);
+        }
+    }
+
+    if (candidates.length === 0) return { resolved: { kind: ReflectionKind.never }, decorations: [] };
+    if (candidates.length === 1) return { resolved: candidates[0], decorations };
+
+    const isMergeAble = candidates.every(v => v.kind === ReflectionKind.objectLiteral || v.kind === ReflectionKind.class);
+    if (isMergeAble) return { resolved: merge(candidates as (TypeObjectLiteral | TypeClass)[]), decorations };
+
+    return { resolved: { kind: ReflectionKind.intersection, types: candidates }, decorations };
+}
+
+export function hasCircularReference(type: Type, stack: Type[] = []) {
+    let hasCircular = false;
+    visit(type, () => undefined, () => {
+        hasCircular = true;
+    });
+    return hasCircular;
+}
+
+export function visit(type: Type, visitor: (type: Type) => false | void, onCircular: (stack: Type[]) => void, stack: Type[] = []): void {
+    if (stack.includes(type)) {
+        onCircular(stack);
+        return;
+    }
+    stack.push(type);
+
+    visitor(type);
+
+    switch (type.kind) {
+        case ReflectionKind.objectLiteral:
+        case ReflectionKind.tuple:
+        case ReflectionKind.union:
+        case ReflectionKind.class:
+        case ReflectionKind.intersection:
+            for (const member of type.types) visit(member, visitor, onCircular, stack);
+            break;
+        case ReflectionKind.propertySignature:
+        case ReflectionKind.property:
+        case ReflectionKind.array:
+        case ReflectionKind.promise:
+        case ReflectionKind.parameter:
+        case ReflectionKind.rest:
+            visit(type.type, visitor, onCircular, stack);
+            break;
+        case ReflectionKind.indexSignature:
+            visit(type.index, visitor, onCircular, stack);
+            visit(type.type, visitor, onCircular, stack);
+            break;
+    }
+
+    stack.pop();
+}
+
 export class ReflectionParameter {
     type: Type;
 
@@ -90,6 +218,10 @@ export class ReflectionParameter {
 
     getName(): string {
         return this.parameter.name;
+    }
+
+    isOptional(): boolean {
+        return this.parameter.optional === true;
     }
 
     applyDecorator(t: TData) {
@@ -468,6 +600,24 @@ export class ReflectionClass<T> {
         }
     }
 
+    getClassType(): ClassType {
+        return this.type.kind === ReflectionKind.class ? this.type.classType : Object;
+    }
+
+    /**
+     * Returns the parent/super class type, if available.
+     */
+    getSuperClass(): ClassType | undefined {
+        return this.parent ? this.parent.getClassType() : undefined;
+    }
+
+    /**
+     * Returns the ReflectionClass object from parent/super class, if available.
+     */
+    getSuperReflectionClass(): ReflectionClass<any> | undefined {
+        return this.parent;
+    }
+
     addProperty(property: ReflectionProperty) {
         this.properties.push(property);
         this.propertyNames.push(property.getName());
@@ -571,9 +721,13 @@ export class ReflectionClass<T> {
         }
         return;
     }
+
+    public hasCircularReference(): boolean {
+        return hasCircularReference(this.type);
+    }
 }
 
-export function decorate<T>(decorate: { [P in keyof T]?: FreeDecoratorFn }, p?: ReceiveType<T>): ReflectionClass<T> {
+export function decorate<T>(decorate: { [P in keyof T]?: FreeDecoratorFn<any> }, p?: ReceiveType<T>): ReflectionClass<T> {
     const type = typeOf([], p);
     if (type.kind === ReflectionKind.objectLiteral) {
         const classType = class {
@@ -582,7 +736,7 @@ export function decorate<T>(decorate: { [P in keyof T]?: FreeDecoratorFn }, p?: 
         (classType as any).prototype[reflectionClassSymbol] = reflection;
 
         for (const [p, fn] of Object.entries(decorate)) {
-            (fn as FreeDecoratorFn)(classType, p);
+            (fn as FreeDecoratorFn<any>)(classType, p);
         }
 
         return reflection;

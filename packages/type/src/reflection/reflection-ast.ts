@@ -22,12 +22,17 @@ import {
     Node,
     NodeFactory,
     QualifiedName,
-    SyntaxKind
+    SyntaxKind,
+    unescapeLeadingUnderscores
 } from 'typescript';
 
+export function getIdentifierName(node: Identifier | PrivateIdentifier): string {
+    return unescapeLeadingUnderscores(node.escapedText);
+}
+
 function joinQualifiedName(name: EntityName): string {
-    if (isIdentifier(name)) return name.text;
-    return joinQualifiedName(name.left) + '_' + name.right.text;
+    if (isIdentifier(name)) return getIdentifierName(name);
+    return joinQualifiedName(name.left) + '_' + getIdentifierName(name.right);
 }
 
 function hasJsDoc(node: any): node is { jsDoc: JSDoc[]; } {
@@ -50,24 +55,24 @@ export function extractJSDocAttribute(node: Node, attribute: string): string {
 export function getPropertyName(f: NodeFactory, node?: Identifier | StringLiteral | NumericLiteral | ComputedPropertyName | PrivateIdentifier): string | ArrowFunction {
     if (!node) return '';
 
-    if (isIdentifier(node)) return node.text;
+    if (isIdentifier(node)) return unescapeLeadingUnderscores(node.escapedText);
     if (isStringLiteral(node)) return node.text;
     if (isNumericLiteral(node)) return node.text;
     if (isComputedPropertyName(node)) {
         return f.createArrowFunction(undefined, undefined, [], undefined, undefined, node.expression);
     }
-    if (isPrivateIdentifier(node)) return node.text;
+    if (isPrivateIdentifier(node)) return unescapeLeadingUnderscores(node.escapedText);
 
     return '';
 }
 
 export function getNameAsString(node?: Identifier | StringLiteral | NumericLiteral | ComputedPropertyName | PrivateIdentifier | QualifiedName): string {
     if (!node) return '';
-    if (isIdentifier(node)) return node.text;
+    if (isIdentifier(node)) return getIdentifierName(node);
     if (isStringLiteral(node)) return node.text;
     if (isNumericLiteral(node)) return node.text;
     if (isComputedPropertyName(node)) return node.getText();
-    if (isPrivateIdentifier(node)) return node.text;
+    if (isPrivateIdentifier(node)) return getIdentifierName(node);
 
     return joinQualifiedName(node);
 }

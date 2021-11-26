@@ -8,7 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { expect, test } from '@jest/globals';
-import { reflect } from '../../../src/reflection/reflection';
+import { t } from '../../../src/decorator';
+import { reflect, ReflectionClass } from '../../../src/reflection/reflection';
 import { int8, integer, PrimaryKey } from '../../../src/reflection/type';
 import { createSerializeFunction, SerializationError } from '../../../src/serializer';
 import { cast, serialize } from '../../../src/serializer-facade';
@@ -140,6 +141,7 @@ test('cast primitives', () => {
     expect(cast<number>('123')).toBe(123);
 
     expect(cast<Date>('2021-10-19T00:22:58.257Z')).toEqual(new Date('2021-10-19T00:22:58.257Z'));
+    expect(serialize<Date>(new Date('2021-10-19T00:22:58.257Z'))).toEqual('2021-10-19T00:22:58.257Z');
 });
 
 test('cast integer', () => {
@@ -168,6 +170,10 @@ test('tuple rest', () => {
     {
         const value = cast<[boolean, ...string[], number]>([1, 12, 13, '14']);
         expect(value).toEqual([true, '12', '13', 14]);
+    }
+    {
+        const value = serialize<[boolean, ...string[], number]>([true, '12', 13]);
+        expect(value).toEqual([true, '12', 13]);
     }
 });
 
@@ -296,6 +302,7 @@ test('union loose string bigint', () => {
 
 test('literal', () => {
     expect(cast<'a'>('a')).toEqual('a');
+    expect(serialize<'a'>('a')).toEqual('a');
     expect(cast<'a'>('b')).toEqual('a');
     expect(cast<'a'>(123)).toEqual('a');
     expect(cast<1>(123)).toEqual(1);
@@ -303,14 +310,20 @@ test('literal', () => {
     expect(cast<true>('123')).toEqual(true);
     expect(cast<1n>('123')).toEqual(1n);
     expect(cast<1n>('123')).toEqual(1n);
+
+    expect(serialize<1n>(1n)).toEqual(1n);
 });
 
 test('union literal', () => {
     expect(cast<'a' | number>('a')).toEqual('a');
     expect(cast<'a' | number>(23)).toEqual(23);
+    expect(serialize<'a' | number>('a')).toEqual('a');
+    expect(serialize<'a' | number>(23)).toEqual(23);
 
     expect(cast<3 | number>(23)).toEqual(23);
     expect(cast<3 | number>(3)).toEqual(3);
+    expect(serialize<3 | number>(23)).toEqual(23);
+    expect(serialize<3 | number>(3)).toEqual(3);
 
     expect(cast<3 | boolean>(3)).toEqual(3);
     expect(cast<true | boolean>(true)).toEqual(true);
@@ -329,6 +342,10 @@ test('union primitive and class', () => {
     expect(cast<number | User>({ id: 23 })).toEqual({ id: 23 });
     expect(cast<number | User>({ id: 23 })).toBeInstanceOf(User);
     expect(cast<number | User>('2asd')).toEqual(undefined);
+
+    expect(serialize<number | User>(2)).toEqual(2);
+    expect(serialize<number | User>({ id: 23 })).toEqual({ id: 23 });
+    expect(serialize<number | User>({ id: 23 })).toBeInstanceOf(Object);
 });
 
 test('union multiple classes', () => {
@@ -350,18 +367,30 @@ test('union multiple classes', () => {
 
     expect(cast<number | User>(23)).toEqual(23);
     expect(cast<number | User>({ id: 23, username: 'peter' })).toBeInstanceOf(User);
+
+    expect(serialize<Picture | User>({ id: 23, username: 'peter' })).toEqual({ id: 23, username: 'peter' });
+    expect(serialize<Picture | User>({ id: 23, username: 'peter' })).toBeInstanceOf(Object);
+
+    expect(serialize<Picture | User>({ id: 23, path: 'src/path' })).toEqual({ id: 23, path: 'src/path' });
+    expect(serialize<Picture | User>({ id: 23, path: 'src/path' })).toBeInstanceOf(Object);
+
+    expect(serialize<number | User>(23)).toEqual(23);
+    expect(serialize<number | User>({ id: 23, username: 'peter' })).toBeInstanceOf(Object);
+    expect(serialize<number | User>({ id: 23, username: 'peter' })).toEqual({ id: 23, username: 'peter' });
 });
 
 test('brands', () => {
     expect(cast<number & PrimaryKey>(2)).toEqual(2);
     expect(cast<number & PrimaryKey>('2')).toEqual(2);
+
+    expect(serialize<number & PrimaryKey>(2)).toEqual(2);
 });
 
 test('throw', () => {
     expect(() => cast<number>('123abc')).toThrow('Cannot convert 123abc to number');
-    expect(() => cast<{ a: string }>(false)).toThrow('Cannot convert false to {a: string}');
+    expect(() => cast<{ a: string }>(false)).toThrow('Cannot convert false to {\n  a: string;\n}');
     expect(() => cast<{ a: number }>({ a: 'abc' })).toThrow('a: Cannot convert abc to number');
-    expect(() => cast<{ a: { b: number } }>({ a: 'abc' })).toThrow('a: Cannot convert abc to {b: number}');
+    expect(() => cast<{ a: { b: number } }>({ a: 'abc' })).toThrow('a: Cannot convert abc to {\n  b: number;\n}');
     expect(() => cast<{ a: { b: number } }>({ a: { b: 'abc' } })).toThrow('a.b: Cannot convert abc to number');
 });
 
@@ -386,4 +415,22 @@ test('index signature ', () => {
     expect(cast<BagOfStrings>({ a: 1, b: 2 })).toEqual({ a: '1', b: '2' });
     expect(cast<BagOfStrings>({ a: 'b' })).toEqual({ a: 'b' });
     expect(cast<BagOfStrings>({ a: 'b', b: 'c' })).toEqual({ a: 'b', b: 'c' });
+
+    expect(serialize<BagOfNumbers>({ a: 1 })).toEqual({ a: 1 });
+    expect(serialize<BagOfStrings>({ a: '1' })).toEqual({ a: '1' });
+});
+
+test('exclude', () => {
+    class User {
+        username!: string;
+
+        @t.exclude()
+        password?: string;
+    }
+
+    const reflection = ReflectionClass.from(User);
+    expect(reflection.getProperty('password')?.excludeSerializerNames).toEqual(['*']);
+
+    expect(cast<User>({ username: 'peter', password: 'nope' })).toEqual({ username: 'peter', password: undefined });
+    expect(serialize<User>({ username: 'peter', password: 'nope' })).toEqual({ username: 'peter', password: undefined });
 });

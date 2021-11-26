@@ -1,20 +1,22 @@
 /** @reflection never */
 import { expect, test } from '@jest/globals';
-import { pack, ReflectionOp, unpack } from '../../src/reflection/compiler';
+import { pack } from '../../src/reflection/compiler';
+import { unpack } from '../../src/reflection/processor';
+import { ReflectionOp } from '../../src/reflection/type';
 
 Error.stackTraceLimit = 200;
 
 test('pack', () => {
-    expect(pack([ReflectionOp.string])).toBe(String.fromCharCode(33 + ReflectionOp.string));
-    expect(pack([ReflectionOp.string, ReflectionOp.optional])).toBe(String.fromCharCode(33 + ReflectionOp.string, 33 + ReflectionOp.optional));
-    expect(pack([ReflectionOp.union, ReflectionOp.string, ReflectionOp.number])).toBe(String.fromCharCode(33 + ReflectionOp.union, 33 + ReflectionOp.string, 33 + ReflectionOp.number));
+    expect(pack([ReflectionOp.string])).toEqual([String.fromCharCode(33 + ReflectionOp.string)]);
+    expect(pack([ReflectionOp.string, ReflectionOp.optional])).toEqual([String.fromCharCode(33 + ReflectionOp.string, 33 + ReflectionOp.optional)]);
+    expect(pack([ReflectionOp.union, ReflectionOp.string, ReflectionOp.number])).toEqual([String.fromCharCode(33 + ReflectionOp.union, 33 + ReflectionOp.string, 33 + ReflectionOp.number)]);
 });
 
 test('unpack', () => {
     expect(unpack([String.fromCharCode(33 + ReflectionOp.string)])).toEqual({ ops: [ReflectionOp.string], stack: [] });
     expect(unpack([String, String.fromCharCode(33 + ReflectionOp.string)])).toEqual({ ops: [ReflectionOp.string], stack: [String] });
     expect(unpack([String, String.fromCharCode(33 + ReflectionOp.string)])).toEqual({ ops: [ReflectionOp.string], stack: [String] });
-    expect(unpack(String.fromCharCode(33 + ReflectionOp.string, 33 + ReflectionOp.optional))).toEqual({ ops: [ReflectionOp.string, ReflectionOp.optional], stack: [] });
+    expect(unpack([String.fromCharCode(33 + ReflectionOp.string, 33 + ReflectionOp.optional)])).toEqual({ ops: [ReflectionOp.string, ReflectionOp.optional], stack: [] });
     expect(unpack(pack([ReflectionOp.union, ReflectionOp.string, ReflectionOp.number]))).toEqual({ ops: [ReflectionOp.union, ReflectionOp.string, ReflectionOp.number], stack: [] });
 });
 

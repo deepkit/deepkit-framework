@@ -13,17 +13,20 @@ import {
     FindType,
     isNullable,
     isOptional,
-    ReflectionKind, stringifyType,
+    ReflectionKind,
+    stringifyType,
     Type,
     TypeClass,
     TypeIndexSignature,
+    TypeIntersection,
     TypeNumberBrand,
     TypeObjectLiteral,
     TypeProperty,
     TypePropertySignature,
-    TypeTuple, TypeUnion
+    TypeTuple,
+    TypeUnion
 } from './reflection/type';
-import { ReflectionClass, ReflectionProperty, typeOf } from './reflection/reflection';
+import { ReflectionClass, ReflectionProperty, resolveIntersection } from './reflection/reflection';
 import { isExtendable } from './reflection/extends';
 import { resolveRuntimeType } from './reflection/processor';
 
@@ -271,7 +274,7 @@ export function getTemplateJSForType(
 export function createConverterJSForProperty(
     setter: string,
     accessor: string,
-    property: ReflectionProperty,
+    property: ReflectionProperty | TypePropertySignature,
     registry: TemplateRegistry,
     compilerContext: CompilerContext,
     namingStrategy: NamingStrategy,
@@ -281,17 +284,18 @@ export function createConverterJSForProperty(
 ): string {
     const undefinedCompiler = registry.get(ReflectionKind.undefined);
     const nullCompiler = registry.get(ReflectionKind.null);
+    const type = property instanceof ReflectionProperty ? property.type : property;
 
-    undefinedSetterCode = undefinedSetterCode || (undefinedCompiler ? executeTemplates(compilerContext, registry, namingStrategy, undefinedCompiler, setter, accessor, property.type, path) : '');
-    nullSetterCode = nullSetterCode || (nullCompiler ? executeTemplates(compilerContext, registry, namingStrategy, nullCompiler, setter, accessor, property.type, path) : '');
+    undefinedSetterCode = undefinedSetterCode || (undefinedCompiler ? executeTemplates(compilerContext, registry, namingStrategy, undefinedCompiler, setter, accessor, type, path) : '');
+    nullSetterCode = nullSetterCode || (nullCompiler ? executeTemplates(compilerContext, registry, namingStrategy, nullCompiler, setter, accessor, type, path) : '');
 
-    const templates = registry.get(property.type.kind);
+    const templates = registry.get(type.kind);
     let convert = '';
     if (templates.length) {
-        convert = executeTemplates(compilerContext, registry, namingStrategy, templates, setter, accessor, property.type, path);
+        convert = executeTemplates(compilerContext, registry, namingStrategy, templates, setter, accessor, type, path);
     } else {
         convert = `
-        //no compiler for ${property.type.kind}
+        //no compiler for ${type.kind}
         ${setter} = ${accessor};`;
     }
 
@@ -300,22 +304,25 @@ export function createConverterJSForProperty(
     const isSerialization = registry.serializer.serializeRegistry === registry;
     const isDeserialization = registry.serializer.deserializeRegistry === registry;
 
-    if (isSerialization) {
-        if (property.serializer) {
-            const fnVar = compilerContext.reserveVariable('transformer', property.serializer);
-            postTransform = `${setter} = ${fnVar}(${setter}, ${compilerContext.reserveConst(property)})`;
+    if (property instanceof ReflectionProperty) {
+        if (isSerialization) {
+            if (property.serializer) {
+                const fnVar = compilerContext.reserveVariable('transformer', property.serializer);
+                postTransform = `${setter} = ${fnVar}(${setter}, ${compilerContext.reserveConst(property)})`;
+            }
+        }
+
+        if (isDeserialization) {
+            if (property.deserializer) {
+                const fnVar = compilerContext.reserveVariable('transformer', property.deserializer);
+                postTransform = `${setter} = ${fnVar}(${setter}, ${compilerContext.reserveConst(property)})`;
+            }
         }
     }
 
-    if (isDeserialization) {
-        if (property.deserializer) {
-            const fnVar = compilerContext.reserveVariable('transformer', property.deserializer);
-            postTransform = `${setter} = ${fnVar}(${setter}, ${compilerContext.reserveConst(property)})`;
-        }
-    }
-
-    const optional = property.isOptional();
-    const nullable = isNullable(property.type);
+    const optional = isOptional(property instanceof ReflectionProperty ? property.property : type);
+    const nullable = isNullable(type);
+    const hasDefault = property instanceof ReflectionProperty ? property.hasDefault() : false;
 
     // since JSON does not support undefined, we emulate it via using null for serialization, and convert that back to undefined when deserialization happens.
     // note: When the value is not defined (property.name in object === false), then this code will never run.
@@ -329,7 +336,7 @@ export function createConverterJSForProperty(
 
     return `
         if (${accessor} === undefined) {
-            if (${!property.hasDefault() || optional}) ${setter} = ${defaultValue};
+            if (${!hasDefault || optional}) ${setter} = ${defaultValue};
             ${undefinedSetterCode}
         } else if (${accessor} === null) {
             //null acts on transport layer as telling an explicitly set undefined
@@ -379,6 +386,10 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
     for (const property of clazz.getProperties()) {
         const name = getNameExpression(state.namingStrategy.getPropertyName(property.property), state);
 
+        if (property.excludeSerializerNames && (property.excludeSerializerNames.includes('*') || property.excludeSerializerNames.includes(state.registry.serializer.name))) {
+            continue;
+        }
+
         lines.push(`
             if (${name} in ${state.accessor}) {
                 ${createConverterJSForProperty(
@@ -409,7 +420,7 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
     `);
 }
 
-export function deserializeObjectLiteral(type: TypeObjectLiteral, state: TemplateState) {
+export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState) {
     const v = state.compilerContext.reserveName('v');
     const lines: string[] = [];
 
@@ -421,15 +432,39 @@ export function deserializeObjectLiteral(type: TypeObjectLiteral, state: Templat
             signatures.push(member);
         } else if (member.kind === ReflectionKind.propertySignature) {
             const name = getNameExpression(state.namingStrategy.getPropertyName(member), state);
-
-            lines.push(getTemplateJSForTypeForState(
+            lines.push(`
+            if (${name} in ${state.accessor}) {
+                ${createConverterJSForProperty(
                 `${v}[${JSON.stringify(member.name)}]`,
                 `${state.accessor}[${name}]`,
-                member.type,
-                state,
-                state.extendPath(String(member.name))
-            ));
+                member,
+                state.registry, state.compilerContext, state.namingStrategy,
+                undefined, undefined, state.extendPath(String(member.name))
+            )}
+            }
+            `);
         }
+    }
+
+    const clazz = type.kind === ReflectionKind.class ? ReflectionClass.from(type.classType) : undefined;
+    if (clazz) for (const property of clazz.getProperties()) {
+        const name = getNameExpression(state.namingStrategy.getPropertyName(property.property), state);
+
+        if (property.excludeSerializerNames && (property.excludeSerializerNames.includes('*') || property.excludeSerializerNames.includes(state.registry.serializer.name))) {
+            continue;
+        }
+
+        lines.push(`
+            if (${name} in ${state.accessor}) {
+                ${createConverterJSForProperty(
+            `${v}[${JSON.stringify(property.getName())}]`,
+            `${state.accessor}[${name}]`,
+            property,
+            state.registry, state.compilerContext, state.namingStrategy,
+            undefined, undefined, state.extendPath(String(property.getName()))
+        )}
+            }
+        `);
     }
 
     if (signatures.length) {
@@ -460,7 +495,7 @@ export function deserializeObjectLiteral(type: TypeObjectLiteral, state: Templat
             } else if (type.kind === ReflectionKind.string) {
                 return `'string' === typeof ${i}`;
             } else if (type.kind === ReflectionKind.symbol) {
-                return `'string' === typeof ${i}`;
+                return `'symbol' === typeof ${i}`;
             } else if (type.kind === ReflectionKind.union) {
                 return '(' + type.types.map(getIndexCheck).join(' || ') + ')';
             }
@@ -544,7 +579,7 @@ export function typeCheckArray(elementType: Type, state: TemplateState) {
     `);
 }
 
-function deserializeTypeTuple(type: TypeTuple, state: TemplateState) {
+function serializeTypeTuple(type: TypeTuple, state: TemplateState) {
     //[string, number], easy
     //[...string, number], easy
     //[number, ...string], easy
@@ -736,7 +771,7 @@ export function typeCheckClassOrObjectLiteral(type: TypeObjectLiteral | TypeClas
             } else if (type.kind === ReflectionKind.string) {
                 return `'string' === typeof ${i}`;
             } else if (type.kind === ReflectionKind.symbol) {
-                return `'string' === typeof ${i}`;
+                return `'symbol' === typeof ${i}`;
             } else if (type.kind === ReflectionKind.union) {
                 return '(' + type.types.map(getIndexCheck).join(' || ') + ')';
             }
@@ -769,15 +804,25 @@ export function typeCheckClassOrObjectLiteral(type: TypeObjectLiteral | TypeClas
                 break;
             }
         }
-
         `);
     }
 
     state.addCodeForSetter(`
         let ${v} = true;
-        ${lines.join('\n')}
-        ${state.setter} = ${v};
+        if (${state.accessor} && 'object' === typeof ${state.accessor}) {
+            ${lines.join('\n')}
+            ${state.setter} = ${v};
+        } else {
+            ${state.setter} = false;
+        }
     `);
+}
+
+export function serializeTypeIntersection(type: TypeIntersection, state: TemplateState) {
+    const { resolved, decorations } = resolveIntersection(type);
+    if (resolved.kind === ReflectionKind.never) return;
+
+    return getTemplateJSForTypeForState(state.setter, state.accessor, resolved, state, state.path);
 }
 
 export function serializeTypeUnion(type: TypeUnion, state: TemplateState) {
@@ -902,18 +947,30 @@ export class Serializer {
 
     typeGuards = new TypeGuardRegistry(this);
 
+    public name: string = 'default';
+
     constructor() {
         this.deserializeRegistry.register(ReflectionKind.class, deserializeClass);
-        this.deserializeRegistry.register(ReflectionKind.objectLiteral, deserializeObjectLiteral);
-        this.deserializeRegistry.register(ReflectionKind.tuple, deserializeTypeTuple);
-        this.deserializeRegistry.register(ReflectionKind.union, serializeTypeUnion);
-        this.deserializeRegistry.register(ReflectionKind.literal, (type, state) => state.addSetter(state.setVariable('v', type.literal)));
+        this.serializeRegistry.register(ReflectionKind.class, serializeObjectLiteral);
+        this.deserializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
+        this.serializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
 
-        this.serializeRegistry.register(ReflectionKind.literal, (type, state) => state.addSetter(state.setVariable('v', type.literal)));
+        this.deserializeRegistry.register(ReflectionKind.tuple, serializeTypeTuple);
+        this.serializeRegistry.register(ReflectionKind.tuple, serializeTypeTuple);
+
+        this.deserializeRegistry.register(ReflectionKind.union, serializeTypeUnion);
         this.serializeRegistry.register(ReflectionKind.union, serializeTypeUnion);
-        this.serializeRegistry.register(ReflectionKind.bigint, (type, state) => {
-            state.addSetter(`${state.accessor}.toString()`);
-        });
+
+        this.serializeRegistry.register(ReflectionKind.intersection, serializeTypeIntersection);
+        this.deserializeRegistry.register(ReflectionKind.intersection, serializeTypeIntersection);
+
+        this.deserializeRegistry.register(ReflectionKind.literal, (type, state) => state.addSetter(state.setVariable('v', type.literal)));
+        this.serializeRegistry.register(ReflectionKind.literal, (type, state) => state.addSetter(state.setVariable('v', type.literal)));
+
+        this.serializeRegistry.register(ReflectionKind.bigint, (type, state) => state.addSetter(`${state.accessor}.toString()`));
+
+        this.deserializeRegistry.prependClass(Date, (type, state) => state.addSetter(`new Date(${state.accessor})`));
+        this.serializeRegistry.prependClass(Date, (type, state) => state.addSetter(`${state.accessor}.toJSON()`));
 
         this.deserializeRegistry.register(ReflectionKind.string, (type, state) => {
             state.addSetter(`'string' !== typeof ${state.accessor} ? ${state.accessor}+'' : ${state.accessor}`);
@@ -1053,6 +1110,13 @@ export class Serializer {
                 }
             `);
         }));
+
+        this.typeGuards.register(1, ReflectionKind.intersection, (type, state) => {
+            const { resolved, decorations } = resolveIntersection(type);
+            if (resolved.kind === ReflectionKind.never) return;
+
+            state.addCodeForSetter(getTemplateJSForTypeForState(state.setter, state.accessor, resolved, state, state.path));
+        });
 
         this.typeGuards.register(1, ReflectionKind.union, (type, state) => {
             const lines: string[] = [];

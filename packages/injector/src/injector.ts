@@ -1,9 +1,10 @@
 import { isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider, NormalizedProvider, ProviderWithScope, Tag, TagProvider, TagRegistry, Token } from './provider';
 import { ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction, isPrototypeOfBase } from '@deepkit/core';
-import { getClassSchema, isFieldDecorator, PropertySchema } from '@deepkit/type';
-import { InjectOptions, InjectorReference, InjectorToken, isInjectDecorator } from './decorator';
+import { InjectorReference, InjectorToken } from './decorator';
 import { ConfigDefinition, ConfigSlice, ConfigToken } from './config';
 import { findModuleForConfig, getScope, InjectorModule, PreparedProvider } from './module';
+import { ReflectionClass, ReflectionParameter, ReflectionProperty } from '@deepkit/type/dist/cjs/src/reflection/reflection';
+import { ReflectionKind, Type } from '@deepkit/type';
 
 
 export class CircularDependencyError extends CustomError {
@@ -226,7 +227,7 @@ export class Injector implements InjectorInterface {
                     case token === ${instantiationCompiler.reserveConst(token, 'token')}${scopeCheck}: {
                         return ${instantiationCompiler.reserveConst(prepared.resolveFrom, 'resolveFrom')}.injector.instantiations(${instantiationCompiler.reserveConst(token, 'token')}, scope);
                     }
-                    `)
+                    `);
                 } else {
                     //we own and instantiate the service
                     lines.push(this.buildProvider(buildContext, resolverCompiler, name, accessor, scope, provider, prepared.modules));
@@ -235,7 +236,7 @@ export class Injector implements InjectorInterface {
                     case token === ${instantiationCompiler.reserveConst(token, 'token')}${scopeCheck}: {
                         return injector.instantiated.${name} || 0;
                     }
-                    `)
+                    `);
                 }
             }
         }
@@ -306,40 +307,41 @@ export class Injector implements InjectorInterface {
             transient = provider.transient === true;
             factory.code = `${accessor} = injector.resolver(${compiler.reserveConst(provider.useExisting)}, scope)`;
         } else if (isFactoryProvider(provider)) {
-            transient = provider.transient === true;
-
-            const args: string[] = [];
-            let i = 0;
-            for (const dep of provider.deps || []) {
-                let optional = false;
-                let token = dep;
-
-                if (isInjectDecorator(dep)) {
-                    optional = dep.options.optional;
-                    token = dep.options.token;
-                }
-
-                if (isFieldDecorator(dep)) {
-                    const propertySchema = dep.buildPropertySchema();
-                    optional = propertySchema.isOptional;
-                    if (propertySchema.type === 'literal' || propertySchema.type === 'class') {
-                        token = propertySchema.literalValue !== undefined ? propertySchema.literalValue : propertySchema.getResolvedClassType();
-                    }
-                }
-
-                if (!token) {
-                    throw new Error(`No token defined for dependency ${i} in 'deps' of useFactory for ${tokenLabel(provider.provide)}`);
-                }
-
-                factory.dependencies++;
-                args.push(this.createFactoryProperty({
-                    name: i++,
-                    token,
-                    optional,
-                }, provider, compiler, resolveDependenciesFrom, 'useFactory', args.length, 'factoryDependencyNotFound'));
-            }
-
-            factory.code = `${accessor} = ${compiler.reserveVariable('factory', provider.useFactory)}(${args.join(', ')});`;
+            throw new Error('Not implemented yet');
+            // transient = provider.transient === true;
+            //
+            // const args: string[] = [];
+            // let i = 0;
+            // for (const dep of provider.deps || []) {
+            //     let optional = false;
+            //     let token = dep;
+            //
+            //     if (isInjectDecorator(dep)) {
+            //         optional = dep.options.optional;
+            //         token = dep.options.token;
+            //     }
+            //
+            //     // if (isFieldDecorator(dep)) {
+            //     //     const propertySchema = dep.buildPropertySchema();
+            //     //     optional = propertySchema.isOptional;
+            //     //     if (propertySchema.type === 'literal' || propertySchema.type === 'class') {
+            //     //         token = propertySchema.literalValue !== undefined ? propertySchema.literalValue : propertySchema.getResolvedClassType();
+            //     //     }
+            //     // }
+            //
+            //     if (!token) {
+            //         throw new Error(`No token defined for dependency ${i} in 'deps' of useFactory for ${tokenLabel(provider.provide)}`);
+            //     }
+            //
+            //     factory.dependencies++;
+            //     args.push(this.createFactoryProperty({
+            //         name: String(i++),
+            //         token,
+            //         optional,
+            //     }, provider, compiler, resolveDependenciesFrom, 'useFactory', args.length, 'factoryDependencyNotFound'));
+            // }
+            //
+            // factory.code = `${accessor} = ${compiler.reserveVariable('factory', provider.useFactory)}(${args.join(', ')});`;
         } else {
             throw new Error('Invalid provider');
         }
@@ -411,30 +413,30 @@ export class Injector implements InjectorInterface {
         resolveDependenciesFrom: InjectorModule[]
     ): { code: string, dependencies: number } {
         if (!classType) throw new Error('Can not create factory for undefined ClassType');
-        const schema = getClassSchema(classType);
+        const reflectionClass = ReflectionClass.from(classType);
         const args: string[] = [];
         const propertyAssignment: string[] = [];
         const classTypeVar = compiler.reserveVariable('classType', classType);
 
         let dependencies: number = 0;
 
-        for (const property of schema.getMethodProperties('constructor')) {
-            if (!property) {
-                throw new Error(`Constructor arguments hole in ${getClassName(classType)}`);
+        const constructor = reflectionClass.getMethod('constructor');
+        if (constructor) {
+            for (const parameter of constructor.getParameters()) {
+                dependencies++;
+                args.push(this.createFactoryProperty(this.optionsFromProperty(parameter), provider, compiler, resolveDependenciesFrom, getClassName(classType), args.length, 'constructorParameterNotFound'));
             }
-            dependencies++;
-            args.push(this.createFactoryProperty(this.optionsFromProperty(property), provider, compiler, resolveDependenciesFrom, getClassName(classType), args.length, 'constructorParameterNotFound'));
         }
 
-        for (const property of schema.getProperties()) {
+        for (const property of reflectionClass.getProperties()) {
             if (!('deepkit/inject' in property.data)) continue;
-            if (property.methodName === 'constructor') continue;
+            // if (property.methodName === 'constructor') continue;
             dependencies++;
             try {
                 const resolveProperty = this.createFactoryProperty(this.optionsFromProperty(property), provider, compiler, resolveDependenciesFrom, getClassName(classType), -1, 'propertyParameterNotFound');
-                propertyAssignment.push(`${resolvedName}.${property.name} = ${resolveProperty};`);
+                propertyAssignment.push(`${resolvedName}.${String(property.getName())} = ${resolveProperty};`);
             } catch (error) {
-                throw new Error(`Could not resolve property injection token ${getClassName(classType)}.${property.name}: ${error.message}`);
+                throw new Error(`Could not resolve property injection token ${getClassName(classType)}.${String(property.getName())}: ${error.message}`);
             }
         }
 
@@ -445,7 +447,7 @@ export class Injector implements InjectorInterface {
     }
 
     protected createFactoryProperty(
-        options: { name: string | number, token: any, optional: boolean },
+        options: { name: string, type: Type, optional: boolean },
         fromProvider: NormalizedProvider,
         compiler: CompilerContext,
         resolveDependenciesFrom: InjectorModule[],
@@ -453,7 +455,7 @@ export class Injector implements InjectorInterface {
         argPosition: number,
         notFoundFunction: string
     ): string {
-        const token = options.token;
+        const token = options.type.kind === ReflectionKind.class ? options.type.classType : undefined;
         let of = `${ofName}.${options.name}`;
 
         //regarding configuration values: the attached module is not necessarily in resolveDependenciesFrom[0]
@@ -565,19 +567,18 @@ export class Injector implements InjectorInterface {
         }
     }
 
-    protected optionsFromProperty(property: PropertySchema): { token: any, name: string | number, optional: boolean } {
-        const options = property.data['deepkit/inject'] as InjectOptions | undefined;
-        let token: any = property.resolveClassType;
-
-        if (options && options.token) {
-            token = isFunction(options.token) ? options.token() : options.token;
-        } else if (property.type === 'class') {
-            token = property.getResolvedClassType();
-        } else if (property.type === 'literal') {
-            token = property.literalValue;
-        }
-
-        return { token, name: property.name, optional: property.isOptional ? true : (!!options && options.optional) };
+    protected optionsFromProperty(property: ReflectionParameter | ReflectionProperty): { type: Type, name: string, optional: boolean } {
+        // const options = property.data['deepkit/inject'] as InjectOptions | undefined;
+        // let token: any = property.resolveClassType;
+        //
+        // if (options && options.token) {
+        //     token = isFunction(options.token) ? options.token() : options.token;
+        // } else if (property.type === 'class') {
+        //     token = property.getResolvedClassType();
+        // } else if (property.type === 'literal') {
+        //     token = property.literalValue;
+        // }
+        return { type: property.getType(), name: String(property.getName()), optional: property.isOptional() };
     }
 }
 

@@ -9,9 +9,9 @@
  */
 
 import { expect, test } from '@jest/globals';
-import { t } from '../../../src/decorator';
-import { decorate, propertiesOf, reflect, ReflectionClass, ReflectionFunction, typeOf, valuesOf } from '../../../src/reflection/reflection';
+import { decorate, propertiesOf, reflect, ReflectionClass, ReflectionFunction, resolveIntersection, typeOf, valuesOf } from '../../../src/reflection/reflection';
 import {
+    assertType,
     BackReference,
     integer,
     PrimaryKey,
@@ -20,13 +20,15 @@ import {
     ReflectionVisibility,
     Type,
     TypeClass,
-    TypeIndexSignature,
+    TypeIndexSignature, TypeIntersection,
     TypeNumber,
     TypeNumberBrand,
     TypeObjectLiteral,
+    TypeString,
     TypeTuple
 } from '../../../src/reflection/type';
 import { ClassType } from '@deepkit/core';
+import { t } from '../../../src/decorator';
 
 test('class', () => {
     class Entity {
@@ -468,6 +470,16 @@ test('type alias partial remove readonly', () => {
     });
 });
 
+test('global partial', () => {
+    type o = { a: string };
+    type p = Partial<o>;
+
+    expect(typeOf<p>()).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        types: [{ kind: ReflectionKind.propertySignature, name: 'a', optional: true, type: { kind: ReflectionKind.string } }]
+    });
+});
+
 test('type alias all string', () => {
     type AllString<T> = {
         [P in keyof T]: string;
@@ -669,17 +681,59 @@ test('Reference', () => {
     interface User {
         id: number & PrimaryKey;
 
-        pages: Page[] & BackReference; //could also be Page & BackReference for 1-to-1
+        pages: Page[] & BackReference;
     }
 
     interface Page {
-        //how do we detect that Reference is a brand?
         owner: User & Reference;
     }
 
     const reflection = ReflectionClass.from(typeOf<Page>());
     const property = reflection.getProperty('owner')!;
-    expect(property.getType().kind).toBe(ReflectionKind.intersection);
+    const owner = property.getType();
+    expect(owner).toMatchObject({
+        kind: ReflectionKind.intersection,
+        types: [
+            typeOf<User>(),
+            typeOf<Reference>(),
+        ]
+    });
+});
+
+test('resolve intersection with reference', () => {
+    class Image {
+        id: number = 0;
+    }
+
+    const {resolved, decorations} = resolveIntersection(typeOf<Image & Reference>() as TypeIntersection);
+    assertType(resolved, ReflectionKind.class);
+    expect(resolved.classType).toBe(Image);
+    expect(decorations[0]).toEqual(typeOf<Reference>());
+});
+
+test('circular interface', () => {
+    interface User {
+        pages: Page[] & BackReference;
+
+        page: Page & BackReference;
+    }
+
+    interface Page {
+        owner: User & Reference;
+    }
+
+    const user = typeOf<User>();
+    const page = typeOf<Page>();
+
+    expect(user === typeOf<User>()).toBe(true);
+    assertType(user, ReflectionKind.objectLiteral);
+    assertType(page, ReflectionKind.objectLiteral);
+
+    assertType(page.types[0], ReflectionKind.propertySignature);
+    expect(page.types[0].name).toBe('owner');
+    assertType(page.types[0].type, ReflectionKind.intersection);
+    expect(page.types[0].type.types[0] === user).toBe(true);
+    expect(page.types[0].type.types[1]).toEqual(typeOf<Reference>());
 });
 
 test('built in numeric type', () => {
@@ -704,6 +758,29 @@ test('custom brands', () => {
     const property = reflection.getProperty('username')!;
     expect(property.getType().kind).toBe(ReflectionKind.string);
     expect((property.getType() as TypeNumber).brands![0]).toEqual(typeOf<{ __brand: 'username' }>());
+});
+
+test('ts-brand', () => {
+    type Brand<Base,
+        Branding,
+        ReservedName extends string = '__type__'> = Base & { [K in ReservedName]: Branding } & { __witness__: Base };
+
+    const type = typeOf<Brand<string, 'uuid'>>();
+    const expected: TypeString = {
+        kind: ReflectionKind.string,
+        brands: [
+            {
+                kind: ReflectionKind.objectLiteral, types: [
+                    { kind: ReflectionKind.propertySignature, name: '__type__', type: { kind: ReflectionKind.literal, literal: 'uuid' } },
+                ]
+            },
+            {
+                kind: ReflectionKind.objectLiteral, types: []
+            }
+        ]
+    };
+    (expected.brands![1] as TypeObjectLiteral).types.push({ kind: ReflectionKind.propertySignature, name: '__witness__', type: expected });
+    expect(type).toEqual(expected);
 });
 
 test('decorate class', () => {

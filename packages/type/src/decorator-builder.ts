@@ -16,6 +16,7 @@ export type PropertyDecoratorFn = (prototype: object, property?: number | string
 export type FluidDecorator<T, D extends Function> = {
     [name in keyof T]: T[name] extends (...args: infer K) => any ? (...args: K) => D & FluidDecorator<T, D>
         : D & FluidDecorator<T, D>
+        & { _data: ExtractApiDataType<T> };
 };
 
 export function createFluidDecorator<API extends APIClass<any> | APIProperty<any>, D extends Function>
@@ -31,6 +32,11 @@ export function createFluidDecorator<API extends APIClass<any> | APIProperty<any
         if (returnCollapse) return res;
     };
     Object.defineProperty(fn, 'name', { value: undefined });
+    Object.defineProperty(fn, '_data', {
+        get: () => {
+            return collapse(modifier, Object);
+        }
+    });
 
     const methods: string[] = [];
     Object.defineProperty(fn, '_methods', { value: methods });
@@ -304,13 +310,13 @@ export function createPropertyDecoratorContext<API extends APIProperty<any>, T =
     return fn as any;
 }
 
-export type FreeDecoratorFn = { (target?: any, property?: number | string | symbol, parameterIndexOrDescriptor?: any): void };
+export type FreeDecoratorFn<API> = { (target?: any, property?: number | string | symbol, parameterIndexOrDescriptor?: any): void } & { _data: ExtractApiDataType<API> };
 
 export type FreeFluidDecorator<API> = {
     [name in keyof ExtractClass<API>]: ExtractClass<API>[name] extends (...args: infer K) => any
         ? (...args: K) => FreeFluidDecorator<API>
         : FreeFluidDecorator<API>
-} & FreeDecoratorFn;
+} & FreeDecoratorFn<API>;
 
 export type FreeDecoratorResult<API extends APIClass<any>> = FreeFluidDecorator<API> & { _fluidFunctionSymbol: symbol };
 

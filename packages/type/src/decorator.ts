@@ -57,8 +57,14 @@ class TDecorator {
         this.t.data[name] = value;
     }
 
+    /**
+     * Excludes this property and given serializers or all if none serializer name is provided.
+     * This includes serialization and deserialization(cast).
+     */
     exclude(...serializerNames: string[]) {
-        this.t.excludeSerializerNames = serializerNames;
+        if (!this.t.excludeSerializerNames) this.t.excludeSerializerNames = [];
+        if (!serializerNames.length) serializerNames = ['*'];
+        this.t.excludeSerializerNames.push(...serializerNames);
     }
 
     group(...groups: string[]) {

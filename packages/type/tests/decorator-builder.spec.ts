@@ -28,13 +28,13 @@ test('without host', () => {
     expect(isDecoratorContext(dec1, () => true)).toBe(false);
 
     {
-        const c2 = dec1.name('Peter')();
+        const c2 = dec1.name('Peter')._data;
         expect(c2).toBeInstanceOf(Dec1Model);
         expect(c2.name).toBe('Peter');
     }
 
     {
-        const c2 = dec1();
+        const c2 = dec1._data;
         expect(c2).toBeInstanceOf(Dec1Model);
         expect(c2.name).toBe('');
     }
@@ -69,13 +69,13 @@ test('collapsing correctly', () => {
     expect(isDecoratorContext(dec1, () => true)).toBe(false);
 
     {
-        const c2 = dec1.optional.default('Peter')();
+        const c2 = dec1.optional.default('Peter')._data;
         expect(c2).toBeInstanceOf(ArgDefinition);
         expect(c2.default).toBe('Peter');
     }
 
     {
-        const c2 = dec1.optional();
+        const c2 = dec1.optional._data;
         expect(c2).toBeInstanceOf(ArgDefinition);
         expect(c2.default).toBe(undefined);
     }
@@ -225,15 +225,15 @@ test('dual decorator', () => {
             @merged.name('b')
             class MyClass {
             }
-        }).toThrow(`Decorator 'name' can not be used on class MyClass`)
+        }).toThrow(`Decorator 'name' can not be used on class MyClass`);
     }
     {
         expect(() => {
             class MyClass {
-                 @(merged as any).controller('b')
-                 prop!: string;
+                @(merged as any).controller('b')
+                prop!: string;
             }
-        }).toThrow(`Decorator 'controller' can not be used on class property MyClass.prop`)
+        }).toThrow(`Decorator 'controller' can not be used on class property MyClass.prop`);
     }
 });
 

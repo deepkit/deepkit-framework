@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, getClassName } from '@deepkit/core';
+import { ClassType, getClassName, indent } from '@deepkit/core';
 
 export enum ReflectionVisibility {
     public,
@@ -306,6 +306,7 @@ export function assertType<K extends Type['kind'], T>(t: Type, kind: K): asserts
  * Checks whether `undefined` is allowed as type.
  */
 export function isOptional(type: Type): boolean {
+    if ((type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property) && type.optional === true) return true;
     return type.kind === ReflectionKind.undefined || (type.kind === ReflectionKind.union && type.types.some(v => v.kind === ReflectionKind.undefined));
 }
 
@@ -374,7 +375,10 @@ export type float64 = number;
 
 export type Reference = { __meta?: 'reference' };
 export type PrimaryKey = { __meta?: 'primaryKey' };
-export type BackReference<T extends ClassType = any, VIA extends keyof T = any> = { __meta?: 'backReference', backReference?: { class: T, via: VIA } };
+export type AutoIncrement = { __meta?: 'autoIncrement' };
+export type UUID = string & { __meta?: 'UUIDv4' };
+export type MongoId = string & { __meta?: 'mongoId' };
+export type BackReference<VIA extends ClassType | Object = never> = { __meta?: 'backReference', backReference?: { via: VIA } };
 
 export const enum MappedModifier {
     optional = 1 << 0,
@@ -383,7 +387,7 @@ export const enum MappedModifier {
     removeReadonly = 1 << 3,
 }
 
-export function stringifyType(type: Type): string {
+export function stringifyType(type: Type, depth: number = 0): string {
     switch (type.kind) {
         case ReflectionKind.never:
             return `never`;
@@ -404,15 +408,27 @@ export function stringifyType(type: Type): string {
         case ReflectionKind.boolean:
             return 'boolean';
         case ReflectionKind.literal:
-            return JSON.stringify(type.literal);
+            if ('number' === typeof type.literal) return type.literal + '';
+            if ('boolean' === typeof type.literal) return type.literal + '';
+            return `'${String(type.literal).replace(/'/g, '\\\'')}'`;
         case ReflectionKind.promise:
             return `Promise<${stringifyType(type.type)}>`;
-        case ReflectionKind.class:
-            return `${getClassName(type.classType)}`;
+        case ReflectionKind.class: {
+            if (type.classType === Date) return `Date`;
+            if (type.classType === Set) return `Set<${stringifyType(type.arguments![0])}>`;
+            if (type.classType === Map) return `Map<${stringifyType(type.arguments![0])}, ${stringifyType(type.arguments![1])}>`;
+            const indentation = indent((depth + 1) * 2);
+            const args = type.arguments ? '<' + type.arguments.map(stringifyType).join(', ') + '>' : '';
+            return `${getClassName(type.classType)}${args} {\n${type.types.map(v => indentation(stringifyType(v, depth + 1))).join(';\n')};\n}`;
+        }
+        case ReflectionKind.objectLiteral: {
+            const indentation = indent((depth + 1) * 2);
+            return `{\n${type.types.map(v => indentation(stringifyType(v, depth + 1))).join(';\n')};\n}`;
+        }
         case ReflectionKind.union:
             return type.types.map(stringifyType).join(' | ');
         case ReflectionKind.intersection:
-            return type.types.map(stringifyType).join(' | ');
+            return type.types.map(stringifyType).join(' & ');
         case ReflectionKind.parameter: {
             const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
             return `${type.readonly ? 'readonly ' : ''}${visibility}${type.name}${type.optional ? '?' : ''}: ${stringifyType(type.type)}`;
@@ -430,8 +446,6 @@ export function stringifyType(type: Type): string {
             return `${stringifyType(type.type)}${type.optional ? '?' : ''}`;
         case ReflectionKind.tuple:
             return `[${type.types.map(stringifyType).join(', ')}]`;
-        case ReflectionKind.objectLiteral:
-            return `{${type.types.map(stringifyType).join(';\n')}}`;
         case ReflectionKind.indexSignature:
             return `{[index: ${stringifyType(type.index)}]: ${stringifyType(type.type)}`;
         case ReflectionKind.propertySignature:
@@ -556,7 +570,7 @@ export enum ReflectionOp {
 
     indexSignature,
     objectLiteral,
-    mappedType,
+    mappedType, //2 parameters: functionPointer and modifier.
     in,
 
     frame, //creates a new stack frame
@@ -580,6 +594,7 @@ export enum ReflectionOp {
     // pointer, //parameter is a number referencing an entry in the stack, relative to the very beginning (0). pushes that entry onto the stack.
     arg, //@deprecated. parameter is a number referencing an entry in the stack, relative to the beginning of the current frame, *-1. pushes that entry onto the stack. this is related to the calling convention.
     template, //template argument, e.g. T in a generic. has 1 parameter: reference to the name.
+    templateDefault, //template argument with a default value, e.g. T in a generic. has 1 parameter: reference to the name. pop() for the default value
     var, //reserve a new variable in the stack
     loads, //pushes to the stack a referenced value in the stack. has 2 parameters: <frame> <index>, frame is a negative offset to the frame, and index the index of the stack entry withing the referenced frame
 

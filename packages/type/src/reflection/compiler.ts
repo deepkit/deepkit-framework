@@ -98,7 +98,7 @@ import {
     visitNode,
 } from 'typescript';
 import { isArray } from '@deepkit/core';
-import { extractJSDocAttribute, getNameAsString, getPropertyName, hasModifier } from './reflection-ast';
+import { extractJSDocAttribute, getIdentifierName, getNameAsString, getPropertyName, hasModifier } from './reflection-ast';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import stripJsonComments from 'strip-json-comments';
@@ -142,6 +142,7 @@ const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.jump]: { params: 1 },
     [ReflectionOp.enum]: { params: 1 },
     [ReflectionOp.template]: { params: 1 },
+    [ReflectionOp.templateDefault]: { params: 1 },
     [ReflectionOp.mappedType]: { params: 2 },
     [ReflectionOp.call]: { params: 1 },
     [ReflectionOp.inline]: { params: 1 },
@@ -217,6 +218,14 @@ function findConditionalFrame(frame: Frame): Frame | undefined {
     if (frame.previous) return findConditionalFrame(frame.previous);
 
     return;
+}
+
+function findSourceFile(declaration: Declaration): SourceFile {
+    let current = declaration.parent;
+    while (current.kind !== SyntaxKind.SourceFile) {
+        current = current.parent;
+    }
+    return current as SourceFile;
 }
 
 class CompilerProgram {
@@ -341,8 +350,8 @@ class CompilerProgram {
         return frame.variables.length - 1;
     }
 
-    pushTemplateParameter(name: string): number {
-        this.pushOp(ReflectionOp.template, this.findOrAddStackEntry(name));
+    pushTemplateParameter(name: string, withDefault: boolean = false): number {
+        this.pushOp(withDefault ? ReflectionOp.templateDefault : ReflectionOp.template, this.findOrAddStackEntry(name));
         this.frame.variables.push({
             index: this.frame.variables.length,
             name,
@@ -397,6 +406,7 @@ export class ReflectionTransformer {
 
     transformSourceFile(sourceFile: SourceFile): SourceFile {
         this.sourceFile = sourceFile;
+
         const reflection = this.findReflectionConfig(sourceFile);
         if (reflection.mode === 'never') {
             return sourceFile;
@@ -417,7 +427,7 @@ export class ReflectionTransformer {
                 return this.decorateArrow(node);
             } else if (isCallExpression(node) && node.typeArguments) {
                 const autoTypeFunctions = ['valuesOf', 'propertiesOf', 'typeOf'];
-                if (isIdentifier(node.expression) && autoTypeFunctions.includes(node.expression.text)) {
+                if (isIdentifier(node.expression) && autoTypeFunctions.includes(getIdentifierName(node.expression))) {
                     const args: Expression[] = [...node.arguments];
 
                     if (!args.length) {
@@ -442,16 +452,18 @@ export class ReflectionTransformer {
                         for (let i = 0; i < type.parameters.length; i++) {
                             // for (const parameter of type.valueDeclaration.parameters) {
                             const parameter = type.parameters[i];
-                            if (!args[i]) {
-                                args[i] = this.f.createIdentifier('undefined');
-                            }
+                            const arg = args[i];
+
+                            //we replace from T to this arg only if either not set or set to undefined
+                            if (arg && (!isIdentifier(arg) || arg.escapedText !== 'undefined')) continue;
+
                             if (parameter.type && isTypeReferenceNode(parameter.type) && isIdentifier(parameter.type.typeName)
-                                && parameter.type.typeName.text === 'ReceiveType' && parameter.type.typeArguments) {
+                                && getIdentifierName(parameter.type.typeName) === 'ReceiveType' && parameter.type.typeArguments) {
                                 const first = parameter.type.typeArguments[0];
                                 if (first && isTypeReferenceNode(first) && isIdentifier(first.typeName)) {
-                                    const name = first.typeName.text;
+                                    const name = getIdentifierName(first.typeName);
                                     //find type parameter position
-                                    const index = type.typeParameters.findIndex(v => v.name.text === name);
+                                    const index = type.typeParameters.findIndex(v => getIdentifierName(v.name) === name);
                                     if (index !== -1) {
                                         const type = this.getTypeOfType(node.typeArguments[index]);
                                         if (!type) return node;
@@ -463,6 +475,10 @@ export class ReflectionTransformer {
                         }
 
                         if (replaced) {
+                            //make sure args has no hole
+                            for (let i = 0; i < args.length; i++) {
+                                if (!args[i]) args[i] = this.f.createIdentifier('undefined');
+                            }
                             return this.f.updateCallExpression(node, node.expression, node.typeArguments, this.f.createNodeArray(args));
                         }
                     }
@@ -472,7 +488,7 @@ export class ReflectionTransformer {
 
             return node;
         };
-        this.sourceFile = visitNode(this.sourceFile, visitor);
+        sourceFile = visitNode(sourceFile, visitor);
 
         //externalize type aliases
         const compileDeclarations = (node: Node): any => {
@@ -482,15 +498,16 @@ export class ReflectionTransformer {
                 const d = this.compileDeclarations.get(node)!;
                 this.compileDeclarations.delete(node);
                 this.compiledDeclarations.add(node);
-                return [node, this.createProgramVarFromNode(node, d.name)];
+                return [this.createProgramVarFromNode(node, d.name), node];
             }
 
             return node;
         };
 
         while (this.compileDeclarations.size > 0) {
-            this.sourceFile = visitNode(this.sourceFile, compileDeclarations);
+            sourceFile = visitNode(sourceFile, compileDeclarations);
         }
+        this.sourceFile = sourceFile;
 
         if (this.embedDeclarations.size) {
             const embeded: Statement[] = [];
@@ -514,7 +531,11 @@ export class ReflectionTransformer {
 
         if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && node.typeParameters) {
             for (const param of node.typeParameters) {
-                typeProgram.pushTemplateParameter(param.name.text);
+                if (param.default) {
+                    //push default on the stack
+                    this.extractPackStructOfType(param.default, typeProgram);
+                }
+                typeProgram.pushTemplateParameter(getIdentifierName(param.name), !!param.default);
             }
         }
         if (isTypeAliasDeclaration(node)) {
@@ -602,7 +623,11 @@ export class ReflectionTransformer {
                     if (narrowed.typeParameters) {
                         for (const typeParameter of narrowed.typeParameters) {
                             const name = getNameAsString(typeParameter.name);
-                            program.pushTemplateParameter(name);
+                            if (typeParameter.default) {
+                                //push default on the stack
+                                this.extractPackStructOfType(typeParameter.default, program);
+                            }
+                            program.pushTemplateParameter(name, !!typeParameter.default);
                         }
                     }
 
@@ -642,7 +667,7 @@ export class ReflectionTransformer {
 
                 //<Type>{[Property in keyof Type]: boolean;};
                 program.pushFrame();
-                program.pushVariable(narrowed.typeParameter.name.text);
+                program.pushVariable(getIdentifierName(narrowed.typeParameter.name));
 
                 const constraint = getEffectiveConstraintOfTypeParameter(narrowed.typeParameter);
                 if (constraint) {
@@ -763,7 +788,7 @@ export class ReflectionTransformer {
                         } else {
                             this.extractPackStructOfType(element.type, program);
                         }
-                        const index = program.findOrAddStackEntry(element.name.text);
+                        const index = program.findOrAddStackEntry(getIdentifierName(element.name));
                         program.pushOp(ReflectionOp.namedTupleMember, index);
                         if (element.questionToken) {
                             program.pushOp(ReflectionOp.optional);
@@ -841,10 +866,10 @@ export class ReflectionTransformer {
 
                 const frame = program.findConditionalFrame();
                 if (frame) {
-                    let variable = program.findVariable(narrowed.typeParameter.name.text);
+                    let variable = program.findVariable(getIdentifierName(narrowed.typeParameter.name));
                     if (!variable) {
-                        program.pushVariable(narrowed.typeParameter.name.text, frame);
-                        variable = program.findVariable(narrowed.typeParameter.name.text);
+                        program.pushVariable(getIdentifierName(narrowed.typeParameter.name), frame);
+                        variable = program.findVariable(getIdentifierName(narrowed.typeParameter.name));
                         if (!variable) throw new Error('Could not find inserted infer variable');
                     }
                     program.pushOp(ReflectionOp.infer, variable.frameOffset, variable.stackIndex);
@@ -1073,21 +1098,21 @@ export class ReflectionTransformer {
 
     protected getDeclarationVariableName(typeName: EntityName) {
         if (isIdentifier(typeName)) {
-            return this.f.createIdentifier('__Ω' + typeName.text);
+            return this.f.createIdentifier('__Ω' + getIdentifierName(typeName));
         }
 
         function joinQualifiedName(name: EntityName): string {
-            if (isIdentifier(name)) return name.text;
-            return joinQualifiedName(name.left) + '_' + name.right.text;
+            if (isIdentifier(name)) return getIdentifierName(name);
+            return joinQualifiedName(name.left) + '_' + getIdentifierName(name.right);
         }
 
         return this.f.createIdentifier('__Ω' + joinQualifiedName(typeName));
     }
 
     protected extractPackStructOfTypeReference(type: TypeReferenceNode, program: CompilerProgram) {
-        if (isIdentifier(type.typeName) && this.knownClasses[type.typeName.text]) {
-            program.pushOp(this.knownClasses[type.typeName.text]);
-        } else if (isIdentifier(type.typeName) && type.typeName.text === 'Promise') {
+        if (isIdentifier(type.typeName) && this.knownClasses[getIdentifierName(type.typeName)]) {
+            program.pushOp(this.knownClasses[getIdentifierName(type.typeName)]);
+        } else if (isIdentifier(type.typeName) && getIdentifierName(type.typeName) === 'Promise') {
             //promise has always one sub type
             if (type.typeArguments && type.typeArguments[0]) {
                 this.extractPackStructOfType(type.typeArguments[0], program);
@@ -1095,14 +1120,14 @@ export class ReflectionTransformer {
                 program.pushOp(ReflectionOp.any);
             }
             program.pushOp(ReflectionOp.promise);
-        } else if (isIdentifier(type.typeName) && type.typeName.text === 'integer') {
+        } else if (isIdentifier(type.typeName) && getIdentifierName(type.typeName) === 'integer') {
             program.pushOp(ReflectionOp.numberBrand, TypeNumberBrand.integer as number);
-        } else if (isIdentifier(type.typeName) && TypeNumberBrand[type.typeName.text as any] !== undefined) {
-            program.pushOp(ReflectionOp.numberBrand, TypeNumberBrand[type.typeName.text as any] as any);
+        } else if (isIdentifier(type.typeName) && TypeNumberBrand[getIdentifierName(type.typeName) as any] !== undefined) {
+            program.pushOp(ReflectionOp.numberBrand, TypeNumberBrand[getIdentifierName(type.typeName) as any] as any);
         } else {
             //check if it references a variable
             if (isIdentifier(type.typeName)) {
-                const variable = program.findVariable(type.typeName.text);
+                const variable = program.findVariable(getIdentifierName(type.typeName));
                 if (variable) {
                     program.pushOp(ReflectionOp.loads, variable.frameOffset, variable.stackIndex);
                     return;
@@ -1126,9 +1151,6 @@ export class ReflectionTransformer {
                             program.pushOp(ReflectionOp.objectLiteral);
                             return;
                         }
-                    }
-                    if (type.typeName.escapedText === 'Partial') {
-                        console.log(type);
                     }
                 }
 
@@ -1181,7 +1203,11 @@ export class ReflectionTransformer {
 
                 //to break recursion, we track which declaration has already been compiled
                 if (!this.compiledDeclarations.has(declaration)) {
-                    if (resolved!.importSpecifier) {
+
+                    //imported declarations will be embedded, because we can't safely import them.
+                    //global declarations like Partial will be embedded as well, since those are not available at runtime.
+                    const isGlobal = findSourceFile(declaration) !== this.sourceFile;
+                    if (resolved!.importSpecifier || isGlobal) {
                         this.embedDeclarations.set(declaration, { name: type.typeName });
                     } else {
                         this.compileDeclarations.set(declaration, { name: type.typeName });
@@ -1256,8 +1282,8 @@ export class ReflectionTransformer {
                 if (isNamedExports(statement.exportClause)) {
                     for (const element of statement.exportClause.elements) {
                         //see if declarationName is exported
-                        if (element.name.text === declarationName) {
-                            const found = this.resolveImportSpecifier(element.propertyName ? element.propertyName.text : declarationName, statement);
+                        if (getIdentifierName(element.name) === declarationName) {
+                            const found = this.resolveImportSpecifier(element.propertyName ? getIdentifierName(element.propertyName) : declarationName, statement);
                             if (found) return found;
                         }
                     }
@@ -1297,8 +1323,11 @@ export class ReflectionTransformer {
      * so the code generation is then broken when we simply reuse them. Wrong code like ``User.__type = [.toEqual({`` is then generated.
      * This function is probably not complete, but we add new copies when required.
      */
-    protected valueToExpression(value: PackExpression | PackExpression[]): Expression {
-        if (isArray(value)) return this.f.createArrayLiteralExpression(this.f.createNodeArray(value.map(v => this.valueToExpression(v))));
+    protected valueToExpression(value: undefined | PackExpression | PackExpression[]): Expression {
+        if (isArray(value)) {
+            return this.f.createArrayLiteralExpression(this.f.createNodeArray(value.map(v => this.valueToExpression(v))));
+        }
+        if (value === undefined) return this.f.createIdentifier('undefined');
         if ('string' === typeof value) return this.f.createStringLiteral(value, true);
         if ('number' === typeof value) return this.f.createNumericLiteral(value);
         if ('bigint' === typeof value) return this.f.createBigIntLiteral(String(value));
@@ -1406,7 +1435,7 @@ export class ReflectionTransformer {
         do {
             const tags = getJSDocTags(current);
             for (const tag of tags) {
-                if (!reflection && tag.tagName.text === 'reflection' && 'string' === typeof tag.comment) {
+                if (!reflection && getIdentifierName(tag.tagName) === 'reflection' && 'string' === typeof tag.comment) {
                     return { mode: this.parseReflectionMode(tag.comment as any || true) };
                 }
             }

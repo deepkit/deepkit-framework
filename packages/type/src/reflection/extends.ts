@@ -12,6 +12,9 @@ import { isType, ReflectionKind, Type } from './type';
 
 type AssignableType = Type | string | boolean | number | symbol | bigint | undefined | null;
 
+/**
+ * The check of `extends` in Typescript. This function can be read as `left extends right`.
+ */
 export function isExtendable(left: AssignableType, right: AssignableType): boolean {
     const rightType = isType(right) ? right : undefined;
     const leftType = isType(left) ? left : undefined;
@@ -29,7 +32,7 @@ export function isExtendable(left: AssignableType, right: AssignableType): boole
     if ('bigint' === typeof left && rightType && rightType.kind === ReflectionKind.bigint) return true;
     if ('undefined' === typeof left && rightType && rightType.kind === ReflectionKind.bigint) return true;
 
-    if (rightType && rightType.kind === ReflectionKind.literal && ReflectionKind.literal === left) return true;
+    if (rightType && rightType.kind === ReflectionKind.literal && rightType.literal === left) return true;
 
     if (leftType && rightType) {
         if (leftType.kind === ReflectionKind.infer) {

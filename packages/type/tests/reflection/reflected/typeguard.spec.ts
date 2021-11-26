@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { expect, test } from '@jest/globals';
-import { float, int8, integer, PrimaryKey } from '../../../src/reflection/type';
+import { float, int8, integer, PrimaryKey, Reference } from '../../../src/reflection/type';
 import { is } from '../../../src/typeguard';
 
 test('primitive string', () => {
@@ -270,4 +270,22 @@ test('index signature ', () => {
     expect(is<BagOfStrings>({ a: 1, b: 2 })).toEqual(false);
     expect(is<BagOfStrings>({ a: 'b' })).toEqual(true);
     expect(is<BagOfStrings>({ a: 'b', b: 'c' })).toEqual(true);
+});
+
+test('reference', () => {
+    class Image {
+        id: number = 0;
+    }
+
+    class User {
+        image?: Image & Reference;
+    }
+
+    expect(is<User>({})).toEqual(true);
+    expect(is<User>({ image: undefined })).toEqual(true);
+    expect(is<User>({ image: { id: 1 } })).toEqual(true);
+    expect(is<User>({ image: { id: false } })).toEqual(false);
+    expect(is<User>({ image: false })).toEqual(false);
+    expect(is<User>({ image: null })).toEqual(false);
+    expect(is<User>({ image: {} })).toEqual(false);
 });

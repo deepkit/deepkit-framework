@@ -33,7 +33,7 @@ import { ClassType, isArray, isFunction } from '@deepkit/core';
 
 export type RuntimeStackEntry = Type | Object | (() => ClassType | Object) | string | number | boolean | bigint;
 
-export type Packed = (RuntimeStackEntry | string)[] & {__is?: (data: any) => boolean};
+export type Packed = (RuntimeStackEntry | string)[] & { __is?: (data: any) => boolean } & { __type?: Type };
 
 export class PackStruct {
     constructor(
@@ -80,8 +80,13 @@ export function resolvePacked(type: Packed, args: any[] = []): Type {
     return resolveRuntimeType(type, args);
 }
 
+function isPack(o: any): o is Packed {
+    return isArray(o);
+}
+
 export function resolveRuntimeType(o: any, args: any[] = [], registry?: ProcessorRegistry): Type {
-    const p: Packed = (isArray(o) || 'string' === typeof o) ? o : o.__type;
+    const p: Packed = isArray(o) ? o : o.__type;
+    if (isPack(o) && o.__type) return o.__type;
     if (registry) {
         const existing = registry.get(p);
         if (existing) {
@@ -90,7 +95,6 @@ export function resolveRuntimeType(o: any, args: any[] = [], registry?: Processo
     }
 
     const packStruct = unpack(p);
-
     if (!packStruct) {
         throw new Error('No valid runtime type given. Is @deepkit/type correctly installed? Execute deepkit-type-install to check');
     }
@@ -101,6 +105,8 @@ export function resolveRuntimeType(o: any, args: any[] = [], registry?: Processo
     const type = processor.run(packStruct.ops, packStruct.stack, args);
     if (registry) registry.delete(p);
     if (isType(type)) {
+        if (isPack(o)) o.__type = type;
+
         if (type.kind === ReflectionKind.class && type.classType === Object) {
             type.classType = o;
         }
@@ -125,6 +131,8 @@ class MappedType {
     constructor(private fromType: Type) {
         if (fromType.kind === ReflectionKind.union) {
             this.types = fromType.types;
+        } else if (fromType.kind === ReflectionKind.literal) {
+            this.types = [fromType];
         }
     }
 
@@ -359,9 +367,17 @@ export class Processor {
                     });
                     break;
                 }
-                case ReflectionOp.template: {
+                case ReflectionOp.template:
+                case ReflectionOp.templateDefault: {
                     const nameRef = this.eatParameter(ops) as number;
-                    const type = this.frame.inputs[this.frame.variables++];
+                    let type = this.frame.inputs[this.frame.variables++];
+
+                    if (op === ReflectionOp.templateDefault) {
+                        const defaultValue = this.pop();
+                        if (type === undefined) {
+                            type = defaultValue;
+                        }
+                    }
 
                     if (type === undefined) {
                         //generic not instantiated
@@ -559,7 +575,7 @@ export class Processor {
                     let right: any = this.pop();
                     const left = this.pop();
 
-                    if (isType(left) && left.kind === ReflectionKind.objectLiteral) {
+                    if (isType(left) && (left.kind === ReflectionKind.objectLiteral || left.kind === ReflectionKind.class)) {
                         if (isType(right) && right.kind === ReflectionKind.literal) {
                             right = right.literal;
                         }
@@ -712,7 +728,7 @@ export class Processor {
                     for (let i = 0; i < argumentSize; i++) {
                         let input = this.pop();
                         if (initialInputs[i]) input = initialInputs[i];
-                        inputs.push(input);
+                        inputs.unshift(input);
                     }
                     const pOrFn = initialStack[pPosition] as number | Packed | (() => Packed);
                     const p = isFunction(pOrFn) ? pOrFn() : pOrFn;
