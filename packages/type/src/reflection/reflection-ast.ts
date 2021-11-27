@@ -55,13 +55,13 @@ export function extractJSDocAttribute(node: Node, attribute: string): string {
 export function getPropertyName(f: NodeFactory, node?: Identifier | StringLiteral | NumericLiteral | ComputedPropertyName | PrivateIdentifier): string | ArrowFunction {
     if (!node) return '';
 
-    if (isIdentifier(node)) return unescapeLeadingUnderscores(node.escapedText);
+    if (isIdentifier(node)) return getIdentifierName(node);
     if (isStringLiteral(node)) return node.text;
     if (isNumericLiteral(node)) return node.text;
     if (isComputedPropertyName(node)) {
         return f.createArrowFunction(undefined, undefined, [], undefined, undefined, node.expression);
     }
-    if (isPrivateIdentifier(node)) return unescapeLeadingUnderscores(node.escapedText);
+    if (isPrivateIdentifier(node)) return getIdentifierName(node);
 
     return '';
 }

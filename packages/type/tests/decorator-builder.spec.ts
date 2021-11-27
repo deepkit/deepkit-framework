@@ -104,12 +104,12 @@ test('inheritance', () => {
     const dec1 = createFreeDecoratorContext(B);
 
     {
-        const r = dec1.methodB()();
+        const r = dec1.methodB()._data;
         expect(r).toBeInstanceOf(Dec1Model);
     }
 
     {
-        const r = dec1.methodA()();
+        const r = dec1.methodA()._data;
         expect(r).toBeInstanceOf(Dec1Model);
     }
 });

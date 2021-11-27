@@ -20,7 +20,8 @@ import {
     ReflectionVisibility,
     Type,
     TypeClass,
-    TypeIndexSignature, TypeIntersection,
+    TypeIndexSignature,
+    TypeIntersection,
     TypeNumber,
     TypeNumberBrand,
     TypeObjectLiteral,
@@ -388,7 +389,7 @@ test('type function', () => {
     });
 });
 
-test('query', () => {
+test('query literal', () => {
     type o = { a: string | number };
 
     expect(typeOf<o['a']>()).toEqual({
@@ -398,6 +399,46 @@ test('query', () => {
             { kind: ReflectionKind.number },
         ]
     });
+});
+
+test('query union from keyof', () => {
+    type o = { a: string, b: string, c: number };
+
+    expect(typeOf<o[keyof o]>()).toEqual({
+        kind: ReflectionKind.union,
+        types: [
+            { kind: ReflectionKind.string },
+            { kind: ReflectionKind.number },
+        ]
+    });
+});
+
+test('query union manual', () => {
+    type o = { a: string, b: string, c: number };
+
+    expect(typeOf<o['a' | 'b' | 'c']>()).toEqual({
+        kind: ReflectionKind.union,
+        types: [
+            { kind: ReflectionKind.string },
+            { kind: ReflectionKind.number },
+        ]
+    });
+});
+
+test('query number index', () => {
+    type o = [string, string, number];
+
+    expect(typeOf<o[number]>()).toEqual({
+        kind: ReflectionKind.union,
+        types: [
+            { kind: ReflectionKind.string },
+            { kind: ReflectionKind.number },
+        ]
+    });
+
+    expect(typeOf<o[0]>()).toEqual({kind: ReflectionKind.string});
+    expect(typeOf<o[1]>()).toEqual({kind: ReflectionKind.string});
+    expect(typeOf<o[2]>()).toEqual({kind: ReflectionKind.number});
 });
 
 test('type alias partial', () => {
@@ -477,6 +518,23 @@ test('global partial', () => {
     expect(typeOf<p>()).toEqual({
         kind: ReflectionKind.objectLiteral,
         types: [{ kind: ReflectionKind.propertySignature, name: 'a', optional: true, type: { kind: ReflectionKind.string } }]
+    });
+
+});
+
+test('global record', () => {
+    type p = Record<string, number>;
+    //equivalent to
+    type a = { [K in string]: number };
+
+    expect(typeOf<p>()).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        types: [{ kind: ReflectionKind.indexSignature, type: { kind: ReflectionKind.number }, index: { kind: ReflectionKind.string } }]
+    } as Type);
+
+    expect(typeOf<a>()).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        types: [{ kind: ReflectionKind.indexSignature, type: { kind: ReflectionKind.number }, index: { kind: ReflectionKind.string } }]
     });
 });
 
@@ -705,7 +763,7 @@ test('resolve intersection with reference', () => {
         id: number = 0;
     }
 
-    const {resolved, decorations} = resolveIntersection(typeOf<Image & Reference>() as TypeIntersection);
+    const { resolved, decorations } = resolveIntersection(typeOf<Image & Reference>() as TypeIntersection);
     assertType(resolved, ReflectionKind.class);
     expect(resolved.classType).toBe(Image);
     expect(decorations[0]).toEqual(typeOf<Reference>());

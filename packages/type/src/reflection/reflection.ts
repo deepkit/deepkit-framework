@@ -278,6 +278,10 @@ export class ReflectionMethod {
         return this.getParameters().map(v => v.getName());
     }
 
+    hasParameter(name: string | number | symbol): boolean {
+        return !!this.getParameter(name);
+    }
+
     getParameter(name: string | number | symbol): ReflectionParameter | undefined {
         for (const property of this.getParameters()) {
             if (property.getName() === name) return property;

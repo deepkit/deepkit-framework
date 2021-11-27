@@ -10,22 +10,26 @@
 
 import {
     isBrandable,
-    isType, MappedModifier,
-    ReflectionKind, ReflectionOp,
+    isType,
+    MappedModifier,
+    queryType,
+    ReflectionKind,
+    ReflectionOp,
     ReflectionVisibility,
     Type,
     TypeBrandable,
-    TypeClass, TypeEnumMember,
+    TypeClass,
+    TypeEnumMember,
     TypeIndexSignature,
     TypeInfer,
     TypeLiteral,
     TypeLiteralMember,
-    TypeMethod,
     TypeMethodSignature,
     TypeObjectLiteral,
     TypeParameter,
     TypeProperty,
-    TypePropertySignature, TypeTupleMember,
+    TypePropertySignature,
+    TypeTupleMember,
     TypeUnion
 } from './type';
 import { isExtendable } from './extends';
@@ -131,7 +135,7 @@ class MappedType {
     constructor(private fromType: Type) {
         if (fromType.kind === ReflectionKind.union) {
             this.types = fromType.types;
-        } else if (fromType.kind === ReflectionKind.literal) {
+        } else {
             this.types = [fromType];
         }
     }
@@ -367,6 +371,10 @@ export class Processor {
                     });
                     break;
                 }
+                case ReflectionOp.regexp: {
+                    this.pushType({ kind: ReflectionKind.regexp });
+                    break;
+                }
                 case ReflectionOp.template:
                 case ReflectionOp.templateDefault: {
                     const nameRef = this.eatParameter(ops) as number;
@@ -572,33 +580,15 @@ export class Processor {
                     break;
                 }
                 case ReflectionOp.query: {
-                    let right: any = this.pop();
-                    const left = this.pop();
+                    let right = this.pop() as Type;
+                    const left = this.pop() as Type;
 
-                    if (isType(left) && (left.kind === ReflectionKind.objectLiteral || left.kind === ReflectionKind.class)) {
-                        if (isType(right) && right.kind === ReflectionKind.literal) {
-                            right = right.literal;
-                        }
-
-                        if ('string' === typeof right || 'number' === typeof right || 'symbol' === typeof right) {
-                            const member = findMember(right, left);
-                            if (member) {
-                                if (member.kind === ReflectionKind.indexSignature) {
-                                    this.pushType(member.type);
-                                } else if (member.kind === ReflectionKind.method || member.kind === ReflectionKind.methodSignature) {
-                                    this.pushType(member);
-                                } else if (member.kind === ReflectionKind.property || member.kind === ReflectionKind.propertySignature) {
-                                    this.pushType(member.type);
-                                }
-                            } else {
-                                this.pushType({ kind: ReflectionKind.any });
-                            }
-                        } else {
-                            this.pushType({ kind: ReflectionKind.any });
-                        }
-                    } else {
+                    if (!isType(left)) {
                         this.push({ kind: ReflectionKind.never });
+                        break;
                     }
+
+                    this.push(queryType(left, right));
                     break;
                 }
                 case ReflectionOp.keyof: {
@@ -628,29 +618,34 @@ export class Processor {
                     if (this.frame.mappedType) {
                         const type = this.pop() as Type;
                         let index: Type | string | boolean | symbol | number | bigint = this.stack[this.frame.startIndex + 1] as Type;
-                        if (index.kind === ReflectionKind.literal) {
-                            index = index.literal;
-                        }
 
-                        const property: TypeProperty | TypePropertySignature = type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property
-                            ? type
-                            : { kind: ReflectionKind.propertySignature, name: index, type } as TypePropertySignature;
+                        if (index.kind === ReflectionKind.string || index.kind === ReflectionKind.number || index.kind === ReflectionKind.symbol) {
+                            this.push({ kind: ReflectionKind.indexSignature, type, index });
+                        } else {
+                            if (index.kind === ReflectionKind.literal) {
+                                index = index.literal;
+                            }
 
-                        if (modifier !== 0) {
-                            if (modifier & MappedModifier.optional) {
-                                property.optional = true;
+                            const property: TypeProperty | TypePropertySignature = type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property
+                                ? type
+                                : { kind: ReflectionKind.propertySignature, name: index, type } as TypePropertySignature;
+
+                            if (modifier !== 0) {
+                                if (modifier & MappedModifier.optional) {
+                                    property.optional = true;
+                                }
+                                if (modifier & MappedModifier.removeOptional && property.optional) {
+                                    property.optional = undefined;
+                                }
+                                if (modifier & MappedModifier.readonly) {
+                                    property.readonly = true;
+                                }
+                                if (modifier & MappedModifier.removeReadonly && property.readonly) {
+                                    property.readonly = undefined;
+                                }
                             }
-                            if (modifier & MappedModifier.removeOptional && property.optional) {
-                                property.optional = undefined;
-                            }
-                            if (modifier & MappedModifier.readonly) {
-                                property.readonly = true;
-                            }
-                            if (modifier & MappedModifier.removeReadonly && property.readonly) {
-                                property.readonly = undefined;
-                            }
+                            this.push(property);
                         }
-                        this.push(property);
                     } else {
                         this.frame.mappedType = new MappedType(this.pop() as Type);
                     }
@@ -802,27 +797,4 @@ export class Processor {
     eatParameter(ops: ReflectionOp[]): RuntimeStackEntry {
         return ops[++this.program];
     }
-}
-
-function findMember(
-    index: string | number | symbol, type: { types: Type[] }
-): TypePropertySignature | TypeMethodSignature | TypeMethod | TypeProperty | TypeIndexSignature | undefined {
-    const indexType = typeof index;
-
-    for (const member of type.types) {
-        if (member.kind === ReflectionKind.propertySignature && member.name === index) return member;
-        if (member.kind === ReflectionKind.methodSignature && member.name === index) return member;
-        if (member.kind === ReflectionKind.property && member.name === index) return member;
-        if (member.kind === ReflectionKind.method && member.name === index) return member;
-
-        if (member.kind === ReflectionKind.indexSignature) {
-            if (member.index.kind === ReflectionKind.string && 'string' === indexType) return member;
-            if (member.index.kind === ReflectionKind.number && 'number' === indexType) return member;
-            //todo: union
-            //todo symbol
-            // if (member.index.kind === ReflectionKind.symbol && 'symbol' === indexType) return member;
-        }
-    }
-
-    return;
 }

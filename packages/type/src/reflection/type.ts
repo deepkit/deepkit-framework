@@ -52,6 +52,7 @@ export enum ReflectionKind {
     enumMember,
 
     rest,
+    regexp,
 
     objectLiteral,
     indexSignature,
@@ -136,6 +137,10 @@ export interface TypeLiteral extends TypeBrandable {
     literal: symbol | string | number | boolean | bigint;
 }
 
+export interface TypeRegexp extends TypeBrandable {
+    kind: ReflectionKind.regexp;
+}
+
 export interface TypeLiteralMember {
     visibility: ReflectionVisibility,
     abstract?: true;
@@ -173,6 +178,10 @@ export interface TypeProperty extends TypeLiteralMember {
     abstract?: true;
     description?: string;
     type: Type;
+
+    /**
+     * Set when the property has a default value aka initializer.
+     */
     default?: () => any
 }
 
@@ -289,7 +298,7 @@ export interface TypeRest {
 export type Type = TypeNever | TypeAny | TypeVoid | TypeString | TypeNumber | TypeBoolean | TypeBigInt | TypeSymbol | TypeNull | TypeUndefined | TypeLiteral
     | TypeParameter | TypeFunction | TypeMethod | TypeProperty | TypePromise | TypeClass | TypeEnum | TypeEnumMember | TypeUnion | TypeIntersection | TypeArray
     | TypeObjectLiteral | TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeTemplate | TypeInfer | TypeTuple | TypeTupleMember
-    | TypeRest
+    | TypeRest | TypeRegexp
     ;
 
 export type FindType<T extends Type, LOOKUP extends ReflectionKind> = { [P in keyof T]: T[P] extends LOOKUP ? T : never }[keyof T]
@@ -298,15 +307,172 @@ export function isType(entry: any): entry is Type {
     return 'object' === typeof entry && entry.constructor === Object && 'kind' in entry;
 }
 
+/**
+ * Checks if the structure of a and b are identical.
+ */
+export function isSameType(a: Type, b: Type): boolean {
+    if (a.kind !== b.kind) return false;
+
+    if (a.kind === ReflectionKind.literal) return a.literal === (b as TypeLiteral).literal;
+    if (a.kind === ReflectionKind.objectLiteral || a.kind === ReflectionKind.class) {
+        //todo: compare structure if equal
+        for (const t of a.types) {
+
+        }
+    }
+
+    if (a.kind === ReflectionKind.array) {
+
+    }
+
+    if (a.kind === ReflectionKind.tuple) {
+
+    }
+
+    if (a.kind === ReflectionKind.function || a.kind === ReflectionKind.method) {
+
+    }
+
+    if (a.kind === ReflectionKind.union) {
+
+    }
+
+    //todo: this is not at all done.
+
+    return true;
+}
+
+export function isTypeIncluded(types: Type[], type: Type): boolean {
+    for (const t of types) {
+        if (isSameType(t, type)) return true;
+    }
+
+    return false;
+}
+
+function findMember(
+    index: string | number | symbol, type: { types: Type[] }
+): TypePropertySignature | TypeMethodSignature | TypeMethod | TypeProperty | TypeIndexSignature | undefined {
+    const indexType = typeof index;
+
+    for (const member of type.types) {
+        if (member.kind === ReflectionKind.propertySignature && member.name === index) return member;
+        if (member.kind === ReflectionKind.methodSignature && member.name === index) return member;
+        if (member.kind === ReflectionKind.property && member.name === index) return member;
+        if (member.kind === ReflectionKind.method && member.name === index) return member;
+
+        if (member.kind === ReflectionKind.indexSignature) {
+            if (member.index.kind === ReflectionKind.string && 'string' === indexType) return member;
+            if (member.index.kind === ReflectionKind.number && 'number' === indexType) return member;
+            if (member.index.kind === ReflectionKind.symbol && 'symbol' === indexType) return member;
+            //todo: union needs to match depending on union and indexType
+        }
+    }
+
+    return;
+}
+
+function resolveObjectIndexType(type: TypeObjectLiteral | TypeClass, index: Type): Type {
+    if (index.kind === ReflectionKind.literal && ('string' === typeof index.literal || 'number' === typeof index.literal || 'symbol' === typeof index.literal)) {
+        const member = findMember(index.literal, type);
+        if (member) {
+            if (member.kind === ReflectionKind.indexSignature) {
+                //todo: check if index type matches literal type
+                return member.type;
+            } else if (member.kind === ReflectionKind.method || member.kind === ReflectionKind.methodSignature) {
+                return member;
+            } else if (member.kind === ReflectionKind.property || member.kind === ReflectionKind.propertySignature) {
+                return member.type;
+            } else {
+                return { kind: ReflectionKind.never };
+            }
+        } else {
+            return { kind: ReflectionKind.any };
+        }
+    } else {
+        return { kind: ReflectionKind.never };
+    }
+}
+
+/**
+ * Query a container type and return the result.
+ *
+ * container[index]
+ *
+ * e.g. {a: string}['a'] => string
+ * e.g. {a: string, b: number}[keyof T] => string | number
+ * e.g. [string, number][0] => string
+ * e.g. [string, number][number] => string | number
+ */
+export function queryType(container: Type, index: Type): Type {
+    if (container.kind === ReflectionKind.array) {
+        if ((index.kind === ReflectionKind.literal && 'number' === typeof index.literal) || index.kind === ReflectionKind.number) return container.type;
+    } else if (container.kind === ReflectionKind.tuple) {
+        if (index.kind === ReflectionKind.literal && 'number' === typeof index.literal) {
+            //todo: this does not yet support `[string, ...number[], boolean][1] => number|boolean`
+            const sub = container.types[index.literal];
+            if (sub.type.kind === ReflectionKind.rest) {
+                return sub.type.type;
+            } else {
+                return sub.type;
+            }
+        } else if (index.kind === ReflectionKind.number) {
+            const union: TypeUnion = { kind: ReflectionKind.union, types: [] };
+            for (const sub of container.types) {
+                if (sub.type.kind === ReflectionKind.rest) {
+                    if (isTypeIncluded(union.types, sub.type.type)) continue;
+                    union.types.push(sub.type.type);
+                } else {
+                    if (isTypeIncluded(union.types, sub.type)) continue;
+                    union.types.push(sub.type);
+                }
+            }
+            return union;
+        } else {
+            return { kind: ReflectionKind.never };
+        }
+    } else if (container.kind === ReflectionKind.objectLiteral || container.kind === ReflectionKind.class) {
+        if (index.kind === ReflectionKind.literal) {
+            return resolveObjectIndexType(container, index);
+        } else if (index.kind === ReflectionKind.union) {
+            const union: TypeUnion = { kind: ReflectionKind.union, types: [] };
+            for (const t of index.types) {
+                const result = resolveObjectIndexType(container, t);
+                if (result.kind === ReflectionKind.never) continue;
+
+                if (result.kind === ReflectionKind.union) {
+                    for (const resultT of result.types) {
+                        if (isTypeIncluded(union.types, resultT)) continue;
+                        union.types.push(resultT);
+                    }
+                } else {
+                    if (isTypeIncluded(union.types, result)) continue;
+                    union.types.push(result);
+                }
+            }
+            return union;
+        } else {
+            return { kind: ReflectionKind.any };
+        }
+    }
+    return { kind: ReflectionKind.never };
+}
+
 export function assertType<K extends Type['kind'], T>(t: Type, kind: K): asserts t is FindType<Type, K> {
     if (t.kind !== kind) throw new Error(`Invalid type ${t.kind}, expected ${kind}`);
+}
+
+export function isMember(type: Type): type is TypePropertySignature | TypeProperty | TypeMethodSignature | TypeMethod {
+    return type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property
+        || type.kind === ReflectionKind.methodSignature || type.kind === ReflectionKind.method;
 }
 
 /**
  * Checks whether `undefined` is allowed as type.
  */
 export function isOptional(type: Type): boolean {
-    if ((type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property) && type.optional === true) return true;
+    if (isMember(type) && type.optional === true) return true;
+    if (type.kind === ReflectionKind.property || type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.indexSignature) return isOptional(type.type);
     return type.kind === ReflectionKind.undefined || (type.kind === ReflectionKind.union && type.types.some(v => v.kind === ReflectionKind.undefined));
 }
 
@@ -405,6 +571,8 @@ export function stringifyType(type: Type, depth: number = 0): string {
             return 'number';
         case ReflectionKind.bigint:
             return 'bigint';
+        case ReflectionKind.regexp:
+            return 'RegExp';
         case ReflectionKind.boolean:
             return 'boolean';
         case ReflectionKind.literal:
@@ -467,7 +635,8 @@ export function stringifyType(type: Type, depth: number = 0): string {
 
 /**
  * The instruction set.
- * Not more than `packSize` elements are allowed (can be stored).
+ * Should not be greater than 93 members, because we encode it via charCode starting at 33. +93 means we end up with charCode=126
+ * (which is '~' and the last char that can be represented without \x. The next 127 is '\x7F').
  */
 export enum ReflectionOp {
     never,
@@ -548,6 +717,8 @@ export enum ReflectionOp {
     defaultValue,
     description,
     rest,
+
+    regexp,
 
     enum,
     enumMember, //has one argument, the name.
