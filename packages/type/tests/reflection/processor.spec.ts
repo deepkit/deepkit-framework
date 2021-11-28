@@ -22,7 +22,7 @@ enum MyEnum {
 }
 
 test('query', () => {
-    expectType({ ops: [ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.arg, 0, ReflectionOp.query], stack: ['a'] }, {
+    expectType({ ops: [ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.arg, 0, ReflectionOp.indexAccess], stack: ['a'] }, {
         kind: ReflectionKind.number
     });
 });
@@ -348,7 +348,7 @@ test('mapped type keyof and query', () => {
         ops: [
             ReflectionOp.template, 0,
             ReflectionOp.jump, 12,
-            ReflectionOp.loads, 2, 0, ReflectionOp.loads, 1, 0, ReflectionOp.query, ReflectionOp.return,
+            ReflectionOp.loads, 2, 0, ReflectionOp.loads, 1, 0, ReflectionOp.indexAccess, ReflectionOp.return,
             ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.keyof, ReflectionOp.mappedType, 4, 0
         ],
         stack: ['T'],
@@ -422,7 +422,7 @@ test('mapped type keyof and conditional', () => {
         ops: [
             ReflectionOp.template, 0,
             ReflectionOp.jump, 18,
-            ReflectionOp.frame, ReflectionOp.loads, 3, 0, ReflectionOp.loads, 2, 0, ReflectionOp.query, ReflectionOp.number, ReflectionOp.extends, ReflectionOp.boolean, ReflectionOp.never, ReflectionOp.condition, ReflectionOp.return,
+            ReflectionOp.frame, ReflectionOp.loads, 3, 0, ReflectionOp.loads, 2, 0, ReflectionOp.indexAccess, ReflectionOp.number, ReflectionOp.extends, ReflectionOp.boolean, ReflectionOp.never, ReflectionOp.condition, ReflectionOp.return,
             ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.keyof, ReflectionOp.mappedType, 4
         ],
         stack: ['T'],

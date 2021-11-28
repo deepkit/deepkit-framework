@@ -45,14 +45,14 @@ export function isExtendable(left: AssignableType, right: AssignableType): boole
             return true;
         }
 
-        if (leftType.kind === ReflectionKind.function && rightType) {
+        if ((leftType.kind === ReflectionKind.function || leftType.kind === ReflectionKind.method || leftType.kind === ReflectionKind.methodSignature) && rightType) {
             if (rightType.kind === ReflectionKind.objectLiteral) {
                 //todo: members maybe contain a call signature
 
                 return true;
             }
 
-            if (rightType.kind === ReflectionKind.function) {
+            if (rightType.kind === ReflectionKind.function || rightType.kind === ReflectionKind.methodSignature || rightType.kind === ReflectionKind.method) {
                 const returnValid = isExtendable(leftType.return, rightType.return);
                 if (!returnValid) return false;
 
@@ -92,8 +92,11 @@ export function isExtendable(left: AssignableType, right: AssignableType): boole
 
             //{a: number} extends {a: number, b: string}
             for (const member of leftType.types) {
-                if (member.kind === ReflectionKind.propertySignature) {
-                    const rightMember = rightType.types.find(v => v.kind === ReflectionKind.propertySignature && v.name === member.name);
+                //todo: call signature
+                //todo: index signatures
+
+                if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.methodSignature) {
+                    const rightMember = rightType.types.find(v => (v.kind === ReflectionKind.propertySignature || v.kind === ReflectionKind.methodSignature) && v.name === member.name);
                     if (!rightMember) return false;
                     if (!isExtendable(member, rightMember)) return false;
                 }

@@ -32,6 +32,7 @@ import {
     FunctionTypeNode,
     getEffectiveConstraintOfTypeParameter,
     getJSDocTags,
+    Identifier,
     ImportCall,
     ImportDeclaration,
     ImportEqualsDeclaration,
@@ -57,17 +58,21 @@ import {
     isInterfaceDeclaration,
     isMappedTypeNode,
     isMethodDeclaration,
+    isMethodSignature,
     isNamedExports,
     isNamedTupleMember,
+    isObjectLiteralExpression,
     isOptionalTypeNode,
     isParenthesizedTypeNode,
     isStringLiteral,
     isTypeAliasDeclaration,
     isTypeLiteralNode,
+    isTypeParameterDeclaration,
     isTypeReferenceNode,
     LiteralTypeNode,
     MappedTypeNode,
     MethodDeclaration,
+    MethodSignature,
     ModifierFlags,
     ModuleDeclaration,
     Node,
@@ -80,6 +85,7 @@ import {
     QualifiedName,
     RestTypeNode,
     ScriptReferenceHost,
+    SignatureDeclaration,
     SourceFile,
     Statement,
     StringLiteral,
@@ -92,6 +98,8 @@ import {
     TypeElement,
     TypeLiteralNode,
     TypeOperatorNode,
+    TypeParameterDeclaration,
+    TypeQueryNode,
     TypeReferenceNode,
     UnionTypeNode,
     visitEachChild,
@@ -154,6 +162,7 @@ const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.method]: { params: 1 },
     [ReflectionOp.description]: { params: 1 },
     [ReflectionOp.numberBrand]: { params: 1 },
+    [ReflectionOp.typeof]: { params: 1 },
 };
 
 export function debugPackStruct(pack: { ops: ReflectionOp[], stack: PackExpression[] }): void {
@@ -414,6 +423,19 @@ export class ReflectionTransformer {
 
         const visitor = (node: Node): any => {
             node = visitEachChild(node, visitor, this.context);
+
+            if (isMethodDeclaration(node) && node.parent && isObjectLiteralExpression(node.parent)) {
+                //replace MethodDeclaration with MethodExpression
+                // {add(v: number) {}} => {add: function (v: number) {}}
+                //so that __type can be added
+                const method = this.decorateFunctionExpression(
+                    this.f.createFunctionExpression(
+                        node.modifiers, node.asteriskToken, isIdentifier(node.name) ? node.name : undefined,
+                        node.typeParameters, node.parameters, node.type, node.body!
+                    )
+                );
+                node = this.f.createPropertyAssignment(node.name, method);
+            }
 
             if (isClassDeclaration(node)) {
                 return this.decorateClass(node);
@@ -878,6 +900,7 @@ export class ReflectionTransformer {
                 }
                 break;
             }
+            case SyntaxKind.MethodSignature:
             case SyntaxKind.MethodDeclaration:
             case SyntaxKind.Constructor:
             case SyntaxKind.ArrowFunction:
@@ -885,7 +908,7 @@ export class ReflectionTransformer {
             case SyntaxKind.FunctionType:
             case SyntaxKind.FunctionDeclaration: {
                 //TypeScript does not narrow types down
-                const narrowed = node as MethodDeclaration | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
+                const narrowed = node as MethodSignature | MethodDeclaration | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
 
                 const config = this.findReflectionConfig(narrowed);
                 if (config.mode === 'never') return;
@@ -920,7 +943,12 @@ export class ReflectionTransformer {
                     program.pushOp(ReflectionOp.any);
                 }
 
-                program.pushOp(isMethodDeclaration(narrowed) || isConstructorDeclaration(narrowed) ? ReflectionOp.method : ReflectionOp.function, program.findOrAddStackEntry(name));
+                program.pushOp(
+                    isMethodSignature(narrowed)
+                        ? ReflectionOp.methodSignature
+                        : isMethodDeclaration(narrowed) || isConstructorDeclaration(narrowed)
+                            ? ReflectionOp.method : ReflectionOp.function, program.findOrAddStackEntry(name)
+                );
 
                 if (isMethodDeclaration(narrowed)) {
                     if (hasModifier(narrowed, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
@@ -994,6 +1022,12 @@ export class ReflectionTransformer {
                 program.pushOp(ReflectionOp.indexSignature);
                 break;
             }
+            case SyntaxKind.TypeQuery: {
+                //TypeScript does not narrow types down
+                const narrowed = node as TypeQueryNode;
+                program.pushOp(ReflectionOp.typeof, program.findOrAddStackEntry(narrowed.exprName));
+                break;
+            }
             case SyntaxKind.TypeOperator: {
                 //TypeScript does not narrow types down
                 const narrowed = node as TypeOperatorNode;
@@ -1010,7 +1044,7 @@ export class ReflectionTransformer {
 
                 this.extractPackStructOfType(narrowed.objectType, program);
                 this.extractPackStructOfType(narrowed.indexType, program);
-                program.pushOp(ReflectionOp.query);
+                program.pushOp(ReflectionOp.indexAccess);
                 break;
             }
             default: {
@@ -1032,6 +1066,7 @@ export class ReflectionTransformer {
         'ArrayBuffer': ReflectionOp.arrayBuffer,
         'BigInt64Array': ReflectionOp.bigInt64Array,
         'Date': ReflectionOp.date,
+        'RegExp': ReflectionOp.regexp,
         'String': ReflectionOp.string,
         'Number': ReflectionOp.number,
         'BigInt': ReflectionOp.bigint,
@@ -1243,6 +1278,39 @@ export class ReflectionTransformer {
                 program.pushOp(ReflectionOp.classReference);
                 program.pushOp(index);
                 program.popFrame();
+            } else if (isTypeParameterDeclaration(declaration)) {
+
+                //check if `type` was used in an expression. if so, we need to resolve it from runtime, otherwise we mark it as T
+
+                //todo: this does not work with when T is used from outer scope
+                // like function <T>(v: T) { return class {item: T}}
+                const isInExpression = type.parent.kind === SyntaxKind.CallExpression;
+
+                if (isInExpression) {
+                    //we need to resolve from which variable the type can be inferred of. If not possible, use its constraint. If that's not possible, use any.
+                    function resolveParameterUser(type: TypeParameterDeclaration): Identifier | undefined {
+                        if (type.parent.kind === SyntaxKind.FunctionDeclaration || type.parent.kind === SyntaxKind.FunctionExpression) {
+                            for (const parameter of (type.parent as SignatureDeclaration).parameters) {
+                                //todo, go deeper to find type
+                                if (parameter.type && isTypeReferenceNode(parameter.type) && isIdentifier(parameter.type.typeName) && parameter.type.typeName.escapedText === type.name.escapedText) {
+                                    if (isIdentifier(parameter.name)) return parameter.name;
+                                }
+                            }
+                        }
+                        return;
+                    }
+
+                    //todo: 1. search for one or multiple variables where T is used, like `<T>(value: T): void` => value.
+                    //todo: 2. create XXX to resolve type from `value` in context of T's constraint.
+                    const user = resolveParameterUser(declaration);
+                    if (user) {
+                        program.pushOp(ReflectionOp.typeof, program.findOrAddStackEntry(user));
+                    } else {
+                        program.pushOp(ReflectionOp.any);
+                    }
+                } else {
+                    program.pushOp(ReflectionOp.template, program.findOrAddStackEntry(getNameAsString(type.typeName)));
+                }
             } else {
                 this.extractPackStructOfType(declaration, program);
             }

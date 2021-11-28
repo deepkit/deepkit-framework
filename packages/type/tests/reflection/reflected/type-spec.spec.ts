@@ -247,6 +247,7 @@ test('model 1', () => {
 
     {
         const model = { filter: { $regex: /Peter/ }, itemsPerPage: 50, parameters: {} };
+        //todo: regexp has no serializer yet
         expect(roundTrip<Model>(model as any)).toEqual(model);
     }
 

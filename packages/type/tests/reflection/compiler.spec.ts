@@ -452,7 +452,7 @@ test('type emitted at the right place', () => {
         type o = { a: string };
         type p = Partial<o>;
         typeOf<p>();
-    };`
+    };`;
 
     const js = transpile(code);
     console.log('js', js);
@@ -535,6 +535,85 @@ test('resolve query union', () => {
             { kind: ReflectionKind.literal, literal: true },
         ]
     });
+});
+
+test('emit function types in objects', () => {
+    const code = `
+    const wrap = {
+        add(item: string) {
+        }
+    };
+    return typeOf<typeof wrap>();
+    `;
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+    expect(type).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            {
+                kind: ReflectionKind.methodSignature,
+                name: 'add',
+                parameters: [{ kind: ReflectionKind.parameter, name: 'item', type: { kind: ReflectionKind.string } }],
+                return: { kind: ReflectionKind.any }
+            }
+        ]
+    } as Type);
+});
+
+test('infer T in function primitive', () => {
+    const code = `
+        return function fn<T extends string | number>(v: T) {
+            return typeOf<T>();
+        }
+    `;
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code) as (v: string | number) => Type;
+    console.log(type);
+    console.log(type('abc'));
+});
+
+test('dynamic class with member of outer T', () => {
+    const code = `
+        return function bla<T>(v: T) {
+            class P {
+                type!: T;
+            }
+
+            return P;
+        }
+    `;
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code) as (v: string | number) => Type;
+    console.log(type);
+    console.log(type('abc'));
+});
+
+test('infer T in function alias', () => {
+    const code = `
+        type A<T> = T;
+        return function fn<T extends string | number>(v: A<T>) {
+            return typeOf<T>();
+        }
+    `;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+    console.log(type);
+});
+
+test('infer T in class', () => {
+    const js = transpile(`
+        class Wrap<T> {
+            constructor(public item: T) {}
+        }
+
+        return new Wrap('abc');
+    `);
+    console.log('js', js);
 });
 
 test('resolve partial', () => {

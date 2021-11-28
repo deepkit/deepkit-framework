@@ -9,10 +9,10 @@
  */
 
 import {
+    indexAccess,
     isBrandable,
     isType,
     MappedModifier,
-    queryType,
     ReflectionKind,
     ReflectionOp,
     ReflectionVisibility,
@@ -21,6 +21,7 @@ import {
     TypeClass,
     TypeEnumMember,
     TypeIndexSignature,
+    typeInfer,
     TypeInfer,
     TypeLiteral,
     TypeLiteralMember,
@@ -579,7 +580,7 @@ export class Processor {
                     this.push(isExtendable(left, right));
                     break;
                 }
-                case ReflectionOp.query: {
+                case ReflectionOp.indexAccess: {
                     let right = this.pop() as Type;
                     const left = this.pop() as Type;
 
@@ -588,7 +589,13 @@ export class Processor {
                         break;
                     }
 
-                    this.push(queryType(left, right));
+                    this.push(indexAccess(left, right));
+                    break;
+                }
+                case ReflectionOp.typeof: {
+                    const param1 = this.eatParameter(ops) as number;
+                    const value = initialStack[param1] as any;
+                    this.pushType(typeInfer(value));
                     break;
                 }
                 case ReflectionOp.keyof: {

@@ -8,7 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, getClassName, indent } from '@deepkit/core';
+import { ClassType, getClassName, indent, isArray } from '@deepkit/core';
+import { resolveRuntimeType } from './processor';
 
 export enum ReflectionVisibility {
     public,
@@ -66,7 +67,7 @@ export interface TypeBrandable {
     brands?: Type[];
 }
 
-export function isBrandable(type: Type): boolean {
+export function isBrandable(type: Type): type is TypeVoid | TypeString | TypeNumber | TypeBoolean | TypeBigInt | TypeNull | TypeUndefined | TypeLiteral {
     return type.kind === ReflectionKind.void || type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.boolean
         || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined || type.kind === ReflectionKind.literal;
 }
@@ -404,7 +405,7 @@ function resolveObjectIndexType(type: TypeObjectLiteral | TypeClass, index: Type
  * e.g. [string, number][0] => string
  * e.g. [string, number][number] => string | number
  */
-export function queryType(container: Type, index: Type): Type {
+export function indexAccess(container: Type, index: Type): Type {
     if (container.kind === ReflectionKind.array) {
         if ((index.kind === ReflectionKind.literal && 'number' === typeof index.literal) || index.kind === ReflectionKind.number) return container.type;
     } else if (container.kind === ReflectionKind.tuple) {
@@ -456,6 +457,94 @@ export function queryType(container: Type, index: Type): Type {
         }
     }
     return { kind: ReflectionKind.never };
+}
+
+export function widenLiteral(type: Type): Type {
+    if (type.kind === ReflectionKind.literal) {
+        if ('number' === typeof type.literal) return { kind: ReflectionKind.number };
+        if ('boolean' === typeof type.literal) return { kind: ReflectionKind.boolean };
+        if ('bigint' === typeof type.literal) return { kind: ReflectionKind.bigint };
+        if ('symbol' === typeof type.literal) return { kind: ReflectionKind.symbol };
+        if ('string' === typeof type.literal) return { kind: ReflectionKind.string };
+    }
+
+    return type;
+}
+
+function typeInferFromContainer(container: Iterable<any>): Type {
+    const union: TypeUnion = { kind: ReflectionKind.union, types: [] };
+    for (const item of container) {
+        const type = widenLiteral(typeInfer(item));
+        if (!isTypeIncluded(union.types, type)) union.types.push(type);
+    }
+
+    return union.types.length === 0 ? { kind: ReflectionKind.any } : union.types.length === 1 ? union.types[0] : union;
+}
+
+export function typeInfer(value: any): Type {
+    if ('string' === typeof value || 'number' === typeof value || 'boolean' === typeof value || 'bigint' === typeof value || 'symbol' === typeof value) {
+        return { kind: ReflectionKind.literal, literal: value };
+    } else if (null === value) {
+        return { kind: ReflectionKind.null };
+    } else if (undefined === value) {
+        return { kind: ReflectionKind.undefined };
+    } else if ('function' === typeof value) {
+        if (isArray(value.__type)) {
+            //with emitted types
+            return resolveRuntimeType(value);
+        }
+
+        return { kind: ReflectionKind.function, name: value.name, return: { kind: ReflectionKind.any }, parameters: [] };
+    } else if (isArray(value)) {
+        return { kind: ReflectionKind.array, type: typeInferFromContainer(value) };
+    } else if ('object' === typeof value) {
+        const constructor = value.constructor;
+        if ('function' === typeof constructor && constructor !== Object && isArray(constructor.__type)) {
+            //with emitted types
+            return resolveRuntimeType(constructor);
+        }
+
+        if (constructor === RegExp) return { kind: ReflectionKind.regexp };
+        if (constructor === Date) return { kind: ReflectionKind.class, classType: Date, types: [] };
+        if (constructor === Set) {
+            const type = typeInferFromContainer(value);
+            return { kind: ReflectionKind.class, classType: Set, arguments: [type], types: [] };
+        }
+
+        if (constructor === Map) {
+            const keyType = typeInferFromContainer((value as Map<any, any>).keys());
+            const valueType = typeInferFromContainer((value as Map<any, any>).values());
+            return { kind: ReflectionKind.class, classType: Map, arguments: [keyType, valueType], types: [] };
+        }
+
+        const type: TypeObjectLiteral = { kind: ReflectionKind.objectLiteral, types: [] };
+        for (const i in value) {
+            if (!value.hasOwnProperty(i)) continue;
+            const propType = typeInfer(value[i]);
+
+            if (propType.kind === ReflectionKind.methodSignature || propType.kind === ReflectionKind.function) {
+                type.types.push({
+                    kind: ReflectionKind.methodSignature,
+                    name: i,
+                    return: propType.return,
+                    parameters: propType.parameters
+                });
+                continue;
+            }
+
+            const property: TypePropertySignature = { kind: ReflectionKind.propertySignature, name: i, type: { kind: ReflectionKind.any } };
+
+            if (propType.kind === ReflectionKind.literal) {
+                property.type = widenLiteral(propType);
+            } else {
+                property.type = propType;
+            }
+
+            type.types.push(property);
+        }
+        return type;
+    }
+    return { kind: ReflectionKind.any };
 }
 
 export function assertType<K extends Type['kind'], T>(t: Type, kind: K): asserts t is FindType<Type, K> {
@@ -769,9 +858,10 @@ export enum ReflectionOp {
     var, //reserve a new variable in the stack
     loads, //pushes to the stack a referenced value in the stack. has 2 parameters: <frame> <index>, frame is a negative offset to the frame, and index the index of the stack entry withing the referenced frame
 
-    query, //T['string'], 2 items on the stack
+    indexAccess, //T['string'], 2 items on the stack
     keyof, //keyof operator
     infer, //2 params, like `loads`
+    typeof, //1 parameter that points to a function returning the runtime value from which we need to extract the type
 
     condition,
     jumpCondition, //used when INFER is used in `extends` conditional branch. 2 args: left program, right program

@@ -321,6 +321,18 @@ test('typeof object literal', () => {
     } as TypeObjectLiteral);
 });
 
+test('typeof object literal with function', () => {
+    expect(typeOf<{ add(item: string): any }>()).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        types: [{
+            kind: ReflectionKind.methodSignature,
+            name: 'add',
+            parameters: [{ kind: ReflectionKind.parameter, name: 'item', type: { kind: ReflectionKind.string } }],
+            return: { kind: ReflectionKind.any }
+        }]
+    } as TypeObjectLiteral);
+});
+
 test('typeof class', () => {
     class Entity {
         a!: string;
@@ -436,9 +448,9 @@ test('query number index', () => {
         ]
     });
 
-    expect(typeOf<o[0]>()).toEqual({kind: ReflectionKind.string});
-    expect(typeOf<o[1]>()).toEqual({kind: ReflectionKind.string});
-    expect(typeOf<o[2]>()).toEqual({kind: ReflectionKind.number});
+    expect(typeOf<o[0]>()).toEqual({ kind: ReflectionKind.string });
+    expect(typeOf<o[1]>()).toEqual({ kind: ReflectionKind.string });
+    expect(typeOf<o[2]>()).toEqual({ kind: ReflectionKind.number });
 });
 
 test('type alias partial', () => {
