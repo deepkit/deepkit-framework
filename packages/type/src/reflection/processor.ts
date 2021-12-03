@@ -9,10 +9,12 @@
  */
 
 import {
+    flattenUnion,
     indexAccess,
     isBrandable,
     isType,
     MappedModifier,
+    narrowOriginalLiteral,
     ReflectionKind,
     ReflectionOp,
     ReflectionVisibility,
@@ -31,7 +33,8 @@ import {
     TypeProperty,
     TypePropertySignature,
     TypeTupleMember,
-    TypeUnion
+    TypeUnion,
+    unboxUnion
 } from './type';
 import { isExtendable } from './extends';
 import { ClassType, isArray, isFunction } from '@deepkit/core';
@@ -126,10 +129,11 @@ interface Frame {
     variables: number;
     inputs: RuntimeStackEntry[];
     previous?: Frame;
-    mappedType?: MappedType;
+    mappedType?: Loop;
+    distributiveLoop?: Loop;
 }
 
-class MappedType {
+class Loop {
     private types: Type[] = [];
     private i: number = 0;
 
@@ -145,7 +149,6 @@ class MappedType {
         return this.types[this.i++];
     }
 }
-
 
 /**
  * To track circular types the registry stores for each Packed a created Processor and returns its `resultType` when it was already registered.
@@ -167,7 +170,7 @@ class ProcessorRegistry {
 }
 
 export class Processor {
-    stack: (RuntimeStackEntry | Type)[] = newArray({ kind: ReflectionKind.any }, 128);
+    stack: (RuntimeStackEntry | Type)[] = newArray({ kind: ReflectionKind.never }, 128);
     stackPointer = -1; //pointer to the stack
     frame: Frame = { startIndex: -1, inputs: [], variables: 0 };
     program: number = 0;
@@ -210,6 +213,12 @@ export class Processor {
                     break;
                 case ReflectionOp.void:
                     this.pushType({ kind: ReflectionKind.void });
+                    break;
+                case ReflectionOp.unknown:
+                    this.pushType({ kind: ReflectionKind.unknown });
+                    break;
+                case ReflectionOp.object:
+                    this.pushType({ kind: ReflectionKind.object });
                     break;
                 case ReflectionOp.never:
                     this.pushType({ kind: ReflectionKind.never });
@@ -294,6 +303,7 @@ export class Processor {
                             }
                             break;
                         }
+                        // if (member.kind === ReflectionKind.property) member.type = widenLiteral(member.type);
                     }
                     const args = this.frame.inputs.filter(isType);
                     let t = { kind: ReflectionKind.class, classType: Object, types } as TypeClass;
@@ -409,7 +419,7 @@ export class Processor {
                     break;
                 case ReflectionOp.union: {
                     const types = this.popFrame() as Type[];
-                    this.pushType({ kind: ReflectionKind.union, types });
+                    this.pushType(unboxUnion({ kind: ReflectionKind.union, types: flattenUnion(types) }));
                     break;
                 }
                 case ReflectionOp.intersection: {
@@ -523,6 +533,9 @@ export class Processor {
                 }
                 case ReflectionOp.objectLiteral: {
                     const types = this.popFrame() as (TypeIndexSignature | TypePropertySignature | TypeMethodSignature)[];
+                    // for (const member of types) {
+                    //     if (member.kind === ReflectionKind.propertySignature) member.type = widenLiteral(member.type);
+                    // }
                     let t = {
                         kind: ReflectionKind.objectLiteral,
                         types
@@ -537,6 +550,35 @@ export class Processor {
                 //     this.push(initialStack[this.eatParameter(ops) as number]);
                 //     break;
                 // }
+                case ReflectionOp.distribute: {
+                    const program = this.eatParameter(ops) as number;
+
+                    if (this.frame.distributiveLoop) {
+                        const type = this.pop() as Type;
+
+                        if (type.kind === ReflectionKind.never) {
+                            //we ignore never, to filter them out
+                        } else {
+                            this.push(type);
+                        }
+                    } else {
+                        //start loop
+                        const distributeOver = this.pop() as Type;
+                        this.frame.distributiveLoop = new Loop(distributeOver);
+                    }
+
+                    const next = this.frame.distributiveLoop.next();
+                    if (next === undefined) {
+                        //end
+                        const result: TypeUnion = { kind: ReflectionKind.union, types: flattenUnion(this.popFrame() as Type[]) };
+                        this.push(unboxUnion(result));
+                    } else {
+                        this.stack[this.frame.startIndex + 1] = next;
+                        this.call(program, -1); //-1=jump back to this very same position, to be able to loop
+                    }
+
+                    break;
+                }
                 case ReflectionOp.condition: {
                     const right = this.pop() as Type;
                     const left = this.pop() as Type;
@@ -545,16 +587,12 @@ export class Processor {
                     condition ? this.pushType(left) : this.pushType(right);
                     break;
                 }
+                //this is deprecated
                 case ReflectionOp.jumpCondition: {
                     const leftProgram = this.eatParameter(ops) as number;
                     const rightProgram = this.eatParameter(ops) as number;
                     const condition = this.pop() as number | boolean;
-                    this.call();
-                    if (condition) {
-                        this.program = leftProgram - 1; //-1 because next iteration does program++
-                    } else {
-                        this.program = rightProgram - 1; //-1 because next iteration does program++
-                    }
+                    this.call(condition ? leftProgram : rightProgram);
                     break;
                 }
                 case ReflectionOp.infer: {
@@ -569,6 +607,14 @@ export class Processor {
                                 this.stack[frame.previous!.startIndex + 1 + stackEntryIndex] = type;
                             } else if (frameOffset === 2) {
                                 this.stack[frame.previous!.previous!.startIndex + 1 + stackEntryIndex] = type;
+                            } else if (frameOffset === 3) {
+                                this.stack[frame.previous!.previous!.previous!.startIndex + 1 + stackEntryIndex] = type;
+                            } else if (frameOffset === 4) {
+                                this.stack[frame.previous!.previous!.previous!.previous!.startIndex + 1 + stackEntryIndex] = type;
+                            } else {
+                                let current = frame;
+                                for (let i = 0; i < frameOffset; i++) current = current.previous!;
+                                this.stack[current.startIndex + 1 + stackEntryIndex] = type;
                             }
                         }
                     } as TypeInfer);
@@ -637,35 +683,37 @@ export class Processor {
                                 ? type
                                 : { kind: ReflectionKind.propertySignature, name: index, type } as TypePropertySignature;
 
-                            if (modifier !== 0) {
-                                if (modifier & MappedModifier.optional) {
-                                    property.optional = true;
+                            if (property.type.kind !== ReflectionKind.never) {
+                                //never is filtered out
+
+                                if (modifier !== 0) {
+                                    if (modifier & MappedModifier.optional) {
+                                        property.optional = true;
+                                    }
+                                    if (modifier & MappedModifier.removeOptional && property.optional) {
+                                        property.optional = undefined;
+                                    }
+                                    if (modifier & MappedModifier.readonly) {
+                                        property.readonly = true;
+                                    }
+                                    if (modifier & MappedModifier.removeReadonly && property.readonly) {
+                                        property.readonly = undefined;
+                                    }
                                 }
-                                if (modifier & MappedModifier.removeOptional && property.optional) {
-                                    property.optional = undefined;
-                                }
-                                if (modifier & MappedModifier.readonly) {
-                                    property.readonly = true;
-                                }
-                                if (modifier & MappedModifier.removeReadonly && property.readonly) {
-                                    property.readonly = undefined;
-                                }
+                                this.push(property);
                             }
-                            this.push(property);
                         }
                     } else {
-                        this.frame.mappedType = new MappedType(this.pop() as Type);
+                        this.frame.mappedType = new Loop(this.pop() as Type);
                     }
 
                     const next = this.frame.mappedType.next();
                     if (next === undefined) {
                         //end
-                        const types = this.popFrame();
-                        this.push({ kind: ReflectionKind.objectLiteral, types: types });
+                        this.push({ kind: ReflectionKind.objectLiteral, types: this.popFrame() });
                     } else {
-                        this.stack[this.frame.startIndex + 1] = next;
-                        this.call(-2);
-                        this.program = functionPointer - 1; //-1 because next iteration does program++
+                        this.stack[this.frame.startIndex + 1] = next; //change the mapped type parameter
+                        this.call(functionPointer, -2);
                     }
                     break;
                 }
@@ -680,6 +728,12 @@ export class Processor {
                         this.push(this.stack[this.frame.previous!.previous!.startIndex + 1 + stackEntryIndex]);
                     } else if (frameOffset === 3) {
                         this.push(this.stack[this.frame.previous!.previous!.previous!.startIndex + 1 + stackEntryIndex]);
+                    } else if (frameOffset === 4) {
+                        this.push(this.stack[this.frame.previous!.previous!.previous!.previous!.startIndex + 1 + stackEntryIndex]);
+                    } else {
+                        let current = this.frame;
+                        for (let i = 0; i < frameOffset; i++) current = current.previous!;
+                        this.push(this.stack[current.startIndex + 1 + stackEntryIndex]);
                     }
                     break;
                 }
@@ -693,9 +747,8 @@ export class Processor {
                     break;
                 }
                 case ReflectionOp.call: {
-                    const arg = this.eatParameter(ops) as number;
-                    this.call();
-                    this.program = arg - 1; //-1 because next iteration does program++
+                    const program = this.eatParameter(ops) as number;
+                    this.call(program);
                     break;
                 }
                 case ReflectionOp.frame: {
@@ -728,8 +781,8 @@ export class Processor {
                     const argumentSize = this.eatParameter(ops) as number;
                     const inputs: any[] = [];
                     for (let i = 0; i < argumentSize; i++) {
-                        let input = this.pop();
-                        if (initialInputs[i]) input = initialInputs[i];
+                        let input = this.pop() as Type;
+                        if (input.kind === ReflectionKind.never && initialInputs[i]) input = initialInputs[i] as Type;
                         inputs.unshift(input);
                     }
                     const pOrFn = initialStack[pPosition] as number | Packed | (() => Packed);
@@ -749,7 +802,7 @@ export class Processor {
             }
         }
 
-        return this.stack[this.stackPointer] as Type;
+        return narrowOriginalLiteral(this.stack[this.stackPointer] as Type);
     }
 
     push(entry: RuntimeStackEntry): void {
@@ -780,9 +833,10 @@ export class Processor {
     /**
      * Create a new stack frame with the calling convention.
      */
-    call(jumpBack: number = 1): void {
-        this.push(this.program + jumpBack); //the `return address`
+    call(program: number, jumpBackTo: number = 1): void {
+        this.push(this.program + jumpBackTo); //the `return address`
         this.pushFrame();
+        this.program = program - 1; //-1 because next iteration does program++
     }
 
     /**

@@ -61,5 +61,3 @@ export async function main() {
 
     suite.run();
 }
-
-main();

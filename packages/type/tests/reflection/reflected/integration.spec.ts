@@ -453,7 +453,7 @@ test('query number index', () => {
     expect(typeOf<o[2]>()).toEqual({ kind: ReflectionKind.number });
 });
 
-test('type alias partial', () => {
+test('mapped type partial', () => {
     type Partial2<T> = {
         [P in keyof T]?: T[P];
     }
@@ -467,7 +467,7 @@ test('type alias partial', () => {
     });
 });
 
-test('type alias required', () => {
+test('mapped type required', () => {
     type Required2<T> = {
         [P in keyof T]-?: T[P];
     }
@@ -481,7 +481,7 @@ test('type alias required', () => {
     });
 });
 
-test('type alias partial readonly', () => {
+test('mapped type partial readonly', () => {
     type Partial2<T> = {
         readonly [P in keyof T]?: T[P];
     }
@@ -492,6 +492,20 @@ test('type alias partial readonly', () => {
     expect(typeOf<p>()).toEqual({
         kind: ReflectionKind.objectLiteral,
         types: [{ kind: ReflectionKind.propertySignature, name: 'a', readonly: true, optional: true, type: { kind: ReflectionKind.string } }]
+    });
+});
+
+test('mapped type filter never', () => {
+    type FilterB<T> = {
+        [P in keyof T]?: P extends 'b' ? never : T[P];
+    }
+
+    type o = { a?: string, b: string };
+    type p = FilterB<o>;
+
+    expect(typeOf<p>()).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        types: [{ kind: ReflectionKind.propertySignature, optional: true, name: 'a', type: { kind: ReflectionKind.string } }]
     });
 });
 
@@ -668,7 +682,7 @@ test('generic dynamic', () => {
         title: string;
     }
 
-    const type = typeOf<Request<any>>([typeOf<Body>()]);
+    const type = typeOf<Request<never>>([typeOf<Body>()]);
     expect(type).toEqual({
         kind: ReflectionKind.objectLiteral,
         types: [
@@ -683,7 +697,7 @@ test('generic dynamic', () => {
         ]
     });
 
-    expect(typeOf<Request<any>>([typeOf<string>()])).toEqual({
+    expect(typeOf<Request<never>>([typeOf<string>()])).toEqual({
         kind: ReflectionKind.objectLiteral,
         types: [
             {

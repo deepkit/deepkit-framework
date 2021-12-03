@@ -14,20 +14,20 @@ test('primitives', () => {
 });
 
 test('widen literal', () => {
-    expect(widenLiteral(typeInfer('asd') as TypeLiteral)).toEqual({ kind: ReflectionKind.string } as Type);
-    expect(widenLiteral(typeInfer(23) as TypeLiteral)).toEqual({ kind: ReflectionKind.number } as Type);
-    expect(widenLiteral(typeInfer(true) as TypeLiteral)).toEqual({ kind: ReflectionKind.boolean } as Type);
-    expect(widenLiteral(typeInfer(false) as TypeLiteral)).toEqual({ kind: ReflectionKind.boolean } as Type);
-    expect(widenLiteral(typeInfer(12n) as TypeLiteral)).toEqual({ kind: ReflectionKind.bigint } as Type);
-    expect(widenLiteral(typeInfer(symbol) as TypeLiteral)).toEqual({ kind: ReflectionKind.symbol } as Type);
+    expect(widenLiteral(typeInfer('asd') as TypeLiteral)).toMatchObject({ kind: ReflectionKind.string });
+    expect(widenLiteral(typeInfer(23) as TypeLiteral)).toMatchObject({ kind: ReflectionKind.number });
+    expect(widenLiteral(typeInfer(true) as TypeLiteral)).toMatchObject({ kind: ReflectionKind.boolean });
+    expect(widenLiteral(typeInfer(false) as TypeLiteral)).toMatchObject({ kind: ReflectionKind.boolean });
+    expect(widenLiteral(typeInfer(12n) as TypeLiteral)).toMatchObject({ kind: ReflectionKind.bigint });
+    expect(widenLiteral(typeInfer(symbol) as TypeLiteral)).toMatchObject({ kind: ReflectionKind.symbol });
 });
 
 test('container', () => {
-    expect(typeInfer([123, 'abc', 'bcd'])).toEqual(typeOf<(number | string)[]>());
+    expect(typeInfer([123, 'abc', 'bcd'])).toMatchObject(typeOf<(number | string)[]>() as any);
     expect(typeInfer(new Set())).toEqual(typeOf<Set<any>>());
     expect(typeInfer(new Map())).toEqual(typeOf<Map<any, any>>());
-    expect(typeInfer(new Set(['a', 32]))).toEqual(typeOf<Set<string | number>>());
-    expect(typeInfer(new Map([[1, 'hello'], [3, 'yes']]))).toEqual(typeOf<Map<number, string>>());
+    expect(typeInfer(new Set(['a', 32]))).toMatchObject(typeOf<Set<string | number>>() as any);
+    expect(typeInfer(new Map([[1, 'hello'], [3, 'yes']]))).toMatchObject(typeOf<Map<number, string>>() as any);
 });
 
 test('class', () => {
@@ -38,15 +38,15 @@ test('class', () => {
 });
 
 test('object', () => {
-    expect(typeInfer({ a: 'hello' })).toEqual(typeOf<{ a: string }>());
-    expect(typeInfer({ a: 123 })).toEqual(typeOf<{ a: number }>());
-    expect(typeInfer({ a: true })).toEqual(typeOf<{ a: boolean }>());
-    expect(typeInfer({ a: 12n })).toEqual(typeOf<{ a: bigint }>());
-    expect(typeInfer({ a: symbol })).toEqual(typeOf<{ a: symbol }>());
-    expect(typeInfer({ a: new Date })).toEqual(typeOf<{ a: Date }>());
-    expect(typeInfer({ a: new RegExp('') })).toEqual(typeOf<{ a: RegExp }>());
-    expect(typeInfer({ a: (b: string): void => undefined  })).toEqual(typeOf<{ a(b: string): void }>());
-    expect(typeInfer({ a(b: string): void {} })).toEqual(typeOf<{ a(b: string): void }>());
+    expect(typeInfer({ a: 'hello' })).toMatchObject(typeOf<{ a: string }>() as any);
+    expect(typeInfer({ a: 123 })).toMatchObject(typeOf<{ a: number }>() as any);
+    expect(typeInfer({ a: true })).toMatchObject(typeOf<{ a: boolean }>() as any);
+    expect(typeInfer({ a: 12n })).toMatchObject(typeOf<{ a: bigint }>() as any);
+    expect(typeInfer({ a: symbol })).toMatchObject(typeOf<{ a: symbol }>() as any);
+    expect(typeInfer({ a: new Date })).toMatchObject(typeOf<{ a: Date }>() as any);
+    expect(typeInfer({ a: new RegExp('') })).toMatchObject(typeOf<{ a: RegExp }>() as any);
+    expect(typeInfer({ a: (b: string): void => undefined  })).toMatchObject(typeOf<{ a(b: string): void }>() as any);
+    expect(typeInfer({ a(b: string): void {} })).toMatchObject(typeOf<{ a(b: string): void }>() as any);
 });
 
 test('function', () => {

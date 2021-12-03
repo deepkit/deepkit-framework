@@ -23,11 +23,12 @@ import {
     Type,
     TypeClass,
     TypeFunction,
+    typeInfer,
     TypeObjectLiteral,
     TypeProperty,
     TypeUnion
 } from '../../src/reflection/type';
-import { ClassType } from '@deepkit/core';
+import { ClassType, typeOf } from '@deepkit/core';
 
 Error.stackTraceLimit = 200;
 
@@ -77,8 +78,12 @@ function transpile(source: string | { [file: string]: string }, useTransformer: 
     return appTs;
 }
 
+function packRaw(...args: Parameters<typeof pack>): string {
+    return `${(pack(...args) as string[]).join().replace(/'/g, '\\\'')}`;
+}
+
 function packString(...args: Parameters<typeof pack>): string {
-    return `'${(pack(...args) as string[]).join().replace(/'/g, '\\\'')}'`;
+    return `'${packRaw(...args)}'`;
 }
 
 const tests: [code: string | { [file: string]: string }, contains: string | string[]][] = [
@@ -456,7 +461,7 @@ test('type emitted at the right place', () => {
 
     const js = transpile(code);
     console.log('js', js);
-    expect(js).toContain(`() => {\n    var __Ωo = ['a', 'M`);
+    expect(js).toContain(`() => {\n    var __Ωo = ['a', '${packRaw([ReflectionOp.frame])}`);
     const type = transpileAndReturn(code);
     console.log(type);
 });
@@ -486,8 +491,8 @@ test('no global clash', () => {
 
     const js = transpile(code);
     console.log('js', js);
-    expect(js).toContain(`var __Ωo = ['a', 'M`);
-    expect(js).toContain(`var __Ωo = ['a', 'b', 'M`);
+    expect(js).toContain(`var __Ωo = ['a', '${packRaw([ReflectionOp.frame])}`);
+    expect(js).toContain(`var __Ωo = ['a', 'b', '${packRaw([ReflectionOp.frame])}`);
     // const clazz = transpileAndReturn(code);
 });
 
@@ -572,6 +577,98 @@ test('infer T in function primitive', () => {
     const type = transpileAndReturn(code) as (v: string | number) => Type;
     console.log(type);
     console.log(type('abc'));
+});
+
+test('complex infer T', () => {
+    function fn1<T extends string | number>(v: T) {
+        type inferT = typeof v;
+    }
+
+    type Box<T> = { a: T };
+
+    function fn2<T extends string | number>(v: Box<{ b: T }>) {
+        type inferT = typeof v extends Box<{ b: infer T }> ? T : never;
+    }
+
+    function fn3<T extends { [name: string]: any }, U extends keyof T>(v: Box<{ b: T }>, u?: U) {
+        type inferU = keyof (typeof v extends Box<{ b: infer T }> ? T : never);
+    }
+});
+
+test('infer T in function boxed primitive', () => {
+    const code = `
+        type Box<T> = { a: T };
+        return function fn<T extends string | number>(v: Box<T>) {
+            // type result = typeof v extends Box<{b: infer T}> ? T : never; //this needs to be generated. It just replaces T with infer T
+
+            //todo: full validation happens with that program:
+            // (typeof v extends Box<{b: infer T}> ? T : never) extends infer RES ? RES extends string | number ? RES : never : never;
+            // this gives us also the information whether RES needs can be narrowed.
+            return typeOf<T>();
+        }
+    `;
+
+    type Box<T> = { a: T };
+    function fn<T extends string | number>(v: Box<T>): T {
+        return undefined as any;
+    }
+    const t1 = fn({a: 'abc'});
+    const t2 = fn({a: 23});
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code) as (v: { a: any }) => Type;
+    expect(type({ a: 'abc' })).toEqual({ kind: ReflectionKind.literal, literal: 'abc' });
+    expect(type({ a: 23 })).toEqual({ kind: ReflectionKind.literal, literal: 23 });
+    expect(type(false as any)).toEqual({ kind: ReflectionKind.never });
+});
+
+test('infer T in function inferred second template arg', () => {
+    const code = `
+        type Box<T> = T extends string ? 'string' : 'number';
+        return function fn<T extends string | number, U extends Box<T>>(v: T) {
+            return typeOf<U>();
+        }
+    `;
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code) as (v: string | number) => Type;
+    expect(type('abc')).toEqual({ kind: ReflectionKind.literal, literal: 'string' });
+    expect(type(34)).toEqual({ kind: ReflectionKind.literal, literal: 'number' });
+});
+
+test('infer T in function branded type', () => {
+    const code = `
+        type PrimaryKey<T> = T & {__brand?: 'primaryKey'};
+
+        return function fn<T extends PrimaryKey<any>>(v: T) {
+            return typeOf<T>();
+        }
+    `;
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code) as (v: string | number) => Type;
+    expect(type('abc')).toEqual({ kind: ReflectionKind.literal, literal: 'abc' });
+    expect(type(34)).toEqual({ kind: ReflectionKind.literal, literal: 34 });
+});
+
+test('correct T resolver', () => {
+    const code = `
+    return function a<T>(v: T) {
+        return class {item: T}
+    }
+    `;
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code) as (v: any) => ClassType;
+    const classType = type('abc');
+    expect(typeInfer(classType)).toEqual({
+        kind: ReflectionKind.class,
+        classType: classType,
+        types: [
+            { kind: ReflectionKind.property, visibility: ReflectionVisibility.public, name: 'item', type: { kind: ReflectionKind.literal, literal: 'abc' } }
+        ]
+    } as Type);
 });
 
 test('dynamic class with member of outer T', () => {
@@ -1102,7 +1199,12 @@ test('branded type', () => {
         brands: [
             {
                 kind: ReflectionKind.objectLiteral, types: [
-                    { kind: ReflectionKind.propertySignature, name: '__type', type: { kind: ReflectionKind.literal, literal: 'primaryKey' }, optional: true }
+                    {
+                        kind: ReflectionKind.propertySignature,
+                        name: '__type',
+                        type: { kind: ReflectionKind.string, origin: { kind: ReflectionKind.literal, literal: 'primaryKey' } },
+                        optional: true
+                    }
                 ]
             },
         ]

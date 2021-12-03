@@ -214,8 +214,8 @@ test('object literal methods', () => {
     expect(is<{ m: (name: string) => string }>({ m: (name: string) => 'asd' })).toEqual(true);
     expect(is<{ m: (name: string) => string }>({ m: (name: number): string => 'asd' })).toEqual(false);
     expect(is<{ m: (name: string) => string }>({ m: (name: string): number => 2 })).toEqual(false);
-    expect(is<{ m: (name: string) => any }>({ m: (name: string): number => 2 })).toEqual(true);
-    expect(is<{ m: (name: any) => number }>({ m: (name: string): number => 2 })).toEqual(true);
+    expect(is<{ m: (name: string) => any }>({ m: (name: string): number => 2 })).toEqual(false);
+    expect(is<{ m: (name: any) => number }>({ m: (name: string): number => 2 })).toEqual(false);
 });
 
 test('multiple index signature', () => {

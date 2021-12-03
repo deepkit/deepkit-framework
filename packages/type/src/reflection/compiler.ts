@@ -53,8 +53,10 @@ import {
     isExportDeclaration,
     isFunctionDeclaration,
     isFunctionExpression,
+    isFunctionLike,
     isIdentifier,
     isImportSpecifier,
+    isInferTypeNode,
     isInterfaceDeclaration,
     isMappedTypeNode,
     isMethodDeclaration,
@@ -97,8 +99,8 @@ import {
     TypeChecker,
     TypeElement,
     TypeLiteralNode,
+    TypeNode,
     TypeOperatorNode,
-    TypeParameterDeclaration,
     TypeQueryNode,
     TypeReferenceNode,
     UnionTypeNode,
@@ -163,6 +165,7 @@ const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.description]: { params: 1 },
     [ReflectionOp.numberBrand]: { params: 1 },
     [ReflectionOp.typeof]: { params: 1 },
+    [ReflectionOp.distribute]: { params: 1 },
 };
 
 export function debugPackStruct(pack: { ops: ReflectionOp[], stack: PackExpression[] }): void {
@@ -333,6 +336,20 @@ class CompilerProgram {
      */
     increaseStackPosition(): number {
         return this.stackPosition++;
+    }
+
+    protected resolveFunctionParameters = new Map<Node, number>();
+
+    resolveFunctionParametersIncrease(fn: Node) {
+        this.resolveFunctionParameters.set(fn, (this.resolveFunctionParameters.get(fn) || 0) + 1);
+    }
+
+    resolveFunctionParametersDecrease(fn: Node) {
+        this.resolveFunctionParameters.set(fn, (this.resolveFunctionParameters.get(fn) || 1) - 1);
+    }
+
+    isResolveFunctionParameters(fn: Node) {
+        return (this.resolveFunctionParameters.get(fn) || 0) > 0;
     }
 
     pushFrame(implicit: boolean = false) {
@@ -604,6 +621,14 @@ export class ReflectionTransformer {
                 program.pushOp(ReflectionOp.void);
                 break;
             }
+            case SyntaxKind.UnknownKeyword: {
+                program.pushOp(ReflectionOp.unknown);
+                break;
+            }
+            case SyntaxKind.ObjectKeyword: {
+                program.pushOp(ReflectionOp.object);
+                break;
+            }
             case SyntaxKind.SymbolKeyword: {
                 program.pushOp(ReflectionOp.symbol);
                 break;
@@ -869,8 +894,24 @@ export class ReflectionTransformer {
                 //TypeScript does not narrow types down
                 const narrowed = node as ConditionalTypeNode;
 
-                program.pushConditionalFrame();
 
+                // Depending on whether this a distributive conditional type or not, it has to be moved to its own function
+                // my understanding of when a distributive conditional type is used is:
+                // 1. the `checkType` is a simple identifier (just `T`, no `[T]`, no `T | x`, no `{a: T}`, etc)
+                let distributiveOverIdentifier: Identifier | undefined = isTypeReferenceNode(narrowed.checkType) && isIdentifier(narrowed.checkType.typeName) ? narrowed.checkType.typeName : undefined;
+
+                if (distributiveOverIdentifier) {
+                    program.pushFrame();
+                    //first we add to the stack the origin type we distribute over.
+                    this.extractPackStructOfType(narrowed.checkType, program);
+
+                    //since the distributive conditional type is a loop that changes only the found `T`, it is necessary to add that as variable,
+                    //so call convention can take over.
+                    program.pushVariable(getIdentifierName(distributiveOverIdentifier));
+                    program.pushCoRoutine();
+                }
+
+                program.pushConditionalFrame(); //gets its own frame for `infer T` ops. all infer variables will be registered in this frame
                 this.extractPackStructOfType(narrowed.checkType, program);
                 this.extractPackStructOfType(narrowed.extendsType, program);
 
@@ -880,6 +921,12 @@ export class ReflectionTransformer {
                 this.extractPackStructOfType(narrowed.falseType, program);
                 program.pushOp(ReflectionOp.condition);
                 program.popFrame();
+
+                if (distributiveOverIdentifier) {
+                    const coRoutineIndex = program.popCoRoutine();
+                    program.pushOp(ReflectionOp.distribute, coRoutineIndex);
+                    program.popFrame();
+                }
                 break;
             }
             case SyntaxKind.InferType: {
@@ -1047,6 +1094,17 @@ export class ReflectionTransformer {
                 program.pushOp(ReflectionOp.indexAccess);
                 break;
             }
+            case SyntaxKind.Identifier: {
+                //TypeScript does not narrow types down
+                const narrowed = node as Identifier;
+
+                //check if it references a variable
+                const variable = program.findVariable(getIdentifierName(narrowed));
+                if (variable) {
+                    program.pushOp(ReflectionOp.loads, variable.frameOffset, variable.stackIndex);
+                }
+                break;
+            }
             default: {
                 program.pushOp(ReflectionOp.any);
             }
@@ -1144,7 +1202,7 @@ export class ReflectionTransformer {
         return this.f.createIdentifier('__Ω' + joinQualifiedName(typeName));
     }
 
-    protected extractPackStructOfTypeReference(type: TypeReferenceNode, program: CompilerProgram) {
+    protected extractPackStructOfTypeReference(type: TypeReferenceNode, program: CompilerProgram): void {
         if (isIdentifier(type.typeName) && this.knownClasses[getIdentifierName(type.typeName)]) {
             program.pushOp(this.knownClasses[getIdentifierName(type.typeName)]);
         } else if (isIdentifier(type.typeName) && getIdentifierName(type.typeName) === 'Promise') {
@@ -1167,6 +1225,9 @@ export class ReflectionTransformer {
                     program.pushOp(ReflectionOp.loads, variable.frameOffset, variable.stackIndex);
                     return;
                 }
+            } else if (isInferTypeNode(type.typeName)) {
+                this.extractPackStructOfType(type.typeName, program);
+                return;
             }
 
             const resolved = this.resolveDeclaration(type.typeName);
@@ -1282,31 +1343,95 @@ export class ReflectionTransformer {
 
                 //check if `type` was used in an expression. if so, we need to resolve it from runtime, otherwise we mark it as T
 
-                //todo: this does not work with when T is used from outer scope
-                // like function <T>(v: T) { return class {item: T}}
-                const isInExpression = type.parent.kind === SyntaxKind.CallExpression;
+                function isDefinedIn(start: Node, parent: SyntaxKind): Node | undefined {
+                    let current: Node = start;
+                    while (current) {
+                        if (current.kind === parent) return current;
+                        current = current.parent;
+                    }
+                    return;
+                }
 
-                if (isInExpression) {
-                    //we need to resolve from which variable the type can be inferred of. If not possible, use its constraint. If that's not possible, use any.
-                    function resolveParameterUser(type: TypeParameterDeclaration): Identifier | undefined {
-                        if (type.parent.kind === SyntaxKind.FunctionDeclaration || type.parent.kind === SyntaxKind.FunctionExpression) {
-                            for (const parameter of (type.parent as SignatureDeclaration).parameters) {
-                                //todo, go deeper to find type
-                                if (parameter.type && isTypeReferenceNode(parameter.type) && isIdentifier(parameter.type.typeName) && parameter.type.typeName.escapedText === type.name.escapedText) {
-                                    if (isIdentifier(parameter.name)) return parameter.name;
+                function isInFunctionReturnType(start: Node): boolean {
+                    let current: Node = start;
+                    while (current) {
+                        if (current.parent && (isMethodSignature(current.parent) || isFunctionDeclaration(current.parent)
+                            || isFunctionExpression(current.parent) || isArrowFunction(current.parent) || isMethodDeclaration(current.parent))) {
+                            return current === current.parent.type;
+                        }
+                        current = current.parent;
+                    }
+                    return false;
+                }
+
+                const isUsedInFunction = isFunctionLike(declaration.parent);
+                const resolveRuntimeTypeParameter = (isUsedInFunction && program.isResolveFunctionParameters(declaration.parent))
+                    || (!isDefinedIn(type, SyntaxKind.TypeParameter) && !isDefinedIn(type, SyntaxKind.Parameter) && !isInFunctionReturnType(type));
+
+                if (resolveRuntimeTypeParameter) {
+                    //go through all parameters and look where `type.name.escapedText` is used (recursively).
+                    //go through all found parameters and replace `T` with `infer T` and embed its type in `typeof parameter extends Type<infer T> ? T : never`, if T is not directly used
+                    const argumentName = declaration.name.escapedText as string; //T
+                    const foundUsers: { type: Node, parameterName: Identifier }[] = [];
+
+                    if (isUsedInFunction) {
+                        for (const parameter of (declaration.parent as SignatureDeclaration).parameters) {
+                            if (!parameter.type) continue;
+                            //if deeply available?
+                            let found = false;
+                            const searchArgument = (node: Node): Node => {
+                                node = visitEachChild(node, searchArgument, this.context);
+
+                                if (isIdentifier(node) && node.escapedText === argumentName) {
+                                    //transform to infer T
+                                    found = true;
+                                    node = this.f.createInferTypeNode(declaration);
                                 }
+
+                                return node;
+                            };
+
+                            const updatedParameterType = visitEachChild(parameter.type, searchArgument, this.context);
+                            if (found && isIdentifier(parameter.name)) {
+                                foundUsers.push({ type: updatedParameterType, parameterName: parameter.name });
                             }
                         }
-                        return;
                     }
 
-                    //todo: 1. search for one or multiple variables where T is used, like `<T>(value: T): void` => value.
-                    //todo: 2. create XXX to resolve type from `value` in context of T's constraint.
-                    const user = resolveParameterUser(declaration);
-                    if (user) {
-                        program.pushOp(ReflectionOp.typeof, program.findOrAddStackEntry(user));
+                    if (foundUsers.length) {
+                        //todo: if there are multiple infers, we need to create an intersection
+                        if (foundUsers.length > 1) {
+                            //todo: intersection start
+                        }
+
+                        for (const foundUser of foundUsers) {
+                            program.pushConditionalFrame();
+
+                            program.pushOp(ReflectionOp.typeof, program.findOrAddStackEntry(foundUser.parameterName));
+                            this.extractPackStructOfType(foundUser.type, program);
+                            program.pushOp(ReflectionOp.extends);
+
+                            this.extractPackStructOfType(declaration.name, program);
+                            this.extractPackStructOfType({ kind: SyntaxKind.NeverKeyword } as TypeNode, program);
+                            program.pushOp(ReflectionOp.condition);
+                            program.popFrame();
+                        }
+
+                        if (foundUsers.length > 1) {
+                            //todo: intersection end
+                        }
+
+                    } else if (declaration.constraint) {
+                        if (isUsedInFunction) program.resolveFunctionParametersIncrease(declaration.parent);
+                        const constraint = getEffectiveConstraintOfTypeParameter(declaration);
+                        if (constraint) {
+                            this.extractPackStructOfType(constraint, program);
+                        } else {
+                            program.pushOp(ReflectionOp.never);
+                        }
+                        if (isUsedInFunction) program.resolveFunctionParametersDecrease(declaration.parent);
                     } else {
-                        program.pushOp(ReflectionOp.any);
+                        program.pushOp(ReflectionOp.never);
                     }
                 } else {
                     program.pushOp(ReflectionOp.template, program.findOrAddStackEntry(getNameAsString(type.typeName)));

@@ -10,7 +10,7 @@
 
 import { expect, test } from '@jest/globals';
 import { typeOf } from '../../../src/reflection/reflection';
-import { assertType, ReflectionKind, Type, typeInfer } from '../../../src/reflection/type';
+import { assertType, ReflectionKind, ReflectionVisibility, Type, typeInfer, Widen } from '../../../src/reflection/type';
 
 test('infer T from function primitive', () => {
     function fn<T extends string | number>(v: T) {
@@ -21,15 +21,52 @@ test('infer T from function primitive', () => {
     expect(fn(23)).toEqual({ kind: ReflectionKind.literal, literal: 23 } as Type);
 });
 
+test('infer T from function boxed primitive', () => {
+    type Box<T> = { a: T };
+
+    function fn<T extends string | number>(v: Box<T>) {
+        return typeOf<T>();
+    }
+
+    //TS infers literals
+    expect(fn({ a: 'abc' })).toEqual({ kind: ReflectionKind.literal, literal: 'abc' } as Type);
+    expect(fn({ a: 23 })).toEqual({ kind: ReflectionKind.literal, literal: 23 } as Type);
+});
+
+test('infer T from function conditional', () => {
+    type Box<T> = T extends string ? true : false;
+
+    function fn<T extends string | number, U extends Box<T>>(v: T) {
+        return typeOf<U>();
+    }
+
+    expect(fn('abc')).toEqual({ kind: ReflectionKind.literal, literal: true } as Type);
+    expect(fn(23)).toEqual({ kind: ReflectionKind.literal, literal: false } as Type);
+});
+
+test('infer T from function branded primitive', () => {
+    type PrimaryKey<A> = A & { __brand?: 'primaryKey' };
+
+    function fn<T extends PrimaryKey<any>>(v: T) {
+        return typeOf<T>();
+    }
+
+    //TS infers literal
+    expect(fn('abc')).toEqual({ kind: ReflectionKind.literal, literal: 'abc' } as Type);
+    expect(fn(23)).toEqual({ kind: ReflectionKind.literal, literal: 23 } as Type);
+});
+
 test('infer T from function union primitive object', () => {
     function fn<T extends string | { a: string | number }>(v: T) {
         return typeOf<T>();
     }
 
     expect(fn('abc')).toEqual({ kind: ReflectionKind.literal, literal: 'abc' } as Type);
+
+    //TS infers {a: string}
     expect(fn({ a: 'abc' })).toEqual({
         kind: ReflectionKind.objectLiteral, types: [
-            { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string } }
+            { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string, origin: { kind: ReflectionKind.literal, literal: 'abc' } } }
         ]
     } as Type);
 });
@@ -50,32 +87,53 @@ test('infer T from interface function', () => {
     expect(typeOf<a>()).toEqual(typeOf<string>());
 });
 
+test('extends string generates literal in constrained type', () => {
+    type Brand<T> = T & { __meta?: 'brand' };
+
+    type f<T> = T extends { a: infer R } ? { b: R } : never;
+    type f1 = f<{ a: 'asd' }>;
+
+    const f = <T>(v: T): { a: T } => ({ a: v }); //{a: string}
+    const f1 = <T>(v: Brand<T>) => ({ a: v }); //{a: 'abc'}
+    const f2 = <T extends string>(v: T) => ({ a: v }); //{a: 'abc'}
+    const f3 = <T extends string | any>(v: T) => ({ a: v }); //{a: string}
+
+    const rf = f('abc'); //{a: string}
+    const rf1 = f1('abc'); //{a: 'abc'}
+    const rf2 = f2('abc'); //{a: 'abc'}
+    const rf3 = f3('abc'); //{a: string}
+
+    const h = <T>(v: T) => v; //'abc'
+    const h2 = <T extends string>(v: T) => v; //'abc'
+    const h3 = <T extends string | any>(v: T) => v; //'abc'
+
+    const rh1 = h('abc'); //'abc'
+    const rh2 = h2('abc'); //'abc'
+    const rh3 = h3('abc'); //'abc'
+
+    //=> This rule is not even well understood among typescript developers, so we resolve always the narrowed type.
+    // The user needs to use Widen<T> if they want to widen it.
+    // We keep the code to make sure it compiles and runs correctly.
+});
+
 test('infer T from class', () => {
-    class Wrap<T> {
-        constructor(item: T) {
-        }
-
-        type() {
-            return typeOf<T>();
-        }
-    }
-
-    const o = new Wrap('abc');
-    // expect(o.type()).toEqual({ kind: ReflectionKind.string });
-
-    function bla<T>(v: T) {
+    function bla<T extends string | number>(v: T) {
         class P {
-            type!: T;
+            typeNarrow!: T;
+            type!: Widen<T>;
         }
 
         return P;
     }
 
     const clazz = bla('abc');
+    const o = new clazz;
+    o.type = 'another-value';
+
     const type = typeInfer(clazz);
     assertType(type, ReflectionKind.class);
-    //todo: TypeParameterDeclaration in compiler needs to be fixed to support that
-    expect(type.types).toEqual([
-        { kind: ReflectionKind.property, name: 'type', type: { kind: ReflectionKind.string } }
+    expect(type.types).toMatchObject([
+        { kind: ReflectionKind.property, name: 'typeNarrow', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.literal, literal: 'abc' }, } as Type,
+        { kind: ReflectionKind.property, name: 'type', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string }, } as Type,
     ]);
 });

@@ -20,7 +20,9 @@ export enum ReflectionVisibility {
 export enum ReflectionKind {
     never,
     any,
+    unknown,
     void,
+    object,
     string,
     number,
     boolean,
@@ -72,19 +74,31 @@ export function isBrandable(type: Type): type is TypeVoid | TypeString | TypeNum
         || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined || type.kind === ReflectionKind.literal;
 }
 
-export interface TypeNever {
+export interface TypeInferred {
+    inferred?: true; //not in use yet
+}
+
+export interface TypeNever extends TypeInferred {
     kind: ReflectionKind.never,
 }
 
-export interface TypeAny {
+export interface TypeAny extends TypeInferred {
     kind: ReflectionKind.any,
 }
 
-export interface TypeVoid extends TypeBrandable {
+export interface TypeUnknown extends TypeInferred {
+    kind: ReflectionKind.unknown,
+}
+
+export interface TypeVoid extends TypeBrandable, TypeInferred {
     kind: ReflectionKind.void,
 }
 
-export interface TypeString extends TypeBrandable {
+export interface TypeObject extends TypeInferred {
+    kind: ReflectionKind.object,
+}
+
+export interface TypeString extends TypeBrandable, TypeOrigin, TypeInferred {
     kind: ReflectionKind.string,
 }
 
@@ -108,37 +122,41 @@ export enum TypeNumberBrand {
     float64,
 }
 
-export interface TypeNumber extends TypeBrandable {
+export interface TypeOrigin {
+    origin?: Type;
+}
+
+export interface TypeNumber extends TypeBrandable, TypeOrigin, TypeInferred {
     kind: ReflectionKind.number,
     brand?: TypeNumberBrand; //built in brand
 }
 
-export interface TypeBoolean extends TypeBrandable {
+export interface TypeBoolean extends TypeBrandable, TypeOrigin, TypeInferred {
     kind: ReflectionKind.boolean,
 }
 
-export interface TypeBigInt extends TypeBrandable {
+export interface TypeBigInt extends TypeBrandable, TypeOrigin, TypeInferred {
     kind: ReflectionKind.bigint,
 }
 
-export interface TypeSymbol extends TypeBrandable {
+export interface TypeSymbol extends TypeBrandable, TypeInferred {
     kind: ReflectionKind.symbol,
 }
 
-export interface TypeNull extends TypeBrandable {
+export interface TypeNull extends TypeBrandable, TypeInferred {
     kind: ReflectionKind.null,
 }
 
-export interface TypeUndefined extends TypeBrandable {
+export interface TypeUndefined extends TypeBrandable, TypeInferred {
     kind: ReflectionKind.undefined,
 }
 
-export interface TypeLiteral extends TypeBrandable {
+export interface TypeLiteral extends TypeBrandable, TypeInferred {
     kind: ReflectionKind.literal,
     literal: symbol | string | number | boolean | bigint;
 }
 
-export interface TypeRegexp extends TypeBrandable {
+export interface TypeRegexp extends TypeBrandable, TypeInferred {
     kind: ReflectionKind.regexp;
 }
 
@@ -186,14 +204,14 @@ export interface TypeProperty extends TypeLiteralMember {
     default?: () => any
 }
 
-export interface TypeFunction {
+export interface TypeFunction extends TypeInferred {
     kind: ReflectionKind.function,
     name?: number | string | symbol,
     parameters: TypeParameter[];
     return: Type;
 }
 
-export interface TypePromise {
+export interface TypePromise extends TypeInferred {
     kind: ReflectionKind.promise,
     type: Type;
 }
@@ -296,11 +314,18 @@ export interface TypeRest {
     type: Type
 }
 
-export type Type = TypeNever | TypeAny | TypeVoid | TypeString | TypeNumber | TypeBoolean | TypeBigInt | TypeSymbol | TypeNull | TypeUndefined | TypeLiteral
+export type Type = TypeNever | TypeAny | TypeUnknown | TypeVoid | TypeObject | TypeString | TypeNumber | TypeBoolean | TypeBigInt | TypeSymbol | TypeNull | TypeUndefined | TypeLiteral
     | TypeParameter | TypeFunction | TypeMethod | TypeProperty | TypePromise | TypeClass | TypeEnum | TypeEnumMember | TypeUnion | TypeIntersection | TypeArray
     | TypeObjectLiteral | TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeTemplate | TypeInfer | TypeTuple | TypeTupleMember
     | TypeRest | TypeRegexp
     ;
+
+export type Widen<T> =
+    T extends string ? string
+        : T extends number ? number
+            : T extends bigint ? bigint
+                : T extends boolean ? boolean
+                    : T extends symbol ? symbol : T;
 
 export type FindType<T extends Type, LOOKUP extends ReflectionKind> = { [P in keyof T]: T[P] extends LOOKUP ? T : never }[keyof T]
 
@@ -315,32 +340,79 @@ export function isSameType(a: Type, b: Type): boolean {
     if (a.kind !== b.kind) return false;
 
     if (a.kind === ReflectionKind.literal) return a.literal === (b as TypeLiteral).literal;
-    if (a.kind === ReflectionKind.objectLiteral || a.kind === ReflectionKind.class) {
-        //todo: compare structure if equal
-        for (const t of a.types) {
 
+    if (a.kind === ReflectionKind.class && b.kind === ReflectionKind.class) {
+        if (a.classType !== b.classType) return false;
+        if (!a.arguments && !b.arguments) return true;
+        if (!a.arguments || !b.arguments) return false;
+
+        if (a.arguments && !b.arguments) return false;
+        if (!a.arguments && b.arguments) return false;
+
+        for (let i = 0; a.arguments.length; i++) {
+            if (!isSameType(a.arguments[i], b.arguments[i])) return false;
+        }
+        return true;
+    }
+
+    if (a.kind === ReflectionKind.objectLiteral) {
+        if (b.kind === ReflectionKind.objectLiteral) {
+            if (a.types.length !== b.types.length) return false;
+
+            for (const aMember of a.types) {
+                //todo: call signature
+                if (aMember.kind === ReflectionKind.indexSignature) {
+                    const valid = b.types.some(v => {
+                        if (v.kind !== ReflectionKind.indexSignature) return false;
+                        const sameIndex = isSameType(aMember.index, v.index);
+                        const sameType = isSameType(aMember.type, v.type);
+                        return sameIndex && sameType;
+                    });
+                    if (!valid) return false;
+                } else if (aMember.kind === ReflectionKind.propertySignature || aMember.kind === ReflectionKind.methodSignature) {
+                    const bMember = findMember(aMember.name, b);
+                    if (!bMember) return false;
+                    if (!isSameType(aMember, bMember)) return false;
+                }
+            }
+            return true;
         }
     }
 
-    if (a.kind === ReflectionKind.array) {
-
+    if (a.kind === ReflectionKind.array && b.kind === ReflectionKind.array) {
+        return isSameType(a.type, b.type);
     }
 
-    if (a.kind === ReflectionKind.tuple) {
-
+    if (a.kind === ReflectionKind.tuple && b.kind === ReflectionKind.tuple) {
+        for (let i = 0; i < a.types.length; i++) {
+            if (!isSameType(a.types[i], b.types[i])) return false;
+        }
+        return true;
     }
 
-    if (a.kind === ReflectionKind.function || a.kind === ReflectionKind.method) {
-
+    if (a.kind === ReflectionKind.parameter && b.kind === ReflectionKind.parameter) {
+        return a.name === b.name && a.optional === b.optional && isSameType(a.type, b.type);
     }
 
-    if (a.kind === ReflectionKind.union) {
+    if (a.kind === ReflectionKind.function || a.kind === ReflectionKind.method || a.kind === ReflectionKind.methodSignature) {
+        if (b.kind !== ReflectionKind.function && b.kind !== ReflectionKind.method && b.kind !== ReflectionKind.methodSignature) return false;
+        if (a.parameters.length !== b.parameters.length) return false;
 
+        for (let i = 0; i < a.parameters.length; i++) {
+            if (!isSameType(a.parameters[i], b.parameters[i])) return false;
+        }
+
+        return isSameType(a.return, b.return);
     }
 
-    //todo: this is not at all done.
+    if (a.kind === ReflectionKind.union && b.kind === ReflectionKind.union) {
+        if (a.types.length !== b.types.length) return false;
+        for (let i = 0; i < a.types.length; i++) {
+            if (!isTypeIncluded(b.types, a.types[i])) return false;
+        }
+    }
 
-    return true;
+    return a.kind === b.kind;
 }
 
 export function isTypeIncluded(types: Type[], type: Type): boolean {
@@ -349,6 +421,35 @@ export function isTypeIncluded(types: Type[], type: Type): boolean {
     }
 
     return false;
+}
+
+/**
+ * `true | (string | number)` => `true | string | number`
+ */
+export function flattenUnion(types: Type[]): Type[] {
+    const result: Type[] = [];
+    for (const type of types) {
+        if (type.kind === ReflectionKind.union) {
+            for (const s of flattenUnion(type.types)) {
+                if (!isTypeIncluded(result, s)) result.push(s);
+            }
+        } else {
+            if (!isTypeIncluded(result, type)) result.push(type);
+        }
+    }
+
+    return result;
+}
+
+/**
+ * empty union => never
+ * union with one member => member
+ * otherwise the union is returned
+ */
+export function unboxUnion(union: TypeUnion): Type {
+    if (union.types.length === 0) return { kind: ReflectionKind.never };
+    if (union.types.length === 1) return union.types[0];
+    return union;
 }
 
 function findMember(
@@ -388,7 +489,7 @@ function resolveObjectIndexType(type: TypeObjectLiteral | TypeClass, index: Type
                 return { kind: ReflectionKind.never };
             }
         } else {
-            return { kind: ReflectionKind.any };
+            return { kind: ReflectionKind.never };
         }
     } else {
         return { kind: ReflectionKind.never };
@@ -428,7 +529,7 @@ export function indexAccess(container: Type, index: Type): Type {
                     union.types.push(sub.type);
                 }
             }
-            return union;
+            return unboxUnion(union);
         } else {
             return { kind: ReflectionKind.never };
         }
@@ -451,21 +552,28 @@ export function indexAccess(container: Type, index: Type): Type {
                     union.types.push(result);
                 }
             }
-            return union;
+            return unboxUnion(union);
         } else {
-            return { kind: ReflectionKind.any };
+            return { kind: ReflectionKind.never };
         }
     }
     return { kind: ReflectionKind.never };
 }
 
+export function narrowOriginalLiteral(type: Type): Type {
+    if ((type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.boolean || type.kind === ReflectionKind.bigint) && type.origin) {
+        return type.origin;
+    }
+    return type;
+}
+
 export function widenLiteral(type: Type): Type {
     if (type.kind === ReflectionKind.literal) {
-        if ('number' === typeof type.literal) return { kind: ReflectionKind.number };
-        if ('boolean' === typeof type.literal) return { kind: ReflectionKind.boolean };
-        if ('bigint' === typeof type.literal) return { kind: ReflectionKind.bigint };
+        if ('number' === typeof type.literal) return { kind: ReflectionKind.number, origin: type };
+        if ('boolean' === typeof type.literal) return { kind: ReflectionKind.boolean, origin: type };
+        if ('bigint' === typeof type.literal) return { kind: ReflectionKind.bigint, origin: type };
         if ('symbol' === typeof type.literal) return { kind: ReflectionKind.symbol };
-        if ('string' === typeof type.literal) return { kind: ReflectionKind.string };
+        if ('string' === typeof type.literal) return { kind: ReflectionKind.string, origin: type };
     }
 
     return type;
@@ -730,7 +838,9 @@ export function stringifyType(type: Type, depth: number = 0): string {
 export enum ReflectionOp {
     never,
     any,
+    unknown,
     void,
+    object,
 
     string,
     number,
@@ -838,6 +948,8 @@ export enum ReflectionOp {
 
     //special instructions that exist to emit less output
     date,
+
+    //those typed array OPs are here only to reduce runtime code overhead when used in types.
     int8Array,
     uint8ClampedArray,
     uint8Array,
@@ -849,6 +961,7 @@ export enum ReflectionOp {
     float64Array,
     bigInt64Array,
     arrayBuffer,
+
     promise,
 
     // pointer, //parameter is a number referencing an entry in the stack, relative to the very beginning (0). pushes that entry onto the stack.
@@ -864,12 +977,12 @@ export enum ReflectionOp {
     typeof, //1 parameter that points to a function returning the runtime value from which we need to extract the type
 
     condition,
-    jumpCondition, //used when INFER is used in `extends` conditional branch. 2 args: left program, right program
+    jumpCondition, //@deprecated. used when INFER is used in `extends` conditional branch. 2 args: left program, right program
     jump, //jump to an address
     call, //has one parameter, the next program address. creates a new stack frame with current program address as first stack entry, and jumps back to that + 1.
     inline,
     inlineCall,
-
+    distribute,//has one parameter, the co-routine program index.
 
     extends, //X extends Y, XY popped from the stack, pushes boolean on the stack
 }
