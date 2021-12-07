@@ -108,17 +108,17 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
     ],
     [
         `class Container<T> {data: T}`,
-        `Container.__type = ['T', 'data', ${packString([ReflectionOp.template, 0, ReflectionOp.loads, 0, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`
+        `Container.__type = ['T', 'data', ${packString([ReflectionOp.typeParameter, 0, ReflectionOp.loads, 0, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`
     ],
 
     [
         `class Container<T> {data: T extends boolean ? number : never}`,
-        `Container.__type = ['T', 'data', ${packString([ReflectionOp.template, 0, ReflectionOp.frame, ReflectionOp.loads, 1, 0, ReflectionOp.boolean, ReflectionOp.extends, ReflectionOp.number, ReflectionOp.never, ReflectionOp.condition, ReflectionOp.property, 1, ReflectionOp.class])}]`
+        `Container.__type = ['T', 'data', ${packString([ReflectionOp.typeParameter, 0, ReflectionOp.frame, ReflectionOp.loads, 1, 0, ReflectionOp.boolean, ReflectionOp.extends, ReflectionOp.number, ReflectionOp.never, ReflectionOp.condition, ReflectionOp.property, 1, ReflectionOp.class])}]`
     ],
 
     [
         `class Container<T, L> {data: T, label: L}`,
-        `Container.__type = ['T', 'L', 'data', 'label', ${packString([ReflectionOp.template, 0, ReflectionOp.template, 1, ReflectionOp.loads, 0, 0, ReflectionOp.property, 2, ReflectionOp.loads, 0, 1, ReflectionOp.property, 3, ReflectionOp.class])}]`
+        `Container.__type = ['T', 'L', 'data', 'label', ${packString([ReflectionOp.typeParameter, 0, ReflectionOp.typeParameter, 1, ReflectionOp.loads, 0, 0, ReflectionOp.property, 2, ReflectionOp.loads, 0, 1, ReflectionOp.property, 3, ReflectionOp.class])}]`
     ],
 
     [`class Entity { p: string | number; p2: string}`,
@@ -579,6 +579,37 @@ test('infer T in function primitive', () => {
     console.log(type('abc'));
 });
 
+
+test('constructor', () => {
+    const code = `
+        type constructor = abstract new (...args: any) => any;
+        return typeOf<constructor>();
+    `;
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code) as (v: string | number) => Type;
+    console.log(type);
+});
+
+test('template literal', () => {
+    const code = '' +
+        'type d8 = `1233` extends `${number}${infer T1}${number}` ? T1 : never;\n' +
+        'type d9 = `1133` extends `${object}${infer T1}${number}` ? T1 : never;';
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code) as (v: string | number) => Type;
+    console.log(type);
+});
+
+test('multiple infer', () => {
+    const code = 'type a2 = \'abcd\' extends `a${infer T}${infer T2}` ? [T, T2] : never;\n' +
+        'return typeOf<a2>();'
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code) as (v: string | number) => Type;
+    console.log(type);
+});
+
 test('complex infer T', () => {
     function fn1<T extends string | number>(v: T) {
         type inferT = typeof v;
@@ -609,11 +640,13 @@ test('infer T in function boxed primitive', () => {
     `;
 
     type Box<T> = { a: T };
+
     function fn<T extends string | number>(v: Box<T>): T {
         return undefined as any;
     }
-    const t1 = fn({a: 'abc'});
-    const t2 = fn({a: 23});
+
+    const t1 = fn({ a: 'abc' });
+    const t2 = fn({ a: 23 });
 
     const js = transpile(code);
     console.log('js', js);

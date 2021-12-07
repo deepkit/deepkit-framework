@@ -19,6 +19,7 @@ import {
     ClassExpression,
     ConditionalTypeNode,
     ConstructorDeclaration,
+    ConstructorTypeNode,
     createCompilerHost,
     createProgram,
     CustomTransformerFactory,
@@ -49,6 +50,7 @@ import {
     isClassDeclaration,
     isClassExpression,
     isConstructorDeclaration,
+    isConstructorTypeNode,
     isEnumDeclaration,
     isExportDeclaration,
     isFunctionDeclaration,
@@ -93,6 +95,7 @@ import {
     StringLiteral,
     SymbolTable,
     SyntaxKind,
+    TemplateLiteralTypeNode,
     TransformationContext,
     TupleTypeNode,
     TypeAliasDeclaration,
@@ -151,8 +154,8 @@ const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.property]: { params: 1 },
     [ReflectionOp.jump]: { params: 1 },
     [ReflectionOp.enum]: { params: 1 },
-    [ReflectionOp.template]: { params: 1 },
-    [ReflectionOp.templateDefault]: { params: 1 },
+    [ReflectionOp.typeParameter]: { params: 1 },
+    [ReflectionOp.typeParameterDefault]: { params: 1 },
     [ReflectionOp.mappedType]: { params: 2 },
     [ReflectionOp.call]: { params: 1 },
     [ReflectionOp.inline]: { params: 1 },
@@ -175,6 +178,9 @@ export function debugPackStruct(pack: { ops: ReflectionOp[], stack: PackExpressi
         const op = pack.ops[i];
         const opInfo = OPs[op];
         items.push(ReflectionOp[op]);
+        if (ReflectionOp[op] === undefined) {
+            throw new Error(`Operator ${op} does not exist at position ${i}`);
+        }
         // items.push(op);
         if (opInfo && opInfo.params > 0) {
             for (let j = 0; j < opInfo.params; j++) {
@@ -305,6 +311,11 @@ class CompilerProgram {
     }
 
     pushOp(...ops: ReflectionOp[]): void {
+        for (const op of ops) {
+            if ('number' !== typeof op) {
+                throw new Error('No valid OP added');
+            }
+        }
         if (this.activeCoRoutines.length) {
             this.activeCoRoutines[this.activeCoRoutines.length - 1].ops.push(...ops);
             return;
@@ -352,6 +363,10 @@ class CompilerProgram {
         return (this.resolveFunctionParameters.get(fn) || 0) > 0;
     }
 
+    /**
+     *
+     * Each pushFrame() call needs a popFrame() call.
+     */
     pushFrame(implicit: boolean = false) {
         if (!implicit) this.pushOp(ReflectionOp.frame);
         const opIndex = this.activeCoRoutines.length ? this.activeCoRoutines[this.activeCoRoutines.length - 1].ops.length : this.ops.length;
@@ -370,14 +385,14 @@ class CompilerProgram {
     pushVariable(name: string, frame: Frame = this.frame): number {
         this.pushOpAtFrame(frame, ReflectionOp.var);
         frame.variables.push({
-            index: this.frame.variables.length,
+            index: frame.variables.length,
             name,
         });
         return frame.variables.length - 1;
     }
 
     pushTemplateParameter(name: string, withDefault: boolean = false): number {
-        this.pushOp(withDefault ? ReflectionOp.templateDefault : ReflectionOp.template, this.findOrAddStackEntry(name));
+        this.pushOp(withDefault ? ReflectionOp.typeParameterDefault : ReflectionOp.typeParameter, this.findOrAddStackEntry(name));
         this.frame.variables.push({
             index: this.frame.variables.length,
             name,
@@ -385,8 +400,8 @@ class CompilerProgram {
         return this.frame.variables.length - 1;
     }
 
-    findVariable(name: string) {
-        return findVariable(this.frame, name);
+    findVariable(name: string, frame = this.frame) {
+        return findVariable(frame, name);
     }
 }
 
@@ -935,10 +950,11 @@ export class ReflectionTransformer {
 
                 const frame = program.findConditionalFrame();
                 if (frame) {
-                    let variable = program.findVariable(getIdentifierName(narrowed.typeParameter.name));
+                    const typeParameterName = getIdentifierName(narrowed.typeParameter.name);
+                    let variable = program.findVariable(typeParameterName);
                     if (!variable) {
-                        program.pushVariable(getIdentifierName(narrowed.typeParameter.name), frame);
-                        variable = program.findVariable(getIdentifierName(narrowed.typeParameter.name));
+                        program.pushVariable(typeParameterName, frame);
+                        variable = program.findVariable(typeParameterName);
                         if (!variable) throw new Error('Could not find inserted infer variable');
                     }
                     program.pushOp(ReflectionOp.infer, variable.frameOffset, variable.stackIndex);
@@ -952,27 +968,34 @@ export class ReflectionTransformer {
             case SyntaxKind.Constructor:
             case SyntaxKind.ArrowFunction:
             case SyntaxKind.FunctionExpression:
+            case SyntaxKind.ConstructorType:
             case SyntaxKind.FunctionType:
             case SyntaxKind.FunctionDeclaration: {
                 //TypeScript does not narrow types down
-                const narrowed = node as MethodSignature | MethodDeclaration | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
+                const narrowed = node as MethodSignature | MethodDeclaration | ConstructorTypeNode | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
 
                 const config = this.findReflectionConfig(narrowed);
                 if (config.mode === 'never') return;
 
                 if (!program.isEmpty()) program.pushFrame();
 
-                const name = isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
+                const name = isConstructorTypeNode(narrowed) ? 'new' : isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
                 if (!narrowed.type && narrowed.parameters.length === 0 && !name) return;
 
                 for (const parameter of narrowed.parameters) {
                     //we support at the moment only identifier as name
                     if (!isIdentifier(parameter.name)) continue;
 
-                    if (parameter.type) {
-                        this.extractPackStructOfType(parameter.type, program);
+                    const type = parameter.type ? (parameter.dotDotDotToken && isArrayTypeNode(parameter.type) ? parameter.type.elementType : parameter.type) : undefined;
+
+                    if (type) {
+                        this.extractPackStructOfType(type, program);
                     } else {
                         program.pushOp(ReflectionOp.any);
+                    }
+
+                    if (parameter.dotDotDotToken) {
+                        program.pushOp(ReflectionOp.rest);
                     }
 
                     program.pushOp(ReflectionOp.parameter, program.findOrAddStackEntry(getNameAsString(parameter.name)));
@@ -1013,6 +1036,27 @@ export class ReflectionTransformer {
                 } else {
                     program.pushOp(ReflectionOp.literal, program.findOrAddStackEntry(narrowed.literal));
                 }
+                break;
+            }
+            case SyntaxKind.TemplateLiteralType: {
+                //TypeScript does not narrow types down
+                const narrowed = node as TemplateLiteralTypeNode;
+
+                program.pushFrame();
+                if (narrowed.head.rawText) {
+                    program.pushOp(ReflectionOp.literal, program.findOrAddStackEntry(narrowed.head.rawText));
+                }
+
+                for (const span of narrowed.templateSpans) {
+                    this.extractPackStructOfType(span.type, program);
+                    if (span.literal.rawText) {
+                        program.pushOp(ReflectionOp.literal, program.findOrAddStackEntry(span.literal.rawText));
+                    }
+                }
+
+                program.pushOp(ReflectionOp.templateLiteral);
+                program.popFrame();
+
                 break;
             }
             case SyntaxKind.UnionType: {
@@ -1203,8 +1247,10 @@ export class ReflectionTransformer {
     }
 
     protected extractPackStructOfTypeReference(type: TypeReferenceNode, program: CompilerProgram): void {
-        if (isIdentifier(type.typeName) && this.knownClasses[getIdentifierName(type.typeName)]) {
-            program.pushOp(this.knownClasses[getIdentifierName(type.typeName)]);
+        if (isIdentifier(type.typeName) && getIdentifierName(type.typeName) !== 'constructor' && this.knownClasses[getIdentifierName(type.typeName)]) {
+            const name = getIdentifierName(type.typeName);
+            const op = this.knownClasses[name];
+            program.pushOp(op);
         } else if (isIdentifier(type.typeName) && getIdentifierName(type.typeName) === 'Promise') {
             //promise has always one sub type
             if (type.typeArguments && type.typeArguments[0]) {
@@ -1215,7 +1261,7 @@ export class ReflectionTransformer {
             program.pushOp(ReflectionOp.promise);
         } else if (isIdentifier(type.typeName) && getIdentifierName(type.typeName) === 'integer') {
             program.pushOp(ReflectionOp.numberBrand, TypeNumberBrand.integer as number);
-        } else if (isIdentifier(type.typeName) && TypeNumberBrand[getIdentifierName(type.typeName) as any] !== undefined) {
+        } else if (isIdentifier(type.typeName) && getIdentifierName(type.typeName) !== 'constructor' && TypeNumberBrand[getIdentifierName(type.typeName) as any] !== undefined) {
             program.pushOp(ReflectionOp.numberBrand, TypeNumberBrand[getIdentifierName(type.typeName) as any] as any);
         } else {
             //check if it references a variable
@@ -1434,7 +1480,7 @@ export class ReflectionTransformer {
                         program.pushOp(ReflectionOp.never);
                     }
                 } else {
-                    program.pushOp(ReflectionOp.template, program.findOrAddStackEntry(getNameAsString(type.typeName)));
+                    program.pushOp(ReflectionOp.typeParameter, program.findOrAddStackEntry(getNameAsString(type.typeName)));
                 }
             } else {
                 this.extractPackStructOfType(declaration, program);

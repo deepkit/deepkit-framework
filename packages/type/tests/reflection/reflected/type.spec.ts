@@ -1,7 +1,10 @@
 import { describe, expect, test } from '@jest/globals';
 import { ReceiveType, typeOf } from '../../../src/reflection/reflection';
-import { isSameType, stringifyType } from '../../../src/reflection/type';
+import { indexAccess, isSameType, ReflectionKind, stringifyType } from '../../../src/reflection/type';
 import { isExtendable } from '../../../src/reflection/extends';
+
+//note: this needs to run in a strict TS mode to infer correctly in the IDE
+type Extends<A, B> = [A] extends [B] ? true : false;
 
 test('stringify primitives', () => {
     expect(stringifyType(typeOf<string>())).toBe('string');
@@ -99,6 +102,28 @@ test('extendability union', () => {
     invalidExtend<string, null | undefined>();
 });
 
+test('extendability constructor', () => {
+    type c = abstract new (...args: any) => any;
+
+    class User {
+    }
+
+    class Setting {
+        constructor(public key: string, public value: any) {
+        }
+    }
+
+    validExtend<any, c>();
+    validExtend<User, c>();
+    validExtend<Setting, c>();
+    invalidExtend<string, c>();
+    invalidExtend<string, c>();
+
+    type c2 = abstract new (key: string, value: any) => any;
+    validExtend<Setting, c2>();
+    invalidExtend<User, c2>();
+});
+
 test('extendability', () => {
     validExtend<string, string>();
     validExtend<'a', string>();
@@ -115,9 +140,11 @@ test('extendability', () => {
     validExtend<true, boolean>();
     validExtend<false, boolean>();
 
-
-    //note: this needs to run in a strict TS mode to infer correctly in the IDE
-    type Extends<A, B> = [A] extends [B] ? true : false;
+    validExtend<string, any>();
+    validExtend<[string], any>();
+    validExtend<boolean, any>();
+    validExtend<{ a: string }, any>();
+    validExtend<never, any>();
 
     type a1 = Extends<never, any>;
     type a11 = Extends<never, unknown>;
@@ -128,7 +155,7 @@ test('extendability', () => {
     type a16 = Extends<never, null>;
     type a17 = Extends<never, string>;
     type a18 = Extends<never, {}>;
-    type a181 = Extends<never, {a: string}>;
+    type a181 = Extends<never, { a: string }>;
     type a19 = Extends<never, User>;
     validExtend<never, any>();
     validExtend<never, unknown>();
@@ -142,7 +169,7 @@ test('extendability', () => {
     validExtend<never, boolean>();
     validExtend<never, bigint>();
     validExtend<never, symbol>();
-    validExtend<never, { }>();
+    validExtend<never, {}>();
     validExtend<never, { a: string }>();
     validExtend<never, User>();
 
@@ -155,7 +182,7 @@ test('extendability', () => {
     type a26 = Extends<null, null>;
     type a27 = Extends<null, string>;
     type a28 = Extends<null, {}>;
-    type a288 = Extends<null, {a: string}>;
+    type a288 = Extends<null, { a: string }>;
     type a29 = Extends<null, User>;
     validExtend<null, any>();
     validExtend<null, unknown>();
@@ -169,7 +196,7 @@ test('extendability', () => {
     invalidExtend<null, boolean>();
     invalidExtend<null, bigint>();
     invalidExtend<null, symbol>();
-    invalidExtend<null, { }>();
+    invalidExtend<null, {}>();
     invalidExtend<null, { a: string }>();
     invalidExtend<null, User>();
 
@@ -182,7 +209,7 @@ test('extendability', () => {
     type a36 = Extends<undefined, null>;
     type a37 = Extends<undefined, string>;
     type a38 = Extends<undefined, {}>;
-    type a388 = Extends<undefined, {a: string}>;
+    type a388 = Extends<undefined, { a: string }>;
     type a39 = Extends<undefined, User>;
     validExtend<undefined, any>();
     validExtend<undefined, unknown>();
@@ -196,7 +223,7 @@ test('extendability', () => {
     invalidExtend<undefined, boolean>();
     invalidExtend<undefined, bigint>();
     invalidExtend<undefined, symbol>();
-    invalidExtend<undefined, { }>();
+    invalidExtend<undefined, {}>();
     invalidExtend<undefined, { a: string }>();
     invalidExtend<undefined, User>();
 
@@ -209,7 +236,7 @@ test('extendability', () => {
     type a46 = Extends<void, null>;
     type a47 = Extends<void, string>;
     type a48 = Extends<void, {}>;
-    type a488 = Extends<void, {a: string}>;
+    type a488 = Extends<void, { a: string }>;
     type a49 = Extends<void, User>;
     validExtend<void, any>();
     validExtend<void, unknown>();
@@ -223,7 +250,7 @@ test('extendability', () => {
     invalidExtend<void, boolean>();
     invalidExtend<void, bigint>();
     invalidExtend<void, symbol>();
-    invalidExtend<void, { }>();
+    invalidExtend<void, {}>();
     invalidExtend<void, { a: string }>();
     invalidExtend<void, User>();
 
@@ -236,7 +263,7 @@ test('extendability', () => {
     type a56 = Extends<object, null>;
     type a57 = Extends<object, string>;
     type a58 = Extends<object, {}>;
-    type a588 = Extends<object, {a: string}>;
+    type a588 = Extends<object, { a: string }>;
     type a59 = Extends<object, User>;
     type a599 = Extends<object, EmptyEntity>;
     validExtend<object, any>();
@@ -251,7 +278,7 @@ test('extendability', () => {
     invalidExtend<object, boolean>();
     invalidExtend<object, bigint>();
     invalidExtend<object, symbol>();
-    validExtend<object, { }>();
+    validExtend<object, {}>();
     invalidExtend<object, { a: string }>();
     invalidExtend<object, User>();
     validExtend<object, EmptyEntity>();
@@ -265,7 +292,7 @@ test('extendability', () => {
     type a66 = Extends<unknown, null>;
     type a67 = Extends<unknown, string>;
     type a68 = Extends<unknown, {}>;
-    type a688 = Extends<unknown, {a: string}>;
+    type a688 = Extends<unknown, { a: string }>;
     type a69 = Extends<unknown, User>;
     validExtend<unknown, any>();
     validExtend<unknown, unknown>();
@@ -279,7 +306,7 @@ test('extendability', () => {
     invalidExtend<unknown, boolean>();
     invalidExtend<unknown, bigint>();
     invalidExtend<unknown, symbol>();
-    invalidExtend<unknown, { }>();
+    invalidExtend<unknown, {}>();
     invalidExtend<unknown, { a: string }>();
     invalidExtend<unknown, User>();
 
@@ -292,7 +319,7 @@ test('extendability', () => {
     type a76 = Extends<any, null>;
     type a77 = Extends<any, string>;
     type a78 = Extends<any, {}>;
-    type a788 = Extends<any, {a: string}>;
+    type a788 = Extends<any, { a: string }>;
     type a79 = Extends<any, User>;
     type a799 = Extends<any, EmptyEntity>;
     validExtend<any, any>();
@@ -307,7 +334,7 @@ test('extendability', () => {
     validExtend<any, boolean>();
     validExtend<any, bigint>();
     validExtend<any, symbol>();
-    validExtend<any, { }>();
+    validExtend<any, {}>();
     validExtend<any, { a: string }>();
     validExtend<any, User>();
 
@@ -320,25 +347,250 @@ test('extendability', () => {
     type a86 = Extends<{}, null>;
     type a87 = Extends<{}, string>;
     type a88 = Extends<{}, {}>;
-    type a888 = Extends<{}, {a: string}>;
+    type a888 = Extends<{}, { a: string }>;
     type a89 = Extends<{}, User>;
     type a899 = Extends<{}, EmptyEntity>;
-    validExtend< { }, any>();
-    validExtend<{ }, unknown>();
-    validExtend<{ }, object>();
-    invalidExtend<{ }, void>();
-    invalidExtend<{ }, undefined>();
-    invalidExtend<{ }, never>();
-    invalidExtend<{ }, null>();
-    invalidExtend<{ }, string>();
-    invalidExtend<{ }, number>();
-    invalidExtend<{ }, boolean>();
-    invalidExtend<{ }, bigint>();
-    invalidExtend<{ }, symbol>();
-    validExtend<{ }, { }>();
-    invalidExtend<{ }, { a: string }>();
-    invalidExtend<{ }, User>();
-    validExtend<{ }, EmptyEntity>();
+    validExtend<{}, any>();
+    validExtend<{}, unknown>();
+    validExtend<{}, object>();
+    invalidExtend<{}, void>();
+    invalidExtend<{}, undefined>();
+    invalidExtend<{}, never>();
+    invalidExtend<{}, null>();
+    invalidExtend<{}, string>();
+    invalidExtend<{}, number>();
+    invalidExtend<{}, boolean>();
+    invalidExtend<{}, bigint>();
+    invalidExtend<{}, symbol>();
+    validExtend<{}, {}>();
+    invalidExtend<{}, { a: string }>();
+    invalidExtend<{}, User>();
+    validExtend<{}, EmptyEntity>();
+
+    type a9 = Extends<`a${string}`, any>;
+    type a91 = Extends<`a${string}`, unknown>;
+    type a911 = Extends<`${string}`, unknown>;
+    type a912 = Extends<string, unknown>;
+    type a92 = Extends<`a${string}`, object>;
+    type a93 = Extends<`a${string}`, void>;
+    type a94 = Extends<`a${string}`, undefined>;
+    type a95 = Extends<`a${string}`, never>;
+    type a96 = Extends<`a${string}`, null>;
+    type a97 = Extends<`a${string}`, string>;
+    type a971 = Extends<`a${string}`, number>;
+    type a98 = Extends<`a${string}`, {}>;
+    type a988 = Extends<`a${string}`, { a: string }>;
+    type a99 = Extends<`a${string}`, User>;
+    type a999 = Extends<`a${string}`, EmptyEntity>;
+    validExtend<`a${string}`, any>();
+    validExtend<`a${string}`, unknown>();
+    validExtend<`${string}`, unknown>();
+    validExtend<string, unknown>();
+    invalidExtend<`a${string}`, object>();
+    invalidExtend<`a${string}`, void>();
+    invalidExtend<`a${string}`, undefined>();
+    invalidExtend<`a${string}`, never>();
+    invalidExtend<`a${string}`, null>();
+    validExtend<`a${string}`, string>();
+    invalidExtend<`a${string}`, number>();
+    invalidExtend<`a${string}`, boolean>();
+    invalidExtend<`a${string}`, bigint>();
+    invalidExtend<`a${string}`, symbol>();
+    validExtend<`a${string}`, {}>();
+    invalidExtend<`a${string}`, { a: string }>();
+    invalidExtend<`a${string}`, User>();
+    validExtend<`a${string}`, EmptyEntity>();
+
+    type b9 = Extends<any, `a${string}`>;
+    type b91 = Extends<unknown, `a${string}`>;
+    type b92 = Extends<object, `a${string}`>;
+    type b93 = Extends<void, `a${string}`>;
+    type b94 = Extends<undefined, `a${string}`>;
+    type b95 = Extends<never, `a${string}`>;
+    type b96 = Extends<null, `a${string}`>;
+    type b97 = Extends<string, `a${string}`>;
+    type b971 = Extends<number, `a${string}`>;
+    type b98 = Extends<{}, `a${string}`>;
+    type b988 = Extends<{ a: string }, `a${string}`>;
+    type b99 = Extends<User, `a${string}`>;
+    type b999 = Extends<EmptyEntity, `a${string}`>;
+    validExtend<any, `a${string}`>();
+    invalidExtend<unknown, `a${string}`>();
+    invalidExtend<unknown, `${string}`>();
+    invalidExtend<object, `a${string}`>();
+    invalidExtend<void, `a${string}`>();
+    invalidExtend<undefined, `a${string}`>();
+    validExtend<never, `a${string}`>();
+    invalidExtend<null, `a${string}`>();
+    invalidExtend<string, `a${string}`>();
+    invalidExtend<number, `a${string}`>();
+    invalidExtend<boolean, `a${string}`>();
+    invalidExtend<bigint, `a${string}`>();
+    invalidExtend<symbol, `a${string}`>();
+    invalidExtend<{}, `a${string}`>();
+    invalidExtend<{ a: string }, `a${string}`>();
+    invalidExtend<User, `a${string}`>();
+    invalidExtend<EmptyEntity, `a${string}`>();
+
+    type c9 = Extends<string, unknown>;
+    type c91 = Extends<number, unknown>;
+    type c92 = Extends<boolean, unknown>;
+    type c93 = Extends<any, unknown>;
+    type c94 = Extends<{}, unknown>;
+    type c95 = Extends<User, unknown>;
+    type c96 = Extends<{ a: string }, unknown>;
+    type c97 = Extends<object, unknown>;
+    type c98 = Extends<null, unknown>;
+    type c99 = Extends<undefined, unknown>;
+    type c100 = Extends<never, unknown>;
+    validExtend<string, unknown>();
+    validExtend<number, unknown>();
+    validExtend<boolean, unknown>();
+    validExtend<string, unknown>();
+});
+
+test('template literal basics', () => {
+    expect(typeOf<`${string}`>()).toEqual(typeOf<string>());
+    expect(typeOf<`${number}`>()).toEqual(typeOf<`${number}`>());
+    expect(typeOf<`${1}`>()).toEqual(typeOf<'1'>());
+    expect(typeOf<`${true}`>()).toEqual(typeOf<'true'>());
+    expect(typeOf<`${boolean}`>()).toEqual(typeOf<'false' | 'true'>());
+});
+
+test('literal extends template literal', () => {
+    validExtend<string, `${string}`>();
+    invalidExtend<string, `a${string}`>();
+    validExtend<`a${string}`, string>();
+
+    type b1 = Extends<'abc', `a${string}`>;
+    type b2 = Extends<'abc', `a${string}bc`>;
+    type b3 = Extends<'abc', `a${string}c`>;
+    type c1 = Extends<'abc', `a${number}`>;
+    type c2 = Extends<'a2', `a${number}`>;
+    type c3 = Extends<'a2e4s', `a${number}s`>;
+    type c4 = Extends<'a2.34s', `a${number}s`>;
+    type c5 = Extends<'2.34s', `${number}${string}`>;
+
+    validExtend<'abc', `a${string}`>();
+    validExtend<'abc', `a${string}bc`>();
+    validExtend<'abc', `a${string}c`>();
+
+    invalidExtend<'abc', `a${number}`>();
+    validExtend<'a2', `a${number}`>();
+    validExtend<'a2e4s', `a${number}s`>();
+    validExtend<'a2.34s', `a${number}s`>();
+    validExtend<'2.34s', `${number}${string}`>();
+
+    validExtend<'abc', `a${string}c`>();
+});
+
+test('template literal extends template literal', () => {
+    // type a0 = Extends<`a${'abc'}`, `aabc`>;
+    // type a1 = Extends<`a${string}`, `a${string}`>;
+    // type a2 = Extends<`a${string}`, `${'1' | ''}a${string}`>;
+    // type a3 = Extends<`abcd`, `a${string}b${string}`>;
+    //
+    // type d1 = `a${number}${number}${string}d` extends `a${infer A}${infer B}d` ? [A, B] : never;
+    // type d2 = `a${number}${number}${string}d` extends `a${string}${string}d` ? true : never;
+    // type d3 = `a122` extends `a${infer A}${infer B}` ? [A, B] : never;
+    // type d4 = `123` extends `${infer S}${number}` ? [S] : never;
+    // type d5 = `!abc123` extends `${infer S}${number}` ? [S] : never;
+    // type d6 = `a1b` extends `${infer T1}${number}${infer T3}` ? [T1, 'number', T3] : never;
+    // type d7 = `a123` extends `${string}${number}${infer T1}${number}` ? T1 : never;
+    //
+    // type d123 = `abc${string}3` extends `a${infer T1}${infer T2}` ? [T1, T2] : never;
+    //
+    // type d8 = `1234` extends `${number}${infer T1}${number}` ? T1 : never;
+    // type d9 = `2234` extends `${number}${infer T1}${number}` ? T1 : never;
+    // type d90 = `2234` extends `${number}${infer T1}${infer T2}` ? T1 : never;
+    // type d901 = `1322234` extends `${number}2${infer T1}` ? T1 : never;
+    //
+    // type d91 = `1133` extends `${infer T1}${string}${number}` ? T1 extends `${number}` ? T1 : never : never;
+    // type d92 = `1133` extends `${number}${string}${number}` ? true : never;
+    //
+    // type d10 = `112233` extends `${number}${infer T1}${number}` ? T1 : never;
+    // type e1 = `${number}a${string}` extends `${string}a${infer T}` ? T : never;
+
+    validExtend<`a${string}`, `a${string}`>();
+    expect(stringifyType(typeOf<`${'1' | ''}a${string}`>())).toEqual('`1a${string}` | `a${string}`');
+    validExtend<`a${string}`, `${'1' | ''}a${string}`>();
+    invalidExtend<`a${string}`, `${'1' | '0'}a${string}`>();
+    validExtend<`1a${string}`, `${'1' | '0'}a${string}`>();
+    validExtend<`0a${string}`, `${'1' | '0'}a${string}`>();
+
+    type e1 = `abcd${string}` extends `ab${infer T1}` ? T1 : never;
+    expect(stringifyType(typeOf<e1>())).toEqual('`cd${string}`');
+
+    type e2 = `abcd${string}` extends `ab${string}${infer T1}` ? T1 : never;
+    expect(stringifyType(typeOf<e2>())).toEqual('`d${string}`');
+});
+
+test('template literal infer', () => {
+    type a1 = 'abc' extends `a${infer T}` ? T : never;
+    expect(typeOf<a1>()).toEqual(typeOf<'bc'>());
+
+    type a2 = 'abcd' extends `a${infer T}${infer T2}` ? [T, T2] : never;
+    expect(typeOf<a2>()).toEqual(typeOf<['b', 'cd']>());
+
+    type a3 = 'abcd' extends `a${string}${infer T2}` ? T2 : never;
+    expect(typeOf<a3>()).toEqual(typeOf<'cd'>());
+
+    type TN<T> = T extends `a${number}` ? T extends `a${infer T}` ? T : never : never;
+    type e1 = TN<`a123.4`>;
+    expect(typeOf<e1>()).toEqual(typeOf<'123.4'>());
+});
+
+test('tuple indexAccess', () => {
+    expect(indexAccess(typeOf<[string]>(), { kind: ReflectionKind.literal, literal: 0 })).toEqual({ kind: ReflectionKind.string });
+    expect(indexAccess(typeOf<[string]>(), { kind: ReflectionKind.literal, literal: 1 })).toEqual({ kind: ReflectionKind.undefined });
+    expect(indexAccess(typeOf<[string, string]>(), { kind: ReflectionKind.literal, literal: 1 })).toEqual({ kind: ReflectionKind.string });
+    expect(indexAccess(typeOf<[string, number]>(), { kind: ReflectionKind.literal, literal: 1 })).toEqual({ kind: ReflectionKind.number });
+    expect(indexAccess(typeOf<[string, ...number[], boolean]>(), { kind: ReflectionKind.literal, literal: 1 })).toEqual({
+        kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.boolean }]
+    });
+    expect(indexAccess(typeOf<[string, ...(number | undefined)[]]>(), { kind: ReflectionKind.literal, literal: 1 })).toEqual({
+        kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }]
+    });
+    expect(indexAccess(typeOf<[string, number?]>(), { kind: ReflectionKind.literal, literal: 1 })).toEqual({
+        kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }]
+    });
+});
+
+test('tuple extends', () => {
+    // validExtend<[], []>();
+    // validExtend<[string], []>();
+    validExtend<[string], [string]>();
+    validExtend<[string], [...string[]]>();
+
+    validExtend<[string, number], [...string[], number]>();
+    validExtend<[string, string, number], [...string[], number]>();
+    validExtend<[...string[], number], [...string[], number]>();
+
+    validExtend<[number, string], [number, ...string[]]>();
+    validExtend<[number, string, string], [number, ...string[]]>();
+    validExtend<[number, ...string[]], [number, ...string[]]>();
+
+    validExtend<[...string[], number], [...string[], number]>();
+    validExtend<[...string[]], [...string[], number]>();
+    validExtend<[...(string | number)[]], [...string[], number]>();
+
+    invalidExtend<[boolean, string], [number, ...string[]]>();
+    invalidExtend<[boolean], [number, ...string[]]>();
+    invalidExtend<[boolean], [number]>();
+    invalidExtend<[boolean], [boolean, boolean]>();
+    validExtend<[...boolean[]], [boolean, boolean]>();
+
+    validExtend<[...boolean[]], boolean[]>();
+    validExtend<[boolean], boolean[]>();
+    validExtend<[boolean, boolean], boolean[]>();
+    validExtend<[boolean, boolean], (boolean | undefined)[]>();
+    validExtend<[boolean, boolean, undefined], (boolean | undefined)[]>();
+    validExtend<[boolean, boolean?], (boolean | undefined)[]>();
+
+    validExtend<boolean[], [...boolean[]]>();
+    invalidExtend<boolean[], [boolean]>();
+    invalidExtend<(boolean | undefined)[], [boolean]>();
+    validExtend<(boolean | undefined)[], [boolean?]>();
 });
 
 class User {
@@ -346,10 +598,6 @@ class User {
 }
 
 class EmptyEntity {
-}
-
-class User2 {
-    a!: number;
 }
 
 class Setting {
@@ -371,6 +619,12 @@ const types = [
     typeOf<23>(),
     typeOf<4n>(),
     typeOf<true>(),
+    typeOf<string[]>(),
+    typeOf<number[]>(),
+    typeOf<[string]>(),
+    typeOf<[number]>(),
+    typeOf<User[]>(),
+    typeOf<[User]>(),
     typeOf<User>(),
     typeOf<Setting>(),
     typeOf<{ a: string }>(),

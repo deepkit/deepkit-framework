@@ -8,7 +8,26 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { isType, ReflectionKind, Type, typeInfer } from './type';
+import {
+    addType,
+    emptyObject,
+    flatten,
+    indexAccess,
+    isOptional,
+    isType,
+    isTypeIncluded,
+    ReflectionKind,
+    Type,
+    TypeAny,
+    TypeInfer,
+    typeInfer,
+    TypeLiteral,
+    TypeNumber,
+    TypeString,
+    TypeTemplateLiteral,
+    TypeTuple,
+    TypeUnion
+} from './type';
 
 type AssignableType = Type | string | boolean | number | symbol | bigint | undefined | null;
 
@@ -22,21 +41,29 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
     const right: Type = isType(rightValue) ? rightValue : typeInfer(rightValue);
     const left: Type = isType(leftValue) ? leftValue : typeInfer(leftValue);
 
+    if (left.kind === ReflectionKind.infer) {
+        left.set(right);
+        return true;
+    }
+
+    if (right.kind === ReflectionKind.infer) {
+        right.set(left);
+        return true;
+    }
+
+    if (right.kind === ReflectionKind.any || right.kind === ReflectionKind.unknown) return true;
+
     if (right.kind !== ReflectionKind.union) {
         if (left.kind === ReflectionKind.null) {
-            return right.kind === ReflectionKind.any || right.kind === ReflectionKind.unknown || right.kind === ReflectionKind.null;
+            return right.kind === ReflectionKind.null;
         }
 
         if (left.kind === ReflectionKind.undefined) {
-            return right.kind === ReflectionKind.any || right.kind === ReflectionKind.unknown || right.kind === ReflectionKind.void || right.kind === ReflectionKind.undefined;
+            return right.kind === ReflectionKind.void || right.kind === ReflectionKind.undefined;
         }
 
         if (left.kind === ReflectionKind.void) {
-            return right.kind === ReflectionKind.any || right.kind === ReflectionKind.unknown || right.kind === ReflectionKind.void;
-        }
-
-        if (left.kind === ReflectionKind.unknown) {
-            return right.kind === ReflectionKind.any || right.kind === ReflectionKind.unknown;
+            return right.kind === ReflectionKind.void;
         }
 
         if (left.kind === ReflectionKind.any) {
@@ -44,13 +71,13 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
         }
 
         if (left.kind === ReflectionKind.object) {
-            return right.kind === ReflectionKind.any || right.kind === ReflectionKind.unknown || right.kind === ReflectionKind.object
+            return right.kind === ReflectionKind.object
                 || (right.kind === ReflectionKind.objectLiteral && right.types.length === 0)
                 || (right.kind === ReflectionKind.class && right.types.length === 0);
         }
 
         if (left.kind === ReflectionKind.objectLiteral && left.types.length === 0) {
-            return right.kind === ReflectionKind.any || right.kind === ReflectionKind.unknown || right.kind === ReflectionKind.object
+            return right.kind === ReflectionKind.object
                 || (right.kind === ReflectionKind.objectLiteral && right.types.length === 0)
                 || (right.kind === ReflectionKind.class && right.types.length === 0);
         }
@@ -72,16 +99,22 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
         if ('boolean' === typeof left.literal && right.kind === ReflectionKind.boolean) return true;
         if ('bigint' === typeof left.literal && right.kind === ReflectionKind.bigint) return true;
         if ('symbol' === typeof left.literal && right.kind === ReflectionKind.symbol) return true;
+
+        if ('string' === typeof left.literal && right.kind === ReflectionKind.templateLiteral) {
+            return extendTemplateLiteral(left, right);
+        }
     }
 
-    if (left.kind === ReflectionKind.infer) {
-        left.set(right);
-        return true;
-    }
+    if (left.kind === ReflectionKind.templateLiteral) {
+        if (emptyObject(right)) return true;
+        if (right.kind === ReflectionKind.string) return true;
 
-    if (right.kind === ReflectionKind.infer) {
-        right.set(left);
-        return true;
+        if (right.kind === ReflectionKind.literal) {
+            return extendTemplateLiteral(left, { kind: ReflectionKind.templateLiteral, types: [right] });
+        }
+        if (right.kind === ReflectionKind.templateLiteral) {
+            return extendTemplateLiteral(left, right);
+        }
     }
 
     if ((left.kind === ReflectionKind.function || left.kind === ReflectionKind.method || left.kind === ReflectionKind.methodSignature) &&
@@ -97,17 +130,17 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
             const returnValid = isExtendable(left.return, right.return);
             if (!returnValid) return false;
 
-            for (let i = 0; i < left.parameters.length; i++) {
-                const leftParam = left.parameters[i];
-                const rightParam = right.parameters[i];
-                if (!rightParam) return false;
-                if (leftParam.kind !== ReflectionKind.parameter || rightParam.kind !== ReflectionKind.parameter) return false;
+            //convert parameters to tuple and just compare that, as it's the same algorithm
+            const leftTuple: TypeTuple = {
+                kind: ReflectionKind.tuple,
+                types: left.parameters.map(v => ({ kind: ReflectionKind.tupleMember, name: v.name, optional: v.optional, type: v.type }))
+            };
+            const rightTuple: TypeTuple = {
+                kind: ReflectionKind.tuple,
+                types: right.parameters.map(v => ({ kind: ReflectionKind.tupleMember, name: v.name, optional: v.optional, type: v.type }))
+            };
 
-                const valid = isExtendable(leftParam.type, rightParam.type);
-                if (!valid) return false;
-            }
-
-            return true;
+            return isExtendable(leftTuple, rightTuple);
         }
 
         return false;
@@ -117,9 +150,13 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
         return isExtendable(left.type, right.type);
     }
 
-    if (left.kind === ReflectionKind.objectLiteral && right.kind === ReflectionKind.objectLiteral) {
+    if ((left.kind === ReflectionKind.class || left.kind === ReflectionKind.objectLiteral) && right.kind === ReflectionKind.function && right.name === 'new') {
+        const leftConstructor = left.types.find(v => (v.kind === ReflectionKind.method && v.name === 'constructor') || (v.kind === ReflectionKind.methodSignature && v.name === 'new'));
+        const valid = isExtendable(leftConstructor || { kind: ReflectionKind.function, parameters: [], return: { kind: ReflectionKind.any } }, right);
+        return valid;
+    }
 
-        //{a: number} extends {a: number, b: string}
+    if ((left.kind === ReflectionKind.class || left.kind === ReflectionKind.objectLiteral) && (right.kind === ReflectionKind.objectLiteral || right.kind === ReflectionKind.class)) {
         for (const member of left.types) {
             //todo: call signature
             //todo: index signatures
@@ -133,27 +170,43 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
         return true;
     }
 
+
     if (left.kind === ReflectionKind.array && right.kind === ReflectionKind.array) {
         return isExtendable(left.type, right.type);
     }
 
     if (left.kind === ReflectionKind.tuple && right.kind === ReflectionKind.array) {
-        //todo: tuple can be compatible to array, e.g. [string] extends string[], [string, number] extends (string|number)[],
-        // [...string] extends string[] or [number, ...string] extends (number|string)[]
+        const tupleUnion: TypeUnion = { kind: ReflectionKind.union, types: [] };
+        for (const member of left.types) {
+            if (member.optional && isTypeIncluded(tupleUnion.types, { kind: ReflectionKind.undefined })) tupleUnion.types.push({ kind: ReflectionKind.undefined });
+            const type = member.type.kind === ReflectionKind.rest ? member.type.type : member.type;
+            if (isTypeIncluded(tupleUnion.types, type)) tupleUnion.types.push(type);
+        }
+        return isExtendable(tupleUnion, right);
     }
 
     if (left.kind === ReflectionKind.array && right.kind === ReflectionKind.tuple) {
-        //todo: array can be compatible to tuple, e.g. string[] extends [...string], (number|string)[] extends [number, ...string]
+        const hasRest = right.types.some(v => v.type.kind === ReflectionKind.rest);
+        const optional = isOptional(left.type);
+        if (!hasRest && (left.type.kind !== ReflectionKind.union || !isOptional(left.type))) return false;
+        for (const member of right.types) {
+            let type = member.type.kind === ReflectionKind.rest ? member.type.type : member.type;
+            if (member.optional) type = flatten({ kind: ReflectionKind.union, types: [{ kind: ReflectionKind.undefined }, type] });
+            if (!isExtendable(left.type, type)) return false;
+        }
+        return true;
     }
 
     if (left.kind === ReflectionKind.tuple && right.kind === ReflectionKind.tuple) {
-        //todo: this check is actually much more complicated when ReflectionKind.rest is involved
-        for (let i = 0; i < left.types.length; i++) {
-            const subLeftType = left.types[i];
-            const subRightType = right.types[i];
-            const valid = isExtendable(subLeftType.type, subRightType.type);
+        for (let i = 0; i < right.types.length; i++) {
+            const rightType = indexAccess(right, { kind: ReflectionKind.literal, literal: i });
+            const leftType = indexAccess(left, { kind: ReflectionKind.literal, literal: i });
+            if (rightType.kind === ReflectionKind.infer || leftType.kind === ReflectionKind.infer) continue;
+            const valid = isExtendable(leftType, rightType);
             if (!valid) return false;
         }
+        inferFromTuple(left, right);
+
         return true;
     }
 
@@ -162,4 +215,189 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
     if (right.kind === ReflectionKind.union) return right.types.some(v => isExtendable(leftValue, v));
 
     return false;
+}
+
+function extendTemplateLiteral(left: TypeLiteral | TypeTemplateLiteral, right: TypeTemplateLiteral): boolean {
+    interface ReadQueueItem {
+        type: TypeString | TypeNumber | TypeLiteral | TypeAny;
+        position: number;
+        next?: ReadQueueItem;
+    }
+
+    let matchQueue: (TypeInfer | TypeNumber | TypeString | TypeAny)[] = [];
+
+    let current = (left.kind === ReflectionKind.literal ? { type: left as (TypeLiteral & { literal: string }), position: 0 } : {
+        type: left.types[0],
+        position: 0
+    }) as ReadQueueItem | undefined;
+
+    if (current && left.kind === ReflectionKind.templateLiteral) {
+        for (let i = 1; i < left.types.length; i++) {
+            const t = left.types[i];
+            if (t.kind === ReflectionKind.infer) continue;
+            current.next = { type: t, position: 0 };
+        }
+    }
+
+    function search(delimiter: string): ReadQueueItem | undefined {
+        let result = current;
+        while (result) {
+            if (result.type.kind === ReflectionKind.literal) {
+                const value = result.type.literal as string;
+                if (value !== '') {
+                    const position = value.indexOf(delimiter, result.position);
+                    if (position !== -1) {
+                        return { ...result, position: position };
+                    }
+                }
+                //go next
+            }
+
+            result = result.next;
+        }
+
+        //not found
+        return;
+    }
+
+    function handleQueue(end?: ReadQueueItem): boolean {
+        if (matchQueue.length === 0) return true;
+
+        const last = matchQueue[matchQueue.length - 1];
+        for (const item of matchQueue) {
+            const isLast = item === last;
+
+            if (!isLast) {
+                //pick only one character
+                while (current) {
+                    if (current.type.kind === ReflectionKind.literal) {
+                        const value = current.type.literal as string;
+                        if (current.position === value.length) {
+                            //end, go next
+                            current = current.next;
+                            continue;
+                        }
+                        const char = value[current.position++];
+                        if (item.kind === ReflectionKind.number) {
+                            if (isNaN(+char)) return false;
+                        } else if (item.kind === ReflectionKind.infer) {
+                            item.set({ kind: ReflectionKind.literal, literal: char });
+                        }
+                    } else if (current.type.kind === ReflectionKind.string) {
+                        if (item.kind === ReflectionKind.number) {
+                            return false;
+                        } else if (item.kind === ReflectionKind.infer) {
+                            item.set(current.type);
+                        }
+                    } else if (current.type.kind === ReflectionKind.any) {
+                        if (item.kind === ReflectionKind.infer) {
+                            item.set(current.type);
+                        }
+                    } else if (current.type.kind === ReflectionKind.number) {
+                        if (item.kind === ReflectionKind.infer) {
+                            item.set(current.type);
+                        }
+                    }
+                    break;
+                }
+            } else {
+                if (item.kind === ReflectionKind.any || item.kind === ReflectionKind.string || item.kind === ReflectionKind.infer) {
+                    const result: TypeTemplateLiteral = { kind: ReflectionKind.templateLiteral, types: [] };
+                    while (current) {
+                        if (current.type.kind === ReflectionKind.literal) {
+                            const value = current.type.literal as string;
+                            if (current.position === value.length) {
+                                //end, go next
+                                current = current.next;
+                                continue;
+                            }
+
+                            const v = value.slice(current.position, end ? end.position : undefined);
+                            result.types.push({ kind: ReflectionKind.literal, literal: v });
+                        } else {
+                            result.types.push(current.type);
+                            //     if (item.kind === ReflectionKind.infer) {
+                            //         item.set(current.type);
+                            //     }
+                        }
+                        if (end && current.type === end.type) break;
+                        current = current.next;
+                    }
+
+                    if (item.kind === ReflectionKind.infer) {
+                        if (result.types.length === 1) {
+                            item.set(result.types[0]);
+                        } else {
+                            item.set(result);
+                        }
+                    }
+                } else if (item.kind === ReflectionKind.number) {
+                    //read until no number
+                    let value = '';
+                    while (current) {
+                        if (current.type.kind === ReflectionKind.literal) {
+                            const v = (current.type.literal as string).slice(current.position, end ? end.position : undefined);
+                            value += v;
+                        } else if (current.type.kind === ReflectionKind.number || current.type.kind === ReflectionKind.any) {
+                            //number is fine
+                        } else {
+                            //string is not fine as it can contain characters not compatible to number
+                            return false;
+                        }
+                        current = current.next;
+                    }
+                    if (isNaN(+value)) return false;
+                }
+            }
+        }
+        matchQueue = [];
+        return true;
+    }
+
+    for (const span of right.types) {
+        if (span.kind === ReflectionKind.literal) {
+            const position = search(span.literal as string);
+            if (!position) return false;
+            if (!handleQueue(position)) return false;
+            current = { ...position, position: position.position + (span.literal as string).length };
+        } else if (span.kind === ReflectionKind.infer) {
+            matchQueue.push(span);
+        } else if (span.kind === ReflectionKind.string) {
+            matchQueue.push(span);
+        } else if (span.kind === ReflectionKind.number) {
+            matchQueue.push(span);
+        }
+    }
+    if (!handleQueue()) return false;
+
+    return true;
+}
+
+function inferFromTuple(left: TypeTuple, right: TypeTuple) {
+    //when all types match, we find `infer`
+    for (let i = 0; i < right.types.length; i++) {
+        const rightType = right.types[i];
+        if (rightType.type.kind === ReflectionKind.infer || (rightType.type.kind === ReflectionKind.rest && rightType.type.type.kind === ReflectionKind.infer)) {
+            const inferred: TypeTuple = { kind: ReflectionKind.tuple, types: [] };
+            let restAdded = false;
+            for (let j = 0; j < left.types.length; j++) {
+                const leftType = left.types[j];
+                if (leftType.type.kind === ReflectionKind.rest) {
+                    addType(inferred, leftType);
+                    restAdded = true; //when a rest element is added, all subsequent types will be added as well
+                } else if (restAdded || j >= i) {
+                    addType(inferred, leftType);
+                }
+            }
+            let inferredType: Type = inferred.types.length === 1 ? inferred.types[0] : inferred.types.length === 0 ? { kind: ReflectionKind.never } : inferred;
+            if (inferredType.kind === ReflectionKind.tupleMember) inferredType = inferredType.type;
+            if (inferredType.kind === ReflectionKind.rest) inferredType = { kind: ReflectionKind.array, type: inferredType.type };
+
+            if (rightType.type.kind === ReflectionKind.infer) {
+                rightType.type.set(inferredType);
+            } else if (rightType.type.kind === ReflectionKind.rest && rightType.type.type.kind === ReflectionKind.infer) {
+                rightType.type.type.set(inferredType);
+            }
+        }
+    }
 }

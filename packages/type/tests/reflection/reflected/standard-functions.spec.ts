@@ -58,3 +58,49 @@ test('Required', () => {
     type o = { a: string, b?: number, c?: boolean }
     equalType<Required<o>, { a: string, b: number, c: boolean }>();
 });
+
+test('ReturnType', () => {
+    type fn = (a: string, ...r: any[]) => void;
+    type fn2 = (a: string, ...r: any[]) => string;
+    type fn3 = () => string | boolean;
+
+    equalType<ReturnType<fn>, void>();
+    equalType<ReturnType<fn2>, string>();
+    equalType<ReturnType<fn3>, string | boolean>();
+});
+
+test('Parameters runtime', () => {
+    function fn(a: string, ...r: any[]): void {
+    }
+
+    equalType<Parameters<typeof fn>, [a: string, ...r: any[]]>();
+});
+
+test('Parameters type', () => {
+    type fn = (a: string, ...r: any[]) => void;
+
+    type r = Parameters<fn>;
+    equalType<r, [a: string, ...r: any[]]>();
+});
+
+test('sub Parameters type', () => {
+    type SubParameters<T extends (...args: any) => any> = T extends (foo: string, ...args: infer P) => any ? P : never;
+    type fn = (a: string, ...r: number[]) => void;
+    type r = SubParameters<fn>;
+    equalType<r, number[]>();
+
+    type fn2 = (a: string, b: number, ...r: boolean[]) => void;
+    type r2 = SubParameters<fn2>;
+    equalType<r2, [b: number, ...r: boolean[]]>();
+});
+
+test('ConstructorParameters', () => {
+    class User {
+        constructor(public username: string, password?: string) {
+        }
+    }
+    equalType<ConstructorParameters<typeof User>, [username: string, password?: string]>();
+
+    type constructor = new (a: string, b: number) => void;
+    equalType<ConstructorParameters<constructor>, [a: string, b: number]>();
+});

@@ -137,3 +137,20 @@ test('infer T from class', () => {
         { kind: ReflectionKind.property, name: 'type', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string }, } as Type,
     ]);
 });
+
+test('T as tuple rest', () => {
+    type Tuple<T extends any[]> = ['hi', ...T];
+    type r = Tuple<[string, number]>;
+
+    const type = typeOf<r>();
+    expect(type).toEqual(typeOf<['hi', string, number]>());
+});
+
+test('T array length', () => {
+    type Tuple<T extends any[]> = ['hi', T['length']];
+    type r = Tuple<string[]>;
+    expect(typeOf<r>()).toEqual(typeOf<['hi', number]>());
+
+    type r2 = Tuple<[string, number]>;
+    expect(typeOf<r2>()).toEqual(typeOf<['hi', 2]>());
+});

@@ -18,8 +18,10 @@ import {
     Reference,
     ReflectionKind,
     ReflectionVisibility,
+    stringifyType,
     Type,
     TypeClass,
+    TypeFunction,
     TypeIndexSignature,
     TypeIntersection,
     TypeNumber,
@@ -141,6 +143,31 @@ test('class constructor', () => {
             },
         ]
     } as Type);
+});
+
+test('constructor type abstract', () => {
+    type constructor = abstract new (...args: any) => any;
+    expect(typeOf<constructor>()).toEqual({
+        kind: ReflectionKind.function,
+        name: 'new',
+        parameters: [
+            { kind: ReflectionKind.parameter, name: 'args', type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.any } } }
+        ],
+        return: { kind: ReflectionKind.any }
+    } as TypeFunction);
+});
+
+test('constructor type normal', () => {
+    type constructor = new (a: string, b: number) => void;
+    expect(typeOf<constructor>()).toEqual({
+        kind: ReflectionKind.function,
+        name: 'new',
+        parameters: [
+            { kind: ReflectionKind.parameter, name: 'a', type: { kind: ReflectionKind.string } },
+            { kind: ReflectionKind.parameter, name: 'b', type: { kind: ReflectionKind.number } },
+        ],
+        return: { kind: ReflectionKind.void }
+    } as TypeFunction);
 });
 
 test('interface', () => {
@@ -411,6 +438,73 @@ test('query literal', () => {
             { kind: ReflectionKind.number },
         ]
     });
+});
+
+test('template literal', () => {
+    type l = `_${'a' | 'b'}Changed`;
+    type l2 = `_${string}Changed${'a' | 'b'}`;
+    type l3 = `_${string}Changed${2 | 'b'}`;
+    type l33 = `_${string}Changed${number | 'b'}`;
+    type l4 = `_${string}Changed${true | 'b'}`;
+    type l5 = `_${string}Changed${boolean | 'b'}`;
+    type l6 = `_${string}Changed${bigint | 'b'}`;
+    type l7 = `${string}`;
+    type l77 = `${number}`;
+    type l771 = `${boolean}`;
+    type l8 = `helloworld`;
+    type hw = 'hello' | 'world';
+    type l9 = `${hw | 'b'}_`
+    type l10 = `${`(${hw})`}_`
+
+    const type0 = typeOf<l>();
+    expect(type0).toEqual({
+        kind: ReflectionKind.union,
+        types: [{ kind: ReflectionKind.literal, literal: '_aChanged' }, { kind: ReflectionKind.literal, literal: '_bChanged' }]
+    } as Type);
+
+    const type1 = typeOf<l2>();
+    expect(type1).toEqual({
+        kind: ReflectionKind.union,
+        types: [
+            {
+                kind: ReflectionKind.templateLiteral, types: [
+                    { kind: ReflectionKind.literal, literal: '_' },
+                    { kind: ReflectionKind.string },
+                    { kind: ReflectionKind.literal, literal: 'Changeda' },
+
+                ]
+            },
+            {
+                kind: ReflectionKind.templateLiteral, types: [
+                    { kind: ReflectionKind.literal, literal: '_' },
+                    { kind: ReflectionKind.string },
+                    { kind: ReflectionKind.literal, literal: 'Changedb' },
+
+                ]
+            },
+        ]
+    } as Type);
+
+    expect(stringifyType(typeOf<l3>())).toBe('`_${string}Changed2` | `_${string}Changedb`');
+    expect(stringifyType(typeOf<l33>())).toBe('`_${string}Changed${number}` | `_${string}Changedb`');
+    expect(stringifyType(typeOf<l4>())).toBe('`_${string}Changedtrue` | `_${string}Changedb`');
+    expect(stringifyType(typeOf<l5>())).toBe('`_${string}Changedfalse` | `_${string}Changedtrue` | `_${string}Changedb`');
+    expect(stringifyType(typeOf<l6>())).toBe('`_${string}Changed${bigint}` | `_${string}Changedb`');
+    expect(stringifyType(typeOf<l7>())).toBe('string');
+    expect(stringifyType(typeOf<l77>())).toBe('`${number}`');
+    expect(stringifyType(typeOf<l771>())).toBe(`'false' | 'true'`);
+    expect(stringifyType(typeOf<l8>())).toBe(`'helloworld'`);
+    expect(stringifyType(typeOf<l9>())).toBe(`'hello_' | 'world_' | 'b_'`);
+    expect(stringifyType(typeOf<l10>())).toBe(`'(hello)_' | '(world)_'`);
+});
+
+test('mapped type key literal', () => {
+    type o = { a: string, b: number, c: boolean, [2]: any };
+    type Prefix<T> = {
+        [P in keyof T as P extends string ? `v${P}` : never]: T[P]
+    };
+
+    type o2 = Prefix<o>;
 });
 
 test('query union from keyof', () => {

@@ -293,7 +293,7 @@ test('mapped type simple', () => {
         ops: [
             ReflectionOp.jump, 4,
             ReflectionOp.boolean, ReflectionOp.return,
-            ReflectionOp.template, 0, ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.mappedType, 2, 0
+            ReflectionOp.typeParameter, 0, ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.mappedType, 2, 0
         ],
         stack: ['T'],
         inputs: [{ kind: ReflectionKind.union, types: [{ kind: ReflectionKind.literal, literal: 'a' }, { kind: ReflectionKind.literal, literal: 'b' }] } as TypeUnion]
@@ -320,7 +320,7 @@ test('mapped type optional simple', () => {
         ops: [
             ReflectionOp.jump, 4,
             ReflectionOp.boolean, ReflectionOp.return,
-            ReflectionOp.template, 0, ReflectionOp.var, ReflectionOp.loads, 0, 0, ReflectionOp.mappedType, 2, 0 | MappedModifier.optional
+            ReflectionOp.typeParameter, 0, ReflectionOp.var, ReflectionOp.loads, 0, 0, ReflectionOp.mappedType, 2, 0 | MappedModifier.optional
         ],
         stack: ['T'],
         inputs: [{ kind: ReflectionKind.union, types: [{ kind: ReflectionKind.literal, literal: 'a' }, { kind: ReflectionKind.literal, literal: 'b' }] } as TypeUnion]
@@ -346,7 +346,7 @@ test('mapped type keyof and query', () => {
 
     expectType({
         ops: [
-            ReflectionOp.template, 0,
+            ReflectionOp.typeParameter, 0,
             ReflectionOp.jump, 12,
             ReflectionOp.loads, 2, 0, ReflectionOp.loads, 1, 0, ReflectionOp.indexAccess, ReflectionOp.return,
             ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.keyof, ReflectionOp.mappedType, 4, 0
@@ -383,7 +383,7 @@ test('mapped type keyof and fixed', () => {
 
     expectType({
         ops: [
-            ReflectionOp.template, 0,
+            ReflectionOp.typeParameter, 0,
             ReflectionOp.jump, 6,
             ReflectionOp.boolean, ReflectionOp.return,
             ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.keyof, ReflectionOp.mappedType, 4
@@ -420,7 +420,7 @@ test('mapped type keyof and conditional', () => {
 
     expectType({
         ops: [
-            ReflectionOp.template, 0,
+            ReflectionOp.typeParameter, 0,
             ReflectionOp.jump, 18,
             ReflectionOp.frame, ReflectionOp.loads, 3, 0, ReflectionOp.loads, 2, 0, ReflectionOp.indexAccess, ReflectionOp.number, ReflectionOp.extends, ReflectionOp.boolean, ReflectionOp.never, ReflectionOp.condition, ReflectionOp.return,
             ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.keyof, ReflectionOp.mappedType, 4
@@ -457,7 +457,7 @@ test('infer property signature', () => {
 
     expectType({
         ops: [
-            ReflectionOp.template, 0,
+            ReflectionOp.typeParameter, 0,
             ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.frame, ReflectionOp.infer, 1, 0, ReflectionOp.propertySignature, 1, ReflectionOp.objectLiteral, ReflectionOp.extends,
             ReflectionOp.loads, 0, 0, ReflectionOp.never, ReflectionOp.condition,
         ],
@@ -501,7 +501,7 @@ test('generic class', () => {
     }
 
     expectType({
-        ops: [ReflectionOp.template, 0, ReflectionOp.loads, 0, 0, ReflectionOp.property, 1, ReflectionOp.class],
+        ops: [ReflectionOp.typeParameter, 0, ReflectionOp.loads, 0, 0, ReflectionOp.property, 1, ReflectionOp.class],
         stack: ['T', 'name'],
         inputs: [{ kind: ReflectionKind.string }]
     }, {
@@ -516,7 +516,7 @@ test('generic class', () => {
     });
 
     expectType({
-        ops: [ReflectionOp.template, 0, ReflectionOp.loads, 0, 0, ReflectionOp.property, 1, ReflectionOp.class],
+        ops: [ReflectionOp.typeParameter, 0, ReflectionOp.loads, 0, 0, ReflectionOp.property, 1, ReflectionOp.class],
         stack: ['T', 'name']
     }, {
         kind: ReflectionKind.class,
@@ -525,7 +525,7 @@ test('generic class', () => {
             kind: ReflectionKind.property,
             name: 'name',
             visibility: ReflectionVisibility.public,
-            type: { kind: ReflectionKind.template, name: 'T' }
+            type: { kind: ReflectionKind.typeParameter, name: 'T' }
         }]
     });
 });

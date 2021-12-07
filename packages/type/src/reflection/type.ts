@@ -32,6 +32,7 @@ export enum ReflectionKind {
     undefined,
 
     literal,
+    templateLiteral,
     property,
     method,
     function,
@@ -44,7 +45,7 @@ export enum ReflectionKind {
      */
     class,
 
-    template,
+    typeParameter,
     enum,
     union,
     intersection,
@@ -69,9 +70,10 @@ export interface TypeBrandable {
     brands?: Type[];
 }
 
-export function isBrandable(type: Type): type is TypeVoid | TypeString | TypeNumber | TypeBoolean | TypeBigInt | TypeNull | TypeUndefined | TypeLiteral {
+export function isBrandable(type: Type): type is TypeVoid | TypeString | TypeNumber | TypeBoolean | TypeBigInt | TypeNull | TypeUndefined | TypeTemplateLiteral | TypeLiteral {
     return type.kind === ReflectionKind.void || type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.boolean
-        || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined || type.kind === ReflectionKind.literal;
+        || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined || type.kind === ReflectionKind.literal
+        || type.kind === ReflectionKind.templateLiteral;
 }
 
 export interface TypeInferred {
@@ -154,6 +156,11 @@ export interface TypeUndefined extends TypeBrandable, TypeInferred {
 export interface TypeLiteral extends TypeBrandable, TypeInferred {
     kind: ReflectionKind.literal,
     literal: symbol | string | number | boolean | bigint;
+}
+
+export interface TypeTemplateLiteral extends TypeBrandable, TypeInferred {
+    kind: ReflectionKind.templateLiteral,
+    types: (TypeString | TypeAny | TypeNumber | TypeLiteral | TypeInfer)[]
 }
 
 export interface TypeRegexp extends TypeBrandable, TypeInferred {
@@ -243,8 +250,8 @@ export interface TypeEnumMember {
     default?: () => string | number;
 }
 
-export interface TypeTemplate {
-    kind: ReflectionKind.template,
+export interface TypeTypeParameter {
+    kind: ReflectionKind.typeParameter,
     name: string,
 }
 
@@ -314,10 +321,42 @@ export interface TypeRest {
     type: Type
 }
 
-export type Type = TypeNever | TypeAny | TypeUnknown | TypeVoid | TypeObject | TypeString | TypeNumber | TypeBoolean | TypeBigInt | TypeSymbol | TypeNull | TypeUndefined | TypeLiteral
-    | TypeParameter | TypeFunction | TypeMethod | TypeProperty | TypePromise | TypeClass | TypeEnum | TypeEnumMember | TypeUnion | TypeIntersection | TypeArray
-    | TypeObjectLiteral | TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeTemplate | TypeInfer | TypeTuple | TypeTupleMember
-    | TypeRest | TypeRegexp
+export type Type =
+    TypeNever
+    | TypeAny
+    | TypeUnknown
+    | TypeVoid
+    | TypeObject
+    | TypeString
+    | TypeNumber
+    | TypeBoolean
+    | TypeBigInt
+    | TypeSymbol
+    | TypeNull
+    | TypeUndefined
+    | TypeLiteral
+    | TypeTemplateLiteral
+    | TypeParameter
+    | TypeFunction
+    | TypeMethod
+    | TypeProperty
+    | TypePromise
+    | TypeClass
+    | TypeEnum
+    | TypeEnumMember
+    | TypeUnion
+    | TypeIntersection
+    | TypeArray
+    | TypeObjectLiteral
+    | TypeIndexSignature
+    | TypePropertySignature
+    | TypeMethodSignature
+    | TypeTypeParameter
+    | TypeInfer
+    | TypeTuple
+    | TypeTupleMember
+    | TypeRest
+    | TypeRegexp
     ;
 
 export type Widen<T> =
@@ -379,18 +418,30 @@ export function isSameType(a: Type, b: Type): boolean {
         }
     }
 
-    if (a.kind === ReflectionKind.array && b.kind === ReflectionKind.array) {
+    if (a.kind === ReflectionKind.tupleMember) {
+        if (b.kind !== ReflectionKind.tupleMember) return false;
+
+        return a.optional === b.optional && a.name === b.name && isSameType(a.type, b.type);
+    }
+
+    if (a.kind === ReflectionKind.array) {
+        if (b.kind !== ReflectionKind.array) return false;
+
         return isSameType(a.type, b.type);
     }
 
-    if (a.kind === ReflectionKind.tuple && b.kind === ReflectionKind.tuple) {
+    if (a.kind === ReflectionKind.tuple) {
+        if (b.kind !== ReflectionKind.tuple) return false;
+
+        if (a.types.length !== b.types.length) return false;
         for (let i = 0; i < a.types.length; i++) {
             if (!isSameType(a.types[i], b.types[i])) return false;
         }
         return true;
     }
 
-    if (a.kind === ReflectionKind.parameter && b.kind === ReflectionKind.parameter) {
+    if (a.kind === ReflectionKind.parameter) {
+        if (b.kind !== ReflectionKind.parameter) return false;
         return a.name === b.name && a.optional === b.optional && isSameType(a.type, b.type);
     }
 
@@ -405,7 +456,8 @@ export function isSameType(a: Type, b: Type): boolean {
         return isSameType(a.return, b.return);
     }
 
-    if (a.kind === ReflectionKind.union && b.kind === ReflectionKind.union) {
+    if (a.kind === ReflectionKind.union) {
+        if (b.kind !== ReflectionKind.union) return false;
         if (a.types.length !== b.types.length) return false;
         for (let i = 0; i < a.types.length; i++) {
             if (!isTypeIncluded(b.types, a.types[i])) return false;
@@ -413,6 +465,35 @@ export function isSameType(a: Type, b: Type): boolean {
     }
 
     return a.kind === b.kind;
+}
+
+export function addType<T extends Type>(container: T, type: Type): T {
+    if (container.kind === ReflectionKind.tuple) {
+        if (type.kind === ReflectionKind.tupleMember) {
+            container.types.push(type);
+        } else {
+            container.types.push({ kind: ReflectionKind.tupleMember, type });
+        }
+    } else if (container.kind === ReflectionKind.union) {
+        if (type.kind === ReflectionKind.union) {
+            for (const t of flatten(type).types) {
+                addType(container, t);
+            }
+        } else if (type.kind === ReflectionKind.tupleMember) {
+            if (type.optional && !isTypeIncluded(container.types, { kind: ReflectionKind.undefined })) {
+                container.types.push({ kind: ReflectionKind.undefined });
+            }
+            addType(container, type.type);
+        } else if (type.kind === ReflectionKind.rest) {
+            addType(container, type.type);
+        } else {
+            if (!isTypeIncluded(container.types, type)) {
+                container.types.push(type);
+            }
+        }
+    }
+
+    return container;
 }
 
 export function isTypeIncluded(types: Type[], type: Type): boolean {
@@ -426,11 +507,18 @@ export function isTypeIncluded(types: Type[], type: Type): boolean {
 /**
  * `true | (string | number)` => `true | string | number`
  */
-export function flattenUnion(types: Type[]): Type[] {
+export function flatten<T extends Type>(type: T): T {
+    if (type.kind === ReflectionKind.union) {
+        type.types = flattenUnionTypes(type.types);
+    }
+    return type;
+}
+
+export function flattenUnionTypes(types: Type[]): Type[] {
     const result: Type[] = [];
     for (const type of types) {
         if (type.kind === ReflectionKind.union) {
-            for (const s of flattenUnion(type.types)) {
+            for (const s of flattenUnionTypes(type.types)) {
                 if (!isTypeIncluded(result, s)) result.push(s);
             }
         } else {
@@ -496,6 +584,74 @@ function resolveObjectIndexType(type: TypeObjectLiteral | TypeClass, index: Type
     }
 }
 
+interface CStack {
+    iterator: Type[];
+    i: number;
+    round: number;
+}
+
+export function emptyObject(type: Type): boolean {
+    return (type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.class) && type.types.length === 0;
+}
+
+export class CartesianProduct {
+    protected stack: CStack[] = [];
+
+    private current(s: CStack): Type {
+        return s.iterator[s.i];
+    }
+
+    private next(s: CStack): boolean {
+        return (++s.i === s.iterator.length) ? (s.i = 0, false) : true;
+    }
+
+    toGroup(type: Type): Type[] {
+        if (type.kind === ReflectionKind.boolean) {
+            return [{ kind: ReflectionKind.literal, literal: 'false' }, { kind: ReflectionKind.literal, literal: 'true' }];
+        } else if (type.kind === ReflectionKind.null) {
+            return [{ kind: ReflectionKind.literal, literal: 'null' }];
+        } else if (type.kind === ReflectionKind.undefined) {
+            return [{ kind: ReflectionKind.literal, literal: 'undefined' }];
+        } else if (type.kind === ReflectionKind.union) {
+            const result: Type[] = [];
+            for (const s of type.types) {
+                const g = this.toGroup(s);
+                result.push(...g);
+            }
+
+            return result;
+        } else {
+            return [type];
+        }
+    }
+
+    add(item: Type) {
+        this.stack.push({ iterator: this.toGroup(item), i: 0, round: 0 });
+    }
+
+    calculate(): Type[][] {
+        const result: Type[][] = [];
+        outer:
+            while (true) {
+                const row: Type[] = [];
+                for (const s of this.stack) row.push(this.current(s));
+                result.push(row);
+
+                for (let i = this.stack.length - 1; i >= 0; i--) {
+                    const active = this.next(this.stack[i]);
+                    //when that i stack is active, continue in main loop
+                    if (active) continue outer;
+
+                    //i stack was rewinded. If its the first, it means we are done
+                    if (i === 0) break outer;
+                }
+                break;
+            }
+
+        return result;
+    }
+}
+
 /**
  * Query a container type and return the result.
  *
@@ -509,15 +665,51 @@ function resolveObjectIndexType(type: TypeObjectLiteral | TypeClass, index: Type
 export function indexAccess(container: Type, index: Type): Type {
     if (container.kind === ReflectionKind.array) {
         if ((index.kind === ReflectionKind.literal && 'number' === typeof index.literal) || index.kind === ReflectionKind.number) return container.type;
+        if (index.kind === ReflectionKind.literal && index.literal === 'length') return { kind: ReflectionKind.number };
     } else if (container.kind === ReflectionKind.tuple) {
+        if (index.kind === ReflectionKind.literal && index.literal === 'length') return { kind: ReflectionKind.literal, literal: container.types.length };
+        if (index.kind === ReflectionKind.literal && 'number' === typeof index.literal && index.literal < 0) {
+            index = { kind: ReflectionKind.number };
+        }
+
         if (index.kind === ReflectionKind.literal && 'number' === typeof index.literal) {
-            //todo: this does not yet support `[string, ...number[], boolean][1] => number|boolean`
-            const sub = container.types[index.literal];
-            if (sub.type.kind === ReflectionKind.rest) {
-                return sub.type.type;
-            } else {
+            type b0 = [string, boolean?][0]; //string
+            type b1 = [string, boolean?][1]; //boolean|undefined
+            type a0 = [string, ...number[], boolean][0]; //string
+            type a1 = [string, ...number[], boolean][1]; //number|boolean
+            type a2 = [string, ...number[], boolean][2]; //number|boolean
+            type a22 = [string, ...number[], boolean][3]; //number|boolean
+            // type a23 = [string, number, boolean][4]; //number|boolean
+            type a3 = [string, number, ...number[], boolean][1]; //number
+            type a4 = [string, number, ...number[], boolean][-2]; //string|number|boolean, minus means all
+            type a5 = [string, number, ...number[], boolean][number]; //string|number|boolean
+
+            let restPosition = -1;
+            for (let i = 0; i < container.types.length; i++) {
+                if (container.types[i].type.kind === ReflectionKind.rest) {
+                    restPosition = i;
+                    break;
+                }
+            }
+
+            if (restPosition === -1 || index.literal < restPosition) {
+                const sub = container.types[index.literal];
+                if (!sub) return { kind: ReflectionKind.undefined };
+                if (sub.optional) return { kind: ReflectionKind.union, types: [sub.type, { kind: ReflectionKind.undefined }] };
                 return sub.type;
             }
+
+            //index beyond a rest, return all beginning from there as big enum
+
+            const result: TypeUnion = { kind: ReflectionKind.union, types: [] };
+            for (let i = restPosition; i < container.types.length; i++) {
+                const member = container.types[i];
+                const type = member.type.kind === ReflectionKind.rest ? member.type.type : member.type;
+                if (!isTypeIncluded(result.types, type)) result.types.push(type);
+                if (member.optional && !isTypeIncluded(result.types, { kind: ReflectionKind.undefined })) result.types.push({ kind: ReflectionKind.undefined });
+            }
+
+            return unboxUnion(result);
         } else if (index.kind === ReflectionKind.number) {
             const union: TypeUnion = { kind: ReflectionKind.union, types: [] };
             for (const sub of container.types) {
@@ -778,6 +970,10 @@ export function stringifyType(type: Type, depth: number = 0): string {
             return `'${String(type.literal).replace(/'/g, '\\\'')}'`;
         case ReflectionKind.promise:
             return `Promise<${stringifyType(type.type)}>`;
+        case ReflectionKind.templateLiteral:
+            return '`' + type.types.map(v => {
+                return v.kind === ReflectionKind.literal ? v.literal : '${' + stringifyType(v) + '}';
+            }).join('') + '`';
         case ReflectionKind.class: {
             if (type.classType === Date) return `Date`;
             if (type.classType === Set) return `Set<${stringifyType(type.arguments![0])}>`;
@@ -946,6 +1142,8 @@ export enum ReflectionOp {
     frame, //creates a new stack frame
     return,
 
+    templateLiteral,
+
     //special instructions that exist to emit less output
     date,
 
@@ -966,8 +1164,8 @@ export enum ReflectionOp {
 
     // pointer, //parameter is a number referencing an entry in the stack, relative to the very beginning (0). pushes that entry onto the stack.
     arg, //@deprecated. parameter is a number referencing an entry in the stack, relative to the beginning of the current frame, *-1. pushes that entry onto the stack. this is related to the calling convention.
-    template, //template argument, e.g. T in a generic. has 1 parameter: reference to the name.
-    templateDefault, //template argument with a default value, e.g. T in a generic. has 1 parameter: reference to the name. pop() for the default value
+    typeParameter, //generic type parameter, e.g. T in a generic. has 1 parameter: reference to the name.
+    typeParameterDefault, //generic type parameter with a default value, e.g. T in a generic. has 1 parameter: reference to the name. pop() for the default value
     var, //reserve a new variable in the stack
     loads, //pushes to the stack a referenced value in the stack. has 2 parameters: <frame> <index>, frame is a negative offset to the frame, and index the index of the stack entry withing the referenced frame
 

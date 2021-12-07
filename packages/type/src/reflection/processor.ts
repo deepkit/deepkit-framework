@@ -9,7 +9,8 @@
  */
 
 import {
-    flattenUnion,
+    CartesianProduct,
+    flattenUnionTypes,
     indexAccess,
     isBrandable,
     isType,
@@ -32,6 +33,7 @@ import {
     TypeParameter,
     TypeProperty,
     TypePropertySignature,
+    TypeTemplateLiteral,
     TypeTupleMember,
     TypeUnion,
     unboxUnion
@@ -243,6 +245,49 @@ export class Processor {
                     this.pushType({ kind: ReflectionKind.literal, literal: initialStack[ref] as string | number | boolean | bigint });
                     break;
                 }
+                case ReflectionOp.templateLiteral: {
+                    const types = this.popFrame() as Type[];
+                    const result: TypeUnion = { kind: ReflectionKind.union, types: [] };
+                    // const templateLiteral: TypeTemplateLiteral = { kind: ReflectionKind.templateLiteral, types: [] };
+                    const cartesian = new CartesianProduct();
+                    for (const type of types) {
+                        cartesian.add(type);
+                    }
+                    const product = cartesian.calculate();
+
+                    for (const combination of product) {
+                        const template: TypeTemplateLiteral = { kind: ReflectionKind.templateLiteral, types: [] };
+                        let hasPlaceholder = false;
+                        let lastLiteral: { kind: ReflectionKind.literal, literal: string } | undefined = undefined;
+                        //merge a combination of types, e.g. [string, 'abc', '3'] as template literal => `${string}abc3`.
+                        for (const item of combination) {
+                            if (item.kind === ReflectionKind.literal) {
+                                if (lastLiteral) {
+                                    lastLiteral.literal += item.literal as string + '';
+                                } else {
+                                    lastLiteral = { kind: ReflectionKind.literal, literal: item.literal as string + '' };
+                                    template.types.push(lastLiteral);
+                                }
+                            } else {
+                                hasPlaceholder = true;
+                                lastLiteral = undefined;
+                                template.types.push(item as TypeTemplateLiteral['types'][number]);
+                            }
+                        }
+
+                        if (hasPlaceholder) {
+                            if (template.types.length === 1 && template.types[0].kind === ReflectionKind.string) {
+                                result.types.push(template.types[0]);
+                            } else {
+                                result.types.push(template);
+                            }
+                        } else if (lastLiteral) {
+                            result.types.push(lastLiteral);
+                        }
+                    }
+                    this.pushType(unboxUnion(result));
+                    break;
+                }
                 case ReflectionOp.date:
                     this.pushType({ kind: ReflectionKind.class, classType: Date, types: [] });
                     break;
@@ -356,7 +401,18 @@ export class Processor {
                 case ReflectionOp.tuple: {
                     const types: TypeTupleMember[] = [];
                     for (const type of this.popFrame() as Type[]) {
-                        types.push(type.kind === ReflectionKind.tupleMember ? type : { kind: ReflectionKind.tupleMember, type });
+                        let resolved: TypeTupleMember = type.kind === ReflectionKind.tupleMember ? type : { kind: ReflectionKind.tupleMember, type };
+                        if (resolved.type.kind === ReflectionKind.rest) {
+                            if (resolved.type.type.kind === ReflectionKind.tuple) {
+                                for (const sub of resolved.type.type.types) {
+                                    types.push(sub);
+                                }
+                            } else {
+                                types.push(resolved);
+                            }
+                        } else {
+                            types.push(resolved);
+                        }
                     }
                     this.pushType({ kind: ReflectionKind.tuple, types });
                     break;
@@ -386,12 +442,12 @@ export class Processor {
                     this.pushType({ kind: ReflectionKind.regexp });
                     break;
                 }
-                case ReflectionOp.template:
-                case ReflectionOp.templateDefault: {
+                case ReflectionOp.typeParameter:
+                case ReflectionOp.typeParameterDefault: {
                     const nameRef = this.eatParameter(ops) as number;
                     let type = this.frame.inputs[this.frame.variables++];
 
-                    if (op === ReflectionOp.templateDefault) {
+                    if (op === ReflectionOp.typeParameterDefault) {
                         const defaultValue = this.pop();
                         if (type === undefined) {
                             type = defaultValue;
@@ -400,7 +456,7 @@ export class Processor {
 
                     if (type === undefined) {
                         //generic not instantiated
-                        this.pushType({ kind: ReflectionKind.template, name: initialStack[nameRef] as string });
+                        this.pushType({ kind: ReflectionKind.typeParameter, name: initialStack[nameRef] as string });
                     } else {
                         this.pushType(type as Type);
                     }
@@ -419,7 +475,7 @@ export class Processor {
                     break;
                 case ReflectionOp.union: {
                     const types = this.popFrame() as Type[];
-                    this.pushType(unboxUnion({ kind: ReflectionKind.union, types: flattenUnion(types) }));
+                    this.pushType(unboxUnion({ kind: ReflectionKind.union, types: flattenUnionTypes(types) }));
                     break;
                 }
                 case ReflectionOp.intersection: {
@@ -570,7 +626,7 @@ export class Processor {
                     const next = this.frame.distributiveLoop.next();
                     if (next === undefined) {
                         //end
-                        const result: TypeUnion = { kind: ReflectionKind.union, types: flattenUnion(this.popFrame() as Type[]) };
+                        const result: TypeUnion = { kind: ReflectionKind.union, types: flattenUnionTypes(this.popFrame() as Type[]) };
                         this.push(unboxUnion(result));
                     } else {
                         this.stack[this.frame.startIndex + 1] = next;
@@ -787,15 +843,20 @@ export class Processor {
                     }
                     const pOrFn = initialStack[pPosition] as number | Packed | (() => Packed);
                     const p = isFunction(pOrFn) ? pOrFn() : pOrFn;
-                    if ('number' === typeof p) {
+                    if ('number' === typeof p && argumentSize === 0) {
                         //self circular reference, usually a 0, which indicates we put the result of the current program as the type on the stack.
                         this.push(this.resultType);
                     } else {
-                        //todo: handle circular dependency
-                        const pack = unpack(p);
-                        const processor = new Processor(p, this.registry);
-                        const type = processor.run(pack.ops, pack.stack, inputs);
-                        this.push(type);
+                        if ('number' === typeof p) {
+                            const processor = new Processor(this.forType, this.registry);
+                            const type = processor.run(ops, initialStack, inputs);
+                            this.push(type);
+                        } else {
+                            const pack = unpack(p);
+                            const processor = new Processor(p, this.registry);
+                            const type = processor.run(pack.ops, pack.stack, inputs);
+                            this.push(type);
+                        }
                     }
                     break;
                 }
