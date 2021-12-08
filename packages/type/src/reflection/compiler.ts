@@ -20,6 +20,7 @@ import {
     ConditionalTypeNode,
     ConstructorDeclaration,
     ConstructorTypeNode,
+    ConstructSignatureDeclaration,
     createCompilerHost,
     createProgram,
     CustomTransformerFactory,
@@ -51,6 +52,7 @@ import {
     isClassExpression,
     isConstructorDeclaration,
     isConstructorTypeNode,
+    isConstructSignatureDeclaration,
     isEnumDeclaration,
     isExportDeclaration,
     isFunctionDeclaration,
@@ -169,6 +171,7 @@ const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.numberBrand]: { params: 1 },
     [ReflectionOp.typeof]: { params: 1 },
     [ReflectionOp.distribute]: { params: 1 },
+    [ReflectionOp.jumpCondition]: { params: 2 },
 };
 
 export function debugPackStruct(pack: { ops: ReflectionOp[], stack: PackExpression[] }): void {
@@ -299,7 +302,7 @@ class CompilerProgram {
     popCoRoutine(): number {
         const coRoutine = this.activeCoRoutines.pop();
         if (!coRoutine) throw new Error('No active co routine found');
-        this.popFrame();
+        this.popFrameImplicit();
         if (this.mainOffset === 0) {
             this.mainOffset = 2; //we add JUMP + index when building the program
         }
@@ -378,7 +381,15 @@ class CompilerProgram {
         return findConditionalFrame(this.frame);
     }
 
-    popFrame() {
+    /**
+     * Remove stack without doing it as OP in the processor. Some other command calls popFrame() already, which makes popFrameImplicit() an implicit popFrame.
+     */
+    popFrameImplicit() {
+        if (this.frame.previous) this.frame = this.frame.previous;
+    }
+
+    moveFrame() {
+        this.pushOp(ReflectionOp.moveFrame);
         if (this.frame.previous) this.frame = this.frame.previous;
     }
 
@@ -676,11 +687,10 @@ export class ReflectionTransformer {
             case SyntaxKind.ClassExpression: {
                 //TypeScript does not narrow types down
                 const narrowed = node as ClassDeclaration | ClassExpression;
+                //class nodes have always their own program, so the start is always fresh, means we don't need a frame
 
                 if (node) {
                     const members: ClassElement[] = [];
-                    const empty = program.isEmpty();
-                    if (!empty) program.pushFrame();
 
                     if (narrowed.typeParameters) {
                         for (const typeParameter of narrowed.typeParameters) {
@@ -705,22 +715,20 @@ export class ReflectionTransformer {
                     }
 
                     program.pushOp(ReflectionOp.class);
-                    if (!empty) program.popFrame();
                 }
                 break;
             }
             case SyntaxKind.IntersectionType: {
                 //TypeScript does not narrow types down
                 const narrowed = node as IntersectionTypeNode;
-
-                const empty = program.isEmpty();
-                if (!empty) program.pushFrame();
+                program.pushFrame();
 
                 for (const type of narrowed.types) {
                     this.extractPackStructOfType(type, program);
                 }
 
                 program.pushOp(ReflectionOp.intersection);
+                program.popFrameImplicit();
                 break;
             }
             case SyntaxKind.MappedType: {
@@ -764,7 +772,7 @@ export class ReflectionTransformer {
                 const coRoutineIndex = program.popCoRoutine();
 
                 program.pushOp(ReflectionOp.mappedType, coRoutineIndex, modifier);
-                program.popFrame();
+                program.popFrameImplicit();
                 break;
             }
             case SyntaxKind.TypeLiteral:
@@ -811,7 +819,7 @@ export class ReflectionTransformer {
                 program.pushFrame();
                 extractMembers(narrowed);
                 program.pushOp(ReflectionOp.objectLiteral);
-                program.popFrame();
+                program.popFrameImplicit();
                 break;
             }
             case SyntaxKind.TypeReference: {
@@ -860,7 +868,7 @@ export class ReflectionTransformer {
                     }
                 }
                 program.pushOp(ReflectionOp.tuple);
-                program.popFrame();
+                program.popFrameImplicit();
                 break;
             }
             case SyntaxKind.PropertySignature: {
@@ -932,15 +940,21 @@ export class ReflectionTransformer {
 
                 program.pushOp(ReflectionOp.extends);
 
+                program.pushCoRoutine();
                 this.extractPackStructOfType(narrowed.trueType, program);
+                const trueProgram = program.popCoRoutine();
+
+                program.pushCoRoutine();
                 this.extractPackStructOfType(narrowed.falseType, program);
-                program.pushOp(ReflectionOp.condition);
-                program.popFrame();
+                const falseProgram = program.popCoRoutine();
+
+                program.pushOp(ReflectionOp.jumpCondition, trueProgram, falseProgram);
+                program.moveFrame();
 
                 if (distributiveOverIdentifier) {
                     const coRoutineIndex = program.popCoRoutine();
                     program.pushOp(ReflectionOp.distribute, coRoutineIndex);
-                    program.popFrame();
+                    program.popFrameImplicit();
                 }
                 break;
             }
@@ -968,20 +982,20 @@ export class ReflectionTransformer {
             case SyntaxKind.Constructor:
             case SyntaxKind.ArrowFunction:
             case SyntaxKind.FunctionExpression:
+            case SyntaxKind.ConstructSignature:
             case SyntaxKind.ConstructorType:
             case SyntaxKind.FunctionType:
             case SyntaxKind.FunctionDeclaration: {
                 //TypeScript does not narrow types down
-                const narrowed = node as MethodSignature | MethodDeclaration | ConstructorTypeNode | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
+                const narrowed = node as MethodSignature | MethodDeclaration | ConstructorTypeNode | ConstructSignatureDeclaration | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
 
                 const config = this.findReflectionConfig(narrowed);
                 if (config.mode === 'never') return;
 
-                if (!program.isEmpty()) program.pushFrame();
-
-                const name = isConstructorTypeNode(narrowed) ? 'new' : isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
+                const name = isConstructorTypeNode(narrowed) || isConstructSignatureDeclaration(node) ? 'new' : isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
                 if (!narrowed.type && narrowed.parameters.length === 0 && !name) return;
 
+                program.pushFrame();
                 for (const parameter of narrowed.parameters) {
                     //we support at the moment only identifier as name
                     if (!isIdentifier(parameter.name)) continue;
@@ -1014,7 +1028,7 @@ export class ReflectionTransformer {
                 }
 
                 program.pushOp(
-                    isMethodSignature(narrowed)
+                    isMethodSignature(narrowed) || isConstructSignatureDeclaration(narrowed)
                         ? ReflectionOp.methodSignature
                         : isMethodDeclaration(narrowed) || isConstructorDeclaration(narrowed)
                             ? ReflectionOp.method : ReflectionOp.function, program.findOrAddStackEntry(name)
@@ -1025,6 +1039,7 @@ export class ReflectionTransformer {
                     if (hasModifier(narrowed, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
                     if (hasModifier(narrowed, SyntaxKind.AbstractKeyword)) program.pushOp(ReflectionOp.abstract);
                 }
+                program.popFrameImplicit();
                 break;
             }
             case SyntaxKind.LiteralType: {
@@ -1055,7 +1070,7 @@ export class ReflectionTransformer {
                 }
 
                 program.pushOp(ReflectionOp.templateLiteral);
-                program.popFrame();
+                program.popFrameImplicit();
 
                 break;
             }
@@ -1069,15 +1084,14 @@ export class ReflectionTransformer {
                     //only emit the type
                     this.extractPackStructOfType(narrowed.types[0], program);
                 } else {
-                    const empty = program.isEmpty();
-                    if (!empty) program.pushFrame();
+                    program.pushFrame();
 
                     for (const subType of narrowed.types) {
                         this.extractPackStructOfType(subType, program);
                     }
 
                     program.pushOp(ReflectionOp.union);
-                    if (!empty) program.popFrame();
+                    program.popFrameImplicit();
                 }
                 break;
             }
@@ -1094,7 +1108,7 @@ export class ReflectionTransformer {
                     }
                 }
                 program.pushOp(ReflectionOp.enum);
-                program.popFrame();
+                program.popFrameImplicit();
                 break;
             }
             case SyntaxKind.IndexSignature: {
@@ -1382,37 +1396,93 @@ export class ReflectionTransformer {
                 }
 
                 const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName)));
-                program.pushOp(ReflectionOp.classReference);
-                program.pushOp(index);
-                program.popFrame();
+                program.pushOp(ReflectionOp.classReference, index);
+                program.popFrameImplicit();
             } else if (isTypeParameterDeclaration(declaration)) {
 
                 //check if `type` was used in an expression. if so, we need to resolve it from runtime, otherwise we mark it as T
 
-                function isDefinedIn(start: Node, parent: SyntaxKind): Node | undefined {
-                    let current: Node = start;
+                /**
+                 * Returns the class declaration, function/arrow declaration, or block where type was used.
+                 */
+                function getTypeUser(type: Node): Node {
+                    let current: Node = type;
                     while (current) {
-                        if (current.kind === parent) return current;
+                        if (current.kind === SyntaxKind.Block) return current; //return the block
+                        if (current.kind === SyntaxKind.ClassDeclaration) return current; //return the class
+                        if (current.kind === SyntaxKind.ClassExpression) return current; //return the class
+                        if (current.kind === SyntaxKind.Constructor) return current.parent; //return the class
+                        if (current.kind === SyntaxKind.MethodDeclaration) return current.parent; //return the class
+                        if (current.kind === SyntaxKind.ArrowFunction || current.kind === SyntaxKind.FunctionDeclaration || current.kind === SyntaxKind.FunctionExpression) return current;
+
                         current = current.parent;
                     }
-                    return;
+                    return current;
                 }
 
-                function isInFunctionReturnType(start: Node): boolean {
-                    let current: Node = start;
-                    while (current) {
-                        if (current.parent && (isMethodSignature(current.parent) || isFunctionDeclaration(current.parent)
-                            || isFunctionExpression(current.parent) || isArrowFunction(current.parent) || isMethodDeclaration(current.parent))) {
-                            return current === current.parent.type;
-                        }
-                        current = current.parent;
-                    }
-                    return false;
+                /**
+                 * With this function we want to check if `type` is used in the signature itself from the parent of `declaration`.
+                 * If so, we do not try to infer the type from runtime values.
+                 *
+                 * Examples where we do not infer from runtime, `type` being `T` and `declaration` being `<T>` (return false):
+                 *
+                 * ```typescript
+                 * class User<T> {
+                 *     config: T;
+                 * }
+                 *
+                 * class User<T> {
+                 *    constructor(public config: T) {}
+                 * }
+                 *
+                 * function do<T>(item: T): void {}
+                 * function do<T>(item: T): T {}
+                 * ```
+                 *
+                 * Examples where we infer from runtime (return true):
+                 *
+                 * ```typescript
+                 * function do<T>(item: T) {
+                 *     return typeOf<T>; //<-- because of that
+                 * }
+                 *
+                 * function do<T>(item: T) {
+                 *     class A {
+                 *         config: T; //<-- because of that
+                 *     }
+                 *     return A;
+                 * }
+                 *
+                 * function do<T>(item: T) {
+                 *     class A {
+                 *         doIt() {
+                 *             class B {
+                 *                 config: T; //<-- because of that
+                 *             }
+                 *             return B;
+                 *         }
+                 *     }
+                 *     return A;
+                 * }
+                 *
+                 * function do<T>(item: T) {
+                 *     class A {
+                 *         doIt(): T { //<-- because of that
+                 *         }
+                 *     }
+                 *     return A;
+                 * }
+                 * ```
+                 */
+                function needsToBeInferred(): boolean {
+                    const declarationUser = getTypeUser(declaration);
+                    const typeUser = getTypeUser(type);
+
+                    return declarationUser !== typeUser;
                 }
 
                 const isUsedInFunction = isFunctionLike(declaration.parent);
-                const resolveRuntimeTypeParameter = (isUsedInFunction && program.isResolveFunctionParameters(declaration.parent))
-                    || (!isDefinedIn(type, SyntaxKind.TypeParameter) && !isDefinedIn(type, SyntaxKind.Parameter) && !isInFunctionReturnType(type));
+                const resolveRuntimeTypeParameter = (isUsedInFunction && program.isResolveFunctionParameters(declaration.parent)) || (needsToBeInferred());
 
                 if (resolveRuntimeTypeParameter) {
                     //go through all parameters and look where `type.name.escapedText` is used (recursively).
@@ -1457,10 +1527,16 @@ export class ReflectionTransformer {
                             this.extractPackStructOfType(foundUser.type, program);
                             program.pushOp(ReflectionOp.extends);
 
-                            this.extractPackStructOfType(declaration.name, program);
+                            const found = program.findVariable(getIdentifierName(declaration.name));
+                            if (found) {
+                                this.extractPackStructOfType(declaration.name, program);
+                            } else {
+                                //type parameter was never found in X of `Y extends X` (no `infer X` was created), probably due to a not supported parameter type expression.
+                                program.pushOp(ReflectionOp.any);
+                            }
                             this.extractPackStructOfType({ kind: SyntaxKind.NeverKeyword } as TypeNode, program);
                             program.pushOp(ReflectionOp.condition);
-                            program.popFrame();
+                            program.popFrameImplicit();
                         }
 
                         if (foundUsers.length > 1) {
@@ -1480,7 +1556,8 @@ export class ReflectionTransformer {
                         program.pushOp(ReflectionOp.never);
                     }
                 } else {
-                    program.pushOp(ReflectionOp.typeParameter, program.findOrAddStackEntry(getNameAsString(type.typeName)));
+                    program.pushOp(ReflectionOp.any);
+                    // program.pushOp(ReflectionOp.typeParameter, program.findOrAddStackEntry(getNameAsString(type.typeName)));
                 }
             } else {
                 this.extractPackStructOfType(declaration, program);

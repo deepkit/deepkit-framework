@@ -22,7 +22,10 @@ import {
     TypeInfer,
     typeInfer,
     TypeLiteral,
+    TypeMethod,
+    TypeMethodSignature,
     TypeNumber,
+    TypeParameter,
     TypeString,
     TypeTemplateLiteral,
     TypeTuple,
@@ -130,17 +133,7 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
             const returnValid = isExtendable(left.return, right.return);
             if (!returnValid) return false;
 
-            //convert parameters to tuple and just compare that, as it's the same algorithm
-            const leftTuple: TypeTuple = {
-                kind: ReflectionKind.tuple,
-                types: left.parameters.map(v => ({ kind: ReflectionKind.tupleMember, name: v.name, optional: v.optional, type: v.type }))
-            };
-            const rightTuple: TypeTuple = {
-                kind: ReflectionKind.tuple,
-                types: right.parameters.map(v => ({ kind: ReflectionKind.tupleMember, name: v.name, optional: v.optional, type: v.type }))
-            };
-
-            return isExtendable(leftTuple, rightTuple);
+            return isFunctionParameterExtendable(left, right);
         }
 
         return false;
@@ -152,11 +145,27 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
 
     if ((left.kind === ReflectionKind.class || left.kind === ReflectionKind.objectLiteral) && right.kind === ReflectionKind.function && right.name === 'new') {
         const leftConstructor = left.types.find(v => (v.kind === ReflectionKind.method && v.name === 'constructor') || (v.kind === ReflectionKind.methodSignature && v.name === 'new'));
-        const valid = isExtendable(leftConstructor || { kind: ReflectionKind.function, parameters: [], return: { kind: ReflectionKind.any } }, right);
+        const valid = isExtendable(right, leftConstructor || { kind: ReflectionKind.function, parameters: [], return: { kind: ReflectionKind.any } });
         return valid;
     }
 
     if ((left.kind === ReflectionKind.class || left.kind === ReflectionKind.objectLiteral) && (right.kind === ReflectionKind.objectLiteral || right.kind === ReflectionKind.class)) {
+        const rightConstructor = right.types.find(v => (v.kind === ReflectionKind.methodSignature && v.name === 'new')) as TypeMethodSignature | undefined;
+
+        if (left.kind === ReflectionKind.class && rightConstructor) {
+            //if rightConstructor is set then its maybe something like:
+            // `class {} extends {new (...args: []) => infer T} ? T : never`
+            //check if parameters are compatible
+            const leftConstructor = left.types.find(v => (v.kind === ReflectionKind.method && v.name === 'constructor')) as TypeMethod | undefined;
+            if (leftConstructor) {
+                if (!isFunctionParameterExtendable(leftConstructor, rightConstructor)) {
+                    return false;
+                }
+            }
+
+            return isExtendable(left, rightConstructor.return);
+        }
+
         for (const member of left.types) {
             //todo: call signature
             //todo: index signatures
@@ -215,6 +224,28 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
     if (right.kind === ReflectionKind.union) return right.types.some(v => isExtendable(leftValue, v));
 
     return false;
+}
+
+function isFunctionParameterExtendable(left: { parameters: TypeParameter[] }, right: { parameters: TypeParameter[] }): boolean {
+    //convert parameters to tuple and just compare that, as it's the same algorithm
+    const leftTuple: TypeTuple = {
+        kind: ReflectionKind.tuple,
+        types: left.parameters.map(v => ({ kind: ReflectionKind.tupleMember, name: v.name, optional: v.optional, type: v.type }))
+    };
+    const rightTuple: TypeTuple = {
+        kind: ReflectionKind.tuple,
+        types: right.parameters.map(v => ({ kind: ReflectionKind.tupleMember, name: v.name, optional: v.optional, type: v.type }))
+    };
+
+    //we have to change the position here since its type assignability is inversed to tuples rules
+    // true for tuple:     [a: string] extends [a: string, b: string]
+    // false for function: (a: string) extends (a: string, b: string)
+
+    const valid = isExtendable(rightTuple, leftTuple);
+    if (valid) {
+        inferFromTuple(leftTuple, rightTuple);
+    }
+    return valid;
 }
 
 function extendTemplateLiteral(left: TypeLiteral | TypeTemplateLiteral, right: TypeTemplateLiteral): boolean {

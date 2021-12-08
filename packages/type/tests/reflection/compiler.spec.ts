@@ -24,11 +24,13 @@ import {
     TypeClass,
     TypeFunction,
     typeInfer,
+    TypeMethod,
     TypeObjectLiteral,
     TypeProperty,
     TypeUnion
 } from '../../src/reflection/type';
 import { ClassType, typeOf } from '@deepkit/core';
+import { resolveRuntimeType } from '../../src/reflection/processor';
 
 Error.stackTraceLimit = 200;
 
@@ -603,11 +605,65 @@ test('template literal', () => {
 
 test('multiple infer', () => {
     const code = 'type a2 = \'abcd\' extends `a${infer T}${infer T2}` ? [T, T2] : never;\n' +
-        'return typeOf<a2>();'
+        'return typeOf<a2>();';
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code) as (v: string | number) => Type;
     console.log(type);
+});
+
+test('ClassType', () => {
+    const code = `
+    interface ClassType<T = any> {
+        new(...args: any[]): T;
+    }
+
+    return typeOf<ClassType<string>>();
+    `;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code) as () => Type;
+    expect(type).toEqual({
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            {
+                kind: ReflectionKind.methodSignature,
+                name: 'new',
+                return: { kind: ReflectionKind.string },
+                parameters: [{ kind: ReflectionKind.parameter, name: 'args', type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.any } } }]
+            }
+        ]
+    } as Type);
+});
+
+test('infer parameter in returned class constructor', () => {
+    const code = `
+    interface ClassType<T = any> {
+        new(...args: any[]): T;
+    }
+
+    class StreamApiResponseClass<T> {
+        constructor(public response: T) {
+        }
+    }
+    return function StreamApiResponse2<T>(responseBodyClass: ClassType<T>) {
+        class A extends StreamApiResponseClass<T> {
+            constructor(public response: T) {
+                super(response);
+            }
+        }
+
+        return A;
+    }
+    `;
+    const js = transpile(code);
+    console.log('js', js);
+    const res = transpileAndReturn(code) as (v: ClassType) => ClassType;
+    const type = resolveRuntimeType(res(class {
+    })) as TypeClass;
+    expect((type.types[0] as TypeMethod).parameters[0].type.kind).toBe(ReflectionKind.class);
+    console.log((type.types[0] as TypeMethod).parameters[0]);
 });
 
 test('complex infer T', () => {

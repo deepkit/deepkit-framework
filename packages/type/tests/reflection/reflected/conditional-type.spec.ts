@@ -4,10 +4,13 @@ import { typeOf } from '../../../src/reflection/reflection';
 test('distributed conditional type', () => {
     //when T is naked, it will be distributed
     type OnlyStrings<T> = T extends string ? T : never;
+    type OnlyStrings1<T> = [T] extends [string] ? T : never;
     type OnlyStrings2<T, E> = T extends string ? T : E;
     type OnlyStrings22<T, E> = boolean | (T extends string ? T : E);
     type OnlyStrings3<T, E> = T extends infer K ? boolean | (K extends string ? K : E) : never;
     type OnlyStrings4<T, T2, E> = T2 extends string ? T2[] : T;
+    expect(typeOf<OnlyStrings<string>>()).toEqual(typeOf<string>());
+    expect(typeOf<OnlyStrings1<string>>()).toEqual(typeOf<string>());
 
     type r1 = OnlyStrings<'a' | 'b' | number>; //'a' | 'b'
     type r12 = OnlyStrings2<'a' | 'b' | number, 'nope'>; //boolean | 'a' | 'b' | 'nope'

@@ -9,8 +9,7 @@
  */
 
 import { createFreeDecoratorContext } from './decorator-builder';
-import { Type } from './reflection/type';
-import { BackReferenceOptions, ReceiveType, ReferenceActions, ReflectionClass, SerializerFn, TData, ValidatorFn } from './reflection/reflection';
+import { BackReferenceOptions, ReceiveType, ReflectionClass, SerializerFn, TData, ValidatorFn } from './reflection/reflection';
 import { ClassType } from '@deepkit/core';
 
 class TDecorator {
@@ -31,7 +30,11 @@ class TDecorator {
 
         } else if (parameterIndexOrDescriptor !== undefined) {
             const reflectionMethod = reflection.getMethod(property || 'constructor');
-            if (reflectionMethod) reflectionMethod.getParameters()[parameterIndexOrDescriptor].applyDecorator(this.t);
+            if (reflectionMethod) {
+                const params = reflectionMethod.getParameters();
+                const param = params[parameterIndexOrDescriptor];
+                param.applyDecorator(this.t);
+            }
         }
     }
 

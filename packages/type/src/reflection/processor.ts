@@ -127,6 +127,7 @@ export function resolveRuntimeType(o: any, args: any[] = [], registry?: Processo
 }
 
 interface Frame {
+    index: number;
     startIndex: number; //when the frame started, index of the stack
     variables: number;
     inputs: RuntimeStackEntry[];
@@ -174,7 +175,7 @@ class ProcessorRegistry {
 export class Processor {
     stack: (RuntimeStackEntry | Type)[] = newArray({ kind: ReflectionKind.never }, 128);
     stackPointer = -1; //pointer to the stack
-    frame: Frame = { startIndex: -1, inputs: [], variables: 0 };
+    frame: Frame = { index: 0, startIndex: -1, inputs: [], variables: 0 };
     program: number = 0;
 
     resultType: Type = { kind: ReflectionKind.any };
@@ -199,6 +200,7 @@ export class Processor {
         const s = ops.length;
         for (this.program = 0; this.program < s; this.program++) {
             const op = ops[this.program];
+            // process.stdout.write(`[${this.frame.index}] step ${this.program} ${ReflectionOp[op]}\n`);
             switch (op) {
                 case ReflectionOp.string:
                     this.pushType({ kind: ReflectionKind.string });
@@ -626,7 +628,8 @@ export class Processor {
                     const next = this.frame.distributiveLoop.next();
                     if (next === undefined) {
                         //end
-                        const result: TypeUnion = { kind: ReflectionKind.union, types: flattenUnionTypes(this.popFrame() as Type[]) };
+                        const types = this.popFrame() as Type[];
+                        const result: TypeUnion = { kind: ReflectionKind.union, types: flattenUnionTypes(types) };
                         this.push(unboxUnion(result));
                     } else {
                         this.stack[this.frame.startIndex + 1] = next;
@@ -643,7 +646,6 @@ export class Processor {
                     condition ? this.pushType(left) : this.pushType(right);
                     break;
                 }
-                //this is deprecated
                 case ReflectionOp.jumpCondition: {
                     const leftProgram = this.eatParameter(ops) as number;
                     const rightProgram = this.eatParameter(ops) as number;
@@ -811,6 +813,12 @@ export class Processor {
                     this.pushFrame();
                     break;
                 }
+                case ReflectionOp.moveFrame: {
+                    const type = this.pop();
+                    this.popFrame();
+                    if (type) this.push(type);
+                    break;
+                }
                 case ReflectionOp.jump: {
                     const arg = this.eatParameter(ops) as number;
                     this.program = arg - 1; //-1 because next iteration does program++
@@ -877,6 +885,7 @@ export class Processor {
 
     pushFrame(): void {
         this.frame = {
+            index: this.frame.index + 1,
             startIndex: this.stackPointer,
             previous: this.frame,
             variables: 0,
@@ -897,6 +906,7 @@ export class Processor {
     call(program: number, jumpBackTo: number = 1): void {
         this.push(this.program + jumpBackTo); //the `return address`
         this.pushFrame();
+        // process.stdout.write(`[${this.frame.index}] call ${program}\n`);
         this.program = program - 1; //-1 because next iteration does program++
     }
 
@@ -906,6 +916,7 @@ export class Processor {
     returnFrame(): void {
         const returnValue = this.pop(); //latest entry on the stack is the return value
         const returnAddress = this.stack[this.frame.startIndex]; //startIndex points the to new frame - 1 position, which is the `return address`.
+        // process.stdout.write(`[${this.frame.index}] return ${returnAddress}\n`);
         this.stackPointer = this.frame.startIndex - 1; //-1 because call convention adds `return address` before entering new frame
         this.push(returnValue);
         if ('number' === typeof returnAddress) this.program = returnAddress - 1; //-1 because iteration does program++

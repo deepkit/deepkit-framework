@@ -636,7 +636,7 @@ export class ReflectionClass<T> {
         if (member.kind === ReflectionKind.property || member.kind === ReflectionKind.propertySignature) {
             const existing = this.getProperty(member.name);
             if (existing) {
-                existing.setType(member);
+                existing.setType(member.type);
             } else {
                 this.addProperty(new ReflectionProperty(member, this));
             }

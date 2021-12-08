@@ -106,6 +106,8 @@ test('extendability constructor', () => {
     type c = abstract new (...args: any) => any;
 
     class User {
+        constructor() {
+        }
     }
 
     class Setting {
@@ -119,9 +121,32 @@ test('extendability constructor', () => {
     invalidExtend<string, c>();
     invalidExtend<string, c>();
 
-    type c2 = abstract new (key: string, value: any) => any;
+    type c2 = new (key: string, value: any) => any;
+    type c3 = typeof User extends c2 ? true : false;
+    type c4 = typeof Setting extends c2 ? true : false;
+
+    type d1 = new () => any;
+    type d2 = typeof User extends d1 ? true : false;
+    type d3 = typeof Setting extends d1 ? true : false;
+
+    // type d2 = (key: string, value: any) => any;
+    // type d3 = (() => void) extends d2 ? true : false;
+
     validExtend<Setting, c2>();
     invalidExtend<User, c2>();
+});
+
+test('extendability function', () => {
+    validExtend<(a: string) => void, (a: string) => void>();
+    validExtend<(a: string) => void, (...args: any[]) => void>();
+
+    type f1 = ((a: string) => void) extends ((a: string, b: string) => void) ? true : false;
+    validExtend<(a: string) => void, (a: string, b: string) => void>();
+
+    type f2 = ((a: string, b: string) => void) extends ((a: string) => void) ? true : false;
+    invalidExtend<(a: string, b: string) => void, (a: string) => void>();
+
+    validExtend<() => void, (a: string) => void>();
 });
 
 test('extendability', () => {
@@ -557,9 +582,10 @@ test('tuple indexAccess', () => {
 });
 
 test('tuple extends', () => {
-    // validExtend<[], []>();
-    // validExtend<[string], []>();
     validExtend<[string], [string]>();
+    invalidExtend<[], [string]>();
+    validExtend<[string], []>();
+    expect(isExtendable(typeOf<[string, number]>(), { kind: ReflectionKind.tuple, types: [] })).toBe(true);
     validExtend<[string], [...string[]]>();
 
     validExtend<[string, number], [...string[], number]>();

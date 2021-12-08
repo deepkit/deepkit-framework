@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, getClassName, indent, isArray } from '@deepkit/core';
+import { ClassType, getClassName, indent, isArray, isClass } from '@deepkit/core';
 import { resolveRuntimeType } from './processor';
 
 export enum ReflectionVisibility {
@@ -790,8 +790,13 @@ export function typeInfer(value: any): Type {
         return { kind: ReflectionKind.undefined };
     } else if ('function' === typeof value) {
         if (isArray(value.__type)) {
-            //with emitted types
+            //with emitted types: function or class
             return resolveRuntimeType(value);
+        }
+
+        if (isClass(value)) {
+            //unknown class
+            return { kind: ReflectionKind.class, classType: value, types: [] };
         }
 
         return { kind: ReflectionKind.function, name: value.name, return: { kind: ReflectionKind.any }, parameters: [] };
@@ -1140,6 +1145,7 @@ export enum ReflectionOp {
     in,
 
     frame, //creates a new stack frame
+    moveFrame, //pop() as T, pops the current stack frame, push(T)
     return,
 
     templateLiteral,
