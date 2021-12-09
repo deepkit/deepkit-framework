@@ -940,6 +940,27 @@ export type UUID = string & { __meta?: 'UUIDv4' };
 export type MongoId = string & { __meta?: 'mongoId' };
 export type BackReference<VIA extends ClassType | Object = never> = { __meta?: 'backReference', backReference?: { via: VIA } };
 
+export type DecoratorMetaNames = 'primaryKey' | 'reference' | 'backReference' | 'autoIncrement' | 'UUID' | 'mongoId';
+
+export function getDecoratorMetas(types: Type[]): DecoratorMetaNames[] {
+    const result: DecoratorMetaNames[] = [];
+    for (const decorator of types) {
+        if (decorator.kind === ReflectionKind.objectLiteral) {
+            if (decorator.types.length !== 1) continue;
+            const t = decorator.types[0];
+            if (t.kind === ReflectionKind.propertySignature && t.name === '__meta' && t.type.kind === ReflectionKind.literal) {
+                if (t.type.literal === 'primaryKey') result.push('primaryKey');
+                if (t.type.literal === 'reference') result.push('reference');
+                if (t.type.literal === 'backReference') result.push('backReference');
+                if (t.type.literal === 'autoIncrement') result.push('autoIncrement');
+                if (t.type.literal === 'UUIDv4') result.push('UUID');
+                if (t.type.literal === 'mongoId') result.push('mongoId');
+            }
+        }
+    }
+    return result;
+}
+
 export const enum MappedModifier {
     optional = 1 << 0,
     removeOptional = 1 << 1,
@@ -947,88 +968,96 @@ export const enum MappedModifier {
     removeReadonly = 1 << 3,
 }
 
-export function stringifyType(type: Type, depth: number = 0): string {
-    switch (type.kind) {
-        case ReflectionKind.never:
-            return `never`;
-        case ReflectionKind.any:
-            return `any`;
-        case ReflectionKind.void:
-            return `void`;
-        case ReflectionKind.undefined:
-            return `undefined`;
-        case ReflectionKind.null:
-            return `null`;
-        case ReflectionKind.string:
-            return 'string';
-        case ReflectionKind.number:
-            return 'number';
-        case ReflectionKind.bigint:
-            return 'bigint';
-        case ReflectionKind.regexp:
-            return 'RegExp';
-        case ReflectionKind.boolean:
-            return 'boolean';
-        case ReflectionKind.literal:
-            if ('number' === typeof type.literal) return type.literal + '';
-            if ('boolean' === typeof type.literal) return type.literal + '';
-            return `'${String(type.literal).replace(/'/g, '\\\'')}'`;
-        case ReflectionKind.promise:
-            return `Promise<${stringifyType(type.type)}>`;
-        case ReflectionKind.templateLiteral:
-            return '`' + type.types.map(v => {
-                return v.kind === ReflectionKind.literal ? v.literal : '${' + stringifyType(v) + '}';
-            }).join('') + '`';
-        case ReflectionKind.class: {
-            if (type.classType === Date) return `Date`;
-            if (type.classType === Set) return `Set<${stringifyType(type.arguments![0])}>`;
-            if (type.classType === Map) return `Map<${stringifyType(type.arguments![0])}, ${stringifyType(type.arguments![1])}>`;
-            const indentation = indent((depth + 1) * 2);
-            const args = type.arguments ? '<' + type.arguments.map(stringifyType).join(', ') + '>' : '';
-            return `${getClassName(type.classType)}${args} {\n${type.types.map(v => indentation(stringifyType(v, depth + 1))).join(';\n')};\n}`;
-        }
-        case ReflectionKind.objectLiteral: {
-            const indentation = indent((depth + 1) * 2);
-            return `{\n${type.types.map(v => indentation(stringifyType(v, depth + 1))).join(';\n')};\n}`;
-        }
-        case ReflectionKind.union:
-            return type.types.map(stringifyType).join(' | ');
-        case ReflectionKind.intersection:
-            return type.types.map(stringifyType).join(' & ');
-        case ReflectionKind.parameter: {
-            const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
-            return `${type.readonly ? 'readonly ' : ''}${visibility}${type.name}${type.optional ? '?' : ''}: ${stringifyType(type.type)}`;
-        }
-        case ReflectionKind.function:
-            return `(${type.parameters.map(stringifyType).join(', ')}) => ${stringifyType(type.return)}`;
-        case ReflectionKind.enum:
-            return `enum todo`;
-        case ReflectionKind.array:
-            return `${stringifyType(type.type)}[]`;
-        case ReflectionKind.rest:
-            return `...${stringifyType(type.type)}[]`;
-        case ReflectionKind.tupleMember:
-            if (type.name) return `${type.name}${type.optional ? '?' : ''}: ${stringifyType(type.type)}`;
-            return `${stringifyType(type.type)}${type.optional ? '?' : ''}`;
-        case ReflectionKind.tuple:
-            return `[${type.types.map(stringifyType).join(', ')}]`;
-        case ReflectionKind.indexSignature:
-            return `{[index: ${stringifyType(type.index)}]: ${stringifyType(type.type)}`;
-        case ReflectionKind.propertySignature:
-            return `${type.readonly ? 'readonly ' : ''}${String(type.name)}${type.optional ? '?' : ''}: ${stringifyType(type.type)}`;
-        case ReflectionKind.property: {
-            const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
-            return `${type.readonly ? 'readonly ' : ''}${visibility}${String(type.name)}${type.optional ? '?' : ''}: ${stringifyType(type.type)}`;
-        }
-        case ReflectionKind.methodSignature:
-            return `${String(type.name)}${type.optional ? '?' : ''}(${type.parameters.map(stringifyType).join(', ')}): ${stringifyType(type.return)}`;
-        case ReflectionKind.method: {
-            const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
-            return `${type.abstract ? 'abstract ' : ''}${visibility}${String(type.name)}${type.optional ? '?' : ''}(${type.parameters.map(stringifyType).join(', ')}): ${stringifyType(type.return)}`;
-        }
-    }
+export function stringifyType(type: Type, state: { depth: number, stack: Type[] } = { depth: 0, stack: [] }): string {
+    if (state.stack.includes(type)) return '* Recursion *';
+    state.stack.push(type);
 
-    return type.kind + '';
+    try {
+        switch (type.kind) {
+            case ReflectionKind.never:
+                return `never`;
+            case ReflectionKind.any:
+                return `any`;
+            case ReflectionKind.void:
+                return `void`;
+            case ReflectionKind.undefined:
+                return `undefined`;
+            case ReflectionKind.null:
+                return `null`;
+            case ReflectionKind.string:
+                return 'string';
+            case ReflectionKind.number:
+                return 'number';
+            case ReflectionKind.bigint:
+                return 'bigint';
+            case ReflectionKind.regexp:
+                return 'RegExp';
+            case ReflectionKind.boolean:
+                return 'boolean';
+            case ReflectionKind.literal:
+                if ('number' === typeof type.literal) return type.literal + '';
+                if ('boolean' === typeof type.literal) return type.literal + '';
+                return `'${String(type.literal).replace(/'/g, '\\\'')}'`;
+            case ReflectionKind.promise:
+                return `Promise<${stringifyType(type.type, state)}>`;
+            case ReflectionKind.templateLiteral:
+                return '`' + type.types.map(v => {
+                    return v.kind === ReflectionKind.literal ? v.literal : '${' + stringifyType(v, state) + '}';
+                }).join('') + '`';
+            case ReflectionKind.class: {
+                if (type.classType === Date) return `Date`;
+                if (type.classType === Set) return `Set<${stringifyType(type.arguments![0], state)}>`;
+                if (type.classType === Map) return `Map<${stringifyType(type.arguments![0], state)}, ${stringifyType(type.arguments![1], state)}>`;
+                const indentation = indent((state.depth + 1) * 2);
+                const args = type.arguments ? '<' + type.arguments.map(v => stringifyType(v, state)).join(', ') + '>' : '';
+                return `${getClassName(type.classType)}${args} {\n${type.types.map(v => indentation(stringifyType(v, state))).join(';\n')};\n}`;
+            }
+            case ReflectionKind.objectLiteral: {
+                const indentation = indent((state.depth + 1) * 2);
+                return `{\n${type.types.map(v => indentation(stringifyType(v, state))).join(';\n')};\n}`;
+            }
+            case ReflectionKind.union:
+                return type.types.map(v => stringifyType(v, state)).join(' | ');
+            case ReflectionKind.intersection:
+                return type.types.map(v => stringifyType(v, state)).join(' & ');
+            case ReflectionKind.parameter: {
+                const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
+                return `${type.readonly ? 'readonly ' : ''}${visibility}${type.name}${type.optional ? '?' : ''}: ${stringifyType(type.type, state)}`;
+            }
+            case ReflectionKind.function:
+                return `(${type.parameters.map(v => stringifyType(v, state)).join(', ')}) => ${stringifyType(type.return, state)}`;
+            case ReflectionKind.enum:
+                return `enum todo`;
+            case ReflectionKind.array:
+                return `${stringifyType(type.type, state)}[]`;
+            case ReflectionKind.rest:
+                return `...${stringifyType(type.type, state)}[]`;
+            case ReflectionKind.tupleMember:
+                if (type.name) return `${type.name}${type.optional ? '?' : ''}: ${stringifyType(type.type, state)}`;
+                return `${stringifyType(type.type, state)}${type.optional ? '?' : ''}`;
+            case ReflectionKind.tuple:
+                return `[${type.types.map(v => stringifyType(v, state)).join(', ')}]`;
+            case ReflectionKind.indexSignature:
+                return `{[index: ${stringifyType(type.index, state)}]: ${stringifyType(type.type, state)}`;
+            case ReflectionKind.propertySignature:
+                return `${type.readonly ? 'readonly ' : ''}${String(type.name)}${type.optional ? '?' : ''}: ${stringifyType(type.type, state)}`;
+            case ReflectionKind.property: {
+                const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
+                return `${type.readonly ? 'readonly ' : ''}${visibility}${String(type.name)}${type.optional ? '?' : ''}: ${stringifyType(type.type, state)}`;
+            }
+            case ReflectionKind.methodSignature:
+                return `${String(type.name)}${type.optional ? '?' : ''}(${type.parameters.map(v => stringifyType(v, state)).join(', ')}): ${stringifyType(type.return, state)}`;
+            case ReflectionKind.method: {
+                const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
+                return `${type.abstract ? 'abstract ' : ''}${visibility}${String(type.name)}${type.optional ? '?' : ''}`
+                    + `(${type.parameters.map(v => stringifyType(v, state)).join(', ')}): ${stringifyType(type.return, state)}`;
+            }
+        }
+
+        return type.kind + '';
+    } finally {
+        state.stack.pop();
+    }
 }
 
 /**

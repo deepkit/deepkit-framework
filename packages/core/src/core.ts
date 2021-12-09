@@ -513,7 +513,7 @@ export async function asyncOperation<T>(executor: (resolve: (value: T) => void, 
                 reject(e);
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         mergeStack(error, createStack());
         throw error;
     }

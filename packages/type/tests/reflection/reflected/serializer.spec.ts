@@ -10,7 +10,7 @@
 import { expect, test } from '@jest/globals';
 import { t } from '../../../src/decorator';
 import { reflect, ReflectionClass } from '../../../src/reflection/reflection';
-import { int8, integer, PrimaryKey } from '../../../src/reflection/type';
+import { BackReference, int8, integer, PrimaryKey, Reference } from '../../../src/reflection/type';
 import { createSerializeFunction, SerializationError } from '../../../src/serializer';
 import { cast, serialize } from '../../../src/serializer-facade';
 import { jsonSerializer } from '../../../src/serializer-json';
@@ -411,7 +411,7 @@ test('index signature ', () => {
     expect(() => cast<BagOfNumbers>({ a: 'b', b: 'c' })).toThrow(SerializationError as any);
     expect(() => cast<BagOfNumbers>({ a: 'b', b: 'c' })).toThrow('a: ');
 
-    expect(cast<BagOfStrings>({ a: 1 })).toEqual({ a: '1' });
+    +expect(cast<BagOfStrings>({ a: 1 })).toEqual({ a: '1' });
     expect(cast<BagOfStrings>({ a: 1, b: 2 })).toEqual({ a: '1', b: '2' });
     expect(cast<BagOfStrings>({ a: 'b' })).toEqual({ a: 'b' });
     expect(cast<BagOfStrings>({ a: 'b', b: 'c' })).toEqual({ a: 'b', b: 'c' });
@@ -433,4 +433,67 @@ test('exclude', () => {
 
     expect(cast<User>({ username: 'peter', password: 'nope' })).toEqual({ username: 'peter', password: undefined });
     expect(serialize<User>({ username: 'peter', password: 'nope' })).toEqual({ username: 'peter', password: undefined });
+});
+
+test('regexp direct', () => {
+    expect(cast<RegExp>(/abc/).toString()).toEqual('/abc/');
+    expect(cast<RegExp>('/abc/').toString()).toEqual('/abc/');
+    expect(cast<RegExp>('abc').toString()).toEqual('/abc/');
+    expect(serialize<RegExp>(/abc/).toString()).toEqual('/abc/');
+});
+
+test('regexp union', () => {
+    expect(cast<string | { $regex: RegExp }>({ $regex: /abc/ })).toEqual({ $regex: /abc/ });
+    expect(cast<Record<string, string | { $regex: RegExp }>>({ a: { $regex: /abc/ } })).toEqual({ a: { $regex: /abc/ } });
+});
+
+test('index signature with template literal', () => {
+    type a1 = { [index: `a${number}`]: number };
+    expect(cast<a1>({ a123: '123' })).toEqual({ a123: 123 });
+    expect(cast<a1>({ a123: '123', b: 123 })).toEqual({ a123: 123, b: undefined });
+    expect(cast<a1>({ a123: '123', a124: 123 })).toEqual({ a123: 123, a124: 123 });
+});
+
+test('class circular reference', () => {
+    class User {
+        constructor(public username: string) {
+        }
+
+        manager?: User;
+    }
+
+    const res = cast<User>({ username: 'Horst', manager: { username: 'Peter' } });
+    expect(res).toEqual({ username: 'Horst', manager: { username: 'Peter' } });
+    expect(res).toBeInstanceOf(User);
+    expect(res.manager).toBeInstanceOf(User);
+});
+
+test('class with reference', () => {
+    class User {
+        constructor(public username: string) {
+        }
+    }
+
+    interface Team {
+        lead: User & Reference;
+    }
+
+    const res = cast<Team>({ lead: { username: 'Peter' } });
+    expect(res).toEqual({ lead: { username: 'Peter' } });
+    expect(res.lead).toBeInstanceOf(User);
+});
+
+test('class with back reference', () => {
+    class User {
+        constructor(public username: string) {
+        }
+    }
+
+    interface Team {
+        leads: User[] & BackReference;
+    }
+
+    const res = cast<Team>({ leads: [{ username: 'Peter' }] });
+    expect(res).toEqual({ leads: [{ username: 'Peter' }] });
+    expect(res.leads[0]).toBeInstanceOf(User);
 });

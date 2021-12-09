@@ -9,6 +9,8 @@
  */
 
 import { ClassType, isObject } from '@deepkit/core';
+import { ReflectionClass, reflectionClassSymbol } from './reflection/reflection';
+import { typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core';
 
 export function isReference(obj: any): boolean {
     return isObject(obj) && referenceSymbol in obj;
@@ -23,7 +25,7 @@ export function getReferenceItemInfo<T>(obj: T): ReferenceItemInfo<T> | undefine
 }
 
 export function getOrCreateReferenceItemInfo<T>(obj: T): ReferenceItemInfo<T> {
-    if (!(obj as any)[referenceItemSymbol]) (obj as any)[referenceItemSymbol] = {hydrated: false};
+    if (!(obj as any)[referenceItemSymbol]) (obj as any)[referenceItemSymbol] = { hydrated: false };
     return (obj as any)[referenceItemSymbol] as ReferenceItemInfo<T>;
 }
 
@@ -48,98 +50,92 @@ export interface ReferenceItemInfo<T> {
 export const referenceSymbol = Symbol('reference');
 export const referenceItemSymbol = Symbol('reference/item');
 
-export function createReference<T>(referenceClass: ClassType<T>, pk: { [name: string]: any }) {
+export function createReference<T>(referenceClass: ClassType<T>, pk: { [name: string]: any }): T {
     const args: any[] = [];
-    //
-    // const classSchema = getClassSchema(referenceClass);
-    //
-    // if (!(referenceSymbol in referenceClass.prototype)) {
-    //     referenceClass = createReferenceClass(classSchema);
-    // }
-    //
-    // for (const prop of classSchema.getMethodProperties('constructor')) {
-    //     args.push(pk[prop.name]);
-    // }
-    //
-    // const old = getGlobalStore().unpopulatedCheck;
-    // getGlobalStore().unpopulatedCheck = UnpopulatedCheck.None;
-    //
-    // try {
-    //     const ref = new referenceClass(...args);
-    //     Object.assign(ref, pk);
-    //
-    //
-    //     return ref;
-    // } finally {
-    //     getGlobalStore().unpopulatedCheck = old;
-    // }
 
+    const reflection = ReflectionClass.from(referenceClass);
+
+    if (!(referenceSymbol in referenceClass.prototype)) {
+        referenceClass = createReferenceClass(referenceClass);
+    }
+
+    for (const prop of reflection.getMethodParameters('constructor')) {
+        args.push(pk[prop.getName()]);
+    }
+
+    const old = typeSettings.unpopulatedCheck;
+    typeSettings.unpopulatedCheck = UnpopulatedCheck.None;
+
+    try {
+        const ref = new referenceClass(...args);
+        const w = Object.assign(ref, pk);
+        return w;
+    } finally {
+        typeSettings.unpopulatedCheck = old;
+    }
 }
+
 export function createReferenceClass<T>(
     classType: ClassType,
 ): ClassType<T> {
-    // const type = classSchema.classType as any;
-    //
-    // if (classSchema.data.referenceClass) return classSchema.data.referenceClass;
+    const reflection = ReflectionClass.from(classType);
+    if (reflection.data.referenceClass) return reflection.data.referenceClass;
 
     const Reference = class extends classType {
     };
 
-    // Object.defineProperty(Reference.prototype, referenceSymbol, { value: { hydrator: undefined }, enumerable: false });
-    // Object.defineProperty(Reference.prototype, referenceItemSymbol, { value: null, writable: true, enumerable: false });
-    // Object.defineProperty(Reference.prototype, classSchemaSymbol, { writable: true, enumerable: false, value: classSchema });
-    //
-    // Reference.buildId = classSchema.buildId;
-    //
-    // const globalStore = getGlobalStore();
-    //
-    // Object.defineProperty(Reference, 'name', {
-    //     value: classSchema.getClassName() + 'Reference'
-    // });
-    //
-    // classSchema.data.referenceClass = Reference;
-    //
-    // for (const property of classSchema.getProperties()) {
-    //     if (property.isId) continue;
-    //
-    //     const message = property.isReference || property.backReference ?
-    //         `Reference ${classSchema.getClassName()}.${property.name} was not loaded. Use joinWith(), useJoinWith(), etc to populate the reference.`
-    //         :
-    //         `Can not access ${classSchema.getClassName()}.${property.name} since class was not completely hydrated. Use 'await hydrate(item)' to completely load it.`;
-    //
-    //     Object.defineProperty(Reference.prototype, property.name, {
-    //         enumerable: false,
-    //         configurable: true,
-    //         get() {
-    //             if (this.hasOwnProperty(property.symbol)) {
-    //                 return this[property.symbol];
-    //             }
-    //
-    //             if (globalStore.unpopulatedCheck === UnpopulatedCheck.Throw) {
-    //                 throw new Error(message);
-    //             }
-    //
-    //             if (globalStore.unpopulatedCheck === UnpopulatedCheck.ReturnSymbol) {
-    //                 return unpopulatedSymbol;
-    //             }
-    //         },
-    //         set(v) {
-    //             if (globalStore.unpopulatedCheck === UnpopulatedCheck.None) {
-    //                 //when this check is off, this item is being constructed
-    //                 //so we ignore initial set operations
-    //                 return;
-    //             }
-    //
-    //             // when we set value, we just accept it and treat all
-    //             // properties accessors that don't throw the Error above as "updated"
-    //             Object.defineProperty(this, property.symbol, {
-    //                 enumerable: false,
-    //                 writable: true,
-    //                 value: v
-    //             });
-    //         }
-    //     });
-    // }
+    Object.defineProperty(Reference.prototype, referenceSymbol, { value: { hydrator: undefined }, enumerable: false });
+    Object.defineProperty(Reference.prototype, referenceItemSymbol, { value: null, writable: true, enumerable: false });
+    Object.defineProperty(Reference.prototype, reflectionClassSymbol, { writable: true, enumerable: false, value: reflection });
+
+    Object.defineProperty(Reference, 'name', {
+        value: reflection.getClassName() + 'Reference'
+    });
+
+    reflection.data.referenceClass = Reference;
+
+    for (const property of reflection.getProperties()) {
+        if (property.primaryKey) continue;
+
+        const name = String(property.getName());
+
+        const message = property.reference || property.backReference ?
+            `Reference ${reflection.getClassName()}.${name} was not loaded. Use joinWith(), useJoinWith(), etc to populate the reference.`
+            :
+            `Can not access ${reflection.getClassName()}.${name} since class was not completely hydrated. Use 'await hydrate(${reflection.getClassName()}.${name})' to completely load it.`;
+
+        Object.defineProperty(Reference.prototype, property.getName(), {
+            enumerable: false,
+            configurable: true,
+            get() {
+                if (this.hasOwnProperty(property.symbol)) {
+                    return this[property.symbol];
+                }
+
+                if (typeSettings.unpopulatedCheck === UnpopulatedCheck.Throw) {
+                    throw new Error(message);
+                }
+
+                if (typeSettings.unpopulatedCheck === UnpopulatedCheck.ReturnSymbol) {
+                    return unpopulatedSymbol;
+                }
+            },
+            set(v) {
+                if (typeSettings.unpopulatedCheck === UnpopulatedCheck.None) {
+                    //when this check is off, this item is being constructed so we ignore initial set operations
+                    return;
+                }
+
+                // when we set value, we just accept it and treat all
+                // properties accessors that don't throw the Error above as "updated"
+                Object.defineProperty(this, property.symbol, {
+                    enumerable: false,
+                    writable: true,
+                    value: v
+                });
+            }
+        });
+    }
 
     return Reference as ClassType<T>;
 }

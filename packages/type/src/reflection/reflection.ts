@@ -9,6 +9,8 @@
  */
 
 import {
+    getDecoratorMetas,
+    isBrandable,
     isType,
     ReflectionKind,
     ReflectionVisibility,
@@ -23,7 +25,7 @@ import {
     TypeProperty,
     TypePropertySignature
 } from './type';
-import { AbstractClassType, ClassType } from '@deepkit/core';
+import { AbstractClassType, ClassType, getClassName } from '@deepkit/core';
 import { FreeDecoratorFn } from '../decorator-builder';
 import { Packed, resolveRuntimeType } from './processor';
 import { isExtendable } from './extends';
@@ -190,6 +192,7 @@ export function visit(type: Type, visitor: (type: Type) => false | void, onCircu
         case ReflectionKind.array:
         case ReflectionKind.promise:
         case ReflectionKind.parameter:
+        case ReflectionKind.tupleMember:
         case ReflectionKind.rest:
             visit(type.type, visitor, onCircular, stack);
             break;
@@ -390,17 +393,10 @@ export type ReferenceActions = 'RESTRICT' | 'NO ACTION' | 'CASCADE' | 'SET NULL'
 export class ReflectionProperty {
     data: { [name: string]: any } = {};
 
-    autoIncrement?: true;
-    primaryKey?: true;
-
     jsonType?: Type;
 
     groups: string[] = [];
 
-    /**
-     * true when this property is marked as a owning reference (also known as foreign key).
-     */
-    reference?: true;
     referenceOptions: { onDelete: ReferenceActions, onUpdate: ReferenceActions } = {
         onDelete: 'CASCADE',
         onUpdate: 'CASCADE',
@@ -409,7 +405,7 @@ export class ReflectionProperty {
     /**
      * Set when this property is marked as a back reference.
      */
-    backReference?: BackReferenceOptions<any>;
+    backReferenceOptions?: BackReferenceOptions<any>;
 
     serializer?: SerializerFn;
     deserializer?: SerializerFn;
@@ -419,14 +415,36 @@ export class ReflectionProperty {
 
     type: Type;
 
+    symbol = Symbol(String(this.getName()));
+
+    primaryKey: boolean = false;
+    reference: boolean = false;
+    backReference: boolean = false;
+    autoIncrement: boolean = false;
+    uuid: boolean = false;
+    mongoId: boolean = false;
+
     constructor(
         public property: TypeProperty | TypePropertySignature,
         public reflectionClass: ReflectionClass<any>,
     ) {
         this.type = property.type;
+        this.setType(this.type);
     }
 
     setType(type: Type) {
+        if (isBrandable(type) && type.brands) {
+            const decoratorMetaNames = getDecoratorMetas(type.brands);
+            if (decoratorMetaNames.includes('primaryKey')) this.primaryKey = true;
+            if (decoratorMetaNames.includes('autoIncrement')) this.autoIncrement = true;
+            if (decoratorMetaNames.includes('UUID')) this.uuid = true;
+            if (decoratorMetaNames.includes('mongoId')) this.mongoId = true;
+        } else if (type.kind === ReflectionKind.intersection) {
+            const { resolved, decorations } = resolveIntersection(type);
+            const decoratorMetaNames = getDecoratorMetas(decorations);
+            if (decoratorMetaNames.includes('reference')) this.reference = true;
+            if (decoratorMetaNames.includes('backReference')) this.backReference = true;
+        }
         this.type = type;
     }
 
@@ -437,11 +455,10 @@ export class ReflectionProperty {
         c.primaryKey = this.primaryKey;
         c.jsonType = this.jsonType;
         c.groups = this.groups.slice();
-        c.reference = this.reference;
         c.serializer = this.serializer;
         c.deserializer = this.deserializer;
         if (this.referenceOptions) c.referenceOptions = { ...this.referenceOptions };
-        if (this.backReference) c.backReference = { ...this.backReference };
+        if (this.backReferenceOptions) c.backReferenceOptions = { ...this.backReferenceOptions };
         if (this.index) c.index = { ...this.index };
         return c;
     }
@@ -452,13 +469,8 @@ export class ReflectionProperty {
         this.serializer = data.serializer;
         this.deserializer = data.deserializer;
         this.excludeSerializerNames = data.excludeSerializerNames;
-        if (data.referenceOptions) {
-            this.reference = true;
-            this.referenceOptions = data.referenceOptions;
-        }
-        if (data.backReference) {
-            this.backReference = data.backReference;
-        }
+        if (data.referenceOptions) this.referenceOptions = { ...data.referenceOptions };
+        if (data.backReference) this.backReferenceOptions = { ...data.backReference };
     }
 
     getName(): number | string | symbol {
@@ -549,7 +561,7 @@ export class ReflectionProperty {
     }
 }
 
-const reflectionClassSymbol = Symbol('reflectionClass');
+export const reflectionClassSymbol = Symbol('reflectionClass');
 
 export interface ValidatorFn {
     (value: any, property: ReflectionProperty): any;
@@ -606,6 +618,24 @@ export class ReflectionClass<T> {
 
     getClassType(): ClassType {
         return this.type.kind === ReflectionKind.class ? this.type.classType : Object;
+    }
+
+    getClassName(): string {
+        return getClassName(this.getClassType());
+    }
+
+    hasPrimary(): boolean {
+        for (const property of this.getProperties()) {
+            if (property.primaryKey) return true;
+        }
+        return false;
+    }
+
+    getPrimary(): ReflectionProperty {
+        for (const property of this.getProperties()) {
+            if (property.primaryKey) return property;
+        }
+        throw new Error(`Class ${this.getClassName()} has no primary key.`);
     }
 
     /**
@@ -717,6 +747,11 @@ export class ReflectionClass<T> {
             if (property.getName() === name) return property;
         }
         return;
+    }
+
+    getMethodParameters(name: string | number | symbol): ReflectionParameter[] {
+        const method = this.getMethod(name);
+        return method ? method.getParameters() : [];
     }
 
     getMethod(name: string | number | symbol): ReflectionMethod | undefined {

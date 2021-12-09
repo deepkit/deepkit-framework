@@ -9,6 +9,23 @@
  */
 
 import { Buffer } from 'buffer';
+import { ClassType } from '@deepkit/core';
+
+//on unpopulated properties access
+export enum UnpopulatedCheck {
+    None, //returns undefined
+    Throw, //throws regular error
+    ReturnSymbol, //returns `unpopulatedSymbol`
+}
+
+export const unpopulatedSymbol = Symbol('unpopulated');
+
+export interface TypeSettings {
+    registeredEntities: { [name: string]: ClassType };
+    unpopulatedCheck: UnpopulatedCheck;
+}
+
+export const typeSettings: TypeSettings = { registeredEntities: {}, unpopulatedCheck: UnpopulatedCheck.None };
 
 export interface TypedArrayClassType<T> {
     new(...args: any[]): T;

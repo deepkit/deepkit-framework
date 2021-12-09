@@ -295,7 +295,7 @@ test('asyncOperation maintain error stack trace', async () => {
         }
 
         await doIt();
-    } catch (error) {
+    } catch (error: any) {
         fetched = true;
         expect(error).toBeInstanceOf(MyError);
         expect(error.stack).toContain('MyError1');
@@ -318,7 +318,7 @@ test('asyncOperation catches async errors', async () => {
         }
 
         await doIt();
-    } catch (error) {
+    } catch (error: any) {
         fetched = true;
         expect(error).toBeInstanceOf(MyError);
         expect(error.stack).toContain('MyError1');
@@ -345,7 +345,7 @@ test('asyncOperation deep', async () => {
         }
 
         await doIt1();
-    } catch (error) {
+    } catch (error: any) {
         fetched = true;
         expect(error.stack).toContain('MyError2');
         expect(error.stack).toContain('doIt1');

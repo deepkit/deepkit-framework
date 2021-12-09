@@ -8,9 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, CompilerContext, CustomError, getClassName, isArray, isFunction, isInteger, isNumeric } from '@deepkit/core';
+import { ClassType, CompilerContext, CustomError, getClassName, isArray, isFunction, isInteger, isNumeric, isObject } from '@deepkit/core';
 import {
     FindType,
+    getDecoratorMetas,
     isNullable,
     isOptional,
     ReflectionKind,
@@ -27,9 +28,9 @@ import {
     TypeUnion
 } from './reflection/type';
 import { ReflectionClass, ReflectionProperty, resolveIntersection } from './reflection/reflection';
-import { isExtendable } from './reflection/extends';
+import { extendTemplateLiteral, isExtendable } from './reflection/extends';
 import { resolveRuntimeType } from './reflection/processor';
-
+import { createReference, isReference, isReferenceHydrated } from './reference';
 
 export class NamingStrategy {
     getPropertyName(type: TypeProperty | TypePropertySignature): string | number | symbol | undefined {
@@ -43,37 +44,33 @@ export interface SerializationOptions {
     loosely?: boolean;
 }
 
-export function createSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = ''): (data: any, options?: SerializationOptions) => any {
+export function createSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): (data: any, options?: SerializationOptions) => any {
     const compiler = new CompilerContext();
 
     const templates = registry.get(type.kind);
     if (!templates.length) return (data: any) => data;
 
-    const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, [path]);
-
-    for (const template of templates) {
-        template(type, state);
-        if (state.ended) break;
-    }
+    const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, jitStack, [path]);
 
     const code = `
         var result;
         options = options ? options : {};
-        ${state.template}
+        ${executeTemplates(state, templates, 'result', 'data', type, [])}
         return result;
     `;
+
     return compiler.build(code, 'data', 'options');
 }
 
 export type Guard = (data: any) => boolean;
 
-export function createTypeGuardFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), specificality?: number, path: string = ''): undefined | Guard {
+export function createTypeGuardFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), specificality?: number, path: string = '', jitStack = new JitStack()): undefined | Guard {
     const compiler = new CompilerContext();
 
     const templates = registry.get(type.kind);
     if (!templates.length) return undefined;
 
-    const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, [path]);
+    const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, jitStack, [path]);
     state.specificality = specificality;
 
     for (const template of templates) {
@@ -101,6 +98,33 @@ class DynamicPath {
     }
 }
 
+export class JitStack {
+    protected stack?: Map<Type, { fn: Function | undefined }>;
+
+    getStack() {
+        if (!this.stack) this.stack = new Map<Type, { fn: Function | undefined }>();
+        return this.stack;
+    }
+
+    has(type: Type): boolean {
+        return this.getStack().has(type);
+    }
+
+    get(type: Type) {
+        return this.getStack().get(type);
+    }
+
+    getOrCreate(type: Type, create: () => Function): { fn: Function | undefined } {
+        const stack = this.getStack();
+        if (stack.has(type)) return stack.get(type)!;
+
+        const entry: { fn: Function | undefined } = { fn: undefined };
+        this.getStack().set(type, entry);
+        entry.fn = create();
+        return entry;
+    }
+}
+
 export class TemplateState {
     public template = '';
 
@@ -116,6 +140,7 @@ export class TemplateState {
         public readonly compilerContext: CompilerContext,
         public readonly registry: TemplateRegistry,
         public readonly namingStrategy: NamingStrategy,
+        public readonly jitStack: JitStack,
         public readonly path: (string | DynamicPath)[]
     ) {
         this.setter = originalSetter;
@@ -230,21 +255,64 @@ export class TemplateRegistry {
 }
 
 export function executeTemplates(
-    compilerContext: CompilerContext,
-    registry: TemplateRegistry,
-    namingStrategy: NamingStrategy,
+    parentState: TemplateState,
     templates: Template<any>[],
     setter: string,
     getter: string,
     type: Type,
     path: (string | DynamicPath)[]
 ): string {
-    const state = new TemplateState(setter, getter, compilerContext, registry, namingStrategy, path);
-    for (const template of templates) {
-        template(type, state);
-        if (state.ended) break;
+
+    //object literals and classes get their own function
+    const needsFunction = type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral;
+    if (needsFunction) {
+        const jit = parentState.jitStack.getOrCreate(type, () => {
+            const state = new TemplateState('result', 'data', new CompilerContext(), parentState.registry, parentState.namingStrategy, parentState.jitStack, path);
+            for (const template of templates) {
+                template(type, state);
+                if (state.ended) break;
+            }
+
+            let circularCheckBeginning = '';
+            let circularCheckEnd = '';
+            if (type.kind === ReflectionKind.class) {
+                const reflection = ReflectionClass.from(type.classType);
+                if (reflection.hasCircularReference()) {
+                    circularCheckBeginning = `
+                        if (options._stack) {
+                            if (options._stack.includes(data)) return undefined;
+                        } else {
+                            options._stack = [];
+                        }
+                        options._stack.push(data);
+                    `;
+                    circularCheckEnd = `if (options._stack) options._stack.pop();`;
+                }
+            }
+            const code = `
+                /*
+                 Jit code for
+                 ${stringifyType(type)}
+                */
+                var result;
+                ${circularCheckBeginning}
+                options = options ? options : {};
+                ${state.template}
+
+                ${circularCheckEnd}
+                return result;
+            `;
+            return state.compilerContext.build(code, 'data', 'options');
+        });
+        return `${setter} = ${parentState.setVariable('jit', jit)}.fn(${getter}, options);`;
+    } else {
+        const state = new TemplateState(setter, getter, parentState.compilerContext, parentState.registry, parentState.namingStrategy, parentState.jitStack, path);
+        for (const template of templates) {
+            template(type, state);
+            if (state.ended) break;
+        }
+        return state.template;
     }
-    return state.template;
 }
 
 export function getTemplateJSForTypeForState(
@@ -254,24 +322,12 @@ export function getTemplateJSForTypeForState(
     state: TemplateState,
     path: (string | DynamicPath)[]
 ) {
-    return getTemplateJSForType(setter, accessor, type, state.registry, state.compilerContext, state.namingStrategy, path);
-}
-
-export function getTemplateJSForType(
-    setter: string,
-    accessor: string,
-    type: Type,
-    registry: TemplateRegistry,
-    compilerContext: CompilerContext,
-    namingStrategy: NamingStrategy,
-    path: (string | DynamicPath)[]
-): string {
-    const templates = registry.get(type.kind);
+    const templates = state.registry.get(type.kind);
     let convert = '';
     if (templates.length) {
-        convert = executeTemplates(compilerContext, registry, namingStrategy, templates, setter, accessor, type, path);
+        convert = executeTemplates(state, templates, setter, accessor, type, path);
     } else {
-        convert = `//no compiler for ${type.kind}`;
+        convert = `//no template for ${type.kind}`;
     }
 
     return convert;
@@ -281,27 +337,26 @@ export function createConverterJSForMember(
     setter: string,
     accessor: string,
     property: ReflectionProperty | TypePropertySignature | TypeIndexSignature,
-    registry: TemplateRegistry,
-    compilerContext: CompilerContext,
-    namingStrategy: NamingStrategy,
+    state: TemplateState,
     undefinedSetterCode: string = '',
     nullSetterCode: string = '',
     path: (string | DynamicPath)[]
 ): string {
+    const { registry, compilerContext, namingStrategy } = state;
     const undefinedCompiler = registry.get(ReflectionKind.undefined);
     const nullCompiler = registry.get(ReflectionKind.null);
     const type = property instanceof ReflectionProperty ? property.type : property.type;
 
-    undefinedSetterCode = undefinedSetterCode || (undefinedCompiler ? executeTemplates(compilerContext, registry, namingStrategy, undefinedCompiler, setter, accessor, type, path) : '');
-    nullSetterCode = nullSetterCode || (nullCompiler ? executeTemplates(compilerContext, registry, namingStrategy, nullCompiler, setter, accessor, type, path) : '');
+    undefinedSetterCode = undefinedSetterCode || (undefinedCompiler ? executeTemplates(state, undefinedCompiler, setter, accessor, { kind: ReflectionKind.undefined }, path) : '');
+    nullSetterCode = nullSetterCode || (nullCompiler ? executeTemplates(state, nullCompiler, setter, accessor, { kind: ReflectionKind.null }, path) : '');
 
     const templates = registry.get(type.kind);
     let convert = '';
     if (templates.length) {
-        convert = executeTemplates(compilerContext, registry, namingStrategy, templates, setter, accessor, type, path);
+        convert = executeTemplates(state, templates, setter, accessor, type, path);
     } else {
         convert = `
-        //no compiler for ${type.kind}
+        //no template for ${type.kind}
         ${setter} = ${accessor};`;
     }
 
@@ -398,7 +453,7 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
                 var c_${i};
                 if (${name} in ${state.accessor}) {
                     ${createConverterJSForMember(`c_${i}`,
-                `${state.accessor}[${name}]`, property, state.registry, state.compilerContext, state.namingStrategy, undefined, undefined, state.extendPath(parameter.getName()))}
+                `${state.accessor}[${name}]`, property, state, undefined, undefined, state.extendPath(parameter.getName()))}
                 } else {
                     ${staticDefault}
                 }
@@ -425,7 +480,7 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
             setter,
             `${state.accessor}[${name}]`,
             property,
-            state.registry, state.compilerContext, state.namingStrategy,
+            state,
             undefined, undefined, state.extendPath(String(property.getName()))
         )}
             } else { ${staticDefault} }
@@ -471,7 +526,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 setter,
                 `${state.accessor}[${name}]`,
                 member,
-                state.registry, state.compilerContext, state.namingStrategy,
+                state,
                 undefined, undefined, state.extendPath(String(member.name))
             )}
             } else { ${staticDefault} }
@@ -496,7 +551,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             setter,
             `${state.accessor}[${name}]`,
             property,
-            state.registry, state.compilerContext, state.namingStrategy,
+            state,
             undefined, undefined, state.extendPath(String(property.getName()))
         )}
             } else { ${staticDefault} }
@@ -532,6 +587,10 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 return `'string' === typeof ${i}`;
             } else if (type.kind === ReflectionKind.symbol) {
                 return `'symbol' === typeof ${i}`;
+            } else if (type.kind === ReflectionKind.templateLiteral) {
+                state.setContext({ extendTemplateLiteral: extendTemplateLiteral });
+                const typeVar = state.setVariable('type', type);
+                return `'string' === typeof ${i} && extendTemplateLiteral({kind: ${ReflectionKind.literal}, literal: ${i}}, ${typeVar})`;
             } else if (type.kind === ReflectionKind.union) {
                 return '(' + type.types.map(getIndexCheck).join(' || ') + ')';
             }
@@ -544,7 +603,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 `${v}[${i}]`,
                 `${state.accessor}[${i}]`,
                 signature,
-                state.registry, state.compilerContext, state.namingStrategy,
+                state,
                 undefined, undefined, state.extendPath(new DynamicPath(i))
             )}
             }`);
@@ -558,7 +617,6 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             if (${existingCheck}) continue;
             if (false) {} ${signatureLines.join(' ')}
         }
-
         `);
     }
 
@@ -575,9 +633,11 @@ export function serializeArray(elementType: Type, state: TemplateState) {
     const l = state.compilerContext.reserveName('l');
 
     const optional = isOptional(elementType);
+    state.setContext({ isArray });
 
     //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
     state.addCodeForSetter(`
+    if (isArray(${state.accessor})) {
          let ${l} = ${state.accessor}.length;
          let ${a} = ${state.accessor}.slice();
          while (${l}--) {
@@ -593,6 +653,7 @@ export function serializeArray(elementType: Type, state: TemplateState) {
             }
          }
          ${state.setter} = ${a};
+    }
     `);
 }
 
@@ -870,7 +931,37 @@ export function serializeTypeIntersection(type: TypeIntersection, state: Templat
     const { resolved, decorations } = resolveIntersection(type);
     if (resolved.kind === ReflectionKind.never) return;
 
-    return getTemplateJSForTypeForState(state.setter, state.accessor, resolved, state, state.path);
+    if (resolved.kind === ReflectionKind.class) {
+        state.setContext({ isObject, isReference, isReferenceHydrated });
+        const reflection = ReflectionClass.from(resolved.classType);
+        const decoratorMetaNames = getDecoratorMetas(decorations);
+        if (decoratorMetaNames.includes('reference') && reflection.hasPrimary()) {
+            if (state.isSerialization) {
+                //the primary key is serialised for unhydrated references
+                state.addCodeForSetter(`
+                if (isReference(${state.accessor}) && !isReferenceHydrated(${state.accessor})) {
+                    ${getTemplateJSForTypeForState(state.setter, `${state.accessor}[${JSON.stringify(reflection.getPrimary().getName())}]`, reflection.getPrimary().getType(), state, state.path)}
+                } else {
+                    ${getTemplateJSForTypeForState(state.setter, state.accessor, resolved, state, state.path)}
+                }
+                `);
+            } else {
+                state.setContext({ createReference });
+                const referenceClassTypeVar = state.setVariable('referenceClassType', resolved.classType);
+                //in deserialization a reference is created when only the primary key is provided (no object given)
+                state.addCodeForSetter(`
+                if (isObject(${state.accessor})) {
+                    ${getTemplateJSForTypeForState(state.setter, state.accessor, resolved, state, state.path)}
+                } else {
+                    ${state.setter} = createReference(${referenceClassTypeVar}, {${JSON.stringify(reflection.getPrimary().getName())}: ${state.accessor}});
+                }
+                `);
+            }
+            return;
+        }
+    }
+
+    state.addCodeForSetter(getTemplateJSForTypeForState(state.setter, state.accessor, resolved, state, state.path));
 }
 
 export function serializeTypeUnion(type: TypeUnion, state: TemplateState) {
@@ -1004,6 +1095,9 @@ export class Serializer {
         this.deserializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
         this.serializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
 
+        this.deserializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
+        this.serializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
+
         this.deserializeRegistry.register(ReflectionKind.tuple, serializeTypeTuple);
         this.serializeRegistry.register(ReflectionKind.tuple, serializeTypeTuple);
 
@@ -1032,6 +1126,11 @@ export class Serializer {
             state.addSetter(`'string' !== typeof ${state.accessor} ? ${state.accessor}+'' : ${state.accessor}`);
         });
 
+        this.serializeRegistry.register(ReflectionKind.templateLiteral, (type, state) => state.addSetter(state.accessor));
+        this.deserializeRegistry.register(ReflectionKind.templateLiteral, (type, state) => {
+            state.addSetter(`'string' !== typeof ${state.accessor} ? ${state.accessor}+'' : ${state.accessor}`);
+        });
+
         this.serializeRegistry.register(ReflectionKind.boolean, (type, state) => state.addSetter(state.accessor));
         this.deserializeRegistry.register(ReflectionKind.boolean, (type, state) => {
             state.addSetter(`'boolean' !== typeof ${state.accessor} ? ${state.accessor} == 1 || ${state.accessor} == 'true' : ${state.accessor}`);
@@ -1049,6 +1148,17 @@ export class Serializer {
 
             //todo check for valid value
             state.addCodeForSetter(`if (isNaN(${state.accessor})) ${state.throwCode('enum')}`);
+        });
+
+        this.serializeRegistry.register(ReflectionKind.regexp, (type, state) => state.addSetter(`${state.accessor}.toString()`));
+        this.deserializeRegistry.register(ReflectionKind.regexp, (type, state) => {
+            state.setContext({ RegExp });
+            state.addSetter(`'string' === typeof ${state.accessor}
+                ? ${state.accessor}[0] === '/'
+                    ? new RegExp(${state.accessor}.slice(1, ${state.accessor}.lastIndexOf('/')), ${state.accessor}.slice(1 + ${state.accessor}.lastIndexOf('/')))
+                    : new RegExp(${state.accessor})
+                : ${state.accessor}
+            `);
         });
 
         this.serializeRegistry.register(ReflectionKind.number, (type, state) => state.addSetter(state.accessor));
@@ -1080,6 +1190,12 @@ export class Serializer {
         });
 
         this.typeGuards.register(1, ReflectionKind.string, (type, state) => state.addSetter(`'string' === typeof ${state.accessor}`));
+        this.typeGuards.register(1, ReflectionKind.templateLiteral, (type, state) => {
+            state.setContext({ extendTemplateLiteral: extendTemplateLiteral });
+            const typeVar = state.setVariable('type', type);
+            state.addSetter(`'string' === typeof ${state.accessor} && extendTemplateLiteral({kind: ${ReflectionKind.literal}, literal: ${state.accessor}}, ${typeVar})`);
+        });
+
         this.typeGuards.register(1, ReflectionKind.undefined, (type, state) => state.addSetter(`'undefined' === typeof ${state.accessor}`));
         this.typeGuards.register(2, ReflectionKind.undefined, (type, state) => state.addSetter(`null === ${state.accessor}`));
 
@@ -1148,6 +1264,8 @@ export class Serializer {
         });
 
         this.typeGuards.register(1, ReflectionKind.regexp, ((type, state) => state.addSetter(`${state.accessor} instanceof RegExp`)));
+        this.typeGuards.register(2, ReflectionKind.regexp, ((type, state) => state.addSetter(`'string' === typeof ${state.accessor}`)));
+        this.typeGuards.register(0.5, ReflectionKind.regexp, ((type, state) => state.addSetter(`'string' === typeof ${state.accessor} && ${state.accessor}[0] === '/'`)));
 
         this.typeGuards.register(1, ReflectionKind.objectLiteral, typeCheckClassOrObjectLiteral);
         this.typeGuards.register(2, ReflectionKind.objectLiteral, typeCheckClassOrObjectLiteralSecondIteration);
@@ -1183,6 +1301,9 @@ export class Serializer {
                 }
             `);
         }));
+
+        this.typeGuards.register(1, ReflectionKind.regexp, (type, state) => state.addSetter(`${state.accessor} instanceof RegExp`));
+        this.typeGuards.register(2, ReflectionKind.regexp, (type, state) => state.addSetter(`'string' === typeof ${state.accessor}`));
 
         this.typeGuards.register(1, ReflectionKind.intersection, (type, state) => {
             const { resolved, decorations } = resolveIntersection(type);

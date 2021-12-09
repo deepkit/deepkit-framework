@@ -666,6 +666,17 @@ test('infer parameter in returned class constructor', () => {
     console.log((type.types[0] as TypeMethod).parameters[0]);
 });
 
+test('index signature with template literal index', () => {
+    const code = `
+    type a1 = { [index: \`a\${number}\`]: number };
+    return typeOf<a1>();
+    `;
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code) as Type;
+    console.log(type);
+});
+
 test('complex infer T', () => {
     function fn1<T extends string | number>(v: T) {
         type inferT = typeof v;

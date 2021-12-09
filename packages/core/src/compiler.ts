@@ -7,6 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+// @ts-ignore
+import { indent } from './indent';
 
 export class CompilerContext {
     public readonly context = new Map<string, any>();
@@ -24,7 +26,10 @@ export class CompilerContext {
 
     public initialiseVariables: string[] = [];
 
-    constructor() {
+    public config: { indent: boolean } = { indent: true };
+
+    constructor(config: Partial<CompilerContext['config']> = {}) {
+        Object.assign(this.config, config);
         this.context.set('_context', this.variableContext);
     }
 
@@ -72,6 +77,11 @@ export class CompilerContext {
         return new Function(...this.context.keys(), `'use strict';\n` + functionCode)(...this.context.values());
     }
 
+    protected format(code: string): string {
+        if (!this.config.indent) return code;
+        return indent.js(code, { tabString: '    ' });
+    }
+
     build(functionCode: string, ...args: string[]): any {
         functionCode = `
             'use strict';
@@ -82,7 +92,7 @@ export class CompilerContext {
             };
         `;
         try {
-            return new Function(...this.context.keys(), functionCode)(...this.context.values());
+            return new Function(...this.context.keys(), this.format(functionCode))(...this.context.values());
         } catch (error) {
             throw new Error(`Could not build function(${[...this.context.keys()].join(',')}): ` + error + functionCode);
         }
@@ -98,7 +108,7 @@ export class CompilerContext {
             };
         `;
         try {
-            return new Function(...this.context.keys(), functionCode)(...this.context.values());
+            return new Function(...this.context.keys(), this.format(functionCode))(...this.context.values());
         } catch (error) {
             throw new Error('Could not build function: ' + error + functionCode);
         }

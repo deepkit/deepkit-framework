@@ -248,7 +248,7 @@ function isFunctionParameterExtendable(left: { parameters: TypeParameter[] }, ri
     return valid;
 }
 
-function extendTemplateLiteral(left: TypeLiteral | TypeTemplateLiteral, right: TypeTemplateLiteral): boolean {
+export function extendTemplateLiteral(left: TypeLiteral | TypeTemplateLiteral, right: TypeTemplateLiteral): boolean {
     interface ReadQueueItem {
         type: TypeString | TypeNumber | TypeLiteral | TypeAny;
         position: number;
@@ -310,7 +310,7 @@ function extendTemplateLiteral(left: TypeLiteral | TypeTemplateLiteral, right: T
                         }
                         const char = value[current.position++];
                         if (item.kind === ReflectionKind.number) {
-                            if (isNaN(+char)) return false;
+                            if (value === '' || isNaN(+char)) return false;
                         } else if (item.kind === ReflectionKind.infer) {
                             item.set({ kind: ReflectionKind.literal, literal: char });
                         }
@@ -377,7 +377,7 @@ function extendTemplateLiteral(left: TypeLiteral | TypeTemplateLiteral, right: T
                         }
                         current = current.next;
                     }
-                    if (isNaN(+value)) return false;
+                    if (value === '' || isNaN(+value)) return false;
                 }
             }
         }

@@ -231,7 +231,6 @@ test('brands', () => {
     expect(is<number & PrimaryKey>('2')).toEqual(false);
 });
 
-
 test('generic interface', () => {
     interface List<T> {
         items: T[];
@@ -288,4 +287,37 @@ test('reference', () => {
     expect(is<User>({ image: false })).toEqual(false);
     expect(is<User>({ image: null })).toEqual(false);
     expect(is<User>({ image: {} })).toEqual(false);
+});
+
+test('template literal', () => {
+    expect(is<`abc`>('abc')).toBe(true);
+    expect(is<`abc`>('abce')).toBe(false);
+
+    expect(is<`ab${string}`>('abc')).toBe(true);
+    expect(is<`ab${string}`>('ab3')).toBe(true);
+
+    type a = 'ab3' extends `ab${string}` ? true : false;
+    type a2 = 'ab' extends `ab${string}` ? true : false;
+    type a3 = 'a' extends `ab${string}` ? true : false;
+
+    expect(is<`ab${string}`>('ab3')).toBe(true);
+    expect(is<`ab${string}`>('ab')).toBe(true);
+    expect(is<`ab${string}`>('a')).toBe(false);
+
+    type b = 'ab3' extends `ab${number}` ? true : false;
+    type b2 = 'ab' extends `ab${number}` ? true : false;
+    type b3 = 'a' extends `ab${number}` ? true : false;
+    type b4 = 'abc' extends `ab${number}` ? true : false;
+
+    expect(is<`ab${number}`>('ab3')).toBe(true);
+    expect(is<`ab${number}`>('ab')).toBe(false);
+    expect(is<`ab${number}`>('a')).toBe(false);
+    expect(is<`ab${number}`>('abc')).toBe(false);
+});
+
+test('union template literal', () => {
+    expect(is<`abc${number}` | number>('abc2')).toBe(true);
+    expect(is<`abc${number}` | number>(23)).toBe(true);
+    expect(is<`abc${number}` | number>('abcd')).toBe(false);
+    expect(is<`abc${number}` | number>('abc')).toBe(false);
 });
