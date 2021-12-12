@@ -12,7 +12,6 @@ import {
     CartesianProduct,
     flattenUnionTypes,
     indexAccess,
-    isBrandable,
     isType,
     MappedModifier,
     narrowOriginalLiteral,
@@ -20,7 +19,6 @@ import {
     ReflectionOp,
     ReflectionVisibility,
     Type,
-    TypeBrandable,
     TypeClass,
     TypeEnumMember,
     TypeIndexSignature,
@@ -117,8 +115,13 @@ export function resolveRuntimeType(o: any, args: any[] = [], registry?: Processo
     if (isType(type)) {
         if (isPack(o)) o.__type = type;
 
-        if (type.kind === ReflectionKind.class && type.classType === Object) {
-            type.classType = o;
+        if (!isPack(o)) {
+            if (type.kind === ReflectionKind.class && type.classType === Object) {
+                type.classType = o;
+            }
+            if (type.kind === ReflectionKind.function && !type.function) {
+                type.function = o;
+            }
         }
         return type;
     }
@@ -482,18 +485,7 @@ export class Processor {
                 }
                 case ReflectionOp.intersection: {
                     const types = this.popFrame() as Type[];
-
-                    const hasBrandableType = types.some(isBrandable);
-                    if (hasBrandableType) {
-                        //if the intersection contains a primitive brandable type + object literal its a type with brands
-                        // e.g. `string & {brand: true}`
-                        // e.g. `string & {brand: any} & {brand2: any}`
-                        const brandableType = types.find(isBrandable) as Type & TypeBrandable;
-                        brandableType.brands = types.filter(v => !isBrandable(v));
-                        this.pushType(brandableType);
-                    } else {
-                        this.pushType({ kind: ReflectionKind.intersection, types });
-                    }
+                    this.pushType({ kind: ReflectionKind.intersection, types });
                     break;
                 }
                 case ReflectionOp.function: {
@@ -733,7 +725,7 @@ export class Processor {
                         if (index.kind === ReflectionKind.string || index.kind === ReflectionKind.number || index.kind === ReflectionKind.symbol) {
                             this.push({ kind: ReflectionKind.indexSignature, type, index });
                         } else {
-                            if (index.kind === ReflectionKind.literal) {
+                            if (index.kind === ReflectionKind.literal && !(index.literal instanceof RegExp)) {
                                 index = index.literal;
                             }
 

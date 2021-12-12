@@ -10,7 +10,7 @@
 
 import {
     getDecoratorMetas,
-    isBrandable,
+    isPrimitive,
     isType,
     ReflectionKind,
     ReflectionVisibility,
@@ -89,7 +89,21 @@ export const typeDecorators: TypeDecorator[] = [
                         { kind: ReflectionKind.literal, literal: 'reference' },
                         { kind: ReflectionKind.literal, literal: 'autoIncrement' },
                         { kind: ReflectionKind.literal, literal: 'primaryKey' },
-                        { kind: ReflectionKind.literal, literal: 'backReference' }
+                        { kind: ReflectionKind.literal, literal: 'backReference' },
+                        {
+                            kind: ReflectionKind.objectLiteral, types: [
+                                { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.literal, literal: 'validator' } },
+                                { kind: ReflectionKind.propertySignature, name: 'name', type: { kind: ReflectionKind.string } },
+                                {
+                                    kind: ReflectionKind.propertySignature,
+                                    name: 'args',
+                                    type: {
+                                        kind: ReflectionKind.tuple,
+                                        types: [{ kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.any } } }]
+                                    }
+                                },
+                            ]
+                        },
                     ]
                 }
             );
@@ -159,7 +173,12 @@ export function resolveIntersection(type: TypeIntersection): { resolved: Type, d
     const isMergeAble = candidates.every(v => v.kind === ReflectionKind.objectLiteral || v.kind === ReflectionKind.class);
     if (isMergeAble) return { resolved: merge(candidates as (TypeObjectLiteral | TypeClass)[]), decorations };
 
-    return { resolved: { kind: ReflectionKind.intersection, types: candidates }, decorations };
+    //return primitive, or first entry
+    for (const t of candidates) {
+        if (isPrimitive(t)) return { resolved: t, decorations };
+    }
+
+    return { resolved: candidates[0], decorations };
 }
 
 export function hasCircularReference(type: Type, stack: Type[] = []) {
@@ -433,17 +452,15 @@ export class ReflectionProperty {
     }
 
     setType(type: Type) {
-        if (isBrandable(type) && type.brands) {
-            const decoratorMetaNames = getDecoratorMetas(type.brands);
-            if (decoratorMetaNames.includes('primaryKey')) this.primaryKey = true;
-            if (decoratorMetaNames.includes('autoIncrement')) this.autoIncrement = true;
-            if (decoratorMetaNames.includes('UUID')) this.uuid = true;
-            if (decoratorMetaNames.includes('mongoId')) this.mongoId = true;
-        } else if (type.kind === ReflectionKind.intersection) {
+        if (type.kind === ReflectionKind.intersection) {
             const { resolved, decorations } = resolveIntersection(type);
             const decoratorMetaNames = getDecoratorMetas(decorations);
             if (decoratorMetaNames.includes('reference')) this.reference = true;
             if (decoratorMetaNames.includes('backReference')) this.backReference = true;
+            if (decoratorMetaNames.includes('primaryKey')) this.primaryKey = true;
+            if (decoratorMetaNames.includes('autoIncrement')) this.autoIncrement = true;
+            if (decoratorMetaNames.includes('UUID')) this.uuid = true;
+            if (decoratorMetaNames.includes('mongoId')) this.mongoId = true;
         }
         this.type = type;
     }

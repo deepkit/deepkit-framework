@@ -89,190 +89,206 @@ function packString(...args: Parameters<typeof pack>): string {
 }
 
 const tests: [code: string | { [file: string]: string }, contains: string | string[]][] = [
-    [`class Entity { p: string }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { p: number }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { p: boolean }`, `Entity.__type = ['p', ${packString([ReflectionOp.boolean, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { p: bigint }`, `Entity.__type = ['p', ${packString([ReflectionOp.bigint, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { p: any }`, `Entity.__type = ['p', ${packString([ReflectionOp.any, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { p: Date }`, `Entity.__type = ['p', ${packString([ReflectionOp.date, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { private p: string }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.private, ReflectionOp.class])}]`],
-    [`class Entity { p?: string }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.optional, ReflectionOp.class])}]`],
-    [`class Entity { p: string | undefined }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { p: string | null }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.null, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { p: number[] }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { p: (number | string)[] }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.string, ReflectionOp.union, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-
-    [`class Entity { p: Promise<number> }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.promise, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { p: number | string }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.string, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [
-        `class Book {}; class IdentifiedReference<T> {} class Entity { p: IdentifiedReference<Book> }`,
-        `Entity.__type = [() => Book, () => IdentifiedReference, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.classReference, 1, ReflectionOp.property, 2, ReflectionOp.class])}]`
-    ],
-    [
-        `class Container<T> {data: T}`,
-        `Container.__type = ['T', 'data', ${packString([ReflectionOp.typeParameter, 0, ReflectionOp.loads, 0, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`
-    ],
-
-    [
-        `class Container<T> {data: T extends boolean ? number : never}`,
-        `Container.__type = ['T', 'data', ${packString([ReflectionOp.typeParameter, 0, ReflectionOp.frame, ReflectionOp.loads, 1, 0, ReflectionOp.boolean, ReflectionOp.extends, ReflectionOp.number, ReflectionOp.never, ReflectionOp.condition, ReflectionOp.property, 1, ReflectionOp.class])}]`
-    ],
-
-    [
-        `class Container<T, L> {data: T, label: L}`,
-        `Container.__type = ['T', 'L', 'data', 'label', ${packString([ReflectionOp.typeParameter, 0, ReflectionOp.typeParameter, 1, ReflectionOp.loads, 0, 0, ReflectionOp.property, 2, ReflectionOp.loads, 0, 1, ReflectionOp.property, 3, ReflectionOp.class])}]`
-    ],
-
-    [`class Entity { p: string | number; p2: string}`,
-        [`['p', 'p2', ${packString([ReflectionOp.string, ReflectionOp.number, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.string, ReflectionOp.property, 1, ReflectionOp.class])}`]],
-
-    [`class Entity { p: Uint8Array }`, `['p', ${packString([ReflectionOp.uint8Array, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Model{}; class Entity { p: Model }`, `[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
-
-    [`class Entity { constructor(param: string) {} }`, `['param', 'constructor', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.any, ReflectionOp.method, 1, ReflectionOp.class])}]`],
-    [`class Entity { p(param: string): void }`, `['param', 'p', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.method, 1, ReflectionOp.class])}]`],
-    [`class Entity { p(param: string): any }`, `['param', 'p', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.any, ReflectionOp.method, 1, ReflectionOp.class])}]`],
-    [`class Entity { p(param: string, size: number): void }`, `['param', 'size', 'p', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.number, ReflectionOp.parameter, 1, ReflectionOp.void, ReflectionOp.method, 2, ReflectionOp.class])}]`],
-
-    [`function f() {enum MyEnum {}; class Entity { p: MyEnum;} }`, `[() => MyEnum, 'p', ${packString([ReflectionOp.enum, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
-
-    [`class Model {} class Entity { p: Model;}`, `[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
-    [`class Entity { p: 'a';}`, `['a', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
-    [`class Entity { p: 'a' | 'b';}`, `['a', 'b', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.literal, 1, ReflectionOp.union, ReflectionOp.property, 2, ReflectionOp.class])}]`],
-    [`class Entity { p: 'a' | 'b' | undefined;}`, `['a', 'b', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.literal, 1, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.property, 2, ReflectionOp.class])}]`],
-
-    [`class Entity { p: 'a' | 'b' | 'c' | undefined;}`, `['a', 'b', 'c', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.literal, 1, ReflectionOp.literal, 2, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.property, 3, ReflectionOp.class])}]`],
-    [`class Entity { p: 'a' | 'b' | null;}`, `['a', 'b', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.literal, 1, ReflectionOp.null, ReflectionOp.union, ReflectionOp.property, 2, ReflectionOp.class])}]`],
-    [`class Entity { p: ('a' | 'b')[];}`, `['a', 'b', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.literal, 1, ReflectionOp.union, ReflectionOp.array, ReflectionOp.property, 2, ReflectionOp.class])}]`],
-    [`class Entity { p?: ('a' | 'b')[];}`, `['a', 'b', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.literal, 1, ReflectionOp.union, ReflectionOp.array, ReflectionOp.property, 2, ReflectionOp.optional, ReflectionOp.class])}]`],
-    [`class Entity { p: {[name: string]: number};}`, `['p', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { p: {[name: string]: number|undefined};}`, `['p', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.frame, ReflectionOp.number, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { p: {[name: number]: number};}`, `['p', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-
-    [`class Entity { p: Record<string, number>; }`, `['p', ${packString([ReflectionOp.string, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { p: Record<string, number|undefined>; }`, `['p', ${packString([ReflectionOp.string, ReflectionOp.frame, ReflectionOp.number, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    [`class Entity { p: Record<number, number>; }`, `['p', ${packString([ReflectionOp.number, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-
+    // [`class Entity { p: string }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [`class Entity { p: number }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [`class Entity { p: boolean }`, `Entity.__type = ['p', ${packString([ReflectionOp.boolean, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [`class Entity { p: bigint }`, `Entity.__type = ['p', ${packString([ReflectionOp.bigint, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [`class Entity { p: any }`, `Entity.__type = ['p', ${packString([ReflectionOp.any, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [`class Entity { p: Date }`, `Entity.__type = ['p', ${packString([ReflectionOp.date, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [`class Entity { private p: string }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.private, ReflectionOp.class])}]`],
+    // [`class Entity { p?: string }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.optional, ReflectionOp.class])}]`],
+    // [`class Entity { p: string | undefined }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [`class Entity { p: string | null }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.null, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [`class Entity { p: number[] }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [`class Entity { p: (number | string)[] }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.string, ReflectionOp.union, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    //
+    // [`class Entity { p: Promise<number> }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.promise, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [`class Entity { p: number | string }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.string, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [
+    //     `class Book {}; class IdentifiedReference<T> {} class Entity { p: IdentifiedReference<Book> }`,
+    //     `Entity.__type = [() => Book, () => IdentifiedReference, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.classReference, 1, ReflectionOp.property, 2, ReflectionOp.class])}]`
+    // ],
+    // [
+    //     `class Container<T> {data: T}`,
+    //     `Container.__type = ['T', 'data', ${packString([ReflectionOp.typeParameter, 0, ReflectionOp.loads, 0, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`
+    // ],
+    //
+    // [
+    //     `class Container<T> {data: T extends boolean ? number : never}`,
+    //     `Container.__type = ['T', 'data', ${packString([ReflectionOp.typeParameter, 0, ReflectionOp.frame, ReflectionOp.loads, 1, 0, ReflectionOp.boolean, ReflectionOp.extends, ReflectionOp.number, ReflectionOp.never, ReflectionOp.condition, ReflectionOp.property, 1, ReflectionOp.class])}]`
+    // ],
+    //
+    // [
+    //     `class Container<T, L> {data: T, label: L}`,
+    //     `Container.__type = ['T', 'L', 'data', 'label', ${packString([ReflectionOp.typeParameter, 0, ReflectionOp.typeParameter, 1, ReflectionOp.loads, 0, 0, ReflectionOp.property, 2, ReflectionOp.loads, 0, 1, ReflectionOp.property, 3, ReflectionOp.class])}]`
+    // ],
+    //
+    // [`class Entity { p: string | number; p2: string}`,
+    //     [`['p', 'p2', ${packString([ReflectionOp.string, ReflectionOp.number, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.string, ReflectionOp.property, 1, ReflectionOp.class])}`]],
+    //
+    // [`class Entity { p: Uint8Array }`, `['p', ${packString([ReflectionOp.uint8Array, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [`class Model{}; class Entity { p: Model }`, `[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
+    //
+    // [`class Entity { constructor(param: string) {} }`, `['param', 'constructor', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.any, ReflectionOp.method, 1, ReflectionOp.class])}]`],
+    // [`class Entity { p(param: string): void }`, `['param', 'p', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.method, 1, ReflectionOp.class])}]`],
+    // [`class Entity { p(param: string): any }`, `['param', 'p', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.any, ReflectionOp.method, 1, ReflectionOp.class])}]`],
+    // [`class Entity { p(param: string, size: number): void }`, `['param', 'size', 'p', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.number, ReflectionOp.parameter, 1, ReflectionOp.void, ReflectionOp.method, 2, ReflectionOp.class])}]`],
+    //
+    // [`function f() {enum MyEnum {}; class Entity { p: MyEnum;} }`, `[() => MyEnum, 'p', ${packString([ReflectionOp.enum, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
+    //
+    // [`class Model {} class Entity { p: Model;}`, `[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
+    // [`class Entity { p: 'a';}`, `['a', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
+    // [`class Entity { p: 'a' | 'b';}`, `['a', 'b', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.literal, 1, ReflectionOp.union, ReflectionOp.property, 2, ReflectionOp.class])}]`],
+    // [`class Entity { p: 'a' | 'b' | undefined;}`, `['a', 'b', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.literal, 1, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.property, 2, ReflectionOp.class])}]`],
+    //
+    // [`class Entity { p: 'a' | 'b' | 'c' | undefined;}`, `['a', 'b', 'c', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.literal, 1, ReflectionOp.literal, 2, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.property, 3, ReflectionOp.class])}]`],
+    // [`class Entity { p: 'a' | 'b' | null;}`, `['a', 'b', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.literal, 1, ReflectionOp.null, ReflectionOp.union, ReflectionOp.property, 2, ReflectionOp.class])}]`],
+    // [`class Entity { p: ('a' | 'b')[];}`, `['a', 'b', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.literal, 1, ReflectionOp.union, ReflectionOp.array, ReflectionOp.property, 2, ReflectionOp.class])}]`],
+    // [`class Entity { p?: ('a' | 'b')[];}`, `['a', 'b', 'p', ${packString([ReflectionOp.literal, 0, ReflectionOp.literal, 1, ReflectionOp.union, ReflectionOp.array, ReflectionOp.property, 2, ReflectionOp.optional, ReflectionOp.class])}]`],
+    // [`class Entity { p: {[name: string]: number};}`, `['p', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [`class Entity { p: {[name: string]: number|undefined};}`, `['p', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.frame, ReflectionOp.number, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [`class Entity { p: {[name: number]: number};}`, `['p', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    //
+    // [`class Entity { p: Record<string, number>; }`, `['p', ${packString([ReflectionOp.string, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [`class Entity { p: Record<string, number|undefined>; }`, `['p', ${packString([ReflectionOp.string, ReflectionOp.frame, ReflectionOp.number, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    // [`class Entity { p: Record<number, number>; }`, `['p', ${packString([ReflectionOp.number, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    //
+    // [{
+    //     app: `import {MyEnum} from './enum'; class Entity { p: MyEnum;}`,
+    //     enum: `export enum MyEnum {}`
+    // }, `[() => MyEnum, 'p', ${packString([ReflectionOp.enum, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
+    //
+    // [{
+    //     app: `import {Model} from './model'; class Entity { p: Model;}`,
+    //     model: `export class Model {}`
+    // }, `[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
     [{
-        app: `import {MyEnum} from './enum'; class Entity { p: MyEnum;}`,
-        enum: `export enum MyEnum {}`
-    }, `[() => MyEnum, 'p', ${packString([ReflectionOp.enum, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
-
+        app: `import {Pattern} from './model'; class Entity { p: Pattern;}`,
+        model: `export const REGEX = /abc/;\nexport type Pattern = {regex: typeof REGEX};`
+    }, `import { REGEX } from './model'`],
     [{
-        app: `import {Model} from './model'; class Entity { p: Model;}`,
-        model: `export class Model {}`
-    }, `[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
-
-    [`export interface MyInterface {id: number}; class Controller { public p: MyInterface[] = [];}`,
-        [
-            `['id', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral])}]`,
-            `[__ΩMyInterface, 'p', () => [], ${packString([ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.defaultValue, 2, ReflectionOp.class])}]`
-        ]
-    ],
-
-    [`interface Base {title: string}; interface MyInterface extends Base {id: number}; class Controller { public p: MyInterface[] = [];}`,
-        [
-            `['id', 'title', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.string, ReflectionOp.propertySignature, 1, ReflectionOp.objectLiteral])}]`,
-            `[__ΩMyInterface, 'p', () => [], ${packString([ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.defaultValue, 2, ReflectionOp.class])}]`
-        ]
-    ],
-
-    [`export type MyAlias = string; class Controller { public p: MyAlias[] = [];}`,
-        [
-            `${packString([ReflectionOp.string])}`,
-            `[__ΩMyAlias, 'p', () => [], ${packString([ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.defaultValue, 2, ReflectionOp.class])}]`,
-        ]
-    ],
-
-    [`
-    /** @reflection never */
-    function() {
-        class Entity { p: number;}
-    }`, '!__type'],
-    [`
-    function() {
-        class Entity {
-            /** @reflection never */
-            p: number;
-
-            p2: number;
-        }
-    }`, `['p2', ${packString([ReflectionOp.number, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-
-    // Imported interfaces/types will be erased and inlined
+        app: `import {Pattern} from './model'; class Entity { p: Pattern;}`,
+        model: `export const REGEX = /abc/;\ntype M<T> = {name: T, regex: typeof REGEX}; type Pattern = M<true>;`
+    }, `import { REGEX } from './model'`],
     [{
-        app: `import {Type} from './model'; class Entity { p: Type[];}`,
-        model: `export type Type = {title: string}`
-    }, [
-        `!./model`, `!import {Type} from './model'`,
-        `['title', 'p', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.class])}]`,
-    ]],
-
-    [{
-        app: `import {Message, Model} from './model'; class Entity { p: Message[]; m: Model[];}`,
-        model: `export type Message = number; export class Model {};`
-    }, [`import { Model } from './model'`, `[__ΩMessage, 'p', () => Model, 'm', ${packString([
-        ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1,
-        ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
-
-    [{
-        app: `import {Type} from './model'; class Entity { p: Type[];}`,
-        model: `export interface Type {title: string}`
-    }, [`!./model`, `!import {Type} from './model'`]],
-
-    // multiple exports can be resolved
-    [{
-        app: `import {Type, Model} from './myPackage'; class Entity { p: Type[]; p2: Model[]};`,
-        myPackage: `export * from './myPackageModel';`,
-        myPackageModel: `export interface Type {title: string}; export class Model {}`
-    }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
-        ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
-
-    [{
-        app: `import {Type, Model} from './myPackage'; class Entity { p: Type[]; p2: Model[]};`,
-        myPackage: `export {Model, Type} from './myPackageModel';`,
-        myPackageModel: `export interface Type {title: string}; export class Model {}`
-    }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
-        ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
-
-    [{
-        app: `import {Type, Model} from './myPackage'; class Entity { p: Type[]; p2: Model[]};`,
-        myPackage: `export {MM as Model, TT as Type} from './myPackageModel';`,
-        myPackageModel: `export interface TT {title: string}; export class MM {}`
-    }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
-        ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
-
-    [`
-    /** @reflection never */
-    class Entity1 { p: number;}
-    class Entity2 { p: string;}
-    `, [`!['p', ${packString([ReflectionOp.number, ReflectionOp.property, 0, ReflectionOp.class])}]`, `['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.class])}]`]],
-
-    [`
-    class Entity1 { p: number;}
-    /** @reflection never */
-    class Entity2 { p: string;}
-    `, [`['p', ${packString([ReflectionOp.number, ReflectionOp.property, 0, ReflectionOp.class])}]`, `!['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.class])}]`]],
-
-    // erasable types will be kept
-    [{
-        app: `import {Model} from './model'; class Entity { p: Model[];}`,
-        model: `export class Model {}`
-    }, [`[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.class])}]`, `import { Model } from './model';`]],
-
-    //functions
-    [`const fn = (param: string): void {}`, `const fn = Object.assign((param) => { }, { __type: ['param', '', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.function, 1])}] })`],
-    [`const fn = (param: string) {}`, `const fn = Object.assign((param) => { }, { __type: ['param', '', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.any, ReflectionOp.function, 1])}] })`],
-    [`const fn = () {}`, `!__type:`],
-    [`const fn = (): any {}`, `const fn = Object.assign(() => { }, { __type: ['', ${packString([ReflectionOp.any, ReflectionOp.function, 0])}] })`],
-
-    [`const fn = function () {}`, `!__type`],
-    [`const fn = function (): any {}`, `const fn = Object.assign(function () { }, { __type: ['', ${packString([ReflectionOp.any, ReflectionOp.function, 0])}] })`],
-    [`function createFn() { return function(): any {} }`, `return Object.assign(function () { }, { __type: ['', ${packString([ReflectionOp.any, ReflectionOp.function, 0])}] })`],
-
-    [`class Entity { createFn() { return function(param: string) {} }}`, `return Object.assign(function (param) { }, { __type: ['param', '', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.any, ReflectionOp.function, 1])}] })`],
-
-    [`function name(): any {}`, `function name() { }\nname.__type = ['name', ${packString([ReflectionOp.any, ReflectionOp.function, 0])}];`],
+        app: `import {Email} from './validator'; class Entity { p: Email;}`,
+        validator: `
+            export const REGEX = /abc/;
+            export type Validator<Name extends string, Args extends [...args: any[]] = []> = { __meta?: { id: 'validator', name: Name, args: Args } }
+            export type Pattern<T extends RegExp> = Validator<'pattern', [T]>
+            export type Email = string & Pattern<typeof EMAIL_REGEX>;`
+    }, `import { EMAIL_REGEX } from './validator';`],
+    //
+    // [`export interface MyInterface {id: number}; class Controller { public p: MyInterface[] = [];}`,
+    //     [
+    //         `['id', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral])}]`,
+    //         `[__ΩMyInterface, 'p', () => [], ${packString([ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.defaultValue, 2, ReflectionOp.class])}]`
+    //     ]
+    // ],
+    //
+    // [`interface Base {title: string}; interface MyInterface extends Base {id: number}; class Controller { public p: MyInterface[] = [];}`,
+    //     [
+    //         `['id', 'title', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.string, ReflectionOp.propertySignature, 1, ReflectionOp.objectLiteral])}]`,
+    //         `[__ΩMyInterface, 'p', () => [], ${packString([ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.defaultValue, 2, ReflectionOp.class])}]`
+    //     ]
+    // ],
+    //
+    // [`export type MyAlias = string; class Controller { public p: MyAlias[] = [];}`,
+    //     [
+    //         `${packString([ReflectionOp.string])}`,
+    //         `[__ΩMyAlias, 'p', () => [], ${packString([ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.defaultValue, 2, ReflectionOp.class])}]`,
+    //     ]
+    // ],
+    //
+    // [`
+    // /** @reflection never */
+    // function() {
+    //     class Entity { p: number;}
+    // }`, '!__type'],
+    // [`
+    // function() {
+    //     class Entity {
+    //         /** @reflection never */
+    //         p: number;
+    //
+    //         p2: number;
+    //     }
+    // }`, `['p2', ${packString([ReflectionOp.number, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    //
+    // // Imported interfaces/types will be erased and inlined
+    // [{
+    //     app: `import {Type} from './model'; class Entity { p: Type[];}`,
+    //     model: `export type Type = {title: string}`
+    // }, [
+    //     `!./model`, `!import {Type} from './model'`,
+    //     `['title', 'p', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.class])}]`,
+    // ]],
+    //
+    // [{
+    //     app: `import {Message, Model} from './model'; class Entity { p: Message[]; m: Model[];}`,
+    //     model: `export type Message = number; export class Model {};`
+    // }, [`import { Model } from './model'`, `[__ΩMessage, 'p', () => Model, 'm', ${packString([
+    //     ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1,
+    //     ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
+    //
+    // [{
+    //     app: `import {Type} from './model'; class Entity { p: Type[];}`,
+    //     model: `export interface Type {title: string}`
+    // }, [`!./model`, `!import {Type} from './model'`]],
+    //
+    // // multiple exports can be resolved
+    // [{
+    //     app: `import {Type, Model} from './myPackage'; class Entity { p: Type[]; p2: Model[]};`,
+    //     myPackage: `export * from './myPackageModel';`,
+    //     myPackageModel: `export interface Type {title: string}; export class Model {}`
+    // }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
+    //     ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
+    //
+    // [{
+    //     app: `import {Type, Model} from './myPackage'; class Entity { p: Type[]; p2: Model[]};`,
+    //     myPackage: `export {Model, Type} from './myPackageModel';`,
+    //     myPackageModel: `export interface Type {title: string}; export class Model {}`
+    // }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
+    //     ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
+    //
+    // [{
+    //     app: `import {Type, Model} from './myPackage'; class Entity { p: Type[]; p2: Model[]};`,
+    //     myPackage: `export {MM as Model, TT as Type} from './myPackageModel';`,
+    //     myPackageModel: `export interface TT {title: string}; export class MM {}`
+    // }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
+    //     ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
+    //
+    // [`
+    // /** @reflection never */
+    // class Entity1 { p: number;}
+    // class Entity2 { p: string;}
+    // `, [`!['p', ${packString([ReflectionOp.number, ReflectionOp.property, 0, ReflectionOp.class])}]`, `['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.class])}]`]],
+    //
+    // [`
+    // class Entity1 { p: number;}
+    // /** @reflection never */
+    // class Entity2 { p: string;}
+    // `, [`['p', ${packString([ReflectionOp.number, ReflectionOp.property, 0, ReflectionOp.class])}]`, `!['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.class])}]`]],
+    //
+    // // erasable types will be kept
+    // [{
+    //     app: `import {Model} from './model'; class Entity { p: Model[];}`,
+    //     model: `export class Model {}`
+    // }, [`[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.class])}]`, `import { Model } from './model';`]],
+    //
+    // //functions
+    // [`const fn = (param: string): void {}`, `const fn = Object.assign((param) => { }, { __type: ['param', '', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.function, 1])}] })`],
+    // [`const fn = (param: string) {}`, `const fn = Object.assign((param) => { }, { __type: ['param', '', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.any, ReflectionOp.function, 1])}] })`],
+    // [`const fn = () {}`, `!__type:`],
+    // [`const fn = (): any {}`, `const fn = Object.assign(() => { }, { __type: ['', ${packString([ReflectionOp.any, ReflectionOp.function, 0])}] })`],
+    //
+    // [`const fn = function () {}`, `!__type`],
+    // [`const fn = function (): any {}`, `const fn = Object.assign(function () { }, { __type: ['', ${packString([ReflectionOp.any, ReflectionOp.function, 0])}] })`],
+    // [`function createFn() { return function(): any {} }`, `return Object.assign(function () { }, { __type: ['', ${packString([ReflectionOp.any, ReflectionOp.function, 0])}] })`],
+    //
+    // [`class Entity { createFn() { return function(param: string) {} }}`, `return Object.assign(function (param) { }, { __type: ['param', '', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.any, ReflectionOp.function, 1])}] })`],
+    //
+    // [`function name(): any {}`, `function name() { }\nname.__type = ['name', ${packString([ReflectionOp.any, ReflectionOp.function, 0])}];`],
 ];
 
 describe('transformer', () => {

@@ -9,8 +9,16 @@
  */
 
 import { createFreeDecoratorContext } from './decorator-builder';
-import { BackReferenceOptions, ReceiveType, ReflectionClass, SerializerFn, TData, ValidatorFn } from './reflection/reflection';
+import { ReceiveType, ReflectionClass, SerializerFn, TData, ValidatorFn } from './reflection/reflection';
 import { ClassType } from '@deepkit/core';
+
+export type Group<Name extends string> = { __meta?: { id: 'group', name: Name } };
+export type Excluded<Name extends string> = { __meta?: { id: 'excluded', name: Name } };
+export type Data<Name extends string, Value> = { __meta?: { id: 'data', name: Name, value: Value } };
+export type Serialize<Fn extends Function> = { __meta?: { id: 'serialize', function: Fn } };
+export type Deserialize<Fn extends Function> = { __meta?: { id: 'serialize', function: Fn } };
+export type Unique<Name extends string = ''> = { __meta?: { id: 'unique', name: Name } };
+export type Index<Name extends string = ''> = { __meta?: { id: 'index', name: Name } };
 
 class TDecorator {
     t = new TData();
@@ -73,14 +81,6 @@ class TDecorator {
     group(...groups: string[]) {
         if (!this.t.groups) this.t.groups = [];
         this.t.groups.push(...groups);
-    }
-
-    // reference(options?: { onDelete: ReferenceActions, onUpdate: ReferenceActions }) {
-    //     this.t.referenceOptions = options;
-    // }
-
-    backReference(backReference?: BackReferenceOptions<any>) {
-        this.t.backReference = backReference;
     }
 }
 

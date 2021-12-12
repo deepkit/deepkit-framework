@@ -81,6 +81,7 @@ import {
     MethodSignature,
     ModifierFlags,
     ModuleDeclaration,
+    ModuleKind,
     Node,
     NodeFactory,
     NodeFlags,
@@ -108,6 +109,7 @@ import {
     TypeOperatorNode,
     TypeQueryNode,
     TypeReferenceNode,
+    unescapeLeadingUnderscores,
     UnionTypeNode,
     visitEachChild,
     visitNode,
@@ -261,7 +263,9 @@ class CompilerProgram {
     protected activeCoRoutines: { ops: ReflectionOp[] }[] = [];
     protected coRoutines: { ops: ReflectionOp[] }[] = [];
 
-    constructor(public forNode: Node) {
+    public importSpecifier?: ImportSpecifier;
+
+    constructor(public forNode: Node, public sourceFile: SourceFile) {
     }
 
     buildPackStruct() {
@@ -417,6 +421,17 @@ class CompilerProgram {
 }
 
 /**
+ * For imports that can removed (like a class import only used as type only, like `p: Model[]`) we have
+ * to modify the import so TS does not remove it.
+ */
+function ensureImportIsEmitted(importSpecifier?: ImportSpecifier) {
+    if (importSpecifier) {
+        //make synthetic. Let the TS compiler keep this import
+        (importSpecifier as any).flags |= NodeFlags.Synthesized;
+    }
+}
+
+/**
  * Read the TypeScript AST and generate pack struct (instructions + pre-defined stack).
  *
  * This transformer extracts type and add the encoded (so its small and low overhead) at classes and functions as property.
@@ -430,6 +445,25 @@ export class ReflectionTransformer {
     protected f: NodeFactory;
 
     protected reflectionMode?: typeof reflectionModes[number];
+
+    /**
+     * Types added to this map will get a type program directly under it.
+     * This is for types used in the very same file.
+     */
+    protected compileDeclarations = new Map<TypeAliasDeclaration | InterfaceDeclaration | EnumDeclaration, { name: EntityName, sourceFile: SourceFile, importSpecifier?: ImportSpecifier }>();
+
+    /**
+     * Types added to this map will get a type program at the top root level of the program.
+     * This is for imported types, which need to be inline into the current file, as we do not emit type imports (TS will omit them).
+     */
+    protected embedDeclarations = new Map<Node, { name: EntityName, sourceFile: SourceFile, importSpecifier?: ImportSpecifier }>();
+
+    /**
+     * When a node was embedded or compiled (from the maps above), we store it here to know to not add it again.
+     */
+    protected compiledDeclarations = new Set<Node>();
+
+    protected addImports: { from: Expression, identifier: Identifier }[] = [];
 
     constructor(
         protected context: TransformationContext,
@@ -510,6 +544,7 @@ export class ReflectionTransformer {
                     // const symbol = typeChecker.getSymbolAtLocation(node.expression);
                     const found = this.resolveDeclaration(node.expression);
                     const type = found && found.declaration;
+                    console.log('found.declaration', node.expression, found?.declaration);
                     if (type && isFunctionDeclaration(type) && type.typeParameters) {
                         const args: Expression[] = [...node.arguments];
                         let replaced = false;
@@ -553,7 +588,7 @@ export class ReflectionTransformer {
 
             return node;
         };
-        sourceFile = visitNode(sourceFile, visitor);
+        this.sourceFile = visitNode(this.sourceFile, visitor);
 
         //externalize type aliases
         const compileDeclarations = (node: Node): any => {
@@ -563,36 +598,63 @@ export class ReflectionTransformer {
                 const d = this.compileDeclarations.get(node)!;
                 this.compileDeclarations.delete(node);
                 this.compiledDeclarations.add(node);
-                return [this.createProgramVarFromNode(node, d.name), node];
+                return [this.createProgramVarFromNode(node, d.name, d.sourceFile, d.importSpecifier), node];
             }
 
             return node;
         };
 
-        while (this.compileDeclarations.size > 0) {
-            sourceFile = visitNode(sourceFile, compileDeclarations);
-        }
-        this.sourceFile = sourceFile;
+        while (this.compileDeclarations.size || this.embedDeclarations.size) {
+            if (this.compileDeclarations.size) {
+                this.sourceFile = visitNode(this.sourceFile, compileDeclarations);
+            }
 
-        if (this.embedDeclarations.size) {
-            const embeded: Statement[] = [];
-            for (const node of this.embedDeclarations.keys()) {
-                this.compiledDeclarations.add(node);
+            if (this.embedDeclarations.size) {
+                const embedded: Statement[] = [];
+                for (const node of this.embedDeclarations.keys()) {
+                    this.compiledDeclarations.add(node);
+                }
+                const entries = [...this.embedDeclarations.entries()];
+                this.embedDeclarations.clear();
+                for (const [node, d] of entries) {
+                    embedded.push(this.createProgramVarFromNode(node, d.name, d.sourceFile, d.importSpecifier));
+                }
+                this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...embedded, ...this.sourceFile.statements]);
             }
-            for (const [node, d] of this.embedDeclarations.entries()) {
-                embeded.push(this.createProgramVarFromNode(node, d.name));
+        }
+
+        if (this.addImports.length) {
+            const compilerOptions = this.context.getCompilerOptions();
+            const imports: Statement[] = [];
+            for (const imp of this.addImports) {
+                if (compilerOptions.module === ModuleKind.CommonJS) {
+                    //var {identifier} = require('./bar')
+                    const variable = this.f.createVariableStatement(undefined, this.f.createVariableDeclarationList([this.f.createVariableDeclaration(
+                        this.f.createObjectBindingPattern([this.f.createBindingElement(undefined, undefined, imp.identifier)]),
+                        undefined, undefined,
+                        this.f.createCallExpression(this.f.createIdentifier('require'), undefined, [imp.from])
+                    )]));
+                    imports.push(variable);
+                } else {
+                    //import {identifier} from './bar'
+                    const specifier = this.f.createImportSpecifier(false, undefined, imp.identifier);
+                    const namedImports = this.f.createNamedImports([specifier]);
+                    const importStatement = this.f.createImportDeclaration(undefined, undefined,
+                        this.f.createImportClause(false, undefined, namedImports), imp.from
+                    );
+                    imports.push(importStatement);
+                }
             }
-            return this.f.updateSourceFile(this.sourceFile, [...embeded, ...this.sourceFile.statements],
-                this.sourceFile.isDeclarationFile, this.sourceFile.referencedFiles, this.sourceFile.typeReferenceDirectives, this.sourceFile.hasNoDefaultLib,
-                this.sourceFile.libReferenceDirectives
-            );
+
+            this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...imports, ...this.sourceFile.statements]);
         }
 
         return this.sourceFile;
     }
 
-    protected createProgramVarFromNode(node: Node, name: EntityName) {
-        const typeProgram = new CompilerProgram(node);
+    protected createProgramVarFromNode(node: Node, name: EntityName, sourceFile: SourceFile, importSpecifier?: ImportSpecifier) {
+        const typeProgram = new CompilerProgram(node, sourceFile);
+        typeProgram.importSpecifier = importSpecifier;
 
         if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && node.typeParameters) {
             for (const param of node.typeParameters) {
@@ -603,6 +665,7 @@ export class ReflectionTransformer {
                 typeProgram.pushTemplateParameter(getIdentifierName(param.name), !!param.default);
             }
         }
+
         if (isTypeAliasDeclaration(node)) {
             this.extractPackStructOfType(node.type, typeProgram);
         } else {
@@ -1130,7 +1193,23 @@ export class ReflectionTransformer {
             case SyntaxKind.TypeQuery: {
                 //TypeScript does not narrow types down
                 const narrowed = node as TypeQueryNode;
-                program.pushOp(ReflectionOp.typeof, program.findOrAddStackEntry(narrowed.exprName));
+
+                if (program.importSpecifier) {
+                    //if this is set, the current program is embedded into another file. All locally used symbols like a variable in `typeof` need to be imported
+                    //in the other file as well.
+                    if (isIdentifier(narrowed.exprName)) {
+                        const originImportStatement = program.importSpecifier.parent.parent.parent;
+                        this.addImports.push({ identifier: narrowed.exprName, from: originImportStatement.moduleSpecifier });
+                    }
+                }
+                if (isIdentifier(narrowed.exprName)) {
+                    const resolved = this.resolveDeclaration(narrowed.exprName);
+                    if (resolved && findSourceFile(resolved.declaration) !== this.sourceFile) {
+                        ensureImportIsEmitted(resolved.importSpecifier);
+                    }
+                }
+
+                program.pushOp(ReflectionOp.typeof, program.findOrAddStackEntry(this.f.createIdentifier(getNameAsString(narrowed.exprName))));
                 break;
             }
             case SyntaxKind.TypeOperator: {
@@ -1198,14 +1277,17 @@ export class ReflectionTransformer {
 
         let declaration: Declaration | undefined = symbol && symbol.declarations ? symbol.declarations[0] : undefined;
 
+
         //if the symbol points to a ImportSpecifier, it means its declared in another file, and we have to use getDeclaredTypeOfSymbol to resolve it.
         const importSpecifier = declaration && isImportSpecifier(declaration) ? declaration : undefined;
         if (symbol && (!declaration || isImportSpecifier(declaration))) {
             const resolvedType = typeChecker.getDeclaredTypeOfSymbol(symbol);
-            if (resolvedType && resolvedType.symbol && resolvedType.symbol.declarations && resolvedType.symbol.declarations[0]) {
+            if (resolvedType && resolvedType.aliasSymbol && resolvedType.aliasSymbol.declarations && resolvedType.aliasSymbol.declarations[0]) {
+                declaration = resolvedType.aliasSymbol.declarations[0];
+            } else if (resolvedType && resolvedType.symbol && resolvedType.symbol.declarations && resolvedType.symbol.declarations[0]) {
                 declaration = resolvedType.symbol.declarations[0];
             } else if (declaration && isImportSpecifier(declaration)) {
-                declaration = this.resolveImportSpecifier(symbol.name, declaration.parent.parent.parent);
+                declaration = this.resolveImportSpecifier(unescapeLeadingUnderscores(symbol.escapedName), declaration.parent.parent.parent);
             }
         }
 
@@ -1233,19 +1315,6 @@ export class ReflectionTransformer {
     //     }
     //     return node;
     // }
-
-    /**
-     * Types added to this map will get a type program directly under it.
-     * This is for types used in the very same file.
-     */
-    protected compileDeclarations = new Map<TypeAliasDeclaration | InterfaceDeclaration | EnumDeclaration, { name: EntityName }>();
-    protected compiledDeclarations = new Set<Node>();
-
-    /**
-     * Types added to this map will get a type program at the top root level of the program.
-     * This is for imported types, which need to be inline into the current file, as we do not emit type imports (TS will omit them).
-     */
-    protected embedDeclarations = new Map<Node, { name: EntityName }>();
 
     protected getDeclarationVariableName(typeName: EntityName) {
         if (isIdentifier(typeName)) {
@@ -1292,38 +1361,9 @@ export class ReflectionTransformer {
 
             const resolved = this.resolveDeclaration(type.typeName);
             if (!resolved) {
-                //if a global well-known type is not available, we try to check its name and infer from it the actual type.
-                if (isIdentifier(type.typeName)) {
-                    if (type.typeName.escapedText === 'Omit') {
-                    }
-                    if (type.typeName.escapedText === 'Exclude') {
-                    }
-                    if (type.typeName.escapedText === 'Record') {
-                        if (type.typeArguments && type.typeArguments.length === 2) {
-                            for (const argument of type.typeArguments) {
-                                this.extractPackStructOfType(argument, program);
-                            }
-                            program.pushOp(ReflectionOp.indexSignature);
-                            program.pushOp(ReflectionOp.objectLiteral);
-                            return;
-                        }
-                    }
-                }
-
                 //non existing references are ignored.
                 program.pushOp(ReflectionOp.any);
                 return;
-            }
-
-            /**
-             * For imports that can removed (like a class import only used as type only, like `p: Model[]`) we have
-             * to modify the import so TS does not remove it.
-             */
-            function ensureImportIsEmitted() {
-                if (resolved!.importSpecifier) {
-                    //make synthetic. Let the TS compiler keep this import
-                    (resolved!.importSpecifier as any).flags |= NodeFlags.Synthesized;
-                }
             }
 
             const declaration = resolved.declaration;
@@ -1359,14 +1399,24 @@ export class ReflectionTransformer {
 
                 //to break recursion, we track which declaration has already been compiled
                 if (!this.compiledDeclarations.has(declaration)) {
-
-                    //imported declarations will be embedded, because we can't safely import them.
+                    //imported declarations will be embedded, because we can't safely import them (we don't even know if the library has built they source with reflection on).
                     //global declarations like Partial will be embedded as well, since those are not available at runtime.
-                    const isGlobal = findSourceFile(declaration) !== this.sourceFile;
+                    //when a type is embedded all its locally linked types are embedded as well. locally linked symbols like variables (for typeof calls) will
+                    //be imported by modifying `resolved!.importSpecifier`, adding the symbol + making the import persistent.
+                    const declarationSourceFile = findSourceFile(declaration);
+                    const isGlobal = declarationSourceFile !== this.sourceFile;
                     if (resolved!.importSpecifier || isGlobal) {
-                        this.embedDeclarations.set(declaration, { name: type.typeName });
+                        this.embedDeclarations.set(declaration, {
+                            name: type.typeName,
+                            sourceFile: declarationSourceFile,
+                            importSpecifier: resolved!.importSpecifier || program.importSpecifier
+                        });
                     } else {
-                        this.compileDeclarations.set(declaration, { name: type.typeName });
+                        this.compileDeclarations.set(declaration, {
+                            name: type.typeName,
+                            sourceFile: declarationSourceFile,
+                            importSpecifier: resolved!.importSpecifier || program.importSpecifier
+                        });
                     }
                 }
 
@@ -1386,7 +1436,7 @@ export class ReflectionTransformer {
                 this.extractPackStructOfType(declaration, program);
                 return;
             } else if (isClassDeclaration(declaration)) {
-                ensureImportIsEmitted();
+                ensureImportIsEmitted(resolved.importSpecifier);
                 program.pushFrame();
 
                 if (type.typeArguments) {
@@ -1621,7 +1671,7 @@ export class ReflectionTransformer {
         const reflection = this.findReflectionConfig(type);
         if (reflection.mode === 'never') return;
 
-        const program = new CompilerProgram(type);
+        const program = new CompilerProgram(type, this.sourceFile);
         this.extractPackStructOfType(type, program);
         return this.packOpsAndStack(program.buildPackStruct());
     }

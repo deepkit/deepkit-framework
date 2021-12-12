@@ -66,16 +66,6 @@ export enum ReflectionKind {
     infer,
 }
 
-export interface TypeBrandable {
-    brands?: Type[];
-}
-
-export function isBrandable(type: Type): type is TypeVoid | TypeString | TypeNumber | TypeBoolean | TypeBigInt | TypeNull | TypeUndefined | TypeTemplateLiteral | TypeLiteral {
-    return type.kind === ReflectionKind.void || type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.boolean
-        || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined || type.kind === ReflectionKind.literal
-        || type.kind === ReflectionKind.templateLiteral;
-}
-
 export interface TypeInferred {
     inferred?: true; //not in use yet
 }
@@ -92,7 +82,7 @@ export interface TypeUnknown extends TypeInferred {
     kind: ReflectionKind.unknown,
 }
 
-export interface TypeVoid extends TypeBrandable, TypeInferred {
+export interface TypeVoid extends TypeInferred {
     kind: ReflectionKind.void,
 }
 
@@ -100,7 +90,11 @@ export interface TypeObject extends TypeInferred {
     kind: ReflectionKind.object,
 }
 
-export interface TypeString extends TypeBrandable, TypeOrigin, TypeInferred {
+export interface TypeOrigin {
+    origin?: Type;
+}
+
+export interface TypeString extends TypeOrigin, TypeInferred {
     kind: ReflectionKind.string,
 }
 
@@ -124,46 +118,42 @@ export enum TypeNumberBrand {
     float64,
 }
 
-export interface TypeOrigin {
-    origin?: Type;
-}
-
-export interface TypeNumber extends TypeBrandable, TypeOrigin, TypeInferred {
+export interface TypeNumber extends TypeOrigin, TypeInferred {
     kind: ReflectionKind.number,
     brand?: TypeNumberBrand; //built in brand
 }
 
-export interface TypeBoolean extends TypeBrandable, TypeOrigin, TypeInferred {
+export interface TypeBoolean extends TypeOrigin, TypeInferred {
     kind: ReflectionKind.boolean,
 }
 
-export interface TypeBigInt extends TypeBrandable, TypeOrigin, TypeInferred {
+export interface TypeBigInt extends TypeOrigin, TypeInferred {
     kind: ReflectionKind.bigint,
 }
 
-export interface TypeSymbol extends TypeBrandable, TypeInferred {
+export interface TypeSymbol extends TypeOrigin, TypeInferred {
     kind: ReflectionKind.symbol,
 }
 
-export interface TypeNull extends TypeBrandable, TypeInferred {
+export interface TypeNull extends TypeInferred {
     kind: ReflectionKind.null,
 }
 
-export interface TypeUndefined extends TypeBrandable, TypeInferred {
+export interface TypeUndefined extends TypeInferred {
     kind: ReflectionKind.undefined,
 }
 
-export interface TypeLiteral extends TypeBrandable, TypeInferred {
+export interface TypeLiteral extends TypeInferred {
     kind: ReflectionKind.literal,
-    literal: symbol | string | number | boolean | bigint;
+    literal: symbol | string | number | boolean | bigint | RegExp;
 }
 
-export interface TypeTemplateLiteral extends TypeBrandable, TypeInferred {
+export interface TypeTemplateLiteral extends TypeInferred {
     kind: ReflectionKind.templateLiteral,
     types: (TypeString | TypeAny | TypeNumber | TypeLiteral | TypeInfer)[]
 }
 
-export interface TypeRegexp extends TypeBrandable, TypeInferred {
+export interface TypeRegexp extends TypeOrigin, TypeInferred {
     kind: ReflectionKind.regexp;
 }
 
@@ -214,6 +204,7 @@ export interface TypeProperty extends TypeLiteralMember {
 export interface TypeFunction extends TypeInferred {
     kind: ReflectionKind.function,
     name?: number | string | symbol,
+    function?: Function; //reference to the real function if available
     parameters: TypeParameter[];
     return: Type;
 }
@@ -370,6 +361,11 @@ export type FindType<T extends Type, LOOKUP extends ReflectionKind> = { [P in ke
 
 export function isType(entry: any): entry is Type {
     return 'object' === typeof entry && entry.constructor === Object && 'kind' in entry;
+}
+
+export function isPrimitive<T extends Type>(type: T): boolean {
+    return type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.boolean
+        || type.kind === ReflectionKind.array || type.kind === ReflectionKind.literal || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined;
 }
 
 /**
@@ -788,6 +784,8 @@ export function typeInfer(value: any): Type {
         return { kind: ReflectionKind.null };
     } else if (undefined === value) {
         return { kind: ReflectionKind.undefined };
+    } else if (value instanceof RegExp) {
+        return { kind: ReflectionKind.literal, literal: value };
     } else if ('function' === typeof value) {
         if (isArray(value.__type)) {
             //with emitted types: function or class

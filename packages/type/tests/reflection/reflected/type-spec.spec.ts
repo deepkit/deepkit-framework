@@ -79,7 +79,7 @@ test('with implicit default value', () => {
     //having a default value doesn't mean we are optional;
     expect(ReflectionClass.from(Product).getProperty('created')!.isOptional()).toBe(false);
 
-    expect(roundTrip<Product>( { id: 23 } as any)).toEqual({ id: 23, created: defaultDate });
+    expect(roundTrip<Product>({ id: 23 } as any)).toEqual({ id: 23, created: defaultDate });
     expect(deserializeFromJson<Product>({ id: 23, created: undefined } as any)).toEqual({ id: 23, created: defaultDate });
     expect(roundTrip<Product>({ id: 23, created: undefined } as any)).toEqual({ id: 23, created: defaultDate });
 
@@ -153,13 +153,6 @@ test('bigint', () => {
     expect(roundTrip<bigint>(16n ** 16n ** 2n)).toEqual(16n ** 16n ** 2n);
     expect(roundTrip<bigint>(16n ** 16n ** 3n)).toEqual(16n ** 16n ** 3n);
 });
-
-//
-// test('propertyDefinition', () => {
-//     const property = t.string.optional.default('asd').buildPropertySchema();
-//     const json = property.toJSONNonReference();
-//     expect(roundTrip(propertyDefinition, json)).toEqual(json);
-// });
 
 test('union basics', () => {
     expect(roundTrip<string | number>('asd')).toEqual('asd');
@@ -525,168 +518,6 @@ test('nullable container', () => {
     expect(serializeToJson<s>({} as any)).toEqual({ tags: null, tagMap: null, tagPartial: null });
 });
 
-// // test('map serializes default', () => {
-// //     const defaultMap = {};
-// //     expect(serializeToJson(t.map(t.any).optional.default(defaultMap), undefined)).not.toBe(defaultMap);
-// //     expect(serializeToJson(t.map(t.any).optional.default(defaultMap), undefined)).toBeInstanceOf(Object);
-// //
-// //     expect(serializeToJson(t.map(t.any).optional.default(defaultMap), null)).toBeInstanceOf(Object);
-// //     expect(serializeToJson(t.map(t.any).optional.default(defaultMap), null)).not.toBe(defaultMap);
-// // });
-// //
-// // test('serialize default', () => {
-// //     expect(serializeToJson(t.string.optional.default('123'), undefined)).toBe('123');
-// //     expect(serializeToJson(t.string.optional.default('123'), null)).toBe('123');
-// //
-// //     expect(serializeToJson(t.number.optional.default(123), undefined)).toBe(123);
-// //     expect(serializeToJson(t.number.optional.default(123), null)).toBe(123);
-// //
-// //     expect(serializeToJson(t.boolean.optional.default(false), undefined)).toBe(false);
-// //     expect(serializeToJson(t.boolean.optional.default(false), null)).toBe(false);
-// //
-// //     expect(serializeToJson(t.uuid.optional.default('5c58e474-82ad-4e92-ad9f-487bbc11e8ed'), undefined)).toBe('5c58e474-82ad-4e92-ad9f-487bbc11e8ed');
-// //     expect(serializeToJson(t.uuid.optional.default('5c58e474-82ad-4e92-ad9f-487bbc11e8ed'), null)).toBe('5c58e474-82ad-4e92-ad9f-487bbc11e8ed');
-// //
-// //     expect(serializeToJson(t.mongoId.optional.default('507f1f77bcf86cd799439011'), undefined)).toBe('507f1f77bcf86cd799439011');
-// //     expect(serializeToJson(t.mongoId.optional.default('507f1f77bcf86cd799439011'), null)).toBe('507f1f77bcf86cd799439011');
-// //
-// //     expect(serializeToJson(t.date.optional.default(new Date), undefined)).toBeInstanceOf(Date);
-// //     expect(serializeToJson(t.date.optional.default(new Date), null)).toBeInstanceOf(Date);
-// //
-// //     const defaultMap = {};
-// //     expect(serializeToJson(t.map(t.any).optional.default(defaultMap), undefined)).not.toBe(defaultMap);
-// //     expect(serializeToJson(t.map(t.any).optional.default(defaultMap), undefined)).toBeInstanceOf(Object);
-// //     expect(serializeToJson(t.map(t.any).optional.default(defaultMap), null)).toBeInstanceOf(Object);
-// //     expect(serializeToJson(t.map(t.any).optional.default(defaultMap), null)).not.toBe(defaultMap);
-// //
-// //     const defaultArray: any[] = [];
-// //     expect(serializeToJson(t.array(t.any).optional.default(defaultArray), undefined)).not.toBe(defaultArray);
-// //     expect(serializeToJson(t.array(t.any).optional.default(defaultArray), undefined)).toBeInstanceOf(Array);
-// //     expect(serializeToJson(t.array(t.any).optional.default(defaultArray), null)).toBeInstanceOf(Array);
-// //     expect(serializeToJson(t.array(t.any).optional.default(defaultArray), null)).not.toBe(defaultArray);
-// //
-// //     expect(serializeToJson(t.partial({ a: t.string }).optional.default(defaultMap), undefined)).not.toBe(defaultMap);
-// //     expect(serializeToJson(t.partial({ a: t.string }).optional.default(defaultMap), undefined)).toBeInstanceOf(Object);
-// //     expect(serializeToJson(t.partial({ a: t.string }).optional.default(defaultMap), null)).not.toBe(defaultMap);
-// //     expect(serializeToJson(t.partial({ a: t.string }).optional.default(defaultMap), null)).toBeInstanceOf(Object);
-// //
-// //     expect(serializeToJson(t.union(t.string).optional.default('asd'), undefined)).toBe('asd');
-// //     expect(serializeToJson(t.union(t.string).optional.default('asd'), null)).toBe('asd');
-// //
-// //     expect(serializeToJson(t.literal('a').optional.default('a'), undefined)).toBe('a');
-// //     expect(serializeToJson(t.literal('a').optional.default('a'), null)).toBe('a');
-// //
-// //     expect(serializeToJson(t.enum(MyEnum).optional.default(MyEnum.b), undefined)).toBe(MyEnum.b);
-// //     expect(serializeToJson(t.enum(MyEnum).optional.default(MyEnum.b), null)).toBe(MyEnum.b);
-// //
-// //     expect(serializeToJson(t.type(Model).optional.default(() => new Model), undefined)).toBeInstanceOf(Object);
-// //     expect(serializeToJson(t.type(Model).optional.default(() => new Model), null)).toBeInstanceOf(Object);
-// // });
-// //
-// // test('deserialize default', () => {
-// //     expect(deserializeFromJson(t.string.optional.default('123'), undefined)).toBe('123');
-// //     expect(deserializeFromJson(t.string.optional.default('123'), null)).toBe('123');
-// //
-// //     expect(deserializeFromJson(t.number.optional.default(123), undefined)).toBe(123);
-// //     expect(deserializeFromJson(t.number.optional.default(123), null)).toBe(123);
-// //
-// //     expect(deserializeFromJson(t.boolean.optional.default(false), undefined)).toBe(false);
-// //     expect(deserializeFromJson(t.boolean.optional.default(false), null)).toBe(false);
-// //
-// //     expect(deserializeFromJson(t.uuid.optional.default('5c58e474-82ad-4e92-ad9f-487bbc11e8ed'), undefined)).toBe('5c58e474-82ad-4e92-ad9f-487bbc11e8ed');
-// //     expect(deserializeFromJson(t.uuid.optional.default('5c58e474-82ad-4e92-ad9f-487bbc11e8ed'), null)).toBe('5c58e474-82ad-4e92-ad9f-487bbc11e8ed');
-// //
-// //     expect(deserializeFromJson(t.mongoId.optional.default('507f1f77bcf86cd799439011'), undefined)).toBe('507f1f77bcf86cd799439011');
-// //     expect(deserializeFromJson(t.mongoId.optional.default('507f1f77bcf86cd799439011'), null)).toBe('507f1f77bcf86cd799439011');
-// //
-// //     expect(deserializeFromJson(t.date.optional.default(new Date), undefined)).toBeInstanceOf(Date);
-// //     expect(deserializeFromJson(t.date.optional.default(new Date), null)).toBeInstanceOf(Date);
-// //
-// //     const defaultMap = {};
-// //     expect(deserializeFromJson(t.map(t.any).optional.default(defaultMap), undefined)).not.toBe(defaultMap);
-// //     expect(deserializeFromJson(t.map(t.any).optional.default(defaultMap), undefined)).toBeInstanceOf(Object);
-// //     expect(deserializeFromJson(t.map(t.any).optional.default(defaultMap), null)).toBeInstanceOf(Object);
-// //     expect(deserializeFromJson(t.map(t.any).optional.default(defaultMap), null)).not.toBe(defaultMap);
-// //
-// //     const defaultArray: any[] = [];
-// //     expect(deserializeFromJson(t.array(t.any).optional.default(defaultArray), undefined)).not.toBe(defaultArray);
-// //     expect(deserializeFromJson(t.array(t.any).optional.default(defaultArray), undefined)).toBeInstanceOf(Array);
-// //     expect(deserializeFromJson(t.array(t.any).optional.default(defaultArray), null)).toBeInstanceOf(Array);
-// //     expect(deserializeFromJson(t.array(t.any).optional.default(defaultArray), null)).not.toBe(defaultArray);
-// //
-// //     expect(deserializeFromJson(t.partial({ a: t.string }).optional.default(defaultMap), undefined)).not.toBe(defaultMap);
-// //     expect(deserializeFromJson(t.partial({ a: t.string }).optional.default(defaultMap), undefined)).toBeInstanceOf(Object);
-// //     expect(deserializeFromJson(t.partial({ a: t.string }).optional.default(defaultMap), null)).not.toBe(defaultMap);
-// //     expect(deserializeFromJson(t.partial({ a: t.string }).optional.default(defaultMap), null)).toBeInstanceOf(Object);
-// //
-// //     expect(deserializeFromJson(t.union(t.string).optional.default('asd'), undefined)).toBe('asd');
-// //     expect(deserializeFromJson(t.union(t.string).optional.default('asd'), null)).toBe('asd');
-// //
-// //     expect(deserializeFromJson(t.literal('a').optional.default('a'), undefined)).toBe('a');
-// //     expect(deserializeFromJson(t.literal('a').optional.default('a'), null)).toBe('a');
-// //
-// //     expect(deserializeFromJson(t.enum(MyEnum).optional.default(MyEnum.b), undefined)).toBe(MyEnum.b);
-// //     expect(deserializeFromJson(t.enum(MyEnum).optional.default(MyEnum.b), null)).toBe(MyEnum.b);
-// //
-// //     const defaultModel = new Model;
-// //     expect(deserializeFromJson(t.type(Model).optional.default(() => new Model), undefined)).not.toBe(defaultModel);
-// //     expect(deserializeFromJson(t.type(Model).optional.default(() => new Model), undefined)).toBeInstanceOf(Model);
-// //     expect(deserializeFromJson(t.type(Model).optional.default(() => new Model), null)).not.toBe(defaultModel);
-// //     expect(deserializeFromJson(t.type(Model).optional.default(() => new Model), null)).toBeInstanceOf(Model);
-// // });
-// //
-// // test('default basics', () => {
-// //     expect(roundTrip(t.string.optional.default('123'), undefined)).toBe('123');
-// //     expect(roundTrip(t.string.optional.default('123'), null)).toBe('123');
-// //
-// //     expect(roundTrip(t.number.optional.default(123), undefined)).toBe(123);
-// //     expect(roundTrip(t.number.optional.default(123), null)).toBe(123);
-// //
-// //     expect(roundTrip(t.boolean.optional.default(false), undefined)).toBe(false);
-// //     expect(roundTrip(t.boolean.optional.default(false), null)).toBe(false);
-// //
-// //     expect(roundTrip(t.uuid.optional.default('5c58e474-82ad-4e92-ad9f-487bbc11e8ed'), undefined)).toBe('5c58e474-82ad-4e92-ad9f-487bbc11e8ed');
-// //     expect(roundTrip(t.uuid.optional.default('5c58e474-82ad-4e92-ad9f-487bbc11e8ed'), null)).toBe('5c58e474-82ad-4e92-ad9f-487bbc11e8ed');
-// //
-// //     expect(roundTrip(t.mongoId.optional.default('507f1f77bcf86cd799439011'), undefined)).toBe('507f1f77bcf86cd799439011');
-// //     expect(roundTrip(t.mongoId.optional.default('507f1f77bcf86cd799439011'), null)).toBe('507f1f77bcf86cd799439011');
-// //
-// //     expect(roundTrip(t.date.optional.default(new Date), undefined)).toBeInstanceOf(Date);
-// //     expect(roundTrip(t.date.optional.default(new Date), null)).toBeInstanceOf(Date);
-// //
-// //     const defaultMap = {};
-// //     expect(roundTrip(t.map(t.any).optional.default(defaultMap), undefined)).not.toBe(defaultMap);
-// //     expect(roundTrip(t.map(t.any).optional.default(defaultMap), undefined)).toBeInstanceOf(Object);
-// //     expect(roundTrip(t.map(t.any).optional.default(defaultMap), null)).toBeInstanceOf(Object);
-// //     expect(roundTrip(t.map(t.any).optional.default(defaultMap), null)).not.toBe(defaultMap);
-// //
-// //     const defaultArray: any[] = [];
-// //     expect(roundTrip(t.array(t.any).optional.default(defaultArray), undefined)).not.toBe(defaultArray);
-// //     expect(roundTrip(t.array(t.any).optional.default(defaultArray), undefined)).toBeInstanceOf(Array);
-// //     expect(roundTrip(t.array(t.any).optional.default(defaultArray), null)).toBeInstanceOf(Array);
-// //     expect(roundTrip(t.array(t.any).optional.default(defaultArray), null)).not.toBe(defaultArray);
-// //
-// //     expect(roundTrip(t.partial({ a: t.string }).optional.default(defaultMap), undefined)).not.toBe(defaultMap);
-// //     expect(roundTrip(t.partial({ a: t.string }).optional.default(defaultMap), undefined)).toBeInstanceOf(Object);
-// //     expect(roundTrip(t.partial({ a: t.string }).optional.default(defaultMap), null)).not.toBe(defaultMap);
-// //     expect(roundTrip(t.partial({ a: t.string }).optional.default(defaultMap), null)).toBeInstanceOf(Object);
-// //
-// //     expect(roundTrip(t.union(t.string).optional.default('asd'), undefined)).toBe('asd');
-// //     expect(roundTrip(t.union(t.string).optional.default('asd'), null)).toBe('asd');
-// //
-// //     expect(roundTrip(t.literal('a').optional.default('a'), undefined)).toBe('a');
-// //     expect(roundTrip(t.literal('a').optional.default('a'), null)).toBe('a');
-// //
-// //     expect(roundTrip(t.enum(MyEnum).optional.default(MyEnum.b), undefined)).toBe(MyEnum.b);
-// //     expect(roundTrip(t.enum(MyEnum).optional.default(MyEnum.b), null)).toBe(MyEnum.b);
-// //
-// //     const defaultModel = new Model;
-// //     expect(roundTrip(t.type(Model).optional.default(defaultModel), undefined)).not.toBe(defaultModel);
-// //     expect(roundTrip(t.type(Model).optional.default(defaultModel), undefined)).toBeInstanceOf(Model);
-// //     expect(roundTrip(t.type(Model).optional.default(defaultModel), null)).not.toBe(defaultModel);
-// //     expect(roundTrip(t.type(Model).optional.default(defaultModel), null)).toBeInstanceOf(Model);
-// // });
-
 test('nullable basics', () => {
     expect(roundTrip<string | null>(undefined)).toBe(null);
     expect(roundTrip<string | null>(null)).toBe(null);
@@ -815,59 +646,59 @@ test('omit circular reference 2', () => {
     }
 });
 
-// test('omit circular reference 3', () => {
-//     class User {
-//         id: number = 0;
-//
-//         public images: Image[] = [];
-//
-//         constructor(public name: string) {
-//         }
-//     }
-//
-//     class Image {
-//         id: number = 0;
-//
-//         constructor(
-//             public user: User,
-//             public title: string,
-//         ) {
-//             if (user.images && !user.images.includes(this)) {
-//                 user.images.push(this);
-//             }
-//         }
-//     }
-//
-//     expect(ReflectionClass.from(User).hasCircularReference()).toBe(true);
-//     expect(ReflectionClass.from(Image).hasCircularReference()).toBe(true);
-//
-//     {
-//         const user = new User('foo');
-//         const image = new Image(user, 'bar');
-//         {
-//             const plain = serializeToJson<User>(user);
-//             expect(plain.images.length).toBe(1);
-//             expect(plain.images[0]).toBeInstanceOf(Object);
-//             expect(plain.images[0].title).toBe('bar');
-//         }
-//
-//         {
-//             const plain = serializeToJson<Image>(image);
-//             expect(plain.user).toBeInstanceOf(Object);
-//             expect(plain.user.name).toBe('foo');
-//         }
-//     }
-//
-//     {
-//         const user = new User('foo');
-//         const plain = serializeToJson<User>(user);
-//         expect(plain.images.length).toBe(0);
-//     }
-// });
-//
-// test('promise', () => {
-//     //make sure promise is automatically forwarded to its first generic type
-//     expect(serializeToJson<Promise<string>>('1')).toBe('1');
-//     expect(deserializeFromJson<Promise<string>>('1' as any)).toBe('1');
-//     expect(roundTrip<Promise<string>>('1' as any)).toBe('1');
-// });
+test('omit circular reference 3', () => {
+    class User {
+        id: number = 0;
+
+        public images: Image[] = [];
+
+        constructor(public name: string) {
+        }
+    }
+
+    class Image {
+        id: number = 0;
+
+        constructor(
+            public user: User,
+            public title: string,
+        ) {
+            if (user.images && !user.images.includes(this)) {
+                user.images.push(this);
+            }
+        }
+    }
+
+    expect(ReflectionClass.from(User).hasCircularReference()).toBe(true);
+    expect(ReflectionClass.from(Image).hasCircularReference()).toBe(true);
+
+    {
+        const user = new User('foo');
+        const image = new Image(user, 'bar');
+        {
+            const plain = serializeToJson<User>(user);
+            expect(plain.images.length).toBe(1);
+            expect(plain.images[0]).toBeInstanceOf(Object);
+            expect(plain.images[0].title).toBe('bar');
+        }
+
+        {
+            const plain = serializeToJson<Image>(image);
+            expect(plain.user).toBeInstanceOf(Object);
+            expect(plain.user.name).toBe('foo');
+        }
+    }
+
+    {
+        const user = new User('foo');
+        const plain = serializeToJson<User>(user);
+        expect(plain.images.length).toBe(0);
+    }
+});
+
+test('promise', () => {
+    //make sure promise is automatically forwarded to its first generic type
+    expect(serializeToJson<Promise<string>>('1')).toBe('1');
+    expect(deserializeFromJson<Promise<string>>('1' as any)).toBe('1');
+    expect(roundTrip<Promise<string>>('1' as any)).toBe('1');
+});

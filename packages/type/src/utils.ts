@@ -10,6 +10,12 @@
 
 import { stringify, v4 } from 'uuid';
 
+export class NoTypeReceived extends Error {
+    constructor() {
+        super('No type information received. Is deepkit/type correctly installed?');
+    }
+}
+
 /**
  * Returns a new UUID v4 as string.
  */

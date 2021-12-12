@@ -1174,169 +1174,169 @@ test('set constructor parameter manually', () => {
     }
 });
 
-// test('circular type 1', () => {
-//     type Page = {
-//         title: string;
-//         children: Page[]
-//     }
-//
-//     const type = typeOf<Page>();
-//
-//     expect(type.kind).toBe(ReflectionKind.objectLiteral);
-//     if (type.kind === ReflectionKind.objectLiteral) {
-//         const c = type.types[1];
-//         expect(c.kind).toBe(ReflectionKind.propertySignature);
-//         if (c.kind === ReflectionKind.propertySignature) {
-//             const cType = c.type;
-//             expect(cType.kind).toBe(ReflectionKind.array);
-//             if (cType.kind === ReflectionKind.array) {
-//                 expect(cType.type.kind).toBe(ReflectionKind.objectLiteral);
-//                 expect(cType.type === type).toBe(true);
-//             }
-//         }
-//     }
-// });
-//
-// test('circular type 2', () => {
-//     type Document = {
-//         title: string;
-//         root: Node;
-//     }
-//
-//     type Node = {
-//         children: Node[]
-//     }
-//
-//     const type = typeOf<Document>();
-//
-//     expect(type.kind).toBe(ReflectionKind.objectLiteral);
-//
-//     if (type.kind === ReflectionKind.objectLiteral) {
-//         const rootProperty = type.types[1];
-//         expect(rootProperty.kind).toBe(ReflectionKind.propertySignature);
-//         if (rootProperty.kind === ReflectionKind.propertySignature) {
-//             const rootType = rootProperty.type;
-//             expect(rootType.kind).toBe(ReflectionKind.objectLiteral);
-//             if (rootType.kind === ReflectionKind.objectLiteral) {
-//                 const childrenProperty = rootType.types[0];
-//                 expect(childrenProperty.kind).toBe(ReflectionKind.propertySignature);
-//                 if (childrenProperty.kind === ReflectionKind.propertySignature) {
-//                     expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
-//                     if (childrenProperty.type.kind === ReflectionKind.array) {
-//                         expect(childrenProperty.type.type).toBe(rootType);
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// });
-//
-// test('circular interface 2', () => {
-//     interface Document {
-//         title: string;
-//         root: Node;
-//     }
-//
-//     interface Node {
-//         children: Node[];
-//     }
-//
-//     const type = typeOf<Document>();
-//
-//     expect(type.kind).toBe(ReflectionKind.objectLiteral);
-//
-//     if (type.kind === ReflectionKind.objectLiteral) {
-//         const rootProperty = type.types[1];
-//         expect(rootProperty.kind).toBe(ReflectionKind.propertySignature);
-//         if (rootProperty.kind === ReflectionKind.propertySignature) {
-//             const rootType = rootProperty.type;
-//             expect(rootType.kind).toBe(ReflectionKind.objectLiteral);
-//             if (rootType.kind === ReflectionKind.objectLiteral) {
-//                 const childrenProperty = rootType.types[0];
-//                 expect(childrenProperty.kind).toBe(ReflectionKind.propertySignature);
-//                 if (childrenProperty.kind === ReflectionKind.propertySignature) {
-//                     expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
-//                     if (childrenProperty.type.kind === ReflectionKind.array) {
-//                         expect(childrenProperty.type.type).toBe(rootType);
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// });
-//
-// test('circular class 2', () => {
-//     class Document {
-//         title!: string;
-//         root!: Node;
-//     }
-//
-//     class Node {
-//         children!: Node[];
-//     }
-//
-//     const type = typeOf<Document>();
-//
-//     expect(type.kind).toBe(ReflectionKind.class);
-//
-//     if (type.kind === ReflectionKind.class) {
-//         const rootProperty = type.types[1];
-//         expect(rootProperty.kind).toBe(ReflectionKind.property);
-//         if (rootProperty.kind === ReflectionKind.property) {
-//             const rootType = rootProperty.type;
-//             expect(rootType.kind).toBe(ReflectionKind.class);
-//             if (rootType.kind === ReflectionKind.class) {
-//                 const childrenProperty = rootType.types[0];
-//                 expect(childrenProperty.kind).toBe(ReflectionKind.property);
-//                 if (childrenProperty.kind === ReflectionKind.property) {
-//                     expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
-//                     if (childrenProperty.type.kind === ReflectionKind.array) {
-//                         expect(childrenProperty.type.type).toBe(rootType);
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// });
-//
-// test('circular class 3', () => {
-//     class Document {
-//         title!: string;
-//         root!: Node;
-//     }
-//
-//     class Node {
-//         document!: Document;
-//         children!: Node[];
-//     }
-//
-//     const type = typeOf<Document>();
-//
-//     expect(type.kind).toBe(ReflectionKind.class);
-//
-//     if (type.kind === ReflectionKind.class) {
-//         const rootProperty = type.types[1];
-//         expect(rootProperty.kind).toBe(ReflectionKind.property);
-//         if (rootProperty.kind === ReflectionKind.property) {
-//             const rootType = rootProperty.type;
-//             expect(rootType.kind).toBe(ReflectionKind.class);
-//             if (rootType.kind === ReflectionKind.class) {
-//                 const documentProperty = rootType.types[0];
-//                 expect(documentProperty.kind).toBe(ReflectionKind.property);
-//                 if (documentProperty.kind === ReflectionKind.property) {
-//                     expect(documentProperty.type.kind).toBe(ReflectionKind.class);
-//                     expect(documentProperty.type).toBe(type);
-//                 }
-//
-//                 const childrenProperty = rootType.types[1];
-//                 expect(childrenProperty.kind).toBe(ReflectionKind.property);
-//                 if (childrenProperty.kind === ReflectionKind.property) {
-//                     expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
-//                     if (childrenProperty.type.kind === ReflectionKind.array) {
-//                         expect(childrenProperty.type.type).toBe(rootType);
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// });
+test('circular type 1', () => {
+    type Page = {
+        title: string;
+        children: Page[]
+    }
+
+    const type = typeOf<Page>();
+
+    expect(type.kind).toBe(ReflectionKind.objectLiteral);
+    if (type.kind === ReflectionKind.objectLiteral) {
+        const c = type.types[1];
+        expect(c.kind).toBe(ReflectionKind.propertySignature);
+        if (c.kind === ReflectionKind.propertySignature) {
+            const cType = c.type;
+            expect(cType.kind).toBe(ReflectionKind.array);
+            if (cType.kind === ReflectionKind.array) {
+                expect(cType.type.kind).toBe(ReflectionKind.objectLiteral);
+                expect(cType.type === type).toBe(true);
+            }
+        }
+    }
+});
+
+test('circular type 2', () => {
+    type Document = {
+        title: string;
+        root: Node;
+    }
+
+    type Node = {
+        children: Node[]
+    }
+
+    const type = typeOf<Document>();
+
+    expect(type.kind).toBe(ReflectionKind.objectLiteral);
+
+    if (type.kind === ReflectionKind.objectLiteral) {
+        const rootProperty = type.types[1];
+        expect(rootProperty.kind).toBe(ReflectionKind.propertySignature);
+        if (rootProperty.kind === ReflectionKind.propertySignature) {
+            const rootType = rootProperty.type;
+            expect(rootType.kind).toBe(ReflectionKind.objectLiteral);
+            if (rootType.kind === ReflectionKind.objectLiteral) {
+                const childrenProperty = rootType.types[0];
+                expect(childrenProperty.kind).toBe(ReflectionKind.propertySignature);
+                if (childrenProperty.kind === ReflectionKind.propertySignature) {
+                    expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
+                    if (childrenProperty.type.kind === ReflectionKind.array) {
+                        expect(childrenProperty.type.type).toBe(rootType);
+                    }
+                }
+            }
+        }
+    }
+});
+
+test('circular interface 2', () => {
+    interface Document {
+        title: string;
+        root: Node;
+    }
+
+    interface Node {
+        children: Node[];
+    }
+
+    const type = typeOf<Document>();
+
+    expect(type.kind).toBe(ReflectionKind.objectLiteral);
+
+    if (type.kind === ReflectionKind.objectLiteral) {
+        const rootProperty = type.types[1];
+        expect(rootProperty.kind).toBe(ReflectionKind.propertySignature);
+        if (rootProperty.kind === ReflectionKind.propertySignature) {
+            const rootType = rootProperty.type;
+            expect(rootType.kind).toBe(ReflectionKind.objectLiteral);
+            if (rootType.kind === ReflectionKind.objectLiteral) {
+                const childrenProperty = rootType.types[0];
+                expect(childrenProperty.kind).toBe(ReflectionKind.propertySignature);
+                if (childrenProperty.kind === ReflectionKind.propertySignature) {
+                    expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
+                    if (childrenProperty.type.kind === ReflectionKind.array) {
+                        expect(childrenProperty.type.type).toBe(rootType);
+                    }
+                }
+            }
+        }
+    }
+});
+
+test('circular class 2', () => {
+    class Document {
+        title!: string;
+        root!: Node;
+    }
+
+    class Node {
+        children!: Node[];
+    }
+
+    const type = typeOf<Document>();
+
+    expect(type.kind).toBe(ReflectionKind.class);
+
+    if (type.kind === ReflectionKind.class) {
+        const rootProperty = type.types[1];
+        expect(rootProperty.kind).toBe(ReflectionKind.property);
+        if (rootProperty.kind === ReflectionKind.property) {
+            const rootType = rootProperty.type;
+            expect(rootType.kind).toBe(ReflectionKind.class);
+            if (rootType.kind === ReflectionKind.class) {
+                const childrenProperty = rootType.types[0];
+                expect(childrenProperty.kind).toBe(ReflectionKind.property);
+                if (childrenProperty.kind === ReflectionKind.property) {
+                    expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
+                    if (childrenProperty.type.kind === ReflectionKind.array) {
+                        expect(childrenProperty.type.type).toBe(rootType);
+                    }
+                }
+            }
+        }
+    }
+});
+
+test('circular class 3', () => {
+    class Document {
+        title!: string;
+        root!: Node;
+    }
+
+    class Node {
+        document!: Document;
+        children!: Node[];
+    }
+
+    const type = typeOf<Document>();
+
+    expect(type.kind).toBe(ReflectionKind.class);
+
+    if (type.kind === ReflectionKind.class) {
+        const rootProperty = type.types[1];
+        expect(rootProperty.kind).toBe(ReflectionKind.property);
+        if (rootProperty.kind === ReflectionKind.property) {
+            const rootType = rootProperty.type;
+            expect(rootType.kind).toBe(ReflectionKind.class);
+            if (rootType.kind === ReflectionKind.class) {
+                const documentProperty = rootType.types[0];
+                expect(documentProperty.kind).toBe(ReflectionKind.property);
+                if (documentProperty.kind === ReflectionKind.property) {
+                    expect(documentProperty.type.kind).toBe(ReflectionKind.class);
+                    expect(documentProperty.type).toBe(type);
+                }
+
+                const childrenProperty = rootType.types[1];
+                expect(childrenProperty.kind).toBe(ReflectionKind.property);
+                if (childrenProperty.kind === ReflectionKind.property) {
+                    expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
+                    if (childrenProperty.type.kind === ReflectionKind.array) {
+                        expect(childrenProperty.type.type).toBe(rootType);
+                    }
+                }
+            }
+        }
+    }
+});
