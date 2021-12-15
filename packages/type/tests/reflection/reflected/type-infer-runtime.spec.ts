@@ -34,7 +34,6 @@ test('class', () => {
     class User {}
     expect(typeInfer(new User())).toEqual(typeOf<User>());
     expect(typeInfer(new Date(''))).toEqual(typeOf<Date>());
-    expect(typeInfer(new RegExp(''))).toEqual(typeOf<RegExp>());
 });
 
 test('object', () => {
@@ -44,12 +43,11 @@ test('object', () => {
     expect(typeInfer({ a: 12n })).toMatchObject(typeOf<{ a: bigint }>() as any);
     expect(typeInfer({ a: symbol })).toMatchObject(typeOf<{ a: symbol }>() as any);
     expect(typeInfer({ a: new Date })).toMatchObject(typeOf<{ a: Date }>() as any);
-    expect(typeInfer({ a: new RegExp('') })).toMatchObject(typeOf<{ a: RegExp }>() as any);
     expect(typeInfer({ a: (b: string): void => undefined  })).toMatchObject(typeOf<{ a(b: string): void }>() as any);
     expect(typeInfer({ a(b: string): void {} })).toMatchObject(typeOf<{ a(b: string): void }>() as any);
 });
 
 test('function', () => {
-    expect(typeInfer((a: string): void => undefined)).toEqual(typeOf<(a: string) => void>());
-    expect(typeInfer((a: string, b: number): void => undefined)).toEqual(typeOf<(a: string, b: number) => void>());
+    expect(typeInfer((a: string): void => undefined)).toMatchObject(typeOf<(a: string) => void>() as any);
+    expect(typeInfer((a: string, b: number): void => undefined)).toMatchObject(typeOf<(a: string, b: number) => void>() as any);
 });

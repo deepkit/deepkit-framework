@@ -17,6 +17,7 @@ import { pack, ReflectionTransformer, transformer } from '../../src/reflection/c
 import { reflect, reflect as reflect2, ReflectionClass, typeOf as typeOf2 } from '../../src/reflection/reflection';
 import {
     assertType,
+    defaultAnnotation,
     ReflectionKind,
     ReflectionOp,
     ReflectionVisibility,
@@ -977,13 +978,15 @@ test('branded type', () => {
     const type = transpileAndReturn(code);
     expect(type).toEqual({
         kind: ReflectionKind.string,
-        brands: [
-            {
-                kind: ReflectionKind.objectLiteral, types: [
-                    { kind: ReflectionKind.propertySignature, type: { kind: ReflectionKind.literal, literal: true }, optional: true, name: '__primaryKey' }
-                ]
-            },
-        ]
+        annotations: {
+            [defaultAnnotation.symbol]: [
+                {
+                    kind: ReflectionKind.objectLiteral, types: [
+                        { kind: ReflectionKind.propertySignature, type: { kind: ReflectionKind.literal, literal: true }, optional: true, name: '__primaryKey' }
+                    ]
+                },
+            ]
+        }
     } as Type);
 });
 
@@ -1029,13 +1032,15 @@ test('brand mapped type var index', () => {
     const type = transpileAndReturn(code);
     expect(type).toEqual({
         kind: ReflectionKind.string,
-        brands: [
-            {
-                kind: ReflectionKind.objectLiteral, types: [
-                    { kind: ReflectionKind.propertySignature, name: 'brand', type: { kind: ReflectionKind.string } },
-                ]
-            }
-        ]
+        annotations: {
+            [defaultAnnotation.symbol]: [
+                {
+                    kind: ReflectionKind.objectLiteral, types: [
+                        { kind: ReflectionKind.propertySignature, name: 'brand', type: { kind: ReflectionKind.string } },
+                    ]
+                }
+            ]
+        }
     } as Type);
 });
 
@@ -1049,13 +1054,15 @@ test('brand mapped type var index/type', () => {
     const type = transpileAndReturn(code);
     expect(type).toEqual({
         kind: ReflectionKind.string,
-        brands: [
-            {
-                kind: ReflectionKind.objectLiteral, types: [
-                    { kind: ReflectionKind.propertySignature, name: 'brand', type: { kind: ReflectionKind.literal, literal: 'uuid' } },
-                ]
-            }
-        ]
+        annotations: {
+            [defaultAnnotation.symbol]: [
+                {
+                    kind: ReflectionKind.objectLiteral, types: [
+                        { kind: ReflectionKind.propertySignature, name: 'brand', type: { kind: ReflectionKind.literal, literal: 'uuid' } },
+                    ]
+                }
+            ]
+        }
     } as Type);
 });
 
@@ -1125,7 +1132,7 @@ test('generic dynamic', () => {
     interface Body {
         title: string;
     }
-    return typeOf<Request<unknown>>([typeOf<string>()]);
+    return typeOf<Request<never>>([typeOf<string>()]);
     `;
 
     const js = transpile(code);
@@ -1158,6 +1165,26 @@ test('map conditional infer', () => {
         types: [
             { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string, } },
             { kind: ReflectionKind.propertySignature, name: 'b', type: { kind: ReflectionKind.number, } },
+        ]
+    });
+});
+
+test('tuple with generic', () => {
+    const code = `
+    type Tuple<T extends any[]> = ['hi', ...T];
+    type r = Tuple<[string, number]>;
+    return typeOf<r>();`;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+
+    expect(type).toEqual({
+        kind: ReflectionKind.tuple,
+        types: [
+            { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.literal, literal: 'hi', } },
+            { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.string } },
+            { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.number } },
         ]
     });
 });
@@ -1269,13 +1296,15 @@ test('brand with symbol property', () => {
     const type = transpileAndReturn(code);
     expect(type).toEqual({
         kind: ReflectionKind.string,
-        brands: [
-            {
-                kind: ReflectionKind.objectLiteral, types: [
-                    { kind: ReflectionKind.propertySignature, name: Symbol.for('computedType1'), type: { kind: ReflectionKind.literal, literal: true }, optional: true }
-                ]
-            },
-        ]
+        annotations: {
+            [defaultAnnotation.symbol]: [
+                {
+                    kind: ReflectionKind.objectLiteral, types: [
+                        { kind: ReflectionKind.propertySignature, name: Symbol.for('computedType1'), type: { kind: ReflectionKind.literal, literal: true }, optional: true }
+                    ]
+                },
+            ]
+        }
     } as Type);
 });
 
@@ -1291,13 +1320,15 @@ test('intersection with symbol property', () => {
     const type = transpileAndReturn(code);
     expect(type).toEqual({
         kind: ReflectionKind.string,
-        brands: [
-            {
-                kind: ReflectionKind.objectLiteral, types: [
-                    { kind: ReflectionKind.propertySignature, name: Symbol.for('computedType1'), type: { kind: ReflectionKind.literal, literal: true }, optional: true }
-                ]
-            },
-        ]
+        annotations: {
+            [defaultAnnotation.symbol]: [
+                {
+                    kind: ReflectionKind.objectLiteral, types: [
+                        { kind: ReflectionKind.propertySignature, name: Symbol.for('computedType1'), type: { kind: ReflectionKind.literal, literal: true }, optional: true }
+                    ]
+                },
+            ]
+        }
     } as Type);
 });
 
@@ -1312,18 +1343,20 @@ test('branded type', () => {
     const type = transpileAndReturn(code);
     expect(type).toEqual({
         kind: ReflectionKind.string,
-        brands: [
-            {
-                kind: ReflectionKind.objectLiteral, types: [
-                    {
-                        kind: ReflectionKind.propertySignature,
-                        name: '__type',
-                        type: { kind: ReflectionKind.string, origin: { kind: ReflectionKind.literal, literal: 'primaryKey' } },
-                        optional: true
-                    }
-                ]
-            },
-        ]
+        annotations: {
+            [defaultAnnotation.symbol]: [
+                {
+                    kind: ReflectionKind.objectLiteral, types: [
+                        {
+                            kind: ReflectionKind.propertySignature,
+                            name: '__type',
+                            type: { kind: ReflectionKind.literal, literal: 'primaryKey' },
+                            optional: true
+                        }
+                    ]
+                },
+            ]
+        }
     } as Type);
 });
 
@@ -1339,13 +1372,15 @@ test('brand intersection', () => {
     const type = transpileAndReturn(code);
     expect(type).toEqual({
         kind: ReflectionKind.string,
-        brands: [
-            {
-                kind: ReflectionKind.objectLiteral, types: [
-                    { kind: ReflectionKind.propertySignature, name: '__type', type: { kind: ReflectionKind.literal, literal: 'primaryKey' }, optional: true }
-                ]
-            },
-        ]
+        annotations: {
+            [defaultAnnotation.symbol]: [
+                {
+                    kind: ReflectionKind.objectLiteral, types: [
+                        { kind: ReflectionKind.propertySignature, name: '__type', type: { kind: ReflectionKind.literal, literal: 'primaryKey' }, optional: true }
+                    ]
+                },
+            ]
+        }
     } as Type);
 });
 
@@ -1362,13 +1397,15 @@ test('brand intersection symbol', () => {
     const type = transpileAndReturn(code);
     expect(type).toEqual({
         kind: ReflectionKind.string,
-        brands: [
-            {
-                kind: ReflectionKind.objectLiteral, types: [
-                    { kind: ReflectionKind.propertySignature, name: Symbol.for('deepkit/meta'), type: { kind: ReflectionKind.literal, literal: 'primaryKey' }, optional: true }
-                ]
-            },
-        ]
+        annotations: {
+            [defaultAnnotation.symbol]: [
+                {
+                    kind: ReflectionKind.objectLiteral, types: [
+                        { kind: ReflectionKind.propertySignature, name: Symbol.for('deepkit/meta'), type: { kind: ReflectionKind.literal, literal: 'primaryKey' }, optional: true }
+                    ]
+                },
+            ]
+        }
     } as Type);
 });
 

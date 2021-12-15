@@ -14,6 +14,7 @@ import { BackReference, int8, integer, PrimaryKey, Reference } from '../../../sr
 import { createSerializeFunction, SerializationError } from '../../../src/serializer';
 import { cast, serialize } from '../../../src/serializer-facade';
 import { jsonSerializer } from '../../../src/serializer-json';
+import { getClassName } from '@deepkit/core';
 
 test('serializer', () => {
     class User {
@@ -470,6 +471,8 @@ test('class circular reference', () => {
 
 test('class with reference', () => {
     class User {
+        id: number & PrimaryKey = 0;
+
         constructor(public username: string) {
         }
     }
@@ -478,9 +481,24 @@ test('class with reference', () => {
         lead: User & Reference;
     }
 
-    const res = cast<Team>({ lead: { username: 'Peter' } });
-    expect(res).toEqual({ lead: { username: 'Peter' } });
-    expect(res.lead).toBeInstanceOf(User);
+    {
+        const res = cast<Team>({ lead: { id: 1, username: 'Peter' } });
+        expect(res).toEqual({ lead: { id: 1, username: 'Peter' } });
+        expect(res.lead).toBeInstanceOf(User);
+    }
+
+    {
+        const res = cast<Team>({ lead: { username: 'Peter' } });
+        expect(res).toEqual({ lead: { id: 0, username: 'Peter' } });
+        expect(res.lead).toBeInstanceOf(User);
+    }
+
+    {
+        const res = cast<Team>({ lead: 23 });
+        expect(res).toEqual({ lead: { id: 23 } });
+        expect(res.lead).toBeInstanceOf(User);
+        expect(getClassName(res.lead)).toBe('UserReference');
+    }
 });
 
 test('class with back reference', () => {

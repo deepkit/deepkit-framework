@@ -1,7 +1,7 @@
 import { ReceiveType } from './reflection/reflection';
 import { is } from './typeguard';
 
-export type Validator<Name extends string, Args extends [...args: any[]] = []> = { __meta?: { id: 'validator', name: Name, args: Args } }
+export type Validator<Name extends string, Args extends [...args: any[]] = []> = { __meta?: ['validator', Name, Args] }
 
 export type Validate<T extends Function> = Validator<'function', [T]>;
 export type Pattern<T extends RegExp> = Validator<'pattern', [T]>;
@@ -13,8 +13,8 @@ export type MultipleOf<Num extends number> = Validator<'multipleOf', [Num]>;
 export type MinLength<Length extends number> = Validator<'minLength', [Length]>;
 export type MaxLength<Length extends number> = Validator<'maxLength', [Length]>;
 
-export type Includes<T extends string|number|boolean> = Validator<'includes', [T]>;
-export type Excludes<T extends string|number|boolean> = Validator<'excludes', [T]>;
+export type Includes<T extends string | number | boolean> = Validator<'includes', [T]>;
+export type Excludes<T extends string | number | boolean> = Validator<'excludes', [T]>;
 
 export type Minimum<T extends number | bigint> = Validator<'minimum', [T]>;
 export type Maximum<T extends number | bigint> = Validator<'maximum', [T]>;

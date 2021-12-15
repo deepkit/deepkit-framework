@@ -1,8 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { Email, MaxLength, MinLength, Positive, Validate, validate, ValidatorError } from '../../../src/validator';
 import { is } from '../../../src/typeguard';
-import { AutoIncrement, integer, PrimaryKey } from '../../../src/reflection/type';
-import { Excluded, Group, Unique } from '../../../src/decorator';
+import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Unique } from '../../../src/reflection/type';
 
 test('email', () => {
     expect(is<Email>('peter@example.com')).toBe(true);

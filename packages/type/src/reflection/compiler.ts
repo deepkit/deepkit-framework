@@ -454,7 +454,7 @@ export class ReflectionTransformer {
 
     /**
      * Types added to this map will get a type program at the top root level of the program.
-     * This is for imported types, which need to be inline into the current file, as we do not emit type imports (TS will omit them).
+     * This is for imported types, which need to be inlined into the current file, as we do not emit type imports (TS will omit them).
      */
     protected embedDeclarations = new Map<Node, { name: EntityName, sourceFile: SourceFile, importSpecifier?: ImportSpecifier }>();
 
@@ -544,7 +544,6 @@ export class ReflectionTransformer {
                     // const symbol = typeChecker.getSymbolAtLocation(node.expression);
                     const found = this.resolveDeclaration(node.expression);
                     const type = found && found.declaration;
-                    console.log('found.declaration', node.expression, found?.declaration);
                     if (type && isFunctionDeclaration(type) && type.typeParameters) {
                         const args: Expression[] = [...node.arguments];
                         let replaced = false;
@@ -1404,7 +1403,7 @@ export class ReflectionTransformer {
                     //when a type is embedded all its locally linked types are embedded as well. locally linked symbols like variables (for typeof calls) will
                     //be imported by modifying `resolved!.importSpecifier`, adding the symbol + making the import persistent.
                     const declarationSourceFile = findSourceFile(declaration);
-                    const isGlobal = declarationSourceFile !== this.sourceFile;
+                    const isGlobal = declarationSourceFile.fileName !== this.sourceFile.fileName;
                     if (resolved!.importSpecifier || isGlobal) {
                         this.embedDeclarations.set(declaration, {
                             name: type.typeName,
@@ -1679,7 +1678,7 @@ export class ReflectionTransformer {
     protected packOpsAndStack(packStruct: PackStruct) {
         if (packStruct.ops.length === 0) return;
         const packed = pack(packStruct);
-        debugPackStruct(packStruct);
+        // debugPackStruct(packStruct);
         return this.valueToExpression(packed);
     }
 

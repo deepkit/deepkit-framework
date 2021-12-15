@@ -144,13 +144,13 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
     }
 
     if ((left.kind === ReflectionKind.class || left.kind === ReflectionKind.objectLiteral) && right.kind === ReflectionKind.function && right.name === 'new') {
-        const leftConstructor = left.types.find(v => (v.kind === ReflectionKind.method && v.name === 'constructor') || (v.kind === ReflectionKind.methodSignature && v.name === 'new'));
+        const leftConstructor = (left.types as Type[]).find(v => (v.kind === ReflectionKind.method && v.name === 'constructor') || (v.kind === ReflectionKind.methodSignature && v.name === 'new'));
         const valid = isExtendable(right, leftConstructor || { kind: ReflectionKind.function, parameters: [], return: { kind: ReflectionKind.any } });
         return valid;
     }
 
     if ((left.kind === ReflectionKind.class || left.kind === ReflectionKind.objectLiteral) && (right.kind === ReflectionKind.objectLiteral || right.kind === ReflectionKind.class)) {
-        const rightConstructor = right.types.find(v => (v.kind === ReflectionKind.methodSignature && v.name === 'new')) as TypeMethodSignature | undefined;
+        const rightConstructor = (right.types as Type[]).find(v => (v.kind === ReflectionKind.methodSignature && v.name === 'new')) as TypeMethodSignature | undefined;
 
         if (left.kind === ReflectionKind.class && rightConstructor) {
             //if rightConstructor is set then its maybe something like:
@@ -171,7 +171,7 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
             //todo: index signatures
 
             if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.methodSignature) {
-                const rightMember = right.types.find(v => (v.kind === ReflectionKind.propertySignature || v.kind === ReflectionKind.methodSignature) && v.name === member.name);
+                const rightMember = (right.types as Type[]).find(v => (v.kind === ReflectionKind.propertySignature || v.kind === ReflectionKind.methodSignature) && v.name === member.name);
                 if (!rightMember) return false;
                 if (!isExtendable(member, rightMember)) return false;
             }
@@ -196,7 +196,6 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
 
     if (left.kind === ReflectionKind.array && right.kind === ReflectionKind.tuple) {
         const hasRest = right.types.some(v => v.type.kind === ReflectionKind.rest);
-        const optional = isOptional(left.type);
         if (!hasRest && (left.type.kind !== ReflectionKind.union || !isOptional(left.type))) return false;
         for (const member of right.types) {
             let type = member.type.kind === ReflectionKind.rest ? member.type.type : member.type;

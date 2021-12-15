@@ -10,6 +10,7 @@
 
 import { ClassType, getClassName, indent, isArray, isClass } from '@deepkit/core';
 import { resolveRuntimeType } from './processor';
+import { getProperty, hasMember, toSignature } from './reflection';
 
 export enum ReflectionVisibility {
     public,
@@ -66,27 +67,31 @@ export enum ReflectionKind {
     infer,
 }
 
-export interface TypeInferred {
-    inferred?: true; //not in use yet
+export type TypeDecorator = (annotations: Annotations, decorator: TypeObjectLiteral) => boolean;
+
+export type Annotations = { [name: symbol]: any[] };
+
+export interface TypeAnnotations {
+    annotations?: Annotations;
 }
 
-export interface TypeNever extends TypeInferred {
+export interface TypeNever extends TypeAnnotations {
     kind: ReflectionKind.never,
 }
 
-export interface TypeAny extends TypeInferred {
+export interface TypeAny extends TypeAnnotations {
     kind: ReflectionKind.any,
 }
 
-export interface TypeUnknown extends TypeInferred {
+export interface TypeUnknown extends TypeAnnotations {
     kind: ReflectionKind.unknown,
 }
 
-export interface TypeVoid extends TypeInferred {
+export interface TypeVoid extends TypeAnnotations {
     kind: ReflectionKind.void,
 }
 
-export interface TypeObject extends TypeInferred {
+export interface TypeObject extends TypeAnnotations {
     kind: ReflectionKind.object,
 }
 
@@ -94,7 +99,7 @@ export interface TypeOrigin {
     origin?: Type;
 }
 
-export interface TypeString extends TypeOrigin, TypeInferred {
+export interface TypeString extends TypeOrigin, TypeAnnotations {
     kind: ReflectionKind.string,
 }
 
@@ -118,42 +123,42 @@ export enum TypeNumberBrand {
     float64,
 }
 
-export interface TypeNumber extends TypeOrigin, TypeInferred {
+export interface TypeNumber extends TypeOrigin, TypeAnnotations {
     kind: ReflectionKind.number,
     brand?: TypeNumberBrand; //built in brand
 }
 
-export interface TypeBoolean extends TypeOrigin, TypeInferred {
+export interface TypeBoolean extends TypeOrigin, TypeAnnotations {
     kind: ReflectionKind.boolean,
 }
 
-export interface TypeBigInt extends TypeOrigin, TypeInferred {
+export interface TypeBigInt extends TypeOrigin, TypeAnnotations {
     kind: ReflectionKind.bigint,
 }
 
-export interface TypeSymbol extends TypeOrigin, TypeInferred {
+export interface TypeSymbol extends TypeOrigin, TypeAnnotations {
     kind: ReflectionKind.symbol,
 }
 
-export interface TypeNull extends TypeInferred {
+export interface TypeNull extends TypeAnnotations {
     kind: ReflectionKind.null,
 }
 
-export interface TypeUndefined extends TypeInferred {
+export interface TypeUndefined extends TypeAnnotations {
     kind: ReflectionKind.undefined,
 }
 
-export interface TypeLiteral extends TypeInferred {
+export interface TypeLiteral extends TypeAnnotations {
     kind: ReflectionKind.literal,
     literal: symbol | string | number | boolean | bigint | RegExp;
 }
 
-export interface TypeTemplateLiteral extends TypeInferred {
+export interface TypeTemplateLiteral extends TypeAnnotations {
     kind: ReflectionKind.templateLiteral,
     types: (TypeString | TypeAny | TypeNumber | TypeLiteral | TypeInfer)[]
 }
 
-export interface TypeRegexp extends TypeOrigin, TypeInferred {
+export interface TypeRegexp extends TypeOrigin, TypeAnnotations {
     kind: ReflectionKind.regexp;
 }
 
@@ -201,7 +206,7 @@ export interface TypeProperty extends TypeLiteralMember {
     default?: () => any
 }
 
-export interface TypeFunction extends TypeInferred {
+export interface TypeFunction {
     kind: ReflectionKind.function,
     name?: number | string | symbol,
     function?: Function; //reference to the real function if available
@@ -209,12 +214,12 @@ export interface TypeFunction extends TypeInferred {
     return: Type;
 }
 
-export interface TypePromise extends TypeInferred {
+export interface TypePromise extends TypeAnnotations {
     kind: ReflectionKind.promise,
     type: Type;
 }
 
-export interface TypeClass {
+export interface TypeClass extends TypeAnnotations {
     kind: ReflectionKind.class,
     classType: ClassType;
     /**
@@ -226,10 +231,10 @@ export interface TypeClass {
     /**
      * properties/methods.
      */
-    types: Type[];
+    types: (TypeIndexSignature | TypeProperty | TypeMethod)[];
 }
 
-export interface TypeEnum {
+export interface TypeEnum extends TypeAnnotations {
     kind: ReflectionKind.enum,
     enum: { [name: string]: string | number | undefined | null },
     values: (string | number | undefined | null)[]
@@ -256,7 +261,7 @@ export interface TypeIntersection {
     types: Type[];
 }
 
-export interface TypeArray {
+export interface TypeArray extends TypeAnnotations {
     kind: ReflectionKind.array,
     type: Type;
 }
@@ -278,7 +283,7 @@ export interface TypeMethodSignature {
     return: Type;
 }
 
-export interface TypeObjectLiteral {
+export interface TypeObjectLiteral extends TypeAnnotations {
     kind: ReflectionKind.objectLiteral,
     types: (TypeIndexSignature | TypePropertySignature | TypeMethodSignature)[];
 }
@@ -302,7 +307,7 @@ export interface TypeTupleMember {
     name?: string;
 }
 
-export interface TypeTuple {
+export interface TypeTuple extends TypeAnnotations {
     kind: ReflectionKind.tuple,
     types: TypeTupleMember[]
 }
@@ -365,7 +370,33 @@ export function isType(entry: any): entry is Type {
 
 export function isPrimitive<T extends Type>(type: T): boolean {
     return type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.boolean
-        || type.kind === ReflectionKind.array || type.kind === ReflectionKind.literal || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined;
+        || type.kind === ReflectionKind.array || type.kind === ReflectionKind.tuple || type.kind === ReflectionKind.literal
+        || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined || type.kind === ReflectionKind.regexp || type.kind === ReflectionKind.symbol;
+}
+
+export type WithAnnotations =
+    TypeAny
+    | TypeString
+    | TypeNumber
+    | TypeBigInt
+    | TypeBoolean
+    | TypeArray
+    | TypeTuple
+    | TypeLiteral
+    | TypeNull
+    | TypeUndefined
+    | TypeClass
+    | TypeObjectLiteral
+    | TypeObject
+    | TypeTemplateLiteral
+    | TypeRegexp
+    | TypeSymbol;
+
+export function isWithAnnotations(type: Type): type is WithAnnotations {
+    return type.kind === ReflectionKind.any || type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.boolean
+        || type.kind === ReflectionKind.array || type.kind === ReflectionKind.tuple || type.kind === ReflectionKind.literal || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined
+        || type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.object || type.kind === ReflectionKind.templateLiteral
+        || type.kind === ReflectionKind.regexp || type.kind === ReflectionKind.symbol;
 }
 
 /**
@@ -748,6 +779,20 @@ export function indexAccess(container: Type, index: Type): Type {
     return { kind: ReflectionKind.never };
 }
 
+export function merge(types: (TypeObjectLiteral | TypeClass)[]): TypeObjectLiteral {
+    const type: TypeObjectLiteral = { kind: ReflectionKind.objectLiteral, types: [] };
+
+    for (const subType of types) {
+        for (const member of subType.types) {
+            if (!isMember(member)) continue;
+            if (!hasMember(type, member.name)) {
+                type.types.push(toSignature(member));
+            }
+        }
+    }
+    return type;
+}
+
 export function narrowOriginalLiteral(type: Type): Type {
     if ((type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.boolean || type.kind === ReflectionKind.bigint) && type.origin) {
         return type.origin;
@@ -931,32 +976,266 @@ export type float32 = number;
  */
 export type float64 = number;
 
-export type Reference = { __meta?: 'reference' };
-export type PrimaryKey = { __meta?: 'primaryKey' };
-export type AutoIncrement = { __meta?: 'autoIncrement' };
-export type UUID = string & { __meta?: 'UUIDv4' };
-export type MongoId = string & { __meta?: 'mongoId' };
-export type BackReference<VIA extends ClassType | Object = never> = { __meta?: 'backReference', backReference?: { via: VIA } };
+export class AnnotationDefinition<T = true> {
+    public symbol = Symbol('annotation');
 
-export type DecoratorMetaNames = 'primaryKey' | 'reference' | 'backReference' | 'autoIncrement' | 'UUID' | 'mongoId';
+    register(annotations: Annotations, data: T) {
+        annotations[this.symbol] ||= [];
+        annotations[this.symbol].push(data);
+    }
 
-export function getDecoratorMetas(types: Type[]): DecoratorMetaNames[] {
-    const result: DecoratorMetaNames[] = [];
-    for (const decorator of types) {
-        if (decorator.kind === ReflectionKind.objectLiteral) {
-            if (decorator.types.length !== 1) continue;
-            const t = decorator.types[0];
-            if (t.kind === ReflectionKind.propertySignature && t.name === '__meta' && t.type.kind === ReflectionKind.literal) {
-                if (t.type.literal === 'primaryKey') result.push('primaryKey');
-                if (t.type.literal === 'reference') result.push('reference');
-                if (t.type.literal === 'backReference') result.push('backReference');
-                if (t.type.literal === 'autoIncrement') result.push('autoIncrement');
-                if (t.type.literal === 'UUIDv4') result.push('UUID');
-                if (t.type.literal === 'mongoId') result.push('mongoId');
+    replace(annotations: Annotations, annotation: T[]) {
+        annotations[this.symbol] = annotation;
+    }
+
+    getAnnotations(type: Type): T[] {
+        if (isWithAnnotations(type) && type.annotations) return type.annotations[this.symbol] || [];
+        return [];
+    }
+
+    getFirst(type: Type): T | undefined {
+        return this.getAnnotations(type)[0];
+    }
+
+    hasAnnotations(type: Type): boolean {
+        return this.getAnnotations(type).length > 0;
+    }
+}
+
+export type AnnotationType<T extends AnnotationDefinition<any>> = T extends AnnotationDefinition<infer K> ? K : never;
+
+
+export type Reference = { __meta?: ['reference'] };
+export type PrimaryKey = { __meta?: ['primaryKey'] };
+export type AutoIncrement = { __meta?: ['autoIncrement'] };
+export type UUID = string & { __meta?: ['UUIDv4'] };
+export type MongoId = string & { __meta?: ['mongoId'] };
+export type BackReference<VIA extends ClassType | Object = never> = { __meta?: ['backReference', { via: VIA }] };
+
+export const referenceAnnotation = new class extends AnnotationDefinition {
+    isReference(type: Type): boolean {
+        return this.getAnnotations(type).length > 0;
+    }
+};
+export const autoIncrementAnnotation = new AnnotationDefinition();
+export const primaryKeyAnnotation = new class extends AnnotationDefinition {
+    isPrimaryKey(type: Type): boolean {
+        return this.getAnnotations(type).length > 0;
+    }
+};
+export const backReferenceAnnotation = new AnnotationDefinition<{ via?: ClassType }>();
+export const validationAnnotation = new AnnotationDefinition<{ name: string, args: Type[] }>();
+export const UUIDAnnotation = new AnnotationDefinition();
+export const mongoIdAnnotation = new AnnotationDefinition();
+export const defaultAnnotation = new AnnotationDefinition();
+
+//`never` is here to allow using a decorator multiple times on the same type without letting the TS complaining about incompatible types.
+export type Group<Name extends string> = { __meta?: ['group', never & Name] };
+export type Excluded<Name extends string> = { __meta?: ['excluded', never & Name] };
+export type Data<Name extends string, Value> = { __meta?: ['data', never & Name, never & Value] };
+
+export type IndexOptions = {
+    name?: string;
+    //index size. Necessary for blob/longtext, etc.
+    size?: number,
+
+    unique?: boolean,
+    spatial?: boolean,
+    sparse?: boolean,
+
+    //only in mongodb
+    fulltext?: boolean,
+    where?: string,
+};
+
+export type Unique<Options extends IndexOptions = {}> = { __meta?: ['index', never & Options & { unique: true }] };
+export type Index<Options extends IndexOptions = {}> = { __meta?: ['index', never & Options] };
+
+export interface MySQLOptions {
+    type: string;
+}
+
+export interface PostgresOptions {
+    type: string;
+}
+
+export interface SqliteOptions {
+    type: string;
+}
+
+export type Database<Name extends string, Options extends { [name: string]: any }> = { __meta?: ['database', never & Name, never & Options] };
+export type MySQL<Options extends MySQLOptions> = Database<'mysql', Options>;
+export type Postgres<Options extends PostgresOptions> = Database<'postgres', Options>;
+export type SQLite<Options extends SqliteOptions> = Database<'sqlite', Options>;
+
+export const groupAnnotation = new AnnotationDefinition<string>();
+export const excludedAnnotation = new AnnotationDefinition<string>();
+export const dataAnnotation = new AnnotationDefinition<{ [name: string]: any }>();
+export const indexAnnotation = new AnnotationDefinition<IndexOptions>();
+export const databaseAnnotation = new class extends AnnotationDefinition<{ name: string, options: { [name: string]: any } }> {
+    getDatabase<T extends { [name: string]: any }>(type: Type, name: string): T | undefined {
+        for (const annotation of this.getAnnotations(type)) {
+            if (annotation.name === name) return annotation.options as T;
+        }
+        return;
+    };
+};
+
+export function registerTypeDecorator(decorator: TypeDecorator) {
+    typeDecorators.push(decorator);
+}
+
+export const typeDecorators: TypeDecorator[] = [
+    (annotations: Annotations, decorator: TypeObjectLiteral) => {
+        const meta = getProperty(decorator, '__meta');
+        if (!meta || meta.type.kind !== ReflectionKind.tuple) return false;
+        const id = meta.type.types[0];
+        if (!id || id.type.kind !== ReflectionKind.literal) return false;
+
+        switch (id.type.literal) {
+            case 'reference':
+                referenceAnnotation.register(annotations, true);
+                return true;
+            case 'autoIncrement':
+                autoIncrementAnnotation.register(annotations, true);
+                return true;
+            case 'primaryKey':
+                primaryKeyAnnotation.register(annotations, true);
+                return true;
+            case 'group': {
+                const nameType = meta.type.types[1];
+                if (!nameType || nameType.type.kind !== ReflectionKind.literal || 'string' !== typeof nameType.type.literal) return false;
+                groupAnnotation.register(annotations, nameType.type.literal);
+                return true;
             }
+            case 'index': {
+                const optionsType = meta.type.types[1];
+                if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
+                const options = typeToObject(optionsType.type);
+                indexAnnotation.replace(annotations, [options]);
+                return true;
+            }
+            case 'database': {
+                const nameType = meta.type.types[1];
+                if (!nameType || nameType.type.kind !== ReflectionKind.literal || 'string' !== typeof nameType.type.literal) return false;
+                const optionsType = meta.type.types[2];
+                if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
+                const options = typeToObject(optionsType.type);
+                databaseAnnotation.register(annotations, { name: nameType.type.literal, options });
+                return true;
+            }
+            case 'excluded': {
+                const nameType = meta.type.types[1];
+                if (!nameType || nameType.type.kind !== ReflectionKind.literal || 'string' !== typeof nameType.type.literal) return false;
+                excludedAnnotation.register(annotations, nameType.type.literal);
+                return true;
+            }
+            case 'data': {
+                const nameType = meta.type.types[1];
+                if (!nameType || nameType.type.kind !== ReflectionKind.literal || 'string' !== typeof nameType.type.literal) return false;
+                const dataType = meta.type.types[2];
+                if (!dataType) return false;
+
+                annotations[dataAnnotation.symbol] ||= [];
+                let data: { [name: string]: any } = {};
+                if (annotations[dataAnnotation.symbol].length) {
+                    data = annotations[dataAnnotation.symbol][0];
+                } else {
+                    annotations[dataAnnotation.symbol].push(data);
+                }
+
+                data[nameType.type.literal] = dataType.type.kind === ReflectionKind.literal ? dataType.type.literal : dataType.type;
+
+                return true;
+            }
+            case 'backReference': {
+                const optionsType = meta.type.types[1];
+                if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
+
+                const options: AnnotationType<typeof backReferenceAnnotation> = {};
+                const via = getProperty(optionsType.type, 'via');
+                if (via && via.type.kind === ReflectionKind.class) {
+                    options.via = via.type.classType;
+                }
+                backReferenceAnnotation.register(annotations, options);
+                return true;
+            }
+            case 'validator': {
+                const nameType = meta.type.types[1];
+                if (!nameType || nameType.type.kind !== ReflectionKind.literal || 'string' !== typeof nameType.type.literal) return false;
+                const name = nameType.type.literal;
+
+                const argsType = meta.type.types[2];
+                if (!argsType || argsType.type.kind !== ReflectionKind.tuple) return false;
+                const args: Type[] = argsType.type.types.map(v => v.type);
+
+                const options: AnnotationType<typeof validationAnnotation> = { name, args };
+                validationAnnotation.register(annotations, options);
+                return true;
+            }
+            default:
+                return false;
         }
     }
-    return result;
+];
+
+export function typeToObject(type: Type, state: { stack: Type[] } = { stack: [] }): any {
+    if (state.stack.includes(type)) return undefined;
+    state.stack.push(type);
+
+    try {
+        switch (type.kind) {
+            case ReflectionKind.any:
+            case ReflectionKind.void:
+            case ReflectionKind.never:
+            case ReflectionKind.undefined:
+                return undefined;
+            case ReflectionKind.null:
+                return null;
+            case ReflectionKind.string:
+                return '';
+            case ReflectionKind.number:
+                return 0;
+            case ReflectionKind.bigint:
+                return BigInt(0);
+            case ReflectionKind.regexp:
+                return; //;
+            case ReflectionKind.boolean:
+                return true;
+            case ReflectionKind.literal:
+                return type.literal;
+            case ReflectionKind.promise:
+                return typeToObject(type.type);
+            case ReflectionKind.templateLiteral:
+                return '';
+            case ReflectionKind.class: {
+                return type.classType;
+            }
+            case ReflectionKind.objectLiteral: {
+                const res: { [name: string | number | symbol]: any } = {};
+                for (const t of type.types) {
+                    if (t.kind === ReflectionKind.propertySignature) {
+                        res[t.name] = typeToObject(t.type);
+                    } else if (t.kind === ReflectionKind.methodSignature) {
+                    }
+                }
+                return res;
+            }
+            case ReflectionKind.union:
+            case ReflectionKind.intersection:
+                return typeToObject(type.types[0]);
+            case ReflectionKind.function:
+                return type.function;
+            case ReflectionKind.array:
+                return [typeToObject(type.type)];
+            case ReflectionKind.tuple:
+                return type.types.map(v => typeToObject(v.type, state));
+        }
+
+        return type.kind + '';
+    } finally {
+        state.stack.pop();
+    }
 }
 
 export const enum MappedModifier {

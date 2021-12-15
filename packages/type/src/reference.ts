@@ -95,11 +95,11 @@ export function createReferenceClass<T>(
     reflection.data.referenceClass = Reference;
 
     for (const property of reflection.getProperties()) {
-        if (property.primaryKey) continue;
+        if (property.isPrimaryKey()) continue;
 
         const name = String(property.getName());
 
-        const message = property.reference || property.backReference ?
+        const message = property.isReference() || property.isBackReference() ?
             `Reference ${reflection.getClassName()}.${name} was not loaded. Use joinWith(), useJoinWith(), etc to populate the reference.`
             :
             `Can not access ${reflection.getClassName()}.${name} since class was not completely hydrated. Use 'await hydrate(${reflection.getClassName()}.${name})' to completely load it.`;

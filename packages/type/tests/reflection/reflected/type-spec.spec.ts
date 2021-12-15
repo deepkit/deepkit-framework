@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { ReceiveType, ReflectionClass } from '../../../src/reflection/reflection';
-import { AutoIncrement, BackReference, MongoId, PrimaryKey, Reference, stringifyType, UUID } from '../../../src/reflection/type';
+import { AutoIncrement, BackReference, MongoId, PrimaryKey, Reference, UUID } from '../../../src/reflection/type';
 import { cast, cloneClass, serialize } from '../../../src/serializer-facade';
 import { resolvePacked } from '../../../src/reflection/processor';
 import { createReference } from '../../../src/reference';
@@ -18,7 +18,7 @@ export const RoundTripExcluded: unique symbol = Symbol('NoValue');
 
 export function roundTrip<T>(value: T | any, type?: ReceiveType<T>): T {
     const t = resolvePacked(type!);
-    console.log('roundTrip', stringifyType(t));
+    // console.log('roundTrip', stringifyType(t));
     const json = serialize(value, {}, undefined, type);
     const res = cast<T>(json, {}, undefined, type);
     return res;
@@ -102,7 +102,6 @@ test('partial keeps explicitely undefined fields', () => {
 
     {
         const item = serializeToJson<Partial<Model>>({ title: undefined });
-        console.log('item', item);
     }
 
     {

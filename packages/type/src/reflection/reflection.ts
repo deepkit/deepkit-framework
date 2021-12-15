@@ -9,15 +9,19 @@
  */
 
 import {
-    getDecoratorMetas,
-    isPrimitive,
+    dataAnnotation,
+    databaseAnnotation,
+    excludedAnnotation,
+    groupAnnotation,
+    indexAnnotation,
     isType,
+    primaryKeyAnnotation,
+    referenceAnnotation,
     ReflectionKind,
     ReflectionVisibility,
     Type,
     TypeClass,
     TypeFunction,
-    TypeIntersection,
     TypeMethod,
     TypeMethodSignature,
     TypeObjectLiteral,
@@ -26,7 +30,6 @@ import {
     TypePropertySignature
 } from './type';
 import { AbstractClassType, ClassType, getClassName } from '@deepkit/core';
-import { FreeDecoratorFn } from '../decorator-builder';
 import { Packed, resolveRuntimeType } from './processor';
 import { isExtendable } from './extends';
 
@@ -78,50 +81,15 @@ export function typeOf<T>(args: any[] = [], p?: Packed): Type {
     throw new Error('No type given');
 }
 
-type TypeDecorator = (type: Type) => boolean;
-
-export const typeDecorators: TypeDecorator[] = [
-    (type: Type) => {
-        if (type.kind === ReflectionKind.objectLiteral) {
-            return hasMember(type, '__meta', {
-                    kind: ReflectionKind.union,
-                    types: [
-                        { kind: ReflectionKind.literal, literal: 'reference' },
-                        { kind: ReflectionKind.literal, literal: 'autoIncrement' },
-                        { kind: ReflectionKind.literal, literal: 'primaryKey' },
-                        { kind: ReflectionKind.literal, literal: 'backReference' },
-                        {
-                            kind: ReflectionKind.objectLiteral, types: [
-                                { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.literal, literal: 'validator' } },
-                                { kind: ReflectionKind.propertySignature, name: 'name', type: { kind: ReflectionKind.string } },
-                                {
-                                    kind: ReflectionKind.propertySignature,
-                                    name: 'args',
-                                    type: {
-                                        kind: ReflectionKind.tuple,
-                                        types: [{ kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.any } } }]
-                                    }
-                                },
-                            ]
-                        },
-                    ]
-                }
-            );
-        }
-        return false;
-    }
-];
-
-export function registerTypeDecorator(decorator: TypeDecorator) {
-    typeDecorators.push(decorator);
-}
-
-export function isTypeDecorator(type: Type): boolean {
-    return typeDecorators.some(v => v(type));
-}
-
 export function isMember(v: Type): v is TypeProperty | TypePropertySignature | TypeMethodSignature | TypeMethod {
     return v.kind === ReflectionKind.property || v.kind === ReflectionKind.propertySignature || v.kind === ReflectionKind.methodSignature || v.kind === ReflectionKind.method;
+}
+
+export function getProperty(type: TypeObjectLiteral | TypeClass, memberName: number | string | symbol): TypeProperty | TypePropertySignature | undefined {
+    for (const t of type.types) {
+        if ((t.kind === ReflectionKind.property || t.kind === ReflectionKind.propertySignature) && t.name === memberName) return t;
+    }
+    return;
 }
 
 export function hasMember(type: TypeObjectLiteral | TypeClass, memberName: number | string | symbol, memberType?: Type): boolean {
@@ -135,50 +103,6 @@ export function toSignature(type: TypeProperty | TypeMethod | TypePropertySignat
     }
 
     return { ...type, kind: ReflectionKind.methodSignature };
-}
-
-export function merge(types: (TypeObjectLiteral | TypeClass)[]): TypeObjectLiteral {
-    const type: TypeObjectLiteral = { kind: ReflectionKind.objectLiteral, types: [] };
-
-    for (const subType of types) {
-        for (const member of subType.types) {
-            if (!isMember(member)) continue;
-            if (!hasMember(type, member.name)) {
-                type.types.push(toSignature(member));
-            }
-        }
-    }
-    return type;
-}
-
-export function resolveIntersection(type: TypeIntersection): { resolved: Type, decorations: Type[] } {
-    const candidates: Type[] = [];
-    const decorations: Type[] = [];
-    for (let t of type.types) {
-        if (t.kind === ReflectionKind.intersection) {
-            const subResolved = resolveIntersection(t);
-            t = subResolved.resolved;
-            decorations.push(...subResolved.decorations);
-        }
-        if (isTypeDecorator(t)) {
-            decorations.push(t);
-        } else {
-            candidates.push(t);
-        }
-    }
-
-    if (candidates.length === 0) return { resolved: { kind: ReflectionKind.never }, decorations: [] };
-    if (candidates.length === 1) return { resolved: candidates[0], decorations };
-
-    const isMergeAble = candidates.every(v => v.kind === ReflectionKind.objectLiteral || v.kind === ReflectionKind.class);
-    if (isMergeAble) return { resolved: merge(candidates as (TypeObjectLiteral | TypeClass)[]), decorations };
-
-    //return primitive, or first entry
-    for (const t of candidates) {
-        if (isPrimitive(t)) return { resolved: t, decorations };
-    }
-
-    return { resolved: candidates[0], decorations };
 }
 
 export function hasCircularReference(type: Type, stack: Type[] = []) {
@@ -414,8 +338,6 @@ export class ReflectionProperty {
 
     jsonType?: Type;
 
-    groups: string[] = [];
-
     referenceOptions: { onDelete: ReferenceActions, onUpdate: ReferenceActions } = {
         onDelete: 'CASCADE',
         onUpdate: 'CASCADE',
@@ -436,13 +358,6 @@ export class ReflectionProperty {
 
     symbol = Symbol(String(this.getName()));
 
-    primaryKey: boolean = false;
-    reference: boolean = false;
-    backReference: boolean = false;
-    autoIncrement: boolean = false;
-    uuid: boolean = false;
-    mongoId: boolean = false;
-
     constructor(
         public property: TypeProperty | TypePropertySignature,
         public reflectionClass: ReflectionClass<any>,
@@ -452,26 +367,53 @@ export class ReflectionProperty {
     }
 
     setType(type: Type) {
-        if (type.kind === ReflectionKind.intersection) {
-            const { resolved, decorations } = resolveIntersection(type);
-            const decoratorMetaNames = getDecoratorMetas(decorations);
-            if (decoratorMetaNames.includes('reference')) this.reference = true;
-            if (decoratorMetaNames.includes('backReference')) this.backReference = true;
-            if (decoratorMetaNames.includes('primaryKey')) this.primaryKey = true;
-            if (decoratorMetaNames.includes('autoIncrement')) this.autoIncrement = true;
-            if (decoratorMetaNames.includes('UUID')) this.uuid = true;
-            if (decoratorMetaNames.includes('mongoId')) this.mongoId = true;
-        }
         this.type = type;
+    }
+
+    isPrimaryKey(): boolean {
+        return primaryKeyAnnotation.isPrimaryKey(this.getType());
+    }
+
+    isBackReference(): boolean {
+        return !!referenceAnnotation.getAnnotations(this.getType());
+    }
+
+    isReference(): boolean {
+        return referenceAnnotation.isReference(this.getType());
+    }
+
+    getGroups(): string[] {
+        return groupAnnotation.getAnnotations(this.getType());
+    }
+
+    getExcluded(): string[] {
+        return excludedAnnotation.getAnnotations(this.getType());
+    }
+
+    getData(): { [name: string]: any } {
+        return dataAnnotation.getFirst(this.getType()) || {};
+    }
+
+    /**
+     * If undefined the property is not an index.
+     * A unique property is defined as index with IndexOptions.unique=true.
+     */
+    getIndex(): IndexOptions | undefined {
+        return indexAnnotation.getFirst(this.getType());
+    }
+
+    /**
+     * If undefined the property is not an index.
+     * A unique property is defined as index with IndexOptions.unique=true.
+     */
+    getDatabase<T extends { [name: string]: any }>(name: string): T | undefined {
+        return databaseAnnotation.getDatabase<T>(this.getType(), name);
     }
 
     clone(reflectionClass?: ReflectionClass<any>, property?: TypeProperty | TypePropertySignature): ReflectionProperty {
         const c = new ReflectionProperty(property || this.property, reflectionClass || this.reflectionClass);
         c.data = { ...this.data };
-        c.autoIncrement = this.autoIncrement;
-        c.primaryKey = this.primaryKey;
         c.jsonType = this.jsonType;
-        c.groups = this.groups.slice();
         c.serializer = this.serializer;
         c.deserializer = this.deserializer;
         if (this.referenceOptions) c.referenceOptions = { ...this.referenceOptions };
@@ -482,7 +424,6 @@ export class ReflectionProperty {
 
     applyDecorator(data: TData) {
         Object.assign(this.data, data.data);
-        if (data.groups) this.groups.push(...data.groups);
         this.serializer = data.serializer;
         this.deserializer = data.deserializer;
         this.excludeSerializerNames = data.excludeSerializerNames;
@@ -595,7 +536,6 @@ export class TData {
     serializer?: SerializerFn;
     deserializer?: SerializerFn;
     excludeSerializerNames?: string[];
-    groups?: string[];
     referenceOptions?: { onDelete: ReferenceActions, onUpdate: ReferenceActions };
     backReference?: BackReferenceOptions<any>;
 
@@ -612,7 +552,6 @@ export class ReflectionClass<T> {
     protected properties: ReflectionProperty[] = [];
     protected methods: ReflectionMethod[] = [];
 
-    public groups: string[] = [];
     public type: TypeClass | TypeObjectLiteral;
 
     constructor(type: Type, public parent?: ReflectionClass<any>) {
@@ -643,14 +582,14 @@ export class ReflectionClass<T> {
 
     hasPrimary(): boolean {
         for (const property of this.getProperties()) {
-            if (property.primaryKey) return true;
+            if (property.isPrimaryKey()) return true;
         }
         return false;
     }
 
     getPrimary(): ReflectionProperty {
         for (const property of this.getProperties()) {
-            if (property.primaryKey) return property;
+            if (property.isPrimaryKey()) return property;
         }
         throw new Error(`Class ${this.getClassName()} has no primary key.`);
     }
@@ -701,7 +640,6 @@ export class ReflectionClass<T> {
 
     applyDecorator(data: TData) {
         Object.assign(this.data, data.data);
-        if (data.groups) this.groups = data.groups;
     }
 
     static from<T>(classTypeIn: AbstractClassType<T> | Type, ...args: any[]): ReflectionClass<T> {
@@ -783,19 +721,20 @@ export class ReflectionClass<T> {
     }
 }
 
-export function decorate<T>(decorate: { [P in keyof T]?: FreeDecoratorFn<any> }, p?: ReceiveType<T>): ReflectionClass<T> {
-    const type = typeOf([], p);
-    if (type.kind === ReflectionKind.objectLiteral) {
-        const classType = class {
-        };
-        const reflection = new ReflectionClass({ kind: ReflectionKind.class, classType, types: type.types });
-        (classType as any).prototype[reflectionClassSymbol] = reflection;
-
-        for (const [p, fn] of Object.entries(decorate)) {
-            (fn as FreeDecoratorFn<any>)(classType, p);
-        }
-
-        return reflection;
-    }
-    throw new Error('Decorate is only possible on object literal/interfaces.');
-}
+// old function to decorate an interface
+// export function decorate<T>(decorate: { [P in keyof T]?: FreeDecoratorFn<any> }, p?: ReceiveType<T>): ReflectionClass<T> {
+//     const type = typeOf([], p);
+//     if (type.kind === ReflectionKind.objectLiteral) {
+//         const classType = class {
+//         };
+//         const reflection = new ReflectionClass({ kind: ReflectionKind.class, classType, types: type.types });
+//         (classType as any).prototype[reflectionClassSymbol] = reflection;
+//
+//         for (const [p, fn] of Object.entries(decorate)) {
+//             (fn as FreeDecoratorFn<any>)(classType, p);
+//         }
+//
+//         return reflection;
+//     }
+//     throw new Error('Decorate is only possible on object literal/interfaces.');
+// }

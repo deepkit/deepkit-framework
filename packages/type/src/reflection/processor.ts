@@ -9,17 +9,23 @@
  */
 
 import {
+    Annotations,
     CartesianProduct,
+    defaultAnnotation,
     flattenUnionTypes,
     indexAccess,
+    isPrimitive,
     isType,
+    isWithAnnotations,
     MappedModifier,
+    merge,
     narrowOriginalLiteral,
     ReflectionKind,
     ReflectionOp,
     ReflectionVisibility,
     Type,
     TypeClass,
+    typeDecorators,
     TypeEnumMember,
     TypeIndexSignature,
     typeInfer,
@@ -405,7 +411,8 @@ export class Processor {
                 }
                 case ReflectionOp.tuple: {
                     const types: TypeTupleMember[] = [];
-                    for (const type of this.popFrame() as Type[]) {
+                    const stackTypes = this.popFrame() as Type[];
+                    for (const type of stackTypes) {
                         let resolved: TypeTupleMember = type.kind === ReflectionKind.tupleMember ? type : { kind: ReflectionKind.tupleMember, type };
                         if (resolved.type.kind === ReflectionKind.rest) {
                             if (resolved.type.type.kind === ReflectionKind.tuple) {
@@ -485,7 +492,64 @@ export class Processor {
                 }
                 case ReflectionOp.intersection: {
                     const types = this.popFrame() as Type[];
-                    this.pushType({ kind: ReflectionKind.intersection, types });
+                    let primitive = undefined as Type | undefined;
+                    const annotations: Annotations = {};
+                    const candidates: (TypeObjectLiteral | TypeClass)[] = [];
+
+                    function extractTypes(types: Type[]) {
+                        outer:
+                            for (const type of types) {
+                                if (type.kind === ReflectionKind.never) continue;
+
+                                if (type.kind === ReflectionKind.intersection) {
+                                    extractTypes(type.types);
+                                    continue;
+                                }
+                                if (type.kind === ReflectionKind.objectLiteral) {
+                                    for (const decorator of typeDecorators) {
+                                        if (decorator(annotations, type)) {
+                                            continue outer;
+                                        }
+                                    }
+                                }
+
+                                if (isPrimitive(type)) {
+                                    primitive = type;
+                                } else if (type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.class) {
+                                    candidates.push(type);
+                                }
+                            }
+                    }
+
+                    extractTypes(types);
+
+                    let result = undefined as Type | undefined;
+
+                    if (primitive) {
+                        result = primitive;
+                        annotations[defaultAnnotation.symbol] = candidates;
+                    } else {
+                        if (candidates.length === 1) {
+                            result = candidates[0];
+                        } else {
+                            const isMergeAble = candidates.every(v => v.kind === ReflectionKind.objectLiteral || v.kind === ReflectionKind.class);
+                            if (isMergeAble) {
+                                result = merge(candidates);
+                            } else {
+                                result = candidates[0];
+                            }
+                        }
+                    }
+
+                    if (result) {
+                        if (isWithAnnotations(result)) {
+                            result.annotations ||= {};
+                            Object.assign(result.annotations, annotations);
+                        }
+                        this.pushType(result);
+                    } else {
+                        this.pushType({ kind: ReflectionKind.never });
+                    }
                     break;
                 }
                 case ReflectionOp.function: {
