@@ -81,7 +81,6 @@ export function unpack(pack: Packed): PackStruct {
     return { ops, stack };
 }
 
-
 function newArray<T>(init: T, items: number): T[] {
     const a: T[] = [];
     for (let i = 0; i < items; i++) {
@@ -165,7 +164,7 @@ class Loop {
 /**
  * To track circular types the registry stores for each Packed a created Processor and returns its `resultType` when it was already registered.
  */
-class ProcessorRegistry {
+export class ProcessorRegistry {
     protected registry = new Map<Packed, Processor>();
 
     get(t: Packed): Processor | undefined {
@@ -379,7 +378,11 @@ export class Processor {
                     const ref = this.eatParameter(ops) as number;
                     const classType = (initialStack[ref] as Function)();
                     const args = this.popFrame() as Type[];
-                    this.pushType(resolveRuntimeType(classType, args, this.registry));
+                    if ('__type' in classType) {
+                        this.pushType(resolveRuntimeType(classType, args, this.registry));
+                    } else {
+                        this.pushType({ kind: ReflectionKind.class, classType: classType, arguments: args, types: [] });
+                    }
                     break;
                 }
                 case ReflectionOp.enum: {
@@ -754,8 +757,9 @@ export class Processor {
                 }
                 case ReflectionOp.typeof: {
                     const param1 = this.eatParameter(ops) as number;
-                    const value = initialStack[param1] as any;
-                    this.pushType(typeInfer(value));
+                    const fn = initialStack[param1] as () => any;
+                    const value = fn();
+                    this.pushType(typeInfer(value, this.registry));
                     break;
                 }
                 case ReflectionOp.keyof: {

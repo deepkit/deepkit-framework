@@ -11,7 +11,10 @@ export function cast<T>(data: JSONPartial<T> | unknown, options?: SerializationO
     return fn(data, options) as T;
 }
 
-export const deserialize = cast;
+export function deserialize<T>(data: JSONPartial<T> | unknown, options?: SerializationOptions, serializer: Serializer = jsonSerializer, type?: ReceiveType<T>): T {
+    const fn = createSerializeFunction(resolvePacked(type!), serializer.deserializeRegistry);
+    return fn(data, options) as T;
+}
 
 export function serialize<T>(data: T, options?: SerializationOptions, serializer: Serializer = jsonSerializer, type?: ReceiveType<T>): T {
     const fn = createSerializeFunction(resolvePacked(type!), serializer.serializeRegistry);

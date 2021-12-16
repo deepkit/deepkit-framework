@@ -208,7 +208,7 @@ test('index signature', () => {
 test('object literal methods', () => {
     expect(is<{ m: () => void }>({ m: (): void => undefined })).toEqual(true);
     expect(is<{ m: () => void }>({ m: false })).toEqual(false);
-    expect(is<{ m: (name: string) => void }>({ m: () => undefined })).toEqual(false);
+    expect(is<{ m: (name: string) => void }>({ m: () => undefined })).toEqual(true); //`() => undefined` has no types, so no __type emitted. Means return=any
     expect(is<{ m: (name: string) => void }>({ m: (name: string): void => undefined })).toEqual(true);
     expect(is<{ m: (name: string) => string }>({ m: (name: string): string => 'asd' })).toEqual(true);
     expect(is<{ m: (name: string) => string }>({ m: (name: string) => 'asd' })).toEqual(true);

@@ -11,12 +11,15 @@
 import {
     dataAnnotation,
     databaseAnnotation,
+    embeddedAnnotation,
     excludedAnnotation,
     groupAnnotation,
     indexAnnotation,
+    IndexOptions,
     isType,
     primaryKeyAnnotation,
     referenceAnnotation,
+    ReferenceOptions,
     ReflectionKind,
     ReflectionVisibility,
     Type,
@@ -199,6 +202,11 @@ export class ReflectionParameter {
 export class ReflectionMethod {
     parameters: ReflectionParameter[] = [];
 
+    /**
+     * Whether this method acts as validator.
+     */
+    validator: boolean = false;
+
     constructor(
         public method: TypeMethod | TypeMethodSignature,
         public reflectionClass: ReflectionClass<any>,
@@ -211,6 +219,13 @@ export class ReflectionMethod {
         this.parameters = [];
         for (const p of this.method.parameters) {
             this.parameters.push(new ReflectionParameter(p, this));
+        }
+    }
+
+    applyDecorator(data: TData) {
+        this.validator = data.validator;
+        if (this.validator) {
+            this.reflectionClass.validationMethod = this.getName();
         }
     }
 
@@ -302,57 +317,12 @@ export class ReflectionFunction {
     }
 }
 
-//convert that to
-export interface BackReferenceOptions<T> {
-    /**
-     * Necessary for normalised many-to-many relations. This defines the class of the pivot table/collection.
-     */
-    via?: ClassType; // | ForwardRefFn<ClassType>,
-
-    /**
-     * A reference/backReference can define which reference on the other side
-     * reference back. This is necessary when there are multiple outgoing references
-     * to the same entity.
-     */
-    mappedBy?: keyof T & string,
-}
-
-export type IndexOptions = Partial<{
-    //index size. Necessary for blob/longtext, etc.
-    size: number,
-
-    unique: boolean,
-    spatial: boolean,
-    sparse: boolean,
-
-    //only in mongodb
-    synchronize: boolean,
-    fulltext: boolean,
-    where: string,
-}>;
-
-export type ReferenceActions = 'RESTRICT' | 'NO ACTION' | 'CASCADE' | 'SET NULL' | 'SET DEFAULT';
-
 export class ReflectionProperty {
-    data: { [name: string]: any } = {};
-
+    //is this really necessary?
     jsonType?: Type;
-
-    referenceOptions: { onDelete: ReferenceActions, onUpdate: ReferenceActions } = {
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE',
-    };
-
-    /**
-     * Set when this property is marked as a back reference.
-     */
-    backReferenceOptions?: BackReferenceOptions<any>;
 
     serializer?: SerializerFn;
     deserializer?: SerializerFn;
-    excludeSerializerNames?: string[];
-
-    index?: IndexOptions;
 
     type: Type;
 
@@ -374,12 +344,27 @@ export class ReflectionProperty {
         return primaryKeyAnnotation.isPrimaryKey(this.getType());
     }
 
+    isEmbedded(): boolean {
+        return !!embeddedAnnotation.getFirst(this.getType());
+    }
+
+    /**
+     * If undefined, it's not an embedded class.
+     */
+    getEmbedded(): { prefix?: string } | undefined {
+        return embeddedAnnotation.getFirst(this.getType());
+    }
+
     isBackReference(): boolean {
         return !!referenceAnnotation.getAnnotations(this.getType());
     }
 
     isReference(): boolean {
-        return referenceAnnotation.isReference(this.getType());
+        return referenceAnnotation.getFirst(this.getType()) !== undefined;
+    }
+
+    getReference(): ReferenceOptions | undefined {
+        return referenceAnnotation.getFirst(this.getType());
     }
 
     getGroups(): string[] {
@@ -388,6 +373,11 @@ export class ReflectionProperty {
 
     getExcluded(): string[] {
         return excludedAnnotation.getAnnotations(this.getType());
+    }
+
+    isSerializerExcluded(name: string): boolean {
+        const excluded = this.getExcluded();
+        return excluded.includes('*') || excluded.includes(name);
     }
 
     getData(): { [name: string]: any } {
@@ -412,23 +402,15 @@ export class ReflectionProperty {
 
     clone(reflectionClass?: ReflectionClass<any>, property?: TypeProperty | TypePropertySignature): ReflectionProperty {
         const c = new ReflectionProperty(property || this.property, reflectionClass || this.reflectionClass);
-        c.data = { ...this.data };
         c.jsonType = this.jsonType;
         c.serializer = this.serializer;
         c.deserializer = this.deserializer;
-        if (this.referenceOptions) c.referenceOptions = { ...this.referenceOptions };
-        if (this.backReferenceOptions) c.backReferenceOptions = { ...this.backReferenceOptions };
-        if (this.index) c.index = { ...this.index };
         return c;
     }
 
     applyDecorator(data: TData) {
-        Object.assign(this.data, data.data);
         this.serializer = data.serializer;
         this.deserializer = data.deserializer;
-        this.excludeSerializerNames = data.excludeSerializerNames;
-        if (data.referenceOptions) this.referenceOptions = { ...data.referenceOptions };
-        if (data.backReference) this.backReferenceOptions = { ...data.backReference };
     }
 
     getName(): number | string | symbol {
@@ -530,33 +512,94 @@ export interface SerializerFn {
 }
 
 export class TData {
+    validator: boolean = false;
     validators: ValidatorFn[] = [];
     type?: Packed | ClassType;
     data: { [name: string]: any } = {};
     serializer?: SerializerFn;
     deserializer?: SerializerFn;
-    excludeSerializerNames?: string[];
-    referenceOptions?: { onDelete: ReferenceActions, onUpdate: ReferenceActions };
-    backReference?: BackReferenceOptions<any>;
+}
 
-    //todo: index
+export class EntityData {
+    name?: string;
+    collectionName?: string;
+    data: { [name: string]: any } = {};
+    indexes: { names: string[], options: IndexOptions }[] = [];
 }
 
 export class ReflectionClass<T> {
+    /**
+     * The description, extracted from the class JSDoc @description.
+     */
     description: string = '';
+
+    /**
+     * A place where arbitrary data is stored.
+     */
     data: { [name: string]: any } = {};
+
+    /**
+     * A place where arbitrary jit functions and its cache data is stored.
+     */
     jit: { [name: string]: any } = {};
+
+    /**
+     * The unique entity name.
+     *
+     * ```typescript
+     * @entity.name('user')
+     * class User {
+     *
+     * }
+     * ```
+     */
+    name?: string;
+
+    /**
+     * The collection name, used in database context (also known as table name).
+     *
+     * Usually, if this is not set, `name` will be used.
+     *
+     * ```typescript
+     * @entity.collection('users').name('user')
+     * class User {
+     *
+     * }
+     * ```
+     */
+    collectionName?: string;
+
+    /**
+     * Defined multi-column indexes.
+     *
+     * ```typescript
+     * @entity
+     *    .collection('users')
+     *    .name('user')
+     *    .index(['username', 'email'])
+     *    .index(['email', 'region'], {unique: true})
+     * class User {
+     *     username: string;
+     *     email: string;
+     * }
+     * ```
+     */
+    indexes: { names: string[], options: IndexOptions }[] = [];
 
     protected propertyNames: (number | string | symbol)[] = [];
     protected methodNames: (number | string | symbol)[] = [];
     protected properties: ReflectionProperty[] = [];
     protected methods: ReflectionMethod[] = [];
 
+    /**
+     * If a custom validator method was set via @t.validator, then this is the method name.
+     */
+    public validationMethod?: string | symbol | number;
+
     public type: TypeClass | TypeObjectLiteral;
 
     constructor(type: Type, public parent?: ReflectionClass<any>) {
         if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) throw new Error('Only class, interface, or object literal type possible');
-
         this.type = type;
         if (parent) {
             for (const member of parent.getProperties()) {
@@ -570,6 +613,13 @@ export class ReflectionClass<T> {
         for (const member of type.types) {
             this.add(member);
         }
+    }
+
+    getPropertiesDeclaredInConstructor(): ReflectionProperty[] {
+        const constructor = this.getMethod('constructor');
+        if (!constructor) return [];
+        const propertyNames = constructor.parameters.filter(v => v.getVisibility() !== undefined).map(v => v.getName());
+        return this.properties.filter(v => propertyNames.includes(String(v.getName())));
     }
 
     getClassType(): ClassType {
@@ -638,8 +688,11 @@ export class ReflectionClass<T> {
         }
     }
 
-    applyDecorator(data: TData) {
+    applyDecorator(data: EntityData) {
         Object.assign(this.data, data.data);
+        this.name = data.name;
+        this.collectionName = data.collectionName;
+        this.indexes = data.indexes;
     }
 
     static from<T>(classTypeIn: AbstractClassType<T> | Type, ...args: any[]): ReflectionClass<T> {

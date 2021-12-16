@@ -9,7 +9,7 @@
  */
 
 import { ClassType, getClassName, indent, isArray, isClass } from '@deepkit/core';
-import { resolveRuntimeType } from './processor';
+import { ProcessorRegistry, resolveRuntimeType } from './processor';
 import { getProperty, hasMember, toSignature } from './reflection';
 
 export enum ReflectionVisibility {
@@ -372,6 +372,18 @@ export function isPrimitive<T extends Type>(type: T): boolean {
     return type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.boolean
         || type.kind === ReflectionKind.array || type.kind === ReflectionKind.tuple || type.kind === ReflectionKind.literal
         || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined || type.kind === ReflectionKind.regexp || type.kind === ReflectionKind.symbol;
+}
+
+/**
+ * Return all properties created in the constructor (via `constructor(public title: string)`.
+ */
+export function getConstructorProperties(type: TypeClass): TypeProperty[] {
+    const constructor = findMember('constructor', type) as TypeMethod | undefined;
+    if (!constructor) return [];
+
+    const parameterCreatedInConstructor = constructor.parameters.filter(v => v.visibility !== undefined).map(v => v.name);
+
+    return type.types.filter(v => v.kind === ReflectionKind.property && 'string' === typeof v.name && parameterCreatedInConstructor.includes(v.name)) as TypeProperty[];
 }
 
 export type WithAnnotations =
@@ -812,17 +824,17 @@ export function widenLiteral(type: Type): Type {
     return type;
 }
 
-function typeInferFromContainer(container: Iterable<any>): Type {
+function typeInferFromContainer(container: Iterable<any>, registry?: ProcessorRegistry): Type {
     const union: TypeUnion = { kind: ReflectionKind.union, types: [] };
     for (const item of container) {
-        const type = widenLiteral(typeInfer(item));
+        const type = widenLiteral(typeInfer(item, registry));
         if (!isTypeIncluded(union.types, type)) union.types.push(type);
     }
 
     return union.types.length === 0 ? { kind: ReflectionKind.any } : union.types.length === 1 ? union.types[0] : union;
 }
 
-export function typeInfer(value: any): Type {
+export function typeInfer(value: any, registry?: ProcessorRegistry): Type {
     if ('string' === typeof value || 'number' === typeof value || 'boolean' === typeof value || 'bigint' === typeof value || 'symbol' === typeof value) {
         return { kind: ReflectionKind.literal, literal: value };
     } else if (null === value) {
@@ -834,7 +846,7 @@ export function typeInfer(value: any): Type {
     } else if ('function' === typeof value) {
         if (isArray(value.__type)) {
             //with emitted types: function or class
-            return resolveRuntimeType(value);
+            return resolveRuntimeType(value, undefined, registry);
         }
 
         if (isClass(value)) {
@@ -844,24 +856,24 @@ export function typeInfer(value: any): Type {
 
         return { kind: ReflectionKind.function, name: value.name, return: { kind: ReflectionKind.any }, parameters: [] };
     } else if (isArray(value)) {
-        return { kind: ReflectionKind.array, type: typeInferFromContainer(value) };
+        return { kind: ReflectionKind.array, type: typeInferFromContainer(value, registry) };
     } else if ('object' === typeof value) {
         const constructor = value.constructor;
         if ('function' === typeof constructor && constructor !== Object && isArray(constructor.__type)) {
             //with emitted types
-            return resolveRuntimeType(constructor);
+            return resolveRuntimeType(constructor, undefined, registry);
         }
 
         if (constructor === RegExp) return { kind: ReflectionKind.regexp };
         if (constructor === Date) return { kind: ReflectionKind.class, classType: Date, types: [] };
         if (constructor === Set) {
-            const type = typeInferFromContainer(value);
+            const type = typeInferFromContainer(value, registry);
             return { kind: ReflectionKind.class, classType: Set, arguments: [type], types: [] };
         }
 
         if (constructor === Map) {
-            const keyType = typeInferFromContainer((value as Map<any, any>).keys());
-            const valueType = typeInferFromContainer((value as Map<any, any>).values());
+            const keyType = typeInferFromContainer((value as Map<any, any>).keys(), registry);
+            const valueType = typeInferFromContainer((value as Map<any, any>).values(), registry);
             return { kind: ReflectionKind.class, classType: Map, arguments: [keyType, valueType], types: [] };
         }
 
@@ -1004,30 +1016,58 @@ export class AnnotationDefinition<T = true> {
 
 export type AnnotationType<T extends AnnotationDefinition<any>> = T extends AnnotationDefinition<infer K> ? K : never;
 
+export type ReferenceActions = 'RESTRICT' | 'NO ACTION' | 'CASCADE' | 'SET NULL' | 'SET DEFAULT';
 
-export type Reference = { __meta?: ['reference'] };
+export interface ReferenceOptions {
+    /**
+     * Default is CASCADE.
+     */
+    onDelete?: ReferenceActions,
+
+    /**
+     * Default is CASCADE.
+     */
+    onUpdate?: ReferenceActions
+}
+
 export type PrimaryKey = { __meta?: ['primaryKey'] };
 export type AutoIncrement = { __meta?: ['autoIncrement'] };
 export type UUID = string & { __meta?: ['UUIDv4'] };
 export type MongoId = string & { __meta?: ['mongoId'] };
-export type BackReference<VIA extends ClassType | Object = never> = { __meta?: ['backReference', { via: VIA }] };
 
-export const referenceAnnotation = new class extends AnnotationDefinition {
-    isReference(type: Type): boolean {
-        return this.getAnnotations(type).length > 0;
-    }
-};
+export type Reference<Options extends ReferenceOptions = {}> = { __meta?: ['reference', Options] };
+export type BackReference<Options extends BackReferenceOptions = {}> = { __meta?: ['backReference', Options] };
+export type Embedded<T, Options extends { prefix?: string } = {}> = T & { __meta?: ['embedded', Options] };
+
+export const referenceAnnotation = new AnnotationDefinition<ReferenceOptions>();
+
 export const autoIncrementAnnotation = new AnnotationDefinition();
 export const primaryKeyAnnotation = new class extends AnnotationDefinition {
     isPrimaryKey(type: Type): boolean {
         return this.getAnnotations(type).length > 0;
     }
 };
-export const backReferenceAnnotation = new AnnotationDefinition<{ via?: ClassType }>();
+
+export interface BackReferenceOptions {
+    /**
+     * Necessary for normalised many-to-many relations. This defines the class of the pivot table/collection.
+     */
+    via?: ClassType;
+
+    /**
+     * A reference/backReference can define which reference on the other side
+     * reference back. This is necessary when there are multiple outgoing references
+     * to the same entity.
+     */
+    mappedBy?: string,
+}
+
+export const backReferenceAnnotation = new AnnotationDefinition<BackReferenceOptions>();
 export const validationAnnotation = new AnnotationDefinition<{ name: string, args: Type[] }>();
 export const UUIDAnnotation = new AnnotationDefinition();
 export const mongoIdAnnotation = new AnnotationDefinition();
 export const defaultAnnotation = new AnnotationDefinition();
+export const embeddedAnnotation = new AnnotationDefinition<{ prefix?: string }>();
 
 //`never` is here to allow using a decorator multiple times on the same type without letting the TS complaining about incompatible types.
 export type Group<Name extends string> = { __meta?: ['group', never & Name] };
@@ -1094,7 +1134,10 @@ export const typeDecorators: TypeDecorator[] = [
 
         switch (id.type.literal) {
             case 'reference':
-                referenceAnnotation.register(annotations, true);
+                const optionsType = meta.type.types[1];
+                if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
+                const options = typeToObject(optionsType.type);
+                referenceAnnotation.replace(annotations, [options]);
                 return true;
             case 'autoIncrement':
                 autoIncrementAnnotation.register(annotations, true);
@@ -1102,6 +1145,13 @@ export const typeDecorators: TypeDecorator[] = [
             case 'primaryKey':
                 primaryKeyAnnotation.register(annotations, true);
                 return true;
+            case 'embedded': {
+                const optionsType = meta.type.types[1];
+                if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
+                const options = typeToObject(optionsType.type);
+                embeddedAnnotation.replace(annotations, [options]);
+                return true;
+            }
             case 'group': {
                 const nameType = meta.type.types[1];
                 if (!nameType || nameType.type.kind !== ReflectionKind.literal || 'string' !== typeof nameType.type.literal) return false;
@@ -1152,11 +1202,7 @@ export const typeDecorators: TypeDecorator[] = [
                 const optionsType = meta.type.types[1];
                 if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
 
-                const options: AnnotationType<typeof backReferenceAnnotation> = {};
-                const via = getProperty(optionsType.type, 'via');
-                if (via && via.type.kind === ReflectionKind.class) {
-                    options.via = via.type.classType;
-                }
+                const options = typeToObject(optionsType.type);
                 backReferenceAnnotation.register(annotations, options);
                 return true;
             }

@@ -1208,7 +1208,7 @@ export class ReflectionTransformer {
                     }
                 }
 
-                program.pushOp(ReflectionOp.typeof, program.findOrAddStackEntry(this.f.createIdentifier(getNameAsString(narrowed.exprName))));
+                program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, this.f.createIdentifier(getNameAsString(narrowed.exprName)))));
                 break;
             }
             case SyntaxKind.TypeOperator: {
@@ -1572,7 +1572,7 @@ export class ReflectionTransformer {
                         for (const foundUser of foundUsers) {
                             program.pushConditionalFrame();
 
-                            program.pushOp(ReflectionOp.typeof, program.findOrAddStackEntry(foundUser.parameterName));
+                            program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, foundUser.parameterName)));
                             this.extractPackStructOfType(foundUser.type, program);
                             program.pushOp(ReflectionOp.extends);
 

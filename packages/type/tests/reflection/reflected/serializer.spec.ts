@@ -8,11 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { expect, test } from '@jest/globals';
-import { t } from '../../../src/decorator';
 import { reflect, ReflectionClass } from '../../../src/reflection/reflection';
-import { BackReference, int8, integer, PrimaryKey, Reference } from '../../../src/reflection/type';
+import { BackReference, Embedded, Excluded, int8, integer, PrimaryKey, Reference } from '../../../src/reflection/type';
 import { createSerializeFunction, SerializationError } from '../../../src/serializer';
-import { cast, serialize } from '../../../src/serializer-facade';
+import { cast, deserialize, serialize } from '../../../src/serializer-facade';
 import { jsonSerializer } from '../../../src/serializer-json';
 import { getClassName } from '@deepkit/core';
 
@@ -425,12 +424,11 @@ test('exclude', () => {
     class User {
         username!: string;
 
-        @t.exclude()
-        password?: string;
+        password?: string & Excluded<'*'>;
     }
 
     const reflection = ReflectionClass.from(User);
-    expect(reflection.getProperty('password')?.excludeSerializerNames).toEqual(['*']);
+    expect(reflection.getProperty('password')?.getExcluded()).toEqual(['*']);
 
     expect(cast<User>({ username: 'peter', password: 'nope' })).toEqual({ username: 'peter', password: undefined });
     expect(serialize<User>({ username: 'peter', password: 'nope' })).toEqual({ username: 'peter', password: undefined });
@@ -514,4 +512,102 @@ test('class with back reference', () => {
     const res = cast<Team>({ leads: [{ username: 'Peter' }] });
     expect(res).toEqual({ leads: [{ username: 'Peter' }] });
     expect(res.leads[0]).toBeInstanceOf(User);
+});
+
+test('value object single field', () => {
+    class Price {
+        constructor(public amount: integer) {
+        }
+
+        isFree() {
+            return this.amount === 0;
+        }
+    }
+
+    class Product {
+        constructor(public title: string, public price: Embedded<Price>) {
+
+        }
+    }
+
+    const product = new Product('Brick', new Price(34));
+    const productJson = serialize<Product>(product);
+    expect(productJson).toEqual({ title: 'Brick', price: 34 });
+
+    {
+        const product = deserialize<Product>(productJson);
+        expect(product).toEqual({ title: 'Brick', price: { amount: 34 } });
+        expect(product.price).toBeInstanceOf(Price);
+        expect(product.price.isFree()).toBe(false);
+    }
+});
+
+test('value object multi field', () => {
+    class Price {
+        constructor(public amount: integer, public currency: string) {
+        }
+
+        isFree() {
+            return this.amount === 0;
+        }
+    }
+
+    class Product {
+        constructor(public title: string, public price: Embedded<Price>) {
+
+        }
+    }
+
+    const product = new Product('Brick', new Price(34, 'EUR'));
+    const productJson = serialize<Product>(product);
+    expect(productJson).toEqual({ title: 'Brick', price_amount: 34, price_currency: 'EUR' });
+
+    {
+        const product = deserialize<Product>(productJson);
+        expect(product).toEqual({ title: 'Brick', price: { amount: 34, currency: 'EUR' } });
+        expect(product.price).toBeInstanceOf(Price);
+        expect(product.price.isFree()).toBe(false);
+    }
+});
+
+test('value object prefix + multi field', () => {
+    class Price {
+        constructor(public amount: integer = 0, public currency: string = 'EUR') {
+        }
+
+        isFree() {
+            return this.amount === 0;
+        }
+    }
+
+    class Product {
+        constructor(public title: string, public price: Embedded<Price, {prefix: ''}>) {
+
+        }
+    }
+
+    const product = new Product('Brick', new Price(34, 'EUR'));
+    const productJson = serialize<Product>(product);
+    expect(productJson).toEqual({ title: 'Brick', amount: 34, currency: 'EUR' });
+
+    {
+        const product = deserialize<Product>(productJson);
+        expect(product).toEqual({ title: 'Brick', price: { amount: 34, currency: 'EUR' } });
+        expect(product.price).toBeInstanceOf(Price);
+        expect(product.price.isFree()).toBe(false);
+    }
+
+    {
+        const product = deserialize<Product>({title: 'Brick'});
+        expect(product).toEqual({ title: 'Brick', price: {amount: 0, currency: 'EUR'}});
+        expect(product.price).toBeInstanceOf(Price);
+        expect(product.price.isFree()).toBe(true);
+    }
+
+    {
+        const product = deserialize<Product>({title: 'Brick', amount: 2.333});
+        expect(product).toEqual({ title: 'Brick', price: {amount: 2, currency: 'EUR'}});
+        expect(product.price).toBeInstanceOf(Price);
+        expect(product.price.isFree()).toBe(false);
+    }
 });

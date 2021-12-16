@@ -70,6 +70,7 @@ export class ValidatorError {
     constructor(
         public readonly code: string,
         public readonly message: string,
+        public readonly path?: string,
     ) {
     }
 }

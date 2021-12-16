@@ -15,6 +15,7 @@ import {
     BackReference,
     Data,
     defaultAnnotation,
+    Embedded,
     Excluded,
     Group,
     Index,
@@ -41,6 +42,7 @@ import {
 } from '../../../src/reflection/type';
 import { ClassType } from '@deepkit/core';
 import { t } from '../../../src/decorator';
+import { validate, ValidatorError } from '../../../src/validator';
 
 test('class', () => {
     class Entity {
@@ -881,7 +883,7 @@ test('Reference', () => {
     const owner = property.getType();
     expect(owner).toMatchObject(typeOf<User>() as any);
     const annotations = referenceAnnotation.getAnnotations(owner);
-    expect(annotations![0]).toEqual(true);
+    expect(annotations![0]).toEqual({});
 });
 
 test('circular interface', () => {
@@ -906,7 +908,7 @@ test('circular interface', () => {
     expect(page.types[0].name).toBe('owner');
     assertType(page.types[0].type, ReflectionKind.objectLiteral);
 
-    expect(referenceAnnotation.getAnnotations(page.types[0].type)).toEqual([true]);
+    expect(referenceAnnotation.getAnnotations(page.types[0].type)).toEqual([{}]);
 });
 
 test('built in numeric type', () => {
@@ -918,6 +920,59 @@ test('built in numeric type', () => {
     const property = reflection.getProperty('id')!;
     expect(property.getType().kind).toBe(ReflectionKind.number);
     expect((property.getType() as TypeNumber).brand).toBe(TypeNumberBrand.integer);
+});
+
+test('class validator', () => {
+    class Email {
+        constructor(public email: string) {
+        }
+
+        @t.validator
+        validator(): ValidatorError | void {
+            if (this.email === '') return new ValidatorError('email', 'Invalid email');
+        }
+    }
+
+
+    const reflection = ReflectionClass.from(Email);
+    expect(reflection.validationMethod).toBe('validator');
+
+    expect(validate<Email>(new Email(''))).toEqual([{path: '', code: 'email', message: 'Invalid email'}]);
+    expect(validate<Email>(new Email('asd'))).toEqual([]);
+});
+
+test('value object single field', () => {
+    class Price {
+        constructor(public amount: integer) {
+        }
+
+        isFree() {
+            return this.amount === 0;
+        }
+    }
+
+    class Product {
+        price2?: Price;
+
+        constructor(public title: string, public price: Embedded<Price>) {
+
+        }
+    }
+
+    const reflection = ReflectionClass.from(Product);
+    const title = reflection.getProperty('title')!;
+    expect(title.isEmbedded()).toBe(false);
+
+    const price = reflection.getProperty('price')!;
+    expect(price.isEmbedded()).toBe(true);
+    expect(price.getEmbedded()).toEqual({});
+    assertType(price.type, ReflectionKind.class);
+    expect(price.type.classType).toBe(Price);
+
+    const price2 = reflection.getProperty('price2')!;
+    expect(price2.isEmbedded()).toBe(false);
+    assertType(price2.type, ReflectionKind.class);
+    expect(price2.type.classType).toBe(Price);
 });
 
 test('simple brands', () => {
@@ -997,6 +1052,20 @@ test('data decorator', () => {
     const username = reflection.getProperty('username');
     expect(username!.getData()).toEqual({ key: 3 });
     expect(reflection.getProperty('config')!.getData()).toEqual({ key: true });
+});
+
+test('reference decorator', () => {
+    class Group {
+    }
+
+    class User {
+        group?: Group & Reference;
+        group2?: Group & Reference<{ onDelete: 'SET NULL' }>;
+    }
+
+    const reflection = ReflectionClass.from(User);
+    expect(reflection.getProperty('group')!.getReference()).toEqual({});
+    expect(reflection.getProperty('group2')!.getReference()).toEqual({ onDelete: 'SET NULL' });
 });
 
 test('index decorator', () => {

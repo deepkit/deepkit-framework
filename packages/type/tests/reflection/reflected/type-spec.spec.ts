@@ -269,7 +269,7 @@ class Team {
 class User {
     id: number & PrimaryKey & AutoIncrement = 0;
     version: number = 0;
-    teams: Team[] & BackReference<UserTeam> = [];
+    teams: Team[] & BackReference<{ via: typeof UserTeam }> = [];
 
     constructor(public name: string) {
     }

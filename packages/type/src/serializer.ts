@@ -11,7 +11,10 @@
 import { ClassType, CompilerContext, CustomError, getClassName, isArray, isFunction, isInteger, isNumeric, isObject } from '@deepkit/core';
 import {
     AnnotationDefinition,
+    assertType,
+    embeddedAnnotation,
     FindType,
+    getConstructorProperties,
     isNullable,
     isOptional,
     referenceAnnotation,
@@ -193,11 +196,11 @@ export class TemplateState {
      * Can be used to track which annotation was already handled. Necessary to use with `isAnnotationHandled` to avoid infinite recursive loops
      * when a serializer template issues sub calls depending on annotation data.
      */
-    annotationHandled(annotation: AnnotationDefinition): void {
+    annotationHandled(annotation: AnnotationDefinition<any>): void {
         this.handledAnnotations.push(annotation);
     }
 
-    isAnnotationHandled(annotation: AnnotationDefinition): boolean {
+    isAnnotationHandled(annotation: AnnotationDefinition<any>): boolean {
         return this.handledAnnotations.includes(annotation);
     }
 
@@ -429,7 +432,7 @@ export function getTemplateJSForTypeForState(
 export function createConverterJSForMember(
     setter: string,
     accessor: string,
-    property: ReflectionProperty | TypePropertySignature | TypeIndexSignature,
+    property: ReflectionProperty | TypeProperty | TypePropertySignature | TypeIndexSignature,
     state: TemplateState,
     undefinedSetterCode: string = '',
     nullSetterCode: string = '',
@@ -476,11 +479,11 @@ export function createConverterJSForMember(
 
     const optional = isOptional(property instanceof ReflectionProperty ? property.property : property);
     const nullable = isNullable(type);
-    const hasDefault = property instanceof ReflectionProperty ? property.hasDefault() : false;
+    // const hasDefault = property instanceof ReflectionProperty ? property.hasDefault() : false;
 
     // // since JSON does not support undefined, we emulate it via using null for serialization, and convert that back to undefined when deserialization happens.
     // // note: When the value is not defined (property.name in object === false), then this code will never run.
-    let defaultValue = isSerialization ? 'null' : 'undefined';
+    // let defaultValue = isSerialization ? 'null' : 'undefined';
 
     // // if (property.hasDefault()) {
     // //     defaultValue = `${compilerContext.reserveVariable('defaultValueGetter', property.getDefaultValueFunction())}()`;
@@ -489,8 +492,10 @@ export function createConverterJSForMember(
     //     defaultValue = 'null';
     // }
 
+    //todo: clean that up. Way too much code for that simple functionality
+
+    //note: this code is only reached when ${accessor} was actually defined checked by the 'in' operator.
     return `
-        //this code is only reached when ${accessor} was actually defined checked by the 'in' operator.
         if (${accessor} === undefined) {
             if (${optional}) {
                 ${undefinedSetterCode}
@@ -522,36 +527,41 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
     const constructorArguments: string[] = [];
     if (constructor) {
         const parameters = constructor.getParameters();
-
-        for (let i = 0; i < parameters.length; i++) {
-            const parameter = parameters[i];
-            if (parameter.getVisibility() === undefined) continue;
+        for (const parameter of parameters) {
+            if (parameter.getVisibility() === undefined) {
+                constructorArguments.push('undefined');
+                continue;
+            }
 
             const property = clazz.getProperty(parameter.getName());
+            if (!property) continue;
 
-            if (!property) {
-                //might be handy to support also constructor parameters that are not properties.
+            if (property.isSerializerExcluded(state.registry.serializer.name)) {
                 continue;
             }
+            const argumentName = state.compilerContext.reserveVariable('c_' + parameter.getName());
 
-            const name = JSON.stringify(parameter.getName());
+            const name = JSON.stringify(property.getName());
+            const staticDefault = property.type.kind === ReflectionKind.literal ? `${argumentName} = ${state.compilerContext.reserveConst(property.type.literal)};` : '';
 
-            if (property.excludeSerializerNames && (property.excludeSerializerNames.includes('*') || property.excludeSerializerNames.includes(state.registry.serializer.name))) {
-                continue;
+            const embedded = property.getEmbedded();
+            if (embedded) {
+                preLines.push(`
+                    ${argumentName} = undefined;
+                    ${deserializeEmbeddable(argumentName, property.property, embedded, state)}
+                `);
+            } else {
+                preLines.push(`
+                ${argumentName} = undefined;
+                    if (${name} in ${state.accessor}) {
+                        ${createConverterJSForMember(argumentName, `${state.accessor}[${name}]`, property, state, undefined, undefined, state.extendPath(String(property.getName())))}
+                    } else {
+                        ${staticDefault}
+                    }
+                `);
             }
 
-            const staticDefault = parameter.type.kind === ReflectionKind.literal ? `c_${i} = ${state.compilerContext.reserveConst(parameter.type.literal)};` : '';
-
-            preLines.push(`
-                var c_${i};
-                if (${name} in ${state.accessor}) {
-                    ${createConverterJSForMember(`c_${i}`,
-                `${state.accessor}[${name}]`, property, state, undefined, undefined, state.extendPath(parameter.getName()))}
-                } else {
-                    ${staticDefault}
-                }
-            `);
-            constructorArguments.push(`c_${i}`);
+            constructorArguments.push(argumentName);
         }
     }
 
@@ -560,24 +570,23 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
 
         const name = getNameExpression(state.namingStrategy.getPropertyName(property.property), state);
 
-        if (property.excludeSerializerNames && (property.excludeSerializerNames.includes('*') || property.excludeSerializerNames.includes(state.registry.serializer.name))) {
+        if (property.isSerializerExcluded(state.registry.serializer.name)) {
             continue;
         }
 
         const setter = `${state.setter}[${JSON.stringify(property.getName())}]`;
         const staticDefault = !property.hasDefault() && property.type.kind === ReflectionKind.literal ? `${setter} = ${state.compilerContext.reserveConst(property.type.literal)};` : '';
 
-        lines.push(`
-            if (${name} in ${state.accessor}) {
-                ${createConverterJSForMember(
-            setter,
-            `${state.accessor}[${name}]`,
-            property,
-            state,
-            undefined, undefined, state.extendPath(String(property.getName()))
-        )}
-            } else { ${staticDefault} }
-        `);
+        const embedded = property.getEmbedded();
+        if (embedded) {
+            lines.push(deserializeEmbeddable(setter, property.property, embedded, state));
+        } else {
+            lines.push(`
+                if (${name} in ${state.accessor}) {
+                    ${createConverterJSForMember(setter, `${state.accessor}[${name}]`, property, state, undefined, undefined, state.extendPath(String(property.getName())))}
+                } else { ${staticDefault} }
+            `);
+        }
     }
 
     // for (const member of type.types) {
@@ -618,7 +627,82 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
     `);
 }
 
+function deserializeEmbeddable(setter: string, member: TypeProperty | TypePropertySignature, embedded: { prefix?: string }, state: TemplateState) {
+    assertType(member.type, ReflectionKind.class);
+    const preLines: string[] = [];
+
+    const clazz = ReflectionClass.from(member.type.classType);
+    const constructor = clazz.getConstructor();
+    const constructorArguments: string[] = [];
+    const embedProperties = getConstructorProperties(member.type);
+    if (constructor) {
+        const parameters = constructor.getParameters();
+        for (const parameter of parameters) {
+            if (parameter.getVisibility() === undefined) {
+                constructorArguments.push('undefined');
+                continue;
+            }
+
+            const property = clazz.getProperty(parameter.getName());
+            if (!property) continue;
+
+            if (property.isSerializerExcluded(state.registry.serializer.name)) {
+                continue;
+            }
+
+            const prefix = embedded.prefix ?? (embedProperties.length > 1 ? String(member.name) + '_' : '');
+            const accessorPropertyName = embedProperties.length === 1 ? String(member.name) : prefix + String(property.getName());
+            const argumentName = state.compilerContext.reserveVariable('c_' + parameter.getName());
+
+            const propertyEmbedded = property.getEmbedded();
+            const converter = propertyEmbedded ? deserializeEmbeddable(argumentName, property.property, propertyEmbedded, state)
+                : createConverterJSForMember(argumentName, `${state.accessor}[${JSON.stringify(accessorPropertyName)}]`, property, state, undefined, undefined, state.extendPath(String(property.getName())));
+
+            preLines.push(`
+                ${argumentName} = undefined;
+                ${converter}
+            `);
+            constructorArguments.push(argumentName);
+        }
+    }
+
+    const classType = state.compilerContext.reserveConst(member.type.classType);
+
+    return `
+        ${preLines.join('\n')}
+        ${setter} = new ${classType}(${constructorArguments.join(', ')});
+    `;
+}
+
+function serializeEmbeddable(setter: string, member: TypeProperty | TypePropertySignature, embedded: { prefix?: string }, state: TemplateState) {
+    assertType(member.type, ReflectionKind.class);
+    //only the constructor properties are serialized
+    const embed: string[] = [];
+    const name = getNameExpression(state.namingStrategy.getPropertyName(member), state);
+    const embedProperties = getConstructorProperties(member.type);
+    const prefix = embedded.prefix ?? (embedProperties.length > 1 ? String(member.name) + '_' : '');
+
+    for (const property of embedProperties) {
+        const embeddedPropertyName = getNameExpression(state.namingStrategy.getPropertyName(property), state);
+        const setterPropertyName = embedProperties.length === 1 ? String(member.name) : prefix + String(property.name);
+        embed.push(`
+            ${createConverterJSForMember(
+            `${setter}[${JSON.stringify(setterPropertyName)}]`,
+            `${state.accessor}[${name}][${embeddedPropertyName}]`,
+            property,
+            state,
+            undefined, undefined, state.extendPath(String(member.name)))}
+        `);
+    }
+
+    return embed;
+}
+
 export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState) {
+    const embedded = embeddedAnnotation.getFirst(type);
+    if (embedded) {
+        throw new Error('Free floating Embedded type not possible');
+    }
 
     const v = state.compilerContext.reserveName('v');
     const lines: string[] = [];
@@ -640,6 +724,16 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 staticDefault = `${setter} = null;`;
             }
 
+            const embedded = embeddedAnnotation.getFirst(member.type);
+            if (member.type.kind === ReflectionKind.class && embedded) {
+                lines.push(`
+                if (${name} in ${state.accessor}) {
+                    ${serializeEmbeddable(v, member, embedded, state).join('\n')}
+                } else { ${staticDefault} }
+                `);
+                continue;
+            }
+
             lines.push(`
             if (${name} in ${state.accessor}) {
                 ${createConverterJSForMember(
@@ -647,8 +741,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 `${state.accessor}[${name}]`,
                 member,
                 state,
-                undefined, undefined, state.extendPath(String(member.name))
-            )}
+                undefined, undefined, state.extendPath(String(member.name)))}
             } else { ${staticDefault} }
             `);
         }
@@ -658,12 +751,22 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     if (clazz) for (const property of clazz.getProperties()) {
         const name = getNameExpression(state.namingStrategy.getPropertyName(property.property), state);
 
-        if (property.excludeSerializerNames && (property.excludeSerializerNames.includes('*') || property.excludeSerializerNames.includes(state.registry.serializer.name))) {
+        if (property.isSerializerExcluded(state.registry.serializer.name)) {
             continue;
         }
 
         const setter = `${v}[${JSON.stringify(property.getName())}]`;
         const staticDefault = property.type.kind === ReflectionKind.literal ? `${setter} = ${state.compilerContext.reserveConst(property.type.literal)};` : '';
+
+        const embedded = embeddedAnnotation.getFirst(property.type);
+        if (property.type.kind === ReflectionKind.class && embedded) {
+            lines.push(`
+                if (${name} in ${state.accessor}) {
+                    ${serializeEmbeddable(v, property.property, embedded, state).join('\n')}
+                } else { ${staticDefault} }
+                `);
+            continue;
+        }
 
         lines.push(`
             if (${name} in ${state.accessor}) {
@@ -1066,11 +1169,27 @@ export function typeCheckClassOrObjectLiteral(type: TypeObjectLiteral | TypeClas
         `);
     }
 
+    let customValidatorCall = '';
+    if (type.kind === ReflectionKind.class) {
+        const reflection = ReflectionClass.from(type.classType);
+        if (reflection.validationMethod) {
+            const resVar = state.setVariable('validationResult');
+            const method = state.setVariable('method', reflection.validationMethod);
+            customValidatorCall = `
+            if (${state.setter}) {
+                ${resVar} = ${state.accessor}[${method}]();
+                if (${resVar} && options.errors) options.errors.push(new ValidationFailedItem(${resVar}.path || ${collapsePath(state.path)}, ${resVar}.code, ${resVar}.message));
+            }
+            `;
+        }
+    }
+
     state.addCodeForSetter(`
         let ${v} = true;
         if (${state.accessor} && 'object' === typeof ${state.accessor}) {
             ${lines.join('\n')}
             ${state.setter} = ${v};
+            ${customValidatorCall}
         } else {
             if (${state.validation}) ${state.assignValidationError('type', 'Not an object')}
             ${state.setter} = false;
@@ -1440,7 +1559,7 @@ export class Serializer {
                     if ('__type' in ${state.accessor}) {
                         ${state.setter} = isExtendable(resolveRuntimeType(${state.accessor}), ${t});
                     } else {
-                        ${state.setter} = false;
+                        ${state.setter} = true;
                     }
                 } else {
                     if (${state.validation}) ${state.assignValidationError('type', 'Not a function')}

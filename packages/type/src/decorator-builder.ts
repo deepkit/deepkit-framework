@@ -248,7 +248,7 @@ export function createClassDecoratorContext<API extends APIClass<any>, T = Extra
 
 export interface PropertyApiTypeInterface<T> {
     t: T,
-    onDecorator?: (target: ClassType, property: string, parameterIndexOrDescriptor?: any) => void
+    onDecorator?: (target: ClassType, property: string | undefined, parameterIndexOrDescriptor?: any) => void
 }
 
 export type APIProperty<T> = ClassType<PropertyApiTypeInterface<T>>;
@@ -264,7 +264,7 @@ export function createPropertyDecoratorContext<API extends APIProperty<any>, T =
     const targetMap = new Map<object, Map<any, PropertyApiTypeInterface<any>>>();
 
     function collapse(modifier: { name: string, args?: any }[], target: object, property?: string, parameterIndexOrDescriptor?: any) {
-        if (!property) throw new Error('Property decorators can only be used on class properties');
+        if (property === undefined && parameterIndexOrDescriptor === undefined) throw new Error('Property decorators can only be used on class properties');
 
         target = (target as any)['constructor']; //property decorators get the prototype instead of the class.
         let map = targetMap.get(target);
@@ -273,8 +273,8 @@ export function createPropertyDecoratorContext<API extends APIProperty<any>, T =
             targetMap.set(target, map);
         }
         const secondIndex = ('number' === typeof parameterIndexOrDescriptor ? parameterIndexOrDescriptor : '');
-        const index = property + '$$' + secondIndex;
-        const api: PropertyApiTypeInterface<any> = map.get(index) ?? new apiType(target, property);
+        const index = (property || 'constructor') + '$$' + secondIndex;
+        const api: PropertyApiTypeInterface<any> = map.get(index) ?? new apiType(target, property || 'constructor');
 
         for (const fn of modifier) {
             if (fn.args) {
