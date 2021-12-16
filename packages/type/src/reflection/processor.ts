@@ -516,7 +516,9 @@ export class Processor {
                                     }
                                 }
 
-                                if (isPrimitive(type)) {
+                                if (isPrimitive(type) || type.kind === ReflectionKind.array || type.kind === ReflectionKind.tuple || type.kind === ReflectionKind.regexp || type.kind === ReflectionKind.symbol) {
+                                    //at the moment, we globally assume that people don't add types to array/tuple/regexp/symbols e.g. no `(string[] & {doSomething: () => void})`.
+                                    //we treat all additional types in the intersection as decorators.
                                     primitive = type;
                                 } else if (type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.class) {
                                     candidates.push(type);

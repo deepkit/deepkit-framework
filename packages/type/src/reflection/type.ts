@@ -370,8 +370,7 @@ export function isType(entry: any): entry is Type {
 
 export function isPrimitive<T extends Type>(type: T): boolean {
     return type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.boolean
-        || type.kind === ReflectionKind.array || type.kind === ReflectionKind.tuple || type.kind === ReflectionKind.literal
-        || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined || type.kind === ReflectionKind.regexp || type.kind === ReflectionKind.symbol;
+        || type.kind === ReflectionKind.literal || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined;
 }
 
 /**

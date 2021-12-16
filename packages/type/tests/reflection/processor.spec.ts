@@ -22,7 +22,7 @@ enum MyEnum {
 }
 
 test('query', () => {
-    expectType({ ops: [ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.arg, 0, ReflectionOp.indexAccess], stack: ['a'] }, {
+    expectType({ ops: [ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.literal, 0, ReflectionOp.indexAccess], stack: ['a'] }, {
         kind: ReflectionKind.number
     });
 });
@@ -70,9 +70,9 @@ test('arg', () => {
 test('call sub routine', () => {
     expectType({ ops: [ReflectionOp.jump, 4, ReflectionOp.string, ReflectionOp.return, ReflectionOp.call, 2], stack: [] }, { kind: ReflectionKind.string });
     expectType({ ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.call, 2], stack: [] }, { kind: ReflectionKind.number });
-    expectType({ ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.call, 2, ReflectionOp.union], stack: [] }, {
+    expectType({ ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.boolean, ReflectionOp.call, 2, ReflectionOp.union], stack: [] }, {
         kind: ReflectionKind.union,
-        types: [{ kind: ReflectionKind.number }], //only number, since `return` returns only latest stack entry, not all
+        types: [{ kind: ReflectionKind.boolean }, { kind: ReflectionKind.number }], //not string, since `return` returns only latest stack entry, not all
     });
     expectType({
         ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.call, 2, ReflectionOp.undefined, ReflectionOp.union],
@@ -443,10 +443,6 @@ test('mapped type keyof and conditional', () => {
             kind: ReflectionKind.propertySignature,
             name: 'a',
             type: { kind: ReflectionKind.boolean }
-        }, {
-            kind: ReflectionKind.propertySignature,
-            name: 'b',
-            type: { kind: ReflectionKind.never }
         }]
     });
 });
