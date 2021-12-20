@@ -83,16 +83,16 @@ export class CompilerContext {
     }
 
     build(functionCode: string, ...args: string[]): any {
-        functionCode = `
+        functionCode = this.format(`
             'use strict';
             ${this.preCode}
             return function self(${args.join(', ')}){
                 'use strict';
                 ${functionCode}
             };
-        `;
+        `);
         try {
-            return new Function(...this.context.keys(), this.format(functionCode))(...this.context.values());
+            return new Function(...this.context.keys(), functionCode)(...this.context.values());
         } catch (error) {
             throw new Error(`Could not build function(${[...this.context.keys()].join(',')}): ` + error + functionCode);
         }

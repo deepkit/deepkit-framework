@@ -8,15 +8,19 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, CompilerContext, CustomError, getClassName, isArray, isFunction, isInteger, isNumeric, isObject } from '@deepkit/core';
+import { ClassType, CompilerContext, CustomError, getClassName, isArray, isFunction, isInteger, isIterable, isNumeric, isObject } from '@deepkit/core';
 import {
     AnnotationDefinition,
     assertType,
     embeddedAnnotation,
+    excludedAnnotation,
     FindType,
     getConstructorProperties,
+    hasDefaultValue,
     isNullable,
     isOptional,
+    mongoIdAnnotation,
+    OuterType,
     referenceAnnotation,
     ReflectionKind,
     stringifyType,
@@ -30,6 +34,7 @@ import {
     TypePropertySignature,
     TypeTuple,
     TypeUnion,
+    uuidAnnotation,
     validationAnnotation
 } from './reflection/type';
 import { ReflectionClass, ReflectionProperty } from './reflection/reflection';
@@ -51,32 +56,29 @@ export interface SerializationOptions {
     loosely?: boolean;
 }
 
-export function createSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): (data: any, options?: SerializationOptions) => any {
+export function createSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): (data: any, state?: SerializationOptions) => any {
     const compiler = new CompilerContext();
-
-    const templates = registry.get(type.kind);
-    if (!templates.length) return (data: any) => data;
 
     const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, jitStack, [path]);
 
     const code = `
         var result;
-        options = options ? options : {};
-        ${executeTemplates(state, templates, 'result', 'data', type, [])}
+        state = state ? state : {};
+        ${executeTemplates(state, type)}
         return result;
     `;
 
-    return compiler.build(code, 'data', 'options');
+    return compiler.build(code, 'data', 'state');
 }
 
-export type Guard = (data: any, options?: { errors?: ValidationFailedItem[] }) => boolean;
+export type Guard = (data: any, state?: { errors?: ValidationFailedItem[] }) => boolean;
 
 interface TypeGuardOptions {
     type: Type;
     registry: TemplateRegistry;
     namingStrategy?: NamingStrategy;
     specificality?: number;
-    path?: (string | DynamicPath)[];
+    path?: (string | RuntimeCode)[];
     jitStack?: JitStack;
     validation?: true;
 }
@@ -84,7 +86,7 @@ interface TypeGuardOptions {
 export function createTypeGuardFunction(options: TypeGuardOptions): undefined | Guard {
     const compiler = new CompilerContext();
 
-    const templates = options.registry.get(options.type.kind);
+    const templates = options.registry.get(options.type);
     if (!templates.length) return undefined;
 
     const state = new TemplateState(
@@ -103,14 +105,15 @@ export function createTypeGuardFunction(options: TypeGuardOptions): undefined | 
         if (state.ended) break;
     }
     for (const hook of state.registry.postHooks) hook(options.type, state);
+    for (const hook of state.registry.getDecorator(options.type)) hook(options.type, state);
 
     const code = `
         var result;
-        options = options ? options : {};
+        state = state ? state : {};
         ${state.template}
         return result === true;
     `;
-    return compiler.build(code, 'data', 'options');
+    return compiler.build(code, 'data', 'state');
 }
 
 export class SerializationError extends CustomError {
@@ -119,13 +122,13 @@ export class SerializationError extends CustomError {
     }
 }
 
-class DynamicPath {
+export class RuntimeCode {
     constructor(public code: string) {
     }
 }
 
-function collapsePath(path: (string | DynamicPath)[], prefix?: string): string {
-    return path.filter(v => !!v).map(v => v instanceof DynamicPath ? v.code : JSON.stringify(v)).join(`+'.'+`) || `''`;
+export function collapsePath(path: (string | RuntimeCode)[], prefix?: string): string {
+    return path.filter(v => !!v).map(v => v instanceof RuntimeCode ? v.code : JSON.stringify(v)).join(`+'.'+`) || `''`;
 }
 
 export class JitStack {
@@ -142,6 +145,17 @@ export class JitStack {
 
     get(type: Type) {
         return this.getStack().get(type);
+    }
+
+    prepare(type: Type) {
+        if (this.getStack().has(type)) throw new Error('Circular jit building detected: ' + stringifyType(type));
+
+        const entry: { fn: Function | undefined } = { fn: undefined };
+        this.getStack().set(type, entry);
+        return (fn: Function) => {
+            entry.fn = fn;
+            return entry;
+        };
     }
 
     getOrCreate(type: Type, create: () => Function): { fn: Function | undefined } {
@@ -169,27 +183,51 @@ export class TemplateState {
 
     public validation: boolean = false;
 
+    public propertyName?: string | RuntimeCode;
+    public setterDisabled: boolean = false;
+
     protected handledAnnotations: AnnotationDefinition[] = [];
 
     constructor(
         public originalSetter: string,
         public originalAccessor: string,
         public compilerContext: CompilerContext,
-        public readonly registry: TemplateRegistry,
+        public registry: TemplateRegistry,
         public readonly namingStrategy: NamingStrategy,
         public readonly jitStack: JitStack,
-        public readonly path: (string | DynamicPath)[]
+        public readonly path: (string | RuntimeCode)[]
     ) {
         this.setter = originalSetter;
         this.accessor = originalAccessor;
     }
 
-    fork(setter: string, accessor: string, path?: (string | DynamicPath)[]): TemplateState {
-        const state = new TemplateState(setter, accessor, this.compilerContext, this.registry, this.namingStrategy, this.jitStack, path || this.path);
+    getTypeGuard(type: Type, specificality: number = 1): undefined | Guard {
+        return createTypeGuardFunction({ type, registry: this.registry.serializer.typeGuards.getRegistry(specificality) });
+    }
+
+    fork(setter?: string, accessor?: string, path?: (string | RuntimeCode)[]): TemplateState {
+        const state = new TemplateState(setter ?? this.setter, accessor ?? this.accessor, this.compilerContext, this.registry, this.namingStrategy, this.jitStack, path || this.path.slice(0));
         state.specificality = this.specificality;
         state.validation = this.validation;
-        this.handledAnnotations = this.handledAnnotations.slice();
+        state.setterDisabled = this.setterDisabled;
+        state.handledAnnotations = this.handledAnnotations.slice();
         return state;
+    }
+
+    forRegistry(registry: TemplateRegistry) {
+        this.registry = registry;
+        return this;
+    }
+
+    forPropertyName(name?: string | number | symbol | RuntimeCode): this {
+        if (name === undefined) return this;
+        this.propertyName = name instanceof RuntimeCode ? name : String(name);
+        return this;
+    }
+
+    disableSetter(): this {
+        this.setterDisabled = true;
+        return this;
     }
 
     /**
@@ -212,20 +250,20 @@ export class TemplateState {
         return this.registry.serializer.deserializeRegistry === this.registry;
     }
 
-    extendPath(path: string | DynamicPath): (string | DynamicPath)[] {
-        const copy = this.path.slice();
-        copy.push(path);
-        return copy;
+    extendPath(path: string | RuntimeCode | number | symbol): this {
+        this.path.push(path instanceof RuntimeCode ? path : String(path));
+        return this;
     }
 
     assignValidationError(code: string, message: string) {
         this.setContext({ ValidationFailedItem });
-        return `if (options.errors) options.errors.push(new ValidationFailedItem(${collapsePath(this.path)}, ${JSON.stringify(code)}, ${JSON.stringify(message)}));`;
+        return `if (state.errors) state.errors.push(new ValidationFailedItem(${collapsePath(this.path)}, ${JSON.stringify(code)}, ${JSON.stringify(message)}));`;
     }
 
-    throwCode(type: string, error?: string) {
+    throwCode(type: OuterType | string, error?: string, accessor: string = this.originalAccessor) {
         this.setContext({ SerializationError });
-        return `throw new SerializationError('Cannot convert ' + ${this.originalAccessor} + ' to ' + ${JSON.stringify(type)} ${error ? ` + ${error}` : ''}, ${collapsePath(this.path)});`;
+        const to = JSON.stringify(('string' === typeof type ? type : stringifyType(type)).replace(/\n/g, '').replace(/\s+/g, ' ').trim());
+        return `throw new SerializationError('Cannot convert ' + ${accessor} + ' to ' + ${to} ${error ? ` + '. ' + ${error}` : ''}, ${collapsePath(this.path)});`;
     }
 
     /**
@@ -286,9 +324,25 @@ export type TemplateHook = (type: Type, state: TemplateState) => void;
 
 export class TemplateRegistry {
     protected templates: { [kind in ReflectionKind]?: Template<any>[] } = {};
+    protected decorator: { [kind in ReflectionKind]?: Template<any>[] } = {};
 
     public preHooks: TemplateHook[] = [];
     public postHooks: TemplateHook[] = [];
+
+    public classTemplates = new Map<ClassType, Template<any>[]>();
+
+    static BinaryTypes: ClassType[] = [
+        Int8Array,
+        Uint8Array,
+        Uint8ClampedArray,
+        Int16Array,
+        Uint16Array,
+        Int32Array,
+        Uint32Array,
+        Float32Array,
+        Float64Array,
+        ArrayBuffer,
+    ];
 
     constructor(public serializer: Serializer) {
     }
@@ -299,8 +353,50 @@ export class TemplateRegistry {
         this.postHooks = [];
     }
 
-    get(kind: ReflectionKind): Template<Type>[] {
-        return this.templates[kind] ||= [];
+    get(type: Type): Template<Type>[] {
+        if (type.kind === ReflectionKind.class) {
+            const classTemplates = this.classTemplates.get(type.classType);
+            if (classTemplates && classTemplates.length) return classTemplates;
+        }
+        return this.templates[type.kind] ||= [];
+    }
+
+    getDecorator(type: Type): Template<Type>[] {
+        return this.decorator[type.kind] ||= [];
+    }
+
+    /**
+     * Registers a template for all binary classes: ArrayBuffer, Uint8Array, Int8Array, etc.
+     */
+    registerBinary(template: Template<TypeClass>) {
+        for (const classType of TemplateRegistry.BinaryTypes) this.registerClass(classType, template);
+    }
+
+    /**
+     * Registers a template for a given class type.
+     *
+     * As soon as a single template has registered for the given classType the template registry
+     * only returns templates for this particular classType and omits all general purpose ReflectionKind.class templates for this particular classType.
+     */
+    registerClass(classType: ClassType, template: Template<TypeClass>) {
+        this.classTemplates.set(classType, [template]);
+    }
+
+    prependClass(classType: ClassType, template: Template<TypeClass>) {
+        this.getClassTemplates(classType).unshift(template);
+    }
+
+    appendClass(classType: ClassType, template: Template<TypeClass>) {
+        this.getClassTemplates(classType).push(template);
+    }
+
+    protected getClassTemplates(classType: ClassType): Template<TypeClass>[] {
+        let templates = this.classTemplates.get(classType);
+        if (!templates) {
+            templates = [];
+            this.classTemplates.set(classType, templates);
+        }
+        return templates;
     }
 
     addPreHook(callback: TemplateHook) {
@@ -325,6 +421,21 @@ export class TemplateRegistry {
         this.templates[kind] = [template];
     }
 
+    /**
+     * Registers additional templates that handle type decorators/annotations. The templates can safely assume that the given type in `state.accessor`
+     * is already type-checked to be `T`.
+     *
+     * Decorator templates run last (after normal templates and postHook).
+     *
+     * This split between register and registerForDecorator is made to have a distinction between native type templates and additional user-made templates.
+     * This allows to fetch only decorator templates and decide upon the result whether additional code is necessary or not. (this would not be possible
+     * if everything is added to the `register` call that does always the basic checks).
+     */
+    addDecorator<T extends ReflectionKind>(kind: T, template: Template<FindType<Type, T>>) {
+        this.decorator[kind] ||= [];
+        this.decorator[kind]!.push(template);
+    }
+
     prepend<T extends ReflectionKind>(kind: T, template: Template<FindType<Type, T>>) {
         this.templates[kind] ||= [];
         this.templates[kind]!.unshift(template);
@@ -334,127 +445,88 @@ export class TemplateRegistry {
         this.templates[kind] ||= [];
         this.templates[kind]!.push(template);
     }
-
-    prependClass(classType: ClassType, template: Template<FindType<Type, ReflectionKind.class>>) {
-        this.prepend(ReflectionKind.class, (type, state) => {
-            if (type.classType === classType) {
-                template(type, state);
-                state.stop();
-            }
-        });
-    }
 }
 
 export function executeTemplates(
-    parentState: TemplateState,
-    templates: Template<any>[],
-    setter: string,
-    getter: string,
+    state: TemplateState,
     type: Type,
-    path: (string | DynamicPath)[]
 ): string {
     //object literals and classes get their own function
-    const needsFunction = type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral;
+    const needsFunction = (type.kind === ReflectionKind.class && type.types.length) || type.kind === ReflectionKind.objectLiteral;
+    const templates = state.registry.get(type);
+    const parentState = state;
     if (needsFunction) {
-        const jit = parentState.jitStack.getOrCreate(type, () => {
-            const state = parentState.fork('result', 'data', [new DynamicPath('_path')]);
-            state.compilerContext = new CompilerContext(); //a fresh once since we create new function
-
-            for (const hook of state.registry.preHooks) hook(type, state);
-            for (const template of templates) {
-                template(type, state);
-                if (state.ended) break;
-            }
-            for (const hook of state.registry.postHooks) hook(type, state);
-
-            let circularCheckBeginning = '';
-            let circularCheckEnd = '';
-            if (type.kind === ReflectionKind.class) {
-                const reflection = ReflectionClass.from(type.classType);
-                if (reflection.hasCircularReference()) {
-                    circularCheckBeginning = `
-                        if (options._stack) {
-                            if (options._stack.includes(data)) return undefined;
-                        } else {
-                            options._stack = [];
-                        }
-                        options._stack.push(data);
-                    `;
-                    circularCheckEnd = `if (options._stack) options._stack.pop();`;
-                }
-            }
-            const code = `
-                /*
-                 Jit code for
-                 ${stringifyType(type)}
-                */
-                var result;
-                ${circularCheckBeginning}
-                options = options ? options : {};
-                ${state.template}
-
-                ${circularCheckEnd}
-                return result;
-            `;
-            return state.compilerContext.build(code, 'data', 'options', '_path');
-        });
-        return `${setter} = ${parentState.setVariable('jit', jit)}.fn(${getter}, options, ${collapsePath(path)});`;
-    } else {
-        const state = parentState.fork(setter, getter, path);
-        for (const hook of state.registry.preHooks) hook(type, state);
-        for (const template of templates) {
-            template(type, state);
-            if (state.ended) break;
+        const jit = state.jitStack.get(type);
+        if (jit) {
+            return `${parentState.setterDisabled || !parentState.setter ? '' : `${parentState.setter} = `}${parentState.setVariable('jit', jit)}.fn(${parentState.accessor || 'undefined'}, state, ${collapsePath(parentState.path)});`;
         }
-        for (const hook of state.registry.postHooks) hook(type, state);
-        return state.template;
-    }
-}
-
-export function getTemplateJSForTypeForState(
-    setter: string,
-    accessor: string,
-    type: Type,
-    state: TemplateState,
-    path: (string | DynamicPath)[]
-) {
-    const templates = state.registry.get(type.kind);
-    let convert = '';
-    if (templates.length) {
-        convert = executeTemplates(state, templates, setter, accessor, type, path);
-    } else {
-        convert = `//no template for ${type.kind}`;
+        const propertyName = state.propertyName;
+        state = state.fork('result', 'data', [new RuntimeCode('_path')]);
+        state.propertyName = propertyName;
+        state.compilerContext = new CompilerContext(); //a fresh once since we create a new function
     }
 
-    return convert;
+    const prepare = needsFunction ? state.jitStack.prepare(type) : undefined;
+
+    for (const hook of state.registry.preHooks) hook(type, state);
+    for (const template of templates) {
+        template(type, state);
+        if (state.ended) break;
+    }
+    for (const hook of state.registry.postHooks) hook(type, state);
+    for (const template of state.registry.getDecorator(type)) template(type, state);
+    if (!state.template) return '';
+
+    if (needsFunction && prepare) {
+        let circularCheckBeginning = '';
+        let circularCheckEnd = '';
+        if (type.kind === ReflectionKind.class) {
+            const reflection = ReflectionClass.from(type.classType);
+            if (reflection.hasCircularReference()) {
+                circularCheckBeginning = `
+                    if (state._stack) {
+                        if (state._stack.includes(data)) return undefined;
+                    } else {
+                        state._stack = [];
+                    }
+                    state._stack.push(data);
+                `;
+                circularCheckEnd = `if (state._stack) state._stack.pop();`;
+            }
+        }
+        const code = `
+            /*
+             Jit code for
+             ${stringifyType(type)}
+            */
+            var result;
+            ${circularCheckBeginning}
+            state = state ? state : {};
+            ${state.template}
+
+            ${circularCheckEnd}
+            return result;
+        `;
+        const jit = prepare(state.compilerContext.build(code, 'data', 'state', '_path'));
+        return `${parentState.setterDisabled || !parentState.setter ? '' : `${parentState.setter} = `}${parentState.setVariable('jit', jit)}.fn(${parentState.accessor || 'undefined'}, state, ${collapsePath(parentState.path)});`;
+    }
+
+    return state.template;
 }
 
 export function createConverterJSForMember(
-    setter: string,
-    accessor: string,
     property: ReflectionProperty | TypeProperty | TypePropertySignature | TypeIndexSignature,
     state: TemplateState,
     undefinedSetterCode: string = '',
     nullSetterCode: string = '',
-    path: (string | DynamicPath)[]
 ): string {
     const { registry, compilerContext, namingStrategy } = state;
-    const undefinedCompiler = registry.get(ReflectionKind.undefined);
-    const nullCompiler = registry.get(ReflectionKind.null);
     const type = property instanceof ReflectionProperty ? property.type : property.type;
 
-    undefinedSetterCode = undefinedSetterCode || (undefinedCompiler ? executeTemplates(state, undefinedCompiler, setter, accessor, { kind: ReflectionKind.undefined }, path) : '');
-    nullSetterCode = nullSetterCode || (nullCompiler ? executeTemplates(state, nullCompiler, setter, accessor, { kind: ReflectionKind.null }, path) : '');
+    undefinedSetterCode = undefinedSetterCode || executeTemplates(state.fork(), { kind: ReflectionKind.undefined });
+    nullSetterCode = nullSetterCode || executeTemplates(state.fork(), { kind: ReflectionKind.null });
 
-    const templates = registry.get(type.kind);
-    let convert = '';
-    if (templates.length) {
-        convert = executeTemplates(state, templates, setter, accessor, type, path);
-    } else {
-        convert = `
-        //no template for ${type.kind}
-        ${setter} = ${accessor};`;
-    }
+    let convert = executeTemplates(state.fork(), type);
 
     let postTransform = '';
 
@@ -465,14 +537,14 @@ export function createConverterJSForMember(
         if (isSerialization) {
             if (property.serializer) {
                 const fnVar = compilerContext.reserveVariable('transformer', property.serializer);
-                postTransform = `${setter} = ${fnVar}(${setter}, ${compilerContext.reserveConst(property)})`;
+                postTransform = `${state.setter} = ${fnVar}(${state.setter}, ${compilerContext.reserveConst(property)})`;
             }
         }
 
         if (isDeserialization) {
             if (property.deserializer) {
                 const fnVar = compilerContext.reserveVariable('transformer', property.deserializer);
-                postTransform = `${setter} = ${fnVar}(${setter}, ${compilerContext.reserveConst(property)})`;
+                postTransform = `${state.setter} = ${fnVar}(${state.setter}, ${compilerContext.reserveConst(property)})`;
             }
         }
     }
@@ -496,11 +568,11 @@ export function createConverterJSForMember(
 
     //note: this code is only reached when ${accessor} was actually defined checked by the 'in' operator.
     return `
-        if (${accessor} === undefined) {
+        if (${state.accessor} === undefined) {
             if (${optional}) {
                 ${undefinedSetterCode}
             }
-        } else if (${accessor} === null) {
+        } else if (${state.accessor} === null) {
             //null acts on transport layer as telling an explicitly set undefined
             //this is to support actual undefined as value across a transport layer. Otherwise it
             //would be impossible to set a already set value to undefined back or override default value (since JSON.stringify() omits that information)
@@ -554,7 +626,7 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
                 preLines.push(`
                 ${argumentName} = undefined;
                     if (${name} in ${state.accessor}) {
-                        ${createConverterJSForMember(argumentName, `${state.accessor}[${name}]`, property, state, undefined, undefined, state.extendPath(String(property.getName())))}
+                        ${createConverterJSForMember(property, state.fork(argumentName, `${state.accessor}[${name}]`).extendPath(String(property.getName())))}
                     } else {
                         ${staticDefault}
                     }
@@ -583,17 +655,11 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
         } else {
             lines.push(`
                 if (${name} in ${state.accessor}) {
-                    ${createConverterJSForMember(setter, `${state.accessor}[${name}]`, property, state, undefined, undefined, state.extendPath(String(property.getName())))}
+                    ${createConverterJSForMember(property, state.fork(setter, `${state.accessor}[${name}]`).extendPath(String(property.getName())))}
                 } else { ${staticDefault} }
             `);
         }
     }
-
-    // for (const member of type.types) {
-    //     if (member.kind === ReflectionKind.indexSignature) {
-    //         //todo, class index signatures
-    //     }
-    // }
 
     const classType = state.compilerContext.reserveConst(type.classType);
 
@@ -614,7 +680,7 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
                 ${code}
             } else {
                 let pk;
-                ${getTemplateJSForTypeForState('pk', state.accessor, reflection.getPrimary().getType(), state, state.extendPath(String(reflection.getPrimary().getName())))}
+                ${executeTemplates(state.fork('pk').extendPath(String(reflection.getPrimary().getName())), reflection.getPrimary().getType())}
                 ${state.setter} = createReference(${referenceClassTypeVar}, {${JSON.stringify(reflection.getPrimary().getName())}: pk});
             }
         `);
@@ -656,7 +722,7 @@ function deserializeEmbeddable(setter: string, member: TypeProperty | TypeProper
 
             const propertyEmbedded = property.getEmbedded();
             const converter = propertyEmbedded ? deserializeEmbeddable(argumentName, property.property, propertyEmbedded, state)
-                : createConverterJSForMember(argumentName, `${state.accessor}[${JSON.stringify(accessorPropertyName)}]`, property, state, undefined, undefined, state.extendPath(String(property.getName())));
+                : createConverterJSForMember(property, state.fork(argumentName, `${state.accessor}[${JSON.stringify(accessorPropertyName)}]`).extendPath(String(property.getName())));
 
             preLines.push(`
                 ${argumentName} = undefined;
@@ -686,16 +752,41 @@ function serializeEmbeddable(setter: string, member: TypeProperty | TypeProperty
         const embeddedPropertyName = getNameExpression(state.namingStrategy.getPropertyName(property), state);
         const setterPropertyName = embedProperties.length === 1 ? String(member.name) : prefix + String(property.name);
         embed.push(`
-            ${createConverterJSForMember(
-            `${setter}[${JSON.stringify(setterPropertyName)}]`,
-            `${state.accessor}[${name}][${embeddedPropertyName}]`,
-            property,
-            state,
-            undefined, undefined, state.extendPath(String(member.name)))}
+            ${createConverterJSForMember(property, state.fork(`${setter}[${JSON.stringify(setterPropertyName)}]`, `${state.accessor}[${name}][${embeddedPropertyName}]`).extendPath(String(member.name)))}
         `);
     }
 
     return embed;
+}
+
+export function getIndexCheck(state: TemplateState, i: string, type: Type): string {
+    if (type.kind === ReflectionKind.number) {
+        state.setContext({ isNumeric: isNumeric });
+        return `isNumeric(${i})`;
+    } else if (type.kind === ReflectionKind.string) {
+        return `'string' === typeof ${i}`;
+    } else if (type.kind === ReflectionKind.symbol) {
+        return `'symbol' === typeof ${i}`;
+    } else if (type.kind === ReflectionKind.templateLiteral) {
+        state.setContext({ extendTemplateLiteral: extendTemplateLiteral });
+        const typeVar = state.setVariable('type', type);
+        return `'string' === typeof ${i} && extendTemplateLiteral({kind: ${ReflectionKind.literal}, literal: ${i}}, ${typeVar})`;
+    } else if (type.kind === ReflectionKind.union) {
+        return '(' + type.types.map(v => getIndexCheck(state, i, v)).join(' || ') + ')';
+    }
+    return '';
+}
+
+export function getStaticDefaultCodeForProperty(member: TypeProperty | TypePropertySignature, setter: string, state: TemplateState) {
+    let staticDefault = ``;
+    if (!hasDefaultValue(member)) {
+        if (member.type.kind === ReflectionKind.literal) {
+            staticDefault = `${setter} = ${state.compilerContext.reserveConst(member.type.literal)};`;
+        } else if (!isOptional(member) && isNullable(member.type)) {
+            staticDefault = `${setter} = null;`;
+        }
+    }
+    return staticDefault;
 }
 
 export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState) {
@@ -712,17 +803,16 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
 
     for (const member of type.types) {
         if (member.kind === ReflectionKind.indexSignature) {
+            if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
             signatures.push(member);
-        } else if (member.kind === ReflectionKind.propertySignature) {
-            const name = getNameExpression(state.namingStrategy.getPropertyName(member), state);
+        } else if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
+            if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
 
-            const setter = `${v}[${JSON.stringify(member.name)}]`;
-            let staticDefault = ``;
-            if (member.type.kind === ReflectionKind.literal) {
-                staticDefault = `${setter} = ${state.compilerContext.reserveConst(member.type.literal)};`;
-            } else if (!isOptional(member) && isNullable(member.type)) {
-                staticDefault = `${setter} = null;`;
-            }
+            const name = getNameExpression(state.namingStrategy.getPropertyName(member), state);
+            existing.push(name);
+
+            const setter = `${v}[${name}]`;
+            const staticDefault = getStaticDefaultCodeForProperty(member, setter, state);
 
             const embedded = embeddedAnnotation.getFirst(member.type);
             if (member.type.kind === ReflectionKind.class && embedded) {
@@ -736,49 +826,10 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
 
             lines.push(`
             if (${name} in ${state.accessor}) {
-                ${createConverterJSForMember(
-                setter,
-                `${state.accessor}[${name}]`,
-                member,
-                state,
-                undefined, undefined, state.extendPath(String(member.name)))}
+                ${createConverterJSForMember(member, state.fork(setter, `${state.accessor}[${name}]`).extendPath(String(member.name)))}
             } else { ${staticDefault} }
             `);
         }
-    }
-
-    const clazz = type.kind === ReflectionKind.class ? ReflectionClass.from(type.classType) : undefined;
-    if (clazz) for (const property of clazz.getProperties()) {
-        const name = getNameExpression(state.namingStrategy.getPropertyName(property.property), state);
-
-        if (property.isSerializerExcluded(state.registry.serializer.name)) {
-            continue;
-        }
-
-        const setter = `${v}[${JSON.stringify(property.getName())}]`;
-        const staticDefault = property.type.kind === ReflectionKind.literal ? `${setter} = ${state.compilerContext.reserveConst(property.type.literal)};` : '';
-
-        const embedded = embeddedAnnotation.getFirst(property.type);
-        if (property.type.kind === ReflectionKind.class && embedded) {
-            lines.push(`
-                if (${name} in ${state.accessor}) {
-                    ${serializeEmbeddable(v, property.property, embedded, state).join('\n')}
-                } else { ${staticDefault} }
-                `);
-            continue;
-        }
-
-        lines.push(`
-            if (${name} in ${state.accessor}) {
-                ${createConverterJSForMember(
-            setter,
-            `${state.accessor}[${name}]`,
-            property,
-            state,
-            undefined, undefined, state.extendPath(String(property.getName()))
-        )}
-            } else { ${staticDefault} }
-        `);
     }
 
     if (signatures.length) {
@@ -802,33 +853,9 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             return +1;
         });
 
-        function getIndexCheck(type: Type): string {
-            if (type.kind === ReflectionKind.number) {
-                state.setContext({ isNumeric: isNumeric });
-                return `isNumeric(${i})`;
-            } else if (type.kind === ReflectionKind.string) {
-                return `'string' === typeof ${i}`;
-            } else if (type.kind === ReflectionKind.symbol) {
-                return `'symbol' === typeof ${i}`;
-            } else if (type.kind === ReflectionKind.templateLiteral) {
-                state.setContext({ extendTemplateLiteral: extendTemplateLiteral });
-                const typeVar = state.setVariable('type', type);
-                return `'string' === typeof ${i} && extendTemplateLiteral({kind: ${ReflectionKind.literal}, literal: ${i}}, ${typeVar})`;
-            } else if (type.kind === ReflectionKind.union) {
-                return '(' + type.types.map(getIndexCheck).join(' || ') + ')';
-            }
-            return '';
-        }
-
         for (const signature of signatures) {
-            signatureLines.push(`else if (${getIndexCheck(signature.index)}) {
-                ${createConverterJSForMember(
-                `${v}[${i}]`,
-                `${state.accessor}[${i}]`,
-                signature,
-                state,
-                undefined, undefined, state.extendPath(new DynamicPath(i))
-            )}
+            signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)}) {
+                ${createConverterJSForMember(signature, state.fork(`${v}[${i}]`, `${state.accessor}[${i}]`).extendPath(new RuntimeCode(i)))}
             }`);
         }
 
@@ -857,7 +884,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             //the primary key is serialised for unhydrated references
             state.addCodeForSetter(`
             if (isReference(${state.accessor}) && !isReferenceHydrated(${state.accessor})) {
-                ${getTemplateJSForTypeForState(state.setter, `${state.accessor}[${JSON.stringify(reflection.getPrimary().getName())}]`, reflection.getPrimary().getType(), state, state.path)}
+                ${executeTemplates(state.fork(state.setter, `${state.accessor}[${JSON.stringify(reflection.getPrimary().getName())}]`), reflection.getPrimary().getType())}
             } else {
                 ${code}
             }
@@ -867,54 +894,48 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     }
 
     state.addCodeForSetter(`
-        if ('object' !== typeof ${state.accessor}) ${state.throwCode(stringifyType(type))}
+        if ('object' !== typeof ${state.accessor}) ${state.throwCode(type)}
         ${code}
     `);
 }
 
 export function serializeArray(elementType: Type, state: TemplateState) {
-    const a = state.compilerContext.reserveName('a');
-    const l = state.compilerContext.reserveName('l');
-
-    const optional = isOptional(elementType);
-    state.setContext({ isArray });
+    state.setContext({ isIterable });
+    const v = state.compilerContext.reserveName('v');
+    const i = state.compilerContext.reserveName('i');
+    const item = state.compilerContext.reserveName('item');
 
     //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
     state.addCodeForSetter(`
-    if (isArray(${state.accessor})) {
-         let ${l} = ${state.accessor}.length;
-         let ${a} = ${state.accessor}.slice();
-         while (${l}--) {
-            //make sure all elements have the correct type
-            if (${state.accessor}[${l}] !== undefined && ${state.accessor}[${l}] !== null) {
-                let itemValue;
-                ${getTemplateJSForTypeForState(`itemValue`, `${a}[${l}]`, elementType, state, state.extendPath(new DynamicPath(l)))}
-                if (${!optional} && itemValue === undefined) {
-                    ${a}.splice(${l}, 1);
-                } else {
-                    ${a}[${l}] = itemValue;
-                }
+         if (isIterable(${state.accessor})) {
+            ${state.setter} = [];
+            let ${i} = 0;
+            for (const ${item} of ${state.accessor}) {
+                let ${v};
+                ${executeTemplates(state.fork(v, item).extendPath(new RuntimeCode(i)), elementType)}
+                ${state.setter}.push(${v});
+                ${i}++;
             }
          }
-         ${state.setter} = ${a};
-    }
     `);
 }
 
 export function typeCheckArray(elementType: Type, state: TemplateState) {
-    const v = state.compilerContext.reserveName('v');
-    const l = state.compilerContext.reserveName('l');
-    state.setContext({ isArray: isArray });
+    state.setContext({ isIterable });
 
+    const v = state.compilerContext.reserveName('v');
+    const i = state.compilerContext.reserveName('i');
+    const item = state.compilerContext.reserveName('item');
     //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
     state.addCodeForSetter(`
          let ${v} = false;
-         if (isArray(${state.accessor})) {
-             let ${l} = ${state.accessor}.length;
-             while (${l}--) {
-                ${getTemplateJSForTypeForState(v, `${state.accessor}[${l}]`, elementType, state, state.extendPath(new DynamicPath(l)))}
+         let ${i} = 0;
+         if (isIterable(${state.accessor})) {
+            for (const ${item} of ${state.accessor}) {
+                ${executeTemplates(state.fork(v, item).extendPath(new RuntimeCode(i)), elementType)}
                 if (!${v}) break;
-             }
+                ${i}++;
+            }
          } else if (${state.validation}) {
             ${state.assignValidationError('type', 'Not an array')}
          }
@@ -944,7 +965,7 @@ function serializeTypeTuple(type: TypeTuple, state: TemplateState) {
             lines.push(`
             for (; ${i} < ${state.accessor}.length - ${restEndOffset}; ${i}++) {
                 ${_} = undefined;
-                ${getTemplateJSForTypeForState(_, `${state.accessor}[${i}]`, member.type.type, state, state.extendPath(new DynamicPath(i)))}
+                ${executeTemplates(state.fork(_, `${state.accessor}[${i}]`).extendPath(new RuntimeCode(i)), member.type.type)}
                 if (${_} !== undefined) {
                     ${state.setter}.push(${_});
                 } else if (${member.optional || isOptional(member.type)}) {
@@ -955,7 +976,7 @@ function serializeTypeTuple(type: TypeTuple, state: TemplateState) {
         } else {
             lines.push(`
             ${_} = undefined;
-            ${getTemplateJSForTypeForState(_, `${state.accessor}[${i}]`, member.type, state, state.extendPath(new DynamicPath(i)))}
+            ${executeTemplates(state.fork(_, `${state.accessor}[${i}]`).extendPath(new RuntimeCode(i)), member.type)}
             if (${_} !== undefined) {
                 ${state.setter}.push(${_});
             } else if (${member.optional || isOptional(member.type)}) {
@@ -995,7 +1016,7 @@ function typeGuardTypeTuple(type: TypeTuple, state: TemplateState) {
         if (member.type.kind === ReflectionKind.rest) {
             lines.push(`
             for (; ${v} && ${i} < ${state.accessor}.length - ${restEndOffset}; ${i}++) {
-                ${getTemplateJSForTypeForState(v, `${state.accessor}[${i}]`, member.type.type, state, state.extendPath(new DynamicPath(i)))}
+                ${executeTemplates(state.fork(v, `${state.accessor}[${i}]`).extendPath(new RuntimeCode(i)), member.type.type)}
                 if (!${v}) {
                     break;
                 }
@@ -1004,7 +1025,7 @@ function typeGuardTypeTuple(type: TypeTuple, state: TemplateState) {
         } else {
             lines.push(`
             if (${v}) {
-                ${getTemplateJSForTypeForState(v, `${state.accessor}[${i}]`, member.type, state, state.extendPath(new DynamicPath(i)))}
+                ${executeTemplates(state.fork(v, `${state.accessor}[${i}]`).extendPath(new RuntimeCode(i)), member.type)}
                 ${i}++;
             }
             `);
@@ -1028,9 +1049,6 @@ function typeGuardTypeTuple(type: TypeTuple, state: TemplateState) {
 function typeGuardTypeClassMap(type: TypeClass, state: TemplateState) {
     if (!type.arguments || type.arguments.length !== 2) return;
 
-    state.setContext({ Array });
-    state.addSetter(`Array.from(${state.accessor})`);
-
     typeCheckArray({
         kind: ReflectionKind.tuple, types: [
             { kind: ReflectionKind.tupleMember, type: type.arguments[0] },
@@ -1042,16 +1060,13 @@ function typeGuardTypeClassMap(type: TypeClass, state: TemplateState) {
 function typeGuardTypeClassSet(type: TypeClass, state: TemplateState) {
     if (!type.arguments || type.arguments.length !== 1) return;
 
-    state.setContext({ Array });
-    state.addSetter(`Array.from(${state.accessor})`);
-
     typeCheckArray(type.arguments[0], state);
 }
 
-function getNameExpression(name: string | number | symbol | undefined, state: TemplateState): string {
+export function getNameExpression(name: string | number | symbol | undefined, state: TemplateState): string {
     if (undefined === name) return 'undefined';
     if ('string' === typeof name || 'number' === typeof name) return JSON.stringify(name);
-    return state.compilerContext.reserveConst(name);
+    return state.compilerContext.reserveConst(name, 'symbolName');
 }
 
 export function typeCheckClassOrObjectLiteralSecondIteration(type: TypeObjectLiteral | TypeClass, state: TemplateState) {
@@ -1092,14 +1107,10 @@ export function typeCheckClassOrObjectLiteral(type: TypeObjectLiteral | TypeClas
 
             lines.push(`
             if (${v} ${optionalCheck}) {
-                ${getTemplateJSForTypeForState(
-                v,
-                `${state.accessor}[${name}]`,
+                ${executeTemplates(state.fork(v, `${state.accessor}[${name}]`).extendPath(String(member.name)),
                 member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
                     ? { kind: ReflectionKind.function, name: member.name, return: member.return, parameters: member.parameters }
-                    : member.type,
-                state,
-                state.extendPath(String(member.name))
+                    : member.type
             )}
             }`);
         }
@@ -1142,13 +1153,7 @@ export function typeCheckClassOrObjectLiteral(type: TypeObjectLiteral | TypeClas
 
         for (const signature of signatures) {
             signatureLines.push(`else if (${getIndexCheck(signature.index)}) {
-                ${getTemplateJSForTypeForState(
-                v,
-                `${state.accessor}[${i}]`,
-                signature.type,
-                state,
-                state.extendPath(new DynamicPath(i))
-            )}
+                ${executeTemplates(state.fork(v, `${state.accessor}[${i}]`).extendPath(new RuntimeCode(i)), signature.type)}
             }`);
         }
 
@@ -1178,7 +1183,7 @@ export function typeCheckClassOrObjectLiteral(type: TypeObjectLiteral | TypeClas
             customValidatorCall = `
             if (${state.setter}) {
                 ${resVar} = ${state.accessor}[${method}]();
-                if (${resVar} && options.errors) options.errors.push(new ValidationFailedItem(${resVar}.path || ${collapsePath(state.path)}, ${resVar}.code, ${resVar}.message));
+                if (${resVar} && state.errors) state.errors.push(new ValidationFailedItem(${resVar}.path || ${collapsePath(state.path)}, ${resVar}.code, ${resVar}.message));
             }
             `;
         }
@@ -1242,10 +1247,10 @@ export function serializeTypeUnion(type: TypeUnion, state: TemplateState) {
             const fn = createTypeGuardFunction({ type: t, registry: typeGuard });
             if (!fn) continue;
             const guard = state.setVariable('guard' + t.kind, fn);
-            const looseCheck = specificality <= 0 ? `options.loosely && ` : '';
+            const looseCheck = specificality <= 0 ? `state.loosely && ` : '';
 
             lines.push(`else if (${looseCheck}${guard}(${state.accessor})) { //type = ${ReflectionKind[t.kind]}, specificality=${specificality}
-                ${getTemplateJSForTypeForState(state.setter, state.accessor, t, state, state.path)}
+                ${executeTemplates(state.fork(state.setter, state.accessor).forPropertyName(state.propertyName), t)}
             }`);
         }
     }
@@ -1311,6 +1316,20 @@ export class TypeGuardRegistry {
     register<T extends ReflectionKind>(specificality: number, kind: T, template: Template<FindType<Type, T>>) {
         this.getRegistry(specificality).register(kind, template);
     }
+
+    /**
+     * @see register
+     */
+    registerClass(specificality: number, classType: ClassType, template: Template<TypeClass>) {
+        this.getRegistry(specificality).registerClass(classType, template);
+    }
+
+    /**
+     * @see register
+     */
+    registerBinary(specificality: number, template: Template<TypeClass>) {
+        this.getRegistry(specificality).registerBinary(template);
+    }
 }
 
 /**
@@ -1322,9 +1341,7 @@ export class TypeGuardRegistry {
 export class Serializer {
     serializeRegistry = new TemplateRegistry(this);
     deserializeRegistry = new TemplateRegistry(this);
-
     typeGuards = new TypeGuardRegistry(this);
-
     validators = new TemplateRegistry(this);
 
     public name: string = 'default';
@@ -1336,9 +1353,6 @@ export class Serializer {
     }
 
     protected registerValidators() {
-        this.validators.register(ReflectionKind.number, () => {
-
-        });
     }
 
     clear() {
@@ -1349,6 +1363,9 @@ export class Serializer {
     }
 
     protected registerSerializers() {
+        this.deserializeRegistry.register(ReflectionKind.any, (type, state) => state.addSetter(state.accessor));
+        this.serializeRegistry.register(ReflectionKind.any, (type, state) => state.addSetter(state.accessor));
+
         this.deserializeRegistry.register(ReflectionKind.class, deserializeClass);
         this.serializeRegistry.register(ReflectionKind.class, serializeObjectLiteral);
         this.deserializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
@@ -1374,12 +1391,28 @@ export class Serializer {
 
         this.serializeRegistry.register(ReflectionKind.bigint, (type, state) => state.addSetter(`${state.accessor}.toString()`));
 
-        this.deserializeRegistry.prependClass(Date, (type, state) => state.addSetter(`new Date(${state.accessor})`));
-        this.serializeRegistry.prependClass(Date, (type, state) => state.addSetter(`${state.accessor}.toJSON()`));
+        this.deserializeRegistry.registerClass(Date, (type, state) => state.addSetter(`new Date(${state.accessor})`));
+        this.serializeRegistry.registerClass(Date, (type, state) => state.addSetter(`${state.accessor}.toJSON()`));
 
         this.serializeRegistry.register(ReflectionKind.string, (type, state) => state.addSetter(state.accessor));
+
         this.deserializeRegistry.register(ReflectionKind.string, (type, state) => {
             state.addSetter(`'string' !== typeof ${state.accessor} ? ${state.accessor}+'' : ${state.accessor}`);
+        });
+
+        this.deserializeRegistry.addDecorator(ReflectionKind.string, (type, state) => {
+            if (uuidAnnotation.getFirst(type)) {
+                const v = state.accessor;
+                const check = `${v}.length === 36 && ${v}[23] === '-' && ${v}[18] === '-' && ${v}[13] === '-' && ${v}[8] === '-'`;
+                state.addCode(`
+                    if (!(${check})) ${state.throwCode(type, JSON.stringify('Not a UUID'))}
+                `);
+            } else if (mongoIdAnnotation.getFirst(type)) {
+                const check = `${state.accessor}.length === 24`;
+                state.addCode(`
+                    if (!(${check})) ${state.throwCode(type, JSON.stringify('Not a MongoId (ObjectId)'))}
+                `);
+            }
         });
 
         this.serializeRegistry.register(ReflectionKind.templateLiteral, (type, state) => state.addSetter(state.accessor));
@@ -1391,6 +1424,9 @@ export class Serializer {
         this.deserializeRegistry.register(ReflectionKind.boolean, (type, state) => {
             state.addSetter(`'boolean' !== typeof ${state.accessor} ? ${state.accessor} == 1 || ${state.accessor} == 'true' : ${state.accessor}`);
         });
+
+        this.serializeRegistry.register(ReflectionKind.promise, (type, state) => executeTemplates(state, type.type));
+        this.deserializeRegistry.register(ReflectionKind.promise, (type, state) => executeTemplates(state, type.type));
 
         this.serializeRegistry.register(ReflectionKind.bigint, (type, state) => state.addSetter(state.accessor));
         this.deserializeRegistry.register(ReflectionKind.bigint, (type, state) => {
@@ -1448,13 +1484,29 @@ export class Serializer {
                 }
             }
 
-            state.addCodeForSetter(`if (isNaN(${state.accessor})) ${state.throwCode('number')}`);
+            state.addCodeForSetter(`if (isNaN(${state.accessor})) ${state.throwCode(type)}`);
         });
 
     }
 
     protected registerTypeGuards() {
-        this.typeGuards.register(1, ReflectionKind.string, (type, state) => state.addSetterAndReportErrorIfInvalid('type', 'Not a string', `'string' === typeof ${state.accessor}`));
+        //if nothing else matches in a union, any matches anything
+        this.typeGuards.register(20, ReflectionKind.any, (type, state) => state.addSetter('true'));
+
+        this.typeGuards.register(1, ReflectionKind.string, (type, state) => {
+            state.addSetterAndReportErrorIfInvalid('type', 'Not a string', `'string' === typeof ${state.accessor}`);
+        });
+        this.typeGuards.getRegistry(1).addDecorator(ReflectionKind.string, (type, state) => {
+            if (uuidAnnotation.getFirst(type)) {
+                const v = state.originalAccessor;
+                const check = `${state.setter} && ${v}.length === 36 && ${v}[23] === '-' && ${v}[18] === '-' && ${v}[13] === '-' && ${v}[8] === '-'`;
+                state.addSetterAndReportErrorIfInvalid('type', 'Not a UUID', check);
+            } else if (mongoIdAnnotation.getFirst(type)) {
+                state.addSetterAndReportErrorIfInvalid('type', 'Not a MongoId (ObjectId)', `${state.setter} && ${state.originalAccessor}.length === 24`);
+            }
+        });
+        this.typeGuards.register(50, ReflectionKind.string, (type, state) => state.addSetter(`true`)); //at the end, everything can be converted to string
+
         this.typeGuards.register(1, ReflectionKind.templateLiteral, (type, state) => {
             state.setContext({ extendTemplateLiteral: extendTemplateLiteral });
             const typeVar = state.setVariable('type', type);
@@ -1467,7 +1519,6 @@ export class Serializer {
         this.typeGuards.register(1, ReflectionKind.null, (type, state) => state.addSetterAndReportErrorIfInvalid('type', 'Not null', `null === ${state.accessor}`));
         this.typeGuards.register(2, ReflectionKind.null, (type, state) => state.addSetter(`'undefined' === typeof ${state.accessor}`));
 
-        this.typeGuards.register(10, ReflectionKind.string, (type, state) => state.addSetter(`true`)); //at the end, everything can be converted to string
 
         this.typeGuards.register(2, ReflectionKind.number, (type, state) => {
             state.setContext({ isNumeric: isNumeric });
@@ -1516,7 +1567,7 @@ export class Serializer {
             state.addSetter(`1 === ${state.accessor} || '1' === ${state.accessor} || 0 === ${state.accessor} || 'true' === ${state.accessor} || 'false' === ${state.accessor}`);
         });
 
-        this.typeGuards.register(1, ReflectionKind.promise, (type, state) => state.addSetterAndReportErrorIfInvalid('type', 'Not a Promise', `${state.accessor} instanceof Promise`));
+        this.typeGuards.register(1, ReflectionKind.promise, (type, state) => executeTemplates(state, type.type));
         this.typeGuards.register(1, ReflectionKind.enum, (type, state) => {
             const values = state.setVariable('values', type.values);
             state.addSetterAndReportErrorIfInvalid('type', 'Invalid enum member', `${values}.indexOf(${state.accessor}) >= 0`);
@@ -1537,17 +1588,17 @@ export class Serializer {
         this.typeGuards.getRegistry(1).append(ReflectionKind.class, typeCheckClassOrObjectLiteral);
         this.typeGuards.getRegistry(2).append(ReflectionKind.class, typeCheckClassOrObjectLiteralSecondIteration);
 
-        this.typeGuards.getRegistry(1).prependClass(Set, typeGuardTypeClassSet);
-        this.typeGuards.getRegistry(1).prependClass(Map, typeGuardTypeClassMap);
-        this.typeGuards.getRegistry(1).prependClass(Date, (type, state) => state.addSetter(`${state.accessor} instanceof Date`));
-        this.typeGuards.getRegistry(0.5).prependClass(Date, (type, state) => {
+        this.typeGuards.getRegistry(1).registerClass(Set, typeGuardTypeClassSet);
+        this.typeGuards.getRegistry(1).registerClass(Map, typeGuardTypeClassMap);
+        this.typeGuards.getRegistry(1).registerClass(Date, (type, state) => state.addSetter(`${state.accessor} instanceof Date`));
+        this.typeGuards.getRegistry(0.5).registerClass(Date, (type, state) => {
             const date = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z$/;
             state.setContext({ date });
             state.addSetter(`'string' === typeof ${state.accessor} && date.exec(${state.accessor}) !== null`);
         });
 
         //if no type is found (>1), date supports also numbers
-        this.typeGuards.getRegistry(1.5).prependClass(Date, (type, state) => {
+        this.typeGuards.getRegistry(1.5).registerClass(Date, (type, state) => {
             state.addSetter(`'number' === typeof ${state.accessor}`);
         });
 
@@ -1583,7 +1634,7 @@ export class Serializer {
                             let error = ${validatorVar}(${state.originalAccessor});
                             if (error) {
                                 ${state.setter} = false;
-                                if (options.errors) options.errors.push(new ValidationFailedItem(${collapsePath(state.path)}, error.code, error.message));
+                                if (state.errors) state.errors.push(new ValidationFailedItem(${collapsePath(state.path)}, error.code, error.message));
                             }
                         }
                     `);
@@ -1597,7 +1648,7 @@ export class Serializer {
                                 let error = ${validatorVar}(${state.originalAccessor});
                                 if (error) {
                                     ${state.setter} = false;
-                                    if (options.errors) options.errors.push(new ValidationFailedItem(${collapsePath(state.path)}, error.code, error.message));
+                                    if (state.errors) state.errors.push(new ValidationFailedItem(${collapsePath(state.path)}, error.code, error.message));
                                 }
                             }
                         `);
@@ -1621,10 +1672,10 @@ export class Serializer {
                         });
                         if (!fn) continue;
                         const guard = state.setVariable('guard' + t.kind, fn);
-                        const looseCheck = specificality <= 0 ? `options.loosely && ` : '';
+                        const looseCheck = specificality <= 0 ? `state.loosely && ` : '';
 
                         lines.push(`else if (${looseCheck}${guard}(${state.accessor})) { //type = ${ReflectionKind[t.kind]}, specificality=${specificality}
-                            ${getTemplateJSForTypeForState(state.setter, state.accessor, t, state, state.path)}
+                            ${executeTemplates(state.fork(state.setter, state.accessor), t)}
                         }`);
                     }
                 }
@@ -1640,7 +1691,7 @@ export class Serializer {
                     const guard = state.setVariable('guard' + t.kind, fn);
 
                     lines.push(`else if (${guard}(${state.accessor})) { //type = ${ReflectionKind[t.kind]}, specificality=${state.specificality}
-                        ${getTemplateJSForTypeForState(state.setter, state.accessor, t, state, state.path)}
+                        ${executeTemplates(state.fork(state.setter, state.accessor), t)}
                     }`);
                 }
             }

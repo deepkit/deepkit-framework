@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { typeOf } from '../../../src/reflection/reflection';
+import { removeTypeName, typeOf } from '../../../src/reflection/reflection';
 
 test('distributed conditional type', () => {
     //when T is naked, it will be distributed
@@ -9,8 +9,8 @@ test('distributed conditional type', () => {
     type OnlyStrings22<T, E> = boolean | (T extends string ? T : E);
     type OnlyStrings3<T, E> = T extends infer K ? boolean | (K extends string ? K : E) : never;
     type OnlyStrings4<T, T2, E> = T2 extends string ? T2[] : T;
-    expect(typeOf<OnlyStrings<string>>()).toEqual(typeOf<string>());
-    expect(typeOf<OnlyStrings1<string>>()).toEqual(typeOf<string>());
+    expect(removeTypeName(typeOf<OnlyStrings<string>>())).toEqual(typeOf<string>());
+    expect(removeTypeName(typeOf<OnlyStrings1<string>>())).toEqual(typeOf<string>());
 
     type r1 = OnlyStrings<'a' | 'b' | number>; //'a' | 'b'
     type r12 = OnlyStrings2<'a' | 'b' | number, 'nope'>; //boolean | 'a' | 'b' | 'nope'
@@ -34,16 +34,16 @@ test('deep distribution in mapped type', () => {
     type r1 = Filter<{ a: string, b: number }, string>; // string
     type r2 = Filter<{ a: string, b: number }, number>; // number
     type r3 = Filter<{ a: string, b: number }, string | number>; // string|number
-    expect(typeOf<r1>()).toEqual(typeOf<string>());
-    expect(typeOf<r2>()).toEqual(typeOf<number>());
-    expect(typeOf<r3>()).toEqual(typeOf<string | number>());
+    expect(removeTypeName(typeOf<r1>())).toEqual(typeOf<string>());
+    expect(removeTypeName(typeOf<r2>())).toEqual(typeOf<number>());
+    expect(removeTypeName(typeOf<r3>())).toEqual(typeOf<string | number>());
 
     type r4 = FilterNoDistribution<{ a: string, b: number }, string>; // string
     type r5 = FilterNoDistribution<{ a: string, b: number }, number>; // number
     type r6 = FilterNoDistribution<{ a: string, b: number }, string | number>; // never
-    expect(typeOf<r4>()).toEqual(typeOf<string>());
-    expect(typeOf<r5>()).toEqual(typeOf<number>());
-    expect(typeOf<r6>()).toEqual(typeOf<never>());
+    expect(removeTypeName(typeOf<r4>())).toEqual(typeOf<string>());
+    expect(removeTypeName(typeOf<r5>())).toEqual(typeOf<number>());
+    expect(removeTypeName(typeOf<r6>())).toEqual(typeOf<never>());
 });
 
 test('disable distribution tuple', () => {
@@ -51,8 +51,8 @@ test('disable distribution tuple', () => {
 
     type r2 = DisabledDistribution<'a' | 'b'>; // ('a' | 'b')[]
     type r3 = DisabledDistribution<'a' | 'b' | number>; // never
-    expect(typeOf<r2>()).toEqual(typeOf<('a' | 'b')[]>());
-    expect(typeOf<r3>()).toEqual(typeOf<never>());
+    expect(removeTypeName(typeOf<r2>())).toEqual(typeOf<('a' | 'b')[]>());
+    expect(removeTypeName(typeOf<r3>())).toEqual(typeOf<never>());
 });
 
 test('disable distribution array', () => {
@@ -60,6 +60,6 @@ test('disable distribution array', () => {
 
     type r2 = DisabledDistribution<'a' | 'b'>; // ('a' | 'b')[]
     type r3 = DisabledDistribution<'a' | 'b' | number>; // never
-    expect(typeOf<r2>()).toEqual(typeOf<('a' | 'b')[]>());
-    expect(typeOf<r3>()).toEqual(typeOf<never>());
+    expect(removeTypeName(typeOf<r2>())).toEqual(typeOf<('a' | 'b')[]>());
+    expect(removeTypeName(typeOf<r3>())).toEqual(typeOf<never>());
 });

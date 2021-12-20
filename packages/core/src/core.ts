@@ -103,7 +103,7 @@ export function applyDefaults<T>(classType: ClassType<T>, target: { [k: string]:
 /**
  * Tries to identify the object by normalised result of Object.toString(obj).
  */
-export function typeOf(obj: any) {
+export function identifyType(obj: any) {
     return ((({}).toString.call(obj).match(/\s([a-zA-Z]+)/) || [])[1] || '').toLowerCase();
 }
 
@@ -283,7 +283,7 @@ export function isSet(obj: any): boolean {
  * @public
  */
 export function isNumber(obj: any): obj is number {
-    return 'number' === typeOf(obj);
+    return 'number' === identifyType(obj);
 }
 
 /**
@@ -321,7 +321,7 @@ export const isInteger: (obj: any) => obj is number = Number.isInteger as any ||
  * @public
  */
 export function isString(obj: any): obj is string {
-    return 'string' === typeOf(obj);
+    return 'string' === identifyType(obj);
 }
 
 /**
@@ -688,4 +688,8 @@ export function createDynamicClass(name: string, base?: ClassType): ClassType {
         return new Function(baseName, `return class ${name} extends ${baseName} {}`)(base);
     }
     return new Function(`return class ${name} {}`)();
+}
+
+export function isIterable(value: any): boolean {
+    return isArray(value) || value instanceof Set || value instanceof Map;
 }

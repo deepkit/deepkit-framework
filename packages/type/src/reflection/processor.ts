@@ -20,6 +20,7 @@ import {
     MappedModifier,
     merge,
     narrowOriginalLiteral,
+    OuterType,
     ReflectionKind,
     ReflectionOp,
     ReflectionVisibility,
@@ -47,7 +48,7 @@ import { ClassType, isArray, isFunction } from '@deepkit/core';
 
 export type RuntimeStackEntry = Type | Object | (() => ClassType | Object) | string | number | boolean | bigint;
 
-export type Packed = (RuntimeStackEntry | string)[] & { __is?: (data: any) => boolean } & { __type?: Type };
+export type Packed = (RuntimeStackEntry | string)[] & { __is?: (data: any) => boolean } & { __type?: OuterType };
 
 export class PackStruct {
     constructor(
@@ -89,8 +90,8 @@ function newArray<T>(init: T, items: number): T[] {
     return a;
 }
 
-export function resolvePacked(type: Packed, args: any[] = []): Type {
-    return resolveRuntimeType(type, args);
+export function resolvePacked(type: Packed, args: any[] = []): OuterType {
+    return resolveRuntimeType(type, args) as OuterType;
 }
 
 function isPack(o: any): o is Packed {
@@ -118,7 +119,7 @@ export function resolveRuntimeType(o: any, args: any[] = [], registry?: Processo
     const type = processor.run(packStruct.ops, packStruct.stack, args);
     if (registry) registry.delete(p);
     if (isType(type)) {
-        if (isPack(o)) o.__type = type;
+        if (isPack(o)) o.__type = type as OuterType;
 
         if (!isPack(o)) {
             if (type.kind === ReflectionKind.class && type.classType === Object) {
@@ -497,6 +498,7 @@ export class Processor {
                     const types = this.popFrame() as Type[];
                     let primitive = undefined as Type | undefined;
                     const annotations: Annotations = {};
+                    const decorators: OuterType[] = [];
                     const candidates: (TypeObjectLiteral | TypeClass)[] = [];
 
                     function extractTypes(types: Type[]) {
@@ -511,6 +513,7 @@ export class Processor {
                                 if (type.kind === ReflectionKind.objectLiteral) {
                                     for (const decorator of typeDecorators) {
                                         if (decorator(annotations, type)) {
+                                            decorators.push(type);
                                             continue outer;
                                         }
                                     }
@@ -549,6 +552,7 @@ export class Processor {
                     if (result) {
                         if (isWithAnnotations(result)) {
                             result.annotations ||= {};
+                            if (decorators.length) result.decorators = decorators;
                             Object.assign(result.annotations, annotations);
                         }
                         this.pushType(result);
@@ -660,7 +664,7 @@ export class Processor {
                         types
                     } as TypeObjectLiteral;
 
-                    //only for the very last op do we replace this.resultType. Otherwise objectLiteral in between would overwrite it.
+                    //only for the very last op do we replace this.resultType. Otherwise, objectLiteral in between would overwrite it.
                     if (this.program + 1 === s) t = Object.assign(this.resultType, t);
                     this.pushType(t);
                     break;
@@ -866,11 +870,6 @@ export class Processor {
                     this.returnFrame();
                     break;
                 }
-                case ReflectionOp.call: {
-                    const program = this.eatParameter(ops) as number;
-                    this.call(program);
-                    break;
-                }
                 case ReflectionOp.frame: {
                     this.pushFrame();
                     break;
@@ -886,6 +885,11 @@ export class Processor {
                     this.program = arg - 1; //-1 because next iteration does program++
                     break;
                 }
+                case ReflectionOp.call: {
+                    const program = this.eatParameter(ops) as number;
+                    this.call(program);
+                    break;
+                }
                 case ReflectionOp.inline: {
                     const pPosition = this.eatParameter(ops) as number;
                     const pOrFn = initialStack[pPosition] as number | Packed | (() => Packed);
@@ -894,11 +898,11 @@ export class Processor {
                         //self circular reference, usually a 0, which indicates we put the result of the current program as the type on the stack.
                         this.push(this.resultType);
                     } else {
-                        this.push(resolveRuntimeType(p, [], this.registry));
-                        // const pack = unpack(p);
-                        // const processor = new Processor(p, this.registry);
-                        // const type = processor.run(pack.ops, pack.stack);
-                        // this.push(type);
+                        const result = resolveRuntimeType(p, [], this.registry);
+                        if (isWithAnnotations(result)) {
+                            result.typeName = isFunction(pOrFn) ? pOrFn.toString().replace('() => __Ω', '') : '';
+                        }
+                        this.push(result);
                     }
                     break;
                 }
@@ -917,16 +921,22 @@ export class Processor {
                         //self circular reference, usually a 0, which indicates we put the result of the current program as the type on the stack.
                         this.push(this.resultType);
                     } else {
+                        let result: Type = { kind: ReflectionKind.never };
                         if ('number' === typeof p) {
                             const processor = new Processor(this.forType, this.registry);
-                            const type = processor.run(ops, initialStack, inputs);
-                            this.push(type);
+                            result = processor.run(ops, initialStack, inputs) as Type;
                         } else {
                             const pack = unpack(p);
                             const processor = new Processor(p, this.registry);
-                            const type = processor.run(pack.ops, pack.stack, inputs);
-                            this.push(type);
+                            result = processor.run(pack.ops, pack.stack, inputs) as Type;
                         }
+
+                        if (isWithAnnotations(result)) {
+                            result.typeName = isFunction(pOrFn) ? pOrFn.toString().replace('() => __Ω', '') : '';
+                            result.typeArguments = inputs;
+                        }
+
+                        this.push(result);
                     }
                     break;
                 }

@@ -14,7 +14,7 @@ import {
     transpileModule
 } from 'typescript';
 import { pack, ReflectionTransformer, transformer } from '../../src/reflection/compiler';
-import { reflect, reflect as reflect2, ReflectionClass, typeOf as typeOf2 } from '../../src/reflection/reflection';
+import { reflect, reflect as reflect2, ReflectionClass, removeTypeName, typeOf as typeOf2 } from '../../src/reflection/reflection';
 import {
     assertType,
     defaultAnnotation,
@@ -30,7 +30,7 @@ import {
     TypeProperty,
     TypeUnion
 } from '../../src/reflection/type';
-import { ClassType, typeOf } from '@deepkit/core';
+import { ClassType } from '@deepkit/core';
 import { resolveRuntimeType } from '../../src/reflection/processor';
 
 Error.stackTraceLimit = 200;
@@ -311,7 +311,9 @@ describe('transformer', () => {
 
 function transpileAndReturn(source: string): { [name: string]: any } {
     const js = transpile(`(() => { ${source} })()`);
-    const typeOf = typeOf2;
+    const typeOf = function (...args: any[]) {
+        return removeTypeName(typeOf2(...args));
+    };
     const reflect = reflect2;
     return eval(js);
 }
@@ -401,7 +403,7 @@ test('external object literal', () => {
 
     const clazz = transpileAndReturn(code);
 
-    expect(reflect(clazz)).toEqual({
+    expect(reflect(clazz)).toMatchObject({
         kind: ReflectionKind.class,
         classType: clazz,
         types: [{
@@ -410,6 +412,7 @@ test('external object literal', () => {
             visibility: ReflectionVisibility.public,
             type: {
                 kind: ReflectionKind.objectLiteral,
+                typeName: 'o',
                 types: [
                     {
                         kind: ReflectionKind.propertySignature,
@@ -439,7 +442,7 @@ test('partial', () => {
     console.log('js', js);
     const clazz = transpileAndReturn(code);
 
-    expect(reflect(clazz)).toEqual({
+    expect(reflect(clazz)).toMatchObject({
         kind: ReflectionKind.class,
         classType: clazz,
         types: [{
@@ -641,7 +644,7 @@ test('ClassType', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code) as () => Type;
-    expect(type).toEqual({
+    expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {
@@ -651,7 +654,7 @@ test('ClassType', () => {
                 parameters: [{ kind: ReflectionKind.parameter, name: 'args', type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.any } } }]
             }
         ]
-    } as Type);
+    } as Type as any);
 });
 
 test('infer parameter in returned class constructor', () => {
@@ -750,8 +753,8 @@ test('infer T in function inferred second template arg', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code) as (v: string | number) => Type;
-    expect(type('abc')).toEqual({ kind: ReflectionKind.literal, literal: 'string' });
-    expect(type(34)).toEqual({ kind: ReflectionKind.literal, literal: 'number' });
+    expect(type('abc')).toMatchObject({ kind: ReflectionKind.literal, literal: 'string' });
+    expect(type(34)).toMatchObject({ kind: ReflectionKind.literal, literal: 'number' });
 });
 
 test('infer T in function branded type', () => {
@@ -838,7 +841,7 @@ test('resolve partial', () => {
     type o = { a: true | string };
     return typeOf<Partial2<o>>();`);
 
-    expect(type).toEqual({
+    expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {
@@ -871,7 +874,7 @@ test('resolve partial 2', () => {
     console.log('js', js);
     const type = transpileAndReturn(code);
 
-    expect(type).toEqual({
+    expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {
@@ -894,7 +897,7 @@ test('conditional simple', () => {
     console.log('js', js);
     const type = transpileAndReturn(code);
 
-    expect(type).toEqual({
+    expect(type).toMatchObject({
         kind: ReflectionKind.literal,
         literal: true,
     });
@@ -914,7 +917,7 @@ test('conditional map', () => {
     console.log('js', js);
     const type = transpileAndReturn(code);
 
-    expect(type).toEqual({
+    expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.literal, literal: true, } },
@@ -933,7 +936,7 @@ test('conditional infer', () => {
     console.log('js', js);
     const type = transpileAndReturn(code);
 
-    expect(type).toEqual({
+    expect(type).toMatchObject({
         kind: ReflectionKind.string
     });
 });
@@ -947,7 +950,7 @@ test('nested object literal', () => {
     console.log('js', js);
     const type = transpileAndReturn(code);
 
-    expect(type).toEqual({
+    expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {
@@ -1107,7 +1110,7 @@ test('generic static', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code);
-    expect(type).toEqual({
+    expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {
@@ -1138,7 +1141,7 @@ test('generic dynamic', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code);
-    expect(type).toEqual({
+    expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {
@@ -1323,7 +1326,7 @@ test('intersection with symbol property', () => {
         annotations: {
             [defaultAnnotation.symbol]: [
                 {
-                    kind: ReflectionKind.objectLiteral, types: [
+                    kind: ReflectionKind.objectLiteral, typeName: 'MyBrand', types: [
                         { kind: ReflectionKind.propertySignature, name: Symbol.for('computedType1'), type: { kind: ReflectionKind.literal, literal: true }, optional: true }
                     ]
                 },
@@ -1375,7 +1378,7 @@ test('brand intersection', () => {
         annotations: {
             [defaultAnnotation.symbol]: [
                 {
-                    kind: ReflectionKind.objectLiteral, types: [
+                    kind: ReflectionKind.objectLiteral, typeName: 'PrimaryKey', types: [
                         { kind: ReflectionKind.propertySignature, name: '__type', type: { kind: ReflectionKind.literal, literal: 'primaryKey' }, optional: true }
                     ]
                 },
@@ -1400,7 +1403,7 @@ test('brand intersection symbol', () => {
         annotations: {
             [defaultAnnotation.symbol]: [
                 {
-                    kind: ReflectionKind.objectLiteral, types: [
+                    kind: ReflectionKind.objectLiteral, typeName: 'PrimaryKey', types: [
                         { kind: ReflectionKind.propertySignature, name: Symbol.for('deepkit/meta'), type: { kind: ReflectionKind.literal, literal: 'primaryKey' }, optional: true }
                     ]
                 },

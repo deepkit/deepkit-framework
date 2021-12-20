@@ -1,8 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { ReceiveType, ReflectionClass } from '../../../src/reflection/reflection';
+import { ReceiveType, ReflectionClass, resolveReceiveType } from '../../../src/reflection/reflection';
 import { AutoIncrement, BackReference, MongoId, PrimaryKey, Reference, UUID } from '../../../src/reflection/type';
 import { cast, cloneClass, serialize } from '../../../src/serializer-facade';
-import { resolvePacked } from '../../../src/reflection/processor';
 import { createReference } from '../../../src/reference';
 import { unpopulatedSymbol } from '../../../src/core';
 
@@ -17,7 +16,7 @@ import { unpopulatedSymbol } from '../../../src/core';
 export const RoundTripExcluded: unique symbol = Symbol('NoValue');
 
 export function roundTrip<T>(value: T | any, type?: ReceiveType<T>): T {
-    const t = resolvePacked(type!);
+    const t = resolveReceiveType(type);
     // console.log('roundTrip', stringifyType(t));
     const json = serialize(value, {}, undefined, type);
     const res = cast<T>(json, {}, undefined, type);
@@ -242,6 +241,11 @@ test('model 1', () => {
     {
         const model = { filter: { $regex: /Peter/ }, itemsPerPage: 50, parameters: {} };
         expect(roundTrip<Model>(model as any)).toEqual(model);
+    }
+
+    {
+        const o = {parameters: { teamName: 'Team a' }};
+        expect(serializeToJson<Model>(o)).toEqual(o);
     }
 
     {

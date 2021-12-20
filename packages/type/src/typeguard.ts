@@ -1,20 +1,22 @@
-import { ReceiveType } from './reflection/reflection';
+import { ReceiveType, resolveReceiveType } from './reflection/reflection';
 import { createTypeGuardFunction, serializer, Serializer } from './serializer';
-import { resolvePacked } from './reflection/processor';
 import { NoTypeReceived } from './utils';
 import { ValidationFailedItem } from './validator';
+import { getTypeJitContainer } from './reflection/type';
 
+export function is<T>(data: any, serializerToUse: Serializer = serializer, errors: ValidationFailedItem[] = [], receiveType?: ReceiveType<T>): data is T {
+    if (!receiveType) throw new NoTypeReceived();
+    const type = resolveReceiveType(receiveType);
+    const jit = getTypeJitContainer(type);
+    if (jit.__is) return jit.__is(data, { errors }) as boolean;
 
-export function is<T>(data: any, serializerToUse: Serializer = serializer, errors: ValidationFailedItem[] = [], type?: ReceiveType<T>): data is T {
-    if (!type) throw new NoTypeReceived();
-    if (type.__is) return type.__is(data);
     const fn = createTypeGuardFunction({
-        type: resolvePacked(type),
+        type: type,
         registry: serializerToUse.typeGuards.getRegistry(1),
         validation: true,
         specificality: 1
     });
     if (!fn) return false;
-    type.__is = fn;
+    jit.__is = fn;
     return fn(data, { errors }) as boolean;
 }

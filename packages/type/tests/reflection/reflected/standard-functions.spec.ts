@@ -9,11 +9,11 @@
  */
 
 import { expect, test } from '@jest/globals';
-import { ReceiveType, typeOf } from '../../../src/reflection/reflection';
+import { ReceiveType, removeTypeName, resolveReceiveType } from '../../../src/reflection/reflection';
 
 function equalType<A, B>(a?: ReceiveType<A>, b?: ReceiveType<B>) {
-    const aType = typeOf([], a);
-    const bType = typeOf([], b);
+    const aType = removeTypeName(resolveReceiveType(a));
+    const bType = removeTypeName(resolveReceiveType(b));
     expect(aType).toEqual(bType as any);
 }
 

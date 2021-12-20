@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
-import { ReceiveType, typeOf } from '../../../src/reflection/reflection';
-import { indexAccess, isSameType, ReflectionKind, stringifyType } from '../../../src/reflection/type';
+import { ReceiveType, resolveReceiveType, typeOf } from '../../../src/reflection/reflection';
+import { indexAccess, isSameType, ReflectionKind, stringifyResolvedType, stringifyType, UUID } from '../../../src/reflection/type';
 import { isExtendable } from '../../../src/reflection/extends';
 
 //note: this needs to run in a strict TS mode to infer correctly in the IDE
@@ -27,14 +27,22 @@ test('stringify date/set/map', () => {
     expect(stringifyType(typeOf<Set<string>>())).toBe('Set<string>');
 });
 
+test('type alias preserved', () => {
+    type MyString = string;
+    expect(stringifyType(typeOf<MyString>())).toBe('MyString');
+
+    expect(stringifyType(typeOf<UUID>())).toBe('UUID');
+});
+
 test('stringify class', () => {
     class User {
         id!: number;
         username!: string;
     }
 
-    expect(stringifyType(typeOf<User>())).toBe(`User {\n  id: number;\n  username: string;\n}`);
-    expect(stringifyType(typeOf<Partial<User>>())).toBe(`{\n  id?: number;\n  username?: string;\n}`);
+    expect(stringifyResolvedType(typeOf<User>())).toBe(`User {\n  id: number;\n  username: string;\n}`);
+    expect(stringifyResolvedType(typeOf<Partial<User>>())).toBe(`{\n  id?: number;\n  username?: string;\n}`);
+    expect(stringifyType(typeOf<Partial<User>>())).toBe(`Partial<User {\n  id: number;\n  username: string;\n}>`);
 });
 
 test('stringify class generic', () => {
@@ -52,7 +60,7 @@ test('stringify interface', () => {
         username: string;
     }
 
-    expect(stringifyType(typeOf<User>())).toBe(`{\n  id: number;\n  username: string;\n}`);
+    expect(stringifyResolvedType(typeOf<User>())).toBe(`{\n  id: number;\n  username: string;\n}`);
 });
 
 test('stringify nested class', () => {
@@ -80,18 +88,18 @@ test('stringify nested interface', () => {
         config: Config;
     }
 
-    expect(stringifyType(typeOf<User>())).toBe(`{\n  id: number;\n  username?: string;\n  config: {\n    color: number;\n  };\n}`);
+    expect(stringifyResolvedType(typeOf<User>())).toBe(`{\n  id: number;\n  username?: string;\n  config: {\n    color: number;\n  };\n}`);
 });
 
 function validExtend<A, B>(a?: ReceiveType<A>, b?: ReceiveType<B>) {
-    const aType = typeOf([], a);
-    const bType = typeOf([], b);
+    const aType = resolveReceiveType(a);
+    const bType = resolveReceiveType(b);
     expect(isExtendable(aType, bType)).toBe(true);
 }
 
 function invalidExtend<A, B>(a?: ReceiveType<A>, b?: ReceiveType<B>) {
-    const aType = typeOf([], a);
-    const bType = typeOf([], b);
+    const aType = resolveReceiveType(a);
+    const bType = resolveReceiveType(b);
     expect(isExtendable(aType, bType)).toBe(false);
 }
 
@@ -544,25 +552,25 @@ test('template literal extends template literal', () => {
     validExtend<`0a${string}`, `${'1' | '0'}a${string}`>();
 
     type e1 = `abcd${string}` extends `ab${infer T1}` ? T1 : never;
-    expect(stringifyType(typeOf<e1>())).toEqual('`cd${string}`');
+    expect(stringifyResolvedType(typeOf<e1>())).toEqual('`cd${string}`');
 
     type e2 = `abcd${string}` extends `ab${string}${infer T1}` ? T1 : never;
-    expect(stringifyType(typeOf<e2>())).toEqual('`d${string}`');
+    expect(stringifyResolvedType(typeOf<e2>())).toEqual('`d${string}`');
 });
 
 test('template literal infer', () => {
     type a1 = 'abc' extends `a${infer T}` ? T : never;
-    expect(typeOf<a1>()).toEqual(typeOf<'bc'>());
+    expect(typeOf<a1>()).toMatchObject(typeOf<'bc'>() as any);
 
     type a2 = 'abcd' extends `a${infer T}${infer T2}` ? [T, T2] : never;
-    expect(typeOf<a2>()).toEqual(typeOf<['b', 'cd']>());
+    expect(typeOf<a2>()).toMatchObject(typeOf<['b', 'cd']>() as any);
 
     type a3 = 'abcd' extends `a${string}${infer T2}` ? T2 : never;
-    expect(typeOf<a3>()).toEqual(typeOf<'cd'>());
+    expect(typeOf<a3>()).toMatchObject(typeOf<'cd'>() as any);
 
     type TN<T> = T extends `a${number}` ? T extends `a${infer T}` ? T : never : never;
     type e1 = TN<`a123.4`>;
-    expect(typeOf<e1>()).toEqual(typeOf<'123.4'>());
+    expect(typeOf<e1>()).toMatchObject(typeOf<'123.4'>() as any);
 });
 
 test('tuple indexAccess', () => {

@@ -17,6 +17,6 @@ test('TypeGuardRegistry', () => {
 
     const registries = serializer.typeGuards.getSortedTemplateRegistries();
 
-    expect(registries[0][1].get(ReflectionKind.number)[0]).toBe(number1);
-    expect(registries[1][1].get(ReflectionKind.number)[0]).toBe(number2);
+    expect(registries[0][1].get({kind: ReflectionKind.number})[0]).toBe(number1);
+    expect(registries[1][1].get({kind: ReflectionKind.number})[0]).toBe(number2);
 });

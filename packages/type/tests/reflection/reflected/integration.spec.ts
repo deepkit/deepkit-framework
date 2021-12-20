@@ -29,6 +29,7 @@ import {
     ReflectionKind,
     ReflectionVisibility,
     SQLite,
+    stringifyResolvedType,
     stringifyType,
     Type,
     TypeClass,
@@ -187,7 +188,7 @@ test('interface', () => {
     }
 
     const type = typeOf<Entity>();
-    expect(type).toEqual({
+    expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {
@@ -321,7 +322,7 @@ test('propertiesOf inline', () => {
 
 test('object literal index signature', () => {
     type t = { [name: string]: string | number, a: string, };
-    expect(typeOf<t>()).toEqual({
+    expect(typeOf<t>()).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {
@@ -502,12 +503,12 @@ test('template literal', () => {
     expect(stringifyType(typeOf<l4>())).toBe('`_${string}Changedtrue` | `_${string}Changedb`');
     expect(stringifyType(typeOf<l5>())).toBe('`_${string}Changedfalse` | `_${string}Changedtrue` | `_${string}Changedb`');
     expect(stringifyType(typeOf<l6>())).toBe('`_${string}Changed${bigint}` | `_${string}Changedb`');
-    expect(stringifyType(typeOf<l7>())).toBe('string');
-    expect(stringifyType(typeOf<l77>())).toBe('`${number}`');
-    expect(stringifyType(typeOf<l771>())).toBe(`'false' | 'true'`);
-    expect(stringifyType(typeOf<l8>())).toBe(`'helloworld'`);
-    expect(stringifyType(typeOf<l9>())).toBe(`'hello_' | 'world_' | 'b_'`);
-    expect(stringifyType(typeOf<l10>())).toBe(`'(hello)_' | '(world)_'`);
+    expect(stringifyResolvedType(typeOf<l7>())).toBe('string');
+    expect(stringifyResolvedType(typeOf<l77>())).toBe('`${number}`');
+    expect(stringifyResolvedType(typeOf<l771>())).toBe(`'false' | 'true'`);
+    expect(stringifyResolvedType(typeOf<l8>())).toBe(`'helloworld'`);
+    expect(stringifyResolvedType(typeOf<l9>())).toBe(`'hello_' | 'world_' | 'b_'`);
+    expect(stringifyResolvedType(typeOf<l10>())).toBe(`'(hello)_' | '(world)_'`);
 });
 
 test('mapped type key literal', () => {
@@ -567,7 +568,7 @@ test('mapped type partial', () => {
     type o = { a: string };
     type p = Partial2<o>;
 
-    expect(typeOf<p>()).toEqual({
+    expect(typeOf<p>()).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [{ kind: ReflectionKind.propertySignature, name: 'a', optional: true, type: { kind: ReflectionKind.string } }]
     });
@@ -581,7 +582,7 @@ test('mapped type required', () => {
     type o = { a?: string };
     type p = Required2<o>;
 
-    expect(typeOf<p>()).toEqual({
+    expect(typeOf<p>()).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [{ kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string } }]
     });
@@ -595,7 +596,7 @@ test('mapped type partial readonly', () => {
     type o = { a: string };
     type p = Partial2<o>;
 
-    expect(typeOf<p>()).toEqual({
+    expect(typeOf<p>()).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [{ kind: ReflectionKind.propertySignature, name: 'a', readonly: true, optional: true, type: { kind: ReflectionKind.string } }]
     });
@@ -609,7 +610,7 @@ test('mapped type filter never', () => {
     type o = { a?: string, b: string };
     type p = FilterB<o>;
 
-    expect(typeOf<p>()).toEqual({
+    expect(typeOf<p>()).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [{ kind: ReflectionKind.propertySignature, optional: true, name: 'a', type: { kind: ReflectionKind.string } }]
     });
@@ -637,7 +638,7 @@ test('type alias partial remove readonly', () => {
     type o = { readonly a: string };
     type p = Partial2<o>;
 
-    expect(typeOf<p>()).toEqual({
+    expect(typeOf<p>()).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [{ kind: ReflectionKind.propertySignature, name: 'a', optional: true, type: { kind: ReflectionKind.string } }]
     });
@@ -647,7 +648,7 @@ test('global partial', () => {
     type o = { a: string };
     type p = Partial<o>;
 
-    expect(typeOf<p>()).toEqual({
+    expect(typeOf<p>()).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [{ kind: ReflectionKind.propertySignature, name: 'a', optional: true, type: { kind: ReflectionKind.string } }]
     });
@@ -659,12 +660,12 @@ test('global record', () => {
     //equivalent to
     type a = { [K in string]: number };
 
-    expect(typeOf<p>()).toEqual({
+    expect(typeOf<p>()).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [{ kind: ReflectionKind.indexSignature, type: { kind: ReflectionKind.number }, index: { kind: ReflectionKind.string } }]
-    } as Type);
+    } as Type as any);
 
-    expect(typeOf<a>()).toEqual({
+    expect(typeOf<a>()).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [{ kind: ReflectionKind.indexSignature, type: { kind: ReflectionKind.number }, index: { kind: ReflectionKind.string } }]
     });
@@ -678,7 +679,7 @@ test('type alias all string', () => {
     type o = { a: string, b: number };
     type p = AllString<o>;
 
-    expect(typeOf<p>()).toEqual({
+    expect(typeOf<p>()).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string } },
@@ -695,7 +696,7 @@ test('type alias conditional type', () => {
     type o = { a: string, b: number };
     type p = IsString<o>;
 
-    expect(typeOf<p>()).toEqual({
+    expect(typeOf<p>()).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.literal, literal: true, } },
@@ -712,7 +713,7 @@ test('type alias infer', () => {
     type o = { a: { t: string }, b: { t: number } };
     type p = InferTypeOfT<o>;
 
-    expect(typeOf<p>()).toEqual({
+    expect(typeOf<p>()).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string } },
@@ -729,7 +730,7 @@ test('user interface', () => {
 
     const type = typeOf<User>();
     console.log((type as any).types);
-    expect(type).toEqual({
+    expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {
@@ -754,7 +755,7 @@ test('generic static', () => {
     }
 
     const type = typeOf<Request<Body>>();
-    expect(type).toEqual({
+    expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {
@@ -768,7 +769,7 @@ test('generic static', () => {
         ]
     });
 
-    expect(typeOf<Request<string>>()).toEqual({
+    expect(typeOf<Request<string>>()).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {
@@ -789,7 +790,7 @@ test('generic dynamic', () => {
     }
 
     const type = typeOf<Request<never>>([typeOf<Body>()]);
-    expect(type).toEqual({
+    expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {
@@ -803,7 +804,7 @@ test('generic dynamic', () => {
         ]
     });
 
-    expect(typeOf<Request<never>>([typeOf<string>()])).toEqual({
+    expect(typeOf<Request<never>>([typeOf<string>()])).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {

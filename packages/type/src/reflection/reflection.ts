@@ -17,6 +17,7 @@ import {
     indexAnnotation,
     IndexOptions,
     isType,
+    OuterType,
     primaryKeyAnnotation,
     referenceAnnotation,
     ReferenceOptions,
@@ -32,14 +33,35 @@ import {
     TypeProperty,
     TypePropertySignature
 } from './type';
-import { AbstractClassType, ClassType, getClassName } from '@deepkit/core';
-import { Packed, resolveRuntimeType } from './processor';
-import { isExtendable } from './extends';
+import { AbstractClassType, ClassType, getClassName, isArray, isClass } from '@deepkit/core';
+import { Packed, resolvePacked, resolveRuntimeType } from './processor';
+import { NoTypeReceived } from '../utils';
 
-export type ReceiveType<T> = Packed;
+/**
+ * Receives the runtime type of template argument.
+ *
+ * Use
+ *
+ * ```typescript
+ *
+ * function f<T>(type?: ReceiveType<T>): Type {
+ *     return resolveReceiveType(type);
+ * }
+ *
+ * ```
+ */
+export type ReceiveType<T> = Packed | OuterType;
 
-export function reflect(o: any, ...args: any[]): Type {
-    return resolveRuntimeType(o, args);
+export function resolveReceiveType(type?: Packed | Type | ClassType): OuterType {
+    if (!type) throw new NoTypeReceived();
+    if (isArray(type) && type.__type) return type.__type;
+    if (isType(type)) return type as OuterType;
+    if (isClass(type)) return resolveRuntimeType(type) as OuterType;
+    return resolvePacked(type);
+}
+
+export function reflect(o: any, ...args: any[]): OuterType {
+    return resolveRuntimeType(o, args) as OuterType;
 }
 
 export function valuesOf<T>(args: any[] = [], p?: Packed): (string | number | symbol | Type)[] {
@@ -76,16 +98,19 @@ export function propertiesOf<T>(args: any[] = [], p?: Packed): (string | number 
     return [];
 }
 
-export function typeOf<T>(args: any[] = [], p?: Packed): Type {
+export function typeOf<T>(args: any[] = [], p?: Packed): OuterType {
     if (p) {
-        return resolveRuntimeType(p, args);
+        return resolveRuntimeType(p, args) as OuterType;
     }
 
     throw new Error('No type given');
 }
 
-export function isMember(v: Type): v is TypeProperty | TypePropertySignature | TypeMethodSignature | TypeMethod {
-    return v.kind === ReflectionKind.property || v.kind === ReflectionKind.propertySignature || v.kind === ReflectionKind.methodSignature || v.kind === ReflectionKind.method;
+export function removeTypeName<T extends Type>(type: T): Omit<T, 'typeName' | 'typeArguments'> {
+    const o = {...type};
+    if ('typeName' in o) delete o.typeName;
+    if ('typeArguments' in o) delete o.typeArguments;
+    return o;
 }
 
 export function getProperty(type: TypeObjectLiteral | TypeClass, memberName: number | string | symbol): TypeProperty | TypePropertySignature | undefined {
@@ -93,10 +118,6 @@ export function getProperty(type: TypeObjectLiteral | TypeClass, memberName: num
         if ((t.kind === ReflectionKind.property || t.kind === ReflectionKind.propertySignature) && t.name === memberName) return t;
     }
     return;
-}
-
-export function hasMember(type: TypeObjectLiteral | TypeClass, memberName: number | string | symbol, memberType?: Type): boolean {
-    return type.types.some(v => isMember(v) && v.name === memberName && (!memberType || isExtendable(v.kind === ReflectionKind.propertySignature || v.kind === ReflectionKind.property ? v.type : v, memberType)));
 }
 
 export function toSignature(type: TypeProperty | TypeMethod | TypePropertySignature | TypeMethodSignature): TypePropertySignature | TypeMethodSignature {
@@ -175,7 +196,7 @@ export class ReflectionParameter {
 
     applyDecorator(t: TData) {
         if (t.type) {
-            this.type = resolveRuntimeType(t.type);
+            this.type = resolveReceiveType(t.type);
             if (this.getVisibility() !== undefined) {
                 this.reflectionMethod.reflectionClass.getProperty(this.getName())!.setType(this.type);
             }
@@ -326,7 +347,7 @@ export class ReflectionProperty {
 
     type: Type;
 
-    symbol = Symbol(String(this.getName()));
+    symbol: symbol;
 
     constructor(
         public property: TypeProperty | TypePropertySignature,
@@ -334,6 +355,7 @@ export class ReflectionProperty {
     ) {
         this.type = property.type;
         this.setType(this.type);
+        this.symbol = Symbol(String(this.getName()));
     }
 
     setType(type: Type) {
@@ -376,8 +398,7 @@ export class ReflectionProperty {
     }
 
     isSerializerExcluded(name: string): boolean {
-        const excluded = this.getExcluded();
-        return excluded.includes('*') || excluded.includes(name);
+        return excludedAnnotation.isExcluded(this.getType(), name);
     }
 
     getData(): { [name: string]: any } {
@@ -514,7 +535,7 @@ export interface SerializerFn {
 export class TData {
     validator: boolean = false;
     validators: ValidatorFn[] = [];
-    type?: Packed | ClassType;
+    type?: Packed | Type | ClassType;
     data: { [name: string]: any } = {};
     serializer?: SerializerFn;
     deserializer?: SerializerFn;

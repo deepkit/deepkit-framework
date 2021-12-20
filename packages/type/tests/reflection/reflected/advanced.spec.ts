@@ -20,9 +20,9 @@ test('array stack', () => {
 });
 
 test('StringToNum', () => {
-    type test<A extends 0[] = []> = `${A["length"]}`;
-    expect(typeOf<test>()).toEqual({kind: ReflectionKind.literal, literal: "0"} as Type);
+    type test<A extends 0[] = []> = `${A['length']}`;
+    expect(typeOf<test>()).toEqual({ kind: ReflectionKind.literal, literal: '0', typeName: 'test' } as Type);
 
-    type StringToNum<T extends string, A extends 0[] = []> = `${A["length"]}` extends T ? A["length"] : StringToNum<T, [...A, 0]>;
-    expect(typeOf<StringToNum<'3'>>()).toEqual({kind: ReflectionKind.literal, literal: 3} as Type);
+    type StringToNum<T extends string, A extends 0[] = []> = `${A['length']}` extends T ? A['length'] : StringToNum<T, [...A, 0]>;
+    expect(typeOf<StringToNum<'3'>>()).toMatchObject({ kind: ReflectionKind.literal, literal: 3 } as Type as any);
 });

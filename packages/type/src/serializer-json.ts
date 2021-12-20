@@ -1,4 +1,4 @@
-import { ReflectionKind, TypeClass, TypeNumberBrand } from './reflection/type';
+import { ReflectionKind, TypeClass } from './reflection/type';
 import { serializeArray, Serializer, TemplateState } from './serializer';
 
 
@@ -8,7 +8,6 @@ import { serializeArray, Serializer, TemplateState } from './serializer';
 function deserializeTypeClassSet(type: TypeClass, state: TemplateState) {
     if (!type.arguments || type.arguments.length !== 1) return;
 
-    state.setContext({ Array });
     serializeArray(type.arguments[0], state);
     state.addSetter(`new Set(${state.accessor})`);
 }
@@ -19,15 +18,11 @@ function deserializeTypeClassSet(type: TypeClass, state: TemplateState) {
 function serializeTypeClassSet(type: TypeClass, state: TemplateState) {
     if (!type.arguments || type.arguments.length !== 1) return;
 
-    state.setContext({ Array });
-    state.addSetter(`Array.from(${state.accessor})`);
-
     serializeArray(type.arguments[0], state);
 }
 
 function deserializeTypeClassMap(type: TypeClass, state: TemplateState) {
     if (!type.arguments || type.arguments.length !== 2) return;
-    state.setContext({ Array });
     serializeArray({
         kind: ReflectionKind.tuple, types: [
             { kind: ReflectionKind.tupleMember, type: type.arguments[0] },
@@ -43,9 +38,6 @@ function deserializeTypeClassMap(type: TypeClass, state: TemplateState) {
 function serializeTypeClassMap(type: TypeClass, state: TemplateState) {
     if (!type.arguments || type.arguments.length !== 2) return;
 
-    state.setContext({ Array });
-    state.addSetter(`Array.from(${state.accessor})`);
-
     serializeArray({
         kind: ReflectionKind.tuple, types: [
             { kind: ReflectionKind.tupleMember, type: type.arguments[0] },
@@ -58,20 +50,11 @@ class JSONSerializer extends Serializer {
     constructor() {
         super();
 
-        this.serializeRegistry.prependClass(Set, serializeTypeClassSet);
-        this.serializeRegistry.prependClass(Map, serializeTypeClassMap);
+        this.serializeRegistry.registerClass(Set, serializeTypeClassSet);
+        this.serializeRegistry.registerClass(Map, serializeTypeClassMap);
 
-        this.deserializeRegistry.prependClass(Set, deserializeTypeClassSet);
-        this.deserializeRegistry.prependClass(Map, deserializeTypeClassMap);
-
-        this.serializeRegistry.prependClass(Date, (type, state) => {
-            state.addSetter(`${state.accessor}.toJSON()`);
-        });
-
-        this.deserializeRegistry.prependClass(Date, (type, state) => {
-            state.setContext({ Date });
-            state.addSetter(`new Date(${state.accessor})`);
-        });
+        this.deserializeRegistry.registerClass(Set, deserializeTypeClassSet);
+        this.deserializeRegistry.registerClass(Map, deserializeTypeClassMap);
     }
 }
 

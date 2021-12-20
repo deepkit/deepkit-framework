@@ -504,7 +504,8 @@ test('createDynamicClass', () => {
     expect(getClassName(new class1)).toBe('Model');
     expect(class1.toString()).toBe('class Model {}');
 
-    class Base {}
+    class Base {
+    }
 
     const class2 = createDynamicClass('Model2', Base);
     expect(getClassName(class2)).toBe('Model2');

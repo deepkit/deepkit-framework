@@ -9,7 +9,7 @@
  */
 
 import { expect, test } from '@jest/globals';
-import { typeOf } from '../../../src/reflection/reflection';
+import { removeTypeName, typeOf } from '../../../src/reflection/reflection';
 import { assertType, ReflectionKind, ReflectionVisibility, Type, typeInfer, Widen } from '../../../src/reflection/type';
 
 test('infer T from function primitive', () => {
@@ -40,8 +40,8 @@ test('infer T from function conditional', () => {
         return typeOf<U>();
     }
 
-    expect(fn('abc')).toEqual({ kind: ReflectionKind.literal, literal: true } as Type);
-    expect(fn(23)).toEqual({ kind: ReflectionKind.literal, literal: false } as Type);
+    expect(fn('abc')).toMatchObject({ kind: ReflectionKind.literal, literal: true });
+    expect(fn(23)).toMatchObject({ kind: ReflectionKind.literal, literal: false });
 });
 
 test('infer T from function branded primitive', () => {
@@ -79,12 +79,12 @@ test('infer T from interface function', () => {
     const wrap: any = {};
     wrap.add = (item: string): void => undefined;
 
-    expect(typeInfer(wrap)).toEqual(typeOf<{ add(item: string): void }>());
-    expect(typeOf<typeof wrap>()).toEqual(typeOf<{ add(item: string): void }>());
-    expect(typeOf<typeof wrap>()).toEqual(typeOf<Wrap<string>>());
+    expect(typeInfer(wrap)).toMatchObject(typeOf<{ add(item: string): void }>() as any);
+    expect(typeOf<typeof wrap>()).toMatchObject(typeOf<{ add(item: string): void }>() as any);
+    expect(typeOf<typeof wrap>()).toMatchObject(removeTypeName(typeOf<Wrap<string>>()) as any);
 
     type a = typeof wrap extends Wrap<infer T> ? T : never;
-    expect(typeOf<a>()).toEqual(typeOf<string>());
+    expect(removeTypeName(typeOf<a>())).toEqual(typeOf<string>());
 });
 
 test('extends string generates literal in constrained type', () => {
@@ -143,14 +143,14 @@ test('T as tuple rest', () => {
     type r = Tuple<[string, number]>;
 
     const type = typeOf<r>();
-    expect(type).toEqual(typeOf<['hi', string, number]>());
+    expect(type).toMatchObject(typeOf<['hi', string, number]>() as any);
 });
 
 test('T array length', () => {
     type Tuple<T extends any[]> = ['hi', T['length']];
     type r = Tuple<string[]>;
-    expect(typeOf<r>()).toEqual(typeOf<['hi', number]>());
+    expect(typeOf<r>()).toMatchObject(typeOf<['hi', number]>() as any);
 
     type r2 = Tuple<[string, number]>;
-    expect(typeOf<r2>()).toEqual(typeOf<['hi', 2]>());
+    expect(typeOf<r2>()).toMatchObject(typeOf<['hi', 2]>() as any);
 });
