@@ -32,7 +32,7 @@ export const BSON_DATA_DECIMAL128 = 19;
 export const BSON_DATA_MIN_KEY = 0xff;
 export const BSON_DATA_MAX_KEY = 0x7f;
 
-export const enum BSONType {
+export enum BSONType {
     NUMBER = 1,
     STRING = 2,
     OBJECT = 3,
@@ -62,10 +62,9 @@ export const BSON_BINARY_SUBTYPE_BYTE_ARRAY = 2;
 export const BSON_BINARY_SUBTYPE_UUID_OLD = 3;
 export const BSON_BINARY_SUBTYPE_UUID = 4;
 export const BSON_BINARY_SUBTYPE_MD5 = 5;
+export const BSON_BINARY_SUBTYPE_ENCRYPT = 6;
+export const BSON_BINARY_SUBTYPE_COLUMN = 7;
 export const BSON_BINARY_SUBTYPE_USER_DEFINED = 128;
-
-//our custom type. Not supported by MongoDB natively. We need to adjust once MongoDB supports bigint
-export const BSON_BINARY_SUBTYPE_BIGINT = 127;
 
 export function digitByteSize(v: number): number {
     if (v < 10) return 2;

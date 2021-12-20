@@ -1,13 +1,10 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { createBSONSizer, getBSONSerializer, getBSONSizer, getValueSize, hexToByte, uuidStringToByte } from '../src/bson-serialize';
-import { ExtractClassType, f, getClassSchema, jsonSerializer, nodeBufferToArrayBuffer, t } from '@deepkit/type';
+import { getBSONSerializer, getBSONSizer, getValueSize, hexToByte, uuidStringToByte } from '../src/bson-serializer';
+import { BinaryBigInt, createReference, Embedded, Excluded, MongoId, nodeBufferToArrayBuffer, PrimaryKey, Reference, SignedBinaryBigInt, typeOf, UUID } from '@deepkit/type';
 import bson from 'bson';
-import { getBSONDecoder } from '../src/bson-jit-parser';
 import { randomBytes } from 'crypto';
-import { parseObject, ParserV2 } from '../src/bson-parser';
-import { ObjectId } from '../src/model';
-import { BSON_BINARY_SUBTYPE_BIGINT, BSONType } from '../src/utils';
+import { BSON_BINARY_SUBTYPE_DEFAULT, BSONType } from '../src/utils';
 
 const { Binary, calculateObjectSize, deserialize, Long, ObjectId: OfficialObjectId, serialize } = bson;
 
@@ -54,12 +51,12 @@ test('basic string', () => {
 
     expect(calculateObjectSize(object)).toBe(expectedSize);
 
-    const schema = t.schema({
-        name: t.string,
-    });
+    const schema = typeOf<{
+        name: string,
+    }>();
 
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
     expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
     expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
 });
 
@@ -78,18 +75,19 @@ test('basic number int', () => {
 
     expect(calculateObjectSize(object)).toBe(expectedSize);
 
-    const schema = t.schema({
-        position: t.number,
-    });
+    const schema = typeOf<{
+        position: number,
+    }>();
 
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
     expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
     expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
 });
 
 test('basic long', () => {
     const object = { position: 3364367088039355000n };
 
+    //23
     const expectedSize =
             4 //size uint32
             + 1 // type (number)
@@ -101,25 +99,29 @@ test('basic long', () => {
             + 1 //object null
     ;
 
-    const schema = t.schema({
-        position: t.number,
-    });
+    const schema = typeOf<{
+        position: number,
+    }>();
+
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
+    // expect(getBSONSerializer(schema)(object)).toEqual(serialize(object)); //mongo doesnt support bigint
 
     const serializer = getBSONSerializer(schema);
-    const deserializer = getBSONDecoder(schema);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    // const deserializer = getBSONDecoder(schema);
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
     expect(serializer(object).byteLength).toBe(expectedSize);
 
-    const reParsed = getBSONDecoder(schema)(serializer(object));
-    expect(reParsed.position).toBe(3364367088039355000n);
+    // const reParsed = getBSONDecoder<any>(schema)(serializer(object));
+    // expect(reParsed.position).toBe(3364367088039355000n);
 
     expect(serializer({ position: 123456n })).toEqual(serialize({ position: Long.fromNumber(123456) }));
     expect(serializer({ position: -123456n })).toEqual(serialize({ position: Long.fromNumber(-123456) }));
     expect(serializer({ position: 3364367088039355000n })).toEqual(serialize({ position: Long.fromBigInt(3364367088039355000n) }));
     expect(serializer({ position: -3364367088039355000n })).toEqual(serialize({ position: Long.fromBigInt(-3364367088039355000n) }));
 
-    expect(deserializer(serializer({ position: 3364367088039355000n }))).toEqual({ position: 3364367088039355000n });
-    expect(deserializer(serializer({ position: -3364367088039355000n }))).toEqual({ position: -3364367088039355000n });
+    // expect(deserializer(serializer({ position: 3364367088039355000n }))).toEqual({ position: 3364367088039355000n });
+    // expect(deserializer(serializer({ position: -3364367088039355000n }))).toEqual({ position: -3364367088039355000n });
 });
 
 test('basic bigint', () => {
@@ -130,24 +132,23 @@ test('basic bigint', () => {
             + 1 // type (binary)
             + 'position\0'.length
             + (
-                4 //binary size
-                + 1 //binary type
-                + 9 //binary content
+                4 //uint32 low bits
+                + 4 //uint32 high bits
             )
             + 1 //object null
     ;
 
-    const schema = t.schema({
-        position: t.bigint,
-    });
+    const schema = typeOf<{
+        position: bigint,
+    }>();
 
     const serializer = getBSONSerializer(schema);
-    const deserializer = getBSONDecoder(schema);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    // const deserializer = getBSONDecoder(schema);
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
     expect(serializer(object).byteLength).toBe(expectedSize);
 
-    const reParsed = deserializer(serializer(object));
-    expect(reParsed.position).toBe(3364367088039355000n);
+    // const reParsed = deserializer(serializer(object));
+    // expect(reParsed.position).toBe(3364367088039355000n);
 
     //this cases are valid when dynamic bigint serialization is activated
     // expect(serializer({ position: 123456n })).toEqual(serialize({ position: 123456 }));
@@ -158,25 +159,49 @@ test('basic bigint', () => {
     // expect(serializer({ position: 9223372036854775807n })).toEqual(serialize({ position: Long.fromBigInt(9223372036854775807n) }));
     // expect(serializer({ position: -9223372036854775807n })).toEqual(serialize({ position: Long.fromBigInt(-9223372036854775807n) }));
 
-    expect(deserializer(serializer({ position: 123456n }))).toEqual({ position: 123456n });
-    expect(deserializer(serializer({ position: -123456n }))).toEqual({ position: -123456n });
-    expect(deserializer(serializer({ position: 3364367088039355000n }))).toEqual({ position: 3364367088039355000n });
-    expect(deserializer(serializer({ position: -3364367088039355000n }))).toEqual({ position: -3364367088039355000n });
+    // expect(deserializer(serializer({ position: 123456n }))).toEqual({ position: 123456n });
+    // expect(deserializer(serializer({ position: -123456n }))).toEqual({ position: -123456n });
+    // expect(deserializer(serializer({ position: 3364367088039355000n }))).toEqual({ position: 3364367088039355000n });
+    // expect(deserializer(serializer({ position: -3364367088039355000n }))).toEqual({ position: -3364367088039355000n });
+    //
+    // expect(deserializer(serializer({ position: 9223372036854775807n }))).toEqual({ position: 9223372036854775807n });
+    // expect(deserializer(serializer({ position: -9223372036854775807n }))).toEqual({ position: -9223372036854775807n });
 
-    expect(deserializer(serializer({ position: 9223372036854775807n }))).toEqual({ position: 9223372036854775807n });
-    expect(deserializer(serializer({ position: -9223372036854775807n }))).toEqual({ position: -9223372036854775807n });
+});
+
+test('basic BinaryBigInt', () => {
+    const object = { position: 3364367088039355000n };
+
+    const expectedSize =
+            4 //size uint32
+            + 1 // type (binary)
+            + 'position\0'.length
+            + (
+                4 //binary size
+                + 1 //binary type
+                + 8 //binary content
+            )
+            + 1 //object null
+    ;
+
+    const schema = typeOf<{
+        position: BinaryBigInt,
+    }>();
+
+    const serializer = getBSONSerializer(schema);
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(serializer(object).byteLength).toBe(expectedSize);
 
     {
         const bson = serializer({ position: 9223372036854775810n }); //force binary format
         expect(bson).toEqual(Buffer.from([
-            29, 0, 0, 0, //size
+            28, 0, 0, 0, //size
             BSONType.BINARY, //type long
             112, 111, 115, 105, 116, 105, 111, 110, 0, //position\n string
 
             9, 0, 0, 0, //binary size, int32
-            BSON_BINARY_SUBTYPE_BIGINT, //binary type
+            BSON_BINARY_SUBTYPE_DEFAULT, //binary type
 
-            1, //signum
             128, 0, 0, 0, 0, 0, 0, 2, //binary data
 
             0, //object null
@@ -186,14 +211,13 @@ test('basic bigint', () => {
     {
         const bson = serializer({ position: -9223372036854775810n }); //force binary format
         expect(bson).toEqual(Buffer.from([
-            29, 0, 0, 0, //size
+            28, 0, 0, 0, //size
             BSONType.BINARY, //type long
             112, 111, 115, 105, 116, 105, 111, 110, 0, //position\n string
 
             9, 0, 0, 0, //binary size, int32
-            BSON_BINARY_SUBTYPE_BIGINT, //binary type
+            BSON_BINARY_SUBTYPE_DEFAULT, //binary type
 
-            255, //signum, 255 = -1
             128, 0, 0, 0, 0, 0, 0, 2, //binary data
 
             0, //object null
@@ -201,7 +225,7 @@ test('basic bigint', () => {
     }
 });
 
-test('basic any bigint', () => {
+test('basic SignedBinaryBigInt', () => {
     const object = { position: 3364367088039355000n };
 
     const expectedSize =
@@ -216,25 +240,13 @@ test('basic any bigint', () => {
             + 1 //object null
     ;
 
-    const schema = t.schema({
-        position: t.any,
-    });
+    const schema = typeOf<{
+        position: SignedBinaryBigInt,
+    }>();
 
     const serializer = getBSONSerializer(schema);
-    const deserializer = getBSONDecoder(schema);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
     expect(serializer(object).byteLength).toBe(expectedSize);
-
-    const reParsed = getBSONDecoder(schema)(serializer(object));
-    expect(reParsed.position).toBe(3364367088039355000n);
-
-    expect(deserializer(serializer({ position: 123456n }))).toEqual({ position: 123456n });
-    expect(deserializer(serializer({ position: -123456n }))).toEqual({ position: -123456n });
-    expect(deserializer(serializer({ position: 3364367088039355000n }))).toEqual({ position: 3364367088039355000n });
-    expect(deserializer(serializer({ position: -3364367088039355000n }))).toEqual({ position: -3364367088039355000n });
-
-    expect(deserializer(serializer({ position: 9223372036854775807n }))).toEqual({ position: 9223372036854775807n });
-    expect(deserializer(serializer({ position: -9223372036854775807n }))).toEqual({ position: -9223372036854775807n });
 
     {
         const bson = serializer({ position: 9223372036854775810n }); //force binary format
@@ -244,9 +256,9 @@ test('basic any bigint', () => {
             112, 111, 115, 105, 116, 105, 111, 110, 0, //position\n string
 
             9, 0, 0, 0, //binary size, int32
-            BSON_BINARY_SUBTYPE_BIGINT, //binary type
+            BSON_BINARY_SUBTYPE_DEFAULT, //binary type
 
-            1, //signum
+            0, //signum
             128, 0, 0, 0, 0, 0, 0, 2, //binary data
 
             0, //object null
@@ -261,7 +273,7 @@ test('basic any bigint', () => {
             112, 111, 115, 105, 116, 105, 111, 110, 0, //position\n string
 
             9, 0, 0, 0, //binary size, int32
-            BSON_BINARY_SUBTYPE_BIGINT, //binary type
+            BSON_BINARY_SUBTYPE_DEFAULT, //binary type
 
             255, //signum, 255 = -1
             128, 0, 0, 0, 0, 0, 0, 2, //binary data
@@ -271,26 +283,96 @@ test('basic any bigint', () => {
     }
 });
 
-test('basic long bigint', () => {
-    const bla: { n: number, m: string }[] = [
-        { n: 1, m: '1' },
-        { n: 1 << 16, m: 'max uint 16' },
-        { n: (1 << 16) + 100, m: 'max uint 16 + 100' },
-        { n: 4294967296, m: 'max uint 32' },
-        { n: 4294967296 - 100, m: 'max uint 32 - 100' },
-        { n: 4294967296 - 1, m: 'max uint 32 - 1' },
-        { n: 4294967296 + 100, m: 'max uint 32 + 100' },
-        { n: 4294967296 + 1, m: 'max uint 32 + 1' },
-        { n: 4294967296 * 10 + 1, m: 'max uint 32 * 10 + 1' },
-        // {n: 9223372036854775807, m: 'max uint64'},
-        // {n: 9223372036854775807 + 1, m: 'max uint64 - 1'},
-        // {n: 9223372036854775807 - 1, m: 'max uint64 + 2'},
-    ];
-    for (const b of bla) {
-        const long = Long.fromNumber(b.n);
-        console.log(b.n, long.toNumber(), long, b.m);
-    }
-});
+// test('basic any bigint', () => {
+//     const object = { position: 3364367088039355000n };
+//
+//     const expectedSize =
+//             4 //size uint32
+//             + 1 // type (binary)
+//             + 'position\0'.length
+//             + (
+//                 4 //binary size
+//                 + 1 //binary type
+//                 + 9 //binary content
+//             )
+//             + 1 //object null
+//     ;
+//
+//     const schema = t.schema({
+//         position: t.any,
+//     });
+//
+//     const serializer = getBSONSerializer(schema);
+//     const deserializer = getBSONDecoder(schema);
+//     expect(getBSONSizer(schema)(object)).toBe(expectedSize);
+//     expect(serializer(object).byteLength).toBe(expectedSize);
+//
+//     const reParsed = getBSONDecoder(schema)(serializer(object));
+//     expect(reParsed.position).toBe(3364367088039355000n);
+//
+//     expect(deserializer(serializer({ position: 123456n }))).toEqual({ position: 123456n });
+//     expect(deserializer(serializer({ position: -123456n }))).toEqual({ position: -123456n });
+//     expect(deserializer(serializer({ position: 3364367088039355000n }))).toEqual({ position: 3364367088039355000n });
+//     expect(deserializer(serializer({ position: -3364367088039355000n }))).toEqual({ position: -3364367088039355000n });
+//
+//     expect(deserializer(serializer({ position: 9223372036854775807n }))).toEqual({ position: 9223372036854775807n });
+//     expect(deserializer(serializer({ position: -9223372036854775807n }))).toEqual({ position: -9223372036854775807n });
+//
+//     {
+//         const bson = serializer({ position: 9223372036854775810n }); //force binary format
+//         expect(bson).toEqual(Buffer.from([
+//             29, 0, 0, 0, //size
+//             BSONType.BINARY, //type long
+//             112, 111, 115, 105, 116, 105, 111, 110, 0, //position\n string
+//
+//             9, 0, 0, 0, //binary size, int32
+//             BSON_BINARY_SUBTYPE_BIGINT, //binary type
+//
+//             1, //signum
+//             128, 0, 0, 0, 0, 0, 0, 2, //binary data
+//
+//             0, //object null
+//         ]));
+//     }
+//
+//     {
+//         const bson = serializer({ position: -9223372036854775810n }); //force binary format
+//         expect(bson).toEqual(Buffer.from([
+//             29, 0, 0, 0, //size
+//             BSONType.BINARY, //type long
+//             112, 111, 115, 105, 116, 105, 111, 110, 0, //position\n string
+//
+//             9, 0, 0, 0, //binary size, int32
+//             BSON_BINARY_SUBTYPE_BIGINT, //binary type
+//
+//             255, //signum, 255 = -1
+//             128, 0, 0, 0, 0, 0, 0, 2, //binary data
+//
+//             0, //object null
+//         ]));
+//     }
+// });
+
+// test('basic long bigint', () => {
+//     const bla: { n: number, m: string }[] = [
+//         { n: 1, m: '1' },
+//         { n: 1 << 16, m: 'max uint 16' },
+//         { n: (1 << 16) + 100, m: 'max uint 16 + 100' },
+//         { n: 4294967296, m: 'max uint 32' },
+//         { n: 4294967296 - 100, m: 'max uint 32 - 100' },
+//         { n: 4294967296 - 1, m: 'max uint 32 - 1' },
+//         { n: 4294967296 + 100, m: 'max uint 32 + 100' },
+//         { n: 4294967296 + 1, m: 'max uint 32 + 1' },
+//         { n: 4294967296 * 10 + 1, m: 'max uint 32 * 10 + 1' },
+//         // {n: 9223372036854775807, m: 'max uint64'},
+//         // {n: 9223372036854775807 + 1, m: 'max uint64 - 1'},
+//         // {n: 9223372036854775807 - 1, m: 'max uint64 + 2'},
+//     ];
+//     for (const b of bla) {
+//         const long = Long.fromNumber(b.n);
+//         console.log(b.n, long.toNumber(), long, b.m);
+//     }
+// });
 
 test('basic number double', () => {
     const object = { position: 149943944399 };
@@ -319,25 +401,17 @@ test('basic number double', () => {
     expect(calculateObjectSize({ position: null })).toBe(expectedSizeNull);
     expect(calculateObjectSize({ position: undefined })).toBe(5);
 
-    const schema = t.schema({
-        position: t.number,
-    });
+    const schema = typeOf<{
+        position?: number,
+    }>();
+
 
     expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
     expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
 
-    expect(getBSONSerializer(schema)({ position: null }).byteLength).toBe(expectedSizeNull);
-    expect(getBSONSerializer(schema)({ position: undefined }).byteLength).toBe(expectedSizeNull); //explicitely annotataed undefined is included
+    expect(getBSONSerializer(schema)({ position: undefined }).byteLength).toBe(expectedSizeNull);
     expect(getBSONSerializer(schema)({}).byteLength).toBe(5);
-
-    expect(getBSONSerializer(schema)({ position: null }).byteLength).toEqual(expectedSizeNull);
-    expect(getBSONSerializer(schema)({ position: undefined }).byteLength).toEqual(expectedSizeNull); //explicitely annotataed undefined is included
-    expect(getBSONSerializer(schema)({}).byteLength).toEqual(5);
-
-    expect(getBSONSerializer(schema)({ position: null })).toEqual(serialize({ position: null }));
-    expect(getBSONSerializer(schema)({})).toEqual(serialize({}));
-    expect(getBSONSerializer(schema)({})).toEqual(serialize({ position: undefined })); //official bson drops undefined values
 });
 
 test('basic boolean', () => {
@@ -355,12 +429,12 @@ test('basic boolean', () => {
 
     expect(calculateObjectSize(object)).toBe(expectedSize);
 
-    const schema = t.schema({
-        valid: t.boolean,
-    });
+    const schema = typeOf<{
+        valid: boolean,
+    }>();
 
     expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
     expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
 });
 
@@ -379,24 +453,24 @@ test('basic date', () => {
 
     expect(calculateObjectSize(object)).toBe(expectedSize);
 
-    const schema = t.schema({
-        created: t.date,
-    });
+    const schema = typeOf<{
+        created: Date,
+    }>();
 
     const serializer = getBSONSerializer(schema);
-    const deserializer = getBSONDecoder(schema);
 
     // expect(serializer(object).byteLength).toBe(expectedSize);
-    // expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    // expect(getBSONSizer(schema)(object)).toBe(expectedSize);
     // expect(serializer(object)).toEqual(serialize(object));
 
-    expect(serializer({created: new Date('2900-10-12T00:00:00.000Z') })).toEqual(serialize({ created: new Date('2900-10-12T00:00:00.000Z') }));
-    expect(serializer({created: new Date('1900-10-12T00:00:00.000Z') })).toEqual(serialize({ created: new Date('1900-10-12T00:00:00.000Z') }));
-    expect(serializer({created: new Date('1000-10-12T00:00:00.000Z') })).toEqual(serialize({ created: new Date('1000-10-12T00:00:00.000Z') }));
-    expect(deserializer(serializer({created: new Date('2900-10-12T00:00:00.000Z') }))).toEqual({ created: new Date('2900-10-12T00:00:00.000Z') });
-    expect(deserializer(serializer({created: new Date('1900-10-12T00:00:00.000Z') }))).toEqual({ created: new Date('1900-10-12T00:00:00.000Z') });
-    expect(deserializer(serializer({created: new Date('1000-10-12T00:00:00.000Z') }))).toEqual({ created: new Date('1000-10-12T00:00:00.000Z') });
+    expect(serializer({ created: new Date('2900-10-12T00:00:00.000Z') })).toEqual(serialize({ created: new Date('2900-10-12T00:00:00.000Z') }));
+    expect(serializer({ created: new Date('1900-10-12T00:00:00.000Z') })).toEqual(serialize({ created: new Date('1900-10-12T00:00:00.000Z') }));
+    expect(serializer({ created: new Date('1000-10-12T00:00:00.000Z') })).toEqual(serialize({ created: new Date('1000-10-12T00:00:00.000Z') }));
 
+    // const deserializer = getBSONDecoder(schema);
+    // expect(deserializer(serializer({ created: new Date('2900-10-12T00:00:00.000Z') }))).toEqual({ created: new Date('2900-10-12T00:00:00.000Z') });
+    // expect(deserializer(serializer({ created: new Date('1900-10-12T00:00:00.000Z') }))).toEqual({ created: new Date('1900-10-12T00:00:00.000Z') });
+    // expect(deserializer(serializer({ created: new Date('1000-10-12T00:00:00.000Z') }))).toEqual({ created: new Date('1000-10-12T00:00:00.000Z') });
 });
 
 test('basic binary', () => {
@@ -419,19 +493,17 @@ test('basic binary', () => {
     //this doesn't support typed arrays
     // expect(calculateObjectSize(object)).toBe(expectedSize);
 
-    const schema = t.schema({
-        binary: t.type(Uint16Array),
-    });
-
-    expect(schema.getProperty('binary').type).toBe('Uint16Array');
+    const schema = typeOf<{
+        binary: Uint16Array,
+    }>();
 
     expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
 
     //doesnt support typed arrays
     // expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
 
-    expect(getBSONDecoder(schema)(getBSONSerializer(schema)(object))).toEqual(object);
+    // expect(getBSONDecoder(schema)(getBSONSerializer(schema)(object))).toEqual(object);
 });
 
 
@@ -459,13 +531,13 @@ test('basic arrayBuffer', () => {
 
     // expect(calculateObjectSize(object)).toBe(expectedSize);
 
-    const schema = t.schema({
-        binary: t.type(ArrayBuffer),
-    });
+    const schema = typeOf<{
+        binary: ArrayBuffer,
+    }>();
 
     expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
-    expect(getBSONDecoder(schema)(getBSONSerializer(schema)(object))).toEqual(object);
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
+    // expect(getBSONDecoder(schema)(getBSONSerializer(schema)(object))).toEqual(object);
     // expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
 });
 
@@ -486,25 +558,23 @@ test('basic Buffer', () => {
 
     // expect(calculateObjectSize(object)).toBe(expectedSize);
 
-    const schema = t.schema({
-        binary: t.type(Uint8Array),
-    });
-
-    expect(schema.getProperty('binary').type).toBe('Uint8Array');
+    const schema = typeOf<{
+        binary: Uint8Array,
+    }>();
 
     expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
-    expect(getBSONDecoder(schema)(getBSONSerializer(schema)(object))).toEqual(object);
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
+    // expect(getBSONDecoder(schema)(getBSONSerializer(schema)(object))).toEqual(object);
 
     Buffer.alloc(2);
     Buffer.alloc(200);
     Buffer.alloc(20000);
 
-    expect(getBSONDecoder(schema)(getBSONSerializer(schema)({
-        binary: Buffer.alloc(44)
-    }))).toEqual({
-        binary: new Uint8Array(44)
-    });
+    // expect(getBSONDecoder(schema)(getBSONSerializer(schema)({
+    //     binary: Buffer.alloc(44)
+    // }))).toEqual({
+    //     binary: new Uint8Array(44)
+    // });
 });
 
 test('basic uuid', () => {
@@ -529,9 +599,9 @@ test('basic uuid', () => {
 
     expect(calculateObjectSize({ uuid: uuidRandomBinary })).toBe(expectedSize);
 
-    const schema = t.schema({
-        uuid: t.uuid,
-    });
+    const schema = typeOf<{
+        uuid: UUID,
+    }>();
 
     expect(getBSONSizer(schema)(object)).toBe(expectedSize);
     expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
@@ -545,9 +615,9 @@ test('basic uuid', () => {
     expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
     expect(getBSONSerializer(schema)(object)).toEqual(serialize(objectBinary));
 
-    const bson = serialize(objectBinary);
-    const parsed = parseObject(new ParserV2(bson));
-    expect(parsed.uuid).toBe('75ed2328-89f2-4b89-9c49-1498891d616d');
+    // const bson = serialize(objectBinary);
+    // const parsed = parseObject(new ParserV2(bson));
+    // expect(parsed.uuid).toBe('75ed2328-89f2-4b89-9c49-1498891d616d');
 });
 
 test('basic objectId', () => {
@@ -566,12 +636,12 @@ test('basic objectId', () => {
     const nativeBson = { _id: new OfficialObjectId('507f191e810c19729de860ea') };
     expect(calculateObjectSize(nativeBson)).toBe(expectedSize);
 
-    const schema = t.schema({
-        _id: t.mongoId,
-    });
+    const schema = typeOf<{
+        _id: MongoId,
+    }>();
 
     expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
     expect(getBSONSerializer(schema)(object)).toEqual(serialize(nativeBson));
 });
 
@@ -597,45 +667,94 @@ test('basic nested', () => {
 
     expect(calculateObjectSize(object)).toBe(expectedSize);
 
-    const schema = t.schema({
+    const schema = typeOf<{
         name: {
-            anotherOne: t.string,
+            anotherOne: string
         },
-    });
+    }>();
 
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
     expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
 });
 
 test('basic map', () => {
-    const object = { name: { anotherOne: 'Peter2' } };
+    const object = { name: new Map([['abc', 'Peter']]) };
 
     const expectedSize =
             4 //size uint32
-            + 1 //type (object)
+            + 1 //type (array)
             + 'name\0'.length
             + (
-                4 //size uint32
-                + 1 //type (object)
-                + 'anotherOne\0'.length
+                4 //size uint32 of array
+                + 1 //type (array)
+                + '0\0'.length //key
                 + (
-                    4 //string size uint32
-                    + 'Peter2'.length + 1 //string content + null
+                    4 //size uint32 of array
+                    + 1 //type (string)
+                    + '0\0'.length //key
+                    + (
+                        4 //string size uint32
+                        + 'abc'.length + 1 //string content + null
+                    )
+                    + 1 //type (string)
+                    + '1\0'.length //key
+                    + (
+                        4 //string size uint32
+                        + 'Peter'.length + 1 //string content + null
+                    )
+                    + 1 //object null
                 )
                 + 1 //object null
             )
             + 1 //object null
     ;
 
-    expect(calculateObjectSize(object)).toBe(expectedSize);
+    expect(calculateObjectSize({ name: [['abc', 'Peter']] })).toBe(expectedSize);
 
-    const schema = t.schema({
-        name: t.map(t.string)
-    });
+    const schema = typeOf<{
+        name: Map<string, string>
+    }>();
 
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
     expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
-    expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
+    expect(getBSONSerializer(schema)(object)).toEqual(serialize({ name: [['abc', 'Peter']] }));
+});
+
+test('basic set', () => {
+    const object = { name: new Set(['abc', 'Peter']) };
+
+    const expectedSize =
+            4 //size uint32
+            + 1 //type (array)
+            + 'name\0'.length
+            + (
+                4 //size uint32 of array
+                + 1 //type (string)
+                + '0\0'.length //key
+                + (
+                    4 //string size uint32
+                    + 'abc'.length + 1 //string content + null
+                )
+                + 1 //type (string)
+                + '1\0'.length //key
+                + (
+                    4 //string size uint32
+                    + 'Peter'.length + 1 //string content + null
+                )
+                + 1 //object null
+            )
+            + 1 //object null
+    ;
+
+    expect(calculateObjectSize({ name: ['abc', 'Peter'] })).toBe(expectedSize);
+
+    const schema = typeOf<{
+        name: Set<string>
+    }>();
+
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
+    expect(getBSONSerializer(schema)(object)).toEqual(serialize({ name: ['abc', 'Peter'] }));
 });
 
 test('basic array', () => {
@@ -660,81 +779,81 @@ test('basic array', () => {
 
     expect(calculateObjectSize(object)).toBe(expectedSize);
 
-    const schema = t.schema({
-        name: t.array(t.string),
-    });
+    const schema = typeOf<{
+        name: string[]
+    }>();
 
     expect(getBSONSerializer(schema)(object).byteLength).toBe(expectedSize);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
     expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
 });
 
-test('number', () => {
+// test('number', () => {
+//     const object = { name: 'Peter4', tags: ['a', 'b', 'c'], priority: 15, position: 149943944399, valid: true, created: new Date() };
+//
+//     const schema = t.schema({
+//         name: t.string,
+//         tags: t.array(t.string),
+//         priority: t.number,
+//         position: t.number,
+//         valid: t.boolean,
+//         created: t.date,
+//     });
+//
+//     expect(getBSONSizer(schema)(object)).toBe(calculateObjectSize(object));
+//     expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
+// });
+//
+test('all supported base types', () => {
     const object = { name: 'Peter4', tags: ['a', 'b', 'c'], priority: 15, position: 149943944399, valid: true, created: new Date() };
 
-    const schema = t.schema({
-        name: t.string,
-        tags: t.array(t.string),
-        priority: t.number,
-        position: t.number,
-        valid: t.boolean,
-        created: t.date,
-    });
+    const schema = typeOf<{
+        name: string,
+        tags: string[],
+        priority: number,
+        position: number,
+        valid: boolean,
+        created: Date
+    }>();
 
-    expect(createBSONSizer(schema)(object)).toBe(calculateObjectSize(object));
+    expect(getBSONSizer(schema)(object)).toBe(calculateObjectSize(object));
     expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
 });
 
-test('all supported types', () => {
-    const object = { name: 'Peter4', tags: ['a', 'b', 'c'], priority: 15, position: 149943944399, valid: true, created: new Date() };
-
-    const schema = t.schema({
-        name: t.string,
-        tags: t.array(t.string),
-        priority: t.number,
-        position: t.number,
-        valid: t.boolean,
-        created: t.date,
-    });
-
-    expect(createBSONSizer(schema)(object)).toBe(calculateObjectSize(object));
-    expect(getBSONSerializer(schema)(object)).toEqual(serialize(object));
-});
-
-test('string utf8', () => {
-    const schema = t.schema({
-        name: t.string,
-        any: t.any,
-    });
-
-    const serialize = getBSONSerializer(schema);
-    const parse = getBSONDecoder(schema);
-
-    expect(parse(serialize({ name: 'Peter' }))).toEqual({ name: 'Peter' });
-    expect(parse(serialize({ name: 'Peter✌️' }))).toEqual({ name: 'Peter✌️' });
-    expect(parse(serialize({ name: '✌️' }))).toEqual({ name: '✌️' });
-    expect(parse(serialize({ name: '🌉' }))).toEqual({ name: '🌉' });
-    expect(parse(serialize({ name: 'πøˆ️' }))).toEqual({ name: 'πøˆ️' });
-    expect(parse(serialize({ name: 'Ѓ' }))).toEqual({ name: 'Ѓ' });
-    expect(parse(serialize({ name: '㒨' }))).toEqual({ name: '㒨' });
-    expect(parse(serialize({ name: '﨣' }))).toEqual({ name: '﨣' });
-
-    expect(parse(serialize({ any: { base: true } }))).toEqual({ any: { base: true } });
-    expect(parse(serialize({ any: { '✌️': true } }))).toEqual({ any: { '✌️': true } });
-    expect(parse(serialize({ any: { 'Ѓ': true } }))).toEqual({ any: { 'Ѓ': true } });
-    expect(parse(serialize({ any: { 㒨: true } }))).toEqual({ any: { 㒨: true } });
-    expect(parse(serialize({ any: { 﨣: true } }))).toEqual({ any: { 﨣: true } });
-});
+// test('string utf8', () => {
+//     const schema = typeOf<{
+//         name: string,
+//         any: any
+//     }>();
+//
+//     const serialize = getBSONSerializer(schema);
+//     const parse = getBSONDecoder(schema);
+//
+//     expect(parse(serialize({ name: 'Peter' }))).toEqual({ name: 'Peter' });
+//     expect(parse(serialize({ name: 'Peter✌️' }))).toEqual({ name: 'Peter✌️' });
+//     expect(parse(serialize({ name: '✌️' }))).toEqual({ name: '✌️' });
+//     expect(parse(serialize({ name: '🌉' }))).toEqual({ name: '🌉' });
+//     expect(parse(serialize({ name: 'πøˆ️' }))).toEqual({ name: 'πøˆ️' });
+//     expect(parse(serialize({ name: 'Ѓ' }))).toEqual({ name: 'Ѓ' });
+//     expect(parse(serialize({ name: '㒨' }))).toEqual({ name: '㒨' });
+//     expect(parse(serialize({ name: '﨣' }))).toEqual({ name: '﨣' });
+//
+//     expect(parse(serialize({ any: { base: true } }))).toEqual({ any: { base: true } });
+//     expect(parse(serialize({ any: { '✌️': true } }))).toEqual({ any: { '✌️': true } });
+//     expect(parse(serialize({ any: { 'Ѓ': true } }))).toEqual({ any: { 'Ѓ': true } });
+//     expect(parse(serialize({ any: { 㒨: true } }))).toEqual({ any: { 㒨: true } });
+//     expect(parse(serialize({ any: { 﨣: true } }))).toEqual({ any: { 﨣: true } });
+// });
 
 test('optional field', () => {
-    const findSchema = t.schema({
-        find: t.string,
-        batchSize: t.number,
-        limit: t.number.optional,
-        skip: t.number.optional,
-    });
+    const schema = typeOf<{
+        find: string,
+        batchSize: number,
+        limit?: number,
+        skip?: number,
+    }>();
 
-    const findSerializer = getBSONSerializer(findSchema);
+    const findSerializer = getBSONSerializer(schema);
     const bson = findSerializer({
         find: 'user',
         batchSize: 1,
@@ -751,17 +870,17 @@ test('optional field', () => {
 });
 
 test('complex', () => {
-    const findSchema = t.schema({
-        find: t.string,
-        batchSize: t.number,
-        limit: t.number.optional,
-        filter: t.any,
-        projection: t.any,
-        sort: t.any,
-        skip: t.number.optional,
-    });
+    const schema = typeOf<{
+        find: string,
+        batchSize: number,
+        limit?: number,
+        filter: any,
+        projection: any,
+        sort: any,
+        skip?: number,
+    }>();
 
-    const findSerializer = getBSONSerializer(findSchema);
+    const findSerializer = getBSONSerializer(schema);
 
     const bson = findSerializer({
         find: 'user',
@@ -777,119 +896,9 @@ test('complex', () => {
     expect(bson).toEqual(bsonOfficial);
 });
 
-test('any objectId', () => {
-    const schema = t.schema({
-        _id: t.any,
-        q: t.any,
-    });
-
-    {
-        const doc = { _id: new ObjectId('507f191e810c19729de860ea') };
-        const officialDoc = { _id: new OfficialObjectId('507f191e810c19729de860ea') };
-        const bson = getBSONSerializer(schema)(doc);
-        const bsonOfficial = serialize(officialDoc);
-
-        expect(bson).toEqual(bsonOfficial);
-        const parsed = deserialize(Buffer.from(bson));
-        expect(parsed._id).toBeInstanceOf(OfficialObjectId);
-        expect(parsed._id.toHexString()).toBe('507f191e810c19729de860ea');
-
-        const parsed2 = getBSONDecoder(schema)(bson);
-        expect(parsed2._id).toBe('507f191e810c19729de860ea');
-    }
-
-    {
-        const doc = { q: { id: new ObjectId('507f191e810c19729de860ea') } };
-        const officialDoc = { q: { id: new OfficialObjectId('507f191e810c19729de860ea') } };
-        const bson = getBSONSerializer(schema)(doc);
-        const bsonOfficial = serialize(officialDoc);
-
-        expect(bson).toEqual(bsonOfficial);
-        const parsed = deserialize(Buffer.from(bson));
-        expect(parsed.q.id).toBeInstanceOf(OfficialObjectId);
-        expect(parsed.q.id.toHexString()).toBe('507f191e810c19729de860ea');
-
-        const parsed2 = getBSONDecoder(schema)(bson);
-        expect(parsed2.q.id).toBe('507f191e810c19729de860ea');
-    }
-});
-
-test('objectId string', () => {
-    const schema = t.schema({
-        id: t.mongoId,
-    });
-
-    {
-        const doc = { id: '507f191e810c19729de860ea' };
-        const bson = getBSONSerializer(schema)(doc);
-
-        const bsonOfficial = serialize({ id: new OfficialObjectId('507f191e810c19729de860ea') });
-        expect(bson).toEqual(bsonOfficial);
-
-        const parsed = deserialize(Buffer.from(bson));
-        expect(parsed.id).toBeInstanceOf(OfficialObjectId);
-        expect(parsed.id.toHexString()).toBe('507f191e810c19729de860ea');
-
-        const parsed2 = getBSONDecoder(schema)(bson);
-        expect(parsed2.id).toBe('507f191e810c19729de860ea');
-    }
-});
-
-test('model 1, missing `public`', () => {
-    class User {
-        @f ready?: boolean;
-
-        @f.array(f.string) tags: string[] = [];
-
-        @f priority: number = 0;
-
-        constructor(
-            @f.primary id: number,
-            @f public name: string
-        ) {
-        }
-    }
-
-    const schema = getClassSchema(User);
-    expect(schema.getMethodProperties('constructor').length).toBe(2);
-    expect(schema.getPropertiesMap().size).toBe(5);
-
-    {
-        const user = new User(1, 'Peter ' + 1);
-        user.ready = true;
-        user.priority = 5;
-        user.tags = ['a', 'b', 'c'];
-
-        const bson = getBSONSerializer(User)(user);
-        const size = getBSONSizer(User)(user);
-        expect(size).toBe(calculateObjectSize(user));
-
-        const s = getBSONDecoder(User);
-        const o = s(bson);
-        expect(o).toEqual(deserialize(Buffer.from(bson)));
-    }
-
-    {
-        const user = {
-            ready: true,
-            priority: 5,
-            tags: ['a', 'b', 'c'],
-            id: null,
-            name: 'Peter 1',
-        };
-        const bson = getBSONSerializer(User)(user);
-        const s = getBSONDecoder(User);
-        const o = s(bson);
-        expect(o).not.toEqual(deserialize(Buffer.from(bson))); //because bson-js includes `id`, but we drop it since it's not assigned in the constructor
-    }
-});
-
-test('decorated', () => {
+test('embedded', () => {
     class DecoratedValue {
-        constructor(
-            @t.array(t.string).decorated
-            public items: string[] = []
-        ) {
+        constructor(public items: string[] = []) {
         }
     }
 
@@ -914,102 +923,85 @@ test('decorated', () => {
 
     expect(calculateObjectSize({ v: ['Peter3'] })).toBe(expectedSize);
 
-    const schema = t.schema({
-        v: t.type(DecoratedValue),
-    });
+    const schema = typeOf<{
+        v: Embedded<DecoratedValue>
+    }>();
 
     const bson = getBSONSerializer(schema)(object);
 
     const officialDeserialize = deserialize(Buffer.from(bson));
-    console.log('officialDeserialize', officialDeserialize);
     expect(officialDeserialize.v).toEqual(['Peter3']);
 
     expect(bson.byteLength).toBe(expectedSize);
-    expect(createBSONSizer(schema)(object)).toBe(expectedSize);
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
 
     expect(bson).toEqual(serialize({ v: ['Peter3'] }));
 
-    const back = getBSONDecoder(schema)(bson);
-    expect(back.v).toBeInstanceOf(DecoratedValue);
-    expect(back.v.items).toEqual(['Peter3']);
-    expect(back).toEqual(object);
+    // const back = getBSONDecoder(schema)(bson);
+    // expect(back.v).toBeInstanceOf(DecoratedValue);
+    // expect(back.v.items).toEqual(['Peter3']);
+    // expect(back).toEqual(object);
 });
 
 test('reference', () => {
-    class User {
-        @t.primary id: number = 1;
+    class Entity {
+        public id: number & PrimaryKey = 0;
 
-        @t.array(User).backReference()
-        managedUsers: User[] = [];
-
-        @t name!: string;
-
-        //self reference
-        @t.optional.reference()
-        manager?: User;
+        constructor(public title: string) {
+        }
     }
 
-    {
-        const object = new User();
-        object.name = 'Peter';
-        (object as any).manager = null;
+    const object = { v: createReference(Entity, { id: 5 }) };
 
-        const bson = getBSONSerializer(User)(object);
-        const json = deserialize(bson);
-        expect('manager' in json).toBe(true); //needs to be maintained in BSON since manager is optional. Only way to reset it.
-        expect(json.manager).toBe(null); //needs to be maintained in BSON since manager is optional. Only way to reset it.
+    const expectedSize =
+            4 //size uint32
+            + 1 //type (number)
+            + 'v\0'.length
+            + (
+                4 //int uint32
+            )
+            + 1 //object null
+    ;
 
-        const trip = getBSONDecoder(User)(bson);
-        expect(trip.manager).toBe(undefined);
-        expect('manager' in trip).toBe(false); //not part of the object since undefined/null
-    }
+    expect(calculateObjectSize({ v: 5 })).toBe(expectedSize);
 
-    const updateSchema = t.schema({
-        update: t.string,
-        $db: t.string,
-        updates: t.array({
-            q: t.any,
-            u: t.any,
-            multi: t.boolean,
-        })
-    });
+    const schema = typeOf<{
+        v: Entity & Reference
+    }>();
 
-    {
-        const object = {
-            update: 'Nix',
-            $db: 'admin',
-            updates: [{
-                q: { id: 213 },
-                u: {
-                    manager: null
-                }
-            }]
-        };
+    expect(getBSONSizer(schema)(object)).toBe(expectedSize);
+    const bson = getBSONSerializer(schema)(object);
 
-        expect(getBSONSizer(updateSchema)(object)).toBe(calculateObjectSize(object));
-        const bson = getBSONSerializer(updateSchema)(object);
-        expect(getBSONDecoder(updateSchema)(bson)).toEqual(deserialize(Buffer.from(bson)));
-    }
+    const officialDeserialize = deserialize(Buffer.from(bson));
+    expect(officialDeserialize.v).toEqual(5);
+
+    expect(bson.byteLength).toBe(expectedSize);
+
+    expect(bson).toEqual(serialize({ v: 5 }));
+
+    // const back = getBSONDecoder(schema)(bson);
+    // expect(back.v).toBeInstanceOf(DecoratedValue);
+    // expect(back.v.items).toEqual(['Peter3']);
+    // expect(back).toEqual(object);
 });
 
 test('bson length', () => {
     const nonce = randomBytes(24);
 
-    class SaslStartCommand extends t.class({
-        saslStart: t.literal(1),
-        $db: t.string,
-        mechanism: t.string,
-        payload: t.type(Uint8Array),
-        autoAuthorize: t.literal(1),
+    const SaslStartCommand = typeOf<{
+        saslStart: 1,
+        $db: string,
+        mechanism: string,
+        payload: Uint8Array,
+        autoAuthorize: 1,
         options: {
-            skipEmptyExchange: t.literal(true)
+            skipEmptyExchange: true
         }
-    }) {
-    }
+    }>();
 
     const message = {
         saslStart: 1,
-        '$db': 'admin',
+        $db: 'admin',
         mechanism: 'SCRAM-SHA-1',
         payload: Buffer.concat([Buffer.from('n,,', 'utf8'), Buffer.from(`n=Peter,r=${nonce.toString('base64')}`, 'utf8')]),
         autoAuthorize: 1,
@@ -1024,21 +1016,20 @@ test('bson length', () => {
     const bson = getBSONSerializer(SaslStartCommand)(message);
 
     expect(bson).toEqual(serialize(message));
-
 });
 
 test('arrayBuffer', () => {
-    const schema = t.schema({
-        name: t.string,
-        secondId: t.mongoId,
-        preview: t.type(ArrayBuffer),
-    });
+    const schema = typeOf<{
+        name: string,
+        secondId: MongoId,
+        preview: ArrayBuffer,
+    }>();
 
-    const message = jsonSerializer.for(schema).deserialize({
+    const message = {
         name: 'myName',
         secondId: '5bf4a1ccce060e0b38864c9e',
         preview: nodeBufferToArrayBuffer(Buffer.from('Baar', 'utf8'))
-    });
+    };
 
     expect(Buffer.from(message.preview).toString('utf8')).toBe('Baar');
 
@@ -1054,23 +1045,23 @@ test('arrayBuffer', () => {
 
     expect(bson).toEqual(serialize(mongoMessage));
 
-    const back = getBSONDecoder(schema)(bson);
-    expect(Buffer.from(back.preview).toString('utf8')).toBe('Baar');
-    expect(back.preview).toEqual(message.preview);
+    // const back = getBSONDecoder(schema)(bson);
+    // expect(Buffer.from(back.preview).toString('utf8')).toBe('Baar');
+    // expect(back.preview).toEqual(message.preview);
 });
 
 test('typed array', () => {
-    const schema = t.schema({
-        name: t.string,
-        secondId: t.mongoId,
-        preview: t.type(Uint16Array),
-    });
+    const schema = typeOf<{
+        name: string,
+        secondId: MongoId,
+        preview: Uint16Array,
+    }>();
 
-    const message = jsonSerializer.for(schema).deserialize({
+    const message = {
         name: 'myName',
         secondId: '5bf4a1ccce060e0b38864c9e',
         preview: new Uint16Array(nodeBufferToArrayBuffer(Buffer.from('LAA3AEIATQBYAA==', 'base64'))), //44, 55, 66, 77, 88
-    });
+    };
 
     expect(message.preview).toBeInstanceOf(Uint16Array);
     expect(message.preview.byteLength).toBe(10);
@@ -1087,21 +1078,102 @@ test('typed array', () => {
 
     expect(bson).toEqual(serialize(mongoMessage));
 
-    const back = getBSONDecoder(schema)(bson);
-    expect(back.preview).toEqual(message.preview);
+    // const back = getBSONDecoder(schema)(bson);
+    // expect(back.preview).toEqual(message.preview);
+});
+
+test('union string | number', () => {
+    const schema = typeOf<{
+        v: string | number,
+    }>();
+
+    expect(getBSONSizer(schema)({ v: 'abc' })).toBe(calculateObjectSize({ v: 'abc' }));
+    expect(getBSONSizer(schema)({ v: 2 })).toBe(calculateObjectSize({ v: 3 }));
+
+    expect(getBSONSerializer(schema)({ v: 'abc' })).toEqual(serialize({ v: 'abc' }));
+    expect(getBSONSerializer(schema)({ v: 2 })).toEqual(serialize({ v: 2 }));
+});
+
+test('union number | class', () => {
+    class MyClass {
+        id: number = 0;
+    }
+
+    const schema = typeOf<{
+        v: number | MyClass,
+    }>();
+
+    expect(getBSONSizer(schema)({ v: { id: 5 } })).toBe(calculateObjectSize({ v: { id: 5 } }));
+    expect(getBSONSizer(schema)({ v: 2 })).toBe(calculateObjectSize({ v: 3 }));
+
+    expect(getBSONSerializer(schema)({ v: { id: 5 } })).toEqual(serialize({ v: { id: 5 } }));
+    expect(getBSONSerializer(schema)({ v: 2 })).toEqual(serialize({ v: 2 }));
+});
+
+test('index signature', () => {
+    const schema = typeOf<{
+        [name: string]: number
+    }>();
+
+    expect(getBSONSizer(schema)({ a: 5 })).toBe(calculateObjectSize({ a: 5 }));
+    expect(getBSONSizer(schema)({ a: 5, b: 6 })).toBe(calculateObjectSize({ a: 5, b: 6 }));
+
+    expect(getBSONSerializer(schema)({ a: 5 })).toEqual(serialize({ a: 5 }));
+    expect(getBSONSerializer(schema)({ a: 5, b: 6 })).toEqual(serialize({ a: 5, b: 6 }));
+});
+
+test('index signature + properties', () => {
+    const schema = typeOf<{
+        id: number;
+        [name: string]: number | string
+    }>();
+
+    expect(getBSONSizer(schema)({ id: 1, a: 5 })).toBe(calculateObjectSize({ id: 1, a: 5 }));
+    expect(getBSONSizer(schema)({ id: 1, a: 5, b: 6 })).toBe(calculateObjectSize({ id: 1, a: 5, b: 6 }));
+
+    expect(getBSONSerializer(schema)({ id: 1, a: 5 })).toEqual(serialize({ id: 1, a: 5 }));
+    expect(getBSONSerializer(schema)({ id: 1, a: 5, b: 6 })).toEqual(serialize({ id: 1, a: 5, b: 6 }));
+});
+
+test('exclude', () => {
+    const schema = typeOf<{
+        id: number;
+        password: string & Excluded
+    }>();
+
+    expect(getBSONSizer(schema)({ id: 1, password: 'asdasd' })).toBe(calculateObjectSize({ id: 1 }));
+    expect(getBSONSerializer(schema)({ id: 1, password: 'asdasd' })).toEqual(serialize({ id: 1 }));
+});
+
+test('promise', () => {
+    const schema = typeOf<{
+        id: Promise<number>;
+    }>();
+
+    expect(getBSONSizer(schema)({ id: 1 })).toBe(calculateObjectSize({ id: 1 }));
+    expect(getBSONSerializer(schema)({ id: 1 })).toEqual(serialize({ id: 1 }));
+});
+
+test('regepx', () => {
+    const schema = typeOf<{
+        id: RegExp
+    }>();
+
+    expect(getBSONSizer(schema)({ id: /asd/g })).toBe(calculateObjectSize({ id: /asd/g }));
+    expect(getBSONSerializer(schema)({ id: /asd/g })).toEqual(serialize({ id: /asd/g }));
 });
 
 test('typed any and undefined', () => {
-    const schema = t.schema({
-        data: t.any,
-    });
+    const schema = typeOf<{
+        data: any,
+    }>();
 
-    const message = jsonSerializer.for(schema).deserialize({
+    const message = {
         data: {
             $set: {},
             $inc: undefined,
         },
-    });
+    };
 
     // expect(getValueSize({ $inc: undefined })).toBe(calculateObjectSize({ $inc: undefined })); //official BSON does not include undefined values, but we do
     expect(getValueSize({ $inc: [undefined] })).toBe(calculateObjectSize({ $inc: [undefined] }));
@@ -1109,208 +1181,12 @@ test('typed any and undefined', () => {
     // const size = getBSONSizer(schema)(message);
     // expect(size).toBe(calculateObjectSize(message)); //official bson doesnt include undefined
 
+    //todo: not sure what the expectation here was
     const bson = getBSONSerializer(schema)(message);
     // expect(bson).toEqual(serialize(message)); //official bson doesnt include undefined
 
-    const back = getBSONDecoder(schema)(bson);
-    expect(back.data.$set).toEqual({});
-    expect(back.data.$inc).toEqual(undefined);
-    expect('$inc' in back.data).toEqual(true);
-});
-
-test('test map map', () => {
-    const schema = t.schema({
-        data: t.map(t.map(t.string)),
-    });
-
-    const message = jsonSerializer.for(schema).deserialize({
-        data: { foo: { bar: 'abc' } },
-    });
-
-    const size = getBSONSizer(schema)(message);
-    expect(size).toBe(calculateObjectSize(message));
-
-    const bson = getBSONSerializer(schema)(message);
-    expect(bson).toEqual(serialize(message));
-
-    expect(getBSONDecoder(schema)(bson)).toEqual(message);
-});
-
-test('test array array', () => {
-    const schema = t.schema({
-        data: t.array(t.array(t.string)),
-    });
-
-    const message = jsonSerializer.for(schema).deserialize({
-        data: [['abc']],
-    });
-
-    const size = getBSONSizer(schema)(message);
-    expect(size).toBe(calculateObjectSize(message));
-
-    const bson = getBSONSerializer(schema)(message);
-
-    expect(bson).toEqual(serialize(message));
-    expect(getBSONDecoder(schema)(bson)).toEqual(message);
-});
-
-test('test array optional', () => {
-    const schema = t.schema({
-        data: t.array(t.date.optional),
-    });
-
-    {
-        const message = { data: [new Date, undefined] };
-        const size = getBSONSizer(schema)(message);
-        expect(size).toBe(calculateObjectSize(message));
-    }
-});
-
-test('test map optional 1', () => {
-    const schema = t.schema({
-        data: t.map(t.date.optional),
-    });
-
-    {
-        const message = { data: { first: new Date, second: undefined } };
-        // const size = getBSONSizer(schema)(message); //we maintain undefined as null, in contrary to BSON official
-        // expect(size).toBe(calculateObjectSize(message));
-
-        expect(getBSONDecoder(schema)(getBSONSerializer(schema)(message))).toEqual(message);
-        // expect(getBSONSerializer(schema)(message)).toEqual(serialize(message));
-    }
-});
-
-test('test map optional 2', () => {
-    const schema = t.schema({
-        data: t.map(t.date.optional),
-    });
-
-    {
-        const message = { data: { first: new Date, second: undefined } };
-        // const size = getBSONSizer(schema)(message);  //we maintain undefined as null, in contrary to BSON official
-        // expect(size).toBe(calculateObjectSize(message));
-        expect(getBSONDecoder(schema)(getBSONSerializer(schema)(message))).toEqual(message);
-        // expect(getBSONSerializer(schema)(message)).toEqual(serialize(message));
-    }
-});
-
-test('test union optional', () => {
-    const schema = t.schema({
-        data: t.union('foo', 'bar').optional
-    });
-
-    {
-        const message = { data: 'foo' };
-        const size = getBSONSizer(schema)(message);
-        expect(size).toBe(calculateObjectSize(message));
-
-        const serializer = getBSONSerializer(schema);
-        const bson = serializer(message);
-        expect(bson).toEqual(serialize(message));
-        expect(getBSONDecoder(schema)(getBSONSerializer(schema)(message))).toEqual(message);
-    }
-
-    {
-        const message = { data: undefined };
-        // const size = getBSONSizer(schema)(message);
-        // expect(size).toBe(calculateObjectSize(message)); //official bson does not include undefined, but we do
-        const trip = getBSONDecoder(schema)(getBSONSerializer(schema)(message));
-        expect('data' in trip).toBe(true);
-        expect(trip.data).toEqual(undefined);
-        // expect(getBSONSerializer(schema)(message)).toEqual(serialize(message));
-    }
-
-    {
-        const message = { data: 'bar' };
-        const size = getBSONSizer(schema)(message);
-        expect(size).toBe(calculateObjectSize(message));
-        expect(getBSONDecoder(schema)(getBSONSerializer(schema)(message))).toEqual(message);
-        expect(getBSONSerializer(schema)(message)).toEqual(serialize(message));
-    }
-});
-
-test('test object', () => {
-    class MyModel {
-        excluded = true;
-
-        @t type: string = '';
-
-        constructor(
-            @t public name: string
-        ) {
-        }
-    }
-
-    const schema = t.schema({
-        data: t.type(MyModel),
-    });
-
-    {
-        const item = new MyModel('bar');
-        item.type = 'foo';
-        const message: ExtractClassType<typeof schema> = { data: item };
-        expect(getBSONSizer(schema)(message)).not.toBe(calculateObjectSize(message)); //should bee different, since we do not include `excluded`, but official bson does
-        const bson = getBSONSerializer(schema)(message);
-
-        const backOfficial = deserialize(Buffer.from(bson));
-        expect(backOfficial.data.excluded).toBe(undefined); //`excluded` should not be part of the BSON
-
-        expect(bson).not.toEqual(serialize(message)); //should not be equal, since MyModel does not serialize `excluded`
-
-        const back = getBSONDecoder(schema)(bson);
-        expect(back.data).toBeInstanceOf(MyModel);
-        expect(back.data.name).toBe('bar');
-        expect(back.data.type).toBe('foo');
-        expect(back).toEqual(message);
-    }
-});
-
-test('test union deep object', () => {
-    class MyModel {
-        excluded = true;
-
-        @t.literal('model') d: 'model' = 'model';
-
-        @t type: string = '';
-
-        constructor(
-            @t public name: string
-        ) {
-        }
-    }
-
-    const schema = t.schema({
-        data: t.union(t.string, MyModel),
-    });
-
-    {
-        const message: ExtractClassType<typeof schema> = { data: 'peter' };
-
-        expect(getBSONSizer(schema)(message)).toBe(calculateObjectSize(message));
-
-        const bson = getBSONSerializer(schema)(message);
-
-        expect(bson).toEqual(serialize(message));
-        expect(getBSONDecoder(schema)(bson)).toEqual(message);
-    }
-
-    {
-        const item = new MyModel('bar');
-        item.type = 'foo';
-        const message: ExtractClassType<typeof schema> = { data: item };
-        expect(getBSONSizer(schema)(message)).not.toBe(calculateObjectSize(message)); //should bee different, since we do not include `excluded`, but official bson does
-        const bson = getBSONSerializer(schema)(message);
-
-        const backOfficial = deserialize(Buffer.from(bson));
-        expect(backOfficial.data.excluded).toBe(undefined); //`excluded` should not be part of the BSON
-
-        expect(bson).not.toEqual(serialize(message)); //should not be equal, since MyModel does not serialize `excluded`
-
-        const back = getBSONDecoder(schema)(bson);
-        expect(back.data).toBeInstanceOf(MyModel);
-        expect((back.data as MyModel).name).toBe('bar');
-        expect((back.data as MyModel).type).toBe('foo');
-        expect(back).toEqual(message);
-    }
+    // const back = getBSONDecoder(schema)(bson);
+    // expect(back.data.$set).toEqual({});
+    // expect(back.data.$inc).toEqual(undefined);
+    // expect('$inc' in back.data).toEqual(true);
 });
