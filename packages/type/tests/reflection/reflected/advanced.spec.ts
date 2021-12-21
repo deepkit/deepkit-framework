@@ -8,9 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { expect, test } from '@jest/globals';
+import { test } from '@jest/globals';
 import { typeOf } from '../../../src/reflection/reflection';
 import { ReflectionKind, Type } from '../../../src/reflection/type';
+import { expectEqualType } from '../processor.spec';
 
 test('array stack', () => {
     type Pop<T extends unknown[]> = T extends [...infer U, unknown] ? U : never
@@ -21,8 +22,8 @@ test('array stack', () => {
 
 test('StringToNum', () => {
     type test<A extends 0[] = []> = `${A['length']}`;
-    expect(typeOf<test>()).toEqual({ kind: ReflectionKind.literal, literal: '0', typeName: 'test' } as Type);
+    expectEqualType(typeOf<test>(), { kind: ReflectionKind.literal, literal: '0', typeName: 'test' } as Type);
 
     type StringToNum<T extends string, A extends 0[] = []> = `${A['length']}` extends T ? A['length'] : StringToNum<T, [...A, 0]>;
-    expect(typeOf<StringToNum<'3'>>()).toMatchObject({ kind: ReflectionKind.literal, literal: 3 } as Type as any);
+    expectEqualType(typeOf<StringToNum<'3'>>(), { kind: ReflectionKind.literal, literal: 3 } as Type as any);
 });

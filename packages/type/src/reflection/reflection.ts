@@ -107,7 +107,7 @@ export function typeOf<T>(args: any[] = [], p?: Packed): OuterType {
 }
 
 export function removeTypeName<T extends Type>(type: T): Omit<T, 'typeName' | 'typeArguments'> {
-    const o = {...type};
+    const o = { ...type };
     if ('typeName' in o) delete o.typeName;
     if ('typeArguments' in o) delete o.typeArguments;
     return o;
@@ -123,10 +123,10 @@ export function getProperty(type: TypeObjectLiteral | TypeClass, memberName: num
 export function toSignature(type: TypeProperty | TypeMethod | TypePropertySignature | TypeMethodSignature): TypePropertySignature | TypeMethodSignature {
     if (type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.methodSignature) return type;
     if (type.kind === ReflectionKind.property) {
-        return { ...type, kind: ReflectionKind.propertySignature };
+        return { ...type, parent: type.parent as any, kind: ReflectionKind.propertySignature };
     }
 
-    return { ...type, kind: ReflectionKind.methodSignature };
+    return { ...type, parent: type.parent as any, kind: ReflectionKind.methodSignature };
 }
 
 export function hasCircularReference(type: Type, stack: Type[] = []) {
@@ -137,14 +137,16 @@ export function hasCircularReference(type: Type, stack: Type[] = []) {
     return hasCircular;
 }
 
-export function visit(type: Type, visitor: (type: Type) => false | void, onCircular: (stack: Type[]) => void, stack: Type[] = []): void {
+export function visit(type: Type, visitor: (type: Type, path: string, parent?: Type) => false | void, onCircular?: (stack: Type[]) => void, stack: Type[] = [], path: string = '', parent?: Type): void {
     if (stack.includes(type)) {
-        onCircular(stack);
+        if (onCircular) onCircular(stack);
         return;
     }
     stack.push(type);
 
-    visitor(type);
+    if (!path) path = '[' + ReflectionKind[type.kind] + ']';
+
+    if (visitor(type, path, parent) === false) return;
 
     switch (type.kind) {
         case ReflectionKind.objectLiteral:
@@ -152,7 +154,22 @@ export function visit(type: Type, visitor: (type: Type) => false | void, onCircu
         case ReflectionKind.union:
         case ReflectionKind.class:
         case ReflectionKind.intersection:
-            for (const member of type.types) visit(member, visitor, onCircular, stack);
+        case ReflectionKind.templateLiteral:
+            for (const member of type.types) visit(member, visitor, onCircular, stack, (path && path + '.') + 'types[' + ReflectionKind[member.kind] + ']', type);
+            break;
+        case ReflectionKind.string:
+        case ReflectionKind.number:
+        case ReflectionKind.bigint:
+        case ReflectionKind.symbol:
+        case ReflectionKind.regexp:
+        case ReflectionKind.boolean:
+            if (type.origin) visit(type.origin, visitor, onCircular, stack, (path && path + '.') + 'origin[' + ReflectionKind[type.origin.kind] + ']', type);
+            break;
+        case ReflectionKind.function:
+        case ReflectionKind.method:
+        case ReflectionKind.methodSignature:
+            visit(type.return, visitor, onCircular, stack, (path && path + '.') + 'return[' + ReflectionKind[type.return.kind] + ']', type);
+            for (const member of type.parameters) visit(member, visitor, onCircular, stack, (path && path + '.') + 'parameters[' + ReflectionKind[member.kind] + ']', type);
             break;
         case ReflectionKind.propertySignature:
         case ReflectionKind.property:
@@ -161,11 +178,11 @@ export function visit(type: Type, visitor: (type: Type) => false | void, onCircu
         case ReflectionKind.parameter:
         case ReflectionKind.tupleMember:
         case ReflectionKind.rest:
-            visit(type.type, visitor, onCircular, stack);
+            visit(type.type, visitor, onCircular, stack, (path && path + '.') + 'type[' + ReflectionKind[type.type.kind] + ']', type);
             break;
         case ReflectionKind.indexSignature:
-            visit(type.index, visitor, onCircular, stack);
-            visit(type.type, visitor, onCircular, stack);
+            visit(type.index, visitor, onCircular, stack, (path && path + '.') + 'index[' + ReflectionKind[type.index.kind] + ']', type);
+            visit(type.type, visitor, onCircular, stack, (path && path + '.') + 'type[' + ReflectionKind[type.type.kind] + ']', type);
             break;
     }
 

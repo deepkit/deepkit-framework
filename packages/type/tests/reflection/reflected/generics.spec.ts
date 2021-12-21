@@ -11,6 +11,7 @@
 import { expect, test } from '@jest/globals';
 import { removeTypeName, typeOf } from '../../../src/reflection/reflection';
 import { assertType, ReflectionKind, ReflectionVisibility, Type, typeInfer, Widen } from '../../../src/reflection/type';
+import { expectEqualType } from '../processor.spec';
 
 test('infer T from function primitive', () => {
     function fn<T extends string | number>(v: T) {
@@ -29,8 +30,8 @@ test('infer T from function boxed primitive', () => {
     }
 
     //TS infers literals
-    expect(fn({ a: 'abc' })).toEqual({ kind: ReflectionKind.literal, literal: 'abc' } as Type);
-    expect(fn({ a: 23 })).toEqual({ kind: ReflectionKind.literal, literal: 23 } as Type);
+    expectEqualType(fn({ a: 'abc' }), { kind: ReflectionKind.literal, literal: 'abc' } as Type);
+    expectEqualType(fn({ a: 23 }), { kind: ReflectionKind.literal, literal: 23 } as Type);
 });
 
 test('infer T from function conditional', () => {
@@ -64,7 +65,7 @@ test('infer T from function union primitive object', () => {
     expect(fn('abc')).toEqual({ kind: ReflectionKind.literal, literal: 'abc' } as Type);
 
     //TS infers {a: string}
-    expect(fn({ a: 'abc' })).toEqual({
+    expectEqualType(fn({ a: 'abc' }), {
         kind: ReflectionKind.objectLiteral, types: [
             { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string, origin: { kind: ReflectionKind.literal, literal: 'abc' } } }
         ]
@@ -79,12 +80,12 @@ test('infer T from interface function', () => {
     const wrap: any = {};
     wrap.add = (item: string): void => undefined;
 
-    expect(typeInfer(wrap)).toMatchObject(typeOf<{ add(item: string): void }>() as any);
-    expect(typeOf<typeof wrap>()).toMatchObject(typeOf<{ add(item: string): void }>() as any);
-    expect(typeOf<typeof wrap>()).toMatchObject(removeTypeName(typeOf<Wrap<string>>()) as any);
+    expectEqualType(typeInfer(wrap), typeOf<{ add(item: string): void }>() as any);
+    expectEqualType(typeOf<typeof wrap>(), typeOf<{ add(item: string): void }>() as any);
+    expectEqualType(typeOf<typeof wrap>(), removeTypeName(typeOf<Wrap<string>>()) as any);
 
     type a = typeof wrap extends Wrap<infer T> ? T : never;
-    expect(removeTypeName(typeOf<a>())).toEqual(typeOf<string>());
+    expectEqualType(removeTypeName(typeOf<a>()), typeOf<string>());
 });
 
 test('extends string generates literal in constrained type', () => {
@@ -143,14 +144,14 @@ test('T as tuple rest', () => {
     type r = Tuple<[string, number]>;
 
     const type = typeOf<r>();
-    expect(type).toMatchObject(typeOf<['hi', string, number]>() as any);
+    expectEqualType(type, typeOf<['hi', string, number]>() as any, {noTypeNames: true});
 });
 
 test('T array length', () => {
     type Tuple<T extends any[]> = ['hi', T['length']];
     type r = Tuple<string[]>;
-    expect(typeOf<r>()).toMatchObject(typeOf<['hi', number]>() as any);
+    expectEqualType(typeOf<r>(), typeOf<['hi', number]>() as any, {noTypeNames: true});
 
     type r2 = Tuple<[string, number]>;
-    expect(typeOf<r2>()).toMatchObject(typeOf<['hi', 2]>() as any);
+    expectEqualType(typeOf<r2>(), typeOf<['hi', 2]>() as any, {noTypeNames: true});
 });

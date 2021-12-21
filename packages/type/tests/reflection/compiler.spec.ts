@@ -32,6 +32,7 @@ import {
 } from '../../src/reflection/type';
 import { ClassType } from '@deepkit/core';
 import { resolveRuntimeType } from '../../src/reflection/processor';
+import { expectEqualType } from './processor.spec';
 
 Error.stackTraceLimit = 200;
 
@@ -359,7 +360,7 @@ test('class constructor', () => {
     console.log('js', js);
     const clazz = transpileAndReturn(code);
     const type = reflect(clazz);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.class,
         classType: clazz as ClassType,
         types: [{
@@ -523,7 +524,7 @@ test('function type', () => {
     type fn = (a: string) => void;
     return typeOf<fn>();`);
 
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.function,
         parameters: [
             { kind: ReflectionKind.parameter, name: 'a', type: { kind: ReflectionKind.string } }
@@ -555,7 +556,7 @@ test('resolve query union', () => {
     type o = { a: string | true };
     return typeOf<o['a']>();`);
 
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.union,
         types: [
             { kind: ReflectionKind.string },
@@ -575,7 +576,7 @@ test('emit function types in objects', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.objectLiteral,
         types: [
             {
@@ -738,9 +739,9 @@ test('infer T in function boxed primitive', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code) as (v: { a: any }) => Type;
-    expect(type({ a: 'abc' })).toEqual({ kind: ReflectionKind.literal, literal: 'abc' });
-    expect(type({ a: 23 })).toEqual({ kind: ReflectionKind.literal, literal: 23 });
-    expect(type(false as any)).toEqual({ kind: ReflectionKind.never });
+    expectEqualType(type({ a: 'abc' }), { kind: ReflectionKind.literal, literal: 'abc' });
+    expectEqualType(type({ a: 23 }), { kind: ReflectionKind.literal, literal: 23 });
+    expectEqualType(type(false as any), { kind: ReflectionKind.never });
 });
 
 test('infer T in function inferred second template arg', () => {
@@ -782,7 +783,7 @@ test('correct T resolver', () => {
     console.log('js', js);
     const type = transpileAndReturn(code) as (v: any) => ClassType;
     const classType = type('abc');
-    expect(typeInfer(classType)).toEqual({
+    expectEqualType(typeInfer(classType), {
         kind: ReflectionKind.class,
         classType: classType,
         types: [
@@ -979,7 +980,7 @@ test('branded type', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [
@@ -1001,7 +1002,7 @@ test('mapped type string index', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.objectLiteral,
         types: [
             { kind: ReflectionKind.propertySignature, name: 'asd', type: { kind: ReflectionKind.string } },
@@ -1017,7 +1018,7 @@ test('mapped type var index', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.objectLiteral,
         types: [
             { kind: ReflectionKind.propertySignature, name: 'asd', type: { kind: ReflectionKind.string } },
@@ -1033,7 +1034,7 @@ test('brand mapped type var index', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [
@@ -1055,7 +1056,7 @@ test('brand mapped type var index/type', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [
@@ -1163,7 +1164,7 @@ test('map conditional infer', () => {
     console.log('js', js);
     const type = transpileAndReturn(code);
 
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.objectLiteral,
         types: [
             { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string, } },
@@ -1182,7 +1183,7 @@ test('tuple with generic', () => {
     console.log('js', js);
     const type = transpileAndReturn(code);
 
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.tuple,
         types: [
             { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.literal, literal: 'hi', } },
@@ -1279,7 +1280,7 @@ test('description', () => {
     console.log('js', js);
     const type = transpileAndReturn(code);
 
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.objectLiteral,
         types: [
             { kind: ReflectionKind.propertySignature, name: 'username', description: 'Hello what up?\nasdasd\n\ndas', type: { kind: ReflectionKind.string } }
@@ -1297,7 +1298,7 @@ test('brand with symbol property', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [
@@ -1321,7 +1322,7 @@ test('intersection with symbol property', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [
@@ -1335,7 +1336,7 @@ test('intersection with symbol property', () => {
     } as Type);
 });
 
-test('branded type', () => {
+test('branded type 2', () => {
     const code = `
     type PrimaryKey<T> = T & {__type?: 'primaryKey'};
     return typeOf<PrimaryKey<string>>();
@@ -1344,7 +1345,7 @@ test('branded type', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [
@@ -1373,7 +1374,7 @@ test('brand intersection', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [
@@ -1398,7 +1399,7 @@ test('brand intersection symbol', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [

@@ -44,6 +44,7 @@ import {
 import { ClassType } from '@deepkit/core';
 import { t } from '../../../src/decorator';
 import { validate, ValidatorError } from '../../../src/validator';
+import { expectEqualType } from '../processor.spec';
 
 test('class', () => {
     class Entity {
@@ -51,7 +52,7 @@ test('class', () => {
     }
 
     const type = reflect(Entity);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.class,
         classType: Entity,
         types: [
@@ -71,7 +72,7 @@ test('class optional question mark', () => {
     }
 
     const type = reflect(Entity);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.class,
         classType: Entity,
         types: [
@@ -92,7 +93,7 @@ test('class optional union', () => {
     }
 
     const type = reflect(Entity);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.class,
         classType: Entity,
         types: [
@@ -118,7 +119,7 @@ test('class constructor', () => {
         }
     }
 
-    expect(reflect(Entity1)).toEqual({
+    expectEqualType(reflect(Entity1), {
         kind: ReflectionKind.class,
         classType: Entity1,
         types: [
@@ -134,7 +135,7 @@ test('class constructor', () => {
         ]
     } as Type);
 
-    expect(reflect(Entity2)).toEqual({
+    expectEqualType(reflect(Entity2), {
         kind: ReflectionKind.class,
         classType: Entity2,
         types: [
@@ -159,7 +160,7 @@ test('class constructor', () => {
 
 test('constructor type abstract', () => {
     type constructor = abstract new (...args: any) => any;
-    expect(typeOf<constructor>()).toEqual({
+    expectEqualType(typeOf<constructor>(), {
         kind: ReflectionKind.function,
         name: 'new',
         parameters: [
@@ -171,7 +172,7 @@ test('constructor type abstract', () => {
 
 test('constructor type normal', () => {
     type constructor = new (a: string, b: number) => void;
-    expect(typeOf<constructor>()).toEqual({
+    expectEqualType(typeOf<constructor>(), {
         kind: ReflectionKind.function,
         name: 'new',
         parameters: [
@@ -188,8 +189,9 @@ test('interface', () => {
     }
 
     const type = typeOf<Entity>();
-    expect(type).toMatchObject({
+    expectEqualType(type, {
         kind: ReflectionKind.objectLiteral,
+        typeName: 'Entity',
         types: [
             {
                 kind: ReflectionKind.propertySignature,
@@ -203,7 +205,7 @@ test('interface', () => {
 test('tuple', () => {
     {
         const type = typeOf<[string]>();
-        expect(type).toEqual({
+        expectEqualType(type, {
             kind: ReflectionKind.tuple,
             types: [
                 { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.string } }
@@ -212,7 +214,7 @@ test('tuple', () => {
     }
     {
         const type = typeOf<[string, number]>();
-        expect(type).toEqual({
+        expectEqualType(type, {
             kind: ReflectionKind.tuple,
             types: [
                 { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.string } },
@@ -225,7 +227,7 @@ test('tuple', () => {
 test('named tuple', () => {
     {
         const type = typeOf<[title: string]>();
-        expect(type).toEqual({
+        expectEqualType(type, {
             kind: ReflectionKind.tuple,
             types: [
                 { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.string }, name: 'title' }
@@ -234,7 +236,7 @@ test('named tuple', () => {
     }
     {
         const type = typeOf<[title: string, prio: number]>();
-        expect(type).toEqual({
+        expectEqualType(type, {
             kind: ReflectionKind.tuple,
             types: [
                 { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.string }, name: 'title' },
@@ -247,7 +249,7 @@ test('named tuple', () => {
 test('rest tuple', () => {
     {
         const type = typeOf<[...string[]]>();
-        expect(type).toEqual({
+        expectEqualType(type, {
             kind: ReflectionKind.tuple,
             types: [
                 { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.string } } }
@@ -256,7 +258,7 @@ test('rest tuple', () => {
     }
     {
         const type = typeOf<[...string[], number]>();
-        expect(type).toEqual({
+        expectEqualType(type, {
             kind: ReflectionKind.tuple,
             types: [
                 { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.string } } },
@@ -269,7 +271,7 @@ test('rest tuple', () => {
 test('rest named tuple', () => {
     {
         const type = typeOf<[...title: string[]]>();
-        expect(type).toEqual({
+        expectEqualType(type, {
             kind: ReflectionKind.tuple,
             types: [
                 { kind: ReflectionKind.tupleMember, name: 'title', type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.string } } }
@@ -278,7 +280,7 @@ test('rest named tuple', () => {
     }
     {
         const type = typeOf<[...title: string[], prio: number]>();
-        expect(type).toEqual({
+        expectEqualType(type, {
             kind: ReflectionKind.tuple,
             types: [
                 { kind: ReflectionKind.tupleMember, name: 'title', type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.string } } },
@@ -289,31 +291,31 @@ test('rest named tuple', () => {
 });
 
 test('typeof primitives', () => {
-    expect(typeOf<string>()).toEqual({ kind: ReflectionKind.string });
-    expect(typeOf<number>()).toEqual({ kind: ReflectionKind.number });
-    expect(typeOf<boolean>()).toEqual({ kind: ReflectionKind.boolean });
-    expect(typeOf<bigint>()).toEqual({ kind: ReflectionKind.bigint });
-    expect(typeOf<null>()).toEqual({ kind: ReflectionKind.null });
-    expect(typeOf<undefined>()).toEqual({ kind: ReflectionKind.undefined });
-    expect(typeOf<any>()).toEqual({ kind: ReflectionKind.any });
-    expect(typeOf<never>()).toEqual({ kind: ReflectionKind.never });
-    expect(typeOf<void>()).toEqual({ kind: ReflectionKind.void });
+    expectEqualType(typeOf<string>(), { kind: ReflectionKind.string });
+    expectEqualType(typeOf<number>(), { kind: ReflectionKind.number });
+    expectEqualType(typeOf<boolean>(), { kind: ReflectionKind.boolean });
+    expectEqualType(typeOf<bigint>(), { kind: ReflectionKind.bigint });
+    expectEqualType(typeOf<null>(), { kind: ReflectionKind.null });
+    expectEqualType(typeOf<undefined>(), { kind: ReflectionKind.undefined });
+    expectEqualType(typeOf<any>(), { kind: ReflectionKind.any });
+    expectEqualType(typeOf<never>(), { kind: ReflectionKind.never });
+    expectEqualType(typeOf<void>(), { kind: ReflectionKind.void });
 });
 
 test('typeof union', () => {
     type t = 'a' | 'b';
-    expect(typeOf<t>()).toEqual({ kind: ReflectionKind.union, types: [{ kind: ReflectionKind.literal, literal: 'a' }, { kind: ReflectionKind.literal, literal: 'b' }] });
+    expectEqualType(typeOf<t>(),{ kind: ReflectionKind.union, types: [{ kind: ReflectionKind.literal, literal: 'a' }, { kind: ReflectionKind.literal, literal: 'b' }] });
 });
 
 test('valuesOf union', () => {
     type t = 'a' | 'b';
-    expect(valuesOf<t>()).toEqual(['a', 'b']);
-    expect(valuesOf<string | number>()).toEqual([{ kind: ReflectionKind.string }, { kind: ReflectionKind.number }]);
+    expectEqualType(valuesOf<t>(), ['a', 'b']);
+    expectEqualType(valuesOf<string | number>(), [{ kind: ReflectionKind.string }, { kind: ReflectionKind.number }]);
 });
 
 test('valuesOf object literal', () => {
     type t = { a: string, b: number };
-    expect(valuesOf<t>()).toEqual([{ kind: ReflectionKind.string }, { kind: ReflectionKind.number }]);
+    expectEqualType(valuesOf<t>(), [{ kind: ReflectionKind.string }, { kind: ReflectionKind.number }]);
 });
 
 test('propertiesOf inline', () => {
@@ -354,14 +356,14 @@ test('propertiesOf class', () => {
 });
 
 test('typeof object literal', () => {
-    expect(typeOf<{ a: string }>()).toEqual({
+    expectEqualType(typeOf<{ a: string }>(), {
         kind: ReflectionKind.objectLiteral,
         types: [{ kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string } }]
     } as TypeObjectLiteral);
 });
 
 test('typeof object literal with function', () => {
-    expect(typeOf<{ add(item: string): any }>()).toEqual({
+    expectEqualType(typeOf<{ add(item: string): any }>(), {
         kind: ReflectionKind.objectLiteral,
         types: [{
             kind: ReflectionKind.methodSignature,
@@ -377,13 +379,13 @@ test('typeof class', () => {
         a!: string;
     }
 
-    expect(typeOf<Entity>()).toEqual({
+    expectEqualType(typeOf<Entity>(),{
         kind: ReflectionKind.class,
         classType: Entity,
         types: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
     } as TypeClass);
 
-    expect(reflect(Entity)).toEqual({
+    expectEqualType(reflect(Entity),{
         kind: ReflectionKind.class,
         classType: Entity,
         types: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
@@ -395,14 +397,14 @@ test('typeof generic class', () => {
         a!: T;
     }
 
-    expect(typeOf<Entity<string>>()).toEqual({
+    expectEqualType(typeOf<Entity<string>>(),{
         kind: ReflectionKind.class,
         classType: Entity,
         arguments: [typeOf<string>()],
         types: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
     } as TypeClass);
 
-    expect(reflect(Entity, typeOf<string>())).toEqual({
+    expectEqualType(reflect(Entity, typeOf<string>()),{
         kind: ReflectionKind.class,
         arguments: [typeOf<string>()],
         classType: Entity,
@@ -416,7 +418,7 @@ test('function', () => {
     }
 
     const type = reflect(pad);
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.function,
         name: 'pad',
         function: pad,
@@ -431,7 +433,7 @@ test('function', () => {
 test('type function', () => {
     type pad = (text: string, size: number) => string;
 
-    expect(typeOf<pad>()).toEqual({
+    expectEqualType(typeOf<pad>(), {
         kind: ReflectionKind.function,
         parameters: [
             { kind: ReflectionKind.parameter, name: 'text', type: { kind: ReflectionKind.string } },
@@ -444,7 +446,7 @@ test('type function', () => {
 test('query literal', () => {
     type o = { a: string | number };
 
-    expect(typeOf<o['a']>()).toEqual({
+    expectEqualType(typeOf<o['a']>(), {
         kind: ReflectionKind.union,
         types: [
             { kind: ReflectionKind.string },
@@ -470,13 +472,13 @@ test('template literal', () => {
     type l10 = `${`(${hw})`}_`
 
     const type0 = typeOf<l>();
-    expect(type0).toEqual({
+    expectEqualType(type0, {
         kind: ReflectionKind.union,
         types: [{ kind: ReflectionKind.literal, literal: '_aChanged' }, { kind: ReflectionKind.literal, literal: '_bChanged' }]
     } as Type);
 
     const type1 = typeOf<l2>();
-    expect(type1).toEqual({
+    expectEqualType(type1, {
         kind: ReflectionKind.union,
         types: [
             {
@@ -523,7 +525,7 @@ test('mapped type key literal', () => {
 test('query union from keyof', () => {
     type o = { a: string, b: string, c: number };
 
-    expect(typeOf<o[keyof o]>()).toEqual({
+    expectEqualType(typeOf<o[keyof o]>(), {
         kind: ReflectionKind.union,
         types: [
             { kind: ReflectionKind.string },
@@ -535,7 +537,7 @@ test('query union from keyof', () => {
 test('query union manual', () => {
     type o = { a: string, b: string, c: number };
 
-    expect(typeOf<o['a' | 'b' | 'c']>()).toEqual({
+    expectEqualType(typeOf<o['a' | 'b' | 'c']>(), {
         kind: ReflectionKind.union,
         types: [
             { kind: ReflectionKind.string },
@@ -547,7 +549,7 @@ test('query union manual', () => {
 test('query number index', () => {
     type o = [string, string, number];
 
-    expect(typeOf<o[number]>()).toEqual({
+    expectEqualType(typeOf<o[number]>(), {
         kind: ReflectionKind.union,
         types: [
             { kind: ReflectionKind.string },
@@ -555,9 +557,9 @@ test('query number index', () => {
         ]
     });
 
-    expect(typeOf<o[0]>()).toEqual({ kind: ReflectionKind.string });
-    expect(typeOf<o[1]>()).toEqual({ kind: ReflectionKind.string });
-    expect(typeOf<o[2]>()).toEqual({ kind: ReflectionKind.number });
+    expectEqualType(typeOf<o[0]>(), { kind: ReflectionKind.string });
+    expectEqualType(typeOf<o[1]>(), { kind: ReflectionKind.string });
+    expectEqualType(typeOf<o[2]>(), { kind: ReflectionKind.number });
 });
 
 test('mapped type partial', () => {
@@ -617,14 +619,14 @@ test('mapped type filter never', () => {
 });
 
 test('object literal optional', () => {
-    expect(typeOf<{ a?: string }>()).toEqual({
+    expectEqualType(typeOf<{ a?: string }>(), {
         kind: ReflectionKind.objectLiteral,
         types: [{ kind: ReflectionKind.propertySignature, name: 'a', optional: true, type: { kind: ReflectionKind.string } }]
     });
 });
 
 test('object literal readonly', () => {
-    expect(typeOf<{ readonly a: string }>()).toEqual({
+    expectEqualType(typeOf<{ readonly a: string }>(), {
         kind: ReflectionKind.objectLiteral,
         types: [{ kind: ReflectionKind.propertySignature, name: 'a', readonly: true, type: { kind: ReflectionKind.string } }]
     });
@@ -836,7 +838,7 @@ test('reflection class', () => {
     expect(sayMethod.getReturnType().kind).toEqual(ReflectionKind.void);
 
     expect(reflection.getPropertyNames()).toEqual(['created', 'username']);
-    expect(reflection.getProperty('username')!.type).toEqual({ kind: ReflectionKind.string }); //string
+    expectEqualType(reflection.getProperty('username')!.type, { kind: ReflectionKind.string }); //string
     expect(reflection.getProperty('username')!.isPublic()).toBe(true); //true
 });
 
@@ -1110,7 +1112,7 @@ test('enum const', () => {
     }
 
     const type = typeOf<MyEnum>();
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.enum,
         enum: { a: 0, b: 1, c: 2 },
         values: [0, 1, 2]
@@ -1124,7 +1126,7 @@ test('enum default', () => {
 
     const type = typeOf<MyEnum>();
 
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.enum,
         enum: { a: 0, b: 1, c: 2 },
         values: [0, 1, 2]
@@ -1138,7 +1140,7 @@ test('enum initializer 1', () => {
 
     const type = typeOf<MyEnum>();
 
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.enum,
         enum: { a: 3, b: 4, c: 5 },
         values: [3, 4, 5]
@@ -1155,7 +1157,7 @@ test('enum initializer 2', () => {
 
     const type = typeOf<MyEnum>();
 
-    expect(type).toEqual({
+    expectEqualType(type, {
         kind: ReflectionKind.enum,
         enum: { a: 0, b: 1, c: 2, d: 4 },
         values: [0, 1, 2, 4]
@@ -1217,7 +1219,7 @@ test('set constructor parameter manually', () => {
         }
     }
 
-    expect(typeOf<Response>()).toEqual({
+    expectEqualType(typeOf<Response>(), {
         kind: ReflectionKind.class,
         classType: Response,
         types: [

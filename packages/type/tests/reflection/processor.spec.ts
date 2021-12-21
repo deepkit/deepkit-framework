@@ -1,17 +1,114 @@
 /** @reflection never */
 import { expect, test } from '@jest/globals';
 import { Processor, RuntimeStackEntry } from '../../src/reflection/processor';
-import { MappedModifier, ReflectionKind, ReflectionOp, ReflectionVisibility, Type, TypeObjectLiteral, TypeUnion } from '../../src/reflection/type';
+import {
+    copyAndSetParent,
+    MappedModifier,
+    ParentLessType,
+    ReflectionKind,
+    ReflectionOp,
+    ReflectionVisibility,
+    Type,
+    TypeObjectLiteral,
+    TypeUnion
+} from '../../src/reflection/type';
 import { isArray, isObject } from '@deepkit/core';
 import { isExtendable } from '../../src/reflection/extends';
+import { visit } from '../../src/reflection/reflection';
 
 Error.stackTraceLimit = 200;
 
-function expectType(pack: ReflectionOp[] | { ops: ReflectionOp[], stack: RuntimeStackEntry[], inputs?: RuntimeStackEntry[] }, expectObject: Partial<Type> | number | string | boolean): void {
+export function assertValidParent(a: Type): void {
+    visit(a, (type, path, parent) => {
+        if (type.parent && type.parent !== parent) {
+            if (!parent) throw new Error('Parent was set, but not expected at ' + path);
+            throw new Error('Invalid parent set at ' + path);
+        }
+    });
+}
+
+/**
+ * Types can not be compared via toEqual since they contain circular references (.parent) and other stuff can not be easily assigned.
+ */
+export function expectEqualType(actual: any, expected: any, options: {noTypeNames?: true, noOrigin?: true, excludes?: string[]} = {}, path: string = ''): void {
+    if ('object' === typeof expected) {
+        if ('object' !== typeof actual) throw new Error('Not equal object type: ' + path);
+
+        for (const i in expected) {
+            if (i === 'parent') continue;
+            if (i === 'decorators') continue;
+            if (options.excludes && options.excludes.includes(i)) continue;
+            if (i === 'annotations') continue;
+            if (options.noOrigin && i === 'origin') continue;
+            if (options.noTypeNames && (i === 'typeName' || i === 'typearguments')) continue;
+
+            if (isArray(expected[i])) {
+                if (!isArray(actual[i])) throw new Error('Not equal array type: ' + path);
+                if (actual[i].length !== expected[i].length) throw new Error('Not equal array length: ' + path);
+                for (let j = 0; j < expected[i].length; j++) {
+                    expectEqualType(expected[i][j], actual[i][j], options, path + '.' + i + '.' + j);
+                }
+            } else {
+                expectEqualType(expected[i], actual[i], options, path + '.' + i);
+            }
+        }
+    } else {
+        if (expected !== actual) throw new Error('Invalid type: ' + path);
+    }
+}
+
+test('assertEqualType', () => {
+    expectEqualType({ kind: ReflectionKind.string }, { kind: ReflectionKind.string });
+    expectEqualType({ kind: ReflectionKind.number }, { kind: ReflectionKind.number });
+    expectEqualType({ kind: ReflectionKind.literal, literal: 'asd' }, { kind: ReflectionKind.literal, literal: 'asd' });
+    expect(() => expectEqualType({ kind: ReflectionKind.literal, literal: 'asd' }, { kind: ReflectionKind.literal, literal: 'asd2' })).toThrow('Invalid type: .literal');
+
+    const a: ParentLessType = { kind: ReflectionKind.tuple, types: [{ kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.string } }] };
+    expectEqualType(a, a);
+    expect(() => expectEqualType(a, {
+        kind: ReflectionKind.tuple,
+        types: [{ kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.number } }]
+    })).toThrow('Invalid type: .types.0.type.kind');
+
+    const b: ParentLessType = {
+        kind: ReflectionKind.function,
+        parameters: [{ kind: ReflectionKind.parameter, name: 'b', type: { kind: ReflectionKind.string } }],
+        return: { kind: ReflectionKind.never }
+    };
+    expectEqualType(b, b);
+    expect(() => expectEqualType(b, {
+        kind: ReflectionKind.function,
+        parameters: [{ kind: ReflectionKind.parameter, name: 'c', type: { kind: ReflectionKind.string } }],
+        return: { kind: ReflectionKind.never }
+    })).toThrow('Invalid type: .parameters.0.name');
+    expect(() => expectEqualType(b, {
+        kind: ReflectionKind.function,
+        parameters: [{ kind: ReflectionKind.parameter, name: 'b', type: { kind: ReflectionKind.number } }],
+        return: { kind: ReflectionKind.never }
+    })).toThrow('Invalid type: .parameters.0.type.kind');
+    expect(() => expectEqualType(b, {
+        kind: ReflectionKind.function,
+        parameters: [{ kind: ReflectionKind.parameter, name: 'b', type: { kind: ReflectionKind.string } }],
+        return: { kind: ReflectionKind.number }
+    })).toThrow('Invalid type: .return.kind');
+});
+
+test('assertEqualType', () => {
+    assertValidParent({ kind: ReflectionKind.string });
+    assertValidParent({ kind: ReflectionKind.literal, literal: 'asd' });
+    assertValidParent(copyAndSetParent({ kind: ReflectionKind.literal, literal: 'asd' }));
+    expect(() => assertValidParent({ kind: ReflectionKind.literal, literal: 'asd', parent: Object as any })).toThrow('Parent was set, but not expected at');
+});
+
+function expectType<E extends ParentLessType>(
+    pack: ReflectionOp[] | { ops: ReflectionOp[], stack: RuntimeStackEntry[], inputs?: RuntimeStackEntry[] },
+    expectObject: E | number | string | boolean
+): void {
     const processor = new Processor([]);
-    const type = processor.run(isArray(pack) ? pack : pack.ops, isArray(pack) ? [] : pack.stack, isArray(pack) ? [] : pack.inputs);
+    const type = processor.run(isArray(pack) ? pack : pack.ops, isArray(pack) ? [] : pack.stack, isArray(pack) ? [] : pack.inputs) as Type;
     if (isObject(expectObject)) {
-        expect(type).toMatchObject(expectObject);
+        expectEqualType(type, expectObject);
+        assertValidParent(type);
     } else {
         expect(type).toEqual(expectObject);
     }
@@ -70,7 +167,10 @@ test('arg', () => {
 test('call sub routine', () => {
     expectType({ ops: [ReflectionOp.jump, 4, ReflectionOp.string, ReflectionOp.return, ReflectionOp.call, 2], stack: [] }, { kind: ReflectionKind.string });
     expectType({ ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.call, 2], stack: [] }, { kind: ReflectionKind.number });
-    expectType({ ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.boolean, ReflectionOp.call, 2, ReflectionOp.union], stack: [] }, {
+    expectType({
+        ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.boolean, ReflectionOp.call, 2, ReflectionOp.union],
+        stack: []
+    }, {
         kind: ReflectionKind.union,
         types: [{ kind: ReflectionKind.boolean }, { kind: ReflectionKind.number }], //not string, since `return` returns only latest stack entry, not all
     });
@@ -146,12 +246,12 @@ test('object literal', () => {
         ]
     });
 
-    expectType([ReflectionOp.string, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral], {
+    expectType([ReflectionOp.string, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral], copyAndSetParent({
         kind: ReflectionKind.objectLiteral,
         types: [
             { kind: ReflectionKind.indexSignature, index: { kind: ReflectionKind.string }, type: { kind: ReflectionKind.number } }
         ]
-    });
+    }));
 
     expectType({
         ops: [ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.string, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral],
@@ -159,8 +259,8 @@ test('object literal', () => {
     }, {
         kind: ReflectionKind.objectLiteral,
         types: [
-            { kind: ReflectionKind.propertySignature, type: { kind: ReflectionKind.number }, name: 'a' },
-            { kind: ReflectionKind.indexSignature, index: { kind: ReflectionKind.string }, type: { kind: ReflectionKind.number } }
+            { kind: ReflectionKind.propertySignature, parent: Object as any, type: { kind: ReflectionKind.number }, name: 'a' },
+            { kind: ReflectionKind.indexSignature, parent: Object as any, index: { kind: ReflectionKind.string }, type: { kind: ReflectionKind.number } }
         ]
     });
 
@@ -168,7 +268,7 @@ test('object literal', () => {
         kind: ReflectionKind.objectLiteral,
         types: [
             {
-                kind: ReflectionKind.indexSignature,
+                kind: ReflectionKind.indexSignature, parent: Object as any,
                 index: { kind: ReflectionKind.string },
                 type: { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }] }
             }
@@ -188,14 +288,14 @@ test('method', () => {
         kind: ReflectionKind.method,
         name: 'name',
         visibility: ReflectionVisibility.public,
-        parameters: [{ kind: ReflectionKind.parameter, name: 'param', type: { kind: ReflectionKind.string } }],
+        parameters: [{ kind: ReflectionKind.parameter, parent: Object as any, name: 'param', type: { kind: ReflectionKind.string } }],
         return: { kind: ReflectionKind.string }
     });
     expectType({ ops: [ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.number, ReflectionOp.method, 1, ReflectionOp.protected], stack: ['param', 'name'] }, {
         kind: ReflectionKind.method,
         name: 'name',
         visibility: ReflectionVisibility.protected,
-        parameters: [{ kind: ReflectionKind.parameter, name: 'param', type: { kind: ReflectionKind.string } }],
+        parameters: [{ kind: ReflectionKind.parameter, parent: Object as any, name: 'param', type: { kind: ReflectionKind.string } }],
         return: { kind: ReflectionKind.number }
     });
     expectType({
@@ -206,7 +306,7 @@ test('method', () => {
         name: 'name',
         visibility: ReflectionVisibility.protected,
         abstract: true,
-        parameters: [{ kind: ReflectionKind.parameter, name: 'param', type: { kind: ReflectionKind.string } }],
+        parameters: [{ kind: ReflectionKind.parameter, parent: Object as any, name: 'param', type: { kind: ReflectionKind.string } }],
         return: { kind: ReflectionKind.number }
     });
 });
@@ -272,11 +372,13 @@ test('class', () => {
         classType: Object,
         types: [{
             kind: ReflectionKind.property,
+            parent: Object as any,
             name: 'name',
             visibility: ReflectionVisibility.public,
             type: { kind: ReflectionKind.string }
         }, {
             kind: ReflectionKind.property,
+            parent: Object as any,
             name: 'id',
             visibility: ReflectionVisibility.public,
             type: { kind: ReflectionKind.number }
@@ -300,11 +402,11 @@ test('mapped type simple', () => {
     }, {
         kind: ReflectionKind.objectLiteral,
         types: [{
-            kind: ReflectionKind.propertySignature,
+            kind: ReflectionKind.propertySignature, parent: Object as any,
             name: 'a',
             type: { kind: ReflectionKind.boolean }
         }, {
-            kind: ReflectionKind.propertySignature,
+            kind: ReflectionKind.propertySignature, parent: Object as any,
             name: 'b',
             type: { kind: ReflectionKind.boolean }
         }]
@@ -327,12 +429,12 @@ test('mapped type optional simple', () => {
     }, {
         kind: ReflectionKind.objectLiteral,
         types: [{
-            kind: ReflectionKind.propertySignature,
+            kind: ReflectionKind.propertySignature, parent: Object as any,
             name: 'a',
             type: { kind: ReflectionKind.boolean },
             optional: true,
         }, {
-            kind: ReflectionKind.propertySignature,
+            kind: ReflectionKind.propertySignature, parent: Object as any,
             name: 'b',
             type: { kind: ReflectionKind.boolean },
             optional: true,
@@ -366,11 +468,11 @@ test('mapped type keyof and query', () => {
     }, {
         kind: ReflectionKind.objectLiteral,
         types: [{
-            kind: ReflectionKind.propertySignature,
+            kind: ReflectionKind.propertySignature, parent: Object as any,
             name: 'a',
             type: { kind: ReflectionKind.number }
         }, {
-            kind: ReflectionKind.propertySignature,
+            kind: ReflectionKind.propertySignature, parent: Object as any,
             name: 'b',
             type: { kind: ReflectionKind.string }
         }]
@@ -403,11 +505,11 @@ test('mapped type keyof and fixed', () => {
     }, {
         kind: ReflectionKind.objectLiteral,
         types: [{
-            kind: ReflectionKind.propertySignature,
+            kind: ReflectionKind.propertySignature, parent: Object as any,
             name: 'a',
             type: { kind: ReflectionKind.boolean }
         }, {
-            kind: ReflectionKind.propertySignature,
+            kind: ReflectionKind.propertySignature, parent: Object as any,
             name: 'b',
             type: { kind: ReflectionKind.boolean }
         }]
@@ -440,7 +542,7 @@ test('mapped type keyof and conditional', () => {
     }, {
         kind: ReflectionKind.objectLiteral,
         types: [{
-            kind: ReflectionKind.propertySignature,
+            kind: ReflectionKind.propertySignature, parent: Object as any,
             name: 'a',
             type: { kind: ReflectionKind.boolean }
         }]
@@ -504,7 +606,7 @@ test('generic class', () => {
         kind: ReflectionKind.class,
         classType: Object,
         types: [{
-            kind: ReflectionKind.property,
+            kind: ReflectionKind.property, parent: Object as any,
             name: 'name',
             visibility: ReflectionVisibility.public,
             type: { kind: ReflectionKind.string }
@@ -518,7 +620,7 @@ test('generic class', () => {
         kind: ReflectionKind.class,
         classType: Object,
         types: [{
-            kind: ReflectionKind.property,
+            kind: ReflectionKind.property, parent: Object as any,
             name: 'name',
             visibility: ReflectionVisibility.public,
             type: { kind: ReflectionKind.typeParameter, name: 'T' }
@@ -579,20 +681,20 @@ test('more advances types', () => {
 
     expectType({ ops: [ReflectionOp.frame, ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.function], stack: ['param'] }, {
         kind: ReflectionKind.function,
-        parameters: [{ kind: ReflectionKind.parameter, name: 'param', type: { kind: ReflectionKind.string } }],
+        parameters: [{ kind: ReflectionKind.parameter, parent: Object as any, name: 'param', type: { kind: ReflectionKind.string } }],
         return: { kind: ReflectionKind.void },
     });
 
     expectType({ ops: [ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.function], stack: ['param'] }, {
         kind: ReflectionKind.function,
-        parameters: [{ kind: ReflectionKind.parameter, name: 'param', type: { kind: ReflectionKind.string } }],
+        parameters: [{ kind: ReflectionKind.parameter, parent: Object as any, name: 'param', type: { kind: ReflectionKind.string } }],
         return: { kind: ReflectionKind.void },
     });
 
     expectType({ ops: [ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.function], stack: ['param'] }, {
         kind: ReflectionKind.function,
         parameters: [{
-            kind: ReflectionKind.parameter,
+            kind: ReflectionKind.parameter, parent: Object as any,
             name: 'param',
             type: { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }] }
         }],
@@ -608,8 +710,18 @@ test('more advances types', () => {
     }, {
         kind: ReflectionKind.function,
         parameters: [
-            { kind: ReflectionKind.parameter, name: 'param', type: { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }] } },
-            { kind: ReflectionKind.parameter, name: 'param2', type: { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }] } },
+            {
+                kind: ReflectionKind.parameter,
+                parent: Object as any,
+                name: 'param',
+                type: { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.undefined }] }
+            },
+            {
+                kind: ReflectionKind.parameter,
+                parent: Object as any,
+                name: 'param2',
+                type: { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }] }
+            },
         ],
         return: { kind: ReflectionKind.void },
     });
@@ -622,7 +734,7 @@ test('more advances types', () => {
     expectType({ ops: [ReflectionOp.string, ReflectionOp.array, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.function], stack: ['param'] }, {
         kind: ReflectionKind.function,
         parameters: [
-            { kind: ReflectionKind.parameter, name: 'param', type: { kind: ReflectionKind.array, type: { kind: ReflectionKind.string } } },
+            { kind: ReflectionKind.parameter, parent: Object as any, name: 'param', type: { kind: ReflectionKind.array, type: { kind: ReflectionKind.string } } },
         ],
         return: { kind: ReflectionKind.void },
     });

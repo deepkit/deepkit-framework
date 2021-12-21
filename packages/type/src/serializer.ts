@@ -11,11 +11,13 @@
 import { ClassType, CompilerContext, CustomError, getClassName, isArray, isFunction, isInteger, isIterable, isNumeric, isObject } from '@deepkit/core';
 import {
     AnnotationDefinition,
+    copyAndSetParent,
     embeddedAnnotation,
     excludedAnnotation,
     FindType,
     getConstructorProperties,
     hasDefaultValue,
+    hasEmbedded,
     isNullable,
     isOptional,
     mongoIdAnnotation,
@@ -790,11 +792,6 @@ function getEmbeddedAccessor(autoPrefix: boolean, accessor: string | ContainerAc
     }
 }
 
-function hasEmbedded(type: Type): boolean {
-    if (type.kind === ReflectionKind.union) return type.types.some(hasEmbedded);
-    return type.kind === ReflectionKind.class && embeddedAnnotation.getFirst(type) !== undefined;
-}
-
 export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState) {
     const embedded = embeddedAnnotation.getFirst(type);
     if (embedded) {
@@ -805,6 +802,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         if (constructorProperties.properties.length === 1) {
             const first = constructorProperties.properties[0];
             let name = getNameExpression(state.namingStrategy.getPropertyName(first), state);
+            //todo: We can not rely on state.setter to check what is being exported. We have to implement Type.parent first and use that.
             const setter = getEmbeddedAccessor(false, state.setter, state.namingStrategy, first, embedded, '');
             state.addCode(executeTemplates(state.fork(setter, new ContainerAccessor(state.accessor, name)), first.type));
         } else {
@@ -1084,12 +1082,12 @@ function typeGuardTypeTuple(type: TypeTuple, state: TemplateState) {
 function typeGuardTypeClassMap(type: TypeClass, state: TemplateState) {
     if (!type.arguments || type.arguments.length !== 2) return;
 
-    typeCheckArray({
+    typeCheckArray(copyAndSetParent({
         kind: ReflectionKind.tuple, types: [
-            { kind: ReflectionKind.tupleMember, type: type.arguments[0] },
-            { kind: ReflectionKind.tupleMember, type: type.arguments[1] },
+            { kind: ReflectionKind.tupleMember, parent: Object as any, type: type.arguments[0] },
+            { kind: ReflectionKind.tupleMember, parent: Object as any, type: type.arguments[1] },
         ]
-    }, state);
+    }), state);
 }
 
 function typeGuardTypeClassSet(type: TypeClass, state: TemplateState) {

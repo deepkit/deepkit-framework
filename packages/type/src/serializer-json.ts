@@ -1,4 +1,4 @@
-import { ReflectionKind, TypeClass } from './reflection/type';
+import { copyAndSetParent, ReflectionKind, TypeClass } from './reflection/type';
 import { serializeArray, Serializer, TemplateState } from './serializer';
 
 
@@ -23,12 +23,12 @@ function serializeTypeClassSet(type: TypeClass, state: TemplateState) {
 
 function deserializeTypeClassMap(type: TypeClass, state: TemplateState) {
     if (!type.arguments || type.arguments.length !== 2) return;
-    serializeArray({
+    serializeArray(copyAndSetParent({
         kind: ReflectionKind.tuple, types: [
             { kind: ReflectionKind.tupleMember, type: type.arguments[0] },
             { kind: ReflectionKind.tupleMember, type: type.arguments[1] },
         ]
-    }, state);
+    }), state);
     state.addSetter(`new Map(${state.accessor})`);
 }
 
@@ -38,12 +38,12 @@ function deserializeTypeClassMap(type: TypeClass, state: TemplateState) {
 function serializeTypeClassMap(type: TypeClass, state: TemplateState) {
     if (!type.arguments || type.arguments.length !== 2) return;
 
-    serializeArray({
+    serializeArray(copyAndSetParent({
         kind: ReflectionKind.tuple, types: [
             { kind: ReflectionKind.tupleMember, type: type.arguments[0] },
             { kind: ReflectionKind.tupleMember, type: type.arguments[1] },
         ]
-    }, state);
+    }), state);
 }
 
 class JSONSerializer extends Serializer {

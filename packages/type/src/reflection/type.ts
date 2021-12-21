@@ -106,22 +106,27 @@ export function getTypeJitContainer(type: OuterType): JitContainer {
 
 export interface TypeNever extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.never,
+    parent?: Type;
 }
 
 export interface TypeAny extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.any,
+    parent?: Type;
 }
 
 export interface TypeUnknown extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.unknown,
+    parent?: Type;
 }
 
 export interface TypeVoid extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.void,
+    parent?: Type;
 }
 
 export interface TypeObject extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.object,
+    parent?: Type;
 }
 
 export interface TypeOrigin {
@@ -130,6 +135,7 @@ export interface TypeOrigin {
 
 export interface TypeString extends TypeOrigin, TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.string,
+    parent?: Type;
 }
 
 /**
@@ -155,43 +161,52 @@ export enum TypeNumberBrand {
 export interface TypeNumber extends TypeOrigin, TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.number,
     brand?: TypeNumberBrand; //built in brand
+    parent?: Type;
 }
 
 export interface TypeBoolean extends TypeOrigin, TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.boolean,
+    parent?: Type;
 }
 
 export interface TypeBigInt extends TypeOrigin, TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.bigint,
+    parent?: Type;
 }
 
 export interface TypeSymbol extends TypeOrigin, TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.symbol,
+    parent?: Type;
 }
 
 export interface TypeNull extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.null,
+    parent?: Type;
 }
 
 export interface TypeUndefined extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.undefined,
+    parent?: Type;
 }
 
 export interface TypeLiteral extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.literal,
     literal: symbol | string | number | boolean | bigint | RegExp;
+    parent?: Type;
 }
 
 export interface TypeTemplateLiteral extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.templateLiteral,
     types: (TypeString | TypeAny | TypeNumber | TypeLiteral | TypeInfer)[]
+    parent?: Type;
 }
 
 export interface TypeRegexp extends TypeOrigin, TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.regexp;
+    parent?: Type;
 }
 
-export interface TypeLiteralMember {
+export interface TypeBaseMember {
     visibility: ReflectionVisibility,
     abstract?: true;
     optional?: true,
@@ -202,6 +217,7 @@ export interface TypeParameter {
     kind: ReflectionKind.parameter,
     name: string;
     type: Type;
+    parent: TypeFunction | TypeMethod | TypeMethodSignature;
 
     //parameter could be a property as well if visibility is set
     visibility?: ReflectionVisibility,
@@ -209,8 +225,9 @@ export interface TypeParameter {
     optional?: true,
 }
 
-export interface TypeMethod extends TypeLiteralMember {
+export interface TypeMethod extends TypeBaseMember {
     kind: ReflectionKind.method,
+    parent: TypeClass;
     visibility: ReflectionVisibility,
     name: number | string | symbol;
     parameters: TypeParameter[];
@@ -219,8 +236,9 @@ export interface TypeMethod extends TypeLiteralMember {
     return: Type;
 }
 
-export interface TypeProperty extends TypeLiteralMember {
+export interface TypeProperty extends TypeBaseMember {
     kind: ReflectionKind.property,
+    parent: TypeClass;
     visibility: ReflectionVisibility,
     name: number | string | symbol;
     optional?: true,
@@ -237,6 +255,7 @@ export interface TypeProperty extends TypeLiteralMember {
 
 export interface TypeFunction extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.function,
+    parent?: Type;
     name?: number | string | symbol,
     function?: Function; //reference to the real function if available
     parameters: TypeParameter[];
@@ -245,11 +264,13 @@ export interface TypeFunction extends TypeAnnotations, TypeRuntimeData {
 
 export interface TypePromise extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.promise,
+    parent?: Type;
     type: Type;
 }
 
 export interface TypeClass extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.class,
+    parent?: Type;
     classType: ClassType;
     /**
      * When class has generic template arguments, e.g. MyClass<string>, it contains
@@ -265,38 +286,45 @@ export interface TypeClass extends TypeAnnotations, TypeRuntimeData {
 
 export interface TypeEnum extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.enum,
+    parent?: Type;
     enum: { [name: string]: string | number | undefined | null },
     values: (string | number | undefined | null)[]
 }
 
 export interface TypeEnumMember {
     kind: ReflectionKind.enumMember,
+    parent: TypeEnum;
     name: string;
     default?: () => string | number;
 }
 
 export interface TypeTypeParameter {
     kind: ReflectionKind.typeParameter,
+    parent?: Type;
     name: string,
 }
 
 export interface TypeUnion extends TypeRuntimeData {
     kind: ReflectionKind.union,
+    parent?: Type;
     types: Type[];
 }
 
 export interface TypeIntersection {
     kind: ReflectionKind.intersection,
+    parent?: Type;
     types: Type[];
 }
 
 export interface TypeArray extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.array,
+    parent?: Type;
     type: Type;
 }
 
 export interface TypePropertySignature {
     kind: ReflectionKind.propertySignature,
+    parent: TypeObjectLiteral;
     name: number | string | symbol;
     optional?: true;
     readonly?: true;
@@ -306,34 +334,39 @@ export interface TypePropertySignature {
 
 export interface TypeMethodSignature {
     kind: ReflectionKind.methodSignature,
+    parent: TypeObjectLiteral;
     name: number | string | symbol;
     optional?: true;
     parameters: TypeParameter[];
     return: Type;
 }
 
+/**
+ * Object literals or interfaces.
+ */
 export interface TypeObjectLiteral extends TypeAnnotations, TypeRuntimeData {
-    typeName?: string;
-    arguments?: OuterType[];
-
     kind: ReflectionKind.objectLiteral,
+    parent?: Type;
     types: (TypeIndexSignature | TypePropertySignature | TypeMethodSignature)[];
 }
 
 export interface TypeIndexSignature {
     kind: ReflectionKind.indexSignature,
+    parent: TypeClass | TypeObjectLiteral;
     index: Type;
     type: Type;
 }
 
 export interface TypeInfer {
     kind: ReflectionKind.infer,
+    parent?: Type;
 
     set(type: Type): void;
 }
 
 export interface TypeTupleMember {
     kind: ReflectionKind.tupleMember,
+    parent: TypeTuple;
     type: Type;
     optional?: true;
     name?: string;
@@ -341,11 +374,13 @@ export interface TypeTupleMember {
 
 export interface TypeTuple extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.tuple,
+    parent?: Type;
     types: TypeTupleMember[]
 }
 
 export interface TypeRest {
     kind: ReflectionKind.rest,
+    parent: TypeTypeParameter | TypeTupleMember;
     type: Type
 }
 
@@ -424,7 +459,7 @@ export type Widen<T> =
                 : T extends boolean ? boolean
                     : T extends symbol ? symbol : T;
 
-export type FindType<T extends Type, LOOKUP extends ReflectionKind> = { [P in keyof T]: T[P] extends LOOKUP ? T : never }[keyof T]
+export type FindType<T extends Type, LOOKUP extends ReflectionKind> = T extends { kind: infer K } ? K extends LOOKUP ? T : never : never;
 
 export function isType(entry: any): entry is Type {
     return 'object' === typeof entry && entry.constructor === Object && 'kind' in entry;
@@ -580,9 +615,9 @@ export function isSameType(a: Type, b: Type): boolean {
 export function addType<T extends Type>(container: T, type: Type): T {
     if (container.kind === ReflectionKind.tuple) {
         if (type.kind === ReflectionKind.tupleMember) {
-            container.types.push(type);
+            container.types.push({ ...type, parent: container });
         } else {
-            container.types.push({ kind: ReflectionKind.tupleMember, type });
+            container.types.push({ kind: ReflectionKind.tupleMember, parent: container, type });
         }
     } else if (container.kind === ReflectionKind.union) {
         if (type.kind === ReflectionKind.union) {
@@ -591,14 +626,14 @@ export function addType<T extends Type>(container: T, type: Type): T {
             }
         } else if (type.kind === ReflectionKind.tupleMember) {
             if (type.optional && !isTypeIncluded(container.types, { kind: ReflectionKind.undefined })) {
-                container.types.push({ kind: ReflectionKind.undefined });
+                container.types.push({ kind: ReflectionKind.undefined, parent: container });
             }
             addType(container, type.type);
         } else if (type.kind === ReflectionKind.rest) {
             addType(container, type.type);
         } else {
             if (!isTypeIncluded(container.types, type)) {
-                container.types.push(type);
+                container.types.push({ ...type as any, parent: container });
             }
         }
     }
@@ -868,11 +903,14 @@ export function merge(types: (TypeObjectLiteral | TypeClass)[]): TypeObjectLiter
     for (const subType of types) {
         for (const member of subType.types) {
             if (member.kind === ReflectionKind.indexSignature) {
+                member.parent = type;
                 type.types.push(member);
             } else if (!isMember(member)) {
                 continue;
             } else if (!hasMember(type, member.name)) {
-                type.types.push(toSignature(member));
+                const t = toSignature(member);
+                t.parent = type;
+                type.types.push(t);
             }
         }
     }
@@ -886,13 +924,64 @@ export function narrowOriginalLiteral(type: Type): Type {
     return type;
 }
 
+type GetArrayElement<T extends any[]> = [T] extends [Array<infer K>] ? K : never;
+type RemoveParent<T, K extends keyof T> = { [P in K]: T[P] extends Type[] ? RemoveParentHomomorphic<GetArrayElement<T[P]>>[] : T[P] extends Type ? RemoveParentHomomorphic<T[P]> : T[P] };
+type RemoveParentHomomorphic<T> = RemoveParent<T, Exclude<keyof T, 'parent'>>;
+type RemoveDeepParent<T extends Type> = T extends infer K ? RemoveParentHomomorphic<K> : never;
+export type ParentLessType = RemoveDeepParent<Type>;
+
+export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type): FindType<Type, T['kind']> {
+    const type = parent ? { ...inc, parent: parent } as Type : { ...inc } as Type;
+
+    switch (type.kind) {
+        case ReflectionKind.objectLiteral:
+        case ReflectionKind.tuple:
+        case ReflectionKind.union:
+        case ReflectionKind.class:
+        case ReflectionKind.intersection:
+        case ReflectionKind.templateLiteral:
+            type.types = type.types.map(member => copyAndSetParent(member, type));
+            break;
+        case ReflectionKind.string:
+        case ReflectionKind.number:
+        case ReflectionKind.bigint:
+        case ReflectionKind.symbol:
+        case ReflectionKind.regexp:
+        case ReflectionKind.boolean:
+            if (type.origin) type.origin = copyAndSetParent(type.origin, type);
+            break;
+        case ReflectionKind.function:
+        case ReflectionKind.method:
+        case ReflectionKind.methodSignature:
+            type.return = copyAndSetParent(type.return, type);
+            type.parameters = type.parameters.map(member => copyAndSetParent(member, type));
+            break;
+        case ReflectionKind.propertySignature:
+        case ReflectionKind.property:
+        case ReflectionKind.array:
+        case ReflectionKind.promise:
+        case ReflectionKind.parameter:
+        case ReflectionKind.tupleMember:
+        case ReflectionKind.rest:
+            type.type = copyAndSetParent(type.type, type);
+            break;
+        case ReflectionKind.indexSignature:
+            type.index = copyAndSetParent(type.index, type);
+            type.type = copyAndSetParent(type.type, type);
+            break;
+    }
+
+    return type as any;
+}
+
 export function widenLiteral(type: Type): Type {
     if (type.kind === ReflectionKind.literal) {
-        if ('number' === typeof type.literal) return { kind: ReflectionKind.number, origin: type };
-        if ('boolean' === typeof type.literal) return { kind: ReflectionKind.boolean, origin: type };
-        if ('bigint' === typeof type.literal) return { kind: ReflectionKind.bigint, origin: type };
-        if ('symbol' === typeof type.literal) return { kind: ReflectionKind.symbol };
-        if ('string' === typeof type.literal) return { kind: ReflectionKind.string, origin: type };
+        if ('number' === typeof type.literal) return copyAndSetParent({ kind: ReflectionKind.number, origin: type });
+        if ('boolean' === typeof type.literal) return copyAndSetParent({ kind: ReflectionKind.boolean, origin: type });
+        if ('bigint' === typeof type.literal) return copyAndSetParent({ kind: ReflectionKind.bigint, origin: type });
+        if ('symbol' === typeof type.literal) return copyAndSetParent({ kind: ReflectionKind.symbol, origin: type });
+        if ('string' === typeof type.literal) return copyAndSetParent({ kind: ReflectionKind.string, origin: type });
+        if (type.literal instanceof RegExp) return copyAndSetParent({ kind: ReflectionKind.regexp, origin: type });
     }
 
     return type;
@@ -959,6 +1048,7 @@ export function typeInfer(value: any, registry?: ProcessorRegistry): Type {
             if (propType.kind === ReflectionKind.methodSignature || propType.kind === ReflectionKind.function) {
                 type.types.push({
                     kind: ReflectionKind.methodSignature,
+                    parent: type,
                     name: i,
                     return: propType.return,
                     parameters: propType.parameters
@@ -966,7 +1056,7 @@ export function typeInfer(value: any, registry?: ProcessorRegistry): Type {
                 continue;
             }
 
-            const property: TypePropertySignature = { kind: ReflectionKind.propertySignature, name: i, type: { kind: ReflectionKind.any } };
+            const property: TypePropertySignature = { kind: ReflectionKind.propertySignature, parent: type, name: i, type: { kind: ReflectionKind.any } };
 
             if (propType.kind === ReflectionKind.literal) {
                 property.type = widenLiteral(propType);
@@ -981,7 +1071,7 @@ export function typeInfer(value: any, registry?: ProcessorRegistry): Type {
     return { kind: ReflectionKind.any };
 }
 
-export function assertType<K extends Type['kind'], T>(t: Type, kind: K): asserts t is FindType<Type, K> {
+export function assertType<K extends ReflectionKind, T>(t: Type, kind: K): asserts t is FindType<Type, K> {
     if (t.kind !== kind) throw new Error(`Invalid type ${t.kind}, expected ${kind}`);
 }
 
@@ -1212,6 +1302,11 @@ export const mongoIdAnnotation = new AnnotationDefinition();
 export const uuidAnnotation = new AnnotationDefinition();
 export const defaultAnnotation = new AnnotationDefinition();
 export const embeddedAnnotation = new AnnotationDefinition<{ prefix?: string }>();
+
+export function hasEmbedded(type: Type): boolean {
+    if (type.kind === ReflectionKind.union) return type.types.some(hasEmbedded);
+    return type.kind === ReflectionKind.class && embeddedAnnotation.getFirst(type) !== undefined;
+}
 
 //`never` is here to allow using a decorator multiple times on the same type without letting the TS complaining about incompatible types.
 export type Group<Name extends string> = { __meta?: ['group', never & Name] };

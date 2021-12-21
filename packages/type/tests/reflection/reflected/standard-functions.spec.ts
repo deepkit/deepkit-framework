@@ -8,13 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { expect, test } from '@jest/globals';
+import { test } from '@jest/globals';
 import { ReceiveType, removeTypeName, resolveReceiveType } from '../../../src/reflection/reflection';
+import { expectEqualType } from '../processor.spec';
 
 function equalType<A, B>(a?: ReceiveType<A>, b?: ReceiveType<B>) {
     const aType = removeTypeName(resolveReceiveType(a));
     const bType = removeTypeName(resolveReceiveType(b));
-    expect(aType).toEqual(bType as any);
+    expectEqualType(aType, bType as any);
 }
 
 test('Exclude', () => {

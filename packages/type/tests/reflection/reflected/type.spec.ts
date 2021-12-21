@@ -1,7 +1,8 @@
 import { describe, expect, test } from '@jest/globals';
 import { ReceiveType, resolveReceiveType, typeOf } from '../../../src/reflection/reflection';
-import { indexAccess, isSameType, ReflectionKind, stringifyResolvedType, stringifyType, UUID } from '../../../src/reflection/type';
+import { assertType, Embedded, indexAccess, isSameType, ReflectionKind, stringifyResolvedType, stringifyType, UUID } from '../../../src/reflection/type';
 import { isExtendable } from '../../../src/reflection/extends';
+import { expectEqualType } from '../processor.spec';
 
 //note: this needs to run in a strict TS mode to infer correctly in the IDE
 type Extends<A, B> = [A] extends [B] ? true : false;
@@ -483,11 +484,11 @@ test('extendability', () => {
 });
 
 test('template literal basics', () => {
-    expect(typeOf<`${string}`>()).toEqual(typeOf<string>());
-    expect(typeOf<`${number}`>()).toEqual(typeOf<`${number}`>());
-    expect(typeOf<`${1}`>()).toEqual(typeOf<'1'>());
-    expect(typeOf<`${true}`>()).toEqual(typeOf<'true'>());
-    expect(typeOf<`${boolean}`>()).toEqual(typeOf<'false' | 'true'>());
+    expectEqualType(typeOf<`${string}`>(), typeOf<string>());
+    expectEqualType(typeOf<`${number}`>(), typeOf<`${number}`>());
+    expectEqualType(typeOf<`${1}`>(), typeOf<'1'>());
+    expectEqualType(typeOf<`${true}`>(),typeOf<'true'>());
+    expectEqualType(typeOf<`${boolean}`>(), typeOf<'false' | 'true'>());
 });
 
 test('literal extends template literal', () => {
@@ -563,14 +564,14 @@ test('template literal infer', () => {
     expect(typeOf<a1>()).toMatchObject(typeOf<'bc'>() as any);
 
     type a2 = 'abcd' extends `a${infer T}${infer T2}` ? [T, T2] : never;
-    expect(typeOf<a2>()).toMatchObject(typeOf<['b', 'cd']>() as any);
+    expectEqualType(typeOf<a2>(), typeOf<['b', 'cd']>() as any, { noTypeNames: true });
 
     type a3 = 'abcd' extends `a${string}${infer T2}` ? T2 : never;
-    expect(typeOf<a3>()).toMatchObject(typeOf<'cd'>() as any);
+    expectEqualType(typeOf<a3>(), typeOf<'cd'>() as any, { noTypeNames: true });
 
     type TN<T> = T extends `a${number}` ? T extends `a${infer T}` ? T : never : never;
     type e1 = TN<`a123.4`>;
-    expect(typeOf<e1>()).toMatchObject(typeOf<'123.4'>() as any);
+    expectEqualType(typeOf<e1>(), typeOf<'123.4'>() as any, { noTypeNames: true });
 });
 
 test('tuple indexAccess', () => {
@@ -578,15 +579,60 @@ test('tuple indexAccess', () => {
     expect(indexAccess(typeOf<[string]>(), { kind: ReflectionKind.literal, literal: 1 })).toEqual({ kind: ReflectionKind.undefined });
     expect(indexAccess(typeOf<[string, string]>(), { kind: ReflectionKind.literal, literal: 1 })).toEqual({ kind: ReflectionKind.string });
     expect(indexAccess(typeOf<[string, number]>(), { kind: ReflectionKind.literal, literal: 1 })).toEqual({ kind: ReflectionKind.number });
-    expect(indexAccess(typeOf<[string, ...number[], boolean]>(), { kind: ReflectionKind.literal, literal: 1 })).toEqual({
+    expectEqualType(indexAccess(typeOf<[string, ...number[], boolean]>(), { kind: ReflectionKind.literal, literal: 1 }), {
         kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.boolean }]
     });
-    expect(indexAccess(typeOf<[string, ...(number | undefined)[]]>(), { kind: ReflectionKind.literal, literal: 1 })).toEqual({
+    expectEqualType(indexAccess(typeOf<[string, ...(number | undefined)[]]>(), { kind: ReflectionKind.literal, literal: 1 }), {
         kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }]
     });
-    expect(indexAccess(typeOf<[string, number?]>(), { kind: ReflectionKind.literal, literal: 1 })).toEqual({
+    expectEqualType(indexAccess(typeOf<[string, number?]>(), { kind: ReflectionKind.literal, literal: 1 }), {
         kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }]
     });
+});
+
+test('parent object literal', () => {
+    interface C {
+        a: string;
+    }
+
+    const t1 = typeOf<C>();
+    assertType(t1, ReflectionKind.objectLiteral);
+    assertType(t1.types[0], ReflectionKind.propertySignature);
+    expect(t1.types[0].parent).toBe(t1);
+
+    const t2 = typeOf<C[] | string[]>();
+    assertType(t2, ReflectionKind.union);
+    assertType(t2.types[0], ReflectionKind.array);
+    assertType(t2.types[0].type, ReflectionKind.objectLiteral);
+    assertType(t2.types[0].type.types[0], ReflectionKind.propertySignature);
+    expect(t2.types[0].parent).toBe(t2);
+    expect(t2.types[0].type.parent).toBe(t2.types[0]);
+    expect(t2.types[0].type.types[0].parent).toBe(t2.types[0].type);
+});
+
+test('parent object literal from fn', () => {
+    interface C {
+        a: string;
+    }
+
+    type t<T> = T;
+    const t1 = typeOf<t<C>>();
+    assertType(t1, ReflectionKind.objectLiteral);
+    assertType(t1.types[0], ReflectionKind.propertySignature);
+    expect(t1.types[0].parent).toBe(t1);
+});
+
+test('parent embedded', () => {
+    interface C {
+        a: string;
+    }
+
+    const t1 = typeOf<{a: Embedded<C>}>();
+    assertType(t1, ReflectionKind.objectLiteral);
+    assertType(t1.types[0], ReflectionKind.propertySignature);
+    expect(t1.types[0].parent).toBe(t1);
+    assertType(t1.types[0].type, ReflectionKind.objectLiteral);
+    expect(t1.types[0].type.parent).toBe(t1.types[0]);
 });
 
 test('tuple extends', () => {

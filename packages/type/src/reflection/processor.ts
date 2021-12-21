@@ -25,6 +25,7 @@ import {
     ReflectionOp,
     ReflectionVisibility,
     Type,
+    TypeBaseMember,
     TypeClass,
     typeDecorators,
     TypeEnumMember,
@@ -32,7 +33,6 @@ import {
     typeInfer,
     TypeInfer,
     TypeLiteral,
-    TypeLiteralMember,
     TypeMethodSignature,
     TypeObjectLiteral,
     TypeParameter,
@@ -269,7 +269,7 @@ export class Processor {
                     for (const combination of product) {
                         const template: TypeTemplateLiteral = { kind: ReflectionKind.templateLiteral, types: [] };
                         let hasPlaceholder = false;
-                        let lastLiteral: { kind: ReflectionKind.literal, literal: string } | undefined = undefined;
+                        let lastLiteral: { kind: ReflectionKind.literal, literal: string, parent?: Type } | undefined = undefined;
                         //merge a combination of types, e.g. [string, 'abc', '3'] as template literal => `${string}abc3`.
                         for (const item of combination) {
                             if (item.kind === ReflectionKind.literal) {
@@ -277,26 +277,33 @@ export class Processor {
                                     lastLiteral.literal += item.literal as string + '';
                                 } else {
                                     lastLiteral = { kind: ReflectionKind.literal, literal: item.literal as string + '' };
+                                    lastLiteral.parent = template;
                                     template.types.push(lastLiteral);
                                 }
                             } else {
                                 hasPlaceholder = true;
                                 lastLiteral = undefined;
+                                item.parent = template;
                                 template.types.push(item as TypeTemplateLiteral['types'][number]);
                             }
                         }
 
                         if (hasPlaceholder) {
                             if (template.types.length === 1 && template.types[0].kind === ReflectionKind.string) {
+                                template.types[0].parent = result;
                                 result.types.push(template.types[0]);
                             } else {
+                                template.parent = result;
                                 result.types.push(template);
                             }
                         } else if (lastLiteral) {
+                            lastLiteral.parent = result;
                             result.types.push(lastLiteral);
                         }
                     }
-                    this.pushType(unboxUnion(result));
+                    const t: Type = unboxUnion(result);
+                    if (t.kind === ReflectionKind.union) for (const member of t.types) member.parent = t;
+                    this.pushType(t);
                     break;
                 }
                 case ReflectionOp.date:
@@ -354,6 +361,7 @@ export class Processor {
                                     } as TypeProperty;
                                     if (parameter.optional) property.optional = true;
                                     if (parameter.readonly) property.readonly = true;
+                                    parameter.type.parent = property;
                                     types.push(property);
                                 }
                             }
@@ -366,13 +374,17 @@ export class Processor {
 
                     //only for the very last op do we replace this.resultType. Otherwise objectLiteral in between would overwrite it.
                     if (this.program + 1 === s) t = Object.assign(this.resultType, t);
+                    for (const member of t.types) member.parent = t;
+                    if (t.arguments) for (const member of t.arguments) member.parent = t;
                     if (args.length) t.arguments = args;
                     this.pushType(t);
                     break;
                 }
                 case ReflectionOp.parameter: {
                     const ref = this.eatParameter(ops) as number;
-                    this.pushType({ kind: ReflectionKind.parameter, name: initialStack[ref] as string, type: this.pop() as Type });
+                    const t: Type = { kind: ReflectionKind.parameter, parent: undefined as any, name: initialStack[ref] as string, type: this.pop() as Type };
+                    t.type.parent = t;
+                    this.pushType(t);
                     break;
                 }
                 case ReflectionOp.classReference: {
@@ -402,13 +414,15 @@ export class Processor {
                             enumType[type.name] = i++;
                         }
                     }
-                    this.pushType({ kind: ReflectionKind.enum, enum: enumType, values: Object.values(enumType) });
+                    const t: Type = { kind: ReflectionKind.enum, enum: enumType, values: Object.values(enumType) };
+                    this.pushType(t);
                     break;
                 }
                 case ReflectionOp.enumMember: {
                     const name = initialStack[this.eatParameter(ops) as number] as string | (() => string);
                     this.pushType({
                         kind: ReflectionKind.enumMember,
+                        parent: undefined as any,
                         name: isFunction(name) ? name() : name
                     });
                     break;
@@ -417,7 +431,7 @@ export class Processor {
                     const types: TypeTupleMember[] = [];
                     const stackTypes = this.popFrame() as Type[];
                     for (const type of stackTypes) {
-                        let resolved: TypeTupleMember = type.kind === ReflectionKind.tupleMember ? type : { kind: ReflectionKind.tupleMember, type };
+                        let resolved: TypeTupleMember = type.kind === ReflectionKind.tupleMember ? type : { kind: ReflectionKind.tupleMember, parent: undefined as any, type };
                         if (resolved.type.kind === ReflectionKind.rest) {
                             if (resolved.type.type.kind === ReflectionKind.tuple) {
                                 for (const sub of resolved.type.type.types) {
@@ -430,28 +444,37 @@ export class Processor {
                             types.push(resolved);
                         }
                     }
-                    this.pushType({ kind: ReflectionKind.tuple, types });
+                    const t: Type = { kind: ReflectionKind.tuple, types };
+                    for (const member of t.types) member.parent = t;
+                    this.pushType(t);
                     break;
                 }
                 case ReflectionOp.tupleMember: {
                     this.pushType({
                         kind: ReflectionKind.tupleMember, type: this.pop() as Type,
+                        parent: undefined as any,
                     });
                     break;
                 }
                 case ReflectionOp.namedTupleMember: {
                     const name = initialStack[this.eatParameter(ops) as number] as string;
-                    this.pushType({
+                    const t: Type = {
                         kind: ReflectionKind.tupleMember, type: this.pop() as Type,
+                        parent: undefined as any,
                         name: isFunction(name) ? name() : name
-                    });
+                    };
+                    t.type.parent = t;
+                    this.pushType(t);
                     break;
                 }
                 case ReflectionOp.rest: {
-                    this.pushType({
+                    const t: Type = {
                         kind: ReflectionKind.rest,
+                        parent: undefined as any,
                         type: this.pop() as Type,
-                    });
+                    };
+                    t.type.parent = t;
+                    this.pushType(t);
                     break;
                 }
                 case ReflectionOp.regexp: {
@@ -478,20 +501,32 @@ export class Processor {
                     }
                     break;
                 }
-                case ReflectionOp.set:
-                    this.pushType({ kind: ReflectionKind.class, classType: Set, arguments: [this.pop() as Type], types: [] });
+                case ReflectionOp.set: {
+                    const t: Type = { kind: ReflectionKind.class, classType: Set, arguments: [this.pop() as Type], types: [] };
+                    t.arguments![0].parent = t;
+                    this.pushType(t);
                     break;
-                case ReflectionOp.map:
+                }
+                case ReflectionOp.map: {
                     const value = this.pop() as Type;
                     const key = this.pop() as Type;
-                    this.pushType({ kind: ReflectionKind.class, classType: Map, arguments: [key, value], types: [] });
+                    const t: TypeClass = { kind: ReflectionKind.class, classType: Map, arguments: [key, value], types: [] };
+                    t.arguments![0].parent = t;
+                    t.arguments![1].parent = t;
+                    this.pushType(t);
                     break;
-                case ReflectionOp.promise:
-                    this.pushType({ kind: ReflectionKind.promise, type: this.pop() as Type });
+                }
+                case ReflectionOp.promise: {
+                    const t: Type = { kind: ReflectionKind.promise, type: this.pop() as Type };
+                    t.type.parent = t;
+                    this.pushType(t);
                     break;
+                }
                 case ReflectionOp.union: {
                     const types = this.popFrame() as Type[];
-                    this.pushType(unboxUnion({ kind: ReflectionKind.union, types: flattenUnionTypes(types) }));
+                    const t: Type = unboxUnion({ kind: ReflectionKind.union, types: flattenUnionTypes(types) });
+                    if (t.kind === ReflectionKind.union) for (const member of t.types) member.parent = t;
+                    this.pushType(t);
                     break;
                 }
                 case ReflectionOp.intersection: {
@@ -564,17 +599,23 @@ export class Processor {
                 case ReflectionOp.function: {
                     const types = this.popFrame() as TypeParameter[];
                     const name = initialStack[this.eatParameter(ops) as number] as string;
-                    this.pushType({
+                    const t: Type = {
                         kind: ReflectionKind.function,
                         name: name || undefined,
                         return: types.length > 0 ? types[types.length - 1] : { kind: ReflectionKind.any },
                         parameters: types.length > 1 ? types.slice(0, -1) : []
-                    });
+                    };
+                    t.return.parent = t;
+                    for (const member of t.parameters) member.parent = t;
+                    this.pushType(t);
                     break;
                 }
-                case ReflectionOp.array:
-                    this.pushType({ kind: ReflectionKind.array, type: this.pop() as Type });
+                case ReflectionOp.array: {
+                    const t: Type = { kind: ReflectionKind.array, type: this.pop() as Type };
+                    t.type.parent = t;
+                    this.pushType(t);
                     break;
+                }
                 case ReflectionOp.property:
                 case ReflectionOp.propertySignature: {
                     const name = initialStack[this.eatParameter(ops) as number] as number | string | symbol | (() => symbol);
@@ -604,6 +645,7 @@ export class Processor {
                         (property as TypeProperty).visibility = ReflectionVisibility.public;
                     }
 
+                    property.type.parent = property;
                     this.pushType(property);
                     break;
                 }
@@ -614,30 +656,31 @@ export class Processor {
                     const returnType: Type = types.length > 0 ? types[types.length - 1] : { kind: ReflectionKind.any };
                     const parameters: TypeParameter[] = types.length > 1 ? types.slice(0, -1) as TypeParameter[] : [];
 
-                    if (op === ReflectionOp.method) {
-                        this.pushType({ kind: ReflectionKind.method, visibility: ReflectionVisibility.public, name, return: returnType, parameters });
-                    } else {
-                        this.pushType({ kind: ReflectionKind.methodSignature, name, return: returnType, parameters });
-                    }
+                    const t: Type = op === ReflectionOp.method
+                        ? { kind: ReflectionKind.method, parent: undefined as any, visibility: ReflectionVisibility.public, name, return: returnType, parameters }
+                        : { kind: ReflectionKind.methodSignature, parent: undefined as any, name, return: returnType, parameters };
+                    t.return.parent = t;
+                    for (const member of t.parameters) member.parent = t;
+                    this.pushType(t);
                     break;
                 }
                 case ReflectionOp.optional:
-                    (this.stack[this.stackPointer] as TypeLiteralMember | TypeTupleMember).optional = true;
+                    (this.stack[this.stackPointer] as TypeBaseMember | TypeTupleMember).optional = true;
                     break;
                 case ReflectionOp.readonly:
-                    (this.stack[this.stackPointer] as TypeLiteralMember).readonly = true;
+                    (this.stack[this.stackPointer] as TypeBaseMember).readonly = true;
                     break;
                 case ReflectionOp.public:
-                    (this.stack[this.stackPointer] as TypeLiteralMember).visibility = ReflectionVisibility.public;
+                    (this.stack[this.stackPointer] as TypeBaseMember).visibility = ReflectionVisibility.public;
                     break;
                 case ReflectionOp.protected:
-                    (this.stack[this.stackPointer] as TypeLiteralMember).visibility = ReflectionVisibility.protected;
+                    (this.stack[this.stackPointer] as TypeBaseMember).visibility = ReflectionVisibility.protected;
                     break;
                 case ReflectionOp.private:
-                    (this.stack[this.stackPointer] as TypeLiteralMember).visibility = ReflectionVisibility.private;
+                    (this.stack[this.stackPointer] as TypeBaseMember).visibility = ReflectionVisibility.private;
                     break;
                 case ReflectionOp.abstract:
-                    (this.stack[this.stackPointer] as TypeLiteralMember).abstract = true;
+                    (this.stack[this.stackPointer] as TypeBaseMember).abstract = true;
                     break;
                 case ReflectionOp.defaultValue:
                     (this.stack[this.stackPointer] as TypeProperty | TypeEnumMember).default = initialStack[this.eatParameter(ops) as number] as () => any;
@@ -648,10 +691,10 @@ export class Processor {
                 case ReflectionOp.indexSignature: {
                     const type = this.pop() as Type;
                     const index = this.pop() as Type;
-                    this.pushType({
-                        kind: ReflectionKind.indexSignature,
-                        index, type
-                    });
+                    const t: Type = { kind: ReflectionKind.indexSignature, parent: undefined as any, index, type };
+                    t.type.parent = t;
+                    t.index.parent = t;
+                    this.pushType(t);
                     break;
                 }
                 case ReflectionOp.objectLiteral: {
@@ -666,6 +709,7 @@ export class Processor {
 
                     //only for the very last op do we replace this.resultType. Otherwise, objectLiteral in between would overwrite it.
                     if (this.program + 1 === s) t = Object.assign(this.resultType, t);
+                    for (const member of t.types) member.parent = t;
                     this.pushType(t);
                     break;
                 }
@@ -695,7 +739,9 @@ export class Processor {
                         //end
                         const types = this.popFrame() as Type[];
                         const result: TypeUnion = { kind: ReflectionKind.union, types: flattenUnionTypes(types) };
-                        this.push(unboxUnion(result));
+                        const t: Type = unboxUnion(result);
+                        if (t.kind === ReflectionKind.union) for (const member of t.types) member.parent = t;
+                        this.push(t);
                     } else {
                         this.stack[this.frame.startIndex + 1] = next;
                         this.call(program, -1); //-1=jump back to this very same position, to be able to loop
@@ -758,7 +804,9 @@ export class Processor {
                         break;
                     }
 
-                    this.push(indexAccess(left, right));
+                    const t: Type = indexAccess(left, right);
+                    t.parent = undefined;
+                    this.push(t);
                     break;
                 }
                 case ReflectionOp.typeof: {
@@ -834,7 +882,9 @@ export class Processor {
                     const next = this.frame.mappedType.next();
                     if (next === undefined) {
                         //end
-                        this.push({ kind: ReflectionKind.objectLiteral, types: this.popFrame() });
+                        const t: Type = { kind: ReflectionKind.objectLiteral, types: this.popFrame() as any[] };
+                        for (const member of t.types) member.parent = t;
+                        this.push(t);
                     } else {
                         this.stack[this.frame.startIndex + 1] = next; //change the mapped type parameter
                         this.call(functionPointer, -2);
