@@ -11,7 +11,6 @@
 import { ClassType, CompilerContext, CustomError, getClassName, isArray, isFunction, isInteger, isIterable, isNumeric, isObject } from '@deepkit/core';
 import {
     AnnotationDefinition,
-    assertType,
     embeddedAnnotation,
     excludedAnnotation,
     FindType,
@@ -78,6 +77,7 @@ interface TypeGuardOptions {
     registry: TemplateRegistry;
     namingStrategy?: NamingStrategy;
     specificality?: number;
+    accessor?: string | ContainerAccessor;
     path?: (string | RuntimeCode)[];
     jitStack?: JitStack;
     validation?: true;
@@ -90,7 +90,7 @@ export function createTypeGuardFunction(options: TypeGuardOptions): undefined | 
     if (!templates.length) return undefined;
 
     const state = new TemplateState(
-        'result', 'data',
+        'result', options.accessor || 'data',
         compiler, options.registry,
         options.namingStrategy || new NamingStrategy(),
         options.jitStack || new JitStack(),
@@ -113,12 +113,12 @@ export function createTypeGuardFunction(options: TypeGuardOptions): undefined | 
         ${state.template}
         return result === true;
     `;
-    return compiler.build(code, 'data', 'state');
+    return compiler.build(code, 'data', 'state', 'property');
 }
 
 export class SerializationError extends CustomError {
     constructor(message: string, public path: string) {
-        super(`${path ? path + ': ' : ''}` + message);
+        super(`${!path ? '' : (path && path.startsWith('.') ? path.slice(1) : path) + ': '}` + message);
     }
 }
 
@@ -169,12 +169,21 @@ export class JitStack {
     }
 }
 
+export class ContainerAccessor {
+    constructor(public container: string | ContainerAccessor, public property: string) {
+    }
+
+    toString() {
+        return `${this.container}[${this.property}]`;
+    }
+}
+
 export class TemplateState {
     public template = '';
 
     public ended = false;
-    public setter = '';
-    public accessor = '';
+    public setter: string | ContainerAccessor = '';
+    public accessor: string | ContainerAccessor = '';
 
     /**
      * @internal for type guards only.
@@ -189,8 +198,8 @@ export class TemplateState {
     protected handledAnnotations: AnnotationDefinition[] = [];
 
     constructor(
-        public originalSetter: string,
-        public originalAccessor: string,
+        public originalSetter: string | ContainerAccessor,
+        public originalAccessor: string | ContainerAccessor,
         public compilerContext: CompilerContext,
         public registry: TemplateRegistry,
         public readonly namingStrategy: NamingStrategy,
@@ -205,7 +214,7 @@ export class TemplateState {
         return createTypeGuardFunction({ type, registry: this.registry.serializer.typeGuards.getRegistry(specificality) });
     }
 
-    fork(setter?: string, accessor?: string, path?: (string | RuntimeCode)[]): TemplateState {
+    fork(setter?: string | ContainerAccessor, accessor?: string | ContainerAccessor, path?: (string | RuntimeCode)[]): TemplateState {
         const state = new TemplateState(setter ?? this.setter, accessor ?? this.accessor, this.compilerContext, this.registry, this.namingStrategy, this.jitStack, path || this.path.slice(0));
         state.specificality = this.specificality;
         state.validation = this.validation;
@@ -260,7 +269,7 @@ export class TemplateState {
         return `if (state.errors) state.errors.push(new ValidationFailedItem(${collapsePath(this.path)}, ${JSON.stringify(code)}, ${JSON.stringify(message)}));`;
     }
 
-    throwCode(type: OuterType | string, error?: string, accessor: string = this.originalAccessor) {
+    throwCode(type: OuterType | string, error?: string, accessor: string | ContainerAccessor = this.originalAccessor) {
         this.setContext({ SerializationError });
         const to = JSON.stringify(('string' === typeof type ? type : stringifyType(type)).replace(/\n/g, '').replace(/\s+/g, ' ').trim());
         return `throw new SerializationError('Cannot convert ' + ${accessor} + ' to ' + ${to} ${error ? ` + '. ' + ${error}` : ''}, ${collapsePath(this.path)});`;
@@ -270,9 +279,9 @@ export class TemplateState {
      * Adds template code for setting the `this.setter` variable. The expression evaluated in `code` is assigned to `this.setter`.
      * `this.accessor` will point now to `this.setter`.
      */
-    addSetter(code: string) {
+    addSetter(code: string | { toString(): string }) {
         this.template += `\n${this.setter} = ${code};`;
-        this.accessor = this.setter;
+        this.accessor = String(this.setter);
     }
 
     addSetterAndReportErrorIfInvalid(errorCode: string, message: string, code: string) {
@@ -310,7 +319,7 @@ export class TemplateState {
      */
     addCodeForSetter(code: string) {
         this.template += '\n' + code;
-        this.accessor = this.setter;
+        this.accessor = String(this.setter);
     }
 
     hasSetterCode(): boolean {
@@ -451,8 +460,9 @@ export function executeTemplates(
     state: TemplateState,
     type: Type,
 ): string {
-    //object literals and classes get their own function
-    const needsFunction = (type.kind === ReflectionKind.class && type.types.length) || type.kind === ReflectionKind.objectLiteral;
+    //object literals and classes get their own function, if not Embedded<T> is used
+    const embedded = embeddedAnnotation.getFirst(type);
+    const needsFunction = !embedded && (type.kind === ReflectionKind.class && type.types.length) || type.kind === ReflectionKind.objectLiteral;
     const templates = state.registry.get(type);
     const parentState = state;
     if (needsFunction) {
@@ -590,7 +600,49 @@ export function createConverterJSForMember(
     `;
 }
 
+export function inAccessor(accessor: ContainerAccessor): string {
+    return `'object' === typeof ${accessor.container} && ${accessor.property} in ${accessor.container}`;
+}
+
 export function deserializeClass(type: TypeClass, state: TemplateState) {
+    const classType = state.compilerContext.reserveConst(type.classType);
+
+    const embedded = embeddedAnnotation.getFirst(type);
+    if (embedded) {
+        const constructorProperties = getConstructorProperties(type);
+        if (!constructorProperties.properties.length) throw new Error(`Can not embed class ${getClassName(type.classType)} since it has no constructor properties`);
+        const args: string[] = [];
+        const loadArgs: string[] = [];
+
+        for (const parameter of constructorProperties.parameters) {
+            if (parameter.kind !== ReflectionKind.property) {
+                args.push('undefined');
+            } else {
+                const setter = state.compilerContext.reserveName('constructorArg');
+                args.push(setter);
+                loadArgs.push(`let ${setter}`);
+
+                const accessor = getEmbeddedAccessor(constructorProperties.properties.length !== 1, state.accessor, state.namingStrategy, parameter, embedded, '');
+                const propertyState = state.fork(setter, accessor).extendPath(String(parameter.name));
+                if (hasEmbedded(parameter.type)) {
+                    loadArgs.push(executeTemplates(propertyState, parameter.type));
+                } else {
+                    if (accessor instanceof ContainerAccessor) {
+                        loadArgs.push(`if (${inAccessor(accessor)}) {${createConverterJSForMember(parameter, propertyState)} }`);
+                    } else {
+                        loadArgs.push(createConverterJSForMember(parameter, propertyState));
+                    }
+                }
+            }
+        }
+
+        state.addCode(`
+            ${loadArgs.join('\n')}
+            ${state.setter} = new ${classType}(${args.join(',')});
+        `);
+        return;
+    }
+
     const preLines: string[] = [];
     const lines: string[] = [];
     const clazz = ReflectionClass.from(type.classType);
@@ -614,19 +666,17 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
             const argumentName = state.compilerContext.reserveVariable('c_' + parameter.getName());
 
             const name = JSON.stringify(property.getName());
+            const propertyState = state.fork(argumentName, new ContainerAccessor(state.accessor, name)).extendPath(String(property.getName()));
             const staticDefault = property.type.kind === ReflectionKind.literal ? `${argumentName} = ${state.compilerContext.reserveConst(property.type.literal)};` : '';
 
             const embedded = property.getEmbedded();
             if (embedded) {
-                preLines.push(`
-                    ${argumentName} = undefined;
-                    ${deserializeEmbeddable(argumentName, property.property, embedded, state)}
-                `);
+                preLines.push(executeTemplates(propertyState, property.type));
             } else {
                 preLines.push(`
-                ${argumentName} = undefined;
-                    if (${name} in ${state.accessor}) {
-                        ${createConverterJSForMember(property, state.fork(argumentName, `${state.accessor}[${name}]`).extendPath(String(property.getName())))}
+                    ${argumentName} = undefined;
+                    if (${inAccessor(propertyState.accessor as ContainerAccessor)}) {
+                        ${createConverterJSForMember(property, propertyState)}
                     } else {
                         ${staticDefault}
                     }
@@ -646,22 +696,21 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
             continue;
         }
 
-        const setter = `${state.setter}[${JSON.stringify(property.getName())}]`;
+        const setter = new ContainerAccessor(state.setter, JSON.stringify(property.getName()));
         const staticDefault = !property.hasDefault() && property.type.kind === ReflectionKind.literal ? `${setter} = ${state.compilerContext.reserveConst(property.type.literal)};` : '';
 
+        const propertyState = state.fork(setter, new ContainerAccessor(state.accessor, name)).extendPath(String(property.getName()));
         const embedded = property.getEmbedded();
         if (embedded) {
-            lines.push(deserializeEmbeddable(setter, property.property, embedded, state));
+            lines.push(executeTemplates(propertyState, property.type));
         } else {
             lines.push(`
                 if (${name} in ${state.accessor}) {
-                    ${createConverterJSForMember(property, state.fork(setter, `${state.accessor}[${name}]`).extendPath(String(property.getName())))}
+                    ${createConverterJSForMember(property, propertyState)}
                 } else { ${staticDefault} }
             `);
         }
     }
-
-    const classType = state.compilerContext.reserveConst(type.classType);
 
     const code = `
         ${preLines.join('\n')}
@@ -693,72 +742,6 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
     `);
 }
 
-function deserializeEmbeddable(setter: string, member: TypeProperty | TypePropertySignature, embedded: { prefix?: string }, state: TemplateState) {
-    assertType(member.type, ReflectionKind.class);
-    const preLines: string[] = [];
-
-    const clazz = ReflectionClass.from(member.type.classType);
-    const constructor = clazz.getConstructor();
-    const constructorArguments: string[] = [];
-    const embedProperties = getConstructorProperties(member.type);
-    if (constructor) {
-        const parameters = constructor.getParameters();
-        for (const parameter of parameters) {
-            if (parameter.getVisibility() === undefined) {
-                constructorArguments.push('undefined');
-                continue;
-            }
-
-            const property = clazz.getProperty(parameter.getName());
-            if (!property) continue;
-
-            if (property.isSerializerExcluded(state.registry.serializer.name)) {
-                continue;
-            }
-
-            const prefix = embedded.prefix ?? (embedProperties.length > 1 ? String(member.name) + '_' : '');
-            const accessorPropertyName = embedProperties.length === 1 ? String(member.name) : prefix + String(property.getName());
-            const argumentName = state.compilerContext.reserveVariable('c_' + parameter.getName());
-
-            const propertyEmbedded = property.getEmbedded();
-            const converter = propertyEmbedded ? deserializeEmbeddable(argumentName, property.property, propertyEmbedded, state)
-                : createConverterJSForMember(property, state.fork(argumentName, `${state.accessor}[${JSON.stringify(accessorPropertyName)}]`).extendPath(String(property.getName())));
-
-            preLines.push(`
-                ${argumentName} = undefined;
-                ${converter}
-            `);
-            constructorArguments.push(argumentName);
-        }
-    }
-
-    const classType = state.compilerContext.reserveConst(member.type.classType);
-
-    return `
-        ${preLines.join('\n')}
-        ${setter} = new ${classType}(${constructorArguments.join(', ')});
-    `;
-}
-
-function serializeEmbeddable(setter: string, member: TypeProperty | TypePropertySignature, embedded: { prefix?: string }, state: TemplateState) {
-    assertType(member.type, ReflectionKind.class);
-    //only the constructor properties are serialized
-    const embed: string[] = [];
-    const name = getNameExpression(state.namingStrategy.getPropertyName(member), state);
-    const embedProperties = getConstructorProperties(member.type);
-    const prefix = embedded.prefix ?? (embedProperties.length > 1 ? String(member.name) + '_' : '');
-
-    for (const property of embedProperties) {
-        const embeddedPropertyName = getNameExpression(state.namingStrategy.getPropertyName(property), state);
-        const setterPropertyName = embedProperties.length === 1 ? String(member.name) : prefix + String(property.name);
-        embed.push(`
-            ${createConverterJSForMember(property, state.fork(`${setter}[${JSON.stringify(setterPropertyName)}]`, `${state.accessor}[${name}][${embeddedPropertyName}]`).extendPath(String(member.name)))}
-        `);
-    }
-
-    return embed;
-}
-
 export function getIndexCheck(state: TemplateState, i: string, type: Type): string {
     if (type.kind === ReflectionKind.number) {
         state.setContext({ isNumeric: isNumeric });
@@ -777,7 +760,7 @@ export function getIndexCheck(state: TemplateState, i: string, type: Type): stri
     return '';
 }
 
-export function getStaticDefaultCodeForProperty(member: TypeProperty | TypePropertySignature, setter: string, state: TemplateState) {
+export function getStaticDefaultCodeForProperty(member: TypeProperty | TypePropertySignature, setter: string | ContainerAccessor, state: TemplateState) {
     let staticDefault = ``;
     if (!hasDefaultValue(member)) {
         if (member.type.kind === ReflectionKind.literal) {
@@ -789,10 +772,66 @@ export function getStaticDefaultCodeForProperty(member: TypeProperty | TypePrope
     return staticDefault;
 }
 
+function getEmbeddedAccessor(autoPrefix: boolean, accessor: string | ContainerAccessor, namingStrategy: NamingStrategy, property: TypeProperty, embedded: { prefix?: string }, container: string) {
+    let embeddedPropertyName = JSON.stringify(namingStrategy.getPropertyName(property));
+    if (embedded.prefix !== undefined) {
+        embeddedPropertyName = JSON.stringify(embedded.prefix) + ' + ' + embeddedPropertyName;
+    } else if (accessor instanceof ContainerAccessor && autoPrefix) {
+        embeddedPropertyName = accessor.property + ` + '_' + ` + embeddedPropertyName;
+    }
+    if ((autoPrefix || embedded.prefix !== undefined) && accessor instanceof ContainerAccessor) {
+        return new ContainerAccessor(accessor.container, embeddedPropertyName);
+    } else if (container && autoPrefix) {
+        return new ContainerAccessor(container, embeddedPropertyName);
+    } else if (autoPrefix) {
+        return new ContainerAccessor(accessor, embeddedPropertyName);
+    } else {
+        return accessor;
+    }
+}
+
+function hasEmbedded(type: Type): boolean {
+    if (type.kind === ReflectionKind.union) return type.types.some(hasEmbedded);
+    return type.kind === ReflectionKind.class && embeddedAnnotation.getFirst(type) !== undefined;
+}
+
 export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState) {
     const embedded = embeddedAnnotation.getFirst(type);
     if (embedded) {
-        throw new Error('Free floating Embedded type not possible');
+        if (type.kind !== ReflectionKind.class) throw new SerializationError(`Object literals can not be embedded`, collapsePath(state.path));
+        const constructorProperties = getConstructorProperties(type);
+        if (!constructorProperties.properties.length) throw new Error(`Can not embed class ${getClassName(type.classType)} since it has no constructor properties`);
+
+        if (constructorProperties.properties.length === 1) {
+            const first = constructorProperties.properties[0];
+            let name = getNameExpression(state.namingStrategy.getPropertyName(first), state);
+            const setter = getEmbeddedAccessor(false, state.setter, state.namingStrategy, first, embedded, '');
+            state.addCode(executeTemplates(state.fork(setter, new ContainerAccessor(state.accessor, name)), first.type));
+        } else {
+            const lines: string[] = [];
+
+            let pre = '';
+            let post = '';
+            let container = '';
+            if (!(state.setter instanceof ContainerAccessor)) {
+                //create own container
+                container = state.compilerContext.reserveName('container');
+                pre = `let ${container} = {}`;
+                post = `${state.setter} = ${container}`;
+            }
+
+            for (const property of constructorProperties.properties) {
+                const setter = getEmbeddedAccessor(true, state.setter, state.namingStrategy, property, embedded, container);
+                lines.push(createConverterJSForMember(property, state.fork(setter, new ContainerAccessor(state.accessor, JSON.stringify(property.name)))));
+            }
+
+            state.addCode(`
+                ${pre}
+                ${lines.join('\n')}
+                ${post}
+            `);
+        }
+        return;
     }
 
     const v = state.compilerContext.reserveName('v');
@@ -811,24 +850,20 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             const name = getNameExpression(state.namingStrategy.getPropertyName(member), state);
             existing.push(name);
 
-            const setter = `${v}[${name}]`;
+            const setter = new ContainerAccessor(v, name);
             const staticDefault = getStaticDefaultCodeForProperty(member, setter, state);
 
-            const embedded = embeddedAnnotation.getFirst(member.type);
-            if (member.type.kind === ReflectionKind.class && embedded) {
+            const propertyState = state.fork(setter, new ContainerAccessor(state.accessor, name)).extendPath(String(member.name));
+
+            if (hasEmbedded(member.type)) {
+                lines.push(executeTemplates(propertyState, member.type));
+            } else {
                 lines.push(`
                 if (${name} in ${state.accessor}) {
-                    ${serializeEmbeddable(v, member, embedded, state).join('\n')}
+                    ${createConverterJSForMember(member, propertyState)}
                 } else { ${staticDefault} }
-                `);
-                continue;
-            }
-
-            lines.push(`
-            if (${name} in ${state.accessor}) {
-                ${createConverterJSForMember(member, state.fork(setter, `${state.accessor}[${name}]`).extendPath(String(member.name)))}
-            } else { ${staticDefault} }
             `);
+            }
         }
     }
 
@@ -855,7 +890,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
 
         for (const signature of signatures) {
             signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)}) {
-                ${createConverterJSForMember(signature, state.fork(`${v}[${i}]`, `${state.accessor}[${i}]`).extendPath(new RuntimeCode(i)))}
+                ${createConverterJSForMember(signature, state.fork(new ContainerAccessor(v, i), new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)))}
             }`);
         }
 
@@ -884,7 +919,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             //the primary key is serialised for unhydrated references
             state.addCodeForSetter(`
             if (isReference(${state.accessor}) && !isReferenceHydrated(${state.accessor})) {
-                ${executeTemplates(state.fork(state.setter, `${state.accessor}[${JSON.stringify(reflection.getPrimary().getName())}]`), reflection.getPrimary().getType())}
+                ${executeTemplates(state.fork(state.setter, new ContainerAccessor(state.accessor, JSON.stringify(reflection.getPrimary().getName()))), reflection.getPrimary().getType())}
             } else {
                 ${code}
             }
@@ -965,7 +1000,7 @@ function serializeTypeTuple(type: TypeTuple, state: TemplateState) {
             lines.push(`
             for (; ${i} < ${state.accessor}.length - ${restEndOffset}; ${i}++) {
                 ${_} = undefined;
-                ${executeTemplates(state.fork(_, `${state.accessor}[${i}]`).extendPath(new RuntimeCode(i)), member.type.type)}
+                ${executeTemplates(state.fork(_, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), member.type.type)}
                 if (${_} !== undefined) {
                     ${state.setter}.push(${_});
                 } else if (${member.optional || isOptional(member.type)}) {
@@ -976,7 +1011,7 @@ function serializeTypeTuple(type: TypeTuple, state: TemplateState) {
         } else {
             lines.push(`
             ${_} = undefined;
-            ${executeTemplates(state.fork(_, `${state.accessor}[${i}]`).extendPath(new RuntimeCode(i)), member.type)}
+            ${executeTemplates(state.fork(_, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), member.type)}
             if (${_} !== undefined) {
                 ${state.setter}.push(${_});
             } else if (${member.optional || isOptional(member.type)}) {
@@ -1016,7 +1051,7 @@ function typeGuardTypeTuple(type: TypeTuple, state: TemplateState) {
         if (member.type.kind === ReflectionKind.rest) {
             lines.push(`
             for (; ${v} && ${i} < ${state.accessor}.length - ${restEndOffset}; ${i}++) {
-                ${executeTemplates(state.fork(v, `${state.accessor}[${i}]`).extendPath(new RuntimeCode(i)), member.type.type)}
+                ${executeTemplates(state.fork(v, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), member.type.type)}
                 if (!${v}) {
                     break;
                 }
@@ -1025,7 +1060,7 @@ function typeGuardTypeTuple(type: TypeTuple, state: TemplateState) {
         } else {
             lines.push(`
             if (${v}) {
-                ${executeTemplates(state.fork(v, `${state.accessor}[${i}]`).extendPath(new RuntimeCode(i)), member.type)}
+                ${executeTemplates(state.fork(v, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), member.type)}
                 ${i}++;
             }
             `);
@@ -1074,9 +1109,35 @@ export function typeCheckClassOrObjectLiteralSecondIteration(type: TypeObjectLit
 }
 
 export function typeCheckClassOrObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState, secondIteration: boolean = false) {
+    if (!secondIteration && type.kind === ReflectionKind.class) {
+        const embedded = embeddedAnnotation.getFirst(type);
+        if (embedded) {
+            const constructorProperties = getConstructorProperties(type);
+            if (!constructorProperties.properties.length) throw new Error(`Can not embed class ${getClassName(type.classType)} since it has no constructor properties`);
+
+            for (const parameter of constructorProperties.parameters) {
+                if (parameter.kind === ReflectionKind.property) {
+                    // const stateAccessor = state.accessor instanceof ContainerAccessor ? state.accessor : new ContainerAccessor(state.accessor, '');
+                    //we pass 'data' as container, since type guards for TypeClass get their own function always and operate on `data` accessor.
+                    const accessor = getEmbeddedAccessor(constructorProperties.properties.length !== 1, state.accessor, state.namingStrategy, parameter, embedded, 'data');
+                    const propertyState = state.fork(state.setter, accessor).extendPath(String(parameter.name));
+                    if (hasEmbedded(parameter.type)) {
+                        state.addCode(executeTemplates(propertyState, parameter.type));
+                    } else {
+                        if (accessor instanceof ContainerAccessor) {
+                            state.addCode(`if (${inAccessor(accessor)}) {${createConverterJSForMember(parameter, propertyState)} }`);
+                        } else {
+                            state.addCode(createConverterJSForMember(parameter, propertyState));
+                        }
+                    }
+                }
+            }
+            return;
+        }
+    }
+
     const v = state.compilerContext.reserveName('v');
     const lines: string[] = [];
-
     const signatures: TypeIndexSignature[] = [];
     const existing: string[] = [];
 
@@ -1102,17 +1163,27 @@ export function typeCheckClassOrObjectLiteral(type: TypeObjectLiteral | TypeClas
                 ? getNameExpression(member.name, state)
                 : getNameExpression(state.namingStrategy.getPropertyName(member), state);
 
-            const optionalCheck = member.optional ? `&& ${state.accessor}[${name}] !== undefined` : '';
-            existing.push(name);
+            const propertyAccessor = new ContainerAccessor(state.accessor, name);
+            const propertyState = state.fork(v, propertyAccessor).extendPath(String(member.name));
 
-            lines.push(`
-            if (${v} ${optionalCheck}) {
-                ${executeTemplates(state.fork(v, `${state.accessor}[${name}]`).extendPath(String(member.name)),
-                member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
-                    ? { kind: ReflectionKind.function, name: member.name, return: member.return, parameters: member.parameters }
-                    : member.type
-            )}
-            }`);
+            const isEmbedded = member.kind === ReflectionKind.property || member.kind === ReflectionKind.propertySignature
+                ? hasEmbedded(member.type) : undefined;
+
+            if (isEmbedded && (member.kind === ReflectionKind.property || member.kind === ReflectionKind.propertySignature)) {
+                lines.push(executeTemplates(propertyState, member.type));
+            } else {
+                const optionalCheck = member.optional ? `&& ${propertyAccessor} !== undefined` : '';
+                existing.push(name);
+
+                lines.push(`
+                if (${v} ${optionalCheck}) {
+                    ${executeTemplates(propertyState,
+                        member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
+                            ? { kind: ReflectionKind.function, name: member.name, return: member.return, parameters: member.parameters }
+                            : member.type
+                    )}
+                }`);
+            }
         }
     }
 
@@ -1137,23 +1208,9 @@ export function typeCheckClassOrObjectLiteral(type: TypeObjectLiteral | TypeClas
             return +1;
         });
 
-        function getIndexCheck(type: Type): string {
-            if (type.kind === ReflectionKind.number) {
-                state.setContext({ isNumeric: isNumeric });
-                return `isNumeric(${i})`;
-            } else if (type.kind === ReflectionKind.string) {
-                return `'string' === typeof ${i}`;
-            } else if (type.kind === ReflectionKind.symbol) {
-                return `'symbol' === typeof ${i}`;
-            } else if (type.kind === ReflectionKind.union) {
-                return '(' + type.types.map(getIndexCheck).join(' || ') + ')';
-            }
-            return '';
-        }
-
         for (const signature of signatures) {
-            signatureLines.push(`else if (${getIndexCheck(signature.index)}) {
-                ${executeTemplates(state.fork(v, `${state.accessor}[${i}]`).extendPath(new RuntimeCode(i)), signature.type)}
+            signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)}) {
+                ${executeTemplates(state.fork(v, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), signature.type)}
             }`);
         }
 
@@ -1244,12 +1301,19 @@ export function serializeTypeUnion(type: TypeUnion, state: TemplateState) {
 
     for (const [specificality, typeGuard] of typeGuards) {
         for (const t of type.types) {
-            const fn = createTypeGuardFunction({ type: t, registry: typeGuard });
+            const options: TypeGuardOptions = { type: t, registry: typeGuard };
+            if (state.accessor instanceof ContainerAccessor) {
+                options.accessor = new ContainerAccessor('data', 'property');
+            }
+
+            const fn = createTypeGuardFunction(options);
             if (!fn) continue;
             const guard = state.setVariable('guard' + t.kind, fn);
             const looseCheck = specificality <= 0 ? `state.loosely && ` : '';
 
-            lines.push(`else if (${looseCheck}${guard}(${state.accessor})) { //type = ${ReflectionKind[t.kind]}, specificality=${specificality}
+            const property = state.accessor instanceof ContainerAccessor ? `${state.accessor.property}` : 'undefined';
+            const call = `${guard}(${state.accessor instanceof ContainerAccessor ? state.accessor.container : state.accessor}, state, ${property})`;
+            lines.push(`else if (${looseCheck}${call}) { //type = ${ReflectionKind[t.kind]}, specificality=${specificality}
                 ${executeTemplates(state.fork(state.setter, state.accessor).forPropertyName(state.propertyName), t)}
             }`);
         }

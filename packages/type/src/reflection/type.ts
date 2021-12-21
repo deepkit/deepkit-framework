@@ -437,14 +437,24 @@ export function isPrimitive<T extends Type>(type: T): boolean {
 
 /**
  * Return all properties created in the constructor (via `constructor(public title: string)`.
+ *
+ * If a non-property parameter is in the constructor, the type is given instead, e.g. `constructor(public title: string, anotherOne:number)` => [TypeProperty, TypeNumber]
  */
-export function getConstructorProperties(type: TypeClass): TypeProperty[] {
+export function getConstructorProperties(type: TypeClass): { parameters: (TypeProperty | OuterType)[], properties: TypeProperty[] } {
     const constructor = findMember('constructor', type) as TypeMethod | undefined;
-    if (!constructor) return [];
+    const result: { parameters: (TypeProperty | OuterType)[], properties: TypeProperty[] } = { parameters: [], properties: [] };
+    if (!constructor) return result;
 
-    const parameterCreatedInConstructor = constructor.parameters.filter(v => v.visibility !== undefined).map(v => v.name);
-
-    return type.types.filter(v => v.kind === ReflectionKind.property && 'string' === typeof v.name && parameterCreatedInConstructor.includes(v.name)) as TypeProperty[];
+    for (const parameter of constructor.parameters) {
+        const property = findMember(parameter.name, type);
+        if (property && property.kind === ReflectionKind.property) {
+            result.properties.push(property);
+            result.parameters.push(property);
+        } else {
+            result.parameters.push(parameter.type as OuterType);
+        }
+    }
+    return result;
 }
 
 export type WithAnnotations =
@@ -857,8 +867,11 @@ export function merge(types: (TypeObjectLiteral | TypeClass)[]): TypeObjectLiter
 
     for (const subType of types) {
         for (const member of subType.types) {
-            if (!isMember(member)) continue;
-            if (!hasMember(type, member.name)) {
+            if (member.kind === ReflectionKind.indexSignature) {
+                type.types.push(member);
+            } else if (!isMember(member)) {
+                continue;
+            } else if (!hasMember(type, member.name)) {
                 type.types.push(toSignature(member));
             }
         }

@@ -514,100 +514,99 @@ test('class with back reference', () => {
     expect(res.leads[0]).toBeInstanceOf(User);
 });
 
-test('value object single field', () => {
+test('embedded single', () => {
     class Price {
-        constructor(public amount: integer) {
-        }
-
-        isFree() {
-            return this.amount === 0;
+        constructor(public amount: integer = 0) {
         }
     }
 
     class Product {
         constructor(public title: string, public price: Embedded<Price>) {
-
         }
     }
 
-    const product = new Product('Brick', new Price(34));
-    const productJson = serialize<Product>(product);
-    expect(productJson).toEqual({ title: 'Brick', price: 34 });
+    expect(serialize<Embedded<Price>>(new Price(34))).toEqual(34);
+    expect(serialize<Embedded<Price>[]>([new Price(34)])).toEqual([34]);
+    expect(serialize<Embedded<Price, { prefix: '' }>[]>([new Price(34)])).toEqual([34]);
+    expect(serialize<Embedded<Price, { prefix: 'price_' }>[]>([new Price(34)])).toEqual([34]);
+    expect(serialize<{ a: Embedded<Price> }>({ a: new Price(34) })).toEqual({ a: 34 });
+    expect(serialize<{ a: Embedded<Price, { prefix: '' }> }>({ a: new Price(34) })).toEqual({ amount: 34 });
+    expect(serialize<{ a: Embedded<Price, { prefix: 'price_' }> }>({ a: new Price(34) })).toEqual({ price_amount: 34 });
+    expect(serialize<Product>(new Product('Brick', new Price(34)))).toEqual({ title: 'Brick', price: 34 });
 
-    {
-        const product = deserialize<Product>(productJson);
-        expect(product).toEqual({ title: 'Brick', price: { amount: 34 } });
-        expect(product.price).toBeInstanceOf(Price);
-        expect(product.price.isFree()).toBe(false);
-    }
+    expect(deserialize<Embedded<Price>>(34)).toEqual(new Price(34));
+    expect(deserialize<Embedded<Price>[]>([34])).toEqual([new Price(34)]);
+    expect(deserialize<Embedded<Price, { prefix: '' }>[]>([34])).toEqual([new Price(34)]);
+    expect(deserialize<Embedded<Price, { prefix: 'price_' }>[]>([34])).toEqual([new Price(34)]);
+    expect(deserialize<{ a: Embedded<Price> }>({ a: 34 })).toEqual({ a: new Price(34) });
+    expect(deserialize<{ a: Embedded<Price, { prefix: '' }> }>({ amount: 34 })).toEqual({ a: new Price(34) });
+    expect(deserialize<{ a: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: 34 })).toEqual({ a: new Price(34) });
+    expect(deserialize<Product>({ title: 'Brick', price: 34 })).toEqual(new Product('Brick', new Price(34)));
+
+    //check if union works correctly
+    expect(serialize<{ v: Embedded<Price> | string }>({ v: new Price(34) })).toEqual({ v: 34 });
+    expect(serialize<{ v: Embedded<Price> | string }>({ v: '123' })).toEqual({ v: '123' });
+    expect(serialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: new Price(34) })).toEqual({ amount: 34 });
+    expect(serialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: '34' })).toEqual({ v: '34' });
+    expect(serialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: new Price(34) })).toEqual({ price_amount: 34 });
+    expect(serialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: '34' })).toEqual({ v: '34' });
+
+    expect(deserialize<{ v: Embedded<Price> | string }>({ v: 34 })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v: Embedded<Price> | string }>({ v: '123' })).toEqual({ v: '123' });
+    expect(deserialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ amount: 34 })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: '34' })).toEqual({ v: '34' });
+    expect(deserialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ price_amount: 34 })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: '34' })).toEqual({ v: '34' });
 });
 
-test('value object multi field', () => {
-    class Price {
-        constructor(public amount: integer, public currency: string) {
-        }
-
-        isFree() {
-            return this.amount === 0;
-        }
-    }
-
-    class Product {
-        constructor(public title: string, public price: Embedded<Price>) {
-
-        }
-    }
-
-    const product = new Product('Brick', new Price(34, 'EUR'));
-    const productJson = serialize<Product>(product);
-    expect(productJson).toEqual({ title: 'Brick', price_amount: 34, price_currency: 'EUR' });
-
-    {
-        const product = deserialize<Product>(productJson);
-        expect(product).toEqual({ title: 'Brick', price: { amount: 34, currency: 'EUR' } });
-        expect(product.price).toBeInstanceOf(Price);
-        expect(product.price.isFree()).toBe(false);
-    }
-});
-
-test('value object prefix + multi field', () => {
+test('embedded multi parameter', () => {
     class Price {
         constructor(public amount: integer = 0, public currency: string = 'EUR') {
         }
-
-        isFree() {
-            return this.amount === 0;
-        }
     }
 
     class Product {
-        constructor(public title: string, public price: Embedded<Price, {prefix: ''}>) {
-
+        constructor(public title: string, public price: Embedded<Price>) {
         }
     }
 
-    const product = new Product('Brick', new Price(34, 'EUR'));
-    const productJson = serialize<Product>(product);
-    expect(productJson).toEqual({ title: 'Brick', amount: 34, currency: 'EUR' });
+    expect(serialize<Embedded<Price>>(new Price(34))).toEqual({ amount: 34, currency: 'EUR' });
+    expect(serialize<Embedded<Price>[]>([new Price(34)])).toEqual([{ amount: 34, currency: 'EUR' }]);
+    expect(serialize<Embedded<Price, { prefix: '' }>[]>([new Price(34)])).toEqual([{ amount: 34, currency: 'EUR' }]);
+    expect(serialize<Embedded<Price, { prefix: 'price_' }>[]>([new Price(34)])).toEqual([{ price_amount: 34, price_currency: 'EUR' }]);
+    expect(serialize<{ a: Embedded<Price> }>({ a: new Price(34) })).toEqual({ a_amount: 34, a_currency: 'EUR' });
+    expect(serialize<{ a: Embedded<Price, { prefix: '' }> }>({ a: new Price(34) })).toEqual({ amount: 34, currency: 'EUR' });
+    expect(serialize<{ a: Embedded<Price, { prefix: 'price_' }> }>({ a: new Price(34) })).toEqual({ price_amount: 34, price_currency: 'EUR' });
+    expect(serialize<Product>(new Product('Brick', new Price(34)))).toEqual({ title: 'Brick', price_amount: 34, price_currency: 'EUR' });
 
-    {
-        const product = deserialize<Product>(productJson);
-        expect(product).toEqual({ title: 'Brick', price: { amount: 34, currency: 'EUR' } });
-        expect(product.price).toBeInstanceOf(Price);
-        expect(product.price.isFree()).toBe(false);
-    }
+    expect(deserialize<Embedded<Price>>({ amount: 34 })).toEqual(new Price(34));
+    expect(deserialize<Embedded<Price>>({ amount: 34, currency: '$' })).toEqual(new Price(34, '$'));
+    expect(deserialize<Embedded<Price>[]>([{ amount: 34 }])).toEqual([new Price(34)]);
+    expect(deserialize<Embedded<Price>[]>([{ amount: 34, currency: '$' }])).toEqual([new Price(34, '$')]);
+    expect(deserialize<Embedded<Price, { prefix: '' }>[]>([{ amount: 34 }])).toEqual([new Price(34)]);
+    expect(deserialize<Embedded<Price, { prefix: 'price_' }>[]>([{ price_amount: 34 }])).toEqual([new Price(34)]);
+    expect(deserialize<{ a: Embedded<Price> }>({ a_amount: 34 })).toEqual({ a: new Price(34) });
+    expect(deserialize<{ a: Embedded<Price, { prefix: '' }> }>({ amount: 34 })).toEqual({ a: new Price(34) });
+    expect(deserialize<{ a: Embedded<Price, { prefix: '' }> }>({ amount: 34, currency: '$' })).toEqual({ a: new Price(34, '$') });
+    expect(deserialize<{ a: Embedded<Price, { prefix: '' }> }>({ amount: 34, currency: undefined })).toEqual({ a: new Price(34) });
+    expect(deserialize<{ a: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: 34 })).toEqual({ a: new Price(34) });
+    expect(deserialize<{ a: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: 34, price_currency: '$' })).toEqual({ a: new Price(34, '$') });
+    expect(deserialize<Product>({ title: 'Brick', price_amount: 34 })).toEqual(new Product('Brick', new Price(34)));
 
-    {
-        const product = deserialize<Product>({title: 'Brick'});
-        expect(product).toEqual({ title: 'Brick', price: {amount: 0, currency: 'EUR'}});
-        expect(product.price).toBeInstanceOf(Price);
-        expect(product.price.isFree()).toBe(true);
-    }
+    //check if union works correctly
+    expect(serialize<{ v: Embedded<Price> | string }>({ v: new Price(34) })).toEqual({ v_amount: 34, v_currency: 'EUR' });
+    expect(serialize<{ v: Embedded<Price> | string }>({ v: new Price(34, '$') })).toEqual({ v_amount: 34, v_currency: '$' });
+    expect(serialize<{ v: Embedded<Price> | string }>({ v: '123' })).toEqual({ v: '123' });
+    expect(serialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: new Price(34) })).toEqual({ amount: 34, currency: 'EUR' });
+    expect(serialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: '34' })).toEqual({ v: '34' });
+    expect(serialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: new Price(34) })).toEqual({ price_amount: 34, price_currency: 'EUR' });
+    expect(serialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: '34' })).toEqual({ v: '34' });
 
-    {
-        const product = deserialize<Product>({title: 'Brick', amount: 2.333});
-        expect(product).toEqual({ title: 'Brick', price: {amount: 2, currency: 'EUR'}});
-        expect(product.price).toBeInstanceOf(Price);
-        expect(product.price.isFree()).toBe(false);
-    }
+    expect(deserialize<{ v: Embedded<Price> | string }>({ v_amount: 34 })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v: Embedded<Price> | string }>({ v_amount: 34, v_currency: '$' })).toEqual({ v: new Price(34, '$') });
+    expect(deserialize<{ v: Embedded<Price> | string }>({ v: '123' })).toEqual({ v: '123' });
+    expect(deserialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ amount: 34 })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: '34' })).toEqual({ v: '34' });
+    expect(deserialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ price_amount: 34 })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: '34' })).toEqual({ v: '34' });
 });
