@@ -73,9 +73,9 @@ test('path', () => {
         configs: Config[] = [];
     }
 
-    expect(validate<Container1>({ configs: [{ name: 'a', value: 3 }] })).toEqual([]);
+    // expect(validate<Container1>({ configs: [{ name: 'a', value: 3 }] })).toEqual([]);
     expect(validate<Container1>({ configs: {} })).toEqual([{ code: 'type', message: 'Not an array', path: 'configs' }]);
-    expect(validate<Container1>({ configs: [{ name: 'a', value: 123  }, {name: '12'}] })).toEqual([{ code: 'type', message: 'Not a number', path: 'configs.1.value' }]);
+    expect(validate<Container1>({ configs: [{ name: 'a', value: 123 }, { name: '12' }] })).toEqual([{ code: 'type', message: 'Not a number', path: 'configs.1.value' }]);
 
     class Container2 {
         configs: { [name: string]: Config } = {};

@@ -59,6 +59,7 @@ export class ValidationFailedItem {
          */
         public readonly message: string,
     ) {
+        this.path = path && path[0] === '.' ? path.slice(1) : path;
     }
 
     toString(prefix: string = '') {

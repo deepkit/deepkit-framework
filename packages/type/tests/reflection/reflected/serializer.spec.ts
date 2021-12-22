@@ -516,7 +516,7 @@ test('class with back reference', () => {
 
 test('embedded single', () => {
     class Price {
-        constructor(public amount: integer = 0) {
+        constructor(public amount: integer) {
         }
     }
 
@@ -536,6 +536,8 @@ test('embedded single', () => {
 
     expect(deserialize<Embedded<Price>>(34)).toEqual(new Price(34));
     expect(deserialize<Embedded<Price>[]>([34])).toEqual([new Price(34)]);
+    expect(deserialize<(Embedded<Price> | string)[]>([34])).toEqual([new Price(34)]);
+    expect(deserialize<(Embedded<Price> | string)[]>(['abc'])).toEqual(['abc']);
     expect(deserialize<Embedded<Price, { prefix: '' }>[]>([34])).toEqual([new Price(34)]);
     expect(deserialize<Embedded<Price, { prefix: 'price_' }>[]>([34])).toEqual([new Price(34)]);
     expect(deserialize<{ a: Embedded<Price> }>({ a: 34 })).toEqual({ a: new Price(34) });
@@ -543,9 +545,11 @@ test('embedded single', () => {
     expect(deserialize<{ a: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: 34 })).toEqual({ a: new Price(34) });
     expect(deserialize<Product>({ title: 'Brick', price: 34 })).toEqual(new Product('Brick', new Price(34)));
 
-    //check if union works correctly
+    // check if union works correctly
     expect(serialize<{ v: Embedded<Price> | string }>({ v: new Price(34) })).toEqual({ v: 34 });
     expect(serialize<{ v: Embedded<Price> | string }>({ v: '123' })).toEqual({ v: '123' });
+    expect(serialize<(Embedded<Price> | string)[]>([new Price(34)])).toEqual([34]);
+    expect(serialize<(Embedded<Price> | string)[]>(['abc'])).toEqual(['abc']);
     expect(serialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: new Price(34) })).toEqual({ amount: 34 });
     expect(serialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: '34' })).toEqual({ v: '34' });
     expect(serialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: new Price(34) })).toEqual({ price_amount: 34 });
@@ -557,11 +561,57 @@ test('embedded single', () => {
     expect(deserialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: '34' })).toEqual({ v: '34' });
     expect(deserialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ price_amount: 34 })).toEqual({ v: new Price(34) });
     expect(deserialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: '34' })).toEqual({ v: '34' });
+
+});
+
+test('embedded single optional', () => {
+    class Price {
+        constructor(public amount: integer) {
+        }
+    }
+
+    expect(deserialize<{ v?: Embedded<Price> }>({ v: 34 })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v?: Embedded<Price> }>({ })).toEqual({ });
+    expect(deserialize<{ v?: Embedded<Price, { prefix: '' }> }>({ amount: 34 })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v?: Embedded<Price, { prefix: '' }> }>({ })).toEqual({ });
+    expect(deserialize<{ v?: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: 34 })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v?: Embedded<Price, { prefix: 'price_' }> }>({  })).toEqual({  });
+
+    class Product1 {
+        constructor(public title: string, public price: Embedded<Price> = new Price(15)) {
+        }
+    }
+
+    class Product2 {
+        constructor(public title: string, public price?: Embedded<Price>) {
+        }
+    }
+
+    class Product3 {
+        public price: Embedded<Price> | undefined = new Price(15);
+    }
+
+    class Product4 {
+        public price: Embedded<Price> | null = new Price(15);
+    }
+
+    expect(deserialize<{ a?: Embedded<Price> }>({})).toEqual({});
+    expect(deserialize<{ a?: Embedded<Price> }>({ a: undefined })).toEqual({});
+    expect(deserialize<{ a?: Embedded<Price, { prefix: '' }> }>({})).toEqual({});
+    expect(deserialize<{ a?: Embedded<Price, { prefix: '' }> }>({ amount: undefined })).toEqual({});
+    expect(deserialize<{ a?: Embedded<Price, { prefix: 'price_' }> }>({})).toEqual({});
+    expect(deserialize<{ a?: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: undefined })).toEqual({});
+    expect(deserialize<Product1>({ title: 'Brick' })).toEqual(new Product1('Brick'));
+    expect(deserialize<Product2>({ title: 'Brick' })).toEqual(new Product2('Brick'));
+    expect(deserialize<Product3>({ })).toEqual({ price: new Price(15) });
+    expect(deserialize<Product3>({ price: null })).toEqual({ price: undefined });
+    expect(deserialize<Product4>({ })).toEqual({ price: new Price(15) });
+    expect(deserialize<Product4>({ price: null })).toEqual({ price: null });
 });
 
 test('embedded multi parameter', () => {
     class Price {
-        constructor(public amount: integer = 0, public currency: string = 'EUR') {
+        constructor(public amount: integer, public currency: string = 'EUR') {
         }
     }
 

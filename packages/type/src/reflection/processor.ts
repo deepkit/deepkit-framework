@@ -357,6 +357,7 @@ export class Processor {
                                         kind: ReflectionKind.property,
                                         name: parameter.name,
                                         visibility: parameter.visibility,
+                                        default: parameter.default,
                                         type: parameter.type,
                                     } as TypeProperty;
                                     if (parameter.optional) property.optional = true;
@@ -683,7 +684,7 @@ export class Processor {
                     (this.stack[this.stackPointer] as TypeBaseMember).abstract = true;
                     break;
                 case ReflectionOp.defaultValue:
-                    (this.stack[this.stackPointer] as TypeProperty | TypeEnumMember).default = initialStack[this.eatParameter(ops) as number] as () => any;
+                    (this.stack[this.stackPointer] as TypeProperty | TypeEnumMember | TypeParameter).default = initialStack[this.eatParameter(ops) as number] as () => any;
                     break;
                 case ReflectionOp.description:
                     (this.stack[this.stackPointer] as TypeProperty).description = initialStack[this.eatParameter(ops) as number] as string;

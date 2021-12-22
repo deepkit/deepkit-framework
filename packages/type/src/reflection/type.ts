@@ -223,6 +223,11 @@ export interface TypeParameter {
     visibility?: ReflectionVisibility,
     readonly?: true;
     optional?: true,
+
+    /**
+     * Set when the parameter has a default value aka initializer.
+     */
+    default?: () => any
 }
 
 export interface TypeMethod extends TypeBaseMember {
@@ -1270,7 +1275,8 @@ export type SignedBinaryBigInt = bigint & { __meta?: ['signedBinaryBigInt'] };
 
 export type Reference<Options extends ReferenceOptions = {}> = { __meta?: ['reference', Options] };
 export type BackReference<Options extends BackReferenceOptions = {}> = { __meta?: ['backReference', Options] };
-export type Embedded<T, Options extends { prefix?: string } = {}> = T & { __meta?: ['embedded', Options] };
+export type EmbeddedMeta<Options> = { __meta?: ['embedded', Options] };
+export type Embedded<T, Options extends { prefix?: string } = {}> = T & EmbeddedMeta<Options>;
 
 export const referenceAnnotation = new AnnotationDefinition<ReferenceOptions>();
 
@@ -1301,9 +1307,15 @@ export const UUIDAnnotation = new AnnotationDefinition();
 export const mongoIdAnnotation = new AnnotationDefinition();
 export const uuidAnnotation = new AnnotationDefinition();
 export const defaultAnnotation = new AnnotationDefinition();
-export const embeddedAnnotation = new AnnotationDefinition<{ prefix?: string }>();
+
+export interface EmbeddedOptions {
+    prefix?: string;
+}
+
+export const embeddedAnnotation = new AnnotationDefinition<EmbeddedOptions>();
 
 export function hasEmbedded(type: Type): boolean {
+    if (type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property) return hasEmbedded(type.type);
     if (type.kind === ReflectionKind.union) return type.types.some(hasEmbedded);
     return type.kind === ReflectionKind.class && embeddedAnnotation.getFirst(type) !== undefined;
 }
@@ -1553,20 +1565,39 @@ export const enum MappedModifier {
     removeReadonly = 1 << 3,
 }
 
-export function stringifyResolvedType(type: Type, state: { depth: number, stack: Type[] } = { depth: 0, stack: [] }): string {
-    return stringifyType(type, { depth: 0, stack: [], keepName: false });
+export function stringifyResolvedType(type: Type): string {
+    return stringifyType(type, { depth: 0, stack: [], showNames: false, showFullDefinition: true });
 }
 
-export function stringifyType(type: Type, state: { depth: number, stack: Type[], keepName: boolean } = { depth: 0, stack: [], keepName: true }): string {
-    if (state.stack.includes(type)) return '* Recursion *';
+export function stringifyShortResolvedType(type: Type): string {
+    return stringifyType(type, { depth: 0, stack: [], showNames: false, showFullDefinition: false });
+}
+
+interface StringifyTypeOptions {
+    depth: number;
+    stack: Type[];
+    //show type alias names
+    showNames: boolean;
+    showFullDefinition: boolean;
+    skipNameOnce?: true;
+    skipNextRecursion?: true;
+}
+
+export function stringifyType(type: Type, state: StringifyTypeOptions = { depth: 0, stack: [], showNames: true, showFullDefinition: true }): string {
+    if (state.stack.includes(type) && !state.skipNextRecursion) {
+        return '* Recursion *';
+    }
+    if (state.skipNextRecursion) state.skipNextRecursion = undefined;
     state.stack.push(type);
 
     try {
         let name = type.kind + '';
-        if (state.keepName && isWithAnnotations(type) && type.typeName) {
-            const args = type.typeArguments ? '<' + type.typeArguments.map(v => stringifyType(v, state)).join(', ') + '>' : '';
+        if (!state.skipNameOnce && state.showNames && isWithAnnotations(type) && type.typeName) {
+            const args = type.typeArguments ? '<' + type.typeArguments.map(v => stringifyType(v, { ...state, skipNameOnce: true, skipNextRecursion: true })).join(', ') + '>' : '';
             return type.typeName + args;
         }
+
+        if (state.skipNameOnce) state.skipNameOnce = undefined;
 
         switch (type.kind) {
             case ReflectionKind.never:
@@ -1631,13 +1662,22 @@ export function stringifyType(type: Type, state: { depth: number, stack: Type[],
                 }
                 const indentation = indent((state.depth + 1) * 2);
                 const args = type.arguments ? '<' + type.arguments.map(v => stringifyType(v, state)).join(', ') + '>' : '';
-                name = `${getClassName(type.classType)}${args} {\n${type.types.map(v => indentation(stringifyType(v, state))).join(';\n')};\n}`;
+                if (state.showFullDefinition) {
+                    name = `${getClassName(type.classType)}${args} {\n${type.types.map(v => indentation(stringifyType(v, state))).join(';\n')};\n}`;
+                } else {
+                    name = `${getClassName(type.classType)}${args}`;
+                }
                 break;
             }
             case ReflectionKind.objectLiteral: {
                 //todo: return name if available
                 const indentation = indent((state.depth + 1) * 2);
-                name = `{\n${type.types.map(v => indentation(stringifyType(v, state))).join(';\n')};\n}`;
+                const sub = type.types.map(v => indentation(stringifyType(v, state)));
+                if (sub.length) {
+                    name = `{\n${sub.join(';\n')};\n}`;
+                } else {
+                    name = `{}`;
+                }
                 break;
             }
             case ReflectionKind.union:

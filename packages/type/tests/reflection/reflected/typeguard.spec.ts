@@ -280,6 +280,9 @@ test('reference', () => {
         image?: Image & Reference;
     }
 
+    expect(is<Image>({})).toEqual(false);
+    expect(is<Image>({ id: 0 })).toEqual(true);
+
     expect(is<User>({})).toEqual(true);
     expect(is<User>({ image: undefined })).toEqual(true);
     expect(is<User>({ image: { id: 1 } })).toEqual(true);

@@ -129,7 +129,7 @@ export function toSignature(type: TypeProperty | TypeMethod | TypePropertySignat
     return { ...type, parent: type.parent as any, kind: ReflectionKind.methodSignature };
 }
 
-export function hasCircularReference(type: Type, stack: Type[] = []) {
+export function hasCircularReference(type: Type) {
     let hasCircular = false;
     visit(type, () => undefined, () => {
         hasCircular = true;

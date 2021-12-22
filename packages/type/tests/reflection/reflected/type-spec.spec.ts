@@ -195,31 +195,25 @@ test('union 2', () => {
     }
 
     expect(deserializeFromJson<undefined | s>({ type: 'm', name: 'Peter' })).toEqual({ type: 'm', name: 'Peter' });
-    //this is a feature to allow deserializing structures that can be safely converted
-    expect(deserializeFromJson<undefined | s>({ name: 'Peter' } as any)).toEqual({ type: 'm', name: 'Peter' });
-
     expect(serializeToJson<undefined | s>({ type: 'm', name: 'Peter' })).toEqual({ type: 'm', name: 'Peter' });
-    expect(serializeToJson<undefined | s>({ name: 'Peter' } as any)).toEqual({ type: 'm', name: 'Peter' });
-
     expect(roundTrip<undefined | s>({ type: 'm', name: 'Peter' })).toEqual({ type: 'm', name: 'Peter' });
-    expect(roundTrip<undefined | s>({ name: 'Peter' } as any)).toEqual({ type: 'm', name: 'Peter' });
 });
 
 test('union 3', () => {
     expect(deserializeFromJson<string | Model>('asd')).toBe('asd');
-    expect(deserializeFromJson<string | Model>({ title: 'foo' } as any)).toEqual({ id: 0, title: 'foo' });
+    expect(deserializeFromJson<string | Model>({ id: 0, title: 'foo' } as any)).toEqual({ id: 0, title: 'foo' });
 
     expect(deserializeFromJson<string | Model | undefined>(undefined)).toBe(undefined);
     expect(deserializeFromJson<string | Model | null>(null)).toBe(null);
 
     expect(serializeToJson<string | Model>('asd')).toBe('asd');
-    expect(serializeToJson<string | Model>({ title: 'foo' } as any)).toEqual({ title: 'foo' });
+    expect(serializeToJson<string | Model>({ id: 0, title: 'foo' } as any)).toEqual({ id: 0, title: 'foo' });
 
     expect(serializeToJson<string | Model | undefined>(undefined)).toBe(null);
     expect(serializeToJson<string | Model | null>(null)).toBe(null);
 
     expect(roundTrip<string | Model>('asd')).toBe('asd');
-    expect(roundTrip<string | Model>({ title: 'foo' } as any)).toBeInstanceOf(Model);
+    expect(roundTrip<string | Model>({ id: 0, title: 'foo' } as any)).toBeInstanceOf(Model);
 });
 
 test('model 1', () => {
