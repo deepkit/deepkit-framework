@@ -423,8 +423,8 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
         const primaryKeyConverted = getSerializeFunction(primaryKey.property, this.platform.serializer.deserializeRegistry);
 
         const sqlBuilder = new SqlBuilder(this.platform);
-        const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
         const tableName = this.platform.getTableIdentifier(this.classSchema);
+        const select = sqlBuilder.select(this.classSchema, model, { select: [`${tableName}.${pkField}`] });
 
         const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
         try {
