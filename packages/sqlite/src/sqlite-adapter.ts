@@ -432,7 +432,8 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const primaryKey = this.classSchema.getPrimaryField();
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
         const sqlBuilder = new SqlBuilder(this.platform);
-        const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
+        const tableName = this.platform.getTableIdentifier(this.classSchema);
+        const select = sqlBuilder.select(this.classSchema, model, { select: [`${tableName}.${pkField}`] });
         const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
@@ -444,7 +445,7 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
             await connection.exec(`DROP TABLE IF EXISTS _tmp_d`);
             await connection.run(`CREATE TEMPORARY TABLE _tmp_d as ${select.sql};`, select.params);
 
-            const sql = `DELETE FROM ${this.platform.getTableIdentifier(this.classSchema)} WHERE ${pkField} IN (SELECT * FROM _tmp_d)`;
+            const sql = `DELETE FROM ${tableName} WHERE ${tableName}.${pkField} IN (SELECT * FROM _tmp_d)`;
             await connection.run(sql);
             const rows = await connection.execAndReturnAll('SELECT * FROM _tmp_d');
 

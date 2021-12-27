@@ -340,7 +340,7 @@ export class SqlBuilder {
     public update<T>(schema: ClassSchema, model: SQLQueryModel<T>, set: string[]): Sql {
         const tableName = this.platform.getTableIdentifier(schema);
         const primaryKey = schema.getPrimaryField();
-        const select = this.select(schema, model, { select: [primaryKey.name] });
+        const select = this.select(schema, model, { select: [`${tableName}.${primaryKey.name}`] });
 
         return new Sql(`UPDATE ${tableName} SET ${set.join(', ')} WHERE ${this.platform.quoteIdentifier(primaryKey.name)} IN (SELECT * FROM (${select.sql}) as __)`, select.params);
     }
