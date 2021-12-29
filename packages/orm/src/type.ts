@@ -8,21 +8,21 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, ExtractPrimaryKeyType, ValidationFailedItem } from '@deepkit/type';
+import { PrimaryKeyType, ReflectionClass, ValidationFailedItem } from '@deepkit/type';
 import { CustomError } from '@deepkit/core';
 
 export interface Entity {
 }
 
-export type PatchResult<T> = { modified: number, returning: { [name in keyof T & string]?: T[name][] }, primaryKeys: ExtractPrimaryKeyType<T>[] };
-export type DeleteResult<T> = { modified: number, primaryKeys: ExtractPrimaryKeyType<T>[] };
+export type PatchResult<T> = { modified: number, returning: { [name in keyof T & string]?: T[name][] }, primaryKeys: PrimaryKeyType<T>[] };
+export type DeleteResult<T> = { modified: number, primaryKeys: PrimaryKeyType<T>[] };
 
 export class DatabaseError extends CustomError {
 }
 
 export class DatabaseValidationError extends DatabaseError {
     constructor(
-        public readonly classSchema: ClassSchema,
+        public readonly classSchema: ReflectionClass<any>,
         public readonly errors: ValidationFailedItem[],
     ) {
         super(`Validation error for class ${classSchema.name || classSchema.getClassName()}:\n${errors.map(v => v.toString()).join(',\n')}`);

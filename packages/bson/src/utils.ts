@@ -8,6 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+import { EmbeddedOptions, getEmbeddedProperty, NamingStrategy, TypeClass, TypeProperty } from '@deepkit/type';
+
 export const TWO_PWR_32_DBL_N = (1 << 16) * (1 << 16);
 
 export const BSON_DATA_NUMBER = 1;
@@ -77,4 +79,33 @@ export function digitByteSize(v: number): number {
     if (v < 100000000) return 9;
     if (v < 1000000000) return 10;
     return 11;
+}
+
+export function getEmbeddedPropertyName(namingStrategy: NamingStrategy, property: TypeProperty, embedded: EmbeddedOptions): string {
+    let embeddedPropertyName = String(namingStrategy.getPropertyName(property));
+    if (embedded.prefix !== undefined) {
+        embeddedPropertyName = embedded.prefix + embeddedPropertyName;
+    }
+    return embeddedPropertyName;
+}
+
+export function getEmbeddedAccessor(type: TypeClass, autoPrefix: boolean, accessor: string, namingStrategy: NamingStrategy, property: TypeProperty, embedded: EmbeddedOptions, container?: string): string {
+    const containerProperty = getEmbeddedProperty(type);
+
+    let embeddedPropertyName = String(namingStrategy.getPropertyName(property));
+    if (embedded.prefix !== undefined) {
+        embeddedPropertyName = embedded.prefix + embeddedPropertyName;
+    } else if (containerProperty) {
+        embeddedPropertyName = String(containerProperty.name) + '_' + embeddedPropertyName;
+    }
+
+    if ((autoPrefix || embedded.prefix !== undefined)) {
+        //if autoPrefix or a prefix is set the embeddedPropertyName is emitted in a container, either manually provided or from accessor.
+        if (containerProperty) return embeddedPropertyName;
+        if (container) return embeddedPropertyName;
+    }
+
+    if (containerProperty) return String(containerProperty.name);
+
+    return accessor;
 }

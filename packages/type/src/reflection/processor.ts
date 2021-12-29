@@ -98,13 +98,13 @@ function isPack(o: any): o is Packed {
     return isArray(o);
 }
 
-export function resolveRuntimeType(o: any, args: any[] = [], registry?: ProcessorRegistry): Type {
+export function resolveRuntimeType(o: any, args: any[] = [], registry?: ProcessorRegistry): OuterType {
     const p: Packed = isArray(o) ? o : o.__type;
     if (isPack(o) && o.__type) return o.__type;
     if (registry) {
         const existing = registry.get(p);
         if (existing) {
-            return existing.resultType;
+            return existing.resultType as OuterType;
         }
     }
 
@@ -129,7 +129,7 @@ export function resolveRuntimeType(o: any, args: any[] = [], registry?: Processo
                 type.function = o;
             }
         }
-        return type;
+        return type as OuterType;
     }
 
     throw new Error('No type returned from runtime type program');
@@ -383,7 +383,7 @@ export class Processor {
                 }
                 case ReflectionOp.parameter: {
                     const ref = this.eatParameter(ops) as number;
-                    const t: Type = { kind: ReflectionKind.parameter, parent: undefined as any, name: initialStack[ref] as string, type: this.pop() as Type };
+                    const t: Type = { kind: ReflectionKind.parameter, parent: undefined as any, name: initialStack[ref] as string, type: this.pop() as OuterType };
                     t.type.parent = t;
                     this.pushType(t);
                     break;
@@ -518,7 +518,7 @@ export class Processor {
                     break;
                 }
                 case ReflectionOp.promise: {
-                    const t: Type = { kind: ReflectionKind.promise, type: this.pop() as Type };
+                    const t: Type = { kind: ReflectionKind.promise, type: this.pop() as OuterType };
                     t.type.parent = t;
                     this.pushType(t);
                     break;
@@ -598,13 +598,13 @@ export class Processor {
                     break;
                 }
                 case ReflectionOp.function: {
-                    const types = this.popFrame() as TypeParameter[];
+                    const types = this.popFrame() as Type[];
                     const name = initialStack[this.eatParameter(ops) as number] as string;
                     const t: Type = {
                         kind: ReflectionKind.function,
                         name: name || undefined,
-                        return: types.length > 0 ? types[types.length - 1] : { kind: ReflectionKind.any },
-                        parameters: types.length > 1 ? types.slice(0, -1) : []
+                        return: types.length > 0 ? types[types.length - 1] as OuterType : { kind: ReflectionKind.any } as OuterType,
+                        parameters: types.length > 1 ? types.slice(0, -1) as TypeParameter[] : []
                     };
                     t.return.parent = t;
                     for (const member of t.parameters) member.parent = t;
@@ -654,7 +654,7 @@ export class Processor {
                 case ReflectionOp.methodSignature: {
                     const name = initialStack[this.eatParameter(ops) as number] as number | string | symbol;
                     const types = this.popFrame() as Type[];
-                    const returnType: Type = types.length > 0 ? types[types.length - 1] : { kind: ReflectionKind.any };
+                    const returnType = types.length > 0 ? types[types.length - 1] as OuterType : { kind: ReflectionKind.any } as OuterType;
                     const parameters: TypeParameter[] = types.length > 1 ? types.slice(0, -1) as TypeParameter[] : [];
 
                     const t: Type = op === ReflectionOp.method

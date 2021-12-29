@@ -1,14 +1,25 @@
+import { getClassName } from '@deepkit/core';
 import {
     binaryBigIntAnnotation,
     BinaryBigIntType,
+    buildFunction,
+    callExtractedFunctionIfAvailable,
     collapsePath,
+    ContainerAccessor,
     createTypeGuardFunction,
+    deserializeEmbedded,
+    embeddedAnnotation,
+    EmbeddedOptions,
     excludedAnnotation,
     executeTemplates,
     extendTemplateLiteral,
+    extractStateToFunctionAndCallIt,
+    getConstructorProperties,
+    getIndexCheck,
     getNameExpression,
     getStaticDefaultCodeForProperty,
     hasDefaultValue,
+    inAccessor,
     isNullable,
     isOptional,
     OuterType,
@@ -18,17 +29,21 @@ import {
     SerializationError,
     stringifyType,
     TemplateState,
+    Type,
     TypeClass,
+    typeGuardEmbedded,
     TypeGuardRegistry,
     TypeIndexSignature,
     TypeLiteral,
     TypeObjectLiteral,
+    TypeProperty,
+    TypePropertySignature,
     TypeTemplateLiteral,
     TypeTuple,
     TypeUnion
 } from '@deepkit/type';
 import { seekElementSize } from './continuation';
-import { BSONType, digitByteSize } from './utils';
+import { BSONType, digitByteSize, getEmbeddedAccessor, getEmbeddedPropertyName } from './utils';
 
 function getNameComparator(name: string): string {
     //todo: support utf8 names
@@ -54,6 +69,12 @@ export function deserializeBinary(type: OuterType, state: TemplateState) {
         } else {
             ${throwInvalidBsonType(type, state)}
         }
+    `);
+}
+
+export function deserializeAny(type: OuterType, state: TemplateState) {
+    state.addCode(`
+        ${state.setter} = state.parser.parse();
     `);
 }
 
@@ -222,17 +243,17 @@ export function deserializeRegExp(type: OuterType, state: TemplateState) {
 export function deserializeUnion(bsonTypeGuards: TypeGuardRegistry, type: TypeUnion, state: TemplateState) {
     const lines: string[] = [];
 
-    //see serializeTypeUnion from deepkit/type for more information
+    //see handleUnion from deepkit/type for more information
     const typeGuards = bsonTypeGuards.getSortedTemplateRegistries();
 
     for (const [specificality, typeGuard] of typeGuards) {
         for (const t of type.types) {
-            const fn = createTypeGuardFunction({ type: t, registry: typeGuard });
+            const fn = createTypeGuardFunction(t, state.fork().forRegistry(typeGuard).clearJit());
             if (!fn) continue;
             const guard = state.setVariable('guard' + t.kind, fn);
             const looseCheck = specificality <= 0 ? `state.loosely && ` : '';
 
-            lines.push(`else if (${looseCheck}${guard}(${state.accessor || 'undefined'}, state)) { //type = ${ReflectionKind[t.kind]}, specificality=${specificality}
+            lines.push(`else if (${looseCheck}${guard}(${state.accessor || 'undefined'}, state, ${collapsePath(state.path)})) { //type = ${ReflectionKind[t.kind]}, specificality=${specificality}
                 ${executeTemplates(state.fork(state.setter, state.accessor).forPropertyName(state.propertyName), t)}
             }`);
         }
@@ -240,6 +261,7 @@ export function deserializeUnion(bsonTypeGuards: TypeGuardRegistry, type: TypeUn
 
     state.addCodeForSetter(`
     {
+        if (!state.elementType) state.elementType = ${BSONType.OBJECT};
         const oldElementType = state.elementType;
         if (false) {
         } ${lines.join(' ')}
@@ -260,7 +282,7 @@ export function bsonTypeGuardUnion(bsonTypeGuards: TypeGuardRegistry, type: Type
 
     for (const [specificality, typeGuard] of typeGuards) {
         for (const t of type.types) {
-            const fn = createTypeGuardFunction({ type: t, registry: typeGuard });
+            const fn = createTypeGuardFunction(t, state.fork().forRegistry(typeGuard).clearJit());
             if (!fn) continue;
             const guard = state.setVariable('guard' + t.kind, fn);
             const looseCheck = specificality <= 0 ? `state.loosely && ` : '';
@@ -273,6 +295,8 @@ export function bsonTypeGuardUnion(bsonTypeGuards: TypeGuardRegistry, type: Type
 
     state.addCodeForSetter(`
         {
+            if (!state.elementType) state.elementType = ${BSONType.OBJECT};
+
             const oldElementType = state.elementType;
             if (false) {
             } ${lines.join(' ')}
@@ -585,16 +609,62 @@ export function bsonTypeGuardArray(elementType: OuterType, state: TemplateState)
     `);
 }
 
+export function getEmbeddedClassesForProperty(type: Type): { type: TypeClass, options: EmbeddedOptions }[] {
+    if (type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property) type = type.type;
+    const res: { type: TypeClass, options: EmbeddedOptions }[] = [];
+
+    if (type.kind === ReflectionKind.union) {
+        for (const t of type.types) {
+            if (t.kind === ReflectionKind.class) {
+                const embedded = embeddedAnnotation.getFirst(t);
+                if (embedded) res.push({ options: embedded, type: t });
+            }
+        }
+    } else if (type.kind === ReflectionKind.class) {
+        const embedded = embeddedAnnotation.getFirst(type);
+        if (embedded) res.push({ options: embedded, type: type });
+    }
+
+    return res;
+}
+
 export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, state: TemplateState) {
+    const embedded = embeddedAnnotation.getFirst(type);
+    if (type.kind === ReflectionKind.class && embedded) {
+        const container = state.compilerContext.reserveName('container');
+
+        const embedded = deserializeEmbedded(type, state.fork(undefined, container).forRegistry(state.registry.serializer.deserializeRegistry));
+        if (embedded) {
+            state.addCode(`
+                const ${container} = state.parser.parse(state.elementType);
+                console.log('container data', '${state.setter}', ${container});
+                ${embedded}
+            `);
+            return;
+        }
+    }
+
+    if (callExtractedFunctionIfAvailable(state, type)) return;
+    const extract = extractStateToFunctionAndCallIt(state, type);
+    state = extract.state;
+
     const lines: string[] = [];
     const signatures: TypeIndexSignature[] = [];
-    const existing: string[] = [];
     const object = state.compilerContext.reserveName('object');
 
     const resetDefaultSets: string[] = [];
 
     //run code for properties that had no value in the BSON. either set static values (literal, or null), or throw an error.
     const setDefaults: string[] = [];
+
+    interface HandleEmbedded {
+        type: TypeClass;
+        valueSetVar: string;
+        property: TypeProperty | TypePropertySignature;
+        containerVar: string;
+    }
+
+    const handleEmbeddedClasses: HandleEmbedded[] = [];
 
     for (const member of type.types) {
         if (member.kind === ReflectionKind.indexSignature) {
@@ -605,24 +675,60 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
         if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
 
         const nameInBson = String(state.namingStrategy.getPropertyName(member));
-        existing.push(JSON.stringify(nameInBson));
-
         const valueSetVar = state.setVariable('valueSetVar', false);
+
+        //since Embedded<T> can have arbitrary prefix, we have to collect all fields first, and then after the loop, build everything together.
+        const embeddedClasses = getEmbeddedClassesForProperty(member);
+        //todo:
+        // 1. Embedded in a union need for each entry in the union (there can be multiple Embedded in one union) to collect all possible values. We collect them into own container
+        // then run the typeGuardObjectLiteral on it at the end of the loop, if the member was not already set. this works the same for non-union members as well, right?
+        // 2. we have to delay detecting the union, right? Otherwise `Embedded<T, {prefix: 'p'}> | string` will throw an error that it can't convert undefined to string, when
+        // ${member.name} is not provided.
+        // 3. we could also collect all values in a loop earlier?
+        if (embeddedClasses.length) {
+            for (const embedded of embeddedClasses) {
+                const constructorProperties = getConstructorProperties(embedded.type);
+                if (!constructorProperties.properties.length) throw new Error(`Can not embed class ${getClassName(embedded.type.classType)} since it has no constructor properties`);
+
+                const containerVar = state.compilerContext.reserveName('container');
+                const handleEmbedded: HandleEmbedded = {
+                    type: embedded.type, containerVar, property: member, valueSetVar
+                };
+                handleEmbeddedClasses.push(handleEmbedded);
+
+                for (const property of constructorProperties.properties) {
+                    const setter = getEmbeddedPropertyName(state.namingStrategy, property, embedded.options);
+                    const accessor = getEmbeddedAccessor(embedded.type, constructorProperties.properties.length !== 1, nameInBson, state.namingStrategy, property, embedded.options);
+                    //todo: handle explicit undefined and non-existing
+                    console.log('container access', accessor);
+                    lines.push(`
+                    if (${getNameComparator(accessor)}) {
+                        state.parser.offset += ${accessor.length} + 1;
+                        ${executeTemplates(state.fork(new ContainerAccessor(containerVar, JSON.stringify(setter)), ''), property.type)};
+                        continue;
+                    }
+                    `);
+                }
+            }
+        }
+
         resetDefaultSets.push(`${valueSetVar} = false;`);
-        const setter = `${object}[${JSON.stringify(member.name)}]`;
+        const setter = new ContainerAccessor(object, JSON.stringify(member.name));
         const staticDefault = getStaticDefaultCodeForProperty(member, setter, state);
         let throwInvalidTypeError = '';
         if (!isOptional(member) && !hasDefaultValue(member)) {
-            throwInvalidTypeError = state.throwCode(member.type as OuterType, '', `'undefined value'`);
+            throwInvalidTypeError = state.fork().extendPath(member.name).throwCode(member.type as OuterType, '', `'undefined value'`);
         }
         setDefaults.push(`if (!${valueSetVar}) { ${staticDefault || throwInvalidTypeError} } `);
 
         let seekOnExplicitUndefined = '';
         //handle explicitly set `undefined`, by jumping over the registered deserializers. if `null` is given and the property has no null type, we treat it as undefined.
         if (isOptional(member) || hasDefaultValue(member)) {
+            const setUndefined = isOptional(member) ? `${setter} = undefined;` : hasDefaultValue(member) ? `` : `${setter} = undefined;`;
             const check = isNullable(member) ? `elementType === ${BSONType.UNDEFINED}` : `elementType === ${BSONType.UNDEFINED} || elementType === ${BSONType.NULL}`;
             seekOnExplicitUndefined = `
             if (${check}) {
+                ${setUndefined}
                 seekElementSize(elementType, state.parser);
                 continue;
             }`;
@@ -630,7 +736,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
 
         lines.push(`
             //property ${String(member.name)} (${member.type.kind})
-            if (!${valueSetVar} && ${getNameComparator(nameInBson)}) {
+            else if (!${valueSetVar} && ${getNameComparator(nameInBson)}) {
                 state.parser.offset += ${nameInBson.length} + 1;
                 ${valueSetVar} = true;
 
@@ -639,6 +745,47 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
                 continue;
             }
         `);
+    }
+
+    if (signatures.length) {
+        const i = state.compilerContext.reserveName('i');
+        const signatureLines: string[] = [];
+
+        function isLiteralType(t: TypeIndexSignature): boolean {
+            return t.index.kind === ReflectionKind.literal || (t.index.kind === ReflectionKind.union && t.index.types.some(v => v.kind === ReflectionKind.literal));
+        }
+
+        function isNumberType(t: TypeIndexSignature): boolean {
+            return t.index.kind === ReflectionKind.number || (t.index.kind === ReflectionKind.union && t.index.types.some(v => v.kind === ReflectionKind.number));
+        }
+
+        //sort, so the order is literal, number, string, symbol.  literal comes first as its the most specific type.
+        //we need to do that for numbers since all keys are string|symbol in runtime, and we need to check if a string is numeric first before falling back to string.
+        signatures.sort((a, b) => {
+            if (isLiteralType(a)) return -1;
+            if (isNumberType(a) && !isLiteralType(b)) return -1;
+            return +1;
+        });
+
+        for (const signature of signatures) {
+            const check = isOptional(signature.type) ? `` : `elementType !== ${BSONType.UNDEFINED} &&`;
+            signatureLines.push(`else if (${check} ${getIndexCheck(state, i, signature.index)}) {
+                ${executeTemplates(state.fork(`${object}[${i}]`).extendPath(new RuntimeCode(i)).forPropertyName(new RuntimeCode(i)), signature.type)}
+                continue;
+            }`);
+        }
+
+        //the index signature type could be: string, number, symbol.
+        //or a literal when it was constructed by a mapped type.
+        lines.push(`else {
+        let ${i} = state.parser.eatObjectPropertyName();
+
+        if (false) {} ${signatureLines.join(' ')}
+
+        //if no index signature matches, we skip over it
+        seekElementSize(elementType, state.parser);
+        continue;
+        }`);
     }
 
     state.setContext({ seekElementSize });
@@ -664,12 +811,26 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
         }
     }
 
+    const handleEmbeddedClassesLines: string[] = [];
+    for (const handle of handleEmbeddedClasses) {
+        // const constructorProperties = getConstructorProperties(handle.type);
+        const setter = new ContainerAccessor(object, JSON.stringify(handle.property.name));
+        handleEmbeddedClassesLines.push(`
+            console.log('embedded', ${handle.containerVar});
+            ${deserializeEmbedded(handle.type, state.fork(setter, handle.containerVar).forRegistry(state.registry.serializer.deserializeRegistry), handle.containerVar)}
+            if (${inAccessor(setter)}) {
+                ${handle.valueSetVar} = true;
+            }
+        `);
+    }
+
     state.addCode(`
         /*
             Deserialize object: ${stringifyType(type)}
         */
         if (state.elementType && state.elementType !== ${BSONType.OBJECT}) ${throwInvalidBsonType(type, state)}
         var ${object} = ${initializeObject};
+        ${handleEmbeddedClasses.map(v => `const ${v.containerVar} = {};`).join('\n')}
         {
             const end = state.parser.eatUInt32() + state.parser.offset;
 
@@ -680,7 +841,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
                 const elementType = state.elementType = state.parser.eatByte();
                 if (elementType === 0) break;
 
-                ${lines.join('\n')}
+                if (false) {} ${lines.join('\n')}
 
                 //jump over this property when not registered in schema
                 while (state.parser.offset < end && state.parser.buffer[state.parser.offset++] != 0);
@@ -690,19 +851,34 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
                 seekElementSize(elementType, state.parser);
             }
 
+            ${handleEmbeddedClassesLines.join('\n')}
             ${setDefaults.join('\n')}
             ${state.setter} = ${object};
-            ${createClassInstance};
+            ${createClassInstance}
 
             state.elementType = oldElementType;
         }
     `);
+
+    extract.setFunction(buildFunction(state, type));
 }
 
 export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, state: TemplateState) {
+    const embedded = embeddedAnnotation.getFirst(type);
+    if (type.kind === ReflectionKind.class && embedded && state.target === 'deserialize') {
+        const container = state.compilerContext.reserveName('container');
+        const sub = state.fork(undefined, container).forRegistry(state.registry.serializer.typeGuards.getRegistry(1));
+        typeGuardEmbedded(type, sub, embedded);
+        state.addCode(`
+            const ${container} = state.parser.read(state.elementType);
+            console.log('container data', '${state.setter}', ${container});
+            ${sub.template}
+        `);
+        return;
+    }
+
     const lines: string[] = [];
     const signatures: TypeIndexSignature[] = [];
-    const existing: string[] = [];
     const valid = state.compilerContext.reserveName('valid');
 
     const resetDefaultSets: string[] = [];
@@ -719,7 +895,6 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
         if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
 
         const nameInBson = String(state.namingStrategy.getPropertyName(member));
-        existing.push(JSON.stringify(nameInBson));
 
         const valueSetVar = state.setVariable('valueSetVar', false);
         resetDefaultSets.push(`${valueSetVar} = false;`);
@@ -742,7 +917,7 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
 
         lines.push(`
             //property ${String(member.name)} (${member.type.kind})
-            if (!${valueSetVar} && ${getNameComparator(nameInBson)}) {
+            else if (!${valueSetVar} && ${getNameComparator(nameInBson)}) {
                 state.parser.offset += ${nameInBson.length} + 1;
                 ${valueSetVar} = true;
 
@@ -755,6 +930,49 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
                 continue;
             }
         `);
+    }
+
+    if (signatures.length) {
+        const i = state.compilerContext.reserveName('i');
+        const signatureLines: string[] = [];
+
+        function isLiteralType(t: TypeIndexSignature): boolean {
+            return t.index.kind === ReflectionKind.literal || (t.index.kind === ReflectionKind.union && t.index.types.some(v => v.kind === ReflectionKind.literal));
+        }
+
+        function isNumberType(t: TypeIndexSignature): boolean {
+            return t.index.kind === ReflectionKind.number || (t.index.kind === ReflectionKind.union && t.index.types.some(v => v.kind === ReflectionKind.number));
+        }
+
+        //sort, so the order is literal, number, string, symbol.  literal comes first as its the most specific type.
+        //we need to do that for numbers since all keys are string|symbol in runtime, and we need to check if a string is numeric first before falling back to string.
+        signatures.sort((a, b) => {
+            if (isLiteralType(a)) return -1;
+            if (isNumberType(a) && !isLiteralType(b)) return -1;
+            return +1;
+        });
+
+        for (const signature of signatures) {
+            signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)}) {
+                ${executeTemplates(state.fork(valid).extendPath(new RuntimeCode(i)).forPropertyName(new RuntimeCode(i)), signature.type)}
+
+                if (!${valid}) break;
+                //guards never eat/parse parser, so we jump over the value automatically
+                seekElementSize(elementType, state.parser);
+                continue;
+            }`);
+        }
+
+        //the index signature type could be: string, number, symbol.
+        //or a literal when it was constructed by a mapped type.
+        lines.push(`else {
+        let ${i} = state.parser.eatObjectPropertyName();
+
+        if (false) {} ${signatureLines.join(' ')}
+
+        //if no index signature matches, we skip over it
+        seekElementSize(elementType, state.parser);
+        }`);
     }
 
     state.setContext({ seekElementSize });
@@ -776,7 +994,7 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
                 const elementType = state.elementType = state.parser.eatByte();
                 if (elementType === 0) break;
 
-                ${lines.join('\n')}
+                if (false) {} ${lines.join('\n')}
 
                 //jump over this property when not registered in schema
                 while (state.parser.offset < end && state.parser.buffer[state.parser.offset++] != 0);

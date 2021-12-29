@@ -167,7 +167,7 @@ test('constructor type abstract', () => {
             { kind: ReflectionKind.parameter, name: 'args', type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.any } } }
         ],
         return: { kind: ReflectionKind.any }
-    } as TypeFunction);
+    });
 });
 
 test('constructor type normal', () => {
@@ -304,7 +304,7 @@ test('typeof primitives', () => {
 
 test('typeof union', () => {
     type t = 'a' | 'b';
-    expectEqualType(typeOf<t>(),{ kind: ReflectionKind.union, types: [{ kind: ReflectionKind.literal, literal: 'a' }, { kind: ReflectionKind.literal, literal: 'b' }] });
+    expectEqualType(typeOf<t>(), { kind: ReflectionKind.union, types: [{ kind: ReflectionKind.literal, literal: 'a' }, { kind: ReflectionKind.literal, literal: 'b' }] });
 });
 
 test('valuesOf union', () => {
@@ -379,13 +379,13 @@ test('typeof class', () => {
         a!: string;
     }
 
-    expectEqualType(typeOf<Entity>(),{
+    expectEqualType(typeOf<Entity>(), {
         kind: ReflectionKind.class,
         classType: Entity,
         types: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
     } as TypeClass);
 
-    expectEqualType(reflect(Entity),{
+    expectEqualType(reflect(Entity), {
         kind: ReflectionKind.class,
         classType: Entity,
         types: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
@@ -397,14 +397,14 @@ test('typeof generic class', () => {
         a!: T;
     }
 
-    expectEqualType(typeOf<Entity<string>>(),{
+    expectEqualType(typeOf<Entity<string>>(), {
         kind: ReflectionKind.class,
         classType: Entity,
         arguments: [typeOf<string>()],
         types: [{ kind: ReflectionKind.property, name: 'a', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string } }]
     } as TypeClass);
 
-    expectEqualType(reflect(Entity, typeOf<string>()),{
+    expectEqualType(reflect(Entity, typeOf<string>()), {
         kind: ReflectionKind.class,
         arguments: [typeOf<string>()],
         classType: Entity,
@@ -881,7 +881,7 @@ test('Reference', () => {
         owner: User & Reference;
     }
 
-    const reflection = ReflectionClass.from(typeOf<Page>());
+    const reflection = ReflectionClass.from(typeOf<Page>() as TypeClass);
     const property = reflection.getProperty('owner')!;
     const owner = property.getType();
     expect(owner).toMatchObject(typeOf<User>() as any);
@@ -940,7 +940,7 @@ test('class validator', () => {
     const reflection = ReflectionClass.from(Email);
     expect(reflection.validationMethod).toBe('validator');
 
-    expect(validate<Email>(new Email(''))).toEqual([{path: '', code: 'email', message: 'Invalid email'}]);
+    expect(validate<Email>(new Email(''))).toEqual([{ path: '', code: 'email', message: 'Invalid email' }]);
     expect(validate<Email>(new Email('asd'))).toEqual([]);
 });
 
@@ -1293,7 +1293,7 @@ test('set constructor parameter manually', () => {
     }
 
     {
-        const type = typeOf<StreamApiResponseClass<Response>>();
+        const type = typeOf<StreamApiResponseClass<Response>>() as TypeClass;
         const reflection = ReflectionClass.from(type);
         if (type.kind === ReflectionKind.class) {
             const t1 = type.arguments![0] as TypeClass;

@@ -30,35 +30,38 @@
 //
 //     return discriminatorFound ? discriminatorFound.property.name : undefined;
 // }
-//
-// export function findCommonLiteral(classSchemas: ClassSchema[]): string | undefined {
-//     const candidates: { [name: string]: { found: number, values: any[], schemas: ClassSchema[] } } = {};
-//
-//     for (const schema of classSchemas) {
-//         for (const property of schema.getProperties()) {
-//             if (property.type !== 'literal') continue;
-//
-//             if (candidates[property.name]) {
-//                 let candidate = candidates[property.name];
-//                 candidate.found++;
-//                 if (candidate.values.includes(property.literalValue)) {
-//                     const usedBy = candidate.schemas[candidate.values.indexOf(property.literalValue)];
-//                     if (usedBy !== schema) {
-//                         throw new Error(`${schema.getClassName()} has a literal on ${property.name} that is already used by ${usedBy.getClassName()}.`);
-//                     }
-//                 }
-//                 candidate.values.push(property.literalValue);
-//                 candidate.schemas.push(schema);
-//             } else {
-//                 candidates[property.name] = { found: 1, values: [property.literalValue], schemas: [schema] };
-//             }
-//         }
-//     }
-//
-//     //check which candidate has the right amount of usages
-//     for (const [name, info] of Object.entries(candidates)) {
-//         if (info.found === classSchemas.length) return name;
-//     }
-//
-//     return;
-// }
+
+import { ReflectionClass } from './reflection/reflection';
+import { ReflectionKind } from './reflection/type';
+
+export function findCommonLiteral(reflectionClasses: ReflectionClass<any>[]): string | undefined {
+    const candidates: { [name: string]: { found: number, values: any[], schemas: ReflectionClass<any>[] } } = {};
+
+    for (const schema of reflectionClasses) {
+        for (const property of schema.getProperties()) {
+            if (property.type.kind !== ReflectionKind.literal) continue;
+
+            if (candidates[property.getNameAsString()]) {
+                let candidate = candidates[property.getNameAsString()];
+                candidate.found++;
+                if (candidate.values.includes(property.type.literal)) {
+                    const usedBy = candidate.schemas[candidate.values.indexOf(property.type.literal)];
+                    if (usedBy !== schema) {
+                        throw new Error(`${schema.getClassName()} has a literal on ${property.getNameAsString()} that is already used by ${usedBy.getClassName()}.`);
+                    }
+                }
+                candidate.values.push(property.type.literal);
+                candidate.schemas.push(schema);
+            } else {
+                candidates[property.getNameAsString()] = { found: 1, values: [property.type.literal], schemas: [schema] };
+            }
+        }
+    }
+
+    //check which candidate has the right amount of usages
+    for (const [name, info] of Object.entries(candidates)) {
+        if (info.found === reflectionClasses.length) return name;
+    }
+
+    return;
+}

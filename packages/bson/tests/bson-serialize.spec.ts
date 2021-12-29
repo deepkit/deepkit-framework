@@ -199,7 +199,7 @@ test('basic BinaryBigInt', () => {
             BSONType.BINARY, //type long
             112, 111, 115, 105, 116, 105, 111, 110, 0, //position\n string
 
-            9, 0, 0, 0, //binary size, int32
+            8, 0, 0, 0, //binary size, int32
             BSON_BINARY_SUBTYPE_DEFAULT, //binary type
 
             128, 0, 0, 0, 0, 0, 0, 2, //binary data
@@ -215,7 +215,7 @@ test('basic BinaryBigInt', () => {
             BSONType.BINARY, //type long
             112, 111, 115, 105, 116, 105, 111, 110, 0, //position\n string
 
-            9, 0, 0, 0, //binary size, int32
+            8, 0, 0, 0, //binary size, int32
             BSON_BINARY_SUBTYPE_DEFAULT, //binary type
 
             128, 0, 0, 0, 0, 0, 0, 2, //binary data

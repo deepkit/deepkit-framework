@@ -9,18 +9,17 @@
  */
 
 import {
-    ClassSchema,
     createReferenceClass,
-    getGlobalStore,
-    getPartialXToClassFunction,
+    deserialize,
     getPrimaryKeyHashGenerator,
     getReferenceInfo,
-    getXToClassFunction,
     isReference,
     isReferenceHydrated,
     markAsHydrated,
-    PropertySchema,
+    ReflectionClass,
+    ReflectionProperty,
     Serializer,
+    typeSettings,
     UnpopulatedCheck,
     unpopulatedSymbol
 } from '@deepkit/type';
@@ -43,18 +42,17 @@ type DBRecord = { [name: string]: any };
  */
 export class Formatter {
     //its important to have for each formatter own proxyClasses since we attached to Proxy's prototype the database session
-    protected referenceClasses: Map<ClassSchema, ClassType> = new Map();
+    protected referenceClasses: Map<ReflectionClass<any>, ClassType> = new Map();
 
     protected instancePools: Map<ClassType, Map<PKHash, any>> = new Map();
 
     public withIdentityMap: boolean = true;
-    protected rootSerializer = this.serializer.for(this.rootClassSchema);
     protected rootPkHash: (value: any) => string = getPrimaryKeyHashGenerator(this.rootClassSchema, this.serializer);
 
-    protected rootClassState: ClassState<any> = getClassState(this.rootClassSchema);
+    protected rootClassState: ClassState = getClassState(this.rootClassSchema);
 
     constructor(
-        protected rootClassSchema: ClassSchema,
+        protected rootClassSchema: ReflectionClass<any>,
         protected serializer: Serializer,
         protected hydrator?: HydratorFn,
         protected identityMap?: IdentityMap,
@@ -73,8 +71,8 @@ export class Formatter {
         return this.hydrateModel(model, this.rootClassSchema, dbRecord);
     }
 
-    protected makeInvalidReference(item: any, classSchema: ClassSchema, propertySchema: PropertySchema) {
-        Object.defineProperty(item, propertySchema.name, {
+    protected makeInvalidReference(item: any, classSchema: ReflectionClass<any>, propertySchema: ReflectionProperty) {
+        Object.defineProperty(item, propertySchema.getNameAsString(), {
             enumerable: false,
             configurable: false,
             get() {
@@ -82,11 +80,11 @@ export class Formatter {
                     return this[propertySchema.symbol];
                 }
 
-                if (getGlobalStore().unpopulatedCheck === UnpopulatedCheck.Throw) {
+                if (typeSettings.unpopulatedCheck === UnpopulatedCheck.Throw) {
                     throw new Error(`Reference ${classSchema.getClassName()}.${propertySchema.name} was not populated. Use joinWith(), useJoinWith(), etc to populate the reference.`);
                 }
 
-                if (getGlobalStore().unpopulatedCheck === UnpopulatedCheck.ReturnSymbol) {
+                if (typeSettings.unpopulatedCheck === UnpopulatedCheck.ReturnSymbol) {
                     return unpopulatedSymbol;
                 }
             },
@@ -100,11 +98,11 @@ export class Formatter {
         });
     }
 
-    protected getReferenceClass<T>(classSchema: ClassSchema<T>): ClassType<T> {
+    protected getReferenceClass<T>(classSchema: ReflectionClass<T>): ClassType<T> {
         let Reference = this.referenceClasses.get(classSchema);
         if (Reference) return Reference;
 
-        Reference = createReferenceClass(classSchema);
+        Reference = createReferenceClass(classSchema.getClassType());
 
         if (this.hydrator) {
             setHydratedDatabaseSession(Reference.prototype, this.hydrator);
@@ -115,26 +113,26 @@ export class Formatter {
     }
 
     protected getReference(
-        classSchema: ClassSchema,
+        classSchema: ReflectionClass<any>,
         dbRecord: DBRecord,
-        propertySchema: PropertySchema,
+        propertySchema: ReflectionProperty,
         isPartial: boolean
     ): object | undefined | null {
-        const foreignSchema = propertySchema.getResolvedClassSchema();
-        const pool = this.getInstancePoolForClass(foreignSchema.classType);
+        const foreignSchema = propertySchema.getResolvedReflectionClass();
+        const pool = this.getInstancePoolForClass(foreignSchema.getClassType());
 
-        const foreignPrimaryFields = foreignSchema.getPrimaryFields();
+        const foreignPrimaryFields = foreignSchema.getPrimaries();
         const foreignPrimaryKey: { [name: string]: any } = {};
 
         let allFilled = foreignPrimaryFields.length;
         for (const property of foreignPrimaryFields) {
-            const foreignKey = foreignPrimaryFields.length === 1 ? propertySchema.name : propertySchema.name + capitalize(property.name);
-            if (property.isReference) {
-                foreignPrimaryKey[property.name] = this.getReference(property.getResolvedClassSchema(), dbRecord, propertySchema, isPartial);
+            const foreignKey = foreignPrimaryFields.length === 1 ? propertySchema.getNameAsString() : propertySchema.getNameAsString() + capitalize(property.getNameAsString());
+            if (property.isReference()) {
+                foreignPrimaryKey[property.getNameAsString()] = this.getReference(property.getResolvedReflectionClass(), dbRecord, propertySchema, isPartial);
             } else {
-                const v = this.serializer.deserializeProperty(property, dbRecord[foreignKey]);
+                const v = deserialize(dbRecord[foreignKey], undefined, this.serializer, property.type);
                 if (v === undefined || v === null) allFilled--;
-                foreignPrimaryKey[property.name] = v;
+                foreignPrimaryKey[property.getNameAsString()] = v;
             }
         }
 
@@ -154,7 +152,7 @@ export class Formatter {
         return ref;
     }
 
-    protected hydrateModel(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, dbRecord: DBRecord) {
+    protected hydrateModel(model: DatabaseQueryModel<any, any, any>, classSchema: ReflectionClass<any>, dbRecord: DBRecord) {
         let pool: Map<PKHash, any> | undefined = undefined;
         let pkHash: any = undefined;
         const partial = model.isPartial();
@@ -174,10 +172,10 @@ export class Formatter {
             classSchema = subClassSchema;
         }
 
-        if (this.rootClassSchema.references.size > 0) {
+        if (this.rootClassSchema.getReferences().length > 0) {
             //the pool is only necessary when the root class has actually references
             pkHash = classSchema === this.rootClassSchema ? this.rootPkHash(dbRecord) : getPrimaryKeyHashGenerator(classSchema, this.serializer)(dbRecord);
-            pool = this.getInstancePoolForClass(classSchema.classType);
+            pool = this.getInstancePoolForClass(classSchema.getClassType());
 
             const found = pool.get(pkHash);
             //When in a record is a reference found, it will be put into the pool.
@@ -204,21 +202,21 @@ export class Formatter {
                 if (fromDatabase && !isReferenceHydrated(item)) {
                     //we automatically hydrate proxy object once someone fetches them from the database.
                     //or we update a stale instance
-                    const converted = this.serializer.for(classSchema).deserialize(dbRecord);
+                    const converted: any = deserialize(dbRecord, undefined, this.serializer, classSchema.type);
 
-                    for (const propName of classSchema.propertyNames) {
-                        if (classSchema.getProperty(propName).isId) continue;
+                    for (const propName of classSchema.getPropertyNames()) {
+                        const property = classSchema.getProperty(propName);
+                        if (property.isPrimaryKey()) continue;
 
-                        const prop = classSchema.getPropertiesMap().get(propName)!;
                         if (propName in item) continue;
 
-                        if (prop.isReference || prop.backReference) {
-                            if (prop.isArray) continue;
+                        if (property.isReference() || property.isBackReference()) {
+                            if (property.isArray()) continue;
 
                             Object.defineProperty(item, propName, {
                                 enumerable: true,
                                 configurable: true,
-                                value: this.getReference(classSchema, dbRecord, prop, partial),
+                                value: this.getReference(classSchema, dbRecord, property, partial),
                             });
                             continue;
                         }
@@ -253,7 +251,7 @@ export class Formatter {
         return converted;
     }
 
-    protected assignJoins(model: DatabaseQueryModel<any, any, any>, classSchema: ClassSchema, dbRecord: DBRecord, item: any): { [name: string]: true } {
+    protected assignJoins(model: DatabaseQueryModel<any, any, any>, classSchema: ReflectionClass<any>, dbRecord: DBRecord, item: any): { [name: string]: true } {
         const handledRelation: { [name: string]: true } = {};
 
         for (const join of model.joins) {
@@ -299,9 +297,10 @@ export class Formatter {
         return handledRelation;
     }
 
-    protected createObject(model: DatabaseQueryModel<any, any, any>, classState: ClassState, classSchema: ClassSchema, dbRecord: DBRecord) {
+    protected createObject(model: DatabaseQueryModel<any, any, any>, classState: ClassState, classSchema: ReflectionClass<any>, dbRecord: DBRecord) {
         const partial = model.isPartial();
 
+        //todo: how do we get a partial type of a classSchema? We need some kind of service that caches it for us when we create one on-demand.
         const converted = classSchema === this.rootClassSchema
             ? (partial ? this.rootSerializer.partialDeserialize(dbRecord) : this.rootSerializer.deserialize(dbRecord))
             : (partial ? getPartialXToClassFunction(classSchema, this.serializer)(dbRecord) : getXToClassFunction(classSchema, this.serializer)(dbRecord));
@@ -310,14 +309,14 @@ export class Formatter {
             if (model.withChangeDetection) getInstanceState(classState, converted).markAsFromDatabase();
         }
 
-        if (classSchema.references.size > 0) {
+        if (classSchema.getReferences().length > 0) {
             const handledRelation = model.joins.length ? this.assignJoins(model, classSchema, dbRecord, converted) : undefined;
 
             //all non-populated owning references will be just proxy references
-            for (const propertySchema of classSchema.references.values()) {
+            for (const propertySchema of classSchema.getReferences()) {
                 if (model.select.size && !model.select.has(propertySchema.name)) continue;
                 if (handledRelation && handledRelation[propertySchema.name]) continue;
-                if (propertySchema.isReference) {
+                if (propertySchema.isReference()) {
                     converted[propertySchema.name] = this.getReference(classSchema, dbRecord, propertySchema, partial);
                 } else {
                     //unpopulated backReferences are inaccessible

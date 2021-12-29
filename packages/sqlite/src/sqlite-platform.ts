@@ -9,11 +9,11 @@
  */
 
 import { Column, DefaultPlatform, ForeignKey, isSet, parseType, Sql, Table, TableDiff } from '@deepkit/sql';
-import { ClassSchema, isArray, PropertySchema, SqliteOptions } from '@deepkit/type';
+import { SqliteOptions } from '@deepkit/type';
 import { SQLiteSchemaParser } from './sqlite-schema-parser';
 import { SqliteSerializer } from './sqlite-serializer';
 import { SQLiteFilterBuilder } from './sql-filter-builder.sqlite';
-import { isObject } from '@deepkit/core';
+import { isArray, isObject } from '@deepkit/core';
 import sqlstring from 'sqlstring-sqlite';
 
 export class SQLitePlatform extends DefaultPlatform {

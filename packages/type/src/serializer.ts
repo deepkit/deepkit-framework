@@ -8,15 +8,17 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, CompilerContext, CustomError, getClassName, isArray, isFunction, isInteger, isIterable, isNumeric, isObject } from '@deepkit/core';
+import { ClassType, CompilerContext, CustomError, getClassName, isArray, isFunction, isInteger, isIterable, isNumeric, isObject, toFastProperties } from '@deepkit/core';
 import {
     AnnotationDefinition,
+    binaryTypes,
     copyAndSetParent,
     embeddedAnnotation,
     EmbeddedOptions,
     excludedAnnotation,
     FindType,
     getConstructorProperties,
+    getTypeJitContainer,
     hasDefaultValue,
     hasEmbedded,
     isNullable,
@@ -25,6 +27,7 @@ import {
     OuterType,
     referenceAnnotation,
     ReflectionKind,
+    stringifyShortResolvedType,
     stringifyType,
     Type,
     TypeClass,
@@ -45,6 +48,7 @@ import { resolveRuntimeType } from './reflection/processor';
 import { createReference, isReference, isReferenceHydrated } from './reference';
 import { ValidationFailedItem } from './validator';
 import { validators } from './validators';
+import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64 } from './core';
 
 export class NamingStrategy {
     getPropertyName(type: TypeProperty | TypePropertySignature): string | number | symbol | undefined {
@@ -58,7 +62,17 @@ export interface SerializationOptions {
     loosely?: boolean;
 }
 
-export function createSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): (data: any, state?: SerializationOptions) => any {
+export function getSerializeFunction(type: OuterType, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): (data: any, state?: SerializationOptions) => any {
+    const jit = getTypeJitContainer(type);
+    if (jit[registry.symbol]) return jit[registry.symbol];
+
+    jit[registry.symbol] = createSerializeFunction(type, registry, namingStrategy, path, jitStack);
+    toFastProperties(jit);
+
+    return jit[registry.symbol];
+}
+
+export function createSerializeFunction(type: OuterType, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): (data: any, state?: SerializationOptions) => any {
     const compiler = new CompilerContext();
 
     const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, jitStack, [path]);
@@ -69,6 +83,7 @@ export function createSerializeFunction(type: Type, registry: TemplateRegistry, 
     const code = `
         var result;
         state = state ? state : {};
+        state.depth = 0;
         ${executeTemplates(state, type)}
         return result;
     `;
@@ -89,6 +104,7 @@ export function createTypeGuardFunction(type: Type, state?: TemplateState, seria
     }
     state.path = [new RuntimeCode('_path')];
     state.validation = true;
+    state.setterDisabled = false;
 
     const templates = state.registry.get(type);
 
@@ -144,7 +160,9 @@ export class JitStack {
     }
 
     prepare(type: Type): (fn: Function) => { fn: Function | undefined } {
-        if (this.getStack().has(type)) throw new Error('Circular jit building detected: ' + stringifyType(type));
+        if (this.getStack().has(type)) {
+            throw new Error('Circular jit building detected: ' + stringifyType(type));
+        }
 
         const entry: { fn: Function | undefined } = { fn: undefined };
         this.getStack().set(type, entry);
@@ -253,6 +271,11 @@ export class TemplateState {
         return this;
     }
 
+    enableSetter(): this {
+        this.setterDisabled = true;
+        return this;
+    }
+
     /**
      * Can be used to track which annotation was already handled. Necessary to use with `isAnnotationHandled` to avoid infinite recursive loops
      * when a serializer template issues sub calls depending on annotation data.
@@ -285,7 +308,7 @@ export class TemplateState {
 
     throwCode(type: OuterType | string, error?: string, accessor: string | ContainerAccessor = this.originalAccessor) {
         this.setContext({ SerializationError });
-        const to = JSON.stringify(('string' === typeof type ? type : stringifyType(type)).replace(/\n/g, '').replace(/\s+/g, ' ').trim());
+        const to = JSON.stringify(('string' === typeof type ? type : stringifyShortResolvedType(type)).replace(/\n/g, '').replace(/\s+/g, ' ').trim());
         return `throw new SerializationError('Cannot convert ' + ${accessor} + ' to ' + ${to} ${error ? ` + '. ' + ${error}` : ''}, ${collapsePath(this.path)});`;
     }
 
@@ -345,6 +368,13 @@ export type Template<T extends Type> = (type: T, state: TemplateState) => void;
 
 export type TemplateHook = (type: Type, state: TemplateState) => void;
 
+/**
+ * Just sets the state.setter to state.accessor without any modification.
+ */
+export function noopTemplate(type: Type, state: TemplateState): void {
+    state.addSetter(state.accessor);
+}
+
 export class TemplateRegistry {
     protected templates: { [kind in ReflectionKind]?: Template<any>[] } = {};
     protected decorator: { [kind in ReflectionKind]?: Template<any>[] } = {};
@@ -354,20 +384,12 @@ export class TemplateRegistry {
 
     public classTemplates = new Map<ClassType, Template<any>[]>();
 
-    static BinaryTypes: ClassType[] = [
-        Int8Array,
-        Uint8Array,
-        Uint8ClampedArray,
-        Int16Array,
-        Uint16Array,
-        Int32Array,
-        Uint32Array,
-        Float32Array,
-        Float64Array,
-        ArrayBuffer,
-    ];
+    /**
+     * Used as JIT cache key.
+     */
+    public symbol = Symbol();
 
-    constructor(public serializer: Serializer) {
+    constructor(public serializer: Serializer = new EmptySerializer()) {
     }
 
     clear() {
@@ -380,6 +402,7 @@ export class TemplateRegistry {
         if (type.kind === ReflectionKind.class) {
             const classTemplates = this.classTemplates.get(type.classType);
             if (classTemplates && classTemplates.length) return classTemplates;
+            if (type.classType === Set || type.classType === Map || binaryTypes.includes(type.classType)) return [];
         }
         return this.templates[type.kind] ||= [];
     }
@@ -392,7 +415,7 @@ export class TemplateRegistry {
      * Registers a template for all binary classes: ArrayBuffer, Uint8Array, Int8Array, etc.
      */
     registerBinary(template: Template<TypeClass>) {
-        for (const classType of TemplateRegistry.BinaryTypes) this.registerClass(classType, template);
+        for (const classType of binaryTypes) this.registerClass(classType, template);
     }
 
     /**
@@ -477,7 +500,10 @@ export class TemplateRegistry {
 export function callExtractedFunctionIfAvailable(state: TemplateState, type: Type): boolean {
     const jit = state.jitStack.get(type);
     if (!jit) return false;
-    state.addCode(`${state.setterDisabled || !state.setter ? '' : `${state.setter} = `}${state.setVariable('jit', jit)}.fn(${state.accessor || 'undefined'}, state, ${collapsePath(state.path)})`);
+    state.addCode(`
+    //call jit for ${state.setter}
+    ${state.setterDisabled || !state.setter ? '' : `${state.setter} = `}${state.setVariable('jit', jit)}.fn(${state.accessor || 'undefined'}, state, ${collapsePath(state.path)});
+    `);
     return true;
 }
 
@@ -510,9 +536,12 @@ export function buildFunction(state: TemplateState, type: Type): Function {
         if (_path === undefined) _path = '';
         ${circularCheckBeginning}
         state = state ? state : {};
+        state.depth++;
         ${state.template}
 
         ${circularCheckEnd}
+
+        state.depth--;
         return result;
     `;
     return state.compilerContext.build(code, 'data', 'state', '_path');
@@ -690,7 +719,7 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
     const lines: string[] = [];
     const clazz = ReflectionClass.from(type.classType);
 
-    const constructor = clazz.getConstructor();
+    const constructor = clazz.getConstructorOrUndefined();
     const constructorArguments: string[] = [];
     if (constructor) {
         const parameters = constructor.getParameters();
@@ -800,6 +829,26 @@ export function getIndexCheck(state: TemplateState, i: string, type: Type): stri
         return '(' + type.types.map(v => getIndexCheck(state, i, v)).join(' || ') + ')';
     }
     return '';
+}
+
+function isLiteralType(t: TypeIndexSignature): boolean {
+    return t.index.kind === ReflectionKind.literal || (t.index.kind === ReflectionKind.union && t.index.types.some(v => v.kind === ReflectionKind.literal));
+}
+
+function isNumberType(t: TypeIndexSignature): boolean {
+    return t.index.kind === ReflectionKind.number || (t.index.kind === ReflectionKind.union && t.index.types.some(v => v.kind === ReflectionKind.number));
+}
+
+/**
+ * Sort, so the order is literal, number, string, symbol.  literal comes first as its the most specific type.
+ * We need to do that for numbers since all keys are string|symbol in runtime, and we need to check if a string is numeric first before falling back to string.
+ */
+export function sortSignatures(signatures: TypeIndexSignature[]) {
+    signatures.sort((a, b) => {
+        if (isLiteralType(a)) return -1;
+        if (isNumberType(a) && !isLiteralType(b)) return -1;
+        return +1;
+    });
 }
 
 export function getStaticDefaultCodeForProperty(member: TypeProperty | TypePropertySignature, setter: string | ContainerAccessor, state: TemplateState) {
@@ -925,21 +974,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         const existingCheck = existing.map(v => `${i} === ${v}`).join(' || ') || 'false';
         const signatureLines: string[] = [];
 
-        function isLiteralType(t: TypeIndexSignature): boolean {
-            return t.index.kind === ReflectionKind.literal || (t.index.kind === ReflectionKind.union && t.index.types.some(v => v.kind === ReflectionKind.literal));
-        }
-
-        function isNumberType(t: TypeIndexSignature): boolean {
-            return t.index.kind === ReflectionKind.number || (t.index.kind === ReflectionKind.union && t.index.types.some(v => v.kind === ReflectionKind.number));
-        }
-
-        //sort, so the order is literal, number, string, symbol.  literal comes first as its the most specific type.
-        //we need to do that for numbers since all keys are string|symbol in runtime, and we need to check if a string is numeric first before falling back to string.
-        signatures.sort((a, b) => {
-            if (isLiteralType(a)) return -1;
-            if (isNumberType(a) && !isLiteralType(b)) return -1;
-            return +1;
-        });
+        sortSignatures(signatures);
 
         for (const signature of signatures) {
             signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)}) {
@@ -984,31 +1019,35 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     extract.setFunction(buildFunction(state, type));
 }
 
-export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState, withEmbeddedCheck: boolean) {
+export function typeGuardEmbedded(type: TypeClass, state: TemplateState, embedded: EmbeddedOptions) {
+    const constructorProperties = getConstructorProperties(type);
+    if (constructorProperties.properties.length) {
+        for (const parameter of constructorProperties.parameters) {
+            if (parameter.kind === ReflectionKind.property) {
+                //we pass 'data' as container, since type guards for TypeClass get their own function always and operate on `data` accessor.
+                const accessor = getEmbeddedAccessor(type, constructorProperties.properties.length !== 1, state.accessor, state.namingStrategy, parameter, embedded);
+                const propertyState = state.fork(state.setter, accessor).extendPath(String(parameter.name));
+                if (hasEmbedded(parameter.type)) {
+                    state.addCode(executeTemplates(propertyState, parameter.type));
+                } else {
+                    if (accessor instanceof ContainerAccessor) {
+                        state.addCode(`if (${inAccessor(accessor)}) {${createConverterJSForMember(parameter, propertyState)} }`);
+                    } else {
+                        state.addCode(createConverterJSForMember(parameter, propertyState));
+                    }
+                }
+            }
+        }
+    }
+}
+
+export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState) {
     //this function is used for both, serialize and deserialization. When serializing the type of `type` is strictly correct, so checking embedded fields would lead to wrong results.
     //this embedded check is only necessary when checking types in deserializing.
     if (type.kind === ReflectionKind.class && state.target === 'deserialize') {
         const embedded = embeddedAnnotation.getFirst(type);
         if (embedded) {
-            const constructorProperties = getConstructorProperties(type);
-            if (constructorProperties.properties.length) {
-                for (const parameter of constructorProperties.parameters) {
-                    if (parameter.kind === ReflectionKind.property) {
-                        //we pass 'data' as container, since type guards for TypeClass get their own function always and operate on `data` accessor.
-                        const accessor = getEmbeddedAccessor(type, constructorProperties.properties.length !== 1, state.accessor, state.namingStrategy, parameter, embedded);
-                        const propertyState = state.fork(state.setter, accessor).extendPath(String(parameter.name));
-                        if (hasEmbedded(parameter.type)) {
-                            state.addCode(executeTemplates(propertyState, parameter.type));
-                        } else {
-                            if (accessor instanceof ContainerAccessor) {
-                                state.addCode(`if (${inAccessor(accessor)}) {${createConverterJSForMember(parameter, propertyState)} }`);
-                            } else {
-                                state.addCode(createConverterJSForMember(parameter, propertyState));
-                            }
-                        }
-                    }
-                }
-            }
+            typeGuardEmbedded(type, state, embedded);
             return;
         }
     }
@@ -1298,7 +1337,51 @@ function typeGuardClassSet(type: TypeClass, state: TemplateState) {
     typeGuardArray(type.arguments[0], state);
 }
 
-function handleUnion(type: TypeUnion, state: TemplateState) {
+/**
+ * Set is simply serialized as array.
+ */
+function deserializeTypeClassSet(type: TypeClass, state: TemplateState) {
+    if (!type.arguments || type.arguments.length !== 1) return;
+
+    serializeArray(type.arguments[0], state);
+    state.addSetter(`new Set(${state.accessor})`);
+}
+
+/**
+ * Set is simply serialized as array.
+ */
+function serializeTypeClassSet(type: TypeClass, state: TemplateState) {
+    if (!type.arguments || type.arguments.length !== 1) return;
+
+    serializeArray(type.arguments[0], state);
+}
+
+function deserializeTypeClassMap(type: TypeClass, state: TemplateState) {
+    if (!type.arguments || type.arguments.length !== 2) return;
+    serializeArray(copyAndSetParent({
+        kind: ReflectionKind.tuple, types: [
+            { kind: ReflectionKind.tupleMember, type: type.arguments[0] },
+            { kind: ReflectionKind.tupleMember, type: type.arguments[1] },
+        ]
+    }), state);
+    state.addSetter(`new Map(${state.accessor})`);
+}
+
+/**
+ * Map is simply serialized as array of tuples.
+ */
+function serializeTypeClassMap(type: TypeClass, state: TemplateState) {
+    if (!type.arguments || type.arguments.length !== 2) return;
+
+    serializeArray(copyAndSetParent({
+        kind: ReflectionKind.tuple, types: [
+            { kind: ReflectionKind.tupleMember, type: type.arguments[0] },
+            { kind: ReflectionKind.tupleMember, type: type.arguments[1] },
+        ]
+    }), state);
+}
+
+export function handleUnion(type: TypeUnion, state: TemplateState) {
     //detecting which serializer to use in union is a complex topic and allows a key feature: deserializing an encoding that is entirely based on strings (e.g. URL query string)
     //to support for example numeric string, we need to have multiple guards being able to detect their 'loosely type' equivalence, for example
     // - '1234' => number
@@ -1349,14 +1432,14 @@ function handleUnion(type: TypeUnion, state: TemplateState) {
         if (state.target === 'serialize' && specificality < 1) continue;
 
         for (const t of type.types) {
-            const fn = createTypeGuardFunction(t, state.fork('', accessor).forRegistry(typeGuard).clearJit());
+            const fn = createTypeGuardFunction(t, state.fork(undefined, accessor).forRegistry(typeGuard).clearJit());
             if (!fn) continue;
             const guard = state.setVariable('guard' + t.kind, fn);
             const looseCheck = specificality <= 0 ? `state.loosely && ` : '';
 
             lines.push(`else if (${looseCheck}${guard}(${args})) {
                 //type = ${ReflectionKind[t.kind]}, specificality=${specificality}
-                ${executeTemplates(state.fork(), t)}
+                ${executeTemplates(state.fullFork(), t)}
             }`);
         }
     }
@@ -1602,14 +1685,42 @@ export class Serializer {
             state.addCodeForSetter(`if (isNaN(${state.accessor})) ${state.throwCode(type)}`);
         });
 
+        //convert binary to base64 (instead of hex, important for primary key hash)
+        this.serializeRegistry.registerBinary((type, state) => {
+            if (type.classType === ArrayBuffer) {
+                state.setContext({ arrayBufferToBase64 });
+                state.addSetter(`arrayBufferToBase64(${state.accessor})`);
+                return;
+            }
+            state.setContext({ typedArrayToBase64 });
+            state.addSetter(`typedArrayToBase64(${state.accessor})`);
+        });
+
+        this.deserializeRegistry.registerBinary((type, state) => {
+            if (type.classType === ArrayBuffer) {
+                state.setContext({ base64ToArrayBuffer });
+                state.addSetter(`${state.accessor} instanceof ArrayBuffer ? ${state.accessor} : base64ToArrayBuffer(${state.accessor})`);
+                return;
+            }
+
+            state.setContext({ base64ToTypedArray });
+            const typedArrayVar = state.setVariable('classType', type.classType);
+            state.addSetter(`${state.accessor} instanceof ${typedArrayVar} ? ${state.accessor} : base64ToTypedArray(${state.accessor}, ${typedArrayVar})`);
+        });
+
+        this.serializeRegistry.registerClass(Set, serializeTypeClassSet);
+        this.serializeRegistry.registerClass(Map, serializeTypeClassMap);
+
+        this.deserializeRegistry.registerClass(Set, deserializeTypeClassSet);
+        this.deserializeRegistry.registerClass(Map, deserializeTypeClassMap);
     }
 
     protected registerTypeGuards() {
         //if nothing else matches in a union, any matches anything
         this.typeGuards.register(20, ReflectionKind.any, (type, state) => state.addSetter('true'));
 
-        this.typeGuards.register(1, ReflectionKind.objectLiteral, (type, state) => typeGuardObjectLiteral(type, state, false));
-        this.typeGuards.register(1, ReflectionKind.class, (type, state) => typeGuardObjectLiteral(type, state, false));
+        this.typeGuards.register(1, ReflectionKind.objectLiteral, (type, state) => typeGuardObjectLiteral(type, state));
+        this.typeGuards.register(1, ReflectionKind.class, (type, state) => typeGuardObjectLiteral(type, state));
 
         // //for deserialization type guards (specifically > 1) we check for embedded type sas well. this is because an embedded could have totally different field names.
         // //and only if the property (where the embedded is placed) has no strict type guard do we look for other fields as well.
@@ -1776,6 +1887,23 @@ export class Serializer {
         });
 
         this.typeGuards.register(1, ReflectionKind.union, handleUnion);
+        this.typeGuards.registerBinary(1, (type, state) => {
+            state.addSetter(`${state.accessor} instanceof ${state.setVariable('classType', type.classType)}`);
+        });
+        this.typeGuards.registerBinary(10, (type, state) => {
+            state.addSetter(`'string' === typeof ${state.accessor}`);
+        });
+    }
+}
+
+export class EmptySerializer extends Serializer {
+    protected registerValidators() {
+    }
+
+    protected registerSerializers() {
+    }
+
+    protected registerTypeGuards() {
     }
 }
 

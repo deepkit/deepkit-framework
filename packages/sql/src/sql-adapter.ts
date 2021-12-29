@@ -634,7 +634,7 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
 
                 const databaseDiff = DatabaseComparator.computeDiff(parsedDatabaseModel, databaseModel);
                 if (databaseDiff) {
-                    const table = databaseModel.getTableForSchema(entity);
+                    const table = databaseModel.getTableForClass(entity);
                     databaseDiff.forTable(table);
                     const diff = databaseDiff.getDiff(table);
 

@@ -25,11 +25,11 @@ class TDecorator {
             const reflectionProperty = reflection.getProperty(property);
             if (reflectionProperty) reflectionProperty.applyDecorator(this.t);
 
-            const reflectionMethod = reflection.getMethod(property);
+            const reflectionMethod = reflection.getMethodOrUndefined(property);
             if (reflectionMethod) reflectionMethod.applyDecorator(this.t);
 
         } else if (parameterIndexOrDescriptor !== undefined) {
-            const reflectionMethod = reflection.getMethod(property || 'constructor');
+            const reflectionMethod = reflection.getMethodOrUndefined(property || 'constructor');
             if (reflectionMethod) {
                 const params = reflectionMethod.getParameters();
                 const param = params[parameterIndexOrDescriptor];
@@ -103,6 +103,10 @@ class EntityDecorator {
 
     index(names: string[], options: IndexOptions = {}) {
         this.t.indexes.push({ names, options });
+    }
+
+    singleTableInheritance() {
+        this.t.singleTableInheritance = true;
     }
 
     data(name: string, value: any) {

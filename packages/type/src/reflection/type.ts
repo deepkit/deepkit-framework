@@ -93,9 +93,12 @@ export interface TypeAnnotations {
 /**
  * Object to hold runtime jit data.
  */
-export type JitContainer = { [name: string]: any };
+export type JitContainer = { [name: string | symbol]: any };
 
 export interface TypeRuntimeData {
+    /**
+     * A place where arbitrary jit functions and its cache data is stored.
+     */
     jit?: JitContainer;
 }
 
@@ -216,7 +219,7 @@ export interface TypeBaseMember {
 export interface TypeParameter {
     kind: ReflectionKind.parameter,
     name: string;
-    type: Type;
+    type: OuterType;
     parent: TypeFunction | TypeMethod | TypeMethodSignature;
 
     //parameter could be a property as well if visibility is set
@@ -238,7 +241,7 @@ export interface TypeMethod extends TypeBaseMember {
     parameters: TypeParameter[];
     optional?: true,
     abstract?: true;
-    return: Type;
+    return: OuterType;
 }
 
 export interface TypeProperty extends TypeBaseMember {
@@ -250,7 +253,7 @@ export interface TypeProperty extends TypeBaseMember {
     readonly?: true;
     abstract?: true;
     description?: string;
-    type: Type;
+    type: OuterType;
 
     /**
      * Set when the property has a default value aka initializer.
@@ -264,13 +267,13 @@ export interface TypeFunction extends TypeAnnotations, TypeRuntimeData {
     name?: number | string | symbol,
     function?: Function; //reference to the real function if available
     parameters: TypeParameter[];
-    return: Type;
+    return: OuterType;
 }
 
 export interface TypePromise extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.promise,
     parent?: Type;
-    type: Type;
+    type: OuterType;
 }
 
 export interface TypeClass extends TypeAnnotations, TypeRuntimeData {
@@ -334,7 +337,7 @@ export interface TypePropertySignature {
     optional?: true;
     readonly?: true;
     description?: string;
-    type: Type;
+    type: OuterType;
 }
 
 export interface TypeMethodSignature {
@@ -343,7 +346,7 @@ export interface TypeMethodSignature {
     name: number | string | symbol;
     optional?: true;
     parameters: TypeParameter[];
-    return: Type;
+    return: OuterType;
 }
 
 /**
@@ -468,6 +471,10 @@ export type FindType<T extends Type, LOOKUP extends ReflectionKind> = T extends 
 
 export function isType(entry: any): entry is Type {
     return 'object' === typeof entry && entry.constructor === Object && 'kind' in entry;
+}
+
+export function isBinary(type: Type): boolean {
+    return type.kind === ReflectionKind.class && binaryTypes.includes(type.classType);
 }
 
 export function isPrimitive<T extends Type>(type: T): boolean {
@@ -979,7 +986,7 @@ export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type
     return type as any;
 }
 
-export function widenLiteral(type: Type): Type {
+export function widenLiteral(type: OuterType): OuterType {
     if (type.kind === ReflectionKind.literal) {
         if ('number' === typeof type.literal) return copyAndSetParent({ kind: ReflectionKind.number, origin: type });
         if ('boolean' === typeof type.literal) return copyAndSetParent({ kind: ReflectionKind.boolean, origin: type });
@@ -1002,7 +1009,7 @@ function typeInferFromContainer(container: Iterable<any>, registry?: ProcessorRe
     return union.types.length === 0 ? { kind: ReflectionKind.any } : union.types.length === 1 ? union.types[0] : union;
 }
 
-export function typeInfer(value: any, registry?: ProcessorRegistry): Type {
+export function typeInfer(value: any, registry?: ProcessorRegistry): OuterType {
     if ('string' === typeof value || 'number' === typeof value || 'boolean' === typeof value || 'bigint' === typeof value || 'symbol' === typeof value) {
         return { kind: ReflectionKind.literal, literal: value };
     } else if (null === value) {
@@ -1050,7 +1057,7 @@ export function typeInfer(value: any, registry?: ProcessorRegistry): Type {
             if (!value.hasOwnProperty(i)) continue;
             const propType = typeInfer(value[i]);
 
-            if (propType.kind === ReflectionKind.methodSignature || propType.kind === ReflectionKind.function) {
+            if (propType.kind === ReflectionKind.function) {
                 type.types.push({
                     kind: ReflectionKind.methodSignature,
                     parent: type,
@@ -1221,6 +1228,12 @@ export interface ReferenceOptions {
  * ```
  */
 export type PrimaryKey = { __meta?: ['primaryKey'] };
+
+type TypeKeyOf<T> = T[keyof T];
+export type PrimaryKeyFields<T> = { [P in keyof T]: Required<T[P]> extends Required<PrimaryKey> ? T[P] : never };
+export type PrimaryKeyType<T> = TypeKeyOf<PrimaryKeyFields<T>>;
+
+
 /**
  * Marks a primary property key as auto-increment.
  *
@@ -1564,6 +1577,19 @@ export const enum MappedModifier {
     readonly = 1 << 2,
     removeReadonly = 1 << 3,
 }
+
+export const binaryTypes: ClassType[] = [
+    Int8Array,
+    Uint8Array,
+    Uint8ClampedArray,
+    Int16Array,
+    Uint16Array,
+    Int32Array,
+    Uint32Array,
+    Float32Array,
+    Float64Array,
+    ArrayBuffer,
+];
 
 export function stringifyResolvedType(type: Type): string {
     return stringifyType(type, { depth: 0, stack: [], showNames: false, showFullDefinition: true });

@@ -655,7 +655,7 @@ test('ClassType', () => {
                 parameters: [{ kind: ReflectionKind.parameter, name: 'args', type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.any } } }]
             }
         ]
-    } as Type as any);
+    });
 });
 
 test('infer parameter in returned class constructor', () => {

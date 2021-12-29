@@ -10,12 +10,12 @@
 
 import { Entity } from './type';
 import { AbstractClassType } from '@deepkit/core';
-import { ClassSchema, ItemChanges, PrimaryKeyFields } from '@deepkit/type';
+import { ItemChanges, PrimaryKeyFields, ReflectionClass } from '@deepkit/type';
 import { Query } from './query';
 import { DatabaseSession, DatabaseTransaction } from './database-session';
 
 export abstract class DatabaseAdapterQueryFactory {
-    abstract createQuery<T extends Entity>(classType: AbstractClassType<T> | ClassSchema<T>): Query<T>;
+    abstract createQuery<T extends Entity>(classType: AbstractClassType<T> | ReflectionClass<T>): Query<T>;
 }
 
 export interface DatabasePersistenceChangeSet<T> {
@@ -25,11 +25,11 @@ export interface DatabasePersistenceChangeSet<T> {
 }
 
 export abstract class DatabasePersistence {
-    abstract remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
+    abstract remove<T extends Entity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void>;
 
-    abstract insert<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void>;
+    abstract insert<T extends Entity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void>;
 
-    abstract update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void>;
+    abstract update<T extends Entity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void>;
 
     /**
      * When DatabasePersistence instance is not used anymore, this function will be called.
@@ -62,7 +62,7 @@ export abstract class DatabaseAdapter {
 
     abstract disconnect(force?: boolean): void;
 
-    abstract migrate(classSchemas: ClassSchema[]): Promise<void>;
+    abstract migrate(classSchemas: ReflectionClass<any>[]): Promise<void>;
 
     abstract getName(): string;
 

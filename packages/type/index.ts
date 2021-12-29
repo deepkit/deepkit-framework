@@ -15,12 +15,13 @@ export * from './src/decorator-builder';
 export * from './src/reference';
 export * from './src/serializer';
 export * from './src/serializer-facade';
-export * from './src/serializer-json';
 export * from './src/typeguard';
 export * from './src/types';
 export * from './src/utils';
 export * from './src/validator';
 export * from './src/validators';
+export * from './src/snapshot';
+export * from './src/path';
 
 export * from './src/reflection/type';
 export * from './src/reflection/processor';

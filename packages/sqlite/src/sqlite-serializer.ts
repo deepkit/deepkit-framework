@@ -8,20 +8,25 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { sqlSerializer } from '@deepkit/sql';
+import { SqlSerializer } from '@deepkit/sql';
+import { ReflectionKind } from '@deepkit/type';
 
-export const SqliteSerializer = new class extends sqlSerializer.fork('sqlite') {
-};
+class SQLiteSerializer extends SqlSerializer {
+    protected registerSerializers() {
+        super.registerSerializers();
 
-SqliteSerializer.fromClass.register('date', (property, state) => {
-    state.addSetter(`${state.accessor}.toJSON();`);
-});
+        this.serializeRegistry.registerClass(Date, (type, state) => {
+            state.addSetter(`${state.accessor}.toJSON();`);
+        });
 
+        this.serializeRegistry.register(ReflectionKind.boolean, (type, state) => {
+            state.addSetter(`${state.accessor} ? 1 : 0`);
+        });
 
-SqliteSerializer.fromClass.register('boolean', (property, state) => {
-    state.addSetter(`${state.accessor} ? 1 : 0`);
-});
+        this.deserializeRegistry.register(ReflectionKind.boolean, (type, state) => {
+            state.addSetter(`${state.accessor} === 1`);
+        });
+    }
+}
 
-SqliteSerializer.toClass.register('boolean', (property, state) => {
-    state.addSetter(`${state.accessor} === 1`);
-});
+export const SqliteSerializer = new SQLiteSerializer;

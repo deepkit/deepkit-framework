@@ -9,10 +9,14 @@
  */
 
 import {
+    autoIncrementAnnotation,
+    backReferenceAnnotation,
+    copyAndSetParent,
     dataAnnotation,
     databaseAnnotation,
     embeddedAnnotation,
     excludedAnnotation,
+    getTypeJitContainer,
     groupAnnotation,
     indexAnnotation,
     IndexOptions,
@@ -36,6 +40,7 @@ import {
 import { AbstractClassType, ClassType, getClassName, isArray, isClass } from '@deepkit/core';
 import { Packed, resolvePacked, resolveRuntimeType } from './processor';
 import { NoTypeReceived } from '../utils';
+import { findCommonLiteral } from '../inheritance';
 
 /**
  * Receives the runtime type of template argument.
@@ -355,14 +360,25 @@ export class ReflectionFunction {
     }
 }
 
+/**
+ * Resolved the class/object ReflectionClass of the given TypeClass|TypeObjectLiteral
+ */
+export function resolveClassType(type: OuterType): ReflectionClass<any> {
+    if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) {
+        throw new Error(`Cant resolve ReflectionClass of type ${type.kind} since its not a class or object literal`);
+    }
+
+    return ReflectionClass.from(type);
+}
+
 export class ReflectionProperty {
     //is this really necessary?
-    jsonType?: Type;
+    jsonType?: OuterType;
 
     serializer?: SerializerFn;
     deserializer?: SerializerFn;
 
-    type: Type;
+    type: OuterType;
 
     symbol: symbol;
 
@@ -375,7 +391,7 @@ export class ReflectionProperty {
         this.symbol = Symbol(String(this.getName()));
     }
 
-    setType(type: Type) {
+    setType(type: OuterType) {
         this.type = type;
     }
 
@@ -388,6 +404,17 @@ export class ReflectionProperty {
     }
 
     /**
+     * Returns the sub type if available (for arrays for example).
+     *
+     * @throws Error if the property type does not support sub types.
+     */
+    getSubType(): OuterType {
+        if (this.type.kind === ReflectionKind.array) return this.type.type as OuterType;
+
+        throw new Error(`Type ${this.type.kind} does not support sub types`);
+    }
+
+    /**
      * If undefined, it's not an embedded class.
      */
     getEmbedded(): { prefix?: string } | undefined {
@@ -395,11 +422,23 @@ export class ReflectionProperty {
     }
 
     isBackReference(): boolean {
-        return !!referenceAnnotation.getAnnotations(this.getType());
+        return backReferenceAnnotation.getFirst(this.getType()) !== undefined;
+    }
+
+    isAutoIncrement(): boolean {
+        return autoIncrementAnnotation.getFirst(this.getType()) === true;
     }
 
     isReference(): boolean {
         return referenceAnnotation.getFirst(this.getType()) !== undefined;
+    }
+
+    isArray(): boolean {
+        return this.type.kind === ReflectionKind.array;
+    }
+
+    getForeignKeyName(): string {
+        return this.getNameAsString();
     }
 
     getReference(): ReferenceOptions | undefined {
@@ -423,6 +462,15 @@ export class ReflectionProperty {
     }
 
     /**
+     * Returns the ReflectionClass of the reference class/object literal.
+     *
+     * @throws Error if the property is not from type TypeClass or TypeObjectLiteral
+     */
+    getResolvedReflectionClass(): ReflectionClass<any> {
+        return resolveClassType(this.getType());
+    }
+
+    /**
      * If undefined the property is not an index.
      * A unique property is defined as index with IndexOptions.unique=true.
      */
@@ -439,7 +487,7 @@ export class ReflectionProperty {
     }
 
     clone(reflectionClass?: ReflectionClass<any>, property?: TypeProperty | TypePropertySignature): ReflectionProperty {
-        const c = new ReflectionProperty(property || this.property, reflectionClass || this.reflectionClass);
+        const c = new ReflectionProperty(copyAndSetParent(property || this.property), reflectionClass || this.reflectionClass);
         c.jsonType = this.jsonType;
         c.serializer = this.serializer;
         c.deserializer = this.deserializer;
@@ -455,12 +503,20 @@ export class ReflectionProperty {
         return this.property.name;
     }
 
+    getNameAsString(): string {
+        return String(this.property.name);
+    }
+
+    get name(): string {
+        return String(this.property.name);
+    }
+
     getKind(): ReflectionKind {
         return this.type.kind;
     }
 
-    getType(): Type {
-        return this.type;
+    getType(): OuterType {
+        return this.type as OuterType;
     }
 
     getDescription(): string {
@@ -491,6 +547,10 @@ export class ReflectionProperty {
      */
     isOptional(): boolean {
         return this.property.optional === true || (this.type.kind === ReflectionKind.union && this.type.types.some(v => v.kind === ReflectionKind.undefined));
+    }
+
+    setOptional(v: boolean): void {
+        this.property.optional = v ? true : undefined;
     }
 
     isNullable(): boolean {
@@ -563,6 +623,7 @@ export class EntityData {
     collectionName?: string;
     data: { [name: string]: any } = {};
     indexes: { names: string[], options: IndexOptions }[] = [];
+    singleTableInheritance?: true;
 }
 
 export class ReflectionClass<T> {
@@ -572,14 +633,9 @@ export class ReflectionClass<T> {
     description: string = '';
 
     /**
-     * A place where arbitrary data is stored.
+     * A place where arbitrary data is stored, usually set via decorator t.data.
      */
     data: { [name: string]: any } = {};
-
-    /**
-     * A place where arbitrary jit functions and its cache data is stored.
-     */
-    jit: { [name: string]: any } = {};
 
     /**
      * The unique entity name.
@@ -592,6 +648,8 @@ export class ReflectionClass<T> {
      * ```
      */
     name?: string;
+
+    databaseSchemaName?: string;
 
     /**
      * The collection name, used in database context (also known as table name).
@@ -606,6 +664,8 @@ export class ReflectionClass<T> {
      * ```
      */
     collectionName?: string;
+
+    singleTableInheritance: boolean = false;
 
     /**
      * Defined multi-column indexes.
@@ -630,11 +690,23 @@ export class ReflectionClass<T> {
     protected methods: ReflectionMethod[] = [];
 
     /**
+     * References and back references.
+     */
+    protected references: ReflectionProperty[] = [];
+
+    protected primaries: ReflectionProperty[] = [];
+
+    /**
      * If a custom validator method was set via @t.validator, then this is the method name.
      */
     public validationMethod?: string | symbol | number;
 
-    public type: TypeClass | TypeObjectLiteral;
+    public readonly type: TypeClass | TypeObjectLiteral;
+
+    /**
+     * A class using @t.singleTableInheritance registers itself in this array in its super class.
+     */
+    public subClasses: ReflectionClass<any>[] = [];
 
     constructor(type: Type, public parent?: ReflectionClass<any>) {
         if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) throw new Error('Only class, interface, or object literal type possible');
@@ -653,6 +725,19 @@ export class ReflectionClass<T> {
         }
     }
 
+    clone(): ReflectionClass<any> {
+        const reflection = new ReflectionClass(copyAndSetParent(this.type), this.parent);
+        reflection.name = this.name;
+        reflection.collectionName = this.collectionName;
+        reflection.databaseSchemaName = this.databaseSchemaName;
+        reflection.singleTableInheritance = this.singleTableInheritance;
+        reflection.indexes = this.indexes.slice();
+        reflection.subClasses = this.subClasses.slice();
+        reflection.data = { ...this.data };
+
+        return reflection;
+    }
+
     getPropertiesDeclaredInConstructor(): ReflectionProperty[] {
         const constructor = this.getMethod('constructor');
         if (!constructor) return [];
@@ -660,33 +745,53 @@ export class ReflectionClass<T> {
         return this.properties.filter(v => propertyNames.includes(String(v.getName())));
     }
 
+    getJitContainer() {
+        return getTypeJitContainer(this.type);
+    }
+
     getClassType(): ClassType {
         return this.type.kind === ReflectionKind.class ? this.type.classType : Object;
     }
 
     getClassName(): string {
-        return getClassName(this.getClassType());
+        return this.type.kind === ReflectionKind.class ? getClassName(this.getClassType()) : this.type.typeName || 'Object';
     }
 
-    hasPrimary(): boolean {
-        for (const property of this.getProperties()) {
-            if (property.isPrimaryKey()) return true;
-        }
-        return false;
+    getName(): string {
+        return this.name || this.getClassName();
+    }
+
+    getCollectionName(): string {
+        return this.collectionName || this.getName();
+    }
+
+    hasProperty(name: string | symbol | number): boolean {
+        return this.propertyNames.includes(name);
     }
 
     getPrimary(): ReflectionProperty {
-        for (const property of this.getProperties()) {
-            if (property.isPrimaryKey()) return property;
-        }
-        throw new Error(`Class ${this.getClassName()} has no primary key.`);
+        if (!this.primaries.length) throw new Error(`Class ${this.getClassName()} has no primary key.`);
+        return this.primaries[0];
     }
 
-    /**
-     * Returns the parent/super class type, if available.
-     */
-    getSuperClass(): ClassType | undefined {
-        return this.parent ? this.parent.getClassType() : undefined;
+    public isSchemaOf(classType: ClassType): boolean {
+        if (this.getClassType() === classType) return true;
+        let currentProto = Object.getPrototypeOf(this.getClassType().prototype);
+        while (currentProto && currentProto !== Object.prototype) {
+            if (currentProto === classType) return true;
+            currentProto = Object.getPrototypeOf(currentProto);
+        }
+
+        return false;
+    }
+
+
+    hasPrimary(): boolean {
+        return this.primaries.length > 0;
+    }
+
+    getPrimaries(): ReflectionProperty[] {
+        return this.primaries;
     }
 
     /**
@@ -699,6 +804,11 @@ export class ReflectionClass<T> {
     addProperty(property: ReflectionProperty) {
         this.properties.push(property);
         this.propertyNames.push(property.getName());
+        if (property.isReference() || property.isBackReference()) {
+            this.references.push(property);
+        }
+
+        if (property.isPrimaryKey()) this.primaries.push(property);
     }
 
     addMethod(method: ReflectionMethod) {
@@ -708,7 +818,7 @@ export class ReflectionClass<T> {
 
     add(member: Type) {
         if (member.kind === ReflectionKind.property || member.kind === ReflectionKind.propertySignature) {
-            const existing = this.getProperty(member.name);
+            const existing = this.getPropertyOrUndefined(member.name);
             if (existing) {
                 existing.setType(member.type);
             } else {
@@ -717,7 +827,7 @@ export class ReflectionClass<T> {
         }
 
         if (member.kind === ReflectionKind.method || member.kind === ReflectionKind.methodSignature) {
-            const existing = this.getMethod(member.name);
+            const existing = this.getMethodOrUndefined(member.name);
             if (existing) {
                 existing.setType(member);
             } else {
@@ -726,14 +836,40 @@ export class ReflectionClass<T> {
         }
     }
 
+    getSingleTableInheritanceDiscriminant(): ReflectionProperty {
+        if (this.data.singleTableInheritanceProperty) return this.data.singleTableInheritanceProperty;
+
+        // let discriminant = findCommonDiscriminant(this.subClasses);
+
+        //when no discriminator was found, find a common literal
+        const discriminant = findCommonLiteral(this.subClasses);
+
+        if (!discriminant) {
+            throw new Error(`Sub classes of ${this.getClassName()} single-table inheritance [${this.subClasses.map(v => v.getClassName())}] have no common discriminant or common literal. Please define one.`);
+        }
+
+        return this.data.singleTableInheritanceProperty = this.getProperty(discriminant);
+    }
+
     applyDecorator(data: EntityData) {
         Object.assign(this.data, data.data);
         this.name = data.name;
         this.collectionName = data.collectionName;
         this.indexes = data.indexes;
+        if (data.singleTableInheritance) {
+            this.singleTableInheritance = true;
+            if (this.parent) {
+                this.parent.subClasses.push(this);
+            }
+        }
     }
 
-    static from<T>(classTypeIn: AbstractClassType<T> | Type, ...args: any[]): ReflectionClass<T> {
+    static from<T>(classTypeIn?: ReceiveType<T> | AbstractClassType<T> | TypeClass | TypeObjectLiteral | ReflectionClass<any>, ...args: any[]): ReflectionClass<T> {
+        if (!classTypeIn) throw new Error(`No type given in ReflectionClass.from<T>`);
+        if (isArray(classTypeIn)) classTypeIn = resolveReceiveType(classTypeIn);
+
+        if (classTypeIn instanceof ReflectionClass) return classTypeIn;
+
         if (isType(classTypeIn)) {
             return new ReflectionClass(classTypeIn);
         }
@@ -751,7 +887,7 @@ export class ReflectionClass<T> {
             }
 
             const parentProto = Object.getPrototypeOf(classType.prototype);
-            const parentReflectionClass: ReflectionClass<any> | undefined = parentProto ? ReflectionClass.from(parentProto) : undefined;
+            const parentReflectionClass: ReflectionClass<T> | undefined = parentProto ? ReflectionClass.from(parentProto) : undefined;
 
             const reflectionClass = new ReflectionClass(type, parentReflectionClass);
             if (args.length === 0) {
@@ -784,27 +920,46 @@ export class ReflectionClass<T> {
         return this.methods;
     }
 
-    getConstructor(): ReflectionMethod | undefined {
-        return this.getMethod('constructor');
+    /**
+     * Returns references and back references.
+     */
+    getReferences(): ReflectionProperty[] {
+        return this.references;
     }
 
-    getProperty(name: string | number | symbol): ReflectionProperty | undefined {
+    getConstructorOrUndefined(): ReflectionMethod | undefined {
+        return this.getMethodOrUndefined('constructor');
+    }
+
+    getPropertyOrUndefined(name: string | number | symbol): ReflectionProperty | undefined {
         for (const property of this.getProperties()) {
             if (property.getName() === name) return property;
         }
         return;
     }
 
+    getProperty(name: string | number | symbol): ReflectionProperty {
+        const property = this.getPropertyOrUndefined(name);
+        if (!property) throw new Error(`No property ${String(name)} found in ${this.getClassName()}`);
+        return property;
+    }
+
     getMethodParameters(name: string | number | symbol): ReflectionParameter[] {
-        const method = this.getMethod(name);
+        const method = this.getMethodOrUndefined(name);
         return method ? method.getParameters() : [];
     }
 
-    getMethod(name: string | number | symbol): ReflectionMethod | undefined {
+    getMethodOrUndefined(name: string | number | symbol): ReflectionMethod | undefined {
         for (const method of this.getMethods()) {
             if (method.getName() === name) return method;
         }
         return;
+    }
+
+    getMethod(name: string | number | symbol): ReflectionMethod {
+        const method = this.getMethodOrUndefined(name);
+        if (!method) throw new Error(`No method ${String(name)} found in ${this.getClassName()}`);
+        return method;
     }
 
     public hasCircularReference(): boolean {

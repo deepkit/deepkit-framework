@@ -18,7 +18,8 @@ import {
     getSimplePrimaryKeyHashGenerator,
     getSingleTableInheritanceTypeValue,
     PrimaryKeyFields,
-    PropertySchema
+    PropertySchema,
+    ReflectionClass
 } from '@deepkit/type';
 import { Subject } from 'rxjs';
 import { DatabaseAdapter } from './database-adapter';
@@ -202,7 +203,7 @@ export class BaseQuery<T extends Entity> {
     public model: DatabaseQueryModel<T>;
 
     constructor(
-        public readonly classSchema: ClassSchema,
+        public readonly classSchema: ReflectionClass<any>,
         model?: DatabaseQueryModel<T>
     ) {
         this.model = model || this.createModel<T>();
@@ -582,8 +583,8 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     }
 
     protected onQueryResolve(query: this): this {
-        if (query.classSchema.singleTableInheritance && query.classSchema.superClass) {
-            const discriminant = query.classSchema.superClass.getSingleTableInheritanceDiscriminant();
+        if (query.classSchema.singleTableInheritance && query.classSchema.parent) {
+            const discriminant = query.classSchema.parent.getSingleTableInheritanceDiscriminant();
             let value = query.classSchema.getProperty(discriminant.name).getDefaultValue();
             if (value === undefined) value = getSingleTableInheritanceTypeValue(query.classSchema);
             return query.addFilter(discriminant.name as keyof T & string, value);
@@ -797,7 +798,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     public async ids(singleKey?: false): Promise<PrimaryKeyFields<T>[]>;
     public async ids(singleKey: true): Promise<ExtractPrimaryKeyType<T>[]>;
     public async ids(singleKey: boolean = false): Promise<PrimaryKeyFields<T>[] | ExtractPrimaryKeyType<T>[]> {
-        const pks: any = this.classSchema.getPrimaryFields().map(v => v.name) as FieldName<T>[];
+        const pks: any = this.classSchema.getPrimaries().map(v => v.name) as FieldName<T>[];
         if (singleKey && pks.length > 1) {
             throw new Error(`Entity ${this.classSchema.getClassName()} has more than one primary key`);
         }

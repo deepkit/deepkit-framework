@@ -38,10 +38,12 @@ export function stringifyUuid(buffer: Uint8Array, offset: number = 0): string {
     return stringify(buffer, offset);
 }
 
+export type Binary = ArrayBuffer | Uint8Array | Int8Array | Uint8ClampedArray | Uint16Array | Int16Array | Uint32Array | Int32Array | Float32Array | Float64Array;
+
 export type JSONPartial<T> = T extends Date ? string :
     T extends Array<infer K> ? Array<JSONPartial<K>> :
         // T extends TypedArrays ? string :
-        T extends ArrayBuffer ? string :
+        T extends Binary ? string :
             T extends object ? JSONPartialObject<T> :
                 T extends string ? number | T :
                     T extends boolean ? number | string | T :
@@ -53,8 +55,7 @@ export type JSONPartialObject<T> = { [name in keyof T]?: T[name] | null };
 
 export type JSONSingle<T> = T extends Date ? string | Date :
     T extends Array<infer K> ? Array<JSONSingle<K>> :
-        // T extends TypedArrays ? string :
-        T extends ArrayBuffer ? string :
+        T extends Binary ? string :
             T extends object ? JSONEntity<T> :
                 T extends string ? string | number | boolean | undefined :
                     T extends boolean ? T | number | string :

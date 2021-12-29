@@ -8,20 +8,21 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Changes, ClassSchema, getClassSchema, getClassTypeFromInstance } from '@deepkit/type';
+import { Changes, ReflectionClass } from '@deepkit/type';
 import { Entity } from './type';
 import sift from 'sift';
 import { FilterQuery } from './query';
 import { getInstanceStateFromItem } from './identity-map';
+import { getClassTypeFromInstance } from '@deepkit/core';
 
 export type FlattenIfArray<T> = T extends Array<any> ? T[0] : T;
 export type FieldName<T> = keyof T & string;
 
-export function getClassSchemaInstancePairs<T extends Entity>(items: Iterable<T>): Map<ClassSchema, T[]> {
-    const map = new Map<ClassSchema, T[]>();
+export function getClassSchemaInstancePairs<T extends Entity>(items: Iterable<T>): Map<ReflectionClass<any>, T[]> {
+    const map = new Map<ReflectionClass<any>, T[]>();
 
     for (const item of items) {
-        const classSchema = getClassSchema(getClassTypeFromInstance(item));
+        const classSchema = ReflectionClass.from(getClassTypeFromInstance(item));
         let items = map.get(classSchema);
         if (!items) {
             items = [];
@@ -45,13 +46,13 @@ export function findQueryList<T extends { [index: string]: any }>(items: T[], qu
 }
 
 export type Placeholder<T> = () => T;
-export type Resolve<T extends {_: Placeholder<any>}> = ReturnType<T['_']>;
+export type Resolve<T extends { _: Placeholder<any> }> = ReturnType<T['_']>;
 export type Replace<T, R> = T & { _: Placeholder<R> };
 
 export function buildChangesFromInstance<T>(item: T): Changes<T> {
     const state = getInstanceStateFromItem(item);
     const lastSnapshot = state.getSnapshot();
     const currentSnapshot = state.classState.snapshot(item);
-    console.log(item, state.classState.classSchema.getClassName(), state.item === item, lastSnapshot, currentSnapshot)
+    console.log(item, state.classState.classSchema.getClassName(), state.item === item, lastSnapshot, currentSnapshot);
     return state.classState.changeDetector(lastSnapshot, currentSnapshot, item) || new Changes;
 }

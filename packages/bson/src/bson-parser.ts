@@ -430,7 +430,7 @@ export function parseArray(parser: BaseParser): any[] {
     return result;
 }
 
-export function deserialize(buffer: Uint8Array, offset = 0) {
+export function deserializeWithoutOptimiser(buffer: Uint8Array, offset = 0) {
     return parseObject(new ParserV2(buffer, offset));
 }
 

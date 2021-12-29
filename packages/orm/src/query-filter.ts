@@ -8,27 +8,27 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, getClassSchema, isArray, PropertySchema } from '@deepkit/type';
-import { ClassType, isPlainObject } from '@deepkit/core';
+import { ReflectionClass, ReflectionKind, ReflectionProperty } from '@deepkit/type';
+import { ClassType, isArray, isPlainObject } from '@deepkit/core';
 import { FilterQuery } from './query';
 
-export type Converter = (convertClassType: ClassSchema, path: string, value: any) => any;
+export type Converter = (convertClass: ReflectionClass<any>, path: string, value: any) => any;
 export type QueryFieldNames = { [name: string]: boolean };
 export type QueryCustomFields = { [name: string]: (name: string, value: any, fieldNames: QueryFieldNames, converter: Converter) => any };
 
-export function exportQueryFilterFieldNames(classSchema: ClassSchema<any>, filter: FilterQuery<any>): string[] {
+export function exportQueryFilterFieldNames(reflectionClass: ReflectionClass<any>, filter: FilterQuery<any>): string[] {
     const filterFields: QueryFieldNames = {};
-    convertQueryFilter(classSchema, filter, (c, p, v) => v, filterFields);
+    convertQueryFilter(reflectionClass, filter, (c, p, v) => v, filterFields);
     return Object.keys(filterFields);
 }
 
-export function replaceQueryFilterParameter<T>(classSchema: ClassSchema<T>, filter: FilterQuery<T>, parameters: { [name: string]: any }): any {
-    return convertQueryFilter(classSchema, filter, (convertClassType: ClassSchema, path: string, value: any) => {
+export function replaceQueryFilterParameter<T>(reflectionClass: ReflectionClass<any>, filter: FilterQuery<T>, parameters: { [name: string]: any }): any {
+    return convertQueryFilter(reflectionClass, filter, (convertClass: ReflectionClass<any>, path: string, value: any) => {
         return value;
     }, {}, {
         $parameter: (name, value) => {
             if (!(value in parameters)) {
-                throw new Error(`Parameter ${value} not defined in ${classSchema.getClassName()} query.`);
+                throw new Error(`Parameter ${value} not defined in ${reflectionClass.getClassName()} query.`);
             }
             return parameters[value];
         }
@@ -36,8 +36,8 @@ export function replaceQueryFilterParameter<T>(classSchema: ClassSchema<T>, filt
 }
 
 function convertProperty(
-    schema: ClassSchema,
-    property: PropertySchema,
+    schema: ReflectionClass<any>,
+    property: ReflectionProperty,
     fieldValue: any,
     name: string,
     converter: Converter,
@@ -93,7 +93,7 @@ function convertProperty(
                     fieldNamesMap[name] = true;
                 } else {
                     fieldNamesMap[name] = true;
-                    if (property.isArray && !isArray(value)) {
+                    if (property.getKind() === ReflectionKind.array && !isArray(value)) {
                         //implicit array conversion
                         (fieldValue as any)[key] = converter(schema, name + '.0', value);
                     } else {
@@ -104,8 +104,7 @@ function convertProperty(
         }
     } else {
         fieldNamesMap[name] = true;
-
-        if (property.isArray && !isArray(fieldValue)) {
+        if (property.getKind() === ReflectionKind.array && !isArray(fieldValue)) {
             //implicit array conversion
             return converter(schema, name + '.0', fieldValue);
         } else {
@@ -117,14 +116,14 @@ function convertProperty(
 }
 
 export function convertQueryFilter<T, K extends keyof T, Q extends FilterQuery<T>>(
-    classType: ClassType<T> | ClassSchema<T>,
+    classType: ClassType<T> | ReflectionClass<T>,
     filter: Q,
     converter: Converter,
     fieldNamesMap: QueryFieldNames = {},
     customMapping: QueryCustomFields = {},
 ): Q {
     const result: { [i: string]: any } = {};
-    const schema = getClassSchema(classType);
+    const schema = ReflectionClass.from(classType);
 
     for (const key in filter) {
         if (!filter.hasOwnProperty(key)) continue;
@@ -133,7 +132,7 @@ export function convertQueryFilter<T, K extends keyof T, Q extends FilterQuery<T
         const property = schema.getPropertyOrUndefined(key);
 
         //when i is a reference, we rewrite it to the foreign key name
-        let targetI = property && property.isReference ? property.getForeignKeyName() : key;
+        let targetI = property && property.isReference() ? property.getForeignKeyName() : key;
 
         if (key[0] === '$') {
             result[key] = (fieldValue as any[]).map(v => convertQueryFilter(classType, v, converter, fieldNamesMap, customMapping));

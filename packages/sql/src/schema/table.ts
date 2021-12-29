@@ -9,20 +9,20 @@
  */
 
 import { arrayRemoveItem } from '@deepkit/core';
-import { ClassSchema, PropertySchema } from '@deepkit/type';
 import { cyrb53 } from '../hash';
+import { ReflectionClass, ReflectionProperty } from '@deepkit/type';
 
 export class DatabaseModel {
     public schemaName: string = '';
 
-    public schemaMap = new Map<ClassSchema, Table>();
+    public schemaMap = new Map<ReflectionClass, Table>();
 
     constructor(public tables: Table[] = []) {
     }
 
-    getTableForSchema(schema: ClassSchema): Table {
+    getTableForClass(schema: ReflectionClass): Table {
         const table = this.schemaMap.get(schema);
-        if (!table) throw new Error(`No table for entity ${schema.getName()}`);
+        if (!table) throw new Error(`No table for entity ${schema.getClassName()}`);
         return table;
     }
 
@@ -57,7 +57,7 @@ export class Table {
     public schemaName: string = '';
     public alias: string = '';
 
-    public columnForProperty: Map<PropertySchema, Column> = new Map;
+    public columnForProperty: Map<ReflectionProperty, Column> = new Map;
     public columns: Column[] = [];
     public indices: Index[] = [];
     public foreignKeys: ForeignKey[] = [];
@@ -80,7 +80,7 @@ export class Table {
         return (this.schemaName ? this.schemaName + schemaDelimiter : '') + this.name;
     }
 
-    addColumn(name: string, property?: PropertySchema): Column {
+    addColumn(name: string, property?: ReflectionProperty): Column {
         const column = new Column(this, name);
         this.columns.push(column);
         if (property) this.columnForProperty.set(property, column);
@@ -109,9 +109,9 @@ export class Table {
         return column;
     }
 
-    getColumnForProperty(property: PropertySchema): Column {
+    getColumnForProperty(property: ReflectionProperty): Column {
         const column = this.columnForProperty.get(property);
-        if (!column) throw new Error(`Column ${property.name} not found at table ${this.name}`);
+        if (!column) throw new Error(`Column ${property.getNameAsString()} not found at table ${this.name}`);
         return column;
     }
 

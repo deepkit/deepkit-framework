@@ -223,6 +223,17 @@ test('basic typed array', () => {
     expect(() => getBSONDeserializer(schema)(serialize({ v: '123' }))).toThrow(`Cannot convert bson type STRING to Uint8Array`);
 });
 
+test('basic union', () => {
+    type t = { v: string | number };
+    expect(deserializeBSON<t>(serialize({ v: 'abc' }))).toEqual({ v: 'abc' });
+    expect(deserializeBSON<t>(serialize({ v: 123 }))).toEqual({ v: 123 });
+});
+
+test('basic union two objects', () => {
+    type t = { a: string } | {b: number};
+    expect(deserializeBSON<t>(serialize({ a: 'abc' }))).toEqual({ a: 'abc' });
+    expect(deserializeBSON<t>(serialize({ b: 123 }))).toEqual({ b: 123 });
+});
 
 test('basic union with typed array', () => {
     const buffer = Buffer.allocUnsafe(16);
@@ -616,6 +627,64 @@ test('map union', () => {
     {
         type t = { v: Map<string, number> | [C] };
         expect(deserializeBSON<t>(serialize({ v: [['a', 23], ['b', 34]] }))).toEqual({ v: new Map<any, any>([['a', 23], ['b', 34]]) });
-        expect(deserializeBSON<t>(serialize({ v: [{d: true}] }))).toEqual({ v: [{d: true}] });
+        expect(deserializeBSON<t>(serialize({ v: [{ d: true }] }))).toEqual({ v: [{ d: true }] });
     }
+});
+
+test('index signature', () => {
+    interface A {
+        [name: string]: number;
+    }
+
+    expect(deserializeBSON<A>(serialize({ a: 1 }))).toEqual({ a: 1 });
+    expect(deserializeBSON<A>(serialize({ a: 1, b: 2 }))).toEqual({ a: 1, b: 2 });
+});
+
+test('index signature in union', () => {
+    interface A {
+        [name: string]: number;
+    }
+
+    type t = A | { another: true };
+
+    expect(deserializeBSON<t>(serialize({ a: 1 }))).toEqual({ a: 1 });
+    expect(deserializeBSON<t>(serialize({ another: true }))).toEqual({ another: true });
+    expect(deserializeBSON<t>(serialize({ a: 1, b: 2 }))).toEqual({ a: 1, b: 2 });
+});
+
+test('index signature template literal', () => {
+    interface A {
+        [name: `a${number}`]: number;
+    }
+
+    expect(deserializeBSON<A>(serialize({ a23: 1 }))).toEqual({ a23: 1 });
+    expect(deserializeBSON<A>(serialize({ add: 1 }))).toEqual({});
+    expect(deserializeBSON<A>(serialize({ a23: 1, a3: 3 }))).toEqual({ a23: 1, a3: 3 });
+});
+
+test('index signature multiple', () => {
+    interface A {
+        [name: number]: boolean;
+
+        [name2: `a${number}`]: number;
+    }
+
+    expect(deserializeBSON<A>(serialize({ a23: 1 }))).toEqual({ a23: 1 });
+    expect(deserializeBSON<A>(serialize({ 12: true }))).toEqual({ 12: true });
+    expect(deserializeBSON<A>(serialize({ a23: 2, 12: true }))).toEqual({ a23: 2, 12: true });
+});
+
+test('index signature + object literal', () => {
+    interface A {
+        [name: number]: boolean;
+
+        [name2: `a${number}`]: number;
+    }
+
+    type t = A & { [P in 'abc']: string };
+
+    expect(deserializeBSON<t>(serialize({ abc: 'yes' }))).toEqual({ abc: 'yes' });
+    expect(() => deserializeBSON<t>(serialize({ a23: 1 }))).toThrow('abc: Cannot convert undefined value to string');
+    expect(deserializeBSON<t>(serialize({ abc: 'yes', 12: true }))).toEqual({ abc: 'yes', 12: true });
+    expect(deserializeBSON<t>(serialize({ abc: 'yes', 12: true, a23: 23 }))).toEqual({ abc: 'yes', 12: true, a23: 23 });
 });

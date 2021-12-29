@@ -9,11 +9,10 @@
  */
 
 import { AbstractClassType, ClassType, getClassName } from '@deepkit/core';
-import { ClassSchema, getClassSchema, getReferenceInfo, isReferenceHydrated, PrimaryKeyFields } from '@deepkit/type';
+import { getReferenceInfo, isReferenceHydrated, PrimaryKeyFields, ReflectionClass } from '@deepkit/type';
 import { DatabaseAdapter } from './database-adapter';
 import { DatabaseSession } from './database-session';
 import { QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter } from './event';
-import { getNormalizedPrimaryKey } from './identity-map';
 import { DatabaseLogger } from './logger';
 import { Query } from './query';
 import { getReference } from './reference';
@@ -73,7 +72,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     /**
      * The entity schema registry.
      */
-    public readonly entities = new Set<ClassSchema>();
+    public readonly entities = new Set<ReflectionClass<any>>();
 
     /**
      * Event API for DatabaseQuery events.
@@ -112,11 +111,11 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     constructor(
         public readonly adapter: ADAPTER,
-        schemas: (ClassType | ClassSchema)[] = []
+        schemas: (ClassType | ReflectionClass<any>)[] = []
     ) {
         if (Database.registry) Database.registry.push(this);
 
-        this.query = (classType: ClassType | ClassSchema) => {
+        this.query = (classType: ClassType | ReflectionClass<any>) => {
             const session = this.createSession();
             session.withIdentityMap = false;
             return session.query(classType);
@@ -148,7 +147,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         }
     }
 
-    static createClass<T extends DatabaseAdapter>(name: string, adapter: T, schemas: (ClassType | ClassSchema)[] = []): ClassType<Database<T>> {
+    static createClass<T extends DatabaseAdapter>(name: string, adapter: T, schemas: (ClassType | ReflectionClass<any>)[] = []): ClassType<Database<T>> {
         return class extends Database<T> {
             constructor(oAdapter = adapter, oSchemas = schemas) {
                 super(oAdapter, oSchemas);
@@ -241,10 +240,8 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * const user = database.getReference(User, 1);
      * ```
      */
-    public getReference<T>(classType: ClassType<T> | ClassSchema<T>, primaryKey: any | PrimaryKeyFields<T>): T {
-        const schema = getClassSchema(classType);
-        const pk = getNormalizedPrimaryKey(schema, primaryKey);
-        return getReference(schema, pk);
+    public getReference<T>(classType: ClassType<T>, primaryKey: PrimaryKeyFields<T>): T {
+        return getReference(ReflectionClass.from(classType), primaryKey);
     }
 
     /**
@@ -252,9 +249,9 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * This is mainly used for db migration utilities and active record.
      * If you want to use active record, you have to assign your entities first to a database using this method.
      */
-    registerEntity(...entities: (ClassType | ClassSchema)[]): void {
+    registerEntity(...entities: (ClassType | ReflectionClass<any>)[]): void {
         for (const entity of entities) {
-            const schema = getClassSchema(entity);
+            const schema = ReflectionClass.from(entity);
 
             this.entities.add(schema);
 
@@ -263,7 +260,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         }
     }
 
-    getEntity(name: string): ClassSchema {
+    getEntity(name: string): ReflectionClass<any> {
         for (const entity of this.entities.values()) {
             if (entity.getName() === name) return entity;
         }
@@ -332,13 +329,13 @@ export class ActiveRecord {
     }
 
     public static getDatabase(): Database<any> {
-        const database = getClassSchema(this).data['orm.database'] as Database<any> | undefined;
+        const database = ReflectionClass.from(this).data['orm.database'] as Database<any> | undefined;
         if (!database) throw new Error(`No database assigned to ${getClassName(this)}. Use Database.registerEntity(${getClassName(this)}) first.`);
         return database;
     }
 
     public static registerDatabase(database: Database<any>): void {
-        getClassSchema(this).data['orm.database'] = database;
+        ReflectionClass.from(this).data['orm.database'] = database;
     }
 
     public async save(): Promise<void> {

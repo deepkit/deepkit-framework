@@ -10,9 +10,8 @@
 import { expect, test } from '@jest/globals';
 import { reflect, ReflectionClass } from '../../../src/reflection/reflection';
 import { BackReference, Embedded, Excluded, int8, integer, PrimaryKey, Reference } from '../../../src/reflection/type';
-import { createSerializeFunction, SerializationError } from '../../../src/serializer';
+import { createSerializeFunction, SerializationError, serializer } from '../../../src/serializer';
 import { cast, deserialize, serialize } from '../../../src/serializer-facade';
-import { jsonSerializer } from '../../../src/serializer-json';
 import { getClassName } from '@deepkit/core';
 
 test('deserializer', () => {
@@ -21,7 +20,7 @@ test('deserializer', () => {
         created!: Date;
     }
 
-    const fn = createSerializeFunction(reflect(User), jsonSerializer.deserializeRegistry);
+    const fn = createSerializeFunction(reflect(User), serializer.deserializeRegistry);
     const o = fn({ username: 'Peter', created: '2021-10-19T00:22:58.257Z' });
     expect(o).toEqual({
         username: 'Peter',

@@ -9,13 +9,7 @@ import { unpopulatedSymbol } from '../../../src/core';
     return this.toString();
 };
 
-/**
- * When the value is not existent anymore (don't confuse with being undefined.).
- * Equal to check with `in`.
- */
-export const RoundTripExcluded: unique symbol = Symbol('NoValue');
-
-export function roundTrip<T>(value: T | any, type?: ReceiveType<T>): T {
+function roundTrip<T>(value: T | any, type?: ReceiveType<T>): T {
     const t = resolveReceiveType(type);
     // console.log('roundTrip', stringifyType(t));
     const json = serialize(value, {}, undefined, type);
@@ -23,12 +17,12 @@ export function roundTrip<T>(value: T | any, type?: ReceiveType<T>): T {
     return res;
 }
 
-export function serializeToJson<T>(value: T | any, type?: ReceiveType<T>): T {
+function serializeToJson<T>(value: T | any, type?: ReceiveType<T>): T {
     const json = serialize(value, {}, undefined, type);
     return json;
 }
 
-export function deserializeFromJson<T>(value: T, type?: ReceiveType<T>): T {
+function deserializeFromJson<T>(value: T, type?: ReceiveType<T>): T {
     const res = cast<T>(value, {}, undefined, type);
     return res;
 }

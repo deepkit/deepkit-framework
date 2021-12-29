@@ -9,13 +9,13 @@
  */
 
 import { convertQueryFilter, FilterQuery } from '@deepkit/orm';
-import { ClassSchema, Serializer } from '@deepkit/type';
+import { pathResolver, ReflectionClass, serialize, Serializer } from '@deepkit/type';
 
-export function getSqlFilter<T>(classSchema: ClassSchema<T>, filter: FilterQuery<T>, parameters: {[name: string]: any} = {}, serializer: Serializer): any {
-    const scope = serializer.for(classSchema);
+export function getSqlFilter<T>(classSchema: ReflectionClass, filter: FilterQuery<T>, parameters: {[name: string]: any} = {}, serializer: Serializer): any {
+    const resolve = pathResolver(classSchema.type);
 
-    return convertQueryFilter(classSchema.classType, (filter || {}), (convertClassType: ClassSchema, path: string, value: any) => {
-        return scope.serializeProperty(path, value);
+    return convertQueryFilter(classSchema.getClassType(), (filter || {}), (convertClass: ReflectionClass, path: string, value: any) => {
+        return serialize(value, undefined, serializer, resolve(path));
     }, {}, {
         $parameter: (name, value) => {
             if (undefined === parameters[value]) {

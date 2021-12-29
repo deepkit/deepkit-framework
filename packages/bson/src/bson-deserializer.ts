@@ -9,6 +9,7 @@ function createBSONDeserializer(type: OuterType, registry: TemplateRegistry, nam
     compiler.context.set('seekElementSize', seekElementSize);
 
     const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, jitStack, [path]);
+    state.target = 'deserialize';
 
     const code = `
         let result;
@@ -23,12 +24,6 @@ function createBSONDeserializer(type: OuterType, registry: TemplateRegistry, nam
 
 export type BSONDeserializer<T> = (bson: Uint8Array, offset?: number) => T;
 
-/**
- * Serializes a schema instance to BSON.
- *
- * Note: The instances needs to be in the mongo format already since it does not resolve decorated properties.
- *       So call it with the result of classToMongo(Schema, item).
- */
 export function getBSONDeserializer<T>(receiveType?: ReceiveType<T>): BSONDeserializer<T> {
     const type = resolveReceiveType(receiveType);
 
