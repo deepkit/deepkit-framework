@@ -263,6 +263,29 @@ test('router body', async () => {
     expect((await httpKernel.request(HttpRequest.POST('/').json({ username: 'Peter' }))).json).toEqual(['Peter', true, '/']);
 });
 
+test('router body is safe for simultaneous requests', async () => {
+    class Body {
+        @t username!: string;
+    }
+
+    class Controller {
+        @http.POST()
+        anyReq(@http.body() body: Body, req: HttpRequest) {
+            return [body.username, body instanceof Body, req.url];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    const makeReq = () => httpKernel.request(HttpRequest.POST('/').json({ username: 'Peter' }));
+
+    const results = await Promise.all([...new Array(100)].map(() => makeReq().then(res => res.json)));
+
+    expect(results).toEqual(
+        results.map(() => ['Peter', true, '/']),
+    )
+});
+
 
 test('router body double', async () => {
     class Body {

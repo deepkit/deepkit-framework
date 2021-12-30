@@ -77,18 +77,6 @@ export class UploadedFile {
     // @t.string.required.nullable hash!: string | 'sha1' | 'md5' | 'sha256' | null;
 }
 
-function parseBody(form: any, req: IncomingMessage, files: { [name: string]: UploadedFile }) {
-    return asyncOperation((resolve, reject) => {
-        form.parse(req, (err: any, fields: any, files: any) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve({ fields, files });
-            }
-        });
-    });
-}
-
 export interface RouteControllerAction {
     //if not set, the root module is used
     module?: AppModule<any>;
@@ -413,12 +401,26 @@ export class Router {
 
     protected routes: RouteConfig[] = [];
 
-    //todo, move some settings to KernelConfig
-    protected form = formidable({
-        multiples: true,
-        hash: 'sha1',
-        enabledPlugins: ['octetstream', 'querystring', 'json'],
-    });
+    private parseBody(req: HttpRequest, files: { [name: string]: UploadedFile }) {
+        const form = formidable({
+            multiples: true,
+            hash: 'sha1',
+            enabledPlugins: ['octetstream', 'querystring', 'json'],
+        });
+        return asyncOperation((resolve, reject) => {
+            if (req.body) {
+                return resolve(req.body);
+            }
+            form.parse(req, (err: any, fields: any, files: any) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    const body = req.body = { ...fields, ...files };
+                    resolve(body);
+                }
+            });
+        });
+    }
 
     constructor(
         controllers: HttpControllers,
@@ -571,11 +573,9 @@ export class Router {
 
         let parseBodyLoading = '';
         if (enableParseBody) {
-            const parseBodyVar = compiler.reserveVariable('parseBody', parseBody);
-            const formVar = compiler.reserveVariable('form', this.form);
+            const parseBodyVar = compiler.reserveVariable('parseBody', this.parseBody.bind(this));
             parseBodyLoading = `
-            const bodyParsed = (await ${parseBodyVar}(${formVar}, request, uploadedFiles));
-            const bodyFields = {...bodyParsed.fields, ...bodyParsed.files};`;
+            const bodyFields = (await ${parseBodyVar}(request, uploadedFiles));`;
             requiresAsyncParameters = true;
         }
 
