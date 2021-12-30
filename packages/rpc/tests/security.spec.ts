@@ -179,3 +179,43 @@ test('onAuthenticate controllers', async () => {
         expect(res).toEqual([true, true, true]);
     }
 });
+
+test('transformError', async () => {
+    class Controller {
+        @rpc.action()
+        test(value: string): string {
+            throw new Error('Internal Error');
+        }
+    }
+
+    class MyKernelSecurity extends RpcKernelSecurity {
+        async hasControllerAccess(session: Session) {
+            return true;
+        }
+
+        async isAllowedToRegisterAsPeer(session: Session) {
+            return true;
+        }
+
+        async isAllowedToSendToPeer(session: Session) {
+            return true;
+        }
+
+        async authenticate(token: any): Promise<Session> {
+            return {} as Session;
+        }
+
+        transformError(err: Error) {
+            const userError = new Error('Unknown error occured');
+            userError.stack = userError.stack!.split('\n')[0];
+            return userError;
+        }
+    }
+
+    const kernel = new RpcKernel(undefined, new MyKernelSecurity);
+    kernel.registerController('test', Controller);
+
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('test');
+    await expect(controller.test('asd')).rejects.toThrow('Unknown error occured');
+});
