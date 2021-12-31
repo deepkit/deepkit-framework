@@ -1758,7 +1758,7 @@ export function mixin<T extends (ClassSchema | ClassType)[]>(...classTypes: T): 
     for (const classType of classTypes) {
         const foreignSchema = getClassSchema(classType);
 
-        for (const i in foreignSchema.classType.prototype) {
+        for (const i of Object.getOwnPropertyNames(foreignSchema.classType.prototype)) {
             schema.classType.prototype[i] = foreignSchema.classType.prototype[i];
         }
 
