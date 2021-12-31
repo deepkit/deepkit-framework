@@ -182,6 +182,12 @@ export class HttpRequest extends IncomingMessage {
 
     public uploadedFiles: { [name: string]: UploadedFile } = {};
 
+    /**
+     * Cache of parsed fields. If middleware prior to Deepkit populates this,
+     * Deepkit will re-use it.
+     */
+    public body?: { [name: string]: any };
+
     static GET(path: string): RequestBuilder {
         return new RequestBuilder(path);
     }
