@@ -46,6 +46,10 @@ export class RpcKernelSecurity {
     async authenticate(token: any): Promise<Session> {
         throw new Error('Authentication not implemented');
     }
+
+    transformError(err: Error) {
+        return err;
+    }
 }
 
 export class SessionState {
