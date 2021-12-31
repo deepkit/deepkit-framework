@@ -18,10 +18,6 @@ export function createBuffer(size: number): Uint8Array {
     return 'undefined' !== typeof Buffer && 'function' === typeof Buffer.allocUnsafe ? Buffer.allocUnsafe(size) : new Uint8Array(size);
 }
 
-(BigInt.prototype as any).toJSON = function () {
-    return this.toString();
-};
-
 // BSON MAX VALUES
 const BSON_INT32_MAX = 0x7fffffff;
 const BSON_INT32_MIN = -0x80000000;
