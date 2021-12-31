@@ -283,7 +283,7 @@ export class RpcServerAction {
                         v: next
                     }, types.observableNextSchema);
                 }, (error) => {
-                    const extracted = rpcEncodeError(error);
+                    const extracted = rpcEncodeError(this.security.transformError(error));
                     response.reply<rpcResponseActionObservableSubscriptionError>(RpcTypes.ResponseActionObservableError, { ...extracted, id: body.id });
                 }, () => {
                     response.reply<rpcActionObservableSubscribeId>(RpcTypes.ResponseActionObservableComplete, {
@@ -446,7 +446,7 @@ export class RpcServerAction {
                                 v: next
                             }, types.observableNextSchema);
                         }, (error) => {
-                            const extracted = rpcEncodeError(error);
+                            const extracted = rpcEncodeError(this.security.transformError(error));
                             response.reply<rpcResponseActionObservableSubscriptionError>(RpcTypes.ResponseActionObservableError, { ...extracted, id: message.id });
                         }, () => {
                             const v = this.observableSubjects[message.id];
@@ -467,7 +467,7 @@ export class RpcServerAction {
                 response.reply(RpcTypes.ResponseActionSimple, { v: result }, types.resultSchema);
             }
         } catch (error: any) {
-            response.error(error);
+            response.error(this.security.transformError(error));
         }
     }
 }
