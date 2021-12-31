@@ -51,6 +51,9 @@ import { validators } from './validators';
 import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64 } from './core';
 
 export class NamingStrategy {
+    protected static ids: number = 0;
+    id: number = NamingStrategy.ids++;
+
     getPropertyName(type: TypeProperty | TypePropertySignature): string | number | symbol | undefined {
         return type.name;
     }
@@ -62,17 +65,39 @@ export interface SerializationOptions {
     loosely?: boolean;
 }
 
-export function getSerializeFunction(type: OuterType, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): (data: any, state?: SerializationOptions) => any {
-    const jit = getTypeJitContainer(type);
-    if (jit[registry.symbol]) return jit[registry.symbol];
+export type SerializeFunction = (data: any, state?: SerializationOptions) => any;
 
-    jit[registry.symbol] = createSerializeFunction(type, registry, namingStrategy, path, jitStack);
-    toFastProperties(jit);
-
-    return jit[registry.symbol];
+/**
+ * Creates a (cached) Partial<T> of the given type and returns a (cached) serializer function for the given registry (serialize or deserialize).
+ */
+export function getPartialSerializeFunction(type: TypeClass | TypeObjectLiteral, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy()) {
+    const jitContainer = getTypeJitContainer(type);
+    if (!jitContainer.partialType) {
+        jitContainer.partialType = copyAndSetParent(type);
+        for (const member of jitContainer.partialType.types) {
+            if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
+                member.optional = true;
+            }
+        }
+    }
+    return getSerializeFunction(jitContainer.partialType, registry, namingStrategy);
 }
 
-export function createSerializeFunction(type: OuterType, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): (data: any, state?: SerializationOptions) => any {
+/**
+ * Returns a (cached) serializer function for the given registry (serialize or deserialize).
+ */
+export function getSerializeFunction(type: OuterType, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): SerializeFunction {
+    const jit = getTypeJitContainer(type);
+    const id = registry.id + '_' + namingStrategy.id;
+    if (jit[id]) return jit[id];
+
+    jit[id] = createSerializeFunction(type, registry, namingStrategy, path, jitStack);
+    toFastProperties(jit);
+
+    return jit[id];
+}
+
+export function createSerializeFunction(type: OuterType, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): SerializeFunction {
     const compiler = new CompilerContext();
 
     const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, jitStack, [path]);
@@ -376,6 +401,9 @@ export function noopTemplate(type: Type, state: TemplateState): void {
 }
 
 export class TemplateRegistry {
+    protected static ids: number = 0;
+    id: number = TemplateRegistry.ids++;
+
     protected templates: { [kind in ReflectionKind]?: Template<any>[] } = {};
     protected decorator: { [kind in ReflectionKind]?: Template<any>[] } = {};
 
@@ -383,11 +411,6 @@ export class TemplateRegistry {
     public postHooks: TemplateHook[] = [];
 
     public classTemplates = new Map<ClassType, Template<any>[]>();
-
-    /**
-     * Used as JIT cache key.
-     */
-    public symbol = Symbol();
 
     constructor(public serializer: Serializer = new EmptySerializer()) {
     }
@@ -1542,7 +1565,7 @@ export class Serializer {
     typeGuards = new TypeGuardRegistry(this);
     validators = new TemplateRegistry(this);
 
-    public name: string = 'default';
+    public name: string = 'json';
 
     constructor() {
         this.registerSerializers();

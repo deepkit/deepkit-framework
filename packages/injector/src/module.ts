@@ -1,8 +1,7 @@
-import { ConfigDefinition } from './config';
 import { NormalizedProvider, ProviderWithScope, TagProvider, Token } from './provider';
-import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, isClass, isPrototypeOfBase } from '@deepkit/core';
-import { InjectorToken } from './decorator';
+import { arrayRemoveItem, ClassType, getClassName, isClass, isPrototypeOfBase } from '@deepkit/core';
 import { BuildContext, Injector, SetupProviderRegistry } from './injector';
+import { isExtendable, isType } from '@deepkit/type';
 
 export type ConfigureProvider<T> = { [name in keyof T]: T[name] extends (...args: infer A) => any ? (...args: A) => ConfigureProvider<T> : T[name] };
 
@@ -56,7 +55,7 @@ export interface PreparedProvider {
     resolveFrom?: InjectorModule;
 }
 
-function registerPreparedProvider(map: Map<any, PreparedProvider>, modules: InjectorModule[], providers: NormalizedProvider[], replaceExistingScope: boolean = true) {
+function registerPreparedProvider(map: Map<Token<any>, PreparedProvider>, modules: InjectorModule[], providers: NormalizedProvider[], replaceExistingScope: boolean = true) {
     const token = providers[0].provide;
     const preparedProvider = map.get(token);
     if (preparedProvider) {
@@ -83,17 +82,15 @@ function registerPreparedProvider(map: Map<any, PreparedProvider>, modules: Inje
     }
 }
 
-export function findModuleForConfig(config: ConfigDefinition<any>, modules: InjectorModule[]): InjectorModule {
+export function findModuleForConfig(config: ClassType, modules: InjectorModule[]): InjectorModule | undefined {
     for (const m of modules) {
         if (m.configDefinition === config) return m;
     }
 
-    const searchedIn = modules.map(v => getClassName(v));
-
-    throw new Error(`No module found for configuration ${config.schema.toString().replace(/\n/g, ' ').replace(/\s+/g, ' ')}. Searched in ${searchedIn.join(', ')}. Did you attach the configuration to a module?`);
+    return undefined;
 }
 
-export type ExportType = AbstractClassType | InjectorToken<any> | string | symbol | InjectorModule;
+export type ExportType = Token | InjectorModule;
 
 export function isProvided(providers: ProviderWithScope[], token: any): boolean {
     return providers.find(v => !(v instanceof TagProvider) ? token === (isClass(v) ? v : v.provide) : false) !== undefined;
@@ -112,7 +109,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
     public root: boolean = false;
 
     /**
-     * The built injector. This is set once a Injector for this module has been created.
+     * The built injector. This is set once an Injector for this module has been created.
      */
     injector?: Injector;
 
@@ -129,7 +126,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
 
     protected exportsDisabled: boolean = false;
 
-    public configDefinition?: ConfigDefinition<any>;
+    public configDefinition?: ClassType;
 
     constructor(
         public providers: ProviderWithScope[] = [],
@@ -179,8 +176,10 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
         return this.imports;
     }
 
-    setConfigDefinition(config: ConfigDefinition<any>): this {
+    setConfigDefinition(config: ClassType): this {
         this.configDefinition = config;
+        const configValues = new config;
+        this.config = Object.assign(configValues, this.config);
         return this;
     }
 
@@ -336,16 +335,25 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
         return this.injector;
     }
 
-    protected preparedProviders?: Map<any, PreparedProvider>;
+    protected preparedProviders?: Map<Token, PreparedProvider>;
 
-    getPreparedProvider(token: any): PreparedProvider | undefined {
+    getPreparedProvider(token: Token): { token: Token, provider: PreparedProvider } | undefined {
         if (!this.preparedProviders) return;
-        return this.preparedProviders.get(token);
+
+        if (isType(token)) {
+            for (const [key, value] of this.preparedProviders.entries()) {
+                if (isType(key) && isExtendable(key, token)) return { token: key, provider: value };
+            }
+        }
+
+        const provider = this.preparedProviders.get(token);
+        if (provider) return { token, provider };
+        return;
     }
 
-    resolveToken(token: any): InjectorModule | undefined {
-        if (!this.preparedProviders) return;
-        if (this.preparedProviders.has(token)) return this;
+    resolveToken(token: Token): InjectorModule | undefined {
+        const found = this.getPreparedProvider(token);
+        if (found) return this;
         if (this.parent) return this.parent.resolveToken(token);
         return;
     }
@@ -462,7 +470,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
                             const parentProviders = this.parent.getPreparedProviders(buildContext);
                             const parentProvider = parentProviders.get(token);
                             //if the parent has this token already defined, we just switch its module to ours,
-                            //so its able to inject our encapsulated services.
+                            //so it's able to inject our encapsulated services.
                             if (parentProvider) {
                                 //we add our module as additional source for potential dependencies
                                 registerPreparedProvider(parentProviders, preparedProvider.modules, preparedProvider.providers, false);

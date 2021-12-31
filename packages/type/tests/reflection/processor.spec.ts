@@ -39,8 +39,10 @@ export function expectEqualType(actual: any, expected: any, options: {noTypeName
             if (i === 'decorators') continue;
             if (options.excludes && options.excludes.includes(i)) continue;
             if (i === 'annotations') continue;
+            if (i === 'parent') continue;
+            if (i === 'indexAccessOrigin') continue;
             if (options.noOrigin && i === 'origin') continue;
-            if (options.noTypeNames && (i === 'typeName' || i === 'typearguments')) continue;
+            if (options.noTypeNames && (i === 'typeName' || i === 'typeArguments')) continue;
 
             if (isArray(expected[i])) {
                 if (!isArray(actual[i])) throw new Error('Not equal array type: ' + path);
@@ -53,22 +55,22 @@ export function expectEqualType(actual: any, expected: any, options: {noTypeName
             }
         }
     } else {
-        if (expected !== actual) throw new Error('Invalid type: ' + path);
+        if (expected !== actual) throw new Error(`Invalid type ${path}: ${expected} !== ${actual}`);
     }
 }
 
-test('assertEqualType', () => {
+test('assertEqualType 1', () => {
     expectEqualType({ kind: ReflectionKind.string }, { kind: ReflectionKind.string });
     expectEqualType({ kind: ReflectionKind.number }, { kind: ReflectionKind.number });
     expectEqualType({ kind: ReflectionKind.literal, literal: 'asd' }, { kind: ReflectionKind.literal, literal: 'asd' });
-    expect(() => expectEqualType({ kind: ReflectionKind.literal, literal: 'asd' }, { kind: ReflectionKind.literal, literal: 'asd2' })).toThrow('Invalid type: .literal');
+    expect(() => expectEqualType({ kind: ReflectionKind.literal, literal: 'asd' }, { kind: ReflectionKind.literal, literal: 'asd2' })).toThrow('Invalid type .literal: asd !== asd2');
 
     const a: ParentLessType = { kind: ReflectionKind.tuple, types: [{ kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.string } }] };
     expectEqualType(a, a);
     expect(() => expectEqualType(a, {
         kind: ReflectionKind.tuple,
         types: [{ kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.number } }]
-    })).toThrow('Invalid type: .types.0.type.kind');
+    })).toThrow('Invalid type .types.0.type.kind: 5 !== 6');
 
     const b: ParentLessType = {
         kind: ReflectionKind.function,
@@ -80,20 +82,20 @@ test('assertEqualType', () => {
         kind: ReflectionKind.function,
         parameters: [{ kind: ReflectionKind.parameter, name: 'c', type: { kind: ReflectionKind.string } }],
         return: { kind: ReflectionKind.never }
-    })).toThrow('Invalid type: .parameters.0.name');
+    })).toThrow('Invalid type .parameters.0.name');
     expect(() => expectEqualType(b, {
         kind: ReflectionKind.function,
         parameters: [{ kind: ReflectionKind.parameter, name: 'b', type: { kind: ReflectionKind.number } }],
         return: { kind: ReflectionKind.never }
-    })).toThrow('Invalid type: .parameters.0.type.kind');
+    })).toThrow('Invalid type .parameters.0.type.kind');
     expect(() => expectEqualType(b, {
         kind: ReflectionKind.function,
         parameters: [{ kind: ReflectionKind.parameter, name: 'b', type: { kind: ReflectionKind.string } }],
         return: { kind: ReflectionKind.number }
-    })).toThrow('Invalid type: .return.kind');
+    })).toThrow('Invalid type .return.kind');
 });
 
-test('assertEqualType', () => {
+test('assertEqualType 2', () => {
     assertValidParent({ kind: ReflectionKind.string });
     assertValidParent({ kind: ReflectionKind.literal, literal: 'asd' });
     assertValidParent(copyAndSetParent({ kind: ReflectionKind.literal, literal: 'asd' }));

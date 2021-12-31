@@ -45,6 +45,7 @@ import { ClassType } from '@deepkit/core';
 import { t } from '../../../src/decorator';
 import { validate, ValidatorError } from '../../../src/validator';
 import { expectEqualType } from '../processor.spec';
+import { MyAlias } from './types';
 
 test('class', () => {
     class Entity {
@@ -221,6 +222,23 @@ test('tuple', () => {
                 { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.number } }
             ]
         } as TypeTuple);
+    }
+});
+
+test('any of type alias', () => {
+    {
+        const type = typeOf<MyAlias<any>>();
+        expectEqualType(type, { kind: ReflectionKind.any });
+    }
+
+    {
+        class MyClass {
+            private c: MyAlias<any>;
+        }
+
+        const reflection = ReflectionClass.from(MyClass);
+        const property = reflection.getProperty('c');
+        expectEqualType(property.type, { kind: ReflectionKind.any });
     }
 });
 
@@ -520,6 +538,35 @@ test('mapped type key literal', () => {
     };
 
     type o2 = Prefix<o>;
+});
+
+test('pick', () => {
+    class Config {
+        debug: boolean = false;
+        title: string = '';
+    }
+
+    type t = Pick<Config, 'debug'>;
+    expectEqualType(typeOf<t>(), {
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            { kind: ReflectionKind.propertySignature, name: 'debug', type: { kind: ReflectionKind.boolean } },
+        ]
+    });
+
+    class MyService {
+        constructor(public config: Pick<Config, 'debug'>) {
+        }
+    }
+
+    const reflection = ReflectionClass.from(MyService);
+    const parameters = reflection.getMethodParameters('constructor');
+    expect(parameters[0].getType()).toMatchObject({
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            { kind: ReflectionKind.propertySignature, name: 'debug', type: { kind: ReflectionKind.boolean } },
+        ]
+    });
 });
 
 test('query union from keyof', () => {

@@ -9,6 +9,7 @@
  */
 
 import {
+    assertType,
     autoIncrementAnnotation,
     backReferenceAnnotation,
     copyAndSetParent,
@@ -212,6 +213,10 @@ export class ReflectionParameter {
         return this.parameter.name;
     }
 
+    get name(): string {
+        return this.parameter.name;
+    }
+
     isOptional(): boolean {
         return this.parameter.optional === true;
     }
@@ -323,6 +328,13 @@ export class ReflectionFunction {
     }
 
     static from(fn: Function): ReflectionFunction {
+        //todo: cache it
+
+        if (!('__type' in fn)) {
+            //functions without any types have no __type attached
+            return new ReflectionFunction({ kind: ReflectionKind.function, function: fn, return: { kind: ReflectionKind.any }, parameters: [] });
+        }
+
         const type = reflect(fn);
         if (type.kind !== ReflectionKind.function) {
             throw new Error(`Given object is not a function ${fn}`);
@@ -696,6 +708,8 @@ export class ReflectionClass<T> {
 
     protected primaries: ReflectionProperty[] = [];
 
+    protected autoIncrements: ReflectionProperty[] = [];
+
     /**
      * If a custom validator method was set via @t.validator, then this is the method name.
      */
@@ -774,6 +788,10 @@ export class ReflectionClass<T> {
         return this.primaries[0];
     }
 
+    getAutoIncrement(): ReflectionProperty | undefined {
+        return this.autoIncrements[0];
+    }
+
     public isSchemaOf(classType: ClassType): boolean {
         if (this.getClassType() === classType) return true;
         let currentProto = Object.getPrototypeOf(this.getClassType().prototype);
@@ -809,6 +827,7 @@ export class ReflectionClass<T> {
         }
 
         if (property.isPrimaryKey()) this.primaries.push(property);
+        if (property.isAutoIncrement()) this.autoIncrements.push(property);
     }
 
     addMethod(method: ReflectionMethod) {
@@ -836,19 +855,54 @@ export class ReflectionClass<T> {
         }
     }
 
-    getSingleTableInheritanceDiscriminant(): ReflectionProperty {
-        if (this.data.singleTableInheritanceProperty) return this.data.singleTableInheritanceProperty;
+    public assignedSingleTableInheritanceSubClassesByIdentifier?: { [id: string]: ReflectionClass<any> };
 
-        // let discriminant = findCommonDiscriminant(this.subClasses);
+    getAssignedSingleTableInheritanceSubClassesByIdentifier(): { [id: string]: ReflectionClass<any> } | undefined {
+        if (!this.subClasses.length) return;
+        if (this.assignedSingleTableInheritanceSubClassesByIdentifier) return this.assignedSingleTableInheritanceSubClassesByIdentifier;
 
-        //when no discriminator was found, find a common literal
-        const discriminant = findCommonLiteral(this.subClasses);
-
-        if (!discriminant) {
-            throw new Error(`Sub classes of ${this.getClassName()} single-table inheritance [${this.subClasses.map(v => v.getClassName())}] have no common discriminant or common literal. Please define one.`);
+        let isBaseOfSingleTableEntity = false;
+        for (const schema of this.subClasses) {
+            if (schema.singleTableInheritance) {
+                isBaseOfSingleTableEntity = true;
+                break;
+            }
         }
 
-        return this.data.singleTableInheritanceProperty = this.getProperty(discriminant);
+        if (!isBaseOfSingleTableEntity) return;
+
+        const discriminant = this.getSingleTableInheritanceDiscriminantName();
+
+        for (const schema of this.subClasses) {
+            if (schema.singleTableInheritance) {
+                if (!this.assignedSingleTableInheritanceSubClassesByIdentifier) this.assignedSingleTableInheritanceSubClassesByIdentifier = {};
+                const property = schema.getProperty(discriminant);
+                assertType(property.type, ReflectionKind.literal);
+                this.assignedSingleTableInheritanceSubClassesByIdentifier[property.type.literal as string] = schema;
+            }
+        }
+        return this.assignedSingleTableInheritanceSubClassesByIdentifier;
+    }
+
+    hasSingleTableInheritanceSubClasses(): boolean {
+        return this.getAssignedSingleTableInheritanceSubClassesByIdentifier() !== undefined;
+    }
+
+    getSingleTableInheritanceDiscriminantName(): string {
+        if (!this.data.singleTableInheritanceProperty) {
+
+            // let discriminant = findCommonDiscriminant(this.subClasses);
+
+            //when no discriminator was found, find a common literal
+            const discriminant = findCommonLiteral(this.subClasses);
+
+            if (!discriminant) {
+                throw new Error(`Sub classes of ${this.getClassName()} single-table inheritance [${this.subClasses.map(v => v.getClassName())}] have no common discriminant or common literal. Please define one.`);
+            }
+            this.data.singleTableInheritanceProperty = this.getProperty(discriminant);
+        }
+
+        return (this.data.singleTableInheritanceProperty as ReflectionProperty).name;
     }
 
     applyDecorator(data: EntityData) {

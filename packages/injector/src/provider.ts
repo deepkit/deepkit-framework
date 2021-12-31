@@ -8,8 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { AbstractClassType, ClassType, isClass } from '@deepkit/core';
-import { InjectorToken } from './decorator';
 import { InjectorModule } from './module';
+import { InjectorToken } from './injector';
+import { OuterType, ReceiveType, resolveReceiveType } from '@deepkit/type';
 
 export interface ProviderBase {
     /**
@@ -19,11 +20,16 @@ export interface ProviderBase {
     transient?: true;
 }
 
-export type Token<T = any> = symbol | string | InjectorToken<T> | AbstractClassType<T>;
+export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | InjectorToken<T> | AbstractClassType<T> | OuterType;
+
+export function provide<T>(provider: Omit<ProviderProvide, 'provide'> | ClassType, type?: ReceiveType<T>): Provider {
+    if (isClass(provider)) return { provide: resolveReceiveType(type), useClass: provider };
+    return { ...provider, provide: resolveReceiveType(type) };
+}
 
 export interface ValueProvider<T> extends ProviderBase {
     /**
-     * An injection token. Typically a class.
+     * An injection token.
      */
     provide: Token<T>;
 
@@ -35,7 +41,7 @@ export interface ValueProvider<T> extends ProviderBase {
 
 export interface ClassProvider<T> extends ProviderBase {
     /**
-     * An injection token. Typically a class.
+     * An injection token.
      */
     provide: Token<T>;
 
@@ -47,7 +53,7 @@ export interface ClassProvider<T> extends ProviderBase {
 
 export interface ExistingProvider<T> extends ProviderBase {
     /**
-     * An injection token. Typically a class.
+     * An injection token.
      */
     provide: Token<T>;
 
@@ -59,7 +65,7 @@ export interface ExistingProvider<T> extends ProviderBase {
 
 export interface FactoryProvider<T> extends ProviderBase {
     /**
-     * An injection token. Typically a class.
+     * An injection token.
      */
     provide: Token<T>;
 
@@ -72,6 +78,8 @@ export interface FactoryProvider<T> extends ProviderBase {
     /**
      * A list of `token`s which need to be resolved by the injector. The list of values is then
      * used as arguments to the `useFactory` function.
+     *
+     * @deprecated not necessary anymore
      */
     deps?: any[];
 }
@@ -92,7 +100,7 @@ export class TagRegistry {
     }
 
     register(tagProvider: TagProvider<any>, module: InjectorModule) {
-        return this.tags.push({tagProvider, module});
+        return this.tags.push({ tagProvider, module });
     }
 
     resolve<T extends ClassType<Tag<any>>>(tag: T): TagRegistryEntry<InstanceType<T>>[] {
@@ -121,8 +129,7 @@ export class Tag<T, TP extends TagProvider<T> = TagProvider<T>> {
         return new TagProvider(provider, this) as TP;
     }
 
-    static provide<
-        P extends ClassType<T> | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>,
+    static provide<P extends ClassType<T> | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>,
         T extends ReturnType<InstanceType<B>['_']>,
         TP extends ReturnType<InstanceType<B>['_2']>,
         B extends ClassType<Tag<any>>>(this: B, provider: P): TP {

@@ -13,6 +13,7 @@ import {
     emptyObject,
     flatten,
     indexAccess,
+    isMember,
     isOptional,
     isType,
     isTypeIncluded,
@@ -139,7 +140,7 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
         return false;
     }
 
-    if (left.kind === ReflectionKind.propertySignature && right.kind === ReflectionKind.propertySignature) {
+    if ((left.kind === ReflectionKind.propertySignature || left.kind === ReflectionKind.property) && (right.kind === ReflectionKind.propertySignature || right.kind === ReflectionKind.property)) {
         return isExtendable(left.type, right.type);
     }
 
@@ -166,14 +167,16 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
             return isExtendable(left, rightConstructor.return);
         }
 
-        for (const member of left.types) {
+        for (const member of right.types) {
             //todo: call signature
             //todo: index signatures
 
-            if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.methodSignature) {
-                const rightMember = (right.types as Type[]).find(v => (v.kind === ReflectionKind.propertySignature || v.kind === ReflectionKind.methodSignature) && v.name === member.name);
-                if (!rightMember) return false;
-                if (!isExtendable(member, rightMember)) return false;
+            if (isMember(member)) {
+                const leftMember = (left.types as Type[]).find(v => isMember(v) && v.name === member.name);
+                if (!leftMember) return false;
+                if (!isExtendable(leftMember, member)) {
+                    return false;
+                }
             }
         }
         return true;

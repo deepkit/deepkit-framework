@@ -86,6 +86,11 @@ export interface TypeAnnotations {
      */
     typeArguments?: OuterType[];
 
+    /**
+     * Set for index access expressions, e.g. Config['property'].
+     */
+    indexAccessOrigin?: { container: TypeClass | TypeObjectLiteral, index: OuterType };
+
     annotations?: Annotations; //parsed decorator types as annotations
     decorators?: OuterType[]; //original decorator type
 }
@@ -470,7 +475,7 @@ export type Widen<T> =
 export type FindType<T extends Type, LOOKUP extends ReflectionKind> = T extends { kind: infer K } ? K extends LOOKUP ? T : never : never;
 
 export function isType(entry: any): entry is Type {
-    return 'object' === typeof entry && entry.constructor === Object && 'kind' in entry;
+    return 'object' === typeof entry && entry.constructor === Object && 'kind' in entry && 'number' === typeof entry.kind;
 }
 
 export function isBinary(type: Type): boolean {
@@ -1233,6 +1238,7 @@ type TypeKeyOf<T> = T[keyof T];
 export type PrimaryKeyFields<T> = { [P in keyof T]: Required<T[P]> extends Required<PrimaryKey> ? T[P] : never };
 export type PrimaryKeyType<T> = TypeKeyOf<PrimaryKeyFields<T>>;
 
+export type ReferenceFields<T> = { [P in keyof T]: Required<T[P]> extends Required<Reference> | Required<BackReference> ? T[P] : never };
 
 /**
  * Marks a primary property key as auto-increment.
@@ -1386,6 +1392,7 @@ export const excludedAnnotation = new class extends AnnotationDefinition<string>
     }
 };
 export const dataAnnotation = new AnnotationDefinition<{ [name: string]: any }>();
+export const metaAnnotation = new AnnotationDefinition<{ name: string, options: OuterType[] }>();
 export const indexAnnotation = new AnnotationDefinition<IndexOptions>();
 export const databaseAnnotation = new class extends AnnotationDefinition<{ name: string, options: { [name: string]: any } }> {
     getDatabase<T extends { [name: string]: any }>(type: Type, name: string): T | undefined {
@@ -1506,8 +1513,11 @@ export const typeDecorators: TypeDecorator[] = [
                 validationAnnotation.register(annotations, options);
                 return true;
             }
-            default:
-                return false;
+            default: {
+                const optionsType = meta.type.types.slice(1).map(v => v.type) as OuterType[];
+                metaAnnotation.register(annotations, { name: id.type.literal as string, options: optionsType });
+                return true;
+            }
         }
     }
 ];
@@ -1609,7 +1619,8 @@ interface StringifyTypeOptions {
     skipNextRecursion?: true;
 }
 
-export function stringifyType(type: Type, state: StringifyTypeOptions = { depth: 0, stack: [], showNames: true, showFullDefinition: true }): string {
+export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions> = {}): string {
+    const state: StringifyTypeOptions = { depth: 0, stack: [], showNames: true, showFullDefinition: true, ...stateIn };
     if (state.stack.includes(type) && !state.skipNextRecursion) {
         return '* Recursion *';
     }
@@ -1766,9 +1777,14 @@ export function stringifyType(type: Type, state: StringifyTypeOptions = { depth:
         }
 
         if (isWithAnnotations(type) && type.decorators) {
-            return '(' + name + ' & ' + type.decorators.map(v => stringifyType(v, state)).join(' & ') + ')';
+            name = name + ' & ' + type.decorators.map(v => (isWithAnnotations(v) && v.typeName) || stringifyType(v, {
+                ...state,
+                showNames: true,
+                showFullDefinition: false
+            })).join(' & ');
         }
 
+        if (state.depth > 0) return '(' + name + ')';
         return name;
     } finally {
         state.stack.pop();

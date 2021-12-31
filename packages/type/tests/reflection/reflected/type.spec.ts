@@ -35,6 +35,10 @@ test('type alias preserved', () => {
     expect(stringifyType(typeOf<UUID>())).toBe('UUID');
 });
 
+test('stringify', () => {
+    expect(stringifyResolvedType(typeOf<any & {}>())).toBe(`any`);
+});
+
 test('stringify class', () => {
     class User {
         id!: number;
@@ -109,6 +113,29 @@ test('extendability union', () => {
     validExtend<null, null | undefined>();
     validExtend<undefined, null | undefined>();
     invalidExtend<string, null | undefined>();
+});
+
+test('interface', () => {
+    interface Connection {
+        id: number;
+
+        write(data: Uint16Array): void;
+    }
+
+    class MyConnection implements Connection {
+        id: number = 0;
+
+        write(data: Uint16Array): void {
+        }
+
+        additional(): void {
+
+        }
+    }
+
+    validExtend<{ id: number, write(data: Uint16Array): void }, Connection>();
+    invalidExtend<{ id: number }, Connection>();
+    validExtend<MyConnection, Connection>();
 });
 
 test('extendability constructor', () => {

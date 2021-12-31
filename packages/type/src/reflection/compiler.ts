@@ -12,7 +12,6 @@ import {
     __String,
     ArrayTypeNode,
     ArrowFunction,
-    BigIntLiteral,
     Bundle,
     ClassDeclaration,
     ClassElement,
@@ -85,7 +84,6 @@ import {
     Node,
     NodeFactory,
     NodeFlags,
-    NumericLiteral,
     PropertyAccessExpression,
     PropertyDeclaration,
     PropertySignature,
@@ -95,7 +93,6 @@ import {
     SignatureDeclaration,
     SourceFile,
     Statement,
-    StringLiteral,
     SymbolTable,
     SyntaxKind,
     TemplateLiteralTypeNode,
@@ -120,6 +117,8 @@ import { existsSync, readFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import stripJsonComments from 'strip-json-comments';
 import { MappedModifier, ReflectionOp, TypeNumberBrand } from './type';
+import { cloneNode } from 'ts-clone-node';
+
 
 export const packSizeByte: number = 6;
 
@@ -477,7 +476,7 @@ export class ReflectionTransformer {
         const sourceFile: SourceFile = this.sourceFile;
         if ((sourceFile as any)._typeChecker) return (sourceFile as any)._typeChecker;
         const host = createCompilerHost(this.context.getCompilerOptions());
-        const program = createProgram([sourceFile.fileName], this.context.getCompilerOptions(), { ...host, ...this.host });
+        const program = createProgram([sourceFile.fileName], this.context.getCompilerOptions(), { ...this.host, ...host });
         return (sourceFile as any)._typeChecker = program.getTypeChecker();
     }
 
@@ -1279,8 +1278,7 @@ export class ReflectionTransformer {
 
         let declaration: Declaration | undefined = symbol && symbol.declarations ? symbol.declarations[0] : undefined;
 
-
-        //if the symbol points to a ImportSpecifier, it means its declared in another file, and we have to use getDeclaredTypeOfSymbol to resolve it.
+        //if the symbol points to a ImportSpecifier, it means it's declared in another file, and we have to use getDeclaredTypeOfSymbol to resolve it.
         const importSpecifier = declaration && isImportSpecifier(declaration) ? declaration : undefined;
         if (symbol && (!declaration || isImportSpecifier(declaration))) {
             const resolvedType = typeChecker.getDeclaredTypeOfSymbol(symbol);
@@ -1291,6 +1289,11 @@ export class ReflectionTransformer {
             } else if (declaration && isImportSpecifier(declaration)) {
                 declaration = this.resolveImportSpecifier(unescapeLeadingUnderscores(symbol.escapedName), declaration.parent.parent.parent);
             }
+        }
+
+        if (declaration && declaration.kind === SyntaxKind.TypeParameter && declaration.parent.kind === SyntaxKind.TypeAliasDeclaration) {
+            //for alias like `type MyAlias<T> = T`, `T` is returned from `typeChecker.getDeclaredTypeOfSymbol(symbol)`.
+            declaration = declaration.parent as TypeAliasDeclaration;
         }
 
         if (!declaration) return;
@@ -1695,19 +1698,28 @@ export class ReflectionTransformer {
         if (isArray(value)) {
             return this.f.createArrayLiteralExpression(this.f.createNodeArray(value.map(v => this.valueToExpression(v))));
         }
+
         if (value === undefined) return this.f.createIdentifier('undefined');
+
         if ('string' === typeof value) return this.f.createStringLiteral(value, true);
         if ('number' === typeof value) return this.f.createNumericLiteral(value);
         if ('bigint' === typeof value) return this.f.createBigIntLiteral(String(value));
         if ('boolean' === typeof value) return value ? this.f.createTrue() : this.f.createFalse();
 
-        if (value.kind === SyntaxKind.StringLiteral) return this.f.createStringLiteral((value as StringLiteral).text, true);
-        if (value.kind === SyntaxKind.NumericLiteral) return this.f.createNumericLiteral((value as NumericLiteral).text);
-        if (value.kind === SyntaxKind.BigIntLiteral) return this.f.createBigIntLiteral((value as BigIntLiteral).text);
-        if (value.kind === SyntaxKind.TrueKeyword) return this.f.createTrue();
-        if (value.kind === SyntaxKind.FalseKeyword) return this.f.createFalse();
+        if (value.pos === -1 && value.end === -1 && value.parent === undefined) {
+            if (isArrowFunction(value)) {
+                if (value.body.pos === -1 && value.body.end === -1 && value.body.parent === undefined) return value;
+                return this.f.createArrowFunction(value.modifiers, value.typeParameters, value.parameters, value.type, value.equalsGreaterThanToken, cloneNode(value.body));
+            }
+            return value;
+        }
 
-        return value;
+        try {
+            return cloneNode(value);
+        } catch (error) {
+            console.log('value', value);
+            throw error;
+        }
     }
 
     /**
