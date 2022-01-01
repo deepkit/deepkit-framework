@@ -52,7 +52,7 @@
     "mikro-orm": "^4.1.0",
     "mongoose": "5.11.11",
     "node-fetch": "^2.6.1",
-    "objection": "^2.2.15",
+    "objection": "^2.2.16",
     "patch-package": "^6.4.7",
     "prisma": "^2.28.0",
     "quartet": "^10.1.0",
