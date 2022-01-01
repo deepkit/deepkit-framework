@@ -45,7 +45,7 @@ export interface ClassType<T = any> {
  */
 export type AbstractClassType<T = any> = abstract new (...args: any[]) => T;
 
-export type ExtractClassType<T> = T extends ClassType<infer K> ? K : never;
+export type ExtractClassType<T> = T extends AbstractClassType<infer K> ? K : never;
 
 /**
  * Returns the class name either of the class definition or of the class of an instance.
