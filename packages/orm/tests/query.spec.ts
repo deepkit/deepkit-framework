@@ -1,4 +1,4 @@
-import { plainToClass, PrimaryKey, t } from '@deepkit/type';
+import { deserialize, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { assert, IsExact } from 'conditional-type-checks';
 import { Database } from '../src/database';
@@ -6,48 +6,47 @@ import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db';
 import { Query } from '../src/query';
 
 test('query select', async () => {
-    const s = t.schema({
-        id: t.number.primary,
-        username: t.string
-    }, { name: 'User' });
-
-    assert<IsExact<{ id: PrimaryKey<number>, username: string }, InstanceType<typeof s.classType>>>(true);
+    class s {
+        id!: number & PrimaryKey;
+        username!: string;
+    }
 
     const database = new Database(new MemoryDatabaseAdapter());
-    await database.persist(plainToClass(s, { id: 0, username: 'Peter' }));
-    await database.persist(plainToClass(s, { id: 0, username: 'Peter' }));
+    await database.persist(deserialize<s>({ id: 0, username: 'Peter' }));
+    await database.persist(deserialize<s>({ id: 0, username: 'Peter' }));
 
     {
         const item = await database.query(s).findOne();
         expect(item.username).toBe('Peter');
-        assert<IsExact<InstanceType<typeof s.classType>, typeof item>>(true);
-        assert<IsExact<{ id: PrimaryKey<number>, username: string }, typeof item>>(true);
+        assert<IsExact<InstanceType<typeof s>, typeof item>>(true);
+        assert<IsExact<{ id: number & PrimaryKey, username: string }, typeof item>>(true);
     }
 
     {
         const item = await database.query(s).select('username').findOne();
         expect(item.username).toBe('Peter');
-        assert<IsExact<InstanceType<typeof s.classType>, typeof item>>(false);
-        assert<IsExact<{ id: PrimaryKey<number>, username: string }, typeof item>>(false);
+        assert<IsExact<InstanceType<typeof s>, typeof item>>(false);
+        assert<IsExact<{ id: number & PrimaryKey, username: string }, typeof item>>(false);
         assert<IsExact<{ username: string }, typeof item>>(true);
     }
 });
 
 test('query lift', async () => {
-    const s = t.schema({
-        id: t.number.primary,
-        username: t.string,
-        openBillings: t.number.default(0),
-    }, { name: 'User' });
+    class s {
+        id!: number & PrimaryKey;
+        username!: string;
+        openBillings: number = 0;
+    }
 
     const database = new Database(new MemoryDatabaseAdapter());
     const q = database.query(s);
 
-    await database.persist(plainToClass(s, { id: 0, username: 'foo' }));
-    await database.persist(plainToClass(s, { id: 1, username: 'bar', openBillings: 5 }));
+    await database.persist(deserialize<s>({ id: 0, username: 'foo' }));
+    await database.persist(deserialize<s>({ id: 1, username: 'bar', openBillings: 5 }));
 
-    class MyBase<T>  extends Query<T> {
+    class MyBase<T> extends Query<T> {
         protected world = 'world';
+
         hello() {
             return this.world;
         }
@@ -71,7 +70,7 @@ test('query lift', async () => {
         }
     }
 
-    class OverwriteHello<T> extends Query<T>  {
+    class OverwriteHello<T> extends Query<T> {
         hello() {
             return 'nope';
         }
@@ -95,27 +94,27 @@ test('query lift', async () => {
 
     {
         const items = await q.lift(UserQuery).find();
-        assert<IsExact<{ username: string, openBillings: number, id: PrimaryKey<number> }[], typeof items>>(true);
+        assert<IsExact<{ username: string, openBillings: number, id: number & PrimaryKey }[], typeof items>>(true);
     }
 
     {
         const items = await q.lift(UserQuery).find();
-        assert<IsExact<{ username: string, openBillings: number, id: PrimaryKey<number> }[], typeof items>>(true);
+        assert<IsExact<{ username: string, openBillings: number, id: number & PrimaryKey }[], typeof items>>(true);
     }
 
     {
         const items = await q.lift(UserQuery).select('id').find();
-        assert<IsExact<{ id: PrimaryKey<number> }[], typeof items>>(true);
+        assert<IsExact<{ id: number & PrimaryKey }[], typeof items>>(true);
     }
 
     {
         const items = await UserQuery.from(q).find();
-        assert<IsExact<{ username: string, openBillings: number, id: PrimaryKey<number> }[], typeof items>>(true);
+        assert<IsExact<{ username: string, openBillings: number, id: number & PrimaryKey }[], typeof items>>(true);
     }
 
     {
         const items = await UserQuery.from(q).select('id').find();
-        assert<IsExact<{ id: PrimaryKey<number> }[], typeof items>>(true);
+        assert<IsExact<{ id: number & PrimaryKey }[], typeof items>>(true);
     }
 
     {
@@ -186,5 +185,5 @@ test('query lift', async () => {
 //     query.groupBy('category').avg('rating').find();
 //     query.groupBy('category').max('rating').find();
 
-//     // await database.persist(plainToClass(s, { id: 0, username: 'Peter' }));
+//     // await database.persist(deserialize<s>({ id: 0, username: 'Peter' }));
 // });

@@ -10,6 +10,7 @@
 
 import {
     changeSetSymbol,
+    getChangeDetector,
     getConverterForSnapshot,
     getPrimaryKeyExtractor,
     getPrimaryKeyHashGenerator,
@@ -211,7 +212,7 @@ export class IdentityMap {
     }
 
     isKnown<T>(item: T): boolean {
-        const classSchema = ReflectionClass.from(item);
+        const classSchema = ReflectionClass.from(getClassTypeFromInstance(item));
         const store = this.getStore(classSchema);
         const state = getClassState(classSchema);
 
@@ -242,7 +243,7 @@ export class IdentityMap {
         return store.has(pk) ? store.get(pk)!.ref : undefined;
     }
 
-    protected getStore(classSchema: ReflectionClass): Map<PKHash, Store> {
+    protected getStore(classSchema: ReflectionClass<any>): Map<PKHash, Store> {
         const store = this.registry.get(classSchema);
         if (store) {
             return store;

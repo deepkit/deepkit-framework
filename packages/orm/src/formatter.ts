@@ -11,13 +11,16 @@
 import {
     createReferenceClass,
     deserialize,
+    getPartialSerializeFunction,
     getPrimaryKeyHashGenerator,
     getReferenceInfo,
+    getSerializeFunction,
     isReference,
     isReferenceHydrated,
     markAsHydrated,
     ReflectionClass,
     ReflectionProperty,
+    SerializeFunction,
     Serializer,
     typeSettings,
     UnpopulatedCheck,
@@ -49,6 +52,9 @@ export class Formatter {
     public withIdentityMap: boolean = true;
     protected rootPkHash: (value: any) => string = getPrimaryKeyHashGenerator(this.rootClassSchema, this.serializer);
 
+    protected deserialize: SerializeFunction;
+    protected partialDeserialize: SerializeFunction;
+
     protected rootClassState: ClassState = getClassState(this.rootClassSchema);
 
     constructor(
@@ -57,6 +63,8 @@ export class Formatter {
         protected hydrator?: HydratorFn,
         protected identityMap?: IdentityMap,
     ) {
+        this.deserialize = getSerializeFunction(rootClassSchema.type, serializer.deserializeRegistry);
+        this.partialDeserialize = getPartialSerializeFunction(rootClassSchema.type, serializer.deserializeRegistry);
     }
 
     protected getInstancePoolForClass(classType: ClassType): Map<PKHash, any> {
@@ -72,7 +80,7 @@ export class Formatter {
     }
 
     protected makeInvalidReference(item: any, classSchema: ReflectionClass<any>, propertySchema: ReflectionProperty) {
-        Object.defineProperty(item, propertySchema.getNameAsString(), {
+        Object.defineProperty(item, propertySchema.name, {
             enumerable: false,
             configurable: false,
             get() {
@@ -126,13 +134,17 @@ export class Formatter {
 
         let allFilled = foreignPrimaryFields.length;
         for (const property of foreignPrimaryFields) {
-            const foreignKey = foreignPrimaryFields.length === 1 ? propertySchema.getNameAsString() : propertySchema.getNameAsString() + capitalize(property.getNameAsString());
+            const foreignKey = foreignPrimaryFields.length === 1 ? propertySchema.name : propertySchema.name + capitalize(property.name);
             if (property.isReference()) {
-                foreignPrimaryKey[property.getNameAsString()] = this.getReference(property.getResolvedReflectionClass(), dbRecord, propertySchema, isPartial);
+                foreignPrimaryKey[property.name] = this.getReference(property.getResolvedReflectionClass(), dbRecord, propertySchema, isPartial);
             } else {
-                const v = deserialize(dbRecord[foreignKey], undefined, this.serializer, property.type);
-                if (v === undefined || v === null) allFilled--;
-                foreignPrimaryKey[property.getNameAsString()] = v;
+                if (dbRecord[foreignKey] === undefined || dbRecord[foreignKey] === null) {
+                    allFilled--;
+                } else {
+                    const v = deserialize(dbRecord[foreignKey], undefined, this.serializer, property.type);
+                    if (v === undefined || v === null) allFilled--;
+                    foreignPrimaryKey[property.name] = v;
+                }
             }
         }
 
@@ -160,12 +172,12 @@ export class Formatter {
 
         const singleTableInheritanceMap = classSchema.getAssignedSingleTableInheritanceSubClassesByIdentifier();
         if (singleTableInheritanceMap) {
-            const discriminant = classSchema.getSingleTableInheritanceDiscriminant();
-            const subClassSchema = singleTableInheritanceMap[dbRecord[discriminant.name]];
+            const discriminant = classSchema.getSingleTableInheritanceDiscriminantName();
+            const subClassSchema = singleTableInheritanceMap[dbRecord[discriminant]];
             if (!subClassSchema) {
                 const availableValues = Array.from(Object.keys(singleTableInheritanceMap));
                 throw new Error(
-                    `${classSchema.getClassName()} has no sub class with discriminator value ${JSON.stringify(dbRecord[discriminant.name])} for field ${discriminant.name}.` +
+                    `${classSchema.getClassName()} has no sub class with discriminator value ${JSON.stringify(dbRecord[discriminant])} for field ${discriminant}.` +
                     `Available discriminator values ${availableValues.map(v => JSON.stringify(v)).join(',')}`
                 );
             }
@@ -265,24 +277,24 @@ export class Formatter {
 
             if (join.populate) {
                 const hasValue = dbRecord[refName] !== undefined && dbRecord[refName] !== null;
-                if (join.propertySchema.backReference && join.propertySchema.isArray) {
+                if (join.propertySchema.isBackReference() && join.propertySchema.isArray()) {
                     if (hasValue) {
                         item[join.propertySchema.name] = dbRecord[refName].map((item: any) => {
-                            return this.hydrateModel(join.query.model, join.propertySchema.getResolvedClassSchema(), item);
+                            return this.hydrateModel(join.query.model, join.propertySchema.getResolvedReflectionClass(), item);
                         });
                     } else {
                         item[join.propertySchema.name] = [];
                     }
                 } else if (hasValue) {
                     item[join.propertySchema.name] = this.hydrateModel(
-                        join.query.model, join.propertySchema.getResolvedClassSchema(), dbRecord[refName]
+                        join.query.model, join.propertySchema.getResolvedReflectionClass(), dbRecord[refName]
                     );
                 } else {
                     item[join.propertySchema.name] = undefined;
                 }
             } else {
                 //not populated
-                if (join.propertySchema.isReference) {
+                if (join.propertySchema.isReference()) {
                     const reference = this.getReference(classSchema, dbRecord, join.propertySchema, model.isPartial());
                     if (reference) item[join.propertySchema.name] = reference;
                 } else {
@@ -302,8 +314,8 @@ export class Formatter {
 
         //todo: how do we get a partial type of a classSchema? We need some kind of service that caches it for us when we create one on-demand.
         const converted = classSchema === this.rootClassSchema
-            ? (partial ? this.rootSerializer.partialDeserialize(dbRecord) : this.rootSerializer.deserialize(dbRecord))
-            : (partial ? getPartialXToClassFunction(classSchema, this.serializer)(dbRecord) : getXToClassFunction(classSchema, this.serializer)(dbRecord));
+            ? (partial ? this.partialDeserialize(dbRecord) : this.deserialize(dbRecord))
+            : (partial ? getPartialSerializeFunction(classSchema.type, this.serializer.deserializeRegistry)(dbRecord) : getSerializeFunction(classSchema.type, this.serializer.deserializeRegistry)(dbRecord));
 
         if (!partial) {
             if (model.withChangeDetection) getInstanceState(classState, converted).markAsFromDatabase();

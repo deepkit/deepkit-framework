@@ -1,4 +1,4 @@
-import { entity, plainToClass, t } from '@deepkit/type';
+import { AutoIncrement, deserialize, entity, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { getInstanceStateFromItem } from '../src/identity-map';
 import { Database } from '../src/database';
@@ -7,21 +7,21 @@ import { SoftDelete, SoftDeleteQuery, SoftDeleteSession } from '../src/plugin/so
 import { Query } from '../src/query';
 
 test('soft-delete query', async () => {
-    const s = t.schema({
-        id: t.number.autoIncrement.primary,
-        username: t.string,
-        deletedAt: t.date.optional,
-        deletedBy: t.string.optional,
-    }, { name: 'User' });
+    class s {
+        id!: number & PrimaryKey & AutoIncrement;
+        username!: string;
+        deletedAt?: Date;
+        deletedBy?: string;
+    }
 
     const memory = new MemoryDatabaseAdapter();
     const database = new Database(memory);
     const softDelete = new SoftDelete(database);
     softDelete.enable(s);
 
-    await database.persist(plainToClass(s, { id: 1, username: 'Peter' }));
-    await database.persist(plainToClass(s, { id: 2, username: 'Joe' }));
-    await database.persist(plainToClass(s, { id: 3, username: 'Lizz' }));
+    await database.persist(deserialize<s>({ id: 1, username: 'Peter' }));
+    await database.persist(deserialize<s>({ id: 2, username: 'Joe' }));
+    await database.persist(deserialize<s>({ id: 3, username: 'Lizz' }));
 
     expect(await database.query(s).count()).toBe(3);
 
@@ -67,15 +67,17 @@ test('soft-delete query', async () => {
 });
 
 test('soft-delete session', async () => {
+
     @entity.name('softDeleteUser')
     class User {
-        @t.primary.autoIncrement id: number = 0;
-        @t.optional deletedAt?: Date;
-        @t.optional deletedBy?: string;
+        id: number & PrimaryKey & AutoIncrement = 0;
+        deletedAt?: Date;
+        deletedBy?: string;
 
         constructor(
-            @t public username: string,
-        ) { }
+            public username: string,
+        ) {
+        }
     }
 
     const memory = new MemoryDatabaseAdapter();

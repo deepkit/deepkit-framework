@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { atomicChange, getClassSchema, jsonSerializer, t } from '@deepkit/type';
+import { atomicChange, deserialize, PrimaryKey, Reference, ReflectionClass, serializer, t } from '@deepkit/type';
 import { Formatter } from '../src/formatter';
 import { DatabaseQueryModel } from '../src/query';
 import { DatabaseSession } from '../src/database-session';
@@ -10,24 +10,24 @@ import { buildChangesFromInstance } from '../src/utils';
 
 test('change-detection', () => {
     class Image {
-        @t.primary id: number = 0;
+        id: number & PrimaryKey = 0;
 
         @t data: string = 'empty';
     }
 
     class User {
-        @t.primary id: number = 0;
+        id: number & PrimaryKey = 0;
 
-        @t.reference().optional image?: Image;
+        image?: Image & Reference;
 
-        constructor(@t public username: string) {
+        constructor(public username: string) {
         }
     }
 
     const session = new DatabaseSession(new MemoryDatabaseAdapter);
 
     {
-        const formatter = new Formatter(getClassSchema(User), jsonSerializer);
+        const formatter = new Formatter(ReflectionClass.from(User), serializer);
         const model = new DatabaseQueryModel<any, any, any>();
         const user = formatter.hydrate(model, { username: 'Peter', id: '2' });
         expect(user.username).toBe('Peter');
@@ -36,33 +36,32 @@ test('change-detection', () => {
     }
 
     {
-        const formatter = new Formatter(getClassSchema(User), jsonSerializer);
+        const formatter = new Formatter(ReflectionClass.from(User), serializer);
         const model = new DatabaseQueryModel<any, any, any>();
         const user = formatter.hydrate(model, { username: 'Peter', id: '2', image: '1' });
         expect(user.username).toBe('Peter');
         expect(user.id).toBe(2);
         expect(user.image).toBeInstanceOf(Image);
         expect(user.image.id).toBe(1);
-        expect(user.image.hasOwnProperty(getClassSchema(Image).getProperty('data').symbol)).toBe(false);
+        expect(user.image.hasOwnProperty(ReflectionClass.from(Image).getProperty('data').symbol)).toBe(false);
         expect(() => user.image.data).toThrow(`Can not access Image.data since class was not completely hydrated`);
 
         user.username = 'Bar';
         // expect(buildChangesFromInstance(user)).toMatchObject({ $set: { username: 'Bar' } });
 
-        expect(getClassState(getClassSchema(user)).classSchema.classType).toBe(User);
-        expect(getClassState(getClassSchema(user.image)).classSchema.classType).toBe(Image);
+        expect(getClassState(ReflectionClass.from(user)).classSchema.getClassType()).toBe(User);
+        expect(getClassState(ReflectionClass.from(user.image)).classSchema.getClassType()).toBe(Image);
 
         expect(getInstanceStateFromItem(user.image).item === user.image).toBe(true);
-        expect(getInstanceStateFromItem(user.image).classState.classSchema.classType === Image).toBe(true);
+        expect(getInstanceStateFromItem(user.image).classState.classSchema.getClassType() === Image).toBe(true);
 
         expect(buildChangesFromInstance(user.image)).toMatchObject({});
 
         expect(getInstanceStateFromItem(user.image).item === user.image).toBe(true);
-        expect(getInstanceStateFromItem(user.image).classState.classSchema.classType === Image).toBe(true);
+        expect(getInstanceStateFromItem(user.image).classState.classSchema.getClassType() === Image).toBe(true);
 
         user.image.data = 'changed';
         expect(user.image.data).toBe('changed');
-        console.log('----------------------------');
         expect(buildChangesFromInstance(user.image)).toMatchObject({ $set: { data: 'changed' } });
 
         //changing user.image.data doesnt trigger for user
@@ -86,11 +85,11 @@ test('change-detection', () => {
 });
 
 test('change-detection string', () => {
-    const s = t.schema({
-        username: t.string,
-    });
+    class s {
+        username!: string;
+    }
 
-    const item = jsonSerializer.for(s).deserialize({ username: 'Peter' });
+    const item = deserialize<s>({ username: 'Peter' });
     getInstanceStateFromItem(item).markAsPersisted();
 
     item.username = 'Alex';
@@ -99,19 +98,19 @@ test('change-detection string', () => {
 });
 
 test('change-detection number', () => {
-    const s = t.schema({
-        position: t.number,
-    });
+    class s {
+        position!: number;
+    }
 
     {
-        const item = jsonSerializer.for(s).deserialize({ position: 1 });
+        const item = deserialize<s>({ position: 1 });
         getInstanceStateFromItem(item).markAsPersisted();
         item.position = 2;
         expect(buildChangesFromInstance(item)).toMatchObject({ $set: { position: 2 } });
     }
 
     {
-        const item = jsonSerializer.for(s).deserialize({ position: 1 });
+        const item = deserialize<s>({ position: 1 });
         getInstanceStateFromItem(item).markAsPersisted();
 
         atomicChange(item).increase('position', 5);
@@ -122,20 +121,20 @@ test('change-detection number', () => {
 });
 
 test('change-detection array', () => {
-    const s = t.schema({
-        id: t.number,
-        tags: t.array(t.string).optional
-    });
+    class s {
+        id!: number;
+        tags?: string[];
+    }
 
     {
-        const item = jsonSerializer.for(s).deserialize({ id: 1, tags: ['a', 'b', 'c'] });
+        const item = deserialize<s>({ id: 1, tags: ['a', 'b', 'c'] });
         getInstanceStateFromItem(item).markAsPersisted();
         item.tags![0] = '000';
         expect(buildChangesFromInstance(item)).toMatchObject({ $set: { tags: ['000', 'b', 'c'] } });
     }
 
     {
-        const item = jsonSerializer.for(s).deserialize({ id: 1, tags: ['a', 'b', 'c'] });
+        const item = deserialize<s>({ id: 1, tags: ['a', 'b', 'c'] });
         getInstanceStateFromItem(item).markAsPersisted();
 
         item.tags!.splice(1, 1); //remove b
@@ -149,13 +148,13 @@ test('change-detection array', () => {
 });
 
 test('change-detection object', () => {
-    const s = t.schema({
-        id: t.number,
-        tags: t.map(t.boolean).optional
-    });
+    class s {
+        id!: number;
+        tags?: { [name: string]: boolean };
+    }
 
     {
-        const item = jsonSerializer.for(s).deserialize({ id: 1, tags: { a: true, b: true } });
+        const item = deserialize<s>({ id: 1, tags: { a: true, b: true } });
         getInstanceStateFromItem(item).markAsPersisted();
         expect(buildChangesFromInstance(item)).toMatchObject({});
         item.tags!.b = false;
@@ -163,7 +162,7 @@ test('change-detection object', () => {
     }
 
     {
-        const item = jsonSerializer.for(s).deserialize({ id: 1, tags: { a: true, b: true } });
+        const item = deserialize<s>({ id: 1, tags: { a: true, b: true } });
         getInstanceStateFromItem(item).markAsPersisted();
 
         delete item.tags!.b;
@@ -177,19 +176,13 @@ test('change-detection object', () => {
 });
 
 test('change-detection union', () => {
-    const s = t.schema({
-        id: t.number,
-        tags: t.union(t.schema({
-            type: t.literal('a'),
-            name: t.string,
-        }), t.schema({
-            type: t.literal('b'),
-            size: t.number,
-        })).optional
-    });
+    class s {
+        id!: number;
+        tags?: { type: 'a', name: string } | { type: 'b', size: number };
+    }
 
     {
-        const item = jsonSerializer.for(s).deserialize({ id: 1, tags: { type: 'a', name: 'peter' } });
+        const item = deserialize<s>({ id: 1, tags: { type: 'a', name: 'peter' } });
         getInstanceStateFromItem(item).markAsPersisted();
         expect(buildChangesFromInstance(item)).toMatchObject({});
 
@@ -208,13 +201,13 @@ test('change-detection enum', () => {
         stopped,
     }
 
-    const s = t.schema({
-        id: t.number,
-        enum: t.enum(MyEnum).optional
-    });
+    class s {
+        id!: number;
+        enum?: MyEnum;
+    }
 
     {
-        const item = jsonSerializer.for(s).deserialize({ id: 1, enum: MyEnum.running });
+        const item = deserialize<s>({ id: 1, enum: MyEnum.running });
         getInstanceStateFromItem(item).markAsPersisted();
         expect(buildChangesFromInstance(item)).toMatchObject({});
 
@@ -227,13 +220,13 @@ test('change-detection enum', () => {
 });
 
 test('change-detection arrayBuffer', () => {
-    const s = t.schema({
-        id: t.number,
-        buffer: t.type(ArrayBuffer)
-    });
+    class s {
+        id!: number;
+        buffer!: ArrayBuffer
+    }
 
     {
-        const item = jsonSerializer.for(s).deserialize({ id: 1, buffer: new ArrayBuffer(10) });
+        const item = deserialize<s>({ id: 1, buffer: new ArrayBuffer(10) });
         getInstanceStateFromItem(item).markAsPersisted();
         expect(buildChangesFromInstance(item)).toMatchObject({});
 
@@ -246,13 +239,13 @@ test('change-detection arrayBuffer', () => {
 });
 
 test('change-detection typedArray', () => {
-    const s = t.schema({
-        id: t.number,
-        buffer: t.type(Uint16Array)
-    });
+    class s {
+        id!: number;
+        buffer!: Uint16Array
+    }
 
     {
-        const item = jsonSerializer.for(s).deserialize({ id: 1, buffer: new Uint16Array(10) });
+        const item = deserialize<s>({ id: 1, buffer: new Uint16Array(10) });
         expect(item.buffer.byteLength).toBe(20);
         getInstanceStateFromItem(item).markAsPersisted();
         expect(buildChangesFromInstance(item)).toMatchObject({});
@@ -266,13 +259,13 @@ test('change-detection typedArray', () => {
 });
 
 test('change-detection array in array', () => {
-    const s = t.schema({
-        id: t.number,
-        tags: t.array(t.array(t.string))
-    });
+    class s {
+        id!: number;
+        tags!: string[][]
+    }
 
     {
-        const item = jsonSerializer.for(s).deserialize({ id: 1, tags: [['a', 'b'], ['c']] });
+        const item = deserialize<s>({ id: 1, tags: [['a', 'b'], ['c']] });
         getInstanceStateFromItem(item).markAsPersisted();
         expect(buildChangesFromInstance(item)).toMatchObject({});
 
@@ -294,13 +287,13 @@ test('change-detection array in array', () => {
 });
 
 test('change-detection array in object', () => {
-    const s = t.schema({
-        id: t.number,
-        tags: t.map(t.array(t.string))
-    });
+    class s {
+        id!: number;
+        tags!: Record<string, string[]>
+    }
 
     {
-        const item = jsonSerializer.for(s).deserialize({ id: 1, tags: { foo: ['a', 'b'], bar: ['c'] } });
+        const item = deserialize<s>({ id: 1, tags: { foo: ['a', 'b'], bar: ['c'] } });
         getInstanceStateFromItem(item).markAsPersisted();
         expect(buildChangesFromInstance(item)).toMatchObject({});
 
@@ -319,13 +312,13 @@ test('change-detection array in object', () => {
 });
 
 test('change-detection object in object', () => {
-    const s = t.schema({
-        id: t.number,
-        tags: t.map(t.map(t.boolean))
-    });
+    class s {
+        id!: number;
+        tags!: Record<string, Record<string, boolean>>
+    }
 
     {
-        const item = jsonSerializer.for(s).deserialize({ id: 1, tags: { foo: { a: true }, bar: { b: false } } });
+        const item = deserialize<s>({ id: 1, tags: { foo: { a: true }, bar: { b: false } } });
         getInstanceStateFromItem(item).markAsPersisted();
         expect(buildChangesFromInstance(item)).toMatchObject({});
 
@@ -350,19 +343,13 @@ test('change-detection object in object', () => {
 });
 
 test('change-detection class', () => {
-    const s = t.schema({
-        id: t.number,
-        config: t.type({
-            a: t.string.optional,
-            b: t.string.optional,
-        })
-    });
-
-    expect(s.getProperty('config').getResolvedClassSchema().getProperty('a').type).toBe('string');
-    expect(s.getProperty('config').getResolvedClassSchema().getProperty('b').type).toBe('string');
+    class s {
+        id!: number;
+        config!: {a?: string, b?: string}
+    }
 
     {
-        const item = jsonSerializer.for(s).deserialize({ id: 1, config: { a: 'foo', b: 'bar' } });
+        const item = deserialize<s>({ id: 1, config: { a: 'foo', b: 'bar' } });
         getInstanceStateFromItem(item).markAsPersisted();
         expect(buildChangesFromInstance(item)).toMatchObject({});
 
@@ -381,19 +368,13 @@ test('change-detection class', () => {
 });
 
 test('change-detection class in array', () => {
-    const s = t.schema({
-        id: t.number,
-        config: t.array({
-            name: t.string,
-            value: t.string,
-        })
-    });
-
-    expect(s.getProperty('config').getSubType().getResolvedClassSchema().getProperty('name').type).toBe('string');
-    expect(s.getProperty('config').getSubType().getResolvedClassSchema().getProperty('value').type).toBe('string');
+    class s {
+        id!: number;
+        config!: {name: string, value: string}[]
+    }
 
     {
-        const item = jsonSerializer.for(s).deserialize({ id: 1, config: [{ name: 'foo', value: 'bar' }, { name: 'foo2', value: 'bar2' }] });
+        const item = deserialize<s>({ id: 1, config: [{ name: 'foo', value: 'bar' }, { name: 'foo2', value: 'bar2' }] });
         getInstanceStateFromItem(item).markAsPersisted();
         expect(buildChangesFromInstance(item)).toMatchObject({});
 

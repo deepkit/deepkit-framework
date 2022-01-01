@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { Database } from '../src/database';
 import { MemoryDatabaseAdapter } from '../src/memory-db';
-import { getClassSchema, t } from '@deepkit/type';
+import { AutoIncrement, PrimaryKey, ReflectionClass, t } from '@deepkit/type';
 
 test('onUpdate plugin', async () => {
     function onUpdate() {
@@ -22,17 +22,16 @@ test('onUpdate plugin', async () => {
     }
 
     class User {
-        @t.primary.autoIncrement id: number = 0;
+        id: number & PrimaryKey & AutoIncrement = 0;
 
-        @t createdAt: Date = new Date;
+        createdAt: Date = new Date;
 
-        @t logins: number = 0;
+        logins: number = 0;
 
-        @t
         @onUpdate()
         updatedAt: Date = new Date;
 
-        constructor(@t public username: string) {
+        constructor(public username: string) {
         }
     }
 
@@ -57,7 +56,7 @@ test('onUpdate plugin', async () => {
     }
 
 
-    const schema = getClassSchema(User);
+    const schema = ReflectionClass.from(User);
     expect(schema.getProperty('updatedAt').data['timestamp/onUpdate']).toBe(true);
 
 });

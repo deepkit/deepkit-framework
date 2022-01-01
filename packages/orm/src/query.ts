@@ -10,16 +10,16 @@
 
 import { ClassType, empty } from '@deepkit/core';
 import {
+    assertType,
     Changes,
     ChangesInterface,
-    ClassSchema,
-    ExtractPrimaryKeyType,
-    ExtractReferences,
     getSimplePrimaryKeyHashGenerator,
-    getSingleTableInheritanceTypeValue,
     PrimaryKeyFields,
-    PropertySchema,
-    ReflectionClass
+    PrimaryKeyType,
+    ReferenceFields,
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionProperty
 } from '@deepkit/type';
 import { Subject } from 'rxjs';
 import { DatabaseAdapter } from './database-adapter';
@@ -34,15 +34,15 @@ export type Sort<T extends Entity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P
 
 export interface DatabaseJoinModel<T, PARENT extends BaseQuery<any>> {
     //this is the parent classSchema, the foreign classSchema is stored in `query`
-    classSchema: ClassSchema<T>,
-    propertySchema: PropertySchema,
+    classSchema: ReflectionClass<T>,
+    propertySchema: ReflectionProperty,
     type: 'left' | 'inner' | string,
     populate: boolean,
     //defines the field name under which the database engine populated the results.
     //necessary for the formatter to pick it up, convert and set correct to the real field name
     as?: string,
     query: JoinDatabaseQuery<T, PARENT>,
-    foreignPrimaryKey: PropertySchema,
+    foreignPrimaryKey: ReflectionProperty,
 }
 
 export type QuerySelector<T> = {
@@ -87,7 +87,7 @@ export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<T> 
     public filter?: FILTER;
     public having?: FILTER;
     public groupBy: Set<string> = new Set<string>();
-    public aggregate = new Map<string, { property: PropertySchema, func: string }>();
+    public aggregate = new Map<string, { property: ReflectionProperty, func: string }>();
     public select: Set<string> = new Set<string>();
     public joins: DatabaseJoinModel<any, any>[] = [];
     public skip?: number;
@@ -347,8 +347,8 @@ export class BaseQuery<T extends Entity> {
         const c = this.clone();
         if (filter && !Object.keys(filter as object).length) filter = undefined;
 
-        if (filter instanceof this.classSchema.classType) {
-            const primaryKey = this.classSchema.getPrimaryField();
+        if (filter instanceof this.classSchema.getClassType()) {
+            const primaryKey = this.classSchema.getPrimary();
             c.model.filter = { [primaryKey.name]: (filter as any)[primaryKey.name] } as this['model']['filter'];
         } else {
             c.model.filter = filter;
@@ -359,9 +359,9 @@ export class BaseQuery<T extends Entity> {
     addFilter<K extends keyof T & string>(name: K, value: FilterQuery<T>[K]): this {
         const c = this.clone();
         if (c.model.filter) {
-            c.model.filter = {$and: [{[name]: value}, c.model.filter]} as any;
+            c.model.filter = { $and: [{ [name]: value }, c.model.filter] } as any;
         } else {
-            c.model.filter = {[name]: value} as any;
+            c.model.filter = { [name]: value } as any;
         }
         return c;
     }
@@ -389,19 +389,19 @@ export class BaseQuery<T extends Entity> {
      * Adds a left join in the filter. Does NOT populate the reference with values.
      * Accessing `field` in the entity (if not optional field) results in an error.
      */
-    join<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K, type: 'left' | 'inner' = 'left', populate: boolean = false): this {
+    join<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<T[K]>>(field: K, type: 'left' | 'inner' = 'left', populate: boolean = false): this {
         const propertySchema = this.classSchema.getProperty(field as string);
-        if (!propertySchema.isReference && !propertySchema.backReference) {
+        if (!propertySchema.isReference() && !propertySchema.isBackReference()) {
             throw new Error(`Field ${field} is not marked as reference. Use @t.reference()`);
         }
         const c = this.clone();
 
-        const query = new JoinDatabaseQuery<ENTITY, this>(propertySchema.getResolvedClassSchema(), c, field as string);
+        const query = new JoinDatabaseQuery<ENTITY, this>(propertySchema.getResolvedReflectionClass(), c, field as string);
         query.model.parameters = c.model.parameters;
 
         c.model.joins.push({
             propertySchema, query, populate, type,
-            foreignPrimaryKey: propertySchema.getResolvedClassSchema().getPrimaryField(),
+            foreignPrimaryKey: propertySchema.getResolvedReflectionClass().getPrimary(),
             classSchema: this.classSchema,
         });
         return c;
@@ -412,7 +412,7 @@ export class BaseQuery<T extends Entity> {
      * Accessing `field` in the entity (if not optional field) results in an error.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useJoin<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useJoin<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         const c = this.join(field, 'left');
         return c.model.joins[c.model.joins.length - 1].query;
     }
@@ -420,7 +420,7 @@ export class BaseQuery<T extends Entity> {
     /**
      * Adds a left join in the filter and populates the result set WITH reference field accordingly.
      */
-    joinWith<K extends ExtractReferences<T>>(field: K): this {
+    joinWith<K extends keyof ReferenceFields<T>>(field: K): this {
         return this.join(field, 'left', true);
     }
 
@@ -428,12 +428,12 @@ export class BaseQuery<T extends Entity> {
      * Adds a left join in the filter and populates the result set WITH reference field accordingly.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useJoinWith<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useJoinWith<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         const c = this.join(field, 'left', true);
         return c.model.joins[c.model.joins.length - 1].query;
     }
 
-    getJoin<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    getJoin<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         for (const join of this.model.joins) {
             if (join.propertySchema.name === field) return join.query;
         }
@@ -443,7 +443,7 @@ export class BaseQuery<T extends Entity> {
     /**
      * Adds a inner join in the filter and populates the result set WITH reference field accordingly.
      */
-    innerJoinWith<K extends ExtractReferences<T>>(field: K): this {
+    innerJoinWith<K extends keyof ReferenceFields<T>>(field: K): this {
         return this.join(field, 'inner', true);
     }
 
@@ -451,7 +451,7 @@ export class BaseQuery<T extends Entity> {
      * Adds a inner join in the filter and populates the result set WITH reference field accordingly.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useInnerJoinWith<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useInnerJoinWith<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         const c = this.join(field, 'inner', true);
         return c.model.joins[c.model.joins.length - 1].query;
     }
@@ -460,7 +460,7 @@ export class BaseQuery<T extends Entity> {
      * Adds a inner join in the filter. Does NOT populate the reference with values.
      * Accessing `field` in the entity (if not optional field) results in an error.
      */
-    innerJoin<K extends ExtractReferences<T>>(field: K): this {
+    innerJoin<K extends keyof ReferenceFields<T>>(field: K): this {
         return this.join(field, 'inner');
     }
 
@@ -469,7 +469,7 @@ export class BaseQuery<T extends Entity> {
      * Accessing `field` in the entity (if not optional field) results in an error.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useInnerJoin<K extends ExtractReferences<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useInnerJoin<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         const c = this.join(field, 'inner');
         return c.model.joins[c.model.joins.length - 1].query;
     }
@@ -477,7 +477,7 @@ export class BaseQuery<T extends Entity> {
 
 export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = DatabaseAdapter, MODEL extends DatabaseQueryModel<T> = DatabaseQueryModel<T>> {
     constructor(
-        protected classSchema: ClassSchema<T>,
+        protected classSchema: ReflectionClass<T>,
         protected session: DatabaseSession<ADAPTER>,
     ) {
     }
@@ -509,7 +509,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     }
 
     constructor(
-        classSchema: ClassSchema,
+        classSchema: ReflectionClass<T>,
         protected session: DatabaseSession<any>,
         protected resolver: GenericQueryResolver<T>
     ) {
@@ -573,23 +573,23 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         return cloned;
     }
 
-    protected async callOnFetchEvent(query: this): Promise<this> {
+    protected async callOnFetchEvent(query: Query<any>): Promise<this> {
         const hasEvents = this.session.queryEmitter.onFetch.hasSubscriptions();
-        if (!hasEvents) return query;
+        if (!hasEvents) return query as this;
 
         const event = new QueryDatabaseEvent(this.session, this.classSchema, query);
         await this.session.queryEmitter.onFetch.emit(event);
         return event.query as any;
     }
 
-    protected onQueryResolve(query: this): this {
+    protected onQueryResolve(query: Query<any>): this {
         if (query.classSchema.singleTableInheritance && query.classSchema.parent) {
-            const discriminant = query.classSchema.parent.getSingleTableInheritanceDiscriminant();
-            let value = query.classSchema.getProperty(discriminant.name).getDefaultValue();
-            if (value === undefined) value = getSingleTableInheritanceTypeValue(query.classSchema);
-            return query.addFilter(discriminant.name as keyof T & string, value);
+            const discriminant = query.classSchema.parent.getSingleTableInheritanceDiscriminantName();
+            const property = query.classSchema.getProperty(discriminant);
+            assertType(property.type, ReflectionKind.literal);
+            return query.addFilter(discriminant as keyof T & string, property.type.literal) as this;
         }
-        return query;
+        return query as this;
     }
 
     public async count(fromHas: boolean = false): Promise<number> {
@@ -598,9 +598,9 @@ export class Query<T extends Entity> extends BaseQuery<T> {
             return await query.resolver.count(query.model);
         }
 
-        const frame = this.session.stopwatch.start((fromHas ? 'Has:' : 'Count:') +this.classSchema.getClassName(), FrameCategory.database);
+        const frame = this.session.stopwatch.start((fromHas ? 'Has:' : 'Count:') + this.classSchema.getClassName(), FrameCategory.database);
         try {
-            frame.data({collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName()});
+            frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
             const eventFrame = this.session.stopwatch.start('Events');
             const query = this.onQueryResolve(await this.callOnFetchEvent(this));
             eventFrame.end();
@@ -618,7 +618,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
 
         const frame = this.session.stopwatch.start('Find:' + this.classSchema.getClassName(), FrameCategory.database);
         try {
-            frame.data({collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName()});
+            frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
             const eventFrame = this.session.stopwatch.start('Events');
             const query = this.onQueryResolve(await this.callOnFetchEvent(this));
             eventFrame.end();
@@ -636,7 +636,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
 
         const frame = this.session.stopwatch.start('FindOne:' + this.classSchema.getClassName(), FrameCategory.database);
         try {
-            frame.data({collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName()});
+            frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
             const eventFrame = this.session.stopwatch.start('Events');
             const query = this.onQueryResolve(await this.callOnFetchEvent(this.limit(1)));
             eventFrame.end();
@@ -660,7 +660,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         return await this.delete(this.limit(1));
     }
 
-    protected async delete(query: this): Promise<DeleteResult<T>> {
+    protected async delete(query: Query<any>): Promise<DeleteResult<T>> {
         const hasEvents = this.session.queryEmitter.onDeletePre.hasSubscriptions() || this.session.queryEmitter.onDeletePost.hasSubscriptions();
 
         const deleteResult: DeleteResult<T> = {
@@ -669,7 +669,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         };
 
         const frame = this.session.stopwatch ? this.session.stopwatch.start('Delete:' + this.classSchema.getClassName(), FrameCategory.database) : undefined;
-        if (frame) frame.data({collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName()});
+        if (frame) frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
 
         try {
             if (!hasEvents) {
@@ -679,7 +679,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
                 return deleteResult;
             }
 
-            const event = new QueryDatabaseDeleteEvent<any>(this.session, this.classSchema, query, deleteResult);
+            const event = new QueryDatabaseDeleteEvent<T>(this.session, this.classSchema, query, deleteResult);
 
             if (this.session.queryEmitter.onDeletePre.hasSubscriptions()) {
                 const eventFrame = this.session.stopwatch ? this.session.stopwatch.start('Events') : undefined;
@@ -714,9 +714,9 @@ export class Query<T extends Entity> extends BaseQuery<T> {
         return await this.patch(this.limit(1), patch);
     }
 
-    protected async patch(query: this, patch: Partial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
+    protected async patch(query: Query<any>, patch: Partial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
         const frame = this.session.stopwatch ? this.session.stopwatch.start('Patch:' + this.classSchema.getClassName(), FrameCategory.database) : undefined;
-        if (frame) frame.data({collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName()});
+        if (frame) frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
 
         try {
             const changes: Changes<T> = new Changes<T>({
@@ -796,8 +796,8 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     }
 
     public async ids(singleKey?: false): Promise<PrimaryKeyFields<T>[]>;
-    public async ids(singleKey: true): Promise<ExtractPrimaryKeyType<T>[]>;
-    public async ids(singleKey: boolean = false): Promise<PrimaryKeyFields<T>[] | ExtractPrimaryKeyType<T>[]> {
+    public async ids(singleKey: true): Promise<PrimaryKeyType<T>[]>;
+    public async ids(singleKey: boolean = false): Promise<PrimaryKeyFields<T>[] | PrimaryKeyType<T>[]> {
         const pks: any = this.classSchema.getPrimaries().map(v => v.name) as FieldName<T>[];
         if (singleKey && pks.length > 1) {
             throw new Error(`Entity ${this.classSchema.getClassName()} has more than one primary key`);
@@ -830,7 +830,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
 
 export class JoinDatabaseQuery<T extends Entity, PARENT extends BaseQuery<any>> extends BaseQuery<T> {
     constructor(
-        public readonly foreignClassSchema: ClassSchema,
+        public readonly foreignClassSchema: ReflectionClass<T>,
         public parentQuery?: PARENT,
         public field?: string,
     ) {

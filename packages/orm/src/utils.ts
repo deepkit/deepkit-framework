@@ -53,6 +53,5 @@ export function buildChangesFromInstance<T>(item: T): Changes<T> {
     const state = getInstanceStateFromItem(item);
     const lastSnapshot = state.getSnapshot();
     const currentSnapshot = state.classState.snapshot(item);
-    console.log(item, state.classState.classSchema.getClassName(), state.item === item, lastSnapshot, currentSnapshot);
     return state.classState.changeDetector(lastSnapshot, currentSnapshot, item) || new Changes;
 }
