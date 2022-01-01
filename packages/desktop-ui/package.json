@@ -18,7 +18,7 @@
   "scripts": {
     "emoji": "ts-node emoji-map.ts",
     "font": "node bin/create-font.js",
-    "build": "typedoc --plugin none --json /tmp/just-to-check-whether-it-runs.json --mode modules src",
+    "build": "typedoc --plugin none --json /tmp/just-to-check-whether-it-runs.json src",
     "prepublishOnly": "webpack && node bin/create-font.js && npm run docs",
     "docs": "typedoc --plugin none --json src/assets/docs.json --mode modules src"
   },
@@ -62,7 +62,7 @@
     "transformation-matrix-js": "2.7.1",
     "ts-loader": "^8.3.0",
     "ttf2woff": "^2.0.1",
-    "typedoc": "0.16.7",
+    "typedoc": "0.21.9",
     "typescript": "^4.3.5",
     "webpack": "^4.41.5",
     "webpack-cli": "^3.3.10",
