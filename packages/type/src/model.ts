@@ -1745,7 +1745,7 @@ type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (x
  *   }
  * ```
  */
-export function mixin<T extends (ClassSchema | ClassType)[]>(...classTypes: T): ClassType<UnionToIntersection<ExtractClassType<T[number]>>> {
+export function mixin<T extends (ClassSchema | AbstractClassType)[]>(...classTypes: T): ClassType<UnionToIntersection<ExtractClassType<T[number]>>> {
     const constructors: Function[] = [];
     const schema = createClassSchema(class {
         constructor(...args: any[]) {
