@@ -2,6 +2,8 @@ import { expect, test } from '@jest/globals';
 import { Email, MaxLength, MinLength, Positive, Validate, validate, ValidatorError } from '../../../src/validator';
 import { is } from '../../../src/typeguard';
 import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Unique } from '../../../src/reflection/type';
+import { t } from '../../../src/decorator';
+import { ReflectionClass, typeOf } from '../../../src/reflection/reflection';
 
 test('email', () => {
     expect(is<Email>('peter@example.com')).toBe(true);
@@ -39,6 +41,27 @@ test('custom validator', () => {
     expect(is<MyType>('aah')).toBe(true);
     expect(is<MyType>('nope')).toBe(false);
     expect(validate<MyType>('nope')).toEqual([{ path: '', code: 'startsWith', message: `Does not start with a` }]);
+});
+
+test('decorator validator', () => {
+    function minLength(length: number) {
+        return (value: any): ValidatorError | void => {
+            if ('string' === typeof value && value.length < length) return new ValidatorError('length', `Min length of ${length}`);
+        };
+    }
+
+    class User {
+        @t.validate(minLength(3))
+        username!: string;
+    }
+
+    const reflection = ReflectionClass.from(User);
+    const userType = typeOf<User>();
+    //resolveRuntimeType caches the type result on the pack array itself
+    expect(userType === reflection.type).toBe(true);
+
+    expect(validate<User>({ username: 'Peter' })).toEqual([]);
+    expect(validate<User>({ username: 'Pe' })).toEqual([{ path: 'username', code: 'length', message: `Min length of 3` }]);
 });
 
 test('class', () => {

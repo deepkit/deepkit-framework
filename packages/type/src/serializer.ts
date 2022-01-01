@@ -1404,6 +1404,22 @@ function serializeTypeClassMap(type: TypeClass, state: TemplateState) {
     }), state);
 }
 
+export function serializeProperty(type: TypePropertySignature | TypeProperty, state: TemplateState) {
+    //todo: handle optional and nullable
+    if (type.optional) {
+        state.addCode(`
+            if (${state.accessor} === undefined) {
+                ${executeTemplates(state.fork(), { kind: ReflectionKind.undefined })}
+            } else {
+                ${executeTemplates(state.fork(), type.type)}
+            }
+        `);
+        return;
+    }
+
+    state.addCode(executeTemplates(state.fork(), type.type));
+}
+
 export function handleUnion(type: TypeUnion, state: TemplateState) {
     //detecting which serializer to use in union is a complex topic and allows a key feature: deserializing an encoding that is entirely based on strings (e.g. URL query string)
     //to support for example numeric string, we need to have multiple guards being able to detect their 'loosely type' equivalence, for example
@@ -1609,6 +1625,11 @@ export class Serializer {
 
         this.serializeRegistry.register(ReflectionKind.null, (type, state) => state.addSetter(`null`));
         this.deserializeRegistry.register(ReflectionKind.null, (type, state) => state.addSetter(`null`));
+
+        this.serializeRegistry.register(ReflectionKind.propertySignature, serializeProperty);
+        this.serializeRegistry.register(ReflectionKind.property, serializeProperty);
+        this.deserializeRegistry.register(ReflectionKind.propertySignature, serializeProperty);
+        this.deserializeRegistry.register(ReflectionKind.property, serializeProperty);
 
         this.serializeRegistry.register(ReflectionKind.bigint, (type, state) => state.addSetter(`${state.accessor}.toString()`));
 
@@ -1883,7 +1904,7 @@ export class Serializer {
                     const validatorVar = state.setVariable('validator', (args[0] as TypeFunction).function);
                     state.addCode(`
                         {
-                            let error = ${validatorVar}(${state.originalAccessor});
+                            let error = ${validatorVar}(${state.originalAccessor}, ${state.compilerContext.reserveConst(type, 'type')});
                             if (error) {
                                 ${state.setter} = false;
                                 if (state.errors) state.errors.push(new ValidationFailedItem(${collapsePath(state.path)}, error.code, error.message));
@@ -1897,7 +1918,7 @@ export class Serializer {
                         const validatorVar = state.setVariable('validator', validator(...args));
                         state.addCode(`
                             {
-                                let error = ${validatorVar}(${state.originalAccessor});
+                                let error = ${validatorVar}(${state.originalAccessor}, ${state.compilerContext.reserveConst(type, 'type')});
                                 if (error) {
                                     ${state.setter} = false;
                                     if (state.errors) state.errors.push(new ValidationFailedItem(${collapsePath(state.path)}, error.code, error.message));

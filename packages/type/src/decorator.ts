@@ -9,9 +9,10 @@
  */
 
 import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext } from './decorator-builder';
-import { EntityData, ReceiveType, ReflectionClass, SerializerFn, TData, ValidatorFn } from './reflection/reflection';
+import { EntityData, ReceiveType, ReflectionClass, SerializerFn, TData } from './reflection/reflection';
 import { ClassType } from '@deepkit/core';
 import { IndexOptions } from './reflection/type';
+import { ValidatorFunction } from './validator';
 
 class TDecorator {
     t = new TData();
@@ -64,7 +65,7 @@ class TDecorator {
         return;
     }
 
-    validate(...validators: ValidatorFn[]) {
+    validate(...validators: ValidatorFunction[]) {
         this.t.validators.push(...validators);
     }
 

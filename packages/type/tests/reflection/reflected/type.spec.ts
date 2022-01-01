@@ -115,7 +115,7 @@ test('extendability union', () => {
     invalidExtend<string, null | undefined>();
 });
 
-test('interface', () => {
+test('interface with method', () => {
     interface Connection {
         id: number;
 
@@ -136,6 +136,16 @@ test('interface', () => {
     validExtend<{ id: number, write(data: Uint16Array): void }, Connection>();
     invalidExtend<{ id: number }, Connection>();
     validExtend<MyConnection, Connection>();
+
+    type t1 = { id: number, write(data: Uint32Array): void } extends Connection ? true : false;
+    type t2 = { id: number, write(): void } extends Connection ? true : false;
+
+    invalidExtend<{ id: number, write(data: Uint32Array): void }, Connection>();
+    validExtend<{ id: number, write(): void }, Connection>();
+    invalidExtend<Connection, { id: number, write(): void }>();
+
+    class SubUint16Array extends Uint16Array {}
+    validExtend<Connection, { id: number, write(data: SubUint16Array): void }>();
 });
 
 test('extendability constructor', () => {
@@ -178,6 +188,7 @@ test('extendability function', () => {
 
     type f1 = ((a: string) => void) extends ((a: string, b: string) => void) ? true : false;
     validExtend<(a: string) => void, (a: string, b: string) => void>();
+
 
     type f2 = ((a: string, b: string) => void) extends ((a: string) => void) ? true : false;
     invalidExtend<(a: string, b: string) => void, (a: string) => void>();
@@ -514,7 +525,7 @@ test('template literal basics', () => {
     expectEqualType(typeOf<`${string}`>(), typeOf<string>());
     expectEqualType(typeOf<`${number}`>(), typeOf<`${number}`>());
     expectEqualType(typeOf<`${1}`>(), typeOf<'1'>());
-    expectEqualType(typeOf<`${true}`>(),typeOf<'true'>());
+    expectEqualType(typeOf<`${true}`>(), typeOf<'true'>());
     expectEqualType(typeOf<`${boolean}`>(), typeOf<'false' | 'true'>());
 });
 
@@ -654,7 +665,7 @@ test('parent embedded', () => {
         a: string;
     }
 
-    const t1 = typeOf<{a: Embedded<C>}>();
+    const t1 = typeOf<{ a: Embedded<C> }>();
     assertType(t1, ReflectionKind.objectLiteral);
     assertType(t1.types[0], ReflectionKind.propertySignature);
     expect(t1.types[0].parent).toBe(t1);

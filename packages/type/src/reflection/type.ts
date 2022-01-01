@@ -527,11 +527,15 @@ export type WithAnnotations =
     | TypeRegexp
     | TypeSymbol;
 
-export function isWithAnnotations(type: Type): type is WithAnnotations {
+export function isWithAnnotations(type: ParentLessType): type is WithAnnotations {
     return type.kind === ReflectionKind.any || type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.boolean
         || type.kind === ReflectionKind.array || type.kind === ReflectionKind.tuple || type.kind === ReflectionKind.literal || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined
         || type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.object || type.kind === ReflectionKind.templateLiteral
         || type.kind === ReflectionKind.regexp || type.kind === ReflectionKind.symbol;
+}
+
+export function getAnnotations(type: WithAnnotations): Annotations {
+    return type.annotations ||= {};
 }
 
 /**
@@ -950,6 +954,13 @@ export type ParentLessType = RemoveDeepParent<Type>;
 export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type): FindType<Type, T['kind']> {
     const type = parent ? { ...inc, parent: parent } as Type : { ...inc } as Type;
 
+    if (isWithAnnotations(type) && isWithAnnotations(inc)) {
+        if (inc.annotations) type.annotations = { ...inc.annotations };
+        if (inc.decorators) type.decorators = inc.decorators.slice();
+        if (inc.indexAccessOrigin) type.indexAccessOrigin = { ...inc.indexAccessOrigin };
+        if (inc.typeArguments) type.typeArguments = inc.typeArguments.slice();
+    }
+
     switch (type.kind) {
         case ReflectionKind.objectLiteral:
         case ReflectionKind.tuple:
@@ -1235,8 +1246,8 @@ export interface ReferenceOptions {
 export type PrimaryKey = { __meta?: ['primaryKey'] };
 
 type TypeKeyOf<T> = T[keyof T];
-export type PrimaryKeyFields<T> = { [P in keyof T]: Required<T[P]> extends Required<PrimaryKey> ? T[P] : never };
-export type PrimaryKeyType<T> = TypeKeyOf<PrimaryKeyFields<T>>;
+export type PrimaryKeyFields<T> = any extends T ? any : { [P in keyof T]: Required<T[P]> extends Required<PrimaryKey> ? T[P] : never };
+export type PrimaryKeyType<T> = any extends T ? any : TypeKeyOf<PrimaryKeyFields<T>>;
 
 export type ReferenceFields<T> = { [P in keyof T]: Required<T[P]> extends Required<Reference> | Required<BackReference> ? T[P] : never };
 

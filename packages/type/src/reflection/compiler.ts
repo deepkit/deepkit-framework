@@ -112,13 +112,11 @@ import {
     visitNode,
 } from 'typescript';
 import { isArray } from '@deepkit/core';
-import { extractJSDocAttribute, getIdentifierName, getNameAsString, getPropertyName, hasModifier } from './reflection-ast';
+import { extractJSDocAttribute, getIdentifierName, getNameAsString, getPropertyName, hasModifier, NodeConverter } from './reflection-ast';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import stripJsonComments from 'strip-json-comments';
 import { MappedModifier, ReflectionOp, TypeNumberBrand } from './type';
-import { cloneNode } from 'ts-clone-node';
-
 
 export const packSizeByte: number = 6;
 
@@ -128,7 +126,7 @@ export const packSizeByte: number = 6;
 export const packSize: number = 2 ** packSizeByte; //64
 
 type StackEntry = Expression | string | number | boolean;
-type PackExpression = Expression | string | number | boolean | bigint;
+export type PackExpression = Expression | string | number | boolean | bigint;
 
 interface PackStruct {
     ops: ReflectionOp[],
@@ -464,12 +462,15 @@ export class ReflectionTransformer {
 
     protected addImports: { from: Expression, identifier: Identifier }[] = [];
 
+    protected nodeConverter: NodeConverter;
+
     constructor(
         protected context: TransformationContext,
     ) {
         this.f = context.factory;
         this.host = (context as any).getEmitHost() as ScriptReferenceHost;
         this.resolver = (context as any).getEmitResolver() as EmitResolver;
+        this.nodeConverter = new NodeConverter(this.f);
     }
 
     protected getTypeCheckerForSource(): TypeChecker {
@@ -1695,31 +1696,7 @@ export class ReflectionTransformer {
      * This function is probably not complete, but we add new copies when required.
      */
     protected valueToExpression(value: undefined | PackExpression | PackExpression[]): Expression {
-        if (isArray(value)) {
-            return this.f.createArrayLiteralExpression(this.f.createNodeArray(value.map(v => this.valueToExpression(v))));
-        }
-
-        if (value === undefined) return this.f.createIdentifier('undefined');
-
-        if ('string' === typeof value) return this.f.createStringLiteral(value, true);
-        if ('number' === typeof value) return this.f.createNumericLiteral(value);
-        if ('bigint' === typeof value) return this.f.createBigIntLiteral(String(value));
-        if ('boolean' === typeof value) return value ? this.f.createTrue() : this.f.createFalse();
-
-        if (value.pos === -1 && value.end === -1 && value.parent === undefined) {
-            if (isArrowFunction(value)) {
-                if (value.body.pos === -1 && value.body.end === -1 && value.body.parent === undefined) return value;
-                return this.f.createArrowFunction(value.modifiers, value.typeParameters, value.parameters, value.type, value.equalsGreaterThanToken, cloneNode(value.body));
-            }
-            return value;
-        }
-
-        try {
-            return cloneNode(value);
-        } catch (error) {
-            console.log('value', value);
-            throw error;
-        }
+        return this.nodeConverter.toExpression(value);
     }
 
     /**

@@ -25,7 +25,7 @@ export interface TypeSettings {
     unpopulatedCheck: UnpopulatedCheck;
 }
 
-export const typeSettings: TypeSettings = { registeredEntities: {}, unpopulatedCheck: UnpopulatedCheck.None };
+export const typeSettings: TypeSettings = { registeredEntities: {}, unpopulatedCheck: UnpopulatedCheck.Throw };
 
 export interface TypedArrayClassType<T> {
     new(...args: any[]): T;

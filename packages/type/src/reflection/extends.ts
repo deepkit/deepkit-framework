@@ -32,6 +32,7 @@ import {
     TypeTuple,
     TypeUnion
 } from './type';
+import { isPrototypeOfBase } from '@deepkit/core';
 
 type AssignableType = Type | string | boolean | number | symbol | bigint | undefined | null;
 
@@ -179,6 +180,13 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
                 }
             }
         }
+
+        if (left.kind === ReflectionKind.class && right.kind === ReflectionKind.class && left.types.length === 0 && right.types.length === 0) {
+            //class User extends Base {}
+            //User extends Base = true
+            return isPrototypeOfBase(left.classType, right.classType);
+        }
+
         return true;
     }
 
@@ -242,7 +250,6 @@ function isFunctionParameterExtendable(left: { parameters: TypeParameter[] }, ri
     //we have to change the position here since its type assignability is inversed to tuples rules
     // true for tuple:     [a: string] extends [a: string, b: string]
     // false for function: (a: string) extends (a: string, b: string)
-
     const valid = isExtendable(rightTuple, leftTuple);
     if (valid) {
         inferFromTuple(leftTuple, rightTuple);

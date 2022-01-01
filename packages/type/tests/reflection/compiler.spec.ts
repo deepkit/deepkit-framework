@@ -176,8 +176,8 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
         app: `import {Email} from './validator'; class Entity { p: Email;}`,
         validator: `
             export const REGEX = /abc/;
-            export type Validator<Name extends string, Args extends [...args: any[]] = []> = { __meta?: { id: 'validator', name: Name, args: Args } }
-            export type Pattern<T extends RegExp> = Validator<'pattern', [T]>
+            export type ValidatorMeta<Name extends string, Args extends [...args: any[]] = []> = { __meta?: { id: 'validator', name: Name, args: Args } }
+            export type Pattern<T extends RegExp> = ValidatorMeta<'pattern', [T]>
             export type Email = string & Pattern<typeof EMAIL_REGEX>;`
     }, `import { EMAIL_REGEX } from './validator';`],
     //

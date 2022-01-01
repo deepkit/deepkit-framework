@@ -100,7 +100,7 @@ function isPack(o: any): o is Packed {
 
 export function resolveRuntimeType(o: any, args: any[] = [], registry?: ProcessorRegistry): OuterType {
     const p: Packed = isArray(o) ? o : o.__type;
-    if (isPack(o) && o.__type) return o.__type;
+    if (isPack(p) && p.__type) return p.__type;
     if (registry) {
         const existing = registry.get(p);
         if (existing) {
@@ -119,7 +119,7 @@ export function resolveRuntimeType(o: any, args: any[] = [], registry?: Processo
     const type = processor.run(packStruct.ops, packStruct.stack, args);
     if (registry) registry.delete(p);
     if (isType(type)) {
-        if (isPack(o)) o.__type = type as OuterType;
+        if (isPack(p)) p.__type = type as OuterType;
 
         if (!isPack(o)) {
             if (type.kind === ReflectionKind.class && type.classType === Object) {

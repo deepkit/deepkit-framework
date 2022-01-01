@@ -1,37 +1,38 @@
 import { ReceiveType } from './reflection/reflection';
 import { is } from './typeguard';
 
-export type Validator<Name extends string, Args extends [...args: any[]] = []> = { __meta?: ['validator', Name, Args] }
+export type ValidatorMeta<Name extends string, Args extends [...args: any[]] = []> = { __meta?: ['validator', Name, Args] }
 
-export type Validate<T extends Function> = Validator<'function', [T]>;
-export type Pattern<T extends RegExp> = Validator<'pattern', [T]>;
-export type Alpha = Validator<'alpha'>;
-export type Alphanumeric = Validator<'alphanumeric'>;
-export type Ascii = Validator<'ascii'>;
-export type Decimal<MinDigits extends number = 1, MaxDigits extends number = 100> = Validator<'decimal', [MinDigits, MaxDigits]>;
-export type MultipleOf<Num extends number> = Validator<'multipleOf', [Num]>;
-export type MinLength<Length extends number> = Validator<'minLength', [Length]>;
-export type MaxLength<Length extends number> = Validator<'maxLength', [Length]>;
+export type ValidatorFunction = (value: any) => ValidatorError | void;
+export type Validate<T extends ValidatorFunction> = ValidatorMeta<'function', [T]>;
+export type Pattern<T extends RegExp> = ValidatorMeta<'pattern', [T]>;
+export type Alpha = ValidatorMeta<'alpha'>;
+export type Alphanumeric = ValidatorMeta<'alphanumeric'>;
+export type Ascii = ValidatorMeta<'ascii'>;
+export type Decimal<MinDigits extends number = 1, MaxDigits extends number = 100> = ValidatorMeta<'decimal', [MinDigits, MaxDigits]>;
+export type MultipleOf<Num extends number> = ValidatorMeta<'multipleOf', [Num]>;
+export type MinLength<Length extends number> = ValidatorMeta<'minLength', [Length]>;
+export type MaxLength<Length extends number> = ValidatorMeta<'maxLength', [Length]>;
 
-export type Includes<T extends string | number | boolean> = Validator<'includes', [T]>;
-export type Excludes<T extends string | number | boolean> = Validator<'excludes', [T]>;
+export type Includes<T extends string | number | boolean> = ValidatorMeta<'includes', [T]>;
+export type Excludes<T extends string | number | boolean> = ValidatorMeta<'excludes', [T]>;
 
-export type Minimum<T extends number | bigint> = Validator<'minimum', [T]>;
-export type Maximum<T extends number | bigint> = Validator<'maximum', [T]>;
+export type Minimum<T extends number | bigint> = ValidatorMeta<'minimum', [T]>;
+export type Maximum<T extends number | bigint> = ValidatorMeta<'maximum', [T]>;
 
-export type Positive = Validator<'positive', [true]>;
-export type Negative = Validator<'negative', [true]>;
+export type Positive = ValidatorMeta<'positive', [true]>;
+export type Negative = ValidatorMeta<'negative', [true]>;
 
-export type PositiveNoZero = Validator<'positive', [false]>;
-export type NegativeNoZero = Validator<'negative', [false]>;
+export type PositiveNoZero = ValidatorMeta<'positive', [false]>;
+export type NegativeNoZero = ValidatorMeta<'negative', [false]>;
 
-export type ExclusiveMinimum<T extends number | bigint> = Validator<'exclusiveMinimum', [T]>;
-export type ExclusiveMaximum<T extends number | bigint> = Validator<'exclusiveMaximum', [T]>;
+export type ExclusiveMinimum<T extends number | bigint> = ValidatorMeta<'exclusiveMinimum', [T]>;
+export type ExclusiveMaximum<T extends number | bigint> = ValidatorMeta<'exclusiveMaximum', [T]>;
 
-export type BeforeDate<T extends number> = Validator<'beforeDate', [T]>;
-export type AfterDate<T extends number> = Validator<'afterDate', [T]>;
-export type BeforeNow = Validator<'beforeNow'>;
-export type AfterNow = Validator<'afterNow'>;
+export type BeforeDate<T extends number> = ValidatorMeta<'beforeDate', [T]>;
+export type AfterDate<T extends number> = ValidatorMeta<'afterDate', [T]>;
+export type BeforeNow = ValidatorMeta<'beforeNow'>;
+export type AfterNow = ValidatorMeta<'afterNow'>;
 
 export const EMAIL_REGEX = /^\S+@\S+$/;
 export type Email = string & Pattern<typeof EMAIL_REGEX>;

@@ -17,11 +17,13 @@ import {
     databaseAnnotation,
     embeddedAnnotation,
     excludedAnnotation,
+    getAnnotations,
     getTypeJitContainer,
     groupAnnotation,
     indexAnnotation,
     IndexOptions,
     isType,
+    isWithAnnotations,
     OuterType,
     primaryKeyAnnotation,
     referenceAnnotation,
@@ -36,12 +38,14 @@ import {
     TypeObjectLiteral,
     TypeParameter,
     TypeProperty,
-    TypePropertySignature
+    TypePropertySignature,
+    validationAnnotation
 } from './type';
 import { AbstractClassType, ClassType, getClassName, isArray, isClass } from '@deepkit/core';
 import { Packed, resolvePacked, resolveRuntimeType } from './processor';
 import { NoTypeReceived } from '../utils';
 import { findCommonLiteral } from '../inheritance';
+import { ValidatorFunction } from '../validator';
 
 /**
  * Receives the runtime type of template argument.
@@ -390,6 +394,8 @@ export class ReflectionProperty {
     serializer?: SerializerFn;
     deserializer?: SerializerFn;
 
+    data: {[name: string]: any} = {};
+
     type: OuterType;
 
     symbol: symbol;
@@ -509,6 +515,17 @@ export class ReflectionProperty {
     applyDecorator(data: TData) {
         this.serializer = data.serializer;
         this.deserializer = data.deserializer;
+        Object.assign(this.data, data.data);
+
+        if (data.validators.length && isWithAnnotations(this.type)) {
+            const annotations = getAnnotations(this.type);
+            for (const validator of data.validators) {
+                validationAnnotation.register(annotations, {
+                    name: 'function',
+                    args: [{ kind: ReflectionKind.function, function: validator, parameters: [], return: { kind: ReflectionKind.any } }]
+                });
+            }
+        }
     }
 
     getName(): number | string | symbol {
@@ -613,17 +630,13 @@ export class ReflectionProperty {
 
 export const reflectionClassSymbol = Symbol('reflectionClass');
 
-export interface ValidatorFn {
-    (value: any, property: ReflectionProperty): any;
-}
-
 export interface SerializerFn {
     (value: any, property: ReflectionProperty): any;
 }
 
 export class TData {
     validator: boolean = false;
-    validators: ValidatorFn[] = [];
+    validators: ValidatorFunction[] = [];
     type?: Packed | Type | ClassType;
     data: { [name: string]: any } = {};
     serializer?: SerializerFn;
