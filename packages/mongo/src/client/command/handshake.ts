@@ -82,10 +82,9 @@ export class HandshakeCommand extends Command {
 
     async execute(config: MongoClientConfig, host: Host): Promise<boolean> {
         const db = config.getAuthSource();
-        const cmd = {
+        const cmd: any = {
             isMaster: 1,
             $db: db,
-            saslSupportedMechs: !config.options.authMechanism && config.authUser ? `${db}.${config.authUser}` : undefined,
             client: {
                 // application: {
                 //     name: 'undefined'
@@ -99,6 +98,10 @@ export class HandshakeCommand extends Command {
                 }
             }
         };
+
+        if (!config.options.authMechanism && config.authUser) {
+            cmd.saslSupportedMechs = `${db}.${config.authUser}`;
+        }
 
         const response = await this.sendAndWait(isMasterSchema, cmd, IsMasterResponse);
         const hostType = host.getTypeFromIsMasterResult(response);
