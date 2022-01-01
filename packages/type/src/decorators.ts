@@ -395,7 +395,7 @@ function createFieldDecoratorResult<T>(
     fn.jsonType = (type: WideTypes) => {
         resetIfNecessary();
         return createFieldDecoratorResult(cb, givenPropertyName, [...modifier, (target: object, property: PropertySchema) => {
-            property.jsonType ||= new PropertySchema('jsonType');
+            if (!property.jsonType) property.jsonType = new PropertySchema('jsonType');
             assignWideTypeToProperty(property.jsonType, type);
         }]);
     };
