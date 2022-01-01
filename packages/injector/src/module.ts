@@ -341,9 +341,11 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
         if (!this.preparedProviders) return;
 
         if (isType(token)) {
+            let last = undefined as { token: Token, provider: PreparedProvider } | undefined;
             for (const [key, value] of this.preparedProviders.entries()) {
-                if (isType(key) && isExtendable(key, token)) return { token: key, provider: value };
+                if (isType(key) && isExtendable(key, token)) last = { token: key, provider: value };
             }
+            if (last) return last;
         }
 
         const provider = this.preparedProviders.get(token);

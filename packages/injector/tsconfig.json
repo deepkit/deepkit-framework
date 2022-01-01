@@ -13,9 +13,6 @@
     "module": "CommonJS",
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
-    "lib": [
-      "ES5"
-    ],
     "declaration": true,
     "composite": true
   },

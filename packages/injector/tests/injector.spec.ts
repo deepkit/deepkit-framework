@@ -156,6 +156,44 @@ test('interface dependency over specified', () => {
     expect(server.connection.id).toBe(0);
 });
 
+test('interface dependency multiple matches', () => {
+    interface Connection {
+        write(data: Uint16Array): void;
+    }
+
+    class MyConnection1 implements Connection {
+        write(data: Uint16Array): void {
+        }
+    }
+
+    class MyConnection2 implements Connection {
+        write(data: Uint16Array): void {
+        }
+    }
+
+    class MyServer {
+        constructor(public connection: Connection) {
+        }
+    }
+
+    {
+        expect(() => Injector.from([MyServer, provide<{ write(invalid: Uint32Array): void }>(MyConnection1)])).toThrow('Undefined dependency "connection');
+    }
+
+    {
+        const injector = Injector.from([MyServer, provide<{ write(): void }>(MyConnection1)]);
+        const server = injector.get(MyServer);
+        expect(server.connection).toBeInstanceOf(MyConnection1);
+    }
+
+    {
+        //last match wins
+        const injector = Injector.from([MyServer, provide<{ write(): void }>(MyConnection1), provide<{ write(): void }>(MyConnection2)]);
+        const server = injector.get(MyServer);
+        expect(server.connection).toBeInstanceOf(MyConnection2);
+    }
+});
+
 test('interface dependency under specified', () => {
     interface Connection {
         id: number;
