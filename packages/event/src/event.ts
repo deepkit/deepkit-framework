@@ -9,7 +9,7 @@
  */
 
 import { ClassType, CompilerContext, isClass, isFunction } from '@deepkit/core';
-import { ConfigSlice, ConfigToken, InjectorContext, InjectorModule } from '@deepkit/injector';
+import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { createClassDecoratorContext, createPropertyDecoratorContext } from '@deepkit/type';
 
 export type EventListenerCallback<T> = (event: T) => void | Promise<void>;
@@ -242,10 +242,7 @@ export class EventDispatcher {
     }
 }
 
-export type ExtractDep<T> = T extends ClassType ? InstanceType<T> :
-    T extends ConfigSlice<infer V> ? V :
-        T extends ConfigToken<infer V> ? V :
-            T;
+export type ExtractDep<T> = T extends ClassType ? InstanceType<T> : T;
 
 export type ExtractDeps<T extends any[]> = { [K in keyof T]: ExtractDep<T[K]> }
 

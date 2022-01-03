@@ -8,14 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ExtractClassDefinition, jsonSerializer, PlainSchemaProps, t } from '@deepkit/type';
-import { ConfigDefinition, InjectorModule, InjectorToken, ProviderWithScope, Token } from '@deepkit/injector';
-import { AbstractClassType, ClassType, CustomError, isClass } from '@deepkit/core';
+import { InjectorModule, InjectorToken, ProviderWithScope, Token } from '@deepkit/injector';
+import { AbstractClassType, ClassType, CustomError, ExtractClassType, isClass } from '@deepkit/core';
 import { EventListener } from '@deepkit/event';
 import type { WorkflowDefinition } from '@deepkit/workflow';
+import { getPartialSerializeFunction, reflect, serializer, TypeClass } from '@deepkit/type';
 
 export type DefaultObject<T> = T extends undefined ? {} : T;
-export type ExtractConfigOfDefinition<T> = T extends ConfigDefinition<infer C> ? C : {};
 
 export interface MiddlewareConfig {
     getClassTypes(): ClassType[];
@@ -47,19 +46,17 @@ export interface ModuleDefinition {
      *
      * @example
      * ```typescript
-     * import {createModule, createModuleConfig} from '@deepkit/app';
-     * import {t} from '@deepkit/type';
      *
-     * const myModuleConfig = createModuleConfig({
-     *     debug: t.boolean.default(false),
+     * class MyModuleConfig {
+     *     debug: boolean = false;
      * });
      *
      * class MyModule extends createModule({
-     *     config: myModuleConfig
+     *     config: MyModuleConfig
      * });
      * ```
      */
-    config?: ConfigDefinition<any>;
+    config?: ClassType;
 
     /**
      * CLI controllers.
@@ -141,16 +138,6 @@ export class ConfigurationInvalidError extends CustomError {
 
 let moduleId = 0;
 
-export class AppModuleConfig<T extends PlainSchemaProps> extends ConfigDefinition<ExtractClassDefinition<T>> {
-    constructor(public config: T) {
-        super(t.schema(config));
-    }
-}
-
-export function createModuleConfig<T extends PlainSchemaProps>(config: T): AppModuleConfig<T> {
-    return new AppModuleConfig(config);
-}
-
 type PartialDeep<T> = T extends string | number | bigint | boolean | null | undefined | symbol | Date
     ? T | undefined
     // Arrays, Sets and Maps and their readonly counterparts have their items made
@@ -192,9 +179,9 @@ export interface AppModuleClass<C> {
  * });
  * ```
  */
-export function createModule<T extends CreateModuleDefinition>(options: T, name: string = ''): AppModuleClass<ExtractConfigOfDefinition<T['config']>> {
+export function createModule<T extends CreateModuleDefinition>(options: T, name: string = ''): AppModuleClass<ExtractClassType<T['config']>> {
     return class AnonAppModule extends AppModule<T> {
-        constructor(config?: PartialDeep<ExtractConfigOfDefinition<T['config']>>) {
+        constructor(config?: PartialDeep<ExtractClassType<T['config']>>) {
             super(options, name);
             if (config) {
                 this.configure(config);
@@ -205,7 +192,7 @@ export function createModule<T extends CreateModuleDefinition>(options: T, name:
 
 export type ListenerType = EventListener<any> | ClassType;
 
-export class AppModule<T extends RootModuleDefinition, C extends ExtractConfigOfDefinition<T['config']> = any> extends InjectorModule<C, AppModule<any>> {
+export class AppModule<T extends RootModuleDefinition, C extends ExtractClassType<T['config']> = any> extends InjectorModule<C, AppModule<any>> {
     public setupConfigs: ((module: AppModule<any>, config: any) => void)[] = [];
 
     public imports: AppModule<any>[] = [];
@@ -232,13 +219,14 @@ export class AppModule<T extends RootModuleDefinition, C extends ExtractConfigOf
         if ('forRoot' in this.options) this.forRoot();
 
         if (this.options.config) {
-            this.configDefinition = this.options.config;
+            this.setConfigDefinition(this.options.config);
+            // this.configDefinition = this.options.config;
             //apply defaults
-            const defaults: any = jsonSerializer.for(this.options.config.schema).deserialize({});
-            //we iterate over so we have the name available on the object, even if its undefined
-            for (const property of this.options.config.schema.getProperties()) {
-                (this.config as any)[property.name] = defaults[property.name];
-            }
+            // const defaults: any = jsonSerializer.for(this.options.config.schema).deserialize({});
+            // //we iterate over so we have the name available on the object, even if its undefined
+            // for (const property of this.options.config.schema.getProperties()) {
+            //     (this.config as any)[property.name] = defaults[property.name];
+            // }
         }
     }
 
@@ -359,7 +347,7 @@ export class AppModule<T extends RootModuleDefinition, C extends ExtractConfigOf
         }
 
         if (this.options.config) {
-            const configNormalized = jsonSerializer.for(this.options.config.schema).partialDeserialize(config);
+            const configNormalized = getPartialSerializeFunction(reflect(this.options.config) as TypeClass, serializer.deserializeRegistry)(config);
             Object.assign(this.config, configNormalized);
         }
 

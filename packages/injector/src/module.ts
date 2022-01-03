@@ -178,8 +178,8 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
 
     setConfigDefinition(config: ClassType): this {
         this.configDefinition = config;
-        const configValues = new config;
-        this.config = Object.assign(configValues, this.config);
+        const configDefaults = new config;
+        this.config = Object.assign(configDefaults, this.config);
         return this;
     }
 

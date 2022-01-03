@@ -8,17 +8,17 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, isFunction, isObject, setPathValue } from '@deepkit/core';
+import { ClassType, ExtractClassType, isFunction, isObject, setPathValue } from '@deepkit/core';
 import { ConfigLoader, ServiceContainer } from './service-container';
 import { InjectorContext, ResolveToken, Token } from '@deepkit/injector';
-import { AppModule, ExtractConfigOfDefinition, RootModuleDefinition } from './module';
+import { AppModule, RootModuleDefinition } from './module';
 import { Command, Config, Options } from '@oclif/config';
 import { basename, relative } from 'path';
 import { Main } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { buildOclifCommand } from './command';
-import { ClassSchema } from '@deepkit/type';
 import { EnvConfiguration } from './configuration';
+import { ReflectionClass, ReflectionKind } from '@deepkit/type';
 
 export function setPartialConfig(target: { [name: string]: any }, partial: { [name: string]: any }, incomingPath: string = '') {
     for (const i in partial) {
@@ -57,7 +57,7 @@ function convertNameStrategy(namingStrategy: EnvNamingStrategy, name: string): s
 function parseEnv(
     config: { [name: string]: any },
     prefix: string,
-    schema: ClassSchema,
+    schema: ReflectionClass<any>,
     incomingDotPath: string,
     incomingEnvPath: string,
     namingStrategy: EnvNamingStrategy,
@@ -66,11 +66,11 @@ function parseEnv(
     for (const property of schema.getProperties()) {
         const name = convertNameStrategy(namingStrategy, property.name);
 
-        if (property.type === 'class') {
+        if (property.type.kind === ReflectionKind.class || property.type.kind === ReflectionKind.objectLiteral) {
             parseEnv(
                 config,
                 prefix,
-                property.getResolvedClassSchema(),
+                ReflectionClass.from(property.type),
                 (incomingDotPath ? incomingDotPath + '.' : '') + property.name,
                 (incomingEnvPath ? incomingEnvPath + '_' : '') + name,
                 namingStrategy,
@@ -136,7 +136,7 @@ class EnvConfigLoader {
         this.namingStrategy = namingStrategy;
     }
 
-    load(module: AppModule<any>, config: { [p: string]: any }, schema: ClassSchema) {
+    load(module: AppModule<any>, config: { [p: string]: any }, schema: ReflectionClass<any>) {
         const envConfiguration = new EnvConfiguration();
         for (const path of this.envFilePaths) {
             if (envConfiguration.loadEnvFile(path)) break;
@@ -148,7 +148,8 @@ class EnvConfigLoader {
     }
 }
 
-export class RootAppModule<T> extends AppModule<T> {}
+export class RootAppModule<T> extends AppModule<T> {
+}
 
 /**
  * This is the smallest available application abstraction in Deepkit.
@@ -189,7 +190,7 @@ export class App<T extends RootModuleDefinition> {
         return this;
     }
 
-    configure(config: Partial<ExtractConfigOfDefinition<T['config']>>): this {
+    configure(config: Partial<ExtractClassType<T['config']>>): this {
         this.serviceContainer.appModule.configure(config);
         return this;
     }
@@ -232,7 +233,7 @@ export class App<T extends RootModuleDefinition> {
         if (!process.env[variableName]) return this;
 
         this.addConfigLoader({
-            load(module: AppModule<any>, config: { [p: string]: any }, schema: ClassSchema) {
+            load(module: AppModule<any>, config: { [p: string]: any }, schema: ReflectionClass<any>) {
                 try {
                     const jsonConfig = JSON.parse(process.env[variableName] || '');
 
