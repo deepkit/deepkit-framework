@@ -31,8 +31,8 @@ import {
     Resolve,
     SORT_ORDER
 } from '@deepkit/orm';
-import { ClassType, isArray } from '@deepkit/core';
-import { Changes, ClassSchema, getClassSchema, hasClassSchema, plainToClass, t } from '@deepkit/type';
+import { ClassType, isArray, isClass } from '@deepkit/core';
+import { Changes, getPartialSerializeFunction, getSerializeFunction, ReflectionClass } from '@deepkit/type';
 import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform';
 import { SqlBuilder } from './sql-builder';
 import { SqlFormatter } from './sql-formatter';
@@ -129,12 +129,12 @@ export abstract class SQLConnectionPool {
     }
 }
 
-function buildSetFromChanges(platform: DefaultPlatform, classSchema: ClassSchema, changes: Changes<any>): string[] {
+function buildSetFromChanges(platform: DefaultPlatform, classSchema: ReflectionClass<any>, changes: Changes<any>): string[] {
     const set: string[] = [];
-    const scopeSerializer = platform.serializer.for(classSchema);
+    const scopeSerializer = getPartialSerializeFunction(classSchema.type, platform.serializer.serializeRegistry);
 
     if (changes.$set) {
-        const value = scopeSerializer.partialSerialize(changes.$set);
+        const value = scopeSerializer(changes.$set);
         for (const i in value) {
             if (!value.hasOwnProperty(i)) continue;
             set.push(`${platform.quoteIdentifier(i)} = ${platform.quoteValue(value[i])}`);
@@ -166,7 +166,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
     constructor(
         protected connectionPool: SQLConnectionPool,
         protected platform: DefaultPlatform,
-        classSchema: ClassSchema<T>,
+        classSchema: ReflectionClass<T>,
         session: DatabaseSession<DatabaseAdapter>
     ) {
         super(classSchema, session);
@@ -181,7 +181,7 @@ export class SQLQueryResolver<T extends Entity> extends GenericQueryResolver<T> 
         );
     }
 
-    protected getTableIdentifier(schema: ClassSchema) {
+    protected getTableIdentifier(schema: ReflectionClass<any>) {
         return this.platform.getTableIdentifier(schema);
     }
 
@@ -374,10 +374,10 @@ export class SqlQuery {
                     sql += column;
                 }
             } else if (part instanceof SqlQueryParameter) {
-                if (part.value instanceof ClassSchema) {
+                if (part.value instanceof ReflectionClass) {
                     sql += platform.getTableIdentifier(part.value);
-                } else if (hasClassSchema(part.value)) {
-                    sql += platform.getTableIdentifier(getClassSchema(part.value));
+                } else if (isClass(part.value)) {
+                    sql += platform.getTableIdentifier(ReflectionClass.from(part.value));
                 } else {
                     sql += placeholderStrategy.getPlaceholder();
                     params.push(part.value);
@@ -415,7 +415,7 @@ export class SQLDatabaseQuery<T extends Entity> extends Query<T> {
     public model: SQLQueryModel<T> = new SQLQueryModel<T>();
 
     constructor(
-        classSchema: ClassSchema<T>,
+        classSchema: ReflectionClass<T>,
         protected databaseSession: DatabaseSession<DatabaseAdapter>,
         protected resolver: SQLQueryResolver<T>
     ) {
@@ -456,30 +456,28 @@ export class SQLDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     }
 
     createQuery<T extends Entity>(
-        classType: ClassType<T> | ClassSchema<T>
+        classType: ClassType<T> | ReflectionClass<T>
     ): SQLDatabaseQuery<T> {
-        return new SQLDatabaseQuery(getClassSchema(classType), this.databaseSession,
-            new SQLQueryResolver(this.connectionPool, this.platform, getClassSchema(classType), this.databaseSession)
+        return new SQLDatabaseQuery(ReflectionClass.from(classType), this.databaseSession,
+            new SQLQueryResolver(this.connectionPool, this.platform, ReflectionClass.from(classType), this.databaseSession)
         );
     }
 }
 
 export class SqlMigrationHandler {
-    protected migrationEntity: ClassSchema;
+    protected migrationEntity = class Entity {
+        created: Date = new Date;
+
+        constructor(public version: number) {
+        }
+    };
 
     constructor(protected database: Database<SQLDatabaseAdapter>) {
-        this.migrationEntity = t.schema({
-            version: t.number.primary,
-            created: t.date,
-        }, { name: database.adapter.platform.getMigrationTableName() });
     }
 
     public async setLatestMigrationVersion(version: number): Promise<void> {
         const session = this.database.createSession();
-        session.add(plainToClass(this.migrationEntity, {
-            version: version,
-            created: new Date,
-        }));
+        session.add(new this.migrationEntity(version));
         await session.commit();
     }
 
@@ -582,11 +580,11 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
         return new SqlRawFactory(session, this.connectionPool, this.platform);
     }
 
-    async getInsertBatchSize(schema: ClassSchema): Promise<number> {
+    async getInsertBatchSize(schema: ReflectionClass<any>): Promise<number> {
         return Math.floor(30000 / schema.getProperties().length);
     }
 
-    async getUpdateBatchSize(schema: ClassSchema): Promise<number> {
+    async getUpdateBatchSize(schema: ReflectionClass<any>): Promise<number> {
         return Math.floor(30000 / schema.getProperties().length);
     }
 
@@ -600,7 +598,7 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
      *
      * WARNING: THIS DELETES ALL AFFECTED TABLES AND ITS CONTENT.
      */
-    public async createTables(classSchemas: ClassSchema[]): Promise<void> {
+    public async createTables(classSchemas: ReflectionClass<any>[]): Promise<void> {
         const connection = await this.connectionPool.getConnection();
         try {
             const database = new DatabaseModel();
@@ -615,7 +613,7 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
         }
     }
 
-    public async getMigrations(classSchemas: ClassSchema[]): Promise<{ [name: string]: { sql: string[], diff: string } }> {
+    public async getMigrations(classSchemas: ReflectionClass<any>[]): Promise<{ [name: string]: { sql: string[], diff: string } }> {
         const migrations: { [name: string]: { sql: string[], diff: string } } = {};
 
         const connection = await this.connectionPool.getConnection();
@@ -652,7 +650,7 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
         return migrations;
     }
 
-    public async migrate(classSchemas: ClassSchema[]): Promise<void> {
+    public async migrate(classSchemas: ReflectionClass<any>[]): Promise<void> {
         const connection = await this.connectionPool.getConnection();
 
         try {
@@ -710,18 +708,18 @@ export class SQLPersistence extends DatabasePersistence {
         if (this.connection) this.connection.release();
     }
 
-    protected prepareAutoIncrement(classSchema: ClassSchema, count: number) {
+    protected prepareAutoIncrement(classSchema: ReflectionClass<any>, count: number) {
     }
 
-    protected populateAutoIncrementFields<T>(classSchema: ClassSchema<T>, items: T[]) {
+    protected populateAutoIncrementFields<T>(classSchema: ReflectionClass<T>, items: T[]) {
     }
 
-    async insert<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
+    async insert<T extends Entity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
         await this.prepareAutoIncrement(classSchema, items.length);
         await this.doInsert(classSchema, items);
     }
 
-    async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+    async update<T extends Entity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         const batchSize = await this.session.adapter.getUpdateBatchSize(classSchema);
 
         if (batchSize > changeSets.length) {
@@ -733,7 +731,7 @@ export class SQLPersistence extends DatabasePersistence {
         }
     }
 
-    protected async doInsert<T>(classSchema: ClassSchema<T>, items: T[]) {
+    protected async doInsert<T>(classSchema: ReflectionClass<T>, items: T[]) {
         const batchSize = await this.session.adapter.getInsertBatchSize(classSchema);
 
         if (batchSize > items.length) {
@@ -748,22 +746,22 @@ export class SQLPersistence extends DatabasePersistence {
         }
     }
 
-    async batchUpdate<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+    async batchUpdate<T extends Entity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         //simple update implementation that is not particular performant nor does it support atomic updates (like $inc)
 
-        const scopeSerializer = this.platform.serializer.for(classSchema);
+        const scopeSerializer = getPartialSerializeFunction(classSchema.type, this.platform.serializer.serializeRegistry);
         const updates: string[] = [];
 
         for (const changeSet of changeSets) {
             const set: string[] = [];
             const where: string[] = [];
 
-            const pk = scopeSerializer.partialSerialize(changeSet.primaryKey) as { [name: string]: any };
+            const pk = scopeSerializer(changeSet.primaryKey) as { [name: string]: any };
             for (const i in pk) {
                 if (!pk.hasOwnProperty(i)) continue;
                 where.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(pk[i])}`);
             }
-            const value = scopeSerializer.partialSerialize(changeSet.changes.$set || {}) as { [name: string]: any };
+            const value = scopeSerializer(changeSet.changes.$set || {}) as { [name: string]: any };
             for (const i in value) {
                 if (!value.hasOwnProperty(i)) continue;
                 set.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(value[i])}`);
@@ -776,28 +774,28 @@ export class SQLPersistence extends DatabasePersistence {
         await (await this.getConnection()).run(sql);
     }
 
-    protected async batchInsert<T>(classSchema: ClassSchema<T>, items: T[]) {
-        const scopeSerializer = this.platform.serializer.for(classSchema);
+    protected async batchInsert<T>(classSchema: ReflectionClass<T>, items: T[]) {
+        const scopeSerializer = getSerializeFunction(classSchema.type, this.platform.serializer.serializeRegistry);
         const insert: string[] = [];
         const params: any[] = [];
         this.resetPlaceholderSymbol();
         const names: string[] = [];
 
         for (const property of classSchema.getProperties()) {
-            if (property.isParentReference) continue;
-            if (property.backReference) continue;
-            if (property.isAutoIncrement) continue;
+            // if (property.isParentReference) continue;
+            if (property.isBackReference()) continue;
+            if (property.isAutoIncrement()) continue;
             names.push(this.platform.quoteIdentifier(property.name));
         }
 
         for (const item of items) {
-            const converted = scopeSerializer.serialize(item);
+            const converted = scopeSerializer(item);
 
             const row: string[] = [];
             for (const property of classSchema.getProperties()) {
-                if (property.isParentReference) continue;
-                if (property.backReference) continue;
-                if (property.isAutoIncrement) continue;
+                // if (property.isParentReference) continue;
+                if (property.isBackReference()) continue;
+                if (property.isAutoIncrement()) continue;
 
                 const v = converted[property.name];
                 params.push(v === undefined ? null : v);
@@ -822,13 +820,13 @@ export class SQLPersistence extends DatabasePersistence {
         return '?';
     }
 
-    protected getInsertSQL(classSchema: ClassSchema, fields: string[], values: string[]): string {
+    protected getInsertSQL(classSchema: ReflectionClass<any>, fields: string[], values: string[]): string {
         return `INSERT INTO ${this.platform.getTableIdentifier(classSchema)} (${fields.join(', ')}) VALUES (${values.join('), (')})`;
     }
 
-    async remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
+    async remove<T extends Entity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
         const pks: any[] = [];
-        const pk = classSchema.getPrimaryField();
+        const pk = classSchema.getPrimary();
         for (const item of items) {
             pks.push(item[pk.name as keyof T]);
         }

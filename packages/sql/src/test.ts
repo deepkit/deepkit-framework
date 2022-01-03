@@ -1,10 +1,10 @@
 import { ClassType } from '@deepkit/core';
-import { ClassSchema, getClassSchema } from '@deepkit/type';
 import { SQLDatabaseAdapter } from './sql-adapter';
 import { DatabaseModel, TableComparator } from './schema/table';
 import { Database } from '@deepkit/orm';
+import { ReflectionClass } from '@deepkit/type';
 
-export async function schemaMigrationRoundTrip(types: (ClassType | ClassSchema)[], adapter: SQLDatabaseAdapter) {
+export async function schemaMigrationRoundTrip(types: (ClassType | ReflectionClass<any>)[], adapter: SQLDatabaseAdapter) {
     const originDatabaseModel = new DatabaseModel;
     adapter.platform.createTables(types, originDatabaseModel);
 
@@ -19,7 +19,7 @@ export async function schemaMigrationRoundTrip(types: (ClassType | ClassSchema)[
         await schemaParser.parse(readDatabaseModel, originDatabaseModel.getTableNames());
 
         for (const type of types) {
-            const s = getClassSchema(type);
+            const s = ReflectionClass.from(type);
             const diff = TableComparator.computeDiff(originDatabaseModel.getTable(s.name!), readDatabaseModel.getTable(s.name!));
             if (diff) console.log('diff', s.getClassName(), diff);
         }

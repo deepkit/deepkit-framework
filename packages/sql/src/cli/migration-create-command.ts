@@ -34,9 +34,18 @@ export class MigrationCreateController extends BaseCommand implements Command {
     }
 
     async execute(
-        @flag.optional.description('Limit the migration to a specific database') database?: string,
-        @flag.optional.description('Do not drop any table that is not available anymore as entity') noDrop: boolean = false,
-        @flag.optional.description('Create an empty migration file') empty: boolean = false,
+        /**
+         * @description Limit the migration to a specific database
+         */
+        @flag database?: string,
+        /**
+         * @description Do not drop any table that is not available anymore as entity
+         */
+        @flag noDrop: boolean = false,
+        /**
+         * @description Create an empty migration file
+         */
+        @flag empty: boolean = false,
     ): Promise<void> {
         if (this.path.length) this.provider.databases.readDatabase(this.path);
         if (this.migrationDir) this.provider.setMigrationDir(this.migrationDir);

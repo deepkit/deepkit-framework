@@ -27,8 +27,14 @@ export class MigrationUpCommand extends BaseCommand {
     }
 
     async execute(
-        @flag.optional.description('Limit migrations to a specific database.') database?: string,
-        @flag.optional.description('Sets the migration version without executing actual SQL commands') fake: boolean = false,
+        /**
+         * @description Limit migrations to a specific database
+         */
+        @flag database?: string,
+        /**
+         * @description Sets the migration version without executing actual SQL commands
+         */
+        @flag fake: boolean = false,
     ): Promise<void> {
         if (this.path.length) this.provider.databases.readDatabase(this.path);
         if (this.migrationDir) this.provider.setMigrationDir(this.migrationDir);

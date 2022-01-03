@@ -60,6 +60,8 @@ export function isDatabaseOf<T extends DatabaseAdapter>(database: Database<any>,
  * Using this class in your code indicates that you can work with common and most basic database semantics.
  * This means that you can use the deepkit/type database API that works across a variety of database engines
  * like MySQL, PostgreSQL, SQLite, and MongoDB.
+ *
+ * @reflection never
  */
 export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     public name: string = 'default';
@@ -324,6 +326,9 @@ export function isActiveRecordClassType(entity: any): entity is ActiveRecordClas
     return 'function' === entity.getDatabase || 'function' === entity.registerDatabase || 'function' === entity.query;
 }
 
+/**
+ * @reflection never
+ */
 export class ActiveRecord {
     constructor(...args: any[]) {
     }

@@ -15,12 +15,12 @@ import { ReflectionClass, ReflectionProperty } from '@deepkit/type';
 export class DatabaseModel {
     public schemaName: string = '';
 
-    public schemaMap = new Map<ReflectionClass, Table>();
+    public schemaMap = new Map<ReflectionClass<any>, Table>();
 
     constructor(public tables: Table[] = []) {
     }
 
-    getTableForClass(schema: ReflectionClass): Table {
+    getTableForClass(schema: ReflectionClass<any>): Table {
         const table = this.schemaMap.get(schema);
         if (!table) throw new Error(`No table for entity ${schema.getClassName()}`);
         return table;
@@ -59,7 +59,7 @@ export class Table {
 
     public columnForProperty: Map<ReflectionProperty, Column> = new Map;
     public columns: Column[] = [];
-    public indices: Index[] = [];
+    public indices: IndexModel[] = [];
     public foreignKeys: ForeignKey[] = [];
 
     constructor(
@@ -87,8 +87,8 @@ export class Table {
         return column;
     }
 
-    addIndex(name: string, unique = false): Index {
-        const index = new Index(this, name, unique);
+    addIndex(name: string, unique = false): IndexModel {
+        const index = new IndexModel(this, name, unique);
         this.indices.push(index);
         return index;
     }
@@ -203,7 +203,7 @@ export class Column {
     }
 }
 
-export class Index {
+export class IndexModel {
     public columns: Column[] = [];
 
     public spatial: boolean = false;
@@ -321,7 +321,7 @@ export class ColumnComparator {
 }
 
 export class IndexComparator {
-    static computeDiff(from: Index, to: Index) {
+    static computeDiff(from: IndexModel, to: IndexModel) {
         //check if order has changed.
         const fromColumnNames = from.columns.map(v => v.name).join(',').toLowerCase();
         const toColumnNames = to.columns.map(v => v.name).join(',').toLowerCase();
@@ -360,9 +360,9 @@ export class TableDiff {
     public removedPKColumns: Column[] = [];
     public renamedPKColumns: [from: Column, to: Column][] = [];
 
-    public addedIndices: Index[] = [];
-    public removedIndices: Index[] = [];
-    public modifiedIndices: [from: Index, to: Index][] = [];
+    public addedIndices: IndexModel[] = [];
+    public removedIndices: IndexModel[] = [];
+    public modifiedIndices: [from: IndexModel, to: IndexModel][] = [];
 
     public addedFKs: ForeignKey[] = [];
     public modifiedFKs: [from: ForeignKey, to: ForeignKey][] = [];

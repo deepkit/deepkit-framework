@@ -33,7 +33,7 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from '@deepkit/sql';
-import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, resolvePropertySchema } from '@deepkit/type';
+import { Changes, getPartialSerializeFunction, getSerializeFunction, ReflectionClass, resolvePath } from '@deepkit/type';
 import sqlite3 from 'better-sqlite3';
 import { SQLitePlatform } from './sqlite-platform';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
@@ -139,11 +139,12 @@ export class SQLiteConnection extends SQLConnection {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
             if (frame) frame.data({ sql, sqlParams: params });
+            console.log('sql', sql, params);
             const stmt = this.db.prepare(sql);
             this.logger.logQuery(sql, params);
             const result = stmt.run(...params);
             this.changes = result.changes;
-        } catch (error) {
+        } catch (error: any) {
             this.handleError(error);
             this.logger.failedQuery(error, sql, params);
             throw error;
@@ -158,7 +159,7 @@ export class SQLiteConnection extends SQLConnection {
             if (frame) frame.data({ sql });
             this.db.exec(sql);
             this.logger.logQuery(sql, []);
-        } catch (error) {
+        } catch (error: any) {
             this.handleError(error);
             this.logger.failedQuery(error, sql, []);
             throw error;
@@ -253,10 +254,10 @@ export class SQLitePersistence extends SQLPersistence {
         super(platform, connectionPool, database);
     }
 
-    async batchUpdate<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
-        const scopeSerializer = this.platform.serializer.for(classSchema);
+    async batchUpdate<T extends Entity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+        const partialSerialize = getPartialSerializeFunction(classSchema.type, this.platform.serializer.serializeRegistry);
         const tableName = this.platform.getTableIdentifier(classSchema);
-        const pkName = classSchema.getPrimaryField().name;
+        const pkName = classSchema.getPrimary().name;
         const pkField = this.platform.quoteIdentifier(pkName);
 
         const values: { [name: string]: any[] } = {};
@@ -270,7 +271,7 @@ export class SQLitePersistence extends SQLPersistence {
         for (const changeSet of changeSets) {
             const where: string[] = [];
 
-            const pk = scopeSerializer.partialSerialize(changeSet.primaryKey);
+            const pk = partialSerialize(changeSet.primaryKey);
             for (const i in pk) {
                 if (!pk.hasOwnProperty(i)) continue;
                 where.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(pk[i])}`);
@@ -286,7 +287,7 @@ export class SQLitePersistence extends SQLPersistence {
             //todo: handle changes.$unset
 
             if (changeSet.changes.$set) {
-                const value = scopeSerializer.partialSerialize(changeSet.changes.$set);
+                const value = partialSerialize(changeSet.changes.$set);
                 for (const i in value) {
                     if (!value.hasOwnProperty(i)) continue;
                     if (!values[i]) {
@@ -388,8 +389,8 @@ export class SQLitePersistence extends SQLPersistence {
         }
     }
 
-    protected async populateAutoIncrementFields<T>(classSchema: ClassSchema<T>, items: T[]) {
-        const autoIncrement = classSchema.getAutoIncrementField();
+    protected async populateAutoIncrementFields<T>(classSchema: ReflectionClass<T>, items: T[]) {
+        const autoIncrement = classSchema.getAutoIncrement();
         if (!autoIncrement) return;
 
         //SQLite returns the _last_ auto-incremented value for a batch insert as last_insert_rowid().
@@ -409,7 +410,7 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
     constructor(
         protected connectionPool: SQLiteConnectionPool,
         protected platform: DefaultPlatform,
-        classSchema: ClassSchema<T>,
+        classSchema: ReflectionClass<T>,
         session: DatabaseSession<DatabaseAdapter>) {
         super(connectionPool, platform, classSchema, session);
     }
@@ -418,12 +419,12 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         // if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
 
         const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
-        const pkName = this.classSchema.getPrimaryField().name;
-        const primaryKey = this.classSchema.getPrimaryField();
+        const primaryKey = this.classSchema.getPrimary();
+        const pkName = primaryKey.name;
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
         const sqlBuilder = new SqlBuilder(this.platform);
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
-        const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
+        const primaryKeyConverted = getSerializeFunction(primaryKey.property, this.platform.serializer.deserializeRegistry);
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
         const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
@@ -452,14 +453,14 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const select: string[] = [];
         const selectParams: any[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
-        const primaryKey = this.classSchema.getPrimaryField();
-        const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
+        const primaryKey = this.classSchema.getPrimary();
+        const primaryKeyConverted = getSerializeFunction(primaryKey.property, this.platform.serializer.deserializeRegistry);
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
 
-        const scopeSerializer = this.platform.serializer.for(this.classSchema);
-        const $set = changes.$set ? scopeSerializer.partialSerialize(changes.$set) : undefined;
+        const partialSerialize = getPartialSerializeFunction(this.classSchema.type, this.platform.serializer.serializeRegistry);
+        const $set = changes.$set ? partialSerialize(changes.$set) : undefined;
 
         if ($set) for (const i in $set) {
             if (!$set.hasOwnProperty(i)) continue;
@@ -475,14 +476,14 @@ export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         }
 
         for (const i of model.returning) {
-            aggregateFields[i] = { converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer) };
+            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.serializeRegistry) };
             select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
         }
 
         if (changes.$inc) for (const i in changes.$inc) {
             if (!changes.$inc.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            aggregateFields[i] = { converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer) };
+            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.serializeRegistry) };
             select.push(`(${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(i)}`);
         }
 
@@ -550,10 +551,10 @@ export class SQLiteDatabaseQueryFactory extends SQLDatabaseQueryFactory {
     }
 
     createQuery<T extends Entity>(
-        classType: ClassType<T> | ClassSchema<T>
+        classType: ClassType<T> | ReflectionClass<T>
     ): SQLiteDatabaseQuery<T> {
-        return new SQLiteDatabaseQuery(getClassSchema(classType), this.databaseSession,
-            new SQLiteQueryResolver(this.connectionPool, this.platform, getClassSchema(classType), this.databaseSession)
+        return new SQLiteDatabaseQuery(ReflectionClass.from(classType), this.databaseSession,
+            new SQLiteQueryResolver(this.connectionPool, this.platform, ReflectionClass.from(classType), this.databaseSession)
         );
     }
 }
@@ -568,7 +569,7 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
         this.connectionPool = new SQLiteConnectionPool(this.sqlitePath);
     }
 
-    async getInsertBatchSize(schema: ClassSchema): Promise<number> {
+    async getInsertBatchSize(schema: ReflectionClass<any>): Promise<number> {
         return Math.floor(32000 / schema.getProperties().length);
     }
 

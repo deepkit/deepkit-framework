@@ -15,8 +15,8 @@ import {
     getPrimaryKeyHashGenerator,
     getReferenceInfo,
     getSerializeFunction,
-    isReference,
     isReferenceHydrated,
+    isReferenceInstance,
     markAsHydrated,
     ReflectionClass,
     ReflectionProperty,
@@ -196,7 +196,7 @@ export class Formatter {
             //that references are excluded from the pool. However, that also breaks for
             //references the identity. We could improve that with a more complex resolution algorithm,
             //that involves changing already populated objects.
-            if (found && !isReference(found)) {
+            if (found && !isReferenceInstance(found)) {
                 return found;
             }
         }

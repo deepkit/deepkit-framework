@@ -1,25 +1,26 @@
 import 'reflect-metadata';
 import { SoftDelete, SoftDeleteQuery, SoftDeleteSession } from '@deepkit/orm';
-import { entity, getClassSchema, plainToClass, t } from '@deepkit/type';
+import { AutoIncrement, cast, entity, PrimaryKey } from '@deepkit/type';
 import { DatabaseFactory } from './test';
 import { expect } from '@jest/globals';
 
 export const softDeleteTests = {
     async query(databaseFactory: DatabaseFactory) {
-        const s = t.schema({
-            id: t.number.autoIncrement.primary,
-            username: t.string,
-            deletedAt: t.date.optional,
-            deletedBy: t.string.optional,
-        }, { name: 'softDeleteUser' });
+        @entity.name('softDeleteUser')
+        class s {
+            id!: number & AutoIncrement & PrimaryKey;
+            username!: string;
+            deletedAt?: Date;
+            deletedBy?: string;
+        }
 
         const database = await databaseFactory([s]);
         const softDelete = new SoftDelete(database);
         softDelete.enable(s);
 
-        await database.persist(plainToClass(s, { id: 1, username: 'Peter' }));
-        await database.persist(plainToClass(s, { id: 2, username: 'Joe' }));
-        await database.persist(plainToClass(s, { id: 3, username: 'Lizz' }));
+        await database.persist(cast<s>({ id: 1, username: 'Peter' }));
+        await database.persist(cast<s>({ id: 2, username: 'Joe' }));
+        await database.persist(cast<s>({ id: 3, username: 'Lizz' }));
 
         expect(await database.query(s).count()).toBe(3);
 
@@ -62,17 +63,16 @@ export const softDeleteTests = {
     async session(databaseFactory: DatabaseFactory) {
         @entity.name('softDeleteUser2')
         class User {
-            @t.primary.autoIncrement id: number = 0;
-            @t deletedAt?: Date;
-            @t deletedBy?: string;
+            id: number & AutoIncrement & PrimaryKey = 0;
+            deletedAt?: Date;
+            deletedBy?: string;
 
             constructor(
-                @t public username: string,
+                public username: string,
             ) {
             }
         }
 
-        expect(getClassSchema(User).getProperty('id').type).toBe('number');
         const database = await databaseFactory([User]);
         const softDelete = new SoftDelete(database);
         softDelete.enable(User);

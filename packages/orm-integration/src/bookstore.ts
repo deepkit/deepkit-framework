@@ -1,6 +1,6 @@
 import { expect } from '@jest/globals';
 import 'reflect-metadata';
-import { entity, getClassSchema, plainToClass, t, uuid } from '@deepkit/type';
+import { AutoIncrement, cast, entity, PrimaryKey, Reference, ReflectionClass, UUID, uuid } from '@deepkit/type';
 import { User, UserGroup } from './bookstore/user';
 import { UserCredentials } from './bookstore/user-credentials';
 import { atomicChange, getInstanceStateFromItem } from '@deepkit/orm';
@@ -9,40 +9,40 @@ import { Group } from './bookstore/group';
 import { DatabaseFactory } from './test';
 
 class BookModeration {
-    @t locked: boolean = false;
+    locked: boolean = false;
 
-    @t.optional maxDate?: Date;
+    maxDate?: Date;
 
-    @t.optional admin?: User;
+    admin?: User;
 
-    @t.array(User) moderators: User[] = [];
+    moderators: User[] = [];
 }
 
 @entity.name('book')
 class Book {
-    @t.primary.autoIncrement public id?: number;
+    public id?: number & PrimaryKey & AutoIncrement;
 
-    @t moderation: BookModeration = new BookModeration;
+    moderation: BookModeration = new BookModeration;
 
     constructor(
-        @t.reference() public author: User,
-        @t public title: string,
+        public author: User & Reference,
+        public title: string,
     ) {
     }
 }
 
 @entity.name('image')
 class Image {
-    @t.primary.uuid id: string = uuid();
+    id: UUID & PrimaryKey  = uuid();
 
-    @t downloads: number = 0;
+    downloads: number = 0;
 
-    @t.uuid privateToken: string = uuid();
+    privateToken: UUID = uuid();
 
-    @t image: Uint8Array = new Uint8Array([128, 255]);
+    image: Uint8Array = new Uint8Array([128, 255]);
 
     constructor(
-        @t public path: string) {
+        public path: string) {
     }
 }
 
@@ -54,14 +54,14 @@ enum ReviewStatus {
 
 @entity.name('review')
 class Review {
-    @t.primary.autoIncrement public id?: number;
-    @t created: Date = new Date;
-    @t stars: number = 0;
-    @t.enum(ReviewStatus) status: ReviewStatus = ReviewStatus.published;
+    public id?: number & PrimaryKey & AutoIncrement;
+    created: Date = new Date;
+    stars: number = 0;
+    status: ReviewStatus = ReviewStatus.published;
 
     constructor(
-        @t.reference() public user: User,
-        @t.reference() public book: Book,
+        public user: User & Reference,
+        public book: Book & Reference,
     ) {
     }
 }
@@ -70,13 +70,13 @@ const entities = [User, UserCredentials, Book, Review, Image, Group, UserGroup];
 
 export const bookstoreTests = {
     schema() {
-        const book = getClassSchema(Book);
+        const book = ReflectionClass.from(Book);
         expect(book.name).toBe('book');
 
-        const user = getClassSchema(User);
+        const user = ReflectionClass.from(User);
         expect(user.name).toBe('user');
-        expect(book.getProperty('author').classType).toBe(User);
-        expect(book.getProperty('author').getResolvedClassSchema()).toBe(user);
+        expect(book.getProperty('author').getResolvedReflectionClass().getClassType()).toBe(User);
+        expect(book.getProperty('author').getResolvedReflectionClass().getClassType()).toBe(user);
 
         expect(user.getProperty('birthdate').isOptional).toBe(true);
     },
@@ -269,7 +269,7 @@ export const bookstoreTests = {
         }
 
         {
-            const book = plainToClass(Book, {
+            const book = cast<Book>({
                 author: marie.id,
                 title: 'Maries path'
             });
@@ -277,13 +277,13 @@ export const bookstoreTests = {
             expect(book.author.id).toBe(marie.id);
             await database.persist(book);
 
-            const book1 = await database.query(Book).filter({title: 'Maries path'}).findOne();
+            const book1 = await database.query(Book).filter({ title: 'Maries path' }).findOne();
             expect(book1.author.id).toBe(marie.id);
         }
 
 
         {
-            const book = plainToClass(Book, {
+            const book = cast<Book>({
                 author: database.getReference(User, peter.id),
                 title: 'Peters path'
             });
@@ -291,7 +291,7 @@ export const bookstoreTests = {
             expect(book.author.id).toBe(peter.id);
             await database.persist(book);
 
-            const book1 = await database.query(Book).filter({title: 'Peters path'}).findOne();
+            const book1 = await database.query(Book).filter({ title: 'Peters path' }).findOne();
             expect(book1.author.id).toBe(peter.id);
         }
 
@@ -649,7 +649,7 @@ export const bookstoreTests = {
         }
     },
 
-    async enum(databaseFactory: DatabaseFactory) {
+    async enumTest(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
 
         const user = new User('Peter');

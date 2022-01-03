@@ -29,4 +29,4 @@ class SQLiteSerializer extends SqlSerializer {
     }
 }
 
-export const SqliteSerializer = new SQLiteSerializer;
+export const sqliteSerializer = new SQLiteSerializer;

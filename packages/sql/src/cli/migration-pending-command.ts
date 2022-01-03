@@ -27,8 +27,14 @@ export class MigrationPendingCommand extends BaseCommand {
     }
 
     async execute(
-        @flag.optional.description('Show SQL commands') verbose: boolean = false,
-        @flag.char('db').optional.description('Limit migrations to a specific database.') database?: string,
+        /**
+         * @description Show SQL commands
+         */
+        @flag verbose: boolean = false,
+        /**
+         * @description Limit migrations to a specific database
+         */
+        @flag.char('db') database?: string,
     ): Promise<void> {
         if (this.path.length) this.provider.databases.readDatabase(this.path);
         if (this.migrationDir) this.provider.setMigrationDir(this.migrationDir);

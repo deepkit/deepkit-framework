@@ -11,7 +11,7 @@
 import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
 import { DatabaseValidationError, Entity } from './type';
 import { ClassType, CustomError, getClassTypeFromInstance } from '@deepkit/core';
-import { getPrimaryKeyExtractor, isReference, markAsHydrated, PrimaryKeyFields, ReflectionClass, typeSettings, UnpopulatedCheck, validate } from '@deepkit/type';
+import { getPrimaryKeyExtractor, isReferenceInstance, markAsHydrated, PrimaryKeyFields, ReflectionClass, typeSettings, UnpopulatedCheck, validate } from '@deepkit/type';
 import { GroupArraySort } from '@deepkit/topsort';
 import { getClassState, getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map';
 import { getClassSchemaInstancePairs } from './utils';
@@ -84,7 +84,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                 //         }
                 //     }
                 // } else {
-                if (!isReference(v)) result.push(v);
+                if (!isReferenceInstance(v)) result.push(v);
                 // }
             }
         } finally {

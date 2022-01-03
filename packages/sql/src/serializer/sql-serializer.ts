@@ -8,13 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { isObject } from '@deepkit/core';
 import {
     ContainerAccessor,
     executeTemplates,
-    isReference,
-    isReferenceHydrated,
-    JSONSerializer,
     nodeBufferToArrayBuffer,
     referenceAnnotation,
     ReflectionClass,
@@ -76,7 +72,7 @@ function serializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state: T
     state.addSetter(`state.depth === 0 ? stringify(${state.accessor}) : ${state.accessor}`);
 }
 
-export class SqlSerializer extends JSONSerializer {
+export class SqlSerializer extends Serializer {
     name = 'sql';
 
     protected registerSerializers() {
@@ -118,8 +114,8 @@ export class SqlSerializer extends JSONSerializer {
 
         //for databases, types decorated with Reference will always only export the primary key.
         this.serializeRegistry.addDecorator(ReflectionKind.class, (type, state) => {
-            if (undefined === referenceAnnotation.hasAnnotations(type)) return;
-            state.setContext({ isObject, isReference, isReferenceHydrated });
+            if (undefined === referenceAnnotation.getFirst(type)) return;
+            // state.setContext({ isObject, isReferenceType, isReferenceHydrated });
             const reflection = ReflectionClass.from(type.classType);
             //the primary key is serialised for unhydrated references
             state.template = `

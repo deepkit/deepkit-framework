@@ -1,29 +1,28 @@
-import { entity, t } from '@deepkit/type';
+import { AutoIncrement, entity, PrimaryKey, ReflectionKind } from '@deepkit/type';
 import { SchemaParser } from '../src/reverse/schema-parser';
 import { DatabaseModel } from '../src/schema/table';
 import { DefaultPlatform } from '../src/platform/default-platform';
 import { expect, test } from '@jest/globals';
 
-@entity.name('person').collectionName('persons')
+@entity.name('person').collection('persons')
 abstract class Person {
-    @t.primary.autoIncrement id: number = 0;
-    @t firstName?: string;
-    @t lastName?: string;
-    @t abstract type: string;
+    id: number & PrimaryKey & AutoIncrement = 0;
+    firstName?: string;
+    lastName?: string;
+    abstract type: string;
 }
 
 @entity.name('employee').singleTableInheritance()
 class Employee extends Person {
-    @t email?: string;
-
-    @t.literal('employee') type: 'employee' = 'employee';
+    email?: string;
+    type: 'employee' = 'employee';
 }
 
 @entity.name('freelancer').singleTableInheritance()
 class Freelance extends Person {
-    @t token?: string;
+    token?: string;
 
-    @t.literal('freelancer') type: 'freelancer' = 'freelancer';
+    type: 'freelancer' = 'freelancer';
 }
 
 class MySchemaParser extends SchemaParser {
@@ -36,7 +35,7 @@ class MyPlatform extends DefaultPlatform {
 
     constructor() {
         super();
-        this.addType('number', 'integer');
+        this.addType(ReflectionKind.number, 'integer');
     }
 }
 

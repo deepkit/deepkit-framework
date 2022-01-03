@@ -1,11 +1,24 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { SQLitePlatform } from '../src/sqlite-platform';
-import { Entity, plainToClass, t } from '@deepkit/type';
 import { databaseFactory } from './factory';
 import { User, UserCredentials } from '@deepkit/orm-integration';
+// import { User } from '@deepkit/orm-integration/src/bookstore/user';
+// import { UserCredentials } from '@deepkit/orm-integration/src/bookstore/user-credentials';
 import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter';
 import { sleep } from '@deepkit/core';
+import { AutoIncrement, cast, entity, PrimaryKey, Reference, ReflectionClass } from '@deepkit/type';
+
+test('reflection circular reference', () => {
+    const user = ReflectionClass.from(User);
+    const credentials = ReflectionClass.from(UserCredentials);
+
+    expect(user.getProperty('credentials').isBackReference()).toBe(true);
+    expect(user.getProperty('credentials').getResolvedReflectionClass()).toBe(credentials);
+    const userProperty = credentials.getProperty('user');
+    expect(userProperty.getResolvedReflectionClass()).toBe(user);
+    expect(userProperty.isPrimaryKey()).toBe(true);
+    expect(userProperty.isReference()).toBe(true);
+});
 
 test('tables', () => {
     const [user] = new SQLitePlatform().createTables([User]);
@@ -17,17 +30,17 @@ test('tables', () => {
 });
 
 test('sqlite basic', async () => {
-    const User = t.schema({
-        id: t.number.primary,
-        name: t.string,
-        created: t.date,
-    }, { name: 'user' });
+    class User {
+        id!: number & PrimaryKey;
+        name!: string;
+        created!: Date
+    }
 
     const database = await databaseFactory([User]);
 
-    const user1 = plainToClass(User, { id: 1, name: 'Yes', created: new Date() });
-    const user2 = plainToClass(User, { id: 2, name: 'Wow', created: new Date() });
-    const user3 = plainToClass(User, { id: 3, name: 'asdadasd', created: new Date() });
+    const user1 = cast<User>({ id: 1, name: 'Yes', created: new Date() });
+    const user2 = cast<User>({ id: 2, name: 'Wow', created: new Date() });
+    const user3 = cast<User>({ id: 3, name: 'asdadasd', created: new Date() });
 
     {
         const session = database.createSession();
@@ -58,13 +71,13 @@ test('sqlite basic', async () => {
 });
 
 test('sqlite autoincrement', async () => {
-    @Entity('sqlite-user')
+    @entity.name('sqlite-user')
     class User {
-        @t.primary.autoIncrement id?: number;
-        @t created: Date = new Date;
+        id?: number & PrimaryKey & AutoIncrement;
+        created: Date = new Date;
 
         constructor(
-            @t public name: string
+            public name: string
         ) {
         }
     }
@@ -88,23 +101,23 @@ test('sqlite autoincrement', async () => {
 });
 
 test('sqlite relation', async () => {
-    @Entity('sqlite-author')
+    @entity.name('sqlite-author')
     class Author {
-        @t created: Date = new Date;
+        created: Date = new Date;
 
         constructor(
-            @t.primary public id: number,
-            @t public name: string,
+            public id: number & PrimaryKey,
+            public name: string,
         ) {
         }
     }
 
-    @Entity('sqlite-book')
+    @entity.name('sqlite-book')
     class Book {
         constructor(
-            @t.primary public id: number,
-            @t.reference() public author: Author,
-            @t public name: string,
+            public id: number & PrimaryKey,
+            public author: Author & Reference,
+            public name: string,
         ) {
         }
     }

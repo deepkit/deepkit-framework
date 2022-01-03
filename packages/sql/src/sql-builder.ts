@@ -10,7 +10,7 @@
 
 import { SQLQueryModel } from './sql-adapter';
 import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform';
-import { ClassSchema, getClassSchema, getPrimaryKeyHashGenerator, PropertySchema, resolveClassTypeOrForward } from '@deepkit/type';
+import { getPrimaryKeyHashGenerator, ReflectionClass, ReflectionProperty } from '@deepkit/type';
 import { DatabaseJoinModel, DatabaseQueryModel } from '@deepkit/orm';
 import { getSqlFilter } from './filter';
 
@@ -47,7 +47,7 @@ export class SqlBuilder {
         this.placeholderStrategy.offset = this.params.length;
     }
 
-    protected appendWhereSQL(sql: Sql, schema: ClassSchema, model: SQLQueryModel<any>, tableName?: string, prefix: string = 'WHERE') {
+    protected appendWhereSQL(sql: Sql, schema: ReflectionClass<any>, model: SQLQueryModel<any>, tableName?: string, prefix: string = 'WHERE') {
         let whereClause: string = '';
         let whereParams: any[] = [];
 
@@ -79,7 +79,7 @@ export class SqlBuilder {
         }
     }
 
-    protected appendHavingSQL(sql: Sql, schema: ClassSchema, model: DatabaseQueryModel<any>, tableName?: string) {
+    protected appendHavingSQL(sql: Sql, schema: ReflectionClass<any>, model: DatabaseQueryModel<any>, tableName?: string) {
         if (!model.having) return;
 
         // tableName = tableName || this.platform.getTableIdentifier(schema);
@@ -95,7 +95,7 @@ export class SqlBuilder {
         }
     }
 
-    protected selectColumns(schema: ClassSchema, model: SQLQueryModel<any>) {
+    protected selectColumns(schema: ReflectionClass<any>, model: SQLQueryModel<any>) {
         const tableName = this.platform.getTableIdentifier(schema);
         const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getProperties();
 
@@ -105,7 +105,7 @@ export class SqlBuilder {
                 this.sqlSelect.push(tableName + '.' + this.platform.quoteIdentifier(name));
             }
             for (const [as, a] of model.aggregate.entries()) {
-                if (a.property.backReference) continue;
+                if (a.property.isBackReference()) continue;
 
                 this.sqlSelect.push(this.platform.getAggregateSelect(tableName, a.property, a.func) + ' AS ' + this.platform.quoteIdentifier(as));
             }
@@ -117,21 +117,21 @@ export class SqlBuilder {
             }
         } else {
             for (const property of properties) {
-                if (property.backReference) continue;
+                if (property.isBackReference()) continue;
 
                 this.sqlSelect.push(tableName + '.' + this.platform.quoteIdentifier(property.name));
             }
         }
     }
 
-    protected selectColumnsWithJoins(schema: ClassSchema, model: SQLQueryModel<any>, refName: string = '') {
-        const result: { startIndex: number, fields: PropertySchema[] } = { startIndex: this.sqlSelect.length, fields: [] };
+    protected selectColumnsWithJoins(schema: ReflectionClass<any>, model: SQLQueryModel<any>, refName: string = '') {
+        const result: { startIndex: number, fields: ReflectionProperty[] } = { startIndex: this.sqlSelect.length, fields: [] };
 
         const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getProperties();
         const tableName = this.platform.getTableIdentifier(schema);
 
-        for (const property of schema.getPrimaryFields()) {
-            if (property.backReference) continue;
+        for (const property of schema.getPrimaries()) {
+            if (property.isBackReference()) continue;
 
             result.fields.push(property);
             const as = this.platform.quoteIdentifier(this.sqlSelect.length + '');
@@ -144,8 +144,8 @@ export class SqlBuilder {
         }
 
         for (const property of properties) {
-            if (property.backReference) continue;
-            if (property.isId) continue;
+            if (property.isBackReference()) continue;
+            if (property.isPrimaryKey()) continue;
 
             result.fields.push(property);
             const as = this.platform.quoteIdentifier(this.sqlSelect.length + '');
@@ -180,7 +180,7 @@ export class SqlBuilder {
         return result;
     }
 
-    public convertRows(schema: ClassSchema, model: SQLQueryModel<any>, rows: any[]): any[] {
+    public convertRows(schema: ReflectionClass<any>, model: SQLQueryModel<any>, rows: any[]): any[] {
         if (!this.rootConverter) throw new Error('No root converter set');
         if (!this.joins.length) return rows.map(v => this.rootConverter!(v));
 
@@ -217,7 +217,7 @@ export class SqlBuilder {
                     itemsStack[joinId + 1] = { hash: pkHash, item: converted };
                 }
 
-                if (join.join.propertySchema.isArray) {
+                if (join.join.propertySchema.isArray()) {
                     if (!forItem[join.join.as]) forItem[join.join.as] = [];
                     if (converted) {
                         //todo: set lastHash stack, so second level joins work as well
@@ -237,12 +237,12 @@ export class SqlBuilder {
         return result;
     }
 
-    protected buildConverter(startIndex: number, fields: PropertySchema[]): ConvertDataToDict {
+    protected buildConverter(startIndex: number, fields: ReflectionProperty[]): ConvertDataToDict {
         const lines: string[] = [];
         let primaryKeyIndex = startIndex;
 
         for (const field of fields) {
-            if (field.isId) primaryKeyIndex = startIndex;
+            if (field.isPrimaryKey()) primaryKeyIndex = startIndex;
             lines.push(`'${field.name}': row[${startIndex++}]`);
         }
 
@@ -269,20 +269,20 @@ export class SqlBuilder {
             const foreignSchema = join.query.classSchema;
 
             //many-to-many
-            if (join.propertySchema.backReference && join.propertySchema.backReference.via) {
-                const viaSchema = getClassSchema(resolveClassTypeOrForward(join.propertySchema.backReference.via));
+            if (join.propertySchema.isBackReference() && join.propertySchema.getBackReference().via) {
+                const viaSchema = ReflectionClass.from(join.propertySchema.getBackReference().via);
                 const pivotTableName = this.platform.getTableIdentifier(viaSchema);
 
                 // JOIN pivotTableName as pivot ON (parent.id = pivot.left_foreign_id)
                 // JOIN target ON (target.id = pivot.target_foreign_id)
                 // viaSchema.name
                 const pivotToLeft = viaSchema.findReverseReference(
-                    join.classSchema.classType,
+                    join.classSchema.getClassType(),
                     join.propertySchema,
                 );
 
                 const pivotToRight = viaSchema.findReverseReference(
-                    join.query.classSchema.classType,
+                    join.query.classSchema.getClassType(),
                     join.propertySchema
                 );
 
@@ -290,13 +290,13 @@ export class SqlBuilder {
 
                 //first pivot table
                 sql.append(`${join.type.toUpperCase()} JOIN ${pivotTableName} AS ${pivotName} ON (`);
-                sql.append(`${pivotName}.${this.platform.quoteIdentifier(pivotToLeft.name)} = ${parentName}.${this.platform.quoteIdentifier(join.classSchema.getPrimaryField().name)}`);
+                sql.append(`${pivotName}.${this.platform.quoteIdentifier(pivotToLeft.name)} = ${parentName}.${this.platform.quoteIdentifier(join.classSchema.getPrimary().name)}`);
 
                 sql.append(`)`);
 
                 //then right table
                 sql.append(`${join.type.toUpperCase()} JOIN ${tableName} AS ${joinName} ON (`);
-                sql.append(`${pivotName}.${this.platform.quoteIdentifier(pivotToRight.name)} = ${joinName}.${this.platform.quoteIdentifier(join.query.classSchema.getPrimaryField().name)}`);
+                sql.append(`${pivotName}.${this.platform.quoteIdentifier(pivotToRight.name)} = ${joinName}.${this.platform.quoteIdentifier(join.query.classSchema.getPrimary().name)}`);
                 this.appendWhereSQL(sql, join.query.classSchema, join.query.model, joinName, 'AND');
                 sql.append(`)`);
 
@@ -307,12 +307,12 @@ export class SqlBuilder {
 
             sql.append(`${join.type.toUpperCase()} JOIN ${tableName} AS ${joinName} ON (`);
 
-            if (join.propertySchema.backReference && !join.propertySchema.backReference.via) {
+            if (join.propertySchema.isBackReference() && !join.propertySchema.getBackReference().via) {
                 const backReference = foreignSchema.findReverseReference(
-                    join.classSchema.classType,
+                    join.classSchema.getClassType(),
                     join.propertySchema,
                 );
-                sql.append(`${parentName}.${this.platform.quoteIdentifier(join.classSchema.getPrimaryField().name)} = ${joinName}.${this.platform.quoteIdentifier(backReference.name)}`);
+                sql.append(`${parentName}.${this.platform.quoteIdentifier(join.classSchema.getPrimary().name)} = ${joinName}.${this.platform.quoteIdentifier(backReference.name)}`);
             } else {
                 sql.append(`${parentName}.${this.platform.quoteIdentifier(join.propertySchema.name)} = ${joinName}.${this.platform.quoteIdentifier(join.foreignPrimaryKey.name)}`);
             }
@@ -324,7 +324,7 @@ export class SqlBuilder {
         }
     }
 
-    public build<T>(schema: ClassSchema, model: SQLQueryModel<T>, head: string, withRange: boolean = true): Sql {
+    public build<T>(schema: ReflectionClass<any>, model: SQLQueryModel<T>, head: string, withRange: boolean = true): Sql {
         const tableName = this.platform.getTableIdentifier(schema);
         const sql = new Sql(`${head} FROM ${tableName}`, this.params);
         this.appendJoinSQL(sql, model, tableName);
@@ -337,16 +337,16 @@ export class SqlBuilder {
         return sql;
     }
 
-    public update<T>(schema: ClassSchema, model: SQLQueryModel<T>, set: string[]): Sql {
+    public update<T>(schema: ReflectionClass<any>, model: SQLQueryModel<T>, set: string[]): Sql {
         const tableName = this.platform.getTableIdentifier(schema);
-        const primaryKey = schema.getPrimaryField();
+        const primaryKey = schema.getPrimary();
         const select = this.select(schema, model, { select: [primaryKey.name] });
 
         return new Sql(`UPDATE ${tableName} SET ${set.join(', ')} WHERE ${this.platform.quoteIdentifier(primaryKey.name)} IN (SELECT * FROM (${select.sql}) as __)`, select.params);
     }
 
     public select(
-        schema: ClassSchema,
+        schema: ReflectionClass<any>,
         model: SQLQueryModel<any>,
         options: { select?: string[] } = {}
     ): Sql {

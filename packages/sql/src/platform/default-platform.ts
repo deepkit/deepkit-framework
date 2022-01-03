@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Column, ColumnDiff, DatabaseDiff, DatabaseModel, ForeignKey, Index, Table, TableDiff } from '../schema/table';
+import { Column, ColumnDiff, DatabaseDiff, DatabaseModel, ForeignKey, IndexModel, Table, TableDiff } from '../schema/table';
 import sqlstring from 'sqlstring';
 import { ClassType, isArray, isObject } from '@deepkit/core';
 import { sqlSerializer } from '../serializer/sql-serializer';
@@ -24,7 +24,7 @@ export function isSet(v: any): boolean {
 export interface NamingStrategy {
     getColumnName(property: ReflectionProperty): string;
 
-    getTableName(reflectionClass: ReflectionClass): string;
+    getTableName(reflectionClass: ReflectionClass<any>): string;
 }
 
 export class DefaultNamingStrategy implements NamingStrategy {
@@ -32,7 +32,7 @@ export class DefaultNamingStrategy implements NamingStrategy {
         return property.getNameAsString();
     }
 
-    getTableName(reflectionClass: ReflectionClass): string {
+    getTableName(reflectionClass: ReflectionClass<any>): string {
         return reflectionClass.getCollectionName();
     }
 }
@@ -70,7 +70,7 @@ export abstract class DefaultPlatform {
     public namingStrategy: NamingStrategy = new DefaultNamingStrategy();
     public placeholderStrategy: ClassType<SqlPlaceholderStrategy> = SqlPlaceholderStrategy;
 
-    typeCast(schema: ReflectionClass, name: string): string {
+    typeCast(schema: ReflectionClass<any>, name: string): string {
         let property = schema.getProperty(name);
         if (property.getType().kind === ReflectionKind.string) return '';
 
@@ -87,7 +87,7 @@ export abstract class DefaultPlatform {
         if (offset) sql.append('OFFSET ' + this.quoteValue(offset));
     }
 
-    createSqlFilterBuilder(reflectionClass: ReflectionClass, tableName: string): SQLFilterBuilder {
+    createSqlFilterBuilder(reflectionClass: ReflectionClass<any>, tableName: string): SQLFilterBuilder {
         return new SQLFilterBuilder(reflectionClass, tableName, this.serializer, new this.placeholderStrategy, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
     }
 
@@ -146,7 +146,7 @@ export abstract class DefaultPlatform {
 
     }
 
-    getEntityFields(schema: ReflectionClass): ReflectionProperty[] {
+    getEntityFields(schema: ReflectionClass<any>): ReflectionProperty[] {
         const fields: ReflectionProperty[] = [];
         for (const property of schema.getProperties()) {
             if (property.isBackReference()) continue;
@@ -202,10 +202,10 @@ export abstract class DefaultPlatform {
         return lines.filter(isSet);
     }
 
-    createTables(schemas: (ReflectionClass | ClassType)[], database: DatabaseModel = new DatabaseModel()): Table[] {
-        const mergedToSingleTable = new Set<ReflectionClass>();
+    createTables(schemas: (ReflectionClass<any> | ClassType)[], database: DatabaseModel = new DatabaseModel()): Table[] {
+        const mergedToSingleTable = new Set<ReflectionClass<any>>();
 
-        const refs = new Map<ReflectionClass, ReflectionClass>();
+        const refs = new Map<ReflectionClass<any>, ReflectionClass<any>>();
 
         for (let schema of schemas) {
             schema = ReflectionClass.from(schema);
@@ -213,13 +213,13 @@ export abstract class DefaultPlatform {
             //if the schema is decorated with singleTableInheritance, all properties of all siblings will be copied, as all
             //will be in one big table.
             if (schema.singleTableInheritance) {
-                const superClass = schema.getSuperClass();
+                const superClass = schema.getSuperReflectionClass();
                 if (!superClass) throw new Error(`Class ${schema.getClassName()} has singleTableInheritance enabled but no super class.`);
 
                 if (mergedToSingleTable.has(superClass)) continue;
                 mergedToSingleTable.add(superClass);
 
-                const discriminant = superClass.getSingleTableInheritanceDiscriminant();
+                const discriminant = superClass.getSingleTableInheritanceDiscriminantName();
 
                 schema = superClass.clone();
                 refs.set(superClass, schema);
@@ -332,14 +332,14 @@ export abstract class DefaultPlatform {
         return `"${id.replace('.', '"."')}"`;
     }
 
-    getTableIdentifier(schema: ReflectionClass): string {
+    getTableIdentifier(schema: ReflectionClass<any>): string {
         const collectionName = this.namingStrategy.getTableName(schema);
 
         if (schema.databaseSchemaName) return this.quoteIdentifier(schema.databaseSchemaName + this.getSchemaDelimiter() + collectionName);
         return this.quoteIdentifier(collectionName);
     }
 
-    getIdentifier(object: Table | Column | Index | ForeignKey, append: string = ''): string {
+    getIdentifier(object: Table | Column | IndexModel | ForeignKey, append: string = ''): string {
         if (object instanceof Table) return this.getFullIdentifier(object, append);
         return this.quoteIdentifier(object.getName() + append);
     }
@@ -508,7 +508,7 @@ export abstract class DefaultPlatform {
         return ddl.join(' ');
     }
 
-    getAddIndexDDL(index: Index): string {
+    getAddIndexDDL(index: IndexModel): string {
         const u = index.isUnique ? 'UNIQUE' : '';
 
         const columns: string[] = [];
@@ -562,11 +562,11 @@ export abstract class DefaultPlatform {
         return `ALTER TABLE ${this.getIdentifier(foreignKey.table)} DROP CONSTRAINT ${this.getIdentifier(foreignKey)}`;
     }
 
-    getDropIndexDDL(index: Index): string {
+    getDropIndexDDL(index: IndexModel): string {
         return `DROP INDEX ${this.getIdentifier(index)}`;
     }
 
-    getUniqueDDL(unique: Index): string {
+    getUniqueDDL(unique: IndexModel): string {
         return `UNIQUE INDEX ${this.getIdentifier(unique)} (${this.getColumnListDDL(unique.columns)})`;
     }
 

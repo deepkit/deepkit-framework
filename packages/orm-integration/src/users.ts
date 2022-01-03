@@ -1,51 +1,49 @@
 import 'reflect-metadata';
 import { DatabaseFactory } from './test';
-import { entity, t } from '@deepkit/type';
+import { AutoIncrement, BackReference, entity, PrimaryKey, Reference } from '@deepkit/type';
 import { expect } from '@jest/globals';
 import { getObjectKeysSize } from '@deepkit/core';
 
 @entity.name('users_user')
 class User {
-    @t.primary.autoIncrement public id: number = 0;
-    @t created: Date = new Date;
+    public id: number & AutoIncrement & PrimaryKey = 0;
+    created: Date = new Date;
 
-    @t.array(() => Post).backReference()
-    posts?: Post[];
+    posts?: Post[] & BackReference;
 
-    @t.array(() => Group).backReference({via: () => UserGroup})
-    groups?: Group[];
+    groups?: Group[] & BackReference<{via: typeof UserGroup}>;
 
-    constructor(@t public username: string) {
+    constructor(public username: string) {
     }
 }
 
 @entity.name('users_group')
 class Group {
-    @t.primary.autoIncrement public id: number = 0;
+    public id: number & AutoIncrement & PrimaryKey = 0;
 
-    constructor(@t public name: string) {
+    constructor(public name: string) {
     }
 }
 
 @entity.name('users_userGroup')
 class UserGroup {
-    @t.primary.autoIncrement public id: number = 0;
+    public id: number & AutoIncrement & PrimaryKey = 0;
 
     constructor(
-        @t.reference() public user: User,
-        @t.reference() public group: Group,
+        public user: User & Reference,
+        public group: Group & Reference,
     ) {
     }
 }
 
 @entity.name('users_post')
 class Post {
-    @t.primary.autoIncrement public id: number = 0;
-    @t created: Date = new Date;
+    public id: number & AutoIncrement & PrimaryKey = 0;
+    created: Date = new Date;
 
     constructor(
-        @t.reference() public author: User,
-        @t public title: string) {
+        public author: User & Reference,
+        public title: string) {
     }
 }
 
