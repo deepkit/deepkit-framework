@@ -56,7 +56,7 @@ export function expectEqualType(actual: any, expected: any, options: { noTypeNam
 
             if (isArray(expected[i])) {
                 if (!isArray(actual[i])) throw new Error('Not equal array type: ' + path);
-                if (actual[i].length !== expected[i].length) throw new Error('Not equal array length: ' + path);
+                if (actual[i].length !== expected[i].length) throw new Error('Not equal array length: ' + path + '.' + i);
                 for (let j = 0; j < expected[i].length; j++) {
                     expectEqualType(expected[i][j], actual[i][j], options, path + '.' + i + '.' + j);
                 }

@@ -9,14 +9,14 @@
  */
 
 import { AbstractClassType, ClassType, getClassName } from '@deepkit/core';
-import { getReferenceInfo, isReferenceHydrated, PrimaryKeyFields, ReflectionClass } from '@deepkit/type';
-import { DatabaseAdapter } from './database-adapter';
+import { getReferenceInfo, isReferenceHydrated, PrimaryKeyFields, ReflectionClass, Type } from '@deepkit/type';
+import { DatabaseAdapter, DatabaseEntityRegistry } from './database-adapter';
 import { DatabaseSession } from './database-session';
 import { QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter } from './event';
 import { DatabaseLogger } from './logger';
 import { Query } from './query';
 import { getReference } from './reference';
-import { Entity } from './type';
+import { OrmEntity } from './type';
 import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint';
 import { Stopwatch } from '@deepkit/stopwatch';
 
@@ -74,7 +74,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     /**
      * The entity schema registry.
      */
-    public readonly entities = new Set<ReflectionClass<any>>();
+    public readonly entityRegistry: DatabaseEntityRegistry = new DatabaseEntityRegistry();
 
     /**
      * Event API for DatabaseQuery events.
@@ -113,8 +113,9 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     constructor(
         public readonly adapter: ADAPTER,
-        schemas: (ClassType | ReflectionClass<any>)[] = []
+        schemas: (Type | ClassType | ReflectionClass<any>)[] = []
     ) {
+        this.entityRegistry.add(...schemas);
         if (Database.registry) Database.registry.push(this);
 
         this.query = (classType: ClassType | ReflectionClass<any>) => {
@@ -191,7 +192,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * ```
      */
     public createSession(): DatabaseSession<ADAPTER> {
-        return new DatabaseSession(this.adapter, this.unitOfWorkEvents, this.queryEvents, this.logger, this.stopwatch);
+        return new DatabaseSession(this.adapter, this.unitOfWorkEvents, this.queryEvents, this.entityRegistry, this.logger, this.stopwatch);
     }
 
     /**
@@ -251,11 +252,11 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * This is mainly used for db migration utilities and active record.
      * If you want to use active record, you have to assign your entities first to a database using this method.
      */
-    registerEntity(...entities: (ClassType | ReflectionClass<any>)[]): void {
+    registerEntity(...entities: (Type | ClassType | ReflectionClass<any>)[]): void {
         for (const entity of entities) {
             const schema = ReflectionClass.from(entity);
 
-            this.entities.add(schema);
+            this.entityRegistry.add(schema);
 
             schema.data['orm.database'] = this;
             if (isActiveRecordClassType(entity)) entity.registerDatabase(this);
@@ -263,7 +264,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     }
 
     getEntity(name: string): ReflectionClass<any> {
-        for (const entity of this.entities.values()) {
+        for (const entity of this.entityRegistry.entities) {
             if (entity.getName() === name) return entity;
         }
 
@@ -277,7 +278,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * SEE THE MIGRATION DOCUMENTATION TO UNDERSTAND ITS IMPLICATIONS.
      */
     async migrate() {
-        await this.adapter.migrate([...this.entities.values()]);
+        await this.adapter.migrate(this.entityRegistry);
     }
 
     /**
@@ -289,7 +290,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      *
      * You should prefer the add/remove and commit() workflow to fully utilizing database performance.
      */
-    public async persist(...items: Entity[]) {
+    public async persist(...items: OrmEntity[]) {
         const session = this.createSession();
         session.withIdentityMap = false;
         session.add(...items);
@@ -304,7 +305,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      *
      * You should prefer the add/remove and commit() workflow to fully utilizing database performance.
      */
-    public async remove(...items: Entity[]) {
+    public async remove(...items: OrmEntity[]) {
         const session = this.createSession();
         session.withIdentityMap = false;
         session.remove(...items);

@@ -11,7 +11,7 @@
 import { PrimaryKeyType, ReflectionClass, ValidationFailedItem } from '@deepkit/type';
 import { CustomError } from '@deepkit/core';
 
-export interface Entity {
+export interface OrmEntity {
 }
 
 export type PatchResult<T> = { modified: number, returning: { [name in keyof T & string]?: T[name][] }, primaryKeys: PrimaryKeyType<T>[] };

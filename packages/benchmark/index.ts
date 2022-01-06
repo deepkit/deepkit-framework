@@ -2,8 +2,6 @@ import { mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import 'reflect-metadata';
 import * as vm from 'vm';
-import fetch from 'node-fetch';
-import { classToPlain, getGlobalStore } from '@deepkit/type';
 import { BenchmarkRun } from './model';
 import * as si from 'systeminformation';
 import { execSync } from 'child_process';
@@ -49,7 +47,6 @@ async function main() {
         for (const key in require.cache) {
             delete require.cache[key];
         }
-        getGlobalStore().RegisteredEntities = {};
         try {
             const script = new vm.Script(`require('./src/bench').BenchSuite.onComplete = onComplete; (require(benchmarkPath).main())`);
             await script.runInNewContext({ benchmarkPath, require, onComplete });
@@ -78,14 +75,14 @@ async function main() {
         benchmarkRun.os = `${os.platform} ${os.distro} ${os.release} ${os.kernel} ${os.arch}`;
         benchmarkRun.commit = execSync('git rev-parse HEAD').toString('utf8').trim();
 
-        await fetch(sendResultsTo, {
-            method: 'POST',
-            headers: {
-                'authorization': process.env.AUTH_TOKEN || '',
-                'content-type': 'application/json'
-            },
-            body: JSON.stringify(classToPlain(BenchmarkRun, benchmarkRun)),
-        });
+        // await fetch(sendResultsTo, {
+        //     method: 'POST',
+        //     headers: {
+        //         'authorization': process.env.AUTH_TOKEN || '',
+        //         'content-type': 'application/json'
+        //     },
+        //     body: JSON.stringify(classToPlain(BenchmarkRun, benchmarkRun)),
+        // });
     }
 }
 

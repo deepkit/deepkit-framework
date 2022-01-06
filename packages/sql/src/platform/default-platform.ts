@@ -12,10 +12,11 @@ import { Column, ColumnDiff, DatabaseDiff, DatabaseModel, ForeignKey, IndexModel
 import sqlstring from 'sqlstring';
 import { ClassType, isArray, isObject } from '@deepkit/core';
 import { sqlSerializer } from '../serializer/sql-serializer';
-import { SchemaParser } from '../reverse/schema-parser';
+import { parseType, SchemaParser } from '../reverse/schema-parser';
 import { SQLFilterBuilder } from '../sql-filter-builder';
 import { Sql } from '../sql-builder';
 import { binaryTypes, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
+import { DatabaseEntityRegistry } from '@deepkit/orm';
 
 export function isSet(v: any): boolean {
     return v !== '' && v !== undefined && v !== null;
@@ -169,11 +170,16 @@ export abstract class DefaultPlatform {
 
     protected setColumnType(column: Column, typeProperty: ReflectionProperty) {
         column.type = this.defaultSqlType;
-        const map = this.getTypeMapping(typeProperty.type);
-        if (map) {
-            column.type = map.sqlType;
-            column.size = map.size;
-            column.scale = map.scale;
+        const options = typeProperty.getDatabase('');
+        if (options && options.type) {
+            parseType(column, options.type);
+        } else {
+            const map = this.getTypeMapping(typeProperty.type);
+            if (map) {
+                column.type = map.sqlType;
+                column.size = map.size;
+                column.scale = map.scale;
+            }
         }
     }
 
@@ -202,13 +208,12 @@ export abstract class DefaultPlatform {
         return lines.filter(isSet);
     }
 
-    createTables(schemas: (ReflectionClass<any> | ClassType)[], database: DatabaseModel = new DatabaseModel()): Table[] {
+    createTables(entityRegistry: DatabaseEntityRegistry, database: DatabaseModel = new DatabaseModel()): Table[] {
         const mergedToSingleTable = new Set<ReflectionClass<any>>();
 
         const refs = new Map<ReflectionClass<any>, ReflectionClass<any>>();
 
-        for (let schema of schemas) {
-            schema = ReflectionClass.from(schema);
+        for (let schema of entityRegistry.entities) {
 
             //if the schema is decorated with singleTableInheritance, all properties of all siblings will be copied, as all
             //will be in one big table.
@@ -270,7 +275,7 @@ export abstract class DefaultPlatform {
                 const reference = property.getReference();
                 if (!reference) continue;
 
-                const foreignSchema = property.getResolvedReflectionClass();
+                const foreignSchema = entityRegistry.get(property.type);
                 const foreignTable = database.schemaMap.get(refs.get(foreignSchema) || foreignSchema);
                 if (!foreignTable) {
                     throw new Error(`Referenced entity ${foreignSchema.getClassName()} from ${schema.getClassName()}.${property.getNameAsString()} is not available`);

@@ -8,8 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { capitalize, ClassType, CompilerContext, CustomError, getClassName, isArray, toFastProperties } from '@deepkit/core';
-import { ExtractClassType } from '@deepkit/type';
+import { capitalize, ClassType, CompilerContext, CustomError, ExtractClassType, getClassName, isArray, toFastProperties } from '@deepkit/core';
 import { BaseEvent, EventDispatcher, EventToken, isEventListenerContainerEntryCallback, isEventListenerContainerEntryService } from '@deepkit/event';
 import { InjectorContext } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';

@@ -2,7 +2,7 @@ import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import { createWorkflow, WorkflowEvent } from '../src/workflow';
 import { eventDispatcher, EventDispatcher, EventToken } from '@deepkit/event';
-import { injectable, InjectorContext, InjectorModule } from '@deepkit/injector';
+import { InjectorContext, InjectorModule } from '@deepkit/injector';
 
 class EndEvent extends WorkflowEvent {
     test: string = 'hi';
@@ -130,7 +130,6 @@ test('workflow events apply injector', async () => {
         data: string = 'myData';
     }
 
-    @injectable
     class Listener {
         constructor(private myService: MyService) {
         }

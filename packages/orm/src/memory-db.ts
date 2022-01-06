@@ -10,10 +10,10 @@
 
 import { DatabaseSession, DatabaseTransaction } from './database-session';
 import { DatabaseQueryModel, GenericQueryResolver, Query } from './query';
-import { Changes, getSerializeFunction, ReflectionClass, resolvePath, serialize, Serializer } from '@deepkit/type';
+import { Changes, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath, serialize, Serializer } from '@deepkit/type';
 import { AbstractClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
-import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
-import { DeleteResult, Entity, PatchResult } from './type';
+import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseEntityRegistry, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
+import { DeleteResult, OrmEntity, PatchResult } from './type';
 import { findQueryList } from './utils';
 import { convertQueryFilter } from './query-filter';
 import { Formatter } from './formatter';
@@ -132,7 +132,7 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
         super();
     }
 
-    createQuery<T extends Entity>(classType: AbstractClassType<T> | ReflectionClass<T>): MemoryQuery<T> {
+    createQuery<T extends OrmEntity>(classType?: ReceiveType<T> | AbstractClassType<T> | ReflectionClass<T>): MemoryQuery<T> {
         const schema = ReflectionClass.from(classType);
         const adapter = this.adapter;
 
@@ -248,7 +248,7 @@ export class MemoryDatabaseTransaction extends DatabaseTransaction {
 export class MemoryDatabaseAdapter extends DatabaseAdapter {
     protected store = new Map<ReflectionClass<any>, SimpleStore<any>>();
 
-    async migrate(classSchemas: Iterable<ReflectionClass<any>>) {
+    async migrate(entityRegistry: DatabaseEntityRegistry) {
     }
 
     isNativeForeignKeyConstraintSupported(): boolean {
@@ -272,7 +272,7 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
         const adapter = this;
 
         class Persistence extends DatabasePersistence {
-            async remove<T extends Entity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
+            async remove<T extends OrmEntity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
                 const store = adapter.getStore(classSchema);
 
                 const primaryKey = classSchema.getPrimary().name as keyof T;
@@ -281,7 +281,7 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
                 }
             }
 
-            async insert<T extends Entity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
+            async insert<T extends OrmEntity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
                 const store = adapter.getStore(classSchema);
                 const serializer = getSerializeFunction(classSchema.type, memorySerializer.serializeRegistry);
                 const autoIncrement = classSchema.getAutoIncrement();
@@ -296,7 +296,7 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
                 }
             }
 
-            async update<T extends Entity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+            async update<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
                 const store = adapter.getStore(classSchema);
                 const serializer = getSerializeFunction(classSchema.type, memorySerializer.serializeRegistry);
                 const primaryKey = classSchema.getPrimary().name as keyof T;

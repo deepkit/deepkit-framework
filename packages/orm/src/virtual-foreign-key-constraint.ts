@@ -29,7 +29,7 @@ export class VirtualForeignKeyConstraint {
 
         const res: IncomingReference[] = [];
 
-        for (const classSchema of this.database.entities.values()) {
+        for (const classSchema of this.database.entityRegistry.entities) {
             for (const reference of classSchema.getReferences()) {
                 if (reference.getReference()!.onDelete === 'NO ACTION') continue;
 

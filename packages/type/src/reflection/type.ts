@@ -165,6 +165,10 @@ export enum TypeNumberBrand {
     float64,
 }
 
+export function isIntegerType(type: Type): type is TypeNumber {
+    return type.kind === ReflectionKind.number && type.brand !== undefined && type.brand >= TypeNumberBrand.integer && type.brand <= TypeNumberBrand.uint32;
+}
+
 export interface TypeNumber extends TypeOrigin, TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.number,
     brand?: TypeNumberBrand; //built in brand
@@ -1178,6 +1182,23 @@ export interface ReferenceOptions {
     onUpdate?: ReferenceActions
 }
 
+export interface EntityOptions {
+    name?: string;
+    collection?: string;
+}
+
+/**
+ * Type to decorate an interface/object literal with entity information.
+ *
+ * ```typescript
+ * interface User extends Entity<{name: 'user'}> {
+ *     id: number & PrimaryKey & AutoIncrement;
+ *     username: string & Unique;
+ * }
+ * ```
+ */
+export type Entity<T extends EntityOptions> = { __meta?: ['entity', T] }
+
 /**
  * Marks a property as primary key.
  * ```typescript
@@ -1253,6 +1274,7 @@ export type EmbeddedMeta<Options> = { __meta?: ['embedded', Options] };
 export type Embedded<T, Options extends { prefix?: string } = {}> = T & EmbeddedMeta<Options>;
 
 export const referenceAnnotation = new AnnotationDefinition<ReferenceOptions>('reference');
+export const entityAnnotation = new AnnotationDefinition<EntityOptions>('entity');
 
 export const autoIncrementAnnotation = new AnnotationDefinition('autoIncrement');
 export const primaryKeyAnnotation = new class extends AnnotationDefinition {
@@ -1346,22 +1368,24 @@ export type IndexOptions = {
 export type Unique<Options extends IndexOptions = {}> = { __meta?: ['index', never & Options & { unique: true }] };
 export type Index<Options extends IndexOptions = {}> = { __meta?: ['index', never & Options] };
 
-export interface MySQLOptions {
-    type: string;
+export interface DatabaseFieldOptions {
+    type?: string;
 }
 
-export interface PostgresOptions {
-    type: string;
+export interface MySQLOptions extends DatabaseFieldOptions {
 }
 
-export interface SqliteOptions {
-    type: string;
+export interface PostgresOptions extends DatabaseFieldOptions {
 }
 
-export type Database<Name extends string, Options extends { [name: string]: any }> = { __meta?: ['database', never & Name, never & Options] };
+export interface SqliteOptions extends DatabaseFieldOptions {
+}
+
+type Database<Name extends string, Options extends { [name: string]: any }> = { __meta?: ['database', never & Name, never & Options] };
 export type MySQL<Options extends MySQLOptions> = Database<'mysql', Options>;
 export type Postgres<Options extends PostgresOptions> = Database<'postgres', Options>;
 export type SQLite<Options extends SqliteOptions> = Database<'sqlite', Options>;
+export type DatabaseField<Options extends DatabaseFieldOptions, Name extends string = '*'> = Database<Name, Options>;
 
 export const enum BinaryBigIntType {
     unsigned,
@@ -1380,11 +1404,15 @@ export const dataAnnotation = new AnnotationDefinition<{ [name: string]: any }>(
 export const metaAnnotation = new AnnotationDefinition<{ name: string, options: OuterType[] }>('meta');
 export const indexAnnotation = new AnnotationDefinition<IndexOptions>('index');
 export const databaseAnnotation = new class extends AnnotationDefinition<{ name: string, options: { [name: string]: any } }> {
-    getDatabase<T extends { [name: string]: any }>(type: Type, name: string): T | undefined {
+    getDatabase<T extends DatabaseFieldOptions>(type: Type, name: string): T | undefined {
+        let options: T | undefined = undefined;
         for (const annotation of this.getAnnotations(type)) {
-            if (annotation.name === name) return annotation.options as T;
+            if (annotation.name === '*' || annotation.name === name) {
+                if (!options) options = {} as T;
+                Object.assign(options, annotation.options as T);
+            }
         }
-        return;
+        return options as any;
     };
 }('database');
 
@@ -1400,12 +1428,20 @@ export const typeDecorators: TypeDecorator[] = [
         if (!id || id.type.kind !== ReflectionKind.literal) return false;
 
         switch (id.type.literal) {
-            case 'reference':
+            case 'reference': {
                 const optionsType = meta.type.types[1];
                 if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
                 const options = typeToObject(optionsType.type);
                 referenceAnnotation.replace(annotations, [options]);
                 return true;
+            }
+            case 'entity': {
+                const optionsType = meta.type.types[1];
+                if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
+                const options = typeToObject(optionsType.type);
+                entityAnnotation.replace(annotations, [options]);
+                return true;
+            }
             case 'autoIncrement':
                 autoIncrementAnnotation.register(annotations, true);
                 return true;
@@ -1943,7 +1979,9 @@ export enum ReflectionOp {
     inlineCall,
     distribute,//has one parameter, the co-routine program index.
 
-    extends, //X extends Y, XY popped from the stack, pushes boolean on the stack
+    extends, //X extends Y in a conditional type, XY popped from the stack, pushes boolean on the stack
 
     widen, //widens the type on the stack, .e.g 'asd' => string, 34 => number, etc. this is necessary for infer runtime data, and widen if necessary (object member or non-contained literal)
+
+
 }

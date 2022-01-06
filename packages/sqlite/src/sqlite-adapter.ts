@@ -16,7 +16,7 @@ import {
     DatabaseSession,
     DatabaseTransaction,
     DeleteResult,
-    Entity,
+    OrmEntity,
     PatchResult,
     UniqueConstraintFailure
 } from '@deepkit/orm';
@@ -139,7 +139,6 @@ export class SQLiteConnection extends SQLConnection {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
             if (frame) frame.data({ sql, sqlParams: params });
-            console.log('sql', sql, params);
             const stmt = this.db.prepare(sql);
             this.logger.logQuery(sql, params);
             const result = stmt.run(...params);
@@ -254,7 +253,7 @@ export class SQLitePersistence extends SQLPersistence {
         super(platform, connectionPool, database);
     }
 
-    async batchUpdate<T extends Entity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+    async batchUpdate<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         const partialSerialize = getPartialSerializeFunction(classSchema.type, this.platform.serializer.serializeRegistry);
         const tableName = this.platform.getTableIdentifier(classSchema);
         const pkName = classSchema.getPrimary().name;
@@ -406,7 +405,7 @@ export class SQLitePersistence extends SQLPersistence {
     }
 }
 
-export class SQLiteQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
+export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T> {
     constructor(
         protected connectionPool: SQLiteConnectionPool,
         protected platform: DefaultPlatform,
@@ -550,7 +549,7 @@ export class SQLiteDatabaseQueryFactory extends SQLDatabaseQueryFactory {
         super(connectionPool, platform, databaseSession);
     }
 
-    createQuery<T extends Entity>(
+    createQuery<T extends OrmEntity>(
         classType: ClassType<T> | ReflectionClass<T>
     ): SQLiteDatabaseQuery<T> {
         return new SQLiteDatabaseQuery(ReflectionClass.from(classType), this.databaseSession,

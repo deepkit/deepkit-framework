@@ -3,11 +3,12 @@ import { AutoIncrement, entity, Index, PrimaryKey, Reference, ReflectionClass, R
 import { DatabaseModel, IndexModel } from '../src/schema/table';
 import { DefaultPlatform } from '../src/platform/default-platform';
 import { SchemaParser } from '../src/reverse/schema-parser';
+import { DatabaseEntityRegistry } from '@deepkit/orm';
 
 @entity.name('user')
     .index(['deleted'], {unique: true})
     .index(['deleted', 'created'])
-class user {
+class User {
     id!: number & PrimaryKey & AutoIncrement;
     username!: string & Unique;
     created!: Date;
@@ -16,9 +17,9 @@ class user {
 }
 
 @entity.name('post')
-class post {
+class Post {
     id!: number & PrimaryKey & AutoIncrement;
-    user?: user & Reference;
+    user?: User & Reference;
     created!: Date;
     slag!: string & Index;
     title!: string;
@@ -39,18 +40,22 @@ class MyPlatform extends DefaultPlatform {
 }
 
 test('migration basic', async () => {
-    const [tableUser, tablePost] = new MyPlatform().createTables([user, post]);
+    const user = ReflectionClass.from(User);
+    expect(user.getProperty('id').getKind()).toBe(ReflectionKind.number);
+    expect(user.getProperty('id').isPrimaryKey()).toBe(true);
+    expect(user.getProperty('id').isAutoIncrement()).toBe(true);
+    expect(user.getPrimary() === user.getProperty('id')).toBe(true);
+    expect(user.getAutoIncrement() === user.getProperty('id')).toBe(true);
 
-    const userReflection = ReflectionClass.from(user);
+    const [tableUser, tablePost] = new MyPlatform().createTables(DatabaseEntityRegistry.from([User, Post]));
+
+    const userReflection = ReflectionClass.from(User);
     expect(userReflection.getProperty('username').getIndex()).toEqual({unique: true});
 
     expect(tableUser.hasColumn('id')).toBe(true);
     expect(tableUser.getColumn('id').isPrimaryKey).toBe(true);
     expect(tableUser.getColumn('id').isAutoIncrement).toBe(true);
     expect(tableUser.getColumn('id').type).toBe('integer');
-
-    // expect(user.getProperty('username').isOptional).toBe(false);
-    // expect(user.getProperty('username').isNullable).toBe(false);
 
     expect(tableUser.hasColumn('username')).toBe(true);
     expect(tableUser.getColumn('username').type).toBe('text');

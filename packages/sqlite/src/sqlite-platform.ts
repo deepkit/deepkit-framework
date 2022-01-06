@@ -9,7 +9,7 @@
  */
 
 import { Column, DefaultPlatform, ForeignKey, isSet, parseType, Sql, Table, TableDiff } from '@deepkit/sql';
-import { isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, SqliteOptions } from '@deepkit/type';
+import { isIntegerType, isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer } from '@deepkit/type';
 import { SQLiteSchemaParser } from './sqlite-schema-parser';
 import { sqliteSerializer } from './sqlite-serializer';
 import { SQLiteFilterBuilder } from './sql-filter-builder.sqlite';
@@ -28,6 +28,8 @@ export class SQLitePlatform extends DefaultPlatform {
         this.addType((type => type.kind === ReflectionKind.class && type.classType === Date), 'text');
         this.addType(ReflectionKind.boolean, 'integer', 1);
         this.addType((type => isUUIDType(type)), 'blob');
+        this.addType(isIntegerType, 'integer');
+
         this.addBinaryType('blob');
     }
 
@@ -136,9 +138,9 @@ export class SQLitePlatform extends DefaultPlatform {
     }
 
     protected setColumnType(column: Column, typeProperty: ReflectionProperty) {
-        const db = (typeProperty.data['sqlite'] || {}) as SqliteOptions;
-        if (db.type) {
-            parseType(column, db.type);
+        const options = typeProperty.getDatabase('sqlite');
+        if (options && options.type) {
+            parseType(column, options.type);
             return;
         }
 

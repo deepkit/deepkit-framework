@@ -18,6 +18,7 @@ import { reflect, reflect as reflect2, ReflectionClass, removeTypeName, typeOf a
 import {
     assertType,
     defaultAnnotation,
+    primaryKeyAnnotation,
     ReflectionKind,
     ReflectionOp,
     ReflectionVisibility,
@@ -472,16 +473,16 @@ test('partial', () => {
 
 test('type emitted at the right place', () => {
     const code = `
-    type Partial<T> = {
-        [P in keyof T]: T[P];
-    }
-    () => {
-        type o = { a: string };
-        type p = Partial<o>;
-        typeOf<p>();
-    };
-    return true;
-`;
+        type Partial<T> = {
+            [P in keyof T]: T[P];
+        }
+        () => {
+            type o = { a: string };
+            type p = Partial<o>;
+            typeOf<p>();
+        };
+        return true;
+    `;
 
     const js = transpile(code);
     console.log('js', js);
@@ -1403,6 +1404,83 @@ test('brand intersection', () => {
             ]
         }
     } as Type);
+});
+
+test('interface extends base', () => {
+    const code = `
+        interface Base {
+            base: boolean;
+        }
+
+        interface User extends Base {
+            id: number;
+        }
+        return typeOf<User>();
+    `;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+    console.log('type', type);
+    expectEqualType(type, {
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            { kind: ReflectionKind.propertySignature, name: 'base', type: { kind: ReflectionKind.boolean } },
+            { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.number } },
+        ]
+    } as Type);
+});
+
+test('interface extends generic', () => {
+    const code = `
+        interface Base<T> {
+            base: T;
+        }
+
+        interface User extends Base<boolean> {
+            id: number;
+        }
+        return typeOf<User>();
+    `;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+    console.log('type', type);
+    expectEqualType(type, {
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            { kind: ReflectionKind.propertySignature, name: 'base', type: { kind: ReflectionKind.boolean } },
+            { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.number } },
+        ]
+    } as Type);
+});
+
+test('interface extends decorator', () => {
+    const code = `
+        type PrimaryKey = { __meta?: ['primaryKey'] };
+
+        interface User extends PrimaryKey {
+            id: number;
+        }
+        return typeOf<User>();
+    `;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code) as Type;
+    console.log('type', type);
+    expectEqualType(type, {
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.number } },
+        ]
+    } as Type);
+
+    assertType(type, ReflectionKind.objectLiteral);
+    expect(type.annotations).toEqual({
+        [primaryKeyAnnotation.symbol]: [true]
+    });
 });
 
 test('brand intersection symbol', () => {

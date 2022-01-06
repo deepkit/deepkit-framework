@@ -722,23 +722,13 @@ export class Processor {
                             break;
                         }
                         case ReflectionOp.objectLiteral: {
-                            const types = this.popFrame() as (TypeIndexSignature | TypePropertySignature | TypeMethodSignature)[];
-                            for (let i = 0; i < types.length; i++) {
-                                const member = types[i];
-                                if (member.kind === ReflectionKind.propertySignature && member.type.kind === ReflectionKind.function) {
-                                    types[i] = {
-                                        kind: ReflectionKind.methodSignature,
-                                        name: member.name,
-                                        optional: member.optional,
-                                        parameters: member.type.parameters,
-                                        return: member.type.return,
-                                    } as TypeMethodSignature;
-                                }
-                            }
                             let t = {
                                 kind: ReflectionKind.objectLiteral,
-                                types
+                                types: []
                             } as TypeObjectLiteral;
+
+                            const frameTypes = this.popFrame() as (TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeObjectLiteral)[];
+                            pushObjectLiteralTypes(t, frameTypes);
 
                             //only for the very last op do we replace this.resultType. Otherwise, objectLiteral in between would overwrite it.
                             if (this.isEnded()) t = Object.assign(program.resultType, t);
@@ -1429,4 +1419,61 @@ function applyPropertyDecorator(type: OuterType, data: TData) {
             });
         }
     }
+}
+
+function pushObjectLiteralTypes(
+    type: TypeObjectLiteral,
+    types: (TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeObjectLiteral)[],
+) {
+    let annotations: Annotations = {};
+    const decorators: OuterType[] = [];
+
+    outer:
+        for (const member of types) {
+            if (member.kind === ReflectionKind.objectLiteral) {
+                //all `extends T` expression land at the beginning of the stack frame, and are always an objectLiteral.
+                //we use it as base and move its types first into types
+
+                //it might be a decorator
+                for (const decorator of typeDecorators) {
+                    if (decorator(annotations, member)) {
+                        decorators.push(member);
+                        continue outer;
+                    }
+                }
+
+                pushObjectLiteralTypes(type, member.types);
+
+                //redirect decorators
+                if (member.decorators) {
+                    decorators.push(...member.decorators);
+                }
+                if (member.annotations) {
+                    annotations = Object.assign(member.annotations, annotations);
+                }
+            } else if (member.kind === ReflectionKind.indexSignature) {
+                //note: is it possible to overwrite an index signature?
+                type.types.push(member);
+            } else if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.methodSignature) {
+                const toAdd = member.kind === ReflectionKind.propertySignature && member.type.kind === ReflectionKind.function ? {
+                    kind: ReflectionKind.methodSignature,
+                    name: member.name,
+                    optional: member.optional,
+                    parameters: member.type.parameters,
+                    return: member.type.return,
+                } as TypeMethodSignature : member;
+
+                const existing = type.types.findIndex(v => (v.kind === ReflectionKind.propertySignature || v.kind === ReflectionKind.methodSignature) && v.name === toAdd.name);
+                if (existing !== -1) {
+                    //remove entry, since we replace it
+                    types.splice(existing, 1);
+                }
+                type.types.push(toAdd);
+            }
+        }
+
+    type.annotations = type.annotations || {};
+    if (decorators.length) type.decorators = decorators;
+
+    Object.assign(type.annotations, annotations);
 }

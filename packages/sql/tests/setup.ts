@@ -1,27 +1,27 @@
-import { Database } from '@deepkit/orm';
+import { Database, DatabaseEntityRegistry } from '@deepkit/orm';
 import { ClassType } from '@deepkit/core';
 import { SQLDatabaseAdapter } from '../src/sql-adapter';
 import { DatabaseModel, TableComparator } from '../src/schema/table';
 import { expect } from '@jest/globals';
-import { ReflectionClass } from '@deepkit/type';
+import { ReflectionClass, Type } from '@deepkit/type';
 
 export async function createSetup(adapter: SQLDatabaseAdapter, schemas: (ReflectionClass<any> | ClassType)[]) {
     const database = new Database(adapter);
     database.registerEntity(...schemas);
-    await adapter.createTables(Array.from(database.entities));
+    await adapter.createTables(database.entityRegistry);
 
     return database;
 }
 
-export async function schemaMigrationRoundTrip(types: (ClassType | ReflectionClass<any>)[], adapter: SQLDatabaseAdapter) {
+export async function schemaMigrationRoundTrip(types: (Type | ClassType | ReflectionClass<any>)[], adapter: SQLDatabaseAdapter) {
     const originDatabaseModel = new DatabaseModel;
-    adapter.platform.createTables(types, originDatabaseModel);
+    adapter.platform.createTables(DatabaseEntityRegistry.from(types), originDatabaseModel);
 
     const db = new Database(adapter, types);
     const connection = await adapter.connectionPool.getConnection();
 
     try {
-        await adapter.createTables(Array.from(db.entities));
+        await adapter.createTables(db.entityRegistry);
         const schemaParser = new adapter.platform.schemaParserType(connection, adapter.platform);
 
         // console.log(adapter.platform.getAddTablesDDL(originDatabaseModel));

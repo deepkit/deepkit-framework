@@ -9,7 +9,7 @@ export const databaseFactory: DatabaseFactory = async (entities): Promise<Databa
 
     const database = new Database(adapter);
     if (entities) database.registerEntity(...entities);
-    await adapter.createTables([...database.entities]);
+    await adapter.createTables(database.entityRegistry);
 
     return database;
 };

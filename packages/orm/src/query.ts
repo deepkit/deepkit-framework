@@ -25,12 +25,12 @@ import { Subject } from 'rxjs';
 import { DatabaseAdapter } from './database-adapter';
 import { DatabaseSession } from './database-session';
 import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event';
-import { DeleteResult, Entity, PatchResult } from './type';
+import { DeleteResult, OrmEntity, PatchResult } from './type';
 import { FieldName, FlattenIfArray, Replace, Resolve } from './utils';
 import { FrameCategory } from '@deepkit/stopwatch';
 
 export type SORT_ORDER = 'asc' | 'desc' | any;
-export type Sort<T extends Entity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
+export type Sort<T extends OrmEntity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
 
 export interface DatabaseJoinModel<T, PARENT extends BaseQuery<any>> {
     //this is the parent classSchema, the foreign classSchema is stored in `query`
@@ -81,7 +81,7 @@ export type FilterQuery<T> = {
 } &
     RootQuerySelector<T>;
 
-export class DatabaseQueryModel<T extends Entity, FILTER extends FilterQuery<T> = FilterQuery<T>, SORT extends Sort<T> = Sort<T>> {
+export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<T> = FilterQuery<T>, SORT extends Sort<T> = Sort<T>> {
     public withIdentityMap: boolean = true;
     public withChangeDetection: boolean = true;
     public filter?: FILTER;
@@ -192,7 +192,7 @@ export interface QueryClassType<T> {
     create(query: BaseQuery<any>): QueryClassType<T>;
 }
 
-export class BaseQuery<T extends Entity> {
+export class BaseQuery<T extends OrmEntity> {
     //for higher kinded type for selected fields
     _!: () => T;
 
@@ -501,7 +501,7 @@ export type Methods<T> = { [K in keyof T]: K extends keyof Query<any> ? never : 
  * All query implementations should extend this since db agnostic consumers are probably
  * coded against this interface via Database<DatabaseAdapter> which uses this GenericQuery.
  */
-export class Query<T extends Entity> extends BaseQuery<T> {
+export class Query<T extends OrmEntity> extends BaseQuery<T> {
     protected lifts: ClassType[] = [];
 
     static is<T extends ClassType<Query<any>>>(v: Query<any>, type: T): v is InstanceType<T> {
@@ -828,7 +828,7 @@ export class Query<T extends Entity> extends BaseQuery<T> {
     }
 }
 
-export class JoinDatabaseQuery<T extends Entity, PARENT extends BaseQuery<any>> extends BaseQuery<T> {
+export class JoinDatabaseQuery<T extends OrmEntity, PARENT extends BaseQuery<any>> extends BaseQuery<T> {
     constructor(
         public readonly foreignClassSchema: ReflectionClass<T>,
         public parentQuery?: PARENT,

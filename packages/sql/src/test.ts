@@ -1,15 +1,15 @@
 import { ClassType } from '@deepkit/core';
 import { SQLDatabaseAdapter } from './sql-adapter';
 import { DatabaseModel, TableComparator } from './schema/table';
-import { Database } from '@deepkit/orm';
-import { ReflectionClass } from '@deepkit/type';
+import { Database, DatabaseEntityRegistry } from '@deepkit/orm';
+import { ReflectionClass, Type } from '@deepkit/type';
 
-export async function schemaMigrationRoundTrip(types: (ClassType | ReflectionClass<any>)[], adapter: SQLDatabaseAdapter) {
+export async function schemaMigrationRoundTrip(types: (Type | ClassType | ReflectionClass<any>)[], adapter: SQLDatabaseAdapter) {
     const originDatabaseModel = new DatabaseModel;
-    adapter.platform.createTables(types, originDatabaseModel);
+    adapter.platform.createTables(DatabaseEntityRegistry.from(types), originDatabaseModel);
 
     const db = new Database(adapter, types);
-    await adapter.createTables([...db.entities]);
+    await adapter.createTables(db.entityRegistry);
 
     const connection = await adapter.connectionPool.getConnection();
     try {

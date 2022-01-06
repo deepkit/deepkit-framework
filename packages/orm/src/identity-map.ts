@@ -18,7 +18,7 @@ import {
     JSONPartial,
     ReflectionClass
 } from '@deepkit/type';
-import { Entity } from './type';
+import { OrmEntity } from './type';
 import { getClassTypeFromInstance, isObject, toFastProperties } from '@deepkit/core';
 
 export function getNormalizedPrimaryKey(schema: ReflectionClass<any>, primaryKey: any) {
@@ -61,7 +61,7 @@ export function getClassState<T>(classSchema: ReflectionClass<T>): ClassState<T>
     return classSchema.data.classState;
 }
 
-class InstanceState<T extends Entity> {
+class InstanceState<T extends OrmEntity> {
     /**
      * Whether current state is known in database.
      */

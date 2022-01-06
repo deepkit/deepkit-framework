@@ -76,7 +76,7 @@ export const bookstoreTests = {
         const user = ReflectionClass.from(User);
         expect(user.name).toBe('user');
         expect(book.getProperty('author').getResolvedReflectionClass().getClassType()).toBe(User);
-        expect(book.getProperty('author').getResolvedReflectionClass().getClassType()).toBe(user);
+        expect(book.getProperty('author').getResolvedReflectionClass()).toBe(user);
 
         expect(user.getProperty('birthdate').isOptional).toBe(true);
     },

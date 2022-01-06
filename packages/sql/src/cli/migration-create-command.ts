@@ -61,7 +61,7 @@ export class MigrationCreateController extends BaseCommand implements Command {
 
             const databaseModel = new DatabaseModel();
             databaseModel.schemaName = db.adapter.getSchemaName();
-            db.adapter.platform.createTables([...db.entities], databaseModel);
+            db.adapter.platform.createTables(db.entityRegistry, databaseModel);
 
             const connection = await db.adapter.connectionPool.getConnection();
             const schemaParser = new db.adapter.platform.schemaParserType(connection, db.adapter.platform);

@@ -15,7 +15,9 @@ import {
     copyAndSetParent,
     dataAnnotation,
     databaseAnnotation,
+    DatabaseFieldOptions,
     embeddedAnnotation,
+    entityAnnotation,
     excludedAnnotation,
     getBackReferenceType,
     getClassType,
@@ -77,7 +79,7 @@ export function reflect(o: any, ...args: any[]): OuterType {
     return resolveRuntimeType(o, args) as OuterType;
 }
 
-export function valuesOf<T>(args: any[] = [], p?: Packed): (string | number | symbol | Type)[] {
+export function valuesOf<T>(args: any[] = [], p?: ReceiveType<T>): (string | number | symbol | Type)[] {
     const type = typeOf(args, p);
     if (type.kind === ReflectionKind.union) {
         return type.types.map(v => {
@@ -97,7 +99,7 @@ export function valuesOf<T>(args: any[] = [], p?: Packed): (string | number | sy
     return [];
 }
 
-export function propertiesOf<T>(args: any[] = [], p?: Packed): (string | number | symbol | Type)[] {
+export function propertiesOf<T>(args: any[] = [], p?: ReceiveType<T>): (string | number | symbol | Type)[] {
     const type = typeOf(args, p);
     if (type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.class) {
         return type.types.map(v => {
@@ -111,7 +113,7 @@ export function propertiesOf<T>(args: any[] = [], p?: Packed): (string | number 
     return [];
 }
 
-export function typeOf<T>(args: any[] = [], p?: Packed): OuterType {
+export function typeOf<T>(args: any[] = [], p?: ReceiveType<T>): OuterType {
     if (p) {
         return resolveRuntimeType(p, args) as OuterType;
     }
@@ -531,10 +533,19 @@ export class ReflectionProperty {
     }
 
     /**
-     * If undefined the property is not an index.
-     * A unique property is defined as index with IndexOptions.unique=true.
+     * Returns database specific options, if defined
+     *
+     * ```typescript
+     * interface User {
+     *     logins: number & DatabaseField<{type: 'integer(8)'}>;
+     *
+     *     //of for a specific db engine
+     *     logins: number & Sqlite<{type: 'integer(8)'}>;
+     * }
+     *
+     * ```
      */
-    getDatabase<T extends { [name: string]: any }>(name: string): T | undefined {
+    getDatabase<T extends DatabaseFieldOptions>(name: string): T | undefined {
         return databaseAnnotation.getDatabase<T>(this.getType(), name);
     }
 
@@ -777,6 +788,12 @@ export class ReflectionClass<T> {
             this.add(member);
         }
 
+        const entityOptions = entityAnnotation.getFirst(this.type);
+        if (entityOptions) {
+            this.name = entityOptions.name;
+            this.collectionName = entityOptions.collection;
+        }
+
         //apply decorators
         if (type.kind === ReflectionKind.class && isWithDeferredDecorators(type.classType)) {
             for (const decorator of type.classType.__decorators) {
@@ -986,7 +1003,7 @@ export class ReflectionClass<T> {
         if (isArray(classTypeIn)) classTypeIn = resolveReceiveType(classTypeIn);
 
         if (classTypeIn instanceof ReflectionClass) return classTypeIn;
-        if (isType(classTypeIn)){
+        if (isType(classTypeIn)) {
             if (classTypeIn.kind === ReflectionKind.objectLiteral) return new ReflectionClass<T>(classTypeIn);
             if (classTypeIn.kind !== ReflectionKind.class) throw new Error(`TypeClass or TypeObjectLiteral expected, not ${classTypeIn.kind}`);
         }
@@ -1001,7 +1018,11 @@ export class ReflectionClass<T> {
             return classType.prototype[reflectionClassSymbol];
         }
 
-        const type = isType(classTypeIn) ? classTypeIn as TypeClass : ('__type' in classType ? resolveRuntimeType(classType, args) : { kind: ReflectionKind.class, classType, types: [] } as TypeClass);
+        const type = isType(classTypeIn) ? classTypeIn as TypeClass : ('__type' in classType ? resolveRuntimeType(classType, args) : {
+            kind: ReflectionKind.class,
+            classType,
+            types: []
+        } as TypeClass);
 
         if (type.kind !== ReflectionKind.class) {
             throw new Error(`Given class is not a class ${classType}`);

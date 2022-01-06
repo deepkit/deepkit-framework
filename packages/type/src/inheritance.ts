@@ -38,9 +38,7 @@ export function findCommonLiteral(reflectionClasses: ReflectionClass<any>[]): st
     const candidates: { [name: string]: { found: number, values: any[], schemas: ReflectionClass<any>[] } } = {};
 
     for (const schema of reflectionClasses) {
-        console.log('schema', schema.getClassName(), schema.type.types);
         for (const property of schema.getProperties()) {
-            console.log('property.type.kind', property.name, property.type.kind);
             if (property.type.kind !== ReflectionKind.literal) continue;
 
             if (candidates[property.name]) {
@@ -60,7 +58,6 @@ export function findCommonLiteral(reflectionClasses: ReflectionClass<any>[]): st
         }
     }
 
-    console.log('candidates', candidates);
     //check which candidate has the right amount of usages
     for (const [name, info] of Object.entries(candidates)) {
         if (info.found === reflectionClasses.length) return name;

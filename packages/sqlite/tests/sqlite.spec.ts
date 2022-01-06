@@ -2,11 +2,10 @@ import { expect, test } from '@jest/globals';
 import { SQLitePlatform } from '../src/sqlite-platform';
 import { databaseFactory } from './factory';
 import { User, UserCredentials } from '@deepkit/orm-integration';
-// import { User } from '@deepkit/orm-integration/src/bookstore/user';
-// import { UserCredentials } from '@deepkit/orm-integration/src/bookstore/user-credentials';
 import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter';
 import { sleep } from '@deepkit/core';
-import { AutoIncrement, cast, entity, PrimaryKey, Reference, ReflectionClass } from '@deepkit/type';
+import { AutoIncrement, cast, Entity, entity, PrimaryKey, Reference, ReflectionClass, typeOf } from '@deepkit/type';
+import { DatabaseEntityRegistry } from '@deepkit/orm';
 
 test('reflection circular reference', () => {
     const user = ReflectionClass.from(User);
@@ -21,52 +20,95 @@ test('reflection circular reference', () => {
 });
 
 test('tables', () => {
-    const [user] = new SQLitePlatform().createTables([User]);
+    const [user] = new SQLitePlatform().createTables(DatabaseEntityRegistry.from([User]));
     expect(user.getColumn('birthdate').isNotNull).toBe(false);
 
-    const [userCredentials] = new SQLitePlatform().createTables([UserCredentials, User]);
+    const [userCredentials] = new SQLitePlatform().createTables(DatabaseEntityRegistry.from([UserCredentials, User]));
     expect(userCredentials.getColumn('user').isPrimaryKey).toBe(true);
     expect(userCredentials.getColumn('user').type).toBe('integer');
 });
 
-test('sqlite basic', async () => {
-    class User {
-        id!: number & PrimaryKey;
-        name!: string;
-        created!: Date
+test('class basic', async () => {
+    class Product {
+        id: number & PrimaryKey = 0;
+        created: Date = new Date;
+
+        constructor(public name: string) {
+        }
     }
 
-    const database = await databaseFactory([User]);
+    const database = await databaseFactory([Product]);
 
-    const user1 = cast<User>({ id: 1, name: 'Yes', created: new Date() });
-    const user2 = cast<User>({ id: 2, name: 'Wow', created: new Date() });
-    const user3 = cast<User>({ id: 3, name: 'asdadasd', created: new Date() });
+    const product1 = cast<Product>({ id: 1, name: 'Yes', created: new Date() });
+    const product2 = cast<Product>({ id: 2, name: 'Wow', created: new Date() });
+    const product3 = cast<Product>({ id: 3, name: 'asdadasd', created: new Date() });
 
     {
         const session = database.createSession();
 
-        expect(await session.query(User).count()).toBe(0);
+        expect(await session.query(Product).count()).toBe(0);
 
-        session.add(user1, user2, user3);
+        session.add(product1, product2, product3);
         await session.commit();
-        expect(await session.query(User).count()).toBe(3);
+        expect(await session.query(Product).count()).toBe(3);
 
-        user1.name = 'Changed';
+        product1.name = 'Changed';
         await session.commit();
-        expect(await session.query(User).count()).toBe(3);
-        expect((await session.query(User).disableIdentityMap().filter(user1).findOne()).name).toBe('Changed');
+        expect(await session.query(Product).count()).toBe(3);
+        expect((await session.query(Product).disableIdentityMap().filter(product1).findOne()).name).toBe('Changed');
     }
 
     {
         const session = database.createSession();
-        const user1db = await session.query(User).filter({ id: user1.id }).findOne();
+        const user1db = await session.query(Product).filter({ id: product1.id }).findOne();
         expect(user1db.name).toBe('Changed');
     }
 
     {
         const session = database.createSession();
-        expect((await session.query(User).deleteMany()).modified).toBe(3);
-        expect((await session.query(User).deleteMany()).modified).toBe(0);
+        expect((await session.query(Product).deleteMany()).modified).toBe(3);
+        expect((await session.query(Product).deleteMany()).modified).toBe(0);
+    }
+});
+
+test('interface basic', async () => {
+    interface Product extends Entity<{ name: 'product' }> {
+        id: number & PrimaryKey;
+        name: string;
+        created: Date;
+    }
+
+    const database = await databaseFactory([typeOf<Product>()]);
+
+    const product1: Product = { id: 1, name: 'Yes', created: new Date() };
+    const product2: Product = { id: 2, name: 'Wow', created: new Date() };
+    const product3: Product = { id: 3, name: 'asdadasd', created: new Date() };
+
+    {
+        const session = database.createSession();
+
+        expect(await session.query<Product>().count()).toBe(0);
+
+        session.add(product1, product2, product3);
+        await session.commit();
+        expect(await session.query<Product>().count()).toBe(3);
+
+        product1.name = 'Changed';
+        await session.commit();
+        expect(await session.query<Product>().count()).toBe(3);
+        expect((await session.query<Product>().disableIdentityMap().filter(product1).findOne()).name).toBe('Changed');
+    }
+
+    {
+        const session = database.createSession();
+        const user1db = await session.query<Product>().filter({ id: product1.id }).findOne();
+        expect(user1db.name).toBe('Changed');
+    }
+
+    {
+        const session = database.createSession();
+        expect((await session.query<Product>().deleteMany()).modified).toBe(3);
+        expect((await session.query<Product>().deleteMany()).modified).toBe(0);
     }
 });
 

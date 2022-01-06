@@ -10,14 +10,17 @@
 
 import { ClassType } from '@deepkit/core';
 import { expect, test } from '@jest/globals';
-import { t } from '../../../src/decorator';
+import { entity, t } from '../../../src/decorator';
 import { propertiesOf, reflect, ReflectionClass, ReflectionFunction, typeOf, valuesOf } from '../../../src/reflection/reflection';
 import {
     assertType,
+    AutoIncrement,
     BackReference,
     Data,
     defaultAnnotation,
     Embedded,
+    Entity,
+    entityAnnotation,
     Excluded,
     Group,
     Index,
@@ -905,6 +908,50 @@ test('reflection function', () => {
     expect(reflection.getReturnType().kind).toBe(ReflectionKind.void);
 });
 
+test('interface extends basic', () => {
+    interface Base {
+        base: boolean;
+    }
+
+    interface User extends Base {
+        id: number & PrimaryKey;
+    }
+
+    const reflection = ReflectionClass.from(typeOf<User>());
+    console.log('reflection', reflection.type);
+    expect(reflection.getProperty('base').getKind()).toBe(ReflectionKind.boolean);
+    expect(reflection.getProperty('id').getKind()).toBe(ReflectionKind.number);
+    expect(reflection.getProperty('id').isPrimaryKey()).toBe(true);
+});
+
+test('interface extends generic', () => {
+    interface Base<T> {
+        base: T;
+    }
+
+    interface User extends Base<boolean> {
+        id: number & PrimaryKey;
+    }
+
+    const reflection = ReflectionClass.from(typeOf<User>());
+    console.log('reflection', reflection.type);
+    expect(reflection.getProperty('base').getKind()).toBe(ReflectionKind.boolean);
+    expect(reflection.getProperty('id').getKind()).toBe(ReflectionKind.number);
+    expect(reflection.getProperty('id').isPrimaryKey()).toBe(true);
+});
+
+test('interface entity', () => {
+    interface User extends Entity<{ name: 'user', collection: 'users' }> {
+        id: number & PrimaryKey;
+    }
+
+    const reflection = ReflectionClass.from(typeOf<User>());
+    const entityOptions = entityAnnotation.getFirst(reflection.type);
+    expect(entityOptions).toEqual({name: 'user', collection: 'users'});
+    expect(reflection.name).toBe('user');
+    expect(reflection.collectionName).toBe('users');
+});
+
 test('primaryKey', () => {
     class User {
         id: number & PrimaryKey = 0;
@@ -915,6 +962,7 @@ test('primaryKey', () => {
     expect(property.getType().kind).toBe(ReflectionKind.number);
     const annotations = primaryKeyAnnotation.getAnnotations(property.getType());
     expect(annotations![0]).toEqual(true);
+    expect(property.isPrimaryKey()).toEqual(true);
 });
 
 test('Reference', () => {
@@ -1592,4 +1640,23 @@ test('typeOf returns same instance, and new one for generics', () => {
         //properties get their own instance, so it's not equal to clazz1 (as annotations would otherwise be redirected to the actual class)
         expect(t.types[0].type === clazz1).toBe(false);
     }
+});
+
+test('reference types decorators correct', () => {
+    @entity.name('user')
+    class User {
+        id!: number & PrimaryKey & AutoIncrement;
+    }
+
+    @entity.name('post')
+    class Post {
+        id!: number & PrimaryKey & AutoIncrement;
+        user?: User & Reference;
+    }
+
+    const user = ReflectionClass.from(User);
+    expect(user.getProperty('id').isPrimaryKey()).toBe(true);
+    expect(user.getProperty('id').isAutoIncrement()).toBe(true);
+    expect(user.getPrimary() === user.getProperty('id')).toBe(true);
+    expect(user.getAutoIncrement() === user.getProperty('id')).toBe(true);
 });

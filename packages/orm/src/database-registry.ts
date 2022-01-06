@@ -118,10 +118,9 @@ export class DatabaseRegistry {
 
             const database = this.injectorContext.get(databaseType.classType);
 
-            for (const classSchema of database.entities) {
+            for (const classSchema of database.entityRegistry.entities) {
                 classSchema.data['orm.database'] = database;
             }
-
 
             if (this.databaseNameMap.has(database.name)) {
                 throw new Error(

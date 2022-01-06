@@ -13,10 +13,10 @@ import { DatabaseSession } from '../database-session';
 import { Database } from '../database';
 import { DatabaseAdapter } from '../database-adapter';
 import { Query } from '../query';
-import { Entity } from '../type';
+import { OrmEntity } from '../type';
 import { ReflectionClass } from '@deepkit/type';
 
-interface SoftDeleteEntity extends Entity {
+interface SoftDeleteEntity extends OrmEntity {
     deletedAt?: Date;
     deletedBy?: any;
 }

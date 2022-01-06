@@ -9,8 +9,9 @@
  */
 
 import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
-import { DatabaseValidationError, Entity } from './type';
-import { ClassType, CustomError, getClassTypeFromInstance } from '@deepkit/core';
+import { DatabaseEntityRegistry } from './database-adapter';
+import { DatabaseValidationError, OrmEntity } from './type';
+import { ClassType, CustomError } from '@deepkit/core';
 import { getPrimaryKeyExtractor, isReferenceInstance, markAsHydrated, PrimaryKeyFields, ReflectionClass, typeSettings, UnpopulatedCheck, validate } from '@deepkit/type';
 import { GroupArraySort } from '@deepkit/topsort';
 import { getClassState, getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map';
@@ -24,8 +25,8 @@ import { Stopwatch } from '@deepkit/stopwatch';
 let SESSION_IDS = 0;
 
 export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
-    protected addQueue = new Set<Entity>();
-    protected removeQueue = new Set<Entity>();
+    protected addQueue = new Set<OrmEntity>();
+    protected removeQueue = new Set<OrmEntity>();
 
     protected inCommit: boolean = false;
     protected committed: boolean = false;
@@ -47,7 +48,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         return this.committed;
     }
 
-    public add(...items: Entity[]): void {
+    public add(...items: OrmEntity[]): void {
         if (this.isInCommit()) throw new Error('Already in commit. Can not change queues.');
 
         for (const item of items) {
@@ -62,9 +63,9 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         }
     }
 
-    protected getReferenceDependencies<T extends Entity>(item: T): Entity[] {
-        const result: Entity[] = [];
-        const classSchema = ReflectionClass.from(getClassTypeFromInstance(item));
+    protected getReferenceDependencies<T extends OrmEntity>(item: T): OrmEntity[] {
+        const result: OrmEntity[] = [];
+        const classSchema = this.session.entityRegistry.getFromInstance(item)
 
         const old = typeSettings.unpopulatedCheck;
         typeSettings.unpopulatedCheck = UnpopulatedCheck.None;
@@ -94,7 +95,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         return result;
     }
 
-    public remove(...items: Entity[]) {
+    public remove(...items: OrmEntity[]) {
         if (this.isInCommit()) throw new Error('Already in commit. Can not change queues.');
 
         for (const item of items) {
@@ -136,7 +137,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
     }
 
     protected async doPersist(persistence: DatabasePersistence) {
-        const sorter = new GroupArraySort<Entity, ReflectionClass<any>>();
+        const sorter = new GroupArraySort<OrmEntity, ReflectionClass<any>>();
         sorter.sameTypeExtraGrouping = true;
         sorter.throwOnNonExistingDependency = false;
         const unpopulatedCheck = typeSettings.unpopulatedCheck;
@@ -144,7 +145,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 
         try {
             for (const item of this.addQueue.values()) {
-                const classSchema = ReflectionClass.from(getClassTypeFromInstance(item));
+                const classSchema = this.session.entityRegistry.getFromInstance(item);
                 sorter.add(item, classSchema, this.getReferenceDependencies(item));
             }
 
@@ -152,8 +153,8 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
             const groups = sorter.getGroups();
 
             for (const group of groups) {
-                const inserts: Entity[] = [];
-                const changeSets: DatabasePersistenceChangeSet<Entity>[] = [];
+                const inserts: OrmEntity[] = [];
+                const changeSets: DatabasePersistenceChangeSet<OrmEntity>[] = [];
                 const classState = getClassState(group.type);
 
                 for (const item of group.items) {
@@ -284,6 +285,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
         public readonly adapter: ADAPTER,
         public readonly unitOfWorkEmitter: UnitOfWorkDatabaseEmitter = new UnitOfWorkDatabaseEmitter,
         public readonly queryEmitter: QueryDatabaseEmitter = new QueryDatabaseEmitter(),
+        public readonly entityRegistry: DatabaseEntityRegistry = new DatabaseEntityRegistry(),
         public logger: DatabaseLogger = new DatabaseLogger,
         public stopwatch?: Stopwatch,
     ) {
@@ -416,7 +418,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
      *
      * This works like Git: you add files, and later commit all in one batch.
      */
-    public add(...items: Entity[]): void {
+    public add(...items: OrmEntity[]): void {
         if (this.getCurrentRound().isInCommit()) {
             this.enterNewRound();
         }
@@ -427,7 +429,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     /**
      * Adds a item to the remove queue. Use session.commit() to remove queued items from the database all at once.
      */
-    public remove(...items: Entity[]) {
+    public remove(...items: OrmEntity[]) {
         if (this.getCurrentRound().isInCommit()) {
             this.enterNewRound();
         }
@@ -454,11 +456,10 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     }
 
     public async hydrateEntity<T extends object>(item: T) {
-        const classType = getClassTypeFromInstance(item);
-        const classSchema = ReflectionClass.from(classType);
+        const classSchema = this.entityRegistry.getFromInstance(item);
         const pk = getPrimaryKeyExtractor(classSchema)(item);
 
-        const itemDB = await this.query(classType).filter(pk).findOne();
+        const itemDB = await this.query(classSchema).filter(pk).findOne();
 
         for (const property of classSchema.getProperties()) {
             if (property.isPrimaryKey()) continue;
