@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { ReceiveType, ReflectionClass, resolveReceiveType } from '../../../src/reflection/reflection';
-import { AutoIncrement, BackReference, MongoId, PrimaryKey, Reference, UUID } from '../../../src/reflection/type';
+import { AutoIncrement, BackReference, isReferenceType, MongoId, PrimaryKey, Reference, UUID } from '../../../src/reflection/type';
 import { cast, cloneClass, serialize } from '../../../src/serializer-facade';
 import { createReference } from '../../../src/reference';
 import { unpopulatedSymbol } from '../../../src/core';
@@ -232,7 +232,7 @@ test('model 1', () => {
     }
 
     {
-        const o = {parameters: { teamName: 'Team a' }};
+        const o = { parameters: { teamName: 'Team a' } };
         expect(serializeToJson<Model>(o)).toEqual(o);
     }
 
@@ -280,6 +280,13 @@ class UserTeam {
 }
 
 test('relation 1', () => {
+    const team = ReflectionClass.from(Team);
+    const user = ReflectionClass.from(User);
+    //they have to be different, otherwise User would have the Reference annotations applied
+    expect(team.getProperty('lead').type === user.type).toBe(false);
+    expect(isReferenceType(user.type)).toBe(false);
+
+
     {
         const user = new User('foo');
         expect(roundTrip<User>(user)).toEqual(user);

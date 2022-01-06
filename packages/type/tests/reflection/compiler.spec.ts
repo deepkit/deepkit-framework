@@ -13,7 +13,7 @@ import {
     TransformationContext,
     transpileModule
 } from 'typescript';
-import { pack, ReflectionTransformer, transformer } from '../../src/reflection/compiler';
+import { ReflectionTransformer, transformer } from '../../src/reflection/compiler';
 import { reflect, reflect as reflect2, ReflectionClass, removeTypeName, typeOf as typeOf2 } from '../../src/reflection/reflection';
 import {
     assertType,
@@ -24,15 +24,14 @@ import {
     Type,
     TypeClass,
     TypeFunction,
-    typeInfer,
     TypeMethod,
     TypeObjectLiteral,
     TypeProperty,
     TypeUnion
 } from '../../src/reflection/type';
 import { ClassType } from '@deepkit/core';
-import { resolveRuntimeType } from '../../src/reflection/processor';
-import { expectEqualType } from './processor.spec';
+import { pack, resolveRuntimeType, typeInfer } from '../../src/reflection/processor';
+import { expectEqualType } from '../utils';
 
 Error.stackTraceLimit = 200;
 
@@ -480,7 +479,9 @@ test('type emitted at the right place', () => {
         type o = { a: string };
         type p = Partial<o>;
         typeOf<p>();
-    };`;
+    };
+    return true;
+`;
 
     const js = transpile(code);
     console.log('js', js);
@@ -546,7 +547,7 @@ test('resolve query string', () => {
     type o = { a: string };
     return typeOf<o['a']>();`);
 
-    expect(type).toEqual({
+    expect(type).toMatchObject({
         kind: ReflectionKind.string
     });
 });
@@ -587,6 +588,22 @@ test('emit function types in objects', () => {
             }
         ]
     } as Type);
+});
+
+test('emit class extends types', () => {
+    const code = `
+        class ClassA<T> { item: T; }
+        class ClassB extends ClassA<string> { }
+        return typeOf<ClassB>();
+    `;
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+    console.log('type', type);
+    expectEqualType(type, {
+        kind: ReflectionKind.class,
+        extendsArguments: [{ kind: ReflectionKind.string }],
+    });
 });
 
 test('infer T in function primitive', () => {

@@ -9,8 +9,8 @@
  */
 
 import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext } from './decorator-builder';
-import { EntityData, ReceiveType, ReflectionClass, SerializerFn, TData } from './reflection/reflection';
-import { ClassType } from '@deepkit/core';
+import { EntityData, ReceiveType, SerializerFn, TData } from './reflection/reflection';
+import { ClassType, isArray } from '@deepkit/core';
 import { IndexOptions } from './reflection/type';
 import { ValidatorFunction } from './validator';
 
@@ -20,23 +20,7 @@ class TDecorator {
     onDecorator(target: any, property?: string, parameterIndexOrDescriptor?: any) {
         if (undefined === target) return;
 
-        const reflection = ReflectionClass.from(target);
-
-        if (property !== undefined && parameterIndexOrDescriptor === undefined) {
-            const reflectionProperty = reflection.getProperty(property);
-            if (reflectionProperty) reflectionProperty.applyDecorator(this.t);
-
-            const reflectionMethod = reflection.getMethodOrUndefined(property);
-            if (reflectionMethod) reflectionMethod.applyDecorator(this.t);
-
-        } else if (parameterIndexOrDescriptor !== undefined) {
-            const reflectionMethod = reflection.getMethodOrUndefined(property || 'constructor');
-            if (reflectionMethod) {
-                const params = reflectionMethod.getParameters();
-                const param = params[parameterIndexOrDescriptor];
-                param.applyDecorator(this.t);
-            }
-        }
+        addDeferredDecorator(this.t, target, property, parameterIndexOrDescriptor);
     }
 
     type<T>(type: ReceiveType<T> | ClassType) {
@@ -89,9 +73,7 @@ class EntityDecorator {
 
     onDecorator(target: any) {
         if (undefined === target) return;
-
-        const reflection = ReflectionClass.from(target);
-        reflection.applyDecorator(this.t);
+        addDeferredDecorator(this.t, target);
     }
 
     name(name: string) {
@@ -116,3 +98,20 @@ class EntityDecorator {
 }
 
 export const entity: ClassDecoratorResult<typeof EntityDecorator> = createClassDecoratorContext(EntityDecorator);
+
+interface DeferredDecorator {
+    data: any;
+    target: any;
+    property?: string;
+    parameterIndexOrDescriptor?: any;
+}
+
+export function isWithDeferredDecorators(obj: any): obj is {__decorators: DeferredDecorator[]} {
+    return obj && '__decorators' in obj && isArray(obj.__decorators);
+}
+
+function addDeferredDecorator(data: any, target: any, property?: string, parameterIndexOrDescriptor?: any) {
+    if (!target) return;
+    if (!target.__decorators) target.__decorators = [];
+    target.__decorators.push({ target, property, parameterIndexOrDescriptor, data });
+}

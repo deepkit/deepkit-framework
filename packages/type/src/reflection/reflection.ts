@@ -11,25 +11,28 @@
 import {
     assertType,
     autoIncrementAnnotation,
-    backReferenceAnnotation,
+    BackReferenceOptions,
     copyAndSetParent,
     dataAnnotation,
     databaseAnnotation,
     embeddedAnnotation,
     excludedAnnotation,
-    getAnnotations,
+    getBackReferenceType,
+    getClassType,
+    getReferenceType,
     getTypeJitContainer,
     groupAnnotation,
     indexAnnotation,
     IndexOptions,
+    isBackReferenceType,
+    isReferenceType,
     isType,
-    isWithAnnotations,
     OuterType,
     primaryKeyAnnotation,
-    referenceAnnotation,
     ReferenceOptions,
     ReflectionKind,
     ReflectionVisibility,
+    stringifyType,
     Type,
     TypeClass,
     TypeFunction,
@@ -38,14 +41,14 @@ import {
     TypeObjectLiteral,
     TypeParameter,
     TypeProperty,
-    TypePropertySignature,
-    validationAnnotation
+    TypePropertySignature
 } from './type';
 import { AbstractClassType, ClassType, getClassName, isArray, isClass } from '@deepkit/core';
 import { Packed, resolvePacked, resolveRuntimeType } from './processor';
 import { NoTypeReceived } from '../utils';
 import { findCommonLiteral } from '../inheritance';
 import { ValidatorFunction } from '../validator';
+import { isWithDeferredDecorators } from '../decorator';
 
 /**
  * Receives the runtime type of template argument.
@@ -60,7 +63,7 @@ import { ValidatorFunction } from '../validator';
  *
  * ```
  */
-export type ReceiveType<T> = Packed | OuterType;
+export type ReceiveType<T> = Packed | Type;
 
 export function resolveReceiveType(type?: Packed | Type | ClassType): OuterType {
     if (!type) throw new NoTypeReceived();
@@ -147,6 +150,10 @@ export function hasCircularReference(type: Type) {
     return hasCircular;
 }
 
+function reflectionName(kind: ReflectionKind): string {
+    return kind + '';
+}
+
 export function visit(type: Type, visitor: (type: Type, path: string, parent?: Type) => false | void, onCircular?: (stack: Type[]) => void, stack: Type[] = [], path: string = '', parent?: Type): void {
     if (stack.includes(type)) {
         if (onCircular) onCircular(stack);
@@ -154,7 +161,7 @@ export function visit(type: Type, visitor: (type: Type, path: string, parent?: T
     }
     stack.push(type);
 
-    if (!path) path = '[' + ReflectionKind[type.kind] + ']';
+    if (!path) path = '[' + reflectionName(type.kind) + ']';
 
     if (visitor(type, path, parent) === false) return;
 
@@ -165,7 +172,7 @@ export function visit(type: Type, visitor: (type: Type, path: string, parent?: T
         case ReflectionKind.class:
         case ReflectionKind.intersection:
         case ReflectionKind.templateLiteral:
-            for (const member of type.types) visit(member, visitor, onCircular, stack, (path && path + '.') + 'types[' + ReflectionKind[member.kind] + ']', type);
+            for (const member of type.types) visit(member, visitor, onCircular, stack, (path && path + '.') + 'types[' + reflectionName(member.kind) + ']', type);
             break;
         case ReflectionKind.string:
         case ReflectionKind.number:
@@ -173,13 +180,13 @@ export function visit(type: Type, visitor: (type: Type, path: string, parent?: T
         case ReflectionKind.symbol:
         case ReflectionKind.regexp:
         case ReflectionKind.boolean:
-            if (type.origin) visit(type.origin, visitor, onCircular, stack, (path && path + '.') + 'origin[' + ReflectionKind[type.origin.kind] + ']', type);
+            if (type.origin) visit(type.origin, visitor, onCircular, stack, (path && path + '.') + 'origin[' + reflectionName(type.origin.kind) + ']', type);
             break;
         case ReflectionKind.function:
         case ReflectionKind.method:
         case ReflectionKind.methodSignature:
-            visit(type.return, visitor, onCircular, stack, (path && path + '.') + 'return[' + ReflectionKind[type.return.kind] + ']', type);
-            for (const member of type.parameters) visit(member, visitor, onCircular, stack, (path && path + '.') + 'parameters[' + ReflectionKind[member.kind] + ']', type);
+            visit(type.return, visitor, onCircular, stack, (path && path + '.') + 'return[' + reflectionName(type.return.kind) + ']', type);
+            for (const member of type.parameters) visit(member, visitor, onCircular, stack, (path && path + '.') + 'parameters[' + reflectionName(member.kind) + ']', type);
             break;
         case ReflectionKind.propertySignature:
         case ReflectionKind.property:
@@ -188,11 +195,11 @@ export function visit(type: Type, visitor: (type: Type, path: string, parent?: T
         case ReflectionKind.parameter:
         case ReflectionKind.tupleMember:
         case ReflectionKind.rest:
-            visit(type.type, visitor, onCircular, stack, (path && path + '.') + 'type[' + ReflectionKind[type.type.kind] + ']', type);
+            visit(type.type, visitor, onCircular, stack, (path && path + '.') + 'type[' + reflectionName(type.type.kind) + ']', type);
             break;
         case ReflectionKind.indexSignature:
-            visit(type.index, visitor, onCircular, stack, (path && path + '.') + 'index[' + ReflectionKind[type.index.kind] + ']', type);
-            visit(type.type, visitor, onCircular, stack, (path && path + '.') + 'type[' + ReflectionKind[type.type.kind] + ']', type);
+            visit(type.index, visitor, onCircular, stack, (path && path + '.') + 'index[' + reflectionName(type.index.kind) + ']', type);
+            visit(type.type, visitor, onCircular, stack, (path && path + '.') + 'type[' + reflectionName(type.type.kind) + ']', type);
             break;
     }
 
@@ -223,6 +230,16 @@ export class ReflectionParameter {
 
     isOptional(): boolean {
         return this.parameter.optional === true;
+    }
+
+    hasDefault(): boolean {
+        return this.parameter.default !== undefined;
+    }
+
+    getDefaultValue(): any {
+        if (this.parameter.default !== undefined) {
+            return this.parameter.default();
+        }
     }
 
     applyDecorator(t: TData) {
@@ -292,14 +309,20 @@ export class ReflectionMethod {
     }
 
     hasParameter(name: string | number | symbol): boolean {
-        return !!this.getParameter(name);
+        return !!this.getParameterOrUndefined(name);
     }
 
-    getParameter(name: string | number | symbol): ReflectionParameter | undefined {
+    getParameterOrUndefined(name: string | number | symbol): ReflectionParameter | undefined {
         for (const property of this.getParameters()) {
             if (property.getName() === name) return property;
         }
         return;
+    }
+
+    getParameter(name: string | number | symbol): ReflectionParameter {
+        const property = this.getParameterOrUndefined(name);
+        if (!property) throw new Error(`No parameter ${String(name)} in method ${this.name} found.`);
+        return property;
     }
 
     getParameterType(name: string | number | symbol): Type | undefined {
@@ -322,6 +345,10 @@ export class ReflectionMethod {
 
     getName(): number | string | symbol {
         return this.method.name;
+    }
+
+    get name(): string {
+        return String(this.getName());
     }
 }
 
@@ -394,7 +421,7 @@ export class ReflectionProperty {
     serializer?: SerializerFn;
     deserializer?: SerializerFn;
 
-    data: {[name: string]: any} = {};
+    data: { [name: string]: any } = {};
 
     type: OuterType;
 
@@ -440,7 +467,11 @@ export class ReflectionProperty {
     }
 
     isBackReference(): boolean {
-        return backReferenceAnnotation.getFirst(this.getType()) !== undefined;
+        return isBackReferenceType(this.getType());
+    }
+
+    getBackReference(): BackReferenceOptions {
+        return getBackReferenceType(this.getType());
     }
 
     isAutoIncrement(): boolean {
@@ -448,7 +479,7 @@ export class ReflectionProperty {
     }
 
     isReference(): boolean {
-        return referenceAnnotation.getFirst(this.getType()) !== undefined;
+        return isReferenceType(this.getType());
     }
 
     isArray(): boolean {
@@ -460,7 +491,7 @@ export class ReflectionProperty {
     }
 
     getReference(): ReferenceOptions | undefined {
-        return referenceAnnotation.getFirst(this.getType());
+        return getReferenceType(this.getType());
     }
 
     getGroups(): string[] {
@@ -485,6 +516,9 @@ export class ReflectionProperty {
      * @throws Error if the property is not from type TypeClass or TypeObjectLiteral
      */
     getResolvedReflectionClass(): ReflectionClass<any> {
+        if (this.type.kind !== ReflectionKind.class && this.type.kind !== ReflectionKind.objectLiteral) {
+            throw new Error(`Could not resolve reflection class since ${this.name} is not a class|object but of type ${stringifyType(this.type)}`);
+        }
         return resolveClassType(this.getType());
     }
 
@@ -517,15 +551,7 @@ export class ReflectionProperty {
         this.deserializer = data.deserializer;
         Object.assign(this.data, data.data);
 
-        if (data.validators.length && isWithAnnotations(this.type)) {
-            const annotations = getAnnotations(this.type);
-            for (const validator of data.validators) {
-                validationAnnotation.register(annotations, {
-                    name: 'function',
-                    args: [{ kind: ReflectionKind.function, function: validator, parameters: [], return: { kind: ReflectionKind.any } }]
-                });
-            }
-        }
+        //note: data.validators is already applied in Processor
     }
 
     getName(): number | string | symbol {
@@ -750,6 +776,30 @@ export class ReflectionClass<T> {
         for (const member of type.types) {
             this.add(member);
         }
+
+        //apply decorators
+        if (type.kind === ReflectionKind.class && isWithDeferredDecorators(type.classType)) {
+            for (const decorator of type.classType.__decorators) {
+                const { data, property, parameterIndexOrDescriptor } = decorator;
+                if (property === undefined && parameterIndexOrDescriptor === undefined) {
+                    this.applyDecorator(data);
+                } else if (property !== undefined && parameterIndexOrDescriptor === undefined) {
+                    const reflectionProperty = this.getPropertyOrUndefined(property);
+                    if (reflectionProperty) reflectionProperty.applyDecorator(data);
+
+                    const reflectionMethod = this.getMethodOrUndefined(property);
+                    if (reflectionMethod) reflectionMethod.applyDecorator(data);
+
+                } else if (parameterIndexOrDescriptor !== undefined) {
+                    const reflectionMethod = this.getMethodOrUndefined(property || 'constructor');
+                    if (reflectionMethod) {
+                        const params = reflectionMethod.getParameters();
+                        const param = params[parameterIndexOrDescriptor];
+                        if (param) param.applyDecorator(data);
+                    }
+                }
+            }
+        }
     }
 
     clone(): ReflectionClass<any> {
@@ -931,40 +981,42 @@ export class ReflectionClass<T> {
         }
     }
 
-    static from<T>(classTypeIn?: ReceiveType<T> | AbstractClassType<T> | TypeClass | TypeObjectLiteral | ReflectionClass<any>, ...args: any[]): ReflectionClass<T> {
+    static from<T>(classTypeIn?: ReceiveType<T> | AbstractClassType<T> | TypeClass | TypeObjectLiteral | ReflectionClass<any>, args: any[] = []): ReflectionClass<T> {
         if (!classTypeIn) throw new Error(`No type given in ReflectionClass.from<T>`);
         if (isArray(classTypeIn)) classTypeIn = resolveReceiveType(classTypeIn);
 
         if (classTypeIn instanceof ReflectionClass) return classTypeIn;
-
-        if (isType(classTypeIn)) {
-            return new ReflectionClass(classTypeIn);
+        if (isType(classTypeIn)){
+            if (classTypeIn.kind === ReflectionKind.objectLiteral) return new ReflectionClass<T>(classTypeIn);
+            if (classTypeIn.kind !== ReflectionKind.class) throw new Error(`TypeClass or TypeObjectLiteral expected, not ${classTypeIn.kind}`);
         }
 
-        const classType = (classTypeIn as any)['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
+        const classType = isType(classTypeIn) ? (classTypeIn as TypeClass).classType : (classTypeIn as any)['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
 
         if (!classType.prototype.hasOwnProperty(reflectionClassSymbol)) {
             Object.defineProperty(classType.prototype, reflectionClassSymbol, { writable: true, enumerable: false });
         }
 
-        if (!classType.prototype[reflectionClassSymbol]) {
-            const type = '__type' in classType ? reflect(classType, ...args) : { kind: ReflectionKind.class, classType, types: [] } as TypeClass;
-            if (type.kind !== ReflectionKind.class) {
-                throw new Error(`Given class is not a class ${classType}`);
-            }
-
-            const parentProto = Object.getPrototypeOf(classType.prototype);
-            const parentReflectionClass: ReflectionClass<T> | undefined = parentProto ? ReflectionClass.from(parentProto) : undefined;
-
-            const reflectionClass = new ReflectionClass(type, parentReflectionClass);
-            if (args.length === 0) {
-                classType.prototype[reflectionClassSymbol] = reflectionClass;
-            } else {
-                return reflectionClass;
-            }
+        if (classType.prototype[reflectionClassSymbol] && args.length === 0) {
+            return classType.prototype[reflectionClassSymbol];
         }
 
-        return classType.prototype[reflectionClassSymbol];
+        const type = isType(classTypeIn) ? classTypeIn as TypeClass : ('__type' in classType ? resolveRuntimeType(classType, args) : { kind: ReflectionKind.class, classType, types: [] } as TypeClass);
+
+        if (type.kind !== ReflectionKind.class) {
+            throw new Error(`Given class is not a class ${classType}`);
+        }
+
+        const parentProto = Object.getPrototypeOf(classType.prototype);
+        const parentReflectionClass: ReflectionClass<T> | undefined = parentProto && parentProto.constructor !== Object ? ReflectionClass.from(parentProto, type.extendsArguments) : undefined;
+
+        const reflectionClass = new ReflectionClass(type, parentReflectionClass);
+        if (args.length === 0) {
+            classType.prototype[reflectionClassSymbol] = reflectionClass;
+            return reflectionClass;
+        } else {
+            return reflectionClass;
+        }
     }
 
     getIndexSignatures() {
@@ -1032,6 +1084,77 @@ export class ReflectionClass<T> {
     public hasCircularReference(): boolean {
         return hasCircularReference(this.type);
     }
+
+    /**
+     * All references have a counter-part. This methods finds it and errors if not possible.
+     *
+     * If the given reference is a owning reference it finds the correct backReference,
+     *    which can be found by checking all reference options.mappedBy.
+     *
+     * If the given reference is a back reference it finds the owning reference,
+     *    which can be found by using its options.mappedBy.
+     *
+     * Alternatively we simply check for resolvedClassType to be given `classType`, and if only one
+     * found, we return it. When more than one found, we throw an error saying the user he
+     * should make its relation mapping not ambiguous.
+     */
+    public findReverseReference(toClassType: ClassType, fromReference: ReflectionProperty): ReflectionProperty {
+        if (fromReference.isBackReference() && fromReference.getBackReference().mappedBy) {
+            if (fromReference.getResolvedReflectionClass().getClassType() === this.getClassType()) {
+                return this.getProperty(fromReference.getBackReference().mappedBy as string);
+            }
+        }
+
+        const candidates: ReflectionProperty[] = [];
+        for (const backRef of this.references) {
+            if (backRef === fromReference) continue;
+
+            //backRef points to something completely different
+            if (!backRef.isArray() && backRef.getResolvedReflectionClass().getClassType() !== toClassType) continue;
+            if (backRef.isArray() && getClassType(backRef.getSubType()) !== toClassType) continue;
+
+            //we found the perfect match, manually annotated
+            if (backRef.isBackReference() && backRef.getBackReference().mappedBy) {
+                if (backRef.getBackReference().mappedBy === fromReference.name) {
+                    return backRef;
+                }
+                continue;
+            }
+
+            if (fromReference.isBackReference() && fromReference.getBackReference().mappedBy && !fromReference.getBackReference().via) {
+                if (fromReference.getBackReference().mappedBy === backRef.name) {
+                    //perfect match
+                    return backRef;
+                }
+                continue;
+            }
+
+            //add to candidates if possible
+            if (fromReference.isBackReference() && fromReference.getBackReference().via && backRef.isBackReference() && backRef.getBackReference().via) {
+                if (fromReference.getBackReference().via === backRef.getBackReference().via) {
+                    candidates.push(backRef);
+                }
+                continue;
+            }
+
+            if (fromReference.isBackReference() && fromReference.isArray() && !fromReference.getBackReference().via) {
+                //other side must be non-array
+                if (backRef.isArray()) continue;
+            }
+
+            candidates.push(backRef);
+        }
+
+        if (candidates.length > 1) {
+            throw new Error(`Class ${this.getClassName()} has multiple potential reverse references [${candidates.map(v => v.name).join(', ')}] for ${fromReference.name} to class ${getClassName(toClassType)}. ` +
+                `Please specify each back reference by using 'mappedBy', e.g. @t.backReference({mappedBy: 'fieldNameOnTheOtherSide'} so its not ambiguous anymore.`);
+        }
+
+        if (candidates.length === 1) return candidates[0];
+
+        throw new Error(`Class ${this.getClassName()} has no reference to class ${getClassName(toClassType)} defined.`);
+    }
+
 }
 
 // old function to decorate an interface

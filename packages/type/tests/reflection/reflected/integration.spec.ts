@@ -8,7 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+import { ClassType } from '@deepkit/core';
 import { expect, test } from '@jest/globals';
+import { t } from '../../../src/decorator';
 import { propertiesOf, reflect, ReflectionClass, ReflectionFunction, typeOf, valuesOf } from '../../../src/reflection/reflection';
 import {
     assertType,
@@ -41,10 +43,8 @@ import {
     TypeTuple,
     Unique
 } from '../../../src/reflection/type';
-import { ClassType } from '@deepkit/core';
-import { t } from '../../../src/decorator';
 import { validate, ValidatorError } from '../../../src/validator';
-import { expectEqualType } from '../processor.spec';
+import { expectEqualType } from '../../utils';
 import { MyAlias } from './types';
 
 test('class', () => {
@@ -931,7 +931,12 @@ test('Reference', () => {
     const reflection = ReflectionClass.from(typeOf<Page>() as TypeClass);
     const property = reflection.getProperty('owner')!;
     const owner = property.getType();
-    expect(owner).toMatchObject(typeOf<User>() as any);
+    assertType(owner, ReflectionKind.objectLiteral);
+    expect(owner.typeName).toBe('User');
+    assertType(owner.types[0], ReflectionKind.propertySignature);
+    expect(owner.types[0].name).toBe('id');
+    assertType(owner.types[0].type, ReflectionKind.number);
+
     const annotations = referenceAnnotation.getAnnotations(owner);
     expect(annotations![0]).toEqual({});
 });
@@ -939,7 +944,6 @@ test('Reference', () => {
 test('circular interface', () => {
     interface User {
         pages: Page[] & BackReference;
-
         page: Page & BackReference;
     }
 
@@ -947,9 +951,9 @@ test('circular interface', () => {
         owner: User & Reference;
     }
 
-
     const user = typeOf<User>();
-    expect(user === typeOf<User>()).toBe(true);
+    const user2 = typeOf<User>();
+    expect(user === user2).toBe(true);
     assertType(user, ReflectionKind.objectLiteral);
 
     const page = typeOf<Page>();
@@ -983,7 +987,6 @@ test('class validator', () => {
         }
     }
 
-
     const reflection = ReflectionClass.from(Email);
     expect(reflection.validationMethod).toBe('validator');
 
@@ -1005,7 +1008,6 @@ test('value object single field', () => {
         price2?: Price;
 
         constructor(public title: string, public price: Embedded<Price>) {
-
         }
     }
 
@@ -1266,6 +1268,35 @@ test('set constructor parameter manually', () => {
         }
     }
 
+    class StreamApiResponseClass<T> {
+        constructor(public response: T) {
+        }
+    }
+
+    {
+        const reflection = reflect(StreamApiResponseClass);
+        assertType(reflection, ReflectionKind.class);
+
+        // type T = StreamApiResponseClass;
+        // type a = T['response'];
+        //if there is no type passed to T it resolved to any
+        expect(reflection.typeArguments).toEqual([{ kind: ReflectionKind.any }]);
+    }
+
+    {
+        class StreamApiResponseClassWithDefault<T = string> {
+            constructor(public response: T) {
+            }
+        }
+
+        const reflection = reflect(StreamApiResponseClassWithDefault);
+        assertType(reflection, ReflectionKind.class);
+
+        // type T = StreamApiResponseClassWithDefault;
+        // type a = T['response'];
+        expect(reflection.typeArguments).toMatchObject([{ kind: ReflectionKind.string }]);
+    }
+
     expectEqualType(typeOf<Response>(), {
         kind: ReflectionKind.class,
         classType: Response,
@@ -1281,10 +1312,6 @@ test('set constructor parameter manually', () => {
         ]
     } as Type);
 
-    class StreamApiResponseClass<T> {
-        constructor(public response: T) {
-        }
-    }
 
     function StreamApiResponse<T>(responseBodyClass: ClassType<T>) {
         class A extends StreamApiResponseClass<T> {
@@ -1328,9 +1355,11 @@ test('set constructor parameter manually', () => {
         const reflection = ReflectionClass.from(classType);
         expect(reflection.getMethods().length).toBe(1);
         expect(reflection.getProperties().length).toBe(1);
-        expect(reflection.getMethod('constructor')!.getParameters().length).toBe(1);
-        expect(reflection.getMethod('constructor')!.getParameter('response')!.getType().kind).toBe(ReflectionKind.class);
+        expect(reflection.getMethod('constructor').getParameters().length).toBe(1);
+        expect(reflection.getMethod('constructor').getParameter('response').getType().kind).toBe(ReflectionKind.class);
         expect(reflection.getMethods()[0].getName()).toBe('constructor');
+        //make sure parent's T is correctly set
+        expect(reflection.getSuperReflectionClass()!.type.typeArguments![0].kind).toBe(ReflectionKind.class);
 
         const responseType = reflection.getProperty('response')!.getType();
         expect(responseType.kind).toBe(ReflectionKind.class);
@@ -1349,8 +1378,8 @@ test('set constructor parameter manually', () => {
         }
         expect(reflection.getMethods().length).toBe(1);
         expect(reflection.getProperties().length).toBe(1);
-        expect(reflection.getMethod('constructor')!.getParameters().length).toBe(1);
-        expect(reflection.getMethod('constructor')!.getParameter('response')!.getType().kind).toBe(ReflectionKind.class);
+        expect(reflection.getMethod('constructor').getParameters().length).toBe(1);
+        expect(reflection.getMethod('constructor').getParameter('response').getType().kind).toBe(ReflectionKind.class);
         const responseType = reflection.getProperty('response')!.getType();
         expect(responseType.kind).toBe(ReflectionKind.class);
         if (responseType.kind === ReflectionKind.class) {
@@ -1464,26 +1493,15 @@ test('circular class 2', () => {
 
     const type = typeOf<Document>();
 
-    expect(type.kind).toBe(ReflectionKind.class);
-
-    if (type.kind === ReflectionKind.class) {
-        const rootProperty = type.types[1];
-        expect(rootProperty.kind).toBe(ReflectionKind.property);
-        if (rootProperty.kind === ReflectionKind.property) {
-            const rootType = rootProperty.type;
-            expect(rootType.kind).toBe(ReflectionKind.class);
-            if (rootType.kind === ReflectionKind.class) {
-                const childrenProperty = rootType.types[0];
-                expect(childrenProperty.kind).toBe(ReflectionKind.property);
-                if (childrenProperty.kind === ReflectionKind.property) {
-                    expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
-                    if (childrenProperty.type.kind === ReflectionKind.array) {
-                        expect(childrenProperty.type.type).toBe(rootType);
-                    }
-                }
-            }
-        }
-    }
+    assertType(type, ReflectionKind.class);
+    const rootProperty = type.types[1];
+    assertType(rootProperty, ReflectionKind.property);
+    assertType(rootProperty.type, ReflectionKind.class);
+    assertType(rootProperty.type.types[0], ReflectionKind.property);
+    assertType(rootProperty.type.types[0].type, ReflectionKind.array);
+    assertType(rootProperty.type.types[0].type.type, ReflectionKind.class);
+    assertType(rootProperty.type.types[0].type.type.types[0], ReflectionKind.property);
+    expect(rootProperty.type.types[0].type.type.types[0].name).toBe('children');
 });
 
 test('circular class 3', () => {
@@ -1499,31 +1517,79 @@ test('circular class 3', () => {
 
     const type = typeOf<Document>();
 
-    expect(type.kind).toBe(ReflectionKind.class);
+    assertType(type, ReflectionKind.class);
 
-    if (type.kind === ReflectionKind.class) {
-        const rootProperty = type.types[1];
-        expect(rootProperty.kind).toBe(ReflectionKind.property);
-        if (rootProperty.kind === ReflectionKind.property) {
-            const rootType = rootProperty.type;
-            expect(rootType.kind).toBe(ReflectionKind.class);
-            if (rootType.kind === ReflectionKind.class) {
-                const documentProperty = rootType.types[0];
-                expect(documentProperty.kind).toBe(ReflectionKind.property);
-                if (documentProperty.kind === ReflectionKind.property) {
-                    expect(documentProperty.type.kind).toBe(ReflectionKind.class);
-                    expect(documentProperty.type).toBe(type);
-                }
+    const rootProperty = type.types[1];
+    assertType(rootProperty, ReflectionKind.property);
+    const rootType = rootProperty.type;
+    assertType(rootType, ReflectionKind.class);
+    const documentProperty = rootType.types[0];
+    assertType(documentProperty, ReflectionKind.property);
+    assertType(documentProperty.type, ReflectionKind.class);
 
-                const childrenProperty = rootType.types[1];
-                expect(childrenProperty.kind).toBe(ReflectionKind.property);
-                if (childrenProperty.kind === ReflectionKind.property) {
-                    expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
-                    if (childrenProperty.type.kind === ReflectionKind.array) {
-                        expect(childrenProperty.type.type).toBe(rootType);
-                    }
-                }
-            }
+    const childrenProperty = rootType.types[1];
+    assertType(childrenProperty, ReflectionKind.property);
+    assertType(childrenProperty.type, ReflectionKind.array);
+    assertType(childrenProperty.type.type, ReflectionKind.class);
+});
+
+test('typeOf returns same instance, and new one for generics', () => {
+    class Clazz {
+    }
+
+    class GenericClazz<T> {
+        item!: T;
+    }
+
+    {
+        const clazz1 = typeOf<Clazz>();
+        const clazz2 = typeOf<Clazz>();
+        //this has to be equal otherwise JitContainer is always empty, and we would basically have no place to store cache data
+        expect(clazz1 === clazz2).toBe(true);
+    }
+
+    //but types used in other types get their own instance
+    {
+        const clazz1 = typeOf<Clazz>();
+        const clazz2 = typeOf<Clazz>();
+        //this has to be equal otherwise JitContainer is always empty, and we would basically have no place to store cache data
+        expect(clazz1 === clazz2).toBe(true);
+    }
+
+    {
+        const clazz1 = typeOf<GenericClazz<string>>();
+        const clazz2 = typeOf<GenericClazz<string>>();
+        const clazz3 = typeOf<GenericClazz<number>>();
+        //generics produce always a new type, no matter what. otherwise, it would be a memory leak.
+        expect(clazz1 === clazz2).toBe(false);
+        expect(clazz2 === clazz3).toBe(false);
+
+        //to get a cached result, a type alias can be used
+        type GenericClassString = GenericClazz<string>;
+        const clazz4 = typeOf<GenericClassString>();
+        const clazz5 = typeOf<GenericClassString>();
+        expect(clazz4 === clazz5).toBe(true);
+    }
+
+    {
+        class Composition {
+            clazz1!: Clazz;
+            clazz2!: Clazz;
         }
+
+        const clazz1 = typeOf<Clazz>();
+        const t = typeOf<Composition>();
+        assertType(t, ReflectionKind.class);
+        assertType(t.types[0], ReflectionKind.property);
+        assertType(t.types[1], ReflectionKind.property);
+        assertType(t.types[0].type, ReflectionKind.class);
+        assertType(t.types[1].type, ReflectionKind.class);
+        expect(t.types[0].type.classType === Clazz).toBe(true);
+
+        //properties clazz1 and clazz2 get each their own type instance
+        expect(t.types[0].type === t.types[1].type).toBe(false);
+
+        //properties get their own instance, so it's not equal to clazz1 (as annotations would otherwise be redirected to the actual class)
+        expect(t.types[0].type === clazz1).toBe(false);
     }
 });

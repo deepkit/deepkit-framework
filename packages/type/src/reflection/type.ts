@@ -8,8 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, getClassName, indent, isArray, isClass } from '@deepkit/core';
-import { ProcessorRegistry, resolveRuntimeType } from './processor';
+import { ClassType, getClassName, indent } from '@deepkit/core';
 import { getProperty, toSignature } from './reflection';
 import { isExtendable } from './extends';
 
@@ -19,7 +18,7 @@ export enum ReflectionVisibility {
     private,
 }
 
-export enum ReflectionKind {
+export const enum ReflectionKind {
     never,
     any,
     unknown,
@@ -221,7 +220,7 @@ export interface TypeBaseMember {
     readonly?: true;
 }
 
-export interface TypeParameter {
+export interface TypeParameter extends TypeRuntimeData {
     kind: ReflectionKind.parameter,
     name: string;
     type: OuterType;
@@ -249,7 +248,7 @@ export interface TypeMethod extends TypeBaseMember {
     return: OuterType;
 }
 
-export interface TypeProperty extends TypeBaseMember {
+export interface TypeProperty extends TypeBaseMember, TypeRuntimeData {
     kind: ReflectionKind.property,
     parent: TypeClass;
     visibility: ReflectionVisibility,
@@ -285,9 +284,17 @@ export interface TypeClass extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.class,
     parent?: Type;
     classType: ClassType;
+
     /**
-     * When class has generic template arguments, e.g. MyClass<string>, it contains
-     * all template arguments. If no template arguments are given, its undefined.
+     * When the class extends another class and uses on it generic type arguments, then those arguments
+     * are in this array.
+     * For example `class A extends B<string, boolean> {}` then extendsArguments = [string, boolean].
+     */
+    extendsArguments?: Type[];
+
+    /**
+     * When class has generic type arguments, e.g. MyClass<string>, it contains
+     * all type arguments. If no type arguments are given, it's undefined.
      */
     arguments?: Type[];
 
@@ -311,7 +318,7 @@ export interface TypeEnumMember {
     default?: () => string | number;
 }
 
-export interface TypeTypeParameter {
+export interface TypeTypeParameter extends TypeRuntimeData {
     kind: ReflectionKind.typeParameter,
     parent?: Type;
     name: string,
@@ -335,7 +342,7 @@ export interface TypeArray extends TypeAnnotations, TypeRuntimeData {
     type: Type;
 }
 
-export interface TypePropertySignature {
+export interface TypePropertySignature extends TypeRuntimeData {
     kind: ReflectionKind.propertySignature,
     parent: TypeObjectLiteral;
     name: number | string | symbol;
@@ -436,7 +443,7 @@ export type Type =
     ;
 
 /**
- * Types that can be created and passed to template arguments.
+ * Types that can be created and passed to type arguments.
  * Excludes things like PropertySignature (which needs ObjectLiteral as parent), TupleMember (which needs Tuple as parent), etc.
  */
 export type OuterType =
@@ -454,6 +461,9 @@ export type OuterType =
     | TypeUndefined
     | TypeLiteral
     | TypeTemplateLiteral
+    | TypePropertySignature
+    | TypeProperty
+    | TypeParameter
     | TypeFunction
     | TypePromise
     | TypeClass
@@ -463,6 +473,7 @@ export type OuterType =
     | TypeObjectLiteral
     | TypeTuple
     | TypeRegexp
+    | TypeTypeParameter
     ;
 
 export type Widen<T> =
@@ -488,7 +499,7 @@ export function isPrimitive<T extends Type>(type: T): boolean {
 }
 
 /**
- * Return all properties created in the constructor (via `constructor(public title: string)`.
+ * Return all properties created in the constructor (via `constructor(public title: string)`)
  *
  * If a non-property parameter is in the constructor, the type is given instead, e.g. `constructor(public title: string, anotherOne:number)` => [TypeProperty, TypeNumber]
  */
@@ -511,6 +522,7 @@ export function getConstructorProperties(type: TypeClass): { parameters: (TypePr
 
 export type WithAnnotations =
     TypeAny
+    | TypeUnknown
     | TypeString
     | TypeNumber
     | TypeBigInt
@@ -528,7 +540,7 @@ export type WithAnnotations =
     | TypeSymbol;
 
 export function isWithAnnotations(type: ParentLessType): type is WithAnnotations {
-    return type.kind === ReflectionKind.any || type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.boolean
+    return type.kind === ReflectionKind.any || type.kind === ReflectionKind.unknown || type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.boolean
         || type.kind === ReflectionKind.array || type.kind === ReflectionKind.tuple || type.kind === ReflectionKind.literal || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined
         || type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.object || type.kind === ReflectionKind.templateLiteral
         || type.kind === ReflectionKind.regexp || type.kind === ReflectionKind.symbol;
@@ -680,6 +692,9 @@ export function flatten<T extends Type>(type: T): T {
     return type;
 }
 
+/**
+ * Flatten nested union types.
+ */
 export function flattenUnionTypes(types: Type[]): Type[] {
     const result: Type[] = [];
     for (const type of types) {
@@ -1015,92 +1030,13 @@ export function widenLiteral(type: OuterType): OuterType {
     return type;
 }
 
-function typeInferFromContainer(container: Iterable<any>, registry?: ProcessorRegistry): Type {
-    const union: TypeUnion = { kind: ReflectionKind.union, types: [] };
-    for (const item of container) {
-        const type = widenLiteral(typeInfer(item, registry));
-        if (!isTypeIncluded(union.types, type)) union.types.push(type);
-    }
-
-    return union.types.length === 0 ? { kind: ReflectionKind.any } : union.types.length === 1 ? union.types[0] : union;
-}
-
-export function typeInfer(value: any, registry?: ProcessorRegistry): OuterType {
-    if ('string' === typeof value || 'number' === typeof value || 'boolean' === typeof value || 'bigint' === typeof value || 'symbol' === typeof value) {
-        return { kind: ReflectionKind.literal, literal: value };
-    } else if (null === value) {
-        return { kind: ReflectionKind.null };
-    } else if (undefined === value) {
-        return { kind: ReflectionKind.undefined };
-    } else if (value instanceof RegExp) {
-        return { kind: ReflectionKind.literal, literal: value };
-    } else if ('function' === typeof value) {
-        if (isArray(value.__type)) {
-            //with emitted types: function or class
-            return resolveRuntimeType(value, undefined, registry);
-        }
-
-        if (isClass(value)) {
-            //unknown class
-            return { kind: ReflectionKind.class, classType: value, types: [] };
-        }
-
-        return { kind: ReflectionKind.function, name: value.name, return: { kind: ReflectionKind.any }, parameters: [] };
-    } else if (isArray(value)) {
-        return { kind: ReflectionKind.array, type: typeInferFromContainer(value, registry) };
-    } else if ('object' === typeof value) {
-        const constructor = value.constructor;
-        if ('function' === typeof constructor && constructor !== Object && isArray(constructor.__type)) {
-            //with emitted types
-            return resolveRuntimeType(constructor, undefined, registry);
-        }
-
-        if (constructor === RegExp) return { kind: ReflectionKind.regexp };
-        if (constructor === Date) return { kind: ReflectionKind.class, classType: Date, types: [] };
-        if (constructor === Set) {
-            const type = typeInferFromContainer(value, registry);
-            return { kind: ReflectionKind.class, classType: Set, arguments: [type], types: [] };
-        }
-
-        if (constructor === Map) {
-            const keyType = typeInferFromContainer((value as Map<any, any>).keys(), registry);
-            const valueType = typeInferFromContainer((value as Map<any, any>).values(), registry);
-            return { kind: ReflectionKind.class, classType: Map, arguments: [keyType, valueType], types: [] };
-        }
-
-        const type: TypeObjectLiteral = { kind: ReflectionKind.objectLiteral, types: [] };
-        for (const i in value) {
-            if (!value.hasOwnProperty(i)) continue;
-            const propType = typeInfer(value[i]);
-
-            if (propType.kind === ReflectionKind.function) {
-                type.types.push({
-                    kind: ReflectionKind.methodSignature,
-                    parent: type,
-                    name: i,
-                    return: propType.return,
-                    parameters: propType.parameters
-                });
-                continue;
-            }
-
-            const property: TypePropertySignature = { kind: ReflectionKind.propertySignature, parent: type, name: i, type: { kind: ReflectionKind.any } };
-
-            if (propType.kind === ReflectionKind.literal) {
-                property.type = widenLiteral(propType);
-            } else {
-                property.type = propType;
-            }
-
-            type.types.push(property);
-        }
-        return type;
-    }
-    return { kind: ReflectionKind.any };
-}
-
 export function assertType<K extends ReflectionKind, T>(t: Type, kind: K): asserts t is FindType<Type, K> {
     if (t.kind !== kind) throw new Error(`Invalid type ${t.kind}, expected ${kind}`);
+}
+
+export function getClassType(type: Type): ClassType {
+    if (type.kind !== ReflectionKind.class) throw new Error(`Type needs to be TypeClass, but ${type.kind} given.`);
+    return type.classType;
 }
 
 export function isMember(type: Type): type is TypePropertySignature | TypeProperty | TypeMethodSignature | TypeMethod {
@@ -1112,6 +1048,9 @@ export function hasMember(type: TypeObjectLiteral | TypeClass, memberName: numbe
     return type.types.some(v => isMember(v) && v.name === memberName && (!memberType || isExtendable(v.kind === ReflectionKind.propertySignature || v.kind === ReflectionKind.property ? v.type : v, memberType)));
 }
 
+export function getMember(type: TypeObjectLiteral | TypeClass, memberName: number | string | symbol): TypeMethodSignature | TypeMethod | TypePropertySignature | TypeProperty | void {
+    return (type.types as (TypeIndexSignature | TypeMethodSignature | TypeMethod | TypePropertySignature | TypeProperty)[]).find(v => isMember(v) && v.name === memberName) as TypeMethodSignature | TypeMethod | TypePropertySignature | TypeProperty | void;
+}
 
 /**
  * Checks whether `undefined` is allowed as type.
@@ -1156,13 +1095,13 @@ export type uint8 = number;
 
 /**
  * Integer 16 bit.
- * Min value 0, max value 65535
+ * Min value -32768, max value 32767
  */
 export type int16 = number;
 
 /**
  * Unsigned integer 16 bit.
- * Min value -32768, max value 32767
+ * Min value 0, max value 65535
  */
 export type uint16 = number;
 
@@ -1194,7 +1133,11 @@ export type float32 = number;
 export type float64 = number;
 
 export class AnnotationDefinition<T = true> {
-    public symbol = Symbol('annotation');
+    public symbol: symbol;
+
+    constructor(public readonly id: string) {
+        this.symbol = Symbol(id);
+    }
 
     register(annotations: Annotations, data: T) {
         annotations[this.symbol] ||= [];
@@ -1261,6 +1204,7 @@ export type ReferenceFields<T> = { [P in keyof T]: Required<T[P]> extends Requir
  * ```
  */
 export type AutoIncrement = { __meta?: ['autoIncrement'] };
+
 /**
  * UUID v4, as string, serialized as string in JSON, and binary in database.
  * Use `uuid()` as handy initializer.
@@ -1293,7 +1237,7 @@ export type BinaryBigInt = bigint & { __meta?: ['binaryBigInt'] };
 /**
  * Same as `bigint` but serializes to signed binary with unlimited size (instead of 8 bytes in most databases).
  * Negative values will be stored using a signed number representation.
- * The binary has an additional leading sign byte and is represented as an integer: 255 for negative, 0 for zero, or 1 for positive.
+ * The binary has an additional leading sign byte and is represented as an uint: 255 for negative, 0 for zero, or 1 for positive.
  *
  * ```typescript
  * class Entity {
@@ -1308,14 +1252,14 @@ export type BackReference<Options extends BackReferenceOptions = {}> = { __meta?
 export type EmbeddedMeta<Options> = { __meta?: ['embedded', Options] };
 export type Embedded<T, Options extends { prefix?: string } = {}> = T & EmbeddedMeta<Options>;
 
-export const referenceAnnotation = new AnnotationDefinition<ReferenceOptions>();
+export const referenceAnnotation = new AnnotationDefinition<ReferenceOptions>('reference');
 
-export const autoIncrementAnnotation = new AnnotationDefinition();
+export const autoIncrementAnnotation = new AnnotationDefinition('autoIncrement');
 export const primaryKeyAnnotation = new class extends AnnotationDefinition {
     isPrimaryKey(type: Type): boolean {
         return this.getAnnotations(type).length > 0;
     }
-};
+}('primaryKey');
 
 export interface BackReferenceOptions {
     /**
@@ -1331,18 +1275,48 @@ export interface BackReferenceOptions {
     mappedBy?: string,
 }
 
-export const backReferenceAnnotation = new AnnotationDefinition<BackReferenceOptions>();
-export const validationAnnotation = new AnnotationDefinition<{ name: string, args: Type[] }>();
-export const UUIDAnnotation = new AnnotationDefinition();
-export const mongoIdAnnotation = new AnnotationDefinition();
-export const uuidAnnotation = new AnnotationDefinition();
-export const defaultAnnotation = new AnnotationDefinition();
+export const backReferenceAnnotation = new AnnotationDefinition<BackReferenceOptions>('backReference');
+export const validationAnnotation = new AnnotationDefinition<{ name: string, args: Type[] }>('validation');
+export const UUIDAnnotation = new AnnotationDefinition('UUID');
+export const mongoIdAnnotation = new AnnotationDefinition('mongoID');
+export const uuidAnnotation = new AnnotationDefinition('uuid');
+export const defaultAnnotation = new AnnotationDefinition('default');
+
+export function isUUIDType(type: Type): boolean {
+    return uuidAnnotation.getFirst(type) !== undefined;
+}
+
+export function isAutoIncrementType(type: Type): boolean {
+    return autoIncrementAnnotation.getFirst(type) !== undefined;
+}
+
+export function isMongoIdType(type: Type): boolean {
+    return mongoIdAnnotation.getFirst(type) !== undefined;
+}
+
+export function isReferenceType(type: Type): boolean {
+    return referenceAnnotation.getFirst(type) !== undefined;
+}
+
+export function getReferenceType(type: Type): ReferenceOptions | undefined {
+    return referenceAnnotation.getFirst(type);
+}
+
+export function isBackReferenceType(type: Type): boolean {
+    return backReferenceAnnotation.getFirst(type) !== undefined;
+}
+
+export function getBackReferenceType(type: Type): BackReferenceOptions {
+    const options = backReferenceAnnotation.getFirst(type);
+    if (!options) throw new Error('No back reference');
+    return options;
+}
 
 export interface EmbeddedOptions {
     prefix?: string;
 }
 
-export const embeddedAnnotation = new AnnotationDefinition<EmbeddedOptions>();
+export const embeddedAnnotation = new AnnotationDefinition<EmbeddedOptions>('embedded');
 
 export function hasEmbedded(type: Type): boolean {
     if (type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property) return hasEmbedded(type.type);
@@ -1394,17 +1368,17 @@ export const enum BinaryBigIntType {
     signed
 }
 
-export const binaryBigIntAnnotation = new AnnotationDefinition<BinaryBigIntType>();
-export const groupAnnotation = new AnnotationDefinition<string>();
+export const binaryBigIntAnnotation = new AnnotationDefinition<BinaryBigIntType>('binaryBigInt');
+export const groupAnnotation = new AnnotationDefinition<string>('group');
 export const excludedAnnotation = new class extends AnnotationDefinition<string> {
     isExcluded(type: Type, name: string): boolean {
         const excluded = this.getAnnotations(type);
         return excluded.includes('*') || excluded.includes(name);
     }
-};
-export const dataAnnotation = new AnnotationDefinition<{ [name: string]: any }>();
-export const metaAnnotation = new AnnotationDefinition<{ name: string, options: OuterType[] }>();
-export const indexAnnotation = new AnnotationDefinition<IndexOptions>();
+}('excluded');
+export const dataAnnotation = new AnnotationDefinition<{ [name: string]: any }>('data');
+export const metaAnnotation = new AnnotationDefinition<{ name: string, options: OuterType[] }>('meta');
+export const indexAnnotation = new AnnotationDefinition<IndexOptions>('index');
 export const databaseAnnotation = new class extends AnnotationDefinition<{ name: string, options: { [name: string]: any } }> {
     getDatabase<T extends { [name: string]: any }>(type: Type, name: string): T | undefined {
         for (const annotation of this.getAnnotations(type)) {
@@ -1412,7 +1386,7 @@ export const databaseAnnotation = new class extends AnnotationDefinition<{ name:
         }
         return;
     };
-};
+}('database');
 
 export function registerTypeDecorator(decorator: TypeDecorator) {
     typeDecorators.push(decorator);
@@ -1860,14 +1834,24 @@ export enum ReflectionOp {
     property,
     propertySignature, //has 1 parameter, reference to stack for its property name
 
-    constructor,
-
     /**
      * This OP pops all types on the current stack frame. Those types should be method|property.
      *
-     * Pushes a class type.
+     * Pushes a TypeClass onto the stack.
      */
     class,
+
+    /**
+     * If a class extends another class with generics, this OP represents the generic type arguments of the super class.
+     *
+     * e.g. `class A extends B<string, boolean>`, string and boolean are on the stack and classExtends pops() them, and then assigns to A.extendsTypeArguments = [string, boolean].
+     *
+     * This is only emitted when the class that is currently being described actually extends another class and uses generics.
+     *
+     * This OP has 1 argument and pops x types from the stack. X is the first argument.
+     * Expects a TypeClass on the stack.
+     */
+    classExtends,
 
     /**
      * This OP has 1 parameter, the stack entry to the actual class symbol.
@@ -1960,4 +1944,6 @@ export enum ReflectionOp {
     distribute,//has one parameter, the co-routine program index.
 
     extends, //X extends Y, XY popped from the stack, pushes boolean on the stack
+
+    widen, //widens the type on the stack, .e.g 'asd' => string, 34 => number, etc. this is necessary for infer runtime data, and widen if necessary (object member or non-contained literal)
 }

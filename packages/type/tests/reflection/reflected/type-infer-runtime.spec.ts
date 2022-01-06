@@ -1,7 +1,8 @@
 import { test } from '@jest/globals';
+import { typeInfer } from '../../../src/reflection/processor';
 import { typeOf } from '../../../src/reflection/reflection';
-import { ReflectionKind, Type, typeInfer, TypeLiteral, widenLiteral } from '../../../src/reflection/type';
-import { expectEqualType } from '../processor.spec';
+import { ReflectionKind, Type, TypeLiteral, widenLiteral } from '../../../src/reflection/type';
+import { expectEqualType } from '../../utils';
 
 const symbol = Symbol();
 
@@ -44,7 +45,7 @@ test('object', () => {
     expectEqualType(typeInfer({ a: 12n }), typeOf<{ a: bigint }>() as any, {noOrigin: true});
     expectEqualType(typeInfer({ a: symbol }), typeOf<{ a: symbol }>() as any, {noOrigin: true});
     expectEqualType(typeInfer({ a: new Date }), typeOf<{ a: Date }>() as any, {noOrigin: true});
-    expectEqualType(typeInfer({ a: (b: string): void => undefined  }), typeOf<{ a(b: string): void }>() as any, {noOrigin: true});
+    expectEqualType(typeInfer({ a: (b: string): void => undefined }), typeOf<{ a(b: string): void }>() as any, {noOrigin: true});
     expectEqualType(typeInfer({ a(b: string): void {} }), typeOf<{ a(b: string): void }>() as any, {noOrigin: true});
 });
 

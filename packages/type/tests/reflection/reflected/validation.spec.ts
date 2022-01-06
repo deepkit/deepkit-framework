@@ -57,7 +57,7 @@ test('decorator validator', () => {
 
     const reflection = ReflectionClass.from(User);
     const userType = typeOf<User>();
-    //resolveRuntimeType caches the type result on the pack array itself
+    //non-generic classes are cached
     expect(userType === reflection.type).toBe(true);
 
     expect(validate<User>({ username: 'Peter' })).toEqual([]);

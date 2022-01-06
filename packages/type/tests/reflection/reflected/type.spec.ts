@@ -2,7 +2,7 @@ import { describe, expect, test } from '@jest/globals';
 import { ReceiveType, resolveReceiveType, typeOf } from '../../../src/reflection/reflection';
 import { assertType, Embedded, indexAccess, isSameType, ReflectionKind, stringifyResolvedType, stringifyType, UUID } from '../../../src/reflection/type';
 import { isExtendable } from '../../../src/reflection/extends';
-import { expectEqualType } from '../processor.spec';
+import { expectEqualType } from '../../utils';
 
 //note: this needs to run in a strict TS mode to infer correctly in the IDE
 type Extends<A, B> = [A] extends [B] ? true : false;
@@ -144,7 +144,9 @@ test('interface with method', () => {
     validExtend<{ id: number, write(): void }, Connection>();
     invalidExtend<Connection, { id: number, write(): void }>();
 
-    class SubUint16Array extends Uint16Array {}
+    class SubUint16Array extends Uint16Array {
+    }
+
     validExtend<Connection, { id: number, write(data: SubUint16Array): void }>();
 });
 
@@ -657,7 +659,9 @@ test('parent object literal from fn', () => {
     const t1 = typeOf<t<C>>();
     assertType(t1, ReflectionKind.objectLiteral);
     assertType(t1.types[0], ReflectionKind.propertySignature);
-    expect(t1.types[0].parent).toBe(t1);
+
+    //this is true since `t<T>` returns a new reference of T, not the exact same instance (so decorators can safely be attached etc)
+    expect(t1.types[0].parent !== t1).toBe(true);
 });
 
 test('parent embedded', () => {

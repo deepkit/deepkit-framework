@@ -1,7 +1,6 @@
 /** @reflection never */
 import { expect, test } from '@jest/globals';
-import { pack } from '../../src/reflection/compiler';
-import { unpack } from '../../src/reflection/processor';
+import { pack, unpack } from '../../src/reflection/processor';
 import { ReflectionOp } from '../../src/reflection/type';
 
 Error.stackTraceLimit = 200;
@@ -17,7 +16,10 @@ test('unpack', () => {
     expect(unpack([String, String.fromCharCode(33 + ReflectionOp.string)])).toEqual({ ops: [ReflectionOp.string], stack: [String] });
     expect(unpack([String, String.fromCharCode(33 + ReflectionOp.string)])).toEqual({ ops: [ReflectionOp.string], stack: [String] });
     expect(unpack([String.fromCharCode(33 + ReflectionOp.string, 33 + ReflectionOp.optional)])).toEqual({ ops: [ReflectionOp.string, ReflectionOp.optional], stack: [] });
-    expect(unpack(pack([ReflectionOp.union, ReflectionOp.string, ReflectionOp.number]))).toEqual({ ops: [ReflectionOp.union, ReflectionOp.string, ReflectionOp.number], stack: [] });
+    expect(unpack(pack([ReflectionOp.union, ReflectionOp.string, ReflectionOp.number]))).toEqual({
+        ops: [ReflectionOp.union, ReflectionOp.string, ReflectionOp.number],
+        stack: []
+    });
 });
 
 test('round-trip', () => {

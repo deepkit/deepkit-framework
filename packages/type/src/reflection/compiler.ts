@@ -21,9 +21,11 @@ import {
     ConstructorTypeNode,
     ConstructSignatureDeclaration,
     createCompilerHost,
+    createPrinter,
     createProgram,
     CustomTransformerFactory,
     Declaration,
+    EmitHint,
     EntityName,
     EnumDeclaration,
     ExportDeclaration,
@@ -34,11 +36,8 @@ import {
     getEffectiveConstraintOfTypeParameter,
     getJSDocTags,
     Identifier,
-    ImportCall,
     ImportDeclaration,
-    ImportEqualsDeclaration,
     ImportSpecifier,
-    ImportTypeNode,
     IndexedAccessTypeNode,
     IndexSignatureDeclaration,
     InferTypeNode,
@@ -54,6 +53,7 @@ import {
     isConstructSignatureDeclaration,
     isEnumDeclaration,
     isExportDeclaration,
+    isExpressionWithTypeArguments,
     isFunctionDeclaration,
     isFunctionExpression,
     isFunctionLike,
@@ -79,21 +79,16 @@ import {
     MethodDeclaration,
     MethodSignature,
     ModifierFlags,
-    ModuleDeclaration,
     ModuleKind,
     Node,
     NodeFactory,
-    NodeFlags,
     PropertyAccessExpression,
     PropertyDeclaration,
     PropertySignature,
     QualifiedName,
     RestTypeNode,
-    ScriptReferenceHost,
     SignatureDeclaration,
-    SourceFile,
     Statement,
-    SymbolTable,
     SyntaxKind,
     TemplateLiteralTypeNode,
     TransformationContext,
@@ -106,17 +101,28 @@ import {
     TypeOperatorNode,
     TypeQueryNode,
     TypeReferenceNode,
-    unescapeLeadingUnderscores,
     UnionTypeNode,
     visitEachChild,
     visitNode,
 } from 'typescript';
-import { isArray } from '@deepkit/core';
-import { extractJSDocAttribute, getIdentifierName, getNameAsString, getPropertyName, hasModifier, NodeConverter } from './reflection-ast';
+import {
+    ensureImportIsEmitted,
+    extractJSDocAttribute,
+    getGlobalsOfSourceFile,
+    getIdentifierName,
+    getNameAsString,
+    getPropertyName,
+    hasModifier,
+    isNodeWithLocals,
+    NodeConverter,
+    PackExpression,
+} from './reflection-ast';
+import { EmitHost, EmitResolver, SourceFile } from './ts-types';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import stripJsonComments from 'strip-json-comments';
 import { MappedModifier, ReflectionOp, TypeNumberBrand } from './type';
+import { encodeOps } from './processor';
 
 export const packSizeByte: number = 6;
 
@@ -124,26 +130,6 @@ export const packSizeByte: number = 6;
  * It can't be more ops than this given number
  */
 export const packSize: number = 2 ** packSizeByte; //64
-
-type StackEntry = Expression | string | number | boolean;
-export type PackExpression = Expression | string | number | boolean | bigint;
-
-interface PackStruct {
-    ops: ReflectionOp[],
-    stack: PackExpression[]
-}
-
-/**
- * An internal helper that has not yet exposed to transformers.
- */
-interface EmitResolver {
-    // getReferencedValueDeclaration(reference: Identifier): Declaration | undefined;
-
-    // getReferencedImportDeclaration(nodeIn: Identifier): Declaration | undefined;
-
-    getExternalModuleFileFromDeclaration(declaration: ImportEqualsDeclaration | ImportDeclaration | ExportDeclaration | ModuleDeclaration | ImportTypeNode | ImportCall): SourceFile | undefined;
-}
-
 const reflectionModes = ['always', 'default', 'never'] as const;
 
 const OPs: { [op in ReflectionOp]?: { params: number } } = {
@@ -169,11 +155,12 @@ const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.description]: { params: 1 },
     [ReflectionOp.numberBrand]: { params: 1 },
     [ReflectionOp.typeof]: { params: 1 },
+    [ReflectionOp.classExtends]: { params: 1 },
     [ReflectionOp.distribute]: { params: 1 },
     [ReflectionOp.jumpCondition]: { params: 2 },
 };
 
-export function debugPackStruct(pack: { ops: ReflectionOp[], stack: PackExpression[] }): void {
+export function debugPackStruct(sourceFile: SourceFile, forType: Node, pack: { ops: ReflectionOp[], stack: PackExpression[] }): void {
     const items: any[] = [];
 
     for (let i = 0; i < pack.ops.length; i++) {
@@ -183,7 +170,6 @@ export function debugPackStruct(pack: { ops: ReflectionOp[], stack: PackExpressi
         if (ReflectionOp[op] === undefined) {
             throw new Error(`Operator ${op} does not exist at position ${i}`);
         }
-        // items.push(op);
         if (opInfo && opInfo.params > 0) {
             for (let j = 0; j < opInfo.params; j++) {
                 const address = pack.ops[++i];
@@ -192,27 +178,17 @@ export function debugPackStruct(pack: { ops: ReflectionOp[], stack: PackExpressi
         }
     }
 
-    console.log(pack.stack, '|', ...items);
-}
-
-/**
- * Pack a pack structure (op instructions + pre-defined stack) and create a encoded version of it.
- */
-export function pack(packOrOps: PackStruct | ReflectionOp[]): PackExpression[] {
-    const ops = isArray(packOrOps) ? packOrOps : packOrOps.ops;
-    const encodedOps = ops.map(v => String.fromCharCode(v + 33)).join('');
-
-    if (!isArray(packOrOps)) {
-        if (packOrOps.stack.length) {
-            return [...packOrOps.stack as StackEntry[], encodedOps];
+    const printer = createPrinter();
+    const stack: any[] = [];
+    for (const s of pack.stack) {
+        if ('object' === typeof s && 'getText' in s) {
+            stack.push(printer.printNode(EmitHint.Unspecified, s, sourceFile));
+        } else {
+            stack.push(s);
         }
     }
-
-    return [encodedOps];
-}
-
-function isNodeWithLocals(node: Node): node is (Node & { locals: SymbolTable | undefined }) {
-    return 'locals' in node;
+    // console.log('debugPackStruct:', 'getText' in forType ? forType.getText().replace(/\n/g, '') : 'no node'); //printer.printNode(EmitHint.Unspecified, forType, sourceFile).replace(/\n/g, ''));
+    console.log(stack.join(','), '|', ...items);
 }
 
 interface Frame {
@@ -247,6 +223,8 @@ function findSourceFile(declaration: Declaration): SourceFile {
     }
     return current as SourceFile;
 }
+
+type StackEntry = Expression | string | number | boolean;
 
 class CompilerProgram {
     protected ops: ReflectionOp[] = [];
@@ -384,6 +362,7 @@ class CompilerProgram {
 
     /**
      * Remove stack without doing it as OP in the processor. Some other command calls popFrame() already, which makes popFrameImplicit() an implicit popFrame.
+     * e.g. union, class, etc. all call popFrame(). the current CompilerProgram needs to be aware of that, which this function is for.
      */
     popFrameImplicit() {
         if (this.frame.previous) this.frame = this.frame.previous;
@@ -418,17 +397,6 @@ class CompilerProgram {
 }
 
 /**
- * For imports that can removed (like a class import only used as type only, like `p: Model[]`) we have
- * to modify the import so TS does not remove it.
- */
-function ensureImportIsEmitted(importSpecifier?: ImportSpecifier) {
-    if (importSpecifier) {
-        //make synthetic. Let the TS compiler keep this import
-        (importSpecifier as any).flags |= NodeFlags.Synthesized;
-    }
-}
-
-/**
  * Read the TypeScript AST and generate pack struct (instructions + pre-defined stack).
  *
  * This transformer extracts type and add the encoded (so its small and low overhead) at classes and functions as property.
@@ -437,8 +405,8 @@ function ensureImportIsEmitted(importSpecifier?: ImportSpecifier) {
  */
 export class ReflectionTransformer {
     sourceFile!: SourceFile;
-    protected host!: ScriptReferenceHost;
-    protected resolver!: EmitResolver;
+    protected host: EmitHost;
+    protected resolver: EmitResolver;
     protected f: NodeFactory;
 
     protected reflectionMode?: typeof reflectionModes[number];
@@ -463,23 +431,33 @@ export class ReflectionTransformer {
     protected addImports: { from: Expression, identifier: Identifier }[] = [];
 
     protected nodeConverter: NodeConverter;
+    protected typeChecker?: TypeChecker;
 
     constructor(
         protected context: TransformationContext,
     ) {
         this.f = context.factory;
-        this.host = (context as any).getEmitHost() as ScriptReferenceHost;
+        this.host = (context as any).getEmitHost();
         this.resolver = (context as any).getEmitResolver() as EmitResolver;
         this.nodeConverter = new NodeConverter(this.f);
     }
 
-    protected getTypeCheckerForSource(): TypeChecker {
-        const sourceFile: SourceFile = this.sourceFile;
-        if ((sourceFile as any)._typeChecker) return (sourceFile as any)._typeChecker;
-        const host = createCompilerHost(this.context.getCompilerOptions());
-        const program = createProgram([sourceFile.fileName], this.context.getCompilerOptions(), { ...this.host, ...host });
-        return (sourceFile as any)._typeChecker = program.getTypeChecker();
+    protected getTypeChecker(): TypeChecker {
+        if (this.typeChecker) return this.typeChecker;
+        const options = this.context.getCompilerOptions();
+        const host = createCompilerHost(options);
+        const program = createProgram([this.sourceFile.fileName], this.context.getCompilerOptions(), { ...this.host, ...host });
+        // const program = createProgram((this.host as any).getSourceFiles().map((v: SourceFile) => v.fileName), options, { ...this.host, ...host });
+        return this.typeChecker = program.getTypeChecker();
     }
+
+    // protected getTypeChecker(): TypeChecker {
+    //     const sourceFile: SourceFile = this.sourceFile;
+    //     if ((sourceFile as any)._typeChecker) return (sourceFile as any)._typeChecker;
+    //     const host = createCompilerHost(this.context.getCompilerOptions());
+    //     const program = createProgram([sourceFile.fileName], this.context.getCompilerOptions(), { ...this.host, ...host });
+    //     return (sourceFile as any)._typeChecker = program.getTypeChecker();
+    // }
 
     withReflectionMode(mode: typeof reflectionModes[number]): this {
         this.reflectionMode = mode;
@@ -540,9 +518,7 @@ export class ReflectionTransformer {
 
                     return this.f.updateCallExpression(node, node.expression, node.typeArguments, this.f.createNodeArray(args));
                 } else {
-                    // const typeChecker = this.getTypeCheckerForSource();
-                    // const symbol = typeChecker.getSymbolAtLocation(node.expression);
-                    const found = this.resolveDeclaration(node.expression);
+                    const found = isIdentifier(node.expression) ? this.resolveDeclaration(node.expression) : undefined;
                     const type = found && found.declaration;
                     if (type && isFunctionDeclaration(type) && type.typeParameters) {
                         const args: Expression[] = [...node.arguments];
@@ -613,7 +589,7 @@ export class ReflectionTransformer {
                 for (const node of this.embedDeclarations.keys()) {
                     this.compiledDeclarations.add(node);
                 }
-                const entries = [...this.embedDeclarations.entries()];
+                const entries = Array.from(this.embedDeclarations.entries());
                 this.embedDeclarations.clear();
                 for (const [node, d] of entries) {
                     embedded.push(this.createProgramVarFromNode(node, d.name, d.sourceFile, d.importSpecifier));
@@ -648,6 +624,8 @@ export class ReflectionTransformer {
             this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...imports, ...this.sourceFile.statements]);
         }
 
+        // console.log('transform sourceFile', this.sourceFile.fileName);
+        // console.log(createPrinter().printNode(EmitHint.SourceFile, this.sourceFile, this.sourceFile));
         return this.sourceFile;
     }
 
@@ -670,7 +648,7 @@ export class ReflectionTransformer {
         } else {
             this.extractPackStructOfType(node, typeProgram);
         }
-        const typeProgramExpression = this.packOpsAndStack(typeProgram.buildPackStruct());
+        const typeProgramExpression = this.packOpsAndStack(typeProgram);
 
         return this.f.createVariableStatement(
             undefined,
@@ -777,6 +755,18 @@ export class ReflectionTransformer {
                     }
 
                     program.pushOp(ReflectionOp.class);
+
+                    if (narrowed.heritageClauses && narrowed.heritageClauses[0] && narrowed.heritageClauses[0].types[0]) {
+                        const first = narrowed.heritageClauses[0].types[0];
+                        if (isExpressionWithTypeArguments(first) && first.typeArguments) {
+                            for (const typeArgument of first.typeArguments) {
+                                this.extractPackStructOfType(typeArgument, program);
+                            }
+
+                            program.pushOp(ReflectionOp.classExtends, first.typeArguments.length);
+                        }
+                    }
+
                 }
                 break;
             }
@@ -1245,7 +1235,7 @@ export class ReflectionTransformer {
                 break;
             }
             default: {
-                program.pushOp(ReflectionOp.any);
+                program.pushOp(ReflectionOp.never);
             }
         }
     }
@@ -1270,26 +1260,48 @@ export class ReflectionTransformer {
         'Boolean': ReflectionOp.boolean,
     };
 
-    protected resolveDeclaration(e: Node): { declaration: Declaration, importSpecifier?: ImportSpecifier } | undefined {
-        // if (!isIdentifier(e)) return;
+    /**
+     * This is a custom resolver based on populated `locals` from the binder. It uses a custom resolution algorithm since
+     * we have no access to the binder/TypeChecker directly and instantiating a TypeChecker per file/transformer is incredible slow.
+     */
+    protected resolveDeclaration(typeName: EntityName): { declaration: Declaration, importSpecifier?: ImportSpecifier } | void {
+        let current: Node = typeName.parent;
+        if (typeName.kind === SyntaxKind.QualifiedName) return; //namespace access not supported yet, e.g. type a = Namespace.X;
 
-        const typeChecker = this.getTypeCheckerForSource();
-        //this resolves the symbol the typeName from the current file. Either the type declaration itself or the import
-        const symbol = typeChecker.getSymbolAtLocation(e);
+        let declaration: Declaration | undefined = undefined;
 
-        let declaration: Declaration | undefined = symbol && symbol.declarations ? symbol.declarations[0] : undefined;
-
-        //if the symbol points to a ImportSpecifier, it means it's declared in another file, and we have to use getDeclaredTypeOfSymbol to resolve it.
-        const importSpecifier = declaration && isImportSpecifier(declaration) ? declaration : undefined;
-        if (symbol && (!declaration || isImportSpecifier(declaration))) {
-            const resolvedType = typeChecker.getDeclaredTypeOfSymbol(symbol);
-            if (resolvedType && resolvedType.aliasSymbol && resolvedType.aliasSymbol.declarations && resolvedType.aliasSymbol.declarations[0]) {
-                declaration = resolvedType.aliasSymbol.declarations[0];
-            } else if (resolvedType && resolvedType.symbol && resolvedType.symbol.declarations && resolvedType.symbol.declarations[0]) {
-                declaration = resolvedType.symbol.declarations[0];
-            } else if (declaration && isImportSpecifier(declaration)) {
-                declaration = this.resolveImportSpecifier(unescapeLeadingUnderscores(symbol.escapedName), declaration.parent.parent.parent);
+        while (current) {
+            if (isNodeWithLocals(current) && current.locals) {
+                const found = current.locals.get(typeName.escapedText);
+                if (found && found.declarations && found.declarations[0]) {
+                    declaration = found.declarations[0];
+                    break;
+                }
             }
+
+            if (current.kind === SyntaxKind.SourceFile) break;
+            current = current.parent;
+        }
+
+        if (!declaration) {
+            //look in globals, read through all files, see checker.ts initializeTypeChecker
+            for (const file of this.host.getSourceFiles()) {
+                const globals = getGlobalsOfSourceFile(file);
+                if (!globals) continue;
+                const symbol = globals.get(typeName.escapedText);
+                if (symbol && symbol.declarations && symbol.declarations[0]) {
+                    declaration = symbol.declarations[0];
+                    console.log('found global', typeName.escapedText, 'in', file.fileName);
+                    break;
+                }
+            }
+            console.log('look in global');
+        }
+
+        let importSpecifier: ImportSpecifier | undefined = declaration && isImportSpecifier(declaration) ? declaration : undefined;
+
+        if (declaration && isImportSpecifier(declaration)) {
+            declaration = this.resolveImportSpecifier(typeName.escapedText, declaration.parent.parent.parent);
         }
 
         if (declaration && declaration.kind === SyntaxKind.TypeParameter && declaration.parent.kind === SyntaxKind.TypeAliasDeclaration) {
@@ -1368,7 +1380,7 @@ export class ReflectionTransformer {
             const resolved = this.resolveDeclaration(type.typeName);
             if (!resolved) {
                 //non existing references are ignored.
-                program.pushOp(ReflectionOp.any);
+                program.pushOp(ReflectionOp.never);
                 return;
             }
 
@@ -1411,7 +1423,8 @@ export class ReflectionTransformer {
                     //be imported by modifying `resolved!.importSpecifier`, adding the symbol + making the import persistent.
                     const declarationSourceFile = findSourceFile(declaration);
                     const isGlobal = declarationSourceFile.fileName !== this.sourceFile.fileName;
-                    if (resolved!.importSpecifier || isGlobal) {
+                    const embed = !!(resolved!.importSpecifier || isGlobal);
+                    if (embed) {
                         this.embedDeclarations.set(declaration, {
                             name: type.typeName,
                             sourceFile: declarationSourceFile,
@@ -1446,13 +1459,15 @@ export class ReflectionTransformer {
                 program.pushFrame();
 
                 if (type.typeArguments) {
-                    for (const template of type.typeArguments) {
-                        this.extractPackStructOfType(template, program);
+                    for (const typeArgument of type.typeArguments) {
+                        this.extractPackStructOfType(typeArgument, program);
                     }
                 }
 
-                const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName)));
+                const body = isIdentifier(type.typeName) ? type.typeName : this.createAccessorForEntityName(type.typeName);
+                const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, body));
                 program.pushOp(ReflectionOp.classReference, index);
+
                 program.popFrameImplicit();
             } else if (isTypeParameterDeclaration(declaration)) {
 
@@ -1625,9 +1640,9 @@ export class ReflectionTransformer {
         return this.f.createPropertyAccessExpression(isIdentifier(e.left) ? e.left : this.createAccessorForEntityName(e.left), e.right);
     }
 
-    protected findDeclarationInFile(sourceFile: SourceFile, declarationName: string): Declaration | undefined {
+    protected findDeclarationInFile(sourceFile: SourceFile, declarationName: __String): Declaration | undefined {
         if (isNodeWithLocals(sourceFile) && sourceFile.locals) {
-            const declarationSymbol = sourceFile.locals.get(declarationName as __String);
+            const declarationSymbol = sourceFile.locals.get(declarationName);
             if (declarationSymbol && declarationSymbol.declarations && declarationSymbol.declarations[0]) {
                 return declarationSymbol.declarations[0];
             }
@@ -1635,7 +1650,7 @@ export class ReflectionTransformer {
         return;
     }
 
-    protected resolveImportSpecifier(declarationName: string, importOrExport: ExportDeclaration | ImportDeclaration): Declaration | undefined {
+    protected resolveImportSpecifier(declarationName: __String, importOrExport: ExportDeclaration | ImportDeclaration): Declaration | undefined {
         if (!importOrExport.moduleSpecifier) return;
         if (!isStringLiteral(importOrExport.moduleSpecifier)) return;
 
@@ -1655,7 +1670,7 @@ export class ReflectionTransformer {
                     for (const element of statement.exportClause.elements) {
                         //see if declarationName is exported
                         if (getIdentifierName(element.name) === declarationName) {
-                            const found = this.resolveImportSpecifier(element.propertyName ? getIdentifierName(element.propertyName) : declarationName, statement);
+                            const found = this.resolveImportSpecifier(element.propertyName ? element.propertyName.escapedText : declarationName, statement);
                             if (found) return found;
                         }
                     }
@@ -1679,18 +1694,18 @@ export class ReflectionTransformer {
 
         const program = new CompilerProgram(type, this.sourceFile);
         this.extractPackStructOfType(type, program);
-        return this.packOpsAndStack(program.buildPackStruct());
+        return this.packOpsAndStack(program);
     }
 
-    protected packOpsAndStack(packStruct: PackStruct) {
+    protected packOpsAndStack(program: CompilerProgram) {
+        const packStruct = program.buildPackStruct();
         if (packStruct.ops.length === 0) return;
-        const packed = pack(packStruct);
-        // debugPackStruct(packStruct);
+        // debugPackStruct(this.sourceFile, program.forNode, packStruct);
+        const packed = [...packStruct.stack, encodeOps(packStruct.ops)];
         return this.valueToExpression(packed);
     }
 
     /**
-     *
      * Note: We have to duplicate the expressions as it can be that incoming expression are from another file and contain wrong pos/end properties,
      * so the code generation is then broken when we simply reuse them. Wrong code like ``User.__type = [.toEqual({`` is then generated.
      * This function is probably not complete, but we add new copies when required.
@@ -1843,3 +1858,4 @@ export const transformer: CustomTransformerFactory = (context) => {
     }
     return new ReflectionTransformer(context);
 };
+

@@ -13,6 +13,7 @@ import {
     ArrowFunction,
     EntityName,
     Expression,
+    ImportSpecifier,
     isArrowFunction,
     isComputedPropertyName,
     isIdentifier,
@@ -24,19 +25,22 @@ import {
     Node,
     NodeArray,
     NodeFactory,
+    NodeFlags,
     QualifiedName,
+    SymbolTable,
     SyntaxKind,
     unescapeLeadingUnderscores
 } from 'typescript';
 import { isArray } from '@deepkit/core';
 import { cloneNode as tsNodeClone, CloneNodeHook } from 'ts-clone-node';
-import { PackExpression } from './compiler';
+import { SourceFile } from './ts-types';
 
+export type PackExpression = Expression | string | number | boolean | bigint;
 export function getIdentifierName(node: Identifier | PrivateIdentifier): string {
     return unescapeLeadingUnderscores(node.escapedText);
 }
 
-function joinQualifiedName(name: EntityName): string {
+export function joinQualifiedName(name: EntityName): string {
     if (isIdentifier(name)) return getIdentifierName(name);
     return joinQualifiedName(name.left) + '_' + getIdentifierName(name.right);
 }
@@ -77,7 +81,7 @@ export function getNameAsString(node?: Identifier | StringLiteral | NumericLiter
     if (isIdentifier(node)) return getIdentifierName(node);
     if (isStringLiteral(node)) return node.text;
     if (isNumericLiteral(node)) return node.text;
-    if (isComputedPropertyName(node)) return node.getText();
+    if (isComputedPropertyName(node)) return '';
     if (isPrivateIdentifier(node)) return getIdentifierName(node);
 
     return joinQualifiedName(node);
@@ -126,12 +130,45 @@ export class NodeConverter {
         }
 
         try {
-            return tsNodeClone(value, { preserveComments: false, factory: this.f, hook: this.cloneHook }) as Expression;
+            return tsNodeClone(value, {
+                preserveComments: false,
+                factory: this.f,
+                setOriginalNodes: true,
+                preserveSymbols: true,
+                setParents: true,
+                hook: this.cloneHook
+            }) as Expression;
         } catch (error) {
             console.log('value', value);
             throw error;
         }
     }
+}
 
+function isExternalOrCommonJsModule(file: SourceFile): boolean {
+    //both attributes are internal and not yet public
+    return (file.externalModuleIndicator || file.commonJsModuleIndicator) !== undefined;
+}
 
+export function isNodeWithLocals(node: Node): node is (Node & { locals: SymbolTable | undefined }) {
+    return 'locals' in node;
+}
+
+export function getGlobalsOfSourceFile(file: SourceFile): SymbolTable | void {
+    if (file.redirectInfo) return;
+    if (!isNodeWithLocals(file)) return;
+    if (!isExternalOrCommonJsModule(file)) return file.locals;
+    if (file.jsGlobalAugmentations) return file.jsGlobalAugmentations;
+    if (file.symbol && file.symbol.globalExports) return file.symbol.globalExports;
+}
+
+/**
+ * For imports that can removed (like a class import only used as type only, like `p: Model[]`) we have
+ * to modify the import so TS does not remove it.
+ */
+export function ensureImportIsEmitted(importSpecifier?: ImportSpecifier) {
+    if (importSpecifier) {
+        //make synthetic. Let the TS compiler keep this import
+        (importSpecifier.flags as any) |= NodeFlags.Synthesized;
+    }
 }

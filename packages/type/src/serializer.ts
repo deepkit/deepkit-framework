@@ -35,6 +35,7 @@ import {
     TypeIndexSignature,
     TypeNumberBrand,
     TypeObjectLiteral,
+    TypeParameter,
     TypeProperty,
     TypePropertySignature,
     TypeTuple,
@@ -45,7 +46,7 @@ import {
 import { hasCircularReference, ReflectionClass, ReflectionProperty } from './reflection/reflection';
 import { extendTemplateLiteral, isExtendable } from './reflection/extends';
 import { resolveRuntimeType } from './reflection/processor';
-import { createReference, isReference, isReferenceHydrated } from './reference';
+import { createReference, isReferenceHydrated, isReferenceInstance } from './reference';
 import { ValidationFailedItem } from './validator';
 import { validators } from './validators';
 import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64 } from './core';
@@ -1026,11 +1027,11 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     if (type.kind === ReflectionKind.class) {
         if (referenceAnnotation.hasAnnotations(type) && !state.isAnnotationHandled(referenceAnnotation)) {
             state.annotationHandled(referenceAnnotation);
-            state.setContext({ isObject, isReference, isReferenceHydrated });
+            state.setContext({ isObject, isReferenceInstance, isReferenceHydrated });
             const reflection = ReflectionClass.from(type.classType);
             //the primary key is serialised for unhydrated references
             state.replaceTemplate(`
-            if (isReference(${state.accessor}) && !isReferenceHydrated(${state.accessor})) {
+            if (isReferenceInstance(${state.accessor}) && !isReferenceHydrated(${state.accessor})) {
                 ${executeTemplates(state.fork(state.setter, new ContainerAccessor(state.accessor, JSON.stringify(reflection.getPrimary().getName()))), reflection.getPrimary().getType())}
             } else {
                 ${state.template}
@@ -1404,7 +1405,7 @@ function serializeTypeClassMap(type: TypeClass, state: TemplateState) {
     }), state);
 }
 
-export function serializeProperty(type: TypePropertySignature | TypeProperty, state: TemplateState) {
+export function serializeProperty(type: TypePropertySignature | TypeProperty | TypeParameter, state: TemplateState) {
     //todo: handle optional and nullable
     if (type.optional) {
         state.addCode(`
@@ -1418,6 +1419,17 @@ export function serializeProperty(type: TypePropertySignature | TypeProperty, st
     }
 
     state.addCode(executeTemplates(state.fork(), type.type));
+}
+
+export function typeGuardProperty(type: TypePropertySignature | TypeProperty | TypeParameter, state: TemplateState) {
+    //todo: handle optional and nullable
+    state.addCode(`
+        if (${state.accessor} === undefined) {
+            if (${!type.optional && state.validation}) ${state.assignValidationError('type', 'Not an object')}
+        } else {
+            ${executeTemplates(state.fork(), type.type)}
+        }
+    `);
 }
 
 export function handleUnion(type: TypeUnion, state: TemplateState) {
@@ -1477,7 +1489,7 @@ export function handleUnion(type: TypeUnion, state: TemplateState) {
             const looseCheck = specificality <= 0 ? `state.loosely && ` : '';
 
             lines.push(`else if (${looseCheck}${guard}(${args})) {
-                //type = ${ReflectionKind[t.kind]}, specificality=${specificality}
+                //type = ${t.kind}, specificality=${specificality}
                 ${executeTemplates(state.fullFork(), t)}
             }`);
         }
@@ -1628,8 +1640,10 @@ export class Serializer {
 
         this.serializeRegistry.register(ReflectionKind.propertySignature, serializeProperty);
         this.serializeRegistry.register(ReflectionKind.property, serializeProperty);
+        this.serializeRegistry.register(ReflectionKind.parameter, serializeProperty);
         this.deserializeRegistry.register(ReflectionKind.propertySignature, serializeProperty);
         this.deserializeRegistry.register(ReflectionKind.property, serializeProperty);
+        this.deserializeRegistry.register(ReflectionKind.parameter, serializeProperty);
 
         this.serializeRegistry.register(ReflectionKind.bigint, (type, state) => state.addSetter(`${state.accessor}.toString()`));
 
@@ -1796,6 +1810,9 @@ export class Serializer {
         this.typeGuards.register(1, ReflectionKind.null, (type, state) => state.addSetterAndReportErrorIfInvalid('type', 'Not null', `null === ${state.accessor}`));
         this.typeGuards.register(2, ReflectionKind.null, (type, state) => state.addSetter(`'undefined' === typeof ${state.accessor}`));
 
+        this.typeGuards.register(2, ReflectionKind.propertySignature, serializeProperty);
+        this.typeGuards.register(2, ReflectionKind.property, serializeProperty);
+        this.typeGuards.register(2, ReflectionKind.parameter, serializeProperty);
 
         this.typeGuards.register(2, ReflectionKind.number, (type, state) => {
             state.setContext({ isNumeric: isNumeric });
@@ -1876,7 +1893,7 @@ export class Serializer {
         });
 
         this.typeGuards.register(1, ReflectionKind.function, ((type, state) => {
-            state.setContext({ isFunction: isFunction, isExtendable: isExtendable, resolveRuntimeType: resolveRuntimeType });
+            state.setContext({ isFunction, isExtendable, resolveRuntimeType });
             const t = state.setVariable('type', type);
             state.addCodeForSetter(`
                 if (isFunction(${state.accessor})) {

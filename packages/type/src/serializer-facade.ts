@@ -2,7 +2,7 @@ import { getClassTypeFromInstance } from '@deepkit/core';
 import { ReceiveType, resolveReceiveType } from './reflection/reflection';
 import { getSerializeFunction, SerializationOptions, serializer, Serializer } from './serializer';
 import { JSONPartial, JSONSingle } from './utils';
-import { typeInfer } from './reflection/type';
+import { typeInfer } from './reflection/processor';
 
 /**
  * Casts/coerces a given data structure to the target data type.

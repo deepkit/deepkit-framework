@@ -9,9 +9,10 @@
  */
 
 import { expect, test } from '@jest/globals';
+import { typeInfer } from '../../../src/reflection/processor';
 import { removeTypeName, typeOf } from '../../../src/reflection/reflection';
-import { assertType, ReflectionKind, ReflectionVisibility, Type, typeInfer, Widen } from '../../../src/reflection/type';
-import { expectEqualType } from '../processor.spec';
+import { assertType, ReflectionKind, ReflectionVisibility, Type, Widen } from '../../../src/reflection/type';
+import { expectEqualType } from '../../utils';
 
 test('infer T from function primitive', () => {
     function fn<T extends string | number>(v: T) {
@@ -66,7 +67,8 @@ test('infer T from function union primitive object', () => {
 
     //TS infers {a: string}
     expectEqualType(fn({ a: 'abc' }), {
-        kind: ReflectionKind.objectLiteral, types: [
+        kind: ReflectionKind.objectLiteral,
+        types: [
             { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string, origin: { kind: ReflectionKind.literal, literal: 'abc' } } }
         ]
     } as Type);
@@ -144,14 +146,14 @@ test('T as tuple rest', () => {
     type r = Tuple<[string, number]>;
 
     const type = typeOf<r>();
-    expectEqualType(type, typeOf<['hi', string, number]>() as any, {noTypeNames: true});
+    expectEqualType(type, typeOf<['hi', string, number]>() as any, { noTypeNames: true });
 });
 
 test('T array length', () => {
     type Tuple<T extends any[]> = ['hi', T['length']];
     type r = Tuple<string[]>;
-    expectEqualType(typeOf<r>(), typeOf<['hi', number]>() as any, {noTypeNames: true});
+    expectEqualType(typeOf<r>(), typeOf<['hi', number]>() as any, { noTypeNames: true });
 
     type r2 = Tuple<[string, number]>;
-    expectEqualType(typeOf<r2>(), typeOf<['hi', 2]>() as any, {noTypeNames: true});
+    expectEqualType(typeOf<r2>(), typeOf<['hi', 2]>() as any, { noTypeNames: true });
 });

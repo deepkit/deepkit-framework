@@ -12,7 +12,7 @@ import { ClassType, isObject } from '@deepkit/core';
 import { ReflectionClass, reflectionClassSymbol } from './reflection/reflection';
 import { typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core';
 
-export function isReference(obj: any): boolean {
+export function isReferenceInstance(obj: any): boolean {
     return isObject(obj) && referenceSymbol in obj;
 }
 

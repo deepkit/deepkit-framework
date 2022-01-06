@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { removeTypeName, typeOf } from '../../../src/reflection/reflection';
-import { expectEqualType } from '../processor.spec';
+import { expectEqualType } from '../../utils';
 
 test('distributed conditional type', () => {
     //when T is naked, it will be distributed
@@ -17,15 +17,15 @@ test('distributed conditional type', () => {
     type r12 = OnlyStrings2<'a' | 'b' | number, 'nope'>; //boolean | 'a' | 'b' | 'nope'
     type r122 = OnlyStrings22<'a' | 'b' | number, 'nope'>; //boolean | 'a' | 'b' | 'nope'
 
-    expect(typeOf<r1>()).toEqual(typeOf<'a' | 'b'>());
-    expect(typeOf<r12>()).toEqual(typeOf<'a' | 'b' | 'nope'>());
-    expect(typeOf<r122>()).toEqual(typeOf<boolean | 'a' | 'b' | 'nope'>());
+    expectEqualType(typeOf<r1>(), typeOf<'a' | 'b'>());
+    expectEqualType(typeOf<r12>(), typeOf<'a' | 'b' | 'nope'>());
+    expectEqualType(typeOf<r122>(), typeOf<boolean | 'a' | 'b' | 'nope'>());
 
     type r13 = OnlyStrings3<'a' | 'b' | number, 'nope'>; //boolean | 'a' | 'b' | 'nope'
-    expect(typeOf<r13>()).toEqual(typeOf<boolean | 'a' | 'b' | 'nope'>());
+    expectEqualType(typeOf<r13>(), typeOf<boolean | 'a' | 'b' | 'nope'>());
 
     type r14 = OnlyStrings4<'a' | 'b', 'c' | 'd', 'nope'>; //'c'[] | 'd'[]
-    expect(typeOf<r14>()).toEqual(typeOf<'c'[] | 'd'[]>());
+    expectEqualType(typeOf<r14>(), typeOf<'c'[] | 'd'[]>());
 });
 
 test('deep distribution in mapped type', () => {

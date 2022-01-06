@@ -21,7 +21,6 @@ import {
     Type,
     TypeAny,
     TypeInfer,
-    typeInfer,
     TypeLiteral,
     TypeMethod,
     TypeMethodSignature,
@@ -33,6 +32,7 @@ import {
     TypeUnion
 } from './type';
 import { isPrototypeOfBase } from '@deepkit/core';
+import { typeInfer } from './processor';
 
 type AssignableType = Type | string | boolean | number | symbol | bigint | undefined | null;
 

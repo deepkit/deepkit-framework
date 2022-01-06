@@ -38,26 +38,29 @@ export function findCommonLiteral(reflectionClasses: ReflectionClass<any>[]): st
     const candidates: { [name: string]: { found: number, values: any[], schemas: ReflectionClass<any>[] } } = {};
 
     for (const schema of reflectionClasses) {
+        console.log('schema', schema.getClassName(), schema.type.types);
         for (const property of schema.getProperties()) {
+            console.log('property.type.kind', property.name, property.type.kind);
             if (property.type.kind !== ReflectionKind.literal) continue;
 
-            if (candidates[property.getNameAsString()]) {
-                let candidate = candidates[property.getNameAsString()];
+            if (candidates[property.name]) {
+                let candidate = candidates[property.name];
                 candidate.found++;
                 if (candidate.values.includes(property.type.literal)) {
                     const usedBy = candidate.schemas[candidate.values.indexOf(property.type.literal)];
                     if (usedBy !== schema) {
-                        throw new Error(`${schema.getClassName()} has a literal on ${property.getNameAsString()} that is already used by ${usedBy.getClassName()}.`);
+                        throw new Error(`${schema.getClassName()} has a literal on ${property.name} that is already used by ${usedBy.getClassName()}.`);
                     }
                 }
                 candidate.values.push(property.type.literal);
                 candidate.schemas.push(schema);
             } else {
-                candidates[property.getNameAsString()] = { found: 1, values: [property.type.literal], schemas: [schema] };
+                candidates[property.name] = { found: 1, values: [property.type.literal], schemas: [schema] };
             }
         }
     }
 
+    console.log('candidates', candidates);
     //check which candidate has the right amount of usages
     for (const [name, info] of Object.entries(candidates)) {
         if (info.found === reflectionClasses.length) return name;

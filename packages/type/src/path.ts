@@ -32,7 +32,7 @@ function pathResolverCode(type: Type, compilerContext: CompilerContext, jitStack
 
 export function resolvePath<T>(path: string, type?: ReceiveType<T>): OuterType {
     const t = pathResolver(resolveReceiveType(type))(path);
-    if (!t) throw new Error(`No type found for path ${path} found`);
+    if (!t) throw new Error(`No type found for path ${path}`);
     return t;
 }
 
