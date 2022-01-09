@@ -202,7 +202,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
         throw new Error(`Injector already built for ${getClassName(this)}. Can not modify its provider or tree structure.`);
     }
 
-    addExport(...controller: ClassType[]): this {
+    addExport(...controller: ExportType[]): this {
         this.assertInjectorNotBuilt();
         this.exports.push(...controller);
         return this;
