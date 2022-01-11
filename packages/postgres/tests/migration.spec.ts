@@ -1,19 +1,37 @@
-import 'reflect-metadata';
 import { expect, test } from '@jest/globals';
 import { schemaMigrationRoundTrip } from '@deepkit/sql';
-import { t } from '@deepkit/type';
+import {
+    AutoIncrement,
+    Entity,
+    float32,
+    int16,
+    int32,
+    int8,
+    integer,
+    Postgres,
+    PrimaryKey,
+    Reference,
+    ReflectionClass,
+    typeOf,
+    uint16,
+    uint32,
+    uint8,
+    Unique
+} from '@deepkit/type';
 import { PostgresDatabaseAdapter } from '../src/postgres-adapter';
+import { DatabaseEntityRegistry } from '@deepkit/orm';
 
+test('custom type', async () => {
+    class post {
+        id: number & AutoIncrement & PrimaryKey = 0;
+        slug: string & Postgres<{ type: 'VARCHAR(255)' }> = '';
+        content: string = '';
+    }
 
-test('postgres custom type', async () => {
-    const post = t.schema({
-        id: t.number.autoIncrement.primary,
-        slug: t.string.postgres({ type: 'VARCHAR(255)' }),
-        content: t.string.postgres({ type: 'text' }),
-    }, { name: 'post' });
-
+    const reflection = ReflectionClass.from(post);
+    reflection.getProperty('slug');
     const adapter = new PostgresDatabaseAdapter({ host: '127.0.0.1', database: 'postgres', user: 'postgres' });
-    const [postTable] = adapter.platform.createTables([post]);
+    const [postTable] = adapter.platform.createTables(DatabaseEntityRegistry.from([post]));
     expect(postTable.getColumn('slug').type).toBe('varchar');
     expect(postTable.getColumn('slug').size).toBe(255);
 
@@ -22,25 +40,76 @@ test('postgres custom type', async () => {
     await schemaMigrationRoundTrip([post], adapter);
 });
 
-const user = t.schema({
-    id: t.number.autoIncrement.primary,
-    username: t.string.index({ unique: true }),
-    created: t.date,
-    deleted: t.boolean,
-    logins: t.number,
-}, { name: 'user' });
-user.addIndex(['deleted'], '', { unique: true });
-user.addIndex(['deleted', 'created']);
+test('default expression', async () => {
+    class post {
+        id: number & AutoIncrement & PrimaryKey = 0;
+        str: string & Postgres<{ type: 'VARCHAR(255)', default: 'abc' }> = '';
+        no: number & Postgres<{ default: 34.5 }> = 3;
+        json: any & Postgres<{ type: 'jsonb', default: {} }> = {};
+        created: Date & Postgres<{ defaultExpr: 'now()' }> = new Date;
+        opt?: boolean;
+    }
 
-const post = t.schema({
-    id: t.number.autoIncrement.primary,
-    user: t.type(user).reference(),
-    created: t.date,
-    slag: t.string.index({ unique: true }),
-    title: t.string,
-    content: t.string,
-}, { name: 'post' });
+    const adapter = new PostgresDatabaseAdapter({ host: '127.0.0.1', database: 'postgres', user: 'postgres' });
+    const [postTable] = adapter.platform.createTables(DatabaseEntityRegistry.from([post]));
+
+    expect(postTable.getColumn('str').defaultValue).toBe('abc');
+    expect(postTable.getColumn('no').defaultValue).toBe(34.5);
+    expect(postTable.getColumn('created').defaultExpression).toBe('now()');
+
+    await schemaMigrationRoundTrip([post], adapter);
+});
+
+test('numbers', async () => {
+    class post {
+        id: integer & AutoIncrement & PrimaryKey = 0;
+        int8: int8 = 0;
+        uint8: uint8 = 0;
+        int16: int16 = 0;
+        uint16: uint16 = 0;
+        int32: int32 = 0;
+        uint32: uint32 = 0;
+        float32: float32 = 0;
+        default: number = 0;
+    }
+
+    const adapter = new PostgresDatabaseAdapter({ host: '127.0.0.1', database: 'postgres', user: 'postgres' });
+    const [postTable] = adapter.platform.createTables(DatabaseEntityRegistry.from([post]));
+
+    const DDL = await schemaMigrationRoundTrip([post], adapter);
+
+    expect(DDL).toContain(`CREATE TABLE "post" (
+    "id" SERIAL,
+    "int8" smallint NOT NULL DEFAULT 0,
+    "uint8" smallint NOT NULL DEFAULT 0,
+    "int16" smallint NOT NULL DEFAULT 0,
+    "uint16" smallint NOT NULL DEFAULT 0,
+    "int32" integer NOT NULL DEFAULT 0,
+    "uint32" integer NOT NULL DEFAULT 0,
+    "float32" real NOT NULL DEFAULT 0,
+    "default" double precision NOT NULL DEFAULT 0,
+    PRIMARY KEY ("id")
+)`);
+
+});
+
+interface User extends Entity<{ name: 'user' }> {
+    id: number & AutoIncrement & PrimaryKey;
+    username: string & Unique;
+    created: Date;
+    deleted: boolean;
+    logins: number;
+}
+
+interface Post extends Entity<{ name: 'post' }> {
+    id: number & AutoIncrement & PrimaryKey;
+    user: User & Reference,
+    created: Date,
+    slag: string & Unique,
+    title: string,
+    content: string,
+}
 
 test('postgres', async () => {
-    await schemaMigrationRoundTrip([user, post], new PostgresDatabaseAdapter({ host: 'localhost', database: 'postgres', user: 'postgres' }));
+    await schemaMigrationRoundTrip([typeOf<User>(), typeOf<Post>()], new PostgresDatabaseAdapter({ host: 'localhost', database: 'postgres', user: 'postgres' }));
 });

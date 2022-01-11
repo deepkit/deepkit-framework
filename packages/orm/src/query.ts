@@ -19,7 +19,8 @@ import {
     ReferenceFields,
     ReflectionClass,
     ReflectionKind,
-    ReflectionProperty
+    ReflectionProperty,
+    resolveForeignReflectionClass
 } from '@deepkit/type';
 import { Subject } from 'rxjs';
 import { DatabaseAdapter } from './database-adapter';
@@ -396,12 +397,13 @@ export class BaseQuery<T extends OrmEntity> {
         }
         const c = this.clone();
 
-        const query = new JoinDatabaseQuery<ENTITY, this>(propertySchema.getResolvedReflectionClass(), c, field as string);
+        const foreignReflectionClass = resolveForeignReflectionClass(propertySchema);
+        const query = new JoinDatabaseQuery<ENTITY, this>(foreignReflectionClass, c, field as string);
         query.model.parameters = c.model.parameters;
 
         c.model.joins.push({
             propertySchema, query, populate, type,
-            foreignPrimaryKey: propertySchema.getResolvedReflectionClass().getPrimary(),
+            foreignPrimaryKey: foreignReflectionClass.getPrimary(),
             classSchema: this.classSchema,
         });
         return c;
@@ -803,12 +805,13 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
             throw new Error(`Entity ${this.classSchema.getClassName()} has more than one primary key`);
         }
 
+        const data = await this.clone().select(...pks).find() as Resolve<this>[];
         if (singleKey) {
             const pkName = pks[0] as keyof Resolve<this>;
-            return (await this.clone().select(...pks).find() as Resolve<this>[]).map(v => v[pkName]) as any;
+            return data.map(v => v[pkName]) as any;
         }
 
-        return await this.clone().select(...pks).find() as any;
+        return data;
     }
 
     public async findField<K extends FieldName<T>>(name: K): Promise<T[K][]> {

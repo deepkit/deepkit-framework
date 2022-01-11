@@ -20,6 +20,7 @@ import {
     markAsHydrated,
     ReflectionClass,
     ReflectionProperty,
+    resolveForeignReflectionClass,
     SerializeFunction,
     Serializer,
     typeSettings,
@@ -110,7 +111,7 @@ export class Formatter {
         let Reference = this.referenceClasses.get(classSchema);
         if (Reference) return Reference;
 
-        Reference = createReferenceClass(classSchema.getClassType());
+        Reference = createReferenceClass(classSchema);
 
         if (this.hydrator) {
             setHydratedDatabaseSession(Reference.prototype, this.hydrator);
@@ -280,14 +281,14 @@ export class Formatter {
                 if (join.propertySchema.isBackReference() && join.propertySchema.isArray()) {
                     if (hasValue) {
                         item[join.propertySchema.name] = dbRecord[refName].map((item: any) => {
-                            return this.hydrateModel(join.query.model, join.propertySchema.getResolvedReflectionClass(), item);
+                            return this.hydrateModel(join.query.model, resolveForeignReflectionClass(join.propertySchema), item);
                         });
                     } else {
                         item[join.propertySchema.name] = [];
                     }
                 } else if (hasValue) {
                     item[join.propertySchema.name] = this.hydrateModel(
-                        join.query.model, join.propertySchema.getResolvedReflectionClass(), dbRecord[refName]
+                        join.query.model, resolveForeignReflectionClass(join.propertySchema), dbRecord[refName]
                     );
                 } else {
                     item[join.propertySchema.name] = undefined;
@@ -312,7 +313,6 @@ export class Formatter {
     protected createObject(model: DatabaseQueryModel<any, any, any>, classState: ClassState, classSchema: ReflectionClass<any>, dbRecord: DBRecord) {
         const partial = model.isPartial();
 
-        //todo: how do we get a partial type of a classSchema? We need some kind of service that caches it for us when we create one on-demand.
         const converted = classSchema === this.rootClassSchema
             ? (partial ? this.partialDeserialize(dbRecord) : this.deserialize(dbRecord))
             : (partial ? getPartialSerializeFunction(classSchema.type, this.serializer.deserializeRegistry)(dbRecord) : getSerializeFunction(classSchema.type, this.serializer.deserializeRegistry)(dbRecord));

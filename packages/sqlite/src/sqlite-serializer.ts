@@ -12,6 +12,7 @@ import { SqlSerializer } from '@deepkit/sql';
 import { ReflectionKind } from '@deepkit/type';
 
 class SQLiteSerializer extends SqlSerializer {
+    name = 'sqlite';
     protected registerSerializers() {
         super.registerSerializers();
 

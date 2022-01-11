@@ -15,7 +15,7 @@ import { sqlSerializer } from '../serializer/sql-serializer';
 import { parseType, SchemaParser } from '../reverse/schema-parser';
 import { SQLFilterBuilder } from '../sql-filter-builder';
 import { Sql } from '../sql-builder';
-import { binaryTypes, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
+import { binaryTypes, databaseAnnotation, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 
 export function isSet(v: any): boolean {
@@ -58,10 +58,16 @@ export interface TypeMapping {
     sqlType: string;
     size?: number;
     scale?: number;
+    unsigned?: boolean;
 }
 
 export abstract class DefaultPlatform {
     protected defaultSqlType = 'text';
+
+    /**
+     * The ID used in annotation to get database related type information (like `type`, `default`, `defaultExpr`, ...) via databaseAnnotation.getDatabase.
+     */
+    protected annotationId = '*';
     protected typeMapping = new Map<ReflectionKind | TypeMappingChecker, TypeMapping>();
     protected nativeTypeInformation = new Map<string, Partial<NativeTypeInformation>>();
 
@@ -111,8 +117,8 @@ export abstract class DefaultPlatform {
         }, sqlType, size, scale);
     }
 
-    addType(kind: ReflectionKind | TypeMappingChecker, sqlType: string, size?: number, scale?: number) {
-        this.typeMapping.set(kind, { sqlType, size, scale });
+    addType(kind: ReflectionKind | TypeMappingChecker, sqlType: string, size?: number, scale?: number, unsigned?: boolean) {
+        this.typeMapping.set(kind, { sqlType, size, scale, unsigned });
     }
 
     getColumnListDDL(columns: Column[]) {
@@ -170,7 +176,7 @@ export abstract class DefaultPlatform {
 
     protected setColumnType(column: Column, typeProperty: ReflectionProperty) {
         column.type = this.defaultSqlType;
-        const options = typeProperty.getDatabase('');
+        const options = typeProperty.getDatabase(this.annotationId);
         if (options && options.type) {
             parseType(column, options.type);
         } else {
@@ -179,6 +185,7 @@ export abstract class DefaultPlatform {
                 column.type = map.sqlType;
                 column.size = map.size;
                 column.scale = map.scale;
+                column.unsigned = map.unsigned === true;
             }
         }
     }
@@ -214,12 +221,14 @@ export abstract class DefaultPlatform {
         const refs = new Map<ReflectionClass<any>, ReflectionClass<any>>();
 
         for (let schema of entityRegistry.entities) {
+            //a parent of a single-table inheritance might already be added
+            if (mergedToSingleTable.has(schema)) continue;
 
             //if the schema is decorated with singleTableInheritance, all properties of all siblings will be copied, as all
             //will be in one big table.
             if (schema.singleTableInheritance) {
                 const superClass = schema.getSuperReflectionClass();
-                if (!superClass) throw new Error(`Class ${schema.getClassName()} has singleTableInheritance enabled but no super class.`);
+                if (!superClass) throw new Error(`Class ${schema.getClassName()} has singleTableInheritance enabled but has no super class.`);
 
                 if (mergedToSingleTable.has(superClass)) continue;
                 mergedToSingleTable.add(superClass);
@@ -234,7 +243,6 @@ export abstract class DefaultPlatform {
                     for (let property of subSchema.getProperties()) {
                         if (schema.hasProperty(property.getName())) continue;
                         property = property.clone();
-                        property.isOptional();
                         //make all newly added properties optional
                         property.setOptional(true);
                         schema.addProperty(property);
@@ -243,6 +251,7 @@ export abstract class DefaultPlatform {
             }
 
             const table = new Table(this.namingStrategy.getTableName(schema));
+
             database.schemaMap.set(schema, table);
 
             table.schemaName = schema.databaseSchemaName || database.schemaName;
@@ -251,9 +260,16 @@ export abstract class DefaultPlatform {
                 if (property.isBackReference()) continue;
 
                 const column = table.addColumn(this.namingStrategy.getColumnName(property), property);
+                const dbOptions = databaseAnnotation.getDatabase(property.type, this.annotationId) || {};
 
                 if (!property.isAutoIncrement()) {
-                    column.defaultValue = property.getDefaultValue();
+                    if (dbOptions.default !== undefined) {
+                        column.defaultValue = dbOptions.default;
+                    } else if (dbOptions.defaultExpr) {
+                        column.defaultExpression = dbOptions.defaultExpr;
+                    } else if (!dbOptions.noDefault && !property.hasDefaultFunctionExpression()) {
+                        column.defaultValue = property.getDefaultValue();
+                    }
                 }
 
                 const isNullable = property.isNullable() || property.isOptional();
@@ -588,9 +604,13 @@ export abstract class DefaultPlatform {
     }
 
     getColumnDefaultValueDDL(column: Column) {
-        if (undefined === column.defaultValue) return '';
-        //todo: allow to add expressions, like CURRENT_TIMESTAMP
-        return 'DEFAULT ' + this.quoteValue(isObject(column.defaultValue) ? JSON.stringify(column.defaultValue) : column.defaultValue);
+        if (column.defaultExpression !== undefined) {
+            return 'DEFAULT ' + column.defaultExpression;
+        }
+        if (column.defaultValue !== undefined) {
+            return 'DEFAULT ' + this.quoteValue(column.defaultValue);
+        }
+        return '';
     }
 
     getAutoIncrement() {

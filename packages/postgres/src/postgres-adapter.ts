@@ -21,13 +21,13 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from '@deepkit/sql';
-import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, Entity, PatchResult, UniqueConstraintFailure } from '@deepkit/orm';
+import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, OrmEntity, PatchResult, UniqueConstraintFailure } from '@deepkit/orm';
 import { PostgresPlatform } from './postgres-platform';
-import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, PropertySchema, resolvePropertySchema } from '@deepkit/type';
 import type { Pool, PoolClient, PoolConfig } from 'pg';
 import pg from 'pg';
 import { asyncOperation, ClassType, empty } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+import { Changes, getPartialSerializeFunction, getSerializeFunction, ReflectionClass, ReflectionKind, ReflectionProperty, resolvePath } from '@deepkit/type';
 
 function handleError(error: Error | string): void {
     const message = 'string' === typeof error ? error : error.message;
@@ -54,7 +54,7 @@ export class PostgresStatement extends SQLStatement {
                 this.client.query(this.sql, params).then(resolve).catch(reject);
             });
             return res.rows[0];
-        } catch (error) {
+        } catch (error: any) {
             handleError(error);
             this.logger.failedQuery(error, this.sql, params);
             throw error;
@@ -73,7 +73,7 @@ export class PostgresStatement extends SQLStatement {
                 this.client.query(this.sql, params).then(resolve).catch(reject);
             });
             return res.rows;
-        } catch (error) {
+        } catch (error: any) {
             handleError(error);
             this.logger.failedQuery(error, this.sql, params);
             throw error;
@@ -116,7 +116,7 @@ export class PostgresConnection extends SQLConnection {
             this.logger.logQuery(sql, params);
             this.lastReturningRows = res.rows;
             this.changes = res.rowCount;
-        } catch (error) {
+        } catch (error: any) {
             handleError(error);
             this.logger.failedQuery(error, sql, params);
             throw error;
@@ -217,11 +217,11 @@ export class PostgresConnectionPool extends SQLConnectionPool {
     }
 }
 
-function typeSafeDefaultValue(property: PropertySchema): any {
-    if (property.type === 'string') return '';
-    if (property.type === 'number') return 0;
-    if (property.type === 'boolean') return false;
-    if (property.type === 'date') return new Date;
+function typeSafeDefaultValue(property: ReflectionProperty): any {
+    if (property.type.kind === ReflectionKind.string) return '';
+    if (property.type.kind === ReflectionKind.number) return 0;
+    if (property.type.kind === ReflectionKind.boolean) return false;
+    if (property.type.kind === ReflectionKind.class && property.type.classType === Date) return false;
 
     return null;
 }
@@ -231,10 +231,10 @@ export class PostgresPersistence extends SQLPersistence {
         super(platform, connectionPool, session);
     }
 
-    async batchUpdate<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
-        const scopeSerializer = this.platform.serializer.for(classSchema);
+    async batchUpdate<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+        const partialSerialize = getPartialSerializeFunction(classSchema.type, this.platform.serializer.serializeRegistry);
         const tableName = this.platform.getTableIdentifier(classSchema);
-        const pkName = classSchema.getPrimaryField().name;
+        const pkName = classSchema.getPrimary().name;
         const pkField = this.platform.quoteIdentifier(pkName);
 
         const values: { [name: string]: any[] } = {};
@@ -248,7 +248,7 @@ export class PostgresPersistence extends SQLPersistence {
         for (const changeSet of changeSets) {
             const where: string[] = [];
 
-            const pk = scopeSerializer.partialSerialize(changeSet.primaryKey);
+            const pk = partialSerialize(changeSet.primaryKey);
             for (const i in pk) {
                 if (!pk.hasOwnProperty(i)) continue;
                 where.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(pk[i])}`);
@@ -262,7 +262,7 @@ export class PostgresPersistence extends SQLPersistence {
             const id = changeSet.primaryKey[pkName];
 
             if (changeSet.changes.$set) {
-                const value = scopeSerializer.partialSerialize(changeSet.changes.$set);
+                const value = partialSerialize(changeSet.changes.$set);
                 for (const i in value) {
                     if (!value.hasOwnProperty(i)) continue;
                     if (!values[i]) {
@@ -374,8 +374,8 @@ export class PostgresPersistence extends SQLPersistence {
         }
     }
 
-    protected async populateAutoIncrementFields<T>(classSchema: ClassSchema<T>, items: T[]) {
-        const autoIncrement = classSchema.getAutoIncrementField();
+    protected async populateAutoIncrementFields<T>(classSchema: ReflectionClass<T>, items: T[]) {
+        const autoIncrement = classSchema.getAutoIncrement();
         if (!autoIncrement) return;
         const connection = await this.getConnection(); //will automatically be released in SQLPersistence
 
@@ -390,8 +390,8 @@ export class PostgresPersistence extends SQLPersistence {
         }
     }
 
-    protected getInsertSQL(classSchema: ClassSchema, fields: string[], values: string[]): string {
-        const autoIncrement = classSchema.getAutoIncrementField();
+    protected getInsertSQL(classSchema: ReflectionClass<any>, fields: string[], values: string[]): string {
+        const autoIncrement = classSchema.getAutoIncrement();
         const returning = autoIncrement ? ` RETURNING ${this.platform.quoteIdentifier(autoIncrement.name)}` : '';
 
         return `INSERT INTO ${this.platform.getTableIdentifier(classSchema)} (${fields.join(', ')}) VALUES (${values.join('), (')}) ${returning}`;
@@ -409,12 +409,12 @@ export class PostgresPersistence extends SQLPersistence {
 
 }
 
-export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
+export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T> {
 
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
-        const primaryKey = this.classSchema.getPrimaryField();
+        const primaryKey = this.classSchema.getPrimary();
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
-        const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
+        const primaryKeyConverted = getSerializeFunction(primaryKey.property, this.platform.serializer.deserializeRegistry);
 
         const sqlBuilder = new SqlBuilder(this.platform);
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
@@ -444,14 +444,14 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         const select: string[] = [];
         const selectParams: any[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
-        const primaryKey = this.classSchema.getPrimaryField();
-        const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
+        const primaryKey = this.classSchema.getPrimary();
+        const primaryKeyConverted = getSerializeFunction(primaryKey.property, this.platform.serializer.deserializeRegistry);
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
 
-        const scopeSerializer = this.platform.serializer.for(this.classSchema);
-        const $set = changes.$set ? scopeSerializer.partialSerialize(changes.$set) : undefined;
+        const partialSerialize = getPartialSerializeFunction(this.classSchema.type, this.platform.serializer.serializeRegistry);
+        const $set = changes.$set ? partialSerialize(changes.$set) : undefined;
         const set: string[] = [];
 
         if ($set) for (const i in $set) {
@@ -473,14 +473,14 @@ export class PostgresSQLQueryResolver<T extends Entity> extends SQLQueryResolver
         }
 
         for (const i of model.returning) {
-            aggregateFields[i] = { converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer) };
+            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.deserializeRegistry) };
             select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
         }
 
         if (changes.$inc) for (const i in changes.$inc) {
             if (!changes.$inc.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            aggregateFields[i] = { converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer) };
+            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.serializeRegistry) };
             select.push(`(${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(i)}`);
         }
 
@@ -544,9 +544,9 @@ export class PostgresSQLDatabaseQuery<T> extends SQLDatabaseQuery<T> {
 }
 
 export class PostgresSQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
-    createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): PostgresSQLDatabaseQuery<T> {
-        return new PostgresSQLDatabaseQuery(getClassSchema(classType), this.databaseSession,
-            new PostgresSQLQueryResolver(this.connectionPool, this.platform, getClassSchema(classType), this.databaseSession)
+    createQuery<T extends OrmEntity>(classType: ClassType<T> | ReflectionClass<T>): PostgresSQLDatabaseQuery<T> {
+        return new PostgresSQLDatabaseQuery(ReflectionClass.from(classType), this.databaseSession,
+            new PostgresSQLQueryResolver(this.connectionPool, this.platform, ReflectionClass.from(classType), this.databaseSession)
         );
     }
 }

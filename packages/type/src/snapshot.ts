@@ -79,9 +79,9 @@ function createJITConverterForSnapshot(
     }
 
     const functionCode = `
-        ${circularCheckBeginning}
         var _result = {};
         state = state || {};
+        ${circularCheckBeginning}
         var oldUnpopulatedCheck = _global.unpopulatedCheck;
         _global.unpopulatedCheck = UnpopulatedCheckNone;
         ${setProperties.join('\n')}

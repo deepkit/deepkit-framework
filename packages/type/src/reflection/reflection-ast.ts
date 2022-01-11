@@ -11,6 +11,7 @@
 import { ComputedPropertyName, Identifier, NumericLiteral, PrivateIdentifier, StringLiteral } from 'typescript/lib/tsserverlibrary';
 import {
     ArrowFunction,
+    BinaryExpression,
     EntityName,
     Expression,
     ImportSpecifier,
@@ -26,6 +27,7 @@ import {
     NodeArray,
     NodeFactory,
     NodeFlags,
+    PropertyAccessExpression,
     QualifiedName,
     SymbolTable,
     SyntaxKind,
@@ -36,6 +38,7 @@ import { cloneNode as tsNodeClone, CloneNodeHook } from 'ts-clone-node';
 import { SourceFile } from './ts-types';
 
 export type PackExpression = Expression | string | number | boolean | bigint;
+
 export function getIdentifierName(node: Identifier | PrivateIdentifier): string {
     return unescapeLeadingUnderscores(node.escapedText);
 }
@@ -92,21 +95,20 @@ export function hasModifier(node: { modifiers?: ModifiersArray }, modifier: Synt
     return node.modifiers.some(v => v.kind === modifier);
 }
 
-export class NodeConverter {
-    cloneHook: any;
-
-    constructor(protected f: NodeFactory) {
-        this.cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNodeHook<T> | undefined => {
-            if (isIdentifier(node)) {
-                //ts-clone-node wants to read `node.text` which does not exist. we hook into into an provide the correct value.
-                return {
-                    text: () => {
-                        return getIdentifierName(node);
-                    }
-                } as any;
+const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNodeHook<T> | undefined => {
+    if (isIdentifier(node)) {
+        //ts-clone-node wants to read `node.text` which does not exist. we hook into into an provide the correct value.
+        return {
+            text: () => {
+                return getIdentifierName(node);
             }
-            return;
-        };
+        } as any;
+    }
+    return;
+}
+
+export class NodeConverter {
+    constructor(protected f: NodeFactory) {
     }
 
     toExpression<T extends PackExpression | PackExpression[]>(value?: T): Expression {
@@ -136,7 +138,7 @@ export class NodeConverter {
                 setOriginalNodes: true,
                 preserveSymbols: true,
                 setParents: true,
-                hook: this.cloneHook
+                hook: cloneHook
             }) as Expression;
         } catch (error) {
             console.log('value', value);
@@ -171,4 +173,39 @@ export function ensureImportIsEmitted(importSpecifier?: ImportSpecifier) {
         //make synthetic. Let the TS compiler keep this import
         (importSpecifier.flags as any) |= NodeFlags.Synthesized;
     }
+}
+
+
+/**
+ * Serializes an entity name as an expression for decorator type metadata.
+ *
+ * @param node The entity name to serialize.
+ */
+export function serializeEntityNameAsExpression(f: NodeFactory, node: EntityName): SerializedEntityNameAsExpression {
+    switch (node.kind) {
+        case SyntaxKind.Identifier:
+            return tsNodeClone(node, {
+                factory: f,
+                preserveComments: false,
+                setOriginalNodes: true,
+                preserveSymbols: true,
+                setParents: true,
+                hook: cloneHook
+            });
+        case SyntaxKind.QualifiedName:
+            return serializeQualifiedNameAsExpression(f, node);
+    }
+}
+
+type SerializedEntityNameAsExpression = Identifier | BinaryExpression | PropertyAccessExpression;
+
+/**
+ * Serializes an qualified name as an expression for decorator type metadata.
+ *
+ * @param node The qualified name to serialize.
+ * @param useFallback A value indicating whether to use logical operators to test for the
+ *                    qualified name at runtime.
+ */
+function serializeQualifiedNameAsExpression(f: NodeFactory, node: QualifiedName): SerializedEntityNameAsExpression {
+    return f.createPropertyAccessExpression(serializeEntityNameAsExpression(f, node.left), node.right);
 }

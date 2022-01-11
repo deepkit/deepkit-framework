@@ -4,7 +4,7 @@ import { Group } from './group';
 
 @entity.name('user')
 export class User {
-    public id?: number & PrimaryKey & AutoIncrement;
+    public id: number & PrimaryKey & AutoIncrement = 0;
     created: Date = new Date;
 
     firstName: string = '';
@@ -20,17 +20,16 @@ export class User {
 
     groups: Group[] & BackReference<{via: typeof UserGroup}> = [];
 
-    constructor(
-        public name: string,
-    ) {
+    constructor(public name: string) {
     }
 }
 
 @entity.name('user-group')
 export class UserGroup {
-    public id?: number & AutoIncrement & PrimaryKey;
+    public id: number & AutoIncrement & PrimaryKey = 0;
 
     constructor(
+        //todo: User is not correctly reflected. its an empty TypeObjectLiteral object
         public user: User & Reference,
         public group: Group & Reference,
     ) {

@@ -10,7 +10,7 @@
 
 import { arrayRemoveItem } from '@deepkit/core';
 import { cyrb53 } from '../hash';
-import { ReflectionClass, ReflectionProperty } from '@deepkit/type';
+import { genericEqual, ReflectionClass, ReflectionProperty } from '@deepkit/type';
 
 export class DatabaseModel {
     public schemaName: string = '';
@@ -176,7 +176,12 @@ export class Column {
     public type?: string;
     public size?: number;
     public scale?: number;
-    public defaultValue?: string;
+    public unsigned: boolean = false;
+
+    public defaultValue?: any;
+
+    //e.g. 'NOW()'
+    public defaultExpression?: string;
 
     public isNotNull = false;
     public isPrimaryKey = false;
@@ -312,9 +317,11 @@ export class ColumnComparator {
 
         if (from.scale !== to.scale) changedProperties.set('scale', new ColumnPropertyDiff(from.scale, to.scale));
         if (from.size !== to.size) changedProperties.set('size', new ColumnPropertyDiff(from.size, to.size));
+        if (from.unsigned !== to.unsigned) changedProperties.set('unsigned', new ColumnPropertyDiff(from.unsigned, to.unsigned));
         if (from.isNotNull !== to.isNotNull) changedProperties.set('isNotNull', new ColumnPropertyDiff(from.isNotNull, to.isNotNull));
         if (from.isAutoIncrement !== to.isAutoIncrement) changedProperties.set('isAutoIncrement', new ColumnPropertyDiff(from.isAutoIncrement, to.isAutoIncrement));
-        if (from.defaultValue !== to.defaultValue) changedProperties.set('defaultValue', new ColumnPropertyDiff(from.defaultValue, to.defaultValue));
+        if (!genericEqual(from.defaultValue, to.defaultValue)) changedProperties.set('defaultValue', new ColumnPropertyDiff(from.defaultValue, to.defaultValue));
+        if (from.defaultExpression !== to.defaultExpression) changedProperties.set('defaultExpression', new ColumnPropertyDiff(from.defaultExpression, to.defaultExpression));
 
         return changedProperties;
     }

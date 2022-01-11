@@ -50,7 +50,7 @@ import {
     widenLiteral
 } from './type';
 import { isExtendable } from './extends';
-import { ClassType, isArray, isClass, isFunction } from '@deepkit/core';
+import { ClassType, getClassName, isArray, isClass, isFunction } from '@deepkit/core';
 import { isWithDeferredDecorators } from '../decorator';
 import { TData } from './reflection';
 
@@ -467,7 +467,7 @@ export class Processor {
                         }
                         case ReflectionOp.classReference: {
                             const ref = this.eatParameter() as number;
-                            const classType = (program.stack[ref] as Function)();
+                            const classType = resolveFunction(program.stack[ref] as Function, program.object);
                             const inputs = this.popFrame() as OuterType[];
                             if (!classType) throw new Error('No class reference given in ' + String(program.stack[ref]));
 
@@ -513,7 +513,8 @@ export class Processor {
                                     enumType[type.name] = i++;
                                 }
                             }
-                            const t: Type = { kind: ReflectionKind.enum, enum: enumType, values: Object.values(enumType) };
+                            const values = Object.values(enumType);
+                            const t: Type = { kind: ReflectionKind.enum, enum: enumType, values, indexType: getEnumType(values) };
                             this.pushType(t);
                             break;
                         }
@@ -1030,7 +1031,8 @@ export class Processor {
                         }
                     }
 
-                    if (!primitive && (isPrimitive(type) || type.kind === ReflectionKind.any || type.kind === ReflectionKind.array || type.kind === ReflectionKind.tuple || type.kind === ReflectionKind.regexp || type.kind === ReflectionKind.symbol)) {
+                    //it's unknown for not-yet resolved types (issues references for circular types
+                    if (!primitive && (isPrimitive(type) || type.kind === ReflectionKind.unknown || type.kind === ReflectionKind.any || type.kind === ReflectionKind.array || type.kind === ReflectionKind.tuple || type.kind === ReflectionKind.regexp || type.kind === ReflectionKind.symbol)) {
                         //at the moment, we globally assume that people don't add types to array/tuple/regexp/symbols e.g. no `(string[] & {doSomething: () => void})`.
                         //we treat all additional types in the intersection as decorators.
                         primitive = type;
@@ -1047,7 +1049,7 @@ export class Processor {
         if (primitive) {
             result = primitive;
             annotations[defaultAnnotation.symbol] = candidates;
-        } else {
+        } else if (candidates.length > 0) {
             if (candidates.length === 1) {
                 result = candidates[0];
             } else {
@@ -1328,7 +1330,8 @@ export function typeInfer(value: any): OuterType {
     } else if ('function' === typeof value) {
         if (isArray(value.__type)) {
             //with emitted types: function or class
-            return resolveRuntimeType(value);
+            //don't use resolveRuntimeType since we don't allow cache here
+            return Processor.get().reflect(value) as OuterType;
         }
 
         if (isClass(value)) {
@@ -1343,7 +1346,8 @@ export function typeInfer(value: any): OuterType {
         const constructor = value.constructor;
         if ('function' === typeof constructor && constructor !== Object && isArray(constructor.__type)) {
             //with emitted types
-            return resolveRuntimeType(constructor);
+            //don't use resolveRuntimeType since we don't allow cache here
+            return Processor.get().reflect(constructor) as OuterType;
         }
 
         if (constructor === RegExp) return { kind: ReflectionKind.regexp };
@@ -1359,7 +1363,7 @@ export function typeInfer(value: any): OuterType {
             return { kind: ReflectionKind.class, classType: Map, arguments: [keyType, valueType], types: [] };
         }
 
-        //generate a new program that builds a objectLiteral. This is necessary since typeInfer() with its resolveRuntimeType calls might return immediately TypeAny if
+        //generate a new program that builds a objectLiteral. This is necessary since typeInfer() with its Processor.reflect() calls might return immediately TypeAny if
         //the execution was scheduled (if we are in an executing program) so we can not depend on the result directly.
         //each part of the program of a value[i] is executed after the current OP, so we have to schedule new OPs doing the same as
         //in this loop here and construct the objectLiteral in the VM.
@@ -1476,4 +1480,34 @@ function pushObjectLiteralTypes(
     if (decorators.length) type.decorators = decorators;
 
     Object.assign(type.annotations, annotations);
+}
+
+export function getEnumType(values: any[]): OuterType {
+    let allowUndefined = false;
+    let allowNull = false;
+    let allowString = false;
+    let allowNumber = false;
+
+    for (const v of values) {
+        if (v === undefined) allowUndefined = true;
+        if (v === null) allowNull = true;
+        if (typeof v === 'number') allowNumber = true;
+        if (typeof v === 'string') allowString = true;
+    }
+
+    const union: TypeUnion = { kind: ReflectionKind.union, types: [] };
+    if (allowString) union.types.push({ kind: ReflectionKind.string });
+    if (allowNumber) union.types.push({ kind: ReflectionKind.number });
+    if (allowNull) union.types.push({ kind: ReflectionKind.null });
+    if (allowUndefined) union.types.push({ kind: ReflectionKind.undefined });
+
+    return unboxUnion(union);
+}
+
+function resolveFunction<T extends Function>(fn: T, forObject: any): any {
+    try {
+        return fn();
+    } catch (error) {
+        throw new Error(`Could not resolve function of object ${getClassName(forObject)}: ${error}`);
+    }
 }

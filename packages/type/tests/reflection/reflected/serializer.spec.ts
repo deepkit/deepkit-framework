@@ -9,10 +9,11 @@
  */
 import { expect, test } from '@jest/globals';
 import { reflect, ReflectionClass } from '../../../src/reflection/reflection';
-import { BackReference, Embedded, Excluded, int8, integer, PrimaryKey, Reference } from '../../../src/reflection/type';
-import { createSerializeFunction, SerializationError, serializer } from '../../../src/serializer';
+import { AutoIncrement, BackReference, Embedded, Excluded, int8, integer, PrimaryKey, Reference, ReflectionKind } from '../../../src/reflection/type';
+import { createSerializeFunction, getSerializeFunction, SerializationError, serializer } from '../../../src/serializer';
 import { cast, deserialize, serialize } from '../../../src/serializer-facade';
 import { getClassName } from '@deepkit/core';
+import { t } from '../../../src/decorator';
 
 test('deserializer', () => {
     class User {
@@ -386,11 +387,11 @@ test('brands', () => {
 });
 
 test('throw', () => {
-    expect(() => cast<number>('123abc')).toThrow('Cannot convert 123abc to number');
-    expect(() => cast<{ a: string }>(false)).toThrow('Cannot convert false to { a: string;}');
-    expect(() => cast<{ a: number }>({ a: 'abc' })).toThrow('a: Cannot convert abc to number');
-    expect(() => cast<{ a: { b: number } }>({ a: 'abc' })).toThrow('a: Cannot convert abc to { b: number;}');
-    expect(() => cast<{ a: { b: number } }>({ a: { b: 'abc' } })).toThrow('a.b: Cannot convert abc to number');
+    expect(() => cast<number>('123abc')).toThrow('Cannot convert string(123abc) to number');
+    expect(() => cast<{ a: string }>(false)).toThrow('Cannot convert boolean(false) to { a: string;}');
+    expect(() => cast<{ a: number }>({ a: 'abc' })).toThrow('a: Cannot convert string(abc) to number');
+    expect(() => cast<{ a: { b: number } }>({ a: 'abc' })).toThrow('a: Cannot convert string(abc) to { b: number;}');
+    expect(() => cast<{ a: { b: number } }>({ a: { b: 'abc' } })).toThrow('a.b: Cannot convert string(abc) to number');
 });
 
 test('index signature ', () => {
@@ -570,11 +571,11 @@ test('embedded single optional', () => {
     }
 
     expect(deserialize<{ v?: Embedded<Price> }>({ v: 34 })).toEqual({ v: new Price(34) });
-    expect(deserialize<{ v?: Embedded<Price> }>({ })).toEqual({ });
+    expect(deserialize<{ v?: Embedded<Price> }>({})).toEqual({});
     expect(deserialize<{ v?: Embedded<Price, { prefix: '' }> }>({ amount: 34 })).toEqual({ v: new Price(34) });
-    expect(deserialize<{ v?: Embedded<Price, { prefix: '' }> }>({ })).toEqual({ });
+    expect(deserialize<{ v?: Embedded<Price, { prefix: '' }> }>({})).toEqual({});
     expect(deserialize<{ v?: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: 34 })).toEqual({ v: new Price(34) });
-    expect(deserialize<{ v?: Embedded<Price, { prefix: 'price_' }> }>({  })).toEqual({  });
+    expect(deserialize<{ v?: Embedded<Price, { prefix: 'price_' }> }>({})).toEqual({});
 
     class Product1 {
         constructor(public title: string, public price: Embedded<Price> = new Price(15)) {
@@ -602,9 +603,9 @@ test('embedded single optional', () => {
     expect(deserialize<{ a?: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: undefined })).toEqual({});
     expect(deserialize<Product1>({ title: 'Brick' })).toEqual(new Product1('Brick'));
     expect(deserialize<Product2>({ title: 'Brick' })).toEqual(new Product2('Brick'));
-    expect(deserialize<Product3>({ })).toEqual({ price: new Price(15) });
+    expect(deserialize<Product3>({})).toEqual({ price: new Price(15) });
     expect(deserialize<Product3>({ price: null })).toEqual({ price: undefined });
-    expect(deserialize<Product4>({ })).toEqual({ price: new Price(15) });
+    expect(deserialize<Product4>({})).toEqual({ price: new Price(15) });
     expect(deserialize<Product4>({ price: null })).toEqual({ price: null });
 });
 
@@ -658,4 +659,29 @@ test('embedded multi parameter', () => {
     expect(deserialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: '34' })).toEqual({ v: '34' });
     expect(deserialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ price_amount: 34 })).toEqual({ v: new Price(34) });
     expect(deserialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: '34' })).toEqual({ v: '34' });
+});
+
+test('class inheritance', () => {
+    abstract class Person {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        firstName?: string;
+        lastName?: string;
+        abstract type: string;
+    }
+
+    class Employee extends Person {
+        email?: string;
+        type: 'employee' = 'employee';
+    }
+
+    class Freelancer extends Person {
+        @t budget: number = 10_000;
+        type: 'freelancer' = 'freelancer';
+    }
+
+    const employee = ReflectionClass.from(Employee);
+    expect(employee.getProperty('firstName').getKind()).toBe(ReflectionKind.string);
+    const scopeSerializer = getSerializeFunction(employee.type, serializer.serializeRegistry);
+
+    expect(scopeSerializer({ type: 'employee', firstName: 'Peter', email: 'test@example.com' })).toEqual({ type: 'employee', firstName: 'Peter', email: 'test@example.com' });
 });

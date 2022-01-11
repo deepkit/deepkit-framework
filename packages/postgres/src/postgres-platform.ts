@@ -8,12 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Column, DefaultPlatform, Index, isSet, parseType, SqlPlaceholderStrategy, Table } from '@deepkit/sql';
+import { Column, DefaultPlatform, IndexModel, isSet, SqlPlaceholderStrategy, Table } from '@deepkit/sql';
 import { postgresSerializer } from './postgres-serializer';
-import { ClassSchema, isArray, PostgresOptions, PropertySchema } from '@deepkit/type';
+import { isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, TypeNumberBrand } from '@deepkit/type';
 import { PostgresSchemaParser } from './postgres-schema-parser';
 import { PostgreSQLFilterBuilder } from './sql-filter-builder';
-import { isObject } from '@deepkit/core';
+import { isArray, isObject } from '@deepkit/core';
 import sqlstring from 'sqlstring';
 
 function escapeLiteral(value: any): string {
@@ -53,60 +53,62 @@ export class PostgresPlaceholderStrategy extends SqlPlaceholderStrategy {
 }
 
 export class PostgresPlatform extends DefaultPlatform {
-    protected defaultSqlType = 'text';
-    public readonly serializer = postgresSerializer;
-    schemaParserType = PostgresSchemaParser;
+    protected override defaultSqlType = 'text';
+    protected override annotationId = 'postgres';
+    public override readonly serializer: Serializer = postgresSerializer;
+    override schemaParserType = PostgresSchemaParser;
 
-    placeholderStrategy = PostgresPlaceholderStrategy;
+    override placeholderStrategy = PostgresPlaceholderStrategy;
 
     constructor() {
         super();
 
-        this.addType('number', 'double precision');
-        this.addType('date', 'timestamp');
-        this.addType('boolean', 'boolean');
+        this.addType(ReflectionKind.number, 'double precision');
+        this.addType(ReflectionKind.boolean, 'boolean');
 
-        this.addType('class', 'jsonb');
-        this.addType('array', 'jsonb');
-        this.addType('union', 'jsonb');
-        this.addType('partial', 'jsonb');
-        this.addType('map', 'jsonb');
-        this.addType('record', 'jsonb');
-        this.addType('patch', 'jsonb');
-        this.addType('enum', 'jsonb');
+        this.addType(ReflectionKind.class, 'jsonb');
+        this.addType(ReflectionKind.array, 'jsonb');
+        this.addType(ReflectionKind.union, 'jsonb');
 
-        this.addType('uuid', 'uuid');
+        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.number, 'integer');
+        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.string, 'text');
+        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.union, 'jsonb');
+
+        this.addType(ReflectionKind.bigint, 'bigint');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.integer, 'integer');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.int8, 'smallint');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.uint8, 'smallint');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.int16, 'smallint');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.uint16, 'smallint');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.int32, 'integer');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.uint32, 'integer');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float32, 'real');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float64, 'double precision');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float, 'double precision');
+
+        this.addType(isUUIDType, 'uuid');
         this.addBinaryType('bytea');
+        this.addType(type => type.kind === ReflectionKind.class && type.classType === Date, 'timestamp');
     }
 
-    getAggregateSelect(tableName: string, property: PropertySchema, func: string) {
+    override getAggregateSelect(tableName: string, property: ReflectionProperty, func: string) {
         if (func === 'group_concat') {
             return `array_to_string(array_agg(${tableName}.${this.quoteIdentifier(property.name)}), ',')`;
         }
         return super.getAggregateSelect(tableName, property, func);
     }
 
-    createSqlFilterBuilder(schema: ClassSchema, tableName: string): PostgreSQLFilterBuilder {
+    override createSqlFilterBuilder(schema: ReflectionClass<any>, tableName: string): PostgreSQLFilterBuilder {
         return new PostgreSQLFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
     }
 
-    quoteValue(value: any): string {
+    override quoteValue(value: any): string {
         if (!(value instanceof Date) && (isObject(value) || isArray(value))) return escapeLiteral(JSON.stringify(value));
         if (value instanceof Date) return 'TIMESTAMP ' + sqlstring.escape(value);
         return escapeLiteral(value);
     }
 
-    protected setColumnType(column: Column, typeProperty: PropertySchema) {
-        const db = (typeProperty.data['postgres'] || {}) as PostgresOptions;
-        if (db.type) {
-            parseType(column, db.type);
-            return;
-        }
-
-        super.setColumnType(column, typeProperty);
-    }
-
-    getColumnDDL(column: Column) {
+    override getColumnDDL(column: Column) {
         const ddl: string[] = [];
 
         ddl.push(this.getIdentifier(column));
@@ -133,11 +135,11 @@ export class PostgresPlatform extends DefaultPlatform {
         return ddl.filter(isSet).join(' ');
     }
 
-    getUniqueDDL(unique: Index): string {
+    getUniqueDDL(unique: IndexModel): string {
         return `CONSTRAINT ${this.getIdentifier(unique)} UNIQUE (${this.getColumnListDDL(unique.columns)})`;
     }
 
-    getDropIndexDDL(index: Index): string {
+    getDropIndexDDL(index: IndexModel): string {
         return `DROP CONSTRAINT ${this.getIdentifier(index)}`;
     }
 

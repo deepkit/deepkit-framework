@@ -1,6 +1,6 @@
 import { expect } from '@jest/globals';
 import 'reflect-metadata';
-import { AutoIncrement, cast, entity, PrimaryKey, Reference, ReflectionClass, UUID, uuid } from '@deepkit/type';
+import { assertType, AutoIncrement, cast, entity, PrimaryKey, Reference, ReflectionClass, ReflectionKind, UUID, uuid } from '@deepkit/type';
 import { User, UserGroup } from './bookstore/user';
 import { UserCredentials } from './bookstore/user-credentials';
 import { atomicChange, getInstanceStateFromItem } from '@deepkit/orm';
@@ -33,7 +33,7 @@ class Book {
 
 @entity.name('image')
 class Image {
-    id: UUID & PrimaryKey  = uuid();
+    id: UUID & PrimaryKey = uuid();
 
     downloads: number = 0;
 
@@ -77,8 +77,7 @@ export const bookstoreTests = {
         expect(user.name).toBe('user');
         expect(book.getProperty('author').getResolvedReflectionClass().getClassType()).toBe(User);
         expect(book.getProperty('author').getResolvedReflectionClass()).toBe(user);
-
-        expect(user.getProperty('birthdate').isOptional).toBe(true);
+        expect(user.getProperty('birthdate').isOptional()).toBe(true);
     },
 
     async deleteManyParallel(databaseFactory: DatabaseFactory) {
@@ -255,6 +254,9 @@ export const bookstoreTests = {
         const marie = new User('Marie');
         await database.persist(peter, marie);
 
+        expect(peter.id).toBe(1);
+        expect(marie.id).toBe(2);
+
         const book1 = new Book(peter, 'Super book');
         await database.persist(book1);
 
@@ -281,7 +283,6 @@ export const bookstoreTests = {
             expect(book1.author.id).toBe(marie.id);
         }
 
-
         {
             const book = cast<Book>({
                 author: database.getReference(User, peter.id),
@@ -294,7 +295,6 @@ export const bookstoreTests = {
             const book1 = await database.query(Book).filter({ title: 'Peters path' }).findOne();
             expect(book1.author.id).toBe(peter.id);
         }
-
     },
     async basics(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
@@ -321,6 +321,10 @@ export const bookstoreTests = {
 
             expect(await session.query(User).count()).toBe(2);
             expect(await session.query(Book).count()).toBe(2);
+            {
+                const titles = await session.query(Book).select('title').find();
+                expect(titles).toEqual([{ title: 'Peters book' }, { title: 'Herberts book' }]);
+            }
             {
                 const ids = await session.query(Book).ids(true);
                 expect(ids[0]).toBe(book1.id);
@@ -486,11 +490,17 @@ export const bookstoreTests = {
 
         const res = await database.query(UserCredentials).filter({ user: user1 }).patchOne({ user: user2 });
         expect(res.modified).toEqual(1);
-        expect(res.primaryKeys).toEqual([user2.id]); //we want to new primaryKey, not the old one
+        expect(res.primaryKeys).toEqual([{ id: user2.id }]); //we want to new primaryKey, not the old one
 
         {
             const creds = await database.query(UserCredentials).filter({ user: user2 }).findOne();
             expect(creds.user.id).toBe(user2.id);
+        }
+
+        {
+            const res = await database.query(User).filter({ id: user1.id }).patchOne({ id: 125 });
+            expect(res.modified).toEqual(1);
+            expect(res.primaryKeys).toEqual([125]); //we want to new primaryKey, not the old one
         }
     },
 
@@ -655,6 +665,11 @@ export const bookstoreTests = {
         const user = new User('Peter');
         const book = new Book(user, 'Great');
 
+        const reflectionReview = ReflectionClass.from(Review);
+        const status = reflectionReview.getProperty('status').type;
+        assertType(status, ReflectionKind.enum);
+        expect(status.indexType).toEqual({ kind: ReflectionKind.number });
+
         const review = new Review(user, book);
         review.status = ReviewStatus.hidden;
         await database.persist(user, book, review);
@@ -666,7 +681,6 @@ export const bookstoreTests = {
             expect(review.status).toBe(ReviewStatus.hidden);
         }
     },
-
 
     async atomic(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);

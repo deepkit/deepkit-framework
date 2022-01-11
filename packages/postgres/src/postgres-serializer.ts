@@ -8,7 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { sqlSerializer } from '@deepkit/sql';
+import { SqlSerializer } from '@deepkit/sql';
 
-export const postgresSerializer = new class extends sqlSerializer.fork('postgres') {
-};
+class PostgresSerializer extends SqlSerializer {
+    name = 'postgres';
+}
+
+export const postgresSerializer = new PostgresSerializer();

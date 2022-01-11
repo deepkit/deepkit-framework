@@ -416,7 +416,6 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
 
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
         // if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
-
         const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
         const primaryKey = this.classSchema.getPrimary();
         const pkName = primaryKey.name;
@@ -475,7 +474,7 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         }
 
         for (const i of model.returning) {
-            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.serializeRegistry) };
+            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.deserializeRegistry) };
             select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
         }
 
@@ -549,9 +548,7 @@ export class SQLiteDatabaseQueryFactory extends SQLDatabaseQueryFactory {
         super(connectionPool, platform, databaseSession);
     }
 
-    createQuery<T extends OrmEntity>(
-        classType: ClassType<T> | ReflectionClass<T>
-    ): SQLiteDatabaseQuery<T> {
+    createQuery<T extends OrmEntity>(classType: ClassType<T> | ReflectionClass<T>): SQLiteDatabaseQuery<T> {
         return new SQLiteDatabaseQuery(ReflectionClass.from(classType), this.databaseSession,
             new SQLiteQueryResolver(this.connectionPool, this.platform, ReflectionClass.from(classType), this.databaseSession)
         );

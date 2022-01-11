@@ -98,7 +98,6 @@ import {
     TupleTypeNode,
     TypeAliasDeclaration,
     TypeChecker,
-    TypeElement,
     TypeLiteralNode,
     TypeNode,
     TypeOperatorNode,
@@ -119,6 +118,7 @@ import {
     isNodeWithLocals,
     NodeConverter,
     PackExpression,
+    serializeEntityNameAsExpression,
 } from './reflection-ast';
 import { EmitHost, EmitResolver, SourceFile } from './ts-types';
 import { existsSync, readFileSync } from 'fs';
@@ -863,12 +863,6 @@ export class ReflectionTransformer {
             case SyntaxKind.InterfaceDeclaration: {
                 //TypeScript does not narrow types down
                 const narrowed = node as TypeLiteralNode | InterfaceDeclaration;
-
-                //interface X {name: string, [indexName: string]: string}
-                //{name: string, [indexName: string]: string};
-                //extract all members + from all parents
-                const members: TypeElement[] = [];
-
                 program.pushFrame();
 
                 //first all extend expressions
@@ -883,12 +877,6 @@ export class ReflectionTransformer {
                 }
 
                 for (const member of narrowed.members) {
-                    const name = getNameAsString(member.name);
-                    if (name) {
-                        const has = members.some(v => getNameAsString(v.name) === name);
-                        if (has) continue;
-                    }
-                    members.push(member);
                     this.extractPackStructOfType(member, program);
                 }
                 program.pushOp(ReflectionOp.objectLiteral);
@@ -1222,7 +1210,8 @@ export class ReflectionTransformer {
                     }
                 }
 
-                program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, this.f.createIdentifier(getNameAsString(narrowed.exprName)))));
+                const expression = program.importSpecifier ? this.f.createIdentifier(getNameAsString(narrowed.exprName)) : serializeEntityNameAsExpression(this.f, narrowed.exprName);
+                program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, expression)));
                 break;
             }
             case SyntaxKind.TypeOperator: {

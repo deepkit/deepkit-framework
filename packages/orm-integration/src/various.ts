@@ -12,7 +12,7 @@ export const variousTests = {
     async testRawQuery(databaseFactory: DatabaseFactory) {
         @entity.name('test_connection_user')
         class user {
-            id!: number & PrimaryKey & AutoIncrement;
+            id: number & PrimaryKey & AutoIncrement = 0;
             username!: string;
         }
 
@@ -73,7 +73,7 @@ export const variousTests = {
     async testRawWhere(databaseFactory: DatabaseFactory) {
         @entity.name('test_connection_user')
         class user {
-            id!: number & PrimaryKey & AutoIncrement;
+            id: number & PrimaryKey & AutoIncrement = 0;
             username!: string;
         }
 
@@ -110,7 +110,6 @@ export const variousTests = {
 
             {
                 const result = await database.query(user).sqlSelect(sql`count(*) as count`).findOne();
-                console.log('result', result);
                 expect(result.count).toBe(3);
             }
         }
@@ -307,7 +306,7 @@ export const variousTests = {
 
         await expect(async () => {
             await database.persist(new User('Peter2'));
-            await database.query(User).filter({username: 'Peter2'}).patchOne({username: 'Peter'});
+            await database.query(User).filter({ username: 'Peter2' }).patchOne({ username: 'Peter' });
         }).rejects.toThrow(UniqueConstraintFailure);
     }
 };

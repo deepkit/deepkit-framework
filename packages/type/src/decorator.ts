@@ -84,6 +84,10 @@ class EntityDecorator {
         this.t.collectionName = name;
     }
 
+    databaseSchema(name: string) {
+        this.t.databaseSchemaName = name;
+    }
+
     index(names: string[], options: IndexOptions = {}) {
         this.t.indexes.push({ names, options });
     }
@@ -106,7 +110,7 @@ interface DeferredDecorator {
     parameterIndexOrDescriptor?: any;
 }
 
-export function isWithDeferredDecorators(obj: any): obj is {__decorators: DeferredDecorator[]} {
+export function isWithDeferredDecorators(obj: any): obj is { __decorators: DeferredDecorator[] } {
     return obj && '__decorators' in obj && isArray(obj.__decorators);
 }
 

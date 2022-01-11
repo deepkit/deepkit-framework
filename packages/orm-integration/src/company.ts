@@ -35,10 +35,10 @@ class Project {
     }
 }
 
-const entities = [Employee, Freelancer, Project];
+const entities = [Employee, Freelancer, Project, Person];
 
 export const companyTests = {
-    async tableLevelInheritance(databaseFactory: DatabaseFactory) {
+    async tableLevelInheritanceBasics(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
 
         const freelance1 = cast<Freelancer>({ firstName: 'Peter' });
@@ -86,7 +86,15 @@ export const companyTests = {
         const database = await databaseFactory(entities);
 
         const peter = cast<Freelancer>({ firstName: 'Peter' });
-        await database.persist(peter, cast<Freelancer>({ firstName: 'Marie' }), cast<Employee>({ firstName: 'Marc' }), cast<Employee>({ firstName: 'Lui' }));
+        expect(peter.firstName).toBe('Peter')
+
+        const marie = cast<Freelancer>({ firstName: 'Marie' });
+        expect(marie.firstName).toBe('Marie')
+
+        const marc = cast<Employee>({ firstName: 'Marc' });
+        expect(marc.firstName).toBe('Marc')
+
+        await database.persist(peter, marie, marc, cast<Employee>({ firstName: 'Lui' }));
 
         {
             const project = new Project(peter, 'My project');

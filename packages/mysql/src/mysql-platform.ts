@@ -10,15 +10,16 @@
 
 import { Pool } from 'mariadb';
 import { mySqlSerializer } from './mysql-serializer';
-import { MySQLOptions, PropertySchema } from '@deepkit/type';
-import { Column, DefaultPlatform, parseType } from '@deepkit/sql';
+import { isUUIDType, ReflectionKind, ReflectionProperty, Serializer, TypeNumberBrand } from '@deepkit/type';
+import { Column, DefaultPlatform, isSet } from '@deepkit/sql';
 import { MysqlSchemaParser } from './mysql-schema-parser';
 
 export class MySQLPlatform extends DefaultPlatform {
-    protected defaultSqlType = 'longtext';
-    schemaParserType = MysqlSchemaParser;
+    protected override defaultSqlType = 'longtext';
+    protected override annotationId = 'mysql';
+    override schemaParserType = MysqlSchemaParser;
 
-    public readonly serializer = mySqlSerializer;
+    public override readonly serializer: Serializer = mySqlSerializer;
 
     constructor(protected pool: Pool) {
         super();
@@ -27,31 +28,58 @@ export class MySQLPlatform extends DefaultPlatform {
         this.nativeTypeInformation.set('longtext', { needsIndexPrefix: true, defaultIndexSize: 767 });
         this.nativeTypeInformation.set('longblob', { needsIndexPrefix: true, defaultIndexSize: 767 });
 
-        this.addType('number', 'double');
-        this.addType('date', 'datetime');
-        this.addType('boolean', 'tinyint', 1);
-        this.addType('uuid', 'binary', 16);
+        this.addType(ReflectionKind.class, 'json');
+        this.addType(ReflectionKind.array, 'json');
+        this.addType(ReflectionKind.union, 'json');
 
-        this.addType('class', 'json');
-        this.addType('array', 'json');
-        this.addType('union', 'json');
-        this.addType('partial', 'json');
-        this.addType('map', 'json');
-        this.addType('record', 'json');
-        this.addType('patch', 'json');
-        this.addType('enum', 'json');
+        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.number, 'integer');
+        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.string, 'VARCHAR', 255);
+        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.union, 'json');
+
+        this.addType(ReflectionKind.number, 'double');
+        this.addType(ReflectionKind.bigint, 'bigint');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.integer, 'int');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.int8, 'tinyint');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.uint8, 'tinyint', undefined, undefined, true);
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.int16, 'smallint');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.uint16, 'smallint', undefined, undefined, true);
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.int32, 'int');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.uint32, 'int', undefined, undefined, true);
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float32, 'float');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float64, 'double');
+        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float, 'double');
+
+        this.addType(type => type.kind === ReflectionKind.class && type.classType === Date, 'datetime');
+        this.addType(ReflectionKind.boolean, 'tinyint', 1);
+        this.addType(isUUIDType, 'binary', 16);
 
         this.addBinaryType('longblob');
     }
 
-    protected setColumnType(column: Column, typeProperty: PropertySchema) {
-        const db = (typeProperty.data['mysql'] || {}) as MySQLOptions;
-        if (db.type) {
-            parseType(column, db.type);
-            return;
-        }
-
+    protected setColumnType(column: Column, typeProperty: ReflectionProperty) {
         super.setColumnType(column, typeProperty);
+
+        if (column.type && (column.defaultExpression !== undefined || column.defaultValue !== undefined)) {
+            const typesWithoutDefault = ['blob', 'longblob', 'longtext', 'text', 'geometry', 'json'];
+            //BLOB, TEXT, GEOMETRY or JSON column 'content' can't have a default value
+            if (typesWithoutDefault.includes(column.type)) {
+                column.defaultValue = undefined;
+                column.defaultExpression = undefined;
+            }
+        }
+    }
+
+    getColumnDDL(column: Column) {
+        const ddl: string[] = [];
+
+        ddl.push(this.getIdentifier(column));
+        ddl.push((column.type || 'INTEGER') + column.getSizeDefinition());
+        if (column.unsigned) ddl.push('UNSIGNED');
+        ddl.push(this.getColumnDefaultValueDDL(column));
+        ddl.push(column.isNotNull ? this.getNotNullString() : this.getNullString());
+        if (column.isAutoIncrement) ddl.push(this.getAutoIncrement());
+
+        return ddl.filter(isSet).join(' ');
     }
 
     quoteValue(value: any): string {

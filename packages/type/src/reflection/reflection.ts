@@ -208,6 +208,16 @@ export function visit(type: Type, visitor: (type: Type, path: string, parent?: T
     stack.pop();
 }
 
+function hasFunctionExpression(fn: Function): boolean {
+    let code = fn.toString();
+    if (code.startsWith('() => ')) code = code.slice('() => '.length)
+    if (code.startsWith('function() { return ')) code = code.slice('function() { return '.length)
+    if (code[0] === '\'' && code[code.length - 1] === '\'') return false;
+    if (code[0] === '"' && code[code.length - 1] === '"') return false;
+    if (code[0] === '`' && code[code.length - 1] === '`') return false;
+    return code.includes('(');
+}
+
 export class ReflectionParameter {
     type: Type;
 
@@ -242,6 +252,10 @@ export class ReflectionParameter {
         if (this.parameter.default !== undefined) {
             return this.parameter.default();
         }
+    }
+
+    hasDefaultFunctionExpression(): boolean {
+        return !!(this.parameter.default && hasFunctionExpression(this.parameter.default));
     }
 
     applyDecorator(t: TData) {
@@ -403,6 +417,18 @@ export class ReflectionFunction {
     getName(): number | string | symbol | undefined {
         return this.type.name;
     }
+}
+
+export function resolveForeignReflectionClass(property: ReflectionProperty): ReflectionClass<any> {
+    if (property.isReference()) return property.getResolvedReflectionClass();
+    if (property.isBackReference()) {
+        if (property.isArray()) {
+            return resolveClassType(property.getSubType());
+        }
+        return property.getResolvedReflectionClass();
+    }
+
+    throw new Error(`Property ${property.name} is neither a Reference nor a BackReference.`);
 }
 
 /**
@@ -641,6 +667,10 @@ export class ReflectionProperty {
         }
     }
 
+    hasDefaultFunctionExpression(): boolean {
+        return !!(this.property.kind === ReflectionKind.property && this.property.default && hasFunctionExpression(this.property.default));
+    }
+
     getDefaultValueFunction(): (() => any) | undefined {
         if (this.property.kind === ReflectionKind.property && this.property.default !== undefined) {
             return this.property.default;
@@ -683,6 +713,7 @@ export class TData {
 export class EntityData {
     name?: string;
     collectionName?: string;
+    databaseSchemaName?: string;
     data: { [name: string]: any } = {};
     indexes: { names: string[], options: IndexOptions }[] = [];
     singleTableInheritance?: true;
@@ -727,6 +758,9 @@ export class ReflectionClass<T> {
      */
     collectionName?: string;
 
+    /**
+     * True when @entity.singleTableInheritance was set.
+     */
     singleTableInheritance: boolean = false;
 
     /**
@@ -776,6 +810,10 @@ export class ReflectionClass<T> {
         if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) throw new Error('Only class, interface, or object literal type possible');
         this.type = type;
         if (parent) {
+            this.name = parent.name;
+            this.collectionName = parent.collectionName;
+            this.databaseSchemaName = parent.databaseSchemaName;
+
             for (const member of parent.getProperties()) {
                 this.addProperty(member.clone(this));
             }
@@ -790,13 +828,15 @@ export class ReflectionClass<T> {
 
         const entityOptions = entityAnnotation.getFirst(this.type);
         if (entityOptions) {
-            this.name = entityOptions.name;
-            this.collectionName = entityOptions.collection;
+            if (entityOptions.name !== undefined) this.name = entityOptions.name;
+            if (entityOptions.collection !== undefined) this.collectionName = entityOptions.collection;
+            if (entityOptions.databaseSchema !== undefined) this.databaseSchemaName = entityOptions.databaseSchema;
         }
 
         //apply decorators
         if (type.kind === ReflectionKind.class && isWithDeferredDecorators(type.classType)) {
             for (const decorator of type.classType.__decorators) {
+                if (decorator.target !== type.classType) continue;
                 const { data, property, parameterIndexOrDescriptor } = decorator;
                 if (property === undefined && parameterIndexOrDescriptor === undefined) {
                     this.applyDecorator(data);
@@ -864,7 +904,9 @@ export class ReflectionClass<T> {
     }
 
     getPrimary(): ReflectionProperty {
-        if (!this.primaries.length) throw new Error(`Class ${this.getClassName()} has no primary key.`);
+        if (!this.primaries.length) {
+            throw new Error(`Class ${this.getClassName()} has no primary key.`);
+        }
         return this.primaries[0];
     }
 
@@ -987,12 +1029,16 @@ export class ReflectionClass<T> {
 
     applyDecorator(data: EntityData) {
         Object.assign(this.data, data.data);
-        this.name = data.name;
-        this.collectionName = data.collectionName;
+        if (data.name !== undefined) this.name = data.name;
+        if (data.collectionName !== undefined) this.collectionName = data.collectionName;
+        if (data.databaseSchemaName !== undefined) this.databaseSchemaName = data.databaseSchemaName;
+
         this.indexes = data.indexes;
         if (data.singleTableInheritance) {
             this.singleTableInheritance = true;
             if (this.parent) {
+                //the subclass is only added when really needed (e.g. for tracking childs of a single table inheritance setup) otherwise it's a memory leak when a lot of classes
+                //are dynamically created.
                 this.parent.subClasses.push(this);
             }
         }
@@ -1004,7 +1050,11 @@ export class ReflectionClass<T> {
 
         if (classTypeIn instanceof ReflectionClass) return classTypeIn;
         if (isType(classTypeIn)) {
-            if (classTypeIn.kind === ReflectionKind.objectLiteral) return new ReflectionClass<T>(classTypeIn);
+            if (classTypeIn.kind === ReflectionKind.objectLiteral) {
+                const jit = getTypeJitContainer(classTypeIn);
+                if (jit.reflectionClass) return jit.reflectionClass;
+                return jit.reflectionClass = new ReflectionClass<T>(classTypeIn);
+            }
             if (classTypeIn.kind !== ReflectionKind.class) throw new Error(`TypeClass or TypeObjectLiteral expected, not ${classTypeIn.kind}`);
         }
 

@@ -231,7 +231,6 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
     async find(model: SQLQueryModel<T>): Promise<T[]> {
         const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
         const sqlBuilder = new SqlBuilder(this.platform);
-        // console.log('find', model);
         const sql = sqlBuilder.select(this.classSchema, model);
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
@@ -261,6 +260,7 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
 
             return results;
         } catch (error) {
+            throw error;
             throw new DatabaseError(`Could not query ${this.classSchema.getClassName()} due to SQL error ${error}.\nSQL: ${sql.sql}\nParams: ${JSON.stringify(sql.params)}`);
         } finally {
             connection.release();

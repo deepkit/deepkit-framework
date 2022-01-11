@@ -8,7 +8,20 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, CompilerContext, CustomError, getClassName, isArray, isFunction, isInteger, isIterable, isNumeric, isObject, toFastProperties } from '@deepkit/core';
+import {
+    ClassType,
+    CompilerContext,
+    CustomError,
+    getClassName,
+    isArray,
+    isFunction,
+    isInteger,
+    isIterable,
+    isNumeric,
+    isObject,
+    stringifyValueWithType,
+    toFastProperties
+} from '@deepkit/core';
 import {
     AnnotationDefinition,
     binaryTypes,
@@ -18,12 +31,15 @@ import {
     excludedAnnotation,
     FindType,
     getConstructorProperties,
+    getPropertiesOfClassOrObject,
     getTypeJitContainer,
+    getTypeObjectLiteralFromTypeClass,
     hasDefaultValue,
     hasEmbedded,
+    isMongoIdType,
     isNullable,
     isOptional,
-    mongoIdAnnotation,
+    isUUIDType,
     OuterType,
     referenceAnnotation,
     ReflectionKind,
@@ -40,7 +56,6 @@ import {
     TypePropertySignature,
     TypeTuple,
     TypeUnion,
-    uuidAnnotation,
     validationAnnotation
 } from './reflection/type';
 import { hasCircularReference, ReflectionClass, ReflectionProperty } from './reflection/reflection';
@@ -49,7 +64,7 @@ import { resolveRuntimeType } from './reflection/processor';
 import { createReference, isReferenceHydrated, isReferenceInstance } from './reference';
 import { ValidationFailedItem } from './validator';
 import { validators } from './validators';
-import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64 } from './core';
+import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core';
 
 export class NamingStrategy {
     protected static ids: number = 0;
@@ -74,12 +89,13 @@ export type SerializeFunction = (data: any, state?: SerializationOptions) => any
 export function getPartialSerializeFunction(type: TypeClass | TypeObjectLiteral, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy()) {
     const jitContainer = getTypeJitContainer(type);
     if (!jitContainer.partialType) {
-        jitContainer.partialType = copyAndSetParent(type);
-        for (const member of jitContainer.partialType.types) {
+        type = copyAndSetParent(type);
+        for (const member of type.types) {
             if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
                 member.optional = true;
             }
         }
+        jitContainer.partialType = getTypeObjectLiteralFromTypeClass(type);
     }
     return getSerializeFunction(jitContainer.partialType, registry, namingStrategy);
 }
@@ -106,11 +122,17 @@ export function createSerializeFunction(type: OuterType, registry: TemplateRegis
         state.target = 'deserialize';
     }
 
+    compiler.context.set('_global', typeSettings);
+    //set unpopulatedCheck to ReturnSymbol to jump over those properties
+    compiler.context.set('UnpopulatedCheckReturnSymbol', UnpopulatedCheck.ReturnSymbol);
+
     const code = `
         var result;
         state = state ? state : {};
-        state.depth = 0;
+        var oldUnpopulatedCheck = _global.unpopulatedCheck;
+        _global.unpopulatedCheck = UnpopulatedCheckReturnSymbol;
         ${executeTemplates(state, type)}
+        _global.unpopulatedCheck = oldUnpopulatedCheck;
         return result;
     `;
 
@@ -144,11 +166,18 @@ export function createTypeGuardFunction(type: Type, state?: TemplateState, seria
     for (const hook of state.registry.postHooks) hook(type, state);
     for (const hook of state.registry.getDecorator(type)) hook(type, state);
 
+    compiler.context.set('_global', typeSettings);
+    //set unpopulatedCheck to ReturnSymbol to jump over those properties
+    compiler.context.set('UnpopulatedCheckReturnSymbol', UnpopulatedCheck.ReturnSymbol);
+
     const code = `
         var result;
         if (_path === undefined) _path = '';
         state = state ? state : {};
+        var oldUnpopulatedCheck = _global.unpopulatedCheck;
+        _global.unpopulatedCheck = UnpopulatedCheckReturnSymbol;
         ${state.template}
+        _global.unpopulatedCheck = oldUnpopulatedCheck;
         return result === true;
     `;
     return compiler.build(code, 'data', 'state', '_path', 'property');
@@ -333,9 +362,9 @@ export class TemplateState {
     }
 
     throwCode(type: OuterType | string, error?: string, accessor: string | ContainerAccessor = this.originalAccessor) {
-        this.setContext({ SerializationError });
+        this.setContext({ SerializationError, stringifyValueWithType });
         const to = JSON.stringify(('string' === typeof type ? type : stringifyShortResolvedType(type)).replace(/\n/g, '').replace(/\s+/g, ' ').trim());
-        return `throw new SerializationError('Cannot convert ' + ${accessor} + ' to ' + ${to} ${error ? ` + '. ' + ${error}` : ''}, ${collapsePath(this.path)});`;
+        return `throw new SerializationError('Cannot convert ' + stringifyValueWithType(${accessor}) + ' to ' + ${to} ${error ? ` + '. ' + ${error}` : ''}, ${collapsePath(this.path)});`;
     }
 
     /**
@@ -401,12 +430,17 @@ export function noopTemplate(type: Type, state: TemplateState): void {
     state.addSetter(state.accessor);
 }
 
+interface TemplateDecorator {
+    predicate: (type: OuterType) => boolean,
+    template: Template<any>
+}
+
 export class TemplateRegistry {
     protected static ids: number = 0;
     id: number = TemplateRegistry.ids++;
 
     protected templates: { [kind in ReflectionKind]?: Template<any>[] } = {};
-    protected decorator: { [kind in ReflectionKind]?: Template<any>[] } = {};
+    protected decorator: TemplateDecorator[] = [];
 
     public preHooks: TemplateHook[] = [];
     public postHooks: TemplateHook[] = [];
@@ -432,7 +466,7 @@ export class TemplateRegistry {
     }
 
     getDecorator(type: Type): Template<Type>[] {
-        return this.decorator[type.kind] ||= [];
+        return this.decorator.filter(v => v.predicate(type as OuterType)).map(v => v.template);
     }
 
     /**
@@ -501,9 +535,15 @@ export class TemplateRegistry {
      * This allows to fetch only decorator templates and decide upon the result whether additional code is necessary or not. (this would not be possible
      * if everything is added to the `register` call that does always the basic checks).
      */
-    addDecorator<T extends ReflectionKind>(kind: T, template: Template<FindType<Type, T>>) {
-        this.decorator[kind] ||= [];
-        this.decorator[kind]!.push(template);
+    addDecorator(predicate: (type: OuterType) => boolean, template: Template<OuterType>) {
+        this.decorator.push({ predicate, template });
+    }
+
+    /**
+     * Removes all registered decorators for a certain type.
+     */
+    removeDecorator(type: OuterType) {
+        this.decorator = this.decorator.filter(v => !v.predicate(type));
     }
 
     prepend<T extends ReflectionKind>(kind: T, template: Template<FindType<Type, T>>) {
@@ -560,12 +600,10 @@ export function buildFunction(state: TemplateState, type: Type): Function {
         if (_path === undefined) _path = '';
         ${circularCheckBeginning}
         state = state ? state : {};
-        state.depth++;
         ${state.template}
 
         ${circularCheckEnd}
 
-        state.depth--;
         return result;
     `;
     return state.compilerContext.build(code, 'data', 'state', '_path');
@@ -638,6 +676,7 @@ export function createConverterJSForMember(
 
     //todo: clean that up. Way too much code for that simple functionality
 
+    state.setContext({ unpopulatedSymbol });
     //note: this code is only reached when ${accessor} was actually defined checked by the 'in' operator.
     return `
         if (${state.accessor} === undefined) {
@@ -655,7 +694,7 @@ export function createConverterJSForMember(
                     ${undefinedSetterCode}
                 }
             }
-        } else {
+        } else if (${state.accessor} !== unpopulatedSymbol)  {
             ${convert}
             ${postTransform}
         }
@@ -819,12 +858,14 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
 
     if (referenceAnnotation.hasAnnotations(type) && !state.isAnnotationHandled(referenceAnnotation)) {
         state.annotationHandled(referenceAnnotation);
-        state.setContext({ isObject, createReference, isReferenceHydrated });
+        state.setContext({ isObject, createReference, isReferenceHydrated, isReferenceInstance });
         const reflection = ReflectionClass.from(type.classType);
         const referenceClassTypeVar = state.setVariable('referenceClassType', type.classType);
         // in deserialization a reference is created when only the primary key is provided (no object given)
         state.replaceTemplate(`
-            if (isObject(${state.accessor})) {
+            if (isReferenceInstance(${state.accessor})) {
+                ${state.setter} = ${state.accessor};
+            } else if (isObject(${state.accessor})) {
                 ${state.template}
             } else {
                 let pk;
@@ -966,7 +1007,8 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     const signatures: TypeIndexSignature[] = [];
     const existing: string[] = [];
 
-    for (const member of type.types) {
+    const properties = getPropertiesOfClassOrObject(type);
+    for (const member of properties) {
         if (member.kind === ReflectionKind.indexSignature) {
             if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
             signatures.push(member);
@@ -1024,20 +1066,22 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         ${state.setter} = ${v};
     `);
 
-    if (type.kind === ReflectionKind.class) {
-        if (referenceAnnotation.hasAnnotations(type) && !state.isAnnotationHandled(referenceAnnotation)) {
-            state.annotationHandled(referenceAnnotation);
-            state.setContext({ isObject, isReferenceInstance, isReferenceHydrated });
-            const reflection = ReflectionClass.from(type.classType);
-            //the primary key is serialised for unhydrated references
-            state.replaceTemplate(`
-            if (isReferenceInstance(${state.accessor}) && !isReferenceHydrated(${state.accessor})) {
-                ${executeTemplates(state.fork(state.setter, new ContainerAccessor(state.accessor, JSON.stringify(reflection.getPrimary().getName()))), reflection.getPrimary().getType())}
-            } else {
-                ${state.template}
-            }
-            `);
+    if (referenceAnnotation.hasAnnotations(type) && !state.isAnnotationHandled(referenceAnnotation)) {
+        state.annotationHandled(referenceAnnotation);
+        state.setContext({ isObject, isReferenceInstance, isReferenceHydrated });
+        const reflection = ReflectionClass.from(type);
+        //the primary key is serialised for unhydrated references
+
+        //when in deserialization a referenced is passed as is
+        const keepReference = state.isDeserialization ? `if (isReferenceInstance(${state.accessor})) {${state.setter} = ${state.accessor};} else ` : '';
+
+        state.replaceTemplate(`
+        ${keepReference} if (isReferenceInstance(${state.accessor}) && !isReferenceHydrated(${state.accessor})) {
+            ${executeTemplates(state.fork(state.setter, new ContainerAccessor(state.accessor, JSON.stringify(reflection.getPrimary().getName()))), reflection.getPrimary().getType())}
+        } else {
+            ${state.template}
         }
+        `);
     }
 
     extract.setFunction(buildFunction(state, type));
@@ -1111,8 +1155,9 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 const optionalCheck = member.optional ? `&& ${propertyAccessor} !== undefined` : '';
                 existing.push(name);
 
+                state.setContext({ unpopulatedSymbol });
                 lines.push(`
-                if (${v} ${optionalCheck}) {
+                if (${v} ${optionalCheck} && ${propertyAccessor} !== unpopulatedSymbol) {
                     ${executeTemplates(propertyState,
                     member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
                         ? { kind: ReflectionKind.function, name: member.name, return: member.return, parameters: member.parameters }
@@ -1406,7 +1451,6 @@ function serializeTypeClassMap(type: TypeClass, state: TemplateState) {
 }
 
 export function serializeProperty(type: TypePropertySignature | TypeProperty | TypeParameter, state: TemplateState) {
-    //todo: handle optional and nullable
     if (type.optional) {
         state.addCode(`
             if (${state.accessor} === undefined) {
@@ -1656,19 +1700,19 @@ export class Serializer {
             state.addSetter(`'string' !== typeof ${state.accessor} ? ${state.accessor}+'' : ${state.accessor}`);
         });
 
-        this.deserializeRegistry.addDecorator(ReflectionKind.string, (type, state) => {
-            if (uuidAnnotation.getFirst(type)) {
-                const v = state.accessor;
-                const check = `${v}.length === 36 && ${v}[23] === '-' && ${v}[18] === '-' && ${v}[13] === '-' && ${v}[8] === '-'`;
-                state.addCode(`
-                    if (!(${check})) ${state.throwCode(type, JSON.stringify('Not a UUID'))}
-                `);
-            } else if (mongoIdAnnotation.getFirst(type)) {
-                const check = `${state.accessor}.length === 24`;
-                state.addCode(`
-                    if (!(${check})) ${state.throwCode(type, JSON.stringify('Not a MongoId (ObjectId)'))}
-                `);
-            }
+        this.deserializeRegistry.addDecorator(isUUIDType, (type, state) => {
+            const v = state.accessor;
+            const check = `${v}.length === 36 && ${v}[23] === '-' && ${v}[18] === '-' && ${v}[13] === '-' && ${v}[8] === '-'`;
+            state.addCode(`
+                if (!(${check})) ${state.throwCode(type, JSON.stringify('Not a UUID'))}
+            `);
+        });
+
+        this.deserializeRegistry.addDecorator(isMongoIdType, (type, state) => {
+            const check = `${state.accessor}.length === 24`;
+            state.addCode(`
+                if (!(${check})) ${state.throwCode(type, JSON.stringify('Not a MongoId (ObjectId)'))}
+            `);
         });
 
         this.serializeRegistry.register(ReflectionKind.templateLiteral, (type, state) => state.addSetter(state.accessor));
@@ -1692,10 +1736,11 @@ export class Serializer {
 
         this.serializeRegistry.register(ReflectionKind.enum, (type, state) => state.addSetter(state.accessor));
         this.deserializeRegistry.register(ReflectionKind.enum, (type, state) => {
-            state.addSetter(`${state.accessor}`);
-
-            //todo check for valid value
-            state.addCodeForSetter(`if (isNaN(${state.accessor})) ${state.throwCode('enum')}`);
+            const valuesVar = state.setVariable('values', type.values);
+            state.addCodeForSetter(`
+                ${state.setter} = ${state.accessor};
+                if (${valuesVar}.indexOf(${state.accessor}) === -1) ${state.throwCode('enum', `'No valid value of ' + ${valuesVar}.join(', ')`)}
+            `);
         });
 
         this.serializeRegistry.register(ReflectionKind.regexp, (type, state) => state.addSetter(`${state.accessor}.toString()`));
@@ -1787,14 +1832,13 @@ export class Serializer {
         this.typeGuards.register(1, ReflectionKind.string, (type, state) => {
             state.addSetterAndReportErrorIfInvalid('type', 'Not a string', `'string' === typeof ${state.accessor}`);
         });
-        this.typeGuards.getRegistry(1).addDecorator(ReflectionKind.string, (type, state) => {
-            if (uuidAnnotation.getFirst(type)) {
-                const v = state.originalAccessor;
-                const check = `${state.setter} && ${v}.length === 36 && ${v}[23] === '-' && ${v}[18] === '-' && ${v}[13] === '-' && ${v}[8] === '-'`;
-                state.addSetterAndReportErrorIfInvalid('type', 'Not a UUID', check);
-            } else if (mongoIdAnnotation.getFirst(type)) {
-                state.addSetterAndReportErrorIfInvalid('type', 'Not a MongoId (ObjectId)', `${state.setter} && ${state.originalAccessor}.length === 24`);
-            }
+        this.typeGuards.getRegistry(1).addDecorator(isUUIDType, (type, state) => {
+            const v = state.originalAccessor;
+            const check = `${state.setter} && ${v}.length === 36 && ${v}[23] === '-' && ${v}[18] === '-' && ${v}[13] === '-' && ${v}[8] === '-'`;
+            state.addSetterAndReportErrorIfInvalid('type', 'Not a UUID', check);
+        });
+        this.typeGuards.getRegistry(1).addDecorator(isMongoIdType, (type, state) => {
+            state.addSetterAndReportErrorIfInvalid('type', 'Not a MongoId (ObjectId)', `${state.setter} && ${state.originalAccessor}.length === 24`);
         });
         this.typeGuards.register(50, ReflectionKind.string, (type, state) => state.addSetter(`true`)); //at the end, everything can be converted to string
 

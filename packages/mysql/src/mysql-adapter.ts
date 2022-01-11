@@ -22,11 +22,12 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from '@deepkit/sql';
-import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, Entity, PatchResult, UniqueConstraintFailure } from '@deepkit/orm';
+import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, PatchResult, UniqueConstraintFailure } from '@deepkit/orm';
 import { MySQLPlatform } from './mysql-platform';
-import { Changes, ClassSchema, getClassSchema, getPropertyXtoClassFunction, isArray, resolvePropertySchema } from '@deepkit/type';
-import { asyncOperation, ClassType, empty } from '@deepkit/core';
+import { Changes, getPartialSerializeFunction, getSerializeFunction, ReflectionClass, resolvePath } from '@deepkit/type';
+import { asyncOperation, ClassType, empty, isArray } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+import { OrmEntity } from '@deepkit/orm/dist/cjs/src/type';
 
 function handleError(error: Error | string): void {
     const message = 'string' === typeof error ? error : error.message;
@@ -52,7 +53,7 @@ export class MySQLStatement extends SQLStatement {
             });
             this.logger.logQuery(this.sql, params);
             return rows[0];
-        } catch (error) {
+        } catch (error: any) {
             handleError(error);
             this.logger.failedQuery(error, this.sql, params);
             throw error;
@@ -72,7 +73,7 @@ export class MySQLStatement extends SQLStatement {
             });
             this.logger.logQuery(this.sql, params);
             return rows;
-        } catch (error) {
+        } catch (error: any) {
             handleError(error);
             this.logger.failedQuery(error, this.sql, params);
             throw error;
@@ -112,7 +113,7 @@ export class MySQLConnection extends SQLConnection {
             const res = (await this.connection.query(sql, params)) as UpsertResult[] | UpsertResult;
             this.logger.logQuery(sql, params);
             this.lastExecResult = isArray(res) ? res : [res];
-        } catch (error) {
+        } catch (error: any) {
             handleError(error);
             this.logger.failedQuery(error, sql, params);
             throw error;
@@ -222,10 +223,10 @@ export class MySQLPersistence extends SQLPersistence {
         super(platform, connectionPool, session);
     }
 
-    async batchUpdate<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
-        const scopeSerializer = this.platform.serializer.for(classSchema);
+    async batchUpdate<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+        const partialSerialize = getPartialSerializeFunction(classSchema.type, this.platform.serializer.serializeRegistry);
         const tableName = this.platform.getTableIdentifier(classSchema);
-        const pkName = classSchema.getPrimaryField().name;
+        const pkName = classSchema.getPrimary().name;
         const pkField = this.platform.quoteIdentifier(pkName);
 
         const values: { [name: string]: any[] } = {};
@@ -239,7 +240,7 @@ export class MySQLPersistence extends SQLPersistence {
         for (const changeSet of changeSets) {
             const where: string[] = [];
 
-            const pk = scopeSerializer.partialSerialize(changeSet.primaryKey);
+            const pk = partialSerialize(changeSet.primaryKey);
             for (const i in pk) {
                 if (!pk.hasOwnProperty(i)) continue;
                 where.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(pk[i])}`);
@@ -253,7 +254,7 @@ export class MySQLPersistence extends SQLPersistence {
             const id = changeSet.primaryKey[pkName];
 
             if (changeSet.changes.$set) {
-                const value = scopeSerializer.partialSerialize(changeSet.changes.$set);
+                const value = partialSerialize(changeSet.changes.$set);
                 for (const i in value) {
                     if (!value.hasOwnProperty(i)) continue;
                     if (!values[i]) {
@@ -376,8 +377,8 @@ export class MySQLPersistence extends SQLPersistence {
         }
     }
 
-    protected async populateAutoIncrementFields<T>(classSchema: ClassSchema<T>, items: T[]) {
-        const autoIncrement = classSchema.getAutoIncrementField();
+    protected async populateAutoIncrementFields<T>(classSchema: ReflectionClass<T>, items: T[]) {
+        const autoIncrement = classSchema.getAutoIncrement();
         if (!autoIncrement) return;
         const connection = await this.getConnection(); //will automatically be released in SQLPersistence
 
@@ -395,11 +396,11 @@ export class MySQLPersistence extends SQLPersistence {
     }
 }
 
-export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
+export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T> {
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
-        const primaryKey = this.classSchema.getPrimaryField();
+        const primaryKey = this.classSchema.getPrimary();
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
-        const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
+        const primaryKeyConverted = getSerializeFunction(primaryKey.property, this.platform.serializer.deserializeRegistry);
 
         const sqlBuilder = new SqlBuilder(this.platform);
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
@@ -429,14 +430,14 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         const select: string[] = [];
         const selectParams: any[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
-        const primaryKey = this.classSchema.getPrimaryField();
-        const primaryKeyConverted = getPropertyXtoClassFunction(primaryKey, this.platform.serializer);
+        const primaryKey = this.classSchema.getPrimary();
+        const primaryKeyConverted = getSerializeFunction(primaryKey.property, this.platform.serializer.deserializeRegistry);
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
 
-        const scopeSerializer = this.platform.serializer.for(this.classSchema);
-        const $set = changes.$set ? scopeSerializer.partialSerialize(changes.$set) : undefined;
+        const partialSerialize = getPartialSerializeFunction(this.classSchema.type, this.platform.serializer.serializeRegistry);
+        const $set = changes.$set ? partialSerialize(changes.$set) : undefined;
 
         if ($set) for (const i in $set) {
             if (!$set.hasOwnProperty(i)) continue;
@@ -452,14 +453,14 @@ export class MySQLQueryResolver<T extends Entity> extends SQLQueryResolver<T> {
         }
 
         for (const i of model.returning) {
-            aggregateFields[i] = { converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer) };
+            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.deserializeRegistry) };
             select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
         }
 
         if (changes.$inc) for (const i in changes.$inc) {
             if (!changes.$inc.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            aggregateFields[i] = { converted: getPropertyXtoClassFunction(resolvePropertySchema(this.classSchema, i), this.platform.serializer) };
+            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.serializeRegistry) };
             select.push(`(${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(i)}`);
         }
 
@@ -528,9 +529,9 @@ export class MySQLDatabaseQuery<T> extends SQLDatabaseQuery<T> {
 }
 
 export class MySQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
-    createQuery<T extends Entity>(classType: ClassType<T> | ClassSchema<T>): MySQLDatabaseQuery<T> {
-        return new MySQLDatabaseQuery(getClassSchema(classType), this.databaseSession,
-            new MySQLQueryResolver(this.connectionPool, this.platform, getClassSchema(classType), this.databaseSession)
+    createQuery<T extends OrmEntity>(classType: ClassType<T> | ReflectionClass<T>): MySQLDatabaseQuery<T> {
+        return new MySQLDatabaseQuery(ReflectionClass.from(classType), this.databaseSession,
+            new MySQLQueryResolver(this.connectionPool, this.platform, ReflectionClass.from(classType), this.databaseSession)
         );
     }
 }

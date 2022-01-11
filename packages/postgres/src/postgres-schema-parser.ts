@@ -8,17 +8,33 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseModel, ForeignKey, parseType, SchemaParser, Table } from '@deepkit/sql';
+import { isNumeric } from '@deepkit/core';
+import { Column, DatabaseModel, ForeignKey, parseType, SchemaParser, Table } from '@deepkit/sql';
 
 export class PostgresSchemaParser extends SchemaParser {
     protected defaultPrecisions = {
         'char': 1,
         'character': 1,
         'integer': 32,
+        'real': 24,
         'bigint': 64,
         'smallint': 16,
         'double precision': 53
     };
+
+    protected numberTypes: string[] = [
+        'smallint',
+        'integer',
+        'bigint',
+        'real',
+        'double precision',
+        'decimal',
+        'numeric',
+        'smallserial',
+        'serial',
+        'bigserial',
+    ];
+
 
     async parse(database: DatabaseModel, limitTableNames?: string[]) {
         await this.parseTables(database, limitTableNames);
@@ -135,22 +151,47 @@ export class PostgresSchemaParser extends SchemaParser {
 
             column.isNotNull = row.is_nullable === 'NO';
 
-            if ('string' === typeof row.column_default) {
-                if (row.column_default.includes('nextval(') && row.column_default.includes('::regclass')) {
-                    column.isAutoIncrement = true;
-                } else {
-                    try {
-                        column.defaultValue = JSON.parse(row.column_default);
-                    } catch {
-                    }
-                }
-            }
+            this.mapDefault(row.column_default, column);
 
             if (row.data_type.includes('SERIAL')) {
                 column.isAutoIncrement = true;
             }
         }
     }
+
+    protected mapDefault(dbDefault: any, column: Column) {
+        if (dbDefault === null || dbDefault === undefined) return;
+
+        if ('string' === typeof dbDefault && dbDefault.includes('nextval(') && dbDefault.includes('::regclass')) {
+            column.isAutoIncrement = true;
+            return;
+        }
+
+        const colonPos = dbDefault.indexOf('::');
+        if (colonPos !== -1) dbDefault = dbDefault.slice(0, colonPos);
+
+        if (column.type) {
+            if (isNumeric(dbDefault) && this.numberTypes.includes(column.type)) {
+                column.defaultValue = parseFloat(dbDefault);
+                return;
+            }
+
+            try {
+                //don't judge me
+                column.defaultValue = eval(dbDefault);
+                if (column.type === 'jsonb' || column.type === 'json') {
+                    column.defaultValue = JSON.parse(column.defaultValue);
+                }
+            } catch (error: any) {
+            }
+        }
+
+        if (dbDefault.includes('(')) {
+            column.defaultExpression = dbDefault;
+            return;
+        }
+    }
+
 
     protected async parseTables(database: DatabaseModel, limitTableNames?: string[]) {
         const rows = await this.connection.execAndReturnAll(`

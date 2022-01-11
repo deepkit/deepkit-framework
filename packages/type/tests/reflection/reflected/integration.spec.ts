@@ -947,7 +947,7 @@ test('interface entity', () => {
 
     const reflection = ReflectionClass.from(typeOf<User>());
     const entityOptions = entityAnnotation.getFirst(reflection.type);
-    expect(entityOptions).toEqual({name: 'user', collection: 'users'});
+    expect(entityOptions).toEqual({ name: 'user', collection: 'users' });
     expect(reflection.name).toBe('user');
     expect(reflection.collectionName).toBe('users');
 });
@@ -1659,4 +1659,41 @@ test('reference types decorators correct', () => {
     expect(user.getProperty('id').isAutoIncrement()).toBe(true);
     expect(user.getPrimary() === user.getProperty('id')).toBe(true);
     expect(user.getAutoIncrement() === user.getProperty('id')).toBe(true);
+});
+
+test('singleTableInheritance', () => {
+    @entity.collection('persons')
+    abstract class Person {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        firstName?: string;
+        lastName?: string;
+        abstract type: string;
+    }
+
+    @entity.singleTableInheritance()
+    class Employee extends Person {
+        email?: string;
+
+        type: 'employee' = 'employee';
+    }
+
+    @entity.singleTableInheritance()
+    class Freelancer extends Person {
+        @t budget: number = 10_000;
+
+        type: 'freelancer' = 'freelancer';
+    }
+
+    const person = ReflectionClass.from(Person);
+    const employee = ReflectionClass.from(Employee);
+    const freelancer = ReflectionClass.from(Freelancer);
+
+    expect(person.singleTableInheritance).toBe(false);
+    expect(person.collectionName).toBe('persons');
+    expect(employee.singleTableInheritance).toBe(true);
+    expect(employee.collectionName).toBe('persons'); //todo: this should be inherited?
+    expect(freelancer.singleTableInheritance).toBe(true);
+
+    const discriminant = person.getSingleTableInheritanceDiscriminantName();
+    expect(discriminant).toBe('type');
 });

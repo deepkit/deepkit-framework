@@ -10,11 +10,16 @@
 
 import {
     ContainerAccessor,
+    deserializeClass,
     executeTemplates,
+    isReferenceType,
+    isUUIDType,
     nodeBufferToArrayBuffer,
+    nodeBufferToTypedArray,
     referenceAnnotation,
     ReflectionClass,
     ReflectionKind,
+    serializeObjectLiteral,
     Serializer,
     TemplateState,
     Type,
@@ -46,7 +51,7 @@ function serializeSqlArray(type: TypeArray, state: TemplateState) {
     if (!isParentIsProperty(type)) return;
 
     state.setContext({ stringify: JSON.stringify });
-    state.addSetter(`state.depth === 0 ? stringify(${state.accessor}) : ${state.accessor}`);
+    state.addSetter(`stringify(${state.accessor})`);
 }
 
 /**
@@ -57,7 +62,7 @@ function deserializeSqlArray(type: TypeArray, state: TemplateState) {
 
     if (!isParentIsProperty(type)) return;
 
-    state.addSetter(`state.depth === 0 && 'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor}`);
+    state.addSetter(`'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor}`);
 }
 
 /**
@@ -68,8 +73,27 @@ function serializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state: T
 
     if (!isParentIsProperty(type)) return;
 
+    //TypeClass|TypeObjectLiteral properties are serialized as JSON
     state.setContext({ stringify: JSON.stringify });
-    state.addSetter(`state.depth === 0 ? stringify(${state.accessor}) : ${state.accessor}`);
+    state.addSetter(`stringify(${state.accessor})`);
+}
+
+/**
+ * For sql databases, objects will be serialised as JSON string. So deserialize it correctly
+ */
+function deserializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state: TemplateState) {
+    if (!isReferenceType(type) && isParentIsProperty(type)) {
+        //TypeClass|TypeObjectLiteral properties are serialized as JSON
+        state.setContext({ jsonParse: JSON.parse });
+        state.addSetter(`${state.accessor} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor}`);
+    }
+
+    //apply regular class/object deserializer
+    if (type.kind === ReflectionKind.class) {
+        deserializeClass(type, state);
+    } else {
+        serializeObjectLiteral(type, state);
+    }
 }
 
 export class SqlSerializer extends Serializer {
@@ -83,8 +107,15 @@ export class SqlSerializer extends Serializer {
             state.addSetter(`${state.accessor}`);
         });
 
-        this.deserializeRegistry.addDecorator(ReflectionKind.string, (type, state) => {
-            if (undefined === uuidAnnotation.getFirst(type)) return;
+        const uuidType = uuidAnnotation.registerType({ kind: ReflectionKind.string }, true);
+
+        this.deserializeRegistry.register(ReflectionKind.string, (type, state) => {
+            //remove string enforcement, since UUID/MonogId are string but received as binary
+            state.addSetter(state.accessor);
+        });
+
+        this.deserializeRegistry.removeDecorator(uuidType);
+        this.deserializeRegistry.addDecorator(isUUIDType, (type, state) => {
             state.setContext({ uuid4Stringify });
             state.addCodeForSetter(`
                 try {
@@ -95,8 +126,8 @@ export class SqlSerializer extends Serializer {
             `);
         });
 
-        this.serializeRegistry.addDecorator(ReflectionKind.string, (type, state) => {
-            if (undefined === uuidAnnotation.getFirst(type)) return;
+        this.serializeRegistry.removeDecorator(uuidType);
+        this.serializeRegistry.addDecorator(isUUIDType, (type, state) => {
             state.setContext({ uuid4Binary });
             state.addCodeForSetter(`
                 try {
@@ -109,14 +140,20 @@ export class SqlSerializer extends Serializer {
 
         this.serializeRegistry.append(ReflectionKind.class, serializeSqlObjectLiteral);
         this.serializeRegistry.append(ReflectionKind.objectLiteral, serializeSqlObjectLiteral);
+
+        this.deserializeRegistry.register(ReflectionKind.class, deserializeSqlObjectLiteral);
+        this.deserializeRegistry.register(ReflectionKind.objectLiteral, deserializeSqlObjectLiteral);
+
         this.serializeRegistry.append(ReflectionKind.array, serializeSqlArray);
         this.deserializeRegistry.append(ReflectionKind.array, deserializeSqlArray);
 
         //for databases, types decorated with Reference will always only export the primary key.
-        this.serializeRegistry.addDecorator(ReflectionKind.class, (type, state) => {
-            if (undefined === referenceAnnotation.getFirst(type)) return;
+        const referenceType = referenceAnnotation.registerType({ kind: ReflectionKind.class, classType: Object, types: [] }, {});
+        this.serializeRegistry.removeDecorator(referenceType);
+        this.serializeRegistry.addDecorator(isReferenceType, (type, state) => {
+            if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) return;
             // state.setContext({ isObject, isReferenceType, isReferenceHydrated });
-            const reflection = ReflectionClass.from(type.classType);
+            const reflection = ReflectionClass.from(type);
             //the primary key is serialised for unhydrated references
             state.template = `
                 ${executeTemplates(state.fork(state.setter, new ContainerAccessor(state.accessor, JSON.stringify(reflection.getPrimary().getName()))), reflection.getPrimary().getType())}
@@ -138,6 +175,7 @@ export class SqlSerializer extends Serializer {
                 state.setContext({ nodeBufferToArrayBuffer });
                 state.addSetter(`nodeBufferToArrayBuffer(${state.accessor})`);
             } else {
+                state.setContext({ nodeBufferToTypedArray });
                 state.addSetter(`nodeBufferToTypedArray(${state.accessor}, ${state.setVariable('typeArray', type.classType)})`);
             }
         });

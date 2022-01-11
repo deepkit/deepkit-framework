@@ -19,6 +19,7 @@ import { getReference } from './reference';
 import { OrmEntity } from './type';
 import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint';
 import { Stopwatch } from '@deepkit/stopwatch';
+import { getNormalizedPrimaryKey } from './identity-map';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -244,7 +245,9 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * ```
      */
     public getReference<T>(classType: ClassType<T>, primaryKey: PrimaryKeyFields<T>): T {
-        return getReference(ReflectionClass.from(classType), primaryKey);
+        const schema = ReflectionClass.from(classType);
+        const pk = getNormalizedPrimaryKey(schema, primaryKey);
+        return getReference(schema, pk);
     }
 
     /**
@@ -252,7 +255,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * This is mainly used for db migration utilities and active record.
      * If you want to use active record, you have to assign your entities first to a database using this method.
      */
-    registerEntity(...entities: (Type | ClassType | ReflectionClass<any>)[]): void {
+    registerEntity(...entities: (Type | AbstractClassType | ReflectionClass<any>)[]): void {
         for (const entity of entities) {
             const schema = ReflectionClass.from(entity);
 

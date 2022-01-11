@@ -9,7 +9,7 @@
  */
 
 import { ClassType, getClassName, indent } from '@deepkit/core';
-import { getProperty, toSignature } from './reflection';
+import { getProperty, ReflectionClass, toSignature } from './reflection';
 import { isExtendable } from './extends';
 
 export enum ReflectionVisibility {
@@ -311,8 +311,9 @@ export interface TypeClass extends TypeAnnotations, TypeRuntimeData {
 export interface TypeEnum extends TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.enum,
     parent?: Type;
-    enum: { [name: string]: string | number | undefined | null },
-    values: (string | number | undefined | null)[]
+    enum: { [name: string]: string | number | undefined | null };
+    values: (string | number | undefined | null)[];
+    indexType: OuterType;
 }
 
 export interface TypeEnumMember {
@@ -719,9 +720,9 @@ export function flattenUnionTypes(types: Type[]): Type[] {
  * union with one member => member
  * otherwise the union is returned
  */
-export function unboxUnion(union: TypeUnion): Type {
+export function unboxUnion(union: TypeUnion): OuterType {
     if (union.types.length === 0) return { kind: ReflectionKind.never };
-    if (union.types.length === 1) return union.types[0];
+    if (union.types.length === 1) return union.types[0] as OuterType;
     return union;
 }
 
@@ -970,8 +971,13 @@ type RemoveParentHomomorphic<T> = RemoveParent<T, Exclude<keyof T, 'parent'>>;
 type RemoveDeepParent<T extends Type> = T extends infer K ? RemoveParentHomomorphic<K> : never;
 export type ParentLessType = RemoveDeepParent<Type>;
 
-export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type): FindType<Type, T['kind']> {
+export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type, stack: Map<ParentLessType, Type> = new Map): FindType<Type, T['kind']> {
+    const existing = stack.get(inc);
+    if (existing) return existing as any;
+
     const type = parent ? { ...inc, parent: parent } as Type : { ...inc } as Type;
+    stack.set(inc, type);
+
 
     if (isWithAnnotations(type) && isWithAnnotations(inc)) {
         if (inc.annotations) type.annotations = { ...inc.annotations };
@@ -987,7 +993,7 @@ export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type
         case ReflectionKind.class:
         case ReflectionKind.intersection:
         case ReflectionKind.templateLiteral:
-            type.types = type.types.map(member => copyAndSetParent(member, type));
+            type.types = type.types.map(member => copyAndSetParent(member, type, stack));
             break;
         case ReflectionKind.string:
         case ReflectionKind.number:
@@ -995,13 +1001,13 @@ export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type
         case ReflectionKind.symbol:
         case ReflectionKind.regexp:
         case ReflectionKind.boolean:
-            if (type.origin) type.origin = copyAndSetParent(type.origin, type);
+            if (type.origin) type.origin = copyAndSetParent(type.origin, type, stack);
             break;
         case ReflectionKind.function:
         case ReflectionKind.method:
         case ReflectionKind.methodSignature:
-            type.return = copyAndSetParent(type.return, type);
-            type.parameters = type.parameters.map(member => copyAndSetParent(member, type));
+            type.return = copyAndSetParent(type.return, type, stack);
+            type.parameters = type.parameters.map(member => copyAndSetParent(member, type, stack));
             break;
         case ReflectionKind.propertySignature:
         case ReflectionKind.property:
@@ -1010,11 +1016,11 @@ export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type
         case ReflectionKind.parameter:
         case ReflectionKind.tupleMember:
         case ReflectionKind.rest:
-            type.type = copyAndSetParent(type.type, type);
+            type.type = copyAndSetParent(type.type, type, stack);
             break;
         case ReflectionKind.indexSignature:
-            type.index = copyAndSetParent(type.index, type);
-            type.type = copyAndSetParent(type.type, type);
+            type.index = copyAndSetParent(type.index, type, stack);
+            type.type = copyAndSetParent(type.type, type, stack);
             break;
     }
 
@@ -1056,6 +1062,29 @@ export function getMember(type: TypeObjectLiteral | TypeClass, memberName: numbe
     return (type.types as (TypeIndexSignature | TypeMethodSignature | TypeMethod | TypePropertySignature | TypeProperty)[]).find(v => isMember(v) && v.name === memberName) as TypeMethodSignature | TypeMethod | TypePropertySignature | TypeProperty | void;
 }
 
+export function getTypeObjectLiteralFromTypeClass<T extends Type>(type: T): T extends TypeClass ? TypeObjectLiteral : T {
+    if (type.kind === ReflectionKind.class) {
+        const objectLiteral: TypeObjectLiteral = { kind: ReflectionKind.objectLiteral, types: [] };
+        for (const member of type.types) {
+            if (member.kind === ReflectionKind.indexSignature) {
+                objectLiteral.types.push(member);
+                member.parent = objectLiteral;
+            } else if (member.kind === ReflectionKind.property) {
+                const m = { ...member, kind: ReflectionKind.propertySignature } as any as TypePropertySignature;
+                m.parent = objectLiteral;
+                objectLiteral.types.push(m);
+            } else if (member.kind === ReflectionKind.method) {
+                const m = { ...member, kind: ReflectionKind.methodSignature } as any as TypeMethodSignature;
+                m.parent = objectLiteral;
+                objectLiteral.types.push(m);
+            }
+        }
+        return objectLiteral as any;
+    }
+
+    return type as any;
+}
+
 /**
  * Checks whether `undefined` is allowed as type.
  */
@@ -1078,6 +1107,14 @@ export function hasDefaultValue(type: Type): boolean {
 export function isNullable(type: Type): boolean {
     if (type.kind === ReflectionKind.property || type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.indexSignature) return isNullable(type.type);
     return type.kind === ReflectionKind.null || (type.kind === ReflectionKind.union && type.types.some(isNullable));
+}
+
+export function getPropertiesOfClassOrObject(type: TypeObjectLiteral | TypeClass): (TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeProperty | TypeMethod)[] {
+    if (type.kind === ReflectionKind.class) {
+        return ReflectionClass.from(type).getProperties().map(v => v.property);
+    }
+
+    return type.types;
 }
 
 /**
@@ -1148,6 +1185,14 @@ export class AnnotationDefinition<T = true> {
         annotations[this.symbol].push(data);
     }
 
+    registerType<Type extends OuterType>(type: Type, data: T): Type {
+        if (isWithAnnotations(type)) {
+            type.annotations ||= {};
+            this.register(type.annotations, data);
+        }
+        return type;
+    }
+
     replace(annotations: Annotations, annotation: T[]) {
         annotations[this.symbol] = annotation;
     }
@@ -1185,6 +1230,7 @@ export interface ReferenceOptions {
 export interface EntityOptions {
     name?: string;
     collection?: string;
+    databaseSchema?: string;
 }
 
 /**
@@ -1369,7 +1415,29 @@ export type Unique<Options extends IndexOptions = {}> = { __meta?: ['index', nev
 export type Index<Options extends IndexOptions = {}> = { __meta?: ['index', never & Options] };
 
 export interface DatabaseFieldOptions {
+    /**
+     *
+     * e.g. `field: string & MySQL<{type: 'VARCHAR(255)'}>`
+     */
     type?: string;
+
+    /**
+     * If the property is on a class, its initializer/default value is per default used.
+     * This can be overridden using this option.
+     * e.g. `field: string & MySQL<{default: 'abc'}>`
+     */
+    default?: any;
+
+    /**
+     * e.g. `field: string & MySQL<{defaultExpr: 'NOW()'}>`
+     */
+    defaultExpr?: any;
+
+    /**
+     * If true no default column value is inferred from the property initializer/default value.
+     * e.g. `field: string & MySQL<{noDefault: true}> = ''`
+     */
+    noDefault?: true;
 }
 
 export interface MySQLOptions extends DatabaseFieldOptions {

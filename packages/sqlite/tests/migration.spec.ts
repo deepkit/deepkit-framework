@@ -5,7 +5,7 @@ import { AutoIncrement, Entity, integer, PrimaryKey, Reference, SQLite, typeOf, 
 import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 
-test('sqlite custom type', async () => {
+test('custom type', async () => {
     interface Post extends Entity<{ name: 'post' }> {
         id: integer & AutoIncrement & PrimaryKey;
         slug: string & SQLite<{ type: 'text' }>;

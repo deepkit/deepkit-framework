@@ -11,6 +11,7 @@
 import { ClassType, isObject } from '@deepkit/core';
 import { ReflectionClass, reflectionClassSymbol } from './reflection/reflection';
 import { typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core';
+import { OuterType, ReflectionKind } from './reflection/type';
 
 export function isReferenceInstance(obj: any): boolean {
     return isObject(obj) && referenceSymbol in obj;
@@ -50,14 +51,12 @@ export interface ReferenceItemInfo<T> {
 export const referenceSymbol = Symbol('reference');
 export const referenceItemSymbol = Symbol('reference/item');
 
-export function createReference<T>(referenceClass: ClassType<T>, pk: { [name: string]: any }): T {
+export function createReference<T extends ClassType | OuterType>(type: T, pk: { [name: string]: any }): T extends ClassType<infer K> ? K : object {
     const args: any[] = [];
 
-    const reflection = ReflectionClass.from(referenceClass);
+    const reflection = ReflectionClass.from(type);
 
-    if (!(referenceSymbol in referenceClass.prototype)) {
-        referenceClass = createReferenceClass(referenceClass);
-    }
+    const reflectionClass = createReferenceClass(reflection);
 
     for (const prop of reflection.getMethodParameters('constructor')) {
         args.push(pk[prop.getName()]);
@@ -67,22 +66,21 @@ export function createReference<T>(referenceClass: ClassType<T>, pk: { [name: st
     typeSettings.unpopulatedCheck = UnpopulatedCheck.None;
 
     try {
-        const ref = new referenceClass(...args);
-        const w = Object.assign(ref, pk);
-        return w;
+        const ref = new reflectionClass(...args);
+        Object.assign(ref, pk);
+        return ref as any;
     } finally {
         typeSettings.unpopulatedCheck = old;
     }
 }
 
 export function createReferenceClass<T>(
-    classType: ClassType,
+    reflection: ReflectionClass<any>,
 ): ClassType<T> {
-    const reflection = ReflectionClass.from(classType);
     if (reflection.data.referenceClass) return reflection.data.referenceClass;
 
-    const Reference = class extends classType {
-    };
+    const Reference = reflection.type.kind === ReflectionKind.class ? class extends reflection.type.classType {
+    } : class {};
 
     Object.defineProperty(Reference.prototype, referenceSymbol, { value: { hydrator: undefined }, enumerable: false });
     Object.defineProperty(Reference.prototype, referenceItemSymbol, { value: null, writable: true, enumerable: false });

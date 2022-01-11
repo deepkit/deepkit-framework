@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Column, DefaultPlatform, ForeignKey, isSet, parseType, Sql, Table, TableDiff } from '@deepkit/sql';
+import { Column, DefaultPlatform, ForeignKey, isSet, Sql, Table, TableDiff } from '@deepkit/sql';
 import { isIntegerType, isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer } from '@deepkit/type';
 import { SQLiteSchemaParser } from './sqlite-schema-parser';
 import { sqliteSerializer } from './sqlite-serializer';
@@ -17,10 +17,11 @@ import { isArray, isObject } from '@deepkit/core';
 import sqlstring from 'sqlstring-sqlite';
 
 export class SQLitePlatform extends DefaultPlatform {
-    protected defaultSqlType = 'text';
-    schemaParserType = SQLiteSchemaParser;
+    protected override defaultSqlType = 'text';
+    protected override annotationId = 'sqlite';
+    override schemaParserType = SQLiteSchemaParser;
 
-    public readonly serializer: Serializer = sqliteSerializer;
+    public override readonly serializer: Serializer = sqliteSerializer;
 
     constructor() {
         super();
@@ -29,6 +30,10 @@ export class SQLitePlatform extends DefaultPlatform {
         this.addType(ReflectionKind.boolean, 'integer', 1);
         this.addType((type => isUUIDType(type)), 'blob');
         this.addType(isIntegerType, 'integer');
+
+        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.number, 'float');
+        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.string, 'text');
+        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.union, 'text'); //as json
 
         this.addBinaryType('blob');
     }
@@ -138,12 +143,6 @@ export class SQLitePlatform extends DefaultPlatform {
     }
 
     protected setColumnType(column: Column, typeProperty: ReflectionProperty) {
-        const options = typeProperty.getDatabase('sqlite');
-        if (options && options.type) {
-            parseType(column, options.type);
-            return;
-        }
-
         if (typeProperty.isAutoIncrement()) {
             column.type = 'integer';
             return;

@@ -44,7 +44,7 @@ function genericEqualObject(a: { [name: string]: any }, b: { [name: string]: any
  * This is a comparator function for the snapshots. They are either string, number, boolean, array, or objects.
  * No date, moment, or custom classes involved here.
  */
-function genericEqual(a: any, b: any): boolean {
+export function genericEqual(a: any, b: any): boolean {
     //is array, the fast way
     const aIsArray = a && 'string' !== typeof a && 'function' === a.slice && 'number' === typeof a.length;
     const bIsArray = b && 'string' !== typeof b && 'function' === b.slice && 'number' === typeof b.length;
