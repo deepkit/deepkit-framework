@@ -31,8 +31,9 @@ import {
     hasCircularReference,
     isNullable,
     isOptional,
-    isReference,
     isReferenceHydrated,
+    isReferenceInstance,
+    isReferenceType,
     JitStack,
     mongoIdAnnotation,
     NamingStrategy,
@@ -648,13 +649,13 @@ function handleObjectLiteral(
 
     if (type.kind === ReflectionKind.class && referenceAnnotation.hasAnnotations(type) && !state.isAnnotationHandled(referenceAnnotation)) {
         state.annotationHandled(referenceAnnotation);
-        state.setContext({ isObject, isReference, isReferenceHydrated });
+        state.setContext({ isObject, isReferenceInstance, isReferenceHydrated });
         const reflection = ReflectionClass.from(type.classType);
         //the primary key is serialised for unhydrated references
         const index = getNameExpression(reflection.getPrimary().getName(), state);
         const primaryKey = reflection.getPrimary().getType();
         state.replaceTemplate(`
-            if (isReference(${state.accessor}) && !isReferenceHydrated(${state.accessor})) {
+            if (isReferenceInstance(${state.accessor}) && !isReferenceHydrated(${state.accessor})) {
                 ${executeTemplates(state.fork(state.setter, `${state.accessor}[${index}]`).forPropertyName(state.propertyName), primaryKey)}
             } else {
                 ${state.template}
@@ -792,7 +793,7 @@ function serializePropertyNameAware(type: OuterType, state: TemplateState, bsonT
     const isInitialObject = `${bsonType === BSONType.OBJECT} && state.writer.offset === 0`;
 
     state.template = `
-        //serializer for ${ReflectionKind[type.kind]}
+        //serializer for ${type.kind}
         ${typeChecker ? `if (!(${typeChecker})) ${state.throwCode(type)}` : ''}
         if (!(${isInitialObject})) state.writer.writeByte(${bsonType});
         ${propertyNameWriter(state)}
@@ -1196,7 +1197,7 @@ class MongoSerializer extends Serializer {
         this.sizerRegistry.register(ReflectionKind.null, (type, state) => sizerPropertyNameAware(type, state, `${state.accessor} === undefined || ${state.accessor} === null`, ``));
         this.sizerRegistry.registerBinary(sizerBinary);
         this.sizerRegistry.register(ReflectionKind.union, handleUnion);
-        this.sizerRegistry.register(ReflectionKind.promise, (type, state) => executeTemplates(state, type.type))
+        this.sizerRegistry.register(ReflectionKind.promise, (type, state) => executeTemplates(state, type.type));
     }
 
     protected registerBsonSerializers() {
@@ -1213,7 +1214,7 @@ class MongoSerializer extends Serializer {
         this.bsonSerializeRegistry.register(ReflectionKind.regexp, serializeRegExp);
         this.bsonSerializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type as OuterType, state));
         this.bsonSerializeRegistry.register(ReflectionKind.tuple, serializeTuple);
-        this.bsonSerializeRegistry.register(ReflectionKind.promise, (type, state) => executeTemplates(state, type.type))
+        this.bsonSerializeRegistry.register(ReflectionKind.promise, (type, state) => executeTemplates(state, type.type));
         this.bsonSerializeRegistry.registerClass(Map, (type, state) => serializeArray(copyAndSetParent({
             kind: ReflectionKind.tuple, types: [
                 { kind: ReflectionKind.tupleMember, type: type.arguments![0] },
@@ -1270,11 +1271,10 @@ class MongoSerializer extends Serializer {
         this.bsonTypeGuards.register(2, ReflectionKind.literal, bsonTypeGuardForBsonTypes([BSONType.NULL, BSONType.UNDEFINED]));
         this.bsonTypeGuards.registerClass(2, Date, bsonTypeGuardForBsonTypes([...numberTypes]));
 
-        this.bsonTypeGuards.getRegistry(1).addDecorator(ReflectionKind.class, (type, state) => {
-            if (!referenceAnnotation.getFirst(type)) return;
+        this.bsonTypeGuards.getRegistry(1).addDecorator(isReferenceType, (type, state) => {
+            if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) return;
             state.setContext({ isObject, createReference, isReferenceHydrated });
-            const reflection = ReflectionClass.from(type.classType);
-            const referenceClassTypeVar = state.setVariable('referenceClassType', type.classType);
+            const reflection = ReflectionClass.from(type);
             // in deserialization a reference is created when only the primary key is provided (no object given)
             state.template = `
                 if (state.elementType === ${BSONType.OBJECT}) {
@@ -1320,11 +1320,11 @@ class MongoSerializer extends Serializer {
             state.addSetter(`new Set(${state.setter})`);
         });
 
-        this.bsonDeserializeRegistry.addDecorator(ReflectionKind.class, (type, state) => {
-            if (!referenceAnnotation.getFirst(type)) return;
+        this.bsonDeserializeRegistry.addDecorator(isReferenceType, (type, state) => {
+            if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) return;
             state.setContext({ isObject, createReference, isReferenceHydrated });
-            const reflection = ReflectionClass.from(type.classType);
-            const referenceClassTypeVar = state.setVariable('referenceClassType', type.classType);
+            const reflection = ReflectionClass.from(type);
+            const referenceClassTypeVar = state.setVariable('referenceClassType', type.kind === ReflectionKind.class ? type.classType : Object);
             // in deserialization a reference is created when only the primary key is provided (no object given)
             state.template = `
                 if (state.elementType === ${BSONType.OBJECT}) {
