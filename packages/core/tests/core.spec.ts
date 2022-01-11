@@ -438,13 +438,13 @@ test('stringifyValueWithType', async () => {
         id = 1;
     }
 
-    expect(stringifyValueWithType(new Peter)).toBe(`Peter {id: Number(1)}`);
-    expect(stringifyValueWithType({ id: 1 })).toBe(`Object {id: Number(1)}`);
-    expect(stringifyValueWithType('foo')).toBe(`String(foo)`);
-    expect(stringifyValueWithType(2)).toBe(`Number(2)`);
-    expect(stringifyValueWithType(true)).toBe(`Boolean(true)`);
+    expect(stringifyValueWithType(new Peter)).toBe(`Peter {id: number(1)}`);
+    expect(stringifyValueWithType({ id: 1 })).toBe(`object {id: number(1)}`);
+    expect(stringifyValueWithType('foo')).toBe(`string(foo)`);
+    expect(stringifyValueWithType(2)).toBe(`number(2)`);
+    expect(stringifyValueWithType(true)).toBe(`boolean(true)`);
     expect(stringifyValueWithType(function Peter() {
-    })).toBe(`Function Peter`);
+    })).toBe(`function Peter`);
 });
 
 test('getClassTypeFromInstance', async () => {

@@ -145,11 +145,11 @@ export function isClassInstance(target: any): boolean {
  * Returns a human readable string representation from the given value.
  */
 export function stringifyValueWithType(value: any): string {
-    if ('string' === typeof value) return `String(${value})`;
-    if ('number' === typeof value) return `Number(${value})`;
-    if ('boolean' === typeof value) return `Boolean(${value})`;
-    if ('function' === typeof value) return `Function ${value.name}`;
-    if (isPlainObject(value)) return `Object ${prettyPrintObject(value)}`;
+    if ('string' === typeof value) return `string(${value})`;
+    if ('number' === typeof value) return `number(${value})`;
+    if ('boolean' === typeof value) return `boolean(${value})`;
+    if ('function' === typeof value) return `function ${value.name}`;
+    if (isPlainObject(value)) return `object ${prettyPrintObject(value)}`;
     if (isObject(value)) return `${getClassName(getClassTypeFromInstance(value))} ${prettyPrintObject(value)}`;
     if (null === value) return `null`;
     return 'undefined';
