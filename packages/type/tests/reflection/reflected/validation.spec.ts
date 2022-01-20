@@ -107,3 +107,12 @@ test('path', () => {
     expect(validate<Container2>({ configs: { a: { name: 'b' } } })).toEqual([{ code: 'type', message: 'Not a number', path: 'configs.a.value' }]);
     expect(validate<Container2>({ configs: { a: { name: 'b', value: 123 }, b: { name: 'b' } } })).toEqual([{ code: 'type', message: 'Not a number', path: 'configs.b.value' }]);
 });
+
+test('class with union literal', () => {
+    class ConnectionOptions {
+        readConcernLevel: 'local' | 'majority' | 'linearizable' | 'available' = 'majority';
+    }
+
+    expect(validate<ConnectionOptions>({ readConcernLevel: 'majority' })).toEqual([]);
+    expect(validate<ConnectionOptions>({ readConcernLevel: 'invalid' })).toEqual([{code: 'type', message: 'Invalid type', path: 'readConcernLevel'}]);
+});

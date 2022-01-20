@@ -46,6 +46,7 @@ test('migration basic', async () => {
     expect(user.getProperty('id').isAutoIncrement()).toBe(true);
     expect(user.getPrimary() === user.getProperty('id')).toBe(true);
     expect(user.getAutoIncrement() === user.getProperty('id')).toBe(true);
+    expect(user.indexes.length).toBe(3);
 
     const [tableUser, tablePost] = new MyPlatform().createTables(DatabaseEntityRegistry.from([User, Post]));
 
@@ -62,8 +63,9 @@ test('migration basic', async () => {
     expect(tableUser.getColumn('username').isNotNull).toBe(true);
 
     const indexes = tableUser.getUnices();
-    expect(indexes[1]).toBeInstanceOf(IndexModel);
-    expect(indexes[1]!.hasColumn('username')).toBe(true);
+    expect(indexes.length).toBe(2);
+    expect(indexes[0]).toBeInstanceOf(IndexModel);
+    expect(indexes[0]!.hasColumn('username')).toBe(true);
 
     expect(tablePost.foreignKeys.length).toBe(1);
     expect(tablePost.foreignKeys[0].foreign).toBe(tableUser);

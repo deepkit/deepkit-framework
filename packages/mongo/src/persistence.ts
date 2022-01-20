@@ -8,26 +8,25 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabasePersistence, DatabasePersistenceChangeSet, DatabaseSession, Entity, getClassState, getInstanceState } from '@deepkit/orm';
-import { ClassSchema } from '@deepkit/type';
+import { DatabasePersistence, DatabasePersistenceChangeSet, DatabaseSession, getClassState, getInstanceState, OrmEntity } from '@deepkit/orm';
 import { convertClassQueryToMongo } from './mapping';
 import { FilterQuery } from './query.model';
 import { MongoClient } from './client/client';
 import { InsertCommand } from './client/command/insert';
 import { UpdateCommand } from './client/command/update';
 import { DeleteCommand } from './client/command/delete';
-import { mongoSerializer } from './mongo-serializer';
 import { FindAndModifyCommand } from './client/command/findAndModify';
 import { empty } from '@deepkit/core';
 import { FindCommand } from './client/command/find';
-import { ObjectId } from '@deepkit/bson';
 import { MongoConnection } from './client/connection';
+import { getPartialSerializeFunction, ReflectionClass } from '@deepkit/type';
+import { ObjectId } from '@deepkit/bson';
+import { mongoSerializer } from './mongo-serializer';
 
 export class MongoPersistence extends DatabasePersistence {
     protected connection?: MongoConnection;
 
-
-    constructor(protected client: MongoClient, protected ormSequences: ClassSchema, protected session: DatabaseSession<any>) {
+    constructor(protected client: MongoClient, protected ormSequences: ReflectionClass<any>, protected session: DatabaseSession<any>) {
         super();
     }
 
@@ -42,36 +41,36 @@ export class MongoPersistence extends DatabasePersistence {
         return this.connection;
     }
 
-    async remove<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
-        const scopeSerializer = mongoSerializer.for(classSchema);
+    async remove<T extends OrmEntity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
         const classState = getClassState(classSchema);
+        const partialSerialize = getPartialSerializeFunction(classSchema.type, mongoSerializer.serializeRegistry);
 
-        if (classSchema.getPrimaryFields().length === 1) {
-            const pk = classSchema.getPrimaryField();
+        if (classSchema.getPrimaries().length === 1) {
+            const pk = classSchema.getPrimary();
             const pkName = pk.name;
             const ids: any[] = [];
 
             for (const item of items) {
-                const converted = scopeSerializer.partialSerialize(getInstanceState(classState, item).getLastKnownPK());
+                const pk = getInstanceState(classState, item).getLastKnownPK();
+                const converted = partialSerialize(pk);
                 ids.push(converted[pkName]);
             }
             await (await this.getConnection()).execute(new DeleteCommand(classSchema, { [pkName]: { $in: ids } }));
         } else {
             const fields: any[] = [];
             for (const item of items) {
-                fields.push(scopeSerializer.partialSerialize(getInstanceState(classState, item).getLastKnownPK()));
+                fields.push(partialSerialize(getInstanceState(classState, item).getLastKnownPK()));
             }
             await (await this.getConnection()).execute(new DeleteCommand(classSchema, { $or: fields }));
         }
     }
 
-    async insert<T extends Entity>(classSchema: ClassSchema<T>, items: T[]): Promise<void> {
+    async insert<T extends OrmEntity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
         const insert: any[] = [];
         const has_Id = classSchema.hasProperty('_id');
-        const scopeSerializer = mongoSerializer.for(classSchema);
 
         const connection = await this.getConnection();
-        const autoIncrement = classSchema.getAutoIncrementField();
+        const autoIncrement = classSchema.getAutoIncrement();
         let autoIncrementValue = 0;
         if (autoIncrement) {
             const command = new FindAndModifyCommand(
@@ -96,8 +95,8 @@ export class MongoPersistence extends DatabasePersistence {
             }
 
             //replaces references with the foreign key
-            const converted = scopeSerializer.serialize(item);
-            insert.push(converted);
+            // const converted = scopeSerializer.serialize(item);
+            insert.push(item);
         }
 
         if (this.session.logger.active) this.session.logger.log('insert', classSchema.getClassName(), items.length);
@@ -105,12 +104,12 @@ export class MongoPersistence extends DatabasePersistence {
         await connection.execute(new InsertCommand(classSchema, insert));
     }
 
-    async update<T extends Entity>(classSchema: ClassSchema<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+    async update<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         const updates: { q: any, u: any, multi: boolean }[] = [];
-        const scopeSerializer = mongoSerializer.for(classSchema);
+        const partialSerializer = getPartialSerializeFunction(classSchema.type, mongoSerializer.serializeRegistry)
 
         let hasAtomic = false;
-        const primaryKeyName = classSchema.getPrimaryField().name;
+        const primaryKeyName = classSchema.getPrimary().name;
         const pks: any[] = [];
         const projection: { [name: string]: 1 } = {};
         projection[primaryKeyName] = 1;
@@ -137,14 +136,15 @@ export class MongoPersistence extends DatabasePersistence {
 
             const u: any = {};
             if (changeSet.changes.$set && !empty(changeSet.changes.$set)) {
-                u.$set = scopeSerializer.partialSerialize(changeSet.changes.$set);
+                //important to correctly set references
+                u.$set = partialSerializer(changeSet.changes.$set);
             }
 
             if (changeSet.changes.$inc) u.$inc = changeSet.changes.$inc;
             if (changeSet.changes.$unset) u.$unset = changeSet.changes.$unset;
 
             updates.push({
-                q: convertClassQueryToMongo(classSchema.classType, changeSet.primaryKey as FilterQuery<T>),
+                q: convertClassQueryToMongo(classSchema, changeSet.primaryKey as FilterQuery<T>),
                 u: u,
                 multi: false,
             });

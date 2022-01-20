@@ -97,6 +97,7 @@ export const bookstoreTests = {
 
         await Promise.all(promises);
         expect(await database.query(User).count()).toBe(0);
+        database.disconnect();
     },
 
     async filterIn(databaseFactory: DatabaseFactory) {
@@ -138,6 +139,7 @@ export const bookstoreTests = {
             expect(items.length).toBe(1);
             expect(items[0].name).toBe('c');
         }
+        database.disconnect();
     },
 
     async binary(databaseFactory: DatabaseFactory) {
@@ -161,6 +163,7 @@ export const bookstoreTests = {
             const imageDB = await database.query(Image).filter({ id: image.id }).findOne();
             expect(imageDB.image).toEqual(new Uint8Array(['s'.charCodeAt(0)]));
         }
+        database.disconnect();
     },
 
     async uuid(databaseFactory: DatabaseFactory) {
@@ -204,6 +207,7 @@ export const bookstoreTests = {
             expect(deleted.primaryKeys).toEqual([image.id]);
             expect(deleted.modified).toBe(1);
         }
+        database.disconnect();
     },
 
     async userGroup(databaseFactory: DatabaseFactory) {
@@ -245,6 +249,7 @@ export const bookstoreTests = {
             const allUsersInB = await database.query(User).useInnerJoin('groups').filter({ name: 'b' }).end().find();
             expect(allUsersInB.length).toBe(2);
         }
+        database.disconnect();
     },
 
     async reference(databaseFactory: DatabaseFactory) {
@@ -295,8 +300,9 @@ export const bookstoreTests = {
             const book1 = await database.query(Book).filter({ title: 'Peters path' }).findOne();
             expect(book1.author.id).toBe(peter.id);
         }
+        database.disconnect();
     },
-    async basics(databaseFactory: DatabaseFactory) {
+    async basicsCrud(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
         {
             const session = database.createSession();
@@ -396,6 +402,7 @@ export const bookstoreTests = {
             //cascade foreign key deletes also the book
             expect(await session.query(Book).count()).toBe(1);
         }
+        database.disconnect();
     },
 
     async subDocuments(databaseFactory: DatabaseFactory) {
@@ -437,6 +444,7 @@ export const bookstoreTests = {
             const book = await database.query(Book).filter({ 'moderation.locked': true }).findOne();
             expect(book.title).toBe('Peters book');
         }
+        database.disconnect();
     },
 
     async instanceState(databaseFactory: DatabaseFactory) {
@@ -468,6 +476,7 @@ export const bookstoreTests = {
             expect(getInstanceStateFromItem(peter).isKnownInDatabase()).toBe(false);
             expect(getInstanceStateFromItem(herbert).isKnownInDatabase()).toBe(false);
         }
+        database.disconnect();
     },
 
     async primaryKeyChange(databaseFactory: DatabaseFactory) {
@@ -490,7 +499,7 @@ export const bookstoreTests = {
 
         const res = await database.query(UserCredentials).filter({ user: user1 }).patchOne({ user: user2 });
         expect(res.modified).toEqual(1);
-        expect(res.primaryKeys).toEqual([{ id: user2.id }]); //we want to new primaryKey, not the old one
+        expect(res.primaryKeys).toMatchObject([{ id: user2.id }]); //we want the new primaryKey, not the old one
 
         {
             const creds = await database.query(UserCredentials).filter({ user: user2 }).findOne();
@@ -500,8 +509,9 @@ export const bookstoreTests = {
         {
             const res = await database.query(User).filter({ id: user1.id }).patchOne({ id: 125 });
             expect(res.modified).toEqual(1);
-            expect(res.primaryKeys).toEqual([125]); //we want to new primaryKey, not the old one
+            expect(res.primaryKeys).toEqual([125]); //we want the new primaryKey, not the old one
         }
+        database.disconnect();
     },
 
     async userAccount(databaseFactory: DatabaseFactory) {
@@ -543,6 +553,7 @@ export const bookstoreTests = {
             expect(userWrongPwButLeftJoin.id).toBe(1);
             expect(userWrongPwButLeftJoin.credentials).toBeUndefined();
         }
+        database.disconnect();
     },
 
     async userEvents(databaseFactory: DatabaseFactory) {
@@ -657,6 +668,7 @@ export const bookstoreTests = {
             sub2.unsubscribe();
             sub3.unsubscribe();
         }
+        database.disconnect();
     },
 
     async enumTest(databaseFactory: DatabaseFactory) {
@@ -680,6 +692,7 @@ export const bookstoreTests = {
             expect(review.book.id).toBe(book.id);
             expect(review.status).toBe(ReviewStatus.hidden);
         }
+        database.disconnect();
     },
 
     async atomic(databaseFactory: DatabaseFactory) {
@@ -723,5 +736,6 @@ export const bookstoreTests = {
 
             expect((await database.query(User).filter(user).findOne()).logins).toBe(1 + 2 + 10);
         }
+        database.disconnect();
     },
 };

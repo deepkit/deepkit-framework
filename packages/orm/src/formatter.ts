@@ -82,7 +82,7 @@ export class Formatter {
 
     protected makeInvalidReference(item: any, classSchema: ReflectionClass<any>, propertySchema: ReflectionProperty) {
         Object.defineProperty(item, propertySchema.name, {
-            enumerable: false,
+            enumerable: true,
             configurable: false,
             get() {
                 if (this.hasOwnProperty(propertySchema.symbol)) {
@@ -130,27 +130,32 @@ export class Formatter {
         const foreignSchema = propertySchema.getResolvedReflectionClass();
         const pool = this.getInstancePoolForClass(foreignSchema.getClassType());
 
-        const foreignPrimaryFields = foreignSchema.getPrimaries();
-        const foreignPrimaryKey: { [name: string]: any } = {};
+        let foreignPrimaryKey: { [name: string]: any } = {};
 
-        let allFilled = foreignPrimaryFields.length;
-        for (const property of foreignPrimaryFields) {
-            const foreignKey = foreignPrimaryFields.length === 1 ? propertySchema.name : propertySchema.name + capitalize(property.name);
-            if (property.isReference()) {
-                foreignPrimaryKey[property.name] = this.getReference(property.getResolvedReflectionClass(), dbRecord, propertySchema, isPartial);
-            } else {
-                if (dbRecord[foreignKey] === undefined || dbRecord[foreignKey] === null) {
-                    allFilled--;
+        if (isReferenceInstance(dbRecord[propertySchema.name])) {
+            //reference instances have already all primary keys
+            foreignPrimaryKey = dbRecord[propertySchema.name];
+        } else {
+            const foreignPrimaryFields = foreignSchema.getPrimaries();
+            let allFilled = foreignPrimaryFields.length;
+            for (const property of foreignPrimaryFields) {
+                const foreignKey = foreignPrimaryFields.length === 1 ? propertySchema.name : propertySchema.name + capitalize(property.name);
+                if (property.isReference()) {
+                    foreignPrimaryKey[property.name] = this.getReference(property.getResolvedReflectionClass(), dbRecord, propertySchema, isPartial);
                 } else {
-                    const v = deserialize(dbRecord[foreignKey], undefined, this.serializer, property.type);
-                    if (v === undefined || v === null) allFilled--;
-                    foreignPrimaryKey[property.name] = v;
+                    if (dbRecord[foreignKey] === undefined || dbRecord[foreignKey] === null) {
+                        allFilled--;
+                    } else {
+                        const v = deserialize(dbRecord[foreignKey], undefined, this.serializer, property.type);
+                        if (v === undefined || v === null) allFilled--;
+                        foreignPrimaryKey[property.name] = v;
+                    }
                 }
             }
-        }
 
-        //empty reference
-        if (allFilled === 0) return undefined;
+            //empty reference
+            if (allFilled === 0) return undefined;
+        }
 
         const ref = getReference(
             foreignSchema,
@@ -325,15 +330,15 @@ export class Formatter {
             const handledRelation = model.joins.length ? this.assignJoins(model, classSchema, dbRecord, converted) : undefined;
 
             //all non-populated owning references will be just proxy references
-            for (const propertySchema of classSchema.getReferences()) {
-                if (model.select.size && !model.select.has(propertySchema.name)) continue;
-                if (handledRelation && handledRelation[propertySchema.name]) continue;
-                if (propertySchema.isReference()) {
-                    converted[propertySchema.name] = this.getReference(classSchema, dbRecord, propertySchema, partial);
+            for (const property of classSchema.getReferences()) {
+                if (model.select.size && !model.select.has(property.name)) continue;
+                if (handledRelation && handledRelation[property.name]) continue;
+                if (property.isReference()) {
+                    converted[property.name] = this.getReference(classSchema, dbRecord, property, partial);
                 } else {
                     //unpopulated backReferences are inaccessible
                     if (!partial) {
-                        this.makeInvalidReference(converted, classSchema, propertySchema);
+                        this.makeInvalidReference(converted, classSchema, property);
                     }
                 }
             }

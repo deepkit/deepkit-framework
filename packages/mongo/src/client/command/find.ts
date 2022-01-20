@@ -9,29 +9,29 @@
  */
 
 import { BaseResponse, Command } from './command';
-import { ClassSchema, ExtractClassType, getClassSchema, t } from '@deepkit/type';
-import { ClassType, toFastProperties } from '@deepkit/core';
+import { toFastProperties } from '@deepkit/core';
 import { DEEP_SORT } from '../../query.model';
+import { InlineRuntimeType, ReflectionClass, ReflectionKind, typeOf, TypeUnion, UUID } from '@deepkit/type';
+import { MongoError } from '../error';
 
-const findSchema = t.schema({
-    find: t.string,
-    $db: t.string,
-    batchSize: t.number,
-    limit: t.number,
-    skip: t.number,
-    filter: t.any,
-    projection: t.any.optional,
-    sort: t.any.optional,
-    lsid: t.type({id: t.uuid}).optional,
-    txnNumber: t.number.optional,
-    startTransaction: t.boolean.optional,
-    autocommit: t.boolean.optional,
-});
+interface FindSchema {
+    find: string;
+    $db: string;
+    batchSize: number;
+    limit: number;
+    skip: number;
+    filter: any;
+    projection?: any;
+    sort?: any;
+    lsid?: { id: UUID },
+    txnNumber?: number,
+    startTransaction?: boolean,
+    autocommit?: boolean,
+}
 
-export class FindCommand<T extends ClassSchema | ClassType> extends Command {
-
+export class FindCommand<T> extends Command {
     constructor(
-        public classSchema: T,
+        public schema: ReflectionClass<T>,
         public filter: { [name: string]: any } = {},
         public projection?: { [name: string]: 1 | 0 },
         public sort?: DEEP_SORT<any>,
@@ -41,12 +41,10 @@ export class FindCommand<T extends ClassSchema | ClassType> extends Command {
         super();
     }
 
-    async execute(config, host, transaction): Promise<ExtractClassType<T>[]> {
-        let classSchema = getClassSchema(this.classSchema);
-
-        const cmd: InstanceType<typeof findSchema.classType> = {
-            find: classSchema.collectionName || classSchema.name || 'unknown',
-            $db: classSchema.databaseSchemaName || config.defaultDb || 'admin',
+    async execute(config, host, transaction): Promise<T[]> {
+        const cmd: FindSchema = {
+            find: this.schema.collectionName || this.schema.name || 'unknown',
+            $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             filter: this.filter,
             limit: this.limit,
             skip: this.skip,
@@ -58,39 +56,75 @@ export class FindCommand<T extends ClassSchema | ClassType> extends Command {
         if (this.projection) cmd.projection = this.projection;
         if (this.sort) cmd.sort = this.sort;
 
-        const jit = classSchema.jit;
+        const jit = this.schema.getJitContainer();
+
         let specialisedResponse = this.projection ? jit.mdbFindPartial : jit.mdbFind;
         if (!specialisedResponse) {
-            let itemType = this.projection ? t.partial(classSchema) : classSchema;
 
-            const singleTableInheritanceMap = classSchema.getAssignedSingleTableInheritanceSubClassesByIdentifier();
+            // let itemType = this.projection ? partial(classSchema) : classSchema;
+
+            const singleTableInheritanceMap = this.schema.getAssignedSingleTableInheritanceSubClassesByIdentifier();
             if (singleTableInheritanceMap) {
-                itemType = this.projection ? t.any : t.union(...Array.from(Object.values(singleTableInheritanceMap)));
-            }
+                const schemas = Array.from(Object.values(singleTableInheritanceMap));
+                const type: TypeUnion = { kind: ReflectionKind.union, types: schemas.map(v => v.type) };
 
-            if (this.projection) {
-                specialisedResponse = t.extendSchema(BaseResponse, {
-                    cursor: {
-                        id: t.number,
-                        firstBatch: t.array(itemType),
-                        nextBatch: t.array(itemType),
-                    },
-                });
-                jit.mdbFindPartial = specialisedResponse;
+                if (this.projection) {
+                    interface SpecialisedResponse extends BaseResponse {
+                        cursor: {
+                            id: number;
+                            firstBatch?: Partial<InlineRuntimeType<typeof type>>[];
+                            nextBatch?: Partial<InlineRuntimeType<typeof type>>[];
+                        };
+                    }
+
+                    jit.mdbFindPartial = specialisedResponse = typeOf<SpecialisedResponse>();
+                } else {
+                    interface SpecialisedResponse extends BaseResponse {
+                        cursor: {
+                            id: number;
+                            firstBatch?: InlineRuntimeType<typeof type>[];
+                            nextBatch?: InlineRuntimeType<typeof type>[];
+                        };
+                    }
+
+                    jit.mdbFind = specialisedResponse = typeOf<SpecialisedResponse>();
+                }
             } else {
-                specialisedResponse = t.extendSchema(BaseResponse, {
-                    cursor: {
-                        id: t.number,
-                        firstBatch: t.array(itemType),
-                        nextBatch: t.array(itemType),
-                    },
-                });
-                jit.mdbFind = specialisedResponse;
+                const schema = this.schema;
+                type resultSchema = InlineRuntimeType<typeof schema>;
+
+                if (this.projection) {
+                    interface SpecialisedResponse extends BaseResponse {
+                        cursor: {
+                            id: number;
+                            firstBatch?: Partial<resultSchema>[];
+                            nextBatch?: Partial<resultSchema>[];
+                        };
+                    }
+
+                    jit.mdbFindPartial = specialisedResponse = typeOf<SpecialisedResponse>();
+                } else {
+                    interface SpecialisedResponse extends BaseResponse {
+                        cursor: {
+                            id: number;
+                            firstBatch?: resultSchema[];
+                            nextBatch?: resultSchema[];
+                        };
+                    }
+
+                    jit.mdbFind = specialisedResponse = typeOf<SpecialisedResponse>();
+                }
             }
             toFastProperties(jit);
         }
 
-        const res = await this.sendAndWait(findSchema, cmd, specialisedResponse) as { cursor: { id: BigInt, firstBatch: any[], nextBatch: any[] } };
+        interface Response extends BaseResponse {
+            cursor: { id: BigInt, firstBatch?: any[], nextBatch?: any[] };
+        }
+
+        const res = await this.sendAndWait<FindSchema, Response>(cmd, undefined, specialisedResponse);
+        if (!res.cursor.firstBatch) throw new MongoError(`No firstBatch received`);
+
         //todo: implement fetchMore and decrease batchSize
         return res.cursor.firstBatch;
     }

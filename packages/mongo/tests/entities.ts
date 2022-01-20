@@ -1,36 +1,17 @@
-import {
-    Entity,
-    t,
-    uuid,
-    MultiIndex
-} from '@deepkit/type';
+import { Embedded, entity, Excluded, Index, MongoId, PrimaryKey, UUID, uuid } from '@deepkit/type';
 
 export class JobTaskQueue {
-    @t
     position: number = 0;
-
-    @t
     tries: number = 0;
-
-    @t
     result: string = '';
-
-    @t
     added: Date = new Date();
 }
 
-
-@Entity('sub')
+@entity.name('sub')
 export class SubModel {
-    @t
     label: string;
-
-    @t.optional
     age?: number;
-
-    @t.optional
     queue?: JobTaskQueue;
-
     constructorUsed = false;
 
     constructor(label: string) {
@@ -48,9 +29,7 @@ export enum Plan {
 export const now = new Date();
 
 export class CollectionWrapper {
-    constructor(
-        @t.array(SubModel).decorated.name('items')
-        public items: SubModel[]) {
+    constructor(public items: SubModel[]) {
     }
 
     public add(item: SubModel) {
@@ -59,10 +38,7 @@ export class CollectionWrapper {
 }
 
 export class StringCollectionWrapper {
-    constructor(
-        @t.array(String).decorated.name('items')
-        public items: string[]
-    ) {
+    constructor(public items: string[]) {
     }
 
     public add(item: string) {
@@ -70,85 +46,61 @@ export class StringCollectionWrapper {
     }
 }
 
-@Entity('SimpleModel')
-@MultiIndex(['name', 'type'], {unique: true})
+@entity.name('SimpleModel').index(['name', 'type'], { unique: true })
 export class SimpleModel {
-    @t.primary.uuid
-    id: string = uuid();
+    id: UUID & PrimaryKey = uuid();
 
-    @t.index()
-    name: string;
-
-    @t
     type: number = 0;
-
-    @t
     yesNo: boolean = false;
 
-    @t.enum(Plan)
     plan: Plan = Plan.DEFAULT;
 
-    @t
     created: Date = now;
 
-    @t.array(t.string)
     types: string[] = [];
 
-    @t.optional
     child?: SubModel;
 
-    @t.optional
     selfChild?: SimpleModel;
 
-    @t.array(SubModel)
     children: SubModel[] = [];
 
-    @t.map(SubModel)
     childrenMap: { [key: string]: SubModel } = {};
 
-    @t.type(CollectionWrapper)
-    childrenCollection: CollectionWrapper = new CollectionWrapper([]);
+    childrenCollection: Embedded<CollectionWrapper> = new CollectionWrapper([]);
 
-    @t.type(StringCollectionWrapper)
-    stringChildrenCollection: StringCollectionWrapper = new StringCollectionWrapper([]);
+    stringChildrenCollection: Embedded<StringCollectionWrapper> = new StringCollectionWrapper([]);
 
     notMapped: { [key: string]: any } = {};
 
-    @t.any
     anyField: any;
 
-    @t.exclude()
-    excluded: string = 'default';
+    excluded: string & Excluded = 'default';
 
-    @t.exclude('mongo')
-    excludedForMongo: string = 'excludedForMongo';
+    excludedForMongo: string & Excluded<'mongo'> = 'excludedForMongo';
 
-    @t.exclude('json')
-    excludedForPlain: string = 'excludedForPlain';
+    excludedForPlain: string & Excluded<'json'> = 'excludedForPlain';
 
-    constructor(name: string) {
-        this.name = name;
+    constructor(public name: string & Index) {
     }
 }
 
-@Entity('SuperSimple')
+@entity.name('SuperSimple')
 export class SuperSimple {
-    @t.primary.mongoId
-    _id?: string;
+    //what is the default for mongoId on new objects?
+    _id: MongoId & PrimaryKey = '';
 
-    @t
-    name?: string;
+    constructor(public name?: string) {
+    }
 }
 
-@Entity('BaseClass')
+@entity.name('BaseClass')
 export class BaseClass {
-    @t.primary.mongoId
-    _id?: string;
+    _id: MongoId & PrimaryKey = '';
 }
 
 
-@Entity('ChildClass')
+@entity.name('ChildClass')
 export class ChildClass extends BaseClass {
-    @t
     name?: string;
 }

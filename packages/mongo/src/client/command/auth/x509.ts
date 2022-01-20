@@ -11,26 +11,24 @@
 import { MongoAuth } from './auth';
 import { BaseResponse, Command } from '../command';
 import { MongoClientConfig } from '../../config';
-import { t } from '@deepkit/type';
 
-class AuthenticateCommand extends t.class({
-    authenticate: t.literal(1),
-    mechanism: t.string,
-    $db: t.string,
-    username: t.string.optional,
-}) {
+interface AuthenticateCommand {
+    authenticate: 1;
+    mechanism: string;
+    $db: string;
+    username?: string;
 }
 
-class AuthenticateResponse extends t.extendClass(BaseResponse, {}) {
+interface AuthenticateResponse extends BaseResponse {
 }
 
 export class X509Auth implements MongoAuth {
     async auth(command: Command, config: MongoClientConfig): Promise<void> {
-        await command.sendAndWait(AuthenticateCommand, {
+        await command.sendAndWait<AuthenticateCommand, AuthenticateResponse>({
             authenticate: 1,
             mechanism: 'MONGODB-X509',
             $db: '$external',
             username: config.authUser
-        }, AuthenticateResponse);
+        });
     }
 }

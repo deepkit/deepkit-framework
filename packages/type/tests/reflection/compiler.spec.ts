@@ -1570,3 +1570,17 @@ test('circular class 2', () => {
     const type = transpileAndReturn(code);
     console.log('type', type);
 });
+
+test('InlineRuntimeType', () => {
+    const code = `
+        const stringType = {kind: ${ReflectionKind.string}};
+        type t = {a: InlineRuntimeType<typeof stringType>}
+        return typeOf<t>();
+    `;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+    console.log('type', type.types[0].type);
+    expect(type.types[0].type).toMatchObject({kind: ReflectionKind.string});
+});

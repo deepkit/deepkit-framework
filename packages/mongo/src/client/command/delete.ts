@@ -9,31 +9,26 @@
  */
 
 import { BaseResponse, Command } from './command';
-import { ClassSchema, getClassSchema, t } from '@deepkit/type';
-import { ClassType } from '@deepkit/core';
+import { ReflectionClass, UUID } from '@deepkit/type';
 
-class DeleteResponse extends t.extendClass(BaseResponse, {
-    n: t.number,
-}) {
+interface DeleteResponse extends BaseResponse {
+    n: number;
 }
 
-const deleteSchema = t.schema({
-    delete: t.string,
-    $db: t.string,
-    deletes: t.array({
-        q: t.any,
-        limit: t.number,
-    }),
-    lsid: t.type({ id: t.uuid }).optional,
-    txnNumber: t.number.optional,
-    autocommit: t.boolean.optional,
-    startTransaction: t.boolean.optional,
-});
+interface DeleteSchema {
+    delete: string;
+    $db: string;
+    deletes: { q: any, limit: number }[];
+    lsid?: { id: UUID };
+    txnNumber?: number;
+    autocommit?: boolean;
+    startTransaction?: boolean;
+}
 
-export class DeleteCommand<T extends ClassSchema | ClassType> extends Command {
+export class DeleteCommand<T extends ReflectionClass<any>> extends Command {
 
     constructor(
-        public classSchema: T,
+        public schema: T,
         public filter: { [name: string]: any } = {},
         public limit: number = 0,
         public skip: number = 0,
@@ -42,11 +37,9 @@ export class DeleteCommand<T extends ClassSchema | ClassType> extends Command {
     }
 
     async execute(config, host, transaction): Promise<number> {
-        const schema = getClassSchema(this.classSchema);
-
         const cmd = {
-            delete: schema.collectionName || schema.name || 'unknown',
-            $db: schema.databaseSchemaName || config.defaultDb || 'admin',
+            delete: this.schema.collectionName || this.schema.name || 'unknown',
+            $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             deletes: [
                 {
                     q: this.filter,
@@ -57,7 +50,7 @@ export class DeleteCommand<T extends ClassSchema | ClassType> extends Command {
 
         if (transaction) transaction.applyTransaction(cmd);
 
-        const res = await this.sendAndWait(deleteSchema, cmd, DeleteResponse);
+        const res = await this.sendAndWait<DeleteSchema, DeleteResponse>(cmd);
         return res.n;
     }
 

@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseAdapter, DatabaseSession, DeleteResult, Entity, Formatter, GenericQueryResolver, PatchResult } from '@deepkit/orm';
-import { Changes, ClassSchema, createClassSchema, getClassSchema, resolveClassTypeOrForward, t } from '@deepkit/type';
+import { DatabaseAdapter, DatabaseSession, DeleteResult, Formatter, GenericQueryResolver, OrmEntity, PatchResult } from '@deepkit/orm';
+import { Changes, getPartialSerializeFunction, ReflectionClass, ReflectionKind, ReflectionVisibility, resolveForeignReflectionClass, serializer, typeOf } from '@deepkit/type';
 import { MongoClient } from './client/client';
 import { AggregateCommand } from './client/command/aggregate';
 import { CountCommand } from './client/command/count';
@@ -18,14 +18,14 @@ import { FindCommand } from './client/command/find';
 import { FindAndModifyCommand } from './client/command/findAndModify';
 import { UpdateCommand } from './client/command/update';
 import { convertClassQueryToMongo } from './mapping';
-import { mongoSerializer } from './mongo-serializer';
 import { DEEP_SORT, FilterQuery, MongoQueryModel } from './query.model';
 import { MongoConnection } from './client/connection';
 import { MongoDatabaseAdapter } from './adapter';
 import { empty } from '@deepkit/core';
+import { mongoSerializer } from './mongo-serializer';
 
-export function getMongoFilter<T>(classSchema: ClassSchema<T>, model: MongoQueryModel<T>): any {
-    return convertClassQueryToMongo(classSchema.classType, (model.filter || {}) as FilterQuery<T>, {}, {
+export function getMongoFilter<T>(classSchema: ReflectionClass<T>, model: MongoQueryModel<T>): any {
+    return convertClassQueryToMongo(classSchema, (model.filter || {}) as FilterQuery<T>, {}, {
         $parameter: (name, value) => {
             if (undefined === model.parameters[value]) {
                 throw new Error(`Parameter ${value} not defined in ${classSchema.getClassName()} query.`);
@@ -35,13 +35,16 @@ export function getMongoFilter<T>(classSchema: ClassSchema<T>, model: MongoQuery
     });
 }
 
-const countSchema = t.schema({
-    count: t.number
-});
+interface CountSchema {
+    count: number;
+}
 
-export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T, DatabaseAdapter, MongoQueryModel<T>> {
+export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolver<T, DatabaseAdapter, MongoQueryModel<T>> {
+
+    protected countSchema = ReflectionClass.from(typeOf<CountSchema>());
+
     constructor(
-        classSchema: ClassSchema<T>,
+        classSchema: ReflectionClass<T>,
         protected session: DatabaseSession<MongoDatabaseAdapter>,
         protected client: MongoClient,
     ) {
@@ -52,16 +55,16 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         return await this.count(model) > 0;
     }
 
-    protected getPrimaryKeysProjection(classSchema: ClassSchema) {
+    protected getPrimaryKeysProjection(classSchema: ReflectionClass<any>) {
         const pk: { [name: string]: 1 | 0 } = { _id: 0 };
-        for (const property of classSchema.getPrimaryFields()) {
+        for (const property of classSchema.getPrimaries()) {
             pk[property.name] = 1;
         }
         return pk;
     }
 
     protected async fetchIds(queryModel: MongoQueryModel<T>, limit: number = 0, connection: MongoConnection): Promise<any[]> {
-        const primaryKeyName = this.classSchema.getPrimaryField().name;
+        const primaryKeyName = this.classSchema.getPrimary().name;
         const projection = { [primaryKeyName]: 1 as const };
 
         if (queryModel.hasJoins()) {
@@ -74,7 +77,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             return items.map(v => v[primaryKeyName]);
         } else {
             const mongoFilter = getMongoFilter(this.classSchema, queryModel);
-            const items = await connection.execute(new FindCommand(this.classSchema, mongoFilter, projection, undefined, limit));
+            const items = await connection.execute(new FindCommand(this.classSchema, mongoFilter, projection, undefined, limit || queryModel.limit, queryModel.skip));
             return items.map(v => v[primaryKeyName]);
         }
     }
@@ -88,9 +91,9 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             if (primaryKeys.length === 0) return;
             deleteResult.modified = primaryKeys.length;
             deleteResult.primaryKeys = primaryKeys;
-            const primaryKeyName = this.classSchema.getPrimaryField().name;
+            const primaryKeyName = this.classSchema.getPrimary().name;
 
-            const query = convertClassQueryToMongo(this.classSchema.classType, { [primaryKeyName]: { $in: primaryKeys } } as FilterQuery<T>);
+            const query = convertClassQueryToMongo(this.classSchema, { [primaryKeyName]: { $in: primaryKeys } } as FilterQuery<T>);
             await connection.execute(new DeleteCommand(this.classSchema, query, queryModel.limit));
         } finally {
             connection.release();
@@ -103,16 +106,20 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         }
 
         const filter = getMongoFilter(this.classSchema, model) || {};
-        const serializer = mongoSerializer.for(this.classSchema);
+
+        const partialSerialize = getPartialSerializeFunction(this.classSchema.type, mongoSerializer.serializeRegistry);
+        const partialDeserialize = getPartialSerializeFunction(this.classSchema.type, serializer.deserializeRegistry);
 
         const u: any = {};
         if (changes.$set) u.$set = changes.$set;
         if (changes.$unset) u.$set = changes.$unset;
         if (changes.$inc) u.$inc = changes.$inc;
+
         if (u.$set) {
-            u.$set = serializer.partialSerialize(u.$set);
+            u.$set = partialSerialize(u.$set);
         }
-        const primaryKeyName = this.classSchema.getPrimaryField().name;
+
+        const primaryKeyName = this.classSchema.getPrimary().name;
 
         const returning = new Set([...model.returning, ...changes.getReturning()]);
 
@@ -131,7 +138,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                 patchResult.modified = res.value ? 1 : 0;
 
                 if (res.value) {
-                    const converted = serializer.partialDeserialize(res.value) as any;
+                    const converted = partialDeserialize(res.value) as any;
                     patchResult.primaryKeys = [converted[primaryKeyName]];
                     for (const name of returning) {
                         patchResult.returning[name] = [converted[name]];
@@ -155,9 +162,9 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                 patchResult.returning[name] = [];
             }
 
-            const items = await connection.execute(new FindCommand(this.classSchema, filter, projection, {}, model.limit));
+            const items = await connection.execute(new FindCommand(this.classSchema, filter, projection, {}, model.limit, model.skip));
             for (const item of items) {
-                const converted = serializer.partialDeserialize(item);
+                const converted = partialDeserialize(item);
                 patchResult.primaryKeys.push(converted[primaryKeyName]);
                 for (const name of returning) {
                     patchResult.returning[name].push(converted[name]);
@@ -176,7 +183,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             if (queryModel.hasJoins() || this.session.assignedTransaction) {
                 const pipeline = this.buildAggregationPipeline(queryModel);
                 pipeline.push({ $count: 'count' });
-                const command = new AggregateCommand(this.classSchema, pipeline, countSchema);
+                const command = new AggregateCommand<any, CountSchema>(this.classSchema, pipeline, this.countSchema);
                 const items = await connection.execute(command);
                 return items.length ? items[0].count : 0;
             } else {
@@ -184,8 +191,8 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                 if (empty(query)) {
                     //when a query is empty, mongo returns an estimated count from meta-data.
                     //we don't want estimates, we want deterministic results, so we add a query
-                    const primaryKey = this.classSchema.getPrimaryField().name;
-                    query[primaryKey] = {$nin: []};
+                    const primaryKey = this.classSchema.getPrimary().name;
+                    query[primaryKey] = { $nin: [] };
                 }
                 return await connection.execute(new CountCommand(
                     this.classSchema,
@@ -199,14 +206,35 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         }
     }
 
+    protected getSchemaWithJoins(): ReflectionClass<any> {
+        const jit = this.classSchema.getJitContainer();
+        if (jit.ormMongoSchemaWithJoins) return jit.ormMongoSchemaWithJoins;
+
+        const schema = this.classSchema.clone();
+
+        for (const property of schema.getProperties().slice()) {
+            if (property.isReference() || property.isBackReference()) {
+                const name = '__ref_' + property.name;
+                schema.addProperty({
+                    name,
+                    type: { kind: ReflectionKind.any },
+                    visibility: ReflectionVisibility.public
+                });
+            }
+        }
+
+        return jit.ormMongoSchemaWithJoins = schema;
+    }
+
     public async findOneOrUndefined(model: MongoQueryModel<T>): Promise<T | undefined> {
         const connection = await this.client.getConnection(undefined, this.session.assignedTransaction);
 
         try {
-            if (model.hasJoins()) {
+            if (model.hasJoins() || model.isAggregate()) {
                 const pipeline = this.buildAggregationPipeline(model);
                 pipeline.push({ $limit: 1 });
-                const command = new AggregateCommand(this.classSchema, pipeline);
+                const resultsSchema = model.isAggregate() ? this.getCachedAggregationSchema(model) : this.getSchemaWithJoins();
+                const command = new AggregateCommand(this.classSchema, pipeline, resultsSchema);
                 command.partial = model.isPartial();
                 const items = await connection.execute(command);
                 if (items.length) {
@@ -233,27 +261,43 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
         }
     }
 
+    protected getCachedAggregationSchema(model: MongoQueryModel<T>): ReflectionClass<any> {
+        const jit = this.classSchema.getJitContainer();
+        const keys: string[] = [...model.groupBy.values()];
+        for (const [g, a] of model.aggregate.entries()) {
+            keys.push(g + ':' + a.func);
+        }
+
+        const cacheKey = 'ormMongoAggregation' + keys.join('/');
+        if (jit[cacheKey]) return jit[cacheKey];
+
+        const schema = this.getSchemaWithJoins().clone();
+        for (const g of model.groupBy.values()) {
+            schema.addProperty({
+                name: g,
+                type: { kind: ReflectionKind.any },
+                visibility: ReflectionVisibility.public
+            });
+        }
+        for (const g of model.aggregate.keys()) {
+            schema.addProperty({
+                name: g,
+                type: { kind: ReflectionKind.any },
+                visibility: ReflectionVisibility.public
+            });
+        }
+
+        return jit[cacheKey] = schema;
+    }
+
     public async find(model: MongoQueryModel<T>): Promise<T[]> {
         const formatter = this.createFormatter(model.withIdentityMap);
-
         const connection = await this.client.getConnection(undefined, this.session.assignedTransaction);
 
         try {
             if (model.hasJoins() || model.isAggregate()) {
                 const pipeline = this.buildAggregationPipeline(model);
-
-                let resultsSchema = this.classSchema;
-                if (model.isAggregate()) {
-                    //todo: cache this depending on the fields selected
-                    resultsSchema = createClassSchema();
-                    for (const g of model.groupBy.values()) {
-                        resultsSchema.addProperty(g, t.any);
-                    }
-                    for (const g of model.aggregate.keys()) {
-                        resultsSchema.addProperty(g, t.any);
-                    }
-                }
-
+                const resultsSchema = model.isAggregate() ? this.getCachedAggregationSchema(model) : this.getSchemaWithJoins();
                 const command = new AggregateCommand(this.classSchema, pipeline, resultsSchema);
                 command.partial = model.isPartial();
                 const items = await connection.execute(command);
@@ -280,23 +324,20 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
 
     protected buildAggregationPipeline(model: MongoQueryModel<T>) {
         const joinRefs: string[] = [];
-        const handleJoins = <T>(pipeline: any[], query: MongoQueryModel<T>, schema: ClassSchema) => {
+        const handleJoins = <T>(pipeline: any[], query: MongoQueryModel<T>, schema: ReflectionClass<any>) => {
             for (const join of query.joins) {
-                if (join.query.model.isPartial()) {
-                    join.as = '__refp_' + join.propertySchema.name;
-                } else {
-                    join.as = '__ref_' + join.propertySchema.name;
-                }
+                //refs are deserialized as `any` and then further deserialized using the default serializer
+                join.as = '__ref_' + join.propertySchema.name;
                 joinRefs.push(join.as);
 
-                const foreignSchema = join.propertySchema.getResolvedClassSchema();
+                const foreignSchema = resolveForeignReflectionClass(join.propertySchema);
                 const joinPipeline: any[] = [];
 
-                if (join.propertySchema.backReference) {
-                    if (join.propertySchema.backReference.via) {
+                if (join.propertySchema.isBackReference()) {
+                    if (join.propertySchema.getBackReference().via) {
                     } else {
                         const backReference = foreignSchema.findReverseReference(
-                            join.classSchema.classType,
+                            join.classSchema.getClassType(),
                             join.propertySchema,
                         );
 
@@ -331,14 +372,14 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                     joinPipeline.push({ $project: projection });
                 }
 
-                if (join.propertySchema.backReference) {
-                    if (join.propertySchema.backReference.via) {
+                if (join.propertySchema.isBackReference()) {
+                    if (join.propertySchema.getBackReference().via) {
                         //many-to-many
-                        const viaClassType = resolveClassTypeOrForward(join.propertySchema.backReference.via);
+                        const viaClassSchema = ReflectionClass.from(join.propertySchema.getBackReference().via);
                         const subAs = join.propertySchema.name;
 
-                        const backReference = getClassSchema(viaClassType).findReverseReference(
-                            join.classSchema.classType,
+                        const backReference = viaClassSchema.findReverseReference(
+                            join.classSchema.getClassType(),
                             join.propertySchema,
                             //mappedBy is not for pivot tables. We would need 2 different mappedBy
                             // join.propertySchema.backReference.mappedBy as string
@@ -346,8 +387,8 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
 
                         pipeline.push({
                             $lookup: {
-                                from: this.client.resolveCollectionName(viaClassType),
-                                let: { localField: '$' + join.classSchema.getPrimaryField().name },
+                                from: this.client.resolveCollectionName(viaClassSchema),
+                                let: { localField: '$' + join.classSchema.getPrimary().name },
                                 pipeline: [
                                     { $match: { $expr: { $eq: ['$' + backReference.getForeignKeyName(), '$$localField'] } } }
                                 ],
@@ -355,9 +396,9 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                             },
                         });
 
-                        const foreignSchema = join.propertySchema.getResolvedClassSchema();
-                        const backReferenceForward = getClassSchema(viaClassType).findReverseReference(
-                            foreignSchema.classType,
+                        const foreignSchema = resolveForeignReflectionClass(join.propertySchema);
+                        const backReferenceForward = viaClassSchema.findReverseReference(
+                            foreignSchema.getClassType(),
                             join.propertySchema,
                             //mappedBy is not for pivot tables. We would need 2 different mappedBy
                             // join.propertySchema.backReference.mappedBy as string
@@ -372,7 +413,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                                 from: this.client.resolveCollectionName(foreignSchema),
                                 let: { localField: '$' + subAs },
                                 pipeline: [
-                                    { $match: { $expr: { $in: ['$' + foreignSchema.getPrimaryField().name, '$$localField'] } } }
+                                    { $match: { $expr: { $in: ['$' + foreignSchema.getPrimary().name, '$$localField'] } } }
                                 ].concat(joinPipeline),
                                 as: join.as,
                             },
@@ -382,7 +423,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                         pipeline.push({
                             $lookup: {
                                 from: this.client.resolveCollectionName(foreignSchema),
-                                let: { foreign_id: '$' + join.classSchema.getPrimaryField().name },
+                                let: { foreign_id: '$' + join.classSchema.getPrimary().name },
                                 pipeline: joinPipeline,
                                 as: join.as,
                             },
@@ -399,33 +440,13 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
                     });
                 }
 
-                if (join.propertySchema.isArray) {
-                    if (!schema.hasProperty(join.as)) {
-                        //it's important that joins with partials have a different name. We set it at the beginning
-                        //of this for each join loop.
-                        if (join.query.model.isPartial()) {
-                            schema.addProperty(join.as, t.array(t.partial(foreignSchema)).noValidation.exclude('all'));
-                        } else {
-                            schema.addProperty(join.as, t.array(t.type(foreignSchema)).noValidation.exclude('all'));
-                        }
-                    }
-
+                if (join.propertySchema.isArray()) {
                     if (join.type === 'inner') {
                         pipeline.push({
                             $match: { [join.as]: { $ne: [] } }
                         });
                     }
                 } else {
-                    if (!schema.hasProperty(join.as)) {
-                        //it's important that joins with partials have a different name. We set it at the beginngin
-                        //of this for each join loop.
-                        if (join.query.model.isPartial()) {
-                            schema.addProperty(join.as, t.partial(foreignSchema).noValidation.exclude('all'));
-                        } else {
-                            schema.addProperty(join.as, t.type(foreignSchema).noValidation.exclude('all'));
-                        }
-                    }
-
                     //for *toOne relations, since mongodb joins always as array
                     pipeline.push({
                         $unwind: {
@@ -494,7 +515,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
      * Returns undefined when no selection limitation has happened. When non-undefined
      * the mongo driver returns a t.partial.
      */
-    protected getProjection<T>(classSchema: ClassSchema, select: Set<string>): { [name: string]: 0 | 1 } | undefined {
+    protected getProjection<T>(classSchema: ReflectionClass<any>, select: Set<string>): { [name: string]: 0 | 1 } | undefined {
         const res: { [name: string]: 0 | 1 } = {};
 
         //as soon as we provide a {} to find/aggregate command, it triggers t.partial()
@@ -503,9 +524,9 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
             for (const v of select.values()) {
                 (res as any)[v] = 1;
             }
-            for (const property of this.classSchema.getPrimaryFields()) {
-                (res as any)[property.name] = 1;
-            }
+            // for (const property of this.classSchema.getPrimaries()) {
+            //     (res as any)[property.name] = 1;
+            // }
             return res;
         } else {
             // for (const v of classSchema.getPropertiesMap().keys()) {
@@ -518,7 +539,7 @@ export class MongoQueryResolver<T extends Entity> extends GenericQueryResolver<T
     protected createFormatter(withIdentityMap: boolean = false) {
         return new Formatter(
             this.classSchema,
-            mongoSerializer,
+            serializer,
             this.session.getHydrator(),
             withIdentityMap ? this.session.identityMap : undefined
         );

@@ -12,6 +12,6 @@ model Model {
   id    Int     @id @default(autoincrement())
   username String
   ready Boolean
-  tags  String
+  //tags  String
   priority Int
 }

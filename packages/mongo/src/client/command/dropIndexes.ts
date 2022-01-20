@@ -9,39 +9,33 @@
  */
 
 import { BaseResponse, Command } from './command';
-import { ClassSchema, getClassSchema, t } from '@deepkit/type';
-import { ClassType } from '@deepkit/core';
+import { ReflectionClass } from '@deepkit/type';
 
-class Response extends t.extendClass(BaseResponse, {}) {
+interface RequestSchema {
+    dropIndexes: string;
+    $db: string;
+    index: string[];
 }
 
-const requestSchema = t.schema({
-    dropIndexes: t.string,
-    $db: t.string,
-    index: t.array(t.string),
-});
-
-export class DropIndexesCommand<T extends ClassSchema | ClassType> extends Command {
+export class DropIndexesCommand<T extends ReflectionClass<any>> extends Command {
     constructor(
-        public classSchema: T,
+        public schema: T,
         public names: string[]
     ) {
         super();
     }
 
-    async execute(config, host, transaction): Promise<Response> {
-        const schema = getClassSchema(this.classSchema);
-
+    async execute(config, host, transaction): Promise<BaseResponse> {
         const cmd: any = {
-            dropIndexes: schema.collectionName || schema.name || 'unknown',
-            $db: schema.databaseSchemaName || config.defaultDb || 'admin',
+            dropIndexes: this.schema.collectionName || this.schema.name || 'unknown',
+            $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             index: this.names
         };
 
         // if (transaction) transaction.applyTransaction(cmd);
 
         try {
-            return await this.sendAndWait(requestSchema, cmd, Response);
+            return await this.sendAndWait<RequestSchema>(cmd);
         } catch (error) {
             throw new Error(`Could not drop indexes ${JSON.stringify(this.names)}: ${error}`);
         }

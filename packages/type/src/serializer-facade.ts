@@ -3,6 +3,7 @@ import { ReceiveType, resolveReceiveType } from './reflection/reflection';
 import { getSerializeFunction, SerializationOptions, serializer, Serializer } from './serializer';
 import { JSONPartial, JSONSingle } from './utils';
 import { typeInfer } from './reflection/processor';
+import { validates } from './validator';
 
 /**
  * Casts/coerces a given data structure to the target data type.
@@ -12,6 +13,16 @@ import { typeInfer } from './reflection/processor';
 export function cast<T>(data: JSONPartial<T> | unknown, options?: SerializationOptions, serializerToUse: Serializer = serializer, type?: ReceiveType<T>): T {
     const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry);
     return fn(data, options) as T;
+}
+
+/**
+ * Casts/coerces a given data structure to the target data type.
+ *
+ * Same as deserialize().
+ */
+export function castFunction<T>(options?: SerializationOptions, serializerToUse: Serializer = serializer, type?: ReceiveType<T>): (data: JSONPartial<T> | unknown) => T {
+    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry);
+    return (data: JSONPartial<T> | unknown) => fn(data, options);
 }
 
 /**
@@ -64,4 +75,16 @@ export function cloneClass<T>(target: T, options?: SerializationOptions): T {
     const serialize = getSerializeFunction(type, serializer.serializeRegistry);
     const deserialize = getSerializeFunction(type, serializer.deserializeRegistry);
     return deserialize(serialize(target, options));
+}
+
+/**
+ * Tries to deserialize given data as T, and throws an error if it's not possible or validation after conversion fails.
+ *
+ * @throws ValidationError when validation fails.
+ */
+export function validatedDeserialize<T>(data: any, options?: SerializationOptions, serializerToUse: Serializer = serializer, type?: ReceiveType<T>) {
+    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry);
+    const item = fn(data, options) as T;
+    validates(item, type);
+    return item;
 }

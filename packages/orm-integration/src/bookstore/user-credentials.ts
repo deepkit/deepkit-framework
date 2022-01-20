@@ -5,7 +5,6 @@ import { User } from './user';
 export class UserCredentials {
     password: string = '';
 
-    //todo: User import is not emitted
     constructor(public user: User & PrimaryKey & Reference) {
     }
 }

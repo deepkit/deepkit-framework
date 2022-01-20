@@ -11,11 +11,11 @@
 import { Host } from './host';
 import { ConnectionOptions } from './options';
 import { parse as parseUrl } from 'url';
-import { ClassSchema, getClassSchema, jsonSerializer } from '@deepkit/type';
 import { parse as parseQueryString } from 'querystring';
 import { MongoError } from './error';
-import { arrayRemoveItem, ClassType, eachPair, singleStack } from '@deepkit/core';
+import { arrayRemoveItem, eachPair, singleStack } from '@deepkit/core';
 import { resolveSrvHosts } from './dns';
+import { ReflectionClass, validatedDeserialize } from '@deepkit/type';
 
 /**
  * Default URL:
@@ -99,7 +99,8 @@ export class MongoClientConfig {
             }
         }
 
-        this.options = jsonSerializer.for(ConnectionOptions).validatedDeserialize(parsed.query ? parseQueryString(parsed.query) : {});
+        const options = parsed.query ? parseQueryString(parsed.query) : {};
+        this.options = validatedDeserialize<ConnectionOptions>(options);
 
         if (url.startsWith('mongodb+srv://')) {
             this.isSrv = true;
@@ -136,8 +137,7 @@ export class MongoClientConfig {
         }
     }
 
-    resolveCollectionName(schema: ClassSchema | ClassType): string {
-        schema = getClassSchema(schema);
+    resolveCollectionName(schema: ReflectionClass<any>): string {
         return schema.collectionName || schema.name || 'unknown';
     }
 
@@ -154,7 +154,7 @@ export class MongoClientConfig {
 
             const hostsData = await this.resolveSrvHosts();
             const options = { ...hostsData.options ? parseQueryString(hostsData.options) : {} };
-            const partialOptions = jsonSerializer.for(ConnectionOptions).validatedDeserialize(options) as {};
+            const partialOptions = validatedDeserialize<ConnectionOptions>(options) as {};
             for (const [k, v] of eachPair(partialOptions)) {
                 this.options[k] = v;
             }

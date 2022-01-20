@@ -36,14 +36,17 @@ import {
     getTypeObjectLiteralFromTypeClass,
     hasDefaultValue,
     hasEmbedded,
+    isBackReferenceType,
     isMongoIdType,
     isNullable,
     isOptional,
+    isReferenceType,
+    isType,
     isUUIDType,
+    memberNameToString,
     OuterType,
     referenceAnnotation,
     ReflectionKind,
-    stringifyShortResolvedType,
     stringifyType,
     Type,
     TypeClass,
@@ -66,12 +69,16 @@ import { ValidationFailedItem } from './validator';
 import { validators } from './validators';
 import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core';
 
+/**
+ * Make sure to change the id when a custom naming strategy is implemented, since caches are based on it.
+ */
 export class NamingStrategy {
-    protected static ids: number = 0;
-    id: number = NamingStrategy.ids++;
+    constructor(public id: string = 'default') {
+    }
 
-    getPropertyName(type: TypeProperty | TypePropertySignature): string | number | symbol | undefined {
-        return type.name;
+
+    getPropertyName(type: TypeProperty | TypePropertySignature): string | undefined {
+        return memberNameToString(type.name);
     }
 }
 
@@ -363,8 +370,8 @@ export class TemplateState {
 
     throwCode(type: OuterType | string, error?: string, accessor: string | ContainerAccessor = this.originalAccessor) {
         this.setContext({ SerializationError, stringifyValueWithType });
-        const to = JSON.stringify(('string' === typeof type ? type : stringifyShortResolvedType(type)).replace(/\n/g, '').replace(/\s+/g, ' ').trim());
-        return `throw new SerializationError('Cannot convert ' + stringifyValueWithType(${accessor}) + ' to ' + ${to} ${error ? ` + '. ' + ${error}` : ''}, ${collapsePath(this.path)});`;
+        const to = JSON.stringify(('string' === typeof type ? type : stringifyType(type)).replace(/\n/g, '').replace(/\s+/g, ' ').trim());
+        return `throw new SerializationError('Cannot convert ' + ${accessor} + ' to ' + ${to} ${error ? ` + '. ' + ${error}` : ''}, ${collapsePath(this.path)});`;
     }
 
     /**
@@ -582,12 +589,14 @@ export function buildFunction(state: TemplateState, type: Type): Function {
     let circularCheckEnd = '';
     if (hasCircularReference(type)) {
         circularCheckBeginning = `
+        if (data) {
             if (state._stack) {
                 if (state._stack.includes(data)) return undefined;
             } else {
                 state._stack = [];
             }
             state._stack.push(data);
+        }
         `;
         circularCheckEnd = `if (state._stack) state._stack.pop();`;
     }
@@ -701,7 +710,8 @@ export function createConverterJSForMember(
     `;
 }
 
-export function inAccessor(accessor: ContainerAccessor): string {
+export function inAccessor(accessor: ContainerAccessor | string): string {
+    if ('string' === typeof accessor) return `${accessor} !== undefined`;
     return `'object' === typeof ${accessor.container} && ${accessor.property} in ${accessor.container}`;
 }
 
@@ -823,7 +833,7 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
     }
 
     for (const property of clazz.getProperties()) {
-        if (constructor && constructor.hasParameter(property.getName())) continue; //already handled in the constructor
+        if (constructor && constructor.hasParameter(property.name)) continue; //already handled in the constructor
 
         const name = getNameExpression(state.namingStrategy.getPropertyName(property.property), state);
 
@@ -855,25 +865,6 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
         ${state.setter} = new ${classType}(${constructorArguments.join(', ')});
         ${lines.join('\n')}
     `);
-
-    if (referenceAnnotation.hasAnnotations(type) && !state.isAnnotationHandled(referenceAnnotation)) {
-        state.annotationHandled(referenceAnnotation);
-        state.setContext({ isObject, createReference, isReferenceHydrated, isReferenceInstance });
-        const reflection = ReflectionClass.from(type.classType);
-        const referenceClassTypeVar = state.setVariable('referenceClassType', type.classType);
-        // in deserialization a reference is created when only the primary key is provided (no object given)
-        state.replaceTemplate(`
-            if (isReferenceInstance(${state.accessor})) {
-                ${state.setter} = ${state.accessor};
-            } else if (isObject(${state.accessor})) {
-                ${state.template}
-            } else {
-                let pk;
-                ${executeTemplates(state.fork('pk').extendPath(String(reflection.getPrimary().getName())), reflection.getPrimary().getType())}
-                ${state.setter} = createReference(${referenceClassTypeVar}, {${JSON.stringify(reflection.getPrimary().getName())}: pk});
-            }
-        `);
-    }
 
     extract.setFunction(buildFunction(state, type));
 }
@@ -969,7 +960,10 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             const first = constructorProperties.properties[0];
             let name = getNameExpression(state.namingStrategy.getPropertyName(first), state);
             const setter = getEmbeddedAccessor(type, false, state.setter, state.namingStrategy, first, embedded);
-            state.addCode(executeTemplates(state.fork(setter, new ContainerAccessor(state.accessor, name)), first.type));
+            state.addCode(`
+            if (${inAccessor(state.accessor)}) {
+                ${executeTemplates(state.fork(setter, new ContainerAccessor(state.accessor, name)), first.type)}
+            }`);
         } else {
             const lines: string[] = [];
 
@@ -989,9 +983,11 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             }
 
             state.addCode(`
-                ${pre}
-                ${lines.join('\n')}
-                ${post}
+                if (${inAccessor(state.accessor)}) {
+                    ${pre}
+                    ${lines.join('\n')}
+                    ${post}
+                }
             `);
         }
         return;
@@ -1160,7 +1156,7 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 if (${v} ${optionalCheck} && ${propertyAccessor} !== unpopulatedSymbol) {
                     ${executeTemplates(propertyState,
                     member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
-                        ? { kind: ReflectionKind.function, name: member.name, return: member.return, parameters: member.parameters }
+                        ? { kind: ReflectionKind.function, name: memberNameToString(member.name), return: member.return, parameters: member.parameters }
                         : member.type
                 )}
                 }`);
@@ -1539,18 +1535,31 @@ export function handleUnion(type: TypeUnion, state: TemplateState) {
         }
     }
 
+    const handleErrors = state.setter ? `
+        if (state.errors) {
+            ${state.setter} = false;
+            state.errors = oldErrors;
+        }
+    ` : '';
+
     state.addCodeForSetter(`
+        const oldErrors = state.errors;
+        if (state.errors) state.errors = [];
+
         //type guard for union
         if (false) {} ${lines.join(' ')}
         else {
+            ${handleErrors}
             ${state.assignValidationError('type', 'Invalid type')}
         }
+
     `);
 }
 
 export function getNameExpression(name: string | number | symbol | undefined, state: TemplateState): string {
     if (undefined === name) return 'undefined';
     if ('string' === typeof name || 'number' === typeof name) return JSON.stringify(name);
+    if (isType(name)) return JSON.stringify(memberNameToString(name));
     return state.compilerContext.reserveConst(name, 'symbolName');
 }
 
@@ -1709,7 +1718,7 @@ export class Serializer {
         });
 
         this.deserializeRegistry.addDecorator(isMongoIdType, (type, state) => {
-            const check = `${state.accessor}.length === 24`;
+            const check = `${state.accessor}.length === 24 || ${state.accessor}.length === 0`;
             state.addCode(`
                 if (!(${check})) ${state.throwCode(type, JSON.stringify('Not a MongoId (ObjectId)'))}
             `);
@@ -1816,6 +1825,28 @@ export class Serializer {
 
         this.deserializeRegistry.registerClass(Set, deserializeTypeClassSet);
         this.deserializeRegistry.registerClass(Map, deserializeTypeClassMap);
+
+        this.deserializeRegistry.addDecorator(
+            type => isReferenceType(type) || isBackReferenceType(type) || (type.parent !== undefined && isBackReferenceType(type.parent)),
+            (type, state) => {
+                if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) return;
+                state.annotationHandled(referenceAnnotation);
+                state.setContext({ isObject, createReference, isReferenceHydrated, isReferenceInstance });
+                const reflection = ReflectionClass.from(type);
+                const referenceClassTypeVar = state.setVariable('referenceClassType', type.kind === ReflectionKind.class ? type.classType : Object);
+                // in deserialization a reference is created when only the primary key is provided (no object given)
+                state.replaceTemplate(`
+                    if (isReferenceInstance(${state.accessor})) {
+                        ${state.setter} = ${state.accessor};
+                    } else if (isObject(${state.accessor})) {
+                        ${state.template}
+                    } else {
+                        let pk;
+                        ${executeTemplates(state.fork('pk').extendPath(String(reflection.getPrimary().getName())), reflection.getPrimary().getType())}
+                        ${state.setter} = createReference(${referenceClassTypeVar}, {${JSON.stringify(reflection.getPrimary().getName())}: pk});
+                    }
+                `);
+            });
     }
 
     protected registerTypeGuards() {
@@ -1838,7 +1869,7 @@ export class Serializer {
             state.addSetterAndReportErrorIfInvalid('type', 'Not a UUID', check);
         });
         this.typeGuards.getRegistry(1).addDecorator(isMongoIdType, (type, state) => {
-            state.addSetterAndReportErrorIfInvalid('type', 'Not a MongoId (ObjectId)', `${state.setter} && ${state.originalAccessor}.length === 24`);
+            state.addSetterAndReportErrorIfInvalid('type', 'Not a MongoId (ObjectId)', `${state.setter} && (${state.originalAccessor}.length === 24 || ${state.originalAccessor}.length === 0)`);
         });
         this.typeGuards.register(50, ReflectionKind.string, (type, state) => state.addSetter(`true`)); //at the end, everything can be converted to string
 
@@ -2001,14 +2032,73 @@ export class Serializer {
     }
 }
 
+function assignAccessorTemplate(type: Type, state: TemplateState) {
+    state.addSetter(state.accessor);
+}
+
+export const serializableKinds: ReflectionKind[] = [
+    ReflectionKind.any,
+    ReflectionKind.unknown,
+    ReflectionKind.object,
+    ReflectionKind.string,
+    ReflectionKind.number,
+    ReflectionKind.boolean,
+    ReflectionKind.symbol,
+    ReflectionKind.bigint,
+    ReflectionKind.null,
+    ReflectionKind.undefined,
+    ReflectionKind.literal,
+    ReflectionKind.templateLiteral,
+    ReflectionKind.property,
+    ReflectionKind.method,
+    ReflectionKind.function,
+    ReflectionKind.promise,
+    ReflectionKind.class,
+    ReflectionKind.enum,
+    ReflectionKind.union,
+    ReflectionKind.array,
+    ReflectionKind.tuple,
+    ReflectionKind.regexp,
+    ReflectionKind.objectLiteral,
+];
+
 export class EmptySerializer extends Serializer {
     protected registerValidators() {
     }
 
     protected registerSerializers() {
-    }
+        for (const kind of serializableKinds) this.serializeRegistry.register(kind, assignAccessorTemplate);
+        for (const kind of serializableKinds) this.deserializeRegistry.register(kind, assignAccessorTemplate);
 
-    protected registerTypeGuards() {
+        this.deserializeRegistry.register(ReflectionKind.class, deserializeClass);
+        this.serializeRegistry.register(ReflectionKind.class, serializeObjectLiteral);
+        this.deserializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
+        this.serializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
+
+        this.deserializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
+        this.serializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
+
+        this.deserializeRegistry.register(ReflectionKind.tuple, serializeTuple);
+        this.serializeRegistry.register(ReflectionKind.tuple, serializeTuple);
+
+        this.deserializeRegistry.register(ReflectionKind.union, handleUnion);
+        this.serializeRegistry.register(ReflectionKind.union, handleUnion);
+
+        this.serializeRegistry.register(ReflectionKind.propertySignature, serializeProperty);
+        this.serializeRegistry.register(ReflectionKind.property, serializeProperty);
+        this.serializeRegistry.register(ReflectionKind.parameter, serializeProperty);
+        this.deserializeRegistry.register(ReflectionKind.propertySignature, serializeProperty);
+        this.deserializeRegistry.register(ReflectionKind.property, serializeProperty);
+        this.deserializeRegistry.register(ReflectionKind.parameter, serializeProperty);
+
+        this.serializeRegistry.registerBinary(assignAccessorTemplate);
+        this.serializeRegistry.registerClass(Date, assignAccessorTemplate);
+        this.serializeRegistry.registerClass(Map, assignAccessorTemplate);
+        this.serializeRegistry.registerClass(Set, assignAccessorTemplate);
+        this.deserializeRegistry.registerBinary(assignAccessorTemplate);
+        this.deserializeRegistry.registerClass(Date, assignAccessorTemplate);
+        this.deserializeRegistry.registerClass(Map, assignAccessorTemplate);
+        this.deserializeRegistry.registerClass(Set, assignAccessorTemplate);
     }
 }
 

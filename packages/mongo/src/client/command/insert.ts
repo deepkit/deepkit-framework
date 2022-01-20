@@ -9,53 +9,53 @@
  */
 
 import { BaseResponse, Command } from './command';
-import { ClassSchema, ExtractClassType, getClassSchema, t } from '@deepkit/type';
-import { ClassType, toFastProperties } from '@deepkit/core';
+import { toFastProperties } from '@deepkit/core';
+import { InlineRuntimeType, ReflectionClass, typeOf, UUID } from '@deepkit/type';
 
-class InsertResponse extends t.extendClass(BaseResponse, {
-    n: t.number,
-}) {
+interface InsertResponse extends BaseResponse {
+    n: number;
 }
 
-const insertSchema = t.schema({
-    insert: t.string,
-    $db: t.string,
-    lsid: t.type({ id: t.uuid }).optional,
-    txnNumber: t.number.optional,
-    autocommit: t.boolean.optional,
-    startTransaction: t.boolean.optional,
-});
+interface InsertSchema {
+    insert: string;
+    $db: string;
+    lsid?: { id: UUID };
+    txnNumber?: number;
+    autocommit?: boolean;
+    startTransaction?: boolean;
+}
 
-export class InsertCommand<T extends ClassSchema | ClassType> extends Command {
+export class InsertCommand<T> extends Command {
     constructor(
-        protected classSchema: T,
-        protected documents: ExtractClassType<T>[]
+        protected schema: ReflectionClass<T>,
+        protected documents: T[]
     ) {
         super();
     }
 
     async execute(config, host, transaction): Promise<number> {
-        const schema = getClassSchema(this.classSchema);
-
         const cmd: any = {
-            insert: schema.collectionName || schema.name || 'unknown',
-            $db: schema.databaseSchemaName || config.defaultDb || 'admin',
+            insert: this.schema.collectionName || this.schema.name || 'unknown',
+            $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             documents: this.documents,
         };
 
         if (transaction) transaction.applyTransaction(cmd);
 
-        const jit = schema.jit;
+        const jit = this.schema.getJitContainer();
         let specialisedSchema = jit.mdbInsert;
         if (!specialisedSchema) {
-            specialisedSchema = t.extendSchema(insertSchema, {
-                documents: t.array(schema)
-            });
-            jit.mdbInsert = specialisedSchema;
+            const schema = this.schema;
+
+            interface SpecialisedSchema extends InsertSchema {
+                documents: InlineRuntimeType<typeof schema>[];
+            }
+
+            jit.mdbInsert = specialisedSchema = typeOf<SpecialisedSchema>();
             toFastProperties(jit);
         }
 
-        const res = await this.sendAndWait(specialisedSchema, cmd, InsertResponse);
+        const res =  await this.sendAndWait<InsertSchema, InsertResponse>(cmd, specialisedSchema);
         return res.n;
     }
 

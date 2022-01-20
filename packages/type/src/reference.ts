@@ -58,14 +58,14 @@ export function createReference<T extends ClassType | OuterType>(type: T, pk: { 
 
     const reflectionClass = createReferenceClass(reflection);
 
-    for (const prop of reflection.getMethodParameters('constructor')) {
-        args.push(pk[prop.getName()]);
-    }
-
     const old = typeSettings.unpopulatedCheck;
     typeSettings.unpopulatedCheck = UnpopulatedCheck.None;
 
     try {
+        for (const prop of reflection.getMethodParameters('constructor')) {
+            args.push(pk[prop.getName()]);
+        }
+
         const ref = new reflectionClass(...args);
         Object.assign(ref, pk);
         return ref as any;
@@ -95,15 +95,21 @@ export function createReferenceClass<T>(
     for (const property of reflection.getProperties()) {
         if (property.isPrimaryKey()) continue;
 
+        //if it has a default, we do not overwrite it with an error
+        if (property.hasDefault()) continue;
+
+        //if it is optional, it's fine to read undefined
+        if (property.isOptional()) continue;
+
         const name = String(property.getName());
 
         const message = property.isReference() || property.isBackReference() ?
             `Reference ${reflection.getClassName()}.${name} was not loaded. Use joinWith(), useJoinWith(), etc to populate the reference.`
             :
-            `Can not access ${reflection.getClassName()}.${name} since class was not completely hydrated. Use 'await hydrate(${reflection.getClassName()}.${name})' to completely load it.`;
+            `Can not access ${reflection.getClassName()}.${name} since class was not completely hydrated. Use 'await hydrateEntity(${reflection.getClassName()})' to completely load it.`;
 
-        Object.defineProperty(Reference.prototype, property.getName(), {
-            enumerable: false,
+        Object.defineProperty(Reference.prototype, property.name, {
+            enumerable: true,
             configurable: true,
             get() {
                 if (this.hasOwnProperty(property.symbol)) {

@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { atomicChange, deserialize, PrimaryKey, Reference, ReflectionClass, serializer, t } from '@deepkit/type';
+import { atomicChange, deserialize, PrimaryKey, Reference, ReflectionClass, serializer } from '@deepkit/type';
 import { Formatter } from '../src/formatter';
 import { DatabaseQueryModel } from '../src/query';
 import { DatabaseSession } from '../src/database-session';
@@ -12,7 +12,8 @@ test('change-detection', () => {
     class Image {
         id: number & PrimaryKey = 0;
 
-        @t data: string = 'empty';
+        constructor(public data: string) {
+        }
     }
 
     class User {
@@ -44,6 +45,7 @@ test('change-detection', () => {
         expect(user.image).toBeInstanceOf(Image);
         expect(user.image.id).toBe(1);
         expect(user.image.hasOwnProperty(ReflectionClass.from(Image).getProperty('data').symbol)).toBe(false);
+        console.log('user.image', user.image);
         expect(() => user.image.data).toThrow(`Can not access Image.data since class was not completely hydrated`);
 
         user.username = 'Bar';

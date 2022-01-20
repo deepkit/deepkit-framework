@@ -324,3 +324,21 @@ test('union template literal', () => {
     expect(is<`abc${number}` | number>('abcd')).toBe(false);
     expect(is<`abc${number}` | number>('abc')).toBe(false);
 });
+
+test('class with literal and default', () => {
+    class ConnectionOptions {
+        readConcernLevel: 'local' = 'local';
+    }
+
+    expect(is<ConnectionOptions>({readConcernLevel: 'local'})).toBe(true);
+    expect(is<ConnectionOptions>({readConcernLevel: 'local2'})).toBe(false);
+});
+
+test('union literal', () => {
+    class ConnectionOptions {
+        readConcernLevel: 'local' | 'majority' | 'linearizable' | 'available' = 'majority';
+    }
+
+    expect(is<ConnectionOptions>({readConcernLevel: 'majority'})).toBe(true);
+    expect(is<ConnectionOptions>({readConcernLevel: 'majority2'})).toBe(false);
+});

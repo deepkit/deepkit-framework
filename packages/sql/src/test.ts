@@ -3,7 +3,6 @@ import { SQLDatabaseAdapter } from './sql-adapter';
 import { DatabaseModel, TableComparator } from './schema/table';
 import { Database, DatabaseEntityRegistry } from '@deepkit/orm';
 import { ReflectionClass, Type } from '@deepkit/type';
-import { expect } from '@jest/globals';
 
 export async function schemaMigrationRoundTrip(types: (Type | ClassType | ReflectionClass<any>)[], adapter: SQLDatabaseAdapter) {
     const originDatabaseModel = new DatabaseModel;
@@ -23,7 +22,7 @@ export async function schemaMigrationRoundTrip(types: (Type | ClassType | Reflec
 
         const readDatabaseModel = new DatabaseModel();
         await schemaParser.parse(readDatabaseModel, originDatabaseModel.getTableNames());
-        expect(readDatabaseModel.tables.length).toBe(types.length);
+        if (readDatabaseModel.tables.length !== types.length) throw new Error(`Read wrong table count, ${readDatabaseModel.tables.length} !== ${types.length}`);
 
         for (const type of types) {
             const s = ReflectionClass.from(type);
@@ -35,7 +34,7 @@ export async function schemaMigrationRoundTrip(types: (Type | ClassType | Reflec
         }
     } finally {
         connection.release();
-        expect(adapter.connectionPool.getActiveConnections()).toBe(0);
+        if (adapter.connectionPool.getActiveConnections() !== 0) throw new Error(`Leaking adapter connections`);
         db.disconnect();
     }
     return result;

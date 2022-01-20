@@ -1,17 +1,14 @@
-import { Forward } from "@deepkit/core";
-import {Entity, t, uuid} from "@deepkit/type";
-import {UserCredentials} from "./credentials";
+import { BackReference, entity, PrimaryKey, UUID, uuid } from '@deepkit/type';
+import { UserCredentials } from './credentials';
 
-@Entity('b-user')
+@entity.name('b-user')
 export class User {
-    @t.uuid.primary
-    id: string = uuid();
+    id: UUID & PrimaryKey = uuid();
 
     //one-to-one reference
-    @t.type(() => UserCredentials).backReference()
-    credentials: Forward<UserCredentials> = new UserCredentials(this);
+    credentials: UserCredentials & BackReference = new UserCredentials(this);
 
-    constructor(@t public name: string, public password?: string) {
+    constructor(public name: string, public password?: string) {
         if (password) this.credentials.password = password;
     }
 }

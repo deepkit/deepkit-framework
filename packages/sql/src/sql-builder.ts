@@ -14,7 +14,7 @@ import { getPrimaryKeyHashGenerator, ReflectionClass, ReflectionProperty } from 
 import { DatabaseJoinModel, DatabaseQueryModel } from '@deepkit/orm';
 import { getSqlFilter } from './filter';
 
-type ConvertDataToDict = (row: any) => { [name: string]: any };
+type ConvertDataToDict = (row: any) => { hash: string, item: { [name: string]: any } } | undefined;
 
 export class Sql {
     constructor(
@@ -129,23 +129,10 @@ export class SqlBuilder {
 
         const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getProperties();
         const tableName = this.platform.getTableIdentifier(schema);
-
-        for (const property of schema.getPrimaries()) {
-            if (property.isBackReference()) continue;
-
-            result.fields.push(property);
-            const as = this.platform.quoteIdentifier(this.sqlSelect.length + '');
-
-            if (refName) {
-                this.sqlSelect.push(this.platform.quoteIdentifier(refName) + '.' + this.platform.quoteIdentifier(property.name) + ' AS ' + as);
-            } else {
-                this.sqlSelect.push(tableName + '.' + this.platform.quoteIdentifier(property.name) + ' AS ' + as);
-            }
-        }
+        if (model.select.size && !model.select.has(schema.getPrimary().name)) properties.unshift(schema.getPrimary());
 
         for (const property of properties) {
             if (property.isBackReference()) continue;
-            if (property.isPrimaryKey()) continue;
 
             result.fields.push(property);
             const as = this.platform.quoteIdentifier(this.sqlSelect.length + '');
@@ -165,14 +152,14 @@ export class SqlBuilder {
                     join,
                     forJoinIndex: forJoinIndex,
                     converter: (() => {
-                        return {};
+                        return;
                     }) as ConvertDataToDict,
                     startIndex: 0,
                 };
                 this.joins.push(joinMap);
 
                 const map = this.selectColumnsWithJoins(join.query.classSchema, join.query.model, refName + '__' + join.propertySchema.name);
-                joinMap.converter = this.buildConverter(map.startIndex, map.fields);
+                joinMap.converter = this.buildConverter(join.query.classSchema, join.query.model, map.startIndex, map.fields);
                 joinMap.startIndex = map.startIndex;
             }
         }
@@ -187,21 +174,17 @@ export class SqlBuilder {
         const result: any[] = [];
 
         const itemsStack: ({ hash: string, item: any } | undefined)[] = [];
-        const hashConverter: ((value: any) => string)[] = [];
         itemsStack.push(undefined); //root
         for (const join of this.joins) {
             itemsStack.push(undefined);
-            hashConverter.push(getPrimaryKeyHashGenerator(join.join.query.classSchema, this.platform.serializer));
         }
-
-        const rootPkHasher = getPrimaryKeyHashGenerator(schema, this.platform.serializer);
 
         for (const row of rows) {
             const converted = this.rootConverter(row);
-            const pkHash = rootPkHasher(converted);
-            if (!itemsStack[0] || itemsStack[0].hash !== pkHash) {
+            if (!converted) continue;
+            if (!itemsStack[0] || itemsStack[0].hash !== converted.hash) {
                 if (itemsStack[0]) result.push(itemsStack[0].item);
-                itemsStack[0] = { hash: pkHash, item: converted };
+                itemsStack[0] = converted;
             }
 
             for (let joinId = 0; joinId < this.joins.length; joinId++) {
@@ -210,11 +193,10 @@ export class SqlBuilder {
 
                 const converted = join.converter(row);
                 if (!converted) continue;
-                const pkHash = hashConverter[joinId](converted);
                 const forItem = itemsStack[join.forJoinIndex + 1]!.item;
 
-                if (!itemsStack[joinId + 1] || itemsStack[joinId + 1]!.hash !== pkHash) {
-                    itemsStack[joinId + 1] = { hash: pkHash, item: converted };
+                if (!itemsStack[joinId + 1] || itemsStack[joinId + 1]!.hash !== converted.hash) {
+                    itemsStack[joinId + 1] = converted;
                 }
 
                 if (join.join.propertySchema.isArray()) {
@@ -224,10 +206,10 @@ export class SqlBuilder {
                         // we need to refactor lashHash to a stack first.
                         // const pkHasher = getPrimaryKeyHashGenerator(join.join.query.classSchema, this.platform.serializer);
                         // const pkHash = pkHasher(item);
-                        forItem[join.join.as].push(converted);
+                        forItem[join.join.as].push(converted.item);
                     }
                 } else {
-                    forItem[join.join.as] = converted;
+                    forItem[join.join.as] = converted.item;
                 }
             }
         }
@@ -237,26 +219,34 @@ export class SqlBuilder {
         return result;
     }
 
-    protected buildConverter(startIndex: number, fields: ReflectionProperty[]): ConvertDataToDict {
+    protected buildConverter(schema: ReflectionClass<any>, model: SQLQueryModel<any>, startIndex: number, fields: ReflectionProperty[]): ConvertDataToDict {
         const lines: string[] = [];
         let primaryKeyIndex = startIndex;
 
         for (const field of fields) {
-            if (field.isPrimaryKey()) primaryKeyIndex = startIndex;
+            if (field.isPrimaryKey()) {
+                primaryKeyIndex = startIndex;
+                if (model.select.size && !model.select.has(field.name)) {
+                    startIndex++;
+                    continue;
+                }
+            }
             lines.push(`'${field.name}': row[${startIndex++}]`);
         }
+        const pkHasher = getPrimaryKeyHashGenerator(schema, this.platform.serializer);
 
         const code = `
             return function(row) {
                 if (null === row[${primaryKeyIndex}]) return;
 
                 return {
-                    ${lines.join(',\n')}
+                    hash: pkHasher({${JSON.stringify(schema.getPrimary().name)}: row[${primaryKeyIndex}]}),
+                    item: {${lines.join(',\n')}}
                 };
             }
         `;
 
-        return new Function(code)() as ConvertDataToDict;
+        return new Function('pkHasher', code)(pkHasher) as ConvertDataToDict;
     }
 
     protected appendJoinSQL<T>(sql: Sql, model: SQLQueryModel<T>, parentName: string, prefix: string = ''): void {
@@ -355,7 +345,7 @@ export class SqlBuilder {
         if (!manualSelect) {
             if (model.hasJoins()) {
                 const map = this.selectColumnsWithJoins(schema, model, '');
-                this.rootConverter = this.buildConverter(map.startIndex, map.fields);
+                this.rootConverter = this.buildConverter(schema, model, map.startIndex, map.fields);
             } else {
                 this.selectColumns(schema, model);
             }

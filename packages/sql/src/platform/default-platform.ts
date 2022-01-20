@@ -245,7 +245,7 @@ export abstract class DefaultPlatform {
                         property = property.clone();
                         //make all newly added properties optional
                         property.setOptional(true);
-                        schema.addProperty(property);
+                        schema.registerProperty(property);
                     }
                 }
             }

@@ -387,11 +387,11 @@ test('brands', () => {
 });
 
 test('throw', () => {
-    expect(() => cast<number>('123abc')).toThrow('Cannot convert string(123abc) to number');
-    expect(() => cast<{ a: string }>(false)).toThrow('Cannot convert boolean(false) to { a: string;}');
-    expect(() => cast<{ a: number }>({ a: 'abc' })).toThrow('a: Cannot convert string(abc) to number');
-    expect(() => cast<{ a: { b: number } }>({ a: 'abc' })).toThrow('a: Cannot convert string(abc) to { b: number;}');
-    expect(() => cast<{ a: { b: number } }>({ a: { b: 'abc' } })).toThrow('a.b: Cannot convert string(abc) to number');
+    expect(() => cast<number>('123abc')).toThrow('Cannot convert 123abc to number');
+    expect(() => cast<{ a: string }>(false)).toThrow('Cannot convert false to { a: string;}');
+    expect(() => cast<{ a: number }>({ a: 'abc' })).toThrow('a: Cannot convert abc to number');
+    expect(() => cast<{ a: { b: number } }>({ a: 'abc' })).toThrow('a: Cannot convert abc to { b: number;}');
+    expect(() => cast<{ a: { b: number } }>({ a: { b: 'abc' } })).toThrow('a.b: Cannot convert abc to number');
 });
 
 test('index signature ', () => {
@@ -501,6 +501,7 @@ test('class with reference', () => {
 
 test('class with back reference', () => {
     class User {
+        id: number & PrimaryKey = 0;
         constructor(public username: string) {
         }
     }
@@ -510,7 +511,7 @@ test('class with back reference', () => {
     }
 
     const res = cast<Team>({ leads: [{ username: 'Peter' }] });
-    expect(res).toEqual({ leads: [{ username: 'Peter' }] });
+    expect(res).toEqual({ leads: [{ id: 0, username: 'Peter' }] });
     expect(res.leads[0]).toBeInstanceOf(User);
 });
 
@@ -684,4 +685,14 @@ test('class inheritance', () => {
     const scopeSerializer = getSerializeFunction(employee.type, serializer.serializeRegistry);
 
     expect(scopeSerializer({ type: 'employee', firstName: 'Peter', email: 'test@example.com' })).toEqual({ type: 'employee', firstName: 'Peter', email: 'test@example.com' });
+});
+
+test('class with union literal', () => {
+    class ConnectionOptions {
+        readConcernLevel: 'local' | 'majority' | 'linearizable' | 'available' = 'majority';
+    }
+
+    expect(cast<ConnectionOptions>({ readConcernLevel: 'majority' })).toEqual({ readConcernLevel: 'majority' });
+    expect(cast<ConnectionOptions>({ readConcernLevel: 'linearizable' })).toEqual({ readConcernLevel: 'linearizable' });
+    expect(cast<ConnectionOptions>({ readConcernLevel: 'unknown' })).toEqual({ readConcernLevel: 'majority' });
 });

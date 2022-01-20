@@ -8,8 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { t } from '@deepkit/type';
-
 type AuthMechanismProperties = { [name: string]: string | boolean };
 
 function parsePropertyValue(value: string): string | boolean {
@@ -18,50 +16,50 @@ function parsePropertyValue(value: string): string | boolean {
     return value;
 }
 
-export class ConnectionOptions extends t.class({
-    replicaSet: t.string.optional,
-    connectTimeoutMS: t.number.default(10000),
-    socketTimeoutMS: t.number.default(36000),
+export class ConnectionOptions {
+    replicaSet?: string;
+    connectTimeoutMS: number = 10000;
+    socketTimeoutMS: number = 36000;
 
-    w: t.string.optional,
-    wtimeoutMS: t.number.optional,
-    journal: t.string.optional,
+    w?: string;
+    wtimeoutMS?: number;
+    journal?: string;
 
-    appName: t.string.optional,
-    retryWrites: t.boolean.default(true),
-    retryReads: t.boolean.default(true),
+    appName?: string;
+    retryWrites: boolean = true;
+    retryReads: boolean = true;
 
-    readConcernLevel: t.union('local', 'majority', 'linearizable', 'available').default('majority'),
+    readConcernLevel: 'local' | 'majority' | 'linearizable' | 'available' = 'majority';
 
     //unknown is there to prevent Typescript generating wrong options.d.ts
-    readPreference: t.union('primary', 'primaryPreferred', 'secondary', 'secondaryPreferred', 'nearest', 'unknown').default('primary'),
+    readPreference: 'primary' | 'primaryPreferred' | 'secondary' | 'secondaryPreferred' | 'nearest' | 'unknown' = 'primary';
 
-    maxStalenessSeconds: t.number.optional,
-    readPreferenceTags: t.string.optional,
+    maxStalenessSeconds?: number;
+    readPreferenceTags?: string;
 
-    compressors: t.union('snappy', 'zlib', 'zstd').optional,
-    zlibCompressionLevel: t.number.optional,
+    compressors?: 'snappy' | 'zlib' | 'zstd';
+    zlibCompressionLevel?: number;
 
-    authSource: t.string.optional,
-    authMechanism: t.union('SCRAM-SHA-1', 'SCRAM-SHA-256', 'MONGODB-X509', 'GSSAPI', 'PLAIN').optional,
-    authMechanismProperties: t.string.optional,
-    gssapiServiceName: t.string.optional,
+    authSource?: string;
+    authMechanism?: 'SCRAM-SHA-1' | 'SCRAM-SHA-256' | 'MONGODB-X509' | 'GSSAPI' | 'PLAIN';
+    authMechanismProperties?: string;
+    gssapiServiceName?: string;
 
-    ssl: t.boolean.optional,
-    tlsCertificateFile: t.string.optional,
-    tlsCertificateKeyFile: t.string.optional,
-    tlsCertificateKeyFilePassword: t.string.optional,
-    tlsCAFile: t.string.optional,
-    tlsCRLFile: t.string.optional,
-    tlsAllowInvalidCertificates: t.boolean.optional,
-    tlsAllowInvalidHostnames: t.boolean.optional,
-    tlsInsecure: t.boolean.optional,
+    ssl?: boolean;
+    tlsCertificateFile?: string;
+    tlsCertificateKeyFile?: string;
+    tlsCertificateKeyFilePassword?: string;
+    tlsCAFile?: string;
+    tlsCRLFile?: string;
+    tlsAllowInvalidCertificates?: boolean;
+    tlsAllowInvalidHostnames?: boolean;
+    tlsInsecure?: boolean;
 
-    maxPoolSize: t.number.default(20),
-    minPoolSize: t.number.default(1),
-    maxIdleTimeMS: t.number.default(100),
-    waitQueueTimeoutMS: t.number.default(0),
-}) {
+    maxPoolSize: number = 20;
+    minPoolSize: number = 1;
+    maxIdleTimeMS: number = 100;
+    waitQueueTimeoutMS: number = 0;
+
     getAuthMechanismProperties(): AuthMechanismProperties {
         const properties: AuthMechanismProperties = {};
         if (!this.authMechanismProperties) return properties;

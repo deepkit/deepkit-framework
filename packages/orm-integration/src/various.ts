@@ -1,10 +1,9 @@
 import { expect } from '@jest/globals';
-import { AutoIncrement, cast, entity, PrimaryKey, Reference, Unique } from '@deepkit/type';
+import { AutoIncrement, cast, entity, isReferenceInstance, PrimaryKey, Reference, Unique } from '@deepkit/type';
 import { identifier, sql, SQLDatabaseAdapter } from '@deepkit/sql';
 import { DatabaseFactory } from './test';
 import { isDatabaseOf, UniqueConstraintFailure } from '@deepkit/orm';
 import { randomBytes } from 'crypto';
-import { isReferenceInstance } from '@deepkit/type/dist/cjs/src/reference';
 
 Error.stackTraceLimit = 20;
 

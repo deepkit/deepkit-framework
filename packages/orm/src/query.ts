@@ -40,7 +40,7 @@ export interface DatabaseJoinModel<T, PARENT extends BaseQuery<any>> {
     type: 'left' | 'inner' | string,
     populate: boolean,
     //defines the field name under which the database engine populated the results.
-    //necessary for the formatter to pick it up, convert and set correct to the real field name
+    //necessary for the formatter to pick it up, convert and set correctly the real field name
     as?: string,
     query: JoinDatabaseQuery<T, PARENT>,
     foreignPrimaryKey: ReflectionProperty,

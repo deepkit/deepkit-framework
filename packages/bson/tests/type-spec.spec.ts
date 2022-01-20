@@ -52,12 +52,12 @@ export function roundTrip<T>(value: T | any, type?: ReceiveType<T>): T {
         });
         //important to not give `type` a parent, so the code acts as if it was not in `v`
         (t.types[0] as TypePropertySignature).type = type;
-        const bson = serializeBSON({ v: value }, t);
-        const res = (deserializeBSON<T>(bson, 0, t) as any).v;
+        const bson = serializeBSON({ v: value }, undefined, t);
+        const res = (deserializeBSON<T>(bson, 0, undefined, t) as any).v;
         return res;
     } else {
-        const bson = serializeBSON(value, type);
-        const res = deserializeBSON<T>(bson, 0, type);
+        const bson = serializeBSON(value, undefined, type);
+        const res = deserializeBSON<T>(bson, 0, undefined, type);
         return res;
     }
 }
@@ -74,10 +74,10 @@ export function serialize<T>(value: T | any, type?: ReceiveType<T>): T {
         });
         //important to not give `type` a parent, so the code acts as if it was not in `v`
         (t.types[0] as TypePropertySignature).type = type;
-        const bson = serializeBSON({ v: value }, t);
+        const bson = serializeBSON({ v: value }, undefined, t);
         return deserializeWithoutOptimiser(bson).v as any;
     } else {
-        const bson = serializeBSON(value, type);
+        const bson = serializeBSON(value, undefined, type);
         return deserializeWithoutOptimiser(bson) as any;
     }
 }
@@ -95,11 +95,11 @@ export function deserialize<T>(value: any, type?: ReceiveType<T>): T {
         //important to not give `type` a parent, so the code acts as if it was not in `v`
         (t.types[0] as TypePropertySignature).type = type;
         const bson = serializeWithoutOptimiser({ v: value });
-        const res = (deserializeBSON<T>(bson, 0, t) as any).v;
+        const res = (deserializeBSON<T>(bson, 0, undefined, t) as any).v;
         return res;
     } else {
         const bson = serializeWithoutOptimiser(value);
-        const res = deserializeBSON<T>(bson, 0, type);
+        const res = deserializeBSON<T>(bson, 0, undefined, type);
         return res;
     }
 }
@@ -864,11 +864,11 @@ test('embedded single optional', () => {
     }
 
     expect(deserialize<{ v?: Embedded<Price> }>({ v: 34 })).toEqual({ v: new Price(34) });
-    expect(deserialize<{ v?: Embedded<Price> }>({ })).toEqual({ });
+    expect(deserialize<{ v?: Embedded<Price> }>({})).toEqual({});
     expect(deserialize<{ v?: Embedded<Price, { prefix: '' }> }>({ amount: 34 })).toEqual({ v: new Price(34) });
-    expect(deserialize<{ v?: Embedded<Price, { prefix: '' }> }>({ })).toEqual({ });
+    expect(deserialize<{ v?: Embedded<Price, { prefix: '' }> }>({})).toEqual({});
     expect(deserialize<{ v?: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: 34 })).toEqual({ v: new Price(34) });
-    expect(deserialize<{ v?: Embedded<Price, { prefix: 'price_' }> }>({  })).toEqual({  });
+    expect(deserialize<{ v?: Embedded<Price, { prefix: 'price_' }> }>({})).toEqual({});
 
     class Product1 {
         constructor(public title: string, public price: Embedded<Price> = new Price(15)) {
@@ -896,9 +896,9 @@ test('embedded single optional', () => {
     expect(deserialize<{ a?: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: undefined })).toEqual({});
     expect(deserialize<Product1>({ title: 'Brick' })).toEqual(new Product1('Brick'));
     expect(deserialize<Product2>({ title: 'Brick' })).toEqual(new Product2('Brick'));
-    expect(deserialize<Product3>({ })).toEqual({ price: new Price(15) });
+    expect(deserialize<Product3>({})).toEqual({ price: new Price(15) });
     expect(deserialize<Product3>({ price: null })).toEqual({ price: undefined });
-    expect(deserialize<Product4>({ })).toEqual({ price: new Price(15) });
+    expect(deserialize<Product4>({})).toEqual({ price: new Price(15) });
     expect(deserialize<Product4>({ price: null })).toEqual({ price: null });
 });
 

@@ -9,12 +9,14 @@
  */
 
 import { ConnectionRequest, MongoConnection, MongoConnectionPool, MongoDatabaseTransaction } from './connection';
-import { ClassSchema } from '@deepkit/type';
 import { isErrorRetryableRead, isErrorRetryableWrite, MongoError } from './error';
-import { ClassType, sleep } from '@deepkit/core';
+import { sleep } from '@deepkit/core';
 import { Command } from './command/command';
 import { DropDatabaseCommand } from './command/dropDatabase';
 import { MongoClientConfig } from './config';
+import { ReflectionClass } from '@deepkit/type';
+import { mongoBinarySerializer } from '../mongo-serializer';
+import { BSONBinarySerializer } from '@deepkit/bson';
 
 export class MongoClient {
     protected inCloseProcedure: boolean = false;
@@ -22,14 +24,16 @@ export class MongoClient {
     public readonly config: MongoClientConfig;
     public connectionPool: MongoConnectionPool;
 
+    protected serializer: BSONBinarySerializer = mongoBinarySerializer;
+
     constructor(
         connectionString: string
     ) {
         this.config = new MongoClientConfig(connectionString);
-        this.connectionPool = new MongoConnectionPool(this.config);
+        this.connectionPool = new MongoConnectionPool(this.config, this.serializer);
     }
 
-    public resolveCollectionName(schema: ClassSchema | ClassType): string {
+    public resolveCollectionName(schema: ReflectionClass<any>): string {
         return this.config.resolveCollectionName(schema);
     }
 

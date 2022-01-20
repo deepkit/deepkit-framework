@@ -1,53 +1,43 @@
 import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
-import { Entity, getClassSchema, t, uuid } from '@deepkit/type';
+import { BackReference, entity, Index, PrimaryKey, Reference, ReflectionClass, resolveForeignReflectionClass, UUID, uuid } from '@deepkit/type';
 import { getInstanceStateFromItem, hydrateEntity } from '@deepkit/orm';
 import { createDatabase } from './utils';
 
 Error.stackTraceLimit = 20;
 
-@Entity('user2')
+@entity.name('user2')
 class User {
-    @t.uuid.primary
-    id: string = uuid();
-
-    @t.array(() => Organisation).backReference({via: () => OrganisationMembership})
-    organisations: Organisation[] = [];
-
+    id: UUID & PrimaryKey = uuid();
+    organisations: Organisation[] & BackReference<{ via: typeof OrganisationMembership }> = [];
     //self reference
-    @t.optional.reference()
-    manager?: User;
+    manager?: User & Reference;
+    managedUsers: User[] & BackReference = [];
 
-    @t.array(User).backReference()
-    managedUsers: User[] = [];
-
-    constructor(@t public name: string) {
+    constructor(public name: string) {
     }
 }
 
-@Entity('organisation2')
+@entity.name('organisation2')
 class Organisation {
-    @t.uuid.primary
-    id: string = uuid();
+    id: UUID & PrimaryKey = uuid();
 
-    @t.array(User).backReference({mappedBy: 'organisations', via: () => OrganisationMembership})
-    users: User[] = [];
+    users: User[] & BackReference<{ mappedBy: 'organisations', via: typeof OrganisationMembership }> = [];
 
     constructor(
-        @t public name: string,
-        @t.reference() public owner: User,
+        public name: string,
+        public owner: User & Reference,
     ) {
     }
 }
 
-@Entity('organisation_member2')
+@entity.name('organisation_member2')
 class OrganisationMembership {
-    @t.uuid.primary
-    id: string = uuid();
+    id: UUID & PrimaryKey = uuid();
 
     constructor(
-        @t.reference().index() public user: User,
-        @t.reference().index() public organisation: Organisation,
+        public user: User & Reference & Index,
+        public organisation: Organisation & Reference & Index,
     ) {
     }
 }
@@ -84,13 +74,13 @@ async function setupTestCase(name: string) {
 }
 
 test('check if foreign keys are deleted correctly', async () => {
-    const {db} = await setupTestCase('check if foreign keys are deleted correctly');
+    const { db } = await setupTestCase('check if foreign keys are deleted correctly');
 
     const manager = new User('manager');
     await db.persist(manager);
 
     {
-        const marc = await db.query(User).filter({name: 'marc'}).findOne();
+        const marc = await db.query(User).filter({ name: 'marc' }).findOne();
         expect(marc.manager).toBeUndefined();
 
         marc.manager = manager;
@@ -99,31 +89,31 @@ test('check if foreign keys are deleted correctly', async () => {
     }
 
     {
-        const marc = await db.query(User).filter({name: 'marc'}).findOne();
+        const marc = await db.query(User).filter({ name: 'marc' }).findOne();
         expect(marc.manager!.id).toBe(manager.id);
     }
 
     {
-        const marc = await db.query(User).joinWith('manager').filter({name: 'marc'}).findOne();
+        const marc = await db.query(User).joinWith('manager').filter({ name: 'marc' }).findOne();
         expect(marc.manager!.id).toBe(manager.id);
         expect(marc.manager!.name).toBe('manager');
     }
 
     {
-        const marc = await db.query(User).filter({name: 'marc'}).findOne();
+        const marc = await db.query(User).filter({ name: 'marc' }).findOne();
         marc.manager = undefined;
 
         await db.persist(marc);
     }
 
     {
-        const marc = await db.query(User).filter({name: 'marc'}).findOne();
+        const marc = await db.query(User).filter({ name: 'marc' }).findOne();
         expect(marc.manager).toBeUndefined();
     }
 });
 
 test('disabled identity map', async () => {
-    const {session, marc, peter, marcel} = await setupTestCase('disabled identity map');
+    const { session, marc, peter, marcel } = await setupTestCase('disabled identity map');
 
     const manager1 = new User('manager1');
     session.add(manager1);
@@ -146,14 +136,14 @@ test('disabled identity map', async () => {
     await session.commit();
 
     {
-        const item = await session.query(User).filter({name: 'marc'}).findOne();
+        const item = await session.query(User).filter({ name: 'marc' }).findOne();
         expect(item).not.toBe(marc);
         expect(item.id).toBe(marc.id);
         expect(item.manager!.id).toBe(manager1.id);
     }
 
     {
-        const item = await session.query(User).filter({id: manager1.id}).findOne();
+        const item = await session.query(User).filter({ id: manager1.id }).findOne();
         expect(item).not.toBe(manager1);
         expect(item).toBeInstanceOf(User);
         expect(item.id).toBe(manager1.id);
@@ -161,7 +151,7 @@ test('disabled identity map', async () => {
     }
 
     {
-        const item = await session.query(User).joinWith('managedUsers').filter({id: manager1.id}).findOne();
+        const item = await session.query(User).joinWith('managedUsers').filter({ id: manager1.id }).findOne();
         expect(item.managedUsers.length).toBe(3);
         expect(item.managedUsers[0]).toBeInstanceOf(User);
         expect(item.managedUsers[0].id).toBe(marc.id);
@@ -175,17 +165,17 @@ test('parameters', async () => {
     } = await setupTestCase('parameters');
     const session = db.createSession();
 
-    await expect(session.query(User).filter({'name': {$parameter: 'name'}}).find()).rejects.toThrow('Parameter name not defined');
+    await expect(session.query(User).filter({ 'name': { $parameter: 'name' } }).find()).rejects.toThrow('Parameter name not defined');
 
     {
-        const query = session.query(User).filter({'name': {$parameter: 'name'}});
+        const query = session.query(User).filter({ 'name': { $parameter: 'name' } });
         const marc = await query.parameter('name', 'marc').findOne();
         expect(marc.name).toBe('marc');
 
         const peter = await query.parameter('name', 'peter').findOne();
         expect(peter.name).toBe('peter');
 
-        const marcel = await query.parameters({name: 'marcel'}).findOne();
+        const marcel = await query.parameters({ name: 'marcel' }).findOne();
         expect(marcel.name).toBe('marcel');
     }
 });
@@ -214,9 +204,9 @@ test('hydrate', async () => {
     {
         expect(session.withIdentityMap).toBe(true);
 
-        //test automatic hydration
+        //test automatic hydration. item.user should be picked up from the identity map, and thus fully hydrated
         {
-            const marcFromDb = await session.query(User).filter({name: 'marc'}).findOne();
+            const marcFromDb = await session.query(User).filter({ name: 'marc' }).findOne();
             const item = await session.query(OrganisationMembership).filter({
                 user: marc,
                 organisation: apple,
@@ -241,11 +231,11 @@ test('hydrate', async () => {
             expect(item.user.id).toBe(marc.id);
             expect(item.organisation.id).toBe(apple.id);
             expect(() => item.user.name).toThrow(`Can not access User.name since class was not completely hydrated`);
-            expect(getInstanceStateFromItem(item.user).getLastKnownPK()).toEqual({id: item.user.id});
+            expect(getInstanceStateFromItem(item.user).getLastKnownPK()).toEqual({ id: item.user.id });
             expect(session.identityMap.isKnown(item.user)).toBe(true);
 
             //this will hydrate all related proxy objects
-            const items = await session.query(User).filter({name: 'marc'}).find();
+            const items = await session.query(User).filter({ name: 'marc' }).find();
             expect(items[0]).toBe(item.user);
         }
     }
@@ -261,12 +251,12 @@ test('joins', async () => {
     expect(await session.query(Organisation).count()).toBe(2);
     expect(await session.query(OrganisationMembership).count()).toBe(4);
 
-    expect(await session.query(OrganisationMembership).filter({user: marc}).count()).toBe(2);
-    expect(await session.query(OrganisationMembership).filter({user: peter}).count()).toBe(1);
-    expect(await session.query(OrganisationMembership).filter({user: marcel}).count()).toBe(1);
+    expect(await session.query(OrganisationMembership).filter({ user: marc }).count()).toBe(2);
+    expect(await session.query(OrganisationMembership).filter({ user: peter }).count()).toBe(1);
+    expect(await session.query(OrganisationMembership).filter({ user: marcel }).count()).toBe(1);
 
-    expect(await session.query(OrganisationMembership).filter({organisation: apple}).count()).toBe(1);
-    expect(await session.query(OrganisationMembership).filter({organisation: microsoft}).count()).toBe(3);
+    expect(await session.query(OrganisationMembership).filter({ organisation: apple }).count()).toBe(1);
+    expect(await session.query(OrganisationMembership).filter({ organisation: microsoft }).count()).toBe(3);
 
     expect(() => {
         session.query(Organisation).join('id' as any);
@@ -292,11 +282,11 @@ test('joins', async () => {
     }
 
     {
-        await expect(session.query(User).innerJoin('organisations').filter({name: 'notexisting'}).findOneField('name')).rejects.toThrow('not found');
+        await expect(session.query(User).innerJoin('organisations').filter({ name: 'notexisting' }).findOneField('name')).rejects.toThrow('not found');
     }
 
     {
-        const item = await session.query(User).innerJoin('organisations').filter({name: 'notexisting'}).findOneFieldOrUndefined('name');
+        const item = await session.query(User).innerJoin('organisations').filter({ name: 'notexisting' }).findOneFieldOrUndefined('name');
         expect(item).toBeUndefined();
     }
 
@@ -306,41 +296,41 @@ test('joins', async () => {
     }
 
     {
-        const items = await session.query(User).sort({name: 'asc'}).findField('name');
+        const items = await session.query(User).sort({ name: 'asc' }).findField('name');
         expect(items).toEqual(['admin', 'marc', 'marcel', 'peter']);
     }
 
     {
-        const items = await session.query(User).sort({name: 'desc'}).findField('name');
+        const items = await session.query(User).sort({ name: 'desc' }).findField('name');
         expect(items).toEqual(['peter', 'marcel', 'marc', 'admin']);
     }
 
-    await expect(session.query(User).filter({name: 'notexisting'}).findOneField('name')).rejects.toThrow('not found');
+    await expect(session.query(User).filter({ name: 'notexisting' }).findOneField('name')).rejects.toThrow('not found');
 
-    expect(await session.query(User).filter({name: 'marc'}).has()).toBe(true);
-    expect(await session.query(User).filter({name: 'notexisting'}).has()).toBe(false);
+    expect(await session.query(User).filter({ name: 'marc' }).has()).toBe(true);
+    expect(await session.query(User).filter({ name: 'notexisting' }).has()).toBe(false);
 
-    expect(await session.query(User).join('organisations').filter({name: 'marc'}).has()).toBe(true);
-    expect(await session.query(User).join('organisations').filter({name: 'notexisting'}).has()).toBe(false);
+    expect(await session.query(User).join('organisations').filter({ name: 'marc' }).has()).toBe(true);
+    expect(await session.query(User).join('organisations').filter({ name: 'notexisting' }).has()).toBe(false);
 
     {
-        const item = await session.query(User).filter({name: 'notexisting'}).findOneFieldOrUndefined('name');
+        const item = await session.query(User).filter({ name: 'notexisting' }).findOneFieldOrUndefined('name');
         expect(item).toBeUndefined();
     }
 
     {
-        const schema = getClassSchema(OrganisationMembership);
-        expect(schema.getProperty('user').getResolvedClassType()).toBe(User);
+        const schema = ReflectionClass.from(OrganisationMembership);
+        expect(schema.getProperty('user').getResolvedReflectionClass().getClassType()).toBe(User);
         const query = session.query(OrganisationMembership).joinWith('user');
 
-        const resolvedType = query.model.joins[0].propertySchema.getResolvedClassType();
+        const resolvedType = resolveForeignReflectionClass(query.model.joins[0].propertySchema).getClassType();
         expect(resolvedType).toBe(User);
         expect(resolvedType === User).toBe(true);
 
-        const schema2 = getClassSchema(resolvedType);
+        const schema2 = ReflectionClass.from(resolvedType);
         expect(schema2.name).toBe('user2');
-        expect(schema2.classType).toBe(User);
-        expect(query.model.joins[0].propertySchema.getResolvedClassSchema().classType).toBe(User);
+        expect(schema2.getClassType()).toBe(User);
+        expect(resolveForeignReflectionClass(query.model.joins[0].propertySchema).getClassType()).toBe(User);
     }
 
     {
@@ -358,14 +348,14 @@ test('joins', async () => {
     }
 
     {
-        const items = await session.query(OrganisationMembership).filter({user: peter}).joinWith('user').find();
+        const items = await session.query(OrganisationMembership).filter({ user: peter }).joinWith('user').find();
         expect(items.length).toBe(1);
         expect(items[0].user.id).toBe(peter.id);
         expect(items[0].organisation.id).toBe(microsoft.id);
     }
 
     {
-        const item = await session.query(OrganisationMembership).filter({user: peter}).joinWith('user').findOne();
+        const item = await session.query(OrganisationMembership).filter({ user: peter }).joinWith('user').findOne();
         expect(item).not.toBeUndefined();
         expect(item.user.id).toBe(peter.id);
         expect(item.user.name).toBe(peter.name);
@@ -374,15 +364,15 @@ test('joins', async () => {
             item.organisation.name;
         }).toThrow(`Can not access Organisation.name since class`);
 
-        const count1 = await session.query(OrganisationMembership).filter({user: peter}).joinWith('user').count();
+        const count1 = await session.query(OrganisationMembership).filter({ user: peter }).joinWith('user').count();
         expect(count1).toBe(1);
 
-        const count2 = await session.query(OrganisationMembership).filter({user: peter}).count();
+        const count2 = await session.query(OrganisationMembership).filter({ user: peter }).count();
         expect(count2).toBe(1);
     }
 
     {
-        const item = await session.query(OrganisationMembership).filter({user: peter}).findOne();
+        const item = await session.query(OrganisationMembership).filter({ user: peter }).findOne();
         expect(item).not.toBeUndefined();
         expect(item.user.id).toBe(peter.id);
         expect(item.organisation.id).toBe(microsoft.id);
@@ -401,7 +391,7 @@ test('joins', async () => {
 
     {
         const items = await session.query(OrganisationMembership)
-            .useJoinWith('user').filter({name: 'marc'}).end().find();
+            .useJoinWith('user').filter({ name: 'marc' }).end().find();
         expect(items.length).toBe(4); //still 4, but user is empty for all other than marc
         expect(items[0].user).toBeInstanceOf(User);
         expect(items[1].user).toBeInstanceOf(User);
@@ -411,7 +401,7 @@ test('joins', async () => {
 
     {
         const items = await session.query(OrganisationMembership)
-            .useInnerJoin('user').filter({name: 'marc'}).end().find();
+            .useInnerJoin('user').filter({ name: 'marc' }).end().find();
 
         expect(items.length).toBe(2);
         expect(() => {
@@ -425,7 +415,7 @@ test('joins', async () => {
 
     {
         const query = await session.query(OrganisationMembership)
-            .useInnerJoinWith('user').select('id').filter({name: 'marc'}).end();
+            .useInnerJoinWith('user').select('id').filter({ name: 'marc' }).end();
 
         {
             const items = await query.find();
@@ -433,7 +423,7 @@ test('joins', async () => {
             expect(items[0].user).not.toBeInstanceOf(User);
             expect(items[1].user).not.toBeInstanceOf(User);
 
-            expect(items[0].user).toEqual({id: marc.id});
+            expect(items[0].user).toEqual({ id: marc.id });
         }
 
         {
@@ -442,7 +432,7 @@ test('joins', async () => {
             expect(items[0].user).not.toBeInstanceOf(User);
             expect(items[1].user).not.toBeInstanceOf(User);
 
-            expect(items[0].user).toEqual({id: marc.id});
+            expect(items[0].user).toEqual({ id: marc.id });
         }
     }
 
@@ -463,7 +453,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await session.query(User).useInnerJoinWith('organisations').filter({name: 'Microsoft'}).end().find();
+        const items = await session.query(User).useInnerJoinWith('organisations').filter({ name: 'Microsoft' }).end().find();
         expect(items[0].organisations.length).toBe(1);
         expect(items[0].organisations[0]).toBeInstanceOf(Organisation);
         expect(items[0].organisations[0].name).toBe('Microsoft');
@@ -500,7 +490,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await session.query(Organisation).useInnerJoinWith('users').sort({name: 'asc'}).end().find();
+        const items = await session.query(Organisation).useInnerJoinWith('users').sort({ name: 'asc' }).end().find();
         expect(items.length).toBe(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
@@ -514,7 +504,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await session.query(Organisation).useJoinWith('users').sort({name: 'asc'}).skip(1).end().find();
+        const items = await session.query(Organisation).useJoinWith('users').sort({ name: 'asc' }).skip(1).end().find();
         expect(items.length).toBe(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
@@ -527,7 +517,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await session.query(Organisation).useJoinWith('users').sort({name: 'asc'}).skip(1).limit(1).end().find();
+        const items = await session.query(Organisation).useJoinWith('users').sort({ name: 'asc' }).skip(1).limit(1).end().find();
         expect(items.length).toBe(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
@@ -554,7 +544,7 @@ test('joins', async () => {
 
     {
         const query = session.query(OrganisationMembership)
-            .useInnerJoinWith('user').filter({name: 'marc'}).end();
+            .useInnerJoinWith('user').filter({ name: 'marc' }).end();
 
         const items = await query.find();
         expect(items.length).toBe(2); //we get 2 because of inner join
@@ -569,7 +559,7 @@ test('joins', async () => {
 
     {
         const query = session.query(OrganisationMembership)
-            .useInnerJoinWith('user').filter({name: 'marc'}).end();
+            .useInnerJoinWith('user').filter({ name: 'marc' }).end();
 
         const item = await query.findOne();
         expect(item.user).toBeInstanceOf(User);
@@ -577,7 +567,7 @@ test('joins', async () => {
     }
 
     {
-        const query = session.query(OrganisationMembership).filter({user: marc});
+        const query = session.query(OrganisationMembership).filter({ user: marc });
         const items = await query.find();
         expect(items.length).toBe(2);
     }
@@ -586,25 +576,25 @@ test('joins', async () => {
     await session.commit();
 
     {
-        const query = session.query(OrganisationMembership).joinWith('user').filter({user: peter});
+        const query = session.query(OrganisationMembership).joinWith('user').filter({ user: peter });
         const items = await query.find();
         expect(items.length).toBe(1);
         expect(await query.count()).toBe(1);
     }
 
     {
-        expect(await session.query(OrganisationMembership).innerJoin('user').filter({user: peter}).count()).toBe(0);
-        expect(await session.query(OrganisationMembership).innerJoinWith('user').filter({user: peter}).count()).toBe(0);
+        expect(await session.query(OrganisationMembership).innerJoin('user').filter({ user: peter }).count()).toBe(0);
+        expect(await session.query(OrganisationMembership).innerJoinWith('user').filter({ user: peter }).count()).toBe(0);
     }
 
     {
         const query = session.query(OrganisationMembership)
-            .useJoinWith('user').filter({name: 'marc'}).end()
+            .useJoinWith('user').filter({ name: 'marc' }).end()
             .joinWith('organisation');
 
         expect(query.model.joins.length).toBe(2);
-        expect(query.model.joins[0].propertySchema.getResolvedClassType()).toBe(User);
-        expect(query.model.joins[1].propertySchema.getResolvedClassType()).toBe(Organisation);
+        expect(resolveForeignReflectionClass(query.model.joins[0].propertySchema).getClassType()).toBe(User);
+        expect(resolveForeignReflectionClass(query.model.joins[1].propertySchema).getClassType()).toBe(Organisation);
 
         const items = await query.find();
         expect(items.length).toBe(4); //we get all, because we got a left join
@@ -612,7 +602,7 @@ test('joins', async () => {
 
     {
         const query = session.query(User)
-            .useInnerJoinWith('organisations').filter({name: 'Microsoft'}).end();
+            .useInnerJoinWith('organisations').filter({ name: 'Microsoft' }).end();
 
         {
             const items = await query.clone().find();
@@ -675,7 +665,7 @@ test('joins', async () => {
         }
 
         {
-            const item = await session.query(User).joinWith('organisations').filter({name: 'marc'}).findOne();
+            const item = await session.query(User).joinWith('organisations').filter({ name: 'marc' }).findOne();
             expect(item.name).toBe('marc');
             expect(item.organisations.length).toBeGreaterThan(0);
         }

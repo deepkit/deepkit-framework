@@ -6,10 +6,18 @@ export const databaseFactory: DatabaseFactory = async (entities): Promise<Databa
     const adapter = new MongoDatabaseAdapter('mongodb://localhost/orm-integration');
 
     const database = new Database(adapter);
-    if (entities) database.registerEntity(...entities);
-    await adapter.client.dropDatabase('orm-integration');
+    if (entities) {
+        database.registerEntity(...entities);
 
-    await database.migrate();
+        //drop&recreate collection is incredible slow in mongodb, so we work around that
+        for (const entity of entities) {
+            await database.query(entity).deleteMany();
+        }
+        await adapter.resetAutoIncrementSequences();
+
+        // await adapter.client.dropDatabase('orm-integration');
+        await database.migrate();
+    }
 
     return database;
 };

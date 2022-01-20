@@ -8,7 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { t } from '@deepkit/type';
 import { Command } from './command';
 import { IsMasterResponse } from './ismaster';
 import { MongoClientConfig } from '../config';
@@ -19,23 +18,23 @@ import { MongoError } from '../error';
 import { MongoAuth } from './auth/auth';
 import { X509Auth } from './auth/x509';
 
-const isMasterSchema = t.schema({
-    isMaster: t.number,
-    $db: t.string,
-    saslSupportedMechs: t.string.optional,
+interface IsMasterSchema {
+    isMaster: number;
+    $db: string;
+    saslSupportedMechs?: string;
     client: {
         // application: {
         //     name: t.string,
         // },
         driver: {
-            name: t.string,
-            version: t.string,
+            name: string;
+            version: string;
         },
         os: {
-            type: t.string,
+            type: string;
         }
-    }
-});
+    };
+}
 
 const enum AuthMechanism {
     MONGODB_AWS = 'mongodb-aws',
@@ -82,10 +81,9 @@ export class HandshakeCommand extends Command {
 
     async execute(config: MongoClientConfig, host: Host): Promise<boolean> {
         const db = config.getAuthSource();
-        const cmd = {
+        const cmd: IsMasterSchema = {
             isMaster: 1,
             $db: db,
-            saslSupportedMechs: !config.options.authMechanism && config.authUser ? `${db}.${config.authUser}` : undefined,
             client: {
                 // application: {
                 //     name: 'undefined'
@@ -100,7 +98,11 @@ export class HandshakeCommand extends Command {
             }
         };
 
-        const response = await this.sendAndWait(isMasterSchema, cmd, IsMasterResponse);
+        if (!config.options.authMechanism && config.authUser) {
+            cmd.saslSupportedMechs = `${db}.${config.authUser}`;
+        }
+
+        const response = await this.sendAndWait<IsMasterSchema, IsMasterResponse>(cmd);
         const hostType = host.getTypeFromIsMasterResult(response);
 
         host.setType(hostType);

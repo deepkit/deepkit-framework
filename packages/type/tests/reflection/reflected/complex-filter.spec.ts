@@ -1,15 +1,6 @@
-/*
- * Deepkit Framework
- * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the MIT License.
- *
- * You should have received a copy of the MIT License along with this program.
- */
-
-import { DatabaseQueryModel, OrmEntity, SORT_ORDER } from '@deepkit/orm';
-import { MongoId, UUID } from '@deepkit/type';
+import { expect, test } from '@jest/globals';
+import { typeOf } from '../../../src/reflection/reflection';
+import { cast } from '../../../src/serializer-facade';
 
 type BSONTypeAlias =
     | 'number'
@@ -20,10 +11,7 @@ type BSONTypeAlias =
     | 'long' | 'decimal' | 'minKey' | 'maxKey';
 
 /** https://docs.mongodb.com/manual/reference/operator/query-bitwise */
-type BitwiseQuery =
-    | number    /** <numeric bitmask> */
-    | number[];
-/** [ <position1>, <position2>, ... ] */
+type BitwiseQuery = number | number[];
 
 // we can search using alternative types in mongodb e.g.
 // string types can be searched using a regex in mongo
@@ -34,7 +22,7 @@ type MongoAltQuery<T> =
         RegExpForString<T>;
 
 /** https://docs.mongodb.com/manual/reference/operator/query/#query-selectors */
-export type QuerySelector<T> = {
+type QuerySelector<T> = {
     // Comparison
     $eq?: T;
     $gt?: T;
@@ -45,12 +33,8 @@ export type QuerySelector<T> = {
     $ne?: T;
     $nin?: T[];
     // Logical
-    $not?: T extends string ? (QuerySelector<T> | RegExp) : QuerySelector<T>;
+    // $not?: T extends string ? (QuerySelector<T> | RegExp) : QuerySelector<T>;
     // Element
-    /**
-     * When `true`, `$exists` matches the documents that contain the field,
-     * including documents where the field value is null.
-     */
     $exists?: boolean;
     $type?: number | BSONTypeAlias;
     // Evaluation
@@ -60,14 +44,12 @@ export type QuerySelector<T> = {
     $regex?: T extends string ? (RegExp | string) : never;
     $options?: T extends string ? string : never;
     // Geospatial
-    // TODO: define better types for geo queries
     $geoIntersects?: { $geometry: object };
     $geoWithin?: object;
     $near?: object;
     $nearSphere?: object;
     $maxDistance?: number;
     // Array
-    // TODO: define better types for $all and $elemMatch
     $all?: T extends Array<infer U> ? any[] : never;
     $elemMatch?: T extends Array<infer U> ? object : never;
     $size?: T extends Array<infer U> ? number : never;
@@ -81,7 +63,7 @@ export type QuerySelector<T> = {
     $parameter?: string;
 };
 
-export type RootQuerySelector<T> = {
+type RootQuerySelector<T> = {
     /** https://docs.mongodb.com/manual/reference/operator/query/and/#op._S_and */
     $and?: Array<FilterQuery<T>>;
     /** https://docs.mongodb.com/manual/reference/operator/query/nor/#op._S_nor */
@@ -99,23 +81,34 @@ export type RootQuerySelector<T> = {
     $where?: string | Function;
     /** https://docs.mongodb.com/manual/reference/operator/query/comment/#op._S_comment */
     $comment?: string;
-
     // we could not find a proper TypeScript generic to support nested queries e.g. 'user.friends.name'
     // this will mark all unrecognized properties as any (including nested queries)
-    [key: string]: UUID | MongoId | any;
+    [key: string]: any;
 };
 
-export type ObjectQuerySelector<T> = T extends object ? { [key in keyof T]?: QuerySelector<T[key]> } : QuerySelector<T>;
+type Condition<T> = MongoAltQuery<T> | QuerySelector<MongoAltQuery<T>>;
 
-export type Condition<T> = MongoAltQuery<T> | QuerySelector<MongoAltQuery<T>>;
-
-export type FilterQuery<T> = {
+type FilterQuery<T> = {
     [P in keyof T]?: Condition<T[P]>;
-} &
-    RootQuerySelector<T>;
+} & RootQuerySelector<T>;
 
-export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
-export type DEEP_SORT<T extends OrmEntity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };
+test('filter', () => {
 
-export class MongoQueryModel<T extends OrmEntity> extends DatabaseQueryModel<T, FilterQuery<T>, DEEP_SORT<T>> {
-}
+    interface Product {
+        id: number;
+        title: string;
+    }
+    interface User {
+        id: number;
+        username: string;
+    }
+
+    type t = FilterQuery<User>;
+    const type = typeOf<t>();
+    // console.log(type);
+    // console.log(stringifyResolvedType(type));
+
+    expect(cast<t>({ username: 'peter' })).toEqual({ username: 'peter' });
+    expect(cast<t>({ id: 3 })).toEqual({ id: 3 });
+    expect(cast<t>({ $and: [{ username: 'peter' }, { id: 3 }] })).toEqual({ $and: [{ username: 'peter' }, { id: 3 }] });
+});

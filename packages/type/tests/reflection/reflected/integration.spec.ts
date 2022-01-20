@@ -1697,3 +1697,8 @@ test('singleTableInheritance', () => {
     const discriminant = person.getSingleTableInheritanceDiscriminantName();
     expect(discriminant).toBe('type');
 });
+
+test('Array<T>', () => {
+    expect(typeOf<string[]>()).toMatchObject({ kind: ReflectionKind.array, type: { kind: ReflectionKind.string } });
+    expect(typeOf<Array<string>>()).toMatchObject({ kind: ReflectionKind.array, type: { kind: ReflectionKind.string } });
+});

@@ -73,10 +73,11 @@ export const usersTests = {
         }
 
         {
-            const q = database.query(User).select('username', 'groups');
             const users = await database.query(User).select('username', 'groups').joinWith('groups').find();
             expect(users.length).toBe(2);
-            expect(getObjectKeysSize(users[0])).toBe(3);
+            expect(Object.keys(users[0]).length).toBe(2)
+            expect(Object.keys(users[0])).toContain('username');
+            expect(Object.keys(users[0])).toContain('groups');
             expect(users[0].username).toBe('User1');
             expect(users[0].groups!.length).toBe(1);
             expect(users[1].groups!.length).toBe(1);
@@ -109,7 +110,7 @@ export const usersTests = {
         {
             const users = await session.query(User).disableIdentityMap().select('username', 'groups').joinWith('groups').find();
             expect(users.length).toBe(2);
-            expect(getObjectKeysSize(users[0])).toBe(3);
+            expect(getObjectKeysSize(users[0])).toBe(2);
             expect(users[0].username).toBe('User1');
             expect(users[0].groups!.length).toBe(1);
             expect(users[1].groups!.length).toBe(1);

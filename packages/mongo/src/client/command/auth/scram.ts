@@ -10,46 +10,40 @@
 
 import { createHash, createHmac, pbkdf2Sync, randomBytes, timingSafeEqual } from 'crypto';
 import { MongoAuth } from './auth';
-import { t } from '@deepkit/type';
 import { MongoClientConfig } from '../../config';
 import { BaseResponse, Command } from '../command';
 import { MongoError } from '../../error';
 // @ts-ignore
 import saslprep from 'saslprep';
 
-class SaslStartCommand extends t.class({
-    saslStart: t.literal(1),
-    $db: t.string,
-    mechanism: t.string,
-    payload: t.type(Uint8Array),
-    autoAuthorize: t.literal(1),
+interface SaslStartCommand {
+    saslStart: 1;
+    $db: string;
+    mechanism: string;
+    payload: Uint8Array;
+    autoAuthorize: 1;
     options: {
-        skipEmptyExchange: t.literal(true)
-    }
-}) {
+        skipEmptyExchange: true
+    };
 }
 
-class SaslStartResponse extends t.extendClass(BaseResponse, {
-    conversationId: t.number,
-    payload: t.type(Uint8Array),
-    done: t.boolean,
-}) {
+interface SaslStartResponse {
+    conversationId: number;
+    payload: Uint8Array;
+    done: boolean;
 }
 
-
-class SaslContinueCommand extends t.class({
-    saslContinue: t.literal(1),
-    $db: t.string,
-    conversationId: t.number,
-    payload: t.type(Buffer),
-}) {
+interface SaslContinueCommand {
+    saslContinue: 1;
+    $db: string;
+    conversationId: number;
+    payload: Uint8Array;
 }
 
-class SaslContinueResponse extends t.extendClass(BaseResponse, {
-    conversationId: t.literal(1),
-    payload: t.type(Uint8Array),
-    done: t.boolean,
-}) {
+interface SaslContinueResponse extends BaseResponse {
+    conversationId: 1;
+    payload: Uint8Array;
+    done: boolean;
 }
 
 function H(method: string, text: Buffer) {
@@ -106,14 +100,14 @@ export abstract class ScramAuth implements MongoAuth {
         const username = cleanUsername(config.authUser || '');
         const password = config.authPassword || '';
 
-        const startResponse = await command.sendAndWait(SaslStartCommand, {
+        const startResponse = await command.sendAndWait<SaslStartCommand, SaslStartResponse>({
             saslStart: 1,
             $db: config.getAuthSource(),
             mechanism: this.mechanism,
             payload: Buffer.concat([Buffer.from('n,,', 'utf8'), this.clientFirstMessageBare(username, this.nonce)]),
             autoAuthorize: 1,
             options: { skipEmptyExchange: true }
-        }, SaslStartResponse);
+        });
 
         const processedPassword = this.mechanism === 'SCRAM-SHA-256' ? saslprep(password) : passwordDigest(username, password);
 
@@ -141,12 +135,12 @@ export abstract class ScramAuth implements MongoAuth {
         const clientFinal = [withoutProof, clientProof].join(',');
 
         const serverSignature = HMAC(this.cryptoMethod, serverKey, authMessage);
-        const continueResponse = await command.sendAndWait(SaslContinueCommand, {
+        const continueResponse = await command.sendAndWait<SaslContinueCommand, SaslContinueResponse>({
             saslContinue: 1,
             $db: config.getAuthSource(),
             conversationId: startResponse.conversationId,
             payload: Buffer.from(clientFinal)
-        }, SaslContinueResponse);
+        });
 
         const payloadContinueString = Buffer.from(continueResponse.payload).toString('utf8');
         const payloadContinue = this.parseContinuePayload(payloadContinueString);
@@ -158,12 +152,12 @@ export abstract class ScramAuth implements MongoAuth {
         if (continueResponse.done) return;
 
         //not done yet, fire an empty round
-        const continueResponse2 = await command.sendAndWait(SaslContinueCommand, {
+        const continueResponse2 = await command.sendAndWait<SaslContinueCommand, SaslContinueResponse>({
             saslContinue: 1,
             $db: config.getAuthSource(),
             conversationId: startResponse.conversationId,
             payload: Buffer.alloc(0)
-        }, SaslContinueResponse);
+        });
 
         if (continueResponse2.done) return;
 

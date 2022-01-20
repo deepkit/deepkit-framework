@@ -9,7 +9,7 @@
  */
 
 import { Column, DatabaseModel, ForeignKey, IndexModel, parseType, SchemaParser, Table } from '@deepkit/sql';
-import { isNumeric } from '@deepkit/core/dist/cjs/src/core';
+import { isNumeric } from '@deepkit/core';
 
 export class MysqlSchemaParser extends SchemaParser {
     public defaultSchema = '';

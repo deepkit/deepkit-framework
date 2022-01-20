@@ -1,5 +1,7 @@
-import { ReceiveType } from './reflection/reflection';
+import { ReceiveType, resolveReceiveType } from './reflection/reflection';
 import { is } from './typeguard';
+import { CustomError } from '@deepkit/core';
+import { stringifyType, Type } from './reflection/type';
 
 export type ValidatorMeta<Name extends string, Args extends [...args: any[]] = []> = { __meta?: ['validator', Name, Args] }
 
@@ -68,6 +70,9 @@ export class ValidationFailedItem {
     }
 }
 
+/**
+ * Used in validator functions.
+ */
 export class ValidatorError {
     constructor(
         public readonly code: string,
@@ -77,11 +82,35 @@ export class ValidatorError {
     }
 }
 
+export class ValidationError extends CustomError {
+    constructor(
+        public readonly type: Type,
+        public readonly errors: ValidationFailedItem[],
+    ) {
+        super(`Validation error for type ${stringifyType(type)}:\n${errors.map(v => v.toString()).join(',\n')}`);
+    }
+}
+
 /**
  * Returns empty array when valid, or ValidationFailedItem[] with detailed error messages if not valid.
+ *
+ * Returns validation error items when failed. If successful returns an empty array.
  */
 export function validate<T>(data: any, type?: ReceiveType<T>): ValidationFailedItem[] {
     const errors: ValidationFailedItem[] = [];
     is(data, undefined, errors, type!);
     return errors;
+}
+
+
+/**
+ * Returns empty array when valid, or ValidationFailedItem[] with detailed error messages if not valid.
+ *
+ * @throws ValidationError when validation fails.
+ */
+export function validates<T>(data: any, type?: ReceiveType<T>): void {
+    const errors = validate(data, type);
+    if (errors.length) {
+        throw new ValidationError(resolveReceiveType(type), errors);
+    }
 }

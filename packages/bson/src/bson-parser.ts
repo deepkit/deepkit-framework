@@ -10,7 +10,7 @@
 
 import { BSON_BINARY_SUBTYPE_BYTE_ARRAY, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils';
 import { buildStringDecoder, decodeUTF8 } from './strings';
-import { nodeBufferToArrayBuffer, OuterType, ReflectionKind } from '@deepkit/type';
+import { nodeBufferToArrayBuffer, OuterType, ReflectionKind, SerializationError } from '@deepkit/type';
 import { hexTable } from './model';
 
 declare var Buffer: any;
@@ -75,7 +75,7 @@ export class BaseParser {
             case BSONType.ARRAY:
                 return parseArray(this);
             default:
-                throw new Error('Unsupported BSON type ' + elementType);
+                throw new SerializationError('Unsupported BSON type ' + elementType, '');
         }
     }
 
@@ -204,7 +204,7 @@ export class BaseParser {
         return this.eatDouble();
     }
 
-    parseOid() {
+    parseOid(): string {
         const offset = this.offset, b = this.buffer;
         let o = hexTable[b[offset]]
             + hexTable[b[offset + 1]]
@@ -224,7 +224,7 @@ export class BaseParser {
         return o;
     }
 
-    parseUUID() {
+    parseUUID(): string {
         //e.g. bef8de96-41fe-442f-b70c-c3a150f8c96c
         //         4      2    2    2       6
         const offset = this.offset, b = this.buffer;

@@ -17,6 +17,7 @@ import {
     getMember,
     indexAccess,
     isPrimitive,
+    isSameType,
     isType,
     isTypeIncluded,
     isWithAnnotations,
@@ -52,7 +53,7 @@ import {
 import { isExtendable } from './extends';
 import { ClassType, getClassName, isArray, isClass, isFunction } from '@deepkit/core';
 import { isWithDeferredDecorators } from '../decorator';
-import { TData } from './reflection';
+import { ReflectionClass, TData } from './reflection';
 
 export type RuntimeStackEntry = Type | Object | (() => ClassType | Object) | string | number | boolean | bigint;
 
@@ -116,8 +117,8 @@ function isPack(o: any): o is Packed {
 /**
  * Computes a type of given object. This function caches the result on the object itself.
  */
-export function resolveRuntimeType(o: ClassType | Function | Packed | any, args: any[] = []): OuterType {
-    const type = Processor.get().reflect(o, args, { reuseCached: true });
+export function resolveRuntimeType(o: ClassType | Function | Packed | any, args: any[] = [], options?: ReflectOptions): OuterType {
+    const type = Processor.get().reflect(o, args, options || { reuseCached: true });
 
     if (isType(type)) {
         return type as OuterType;
@@ -207,6 +208,43 @@ function createProgram(options: Partial<Program>, inputs?: RuntimeStackEntry[]):
     return program;
 }
 
+function findExistingProgram(current: Program | undefined, object: ClassType | Function | Packed | any, inputs: RuntimeStackEntry[] = []) {
+    let checks = 0;
+    while (current) {
+        if (current.object === object) {
+            checks++;
+            //as safety check to never go into an endless loop, we return just this program if objects matches and we are 1000 programs deep.
+            if (checks > 1000) return current;
+
+            //issue a new reference if inputs are the same
+            //todo: when a function has a default, this is not set in current.inputs, and could fail when it differs to given inputs
+            let sameInputs = current.inputs.length === inputs.length;
+            for (let i = 0; i < current.inputs.length; i++) {
+                if (!inputs[i] || !isSameType(current.inputs[i] as Type, inputs[i] as Type)) {
+                    sameInputs = false;
+                    break;
+                }
+            }
+            if (sameInputs) return current;
+        }
+
+        current = current.previous;
+    }
+
+    return;
+}
+
+function createRef(current: Program): Type {
+    if (!current.resultTypes) current.resultTypes = [];
+    const ref: Type = { kind: ReflectionKind.unknown };
+    current.resultTypes.push(ref);
+    return ref;
+}
+
+export interface ReflectOptions {
+    reuseCached?: boolean;
+}
+
 export class Processor {
     static typeProcessor?: Processor;
 
@@ -233,27 +271,17 @@ export class Processor {
         // object: undefined,
     };
 
-    reflect(object: ClassType | Function | Packed | any, inputs: RuntimeStackEntry[] = [], options: { reuseCached?: boolean } = {}): Type {
+    reflect(object: ClassType | Function | Packed | any, inputs: RuntimeStackEntry[] = [], options: ReflectOptions = {}): Type {
         const packed: Packed | undefined = isPack(object) ? object : object.__type;
         if (!packed) {
             throw new Error('No valid runtime type given. Is @deepkit/type correctly installed? Execute deepkit-type-install to check');
         }
 
-        let current: Program | undefined = this.program;
         //this check if there is an active program still running for given packed. if so, issue a new reference.
         //this reference is changed (its content only via Object.assign(reference, computedValues)) once the program finished.
         //this is independent of reuseCache since it's the cache for the current 'run', not a global cache
-        while (current) {
-            if (current.object === object) {
-                //issue a new reference
-                if (!current.resultTypes) current.resultTypes = [];
-                const ref: Type = { kind: ReflectionKind.unknown };
-                current.resultTypes.push(ref);
-                return ref;
-            }
-
-            current = current.previous;
-        }
+        const found = findExistingProgram(this.program, object, inputs);
+        if (found) return createRef(found);
 
         //the cache of already computed types is stored on the Packed (the array of the type program) because it's a static object that never changes
         //and will be GC correctly (and with it this cache). Its crucial that not all reflect() calls cache the content, otherwise it would pollute the
@@ -847,7 +875,12 @@ export class Processor {
                         }
                         case ReflectionOp.arg: {
                             const arg = this.eatParameter() as number;
-                            this.push(program.stack[program.frame.startIndex - arg]);
+                            const t = program.stack[arg] as Type | ReflectionClass<any>;
+                            if (t instanceof ReflectionClass) {
+                                this.push(t.type);
+                            } else {
+                                this.push(t);
+                            }
                             break;
                         }
                         case ReflectionOp.return: {
@@ -915,16 +948,21 @@ export class Processor {
                                     //self circular reference, usually a 0, which indicates we put the result of the current program as the type on the stack.
                                     this.push(program.resultType);
                                 } else {
-                                    //execute again the current program
-                                    const nextProgram = createProgram({
-                                        ops: program.ops,
-                                        initialStack: program.initialStack,
-                                    }, inputs);
-                                    this.push(this.runProgram(nextProgram), program);
+                                    const found = findExistingProgram(this.program, program.object, inputs);
+                                    if (found) {
+                                        this.push(createRef(found), program);
+                                    } else {
+                                        //execute again the current program
+                                        const nextProgram = createProgram({
+                                            ops: program.ops,
+                                            initialStack: program.initialStack,
+                                        }, inputs);
+                                        this.push(this.runProgram(nextProgram), program);
 
-                                    //continue to next this.program that was assigned by runProgram()
-                                    program.program++; //manual increment as the for loop would normally do that
-                                    continue programLoop;
+                                        //continue to next this.program that was assigned by runProgram()
+                                        program.program++; //manual increment as the for loop would normally do that
+                                        continue programLoop;
+                                    }
                                 }
                             } else {
                                 const result = this.reflect(p, inputs);
@@ -1198,47 +1236,52 @@ export class Processor {
     private handleTemplateLiteral() {
         const types = this.popFrame() as Type[];
         const result: TypeUnion = { kind: ReflectionKind.union, types: [] };
-        // const templateLiteral: TypeTemplateLiteral = { kind: ReflectionKind.templateLiteral, types: [] };
         const cartesian = new CartesianProduct();
         for (const type of types) {
             cartesian.add(type);
         }
         const product = cartesian.calculate();
 
-        for (const combination of product) {
-            const template: TypeTemplateLiteral = { kind: ReflectionKind.templateLiteral, types: [] };
-            let hasPlaceholder = false;
-            let lastLiteral: { kind: ReflectionKind.literal, literal: string, parent?: Type } | undefined = undefined;
-            //merge a combination of types, e.g. [string, 'abc', '3'] as template literal => `${string}abc3`.
-            for (const item of combination) {
-                if (item.kind === ReflectionKind.literal) {
-                    if (lastLiteral) {
-                        lastLiteral.literal += item.literal as string + '';
-                    } else {
-                        lastLiteral = { kind: ReflectionKind.literal, literal: item.literal as string + '', parent: template };
-                        template.types.push(lastLiteral);
+        outer:
+            for (const combination of product) {
+                const template: TypeTemplateLiteral = { kind: ReflectionKind.templateLiteral, types: [] };
+                let hasPlaceholder = false;
+                let lastLiteral: { kind: ReflectionKind.literal, literal: string, parent?: Type } | undefined = undefined;
+                //merge a combination of types, e.g. [string, 'abc', '3'] as template literal => `${string}abc3`.
+                for (const item of combination) {
+                    if (item.kind === ReflectionKind.never) {
+                        //template literals that contain a never like `prefix.${never}` are completely ignored
+                        continue outer;
                     }
-                } else {
-                    hasPlaceholder = true;
-                    lastLiteral = undefined;
-                    item.parent = template;
-                    template.types.push(item as TypeTemplateLiteral['types'][number]);
-                }
-            }
 
-            if (hasPlaceholder) {
-                if (template.types.length === 1 && template.types[0].kind === ReflectionKind.string) {
-                    template.types[0].parent = result;
-                    result.types.push(template.types[0]);
-                } else {
-                    template.parent = result;
-                    result.types.push(template);
+                    if (item.kind === ReflectionKind.literal) {
+                        if (lastLiteral) {
+                            lastLiteral.literal += item.literal as string + '';
+                        } else {
+                            lastLiteral = { kind: ReflectionKind.literal, literal: item.literal as string + '', parent: template };
+                            template.types.push(lastLiteral);
+                        }
+                    } else {
+                        hasPlaceholder = true;
+                        lastLiteral = undefined;
+                        item.parent = template;
+                        template.types.push(item as TypeTemplateLiteral['types'][number]);
+                    }
                 }
-            } else if (lastLiteral) {
-                lastLiteral.parent = result;
-                result.types.push(lastLiteral);
+
+                if (hasPlaceholder) {
+                    if (template.types.length === 1 && template.types[0].kind === ReflectionKind.string) {
+                        template.types[0].parent = result;
+                        result.types.push(template.types[0]);
+                    } else {
+                        template.parent = result;
+                        result.types.push(template);
+                    }
+                } else if (lastLiteral) {
+                    lastLiteral.parent = result;
+                    result.types.push(lastLiteral);
+                }
             }
-        }
         const t: Type = unboxUnion(result);
         if (t.kind === ReflectionKind.union) for (const member of t.types) member.parent = t;
         this.pushType(t);
@@ -1434,6 +1477,8 @@ function pushObjectLiteralTypes(
 
     outer:
         for (const member of types) {
+            if (member.kind === ReflectionKind.propertySignature && member.type.kind === ReflectionKind.never) continue;
+
             if (member.kind === ReflectionKind.objectLiteral) {
                 //all `extends T` expression land at the beginning of the stack frame, and are always an objectLiteral.
                 //we use it as base and move its types first into types

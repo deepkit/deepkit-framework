@@ -50,6 +50,7 @@ export function expectEqualType(actual: any, expected: any, options: { noTypeNam
             if (options.excludes && options.excludes.includes(i)) continue;
             if (i === 'annotations') continue;
             if (i === 'parent') continue;
+            if (i === 'jit') continue;
             if (i === 'indexAccessOrigin') continue;
             if (options.noOrigin && i === 'origin') continue;
             if (options.noTypeNames && (i === 'typeName' || i === 'typeArguments')) continue;

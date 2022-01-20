@@ -75,6 +75,7 @@ import {
     isTypeAliasDeclaration,
     isTypeLiteralNode,
     isTypeParameterDeclaration,
+    isTypeQueryNode,
     isTypeReferenceNode,
     isUnionTypeNode,
     LiteralTypeNode,
@@ -300,6 +301,10 @@ class CompilerProgram {
             if ('number' !== typeof op) {
                 throw new Error('No valid OP added');
             }
+            // if (op + 33 > 126) {
+                //todo: encode as var int
+                // throw new Error('stack pointer too big ' + op);
+            // }
         }
         if (this.activeCoRoutines.length) {
             this.activeCoRoutines[this.activeCoRoutines.length - 1].ops.push(...ops);
@@ -574,8 +579,9 @@ export class ReflectionTransformer {
                                 //find type parameter position
                                 const index = type.typeParameters.findIndex(v => getIdentifierName(v.name) === name);
                                 if (index !== -1) {
+                                    if (!node.typeArguments[index]) continue;
                                     const type = this.getTypeOfType(node.typeArguments[index]);
-                                    if (!type) return node;
+                                    if (!type) continue;
                                     args[i] = type;
                                     replaced = true;
                                 }
@@ -1364,6 +1370,12 @@ export class ReflectionTransformer {
             return;
         }
 
+        if (isIdentifier(typeName) && getIdentifierName(typeName) === 'InlineRuntimeType' && type.typeArguments && type.typeArguments[0] && isTypeQueryNode(type.typeArguments[0])) {
+            const expression = serializeEntityNameAsExpression(this.f, type.typeArguments[0].exprName);
+            program.pushOp(ReflectionOp.arg, program.pushStack(expression));
+            return;
+        }
+
         if (isIdentifier(typeName) && getIdentifierName(typeName) !== 'constructor' && this.knownClasses[getIdentifierName(typeName)]) {
             const name = getIdentifierName(typeName);
             const op = this.knownClasses[name];
@@ -1405,7 +1417,21 @@ export class ReflectionTransformer {
             if (isTypeAliasDeclaration(declaration) || isInterfaceDeclaration(declaration) || isEnumDeclaration(declaration)) {
                 //Set/Map are interface declarations
                 const name = getNameAsString(typeName);
-                if (name === 'Set') {
+                if (name === 'Array') {
+                    if (type.typeArguments && type.typeArguments[0]) {
+                        this.extractPackStructOfType(type.typeArguments[0], program);
+                    } else {
+                        program.pushOp(ReflectionOp.any);
+                    }
+
+                    program.pushOp(ReflectionOp.array);
+                    return;
+                } else if (name === 'Function') {
+                    program.pushOp(ReflectionOp.frame);
+                    program.pushOp(ReflectionOp.any);
+                    program.pushOp(ReflectionOp.function, program.pushStack(''));
+                    return;
+                } else if (name === 'Set') {
                     if (type.typeArguments && type.typeArguments[0]) {
                         this.extractPackStructOfType(type.typeArguments[0], program);
                     } else {

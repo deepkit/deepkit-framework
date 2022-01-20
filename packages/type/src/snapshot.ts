@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { CompilerContext, toFastProperties } from '@deepkit/core';
+import { CompilerContext, isObject, toFastProperties } from '@deepkit/core';
 import { typeSettings, UnpopulatedCheck } from './core';
 import { ReflectionClass, ReflectionProperty } from './reflection/reflection';
 import { ContainerAccessor, executeTemplates, noopTemplate, serializer, Serializer, TemplateRegistry, TemplateState } from './serializer';
@@ -193,6 +193,7 @@ function createPrimaryKeyHashGenerator(
 ) {
     const context = new CompilerContext();
     const setProperties: string[] = [];
+    context.context.set('isObject', isObject);
 
     const state = new TemplateState('', '', context, serializer.serializeRegistry);
 
@@ -225,7 +226,15 @@ function createPrimaryKeyHashGenerator(
             setProperties.push(`
             //getPrimaryKeyExtractor ${property.getNameAsString()} class:snapshot:${property.getKind()} reference
             if (undefined !== ${accessor} && null !== ${accessor}) {
-                ${referenceCode.join('\n')}
+                if (isObject(${accessor})) {
+                    ${referenceCode.join('\n')}
+                } else {
+                    //might be a primary key directly
+                    lastValue = '';
+                    ${executeTemplates(state.fork('lastValue', accessor).forRegistry(serializer.deserializeRegistry), property.getResolvedReflectionClass().getPrimary().type)}
+                    ${executeTemplates(state.fork('lastValue', 'lastValue'), property.getResolvedReflectionClass().getPrimary().type)}
+                    _result += '\\0' + lastValue;
+                    }
             } else {
                 _result += '\\0';
             }

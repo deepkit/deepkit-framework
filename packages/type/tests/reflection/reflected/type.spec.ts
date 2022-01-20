@@ -558,6 +558,15 @@ test('literal extends template literal', () => {
     validExtend<'abc', `a${string}c`>();
 });
 
+test('template literal extends literal', () => {
+    type a0 = `a${string}` extends '' ? true : false;
+    type a1 = `${string}` extends 'asd' ? true : false;
+
+    invalidExtend<`a${string}`, ''>();
+    invalidExtend<`${string}`, ''>();
+    invalidExtend<`${string}`, 'asd'>();
+});
+
 test('template literal extends template literal', () => {
     // type a0 = Extends<`a${'abc'}`, `aabc`>;
     // type a1 = Extends<`a${string}`, `a${string}`>;

@@ -9,7 +9,7 @@
  */
 
 import { SqlSerializer } from '@deepkit/sql';
-import { binaryTypes, isUUIDType, ReflectionKind, TemplateState, Type } from '@deepkit/type';
+import { binaryTypes, isUUIDType, TemplateState, Type } from '@deepkit/type';
 
 //for queries with `returning`, MySQL returns binary stuff as base64.
 function convertBinaryFromBase64(type: Type, state: TemplateState) {
@@ -32,11 +32,6 @@ class MySQLSerializer extends SqlSerializer {
             if (isUUIDType(type)) {
                 convertBinaryFromBase64(type, state);
             }
-        });
-
-        //enums are stored as json, so we need always a string, no matter if the enum is actually an number index.
-        this.serializeRegistry.register(ReflectionKind.enum, (type, state) => {
-            state.addSetter(`${state.accessor}+''`);
         });
     }
 }

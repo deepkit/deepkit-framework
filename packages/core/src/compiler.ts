@@ -26,7 +26,7 @@ export class CompilerContext {
 
     public initialiseVariables: string[] = [];
 
-    public config: { indent: boolean } = { indent: true };
+    public config: { indent: boolean } = { indent: false };
 
     constructor(config: Partial<CompilerContext['config']> = {}) {
         Object.assign(this.config, config);

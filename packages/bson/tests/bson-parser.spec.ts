@@ -2,8 +2,22 @@ import { expect, test } from '@jest/globals';
 import 'reflect-metadata';
 import bson, { Binary } from 'bson';
 import { deserializeBSON, getBSONDeserializer } from '../src/bson-deserializer';
-import { BinaryBigInt, MongoId, nodeBufferToArrayBuffer, PrimaryKey, Reference, SignedBinaryBigInt, typeOf, uuid, UUID } from '@deepkit/type';
+import {
+    BinaryBigInt,
+    copyAndSetParent,
+    MongoId,
+    nodeBufferToArrayBuffer,
+    PrimaryKey,
+    Reference,
+    ReflectionKind,
+    SignedBinaryBigInt,
+    TypeObjectLiteral,
+    typeOf,
+    uuid,
+    UUID
+} from '@deepkit/type';
 import { getClassName } from '@deepkit/core';
+import { serializeWithoutOptimiser } from '../src/bson-serializer';
 
 const { deserialize, serialize } = bson;
 
@@ -14,12 +28,12 @@ test('basic number', () => {
     const schema = typeOf<{
         v: number
     }>();
-    expect(getBSONDeserializer(schema)(bson)).toEqual(obj);
-    expect(getBSONDeserializer(schema)(serialize({ v: '123' }))).toEqual(obj);
-    expect(getBSONDeserializer(schema)(serialize({ v: true }))).toEqual({ v: 1 });
-    expect(getBSONDeserializer(schema)(serialize({ v: false }))).toEqual({ v: 0 });
-    expect(getBSONDeserializer(schema)(serialize({ v: -1234 }))).toEqual({ v: -1234 });
-    expect(() => getBSONDeserializer(schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to number`);
+    expect(getBSONDeserializer(undefined, schema)(bson)).toEqual(obj);
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toEqual(obj);
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: true }))).toEqual({ v: 1 });
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: false }))).toEqual({ v: 0 });
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: -1234 }))).toEqual({ v: -1234 });
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to number`);
 });
 
 test('basic bigint', () => {
@@ -29,22 +43,22 @@ test('basic bigint', () => {
     const schema = typeOf<{
         v: bigint
     }>();
-    expect(getBSONDeserializer(schema)(bson)).toEqual(obj);
-    expect(getBSONDeserializer(schema)(serialize({ v: '123' }))).toEqual(obj);
-    expect(getBSONDeserializer(schema)(serialize({ v: true }))).toEqual({ v: 1n });
-    expect(getBSONDeserializer(schema)(serialize({ v: false }))).toEqual({ v: 0n });
-    expect(() => getBSONDeserializer(schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to bigint`);
+    expect(getBSONDeserializer(undefined, schema)(bson)).toEqual(obj);
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toEqual(obj);
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: true }))).toEqual({ v: 1n });
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: false }))).toEqual({ v: 0n });
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to bigint`);
 });
 
 test('basic null', () => {
     const schema = typeOf<{
         v: null
     }>();
-    expect(getBSONDeserializer(schema)(serialize({ v: null }))).toEqual({ v: null });
-    expect(getBSONDeserializer(schema)(serialize({ v: undefined }))).toEqual({ v: null });
-    expect(getBSONDeserializer(schema)(serialize({}))).toEqual({ v: null });
-    expect(() => getBSONDeserializer(schema)(serialize({ v: 123 }))).toThrow(`Cannot convert bson type INT to null`);
-    expect(() => getBSONDeserializer(schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to null`);
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: null }))).toEqual({ v: null });
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: undefined }))).toEqual({ v: null });
+    expect(getBSONDeserializer(undefined, schema)(serialize({}))).toEqual({ v: null });
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: 123 }))).toThrow(`Cannot convert bson type INT to null`);
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to null`);
 
     expect(deserializeBSON<{ v: null }>(serialize({ v: null }))).toEqual({ v: null });
     expect(deserializeBSON<{ v?: null }>(serialize({ v: null }))).toEqual({ v: null });
@@ -55,11 +69,11 @@ test('basic undefined', () => {
     const schema = typeOf<{
         v: undefined
     }>();
-    expect(getBSONDeserializer(schema)(serialize({ v: null }))).toEqual({ v: undefined });
-    expect(getBSONDeserializer(schema)(serialize({ v: undefined }))).toEqual({ v: undefined });
-    expect(getBSONDeserializer(schema)(serialize({}))).toEqual({ v: undefined });
-    expect(() => getBSONDeserializer(schema)(serialize({ v: 123 }))).toThrow(`Cannot convert bson type INT to undefined`);
-    expect(() => getBSONDeserializer(schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to undefined`);
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: null }))).toEqual({ v: undefined });
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: undefined }))).toEqual({ v: undefined });
+    expect(getBSONDeserializer(undefined, schema)(serialize({}))).toEqual({ v: undefined });
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: 123 }))).toThrow(`Cannot convert bson type INT to undefined`);
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to undefined`);
 });
 
 test('basic literal', () => {
@@ -150,11 +164,11 @@ test('basic binary bigint', () => {
     const schema = typeOf<{
         v: BinaryBigInt
     }>();
-    expect(getBSONDeserializer(schema)(bson)).toEqual(obj);
-    expect(getBSONDeserializer(schema)(serialize({ v: '123' }))).toEqual({ v: 123n });
-    expect(getBSONDeserializer(schema)(serialize({ v: true }))).toEqual({ v: 1n });
-    expect(getBSONDeserializer(schema)(serialize({ v: false }))).toEqual({ v: 0n });
-    expect(() => getBSONDeserializer(schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to BinaryBigInt`);
+    expect(getBSONDeserializer(undefined, schema)(bson)).toEqual(obj);
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toEqual({ v: 123n });
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: true }))).toEqual({ v: 1n });
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: false }))).toEqual({ v: 0n });
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to BinaryBigInt`);
 });
 
 test('basic signed binary bigint', () => {
@@ -166,12 +180,12 @@ test('basic signed binary bigint', () => {
     const schema = typeOf<{
         v: SignedBinaryBigInt
     }>();
-    expect(getBSONDeserializer(schema)(bson)).toEqual(obj);
-    expect(getBSONDeserializer(schema)(bsonNegative)).toEqual({ v: -100n });
-    expect(getBSONDeserializer(schema)(serialize({ v: '123' }))).toEqual({ v: 123n });
-    expect(getBSONDeserializer(schema)(serialize({ v: true }))).toEqual({ v: 1n });
-    expect(getBSONDeserializer(schema)(serialize({ v: false }))).toEqual({ v: 0n });
-    expect(() => getBSONDeserializer(schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to SignedBinaryBigInt`);
+    expect(getBSONDeserializer(undefined, schema)(bson)).toEqual(obj);
+    expect(getBSONDeserializer(undefined, schema)(bsonNegative)).toEqual({ v: -100n });
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toEqual({ v: 123n });
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: true }))).toEqual({ v: 1n });
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: false }))).toEqual({ v: 0n });
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to SignedBinaryBigInt`);
 });
 
 test('basic string', () => {
@@ -181,9 +195,9 @@ test('basic string', () => {
     const schema = typeOf<{
         v: string
     }>();
-    expect(getBSONDeserializer(schema)(bson)).toEqual(obj);
-    expect(getBSONDeserializer(schema)(serialize({ v: 123 }))).toEqual({ v: '123' });
-    expect(() => getBSONDeserializer(schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to string`);
+    expect(getBSONDeserializer(undefined, schema)(bson)).toEqual(obj);
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: 123 }))).toEqual({ v: '123' });
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to string`);
 });
 
 test('basic boolean', () => {
@@ -193,10 +207,10 @@ test('basic boolean', () => {
     const schema = typeOf<{
         v: boolean
     }>();
-    expect(getBSONDeserializer(schema)(bson)).toEqual(obj);
-    expect(getBSONDeserializer(schema)(serialize({ v: 123 }))).toEqual({ v: true });
-    expect(getBSONDeserializer(schema)(serialize({ v: 0 }))).toEqual({ v: false });
-    expect(() => getBSONDeserializer(schema)(serialize({ v: '123' }))).toThrow(`Cannot convert bson type STRING to boolean`);
+    expect(getBSONDeserializer(undefined, schema)(bson)).toEqual(obj);
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: 123 }))).toEqual({ v: true });
+    expect(getBSONDeserializer(undefined, schema)(serialize({ v: 0 }))).toEqual({ v: false });
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toThrow(`Cannot convert bson type STRING to boolean`);
 });
 
 test('basic array buffer', () => {
@@ -207,8 +221,8 @@ test('basic array buffer', () => {
     const schema = typeOf<{
         v: ArrayBuffer
     }>();
-    expect(getBSONDeserializer(schema)(bson)).toEqual(obj);
-    expect(() => getBSONDeserializer(schema)(serialize({ v: '123' }))).toThrow(`Cannot convert bson type STRING to ArrayBuffer`);
+    expect(getBSONDeserializer(undefined, schema)(bson)).toEqual(obj);
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toThrow(`Cannot convert bson type STRING to ArrayBuffer`);
 });
 
 test('basic typed array', () => {
@@ -219,8 +233,8 @@ test('basic typed array', () => {
     const schema = typeOf<{
         v: Uint8Array
     }>();
-    expect(getBSONDeserializer(schema)(bson)).toEqual(obj);
-    expect(() => getBSONDeserializer(schema)(serialize({ v: '123' }))).toThrow(`Cannot convert bson type STRING to Uint8Array`);
+    expect(getBSONDeserializer(undefined, schema)(bson)).toEqual(obj);
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toThrow(`Cannot convert bson type STRING to Uint8Array`);
 });
 
 test('basic union', () => {
@@ -230,7 +244,7 @@ test('basic union', () => {
 });
 
 test('basic union two objects', () => {
-    type t = { a: string } | {b: number};
+    type t = { a: string } | { b: number };
     expect(deserializeBSON<t>(serialize({ a: 'abc' }))).toEqual({ a: 'abc' });
     expect(deserializeBSON<t>(serialize({ b: 123 }))).toEqual({ b: 123 });
 });
@@ -687,4 +701,70 @@ test('index signature + object literal', () => {
     expect(() => deserializeBSON<t>(serialize({ a23: 1 }))).toThrow('abc: Cannot convert undefined value to string');
     expect(deserializeBSON<t>(serialize({ abc: 'yes', 12: true }))).toEqual({ abc: 'yes', 12: true });
     expect(deserializeBSON<t>(serialize({ abc: 'yes', 12: true, a23: 23 }))).toEqual({ abc: 'yes', 12: true, a23: 23 });
+});
+
+
+test('any', () => {
+    const data = {
+        lastErrorObject: { n: 1, updatedExisting: true },
+        value: {
+            _id: '61df83e58a5e3ba77f8f1c0f',
+            id: 'bdcfb3a0-034a-4f07-8aff-b78e2822a5a8'
+        },
+        ok: 1,
+        '$clusterTime': {
+            clusterTime: 7052500565351202817n,
+            signature: {
+                hash: Buffer.alloc(16),
+                keyId: 0n
+            }
+        },
+        operationTime: 7052500565351202817n
+    };
+
+    const type: TypeObjectLiteral = copyAndSetParent({
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            { kind: ReflectionKind.propertySignature, name: 'value', type: { kind: ReflectionKind.any } }
+        ]
+    });
+
+    const bson = serializeWithoutOptimiser(data);
+    const deserializer = getBSONDeserializer(undefined, type);
+    const back = deserializer(bson);
+    console.log('back', back);
+});
+
+test('circular', () => {
+    class Model {
+        id: number = 0;
+        child?: Model;
+    }
+
+    const bson = serializeWithoutOptimiser({ items: [{ id: 0, child: { id: 2 } }] } as Response);
+
+    interface Response {
+        items: Model[];
+    }
+
+    const fn = getBSONDeserializer<Response>();
+    const back = fn(bson);
+    expect(back).toEqual({ items: [{ id: 0, child: { id: 2 } }] });
+});
+
+
+test('additional are ignored', () => {
+    const data = {
+        setVersion: 1,
+        ismaster: true,
+    };
+    const bson = serializeWithoutOptimiser(data);
+
+    interface IsMasterResponse  {
+        ismaster: boolean;
+    }
+
+    const fn = getBSONDeserializer<IsMasterResponse>();
+    const back = fn(bson);
+    expect(back).toEqual({ismaster: true});
 });

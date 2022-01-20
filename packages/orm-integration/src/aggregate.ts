@@ -54,6 +54,8 @@ export const aggregateTest = {
         } else {
             expect(groupConcat).toEqual([{ category: 'planets', price: '45549' }, { category: 'toys', price: '999,499' }]);
         }
+
+        database.disconnect();
     },
 
 };

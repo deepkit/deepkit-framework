@@ -8,5 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export {getBSONDeserializer, deserializeBSON} from './src/bson-deserializer';
-export {BSONSerializer, getBSONSizer, getBSONSerializer, mongoSerializer, serializeBSON} from './src/bson-serializer';
+export { ObjectId } from './src/model';
+export { deserializeWithoutOptimiser } from './src/bson-parser';
+export { getBSONDeserializer, deserializeBSON, BSONDeserializer, } from './src/bson-deserializer';
+export {
+    BSONSerializer, getBSONSizer, getBSONSerializer, bsonBinarySerializer, serializeBSON, serializeWithoutOptimiser, Writer, BSONBinarySerializer, ValueWithBSONSerializer
+} from './src/bson-serializer';

@@ -115,6 +115,8 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
         if (right.kind === ReflectionKind.string) return true;
 
         if (right.kind === ReflectionKind.literal) {
+            if (right.literal === '') return false;
+
             return extendTemplateLiteral(left, { kind: ReflectionKind.templateLiteral, types: [right] });
         }
         if (right.kind === ReflectionKind.templateLiteral) {
@@ -149,6 +151,10 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
         const leftConstructor = (left.types as Type[]).find(v => (v.kind === ReflectionKind.method && v.name === 'constructor') || (v.kind === ReflectionKind.methodSignature && v.name === 'new'));
         const valid = isExtendable(right, leftConstructor || { kind: ReflectionKind.function, parameters: [], return: { kind: ReflectionKind.any } });
         return valid;
+    }
+
+    if ((left.kind === ReflectionKind.class || left.kind === ReflectionKind.objectLiteral) && (right.kind === ReflectionKind.object || (right.kind === ReflectionKind.objectLiteral && right.types.length === 0))) {
+        return true;
     }
 
     if ((left.kind === ReflectionKind.class || left.kind === ReflectionKind.objectLiteral) && (right.kind === ReflectionKind.objectLiteral || right.kind === ReflectionKind.class)) {

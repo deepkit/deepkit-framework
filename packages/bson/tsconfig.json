@@ -19,7 +19,6 @@
   "include": [
     "benchmarks",
     "src",
-    "tests",
     "index.ts"
   ],
   "references": [

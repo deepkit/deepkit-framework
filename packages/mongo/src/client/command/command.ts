@@ -8,14 +8,15 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, ExtractClassType, getClassSchema, t } from '@deepkit/type';
-import { asyncOperation, ClassType } from '@deepkit/core';
-import { deserialize, getBSONDecoder } from '@deepkit/bson';
+import { asyncOperation, getClassName } from '@deepkit/core';
 import { handleErrorResponse, MongoError } from '../error';
 import { MongoClientConfig } from '../config';
 import { Host } from '../host';
 import { MongoDatabaseTransaction } from '../connection';
-
+import { OuterType, ReceiveType, ReflectionClass, resolveReceiveType, SerializationError, stringifyType, typeOf } from '@deepkit/type';
+import { BSONDeserializer, deserializeWithoutOptimiser, getBSONDeserializer } from '@deepkit/bson';
+import { mongoBinarySerializer } from '../../mongo-serializer';
+import { inspect } from 'util';
 
 export interface CommandMessageResponseCallbackResult<T> {
     /**
@@ -30,37 +31,37 @@ export interface CommandMessageResponseCallbackResult<T> {
     next?: CommandMessage<any, any>;
 }
 
-export class CommandMessage<T, R extends ClassSchema | ClassType> {
+export class CommandMessage<T, R> {
     constructor(
-        public readonly schema: ClassSchema<T>,
+        public readonly schema: ReflectionClass<T>,
         public readonly message: T,
-        public readonly responseSchema: R,
-        public readonly responseCallback: (response: ExtractClassType<R>) => { result?: any, next?: CommandMessage<any, any> },
+        public readonly responseSchema: ReflectionClass<R>,
+        public readonly responseCallback: (response: R) => { result?: any, next?: CommandMessage<any, any> },
     ) {
     }
 }
 
-export const BaseResponse = t.schema({
-    ok: t.number,
-    errmsg: t.string.optional,
-    code: t.number.optional,
-    codeName: t.string.optional,
-    writeErrors: t.array({index: t.number, code: t.number, errmsg: t.string}).optional
-});
+export interface BaseResponse {
+    ok: number;
+    errmsg?: string;
+    code?: number;
+    codeName?: string;
+    writeErrors?: Array<{ index: number, code: number, errmsg: string }>;
+}
 
 export abstract class Command {
-    protected current?: { response?: ClassSchema | ClassType, resolve: Function, reject: Function };
+    protected current?: { responseType?: OuterType, resolve: Function, reject: Function };
 
-    public sender?: (schema: ClassSchema | ClassType, message: Buffer) => void;
+    public sender?: <T>(schema: OuterType, message: T) => void;
 
-    public sendAndWait<T extends ClassSchema | ClassType, R extends ClassSchema | ClassType>(
-        schema: T, message: ExtractClassType<T>, response?: R
-    ): Promise<ExtractClassType<R>> {
-        if (!this.sender) throw new Error(`No sender set in command ${getClassSchema(this)}`);
-        this.sender(schema, message);
+    public sendAndWait<T, R = BaseResponse>(
+        message: T, messageType?: ReceiveType<T>, responseType?: ReceiveType<R>
+    ): Promise<R> {
+        if (!this.sender) throw new Error(`No sender set in command ${getClassName(this)}`);
+        this.sender(resolveReceiveType(messageType), message);
 
         return asyncOperation((resolve, reject) => {
-            this.current = { resolve, reject, response };
+            this.current = { resolve, reject, responseType: responseType ? resolveReceiveType(responseType) : typeOf<BaseResponse>() };
         });
     }
 
@@ -70,33 +71,54 @@ export abstract class Command {
 
     handleResponse(response: Uint8Array): void {
         if (!this.current) throw new Error('Got handleResponse without active command');
-        const deserializer = this.current.response ? getBSONDecoder(this.current.response) : deserialize;
-        const message = deserializer(response);
-        const error = handleErrorResponse(message);
-        if (error) {
+        const deserializer: BSONDeserializer<BaseResponse> = this.current.responseType ? getBSONDeserializer(mongoBinarySerializer, this.current.responseType) : deserializeWithoutOptimiser;
+
+        try {
+            const message = deserializer(response);
+            const error = handleErrorResponse(message);
+            if (error) {
+                this.current.reject(error);
+                return;
+            }
+
+            if (!message.ok) {
+                this.current.reject(new MongoError(message.errmsg || 'error', message.code));
+            } else {
+                this.current.resolve(message);
+            }
+        } catch (error: any) {
+            if (error instanceof SerializationError) {
+                if (this.current.responseType) {
+                    const raw = deserializeWithoutOptimiser(response);
+                    console.log('mongo raw response', inspect(raw, {depth: null}));
+                    if (raw.errmsg && raw.ok === 0) {
+                        const error = handleErrorResponse(raw);
+                        if (error) {
+                            this.current.reject(error);
+                            return;
+                        }
+                    }
+
+                    this.current.reject(new MongoError(`Could not deserialize type ${stringifyType(this.current.responseType)}: ${error}`));
+                    return;
+                }
+            }
             this.current.reject(error);
-            return;
-        }
-
-        if (!message.ok) {
-            this.current.reject(new MongoError(message.errmsg, message.code));
-        } else {
-            this.current.resolve(message);
         }
     }
 }
 
-export class GenericCommand extends Command {
-    constructor(protected classSchema: ClassSchema, protected cmd: { [name: string]: any }, protected _needsWritableHost: boolean) {
-        super();
-    }
-
-    async execute(config): Promise<number> {
-        const res = await this.sendAndWait(this.classSchema, this.cmd);
-        return res.n;
-    }
-
-    needsWritableHost(): boolean {
-        return this._needsWritableHost;
-    }
-}
+// export class GenericCommand extends Command {
+//     constructor(protected classSchema: ReflectionClass<any>, protected cmd: { [name: string]: any }, protected _needsWritableHost: boolean) {
+//         super();
+//     }
+//
+//     async execute(config): Promise<number> {
+//         const res = await this.sendAndWait(this.classSchema, this.cmd);
+//         return res.n;
+//     }
+//
+//     needsWritableHost(): boolean {
+//         return this._needsWritableHost;
+//     }
+// }

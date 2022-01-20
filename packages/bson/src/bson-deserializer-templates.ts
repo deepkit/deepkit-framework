@@ -22,6 +22,7 @@ import {
     inAccessor,
     isNullable,
     isOptional,
+    mongoIdAnnotation,
     OuterType,
     ReflectionClass,
     ReflectionKind,
@@ -40,10 +41,12 @@ import {
     TypePropertySignature,
     TypeTemplateLiteral,
     TypeTuple,
-    TypeUnion
+    TypeUnion,
+    uuidAnnotation
 } from '@deepkit/type';
 import { seekElementSize } from './continuation';
 import { BSONType, digitByteSize, getEmbeddedAccessor, getEmbeddedPropertyName } from './utils';
+import { BSONError } from './model';
 
 function getNameComparator(name: string): string {
     //todo: support utf8 names
@@ -74,7 +77,7 @@ export function deserializeBinary(type: OuterType, state: TemplateState) {
 
 export function deserializeAny(type: OuterType, state: TemplateState) {
     state.addCode(`
-        ${state.setter} = state.parser.parse();
+        ${state.setter} = state.parser.parse(state.elementType);
     `);
 }
 
@@ -131,6 +134,20 @@ export function deserializeBigInt(type: OuterType, state: TemplateState) {
 }
 
 export function deserializeString(type: OuterType, state: TemplateState) {
+    const branches: string[] = [];
+
+    if (uuidAnnotation.getFirst(type)) {
+        branches.push(`
+         } else if (state.elementType === ${BSONType.BINARY}) {
+            ${state.setter} = state.parser.parseBinary();
+        `);
+    } else if (mongoIdAnnotation.getFirst(type)) {
+        branches.push(`
+         } else if (state.elementType === ${BSONType.OID}) {
+            ${state.setter} = state.parser.parseOid();
+        `);
+    }
+
     state.addCode(`
         if (state.elementType === ${BSONType.STRING}) {
             ${state.setter} = state.parser.parseString();
@@ -144,6 +161,7 @@ export function deserializeString(type: OuterType, state: TemplateState) {
             ${state.setter} = '' + state.parser.parseNumber();
         } else if (state.elementType === ${BSONType.LONG} || state.elementType === ${BSONType.TIMESTAMP}) {
             ${state.setter} = '' + state.parser.parseLong();
+        ${branches.join('\n')}
         } else {
             ${throwInvalidBsonType(type, state)}
         }
@@ -253,7 +271,7 @@ export function deserializeUnion(bsonTypeGuards: TypeGuardRegistry, type: TypeUn
             const guard = state.setVariable('guard' + t.kind, fn);
             const looseCheck = specificality <= 0 ? `state.loosely && ` : '';
 
-            lines.push(`else if (${looseCheck}${guard}(${state.accessor || 'undefined'}, state, ${collapsePath(state.path)})) { //type = ${ReflectionKind[t.kind]}, specificality=${specificality}
+            lines.push(`else if (${looseCheck}${guard}(${state.accessor || 'undefined'}, state, ${collapsePath(state.path)})) { //type = ${t.kind}, specificality=${specificality}
                 ${executeTemplates(state.fork(state.setter, state.accessor).forPropertyName(state.propertyName), t)}
             }`);
         }
@@ -287,7 +305,7 @@ export function bsonTypeGuardUnion(bsonTypeGuards: TypeGuardRegistry, type: Type
             const guard = state.setVariable('guard' + t.kind, fn);
             const looseCheck = specificality <= 0 ? `state.loosely && ` : '';
 
-            lines.push(`else if (${looseCheck}${guard}(${state.accessor || 'undefined'}, state)) { //type = ${ReflectionKind[t.kind]}, specificality=${specificality}
+            lines.push(`else if (${looseCheck}${guard}(${state.accessor || 'undefined'}, state)) { //type = ${t.kind}, specificality=${specificality}
                 ${state.setter} = true;
             }`);
         }
@@ -688,7 +706,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
         if (embeddedClasses.length) {
             for (const embedded of embeddedClasses) {
                 const constructorProperties = getConstructorProperties(embedded.type);
-                if (!constructorProperties.properties.length) throw new Error(`Can not embed class ${getClassName(embedded.type.classType)} since it has no constructor properties`);
+                if (!constructorProperties.properties.length) throw new BSONError(`Can not embed class ${getClassName(embedded.type.classType)} since it has no constructor properties`);
 
                 const containerVar = state.compilerContext.reserveName('container');
                 const handleEmbedded: HandleEmbedded = {
@@ -700,7 +718,6 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
                     const setter = getEmbeddedPropertyName(state.namingStrategy, property, embedded.options);
                     const accessor = getEmbeddedAccessor(embedded.type, constructorProperties.properties.length !== 1, nameInBson, state.namingStrategy, property, embedded.options);
                     //todo: handle explicit undefined and non-existing
-                    console.log('container access', accessor);
                     lines.push(`
                     if (${getNameComparator(accessor)}) {
                         state.parser.offset += ${accessor.length} + 1;
@@ -741,7 +758,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
                 ${valueSetVar} = true;
 
                 ${seekOnExplicitUndefined}
-                ${executeTemplates(state.fork(setter, '').extendPath(member.name), member.type) || `throw new Error('No template found for ${member.kind}')`}
+                ${executeTemplates(state.fork(setter, '').extendPath(member.name), member.type) || `throw new BSONError('No template found for ${member.kind}')`}
                 continue;
             }
         `);
@@ -794,7 +811,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
     let createClassInstance = ``;
     if (type.kind === ReflectionKind.class && type.classType !== Object) {
         const reflection = ReflectionClass.from(type.classType);
-        const constructor = reflection.getConstructor();
+        const constructor = reflection.getConstructorOrUndefined();
         if (constructor && constructor.parameters.length) {
             const constructorArguments: string[] = [];
             for (const parameter of constructor.getParameters()) {
@@ -816,7 +833,6 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
         // const constructorProperties = getConstructorProperties(handle.type);
         const setter = new ContainerAccessor(object, JSON.stringify(handle.property.name));
         handleEmbeddedClassesLines.push(`
-            console.log('embedded', ${handle.containerVar});
             ${deserializeEmbedded(handle.type, state.fork(setter, handle.containerVar).forRegistry(state.registry.serializer.deserializeRegistry), handle.containerVar)}
             if (${inAccessor(setter)}) {
                 ${handle.valueSetVar} = true;
@@ -922,7 +938,7 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
                 ${valueSetVar} = true;
 
                 ${seekOnExplicitUndefined}
-                ${executeTemplates(state.fork(valid).extendPath(member.name), member.type) || `throw new Error('No template found for ${member.kind}')`}
+                ${executeTemplates(state.fork(valid).extendPath(member.name), member.type) || `throw new BSONError('No template found for ${member.kind}')`}
 
                 if (!${valid}) break;
                 //guards never eat/parse parser, so we jump over the value automatically
