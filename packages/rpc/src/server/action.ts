@@ -8,26 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, collectForMicrotask, getClassName, getClassPropertyName, isArray, isPlainObject, isPrototypeOfBase, toFastProperties } from '@deepkit/core';
+import { ClassType, collectForMicrotask, getClassName, getClassPropertyName, isArray, isPlainObject, toFastProperties } from '@deepkit/core';
 import { isBehaviorSubject, isSubject } from '@deepkit/core-rxjs';
-import {
-    ClassSchema,
-    createClassSchema,
-    getClassSchema,
-    getXToClassFunction,
-    jitValidate,
-    jsonSerializer,
-    propertyDefinition,
-    PropertySchema,
-    t,
-    ValidationFailedItem
-} from '@deepkit/type';
+import { ReflectionClass, ReflectionKind, TypeTuple, ValidationFailedItem } from '@deepkit/type';
 import { isObservable, Observable, Subject, Subscription } from 'rxjs';
 import { Collection, CollectionEvent, CollectionQueryModel, CollectionState, isCollection } from '../collection';
-import { getActionParameters, getActions } from '../decorators';
+import { getActions } from '../decorators';
 import {
     ActionObservableTypes,
-    EntitySubject,
     isEntitySubject,
     rpcActionObservableSubscribeId,
     rpcActionType,
@@ -45,17 +33,13 @@ import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 
 export type ActionTypes = {
-    parameters: PropertySchema[],
-    parameterSchema: ClassSchema,
+    parameterSchema: ReflectionClass<{ v?: any }>,
     parametersDeserialize: (value: any) => any,
     parametersValidate: (value: any, path?: string, errors?: ValidationFailedItem[]) => ValidationFailedItem[],
 
-    //those might change in the actual action call
-    resultProperty: PropertySchema,
-    resultPropertyChanged: number,
-    resultSchema: ClassSchema<{ v?: any }>,
-    observableNextSchema: ClassSchema,
-    collectionSchema?: ClassSchema<{ v: any[] }>,
+    resultSchema: ReflectionClass<{ v?: any }>,
+    observableNextSchema: ReflectionClass<{ v?: any }>,
+    collectionSchema?: ReflectionClass<{ v?: any }>,
 };
 
 export class RpcServerAction {
@@ -94,10 +78,10 @@ export class RpcServerAction {
     }
 
     public async handleActionTypes(message: RpcMessage, response: RpcMessageBuilder) {
-        const body = message.parseBody(rpcActionType);
+        const body = message.parseBody<rpcActionType>();
         const types = await this.loadTypes(body.controller, body.method);
 
-        response.reply(RpcTypes.ResponseActionType, rpcResponseActionType, {
+        response.reply<rpcResponseActionType>(RpcTypes.ResponseActionType, {
             parameters: types.parameters.map(v => v.toJSONNonReference(undefined, body.disableTypeReuse)),
             result: types.resultSchema.getProperty('v').toJSONNonReference(undefined, body.disableTypeReuse),
             next: types.observableNextSchema.getProperty('v').toJSONNonReference(undefined, body.disableTypeReuse),
@@ -127,8 +111,8 @@ export class RpcServerAction {
         return await this.security.hasControllerAccess(this.sessionState.getSession(), controllerAccess);
     }
 
-    protected async loadTypes(controller: string, method: string): Promise<ActionTypes> {
-        const cacheId = controller + '!' + method;
+    protected async loadTypes(controller: string, methodName: string): Promise<ActionTypes> {
+        const cacheId = controller + '!' + methodName;
         let types = this.cachedActionsTypes[cacheId];
         if (types) return types;
 
@@ -136,50 +120,72 @@ export class RpcServerAction {
         if (!classType) {
             throw new Error(`No controller registered for id ${controller}`);
         }
-        const action = getActions(classType.controller).get(method);
+        const action = getActions(classType.controller).get(methodName);
 
         if (!action) {
-            throw new Error(`Action unknown ${method}`);
+            throw new Error(`Action unknown ${methodName}`);
         }
 
         const controllerAccess: RpcControllerAccess = {
-            controllerName: controller, actionName: method, controllerClassType: classType.controller,
+            controllerName: controller, actionName: methodName, controllerClassType: classType.controller,
             actionGroups: action.groups, actionData: action.data
         };
 
         if (!await this.hasControllerAccess(controllerAccess)) {
-            throw new Error(`Access denied to action ${method}`);
+            throw new Error(`Access denied to action ${methodName}`);
         }
 
-        const parameters = getActionParameters(classType.controller, method);
+        const method = ReflectionClass.from(classType.controller).getMethod(methodName);
 
-        const argSchema = createClassSchema();
-        for (let i = 0; i < parameters.length; i++) {
-            argSchema.registerProperty(parameters[i]);
-        }
+        const parameters: TypeTuple = {
+            kind: ReflectionKind.tuple,
+            types: method.getParameters().map(v => ({
+                kind: ReflectionKind.tupleMember,
+                parent: Object as any,
+                name: v.name,
+                optional: v.isOptional() ? true : undefined,
+                type: v.type
+            }))
+        };
 
-        let resultProperty = getClassSchema(classType.controller).getMethod(method).clone();
+        const argSchema = new ReflectionClass({
+            kind: ReflectionKind.objectLiteral,
+            types: [{
+                kind: ReflectionKind.propertySignature,
+                name: 'v',
+                parent: Object as any,
+                type: parameters,
+            }]
+        });
 
-        if (resultProperty.type === 'class' && resultProperty.classType) {
-            const generic = resultProperty.templateArgs[0];
+        const resultSchema = new ReflectionClass({
+            kind: ReflectionKind.objectLiteral,
+            types: [{
+                kind: ReflectionKind.propertySignature,
+                name: 'v',
+                parent: Object as any,
+                optional: true,
+                type: method.getReturnType(),
+            }]
+        });
 
-            if (generic) {
-                resultProperty = generic.clone();
-            } else {
-                //if its Observable, Collection, EntitySubject, we simply assume any, because sending those types as resultProperty is definitely wrong
-                //and result in weird errors when `undefined` is returned in the actual action (since from undefined we don't infer an actual type)
-                if (isPrototypeOfBase(resultProperty.classType, Observable)
-                    || isPrototypeOfBase(resultProperty.classType, Collection)
-                    || isPrototypeOfBase(resultProperty.classType, EntitySubject)
-                ) {
-                    resultProperty.type = 'any';
-                    resultProperty.typeSet = false; //to signal the user hasn't defined a type
-                }
-            }
-        }
-
-        resultProperty.name = 'v';
-        resultProperty.isOptional = true;
+        // if (resultProperty.type === 'class' && resultProperty.classType) {
+        //     const generic = resultProperty.templateArgs[0];
+        //
+        //     if (generic) {
+        //         resultProperty = generic.clone();
+        //     } else {
+        //         //if its Observable, Collection, EntitySubject, we simply assume any, because sending those types as resultProperty is definitely wrong
+        //         //and result in weird errors when `undefined` is returned in the actual action (since from undefined we don't infer an actual type)
+        //         if (isPrototypeOfBase(resultProperty.classType, Observable)
+        //             || isPrototypeOfBase(resultProperty.classType, Collection)
+        //             || isPrototypeOfBase(resultProperty.classType, EntitySubject)
+        //         ) {
+        //             resultProperty.type = 'any';
+        //             resultProperty.typeSet = false; //to signal the user hasn't defined a type
+        //         }
+        //     }
+        // }
 
         const observableNextSchema = rpcActionObservableSubscribeId.clone();
         let nextProperty = resultProperty;
@@ -194,9 +200,6 @@ export class RpcServerAction {
         }
 
         observableNextSchema.registerProperty(nextProperty);
-
-        const resultSchema = createClassSchema();
-        resultSchema.registerProperty(resultProperty);
 
         types = this.cachedActionsTypes[cacheId] = {
             parameters: parameters,
@@ -223,7 +226,7 @@ export class RpcServerAction {
                 const body = message.parseBody(rpcActionObservableSubscribeId);
                 if (observable.subscriptions[body.id]) return response.error(new Error('Subscription already created'));
 
-                const sub: { active: boolean, sub?: Subscription, complete: () => void} = {
+                const sub: { active: boolean, sub?: Subscription, complete: () => void } = {
                     active: true,
                     complete: () => {
                         sub.active = false;

@@ -11,7 +11,7 @@
 import { InjectorModule, InjectorToken, ProviderWithScope, Token } from '@deepkit/injector';
 import { AbstractClassType, ClassType, CustomError, ExtractClassType, isClass } from '@deepkit/core';
 import { EventListener } from '@deepkit/event';
-import type { WorkflowDefinition } from '@deepkit/workflow';
+import { WorkflowDefinition } from '@deepkit/workflow';
 import { getPartialSerializeFunction, reflect, serializer, TypeClass } from '@deepkit/type';
 
 export type DefaultObject<T> = T extends undefined ? {} : T;

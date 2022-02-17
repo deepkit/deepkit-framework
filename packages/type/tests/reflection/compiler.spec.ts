@@ -5,7 +5,6 @@ import {
     createCompilerHost,
     createProgram,
     createSourceFile,
-    CustomTransformerFactory,
     ModuleKind,
     ScriptKind,
     ScriptTarget,
@@ -13,15 +12,15 @@ import {
     TransformationContext,
     transpileModule
 } from 'typescript';
-import { ReflectionTransformer, transformer } from '../../src/reflection/compiler';
+import { ReflectionTransformer, transformer } from '@deepkit/type-compiler';
 import { reflect, reflect as reflect2, ReflectionClass, removeTypeName, typeOf as typeOf2 } from '../../src/reflection/reflection';
 import {
     assertType,
     defaultAnnotation,
     primaryKeyAnnotation,
     ReflectionKind,
-    ReflectionOp,
     ReflectionVisibility,
+    stringifyType,
     Type,
     TypeClass,
     TypeFunction,
@@ -30,7 +29,8 @@ import {
     TypeProperty,
     TypeUnion
 } from '../../src/reflection/type';
-import { ClassType } from '@deepkit/core';
+import { ReflectionOp } from '@deepkit/type-spec';
+import { ClassType, isObject } from '@deepkit/core';
 import { pack, resolveRuntimeType, typeInfer } from '../../src/reflection/processor';
 import { expectEqualType } from '../utils';
 
@@ -39,17 +39,20 @@ Error.stackTraceLimit = 200;
 const options: CompilerOptions = {
     experimentalDecorators: true,
     module: ModuleKind.ES2020,
+    declaration: true,
     transpileOnly: true,
     target: ScriptTarget.ES2020,
 };
 
-function transpile(source: string | { [file: string]: string }, useTransformer: CustomTransformerFactory = transformer) {
+function transpile<T extends string | { [file: string]: string }>(source: T, optionsToUse: CompilerOptions = options): T extends string ? string : Record<string, string> {
     if ('string' === typeof source) {
         return transpileModule(source, {
             fileName: __dirname + '/module.ts',
-            compilerOptions: options,
-            transformers: { before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflectionMode('always')] }
-        }).outputText;
+            compilerOptions: optionsToUse,
+            transformers: {
+                before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflectionMode('always')],
+            }
+        }).outputText as any;
     }
 
     const files: { [path: string]: SourceFile } = {};
@@ -63,10 +66,10 @@ function transpile(source: string | { [file: string]: string }, useTransformer: 
         }
     }
 
-    let appTs = '';
-    const host = createCompilerHost(options);
+    const result: Record<string, string> = {};
+    const host = createCompilerHost(optionsToUse);
     host.writeFile = (fileName, data, writeByteOrderMark, onError, sourceFiles) => {
-        if (fileName.endsWith('app.js')) appTs = data;
+        result[fileName.slice(__dirname.length + 1)] = data;
     };
 
     const ori = { ...host };
@@ -77,9 +80,11 @@ function transpile(source: string | { [file: string]: string }, useTransformer: 
         return !!files[fileName] || ori.fileExists(fileName);
     };
 
-    const program = createProgram(Object.keys(files), options, host);
-    program.emit(files[appPath], undefined, undefined, undefined, { before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflectionMode('always')] });
-    return appTs;
+    const program = createProgram(Object.keys(files), optionsToUse, host);
+    program.emit(undefined, undefined, undefined, undefined, {
+        before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflectionMode('always')],
+    });
+    return result as any;
 }
 
 function packRaw(...args: Parameters<typeof pack>): string {
@@ -91,21 +96,21 @@ function packString(...args: Parameters<typeof pack>): string {
 }
 
 const tests: [code: string | { [file: string]: string }, contains: string | string[]][] = [
-    // [`class Entity { p: string }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    // [`class Entity { p: number }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    // [`class Entity { p: boolean }`, `Entity.__type = ['p', ${packString([ReflectionOp.boolean, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    // [`class Entity { p: bigint }`, `Entity.__type = ['p', ${packString([ReflectionOp.bigint, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    // [`class Entity { p: any }`, `Entity.__type = ['p', ${packString([ReflectionOp.any, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    // [`class Entity { p: Date }`, `Entity.__type = ['p', ${packString([ReflectionOp.date, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    // [`class Entity { private p: string }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.private, ReflectionOp.class])}]`],
-    // [`class Entity { p?: string }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.optional, ReflectionOp.class])}]`],
-    // [`class Entity { p: string | undefined }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    // [`class Entity { p: string | null }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.null, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    // [`class Entity { p: number[] }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    // [`class Entity { p: (number | string)[] }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.string, ReflectionOp.union, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    //
-    // [`class Entity { p: Promise<number> }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.promise, ReflectionOp.property, 0, ReflectionOp.class])}]`],
-    // [`class Entity { p: number | string }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.string, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { p: string }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { p: number }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { p: boolean }`, `Entity.__type = ['p', ${packString([ReflectionOp.boolean, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { p: bigint }`, `Entity.__type = ['p', ${packString([ReflectionOp.bigint, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { p: any }`, `Entity.__type = ['p', ${packString([ReflectionOp.any, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { p: Date }`, `Entity.__type = ['p', ${packString([ReflectionOp.date, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { private p: string }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.private, ReflectionOp.class])}]`],
+    [`class Entity { p?: string }`, `Entity.__type = ['p', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.optional, ReflectionOp.class])}]`],
+    [`class Entity { p: string | undefined }`, `Entity.__type = ['p', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { p: string | null }`, `Entity.__type = ['p', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.null, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { p: number[] }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { p: (number | string)[] }`, `Entity.__type = ['p', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.string, ReflectionOp.union, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+
+    [`class Entity { p: Promise<number> }`, `Entity.__type = ['p', ${packString([ReflectionOp.number, ReflectionOp.promise, ReflectionOp.property, 0, ReflectionOp.class])}]`],
+    [`class Entity { p: number | string }`, `Entity.__type = ['p', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.string, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class])}]`],
     // [
     //     `class Book {}; class IdentifiedReference<T> {} class Entity { p: IdentifiedReference<Book> }`,
     //     `Entity.__type = [() => Book, () => IdentifiedReference, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.classReference, 1, ReflectionOp.property, 2, ReflectionOp.class])}]`
@@ -164,22 +169,22 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
     //     app: `import {Model} from './model'; class Entity { p: Model;}`,
     //     model: `export class Model {}`
     // }, `[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
-    [{
-        app: `import {Pattern} from './model'; class Entity { p: Pattern;}`,
-        model: `export const REGEX = /abc/;\nexport type Pattern = {regex: typeof REGEX};`
-    }, `import { REGEX } from './model'`],
-    [{
-        app: `import {Pattern} from './model'; class Entity { p: Pattern;}`,
-        model: `export const REGEX = /abc/;\ntype M<T> = {name: T, regex: typeof REGEX}; type Pattern = M<true>;`
-    }, `import { REGEX } from './model'`],
-    [{
-        app: `import {Email} from './validator'; class Entity { p: Email;}`,
-        validator: `
-            export const REGEX = /abc/;
-            export type ValidatorMeta<Name extends string, Args extends [...args: any[]] = []> = { __meta?: { id: 'validator', name: Name, args: Args } }
-            export type Pattern<T extends RegExp> = ValidatorMeta<'pattern', [T]>
-            export type Email = string & Pattern<typeof EMAIL_REGEX>;`
-    }, `import { EMAIL_REGEX } from './validator';`],
+    // [{
+    //     app: `import {Pattern} from './model'; class Entity { p: Pattern;}`,
+    //     model: `export const REGEX = /abc/;\nexport type Pattern = {regex: typeof REGEX};`
+    // }, `import { REGEX } from './model'`],
+    // [{
+    //     app: `import {Pattern} from './model'; class Entity { p: Pattern;}`,
+    //     model: `export const REGEX = /abc/;\ntype M<T> = {name: T, regex: typeof REGEX}; type Pattern = M<true>;`
+    // }, `import { REGEX } from './model'`],
+    // [{
+    //     app: `import {Email} from './validator'; class Entity { p: Email;}`,
+    //     validator: `
+    //         export const REGEX = /abc/;
+    //         export type ValidatorMeta<Name extends string, Args extends [...args: any[]] = []> = { __meta?: { id: 'validator', name: Name, args: Args } }
+    //         export type Pattern<T extends RegExp> = ValidatorMeta<'pattern', [T]>
+    //         export type Email = string & Pattern<typeof EMAIL_REGEX>;`
+    // }, `import { EMAIL_REGEX } from './validator';`],
     //
     // [`export interface MyInterface {id: number}; class Controller { public p: MyInterface[] = [];}`,
     //     [
@@ -297,8 +302,10 @@ describe('transformer', () => {
     for (const entry of tests) {
         const [code, contains] = entry;
         const label = 'string' === typeof code ? code : code['app'] || '';
-        test(`${contains}: ${label.slice(-40)}`, () => {
-            const e = expect(transpile(code));
+        test(`${label.slice(-40)}: ${contains}`, () => {
+            const transpiled = transpile(code);
+            const result = isObject(transpiled) ? transpiled['app.js'] : transpiled;
+            const e = expect(result);
             for (const c of (Array.isArray(contains) ? contains : [contains])) {
                 if (c.startsWith('!')) {
                     e.not.toContain(c.substr(1));
@@ -312,6 +319,10 @@ describe('transformer', () => {
 
 function transpileAndReturn(source: string): { [name: string]: any } {
     const js = transpile(`(() => { ${source} })()`);
+    return run(js);
+}
+
+function run(js: string): any {
     const typeOf = function (...args: any[]) {
         return removeTypeName(typeOf2(...args));
     };
@@ -335,6 +346,20 @@ test('class', () => {
     assertType(type.types[1], ReflectionKind.property);
     assertType(type.types[1].type, ReflectionKind.string);
     expect(type.types[1].name).toBe('username');
+});
+
+test('class declaration', () => {
+    const code = `
+    /**
+     * This is my class
+     */
+    class User {id: number; username: string}
+
+    /** My function */
+    function p() {}
+    `;
+    const js = transpile({ 'app.ts': code });
+    console.log('js', js);
 });
 
 test('generic class', () => {
@@ -651,7 +676,7 @@ test('multiple infer', () => {
     console.log(type);
 });
 
-test('ClassType', () => {
+test('ClassType declaration', () => {
     const code = `
     interface ClassType<T = any> {
         new(...args: any[]): T;
@@ -676,6 +701,34 @@ test('ClassType', () => {
     });
 });
 
+test('ClassType infer', () => {
+    const code = `
+    interface ClassType<T = any> {
+        new(...args: any[]): T;
+    }
+
+    class MyClass {
+        id: number;
+    }
+
+    return typeOf<MyClass extends ClassType<infer R> ? R : never>();
+    `;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code) as () => Type;
+    expect(type).toMatchObject({
+        kind: ReflectionKind.class,
+        types: [
+            {
+                kind: ReflectionKind.property,
+                name: 'id',
+                type: { kind: ReflectionKind.number },
+            }
+        ]
+    });
+});
+
 test('infer parameter in returned class constructor', () => {
     const code = `
     interface ClassType<T = any> {
@@ -686,9 +739,10 @@ test('infer parameter in returned class constructor', () => {
         constructor(public response: T) {
         }
     }
-    return function StreamApiResponse2<T>(responseBodyClass: ClassType<T>) {
-        class A extends StreamApiResponseClass<T> {
-            constructor(public response: T) {
+
+    return function StreamApiResponse2<ResponseType>(responseBodyClass: ClassType<ResponseType>) {
+        class A extends StreamApiResponseClass<ResponseType> {
+            constructor(public response: ResponseType) {
                 super(response);
             }
         }
@@ -699,8 +753,9 @@ test('infer parameter in returned class constructor', () => {
     const js = transpile(code);
     console.log('js', js);
     const res = transpileAndReturn(code) as (v: ClassType) => ClassType;
-    const type = resolveRuntimeType(res(class {
+    const type = resolveRuntimeType(res(class MyResponse {
     })) as TypeClass;
+    console.log('type', stringifyType(type));
     expect((type.types[0] as TypeMethod).parameters[0].type.kind).toBe(ReflectionKind.class);
     console.log((type.types[0] as TypeMethod).parameters[0]);
 });
@@ -1582,5 +1637,135 @@ test('InlineRuntimeType', () => {
     console.log('js', js);
     const type = transpileAndReturn(code);
     console.log('type', type.types[0].type);
-    expect(type.types[0].type).toMatchObject({kind: ReflectionKind.string});
+    expect(type.types[0].type).toMatchObject({ kind: ReflectionKind.string });
+});
+
+test('InstanceType', () => {
+    const code = `
+        type InstanceType<T extends abstract new (...args: any) => any> = T extends abstract new (...args: any) => infer R ? R : any;
+        type t = InstanceType<any>;
+        return typeOf<t>();
+    `;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+    console.log('type', type);
+    expect(type).toMatchObject({ kind: ReflectionKind.unknown });
+});
+
+test('import types named import esm', () => {
+    const js = transpile({
+        'app': `
+            import {User} from './user';
+            export type bla = string;
+            export const hi = 'yes';
+            type a = Partial<User>;
+            typeOf<a>();
+        `,
+        'user': `export interface User {id: number}`
+    });
+    expect(js['app.js']).toContain(`import { __ΩUser } from './user';`);
+    expect(js['app.js']).toContain(`var __ΩPartial = [`);
+    expect(js['app.js']).toContain(`export { __Ωbla };`);
+    expect(js['app.js']).toContain(`var __Ωa = [`);
+
+    expect(js['user.js']).toContain(`export { __ΩUser };`);
+
+    console.log(js);
+});
+
+test('import types named import cjs', () => {
+    const js = transpile({
+        'app': `
+            import {User} from './user';
+            export type bla = string;
+            export const hi = 'yes';
+            type a = Partial<User>;
+            typeOf<a>();
+        `,
+        'user': `export interface User {id: number}`
+    }, { ...options, module: ModuleKind.CommonJS });
+    expect(js['app.js']).toContain(`var { __ΩUser } = require('./user');`);
+    expect(js['app.js']).toContain(`var __ΩPartial = [`);
+    expect(js['app.js']).toContain(`exports.__Ωbla = __Ωbla`);
+    expect(js['app.js']).toContain(`var __Ωa = [`);
+
+    expect(js['user.js']).toContain(`exports.__ΩUser = __ΩUser`);
+    console.log(js);
+});
+
+test('import types named import typeOnly', () => {
+    const js = transpile({
+        'app': `
+            import {type User} from './user';
+            export type bla = string;
+            export const hi = 'yes';
+            type a = Partial<User>;
+            typeOf<a>();
+        `,
+        'user': `export interface User {id: number}`
+    });
+    expect(js['app.js']).not.toContain(`var { __ΩUser } = require('./user');`);
+    expect(js['app.js']).toContain(`var __ΩPartial = [`);
+    expect(js['app.js']).toContain(`export { __Ωbla };`);
+    expect(js['app.js']).toContain(`var __Ωa = [`);
+
+    expect(js['user.js']).toContain(`export { __ΩUser };`);
+
+    console.log(js);
+});
+
+test('import types named import with disabled reflection', () => {
+    const js = transpile({
+        'app': `
+            import {User} from './user';
+            export type bla = string;
+            export const hi = 'yes';
+            type a = Partial<User>;
+            typeOf<a>();
+        `,
+        'user': `/** @reflection never */ export interface User {id: number}`
+    });
+    expect(js['app.js']).not.toContain(`var { __ΩUser } = require('./user');`);
+    expect(js['app.js']).toContain(`var __ΩPartial = [`);
+    expect(js['app.js']).toContain(`export { __Ωbla };`);
+    expect(js['app.js']).toContain(`var __Ωa = [`);
+    expect(js['user.js']).not.toContain(`export { __ΩUser };`);
+
+    console.log(js);
+});
+
+test('import types star import', () => {
+    //not supported yet
+    const js = transpile({
+        'app.ts': `
+            import * as user from './user';
+            type a = Partial<user.User>;
+            typeOf<a>();
+        `,
+        'user.ts': `export interface User {id: number}`
+    });
+    console.log(js);
+});
+
+test('multiple exports', () => {
+    //not supported yet
+    const js = transpile(`
+        /**
+         * @public
+         */
+        export interface ClassType<T = any> {
+            new(...args: any[]): T;
+        }
+
+        /**
+         * @public
+         */
+        export type AbstractClassType<T = any> = abstract new (...args: any[]) => T;
+
+        export type ExtractClassType<T> = T extends ClassType<infer K> ? K : never;
+
+    `);
+    console.log(js);
 });

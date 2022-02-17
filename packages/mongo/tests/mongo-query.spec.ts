@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { convertClassQueryToMongo, convertPlainQueryToMongo } from '../index';
 import { Embedded, PrimaryKey, Reference } from '@deepkit/type';
 

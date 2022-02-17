@@ -1,11 +1,10 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { getBSONSerializer, getBSONSizer, getValueSize, hexToByte, uuidStringToByte } from '../src/bson-serializer';
 import { BinaryBigInt, createReference, Embedded, Excluded, MongoId, nodeBufferToArrayBuffer, PrimaryKey, Reference, SignedBinaryBigInt, typeOf, uuid, UUID } from '@deepkit/type';
 import bson from 'bson';
 import { randomBytes } from 'crypto';
 import { BSON_BINARY_SUBTYPE_DEFAULT, BSONType } from '../src/utils';
-import { deserializeWithoutOptimiser } from '../src/bson-parser';
+import { deserializeBSONWithoutOptimiser } from '../src/bson-parser';
 
 const { Binary, calculateObjectSize, deserialize, Long, ObjectId: OfficialObjectId, serialize } = bson;
 
@@ -1213,6 +1212,6 @@ test('Excluded', () => {
     const fn = getBSONSerializer<Message>();
     const bson = fn({ insert: 'a', $db: 'b', documents: [model] });
 
-    const back = deserializeWithoutOptimiser(bson);
+    const back = deserializeBSONWithoutOptimiser(bson);
     console.log('back', back);
 });

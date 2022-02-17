@@ -8,7 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import 'reflect-metadata';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { BenchSuite } from '../bench';
 import { GetOptimizationStatus } from '../utils';

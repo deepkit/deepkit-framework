@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { ApiAction, ApiRoute } from '../api';
 import { ClassSchema, classToPlain, plainToClass, PropertySchema, t } from '@deepkit/type';
 import { RemoteController, RpcClient, RpcClientEventIncomingMessage, RpcClientEventOutgoingMessage } from '@deepkit/rpc';

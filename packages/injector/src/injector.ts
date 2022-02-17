@@ -13,7 +13,6 @@ import {
     stringifyType
 } from '@deepkit/type';
 
-
 export class CircularDependencyError extends CustomError {
 }
 
@@ -125,7 +124,6 @@ export type SetupProviderCalls = {
     | { type: 'property', property: string | symbol | number, value: any, order: number }
     | { type: 'stop', order: number }
     ;
-
 
 export class SetupProviderRegistry {
     public calls = new Map<Token, SetupProviderCalls[]>();

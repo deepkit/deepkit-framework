@@ -8,17 +8,17 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { asyncOperation, ClassType, CustomError, getClassName } from '@deepkit/core';
-import { getClassTypeFromInstance, getPropertyClassToXFunction, isClassInstance, isRegisteredEntity, jsonSerializer, ValidationFailed } from '@deepkit/type';
+import { asyncOperation, ClassType, CustomError, getClassName, getClassTypeFromInstance, isClassInstance } from '@deepkit/core';
 import { OutgoingHttpHeaders, ServerResponse } from 'http';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpRequest, HttpResponse } from './model';
-import { inject, injectable, InjectorContext } from '@deepkit/injector';
+import { InjectorContext } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { RouteConfig, RouteParameterResolverForInjector, Router } from './router';
 import { createWorkflow, WorkflowEvent } from '@deepkit/workflow';
 import type { ElementStruct, render } from '@deepkit/template';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+import { getSerializeFunction, hasTypeInformation, ReflectionKind, resolveReceiveType, SerializationError, serialize, serializer, ValidationError } from '@deepkit/type';
 
 export function isElementStruct(v: any): v is ElementStruct {
     return 'object' === typeof v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes') && !v.slice;
@@ -350,7 +350,6 @@ export interface HttpResultFormatterContext {
     route?: RouteConfig;
 }
 
-@injectable
 export class HttpResultFormatter {
     protected jsonContentType: string = 'application/json; charset=utf-8';
     protected htmlContentType: string = 'text/html; charset=utf-8';
@@ -406,14 +405,9 @@ export class HttpResultFormatter {
     handleTypeEntity<T>(classType: ClassType<T>, instance: T, context: HttpResultFormatterContext, route?: RouteConfig): void {
         this.setContentTypeIfNotSetAlready(context.response, this.jsonContentType);
 
-        context.response.end(JSON.stringify(
-                (route && route?.serializer ? route.serializer : jsonSerializer)
-                    .for(classType).serialize(
-                    instance,
-                    route ? route.serializationOptions : undefined
-                )
-            )
-        );
+        const serializerToUse = route && route?.serializer ? route.serializer : serializer;
+
+        context.response.end(JSON.stringify(serialize(instance, route ? route.serializationOptions : undefined, serializerToUse, resolveReceiveType(classType))));
     }
 
     handleBinary(result: Uint8Array, context: HttpResultFormatterContext): void {
@@ -441,7 +435,7 @@ export class HttpResultFormatter {
         } else {
             if (isClassInstance(result)) {
                 const classType = getClassTypeFromInstance(result);
-                if (isRegisteredEntity(classType)) {
+                if (hasTypeInformation(classType)) {
                     this.handleTypeEntity(classType, result, context);
                     return;
                 }
@@ -452,13 +446,12 @@ export class HttpResultFormatter {
     }
 }
 
-@injectable
 export class HttpListener {
     constructor(
         protected router: Router,
         protected logger: Logger,
         protected resultFormatter: HttpResultFormatter,
-        @inject().optional protected stopwatch?: Stopwatch,
+        protected stopwatch?: Stopwatch,
     ) {
     }
 
@@ -573,7 +566,7 @@ export class HttpListener {
         try {
             event.parameters = await event.parameterResolver(event.injectorContext);
             event.next('controller', new HttpControllerEvent(event.injectorContext, event.request, event.response, event.parameters, event.route));
-        } catch (error) {
+        } catch (error: any) {
             event.next('parametersFailed', new HttpControllerErrorEvent(event.injectorContext, event.request, event.response, event.route, error));
         }
     }
@@ -606,7 +599,7 @@ export class HttpListener {
             const responseEvent = new HttpResponseEvent(event.injectorContext, event.request, event.response, result, event.route);
             responseEvent.controllerActionTime = Date.now() - start;
             event.next('response', responseEvent);
-        } catch (error) {
+        } catch (error: any) {
             if (frame) frame.end();
             if (error instanceof HttpAccessDeniedError) {
                 event.next('accessDenied', new HttpAccessDeniedEvent(event.injectorContext, event.request, event.response, event.route));
@@ -625,7 +618,16 @@ export class HttpListener {
         if (event.response.finished) return;
         if (event.sent) return;
 
-        if (event.error instanceof ValidationFailed) {
+        if (event.error instanceof SerializationError) {
+            event.send(new JSONResponse({
+                message: event.error.message,
+                errors: [{
+                    path: event.error.path,
+                    code: 'serialization',
+                    message: event.error.originalMessage,
+                }]
+            }, 400).disableAutoSerializing());
+        } else if (event.error instanceof ValidationError) {
             event.send(new JSONResponse({
                 message: event.error.message,
                 errors: event.error.errors
@@ -642,7 +644,7 @@ export class HttpListener {
         if (event.response.finished) return;
         if (event.sent) return;
 
-        if (event.error instanceof ValidationFailed) {
+        if (event.error instanceof ValidationError) {
             event.send(new JSONResponse({
                 message: event.error.message,
                 errors: event.error.errors
@@ -672,28 +674,25 @@ export class HttpListener {
         if (event.result instanceof HtmlResponse || event.result instanceof ServerResponse || event.result instanceof Redirect) {
             // don't do anything
         } else if (event.result instanceof JSONResponse) {
-            const schema = (event.result._statusCode && event.route.getSchemaForResponse(event.result._statusCode)) || event.route.returnSchema;
+            const schema = (event.result._statusCode && event.route.getSchemaForResponse(event.result._statusCode)) || event.route.returnType;
 
             if (!schema || !event.result.autoSerializing) return;
 
-            event.result.json = getPropertyClassToXFunction(
-                schema,
-                event.route && event.route.serializer ? event.route.serializer : jsonSerializer
-            )(event.result.json, event.route.serializationOptions);
-        } else if (event.route.returnSchema && (!event.route.returnSchema.isPromise || event.route.returnSchema.getSubType())) {
-            event.result = getPropertyClassToXFunction(
-                event.route.returnSchema,
-                event.route && event.route.serializer ? event.route.serializer : jsonSerializer
-            )(event.result, event.route.serializationOptions);
+            const serializerToUse = event.route && event.route.serializer ? event.route.serializer : serializer;
+            const serialize = getSerializeFunction(schema, serializerToUse.serializeRegistry);
+            event.result.json = serialize(event.result.json, event.route.serializationOptions);
+        } else if (event.route.returnType && event.route.returnType.kind !== ReflectionKind.any) {
+            const serializerToUse = event.route && event.route.serializer ? event.route.serializer : serializer;
+            const serialize = getSerializeFunction(event.route.returnType, serializerToUse.serializeRegistry);
+            event.result = serialize(event.result, event.route.serializationOptions);
         } else {
             const schema = event.route.getSchemaForResponse(200);
             if (!schema) return;
-            event.result = getPropertyClassToXFunction(
-                schema,
-                event.route && event.route.serializer ? event.route.serializer : jsonSerializer
-            )(event.result, event.route.serializationOptions);
-        }
 
+            const serializerToUse = event.route && event.route.serializer ? event.route.serializer : serializer;
+            const serialize = getSerializeFunction(schema, serializerToUse.serializeRegistry);
+            event.result = serialize(event.result, event.route.serializationOptions);
+        }
     }
 
     @eventDispatcher.listen(httpWorkflow.onResponse, 100)

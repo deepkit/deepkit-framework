@@ -1,11 +1,5 @@
 #!/usr/bin/env ts-node
-import {
-    Application,
-    eventDispatcher,
-    HtmlResponse, http,
-    HttpAccessDeniedError, httpWorkflow
-} from '@deepkit/framework';
-import 'reflect-metadata';
+import { Application, eventDispatcher, HtmlResponse, http, HttpAccessDeniedError, httpWorkflow } from '@deepkit/framework';
 
 /*
 

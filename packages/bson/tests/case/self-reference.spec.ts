@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { expect, test } from '@jest/globals';
 import { createReference, entity, isReference, t } from '@deepkit/type';
 import { randomBytes } from 'crypto';

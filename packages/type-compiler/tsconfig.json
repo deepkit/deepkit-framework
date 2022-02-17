@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "moduleResolution": "node",
+    "target": "ES2020",
+    "module": "CommonJS",
+    "esModuleInterop": true,
+    "outDir": "./dist/cjs",
+    "declaration": true,
+    "composite": true
+  },
+  "reflection": false,
+  "include": [
+    "src",
+    "tests",
+    "install-transformer.ts",
+    "index.ts"
+  ],
+  "references": [
+    {
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../type-spec/tsconfig.json"
+    }
+  ]
+}

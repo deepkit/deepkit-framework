@@ -11,26 +11,24 @@
 import { ClassType, isClass, urlJoin } from '@deepkit/core';
 import {
     ClassDecoratorResult,
-    ClassSchema,
     createClassDecoratorContext,
     createPropertyDecoratorContext,
-    FieldDecoratorResult,
-    getClassSchema,
+    DecoratorAndFetchSignature,
+    DualDecorator,
+    ExtractApiDataType,
+    ExtractClass,
     isDecoratorContext,
-    isFieldDecorator,
-    JitConverterOptions,
     mergeDecorator,
-    PropertyDecoratorResult,
-    PropertySchema,
+    OuterType,
+    PropertyDecoratorFn,
+    ReceiveType,
+    resolveReceiveType,
+    SerializationOptions,
     Serializer,
-    t
+    UnionToIntersection
 } from '@deepkit/type';
 import { RouteParameterResolver } from './router';
 import { httpMiddleware, HttpMiddleware, HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware';
-
-export interface ControllerOptions {
-    name: string;
-}
 
 type HttpActionMiddleware = (() => HttpMiddlewareConfig) | ClassType<HttpMiddleware> | HttpMiddlewareFn;
 
@@ -99,7 +97,7 @@ export class HttpAction {
     groups: string[] = [];
     serializer?: Serializer;
     middlewares: (() => HttpMiddlewareConfig)[] = [];
-    serializationOptions?: JitConverterOptions;
+    serializationOptions?: SerializationOptions;
 
     parameterRegularExpressions: { [name: string]: any } = {};
 
@@ -107,16 +105,11 @@ export class HttpAction {
     resolverForParameterName: Map<string, ClassType> = new Map();
 
     /**
-     * This is only filled when the user used @http.body() for example on an method argument.
-     */
-    parameters: { [name: string]: HttpActionParameter } = {};
-
-    /**
      * An arbitrary data container the user can use to store app specific settings/values.
      */
     data = new Map<any, any>();
 
-    responses: { statusCode: number, description: string, type?: PropertySchema }[] = [];
+    responses: { statusCode: number, description: string, type?: OuterType }[] = [];
 }
 
 export class HttpDecorator {
@@ -196,7 +189,8 @@ export const httpClass: ClassDecoratorResult<typeof HttpDecorator> = createClass
 export class HttpActionDecorator {
     t = new HttpAction;
 
-    onDecorator(target: ClassType, property: string) {
+    onDecorator(target: ClassType, property: string | undefined, parameterIndexOrDescriptor?: any) {
+        if (!property) return;
         this.t.methodName = property;
         httpClass.setAction(this.t)(target);
     }
@@ -205,15 +199,11 @@ export class HttpActionDecorator {
         this.t.name = name;
     }
 
-    setParameter(name: string, parameter: HttpActionParameter) {
-        this.t.parameters[name] = parameter;
-    }
-
     description(description: string) {
         this.t.description = description;
     }
 
-    serialization(options: JitConverterOptions) {
+    serialization(options: SerializationOptions) {
         this.t.serializationOptions = options;
     }
 
@@ -298,12 +288,12 @@ export class HttpActionDecorator {
     }
 
     OPTIONS(path: string = '') {
-        this.t.httpMethods.push('HEAD');
+        this.t.httpMethods.push('OPTIONS');
         if (path) this.t.path = path;
     }
 
     TRACE(path: string = '') {
-        this.t.httpMethods.push('HEAD');
+        this.t.httpMethods.push('TRACE');
         if (path) this.t.path = path;
     }
 
@@ -319,31 +309,29 @@ export class HttpActionDecorator {
 
     /**
      * Adds additional information about what HTTP status codes are available in this route.
-     * You can add additionally a description and a class type.
+     * You can add additionally a description and a response body type.
      *
-     * The class type is used for serialization for responses with the given statusCode.
+     * The type is used for serialization for responses with the given statusCode.
      *
-     * Those information are available in Deepkit API console.
-     *
-     * classType can be a schema, class, or deepkit/type t.
+     * This information is available in Deepkit API console.
      *
      * ```typescript
      *
-     * @http.GET().response(200, 'All ok', t.boolean)
+     * @http.GET().response<boolean>(200, 'All ok')
      *
-     * class User {
-     *     @t username: string = '';
+     * interface User {
+     *     username: string;
      * }
-     * @http.GET().response(200, 'User object', User)
+     * @http.GET().response<User>(200, 'User object')
      *
-     *
-     * const error = t.schema({error: t.string});
-     * @http.GET().response(500, 'Error', error)
+     * interface HttpErrorMessage {
+     *     error: string;
+     * }
+     * @http.GET().response<HttpErrorMessage>(500, 'Error')
      * ```
      */
-    response(statusCode: number, description: string = '', classType?: FieldDecoratorResult<any> | ClassType | ClassSchema,) {
-        const type = classType ? (isFieldDecorator(classType) ? classType.buildPropertySchema() : t.type(getClassSchema(classType)).buildPropertySchema()) : undefined;
-        this.t.responses.push({ statusCode, description, type });
+    response<T>(statusCode: number, description: string = '', type?: ReceiveType<T>) {
+        this.t.responses.push({ statusCode, description, type: type ? resolveReceiveType(type) : undefined });
     }
 
     /**
@@ -401,89 +389,18 @@ export class HttpActionDecorator {
     }
 }
 
-class HttpActionParameterDecorator {
-    t = new HttpActionParameter();
+//this workaround is necessary since generic functions (necessary for response<T>) are lost during a mapped type and changed ReturnType
+type HttpActionFluidDecorator<T, D extends Function> = {
+    [name in keyof T]: name extends 'response' ? <T2>(statusCode: number, description?: string, type?: ReceiveType<T2>) => D & HttpActionFluidDecorator<T, D>
+        : T[name] extends (...args: infer K) => any ? (...args: K) => D & HttpActionFluidDecorator<T, D>
+        : D & HttpActionFluidDecorator<T, D> & { _data: ExtractApiDataType<T> };
+};
+type HttpActionPropertyDecoratorResult = HttpActionFluidDecorator<ExtractClass<typeof HttpActionDecorator>, PropertyDecoratorFn> & DecoratorAndFetchSignature<typeof HttpActionDecorator, PropertyDecoratorFn>;
 
-    onDecorator(target: ClassType, propertyName?: string, parameterIndex?: number) {
-        if (!propertyName) throw new Error('@http action parameter decorator can only be used on method arguments.');
-        if (parameterIndex === undefined) throw new Error('@http action parameter decorator can only be used on method arguments.');
-        const schema = getClassSchema(target);
-        const property = schema.getMethodProperties(propertyName)[parameterIndex];
-        this.t.name = property.name;
-        if (this.t.typePath === undefined) {
-            this.t.typePath = property.name;
-        }
-        httpAction.setParameter(property.name, this.t)(target.prototype, propertyName);
-    }
+export const httpAction: HttpActionPropertyDecoratorResult = createPropertyDecoratorContext(HttpActionDecorator);
 
-    /**
-     * Marks the argument as body parameter. Data from the client sent in the body
-     * will be tried to parsed (JSON/form data) and deserialized to the defined type.
-     * Make sure the class type as a schema assigned.
-     *
-     * @example
-     * ```typescript
-     * class MyActionBody {
-     *     @t name!: string;
-     * }
-     *
-     * class Controller {
-     *     @http.GET()
-     *     myAction(@http.body() body: MyActionBody) {
-     *         console.log('body', body.name);
-     *     }
-     * }
-     * ```
-     */
-    body() {
-        this.t.type = 'body';
-        this.t.typePath = ''; //root
-    }
+//this workaround is necessary since generic functions are lost during a mapped type and changed ReturnType
+type HttpMerge<U> = { [K in keyof U]: K extends 'response' ? <T2>(statusCode: number, description?: string, type?: ReceiveType<T2>) => PropertyDecoratorFn & U : U[K] extends ((...a: infer A) => infer R) ? R extends DualDecorator ? (...a: A) => PropertyDecoratorFn & R & U : (...a: A) => R : never };
+type MergedHttp<T extends any[]> = HttpMerge<Omit<UnionToIntersection<T[number]>, '_fetch' | 't'>>
 
-    query(path?: string) {
-        this.t.typePath = path; //undefined === propertyName
-        this.t.type = 'query';
-    }
-
-    get optional() {
-        this.t.optional = true;
-        return;
-    }
-
-    /**
-     * Marks the argument as query parameter. Data from the query string is parsed
-     * and deserialized to the defined type.
-     * Define a `path` if you want to parse a subset of the query string only.
-     *
-     * Note: Make sure the defined parameter type has optional properties,
-     * otherwise it's always required to pass a query string.
-     *
-     * @example
-     * ```typescript
-     * class MyActionQueries {
-     *     @t.optional name?: string;
-     * }
-     *
-     * class Controller {
-     *     @http.GET('my-action')
-     *     myAction(@http.queries() query: MyActionQueries) {
-     *         console.log('query', query.name);
-     *     }
-     * }
-     *
-     * // Open via, e.g.
-     * // -> /my-action?name=Peter
-     * ```
-     *
-     */
-    queries(path: string = '') {
-        this.t.typePath = path; //'' === root
-        this.t.type = 'queries';
-    }
-}
-
-export const httpAction: PropertyDecoratorResult<typeof HttpActionDecorator> = createPropertyDecoratorContext(HttpActionDecorator);
-
-export const httpActionParameter: PropertyDecoratorResult<typeof HttpActionParameterDecorator> = createPropertyDecoratorContext(HttpActionParameterDecorator);
-
-export const http = mergeDecorator(httpClass, httpAction, httpActionParameter);
+export const http: MergedHttp<[typeof httpClass, typeof httpAction]> = mergeDecorator(httpClass, httpAction) as any as MergedHttp<[typeof httpClass, typeof httpAction]>;

@@ -1,6 +1,5 @@
 import { t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { skip } from 'rxjs/operators';
 import { DirectClient } from '../src/client/client-direct';
 import { rpc } from '../src/decorators';

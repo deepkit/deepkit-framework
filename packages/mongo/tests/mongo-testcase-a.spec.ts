@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { BackReference, entity, Index, PrimaryKey, Reference, ReflectionClass, resolveForeignReflectionClass, UUID, uuid } from '@deepkit/type';
 import { getInstanceStateFromItem, hydrateEntity } from '@deepkit/orm';
 import { createDatabase } from './utils';

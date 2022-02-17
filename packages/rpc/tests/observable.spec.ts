@@ -1,7 +1,6 @@
 import { sleep } from '@deepkit/core';
 import { entity, plainToClass, t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
 import { first, take } from 'rxjs/operators';
 import { DirectClient } from '../src/client/client-direct';

@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { expect, test } from '@jest/globals';
 import { CircularDependencyError, Injector, InjectorToken } from '../src/injector';
 import { InjectorModule } from '../src/module';

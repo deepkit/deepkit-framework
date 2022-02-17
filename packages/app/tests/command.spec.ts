@@ -1,8 +1,8 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { App } from '../src/app';
 import { arg, cli, Command } from '../src/command';
 import { ServiceContainer } from '../src/service-container';
+import { ReflectionKind } from '@deepkit/type';
 
 @cli.controller('my')
 class MyCli implements Command {
@@ -19,8 +19,7 @@ test('command simple', () => {
 
     expect(cliConfig.name).toBe('my');
     expect(cliConfig.getArg('host').name).toBe('host');
-    expect(cliConfig.getArg('host').optional).toBe(false);
-    expect(cliConfig.getArg('host').propertySchema!.type).toBe('string');
+    expect(cliConfig.getArg('host').propertySchema!.type.kind).toBe(ReflectionKind.string);
 });
 
 test('command execute', async () => {

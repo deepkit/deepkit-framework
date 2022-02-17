@@ -12,7 +12,7 @@ import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecora
 import { EntityData, ReceiveType, SerializerFn, TData } from './reflection/reflection';
 import { ClassType, isArray } from '@deepkit/core';
 import { IndexOptions } from './reflection/type';
-import { ValidatorFunction } from './validator';
+import type { ValidatorFunction } from './validator';
 
 class TDecorator {
     t = new TData();

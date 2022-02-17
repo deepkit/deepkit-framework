@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import bson, { Binary } from 'bson';
 import { deserializeBSON, getBSONDeserializer } from '../src/bson-deserializer';
 import {

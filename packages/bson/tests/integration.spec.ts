@@ -1,5 +1,4 @@
 import { describe, expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { entity, FieldDecoratorResult, t, Types } from '@deepkit/type';
 import bson from 'bson';
 import { createBSONSizer, getBSONSerializer, JS_INT_MAX, JS_INT_MIN } from '../src/bson-serialize';

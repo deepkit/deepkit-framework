@@ -1,6 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { ReceiveType, resolveReceiveType, typeOf } from '../../../src/reflection/reflection';
-import { ReflectionKind } from '../../../src/reflection/type';
+import { OuterType, ReflectionKind, Type } from '../../../src/reflection/type';
+import { Packed } from '../../../src/reflection/processor';
 
 test('typeOf', () => {
     const type = typeOf<string>();
@@ -28,4 +29,29 @@ test('method call', () => {
 
     const type = db.query<string>();
     expect(type).toEqual({ kind: ReflectionKind.string });
+});
+
+test('decorator call', () => {
+    let got: OuterType | undefined;
+
+    class HttpDecorator {
+        something(): HttpDecorator {
+            return this;
+        }
+
+        response<T>(name: string, description: string = '', type?: ReceiveType<T>): any {
+            got = resolveReceiveType(type);
+        }
+    }
+
+    const http = new HttpDecorator;
+
+    interface User {}
+
+    class Controller {
+        @http.something().response<User>('abc')
+        action() {}
+    }
+
+    expect(got).toMatchObject({kind: ReflectionKind.objectLiteral, typeName: 'User'});
 });

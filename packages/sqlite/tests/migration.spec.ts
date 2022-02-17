@@ -1,7 +1,6 @@
-import 'reflect-metadata';
 import { expect, test } from '@jest/globals';
 import { schemaMigrationRoundTrip } from '@deepkit/sql';
-import { AutoIncrement, Entity, integer, PrimaryKey, Reference, SQLite, typeOf, Unique } from '@deepkit/type';
+import { AutoIncrement, Entity, integer, PrimaryKey, Reference, SQLite, stringifyResolvedType, typeOf, Unique } from '@deepkit/type';
 import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 
@@ -17,6 +16,7 @@ test('custom type', async () => {
     const adapter = new SQLiteDatabaseAdapter(':memory:');
     const [postTable] = adapter.platform.createTables(DatabaseEntityRegistry.from([typeOf<Post>()]));
     expect(postTable.getColumn('id').type).toBe('integer');
+    expect(postTable.getColumn('slug').type).toBe('text');
     expect(postTable.getColumn('size').type).toBe('integer');
     expect(postTable.getColumn('size').size).toBe(4);
 

@@ -11,7 +11,7 @@
 import {
     assertType,
     autoIncrementAnnotation,
-    BackReferenceOptions,
+    BackReferenceOptionsResolved,
     clearTypeJitContainer,
     copyAndSetParent,
     dataAnnotation,
@@ -54,7 +54,7 @@ import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, isArray, i
 import { Packed, resolvePacked, resolveRuntimeType } from './processor';
 import { NoTypeReceived } from '../utils';
 import { findCommonLiteral } from '../inheritance';
-import { ValidatorFunction } from '../validator';
+import type { ValidatorFunction } from '../validator';
 import { isWithDeferredDecorators } from '../decorator';
 
 /**
@@ -356,7 +356,7 @@ export class ReflectionMethod {
         return this.parameters;
     }
 
-    getReturnType(): Type {
+    getReturnType(): OuterType {
         return this.method.return;
     }
 
@@ -503,7 +503,7 @@ export class ReflectionProperty {
         return isBackReferenceType(this.getType());
     }
 
-    getBackReference(): BackReferenceOptions {
+    getBackReference(): BackReferenceOptionsResolved {
         return getBackReferenceType(this.getType());
     }
 
@@ -912,6 +912,10 @@ export class ReflectionClass<T> {
 
     hasProperty(name: string | symbol | number): boolean {
         return this.propertyNames.includes(memberNameToString(name));
+    }
+
+    hasMethod(name: string | symbol | number): boolean {
+        return this.methodNames.includes(memberNameToString(name));
     }
 
     getPrimary(): ReflectionProperty {

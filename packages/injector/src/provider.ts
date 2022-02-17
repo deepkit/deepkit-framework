@@ -20,6 +20,7 @@ export interface ProviderBase {
     transient?: true;
 }
 
+/** @reflection never */
 export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | InjectorToken<T> | AbstractClassType<T> | OuterType;
 
 export function provide<T>(provider: Omit<ProviderProvide, 'provide'> | ClassType, type?: ReceiveType<T>): Provider {
@@ -84,15 +85,19 @@ export interface FactoryProvider<T> extends ProviderBase {
     deps?: any[];
 }
 
+/** @reflection never */
 export type Provider<T = any> = ClassType | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T> | TagProvider<T>;
 
+/** @reflection never */
 export type ProviderProvide<T = any> = ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>;
 
+/** @reflection never */
 interface TagRegistryEntry<T> {
     tagProvider: TagProvider<T>;
     module: InjectorModule;
 }
 
+/** @reflection never */
 export class TagRegistry {
     constructor(
         public tags: TagRegistryEntry<any>[] = []
@@ -108,6 +113,7 @@ export class TagRegistry {
     }
 }
 
+/** @reflection never */
 export class TagProvider<T> {
     constructor(
         public provider: NormalizedProvider<T>,
@@ -116,6 +122,7 @@ export class TagProvider<T> {
     }
 }
 
+/** @reflection never */
 export class Tag<T, TP extends TagProvider<T> = TagProvider<T>> {
     _!: () => T;
     _2!: () => TP;
@@ -143,12 +150,15 @@ export class Tag<T, TP extends TagProvider<T> = TagProvider<T>> {
     }
 }
 
+/** @reflection never */
 export interface ProviderScope {
     scope?: 'module' | 'rpc' | 'http' | 'cli' | string;
 }
 
+/** @reflection never */
 export type NormalizedProvider<T = any> = ProviderProvide<T> & ProviderScope;
 
+/** @reflection never */
 export type ProviderWithScope<T = any> = ClassType | (ProviderProvide<T> & ProviderScope) | TagProvider<any>;
 
 export function isScopedProvider(obj: any): obj is ProviderProvide & ProviderScope {
@@ -180,7 +190,6 @@ export function isTransient(provider: ProviderWithScope): boolean {
     if (provider instanceof TagProvider) return false;
     return provider.transient === true;
 }
-
 
 export function getProviders(
     providers: ProviderWithScope[],

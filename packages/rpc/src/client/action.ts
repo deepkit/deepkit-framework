@@ -9,7 +9,6 @@
  */
 
 import { asyncOperation, toFastProperties } from '@deepkit/core';
-import { ClassSchema, createClassSchema, getClassSchema, propertyDefinition, PropertySchema, PropertySchemaSerialized } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';
 import { skip } from 'rxjs/operators';
 import { Collection, CollectionQueryModel, CollectionState } from '../collection';
@@ -118,11 +117,11 @@ export class RpcActionClient {
 
                 ClientProgress.nextProgress = progress;
 
-                const subject = this.client.sendMessage(RpcTypes.Action, types.parameterSchema, {
+                const subject = this.client.sendMessage(RpcTypes.Action, {
                     controller: controller.controller,
                     method: method,
                     args: argsObject
-                }, {
+                }, types.parameterSchema, {
                     peerId: controller.peerId,
                     dontWaitForConnection: options.dontWaitForConnection,
                     timeout: options.timeout,

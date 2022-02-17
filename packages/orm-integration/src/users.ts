@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { DatabaseFactory } from './test';
 import { AutoIncrement, BackReference, entity, PrimaryKey, Reference } from '@deepkit/type';
 import { expect } from '@jest/globals';
@@ -82,6 +81,7 @@ export const usersTests = {
             expect(users[0].groups!.length).toBe(1);
             expect(users[1].groups!.length).toBe(1);
         }
+        database.disconnect();
     },
     async createSession(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
@@ -115,5 +115,6 @@ export const usersTests = {
             expect(users[0].groups!.length).toBe(1);
             expect(users[1].groups!.length).toBe(1);
         }
+        database.disconnect();
     },
 };

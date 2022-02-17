@@ -1,6 +1,5 @@
 import { rpc } from '@deepkit/rpc';
 import { afterEach, describe, expect, jest, test } from '@jest/globals';
-import 'reflect-metadata';
 import { InjectorContext } from '@deepkit/injector';
 import { createTestingApp } from '../src/testing';
 import { ApplicationServer } from '../src/application-server';

@@ -13,10 +13,10 @@ import {
     ClassDecoratorResult,
     createClassDecoratorContext,
     createPropertyDecoratorContext,
-    getClassSchema,
     mergeDecorator,
     PropertyDecoratorResult,
-    PropertySchema,
+    ReflectionClass,
+    ReflectionParameter
 } from '@deepkit/type';
 import { ControllerDefinition } from './model';
 
@@ -64,7 +64,8 @@ export const rpcClass: ClassDecoratorResult<typeof RpcClass> = createClassDecora
 class RpcProperty {
     t = new RpcAction;
 
-    onDecorator(classType: ClassType, property: string) {
+    onDecorator(classType: ClassType, property: string | undefined) {
+        if (!property) return;
         this.t.name = property;
         this.t.classType = classType;
         rpcClass.addAction(property!, this.t)(classType);
@@ -94,8 +95,8 @@ export const rpcProperty: PropertyDecoratorResult<typeof RpcProperty> = createPr
 
 export const rpc: typeof rpcClass & typeof rpcProperty = mergeDecorator(rpcClass, rpcProperty) as any;
 
-export function getActionParameters<T>(target: ClassType<T>, method: string): PropertySchema[] {
-    return getClassSchema(target).getMethodProperties(method);
+export function getActionParameters<T>(target: ClassType<T>, method: string): ReflectionParameter[] {
+    return ReflectionClass.from(target).getMethodParameters(method);
 }
 
 export function getActions<T>(target: ClassType<T>): Map<string, RpcAction> {

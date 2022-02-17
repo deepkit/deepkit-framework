@@ -1,7 +1,6 @@
 import { ClassType } from '@deepkit/core';
 import { AppModule } from '@deepkit/app';
 import { RouteConfig, Router } from './router';
-import { injectable } from '@deepkit/injector';
 
 export interface HttpRouteFilterRoute {
     path?: string;
@@ -57,7 +56,6 @@ function match(routeConfig: RouteConfig, route: HttpRouteFilterRoute): boolean {
     return false;
 }
 
-@injectable
 export class HttpRouterFilterResolver {
     constructor(protected router: Router) {
     }

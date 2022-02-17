@@ -10,7 +10,7 @@
 
 import { ClassType, CustomError, isObject } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
-import { arrayBufferTo, Entity, propertyDefinition, t } from '@deepkit/type';
+import { arrayBufferTo, entity, Type } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, TeardownLogic } from 'rxjs';
 import { skip } from 'rxjs/operators';
 
@@ -220,18 +220,17 @@ export function ControllerSymbol<T>(path: string, entities: ClassType[] = []): C
     return new ControllerDefinition<T>(path, entities);
 }
 
-@Entity('@error:json')
+@entity.name('@error:json')
 export class JSONError {
-    constructor(@t.any.name('json') public readonly json: any) {
+    constructor(public readonly json: any) {
     }
 }
 
-
 export class ValidationErrorItem {
     constructor(
-        @t.name('path') public readonly path: string,
-        @t.name('code') public readonly code: string,
-        @t.name('message') public readonly message: string,
+        public readonly path: string,
+        public readonly code: string,
+        public readonly message: string,
     ) {
     }
 
@@ -240,10 +239,10 @@ export class ValidationErrorItem {
     }
 }
 
-@Entity('@error:validation')
+@entity.name('@error:validation')
 export class ValidationError extends CustomError {
     constructor(
-        @t.array(ValidationErrorItem).name('errors') public readonly errors: ValidationErrorItem[]
+        public readonly errors: ValidationErrorItem[]
     ) {
         super(errors.map(v => `${v.path}(${v.code}): ${v.message}`).join(','));
     }
@@ -253,13 +252,13 @@ export class ValidationError extends CustomError {
     }
 }
 
-@Entity('@error:parameter')
+@entity.name('@error:parameter')
 export class ValidationParameterError {
     constructor(
-        @t.name('controller') public readonly controller: string,
-        @t.name('action') public readonly action: string,
-        @t.name('arg') public readonly arg: number,
-        @t.array(ValidationErrorItem).name('errors') public readonly errors: ValidationErrorItem[]
+        public readonly controller: string,
+        public readonly action: string,
+        public readonly arg: number,
+        public readonly errors: ValidationErrorItem[]
     ) {
     }
 
@@ -328,28 +327,30 @@ export enum RpcTypes {
     EntityRemove,
 }
 
-export const rpcClientId = t.schema({
-    id: t.type(Uint8Array)
-});
+export interface rpcClientId {
+    id: Uint8Array;
+}
 
-export const rpcChunk = t.schema({
-    id: t.number, //chunk id
-    total: t.number, //size in bytes
-    v: t.type(Uint8Array),
-});
+export interface rpcChunk {
+    id: number; //chunk id
+    total: number; //size in bytes
+    v: Uint8Array;
+}
 
-export const rpcActionObservableSubscribeId = t.schema({
-    id: t.number,
-});
+export interface rpcActionObservableSubscribeId {
+    id: number;
+}
 
-export const rpcError = t.schema({
-    classType: t.string,
-    message: t.string,
-    stack: t.string,
-    properties: t.map(t.any).optional,
-});
+export interface rpcError {
+    classType: string;
+    message: string;
+    stack: string;
+    properties?: Record<string, any>;
+}
 
-export const rpcResponseActionObservableSubscriptionError = rpcError.extend({ id: t.number });
+export interface rpcResponseActionObservableSubscriptionError extends rpcError {
+    id: number;
+}
 
 export enum ActionObservableTypes {
     observable,
@@ -357,61 +358,60 @@ export enum ActionObservableTypes {
     behaviorSubject,
 }
 
-export const rpcSort = t.schema({
-    field: t.string,
-    direction: t.union('asc', 'desc'),
-});
+export interface rpcSort {
+    field: string;
+    direction: 'asc' | 'desc';
+}
 
-export const rpcResponseActionObservable = t.schema({
-    type: t.enum(ActionObservableTypes)
-});
+export interface rpcResponseActionObservable {
+    type: ActionObservableTypes;
+}
 
-export const rpcAuthenticate = t.schema({
-    token: t.any,
-});
+export interface rpcAuthenticate {
+    token: any;
+}
 
-export const rpcResponseAuthenticate = t.schema({
-    username: t.string,
-});
+export interface rpcResponseAuthenticate {
+    username: string;
+}
 
-export const rpcAction = t.schema({
-    controller: t.string,
-    method: t.string,
-});
+export interface rpcAction {
+    controller: string;
+    method: string;
+}
 
-export const rpcActionType = t.schema({
-    controller: t.string,
-    method: t.string,
-    disableTypeReuse: t.boolean.optional,
-});
+export interface rpcActionType {
+    controller: string;
+    method: string;
+    disableTypeReuse?: boolean;
+}
 
-export const rpcResponseActionType = t.schema({
-    parameters: t.array(propertyDefinition),
-    result: t.type(propertyDefinition),
-    next: t.type(propertyDefinition).optional,
-});
+export interface rpcResponseActionType {
+    parameters: Type;
+    result: Type;
+    next?: Type;
+}
 
-export const rpcPeerRegister = t.schema({
-    id: t.string,
-});
+export interface rpcPeerRegister {
+    id: string;
+}
 
-export const rpcPeerDeregister = t.schema({
-    id: t.string,
-});
+export interface rpcPeerDeregister {
+    id: string;
+}
 
+export interface rpcResponseActionCollectionRemove {
+    ids: (string | number)[];
+}
 
-export const rpcResponseActionCollectionRemove = t.schema({
-    ids: t.array(t.union(t.string, t.number)),
-});
+export interface rpcResponseActionCollectionSort {
+    ids: (string | number)[];
+}
 
-export const rpcResponseActionCollectionSort = t.schema({
-    ids: t.array(t.union(t.string, t.number)),
-});
-
-export const rpcEntityRemove = t.schema({
-    entityName: t.string,
-    ids: t.array(t.union(t.string, t.number)),
-});
+export interface rpcEntityRemove {
+    entityName: string;
+    ids: (string | number)[];
+}
 
 export interface EntityPatch {
     $set?: { [path: string]: any },
@@ -419,16 +419,16 @@ export interface EntityPatch {
     $inc?: { [path: string]: number }
 }
 
-export const rpcEntityPatch = t.schema({
-    entityName: t.string,
-    id: t.union(t.string, t.number),
-    version: t.number,
-    patch: t.type({
-        $set: t.map(t.any).optional,
-        $unset: t.map(t.number).optional,
-        $inc: t.map(t.number).optional,
-    })
-});
+export interface rpcEntityPatch {
+    entityName: string;
+    id: string | number;
+    version: number;
+    patch: {
+        $set?: Record<string, any>,
+        $unset?: Record<string, number>,
+        $inc?: Record<string, number>,
+    };
+}
 
 export class AuthenticationError extends Error {
     constructor(message: string = 'Authentication failed') {

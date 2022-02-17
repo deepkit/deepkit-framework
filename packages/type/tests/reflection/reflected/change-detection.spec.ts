@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { deserialize } from '../../../src/serializer-facade';
 import { createSnapshot } from '../../../src/snapshot';
 import { ReflectionClass, resolveClassType, typeOf } from '../../../src/reflection/reflection';

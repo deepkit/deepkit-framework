@@ -15,14 +15,12 @@ import { HtmlResponse, httpWorkflow } from './http';
 import { AppModule } from '@deepkit/app';
 import { normalizeDirectory } from './utils';
 import { ClassType, urlJoin } from '@deepkit/core';
-import { injectable } from '@deepkit/injector';
 import { HttpRequest, HttpResponse } from './model';
 import send from 'send';
 import { eventDispatcher } from '@deepkit/event';
 import { RouteConfig, Router } from './router';
 
 export function serveStaticListener(module: AppModule<any>, path: string, localPath: string = path): ClassType {
-    @injectable
     class HttpRequestStaticServingListener {
         serve(path: string, request: HttpRequest, response: HttpResponse) {
             return new Promise((resolve, reject) => {

@@ -8,12 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ComputedPropertyName, Identifier, NumericLiteral, PrivateIdentifier, StringLiteral } from 'typescript/lib/tsserverlibrary';
 import {
     ArrowFunction,
     BinaryExpression,
+    ComputedPropertyName,
     EntityName,
     Expression,
+    Identifier,
     ImportSpecifier,
     isArrowFunction,
     isComputedPropertyName,
@@ -27,8 +28,11 @@ import {
     NodeArray,
     NodeFactory,
     NodeFlags,
+    NumericLiteral,
+    PrivateIdentifier,
     PropertyAccessExpression,
     QualifiedName,
+    StringLiteral,
     SymbolTable,
     SyntaxKind,
     unescapeLeadingUnderscores

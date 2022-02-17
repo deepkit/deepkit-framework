@@ -1,6 +1,5 @@
-import { entity, getClassSchema, t } from '@deepkit/type';
+import { entity, t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { DirectClient } from '../../src/client/client-direct';
 import { rpc } from '../../src/decorators';
 import { RpcKernel } from '../../src/server/kernel';

@@ -47,14 +47,6 @@ export type AbstractClassType<T = any> = abstract new (...args: any[]) => T;
 
 export type ExtractClassType<T> = T extends ClassType<infer K> ? K : never;
 
-declare const __forward: unique symbol;
-
-/**
- * This type maintains the actual type, but erases the decoratorMetadata, which is requires in a circular reference for ECMAScript modules.
- * Basically fixes like "ReferenceError: Cannot access 'MyClass' before initialization"
- */
-export type Forward<T> = T & { [__forward]?: true };
-
 /**
  * Returns the class name either of the class definition or of the class of an instance.
  *
@@ -74,7 +66,7 @@ export type Forward<T> = T & { [__forward]?: true };
 export function getClassName<T>(classTypeOrInstance: ClassType<T> | Object): string {
     if (!classTypeOrInstance) return 'undefined';
     const proto = (classTypeOrInstance as any)['prototype'] ? (classTypeOrInstance as any)['prototype'] : classTypeOrInstance;
-    return proto.constructor.name;
+    return proto.constructor.name || 'AnonymousClass';
 }
 
 /**
@@ -148,9 +140,12 @@ export function stringifyValueWithType(value: any): string {
     if ('string' === typeof value) return `string(${value})`;
     if ('number' === typeof value) return `number(${value})`;
     if ('boolean' === typeof value) return `boolean(${value})`;
-    if ('function' === typeof value) return `function ${value.name}`;
+    if ('bigint' === typeof value) return `bigint(${value})`;
     if (isPlainObject(value)) return `object ${prettyPrintObject(value)}`;
+    if (isArray(value)) return `Array`;
+    if (isClass(value)) return `${getClassName(value)}`;
     if (isObject(value)) return `${getClassName(getClassTypeFromInstance(value))} ${prettyPrintObject(value)}`;
+    if ('function' === typeof value) return `function ${value.name}`;
     if (null === value) return `null`;
     return 'undefined';
 }
@@ -658,7 +653,7 @@ export function isConstructable(fn: any): boolean {
     } catch (err) {
         return false;
     }
-};
+}
 
 export function isPrototypeOfBase(prototype: ClassType | undefined, base: ClassType): boolean {
     if (!prototype) return false;
@@ -669,6 +664,12 @@ export function isPrototypeOfBase(prototype: ClassType | undefined, base: ClassT
         currentProto = Object.getPrototypeOf(currentProto);
     }
     return false;
+}
+
+export function getParentClass(classType: ClassType): ClassType | undefined {
+    const parent = Object.getPrototypeOf(classType);
+    if (parent === Object.prototype || Object.getPrototypeOf(parent) === Object.prototype) return;
+    return parent;
 }
 
 declare var v8debug: any;

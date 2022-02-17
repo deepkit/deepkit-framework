@@ -1,17 +1,15 @@
 import { expect, test } from '@jest/globals';
-import { createModule, createModuleConfig, ExtractConfigOfDefinition } from '../src/module';
-import { getClassSchema, t } from '@deepkit/type';
-import { inject, injectable } from '@deepkit/injector';
+import { createModule } from '../src/module';
 import { ServiceContainer } from '../src/service-container';
 import { assert, IsExact } from 'conditional-type-checks';
 
 test('strict types config', () => {
-    const config = createModuleConfig({
-        host: t.string,
-    });
+    class Config {
+        host!: string;
+    }
 
     class MyModule extends createModule({
-        config
+        config: Config
     }) {
         process() {
             //at this point the validation happened and it can be assumed the config has the right types
@@ -22,12 +20,12 @@ test('strict types config', () => {
 });
 
 test('strict types config with defaults', () => {
-    const config = createModuleConfig({
-        host: t.string.default('0.0.0.0'),
-    });
+    class Config {
+        host: string = '0.0.0.0';
+    }
 
     class MyModule extends createModule({
-        config
+        config: Config
     }) {
         process() {
             //at this point the validation happened and it can be assumed the config has the right types
@@ -38,19 +36,17 @@ test('strict types config with defaults', () => {
 });
 
 test('nested options are optional as well for constructor, but strict in process()', () => {
-    const config = createModuleConfig({
-        host: t.string.default('0.0.0.0'),
-        secret: t.string,
-        nested: t.type({
-            enabled: t.boolean,
-            type: t.string.default('all'),
-        }).optional,
-    });
-
-    assert<IsExact<{ host: string, secret: string, nested?: { enabled: boolean, type: string } }, ExtractConfigOfDefinition<typeof config>>>(true);
+    class Config {
+        host: string = '0.0.0.0';
+        secret!: string;
+        nested?: {
+            enabled: boolean,
+            type: string
+        }
+    }
 
     class MyModule extends createModule({
-        config
+        config: Config
     }) {
         process() {
             const config = this.config;
@@ -65,25 +61,23 @@ test('nested options are optional as well for constructor, but strict in process
 });
 
 test('partial nested options are optional as well for constructor, but strict in process()', () => {
-    const config = createModuleConfig({
-        host: t.string.default('0.0.0.0'),
-        secret: t.string,
-        nested: t.partial({
-            enabled: t.boolean,
-            type: t.string.default('all'),
-        }).optional,
-    });
-
-    assert<IsExact<{ host: string, secret: string, nested?: { enabled?: boolean, type?: string } }, ExtractConfigOfDefinition<typeof config>>>(true);
+    class Config {
+        host: string = '0.0.0.0';
+        secret!: string;
+        nested?: {
+            enabled: boolean,
+            type: string
+        }
+    }
 
     class MyModule extends createModule({
-        config
+        config: Config
     }) {
         process() {
             const config = this.config;
             if (config.nested) {
                 const nested = config.nested;
-                assert<IsExact<string | undefined, typeof nested['type']>>(true);
+                assert<IsExact<string, typeof nested['type']>>(true);
             }
         }
     }
@@ -93,16 +87,16 @@ test('partial nested options are optional as well for constructor, but strict in
 
 test('no config reference leak', () => {
     class ModuleA extends createModule({
-        config: createModuleConfig({
-            param1: t.string.optional,
-        })
+        config: class {
+            param1?: string;
+        }
     }, 'myModule') {
     }
 
     class RootApp extends createModule({
-        config: createModuleConfig({
-            value: t.string
-        })
+        config: class {
+            value!: string
+        }
     }) {
         override imports = [new ModuleA];
 
@@ -111,7 +105,7 @@ test('no config reference leak', () => {
         }
     }
 
-    expect(new ModuleA().getConfig()).toMatchObject({ param1: undefined });
+    expect(new ModuleA().getConfig()).toEqual({  });
 
     const app = new RootApp({ value: '1' });
     app.process();
@@ -119,48 +113,25 @@ test('no config reference leak', () => {
 
     expect(app.getImports()[0].getConfig()).toMatchObject({ param1: '1' });
 
-    expect(new ModuleA().getConfig()).toMatchObject({ param1: undefined });
+    expect(new ModuleA().getConfig()).toEqual({ });
 
-    expect(new RootApp().getImports()[0].getConfig()).toMatchObject({ param1: undefined });
+    expect(new RootApp().getImports()[0].getConfig()).toEqual({ });
 
     expect(app.getImports()[0].getConfig()).toMatchObject({ param1: '1' });
 });
 
-test('constructor argument hole', () => {
-    class Logger {
-    }
-
-    class Stopwatch {
-    }
-
-    @injectable
-    class Service {
-        constructor(public stopwatch: Stopwatch, @inject(Logger) public logger: any) {
-        }
-    }
-
-    {
-        const schema = getClassSchema(Service);
-        const methods = schema.getMethodProperties('constructor');
-        expect(methods.length).toBe(2);
-        expect(methods[0].name).toBe('stopwatch');
-        expect(methods[1].name).toBe('logger');
-    }
-});
-
 test('nested config', () => {
-    const moduleAConfig = createModuleConfig({
-        param1: t.string,
-        nested: {
-            param2: t.string
+    class ModuleAConfig {
+        param1!: string;
+        nested!: {
+            param2: string
         }
-    });
+    }
 
-    @injectable
     class Service {
         constructor(
-            @inject(moduleAConfig.token('nested')) public settings: typeof moduleAConfig.config['nested'],
-            @inject(moduleAConfig.token('param1')) public param1: string,
+            public settings: ModuleAConfig['nested'],
+            public param1: ModuleAConfig['param1'],
         ) {
         }
     }
@@ -168,7 +139,7 @@ test('nested config', () => {
     let moduleAProcessCalled = 0;
 
     class ModuleA extends createModule({
-        config: moduleAConfig,
+        config: ModuleAConfig,
         providers: [
             Service
         ]

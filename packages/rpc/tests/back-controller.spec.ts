@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { RpcKernel, RpcKernelConnection } from '../src/server/kernel';
 import { DirectClient } from '../src/client/client-direct';
 import { rpc } from '../src/decorators';

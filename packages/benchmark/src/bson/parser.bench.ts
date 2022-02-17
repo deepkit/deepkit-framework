@@ -8,7 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import 'reflect-metadata';
 import * as bson from 'bson';
 import * as bsonExt from 'bson-ext';
 import { BenchSuite } from '../bench';

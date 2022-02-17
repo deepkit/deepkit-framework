@@ -10,7 +10,9 @@
 
 import {
     Annotations,
+    applyScheduledAnnotations,
     CartesianProduct,
+    copyAndSetParent,
     defaultAnnotation,
     flattenUnionTypes,
     getAnnotations,
@@ -21,12 +23,10 @@ import {
     isType,
     isTypeIncluded,
     isWithAnnotations,
-    MappedModifier,
     merge,
     narrowOriginalLiteral,
     OuterType,
     ReflectionKind,
-    ReflectionOp,
     ReflectionVisibility,
     Type,
     TypeBaseMember,
@@ -50,6 +50,7 @@ import {
     validationAnnotation,
     widenLiteral
 } from './type';
+import { MappedModifier, ReflectionOp } from '@deepkit/type-spec';
 import { isExtendable } from './extends';
 import { ClassType, getClassName, isArray, isClass, isFunction } from '@deepkit/core';
 import { isWithDeferredDecorators } from '../decorator';
@@ -156,6 +157,7 @@ class Loop {
 
 interface Program {
     frame: Frame;
+    active: boolean;
     stack: (RuntimeStackEntry | Type)[];
     stackPointer: number; //pointer to the stack
     program: number; //pointer to the current op
@@ -166,6 +168,7 @@ interface Program {
     end: number;
     inputs: RuntimeStackEntry[];
     resultTypes?: Type[];
+    started: number;
     typeParameters?: OuterType[];
     previous?: Program;
     object?: ClassType | Function | Packed | any;
@@ -178,6 +181,7 @@ function isConditionTruthy(condition: Type | number): boolean {
 
 function createProgram(options: Partial<Program>, inputs?: RuntimeStackEntry[]): Program {
     const program: Program = {
+        active: true,
         frame: { index: 0, startIndex: -1, inputs: inputs || [], variables: 0, previous: undefined },
         stack: options.stack || [],
         stackPointer: options.stackPointer ?? -1,
@@ -188,6 +192,7 @@ function createProgram(options: Partial<Program>, inputs?: RuntimeStackEntry[]):
         ops: options.ops || [],
         end: options.end ?? (options.ops ? options.ops.length : 0),
         inputs: inputs || [],
+        started: Date.now(),
         // resultTypes: [],
         // typeParameters: [],
         // previous: undefined,
@@ -208,6 +213,26 @@ function createProgram(options: Partial<Program>, inputs?: RuntimeStackEntry[]):
     return program;
 }
 
+function isValidCacheEntry(current: Program, object: ClassType | Function | Packed | any, inputs: RuntimeStackEntry[] = []): Program | undefined {
+    if (current.object === object) {
+        //issue a new reference if inputs are the same
+        //todo: when a function has a default, this is not set in current.inputs, and could fail when it differs to given inputs
+        let sameInputs = current.inputs.length === inputs.length;
+        if (sameInputs) {
+            for (let i = 0; i < current.inputs.length; i++) {
+                if (!inputs[i] || !isSameType(current.inputs[i] as Type, inputs[i] as Type)) {
+                    sameInputs = false;
+                    break;
+                }
+            }
+            if (sameInputs) {
+                return current;
+            }
+        }
+    }
+    return;
+}
+
 function findExistingProgram(current: Program | undefined, object: ClassType | Function | Packed | any, inputs: RuntimeStackEntry[] = []) {
     let checks = 0;
     while (current) {
@@ -219,13 +244,15 @@ function findExistingProgram(current: Program | undefined, object: ClassType | F
             //issue a new reference if inputs are the same
             //todo: when a function has a default, this is not set in current.inputs, and could fail when it differs to given inputs
             let sameInputs = current.inputs.length === inputs.length;
-            for (let i = 0; i < current.inputs.length; i++) {
-                if (!inputs[i] || !isSameType(current.inputs[i] as Type, inputs[i] as Type)) {
-                    sameInputs = false;
-                    break;
+            if (sameInputs) {
+                for (let i = 0; i < current.inputs.length; i++) {
+                    if (!inputs[i] || !isSameType(current.inputs[i] as Type, inputs[i] as Type)) {
+                        sameInputs = false;
+                        break;
+                    }
                 }
+                if (sameInputs) return current;
             }
-            if (sameInputs) return current;
         }
 
         current = current.previous;
@@ -242,6 +269,9 @@ function createRef(current: Program): Type {
 }
 
 export interface ReflectOptions {
+    /**
+     *
+     */
     reuseCached?: boolean;
 }
 
@@ -252,10 +282,13 @@ export class Processor {
         return Processor.typeProcessor ||= new Processor();
     }
 
+    private cache: Program[] = [];
+
     /**
      * Linked list of programs to execute. For each external call to external program will this be changed.
      */
     protected program: Program = {
+        active: false,
         frame: { index: 0, startIndex: -1, inputs: [], variables: 0 },
         stack: [],
         stackPointer: -1,
@@ -267,6 +300,7 @@ export class Processor {
         inputs: [],
         end: 0,
         ops: [],
+        started: 0,
         // previous: undefined,
         // object: undefined,
     };
@@ -274,26 +308,38 @@ export class Processor {
     reflect(object: ClassType | Function | Packed | any, inputs: RuntimeStackEntry[] = [], options: ReflectOptions = {}): Type {
         const packed: Packed | undefined = isPack(object) ? object : object.__type;
         if (!packed) {
-            throw new Error('No valid runtime type given. Is @deepkit/type correctly installed? Execute deepkit-type-install to check');
+            throw new Error('No valid runtime type given. Is @deepkit/type-compiler correctly installed? Execute deepkit-type-install to check');
         }
 
-        //this check if there is an active program still running for given packed. if so, issue a new reference.
-        //this reference is changed (its content only via Object.assign(reference, computedValues)) once the program finished.
-        //this is independent of reuseCache since it's the cache for the current 'run', not a global cache
+        // //this checks if there is an active program still running for given packed. if so, issue a new reference.
+        // //this reference is changed (its content only via Object.assign(reference, computedValues)) once the program finished.
+        // //this is independent of reuseCache since it's the cache for the current 'run', not a global cache
         const found = findExistingProgram(this.program, object, inputs);
-        if (found) return createRef(found);
+        if (found) {
+            return createRef(found);
+        }
 
         //the cache of already computed types is stored on the Packed (the array of the type program) because it's a static object that never changes
         //and will be GC correctly (and with it this cache). Its crucial that not all reflect() calls cache the content, otherwise it would pollute the
         //memory with useless types. For example a global type Partial<> would hold all its instances, what we do not want.
         //We cache only direct non-generic (inputs empty) types passed to typeOf<>() or resolveRuntimeType(). all other reflect() calls do not use this cache.
-        if (options.reuseCached) {
-            //make sure the same type is returned if already known
-            if (packed.__type && inputs.length === 0) {
-                return packed.__type;
+        //make sure the same type is returned if already known
+        if (options.reuseCached && packed.__type && inputs.length === 0) {
+            return packed.__type;
+        }
+
+        //all computed types should be cached until the program terminates, otherwise a lot of types will be computed
+        //way too often. This means we have a much bigger array cache and put everything in there, even for generics,
+        //and clear the cache once the program terminates. findExistingProgram will be replaced by that.
+        //with this change we could also remove the linked structure of Program and put it into an array as well.
+        for (const cache of this.cache) {
+            if (isValidCacheEntry(cache, object, inputs)) {
+                //if program is still active, create new ref otherwise copy computed type
+                return cache.active ? createRef(cache) : copyAndSetParent(cache.resultType);
             }
         }
 
+        // process.stdout.write(`${options.reuseCached} Cache miss ${stringifyValueWithType(object)}(...${inputs.length})\n`);
         const pack = packed.__unpack ||= unpack(packed);
         const type = this.run(pack.ops, pack.stack, inputs, object) as OuterType;
 
@@ -313,6 +359,9 @@ export class Processor {
         program.previous = this.program;
         program.depth = this.program.depth + 1;
         this.program = program;
+        this.cache.push(program);
+
+        // process.stdout.write(`jump to program: ${stringifyValueWithType(program.object)}\n`);
         if (!loopRunning) {
             return this.loop(program) as OuterType;
         }
@@ -333,10 +382,11 @@ export class Processor {
         programLoop:
             while (this.program.end !== 0) {
                 const program = this.program;
+                // process.stdout.write(`jump to program: ${stringifyValueWithType(program.object)}\n`);
                 for (; program.program < program.end; program.program++) {
                     const op = program.ops[program.program];
 
-                    // process.stdout.write(`[${program.frame.index}] step ${program} ${ReflectionOp[op]}\n`);
+                    // process.stdout.write(`[${program.depth}:${program.frame.index}] step ${program.program} ${ReflectionOp[op]}\n`);
                     switch (op) {
                         case ReflectionOp.string:
                             this.pushType({ kind: ReflectionKind.string });
@@ -785,7 +835,8 @@ export class Processor {
                             const leftProgram = this.eatParameter() as number;
                             const rightProgram = this.eatParameter() as number;
                             const condition = this.pop() as Type | number;
-                            this.call(isConditionTruthy(condition) ? leftProgram : rightProgram);
+                            const truthy = isConditionTruthy(condition);
+                            this.call(truthy ? leftProgram : rightProgram);
                             break;
                         }
                         case ReflectionOp.infer: {
@@ -845,7 +896,7 @@ export class Processor {
                             break;
                         }
                         case ReflectionOp.var: {
-                            this.push({ kind: ReflectionKind.never });
+                            this.push({ kind: ReflectionKind.unknown });
                             program.frame.variables++;
                             break;
                         }
@@ -911,7 +962,11 @@ export class Processor {
                             const pPosition = this.eatParameter() as number;
                             const pOrFn = program.stack[pPosition] as number | Packed | (() => Packed);
                             const p = isFunction(pOrFn) ? pOrFn() : pOrFn;
-                            if ('number' === typeof p) {
+                            // process.stdout.write(`inline ${pOrFn.toString()}\n`);
+                            if (p === undefined) {
+                                // console.log('inline with invalid reference', pOrFn.toString());
+                                this.push({ kind: ReflectionKind.unknown });
+                            } else if ('number' === typeof p) {
                                 //self circular reference, usually a 0, which indicates we put the result of the current program as the type on the stack.
                                 this.push(program.resultType);
                             } else {
@@ -943,7 +998,10 @@ export class Processor {
                             }
                             const pOrFn = program.stack[pPosition] as number | Packed | (() => Packed);
                             const p = isFunction(pOrFn) ? pOrFn() : pOrFn;
-                            if ('number' === typeof p) {
+                            if (p === undefined) {
+                                // console.log('inline with invalid reference', pOrFn.toString());
+                                this.push({ kind: ReflectionKind.unknown });
+                            } else if ('number' === typeof p) {
                                 if (argumentSize === 0) {
                                     //self circular reference, usually a 0, which indicates we put the result of the current program as the type on the stack.
                                     this.push(program.resultType);
@@ -952,6 +1010,7 @@ export class Processor {
                                     if (found) {
                                         this.push(createRef(found), program);
                                     } else {
+                                        // process.stdout.write(`Cache miss ${pOrFn.toString()}(...${inputs.length})\n`);
                                         //execute again the current program
                                         const nextProgram = createProgram({
                                             ops: program.ops,
@@ -993,11 +1052,11 @@ export class Processor {
                 }
 
                 result = narrowOriginalLiteral(program.stack[program.stackPointer] as Type);
+                // process.stdout.write(`Done ${program.depth} in ${Date.now() - program.started}ms with ${stringifyValueWithType(program.object)} -> ${stringifyShortResolvedType(result as Type)}\n`);
 
                 if (isType(result) && program.object) {
                     if (result.kind === ReflectionKind.class && result.classType === Object) {
                         result.classType = program.object;
-                        //apply decorators
                         applyClassDecorators(result);
                     }
                     if (result.kind === ReflectionKind.function && !result.function) {
@@ -1005,16 +1064,23 @@ export class Processor {
                     }
                 }
 
+                program.active = false;
                 if (program.previous) this.program = program.previous;
                 if (program.resultType !== result) {
                     Object.assign(program.resultType, result);
+                    applyScheduledAnnotations(program.resultType);
                 }
                 if (program.resultTypes) for (const ref of program.resultTypes) {
                     Object.assign(ref, result);
+                    applyScheduledAnnotations(ref);
                 }
-                if (until === program) return result;
+                if (until === program) {
+                    this.cache = [];
+                    return result;
+                }
             }
 
+        this.cache = [];
         return result;
     }
 
@@ -1048,7 +1114,7 @@ export class Processor {
         const types = this.popFrame() as Type[];
         let primitive = undefined as Type | undefined;
         const annotations: Annotations = {};
-        const decorators: OuterType[] = [];
+        const decorators: TypeObjectLiteral[] = [];
         const candidates: (TypeObjectLiteral | TypeClass)[] = [];
 
         function extractTypes(types: Type[]) {
@@ -1070,7 +1136,8 @@ export class Processor {
                     }
 
                     //it's unknown for not-yet resolved types (issues references for circular types
-                    if (!primitive && (isPrimitive(type) || type.kind === ReflectionKind.unknown || type.kind === ReflectionKind.any || type.kind === ReflectionKind.array || type.kind === ReflectionKind.tuple || type.kind === ReflectionKind.regexp || type.kind === ReflectionKind.symbol)) {
+                    if (!primitive && (isPrimitive(type) || type.kind === ReflectionKind.unknown || type.kind === ReflectionKind.any || type.kind === ReflectionKind.array
+                        || type.kind === ReflectionKind.union || type.kind === ReflectionKind.tuple || type.kind === ReflectionKind.regexp || type.kind === ReflectionKind.symbol)) {
                         //at the moment, we globally assume that people don't add types to array/tuple/regexp/symbols e.g. no `(string[] & {doSomething: () => void})`.
                         //we treat all additional types in the intersection as decorators.
                         primitive = type;
@@ -1102,9 +1169,16 @@ export class Processor {
 
         if (result) {
             if (isWithAnnotations(result)) {
-                result.annotations = result.annotations || {};
-                if (decorators.length) result.decorators = decorators;
-                Object.assign(result.annotations, annotations);
+                if (result.kind === ReflectionKind.unknown) {
+                    //type not calculated yet, so schedule annotations. Those will be applied once the type is fully computed.
+                    result.scheduleDecorators = decorators;
+                } else {
+                    //copy so the original type is not modified
+                    result = copyAndSetParent(result);
+                    result.annotations = result.annotations || {};
+                    if (decorators.length) result.decorators = decorators;
+                    Object.assign(result.annotations, annotations);
+                }
             }
             this.pushType(result);
         } else {
@@ -1553,6 +1627,6 @@ function resolveFunction<T extends Function>(fn: T, forObject: any): any {
     try {
         return fn();
     } catch (error) {
-        throw new Error(`Could not resolve function of object ${getClassName(forObject)}: ${error}`);
+        throw new Error(`Could not resolve function of object ${getClassName(forObject)} via ${fn.toString()}: ${error}`);
     }
 }

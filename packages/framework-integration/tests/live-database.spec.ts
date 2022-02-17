@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { ClassType } from '@deepkit/core';
 import { createTestingApp as createTestingAppOriginal, LiveDatabase, TestingFacade } from '@deepkit/framework';
 import { App, AppModule, RootModuleDefinition } from '@deepkit/app';

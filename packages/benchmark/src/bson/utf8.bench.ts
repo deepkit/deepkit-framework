@@ -9,7 +9,6 @@
  */
 
 import { buildStringDecoder, decodeUTF8, decodeUTF8Short, Writer } from '@deepkit/bson';
-import 'reflect-metadata';
 import { BenchSuite } from '../bench';
 import { performance } from 'perf_hooks';
 import { GetOptimizationStatus } from '../utils';

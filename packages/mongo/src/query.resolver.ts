@@ -418,6 +418,11 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                                 as: join.as,
                             },
                         });
+
+                        //important to unset the actual property in the database since its type is incompatible with the declared type in TS. (foreign key vs objects)
+                        pipeline.push({
+                            $unset: [join.propertySchema.name],
+                        });
                     } else {
                         //one-to-many
                         pipeline.push({

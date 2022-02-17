@@ -88,6 +88,7 @@ test('circular generic 2', () => {
 
     //$another
     assertType(type.types[3], ReflectionKind.propertySignature);
+    expect(type.types[3].name).toBe('$another');
     assertType(type.types[3].type, ReflectionKind.array);
     assertType(type.types[3].type.type, ReflectionKind.objectLiteral);
     //$another.title
@@ -184,6 +185,6 @@ test('dotted object', () => {
     type t1 = FilterQuery<User>;
     const o: t1 = {};
     const type = typeOf<t1>();
-    console.log(stringifyResolvedType(type));
+    // console.log(stringifyResolvedType(type));
     // expect(stringifyResolvedType(type)).toBe("'id' | 'username' | 'products' | 'mainProduct' | `products.${number}.id` | `products.${number}.title` | 'mainProduct.id' | 'mainProduct.title'")
 });

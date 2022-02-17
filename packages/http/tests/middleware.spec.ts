@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { http } from '../src/decorator';
 import { createHttpKernel } from './utils';
 import { HttpMiddleware, httpMiddleware } from '../src/middleware';

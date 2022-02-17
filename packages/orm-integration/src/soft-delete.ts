@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { SoftDelete, SoftDeleteQuery, SoftDeleteSession } from '@deepkit/orm';
 import { AutoIncrement, cast, entity, PrimaryKey } from '@deepkit/type';
 import { DatabaseFactory } from './test';
@@ -58,6 +57,8 @@ export const softDeleteTests = {
         await database.query(s).lift(SoftDeleteQuery).withSoftDeleted().deleteMany();
         expect(await database.query(s).count()).toBe(0);
         expect(await database.query(s).lift(SoftDeleteQuery).withSoftDeleted().count()).toBe(0);
+
+        database.disconnect();
     },
 
     async session(databaseFactory: DatabaseFactory) {
@@ -113,5 +114,7 @@ export const softDeleteTests = {
             session.from(SoftDeleteSession).restore(peter);
             await session.commit();
         }
+
+        database.disconnect();
     },
 };

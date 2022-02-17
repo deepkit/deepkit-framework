@@ -68,6 +68,7 @@ export const variousTests = {
                                                   FROM ${user}`).findOne();
             expect(result.count).toBe(0);
         }
+        database.disconnect();
     },
     async testRawWhere(databaseFactory: DatabaseFactory) {
         @entity.name('test_connection_user')
@@ -112,6 +113,7 @@ export const variousTests = {
                 expect(result.count).toBe(3);
             }
         }
+        database.disconnect();
     },
     async testSelfReference(databaseFactory: DatabaseFactory) {
         @entity.name('explorer/block').collection('blocks')
@@ -156,6 +158,7 @@ export const variousTests = {
             }
             expect(block.level).toBeGreaterThan(0);
         }
+        database.disconnect();
     },
     async transactionSimple(databaseFactory: DatabaseFactory) {
         @entity.collection('users')
@@ -279,6 +282,7 @@ export const variousTests = {
 
             });
         }
+        database.disconnect();
     },
     async uniqueConstraintFailure(databaseFactory: DatabaseFactory) {
         @entity.collection('usersConstraints')
@@ -307,5 +311,6 @@ export const variousTests = {
             await database.persist(new User('Peter2'));
             await database.query(User).filter({ username: 'Peter2' }).patchOne({ username: 'Peter' });
         }).rejects.toThrow(UniqueConstraintFailure);
+        database.disconnect();
     }
 };

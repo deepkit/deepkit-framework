@@ -1,5 +1,4 @@
 import { expect } from '@jest/globals';
-import 'reflect-metadata';
 import { User, UserGroup } from './bookstore/user';
 import { Book } from './active-record/book';
 import { Tag } from './active-record/tag';
@@ -23,6 +22,7 @@ export const activeRecordTests = {
 
         expect(await Book.query().count()).toBe(0);
         expect(await database.query(User).count()).toBe(1);
+        database.disconnect();
     },
 
     async secondLevelJoin(databaseFactory: DatabaseFactory) {
@@ -68,6 +68,7 @@ export const activeRecordTests = {
             expect(book2Db.author.groups.length).toBe(1);
             expect(book2Db.author.groups[0].name).toBe('group1');
         }
+        database.disconnect();
     },
 
     async manyToMany(databaseFactory: DatabaseFactory) {
@@ -104,5 +105,6 @@ export const activeRecordTests = {
             expect(book1DB.tags[1].name).toBe('hot');
             expect(book1DB.tags[1].id).toBe(tagHot.id);
         }
+        database.disconnect();
     },
 };

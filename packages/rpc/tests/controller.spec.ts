@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { entity, getClassSchema, getGlobalStore, PropertySchema, t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { DirectClient } from '../src/client/client-direct';

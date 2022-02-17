@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { atomicChange, deserialize, PrimaryKey, Reference, ReflectionClass, serializer } from '@deepkit/type';
 import { Formatter } from '../src/formatter';
 import { DatabaseQueryModel } from '../src/query';

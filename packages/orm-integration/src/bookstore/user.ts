@@ -29,7 +29,6 @@ export class UserGroup {
     public id: number & AutoIncrement & PrimaryKey = 0;
 
     constructor(
-        //todo: User is not correctly reflected. its an empty TypeObjectLiteral object
         public user: User & Reference,
         public group: Group & Reference,
     ) {

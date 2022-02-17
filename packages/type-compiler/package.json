@@ -1,0 +1,49 @@
+{
+  "name": "@deepkit/type-compiler",
+  "version": "1.0.1-alpha.58",
+  "description": "Deepkit/type compiler/Typescript transformer",
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    }
+  },
+  "bin": {
+    "deepkit-type-install": "./dist/cjs/install-transformer.js"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json",
+    "install": "node ./dist/cjs/install-transformer.js || exit 0"
+  },
+  "repository": "https://github.com/deepkit/deepkit-framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "dependencies": {
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/type-spec": "^1.0.1-alpha.13",
+    "strip-json-comments": "^3.1.1",
+    "ts-clone-node": "^0.3.29"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testMatch": [
+      "**/tests/**/*.spec.ts"
+    ],
+    "globals": {
+      "ts-jest": {
+        "tsconfig": "<rootDir>/tsconfig.test.json"
+      }
+    }
+  }
+}

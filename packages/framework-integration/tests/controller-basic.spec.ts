@@ -1,13 +1,11 @@
 import { afterAll, expect, test } from '@jest/globals';
-import 'reflect-metadata';
-import { JSONError, ValidationError, ValidationErrorItem } from '@deepkit/rpc';
+import { ClientProgress, JSONError, rpc, ValidationError, ValidationErrorItem } from '@deepkit/rpc';
 import { appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait } from './util';
 import { Observable } from 'rxjs';
 import { bufferCount, first, skip } from 'rxjs/operators';
 import { Entity, getClassSchema, PropertySchema, t } from '@deepkit/type';
 import { ObserverTimer } from '@deepkit/core-rxjs';
 import { isArray } from '@deepkit/core';
-import { ClientProgress, rpc } from '@deepkit/rpc';
 import { fail } from 'assert';
 import ws from 'ws';
 

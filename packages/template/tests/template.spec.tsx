@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import '../src/optimize-tsx';
 import { html, render } from '../src/template';
 import { Injector } from '@deepkit/injector';

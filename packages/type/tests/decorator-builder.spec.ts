@@ -1,11 +1,11 @@
 import { expect, test } from '@jest/globals';
 import {
+    APIProperty,
     createClassDecoratorContext,
     createFreeDecoratorContext,
-    createPropertyDecoratorContext,
-    DualDecorator,
+    createPropertyDecoratorContext, DecoratorAndFetchSignature, DualDecorator, ExtractApiDataType, ExtractClass, FluidDecorator,
     isDecoratorContext,
-    mergeDecorator
+    mergeDecorator, PropertyDecoratorFn, PropertyDecoratorResult
 } from '../src/decorator-builder';
 
 test('without host', () => {
@@ -179,28 +179,40 @@ test('dual decorator', () => {
         }
     );
 
-    const dec2 = createPropertyDecoratorContext(
-        class {
-            t = new class {
-                name = '';
-                resolver: string[] = [];
-            };
+    class Dec2 {
+        t = new class {
+            name = '';
+            resolver: string[] = [];
+        };
 
-            name(name: string) {
-                this.t.name = name;
-            };
+        name(name: string) {
+            this.t.name = name;
+        };
 
-            resolve(name: string): DualDecorator {
-                this.t.resolver.push(name);
-            };
+        resolve(name: string): DualDecorator {
+            this.t.resolver.push(name);
+        };
+
+        typeArg<T>(a: T) {
         }
-    );
+    }
+
+    type Dec2FluidDecorator<T, D extends Function> = {
+        [name in keyof T]: name extends 'typeArg' ? <A>(a: A) => D & Dec2FluidDecorator<T, D> : T[name] extends (...args: infer K) => any ? (...args: K) => D & Dec2FluidDecorator<T, D>
+            : D & Dec2FluidDecorator<T, D> & { _data: ExtractApiDataType<T> };
+    };
+
+    type PropertyDecoratorResult2 = Dec2FluidDecorator<ExtractClass<typeof Dec2>, PropertyDecoratorFn> & DecoratorAndFetchSignature<typeof Dec2, PropertyDecoratorFn>;
+
+    const dec2: PropertyDecoratorResult2 = createPropertyDecoratorContext(Dec2);
 
     const merged = mergeDecorator(dec1, dec2);
 
     {
         @merged.controller('asd').resolve('a').resolve('b')
         class MyClass {
+            @dec2.name('dd')
+            @dec2.typeArg<string>('dd')
             @merged.resolve('c').resolve('d')
             property!: string;
         }

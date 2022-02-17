@@ -50,7 +50,7 @@ export function runIntegrationTests(databaseFactory: DatabaseFactory) {
     }
 
     for (const i in activeRecordTests) {
-        test('actviveRecord:' + i, async () => {
+        test('activeRecord:' + i, async () => {
             await activeRecordTests[i](databaseFactory);
         });
     }

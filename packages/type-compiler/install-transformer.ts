@@ -9,7 +9,7 @@
 import { dirname, join, relative } from 'path';
 import { readFileSync, writeFileSync } from 'fs';
 
-const to = process.argv[2] || process.cwd();
+let to = process.argv[2] || process.cwd();
 
 function getPatchId(id: string): string{
      return 'deepkit_type_patch_' + id;
@@ -19,7 +19,7 @@ function getCode(deepkitDistPath: string, varName: string, id: string): string {
     return `
         //${getPatchId(id)}
         try {
-        var typeTransformer = require('${deepkitDistPath}/src/reflection/compiler');
+        var typeTransformer = require('${deepkitDistPath}/src/compiler');
         if (typeTransformer) {
             if (!${varName}) ${varName} = {};
             if (!${varName}.before) ${varName}.before = [];
@@ -53,6 +53,10 @@ function patchCustomTransformers(deepkitDistPath: string, code: string): string 
     });
 
     return code;
+}
+
+if (to + '/dist/cjs' === __dirname) {
+    to = join(to, '..'); //we exclude type-compiler/node_modules
 }
 
 const typeScriptPath = dirname(require.resolve('typescript', {paths: [to]}));

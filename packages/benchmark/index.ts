@@ -1,6 +1,5 @@
 import { mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import 'reflect-metadata';
 import * as vm from 'vm';
 import { BenchmarkRun } from './model';
 import * as si from 'systeminformation';

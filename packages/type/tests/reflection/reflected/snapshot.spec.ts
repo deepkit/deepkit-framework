@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { expect, test } from '@jest/globals';
 import { getConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator } from '../../../src/snapshot';
 import { PrimaryKey, Reference } from '../../../src/reflection/type';

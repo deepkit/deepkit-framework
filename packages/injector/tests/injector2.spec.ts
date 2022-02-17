@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { expect, test } from '@jest/globals';
 import { InjectorContext, injectorReference, InjectorToken } from '../src/injector';
 import { Tag } from '../src/provider';

@@ -7,13 +7,12 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import 'reflect-metadata';
-import { ClassType, getClassName, isClass } from '@deepkit/core';
-import { getClassSchema, isArray } from '@deepkit/type';
+import { ClassType, getClassName, isArray, isClass } from '@deepkit/core';
 import './optimize-tsx';
 import { Injector } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { escapeAttribute, escapeHtml, safeString } from './utils';
+import { ReflectionClass, ReflectionKind } from '@deepkit/type';
 
 export type Attributes<T = any> = {
     [P in keyof T]: T[P];
@@ -170,16 +169,17 @@ export async function render(injector: Injector, struct: ElementStruct | string 
     if (isClass(struct.render)) {
         const element = struct.render;
         const args: any = [struct.attributes || {}, html(children)];
-        const schema = getClassSchema(struct.render);
-        const types = schema.getMethodProperties('constructor');
-        for (let i = 2; i < types.length; i++) {
-            const token = (types[i].type === 'class') ? types[i].getResolvedClassType() : types[i].literalValue || types[i].typeValue;
-            if (token === undefined) {
-                args.push(undefined);
-            } else {
-                args.push(injector.get(token));
-            }
-        }
+        const schema = ReflectionClass.from(struct.render);
+        const types = schema.getMethodParameters('constructor');
+        //todo: refactor this to support all types
+        // for (let i = 2; i < types.length; i++) {
+        //     const token = (types[i].type.kind === ReflectionKind.class) ? types[i].getResolvedClassType() : types[i].literalValue || types[i].typeValue;
+        //     if (token === undefined) {
+        //         args.push(undefined);
+        //     } else {
+        //         args.push(injector.get(token));
+        //     }
+        // }
         const instance = new element(...args);
         if (stopwatch) {
             const frame = stopwatch.start(getClassName(struct.render), FrameCategory.template);

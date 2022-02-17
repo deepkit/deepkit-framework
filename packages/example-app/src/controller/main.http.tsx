@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { BodyValidation, HtmlResponse, http, HttpResponse, Redirect, UploadedFile } from '@deepkit/http';
 import { Logger } from '@deepkit/logger';
 import { readFile } from 'fs/promises';

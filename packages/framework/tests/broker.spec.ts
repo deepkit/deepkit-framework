@@ -2,7 +2,6 @@ import { BrokerKernel } from '@deepkit/broker';
 import { sleep } from '@deepkit/core';
 import { entity, plainToClass, t, uuid } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { BehaviorSubject } from 'rxjs';
 import { DirectBroker, EntityChannelMessageType } from '../src/broker/broker';
 

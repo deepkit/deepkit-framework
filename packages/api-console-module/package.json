@@ -48,7 +48,6 @@
     "@deepkit/logger": "^1.0.1-alpha.58",
     "@deepkit/rpc": "^1.0.1-alpha.58",
     "@deepkit/type": "^1.0.1-alpha.58",
-    "reflect-metadata": "^0.1.13",
     "rxjs": "~6.6.0"
   },
   "jest": {

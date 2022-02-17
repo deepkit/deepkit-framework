@@ -34,6 +34,7 @@ import {
     getPropertiesOfClassOrObject,
     getTypeJitContainer,
     getTypeObjectLiteralFromTypeClass,
+    groupAnnotation,
     hasDefaultValue,
     hasEmbedded,
     isBackReferenceType,
@@ -52,7 +53,6 @@ import {
     TypeClass,
     TypeFunction,
     TypeIndexSignature,
-    TypeNumberBrand,
     TypeObjectLiteral,
     TypeParameter,
     TypeProperty,
@@ -61,6 +61,7 @@ import {
     TypeUnion,
     validationAnnotation
 } from './reflection/type';
+import { TypeNumberBrand } from '@deepkit/type-spec';
 import { hasCircularReference, ReflectionClass, ReflectionProperty } from './reflection/reflection';
 import { extendTemplateLiteral, isExtendable } from './reflection/extends';
 import { resolveRuntimeType } from './reflection/processor';
@@ -68,6 +69,8 @@ import { createReference, isReferenceHydrated, isReferenceInstance } from './ref
 import { ValidationFailedItem } from './validator';
 import { validators } from './validators';
 import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core';
+
+if (!binaryTypes) throw new Error('WAT');
 
 /**
  * Make sure to change the id when a custom naming strategy is implemented, since caches are based on it.
@@ -82,11 +85,66 @@ export class NamingStrategy {
     }
 }
 
+/**
+ * Options that can be passed to the serialization/deserialization functions
+ * and change the behavior in runtime (not embedded in JIT).
+ */
 export interface SerializationOptions {
+    /**
+     * Which groups to include. If a property is not assigned to
+     * a given group, it will be excluded.
+     * Use an empty array to include only non-grouped properties.
+     */
     groups?: string[];
-    excludeGroups?: string[];
+
+    /**
+     * Which groups to exclude. If a property is assigned to at least
+     * one given group, it will be excluded. Basically the opposite of
+     * `groups`, but you can combine both.
+     * Use an empty array to exclude only non-grouped properties.
+     */
+    groupsExclude?: string[];
+
+    /**
+     * Allows more loosely data for certain types. e.g.
+     *
+     * - '1', '0', 'true', 'false' will be converted to true|false for boolean type.
+     *
+     * This will activate all registered type guards with negative specifically.
+     */
     loosely?: boolean;
 }
+
+function isGroupAllowed(options: SerializationOptions, groupNames: string[]): boolean {
+    if (!options.groups && !options.groupsExclude) return true;
+
+    if (options.groupsExclude) {
+        if (options.groupsExclude.length === 0 && groupNames.length === 0) {
+            return false;
+        }
+        for (const group of options.groupsExclude) {
+            if (groupNames.includes(group)) {
+                return false;
+            }
+        }
+    }
+
+    if (options.groups) {
+        if (options.groups.length === 0 && groupNames.length === 0) {
+            return true;
+        }
+        for (const group of options.groups) {
+            if (groupNames.includes(group)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    return true;
+}
+
 
 export type SerializeFunction = (data: any, state?: SerializationOptions) => any;
 
@@ -97,6 +155,7 @@ export function getPartialSerializeFunction(type: TypeClass | TypeObjectLiteral,
     const jitContainer = getTypeJitContainer(type);
     if (!jitContainer.partialType) {
         type = copyAndSetParent(type);
+        type.types = type.types.map(v => {return {...v}}) as any;
         for (const member of type.types) {
             if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
                 member.optional = true;
@@ -112,7 +171,7 @@ export function getPartialSerializeFunction(type: TypeClass | TypeObjectLiteral,
  */
 export function getSerializeFunction(type: OuterType, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): SerializeFunction {
     const jit = getTypeJitContainer(type);
-    const id = registry.id + '_' + namingStrategy.id;
+    const id = registry.id + '_' + namingStrategy.id + '_' + path;
     if (jit[id]) return jit[id];
 
     jit[id] = createSerializeFunction(type, registry, namingStrategy, path, jitStack);
@@ -124,7 +183,7 @@ export function getSerializeFunction(type: OuterType, registry: TemplateRegistry
 export function createSerializeFunction(type: OuterType, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): SerializeFunction {
     const compiler = new CompilerContext();
 
-    const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, jitStack, [path]);
+    const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, jitStack, path ? [path] : []);
     if (state.isDeserialization) {
         state.target = 'deserialize';
     }
@@ -191,8 +250,8 @@ export function createTypeGuardFunction(type: Type, state?: TemplateState, seria
 }
 
 export class SerializationError extends CustomError {
-    constructor(message: string, public path: string) {
-        super(`${!path ? '' : (path && path.startsWith('.') ? path.slice(1) : path) + ': '}` + message);
+    constructor(public originalMessage: string, public path: string) {
+        super(`Serialization failed. ${!path ? '' : (path && path.startsWith('.') ? path.slice(1) : path) + ': '}` + originalMessage);
     }
 }
 
@@ -787,6 +846,7 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
     if (callExtractedFunctionIfAvailable(state, type)) return;
     const extract = extractStateToFunctionAndCallIt(state, type);
     state = extract.state;
+    state.setContext({ isGroupAllowed });
 
     const preLines: string[] = [];
     const lines: string[] = [];
@@ -820,7 +880,7 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
             } else {
                 preLines.push(`
                     ${argumentName} = undefined;
-                    if (${inAccessor(propertyState.accessor as ContainerAccessor)}) {
+                    if (${inAccessor(propertyState.accessor as ContainerAccessor)} && ${groupFilter(parameter.type)}) {
                         ${createConverterJSForMember(property, propertyState)}
                     } else {
                         ${staticDefault}
@@ -850,7 +910,7 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
             lines.push(executeTemplates(propertyState, property.type));
         } else {
             lines.push(`
-                if (${name} in ${state.accessor}) {
+                if (${name} in ${state.accessor} && ${groupFilter(property.type)}) {
                     ${createConverterJSForMember(property, propertyState)}
                 } else { ${staticDefault} }
             `);
@@ -949,6 +1009,11 @@ function getEmbeddedAccessor(type: TypeClass, autoPrefix: boolean, accessor: str
     return accessor;
 }
 
+function groupFilter(type: Type): string {
+    const groupNames = groupAnnotation.getAnnotations(type);
+    return `(state.groups || state.groupsExclude ? isGroupAllowed(state, ${JSON.stringify(groupNames)}) : true)`;
+}
+
 export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState) {
     const embedded = embeddedAnnotation.getFirst(type);
     if (embedded) {
@@ -996,6 +1061,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     if (callExtractedFunctionIfAvailable(state, type)) return;
     const extract = extractStateToFunctionAndCallIt(state, type);
     state = extract.state;
+    state.setContext({ isGroupAllowed });
 
     const v = state.compilerContext.reserveName('v');
     const lines: string[] = [];
@@ -1023,7 +1089,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 lines.push(executeTemplates(propertyState, member.type));
             } else {
                 lines.push(`
-                if (${name} in ${state.accessor}) {
+                if (${name} in ${state.accessor} && ${groupFilter(member.type)}) {
                     ${createConverterJSForMember(member, propertyState)}
                 } else { ${staticDefault} }
             `);
@@ -1039,7 +1105,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         sortSignatures(signatures);
 
         for (const signature of signatures) {
-            signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)}) {
+            signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)} && ${groupFilter(signature.type)}) {
                 ${createConverterJSForMember(signature, state.fork(new ContainerAccessor(v, i), new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)))}
             }`);
         }
@@ -1446,7 +1512,7 @@ function serializeTypeClassMap(type: TypeClass, state: TemplateState) {
     }), state);
 }
 
-export function serializeProperty(type: TypePropertySignature | TypeProperty | TypeParameter, state: TemplateState) {
+export function serializePropertyOrParameter(type: TypePropertySignature | TypeProperty | TypeParameter, state: TemplateState) {
     if (type.optional) {
         state.addCode(`
             if (${state.accessor} === undefined) {
@@ -1461,11 +1527,10 @@ export function serializeProperty(type: TypePropertySignature | TypeProperty | T
     state.addCode(executeTemplates(state.fork(), type.type));
 }
 
-export function typeGuardProperty(type: TypePropertySignature | TypeProperty | TypeParameter, state: TemplateState) {
-    //todo: handle optional and nullable
+export function validatePropertyOrParameter(type: TypePropertySignature | TypeProperty | TypeParameter, state: TemplateState) {
     state.addCode(`
         if (${state.accessor} === undefined) {
-            if (${!type.optional && state.validation}) ${state.assignValidationError('type', 'Not an object')}
+            if (${!type.optional && state.validation}) ${state.assignValidationError('type', 'No value given')}
         } else {
             ${executeTemplates(state.fork(), type.type)}
         }
@@ -1691,19 +1756,21 @@ export class Serializer {
         this.serializeRegistry.register(ReflectionKind.null, (type, state) => state.addSetter(`null`));
         this.deserializeRegistry.register(ReflectionKind.null, (type, state) => state.addSetter(`null`));
 
-        this.serializeRegistry.register(ReflectionKind.propertySignature, serializeProperty);
-        this.serializeRegistry.register(ReflectionKind.property, serializeProperty);
-        this.serializeRegistry.register(ReflectionKind.parameter, serializeProperty);
-        this.deserializeRegistry.register(ReflectionKind.propertySignature, serializeProperty);
-        this.deserializeRegistry.register(ReflectionKind.property, serializeProperty);
-        this.deserializeRegistry.register(ReflectionKind.parameter, serializeProperty);
+        this.serializeRegistry.register(ReflectionKind.propertySignature, serializePropertyOrParameter);
+        this.serializeRegistry.register(ReflectionKind.property, serializePropertyOrParameter);
+        this.serializeRegistry.register(ReflectionKind.parameter, serializePropertyOrParameter);
+        this.deserializeRegistry.register(ReflectionKind.propertySignature, serializePropertyOrParameter);
+        this.deserializeRegistry.register(ReflectionKind.property, serializePropertyOrParameter);
+        this.deserializeRegistry.register(ReflectionKind.parameter, serializePropertyOrParameter);
 
         this.serializeRegistry.register(ReflectionKind.bigint, (type, state) => state.addSetter(`${state.accessor}.toString()`));
 
         this.deserializeRegistry.registerClass(Date, (type, state) => state.addSetter(`new Date(${state.accessor})`));
         this.serializeRegistry.registerClass(Date, (type, state) => state.addSetter(`${state.accessor}.toJSON()`));
 
-        this.serializeRegistry.register(ReflectionKind.string, (type, state) => state.addSetter(state.accessor));
+        this.serializeRegistry.register(ReflectionKind.string, (type, state) => {
+            state.addSetter(`'string' === typeof ${state.accessor} ? ${state.accessor} : ''+ ${state.accessor}`);
+        });
 
         this.deserializeRegistry.register(ReflectionKind.string, (type, state) => {
             state.addSetter(`'string' !== typeof ${state.accessor} ? ${state.accessor}+'' : ${state.accessor}`);
@@ -1885,9 +1952,9 @@ export class Serializer {
         this.typeGuards.register(1, ReflectionKind.null, (type, state) => state.addSetterAndReportErrorIfInvalid('type', 'Not null', `null === ${state.accessor}`));
         this.typeGuards.register(2, ReflectionKind.null, (type, state) => state.addSetter(`'undefined' === typeof ${state.accessor}`));
 
-        this.typeGuards.register(2, ReflectionKind.propertySignature, serializeProperty);
-        this.typeGuards.register(2, ReflectionKind.property, serializeProperty);
-        this.typeGuards.register(2, ReflectionKind.parameter, serializeProperty);
+        this.typeGuards.register(1, ReflectionKind.propertySignature, validatePropertyOrParameter);
+        this.typeGuards.register(1, ReflectionKind.property, validatePropertyOrParameter);
+        this.typeGuards.register(1, ReflectionKind.parameter, validatePropertyOrParameter);
 
         this.typeGuards.register(2, ReflectionKind.number, (type, state) => {
             state.setContext({ isNumeric: isNumeric });
@@ -1933,7 +2000,15 @@ export class Serializer {
 
         this.typeGuards.register(1, ReflectionKind.boolean, (type, state) => state.addSetterAndReportErrorIfInvalid('type', 'Not a boolean', `'boolean' === typeof ${state.accessor}`));
         this.typeGuards.register(-0.9, ReflectionKind.boolean, (type, state) => {
-            state.addSetter(`1 === ${state.accessor} || '1' === ${state.accessor} || 0 === ${state.accessor} || 'true' === ${state.accessor} || 'false' === ${state.accessor}`);
+            let handleNumeric = true;
+            if (type.parent && type.parent.kind === ReflectionKind.union && (type.parent.types.some(v => v.kind === ReflectionKind.number || v.kind === ReflectionKind.bigint))) {
+                handleNumeric = false;
+            }
+            if (handleNumeric) {
+                state.addSetter(`1 === ${state.accessor} || '1' === ${state.accessor} || 0 === ${state.accessor} || 'true' === ${state.accessor} || 'false' === ${state.accessor}`);
+            } else {
+                state.addSetter(`'true' === ${state.accessor} || 'false' === ${state.accessor}`);
+            }
         });
 
         this.typeGuards.register(1, ReflectionKind.promise, (type, state) => executeTemplates(state, type.type));
@@ -2084,12 +2159,12 @@ export class EmptySerializer extends Serializer {
         this.deserializeRegistry.register(ReflectionKind.union, handleUnion);
         this.serializeRegistry.register(ReflectionKind.union, handleUnion);
 
-        this.serializeRegistry.register(ReflectionKind.propertySignature, serializeProperty);
-        this.serializeRegistry.register(ReflectionKind.property, serializeProperty);
-        this.serializeRegistry.register(ReflectionKind.parameter, serializeProperty);
-        this.deserializeRegistry.register(ReflectionKind.propertySignature, serializeProperty);
-        this.deserializeRegistry.register(ReflectionKind.property, serializeProperty);
-        this.deserializeRegistry.register(ReflectionKind.parameter, serializeProperty);
+        this.serializeRegistry.register(ReflectionKind.propertySignature, serializePropertyOrParameter);
+        this.serializeRegistry.register(ReflectionKind.property, serializePropertyOrParameter);
+        this.serializeRegistry.register(ReflectionKind.parameter, serializePropertyOrParameter);
+        this.deserializeRegistry.register(ReflectionKind.propertySignature, serializePropertyOrParameter);
+        this.deserializeRegistry.register(ReflectionKind.property, serializePropertyOrParameter);
+        this.deserializeRegistry.register(ReflectionKind.parameter, serializePropertyOrParameter);
 
         this.serializeRegistry.registerBinary(assignAccessorTemplate);
         this.serializeRegistry.registerClass(Date, assignAccessorTemplate);

@@ -9,8 +9,7 @@
  */
 
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
-import { f, getClassSchema, Patcher, jsonSerializer } from '@deepkit/type';
+import { f, getClassSchema, jsonSerializer, Patcher } from '@deepkit/type';
 import { BenchSuite } from './bench';
 
 test.only('nope', () => { });

@@ -119,22 +119,16 @@ export interface CollectionQueryModelInterface<T> {
  */
 export class CollectionQueryModel<T> implements CollectionQueryModelInterface<T> {
     //filter is not used yet
-    @t.map(t.any).optional
     filter?: FilterQuery<T>;
 
-    @t.number.optional
     skip?: number;
 
-    @t.number
     itemsPerPage: number = 50;
 
-    @t.number.optional
     limit?: number;
 
-    @t.map(t.any)
     parameters: { [name: string]: any } = {};
 
-    @t.map(t.any).optional
     sort?: Sort<T>;
 
     public readonly change = new Subject<void>();

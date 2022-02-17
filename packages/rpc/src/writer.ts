@@ -141,7 +141,7 @@ export class RpcMessageWriter implements RpcConnectionWriter {
             while (offset < buffer.byteLength) {
                 //todo: check back-pressure and wait if necessary
                 const slice = buffer.slice(offset, offset + this.options.chunkSize);
-                const chunkMessage = createRpcMessage(message.id, RpcTypes.Chunk, rpcChunk, {
+                const chunkMessage = createRpcMessage<rpcChunk>(message.id, RpcTypes.Chunk, {
                     id: chunkId,
                     total: buffer.byteLength,
                     v: slice

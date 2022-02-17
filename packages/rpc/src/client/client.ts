@@ -9,7 +9,7 @@
  */
 
 import { asyncOperation, ClassType, sleep } from '@deepkit/core';
-import { ClassSchema } from '@deepkit/type';
+import { ReceiveType } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { ControllerDefinition, rpcAuthenticate, rpcClientId, rpcPeerDeregister, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model';
 import { createRpcMessage, createRpcMessagePeer, ErroredRpcMessage, RpcMessage, RpcMessageReader, RpcMessageRouteType } from '../protocol';
@@ -66,8 +66,8 @@ export interface ClientTransportAdapter {
 export interface WritableClient {
     sendMessage<T>(
         type: number,
-        schema?: ClassSchema<T>,
         body?: T,
+        receiveType?: ReceiveType<T>,
         options?: {
             dontWaitForConnection?: boolean,
             connectionId?: number,

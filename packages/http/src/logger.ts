@@ -1,9 +1,7 @@
-import { injectable } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { eventDispatcher } from '@deepkit/event';
 import { httpWorkflow } from './http';
 
-@injectable
 export class HttpLogger {
     constructor(private logger: Logger) {
     }

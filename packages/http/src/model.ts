@@ -23,6 +23,10 @@ export class HttpResponse extends ServerResponse {
 export type HttpRequestQuery = { [name: string]: string };
 export type HttpRequestResolvedParameters = { [name: string]: any };
 
+export type HttpBody<T> = T & { __meta?: ['httpBody'] };
+export type HttpQuery<T, Options extends {name?: string} = {}> = T & { __meta?: ['httpQuery', Options] };
+export type HttpQueries<T, Options extends {name?: string} = {}> = T & { __meta?: ['httpQueries', Options] };
+
 export class RequestBuilder {
     protected contentBuffer: Buffer = Buffer.alloc(0);
     protected _headers: { [name: string]: string } = {};
@@ -48,8 +52,9 @@ export class RequestBuilder {
         const bodyContent = this.contentBuffer;
 
         const writable = new Writable({
-            write(chunk, encoding, callback) {-
-                callback();
+            write(chunk, encoding, callback) {
+                -
+                    callback();
             },
             writev(chunks, callback) {
                 callback();
@@ -69,7 +74,7 @@ export class RequestBuilder {
                     this.push(bodyContent);
                     process.nextTick(() => {
                         this.emit('end');
-                    })
+                    });
                     this.done = true;
                 }
             }
@@ -130,6 +135,14 @@ export class HttpRequest extends IncomingMessage {
         return new RequestBuilder(path, 'OPTIONS');
     }
 
+    static TRACE(path: string): RequestBuilder {
+        return new RequestBuilder(path, 'TRACE');
+    }
+
+    static HEAD(path: string): RequestBuilder {
+        return new RequestBuilder(path, 'HEAD');
+    }
+
     static PATCH(path: string): RequestBuilder {
         return new RequestBuilder(path, 'PATCH');
     }
@@ -151,7 +164,7 @@ export class HttpRequest extends IncomingMessage {
     }
 
     getRemoteAddress(): string {
-        return this.connection.remoteAddress || '';
+        return this.socket.remoteAddress || '';
     }
 }
 
@@ -162,7 +175,7 @@ export class MemoryHttpResponse extends HttpResponse {
         const json = this.bodyString;
         try {
             return JSON.parse(json);
-        }  catch (error) {
+        } catch (error: any) {
             throw new Error(`Could not parse JSON: ${error.message}, body: ${json}`);
         }
     }

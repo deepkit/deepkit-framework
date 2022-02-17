@@ -51,6 +51,11 @@ test('log data', () => {
 
     logger.log('Peter', { user: new User });
 
+    expect(memory.messages[0].message).toEqual('Peter { user: User {} }');
+
+    memory.clear();
+
+    logger.data({ user: new User }).log('Peter');
     expect(memory.messages[0].message).toEqual('Peter');
     expect(memory.messages[0].data.user).toBeInstanceOf(User);
 

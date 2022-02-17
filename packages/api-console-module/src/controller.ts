@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { ApiAction, ApiConsoleApi, ApiDocument, ApiEntryPoints, ApiRoute, ApiRouteResponse } from '@deepkit/api-console-gui/src/api';
 import { getActionParameters, getActions, rpc, RpcKernel } from '@deepkit/rpc';
 import { HttpRouteFilter, HttpRouterFilterResolver, parseRouteControllerAction } from '@deepkit/http';

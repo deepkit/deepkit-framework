@@ -5,7 +5,6 @@ import { Collection, EntityState, EntitySubject, IdInterface, rpc, RpcKernelConn
 import { Entity, getClassSchema, t, uuid } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { fail } from 'assert';
-import 'reflect-metadata';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { Broker, DirectBroker } from '../src/broker/broker';
 import { LiveDatabase } from '../src/database/live-database';

@@ -2,7 +2,6 @@ import { sleep } from '@deepkit/core';
 import { AsyncSubscription } from '@deepkit/core-rxjs';
 import { t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { BehaviorSubject } from 'rxjs';
 import { BrokerDirectClient } from '../src/client';
 import { BrokerKernel } from '../src/kernel';

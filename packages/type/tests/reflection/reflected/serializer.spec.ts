@@ -9,7 +9,7 @@
  */
 import { expect, test } from '@jest/globals';
 import { reflect, ReflectionClass } from '../../../src/reflection/reflection';
-import { AutoIncrement, BackReference, Embedded, Excluded, int8, integer, PrimaryKey, Reference, ReflectionKind } from '../../../src/reflection/type';
+import { AutoIncrement, BackReference, Embedded, Excluded, Group, int8, integer, PrimaryKey, Reference, ReflectionKind } from '../../../src/reflection/type';
 import { createSerializeFunction, getSerializeFunction, SerializationError, serializer } from '../../../src/serializer';
 import { cast, deserialize, serialize } from '../../../src/serializer-facade';
 import { getClassName } from '@deepkit/core';
@@ -58,6 +58,30 @@ test('cast class', () => {
     });
 });
 
+test('groups', () => {
+    class Settings {
+        weight: string & Group<'privateSettings'> = '12g';
+        color: string = 'red';
+    }
+
+    class User {
+        id: number = 0;
+        password: string & Group<'b'> = '';
+        settings: Settings = new Settings;
+
+        constructor(public username: string & Group<'a'>) {
+        }
+
+    }
+
+    const user = new User('peter');
+    expect(serialize<User>(user)).toEqual({ id: 0, username: 'peter', password: '', settings: { weight: '12g', color: 'red' } });
+    expect(serialize<User>(user, { groups: ['a'] })).toEqual({ username: 'peter' });
+    expect(serialize<User>(user, { groups: ['b'] })).toEqual({ password: '' });
+    expect(serialize<User>(user, { groups: ['a', 'b'] })).toEqual({ username: 'peter', password: '' });
+    expect(serialize<User>(user, { groupsExclude: ['b'] })).toEqual({ id: 0, username: 'peter', settings: { weight: '12g', color: 'red' } });
+    expect(serialize<User>(user, { groupsExclude: ['privateSettings'] })).toEqual({ id: 0, username: 'peter', password: '', settings: { color: 'red' } });
+});
 
 test('default value', () => {
     class User {
@@ -265,10 +289,13 @@ test('union loose string boolean', () => {
 
 test('union loose number boolean', () => {
     expect(cast<number | boolean>('a', { loosely: true })).toEqual(undefined);
-    expect(cast<number | boolean>(1, { loosely: true })).toEqual(true);
-    expect(cast<number | boolean>('1', { loosely: true })).toEqual(true);
+    expect(cast<string | boolean>(1, { loosely: true })).toEqual(true);
+    expect(cast<number | boolean>(1, { loosely: true })).toEqual(1);
+    expect(cast<string | boolean>('1', { loosely: true })).toEqual(true);
+    expect(cast<number | boolean>('1', { loosely: true })).toEqual(1);
     expect(cast<number | boolean>('1')).toEqual(1);
-    expect(cast<number | boolean>(0, { loosely: true })).toEqual(false);
+    expect(cast<string | boolean>(0, { loosely: true })).toEqual(false);
+    expect(cast<number | boolean>(0, { loosely: true })).toEqual(0);
     expect(cast<number | boolean>(-1, { loosely: true })).toEqual(-1);
     expect(cast<number | boolean>(2, { loosely: true })).toEqual(2);
     expect(cast<number | boolean>('2', { loosely: true })).toEqual(2);
@@ -502,6 +529,7 @@ test('class with reference', () => {
 test('class with back reference', () => {
     class User {
         id: number & PrimaryKey = 0;
+
         constructor(public username: string) {
         }
     }

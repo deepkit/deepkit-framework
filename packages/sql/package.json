@@ -53,8 +53,7 @@
     "@deepkit/logger": "^1.0.1-alpha.58",
     "@deepkit/orm": "^1.0.1-alpha.58",
     "@deepkit/stopwatch": "^1.0.1-alpha.58",
-    "@deepkit/type": "^1.0.1-alpha.58",
-    "reflect-metadata": "^0.1.13"
+    "@deepkit/type": "^1.0.1-alpha.58"
   },
   "jest": {
     "runner": "../../jest-serial-runner.js",

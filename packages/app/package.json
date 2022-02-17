@@ -27,8 +27,7 @@
     "@deepkit/injector": "^1.0.1-alpha.13",
     "@deepkit/stopwatch": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/workflow": "^1.0.1-alpha.13",
-    "reflect-metadata": "^0.1.13"
+    "@deepkit/workflow": "^1.0.1-alpha.13"
   },
   "dependencies": {
     "@oclif/command": "^1.8.16",
@@ -42,8 +41,7 @@
     "@deepkit/stopwatch": "^1.0.1-alpha.58",
     "@deepkit/type": "^1.0.1-alpha.58",
     "@deepkit/workflow": "^1.0.1-alpha.58",
-    "conditional-type-checks": "^1.0.5",
-    "reflect-metadata": "^0.1.13"
+    "conditional-type-checks": "^1.0.5"
   },
   "jest": {
     "transform": {

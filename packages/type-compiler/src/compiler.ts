@@ -36,6 +36,7 @@ import {
     FunctionTypeNode,
     getEffectiveConstraintOfTypeParameter,
     getJSDocTags,
+    getLeadingCommentRanges,
     Identifier,
     ImportDeclaration,
     ImportSpecifier,
@@ -52,17 +53,16 @@ import {
     isConstructorDeclaration,
     isConstructorTypeNode,
     isConstructSignatureDeclaration,
-    isEnumDeclaration,
+    isEnumDeclaration, isExportAssignment,
     isExportDeclaration,
     isExpressionWithTypeArguments,
     isFunctionDeclaration,
     isFunctionExpression,
-    isFunctionLike,
+    isFunctionLike, isFunctionTypeNode,
     isIdentifier,
     isImportSpecifier,
     isInferTypeNode,
     isInterfaceDeclaration,
-    isMappedTypeNode,
     isMethodDeclaration,
     isMethodSignature,
     isNamedExports,
@@ -73,7 +73,6 @@ import {
     isPropertyAccessExpression,
     isStringLiteral,
     isTypeAliasDeclaration,
-    isTypeLiteralNode,
     isTypeParameterDeclaration,
     isTypeQueryNode,
     isTypeReferenceNode,
@@ -91,6 +90,7 @@ import {
     PropertySignature,
     QualifiedName,
     RestTypeNode,
+    setSyntheticLeadingComments,
     SignatureDeclaration,
     Statement,
     SyntaxKind,
@@ -102,6 +102,7 @@ import {
     TypeLiteralNode,
     TypeNode,
     TypeOperatorNode,
+    TypeParameterDeclaration,
     TypeQueryNode,
     TypeReferenceNode,
     UnionTypeNode,
@@ -125,8 +126,11 @@ import { EmitHost, EmitResolver, SourceFile } from './ts-types';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import stripJsonComments from 'strip-json-comments';
-import { MappedModifier, ReflectionOp, TypeNumberBrand } from './type';
-import { encodeOps } from './processor';
+import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spec';
+
+export function encodeOps(ops: ReflectionOp[]): string {
+    return ops.map(v => String.fromCharCode(v + 33)).join('');
+}
 
 export const packSizeByte: number = 6;
 
@@ -220,9 +224,10 @@ function findConditionalFrame(frame: Frame): Frame | undefined {
     return;
 }
 
-function findSourceFile(declaration: Declaration): SourceFile {
-    let current = declaration.parent;
-    while (current.kind !== SyntaxKind.SourceFile) {
+function findSourceFile(node: Node): SourceFile | undefined {
+    if (node.kind === SyntaxKind.SourceFile) return node as SourceFile;
+    let current = node.parent;
+    while (current && current.kind !== SyntaxKind.SourceFile) {
         current = current.parent;
     }
     return current as SourceFile;
@@ -242,6 +247,7 @@ class CompilerProgram {
     protected activeCoRoutines: { ops: ReflectionOp[] }[] = [];
     protected coRoutines: { ops: ReflectionOp[] }[] = [];
 
+    //this was used for embedding external programs. not necessary anymore, since we rely on types being reflected in external modules.
     public importSpecifier?: ImportSpecifier;
 
     constructor(public forNode: Node, public sourceFile: SourceFile) {
@@ -302,8 +308,8 @@ class CompilerProgram {
                 throw new Error('No valid OP added');
             }
             // if (op + 33 > 126) {
-                //todo: encode as var int
-                // throw new Error('stack pointer too big ' + op);
+            //todo: encode as var int
+            // throw new Error('stack pointer too big ' + op);
             // }
         }
         if (this.activeCoRoutines.length) {
@@ -496,6 +502,16 @@ export class ReflectionTransformer {
         const visitor = (node: Node): any => {
             node = visitEachChild(node, visitor, this.context);
 
+            if ((isInterfaceDeclaration(node) || isTypeAliasDeclaration(node) || isEnumDeclaration(node))) {
+                const reflection = this.findReflectionConfig(node);
+                if (reflection.mode !== 'never') {
+                    this.compileDeclarations.set(node, {
+                        name: node.name,
+                        sourceFile: this.sourceFile
+                    });
+                }
+            }
+
             if (isMethodDeclaration(node) && node.parent && isObjectLiteralExpression(node.parent)) {
                 //replace MethodDeclaration with MethodExpression
                 // {add(v: number) {}} => {add: function (v: number) {}}
@@ -542,10 +558,10 @@ export class ReflectionTransformer {
                     if (found) type = found.declaration;
                 } else if (isPropertyAccessExpression(node.expression)) {
                     const found = this.getTypeCheckerForHost().getTypeAtLocation(node.expression);
-                    if (found && found.symbol.declarations) type = found.symbol.declarations[0];
+                    if (found && found.symbol && found.symbol.declarations) type = found.symbol.declarations[0];
                 }
 
-                if (type && (isFunctionDeclaration(type) || isMethodDeclaration(type)) && type.typeParameters) {
+                if (type && (isFunctionDeclaration(type) || isMethodDeclaration(type) || isFunctionTypeNode(type)) && type.typeParameters) {
                     const args: Expression[] = [...node.arguments];
                     let replaced = false;
 
@@ -611,7 +627,7 @@ export class ReflectionTransformer {
                 const d = this.compileDeclarations.get(node)!;
                 this.compileDeclarations.delete(node);
                 this.compiledDeclarations.add(node);
-                return [this.createProgramVarFromNode(node, d.name, d.sourceFile, d.importSpecifier), node];
+                return [...this.createProgramVarFromNode(node, d.name, d.sourceFile, d.importSpecifier), node];
             }
 
             return node;
@@ -630,7 +646,7 @@ export class ReflectionTransformer {
                 const entries = Array.from(this.embedDeclarations.entries());
                 this.embedDeclarations.clear();
                 for (const [node, d] of entries) {
-                    embedded.push(this.createProgramVarFromNode(node, d.name, d.sourceFile, d.importSpecifier));
+                    embedded.push(...this.createProgramVarFromNode(node, d.name, d.sourceFile, d.importSpecifier));
                 }
                 this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...embedded, ...this.sourceFile.statements]);
             }
@@ -688,8 +704,8 @@ export class ReflectionTransformer {
         }
         const typeProgramExpression = this.packOpsAndStack(typeProgram);
 
-        return this.f.createVariableStatement(
-            undefined,
+        const variable = this.f.createVariableStatement(
+            [],
             this.f.createVariableDeclarationList([
                 this.f.createVariableDeclaration(
                     this.getDeclarationVariableName(name),
@@ -697,8 +713,20 @@ export class ReflectionTransformer {
                     undefined,
                     typeProgramExpression,
                 )
-            ])
+            ]),
         );
+
+        //when its commonJS, the `variable` would be exported as `exports.$name = $value`, but all references point just to $name.
+        //so the idea is, that we create a normal variable and export it via `export {$name}`.
+        if (hasModifier(node, SyntaxKind.ExportKeyword)) {
+            const exportNode = this.f.createExportDeclaration(undefined, undefined, false, this.f.createNamedExports([
+                this.f.createExportSpecifier(false, undefined, this.getDeclarationVariableName(name))
+            ]));
+            return [variable, exportNode];
+        }
+
+
+        return [variable];
     }
 
     protected extractPackStructOfType(node: Node | Declaration | ClassDeclaration | ClassExpression, program: CompilerProgram): void {
@@ -958,7 +986,7 @@ export class ReflectionTransformer {
                 const narrowed = node as PropertyDeclaration;
 
                 if (narrowed.type) {
-                    const config = this.findReflectionConfig(narrowed);
+                    const config = this.findReflectionConfig(narrowed, program);
                     if (config.mode === 'never') return;
 
                     this.extractPackStructOfType(narrowed.type, program);
@@ -1056,16 +1084,16 @@ export class ReflectionTransformer {
                 //TypeScript does not narrow types down
                 const narrowed = node as MethodSignature | MethodDeclaration | ConstructorTypeNode | ConstructSignatureDeclaration | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
 
-                const config = this.findReflectionConfig(narrowed);
+                const config = this.findReflectionConfig(narrowed, program);
                 if (config.mode === 'never') return;
 
                 const name = isConstructorTypeNode(narrowed) || isConstructSignatureDeclaration(node) ? 'new' : isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
                 if (!narrowed.type && narrowed.parameters.length === 0 && !name) return;
 
                 program.pushFrame();
-                for (const parameter of narrowed.parameters) {
-                    //we support at the moment only identifier as name
-                    if (!isIdentifier(parameter.name)) continue;
+                for (let i = 0; i < narrowed.parameters.length; i++) {
+                    const parameter = narrowed.parameters[i];
+                    const parameterName = isIdentifier(parameter.name) ? getNameAsString(parameter.name) : 'param' + i;
 
                     const type = parameter.type ? (parameter.dotDotDotToken && isArrayTypeNode(parameter.type) ? parameter.type.elementType : parameter.type) : undefined;
 
@@ -1079,7 +1107,7 @@ export class ReflectionTransformer {
                         program.pushOp(ReflectionOp.rest);
                     }
 
-                    program.pushOp(ReflectionOp.parameter, program.findOrAddStackEntry(getNameAsString(parameter.name)));
+                    program.pushOp(ReflectionOp.parameter, program.findOrAddStackEntry(parameterName));
 
                     if (parameter.questionToken) program.pushOp(ReflectionOp.optional);
                     if (hasModifier(parameter, SyntaxKind.PublicKeyword)) program.pushOp(ReflectionOp.public);
@@ -1454,24 +1482,36 @@ export class ReflectionTransformer {
                     return;
                 }
 
-                // store its declaration in its own definition program
-                const index = program.pushStack(program.forNode === declaration ? 0 : this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, this.getDeclarationVariableName(typeName)));
-
                 //to break recursion, we track which declaration has already been compiled
                 if (!this.compiledDeclarations.has(declaration)) {
-                    //imported declarations will be embedded, because we can't safely import them (we don't even know if the library has built they source with reflection on).
-                    //global declarations like Partial will be embedded as well, since those are not available at runtime.
-                    //when a type is embedded all its locally linked types are embedded as well. locally linked symbols like variables (for typeof calls) will
-                    //be imported by modifying `resolved!.importSpecifier`, adding the symbol + making the import persistent.
-                    const declarationSourceFile = findSourceFile(declaration);
-                    const isGlobal = declarationSourceFile.fileName !== this.sourceFile.fileName;
-                    const embed = !!(resolved!.importSpecifier || isGlobal);
-                    if (embed) {
+                    const declarationSourceFile = findSourceFile(declaration) || this.sourceFile;
+                    const isGlobal = resolved.importSpecifier === undefined && declarationSourceFile.fileName !== this.sourceFile.fileName;
+                    const isFromImport = resolved.importSpecifier !== undefined;
+
+                    if (isGlobal) {
+                        //we don't embed non-global imported declarations anymore
                         this.embedDeclarations.set(declaration, {
                             name: typeName,
                             sourceFile: declarationSourceFile,
                             importSpecifier: resolved!.importSpecifier || program.importSpecifier
                         });
+                    } else if (isFromImport) {
+                        if (resolved.importSpecifier) {
+                            //check if the referenced file has reflection info emitted. if not, any is emitted for that reference
+                            const reflection = this.findReflectionConfig(declaration, program);
+                            if (reflection.mode === 'never') {
+                                program.pushOp(ReflectionOp.any);
+                                return;
+                            }
+
+                            //if explicit `import {type T}`, we do not emit an import and instead push any
+                            if (resolved.importSpecifier.isTypeOnly || resolved.importSpecifier.parent.parent.isTypeOnly) {
+                                program.pushOp(ReflectionOp.any);
+                                return;
+                            }
+                            const originImportStatement = resolved.importSpecifier.parent.parent.parent;
+                            this.addImports.push({ identifier: this.getDeclarationVariableName(typeName), from: originImportStatement.moduleSpecifier });
+                        }
                     } else {
                         this.compileDeclarations.set(declaration, {
                             name: typeName,
@@ -1481,6 +1521,7 @@ export class ReflectionTransformer {
                     }
                 }
 
+                const index = program.pushStack(program.forNode === declaration ? 0 : this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, this.getDeclarationVariableName(typeName)));
                 if (type.typeArguments) {
                     for (const argument of type.typeArguments) {
                         this.extractPackStructOfType(argument, program);
@@ -1489,13 +1530,23 @@ export class ReflectionTransformer {
                 } else {
                     program.pushOp(ReflectionOp.inline, index);
                 }
-            } else if (isTypeLiteralNode(declaration)) {
-                this.extractPackStructOfType(declaration, program);
-                return;
-            } else if (isMappedTypeNode(declaration)) {
-                //<Type>{[Property in keyof Type]: boolean;};
-                this.extractPackStructOfType(declaration, program);
-                return;
+
+                //
+                // if (type.typeArguments) {
+                //     for (const argument of type.typeArguments) {
+                //         this.extractPackStructOfType(argument, program);
+                //     }
+                //     program.pushOp(ReflectionOp.inlineCall, index, type.typeArguments.length);
+                // } else {
+                //     program.pushOp(ReflectionOp.inline, index);
+                // }
+                // } else if (isTypeLiteralNode(declaration)) {
+                //     this.extractPackStructOfType(declaration, program);
+                //     return;
+                // } else if (isMappedTypeNode(declaration)) {
+                //     //<Type>{[Property in keyof Type]: boolean;};
+                //     this.extractPackStructOfType(declaration, program);
+                //     return;
             } else if (isClassDeclaration(declaration)) {
                 ensureImportIsEmitted(resolved.importSpecifier);
                 program.pushFrame();
@@ -1512,169 +1563,171 @@ export class ReflectionTransformer {
 
                 program.popFrameImplicit();
             } else if (isTypeParameterDeclaration(declaration)) {
-
-                //check if `type` was used in an expression. if so, we need to resolve it from runtime, otherwise we mark it as T
-
-                /**
-                 * Returns the class declaration, function/arrow declaration, or block where type was used.
-                 */
-                function getTypeUser(type: Node): Node {
-                    let current: Node = type;
-                    while (current) {
-                        if (current.kind === SyntaxKind.Block) return current; //return the block
-                        if (current.kind === SyntaxKind.ClassDeclaration) return current; //return the class
-                        if (current.kind === SyntaxKind.ClassExpression) return current; //return the class
-                        if (current.kind === SyntaxKind.Constructor) return current.parent; //return the class
-                        if (current.kind === SyntaxKind.MethodDeclaration) return current.parent; //return the class
-                        if (current.kind === SyntaxKind.ArrowFunction || current.kind === SyntaxKind.FunctionDeclaration || current.kind === SyntaxKind.FunctionExpression) return current;
-
-                        current = current.parent;
-                    }
-                    return current;
-                }
-
-                /**
-                 * With this function we want to check if `type` is used in the signature itself from the parent of `declaration`.
-                 * If so, we do not try to infer the type from runtime values.
-                 *
-                 * Examples where we do not infer from runtime, `type` being `T` and `declaration` being `<T>` (return false):
-                 *
-                 * ```typescript
-                 * class User<T> {
-                 *     config: T;
-                 * }
-                 *
-                 * class User<T> {
-                 *    constructor(public config: T) {}
-                 * }
-                 *
-                 * function do<T>(item: T): void {}
-                 * function do<T>(item: T): T {}
-                 * ```
-                 *
-                 * Examples where we infer from runtime (return true):
-                 *
-                 * ```typescript
-                 * function do<T>(item: T) {
-                 *     return typeOf<T>; //<-- because of that
-                 * }
-                 *
-                 * function do<T>(item: T) {
-                 *     class A {
-                 *         config: T; //<-- because of that
-                 *     }
-                 *     return A;
-                 * }
-                 *
-                 * function do<T>(item: T) {
-                 *     class A {
-                 *         doIt() {
-                 *             class B {
-                 *                 config: T; //<-- because of that
-                 *             }
-                 *             return B;
-                 *         }
-                 *     }
-                 *     return A;
-                 * }
-                 *
-                 * function do<T>(item: T) {
-                 *     class A {
-                 *         doIt(): T { //<-- because of that
-                 *         }
-                 *     }
-                 *     return A;
-                 * }
-                 * ```
-                 */
-                function needsToBeInferred(): boolean {
-                    const declarationUser = getTypeUser(declaration);
-                    const typeUser = getTypeUser(type);
-
-                    return declarationUser !== typeUser;
-                }
-
-                const isUsedInFunction = isFunctionLike(declaration.parent);
-                const resolveRuntimeTypeParameter = (isUsedInFunction && program.isResolveFunctionParameters(declaration.parent)) || (needsToBeInferred());
-
-                if (resolveRuntimeTypeParameter) {
-                    //go through all parameters and look where `type.name.escapedText` is used (recursively).
-                    //go through all found parameters and replace `T` with `infer T` and embed its type in `typeof parameter extends Type<infer T> ? T : never`, if T is not directly used
-                    const argumentName = declaration.name.escapedText as string; //T
-                    const foundUsers: { type: Node, parameterName: Identifier }[] = [];
-
-                    if (isUsedInFunction) {
-                        for (const parameter of (declaration.parent as SignatureDeclaration).parameters) {
-                            if (!parameter.type) continue;
-                            //if deeply available?
-                            let found = false;
-                            const searchArgument = (node: Node): Node => {
-                                node = visitEachChild(node, searchArgument, this.context);
-
-                                if (isIdentifier(node) && node.escapedText === argumentName) {
-                                    //transform to infer T
-                                    found = true;
-                                    node = this.f.createInferTypeNode(declaration);
-                                }
-
-                                return node;
-                            };
-
-                            const updatedParameterType = visitEachChild(parameter.type, searchArgument, this.context);
-                            if (found && isIdentifier(parameter.name)) {
-                                foundUsers.push({ type: updatedParameterType, parameterName: parameter.name });
-                            }
-                        }
-                    }
-
-                    if (foundUsers.length) {
-                        //todo: if there are multiple infers, we need to create an intersection
-                        if (foundUsers.length > 1) {
-                            //todo: intersection start
-                        }
-
-                        for (const foundUser of foundUsers) {
-                            program.pushConditionalFrame();
-
-                            program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, foundUser.parameterName)));
-                            this.extractPackStructOfType(foundUser.type, program);
-                            program.pushOp(ReflectionOp.extends);
-
-                            const found = program.findVariable(getIdentifierName(declaration.name));
-                            if (found) {
-                                this.extractPackStructOfType(declaration.name, program);
-                            } else {
-                                //type parameter was never found in X of `Y extends X` (no `infer X` was created), probably due to a not supported parameter type expression.
-                                program.pushOp(ReflectionOp.any);
-                            }
-                            this.extractPackStructOfType({ kind: SyntaxKind.NeverKeyword } as TypeNode, program);
-                            program.pushOp(ReflectionOp.condition);
-                            program.popFrameImplicit();
-                        }
-
-                        if (foundUsers.length > 1) {
-                            //todo: intersection end
-                        }
-
-                    } else if (declaration.constraint) {
-                        if (isUsedInFunction) program.resolveFunctionParametersIncrease(declaration.parent);
-                        const constraint = getEffectiveConstraintOfTypeParameter(declaration);
-                        if (constraint) {
-                            this.extractPackStructOfType(constraint, program);
-                        } else {
-                            program.pushOp(ReflectionOp.never);
-                        }
-                        if (isUsedInFunction) program.resolveFunctionParametersDecrease(declaration.parent);
-                    } else {
-                        program.pushOp(ReflectionOp.never);
-                    }
-                } else {
-                    program.pushOp(ReflectionOp.any);
-                    // program.pushOp(ReflectionOp.typeParameter, program.findOrAddStackEntry(getNameAsString(typeName)));
-                }
+                this.resolveTypeParameter(declaration, type, program);
             } else {
                 this.extractPackStructOfType(declaration, program);
             }
+        }
+    }
+
+    /**
+     * Returns the class declaration, function/arrow declaration, or block where type was used.
+     */
+    protected getTypeUser(type: Node): Node {
+        let current: Node = type;
+        while (current) {
+            if (current.kind === SyntaxKind.Block) return current; //return the block
+            if (current.kind === SyntaxKind.ClassDeclaration) return current; //return the class
+            if (current.kind === SyntaxKind.ClassExpression) return current; //return the class
+            if (current.kind === SyntaxKind.Constructor) return current.parent; //return the class
+            if (current.kind === SyntaxKind.MethodDeclaration) return current.parent; //return the class
+            if (current.kind === SyntaxKind.ArrowFunction || current.kind === SyntaxKind.FunctionDeclaration || current.kind === SyntaxKind.FunctionExpression) return current;
+
+            current = current.parent;
+        }
+        return current;
+    }
+
+    /**
+     * With this function we want to check if `type` is used in the signature itself from the parent of `declaration`.
+     * If so, we do not try to infer the type from runtime values.
+     *
+     * Examples where we do not infer from runtime, `type` being `T` and `declaration` being `<T>` (return false):
+     *
+     * ```typescript
+     * class User<T> {
+     *     config: T;
+     * }
+     *
+     * class User<T> {
+     *    constructor(public config: T) {}
+     * }
+     *
+     * function do<T>(item: T): void {}
+     * function do<T>(item: T): T {}
+     * ```
+     *
+     * Examples where we infer from runtime (return true):
+     *
+     * ```typescript
+     * function do<T>(item: T) {
+     *     return typeOf<T>; //<-- because of that
+     * }
+     *
+     * function do<T>(item: T) {
+     *     class A {
+     *         config: T; //<-- because of that
+     *     }
+     *     return A;
+     * }
+     *
+     * function do<T>(item: T) {
+     *     class A {
+     *         doIt() {
+     *             class B {
+     *                 config: T; //<-- because of that
+     *             }
+     *             return B;
+     *         }
+     *     }
+     *     return A;
+     * }
+     *
+     * function do<T>(item: T) {
+     *     class A {
+     *         doIt(): T { //<-- because of that
+     *         }
+     *     }
+     *     return A;
+     * }
+     * ```
+     */
+    protected needsToBeInferred(declaration: TypeParameterDeclaration, type: TypeReferenceNode | ExpressionWithTypeArguments): boolean {
+        const declarationUser = this.getTypeUser(declaration);
+        const typeUser = this.getTypeUser(type);
+
+        return declarationUser !== typeUser;
+    }
+
+    protected resolveTypeParameter(declaration: TypeParameterDeclaration, type: TypeReferenceNode | ExpressionWithTypeArguments, program: CompilerProgram) {
+        //check if `type` was used in an expression. if so, we need to resolve it from runtime, otherwise we mark it as T
+        const isUsedInFunction = isFunctionLike(declaration.parent);
+        const resolveRuntimeTypeParameter = (isUsedInFunction && program.isResolveFunctionParameters(declaration.parent)) || (this.needsToBeInferred(declaration, type));
+
+        if (resolveRuntimeTypeParameter) {
+            //go through all parameters and look where `type.name.escapedText` is used (recursively).
+            //go through all found parameters and replace `T` with `infer T` and embed its type in `typeof parameter extends Type<infer T> ? T : never`, if T is not directly used
+            const argumentName = declaration.name.escapedText as string; //T
+            const foundUsers: { type: Node, parameterName: Identifier }[] = [];
+
+            if (isUsedInFunction) {
+                for (const parameter of (declaration.parent as SignatureDeclaration).parameters) {
+                    if (!parameter.type) continue;
+                    //if deeply available?
+                    let found = false;
+                    const searchArgument = (node: Node): Node => {
+                        node = visitEachChild(node, searchArgument, this.context);
+
+                        if (isIdentifier(node) && node.escapedText === argumentName) {
+                            //transform to infer T
+                            found = true;
+                            node = this.f.createInferTypeNode(declaration);
+                        }
+
+                        return node;
+                    };
+
+                    const updatedParameterType = visitEachChild(parameter.type, searchArgument, this.context);
+                    if (found && isIdentifier(parameter.name)) {
+                        foundUsers.push({ type: updatedParameterType, parameterName: parameter.name });
+                    }
+                }
+            }
+
+            if (foundUsers.length) {
+                //todo: if there are multiple infers, we need to create an intersection
+                if (foundUsers.length > 1) {
+                    //todo: intersection start
+                }
+
+                for (const foundUser of foundUsers) {
+                    program.pushConditionalFrame();
+
+                    program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, foundUser.parameterName)));
+                    this.extractPackStructOfType(foundUser.type, program);
+                    program.pushOp(ReflectionOp.extends);
+
+                    const found = program.findVariable(getIdentifierName(declaration.name));
+                    if (found) {
+                        this.extractPackStructOfType(declaration.name, program);
+                    } else {
+                        //type parameter was never found in X of `Y extends X` (no `infer X` was created), probably due to a not supported parameter type expression.
+                        program.pushOp(ReflectionOp.any);
+                    }
+                    this.extractPackStructOfType({ kind: SyntaxKind.NeverKeyword } as TypeNode, program);
+                    program.pushOp(ReflectionOp.condition);
+                    program.popFrameImplicit();
+                }
+
+                if (foundUsers.length > 1) {
+                    //todo: intersection end
+                }
+
+            } else if (declaration.constraint) {
+                if (isUsedInFunction) program.resolveFunctionParametersIncrease(declaration.parent);
+                const constraint = getEffectiveConstraintOfTypeParameter(declaration);
+                if (constraint) {
+                    this.extractPackStructOfType(constraint, program);
+                } else {
+                    program.pushOp(ReflectionOp.never);
+                }
+                if (isUsedInFunction) program.resolveFunctionParametersDecrease(declaration.parent);
+            } else {
+                program.pushOp(ReflectionOp.never);
+            }
+        } else {
+            program.pushOp(ReflectionOp.any);
+            // program.pushOp(ReflectionOp.typeParameter, program.findOrAddStackEntry(getNameAsString(typeName)));
         }
     }
 
@@ -1857,7 +1910,13 @@ export class ReflectionTransformer {
 
     protected resolvedTsConfig: { [path: string]: { data: Record<string, any>, exists: boolean } } = {};
 
-    protected findReflectionConfig(node: Node): { mode: typeof reflectionModes[number] } {
+    protected findReflectionConfig(node: Node, program?: CompilerProgram): { mode: typeof reflectionModes[number] } {
+        if (program && program.sourceFile !== this.sourceFile) {
+            //when the node is from another module it was already decided that it will be reflected, so
+            //make sure it returns correct mode. for globals this would read otherwise to `mode: never`.
+            return { mode: 'always' };
+        }
+
         let current: Node | undefined = node;
         let reflection: typeof reflectionModes[number] | undefined;
 
@@ -1873,7 +1932,8 @@ export class ReflectionTransformer {
 
         //nothing found, look in tsconfig.json
         if (this.reflectionMode !== undefined) return { mode: this.reflectionMode };
-        let currentDir = dirname(this.sourceFile.fileName);
+        const sourceFile = findSourceFile(node) || this.sourceFile;
+        let currentDir = dirname(sourceFile.fileName);
 
         while (currentDir) {
             const tsconfigPath = join(currentDir, 'tsconfig.json');
@@ -1915,4 +1975,3 @@ export const transformer: CustomTransformerFactory = (context) => {
     }
     return new ReflectionTransformer(context);
 };
-

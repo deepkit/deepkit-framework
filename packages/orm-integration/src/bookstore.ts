@@ -1,5 +1,4 @@
 import { expect } from '@jest/globals';
-import 'reflect-metadata';
 import { assertType, AutoIncrement, cast, entity, PrimaryKey, Reference, ReflectionClass, ReflectionKind, UUID, uuid } from '@deepkit/type';
 import { User, UserGroup } from './bookstore/user';
 import { UserCredentials } from './bookstore/user-credentials';
@@ -78,6 +77,11 @@ export const bookstoreTests = {
         expect(book.getProperty('author').getResolvedReflectionClass().getClassType()).toBe(User);
         expect(book.getProperty('author').getResolvedReflectionClass()).toBe(user);
         expect(user.getProperty('birthdate').isOptional()).toBe(true);
+
+        const userGroup = ReflectionClass.from(UserGroup);
+
+        expect(userGroup.getProperty('user').isReference()).toBe(true);
+        expect(userGroup.getProperty('group').isReference()).toBe(true);
     },
 
     async deleteManyParallel(databaseFactory: DatabaseFactory) {

@@ -8,8 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, getClassName, indent } from '@deepkit/core';
-import { getProperty, ReflectionClass, toSignature } from './reflection';
+import { ClassType, getClassName, getParentClass, indent, isArray } from '@deepkit/core';
+import { TypeNumberBrand } from '@deepkit/type-spec';
+import { getProperty, reflect, ReflectionClass, toSignature } from './reflection';
 import { isExtendable } from './extends';
 
 export enum ReflectionVisibility {
@@ -92,6 +93,27 @@ export interface TypeAnnotations {
 
     annotations?: Annotations; //parsed decorator types as annotations
     decorators?: OuterType[]; //original decorator type
+
+    scheduleDecorators?: TypeObjectLiteral[];
+}
+
+export function applyScheduledAnnotations(type: Type) {
+    if (isWithAnnotations(type) && type.scheduleDecorators) {
+        type.annotations = type.annotations ? { ...type.annotations } : {};
+        type.decorators = type.decorators ? type.decorators.slice() : [];
+        type.decorators.push(...type.scheduleDecorators);
+
+        for (const scheduledDecorator of type.scheduleDecorators) {
+            for (const decorator of typeDecorators) {
+                decorator(type.annotations, scheduledDecorator);
+            }
+        }
+        type.scheduleDecorators = undefined;
+    }
+}
+
+export function hasTypeInformation(object: ClassType | Function): boolean {
+    return '__type' in object && isArray((object as any)._type);
 }
 
 /**
@@ -147,26 +169,6 @@ export interface TypeOrigin {
 export interface TypeString extends TypeOrigin, TypeAnnotations, TypeRuntimeData {
     kind: ReflectionKind.string,
     parent?: Type;
-}
-
-/**
- * note: Checks are based on range checks (>, <, etc), so when adding
- * new types a check is required for all code using `TypeNumberBrand`.
- */
-export enum TypeNumberBrand {
-    integer,
-
-    int8,
-    int16,
-    int32,
-
-    uint8,
-    uint16,
-    uint32,
-
-    float,
-    float32,
-    float64,
 }
 
 export function isIntegerType(type: Type): type is TypeNumber {
@@ -561,7 +563,7 @@ export type WithAnnotations =
 
 export function isWithAnnotations(type: ParentLessType): type is WithAnnotations {
     return type.kind === ReflectionKind.any || type.kind === ReflectionKind.unknown || type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.boolean
-        || type.kind === ReflectionKind.array || type.kind === ReflectionKind.tuple || type.kind === ReflectionKind.literal || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined
+        || type.kind === ReflectionKind.union || type.kind === ReflectionKind.array || type.kind === ReflectionKind.tuple || type.kind === ReflectionKind.literal || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined
         || type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.object || type.kind === ReflectionKind.templateLiteral
         || type.kind === ReflectionKind.regexp || type.kind === ReflectionKind.symbol;
 }
@@ -573,36 +575,59 @@ export function getAnnotations(type: WithAnnotations): Annotations {
 /**
  * Checks if the structure of a and b are identical.
  */
-export function isSameType(a: Type, b: Type): boolean {
-    if (a.kind !== b.kind) return false;
+export function isSameType(a: Type, b: Type, stack: Type[] = []): boolean {
+    if (a === b) return true;
 
-    if (a.kind === ReflectionKind.literal) return a.literal === (b as TypeLiteral).literal;
+    if (stack.includes(a)) return false;
+    stack.push(a);
+    try {
+        if (a.kind !== b.kind) return false;
+        if (a.kind === ReflectionKind.infer || b.kind === ReflectionKind.infer) return false;
 
-    if (a.kind === ReflectionKind.templateLiteral && b.kind === ReflectionKind.templateLiteral) {
-        if (a.types.length !== b.types.length) return false;
+        if (a.kind === ReflectionKind.literal) return a.literal === (b as TypeLiteral).literal;
 
-        for (let i = 0; a.types.length; i++) {
-            if (!isSameType(a.types[i], b.types[i])) return false;
+        if (a.kind === ReflectionKind.templateLiteral && b.kind === ReflectionKind.templateLiteral) {
+            if (a.types.length !== b.types.length) return false;
+
+            for (let i = 0; a.types.length; i++) {
+                if (!isSameType(a.types[i], b.types[i], stack)) return false;
+            }
+            return true;
         }
-        return true;
-    }
 
-    if (a.kind === ReflectionKind.class && b.kind === ReflectionKind.class) {
-        if (a.classType !== b.classType) return false;
-        if (!a.arguments && !b.arguments) return true;
-        if (!a.arguments || !b.arguments) return false;
+        if (a.kind === ReflectionKind.class && b.kind === ReflectionKind.class) {
+            if (a.classType !== b.classType) return false;
+            if (!a.arguments && !b.arguments) return true;
+            if (!a.arguments || !b.arguments) return false;
 
-        if (a.arguments && !b.arguments) return false;
-        if (!a.arguments && b.arguments) return false;
+            if (a.arguments && !b.arguments) return false;
+            if (!a.arguments && b.arguments) return false;
 
-        for (let i = 0; a.arguments.length; i++) {
-            if (!isSameType(a.arguments[i], b.arguments[i])) return false;
+            for (let i = 0; a.arguments.length; i++) {
+                if (!a.arguments[i] || !b.arguments[i]) return false;
+                const aMember = a.arguments[i];
+                const bMember = b.arguments[i];
+                if (aMember === bMember) continue;
+
+                if (aMember.kind === ReflectionKind.property) {
+                    if (bMember.kind === ReflectionKind.property) {
+                        if (aMember.name !== bMember.name) return false;
+                        if (aMember.readonly !== bMember.readonly) return false;
+                        if (aMember.optional !== bMember.optional) return false;
+                        if (aMember.abstract !== bMember.abstract) return false;
+                        if (aMember.visibility !== bMember.visibility) return false;
+                        if (!isSameType(aMember.type, bMember.type, stack)) return false;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    if (!isSameType(aMember, bMember)) return false;
+                }
+            }
+            return true;
         }
-        return true;
-    }
 
-    if (a.kind === ReflectionKind.objectLiteral) {
-        if (b.kind === ReflectionKind.objectLiteral) {
+        if (a.kind === ReflectionKind.objectLiteral && b.kind === ReflectionKind.objectLiteral) {
             if (a.types.length !== b.types.length) return false;
 
             for (const aMember of a.types) {
@@ -610,68 +635,87 @@ export function isSameType(a: Type, b: Type): boolean {
                 if (aMember.kind === ReflectionKind.indexSignature) {
                     const valid = b.types.some(v => {
                         if (v.kind !== ReflectionKind.indexSignature) return false;
-                        const sameIndex = isSameType(aMember.index, v.index);
-                        const sameType = isSameType(aMember.type, v.type);
+                        const sameIndex = isSameType(aMember.index, v.index, stack);
+                        const sameType = isSameType(aMember.type, v.type, stack);
                         return sameIndex && sameType;
                     });
                     if (!valid) return false;
                 } else if (aMember.kind === ReflectionKind.propertySignature || aMember.kind === ReflectionKind.methodSignature) {
                     const bMember = findMember(aMember.name, b);
                     if (!bMember) return false;
-                    if (!isSameType(aMember, bMember)) return false;
+                    if (aMember === bMember) continue;
+
+                    if (aMember.kind === ReflectionKind.propertySignature) {
+                        if (bMember.kind === ReflectionKind.propertySignature) {
+                            if (aMember.name !== bMember.name) return false;
+                            if (aMember.readonly !== bMember.readonly) return false;
+                            if (aMember.optional !== bMember.optional) return false;
+                            if (aMember.type === bMember.type) continue;
+                            if (!isSameType(aMember.type, bMember.type, stack)) return false;
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        if (!isSameType(aMember, bMember, stack)) return false;
+                    }
                 }
             }
             return true;
         }
-    }
 
-    if (a.kind === ReflectionKind.tupleMember) {
-        if (b.kind !== ReflectionKind.tupleMember) return false;
+        if (a.kind === ReflectionKind.tupleMember) {
+            if (b.kind !== ReflectionKind.tupleMember) return false;
 
-        return a.optional === b.optional && a.name === b.name && isSameType(a.type, b.type);
-    }
-
-    if (a.kind === ReflectionKind.array) {
-        if (b.kind !== ReflectionKind.array) return false;
-
-        return isSameType(a.type, b.type);
-    }
-
-    if (a.kind === ReflectionKind.tuple) {
-        if (b.kind !== ReflectionKind.tuple) return false;
-        if (a.types.length !== b.types.length) return false;
-
-        for (let i = 0; i < a.types.length; i++) {
-            if (!isSameType(a.types[i], b.types[i])) return false;
-        }
-        return true;
-    }
-
-    if (a.kind === ReflectionKind.parameter) {
-        if (b.kind !== ReflectionKind.parameter) return false;
-        return a.name === b.name && a.optional === b.optional && isSameType(a.type, b.type);
-    }
-
-    if (a.kind === ReflectionKind.function || a.kind === ReflectionKind.method || a.kind === ReflectionKind.methodSignature) {
-        if (b.kind !== ReflectionKind.function && b.kind !== ReflectionKind.method && b.kind !== ReflectionKind.methodSignature) return false;
-        if (a.parameters.length !== b.parameters.length) return false;
-
-        for (let i = 0; i < a.parameters.length; i++) {
-            if (!isSameType(a.parameters[i], b.parameters[i])) return false;
+            return a.optional === b.optional && a.name === b.name && isSameType(a.type, b.type, stack);
         }
 
-        return isSameType(a.return, b.return);
-    }
+        if (a.kind === ReflectionKind.array) {
+            if (b.kind !== ReflectionKind.array) return false;
 
-    if (a.kind === ReflectionKind.union) {
-        if (b.kind !== ReflectionKind.union) return false;
-        if (a.types.length !== b.types.length) return false;
-        for (let i = 0; i < a.types.length; i++) {
-            if (!isTypeIncluded(b.types, a.types[i])) return false;
+            return isSameType(a.type, b.type, stack);
         }
-    }
 
-    return a.kind === b.kind;
+        if (a.kind === ReflectionKind.tuple) {
+            if (b.kind !== ReflectionKind.tuple) return false;
+            if (a.types.length !== b.types.length) return false;
+
+            for (let i = 0; i < a.types.length; i++) {
+                if (!isSameType(a.types[i], b.types[i], stack)) return false;
+            }
+            return true;
+        }
+
+        if (a.kind === ReflectionKind.parameter) {
+            if (b.kind !== ReflectionKind.parameter) return false;
+            return a.name === b.name && a.optional === b.optional && isSameType(a.type, b.type, stack);
+        }
+
+        if (a.kind === ReflectionKind.function || a.kind === ReflectionKind.method || a.kind === ReflectionKind.methodSignature) {
+            if (b.kind !== ReflectionKind.function && b.kind !== ReflectionKind.method && b.kind !== ReflectionKind.methodSignature) return false;
+            if (a.parameters.length !== b.parameters.length) return false;
+
+            for (let i = 0; i < a.parameters.length; i++) {
+                if (!isSameType(a.parameters[i], b.parameters[i], stack)) return false;
+            }
+
+            return isSameType(a.return, b.return, stack);
+        }
+
+        if (a.kind === ReflectionKind.union) {
+            if (b.kind !== ReflectionKind.union) return false;
+            if (a.types.length !== b.types.length) return false;
+            for (let i = 0; i < a.types.length; i++) {
+                if (!a.types[i] || !b.types[i]) return false;
+                if (a.types[i] === b.types[i]) continue;
+
+                if (!isSameType(a.types[i], b.types[i], stack)) return false;
+            }
+        }
+
+        return a.kind === b.kind;
+    } finally {
+        stack.pop();
+    }
 }
 
 export function addType<T extends Type>(container: T, type: Type): T {
@@ -703,9 +747,9 @@ export function addType<T extends Type>(container: T, type: Type): T {
     return container;
 }
 
-export function isTypeIncluded(types: Type[], type: Type): boolean {
+export function isTypeIncluded(types: Type[], type: Type, stack: Type[] = []): boolean {
     for (const t of types) {
-        if (isSameType(t, type)) return true;
+        if (isSameType(t, type, stack)) return true;
     }
 
     return false;
@@ -1048,12 +1092,18 @@ type RemoveParentHomomorphic<T> = RemoveParent<T, Exclude<keyof T, 'parent'>>;
 type RemoveDeepParent<T extends Type> = T extends infer K ? RemoveParentHomomorphic<K> : never;
 export type ParentLessType = RemoveDeepParent<Type>;
 
-export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type, stack: Map<ParentLessType, Type> = new Map): FindType<Type, T['kind']> {
-    const existing = stack.get(inc);
-    if (existing) return existing as any;
+//todo: this whole function is way too slow. either make it fast, or find a solution that does not need such a function at all.
+/**
+ * This function does not do a deep copy, only shallow. A deep copy makes it way to inefficient, so much that router.spec.ts takes up to 20-30seconds
+ * to complete instead of barely 30ms.
+ */
+export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type): FindType<Type, T['kind']> {
+    // return inc as any;
+    // const existing = stack.get(inc);
+    // if (existing) return existing as any;
 
     const type = parent ? { ...inc, parent: parent } as Type : { ...inc } as Type;
-    stack.set(inc, type);
+    // stack.set(inc, type);
 
     if (isWithAnnotations(type) && isWithAnnotations(inc)) {
         if (inc.annotations) type.annotations = { ...inc.annotations };
@@ -1063,45 +1113,47 @@ export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type
         type.jit = {};
     }
 
-    switch (type.kind) {
-        case ReflectionKind.objectLiteral:
-        case ReflectionKind.tuple:
-        case ReflectionKind.union:
-        case ReflectionKind.class:
-        case ReflectionKind.intersection:
-        case ReflectionKind.templateLiteral:
-            type.types = type.types.map(member => copyAndSetParent(member, type, stack));
-            break;
-        case ReflectionKind.string:
-        case ReflectionKind.number:
-        case ReflectionKind.bigint:
-        case ReflectionKind.symbol:
-        case ReflectionKind.regexp:
-        case ReflectionKind.boolean:
-            if (type.origin) type.origin = copyAndSetParent(type.origin, type, stack);
-            break;
-        case ReflectionKind.function:
-        case ReflectionKind.method:
-        case ReflectionKind.methodSignature:
-            type.return = copyAndSetParent(type.return, type, stack);
-            type.parameters = type.parameters.map(member => copyAndSetParent(member, type, stack));
-            break;
-        case ReflectionKind.propertySignature:
-        case ReflectionKind.property:
-        case ReflectionKind.array:
-        case ReflectionKind.promise:
-        case ReflectionKind.parameter:
-        case ReflectionKind.tupleMember:
-        case ReflectionKind.rest:
-            type.type = copyAndSetParent(type.type, type, stack);
-            break;
-        case ReflectionKind.indexSignature:
-            type.index = copyAndSetParent(type.index, type, stack);
-            type.type = copyAndSetParent(type.type, type, stack);
-            break;
-    }
-
     return type as any;
+
+    // switch (type.kind) {
+    //     case ReflectionKind.objectLiteral:
+    //     case ReflectionKind.tuple:
+    //     case ReflectionKind.union:
+    //     case ReflectionKind.class:
+    //     case ReflectionKind.intersection:
+    //     case ReflectionKind.templateLiteral:
+    //         type.types = type.types.map(member => copyAndSetParent(member, type, stack));
+    //         break;
+    //     case ReflectionKind.string:
+    //     case ReflectionKind.number:
+    //     case ReflectionKind.bigint:
+    //     case ReflectionKind.symbol:
+    //     case ReflectionKind.regexp:
+    //     case ReflectionKind.boolean:
+    //         if (type.origin) type.origin = copyAndSetParent(type.origin, type, stack);
+    //         break;
+    //     case ReflectionKind.function:
+    //     case ReflectionKind.method:
+    //     case ReflectionKind.methodSignature:
+    //         type.return = copyAndSetParent(type.return, type, stack);
+    //         type.parameters = type.parameters.map(member => copyAndSetParent(member, type, stack));
+    //         break;
+    //     case ReflectionKind.propertySignature:
+    //     case ReflectionKind.property:
+    //     case ReflectionKind.array:
+    //     case ReflectionKind.promise:
+    //     case ReflectionKind.parameter:
+    //     case ReflectionKind.tupleMember:
+    //     case ReflectionKind.rest:
+    //         type.type = copyAndSetParent(type.type, type, stack);
+    //         break;
+    //     case ReflectionKind.indexSignature:
+    //         type.index = copyAndSetParent(type.index, type, stack);
+    //         type.type = copyAndSetParent(type.type, type, stack);
+    //         break;
+    // }
+    //
+    // return type as any;
 }
 
 export function widenLiteral(type: OuterType): OuterType {
@@ -1391,6 +1443,20 @@ export type BinaryBigInt = bigint & { __meta?: ['binaryBigInt'] };
  */
 export type SignedBinaryBigInt = bigint & { __meta?: ['signedBinaryBigInt'] };
 
+export interface BackReferenceOptions {
+    /**
+     * Necessary for normalised many-to-many relations. This defines the class of the pivot table/collection.
+     */
+    via?: ClassType | {};
+
+    /**
+     * A reference/backReference can define which reference on the other side
+     * reference back. This is necessary when there are multiple outgoing references
+     * to the same entity.
+     */
+    mappedBy?: string,
+}
+
 export type Reference<Options extends ReferenceOptions = {}> = { __meta?: ['reference', Options] };
 export type BackReference<Options extends BackReferenceOptions = {}> = { __meta?: ['backReference', Options] };
 export type EmbeddedMeta<Options> = { __meta?: ['embedded', Options] };
@@ -1406,11 +1472,11 @@ export const primaryKeyAnnotation = new class extends AnnotationDefinition {
     }
 }('primaryKey');
 
-export interface BackReferenceOptions {
+export interface BackReferenceOptionsResolved {
     /**
      * Necessary for normalised many-to-many relations. This defines the class of the pivot table/collection.
      */
-    via?: ClassType;
+    via?: TypeClass | TypeObjectLiteral;
 
     /**
      * A reference/backReference can define which reference on the other side
@@ -1420,7 +1486,7 @@ export interface BackReferenceOptions {
     mappedBy?: string,
 }
 
-export const backReferenceAnnotation = new AnnotationDefinition<BackReferenceOptions>('backReference');
+export const backReferenceAnnotation = new AnnotationDefinition<BackReferenceOptionsResolved>('backReference');
 export const validationAnnotation = new AnnotationDefinition<{ name: string, args: Type[] }>('validation');
 export const UUIDAnnotation = new AnnotationDefinition('UUID');
 export const mongoIdAnnotation = new AnnotationDefinition('mongoID');
@@ -1455,7 +1521,7 @@ export function isBackReferenceType(type: Type): boolean {
     return backReferenceAnnotation.getFirst(type) !== undefined;
 }
 
-export function getBackReferenceType(type: Type): BackReferenceOptions {
+export function getBackReferenceType(type: Type): BackReferenceOptionsResolved {
     const options = backReferenceAnnotation.getFirst(type);
     if (!options) throw new Error('No back reference');
     return options;
@@ -1550,7 +1616,14 @@ export const excludedAnnotation = new class extends AnnotationDefinition<string>
     }
 }('excluded');
 export const dataAnnotation = new AnnotationDefinition<{ [name: string]: any }>('data');
-export const metaAnnotation = new AnnotationDefinition<{ name: string, options: OuterType[] }>('meta');
+export const metaAnnotation = new class extends AnnotationDefinition<{ name: string, options: OuterType[] }> {
+    getForName(type: Type, metaName: string): OuterType[] | undefined {
+        for (const v of this.getAnnotations(type)) {
+            if (v.name === metaName) return v.options;
+        }
+        return;
+    }
+}('meta');
 export const indexAnnotation = new AnnotationDefinition<IndexOptions>('index');
 export const databaseAnnotation = new class extends AnnotationDefinition<{ name: string, options: { [name: string]: any } }> {
     getDatabase<T extends DatabaseFieldOptions>(type: Type, name: string): T | undefined {
@@ -1667,7 +1740,11 @@ export const typeDecorators: TypeDecorator[] = [
                 if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
 
                 const options = typeToObject(optionsType.type);
-                backReferenceAnnotation.register(annotations, options);
+                const member = findMember('via', optionsType.type);
+                backReferenceAnnotation.register(annotations, {
+                    mappedBy: options.mappedBy,
+                    via: member && member.kind === ReflectionKind.propertySignature && (member.type.kind === ReflectionKind.objectLiteral || member.type.kind === ReflectionKind.class) ? member.type : undefined,
+                });
                 return true;
             }
             case 'validator': {
@@ -1756,13 +1833,6 @@ export function memberNameToString(name: number | string | symbol): string {
         return stringifyResolvedType(name);
     }
     return String(name);
-}
-
-export const enum MappedModifier {
-    optional = 1 << 0,
-    removeOptional = 1 << 1,
-    readonly = 1 << 2,
-    removeReadonly = 1 << 3,
 }
 
 export const binaryTypes: ClassType[] = [
@@ -1876,10 +1946,26 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                 }
                 const indentation = indent((state.depth + 1) * 2);
                 const args = type.arguments ? '<' + type.arguments.map(v => stringifyType(v, state)).join(', ') + '>' : '';
+                let heritage = '';
+                const superClass = getParentClass(type.classType);
+                if (superClass) {
+                    try {
+                        const superClassType = reflect(superClass);
+                        if (superClassType.kind === ReflectionKind.class) {
+                            heritage = ' extends ' + (superClassType.typeName || superClass.name);
+                        }
+                    } catch (error: any) {
+                        heritage = ' extends ' + superClass.name;
+                    }
+                    if (type.extendsArguments && type.extendsArguments.length) {
+                        heritage += '<' + type.extendsArguments.map(v => stringifyShortResolvedType(v)).join(', ') + '>';
+                    }
+                }
+                const className = type.typeName || getClassName(type.classType);
                 if (state.showFullDefinition) {
-                    name = `${getClassName(type.classType)}${args} {\n${type.types.map(v => indentation(stringifyType(v, state))).join(';\n')};\n}`;
+                    name = `${className}${args}${heritage} {\n${type.types.map(v => indentation(stringifyType(v, state))).join(';\n')};\n}`;
                 } else {
-                    name = `${getClassName(type.classType)}${args}`;
+                    name = `${className}${args}${heritage}`;
                 }
                 break;
             }
@@ -1966,176 +2052,4 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
     } finally {
         state.stack.pop();
     }
-}
-
-/**
- * The instruction set.
- * Should not be greater than 93 members, because we encode it via charCode starting at 33. +93 means we end up with charCode=126
- * (which is '~' and the last char that can be represented without \x. The next 127 is '\x7F').
- */
-export enum ReflectionOp {
-    never,
-    any,
-    unknown,
-    void,
-    object,
-
-    string,
-    number,
-    numberBrand,
-    boolean,
-    bigint,
-
-    symbol,
-    null,
-    undefined,
-
-    /**
-     * The literal type of string, number, or boolean.
-     *
-     * This OP has 1 parameter. The next byte is the absolute address of the literal on the stack, which is the actual literal value.
-     *
-     * Pushes a function type.
-     */
-    literal,
-
-    /**
-     * This OP pops all types on the current stack frame.
-     *
-     * This OP has 1 parameter. The next byte is the absolute address of a string|number|symbol entry on the stack.
-     *
-     * Pushes a function type.
-     */
-    function,
-
-    /**
-     * This OP pops all types on the current stack frame.
-     *
-     * Pushes a method type.
-     */
-    method,
-    methodSignature, //has 1 parameter, reference to stack for its property name
-
-    parameter,
-
-    /**
-     * This OP pops the latest type entry on the stack.
-     *
-     * Pushes a property type.
-     */
-    property,
-    propertySignature, //has 1 parameter, reference to stack for its property name
-
-    /**
-     * This OP pops all types on the current stack frame. Those types should be method|property.
-     *
-     * Pushes a TypeClass onto the stack.
-     */
-    class,
-
-    /**
-     * If a class extends another class with generics, this OP represents the generic type arguments of the super class.
-     *
-     * e.g. `class A extends B<string, boolean>`, string and boolean are on the stack and classExtends pops() them, and then assigns to A.extendsTypeArguments = [string, boolean].
-     *
-     * This is only emitted when the class that is currently being described actually extends another class and uses generics.
-     *
-     * This OP has 1 argument and pops x types from the stack. X is the first argument.
-     * Expects a TypeClass on the stack.
-     */
-    classExtends,
-
-    /**
-     * This OP has 1 parameter, the stack entry to the actual class symbol.
-     */
-    classReference,
-
-    /**
-     * Marks the last entry in the stack as optional. Used for method|property. Equal to the QuestionMark operator in a property assignment.
-     */
-    optional,
-    readonly,
-
-    //modifiers for property|method
-    public,
-    private,
-    protected,
-    abstract,
-    defaultValue,
-    description,
-    rest,
-
-    regexp,
-
-    enum,
-    enumMember, //has one argument, the name.
-
-    set,
-    map,
-
-    /**
-     * Pops the latest stack entry and uses it as T for an array type.
-     *
-     * Pushes an array type.
-     */
-    array,
-    tuple,
-    tupleMember,
-    namedTupleMember, //has one argument, the name.
-
-    union, //pops frame. requires frame start when stack can be dirty.
-    intersection,
-
-    indexSignature,
-    objectLiteral,
-    mappedType, //2 parameters: functionPointer and modifier.
-    in,
-
-    frame, //creates a new stack frame
-    moveFrame, //pop() as T, pops the current stack frame, push(T)
-    return,
-
-    templateLiteral,
-
-    //special instructions that exist to emit less output
-    date,
-
-    //those typed array OPs are here only to reduce runtime code overhead when used in types.
-    int8Array,
-    uint8ClampedArray,
-    uint8Array,
-    int16Array,
-    uint16Array,
-    int32Array,
-    uint32Array,
-    float32Array,
-    float64Array,
-    bigInt64Array,
-    arrayBuffer,
-
-    promise,
-
-    // pointer, //parameter is a number referencing an entry in the stack, relative to the very beginning (0). pushes that entry onto the stack.
-    arg, //@deprecated. parameter is a number referencing an entry in the stack, relative to the beginning of the current frame, *-1. pushes that entry onto the stack. this is related to the calling convention.
-    typeParameter, //generic type parameter, e.g. T in a generic. has 1 parameter: reference to the name.
-    typeParameterDefault, //generic type parameter with a default value, e.g. T in a generic. has 1 parameter: reference to the name. pop() for the default value
-    var, //reserve a new variable in the stack
-    loads, //pushes to the stack a referenced value in the stack. has 2 parameters: <frame> <index>, frame is a negative offset to the frame, and index the index of the stack entry withing the referenced frame
-
-    indexAccess, //T['string'], 2 items on the stack
-    keyof, //keyof operator
-    infer, //2 params, like `loads`
-    typeof, //1 parameter that points to a function returning the runtime value from which we need to extract the type
-
-    condition,
-    jumpCondition, //@deprecated. used when INFER is used in `extends` conditional branch. 2 args: left program, right program
-    jump, //jump to an address
-    call, //has one parameter, the next program address. creates a new stack frame with current program address as first stack entry, and jumps back to that + 1.
-    inline,
-    inlineCall,
-    distribute,//has one parameter, the co-routine program index.
-
-    extends, //X extends Y in a conditional type, XY popped from the stack, pushes boolean on the stack
-
-    widen, //widens the type on the stack, .e.g 'asd' => string, 34 => number, etc. this is necessary for infer runtime data, and widen if necessary (object member or non-contained literal)
 }

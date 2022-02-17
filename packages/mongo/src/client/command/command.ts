@@ -12,7 +12,7 @@ import { asyncOperation, getClassName } from '@deepkit/core';
 import { handleErrorResponse, MongoError } from '../error';
 import { MongoClientConfig } from '../config';
 import { Host } from '../host';
-import { MongoDatabaseTransaction } from '../connection';
+import type { MongoDatabaseTransaction } from '../connection';
 import { OuterType, ReceiveType, ReflectionClass, resolveReceiveType, SerializationError, stringifyType, typeOf } from '@deepkit/type';
 import { BSONDeserializer, deserializeWithoutOptimiser, getBSONDeserializer } from '@deepkit/bson';
 import { mongoBinarySerializer } from '../../mongo-serializer';

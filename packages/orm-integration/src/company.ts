@@ -80,6 +80,7 @@ export const companyTests = {
         expect(persons[3].id).toBe(4);
         expect(persons[3].type).toBe('employee');
         expect(persons[3]).toBeInstanceOf(Employee);
+        database.disconnect();
     },
 
     async tableLevelInheritanceJoins(databaseFactory: DatabaseFactory) {
@@ -107,5 +108,6 @@ export const companyTests = {
             expect(project.owner.id).toBe(1);
             expect(project.owner.firstName).toBe('Peter');
         }
+        database.disconnect();
     },
 };

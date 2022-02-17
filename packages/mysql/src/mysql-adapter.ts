@@ -22,12 +22,11 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from '@deepkit/sql';
-import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, PatchResult, UniqueConstraintFailure } from '@deepkit/orm';
+import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, OrmEntity, PatchResult, UniqueConstraintFailure } from '@deepkit/orm';
 import { MySQLPlatform } from './mysql-platform';
 import { Changes, getPartialSerializeFunction, getSerializeFunction, ReflectionClass, resolvePath } from '@deepkit/type';
 import { asyncOperation, ClassType, empty, isArray } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
-import { OrmEntity } from '@deepkit/orm/dist/cjs/src/type';
 
 function handleError(error: Error | string): void {
     const message = 'string' === typeof error ? error : error.message;

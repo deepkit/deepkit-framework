@@ -29,3 +29,5 @@ export * from './src/reflection/processor';
 export * from './src/reflection/type';
 export * from './src/reflection/extends';
 export * from './src/reflection/reflection';
+
+export { TypeNumberBrand } from '@deepkit/type-spec';

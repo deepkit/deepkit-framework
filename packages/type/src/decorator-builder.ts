@@ -202,10 +202,7 @@ export type APIClass<T> = ClassType<ClassApiTypeInterface<T>>;
 export type ExtractClass<T> = T extends AbstractClassType<infer K> ? K : never;
 export type ExtractApiDataType<T> = T extends AbstractClassType<infer K> ? K extends { t: infer P } ? P : never : (T extends { t: infer P } ? P : never);
 
-export type ClassDecoratorResult<API extends APIClass<any>> =
-    FluidDecorator<ExtractClass<API>, ClassDecoratorFn>
-    & { (classType: AbstractClassType): void }
-    & { _fetch: (classType: ClassType) => ExtractApiDataType<API> | undefined };
+export type ClassDecoratorResult<API extends APIClass<any>> = FluidDecorator<ExtractClass<API>, ClassDecoratorFn> & DecoratorAndFetchSignature<API, ClassDecoratorFn>;
 
 export function createClassDecoratorContext<API extends APIClass<any>, T = ExtractApiDataType<API>>(
     apiType: API
@@ -253,12 +250,12 @@ export interface PropertyApiTypeInterface<T> {
 
 export type APIProperty<T> = ClassType<PropertyApiTypeInterface<T>>;
 
-export type PropertyDecoratorResult<API extends APIProperty<any>> =
-    FluidDecorator<ExtractClass<API>, PropertyDecoratorFn>
-    & { (prototype: object, property: string, parameterIndexOrDescriptor?: any): void }
-    & { _fetch: (classType: ClassType, property: string, parameterIndexOrDescriptor?: any) => ExtractApiDataType<API> | undefined };
+export type DecoratorAndFetchSignature<API extends APIProperty<any>, FN extends (...args: any[]) => any> = & FN
+    & { _fetch: (...args: Parameters<FN>) => ExtractApiDataType<API> | undefined };
 
-export function createPropertyDecoratorContext<API extends APIProperty<any>, T = ExtractApiDataType<API>>(
+export type PropertyDecoratorResult<API extends APIProperty<any>> = FluidDecorator<ExtractClass<API>, PropertyDecoratorFn> & DecoratorAndFetchSignature<API, PropertyDecoratorFn>;
+
+export function createPropertyDecoratorContext<API extends APIProperty<any>>(
     apiType: API
 ): PropertyDecoratorResult<API> {
     const targetMap = new Map<object, Map<any, PropertyApiTypeInterface<any>>>();
@@ -310,7 +307,9 @@ export function createPropertyDecoratorContext<API extends APIProperty<any>, T =
     return fn as any;
 }
 
-export type FreeDecoratorFn<API> = { (target?: any, property?: number | string | symbol, parameterIndexOrDescriptor?: any): void } & { _data: ExtractApiDataType<API> };
+export type FreeDecoratorFn<API> =
+    { (target?: any, property?: number | string | symbol, parameterIndexOrDescriptor?: any): ExtractApiDataType<API> }
+    & { _data: ExtractApiDataType<API> };
 
 export type FreeFluidDecorator<API> = {
     [name in keyof ExtractClass<API>]: ExtractClass<API>[name] extends (...args: infer K) => any
@@ -342,7 +341,7 @@ export function createFreeDecoratorContext<API extends APIClass<any>, T = Extrac
 
     const fluidFunctionSymbol = Symbol('fluidFunctionSymbol');
 
-    const fn = createFluidDecorator(apiType, [], collapse, false, fluidFunctionSymbol);
+    const fn = createFluidDecorator(apiType, [], collapse, true, fluidFunctionSymbol);
 
     Object.defineProperty(fn, '_fluidFunctionSymbol', {
         configurable: true,

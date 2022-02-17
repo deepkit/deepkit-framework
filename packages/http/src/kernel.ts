@@ -1,4 +1,4 @@
-import { inject, injectable, InjectorContext } from '@deepkit/injector';
+import { InjectorContext } from '@deepkit/injector';
 import { Router } from './router';
 import { EventDispatcher } from '@deepkit/event';
 import { Logger } from '@deepkit/logger';
@@ -7,14 +7,13 @@ import { HttpRequestEvent, httpWorkflow } from './http';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { unlink } from 'fs';
 
-@injectable
 export class HttpKernel {
     constructor(
         protected router: Router,
         protected eventDispatcher: EventDispatcher,
         protected injectorContext: InjectorContext,
         protected logger: Logger,
-        @inject().optional protected stopwatch?: Stopwatch,
+        protected stopwatch?: Stopwatch,
     ) {
 
     }

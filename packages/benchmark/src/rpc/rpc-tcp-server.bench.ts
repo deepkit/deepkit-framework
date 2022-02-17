@@ -10,7 +10,6 @@
 
 import { rpc, RpcClient, RpcKernel } from '@deepkit/rpc';
 import { TcpRpcClientAdapter, TcpRpcServer } from '@deepkit/rpc-tcp';
-import 'reflect-metadata';
 import { BenchSuite } from '../bench';
 
 export async function main() {

@@ -15,16 +15,18 @@
     "declaration": true,
     "composite": true
   },
-  "reflection": false,
+  "reflection": true,
   "include": [
     "src",
     "tests",
-    "install-transformer.ts",
     "index.ts"
   ],
   "references": [
     {
       "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../type-spec/tsconfig.json"
     }
   ]
 }

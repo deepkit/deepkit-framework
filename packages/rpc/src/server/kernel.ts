@@ -9,7 +9,7 @@
  */
 
 import { arrayRemoveItem, ClassType } from '@deepkit/core';
-import { ClassSchema, getClassSchema, stringifyUuid, writeUuid } from '@deepkit/type';
+import { ReceiveType, resolveReceiveType, stringifyUuid, typeOf, writeUuid } from '@deepkit/type';
 import { RpcMessageSubject } from '../client/message-subject';
 import { AuthenticationError, ControllerDefinition, rpcAuthenticate, rpcClientId, rpcError, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model';
 import {
@@ -47,8 +47,8 @@ export class RpcCompositeMessage {
     ) {
     }
 
-    add<T>(type: number, schema?: ClassSchema<T> | ClassType<T>, body?: T): this {
-        this.messages.push({ type, schema: schema ? getClassSchema(schema) : undefined, body });
+    add<T>(type: number, body?: T, receiveType?: ReceiveType<T>): this {
+        this.messages.push({ type, schema: receiveType ? resolveReceiveType(receiveType) : undefined, body });
         return this;
     }
 
@@ -73,7 +73,7 @@ export class RpcMessageBuilder {
     ) {
     }
 
-    protected messageFactory<T>(type: RpcTypes, schemaOrBody?: ClassSchema<T> | Uint8Array, data?: T): Uint8Array {
+    protected messageFactory<T>(type: RpcTypes, schemaOrBody?: ReceiveType<T> | Uint8Array, data?: T): Uint8Array {
         if (schemaOrBody instanceof Uint8Array) {
             if (this.source && this.clientId) {
                 //we route back accordingly
@@ -84,9 +84,9 @@ export class RpcMessageBuilder {
         } else {
             if (this.source && this.clientId) {
                 //we route back accordingly
-                return createRpcMessageSourceDest(this.id, type, this.clientId, this.source, schemaOrBody, data);
+                return createRpcMessageSourceDest(this.id, type, this.clientId, this.source, data, schemaOrBody);
             } else {
-                return createRpcMessage(this.id, type, schemaOrBody, data, this.routeType);
+                return createRpcMessage(this.id, type, data, this.routeType, schemaOrBody);
             }
         }
     }
@@ -98,12 +98,15 @@ export class RpcMessageBuilder {
     error(error: Error | string): void {
         const extracted = rpcEncodeError(error);
 
-        this.writer.write(this.messageFactory(RpcTypes.Error, rpcError, extracted));
+        this.writer.write(this.messageFactory(RpcTypes.Error, typeOf<rpcError>(), extracted));
     }
 
-    reply<T>(type: number, schemaOrBody?: ClassSchema<T> | Uint8Array, body?: T): void {
+    reply<T>(type: number, body?: T, receiveType?: ReceiveType<T>): void {
+        this.writer.write(this.messageFactory(type, receiveType, body));
+    }
 
-        this.writer.write(this.messageFactory(type, schemaOrBody, body));
+    replyBinary<T>(type: number, body?: Uint8Array): void {
+        this.writer.write(this.messageFactory(type, body));
     }
 
     composite(type: number): RpcCompositeMessage {
@@ -263,14 +266,14 @@ export abstract class RpcKernelBaseConnection {
 
     public sendMessage<T>(
         type: number,
-        schema?: ClassSchema<T>,
-        body?: T
+        body?: T,
+        receiveType?: ReceiveType<T>,
     ): RpcMessageSubject {
         const id = this.messageId++;
-        const continuation = <T>(type: number, schema?: ClassSchema<T>, body?: T) => {
+        const continuation = <T>(type: number, body?: T, receiveType?: ReceiveType<T>) => {
             //send a message with the same id. Don't use sendMessage() again as this would lead to a memory leak
             // and a new id generated. We want to use the same id.
-            const message = createRpcMessage(id, type, schema, body, RpcMessageRouteType.server);
+            const message = createRpcMessage(id, type, body, RpcMessageRouteType.server, receiveType);
             this.writer.write(message);
         };
 
@@ -280,7 +283,7 @@ export abstract class RpcKernelBaseConnection {
 
         this.replies.set(id, (v: RpcMessage) => subject.next(v));
 
-        const message = createRpcMessage(id, type, schema, body, RpcMessageRouteType.server);
+        const message = createRpcMessage(id, type, body, RpcMessageRouteType.server, receiveType);
         this.writer.write(message);
 
         return subject;
@@ -347,7 +350,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
             if (message.routeType === RpcMessageRouteType.client) {
                 switch (message.type) {
                     case RpcTypes.ClientId:
-                        return response.reply(RpcTypes.ClientIdResponse, rpcClientId, { id: this.id });
+                        return response.reply<rpcClientId>(RpcTypes.ClientIdResponse, { id: this.id });
                     case RpcTypes.PeerRegister:
                         return await this.registerAsPeer(message, response);
                     case RpcTypes.PeerDeregister:
@@ -365,17 +368,17 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
                 default:
                     return await this.actionHandler.handle(message, response);
             }
-        } catch (error) {
+        } catch (error: any) {
             response.error(error);
         }
     }
 
     protected async authenticate(message: RpcMessage, response: RpcMessageBuilder) {
-        const body = message.parseBody(rpcAuthenticate);
+        const body = message.parseBody<rpcAuthenticate>();
         try {
             const session = await this.security.authenticate(body.token);
             this.sessionState.setSession(session);
-            response.reply(RpcTypes.AuthenticateResponse, rpcResponseAuthenticate, { username: session.username });
+            response.reply<rpcResponseAuthenticate>(RpcTypes.AuthenticateResponse, { username: session.username });
         } catch (error) {
             if (error instanceof AuthenticationError) throw new Error(error.message);
             this.logger.error('authenticate failed', error);
@@ -384,7 +387,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
     }
 
     protected async deregisterAsPeer(message: RpcMessage, response: RpcMessageBuilder) {
-        const body = message.parseBody(rpcPeerRegister);
+        const body = message.parseBody<rpcPeerRegister>();
 
         try {
             if (body.id !== this.myPeerId) {
@@ -400,7 +403,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
     }
 
     protected async registerAsPeer(message: RpcMessage, response: RpcMessageBuilder) {
-        const body = message.parseBody(rpcPeerRegister);
+        const body = message.parseBody<rpcPeerRegister>();
 
         try {
             if (await this.peerExchange.isRegistered(body.id)) {
@@ -453,7 +456,7 @@ export class RpcKernel {
                 SessionState,
 
                 //will be provided when scope is created
-                {provide: RpcKernelConnection, scope: 'rpc', useValue: undefined},
+                { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
             ]);
             this.autoInjector = true;
         }

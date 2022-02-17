@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { BaseQuery, Formatter, getInstanceStateFromItem, getNormalizedPrimaryKey } from '../index';
 import { getReference } from '../src/reference';
 import { PrimaryKey, Reference, ReflectionClass, serializer } from '@deepkit/type';

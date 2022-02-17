@@ -1,5 +1,4 @@
 #!/usr/bin/env ts-node
-import 'reflect-metadata';
 import {
     Application,
     eventDispatcher,

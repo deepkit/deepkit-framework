@@ -1,7 +1,8 @@
-import { ParentLessType, ReflectionKind, ReflectionOp, Type } from '../src/reflection/type';
+import { ParentLessType, ReflectionKind, Type } from '../src/reflection/type';
 import { Processor, RuntimeStackEntry } from '../src/reflection/processor';
 import { expect } from '@jest/globals';
 import { visit } from '../src/reflection/reflection';
+import { ReflectionOp } from '@deepkit/type-spec';
 import { isArray, isObject } from '@deepkit/core';
 
 export function assertValidParent(a: Type): void {

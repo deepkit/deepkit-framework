@@ -49,6 +49,7 @@
     "fast-glob": "^3.2.4",
     "fp-ts": "^2.8.2",
     "io-ts": "^2.2.10",
+    "memoizee": "^0.4.15",
     "mikro-orm": "^4.1.0",
     "mongoose": "5.11.11",
     "node-fetch": "^2.6.1",

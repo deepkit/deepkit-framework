@@ -84,10 +84,14 @@ export class ValidatorError {
 
 export class ValidationError extends CustomError {
     constructor(
-        public readonly type: Type,
         public readonly errors: ValidationFailedItem[],
+        public readonly type?: Type,
     ) {
-        super(`Validation error for type ${stringifyType(type)}:\n${errors.map(v => v.toString()).join(',\n')}`);
+        super(`Validation error${type ? ` for type ${stringifyType(type)}` : ''}:\n${errors.map(v => v.toString()).join(',\n')}`);
+    }
+
+    static from(errors: { path: string, message: string, code?: string }[]) {
+        return new ValidationError(errors.map(v => new ValidationFailedItem(v.path, v.code || '', v.message)));
     }
 }
 
@@ -102,7 +106,6 @@ export function validate<T>(data: any, type?: ReceiveType<T>): ValidationFailedI
     return errors;
 }
 
-
 /**
  * Returns empty array when valid, or ValidationFailedItem[] with detailed error messages if not valid.
  *
@@ -111,6 +114,6 @@ export function validate<T>(data: any, type?: ReceiveType<T>): ValidationFailedI
 export function validates<T>(data: any, type?: ReceiveType<T>): void {
     const errors = validate(data, type);
     if (errors.length) {
-        throw new ValidationError(resolveReceiveType(type), errors);
+        throw new ValidationError(errors, resolveReceiveType(type));
     }
 }

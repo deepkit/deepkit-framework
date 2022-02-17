@@ -1,13 +1,11 @@
 import { afterAll, expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { Entity, f } from '@deepkit/type';
 import { appModuleForControllers, closeAllCreatedServers, createServerClientPair } from './util';
-import { createModule } from '@deepkit/framework';
+import { createModule, DeepkitRpcSecurity } from '@deepkit/framework';
 import { Observable } from 'rxjs';
 import { sleep } from '@deepkit/core';
-import { rpc, RpcKernelSecurity,  } from '@deepkit/rpc';
+import { rpc, RpcKernelSecurity, } from '@deepkit/rpc';
 import { fail } from 'assert';
-import { DeepkitRpcSecurity } from '@deepkit/framework';
 import ws from 'ws';
 
 // @ts-ignore

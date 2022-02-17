@@ -33,8 +33,7 @@
     "@deepkit/event": "^1.0.1-alpha.58",
     "@deepkit/injector": "^1.0.1-alpha.58",
     "@deepkit/stopwatch": "^1.0.1-alpha.58",
-    "@deepkit/type": "^1.0.1-alpha.58",
-    "reflect-metadata": "^0.1.13"
+    "@deepkit/type": "^1.0.1-alpha.58"
   },
   "jest": {
     "transform": {

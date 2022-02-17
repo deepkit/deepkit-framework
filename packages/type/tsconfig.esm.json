@@ -7,6 +7,9 @@
   "references": [
     {
       "path": "../core/tsconfig.esm.json"
+    },
+    {
+      "path": "../type-spec/tsconfig.esm.json"
     }
   ]
 }

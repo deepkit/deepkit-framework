@@ -1,8 +1,8 @@
 import { expect, test } from '@jest/globals';
-import { AutoIncrement, Entity, float32, int16, int32, int8, integer, MySQL, PrimaryKey, Reference, typeOf, uint16, uint32, uint8, Unique } from '@deepkit/type';
+import { AutoIncrement, Entity, float32, int16, int32, int8, integer, MySQL, PrimaryKey, Reference, typeOf, uint16, uint32, uint8, Unique, UUID } from '@deepkit/type';
 import { schemaMigrationRoundTrip } from '@deepkit/sql';
 import { MySQLDatabaseAdapter } from '../src/mysql-adapter';
-import { DatabaseEntityRegistry } from '@deepkit/orm/dist/cjs/src/database-adapter';
+import { DatabaseEntityRegistry } from '@deepkit/orm';
 
 test('mysql custom type', async () => {
     class post {
@@ -14,10 +14,26 @@ test('mysql custom type', async () => {
     const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW });
     const [postTable] = adapter.platform.createTables(DatabaseEntityRegistry.from([post]));
 
+    expect(postTable.getColumn('id').isNotNull).toBe(true);
+
     expect(postTable.getColumn('slug').type).toBe('varchar');
     expect(postTable.getColumn('slug').size).toBe(255);
 
     await schemaMigrationRoundTrip([post], adapter);
+    adapter.disconnect();
+});
+
+test('uuid required', async () => {
+    class post {
+        id: UUID & PrimaryKey = '';
+    }
+
+    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW });
+    const [postTable] = adapter.platform.createTables(DatabaseEntityRegistry.from([post]));
+
+    expect(postTable.getColumn('id').isNotNull).toBe(true);
+
+    adapter.disconnect();
 });
 
 test('mysql default expression', async () => {

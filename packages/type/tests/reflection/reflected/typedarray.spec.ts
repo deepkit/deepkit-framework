@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { Buffer } from 'buffer';
 import { ReflectionClass } from '../../../src/reflection/reflection';
 import { assertType, binaryTypes, ReflectionKind } from '../../../src/reflection/type';

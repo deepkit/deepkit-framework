@@ -9,7 +9,7 @@
  */
 
 export { ObjectId } from './src/model';
-export { deserializeWithoutOptimiser } from './src/bson-parser';
+export { deserializeBSONWithoutOptimiser } from './src/bson-parser';
 export { getBSONDeserializer, deserializeBSON, BSONDeserializer, } from './src/bson-deserializer';
 export {
     BSONSerializer, getBSONSizer, getBSONSerializer, bsonBinarySerializer, serializeBSON, serializeWithoutOptimiser, Writer, BSONBinarySerializer, ValueWithBSONSerializer
