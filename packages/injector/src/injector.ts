@@ -657,6 +657,7 @@ export class Injector implements InjectorInterface {
         }
 
         if (!foundPreparedProvider && options.optional) return 'undefined';
+        const fromScope = getScope(fromProvider);
 
         if (!foundPreparedProvider) {
             if (argPosition >= 0) {
@@ -669,7 +670,7 @@ export class Injector implements InjectorInterface {
             const type = stringifyShortResolvedType(options.type).replace(/\n/g, '').replace(/\s\s+/g, ' ').replace(' & InjectMeta', '');
             if (options.optional) return 'undefined';
             throw new DependenciesUnmetError(
-                `Undefined dependency "${options.name}: ${type}" of ${of}. Type ${type} has no provider.`
+                `Undefined dependency "${options.name}: ${type}" of ${of}. Type ${type} has no provider in ${fromScope ? 'scope ' + fromScope : 'no scope'}.`
             );
 
             // throw new DependenciesUnmetError(
@@ -679,7 +680,6 @@ export class Injector implements InjectorInterface {
 
         const tokenVar = compiler.reserveVariable('token', foundPreparedProvider.token);
         const allPossibleScopes = foundPreparedProvider.provider.providers.map(getScope);
-        const fromScope = getScope(fromProvider);
         const unscoped = allPossibleScopes.includes('') && allPossibleScopes.length === 1;
 
         if (!unscoped && !allPossibleScopes.includes(fromScope)) {
