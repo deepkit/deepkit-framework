@@ -125,7 +125,9 @@ export class DatabaseEntityRegistry {
         }
 
         type = type instanceof ReflectionClass ? type.type : type;
-        if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) throw new Error(`Only TypeClass|TypeObjectLiteral expected`);
+        if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) {
+            throw new Error(`Only TypeClass|TypeObjectLiteral expected, but got kind ${type.kind}`);
+        }
 
         for (const entity of this.entities) {
             if (entity.type === type) return entity;
