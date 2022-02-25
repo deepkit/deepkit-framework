@@ -724,3 +724,26 @@ test('class with union literal', () => {
     expect(cast<ConnectionOptions>({ readConcernLevel: 'linearizable' })).toEqual({ readConcernLevel: 'linearizable' });
     expect(cast<ConnectionOptions>({ readConcernLevel: 'unknown' })).toEqual({ readConcernLevel: 'majority' });
 });
+
+test('named tuple in error message', () => {
+    expect(cast<[age: number]>([23])).toEqual([23]);
+    expect(() => cast<{ v: [age: number] }>({ v: ['123abc'] })).toThrow('v.age: Cannot convert 123abc to number');
+});
+
+test('intersected mapped type key', () => {
+    type SORT_ORDER = 'asc' | 'desc' | any;
+    type Sort<T, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
+
+    interface A {
+        username: string;
+        id: number;
+    }
+    type sortA = Sort<A>;
+
+    expect(cast<sortA>({username: 'asc'})).toEqual({username: 'asc'});
+    expect(cast<sortA>({id: 'desc', username: 'asc'})).toEqual({id: 'desc', username: 'asc'});
+
+    type sortAny = Sort<any>;
+    expect(cast<sortAny>({username: 'asc'})).toEqual({username: 'asc'});
+    expect(cast<sortAny>({id: 'desc', username: 'asc'})).toEqual({id: 'desc', username: 'asc'});
+});

@@ -61,7 +61,7 @@ export function genericEqual(a: any, b: any): boolean {
 
 function createJITChangeDetectorForSnapshot(schema: ReflectionClass<any>, stateIn?: TemplateState): (lastSnapshot: any, currentSnapshot: any) => ItemChanges<any> {
     const compiler = new CompilerContext();
-    const state = new TemplateState('', '', compiler, new TemplateRegistry(), undefined, stateIn ? stateIn.jitStack : undefined);
+    const state = new TemplateState('', '', compiler, stateIn ? stateIn.registry : new TemplateRegistry(), undefined, stateIn ? stateIn.jitStack : undefined);
     state.setContext({
         genericEqual, empty
     });
@@ -150,7 +150,9 @@ function createJITChangeDetectorForSnapshot(schema: ReflectionClass<any>, stateI
                 `;
             }
 
-            const jitChangeDetectorThis = compiler.reserveVariable('jitChangeDetector', state.jitStack.getOrCreate(type, () => createJITChangeDetectorForSnapshot(classSchema, state)));
+            const jitChangeDetectorThis = compiler.reserveVariable('jitChangeDetector', state.jitStack.getOrCreate(state.registry, type, () => {
+                return createJITChangeDetectorForSnapshot(classSchema, state);
+            }));
 
             return `
                 if (!${has(changedName)}) {

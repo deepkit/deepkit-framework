@@ -242,16 +242,22 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
     return false;
 }
 
+export function parametersToTuple(parameters: TypeParameter[]): TypeTuple {
+    const tuple = {
+        kind: ReflectionKind.tuple,
+        types: []
+    } as TypeTuple;
+
+    for (const v of parameters) {
+        tuple.types.push({ kind: ReflectionKind.tupleMember, parent: tuple, name: v.name, optional: v.optional, type: v.type });
+    }
+    return tuple;
+}
+
 function isFunctionParameterExtendable(left: { parameters: TypeParameter[] }, right: { parameters: TypeParameter[] }): boolean {
     //convert parameters to tuple and just compare that, as it's the same algorithm
-    const leftTuple: TypeTuple = {
-        kind: ReflectionKind.tuple,
-        types: left.parameters.map(v => ({ kind: ReflectionKind.tupleMember, parent: Object as any, name: v.name, optional: v.optional, type: v.type }))
-    };
-    const rightTuple: TypeTuple = {
-        kind: ReflectionKind.tuple,
-        types: right.parameters.map(v => ({ kind: ReflectionKind.tupleMember, parent: Object as any, name: v.name, optional: v.optional, type: v.type }))
-    };
+    const leftTuple: TypeTuple = parametersToTuple(left.parameters);
+    const rightTuple: TypeTuple = parametersToTuple(right.parameters);
 
     //we have to change the position here since its type assignability is inversed to tuples rules
     // true for tuple:     [a: string] extends [a: string, b: string]

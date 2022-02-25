@@ -81,3 +81,12 @@ export type JSONEntity<T> = { [name in keyof T]: JSONSingle<T[name]> };
 //
 // export type PlainOrFullEntityFromClassTypeOrSchema<T> = { [name: string]: any } | JSONPartial<ExtractClassType<T>> | ExtractClassType<T>;
 
+export function regExpFromString(v: string): RegExp {
+    if (v[0] === '/') {
+        const end = v.lastIndexOf('/');
+        const regexp = v.slice(1, end);
+        const modifiers = v.slice(1 + end);
+        return new RegExp(regexp, modifiers);
+    }
+    return new RegExp(v);
+}

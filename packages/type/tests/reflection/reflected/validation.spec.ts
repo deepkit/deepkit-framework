@@ -116,3 +116,8 @@ test('class with union literal', () => {
     expect(validate<ConnectionOptions>({ readConcernLevel: 'majority' })).toEqual([]);
     expect(validate<ConnectionOptions>({ readConcernLevel: 'invalid' })).toEqual([{code: 'type', message: 'Invalid type', path: 'readConcernLevel'}]);
 });
+
+test('named tuple', () => {
+    expect(validate<[name: string]>(['asd'])).toEqual([]);
+    expect(validate<[name: string]>([23])).toEqual([{code: 'type', message: 'Not a string', path: 'name'}]);
+});

@@ -311,6 +311,10 @@ export class Processor {
             throw new Error('No valid runtime type given. Is @deepkit/type-compiler correctly installed? Execute deepkit-type-install to check');
         }
 
+        for (let i = 0; i < inputs.length; i++) {
+            if (isClass(inputs[i])) inputs[i] = resolveRuntimeType(inputs[i]);
+        }
+
         // //this checks if there is an active program still running for given packed. if so, issue a new reference.
         // //this reference is changed (its content only via Object.assign(reference, computedValues)) once the program finished.
         // //this is independent of reuseCache since it's the cache for the current 'run', not a global cache
@@ -993,7 +997,7 @@ export class Processor {
                             const inputs: OuterType[] = [];
                             for (let i = 0; i < argumentSize; i++) {
                                 let input = this.pop() as OuterType;
-                                if (input.kind === ReflectionKind.never && program.inputs[i]) input = program.inputs[i] as OuterType;
+                                if ((input.kind === ReflectionKind.never || input.kind === ReflectionKind.unknown) && program.inputs[i]) input = program.inputs[i] as OuterType;
                                 inputs.unshift(input);
                             }
                             const pOrFn = program.stack[pPosition] as number | Packed | (() => Packed);
@@ -1237,16 +1241,18 @@ export class Processor {
 
     private handleKeyOf() {
         const type = this.pop() as Type;
-        const union = { kind: ReflectionKind.union, types: [] } as TypeUnion;
-        this.push(union);
         if (type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.class) {
+            const union = { kind: ReflectionKind.union, types: [] } as TypeUnion;
             for (const member of type.types) {
                 if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
-                    union.types.push({ kind: ReflectionKind.literal, literal: member.name } as TypeLiteral);
+                    union.types.push({ kind: ReflectionKind.literal, literal: member.name, parent: union } as TypeLiteral);
                 } else if (member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method) {
-                    union.types.push({ kind: ReflectionKind.literal, literal: member.name } as TypeLiteral);
+                    union.types.push({ kind: ReflectionKind.literal, literal: member.name, parent: union } as TypeLiteral);
                 }
             }
+            this.push(union);
+        } else if (type.kind === ReflectionKind.any) {
+            this.push({ kind: ReflectionKind.string });
         }
     }
 
@@ -1258,7 +1264,7 @@ export class Processor {
             const type = this.pop() as Type;
             let index: Type | string | boolean | symbol | number | bigint = program.stack[program.frame.startIndex + 1] as Type;
 
-            if (index.kind === ReflectionKind.string || index.kind === ReflectionKind.number || index.kind === ReflectionKind.symbol) {
+            if (index.kind === ReflectionKind.any || index.kind === ReflectionKind.string || index.kind === ReflectionKind.number || index.kind === ReflectionKind.symbol) {
                 this.push({ kind: ReflectionKind.indexSignature, type, index });
             } else {
                 if (index.kind === ReflectionKind.literal && !(index.literal instanceof RegExp)) {

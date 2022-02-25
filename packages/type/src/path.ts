@@ -23,7 +23,7 @@ function pathResolverCode(type: Type, compilerContext: CompilerContext, jitStack
     } else if (type.kind === ReflectionKind.union) {
         //todo: which type will be picked? return union?
     } else if (type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral) {
-        const jit = compilerContext.reserveVariable('jit', jitStack.getOrCreate(type, () => pathResolver(type, jitStack)));
+        const jit = compilerContext.reserveVariable('jit', jitStack.getOrCreate(undefined, type, () => pathResolver(type, jitStack)));
         return `return ${jit}.fn(path);`;
     }
 

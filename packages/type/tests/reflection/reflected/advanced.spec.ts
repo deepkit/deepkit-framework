@@ -11,6 +11,7 @@
 import { expect, test } from '@jest/globals';
 import { typeOf } from '../../../src/reflection/reflection';
 import { assertType, ReflectionKind, stringifyResolvedType, Type } from '../../../src/reflection/type';
+import { serialize } from '../../../src/serializer-facade';
 import { expectEqualType } from '../../utils';
 
 test('array stack', () => {
@@ -30,29 +31,109 @@ test('StringToNum', () => {
 });
 
 test('circular generic 1', () => {
+    type QuerySelector<T> = {
+        // Comparison
+        $eq?: T;
+        $gt?: T;
+        $gte?: T;
+        $in?: T[];
+        $lt?: T;
+        $lte?: T;
+        $ne?: T;
+        $nin?: T[];
+        // Logical
+        $not?: T extends string ? (QuerySelector<T> | RegExp) : QuerySelector<T>;
+        $regex?: T extends string ? (RegExp | string) : never;
+
+        //special deepkit/type type
+        $parameter?: string;
+    };
+
+    type RootQuerySelector<T> = {
+        $and?: Array<FilterQuery<T>>;
+        $nor?: Array<FilterQuery<T>>;
+        $or?: Array<FilterQuery<T>>;
+    };
+
     type RegExpForString<T> = T extends string ? (RegExp | T) : T;
     type MongoAltQuery<T> = T extends Array<infer U> ? (T | RegExpForString<U>) : RegExpForString<T>;
-
-    type QuerySelector<T> = {
-        $eq?: T;
-        $not?: QuerySelector<T>;
-    }
-    // type Condition<T> = QuerySelector<T>;
+    type Condition<T> = MongoAltQuery<T> | QuerySelector<MongoAltQuery<T>>;
 
     type FilterQuery<T> = {
-        [P in keyof T]?: QuerySelector<T[P]>;
-    };
+        [P in keyof T & string]?: Condition<T[P]>;
+    } &
+        RootQuerySelector<T>;
 
     interface Product {
         id: number;
         title: string;
     }
 
-    type t = QuerySelector<Product>;
+    type t = FilterQuery<Product>;
     const type = typeOf<t>();
+
+    expect(serialize<t>({id: 5})).toEqual({id: 5});
+    expect(serialize<t>({id: {$lt: 5}})).toEqual({id: {$lt: 5}});
 });
 
-test('circular generic 2', () => {
+test('circular generic 1', () => {
+    type QuerySelector<T> = {
+        // Comparison
+        $eq?: T;
+        $gt?: T;
+        $gte?: T;
+        $in?: T[];
+        $lt?: T;
+        $lte?: T;
+        $ne?: T;
+        $nin?: T[];
+        // Logical
+        $not?: T extends string ? (QuerySelector<T> | RegExp) : QuerySelector<T>;
+        $regex?: T extends string ? (RegExp | string) : never;
+
+        //special deepkit/type type
+        $parameter?: string;
+    };
+
+    type RootQuerySelector<T> = {
+        $and?: Array<FilterQuery<T>>;
+        $nor?: Array<FilterQuery<T>>;
+        $or?: Array<FilterQuery<T>>;
+        // we could not find a proper TypeScript generic to support nested queries e.g. 'user.friends.name'
+        // this will mark all unrecognized properties as any (including nested queries)
+        [key: string]: any;
+    };
+
+    type RegExpForString<T> = T extends string ? (RegExp | T) : T;
+    type MongoAltQuery<T> = T extends Array<infer U> ? (T | RegExpForString<U>) : RegExpForString<T>;
+    type Condition<T> = MongoAltQuery<T> | QuerySelector<MongoAltQuery<T>>;
+
+    type FilterQuery<T> = {
+        [P in keyof T & string]?: Condition<T[P]>;
+    } &
+        RootQuerySelector<T>;
+
+    interface Product {
+        id: number;
+        title: string;
+    }
+
+    type t = FilterQuery<Product>;
+    const type = typeOf<t>();
+
+    expect(serialize<t>({id: 5})).toEqual({id: 5});
+    expect(serialize<t>({id: {$lt: 5}})).toEqual({id: {$lt: 5}});
+
+    type t2 = FilterQuery<any>;
+    const type2 = typeOf<t2>();
+
+    expect(serialize<t2>({id: 5})).toEqual({id: 5});
+    expect(serialize<t2>({id: {$lt: 5}})).toEqual({id: {$lt: 5}});
+
+    console.log('type2', type2);
+});
+
+test('circular generic 3', () => {
     //this tests if FilterQuery<> is correctly instantiated in a circular type
     interface Product {
         id: number;

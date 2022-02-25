@@ -264,41 +264,49 @@ export function collapsePath(path: (string | RuntimeCode)[], prefix?: string): s
     return path.filter(v => !!v).map(v => v instanceof RuntimeCode ? v.code : JSON.stringify(v)).join(`+'.'+`) || `''`;
 }
 
+/**
+ * internal: The jit stack cache is used in both serializer and guards, so its cache key needs to be aware of it
+ */
 export class JitStack {
-    protected stack?: Map<Type, { fn: Function | undefined }>;
+    protected stacks: {registry?: TemplateRegistry, map: Map<Type, { fn: Function | undefined }>}[] = [];
 
-    getStack() {
-        if (!this.stack) this.stack = new Map<Type, { fn: Function | undefined }>();
-        return this.stack;
+    getStack(registry?: TemplateRegistry) {
+        for (const stack of this.stacks) {
+            if (stack.registry === registry) return stack.map;
+        }
+        const map = new Map<Type, { fn: Function | undefined }>();
+        this.stacks.push({registry, map});
+        return map;
     }
 
-    has(type: Type): boolean {
-        return this.getStack().has(type);
+    has(registry: TemplateRegistry, type: Type): boolean {
+        return this.getStack(registry).has(type);
     }
 
-    get(type: Type) {
-        return this.getStack().get(type);
+    get(registry: TemplateRegistry, type: Type) {
+        return this.getStack(registry).get(type);
     }
 
-    prepare(type: Type): (fn: Function) => { fn: Function | undefined } {
-        if (this.getStack().has(type)) {
+    prepare(registry: TemplateRegistry, type: Type): (fn: Function) => { fn: Function | undefined } {
+        if (this.getStack(registry).has(type)) {
             throw new Error('Circular jit building detected: ' + stringifyType(type));
         }
 
         const entry: { fn: Function | undefined } = { fn: undefined };
-        this.getStack().set(type, entry);
+        this.getStack(registry).set(type, entry);
         return (fn: Function) => {
             entry.fn = fn;
             return entry;
         };
     }
 
-    getOrCreate(type: Type, create: () => Function): { fn: Function | undefined } {
-        const stack = this.getStack();
-        if (stack.has(type)) return stack.get(type)!;
+    getOrCreate(registry: TemplateRegistry | undefined, type: Type, create: () => Function): { fn: Function | undefined } {
+        const stack = this.getStack(registry);
+        const existing = stack.get(type);
+        if (existing) return existing;
 
         const entry: { fn: Function | undefined } = { fn: undefined };
-        this.getStack().set(type, entry);
+        stack.set(type, entry);
         entry.fn = create();
         return entry;
     }
@@ -365,11 +373,6 @@ export class TemplateState {
         state.target = this.target;
         state.handledAnnotations = this.handledAnnotations.slice();
         return state;
-    }
-
-    clearJit() {
-        this.jitStack = new JitStack();
-        return this;
     }
 
     fullFork() {
@@ -628,7 +631,7 @@ export class TemplateRegistry {
  * if this returns true, code is put into state to call an already existing function.
  */
 export function callExtractedFunctionIfAvailable(state: TemplateState, type: Type): boolean {
-    const jit = state.jitStack.get(type);
+    const jit = state.jitStack.get(state.registry, type);
     if (!jit) return false;
     state.addCode(`
     //call jit for ${state.setter}
@@ -638,7 +641,7 @@ export function callExtractedFunctionIfAvailable(state: TemplateState, type: Typ
 }
 
 export function extractStateToFunctionAndCallIt(state: TemplateState, type: Type) {
-    const prepare = state.jitStack.prepare(type);
+    const prepare = state.jitStack.prepare(state.registry, type);
     callExtractedFunctionIfAvailable(state, type);
     return { setFunction: prepare, state: state.fork('result', 'data', [new RuntimeCode('_path')]) };
 }
@@ -933,7 +936,7 @@ export function getIndexCheck(state: TemplateState, i: string, type: Type): stri
     if (type.kind === ReflectionKind.number) {
         state.setContext({ isNumeric: isNumeric });
         return `isNumeric(${i})`;
-    } else if (type.kind === ReflectionKind.string) {
+    } else if (type.kind === ReflectionKind.string || type.kind === ReflectionKind.any) {
         return `'string' === typeof ${i}`;
     } else if (type.kind === ReflectionKind.symbol) {
         return `'symbol' === typeof ${i}`;
@@ -1212,7 +1215,11 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 ? hasEmbedded(member.type) : undefined;
 
             if (isEmbedded && (member.kind === ReflectionKind.property || member.kind === ReflectionKind.propertySignature)) {
-                lines.push(executeTemplates(propertyState, member.type));
+
+                const template = executeTemplates(propertyState, member.type);
+                if (!template) throw new Error(`No template found for ${member.type.kind}`);
+
+                lines.push(template);
             } else {
                 const optionalCheck = member.optional ? `&& ${propertyAccessor} !== undefined` : '';
                 existing.push(name);
@@ -1235,21 +1242,7 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         const existingCheck = existing.map(v => `${i} === ${v}`).join(' || ') || 'false';
         const signatureLines: string[] = [];
 
-        function isLiteralType(t: TypeIndexSignature): boolean {
-            return t.index.kind === ReflectionKind.literal || (t.index.kind === ReflectionKind.union && t.index.types.some(v => v.kind === ReflectionKind.literal));
-        }
-
-        function isNumberType(t: TypeIndexSignature): boolean {
-            return t.index.kind === ReflectionKind.number || (t.index.kind === ReflectionKind.union && t.index.types.some(v => v.kind === ReflectionKind.number));
-        }
-
-        //sort, so the order is literal, number, string, symbol.  literal comes first as its the most specific type.
-        //we need to do that for numbers since all keys are string|symbol in runtime, and we need to check if a string is numeric first before falling back to string.
-        signatures.sort((a, b) => {
-            if (isLiteralType(a)) return -1;
-            if (isNumberType(a) && !isLiteralType(b)) return -1;
-            return +1;
-        });
+        sortSignatures(signatures);
 
         for (const signature of signatures) {
             signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)}) {
@@ -1370,7 +1363,7 @@ function serializeTuple(type: TypeTuple, state: TemplateState) {
             lines.push(`
             for (; ${i} < ${state.accessor}.length - ${restEndOffset}; ${i}++) {
                 ${_} = undefined;
-                ${executeTemplates(state.fork(_, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), member.type.type)}
+                ${executeTemplates(state.fork(_, new ContainerAccessor(state.accessor, i)).extendPath(member.name || new RuntimeCode(i)), member.type.type)}
                 if (${_} !== undefined) {
                     ${state.setter}.push(${_});
                 } else if (${member.optional || isOptional(member.type)}) {
@@ -1381,7 +1374,7 @@ function serializeTuple(type: TypeTuple, state: TemplateState) {
         } else {
             lines.push(`
             ${_} = undefined;
-            ${executeTemplates(state.fork(_, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), member.type)}
+            ${executeTemplates(state.fork(_, new ContainerAccessor(state.accessor, i)).extendPath(member.name || new RuntimeCode(i)), member.type)}
             if (${_} !== undefined) {
                 ${state.setter}.push(${_});
             } else if (${member.optional || isOptional(member.type)}) {
@@ -1421,7 +1414,7 @@ function typeGuardTuple(type: TypeTuple, state: TemplateState) {
         if (member.type.kind === ReflectionKind.rest) {
             lines.push(`
             for (; ${v} && ${i} < ${state.accessor}.length - ${restEndOffset}; ${i}++) {
-                ${executeTemplates(state.fork(v, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), member.type.type)}
+                ${executeTemplates(state.fork(v, new ContainerAccessor(state.accessor, i)).extendPath(member.name || new RuntimeCode(i)), member.type.type)}
                 if (!${v}) {
                     break;
                 }
@@ -1430,7 +1423,7 @@ function typeGuardTuple(type: TypeTuple, state: TemplateState) {
         } else {
             lines.push(`
             if (${v}) {
-                ${executeTemplates(state.fork(v, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), member.type)}
+                ${executeTemplates(state.fork(v, new ContainerAccessor(state.accessor, i)).extendPath(member.name || new RuntimeCode(i)), member.type)}
                 ${i}++;
             }
             `);
@@ -1588,7 +1581,7 @@ export function handleUnion(type: TypeUnion, state: TemplateState) {
         if (state.target === 'serialize' && specificality < 1) continue;
 
         for (const t of type.types) {
-            const fn = createTypeGuardFunction(t, state.fork(undefined, accessor).forRegistry(typeGuard).clearJit());
+            const fn = createTypeGuardFunction(t, state.fork(undefined, accessor).forRegistry(typeGuard));
             if (!fn) continue;
             const guard = state.setVariable('guard' + t.kind, fn);
             const looseCheck = specificality <= 0 ? `state.loosely && ` : '';

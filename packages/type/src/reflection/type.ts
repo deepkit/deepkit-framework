@@ -32,6 +32,7 @@ export const enum ReflectionKind {
     bigint,
     null,
     undefined,
+    regexp,
 
     literal,
     templateLiteral,
@@ -58,7 +59,6 @@ export const enum ReflectionKind {
     enumMember,
 
     rest,
-    regexp,
 
     objectLiteral,
     indexSignature,
@@ -830,7 +830,7 @@ export function unboxUnion(union: TypeUnion): OuterType {
     return union;
 }
 
-function findMember(
+export function findMember(
     index: string | number | symbol | TypeTemplateLiteral, type: { types: Type[] }
 ): TypePropertySignature | TypeMethodSignature | TypeMethod | TypeProperty | TypeIndexSignature | undefined {
     const indexType = typeof index;
@@ -1852,8 +1852,8 @@ export function stringifyResolvedType(type: Type): string {
     return stringifyType(type, { depth: 0, stack: [], showNames: false, showFullDefinition: true });
 }
 
-export function stringifyShortResolvedType(type: Type): string {
-    return stringifyType(type, { depth: 0, stack: [], showNames: false, showFullDefinition: false });
+export function stringifyShortResolvedType(type: Type, stateIn: Partial<StringifyTypeOptions> = {}): string {
+    return stringifyType(type, { depth: 0, stack: [], ...stateIn, showNames: false, showFullDefinition: false,  });
 }
 
 interface StringifyTypeOptions {
@@ -1958,7 +1958,7 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                         heritage = ' extends ' + superClass.name;
                     }
                     if (type.extendsArguments && type.extendsArguments.length) {
-                        heritage += '<' + type.extendsArguments.map(v => stringifyShortResolvedType(v)).join(', ') + '>';
+                        heritage += '<' + type.extendsArguments.map(v => stringifyShortResolvedType(v, state)).join(', ') + '>';
                     }
                 }
                 const className = type.typeName || getClassName(type.classType);

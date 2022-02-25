@@ -13,6 +13,7 @@ import { EntityData, ReceiveType, SerializerFn, TData } from './reflection/refle
 import { ClassType, isArray } from '@deepkit/core';
 import { IndexOptions } from './reflection/type';
 import type { ValidatorFunction } from './validator';
+import { typeSettings } from './core';
 
 class TDecorator {
     t = new TData();
@@ -73,6 +74,7 @@ class EntityDecorator {
 
     onDecorator(target: any) {
         if (undefined === target) return;
+        if (this.t.name) typeSettings.registeredEntities[this.t.name] = target;
         addDeferredDecorator(this.t, target);
     }
 
