@@ -2,12 +2,8 @@ import { expect, test } from '@jest/globals';
 import { RpcKernel, RpcKernelConnection } from '../src/server/kernel';
 import { DirectClient } from '../src/client/client-direct';
 import { rpc } from '../src/decorators';
-import { injectable } from '@deepkit/injector';
-import { t } from '@deepkit/type';
-
 
 test('back controller', async () => {
-    @injectable
     class Controller {
         constructor(protected connection: RpcKernelConnection) {
         }
@@ -18,7 +14,6 @@ test('back controller', async () => {
         }
 
         @rpc.action()
-        @t.string
         async triggerClientCall(): Promise<string> {
             const controller = this.connection.controller<Controller>('myController');
             return await controller.foo('2');

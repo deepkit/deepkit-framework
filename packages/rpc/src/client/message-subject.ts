@@ -108,7 +108,7 @@ export class RpcMessageSubject {
         });
     }
 
-    async firstThenClose<T>(type: number, schema?: ReceiveType<T>): Promise<undefined extends T ? RpcMessage : ExtractClassType<T>> {
+    async firstThenClose<T = undefined>(type: number, schema?: ReceiveType<T>): Promise<T> {
         return asyncOperation<any>((resolve, reject) => {
             this.onReply((next) => {
                 this.onReplyCallback = this.catchOnReplyCallback;

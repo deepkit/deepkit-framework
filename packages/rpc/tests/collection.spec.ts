@@ -1,11 +1,10 @@
-import { entity, plainToClass, t } from '@deepkit/type';
+import { entity } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { DirectClient } from '../src/client/client-direct';
 import { Collection } from '../src/collection';
 import { rpc } from '../src/decorators';
 import { RpcKernel } from '../src/server/kernel';
 import { sleep } from '@deepkit/core';
-
 
 test('collection basic', () => {
     class Item {
@@ -14,7 +13,8 @@ test('collection basic', () => {
         constructor(
             public readonly id: number,
             public readonly name: string,
-        ) { }
+        ) {
+        }
     }
 
     const collection = new Collection(Item);
@@ -57,11 +57,11 @@ test('collection basic', () => {
     expect(collection.empty()).toBe(true);
 });
 
-
 test('collection state', async () => {
     @entity.name('collection/simple/model')
     class MyModel {
-        @t id: number = 0;
+        constructor(public id: number) {
+        }
     }
 
     class Controller {
@@ -70,9 +70,9 @@ test('collection state', async () => {
         @rpc.action()
         fix(): Collection<MyModel> {
             this.collection.set([
-                plainToClass(MyModel, { id: 1 }),
-                plainToClass(MyModel, { id: 2 }),
-                plainToClass(MyModel, { id: 3 }),
+                new MyModel(1),
+                new MyModel(2),
+                new MyModel(3),
             ]);
             this.collection.state.total = 150;
             return this.collection;
@@ -99,8 +99,10 @@ test('collection state', async () => {
         }
 
         @rpc.action()
-        set(@t.array(t.number) id: number[]): void {
-            const items = id.map(v => { return { id: v } });
+        set(id: number[]): void {
+            const items = id.map(v => {
+                return { id: v };
+            });
             this.collection.set(items);
         }
     }
@@ -113,6 +115,7 @@ test('collection state', async () => {
 
     {
         const c = await controller.changedModel();
+        console.log('c', c);
         expect(c.model.itemsPerPage).toBe(30);
         expect(c.model.skip).toBe(30);
         expect(c.model.limit).toBe(5);

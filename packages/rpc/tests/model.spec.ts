@@ -1,15 +1,5 @@
 import { expect, test } from '@jest/globals';
 import { EntitySubject, isEntitySubject } from '../src/model';
-import { Collection, isCollection } from '../src/collection';
-
-
-test('collection', async () => {
-    class User {
-        id!: string;
-    }
-
-    expect(isCollection(new Collection(User))).toBe(true);
-});
 
 test('entitySubject', async () => {
     class User {

@@ -8,14 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { asyncOperation, toFastProperties } from '@deepkit/core';
+import { asyncOperation, ClassType, toFastProperties } from '@deepkit/core';
 import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';
 import { skip } from 'rxjs/operators';
-import { Collection, CollectionQueryModel, CollectionState } from '../collection';
+import { Collection, CollectionQueryModelInterface, CollectionState } from '../collection';
 import {
     ActionObservableTypes,
     IdInterface,
-    rpcAction,
+    rpcActionObservableNext,
     rpcActionObservableSubscribeId,
     rpcActionType,
     rpcResponseActionCollectionRemove,
@@ -23,20 +23,25 @@ import {
     rpcResponseActionObservable,
     rpcResponseActionObservableSubscriptionError,
     rpcResponseActionType,
-    RpcTypes
+    RpcTypes,
+    WrappedV
 } from '../model';
 import { rpcDecodeError, RpcMessage } from '../protocol';
 import { ClientProgress } from '../writer';
 import type { WritableClient } from './client';
 import { EntityState, EntitySubjectStore } from './entity-state';
+import { assertType, deserializeType, ReflectionKind, Type, TypeObjectLiteral, typeOf } from '@deepkit/type';
+
+interface ResponseActionObservableError extends rpcActionObservableSubscribeId, WrappedV {
+}
 
 type ControllerStateActionTypes = {
-    parameters: string[],
-    parameterSchema: ClassSchema,
-    resultSchema: ClassSchema<{ v?: any }>,
-    resultProperty: PropertySchema,
-    observableNextSchema: ClassSchema<{ id: number, v: any }>
-    collectionSchema?: ClassSchema<{ v: any[] }>
+    callSchema: TypeObjectLiteral, //with args, method, and controller as property
+    resultSchema: TypeObjectLiteral, //with v as property
+    observableNextSchema?: Type, //with v as property
+    collectionSchema?: Type, //with v as property
+    collectionQueryModel?: Type,
+    classType?: ClassType, //if method returns an classType, this is set here
 };
 
 type ControllerStateActionState = {
@@ -63,24 +68,16 @@ export class RpcControllerState {
     }
 }
 
-function setReturnType(types: ControllerStateActionTypes, prop: PropertySchemaSerialized) {
-    const resultProperty = PropertySchema.fromJSON(prop);
-    resultProperty.name = 'v';
-    const resultSchema = createClassSchema();
-    resultSchema.registerProperty(resultProperty);
-    types.resultProperty = resultProperty;
-    types.resultSchema = resultSchema;
-
-    types.collectionSchema = createClassSchema();
-    const v = new PropertySchema('v');
-    v.setType('array');
-    v.templateArgs.push(resultProperty);
-    types.collectionSchema.registerProperty(v);
-
-    const observableNextSchema = rpcActionObservableSubscribeId.clone();
-    observableNextSchema.registerProperty(resultProperty);
-    types.observableNextSchema = observableNextSchema;
-}
+// function setReturnType(types: ControllerStateActionTypes, serializedTypes: SerializedTypes) {
+//     const method = deserializeType(serializedTypes);
+//     assertType(method, ReflectionKind.method);
+//
+//     if (method.return.kind === ReflectionKind.class) {
+//         types.classType = method.return.classType;
+//     } else if (method.return.kind === ReflectionKind.promise && method.return.type.kind === ReflectionKind.class) {
+//         types.classType = method.return.type.classType;
+//     }
+// }
 
 export class RpcActionClient {
     public entityState = new EntityState;
@@ -96,11 +93,10 @@ export class RpcActionClient {
                 const types = controller.getState(method)?.types || await this.loadActionTypes(controller, method, options);
                 // console.log('client types', types.parameterSchema.getProperty('args').getResolvedClassSchema().toString(), )
 
-                const argsObject: any = {};
-
-                for (let i = 0; i < args.length; i++) {
-                    argsObject[types.parameters[i]] = args[i];
-                }
+                // const argsObject: any = {};
+                // for (let i = 0; i < args.length; i++) {
+                //     argsObject[types.parameters[i]] = args[i];
+                // }
 
                 let observable: Observable<any> | undefined;
                 let observableSubject: Subject<any> | undefined;
@@ -120,8 +116,8 @@ export class RpcActionClient {
                 const subject = this.client.sendMessage(RpcTypes.Action, {
                     controller: controller.controller,
                     method: method,
-                    args: argsObject
-                }, types.parameterSchema, {
+                    args
+                }, types.callSchema, {
                     peerId: controller.peerId,
                     dontWaitForConnection: options.dontWaitForConnection,
                     timeout: options.timeout,
@@ -129,38 +125,22 @@ export class RpcActionClient {
                     try {
                         // console.log('client: answer', RpcTypes[reply.type], reply.composite);
 
-                        if (reply.type === RpcTypes.ResponseActionResult) {
-                            const bodies = reply.getBodies();
-                            if (bodies.length === 2) {
-                                //we got returnType
-                                if (bodies[0].type !== RpcTypes.ResponseActionReturnType) return reject(new Error('RpcTypes.ResponseActionResult should contain as first body RpcTypes.ResponseActionReturnType'));
-                                setReturnType(types, bodies[0].parseBody(propertyDefinition));
-                                reply = bodies[1];
-                            } else {
-                                reply = bodies[0];
-                            }
-                        }
-
                         switch (reply.type) {
                             case RpcTypes.ResponseEntity: {
-                                resolve(this.entityState.createEntitySubject(types.resultProperty.getResolvedClassSchema(), types.resultSchema, reply));
+                                if (!types.classType) throw new Error('No classType returned by the rpc action');
+                                resolve(this.entityState.createEntitySubject(types.classType, types.resultSchema, reply));
                                 break;
                             }
 
                             case RpcTypes.ResponseActionSimple: {
                                 subject.release();
-                                const result = reply.parseBody(types.resultSchema);
+                                const result = reply.parseBody<WrappedV>(types.resultSchema);
                                 resolve(result.v);
                                 break;
                             }
 
-                            case RpcTypes.ResponseActionReturnType: {
-                                setReturnType(types, reply.parseBody(propertyDefinition));
-                                break;
-                            }
-
                             case RpcTypes.ResponseActionObservableError: {
-                                const body = reply.parseBody(rpcResponseActionObservableSubscriptionError);
+                                const body = reply.parseBody<rpcResponseActionObservableSubscriptionError>();
                                 const error = rpcDecodeError(body);
                                 if (observable) {
                                     if (!subscribers[body.id]) return; //we silently ignore this
@@ -172,7 +152,7 @@ export class RpcActionClient {
                             }
 
                             case RpcTypes.ResponseActionObservableComplete: {
-                                const body = reply.parseBody(rpcActionObservableSubscribeId);
+                                const body = reply.parseBody<rpcActionObservableSubscribeId>();
 
                                 if (observable) {
                                     if (!subscribers[body.id]) return; //we silently ignore this
@@ -184,7 +164,9 @@ export class RpcActionClient {
                             }
 
                             case RpcTypes.ResponseActionObservableNext: {
-                                const body = reply.parseBody(types.observableNextSchema);
+                                if (!types.observableNextSchema) throw new Error('No observableNextSchema set');
+
+                                const body = reply.parseBody<rpcActionObservableNext>(types.observableNextSchema);
 
                                 if (observable) {
                                     if (!subscribers[body.id]) return; //we silently ignore this
@@ -200,7 +182,7 @@ export class RpcActionClient {
                             }
 
                             case RpcTypes.ResponseActionBehaviorSubject: {
-                                const body = reply.parseBody(types.observableNextSchema);
+                                const body = reply.parseBody<WrappedV>(types.observableNextSchema);
                                 observableSubject = new BehaviorSubject(body.v);
                                 resolve(observableSubject);
                                 break;
@@ -208,7 +190,7 @@ export class RpcActionClient {
 
                             case RpcTypes.ResponseActionObservable: {
                                 if (observable) console.error('Already got ActionResponseObservable');
-                                const body = reply.parseBody(rpcResponseActionObservable);
+                                const body = reply.parseBody<rpcResponseActionObservable>();
 
                                 //this observable can be subscribed multiple times now
                                 // each time we need to call the server again, since its not a Subject
@@ -216,12 +198,12 @@ export class RpcActionClient {
                                     observable = new Observable((observer) => {
                                         const id = subscriberId++;
                                         subscribers[id] = observer;
-                                        subject.send(RpcTypes.ActionObservableSubscribe, rpcActionObservableSubscribeId, { id });
+                                        subject.send<rpcActionObservableSubscribeId>(RpcTypes.ActionObservableSubscribe, { id });
 
                                         return {
                                             unsubscribe: () => {
                                                 delete subscribers[id];
-                                                subject.send(RpcTypes.ActionObservableUnsubscribe, rpcActionObservableSubscribeId, { id });
+                                                subject.send<rpcActionObservableSubscribeId>(RpcTypes.ActionObservableUnsubscribe, { id });
                                             }
                                         };
                                     });
@@ -285,16 +267,13 @@ export class RpcActionClient {
                             case RpcTypes.ResponseActionCollection: {
                                 const bodies = reply.getBodies();
 
-                                if (bodies[0].type === RpcTypes.ResponseActionReturnType) {
-                                    setReturnType(types, bodies[0].parseBody(propertyDefinition));
-                                }
-
-                                const classType = types.resultProperty.getResolvedClassType();
-                                collection = new Collection(classType);
-                                collectionEntityStore = this.entityState.getStore(classType);
+                                if (!types.classType) throw new Error('No classType returned by the rpc action');
+                                if (!types.collectionQueryModel) throw new Error('No collectionQueryModel returned by the rpc action');
+                                collection = new Collection(types.classType);
+                                collectionEntityStore = this.entityState.getStore(types.classType);
 
                                 collection.model.change.subscribe(() => {
-                                    subject.send(RpcTypes.ActionCollectionModel, getClassSchema(CollectionQueryModel), collection!.model);
+                                    subject.send(RpcTypes.ActionCollectionModel, collection!.model, types.collectionQueryModel);
                                 });
 
                                 collection.addTeardown(() => {
@@ -334,26 +313,27 @@ export class RpcActionClient {
         for (const next of messages) {
             switch (next.type) {
                 case RpcTypes.ResponseActionCollectionState: {
-                    const state = next.parseBody(getClassSchema(CollectionState));
+                    const state = next.parseBody<CollectionState>();
                     collection.setState(state);
                     break;
                 }
 
                 case RpcTypes.ResponseActionCollectionSort: {
-                    const body = next.parseBody(rpcResponseActionCollectionSort);
+                    const body = next.parseBody<rpcResponseActionCollectionSort>();
                     collection.setSort(body.ids);
                     break;
                 }
 
                 case RpcTypes.ResponseActionCollectionModel: {
-                    collection.model.set(next.parseBody(getClassSchema(CollectionQueryModel)));
+                    if (!types.collectionQueryModel) throw new Error('No collectionQueryModel set');
+                    collection.model.set(next.parseBody(types.collectionQueryModel));
                     break;
                 }
 
                 case RpcTypes.ResponseActionCollectionUpdate:
                 case RpcTypes.ResponseActionCollectionAdd: {
                     if (!types.collectionSchema) continue;
-                    const incomingItems = next.parseBody(types.collectionSchema).v as IdInterface[];
+                    const incomingItems = next.parseBody<WrappedV>(types.collectionSchema).v as IdInterface[];
                     const items: IdInterface[] = [];
 
                     for (const item of incomingItems) {
@@ -386,14 +366,14 @@ export class RpcActionClient {
                 }
 
                 case RpcTypes.ResponseActionCollectionRemove: {
-                    const ids = next.parseBody(rpcResponseActionCollectionRemove).ids;
+                    const ids = next.parseBody<rpcResponseActionCollectionRemove>().ids;
                     collection.remove(ids); //this unsubscribes its EntitySubject as well
                     break;
                 }
 
                 case RpcTypes.ResponseActionCollectionSet: {
                     if (!types.collectionSchema) continue;
-                    const incomingItems = next.parseBody(types.collectionSchema).v as IdInterface[];
+                    const incomingItems = next.parseBody<WrappedV>(types.collectionSchema).v as IdInterface[];
                     const items: IdInterface[] = [];
                     for (const item of incomingItems) {
                         if (!entityStore.isRegistered(item.id)) entityStore.register(item);
@@ -429,47 +409,72 @@ export class RpcActionClient {
 
         state.promise = asyncOperation<ControllerStateActionTypes>(async (resolve, reject) => {
             try {
-                const parsed = await this.client.sendMessage(RpcTypes.ActionType, rpcActionType, {
+                const a = this.client.sendMessage<rpcActionType>(RpcTypes.ActionType, {
                     controller: controller.controller,
                     method: method,
                     disableTypeReuse: typeReuseDisabled
-                }, {
+                }, undefined, {
                     peerId: controller.peerId,
                     dontWaitForConnection: options.dontWaitForConnection,
                     timeout: options.timeout,
-                }).firstThenClose(RpcTypes.ResponseActionType, rpcResponseActionType);
+                });
 
-                const parameters: string[] = [];
-                const argsSchema = createClassSchema();
-                for (const propertyJson of parsed.parameters) {
-                    const property = PropertySchema.fromJSON(propertyJson);
-                    argsSchema.registerProperty(property);
-                    parameters.push(propertyJson.name);
+                const parsed = await a.firstThenClose<rpcResponseActionType>(RpcTypes.ResponseActionType);
+
+                const returnType = deserializeType(parsed.type, { disableReuse: typeReuseDisabled });
+
+                let observableNextSchema: TypeObjectLiteral | undefined;
+                let collectionSchema: Type | undefined;
+                let collectionQueryModel: Type | undefined;
+                let unwrappedReturnType = returnType;
+                if (unwrappedReturnType.kind === ReflectionKind.promise) unwrappedReturnType = unwrappedReturnType.type;
+                const classType: ClassType | undefined = unwrappedReturnType.kind === ReflectionKind.class ? unwrappedReturnType.classType : undefined;
+
+                const parameters: Type = deserializeType(parsed.parameters);
+                assertType(parameters, ReflectionKind.tuple);
+
+                if (parsed.mode === 'observable') {
+                    observableNextSchema = {
+                        kind: ReflectionKind.objectLiteral,
+                        types: [
+                            { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.number } },
+                            { kind: ReflectionKind.propertySignature, name: 'v', type: unwrappedReturnType },
+                        ]
+                    } as TypeObjectLiteral;
+                } else if (parsed.mode === 'entitySubject') {
+                } else if (parsed.mode === 'collection') {
+                    collectionQueryModel = typeOf<CollectionQueryModelInterface<unknown>>([unwrappedReturnType]) as TypeObjectLiteral;
+                    collectionSchema = {
+                        kind: ReflectionKind.objectLiteral,
+                        types: [{
+                            kind: ReflectionKind.propertySignature,
+                            name: 'v',
+                            parent: Object as any,
+                            optional: true,
+                            type: { kind: ReflectionKind.array, type: unwrappedReturnType }
+                        }]
+                    };
                 }
-
-                const resultProperty = PropertySchema.fromJSON(parsed.result, undefined, !typeReuseDisabled);
-                resultProperty.name = 'v';
-                const resultSchema = createClassSchema();
-                resultSchema.registerProperty(resultProperty);
-
-                const observableNextSchema = rpcActionObservableSubscribeId.clone();
-                if (parsed.next) {
-                    observableNextSchema.registerProperty(PropertySchema.fromJSON(parsed.next, undefined, !typeReuseDisabled));
-                }
-
-                const collectionSchema = createClassSchema();
-                const v = new PropertySchema('v');
-                v.setType('array');
-                v.templateArgs.push(resultProperty);
-                collectionSchema.registerProperty(v);
 
                 state.types = {
-                    parameters: parameters,
-                    parameterSchema: rpcAction.extend({ args: argsSchema }),
-                    resultProperty,
-                    resultSchema,
-                    observableNextSchema,
+                    classType,
+                    collectionQueryModel,
                     collectionSchema,
+                    callSchema: {
+                        kind: ReflectionKind.objectLiteral,
+                        types: [
+                            { kind: ReflectionKind.propertySignature, name: 'controller', type: { kind: ReflectionKind.string } },
+                            { kind: ReflectionKind.propertySignature, name: 'method', type: { kind: ReflectionKind.string } },
+                            { kind: ReflectionKind.propertySignature, name: 'args', type: parameters },
+                        ]
+                    } as TypeObjectLiteral,
+                    resultSchema: {
+                        kind: ReflectionKind.objectLiteral,
+                        types: [
+                            { kind: ReflectionKind.propertySignature, name: 'v', type: unwrappedReturnType },
+                        ]
+                    } as TypeObjectLiteral,
+                    observableNextSchema,
                 };
 
                 resolve(state.types);

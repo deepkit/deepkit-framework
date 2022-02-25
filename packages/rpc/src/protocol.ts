@@ -154,6 +154,7 @@ export class RpcMessage {
         if (!this.bodySize) throw new Error('Message has no body');
         if (!this.buffer) throw new Error('No buffer');
         if (this.composite) throw new Error('Composite message can not be read directly');
+        // console.log('parseBody raw', deserializeBSONWithoutOptimiser(this.buffer, this.bodyOffset));
         return getBSONDeserializer<T>(undefined, type)(this.buffer, this.bodyOffset);
     }
 
@@ -293,7 +294,7 @@ export function createRpcCompositeMessageSourceDest<T>(
 
         if (message.schema && message.body) {
             //BSON object contain already their size at the beginning
-            getBSONSerializer(undefined, message.schema)(message.body, {writer});
+            getBSONSerializer(undefined, message.schema)(message.body, { writer });
         }
     }
 
@@ -319,7 +320,11 @@ export function createRpcMessage<T>(
     writer.writeByte(0); //composite=false
     writer.writeByte(type);
 
-    if (schema && body) getBSONSerializer(undefined, schema)(body, {writer});
+    if (schema && body) {
+        const offset = writer.offset;
+        const serializer = getBSONSerializer(undefined, schema);
+        serializer(body, { writer });
+    }
 
     return writer.buffer;
 }
@@ -351,7 +356,8 @@ export function createRpcMessagePeer<T>(
     id: number, type: number,
     source: Uint8Array,
     peerId: string,
-    schema?: OuterType, body?: T,
+    body?: T,
+    schema?: ReceiveType<T>,
 ): Uint8Array {
     const bodySize = schema && body ? getBSONSizer(undefined, schema)(body) : 0;
     //<size> <version> <messageId> <routeType>[routeData] <composite> <type> <body...>
@@ -371,7 +377,7 @@ export function createRpcMessagePeer<T>(
     writer.writeByte(0); //composite=false
     writer.writeByte(type);
 
-    if (schema && body) getBSONSerializer(undefined, schema)(body, {writer});
+    if (schema && body) getBSONSerializer(undefined, schema)(body, { writer });
 
     return writer.buffer;
 }
@@ -401,7 +407,7 @@ export function createRpcMessageSourceDest<T>(
     writer.writeByte(0); //composite=false
     writer.writeByte(type);
 
-    if (schema && body) getBSONSerializer(undefined, schema)(body, {writer});
+    if (schema && body) getBSONSerializer(undefined, schema)(body, { writer });
 
     return writer.buffer;
 }

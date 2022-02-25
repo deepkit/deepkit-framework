@@ -1,5 +1,5 @@
 import { sleep } from '@deepkit/core';
-import { entity, plainToClass, t } from '@deepkit/type';
+import { entity } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
 import { first, take } from 'rxjs/operators';
@@ -10,9 +10,7 @@ import { RpcKernel } from '../src/server/kernel';
 test('observable basics', async () => {
     @entity.name('model')
     class MyModel {
-        constructor(
-            @t public name: string
-        ) {
+        constructor(public name: string) {
         }
     }
 
@@ -130,7 +128,6 @@ test('promise Subject', async () => {
         }
 
         @rpc.action()
-        @t.generic(t.type(Subject).generic(t.string))
         async stringsExplicit(): Promise<Subject<string>> {
             const subject = new Subject<string>();
             (async () => {
@@ -317,21 +314,19 @@ test('observable unsubscribes automatically when connection closes', async () =>
 });
 
 test('observable different next type', async () => {
-
     class WrongModel {
-        @t id: number = 0;
+        id: number = 0;
     }
 
     @entity.name('observable/differentytype')
     class MyModel {
-        @t id: number = 0;
+        id: number = 0;
     }
 
     class Controller {
         protected subject = new BehaviorSubject<MyModel | undefined>(undefined);
 
         @rpc.action()
-        @t.generic(MyModel)
         getSubject(): BehaviorSubject<MyModel | undefined> {
             if (this.subject) this.subject.complete();
             this.subject = new BehaviorSubject<MyModel | undefined>(undefined);
@@ -340,7 +335,7 @@ test('observable different next type', async () => {
 
         @rpc.action()
         triggerCorrect(): void {
-            this.subject.next(plainToClass(MyModel, { id: 2 }));
+            this.subject.next(Object.assign(new MyModel, { id: 2 }));
         }
 
         @rpc.action()

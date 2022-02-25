@@ -6,7 +6,6 @@ import { RpcKernelSecurity, Session } from '../src/server/security';
 import { AuthenticationError } from '../src/model';
 import { MemoryLoggerTransport } from '../../logger';
 import { Logger } from '@deepkit/logger';
-import { injectable } from '@deepkit/injector';
 
 test('authentication', async () => {
     class Controller {
@@ -106,7 +105,6 @@ test('onAuthenticate controllers', async () => {
         }
     }
 
-    @injectable
     class Controller {
         constructor(protected connection: RpcKernelConnection) {
         }

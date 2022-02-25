@@ -1,23 +1,23 @@
-import { entity, getClassSchema, plainToClass, t } from '@deepkit/type';
+import { cast, entity, ReflectionClass } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { EntitySubject, rpcEntityPatch, RpcTypes } from '../src/model';
 import { DirectClient } from '../src/client/client-direct';
 import { EntitySubjectStore } from '../src/client/entity-state';
 import { rpc } from '../src/decorators';
 import { RpcKernel, RpcKernelConnection } from '../src/server/kernel';
-import { injectable, InjectorContext } from '@deepkit/injector';
+import { InjectorContext } from '@deepkit/injector';
 
 test('EntitySubjectStore multi', () => {
     class MyModel {
-        @t version: number = 0;
+        version: number = 0;
 
         constructor(
-            @t public id: number = 0
+            public id: number = 0
         ) {
         }
     }
 
-    const store = new EntitySubjectStore(getClassSchema(MyModel));
+    const store = new EntitySubjectStore(MyModel);
     const m1 = new MyModel(1);
     store.register(m1);
 
@@ -51,23 +51,22 @@ test('EntitySubjectStore multi', () => {
 
 test('controller', async () => {
     class Config {
-        @t timeout: number = 0;
-        @t logs: boolean = true;
+        timeout: number = 0;
+        logs: boolean = true;
     }
 
     @entity.name('collection/simple/model')
     class MyModel {
-        @t version: number = 0;
-        @t title: string = 'foo';
-        @t config: Config = new Config;
+        version: number = 0;
+        title: string = 'foo';
+        config: Config = new Config;
 
         constructor(
-            @t public id: number
+            public id: number
         ) {
         }
     }
 
-    @injectable
     class Controller {
         constructor(protected connection: RpcKernelConnection) {
 
@@ -89,11 +88,11 @@ test('controller', async () => {
             setTimeout(() => {
                 this.connection.createMessageBuilder()
                     .composite(RpcTypes.Entity)
-                    .add(RpcTypes.EntityPatch, rpcEntityPatch, {
-                        entityName: getClassSchema(MyModel).getName(),
+                    .add<rpcEntityPatch>(RpcTypes.EntityPatch, {
+                        entityName: ReflectionClass.from(MyModel).getName(),
                         id: model.id,
                         version: model.version + 1,
-                        patch: { $set: { title: 'bar', config: plainToClass(Config, { timeout: 44, logs: false }) } }
+                        patch: { $set: { title: 'bar', config: cast<Config>({ timeout: 44, logs: false }) } }
                     }).send();
             }, 10);
 
@@ -102,8 +101,8 @@ test('controller', async () => {
     }
 
     const kernel = new RpcKernel(InjectorContext.forProviders([
-        {provide: RpcKernelConnection, scope: 'rpc'},
-        {provide: Controller, scope: 'rpc'},
+        { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
+        { provide: Controller, scope: 'rpc' },
     ]));
     kernel.registerController('myController', Controller);
 

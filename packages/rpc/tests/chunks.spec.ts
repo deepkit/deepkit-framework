@@ -1,4 +1,3 @@
-import { t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { skip } from 'rxjs/operators';
 import { DirectClient } from '../src/client/client-direct';
@@ -6,17 +5,16 @@ import { rpc } from '../src/decorators';
 import { RpcKernel } from '../src/server/kernel';
 import { ClientProgress } from '../src/writer';
 
-
 test('chunks', async () => {
     @rpc.controller('test')
     class TestController {
         @rpc.action()
-        uploadBig(@t.type(Buffer) file: Buffer): number {
+        uploadBig(file: Uint8Array): number {
             return file.length;
         }
 
         @rpc.action()
-        downloadBig(size: number): Buffer {
+        downloadBig(size: number): Uint8Array {
             return Buffer.alloc(size);
         }
     }
@@ -68,7 +66,7 @@ test('chunks', async () => {
         const uploadFile = Buffer.alloc(100);
         const progress = ClientProgress.track();
         const size = await controller.uploadBig(uploadFile);
-        expect(progress.upload.total).toBe(182);
+        expect(progress.upload.total).toBe(179);
         expect(progress.upload.progress).toBe(1);
     }
 
@@ -90,7 +88,7 @@ test('chunks', async () => {
             300_000,
             400_000,
             500_000,
-            550_082,
+            550_079,
         ]);
         expect(progress.upload.done).toBe(true);
         expect(progress.upload.progress).toBe(1);

@@ -10,7 +10,7 @@
 
 import { ClassType, CustomError, isObject } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
-import { arrayBufferTo, entity, Type } from '@deepkit/type';
+import { arrayBufferTo, entity } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, TeardownLogic } from 'rxjs';
 import { skip } from 'rxjs/operators';
 
@@ -294,6 +294,10 @@ export enum RpcTypes {
     ResponseActionType,
     ResponseActionReturnType,
     ResponseActionSimple, //direct response that can be simple deserialized.
+
+    /**
+     * @deprecated types are no longer dynamically detected, but from the type system
+     */
     ResponseActionResult, //composite message, first optional ResponseActionType, second ResponseAction*
 
     ActionObservableSubscribe,
@@ -341,6 +345,11 @@ export interface rpcActionObservableSubscribeId {
     id: number;
 }
 
+export interface rpcActionObservableNext {
+    id: number;
+    v: any;
+}
+
 export interface rpcError {
     classType: string;
     message: string;
@@ -386,10 +395,12 @@ export interface rpcActionType {
     disableTypeReuse?: boolean;
 }
 
+export type ActionMode = 'arbitrary' | 'collection' | 'entitySubject' | 'observable';
+
 export interface rpcResponseActionType {
-    parameters: Type;
-    result: Type;
-    next?: Type;
+    mode: ActionMode;
+    type: any; //Type as SerializedTypes
+    parameters: any; //TypeTuple as SerializedTypes
 }
 
 export interface rpcPeerRegister {
@@ -434,4 +445,8 @@ export class AuthenticationError extends Error {
     constructor(message: string = 'Authentication failed') {
         super(message);
     }
+}
+
+export interface WrappedV {
+    v: any;
 }
