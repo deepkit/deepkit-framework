@@ -36,7 +36,6 @@ import {
     FunctionTypeNode,
     getEffectiveConstraintOfTypeParameter,
     getJSDocTags,
-    getLeadingCommentRanges,
     Identifier,
     ImportDeclaration,
     ImportSpecifier,
@@ -53,12 +52,13 @@ import {
     isConstructorDeclaration,
     isConstructorTypeNode,
     isConstructSignatureDeclaration,
-    isEnumDeclaration, isExportAssignment,
+    isEnumDeclaration,
     isExportDeclaration,
     isExpressionWithTypeArguments,
     isFunctionDeclaration,
     isFunctionExpression,
-    isFunctionLike, isFunctionTypeNode,
+    isFunctionLike,
+    isFunctionTypeNode,
     isIdentifier,
     isImportSpecifier,
     isInferTypeNode,
@@ -90,7 +90,6 @@ import {
     PropertySignature,
     QualifiedName,
     RestTypeNode,
-    setSyntheticLeadingComments,
     SignatureDeclaration,
     Statement,
     SyntaxKind,
@@ -561,12 +560,11 @@ export class ReflectionTransformer {
                     if (found && found.symbol && found.symbol.declarations) type = found.symbol.declarations[0];
                 }
 
-                if (type && (isFunctionDeclaration(type) || isMethodDeclaration(type) || isFunctionTypeNode(type)) && type.typeParameters) {
+                if (type && (isFunctionDeclaration(type) || isMethodDeclaration(type) || isMethodSignature(type) || isFunctionTypeNode(type)) && type.typeParameters) {
                     const args: Expression[] = [...node.arguments];
                     let replaced = false;
 
                     for (let i = 0; i < type.parameters.length; i++) {
-                        // for (const parameter of type.valueDeclaration.parameters) {
                         const parameter = type.parameters[i];
                         const arg = args[i];
 
@@ -1489,7 +1487,7 @@ export class ReflectionTransformer {
                     const isFromImport = resolved.importSpecifier !== undefined;
 
                     if (isGlobal) {
-                        //we don't embed non-global imported declarations anymore
+                        //we don't embed non-global imported declarations anymore, only globals
                         this.embedDeclarations.set(declaration, {
                             name: typeName,
                             sourceFile: declarationSourceFile,
@@ -1548,6 +1546,12 @@ export class ReflectionTransformer {
                 //     this.extractPackStructOfType(declaration, program);
                 //     return;
             } else if (isClassDeclaration(declaration)) {
+                //if explicit `import {type T}`, we do not emit an import and instead push any
+                if (resolved.importSpecifier && (resolved.importSpecifier.isTypeOnly || resolved.importSpecifier.parent.parent.isTypeOnly)) {
+                    program.pushOp(ReflectionOp.any);
+                    return;
+                }
+
                 ensureImportIsEmitted(resolved.importSpecifier);
                 program.pushFrame();
 
