@@ -391,23 +391,23 @@ test('basic array union', () => {
 
 test('basic two array union', () => {
     const value = ['a', 'b', false, 'c', true];
-    type t = (string | boolean)[] | number[];
-    expect(deserializeBSON<{ v: t }>(serialize({ v: value }))).toEqual({ v: value });
-    expect(deserializeBSON<{ v: t }>(serialize({ v: [1, 2] }))).toEqual({ v: [1, 2] });
-    expect(() => deserializeBSON<{ v: t }>(serialize({ v: 123 }))).toThrow('Cannot convert bson type INT to (string | boolean)[]');
-    expect(() => deserializeBSON<{ v: t }>(serialize({ v: ['a', {}] }))).toThrow('Cannot convert bson type ARRAY to (string | boolean)[] | number[]');
+    type MyType = (string | boolean)[] | number[];
+    expect(deserializeBSON<{ v: MyType }>(serialize({ v: value }))).toEqual({ v: value });
+    expect(deserializeBSON<{ v: MyType }>(serialize({ v: [1, 2] }))).toEqual({ v: [1, 2] });
+    expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: 123 }))).toThrow('Cannot convert bson type INT to MyType');
+    expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: ['a', {}] }))).toThrow('Cannot convert bson type ARRAY to MyType');
 });
 
 test('basic loosely array union', () => {
     const value = ['a', 'b', false, 'c', true];
-    type t = (string | boolean)[] | number;
-    expect(deserializeBSON<{ v: t }>(serialize({ v: value }))).toEqual({ v: value });
+    type MyType = (string | boolean)[] | number;
+    expect(deserializeBSON<{ v: MyType }>(serialize({ v: value }))).toEqual({ v: value });
 
     //when resolving an complicated union, we do not use loosely type guards
-    expect(() => deserializeBSON<{ v: t }>(serialize({ v: [1, 2] }))).toThrow('Cannot convert bson type ARRAY to (string | boolean)[] | number');
+    expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: [1, 2] }))).toThrow('Cannot convert bson type ARRAY to MyType');
 
-    expect(deserializeBSON<{ v: t }>(serialize({ v: 123 }))).toEqual({ v: 123 });
-    expect(() => deserializeBSON<{ v: t }>(serialize({ v: ['a', {}] }))).toThrow('Cannot convert bson type ARRAY to (string | boolean)[] | number');
+    expect(deserializeBSON<{ v: MyType }>(serialize({ v: 123 }))).toEqual({ v: 123 });
+    expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: ['a', {}] }))).toThrow('Cannot convert bson type ARRAY to MyType');
 });
 
 test('basic class array union', () => {
@@ -424,27 +424,27 @@ test('basic class array union', () => {
         c!: string;
     }
 
-    type t = (A)[] | (B)[] | (C)[];
+    type MyType = (A)[] | (B)[] | (C)[];
     {
-        const items = deserializeBSON<{ v: t }>(serialize({ v: [{ type: 'a' }] }));
+        const items = deserializeBSON<{ v: MyType }>(serialize({ v: [{ type: 'a' }] }));
         expect(items.v[0]).toBeInstanceOf(A);
         expect((items.v[0] as A).type).toBe('a');
     }
 
     {
-        const items = deserializeBSON<{ v: t }>(serialize({ v: [{ type: 'b' }] }));
+        const items = deserializeBSON<{ v: MyType }>(serialize({ v: [{ type: 'b' }] }));
         expect(items.v[0]).toBeInstanceOf(B);
         expect((items.v[0] as B).type).toBe('b');
     }
 
     {
-        const items = deserializeBSON<{ v: t }>(serialize({ v: [{ c: 'yes' }] }));
+        const items = deserializeBSON<{ v: MyType }>(serialize({ v: [{ c: 'yes' }] }));
         expect(items.v[0]).toBeInstanceOf(C);
         expect((items.v[0] as C).c).toBe('yes');
     }
 
     {
-        expect(() => deserializeBSON<{ v: t }>(serialize({ v: [{ nope: 'no' }] }))).toThrow(`Cannot convert bson type ARRAY to A { type: 'a'; b?: number;}[] | B { type: 'b';}[] | C { c: string;}[]`);
+        expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: [{ nope: 'no' }] }))).toThrow(`Cannot convert bson type ARRAY to MyType`);
     }
 });
 

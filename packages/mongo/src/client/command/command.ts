@@ -14,7 +14,7 @@ import { MongoClientConfig } from '../config';
 import { Host } from '../host';
 import type { MongoDatabaseTransaction } from '../connection';
 import { OuterType, ReceiveType, ReflectionClass, resolveReceiveType, SerializationError, stringifyType, typeOf } from '@deepkit/type';
-import { BSONDeserializer, deserializeWithoutOptimiser, getBSONDeserializer } from '@deepkit/bson';
+import { BSONDeserializer, deserializeBSONWithoutOptimiser, getBSONDeserializer } from '@deepkit/bson';
 import { mongoBinarySerializer } from '../../mongo-serializer';
 import { inspect } from 'util';
 
@@ -71,7 +71,7 @@ export abstract class Command {
 
     handleResponse(response: Uint8Array): void {
         if (!this.current) throw new Error('Got handleResponse without active command');
-        const deserializer: BSONDeserializer<BaseResponse> = this.current.responseType ? getBSONDeserializer(mongoBinarySerializer, this.current.responseType) : deserializeWithoutOptimiser;
+        const deserializer: BSONDeserializer<BaseResponse> = this.current.responseType ? getBSONDeserializer(mongoBinarySerializer, this.current.responseType) : deserializeBSONWithoutOptimiser;
 
         try {
             const message = deserializer(response);
@@ -89,7 +89,7 @@ export abstract class Command {
         } catch (error: any) {
             if (error instanceof SerializationError) {
                 if (this.current.responseType) {
-                    const raw = deserializeWithoutOptimiser(response);
+                    const raw = deserializeBSONWithoutOptimiser(response);
                     console.log('mongo raw response', inspect(raw, {depth: null}));
                     if (raw.errmsg && raw.ok === 0) {
                         const error = handleErrorResponse(raw);

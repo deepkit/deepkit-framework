@@ -248,7 +248,7 @@ export function isObject(obj: any): obj is { [key: string]: any } {
  * @public
  */
 export function isArray(obj: any): obj is any[] {
-    return !!(obj && 'number' === typeof obj.length && 'function' === typeof obj.reduce);
+    return Array.isArray(obj);
 }
 
 /**

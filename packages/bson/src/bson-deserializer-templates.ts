@@ -27,7 +27,7 @@ import {
     ReflectionClass,
     ReflectionKind,
     RuntimeCode,
-    SerializationError,
+    sortSignatures,
     stringifyType,
     TemplateState,
     Type,
@@ -45,7 +45,7 @@ import {
     uuidAnnotation
 } from '@deepkit/type';
 import { seekElementSize } from './continuation';
-import { BSONType, digitByteSize, getEmbeddedAccessor, getEmbeddedPropertyName } from './utils';
+import { BSONType, digitByteSize, getEmbeddedAccessor, getEmbeddedPropertyName, isSerializable } from './utils';
 import { BSONError } from './model';
 
 function getNameComparator(name: string): string {
@@ -266,7 +266,7 @@ export function deserializeUnion(bsonTypeGuards: TypeGuardRegistry, type: TypeUn
 
     for (const [specificality, typeGuard] of typeGuards) {
         for (const t of type.types) {
-            const fn = createTypeGuardFunction(t, state.fork().forRegistry(typeGuard).clearJit());
+            const fn = createTypeGuardFunction(t, state.fork().forRegistry(typeGuard));
             if (!fn) continue;
             const guard = state.setVariable('guard' + t.kind, fn);
             const looseCheck = specificality <= 0 ? `state.loosely && ` : '';
@@ -300,7 +300,7 @@ export function bsonTypeGuardUnion(bsonTypeGuards: TypeGuardRegistry, type: Type
 
     for (const [specificality, typeGuard] of typeGuards) {
         for (const t of type.types) {
-            const fn = createTypeGuardFunction(t, state.fork().forRegistry(typeGuard).clearJit());
+            const fn = createTypeGuardFunction(t, state.fork().forRegistry(typeGuard));
             if (!fn) continue;
             const guard = state.setVariable('guard' + t.kind, fn);
             const looseCheck = specificality <= 0 ? `state.loosely && ` : '';
@@ -588,7 +588,6 @@ export function bsonTypeGuardArray(elementType: OuterType, state: TemplateState)
     state.setContext({ digitByteSize, seekElementSize });
 
     const typeGuardCode = executeTemplates(state.fork(v, '').extendPath(new RuntimeCode(i)), elementType);
-    if (!typeGuardCode) throw new SerializationError('No template registered for ' + stringifyType(elementType), collapsePath(state.path));
 
     state.addCode(`
         /*
@@ -690,6 +689,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
             signatures.push(member);
         }
         if (member.kind !== ReflectionKind.property && member.kind !== ReflectionKind.propertySignature) continue;
+        if (!isSerializable(member.type)) continue;
         if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
 
         const nameInBson = String(state.namingStrategy.getPropertyName(member));
@@ -751,6 +751,8 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
             }`;
         }
 
+        const setterTemplate = executeTemplates(state.fork(setter, '').extendPath(member.name), member.type);
+
         lines.push(`
             //property ${String(member.name)} (${member.type.kind})
             else if (!${valueSetVar} && ${getNameComparator(nameInBson)}) {
@@ -758,7 +760,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
                 ${valueSetVar} = true;
 
                 ${seekOnExplicitUndefined}
-                ${executeTemplates(state.fork(setter, '').extendPath(member.name), member.type) || `throw new BSONError('No template found for ${member.kind}')`}
+                ${setterTemplate}
                 continue;
             }
         `);
@@ -768,21 +770,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
         const i = state.compilerContext.reserveName('i');
         const signatureLines: string[] = [];
 
-        function isLiteralType(t: TypeIndexSignature): boolean {
-            return t.index.kind === ReflectionKind.literal || (t.index.kind === ReflectionKind.union && t.index.types.some(v => v.kind === ReflectionKind.literal));
-        }
-
-        function isNumberType(t: TypeIndexSignature): boolean {
-            return t.index.kind === ReflectionKind.number || (t.index.kind === ReflectionKind.union && t.index.types.some(v => v.kind === ReflectionKind.number));
-        }
-
-        //sort, so the order is literal, number, string, symbol.  literal comes first as its the most specific type.
-        //we need to do that for numbers since all keys are string|symbol in runtime, and we need to check if a string is numeric first before falling back to string.
-        signatures.sort((a, b) => {
-            if (isLiteralType(a)) return -1;
-            if (isNumberType(a) && !isLiteralType(b)) return -1;
-            return +1;
-        });
+        sortSignatures(signatures);
 
         for (const signature of signatures) {
             const check = isOptional(signature.type) ? `` : `elementType !== ${BSONType.UNDEFINED} &&`;
@@ -893,6 +881,10 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
         return;
     }
 
+    if (callExtractedFunctionIfAvailable(state, type)) return;
+    const extract = extractStateToFunctionAndCallIt(state, type);
+    state = extract.state;
+
     const lines: string[] = [];
     const signatures: TypeIndexSignature[] = [];
     const valid = state.compilerContext.reserveName('valid');
@@ -908,6 +900,7 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
             signatures.push(member);
         }
         if (member.kind !== ReflectionKind.property && member.kind !== ReflectionKind.propertySignature) continue;
+        if (!isSerializable(member.type)) continue;
         if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
 
         const nameInBson = String(state.namingStrategy.getPropertyName(member));
@@ -931,6 +924,8 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
             }`;
         }
 
+        const template = executeTemplates(state.fork(valid).extendPath(member.name), member.type);
+
         lines.push(`
             //property ${String(member.name)} (${member.type.kind})
             else if (!${valueSetVar} && ${getNameComparator(nameInBson)}) {
@@ -938,7 +933,7 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
                 ${valueSetVar} = true;
 
                 ${seekOnExplicitUndefined}
-                ${executeTemplates(state.fork(valid).extendPath(member.name), member.type) || `throw new BSONError('No template found for ${member.kind}')`}
+                ${template}
 
                 if (!${valid}) break;
                 //guards never eat/parse parser, so we jump over the value automatically
@@ -952,21 +947,7 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
         const i = state.compilerContext.reserveName('i');
         const signatureLines: string[] = [];
 
-        function isLiteralType(t: TypeIndexSignature): boolean {
-            return t.index.kind === ReflectionKind.literal || (t.index.kind === ReflectionKind.union && t.index.types.some(v => v.kind === ReflectionKind.literal));
-        }
-
-        function isNumberType(t: TypeIndexSignature): boolean {
-            return t.index.kind === ReflectionKind.number || (t.index.kind === ReflectionKind.union && t.index.types.some(v => v.kind === ReflectionKind.number));
-        }
-
-        //sort, so the order is literal, number, string, symbol.  literal comes first as its the most specific type.
-        //we need to do that for numbers since all keys are string|symbol in runtime, and we need to check if a string is numeric first before falling back to string.
-        signatures.sort((a, b) => {
-            if (isLiteralType(a)) return -1;
-            if (isNumberType(a) && !isLiteralType(b)) return -1;
-            return +1;
-        });
+        sortSignatures(signatures);
 
         for (const signature of signatures) {
             signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)}) {
@@ -1028,6 +1009,8 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
             ${state.setter} = ${valid};
         }
     `);
+
+    extract.setFunction(buildFunction(state, type));
 }
 
 export function bsonTypeGuardForBsonTypes(types: BSONType[]): (type: OuterType, state: TemplateState) => void {

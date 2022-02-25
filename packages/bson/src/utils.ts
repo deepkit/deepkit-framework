@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { EmbeddedOptions, getEmbeddedProperty, NamingStrategy, TypeClass, TypeProperty } from '@deepkit/type';
+import { EmbeddedOptions, getEmbeddedProperty, NamingStrategy, ReflectionKind, Type, TypeClass, TypeProperty } from '@deepkit/type';
 
 export const TWO_PWR_32_DBL_N = (1 << 16) * (1 << 16);
 
@@ -108,4 +108,8 @@ export function getEmbeddedAccessor(type: TypeClass, autoPrefix: boolean, access
     if (containerProperty) return String(containerProperty.name);
 
     return accessor;
+}
+
+export function isSerializable(type: Type): boolean {
+    return type.kind !== ReflectionKind.methodSignature && type.kind !== ReflectionKind.method && type.kind !== ReflectionKind.function;
 }
