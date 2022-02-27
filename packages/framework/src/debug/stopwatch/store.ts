@@ -3,18 +3,12 @@ import { appendFile, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { decodeFrames, encodeFrameData, encodeFrames } from '@deepkit/framework-debug-api';
 import { asyncOperation, Mutex } from '@deepkit/core';
-import { frameworkConfig } from '../../module.config';
-import { injectable } from '@deepkit/injector';
-import { t } from '@deepkit/type';
+import { FrameworkConfig } from '../../module.config';
 import { Zone } from '../../zone';
 import cluster from 'cluster';
 import { performance } from 'perf_hooks';
 import { DebugBroker } from '../broker';
 
-class Config extends frameworkConfig.slice('varPath', 'debugStorePath') {
-}
-
-@injectable
 export class FileStopwatchStore extends StopwatchStore {
     protected lastSync?: any;
     protected syncMutex = new Mutex;
@@ -22,14 +16,14 @@ export class FileStopwatchStore extends StopwatchStore {
     protected lastId: number = -1;
     protected lastContext: number = -1;
 
-    public frameChannel = this.broker.channel('_debug/frames', t.type(Uint8Array));
-    public frameDataChannel = this.broker.channel('_debug/frames-data', t.type(Uint8Array));
+    public frameChannel = this.broker.channel<Uint8Array>('_debug/frames');
+    public frameDataChannel = this.broker.channel<Uint8Array>('_debug/frames-data');
 
     protected framesPath: string = join(this.config.varPath, this.config.debugStorePath, 'frames.bin');
     protected framesDataPath: string = join(this.config.varPath, this.config.debugStorePath, 'frames-data.bin');
 
     constructor(
-        protected config: Config,
+        protected config: Pick<FrameworkConfig, 'varPath' | 'debugStorePath'>,
         protected broker: DebugBroker,
     ) {
         super();

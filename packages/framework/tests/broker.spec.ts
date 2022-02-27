@@ -1,6 +1,6 @@
 import { BrokerKernel } from '@deepkit/broker';
 import { sleep } from '@deepkit/core';
-import { entity, plainToClass, t, uuid } from '@deepkit/type';
+import { cast, entity, PrimaryKey, UUID, uuid } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { BehaviorSubject } from 'rxjs';
 import { DirectBroker, EntityChannelMessageType } from '../src/broker/broker';
@@ -11,9 +11,9 @@ test('entity channel number', async () => {
 
     @entity.name('model')
     class Model {
-        @t id: number = 0;
-        @t version: number = 0;
-        @t title: string = '';
+        id: number = 0;
+        version: number = 0;
+        title: string = '';
     }
 
     {
@@ -35,7 +35,7 @@ test('entity channel number', async () => {
             item: { title: 'asd' }
         });
 
-        await channel.publishAdd(plainToClass(Model, { id: 1243, version: 0, title: 'peter' }));
+        await channel.publishAdd(cast<Model>({ id: 1243, version: 0, title: 'peter' }));
         await sleep(0);
         expect(subject.value).toEqual({
             type: EntityChannelMessageType.add,
@@ -51,9 +51,9 @@ test('entity channel uuid', async () => {
 
     @entity.name('modelUuid')
     class Model {
-        @t.primary.uuid id: string = uuid();
-        @t version: number = 0;
-        @t title: string = '';
+        id: string & PrimaryKey & UUID = uuid();
+        version: number = 0;
+        title: string = '';
     }
 
     {
@@ -77,7 +77,7 @@ test('entity channel uuid', async () => {
             item: { title: 'asd' }
         });
 
-        await channel.publishAdd(plainToClass(Model, { id: item.id, version: 0, title: 'peter' }));
+        await channel.publishAdd(cast<Model>({ id: item.id, version: 0, title: 'peter' }));
         await sleep(0);
         expect(subject.value).toEqual({
             type: EntityChannelMessageType.add,

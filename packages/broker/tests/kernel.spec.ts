@@ -1,6 +1,5 @@
 import { sleep } from '@deepkit/core';
 import { AsyncSubscription } from '@deepkit/core-rxjs';
-import { t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { BehaviorSubject } from 'rxjs';
 import { BrokerDirectClient } from '../src/client';
@@ -12,9 +11,11 @@ test('basics', async () => {
     const kernel = new BrokerKernel();
     const client = new BrokerDirectClient(kernel);
 
-    const schema = t.schema({ v: t.number });
+    interface schema {
+        v: number;
+    }
 
-    const keyId = client.key('id', schema);
+    const keyId = client.key<schema>('id');
     await keyId.set({ v: 123 });
 
     {
@@ -28,7 +29,7 @@ test('basics', async () => {
     }
 
     {
-        const v = await client.key('id-unknown', schema).getOrUndefined();
+        const v = await client.key<schema>('id-unknown').getOrUndefined();
         expect(v).toBe(undefined);
     }
 
@@ -45,20 +46,21 @@ test('basics', async () => {
 
     {
         await client.delete('inc');
-        expect(await client.key('inc', schema).getOrUndefined()).toBe(undefined);
+        expect(await client.key<schema>('inc').getOrUndefined()).toBe(undefined);
     }
 });
-
 
 test('pub-sub', async () => {
     const kernel = new BrokerKernel();
     const client = new BrokerDirectClient(kernel);
 
     {
-        const schema = t.schema({ value: t.number });
+        interface schema {
+            value: number;
+        }
 
         const subject = new BehaviorSubject<any>(undefined);
-        const channel1 = client.channel('channel1', schema);
+        const channel1 = client.channel<schema>('channel1');
         await channel1.subscribe(v => subject.next(v));
 
         await channel1.publish({ value: 1345 });
@@ -72,7 +74,7 @@ test('pub-sub', async () => {
 
     {
         const subject = new BehaviorSubject<any>(undefined);
-        const channel2 = client.channel('channel2', t.string);
+        const channel2 = client.channel<string>('channel2');
         await channel2.subscribe(v => subject.next(v));
         await channel2.publish('myValue');
         await sleep(0);
@@ -81,7 +83,7 @@ test('pub-sub', async () => {
 
     {
         const subject = new BehaviorSubject<any>(undefined);
-        const channel3 = client.channel('channel3', t.number);
+        const channel3 = client.channel<number>('channel3');
         await channel3.subscribe(v => subject.next(v));
         await channel3.publish(123132);
         await sleep(0);
@@ -89,26 +91,27 @@ test('pub-sub', async () => {
     }
 
     {
-        const ClassA = t.schema({
-            type: t.literal('a').discriminant,
-            name: t.string,
-        });
-        const ClassB = t.schema({
-            type: t.literal('b').discriminant,
-            id: t.number,
-        });
+        interface ClassA {
+            type: 'a';
+            name: string;
+        }
+
+        interface ClassB {
+            type: 'b';
+            id: number;
+        }
+
+        type ChannelType = ClassA | ClassB;
         const subject = new BehaviorSubject<any>(undefined);
-        const channel4 = client.channel('channel4', t.union(ClassA, ClassB));
+        const channel4 = client.channel<ChannelType>('channel4');
         await channel4.subscribe(v => subject.next(v));
         await channel4.publish({ type: 'a', name: 'bar' });
         await sleep(0);
         expect(subject.value).toEqual({ type: 'a', name: 'bar' });
-        expect(subject.value).toBeInstanceOf(ClassA.classType);
 
         await channel4.publish({ type: 'b', id: 555 });
         await sleep(0);
         expect(subject.value).toEqual({ type: 'b', id: 555 });
-        expect(subject.value).toBeInstanceOf(ClassB.classType);
     }
 });
 

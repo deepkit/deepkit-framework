@@ -9,7 +9,7 @@
  */
 
 import { addHook } from 'pirates';
-import {
+import type {
     ArrayExpression,
     ArrayPattern,
     AssignmentPattern,

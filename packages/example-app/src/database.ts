@@ -1,62 +1,58 @@
-import { entity, t } from '@deepkit/type';
+import { AutoIncrement, Email, entity, MaxLength, MinLength, PrimaryKey, Reference, t, Unique } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
-import { config } from './config';
+import { Config } from './config';
 
 @entity.name('user')
 export class User {
-    @t.primary.autoIncrement id: number = 0;
-    @t created: Date = new Date;
-    @t.jsonType(t.string.optional).serialize(v => v && v.data, 'json') image?: Uint8Array;
+    id: number & PrimaryKey & AutoIncrement = 0;
+    created: Date = new Date;
+    image?: Uint8Array;
 
     constructor(
-        @t.minLength(3).index({unique: true}) public username: string
+        public username: string & MinLength<3> & Unique
     ) {
     }
 }
 
-const EMAIL_REGEX = /^\S+@\S+$/;
-
 @entity.name('author')
 export class Author {
-    @t.primary.autoIncrement id: number = 0;
+    id: number & PrimaryKey & AutoIncrement = 0;
     @t created: Date = new Date;
 
-    @t.maximum(100).pattern(EMAIL_REGEX) email?: string;
+    email?: string & Email & MaxLength<100>;
 
-    @t.maximum(100) firstName?: string;
-    @t.maximum(100) lastName?: string;
+    firstName?: string & MaxLength<100>;
+    lastName?: string & MaxLength<100>;
 
-    @t birthDate?: Date;
+    birthDate?: Date;
 
     constructor(
-        @t.minLength(3).maximum(24).index({ unique: true }) public username: string
+        public username: string & MinLength<3> & MaxLength<24> & Unique
     ) {
     }
 }
 
 @entity.name('book')
 export class Book {
-    @t.primary.autoIncrement id: number = 0;
-    @t created: Date = new Date;
+    id: number & PrimaryKey & AutoIncrement = 0;
+    created: Date = new Date;
 
-    @t.maximum(1024 * 4) description: string = '';
+    description: string & MaxLength<4096> = '';
 
-    @t price: number = 0;
-    @t.maximum(64) isbn: string = '';
+    price: number = 0;
+    isbn: string & MaxLength<64> = '';
 
     constructor(
-        @t.reference() public author: Author,
-        @t.maximum(128).minLength(3) public title: string,
+        public author: Author & Reference,
+        public title: string & MaxLength<128> & MinLength<3>,
     ) {
     }
 }
 
-class DbConfig extends config.slice('dbPath') {}
-
 export class SQLiteDatabase extends Database {
-    constructor(private config: DbConfig) {
+    constructor(dbPath: Config['dbPath']) {
         // super(new MongoDatabaseAdapter('mongodb://localhost/example-app'), [User, Book, Author]);
-        super(new SQLiteDatabaseAdapter(config.dbPath), [User, Book, Author]);
+        super(new SQLiteDatabaseAdapter(dbPath), [User, Book, Author]);
     }
 }

@@ -9,7 +9,7 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { assertType, createReference, getPrimaryKeyHashGenerator, ReflectionClass, ReflectionKind } from '@deepkit/type';
+import { createReference, getPrimaryKeyHashGenerator, ReflectionClass } from '@deepkit/type';
 import { IdentityMap } from './identity-map';
 
 export function getReference<T>(
@@ -32,8 +32,7 @@ export function getReference<T>(
         }
     }
 
-    assertType(reflectionClass.type, ReflectionKind.class);
-    const ref = createReference(ReferenceClass || reflectionClass.type.classType, pk);
+    const ref = createReference(ReferenceClass || reflectionClass, pk);
     if (pool) pool.set(pkHash, ref);
     if (identityMap) identityMap.store(reflectionClass, ref);
     return ref;

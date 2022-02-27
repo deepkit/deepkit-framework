@@ -244,7 +244,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * const user = database.getReference(User, 1);
      * ```
      */
-    public getReference<T>(classType: ClassType<T>, primaryKey: PrimaryKeyFields<T>): T {
+    public getReference<T>(classType: ClassType<T> | ReflectionClass<any>, primaryKey: PrimaryKeyFields<T>): T {
         const schema = ReflectionClass.from(classType);
         const pk = getNormalizedPrimaryKey(schema, primaryKey);
         return getReference(schema, pk);

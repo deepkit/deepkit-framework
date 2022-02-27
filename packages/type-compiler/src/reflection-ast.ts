@@ -22,6 +22,7 @@ import {
     isNumericLiteral,
     isPrivateIdentifier,
     isStringLiteral,
+    isStringLiteralLike,
     JSDoc,
     ModifiersArray,
     Node,
@@ -33,6 +34,7 @@ import {
     PropertyAccessExpression,
     QualifiedName,
     StringLiteral,
+    StringLiteralLike,
     SymbolTable,
     SyntaxKind,
     unescapeLeadingUnderscores
@@ -88,7 +90,10 @@ export function getNameAsString(node?: Identifier | StringLiteral | NumericLiter
     if (isIdentifier(node)) return getIdentifierName(node);
     if (isStringLiteral(node)) return node.text;
     if (isNumericLiteral(node)) return node.text;
-    if (isComputedPropertyName(node)) return '';
+    if (isComputedPropertyName(node)) {
+        if (isStringLiteralLike(node) || isNumericLiteral(node)) return (node as StringLiteralLike | NumericLiteral).text;
+        return '';
+    }
     if (isPrivateIdentifier(node)) return getIdentifierName(node);
 
     return joinQualifiedName(node);
@@ -109,7 +114,7 @@ const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNo
         } as any;
     }
     return;
-}
+};
 
 export class NodeConverter {
     constructor(protected f: NodeFactory) {

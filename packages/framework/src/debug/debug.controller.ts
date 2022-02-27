@@ -23,23 +23,20 @@ import {
     Workflow
 } from '@deepkit/framework-debug-api';
 import { rpc, rpcClass } from '@deepkit/rpc';
-import { getClassSchema, serializeSchemas, t } from '@deepkit/type';
 import { parseRouteControllerAction, Router } from '@deepkit/http';
-import { changeClass, getClassName, isClass } from '@deepkit/core';
+import { changeClass, ClassType, getClassName, isClass } from '@deepkit/core';
 import { EventDispatcher, isEventListenerContainerEntryService } from '@deepkit/event';
 import { DatabaseAdapter, DatabaseRegistry } from '@deepkit/orm';
 import { readFileSync, statSync, truncateSync } from 'fs';
 import { join } from 'path';
-import { frameworkConfig } from '../module.config';
+import { FrameworkConfig } from '../module.config';
 import { FileStopwatchStore } from './stopwatch/store';
 import { Subject } from 'rxjs';
 import { unlink } from 'fs/promises';
-import { getScope, inject, InjectorToken, resolveToken, Token } from '@deepkit/injector';
+import { getScope, InjectorToken, resolveToken, Token } from '@deepkit/injector';
 import { AppModule, ServiceContainer } from '@deepkit/app';
 import { RpcControllers } from '../rpc';
-
-class DebugConfig extends frameworkConfig.slice('varPath', 'debugStorePath') {
-}
+import { ReflectionClass, serializeType, stringifyType } from '@deepkit/type';
 
 @rpc.controller(DebugControllerInterface)
 export class DebugController implements DebugControllerInterface {
@@ -50,16 +47,15 @@ export class DebugController implements DebugControllerInterface {
         protected serviceContainer: ServiceContainer,
         protected eventDispatcher: EventDispatcher,
         protected router: Router,
-        protected config: DebugConfig,
+        protected config: Pick<FrameworkConfig, 'varPath' | 'debugStorePath'>,
         protected rpcControllers: RpcControllers,
         protected databaseRegistry: DatabaseRegistry,
-        @inject().optional protected stopwatchStore?: FileStopwatchStore,
+        protected stopwatchStore?: FileStopwatchStore,
         // protected liveDatabase: LiveDatabase,
     ) {
     }
 
     @rpc.action()
-    @t.generic(t.type(Subject).generic(Uint8Array))
     async subscribeStopwatchFramesData(): Promise<Subject<Uint8Array>> {
         if (!this.stopwatchStore) throw new Error('not enabled');
 
@@ -74,7 +70,6 @@ export class DebugController implements DebugControllerInterface {
     }
 
     @rpc.action()
-    @t.generic(t.type(Subject).generic(Uint8Array))
     async subscribeStopwatchFrames(): Promise<Subject<Uint8Array>> {
         if (!this.stopwatchStore) throw new Error('not enabled');
 
@@ -97,7 +92,6 @@ export class DebugController implements DebugControllerInterface {
     }
 
     @rpc.action()
-    @t.array(Uint8Array)
     getProfilerFrames(): [Uint8Array, Uint8Array] {
         const framesPath = join(this.config.varPath, this.config.debugStorePath, 'frames.bin');
         const frameDataPath = join(this.config.varPath, this.config.debugStorePath, 'frames-data.bin');
@@ -114,7 +108,6 @@ export class DebugController implements DebugControllerInterface {
     }
 
     @rpc.action()
-    @t.array(Database)
     databases(): Database[] {
         if (!this.databaseRegistry) return [];
 
@@ -122,7 +115,7 @@ export class DebugController implements DebugControllerInterface {
 
         for (const db of this.databaseRegistry.getDatabases()) {
             const entities: DatabaseEntity[] = [];
-            for (const classSchema of db.entities) {
+            for (const classSchema of db.entityRegistry.entities) {
                 entities.push({ name: classSchema.name, className: classSchema.getClassName() });
             }
             databases.push({ name: db.name, entities, adapter: (db.adapter as DatabaseAdapter).getName() });
@@ -132,7 +125,6 @@ export class DebugController implements DebugControllerInterface {
     }
 
     @rpc.action()
-    @t.array(Event)
     events(): Event[] {
         const events: Event[] = [];
         for (const token of this.eventDispatcher.getTokens()) {
@@ -152,7 +144,6 @@ export class DebugController implements DebugControllerInterface {
     }
 
     @rpc.action()
-    @t.array(Route)
     routes(): Route[] {
         const routes: Route[] = [];
 
@@ -171,21 +162,20 @@ export class DebugController implements DebugControllerInterface {
 
             const queryParameters: string[] = [];
             for (const parameter of parsedRoute.getParameters()) {
-                if (parameter === parsedRoute.customValidationErrorHandling) continue;
-                if (parameter.body) {
-                    routeD.bodySchema = parameter.property.toJSONNonReference();
+                if (parameter.body || parameter.bodyValidation) {
+                    routeD.bodySchema = serializeType(parameter.getType());
                 } else if (parameter.query) {
                     routeD.parameters.push({
                         name: parameter.getName(),
                         type: 'query',
-                        schema: parameter.property.toJSON(),
+                        schema: serializeType(parameter.parameter.type),
                     });
-                    queryParameters.push(`${parameter.getName()}=${parameter.property.toString()}`);
+                    queryParameters.push(`${parameter.getName()}=${stringifyType(parameter.parameter.type)}`);
                 } else if (parameter.isPartOfPath()) {
                     routeD.parameters.push({
                         name: parameter.getName(),
                         type: 'url',
-                        schema: parameter.property.toJSON(),
+                        schema: serializeType(parameter.parameter.type),
                     });
                 } else {
                     //its a dependency injection token
@@ -242,7 +232,6 @@ export class DebugController implements DebugControllerInterface {
     }
 
     @rpc.action()
-    @t.array(RpcAction)
     actions(): RpcAction[] {
         const result: RpcAction[] = [];
 
@@ -252,9 +241,8 @@ export class DebugController implements DebugControllerInterface {
 
             for (const action of rpcConfig.actions.values()) {
                 const parameters: RpcActionParameter[] = [];
-                const properties = getClassSchema(controller).getMethodProperties(action.name || '');
-                for (const property of properties) {
-                    parameters.push(new RpcActionParameter(property.name, property.toJSON()));
+                for (const parameter of ReflectionClass.from(controller).getMethodParameters(action.name || '')) {
+                    parameters.push(new RpcActionParameter(parameter.name, serializeType(parameter.type)));
                 }
 
                 result.push({
@@ -280,13 +268,11 @@ export class DebugController implements DebugControllerInterface {
     }
 
     // @rpc.action()
-    // @t.generic(DebugRequest)
     // httpRequests(): Promise<Collection<DebugRequest>> {
     //     return this.liveDatabase.query(DebugRequest).find();
     // }
 
     @rpc.action()
-    @t.type(ModuleApi)
     modules(): ModuleApi {
         const injectorContext = this.serviceContainer.getInjectorContext();
 
@@ -312,11 +298,11 @@ export class DebugController implements DebugControllerInterface {
             const moduleApi = new ModuleApi(module.name, module.id, getClassName(module));
             moduleApi.config = module.getConfig();
             if (module.configDefinition) {
-                moduleApi.configSchemas = serializeSchemas([module.configDefinition.schema]);
+                moduleApi.configSchemas = serializeType(ReflectionClass.from(module.configDefinition).type);
             }
 
             for (const provider of module.getProviders()) {
-                const token = resolveToken(provider);
+                const token = resolveToken(provider) as ClassType;
                 const service = new ModuleService(getTokenId(token), getTokenLabel(token));
                 service.scope = getScope(provider);
                 service.instantiations = injectorContext.instantiationCount(token, module, service.scope);

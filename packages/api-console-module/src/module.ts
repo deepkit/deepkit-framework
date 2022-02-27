@@ -1,12 +1,12 @@
 import { createModule, findParentPath } from '@deepkit/app';
 import { HttpRouteFilter, normalizeDirectory, registerStaticHttpController } from '@deepkit/http';
 import { ApiConsoleApi } from '@deepkit/api-console-gui/src/api';
-import { config } from './module.config';
+import { Config } from './module.config';
 import { rpc } from '@deepkit/rpc';
 import { ApiConsoleController } from './controller';
 
 export class ApiConsoleModule extends createModule({
-    config,
+    config: Config,
 }, 'apiConsole') {
     protected routeFilter = new HttpRouteFilter().excludeRoutes({group: 'app-static'});
 

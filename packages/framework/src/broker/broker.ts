@@ -11,10 +11,9 @@
 import { BrokerChannel, BrokerClient, BrokerKernel } from '@deepkit/broker';
 import { ClassType } from '@deepkit/core';
 import { IdInterface, RpcDirectClientAdapter } from '@deepkit/rpc';
-import { ClassSchema, FieldDecoratorResult, getClassSchema, t } from '@deepkit/type';
-import { inject, injectable } from '@deepkit/injector';
-import { brokerConfig } from './broker.config';
+import { BrokerConfig } from './broker.config';
 import { NetTcpRpcClientAdapter, NetTcpRpcServer, TcpRpcClientAdapter, TcpRpcServer } from '@deepkit/rpc-tcp';
+import { MongoId, ReflectionClass, Type, typeOf, UUID } from '@deepkit/type';
 
 
 export enum EntityChannelMessageType {
@@ -29,32 +28,16 @@ interface EntityChannelMessageAdd<T> {
     item: T,
 }
 
-const entityChannelMessageAdd = t.schema({
-    type: t.literal(EntityChannelMessageType.add).discriminant,
-    id: t.union(t.string, t.number),
-}, { name: 'EntityChannelMessageAdd' });
-
-interface EntityChannelMessageRemove<T> {
+interface EntityChannelMessageRemove {
     type: EntityChannelMessageType.remove,
-    ids: (string | number)[],
+    ids: (string | number | UUID | MongoId)[],
 }
-
-const entityChannelMessageRemove = t.schema({
-    type: t.literal(EntityChannelMessageType.remove).discriminant,
-    ids: t.array(t.union(t.string, t.number, t.uuid, t.mongoId)),
-}, { name: 'EntityChannelMessageRemove' });
 
 export interface EntityPatches {
     $set?: { [path: string]: any };
     $unset?: { [path: string]: number };
     $inc?: { [path: string]: number };
 }
-
-const entityPatch: ClassSchema<EntityPatches> = t.schema({
-    $set: t.map(t.any).optional,
-    $unset: t.map(t.number).optional,
-    $inc: t.map(t.number).optional,
-});
 
 interface EntityChannelMessagePatch<T> {
     type: EntityChannelMessageType.patch,
@@ -64,15 +47,8 @@ interface EntityChannelMessagePatch<T> {
     patch: EntityPatches,
 }
 
-const entityChannelMessagePatch = t.schema({
-    type: t.literal(EntityChannelMessageType.patch).discriminant,
-    id: t.union(t.string, t.number),
-    version: t.number,
-    patch: t.type(entityPatch)
-}, { name: 'EntityChannelMessagePatch' });
-
 type EntityChannelMessage<T extends IdInterface> = EntityChannelMessageAdd<T>
-    | EntityChannelMessageRemove<T>
+    | EntityChannelMessageRemove
     | EntityChannelMessagePatch<T>;
 
 export class EntityBrokerChannel<T extends IdInterface> extends BrokerChannel<EntityChannelMessage<T>> {
@@ -81,6 +57,7 @@ export class EntityBrokerChannel<T extends IdInterface> extends BrokerChannel<En
     }
 
     publishRemove(ids: (string | number)[]) {
+        console.log('publishRemove', this.type);
         return this.publish({ type: EntityChannelMessageType.remove, ids });
     }
 
@@ -90,26 +67,22 @@ export class EntityBrokerChannel<T extends IdInterface> extends BrokerChannel<En
 }
 
 export class BaseBroker extends BrokerClient {
-    protected getEntityChannelMessageSchema<T>(schema: ClassSchema<T>): FieldDecoratorResult<any> {
-        const jit = schema.jit;
+    protected getEntityChannelMessageType<T>(schema: ReflectionClass<T>): Type {
+        const jit = schema.getJitContainer();
         if (!jit.entityChannelMessage) {
-            jit.entityChannelMessage = t.union(
-                entityChannelMessageRemove,
-                entityChannelMessagePatch.extend({ item: t.partial(schema) }),
-                entityChannelMessageAdd.extend({ item: schema })
-            );
+            jit.entityChannelMessage = typeOf<EntityChannelMessage<never>>([schema.type]);
         }
         return jit.entityChannelMessage;
     }
 
-    public entityChannel<T extends IdInterface>(schemaOrType: ClassSchema<T> | ClassType<T>): EntityBrokerChannel<T> {
-        const schema = getClassSchema(schemaOrType);
+    public entityChannel<T extends IdInterface>(schemaOrType: ClassType<T>): EntityBrokerChannel<T> {
+        const schema = ReflectionClass.from(schemaOrType);
         const channelName = 'dk/e/' + schema.getName();
         let channel = this.activeChannels.get(channelName);
         if (channel) return channel as EntityBrokerChannel<T>;
 
-        const decorator = this.getEntityChannelMessageSchema(schema);
-        channel = new EntityBrokerChannel(channelName, decorator, this);
+        const type = this.getEntityChannelMessageType(schema);
+        channel = new EntityBrokerChannel(channelName, type, this);
         this.activeChannels.set(channel.channel, channel);
 
         return channel as EntityBrokerChannel<T>;
@@ -117,16 +90,14 @@ export class BaseBroker extends BrokerClient {
 }
 
 export class Broker extends BaseBroker {
-    constructor(
-        @inject(brokerConfig.token('host')) protected url: string) {
-        super(new TcpRpcClientAdapter(url));
+    constructor(protected host: BrokerConfig['host']) {
+        super(new TcpRpcClientAdapter(host));
     }
 }
 
 export class NetBroker extends BaseBroker {
-    constructor(
-        @inject(brokerConfig.token('host')) protected url: string) {
-        super(new NetTcpRpcClientAdapter(url));
+    constructor(protected host: BrokerConfig['host']) {
+        super(new NetTcpRpcClientAdapter(host));
     }
 }
 
@@ -136,20 +107,18 @@ export class DirectBroker extends BaseBroker {
     }
 }
 
-@injectable
 export class BrokerServer extends TcpRpcServer {
     protected kernel: BrokerKernel = new BrokerKernel;
 
-    constructor(@inject(brokerConfig.token('listen')) listen: string) {
+    constructor(protected listen: BrokerConfig['listen']) {
         super(new BrokerKernel, listen);
     }
 }
 
-@injectable
 export class NetBrokerServer extends NetTcpRpcServer {
     protected kernel: BrokerKernel = new BrokerKernel;
 
-    constructor(@inject(brokerConfig.token('listen')) listen: string) {
+    constructor(listen: BrokerConfig['listen']) {
         super(new BrokerKernel, listen);
     }
 }

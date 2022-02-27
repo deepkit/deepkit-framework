@@ -1,72 +1,72 @@
-import { ClassSchema, deserializeSchemas, entity, SerializedSchema, serializedSchemaDefinition, t } from '@deepkit/type';
 import { ControllerSymbol } from '@deepkit/rpc';
+import { deserializeType, entity, Type } from '@deepkit/type';
 
 export class ApiRouteParameter {
-    @t name!: string;
-    @t.string type!: 'body' | 'query' | 'url';
-    @t.any schema: any;
+    name!: string;
+    type!: 'body' | 'query' | 'url';
+    schema: any;
 }
 
 @entity.name('.deepkit/api-console/route/response')
 export class ApiRouteResponse {
-    public deserializedSchemas?: ClassSchema[];
+    public type?: Type;
 
     constructor(
-        @t.name('statusCode') public statusCode: number,
-        @t.name('description') public description: string,
-        @t.array(serializedSchemaDefinition).name('serializedSchemas') public serializedSchemas: SerializedSchema[], //the last entry has only `v` property with the response type
+        public statusCode: number,
+        public description: string,
+        public serializedType: any,
     ) {
     }
 
-    getSchemas(): ClassSchema[] {
-        if (!this.deserializedSchemas) {
-            this.deserializedSchemas = deserializeSchemas(this.serializedSchemas);
+    getType(): Type {
+        if (!this.type) {
+            this.type = deserializeType(this.serializedType);
         }
-        return this.deserializedSchemas;
+        return this.type;
     }
 }
 
 @entity.name('.deepkit/api-console/document')
 export class ApiDocument {
-    @t markdown?: string;
+    markdown?: string;
 }
 
 @entity.name('.deepkit/api-console/action')
 export class ApiAction {
-    protected deserializedResultSchemas?: ClassSchema[];
-    protected deserializedParameterSchemas?: ClassSchema[];
+    protected deserializedResultType?: Type;
+    protected deserializedParameterType?: Type;
 
     //last entry is the actual schema, all other dependencies
-    @t.array(serializedSchemaDefinition) public parameterSchemas: SerializedSchema[] = [];
+    public parameterType: any; //SerializedTypes
 
     //last entry is the actual schema, all other dependencies
-    @t.array(serializedSchemaDefinition) public resultSchemas: SerializedSchema[] = [];
+    public resultType: any; //SerializedTypes
 
     public parameterSignature: string = '';
     public returnSignature: string = '';
 
     constructor(
-        @t.name('controllerClassName') public controllerClassName: string,
-        @t.name('controllerPath') public controllerPath: string,
-        @t.name('methodName') public methodName: string,
-        @t.name('description') public description: string,
-        @t.array(t.string).name('groups') public groups: string[],
-        @t.string.name('category') public category: string,
+        public controllerClassName: string,
+        public controllerPath: string,
+        public methodName: string,
+        public description: string,
+        public groups: string[],
+        public category: string,
     ) {
     }
 
-    getParametersSchema(): ClassSchema | undefined {
-        if (!this.deserializedParameterSchemas) {
-            this.deserializedParameterSchemas = deserializeSchemas(this.parameterSchemas);
+    getParametersType(): Type | undefined {
+        if (!this.deserializedParameterType) {
+            this.deserializedParameterType = deserializeType(this.parameterType);
         }
-        return this.deserializedParameterSchemas[this.deserializedParameterSchemas.length - 1];
+        return this.deserializedParameterType;
     }
 
-    getResultsSchema(): ClassSchema | undefined {
-        if (!this.deserializedResultSchemas) {
-            this.deserializedResultSchemas = deserializeSchemas(this.resultSchemas);
+    getResultsType(): Type | undefined {
+        if (!this.deserializedResultType) {
+            this.deserializedResultType = deserializeType(this.resultType);
         }
-        return this.deserializedResultSchemas[this.deserializedResultSchemas.length - 1];
+        return this.deserializedResultType;
     }
 
     get id(): string {
@@ -76,64 +76,60 @@ export class ApiAction {
 
 @entity.name('.deepkit/api-console/route')
 export class ApiRoute {
-    public deserializedBodySchemas: ClassSchema[] = [];
-    public deserializedQuerySchema?: ClassSchema;
-    public deserializedUrlSchema?: ClassSchema;
-    protected parsedResultSchemas: ClassSchema[] = [];
+    public deserializedBodyType?: Type
+    public deserializedQueryType?: Type;
+    public deserializedUrlType?: Type;
+    protected deserializedResultType?: Type;
 
     //last entry is the actual schema, all other dependencies
-    @t.array(serializedSchemaDefinition) public querySchemas: SerializedSchema[] = [];
+    public queryType: any; //SerializedTypes
 
     //last entry is the actual schema, all other dependencies
-    @t.array(serializedSchemaDefinition) public resultSchemas: SerializedSchema[] = [];
+    public resultType: any; //SerializedTypes
 
     //last entry is the actual schema, all other dependencies
-    @t.array(serializedSchemaDefinition) public urlSchemas: SerializedSchema[] = [];
+    public urlType: any; //SerializedTypes
 
-    @t.array(ApiRouteResponse) responses: ApiRouteResponse[] = [];
+    responses: ApiRouteResponse[] = [];
 
     constructor(
-        @t.name('path') public path: string,
-        @t.array(t.string).name('httpMethods') public httpMethods: string[],
-        @t.name('controller') public controller: string,
-        @t.name('action') public action: string,
-        @t.name('description') public description: string,
-        @t.array(t.string).name('groups') public groups: string[],
-        @t.string.name('category') public category: string,
-        @t.array(serializedSchemaDefinition).name('bodySchemas') public bodySchemas: SerializedSchema[] = []
+        public path: string,
+        public httpMethods: string[],
+        public controller: string,
+        public action: string,
+        public description: string,
+        public groups: string[],
+        public category: string,
+        public bodySchemas?: any, //SerializedTypes
     ) {
         if (bodySchemas) {
-            this.deserializedBodySchemas = deserializeSchemas(bodySchemas);
+            this.deserializedBodyType = deserializeType(bodySchemas);
         }
     }
 
-    getBodySchema(): ClassSchema | undefined {
-        if (!this.deserializedBodySchemas.length) return;
-
-        return this.deserializedBodySchemas[this.deserializedBodySchemas.length - 1];
+    getBodyType(): Type | undefined {
+        return this.deserializedBodyType;
     }
 
-    getResultSchema(): ClassSchema | undefined {
-        if (!this.parsedResultSchemas.length && this.resultSchemas.length > 0) {
-            this.parsedResultSchemas = deserializeSchemas(this.resultSchemas);
+    getResultType(): Type | undefined {
+        if (!this.deserializedResultType && this.resultType) {
+            this.deserializedResultType = deserializeType(this.resultType);
         }
-        return this.parsedResultSchemas[this.parsedResultSchemas.length - 1];
+        return this.deserializedResultType;
     }
 
-    getQuerySchema(): ClassSchema | undefined {
-        if (!this.deserializedQuerySchema && this.querySchemas.length > 0) {
-            const schemas = deserializeSchemas(this.querySchemas);
-            this.deserializedQuerySchema = schemas[schemas.length - 1];
+    getQueryType(): Type | undefined {
+        if (!this.deserializedQueryType && this.queryType) {
+            this.deserializedQueryType = deserializeType(this.queryType);
         }
-        return this.deserializedQuerySchema;
+        return this.deserializedQueryType;
     }
 
-    getUrlSchema(): ClassSchema | undefined {
-        if (!this.deserializedUrlSchema && this.urlSchemas.length > 0) {
-            const schemas = deserializeSchemas(this.urlSchemas);
-            this.deserializedUrlSchema = schemas[schemas.length - 1];
+    getUrlType(): Type | undefined {
+        if (!this.deserializedUrlType && this.urlType) {
+            this.deserializedUrlType = deserializeType(this.urlType);
         }
-        return this.deserializedUrlSchema;
+        return this.deserializedUrlType;
     }
 
     get id(): string {
@@ -143,8 +139,8 @@ export class ApiRoute {
 
 
 export class ApiEntryPoints {
-    @t.array(ApiRoute) httpRoutes: ApiRoute[] = [];
-    @t.array(ApiAction) rpcActions: ApiAction[] = [];
+    httpRoutes: ApiRoute[] = [];
+    rpcActions: ApiAction[] = [];
 }
 
 export const ApiConsoleApi = ControllerSymbol<ApiConsoleApi>('.deepkit/api-console', [ApiRoute, ApiDocument]);

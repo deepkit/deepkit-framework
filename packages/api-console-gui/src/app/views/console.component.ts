@@ -172,7 +172,7 @@ export class ConsoleComponent implements OnInit, OnDestroy {
         this.entryPoints = await this.client.api.getEntryPoints();
 
         for (const action of this.entryPoints.rpcActions) {
-            const schema = action.getParametersSchema();
+            const schema = action.getParametersType();
             if (schema) {
                 const args: string[] = [];
                 for (const property of schema.getProperties()) {
@@ -182,7 +182,7 @@ export class ConsoleComponent implements OnInit, OnDestroy {
                 action.parameterSignature = args.join(', ');
             }
 
-            const resultSchema = action.getResultsSchema();
+            const resultSchema = action.getResultsType();
             if (resultSchema) {
                 let type = resultSchema.getProperty('v');
                 if (type.type === 'promise') type = type.templateArgs[0];

@@ -34,11 +34,6 @@ class ArgDefinitions {
     name: string = '';
     description: string = '';
     args: ArgDefinition[] = [];
-
-    getArg(name: string): ArgDefinition {
-        for (const arg of this.args) if (arg.name === name) return arg;
-        throw new Error(`No argument with name ${name} found`);
-    }
 }
 
 class CommandDecorator {
@@ -58,13 +53,19 @@ class CommandDecorator {
 
 export const cli: ClassDecoratorResult<typeof CommandDecorator> = createClassDecoratorContext(CommandDecorator);
 
+function getProperty(classType: ClassType, ref: {property: string; parameterIndex?: number;}): ReflectionProperty | ReflectionParameter {
+    return ref.parameterIndex !== undefined
+        ? ReflectionClass.from(classType).getMethodParameters(ref.property)[ref.parameterIndex]
+        : ReflectionClass.from(classType).getProperty(ref.property);
+}
+
 class ArgDefinition {
-    name: string = '';
     isFlag: boolean = false;
-    propertySchema!: ReflectionProperty | ReflectionParameter;
     multiple: boolean = false;
     hidden: boolean = false;
     char: string = '';
+    property!: string;
+    parameterIndex?: number;
 }
 
 export class ArgDecorator implements PropertyApiTypeInterface<ArgDefinition> {
@@ -72,19 +73,9 @@ export class ArgDecorator implements PropertyApiTypeInterface<ArgDefinition> {
 
     onDecorator(classType: ClassType, property: string | undefined, parameterIndex?: number): void {
         if (!property) throw new Error('arg|flag needs to be on a method argument or class property, .e.g execute(@arg hostname: string) {}');
-        // const schema = getClassSchema(classType);
 
-        // if (parameterIndex === undefined && !schema.hasProperty(property)) {
-        //     //make sure its known in ClassSchema
-        //     t(classType.prototype, property);
-        // }
-
-        const propertySchema = parameterIndex !== undefined
-            ? ReflectionClass.from(classType).getMethodParameters(property)[parameterIndex]
-            : ReflectionClass.from(classType).getProperty(property);
-
-        this.t.name = propertySchema.name;
-        this.t.propertySchema = propertySchema;
+        this.t.property = property;
+        this.t.parameterIndex = parameterIndex;
 
         const aBase = cli._fetch(Object.getPrototypeOf(classType.prototype)?.constructor);
         if (aBase) {
@@ -142,15 +133,13 @@ export function buildOclifCommand(name: string, injector: InjectorContext, class
     let converters = new Map<ReflectionProperty | ReflectionParameter, (v: any) => any>();
 
     for (const property of argDefinitions.args) {
-        converters.set(property.propertySchema, (value: any) => {
-            value = deserialize(value, undefined, undefined, property.propertySchema.type);
-            // const errors: ValidationFailedItem[] = [];
-            const errors = validate(value, property.propertySchema.type);
-            // jitValidateProperty(property.propertySchema)(
-            //     value,
-            //     property.propertySchema.name,
-            //     errors
-            // );
+        const propertySchema = getProperty(classType, property);
+        converters.set(propertySchema, (value: any) => {
+            if (value === undefined && !propertySchema.isValueRequired()) {
+                return undefined;
+            }
+            value = deserialize(value, undefined, undefined, propertySchema.type);
+            const errors = validate(value, propertySchema.type);
             if (errors.length) {
                 throw errors[0];
             }
@@ -161,19 +150,20 @@ export function buildOclifCommand(name: string, injector: InjectorContext, class
     for (const i in argDefinitions.args) {
         if (!argDefinitions.args.hasOwnProperty(i)) continue;
         const t = argDefinitions.args[i];
+        const propertySchema = getProperty(classType, t);
 
         const options = {
-            name: t.name,
+            name: propertySchema.name,
             description: 'todo',
             hidden: t.hidden,
-            required: !(t.propertySchema.isOptional() || t.propertySchema.hasDefault()),
+            required: !(propertySchema.isOptional() || propertySchema.hasDefault()),
             multiple: t.multiple,
-            default: t.propertySchema.getDefaultValue(),
+            default: propertySchema.getDefaultValue(),
         };
 
         //todo, add `parse(i)` and make sure type is correct depending on t.propertySchema.type
         if (t.isFlag) {
-            oclifFlags[t.name] = t.propertySchema.type.kind === ReflectionKind.boolean ? flags.boolean(options) : flags.string(options);
+            oclifFlags[propertySchema.name] = propertySchema.type.kind === ReflectionKind.boolean ? flags.boolean(options) : flags.string(options);
         } else {
             oclifArgs.push(options);
         }
@@ -199,12 +189,14 @@ export function buildOclifCommand(name: string, injector: InjectorContext, class
 
                     for (const property of argDefinitions!.args) {
                         try {
-                            const v = converters.get(property.propertySchema)!(args[property.name] ?? flags[property.name]);
-                            if (property.propertySchema instanceof ReflectionParameter) {
+                            const propertySchema = getProperty(classType, property);
+
+                            const v = converters.get(propertySchema)!(args[propertySchema.name] ?? flags[propertySchema.name]);
+                            if (propertySchema instanceof ReflectionParameter) {
                                 methodArgs.push(v);
-                            } else if (property.propertySchema instanceof ReflectionProperty) {
+                            } else if (propertySchema instanceof ReflectionProperty) {
                                 if (v !== undefined) {
-                                    instance[property.name as keyof typeof instance] = v;
+                                    instance[propertySchema.name as keyof typeof instance] = v;
                                 }
                             }
                         } catch (e) {

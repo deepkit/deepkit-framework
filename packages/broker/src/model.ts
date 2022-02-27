@@ -8,8 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { t } from "@deepkit/type";
-
 export enum BrokerType {
     //the first 100 are reserved
     Ack,
@@ -43,61 +41,61 @@ export enum BrokerType {
     EntityFields,
 }
 
-export const brokerDelete = t.schema({
-    n: t.string,
-});
+export interface brokerDelete {
+    n: string;
+}
 
-export const brokerIncrement = t.schema({
-    n: t.string,
-    v: t.number.optional
-});
+export interface brokerIncrement {
+    n: string,
+    v?: number
+}
 
-export const brokerResponseIncrement = t.schema({
-    v: t.number
-});
+export interface brokerResponseIncrement {
+    v: number;
+}
 
-export const brokerSet = t.schema({
-    n: t.string,
-    v: t.type(Uint8Array),
-});
+export interface brokerSet {
+    n: string,
+    v: Uint8Array,
+}
 
-export const brokerResponseGet = t.schema({
-    v: t.type(Uint8Array).optional,
-});
+export interface brokerResponseGet {
+    v?: Uint8Array,
+}
 
-export const brokerGet = t.schema({
-    n: t.string,
-});
+export interface brokerGet {
+    n: string;
+}
 
-export const brokerPublish = t.schema({
-    c: t.string,
-    v: t.type(Uint8Array),
-});
+export interface brokerPublish {
+    c: string,
+    v: Uint8Array,
+}
 
-export const brokerSubscribe = t.schema({
-    c: t.string,
-});
+export interface brokerSubscribe {
+    c: string;
+}
 
-export const brokerResponseSubscribeMessage = t.schema({
-    c: t.string,
-    v: t.type(Uint8Array),
-});
+export interface brokerResponseSubscribeMessage {
+    c: string,
+    v: Uint8Array,
+}
 
-export const brokerLockId = t.schema({
-    id: t.string,
-});
+export interface brokerLockId {
+    id: string;
+}
 
-export const brokerLock = t.schema({
-    id: t.string,
-    ttl: t.number,
-    timeout: t.number.optional,
-});
+export interface brokerLock {
+    id: string,
+    ttl: number,
+    timeout?: number,
+}
 
-export const brokerResponseIsLock = t.schema({
-    v: t.boolean
-});
+export interface brokerResponseIsLock {
+    v: boolean;
+}
 
-export const brokerEntityFields = t.schema({
-    name: t.string,
-    fields: t.array(t.string),
-});
+export interface brokerEntityFields {
+    name: string,
+    fields: string[],
+}

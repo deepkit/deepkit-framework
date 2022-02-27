@@ -155,7 +155,8 @@ export function getPartialSerializeFunction(type: TypeClass | TypeObjectLiteral,
     const jitContainer = getTypeJitContainer(type);
     if (!jitContainer.partialType) {
         type = copyAndSetParent(type);
-        type.types = type.types.map(v => {return {...v}}) as any;
+        const reflection = ReflectionClass.from(type);
+        type.types = reflection.type.types.map(v => ({ ...v })) as any;
         for (const member of type.types) {
             if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
                 member.optional = true;
@@ -268,14 +269,14 @@ export function collapsePath(path: (string | RuntimeCode)[], prefix?: string): s
  * internal: The jit stack cache is used in both serializer and guards, so its cache key needs to be aware of it
  */
 export class JitStack {
-    protected stacks: {registry?: TemplateRegistry, map: Map<Type, { fn: Function | undefined }>}[] = [];
+    protected stacks: { registry?: TemplateRegistry, map: Map<Type, { fn: Function | undefined }> }[] = [];
 
     getStack(registry?: TemplateRegistry) {
         for (const stack of this.stacks) {
             if (stack.registry === registry) return stack.map;
         }
         const map = new Map<Type, { fn: Function | undefined }>();
-        this.stacks.push({registry, map});
+        this.stacks.push({ registry, map });
         return map;
     }
 
@@ -1194,7 +1195,10 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     const signatures: TypeIndexSignature[] = [];
     const existing: string[] = [];
 
-    for (const member of type.types) {
+    //to resolve inheritance in TypeClass, use ReflectionClass
+    const reflection = ReflectionClass.from(type);
+
+    for (const member of reflection.type.types) {
         if (member.kind === ReflectionKind.indexSignature) {
             signatures.push(member);
         } else if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property || member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method) {
@@ -1610,7 +1614,7 @@ export function handleUnion(type: TypeUnion, state: TemplateState) {
             ${handleErrors}
             ${state.assignValidationError('type', 'Invalid type')}
         }
-
+        state.errors = oldErrors;
     `);
 }
 

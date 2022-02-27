@@ -9,10 +9,10 @@
  */
 import { ClassType, getClassName, isArray, isClass } from '@deepkit/core';
 import './optimize-tsx';
-import { Injector } from '@deepkit/injector';
+import { Injector, Resolver } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { escapeAttribute, escapeHtml, safeString } from './utils';
-import { ReflectionClass, ReflectionKind } from '@deepkit/type';
+import { OuterType, reflect, ReflectionClass, ReflectionKind } from '@deepkit/type';
 
 export type Attributes<T = any> = {
     [P in keyof T]: T[P];
@@ -109,6 +109,10 @@ async function renderChildren(injector: Injector, contents: ElementStructChildre
     return children;
 }
 
+interface TemplateCacheCall {
+    templateCall?(attributes: any, children: any): any;
+}
+
 export async function render(injector: Injector, struct: ElementStruct | string | (ElementStruct | string)[], stopwatch?: Stopwatch): Promise<any> {
     if ('string' === typeof struct) {
         return struct;
@@ -167,20 +171,21 @@ export async function render(injector: Injector, struct: ElementStruct | string 
     }
 
     if (isClass(struct.render)) {
-        const element = struct.render;
-        const args: any = [struct.attributes || {}, html(children)];
-        const schema = ReflectionClass.from(struct.render);
-        const types = schema.getMethodParameters('constructor');
-        //todo: refactor this to support all types
-        // for (let i = 2; i < types.length; i++) {
-        //     const token = (types[i].type.kind === ReflectionKind.class) ? types[i].getResolvedClassType() : types[i].literalValue || types[i].typeValue;
-        //     if (token === undefined) {
-        //         args.push(undefined);
-        //     } else {
-        //         args.push(injector.get(token));
-        //     }
-        // }
-        const instance = new element(...args);
+        const element = struct.render as any as ClassType & TemplateCacheCall;
+        if (!element.templateCall) {
+            const schema = ReflectionClass.from(struct.render);
+            const args: Resolver<any>[] = [];
+            const types = schema.getMethodParameters('constructor');
+            for (let i = 2; i < types.length; i++) {
+                args.push(injector.createResolver(types[i].type as OuterType));
+            }
+
+            element.templateCall = (attributes: any, children: any) => {
+                return new element(attributes, children, ...(args.map(v => v())));
+            };
+        }
+        const instance = element.templateCall(struct.attributes || {}, html(children));
+
         if (stopwatch) {
             const frame = stopwatch.start(getClassName(struct.render), FrameCategory.template);
             try {
@@ -194,9 +199,25 @@ export async function render(injector: Injector, struct: ElementStruct | string 
 
     if ('function' === typeof struct.render) {
         const frame = stopwatch?.start(struct.render.name, FrameCategory.template);
+        const element = struct.render as Function & TemplateCacheCall;
+        if (!element.templateCall) {
+            const type = reflect(struct.render);
+            if (type.kind === ReflectionKind.function) {
+                const args: Resolver<any>[] = [];
+                for (let i = 2; i < type.parameters.length; i++) {
+                    args.push(injector.createResolver(type.parameters[i]));
+                }
+
+                element.templateCall = (attributes: any, children: any) => {
+                    return element(attributes, children, ...(args.map(v => v())));
+                };
+            } else {
+                element.templateCall = element as any;
+            }
+        }
 
         try {
-            const res = await struct.render(struct.attributes as any || {}, html(children));
+            const res = await element.templateCall!(struct.attributes as any || {}, html(children));
             if (isElementStruct(res)) {
                 return await render(injector, res, stopwatch);
             } else {

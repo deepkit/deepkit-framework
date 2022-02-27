@@ -56,6 +56,7 @@ import { NoTypeReceived } from '../utils';
 import { findCommonLiteral } from '../inheritance';
 import type { ValidatorFunction } from '../validator';
 import { isWithDeferredDecorators } from '../decorator';
+import { SerializedTypes, serializeType } from '../type-serialization';
 
 /**
  * Receives the runtime type of template argument.
@@ -70,7 +71,7 @@ import { isWithDeferredDecorators } from '../decorator';
  *
  * ```
  */
-export type ReceiveType<T> = Packed | Type;
+export type ReceiveType<T> = Packed | Type | ClassType<T>;
 
 export function resolveReceiveType(type?: Packed | Type | ClassType): OuterType {
     if (!type) throw new NoTypeReceived();
@@ -251,6 +252,12 @@ export class ReflectionParameter {
 
     hasDefault(): boolean {
         return this.parameter.default !== undefined;
+    }
+
+    isValueRequired(): boolean {
+        if (this.hasDefault()) return false;
+
+        return !this.isOptional();
     }
 
     getDefaultValue(): any {
@@ -439,7 +446,7 @@ export function resolveForeignReflectionClass(property: ReflectionProperty): Ref
 /**
  * Resolved the class/object ReflectionClass of the given TypeClass|TypeObjectLiteral
  */
-export function resolveClassType(type: OuterType): ReflectionClass<any> {
+export function resolveClassType(type: Type): ReflectionClass<any> {
     if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) {
         throw new Error(`Cant resolve ReflectionClass of type ${type.kind} since its not a class or object literal`);
     }
@@ -517,6 +524,14 @@ export class ReflectionProperty {
 
     isArray(): boolean {
         return this.type.kind === ReflectionKind.array;
+    }
+
+    isDate(): boolean {
+        return this.type.kind === ReflectionKind.class && this.type.classType === Date;
+    }
+
+    isNumber(): boolean {
+        return this.type.kind === ReflectionKind.number || this.type.kind === ReflectionKind.bigint;
     }
 
     getForeignKeyName(): string {
@@ -902,6 +917,14 @@ export class ReflectionClass<T> {
         return this.type.kind === ReflectionKind.class ? getClassName(this.getClassType()) : this.type.typeName || 'Object';
     }
 
+    createDefaultObject(): object {
+        try {
+            return new (this.getClassType());
+        } catch {
+            return {};
+        }
+    }
+
     getName(): string {
         return this.name || this.getClassName();
     }
@@ -1235,6 +1258,10 @@ export class ReflectionClass<T> {
 
     public hasCircularReference(): boolean {
         return hasCircularReference(this.type);
+    }
+
+    serializeType(): SerializedTypes {
+        return serializeType(this.type);
     }
 
     /**

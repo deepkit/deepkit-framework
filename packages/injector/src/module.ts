@@ -1,7 +1,7 @@
 import { NormalizedProvider, ProviderWithScope, TagProvider, Token } from './provider';
 import { arrayRemoveItem, ClassType, getClassName, isClass, isPrototypeOfBase } from '@deepkit/core';
 import { BuildContext, Injector, SetupProviderRegistry } from './injector';
-import { isExtendable, isType } from '@deepkit/type';
+import { hasTypeInformation, isExtendable, isType, reflect } from '@deepkit/type';
 
 export type ConfigureProvider<T> = { [name in keyof T]: T[name] extends (...args: infer A) => any ? (...args: A) => ConfigureProvider<T> : T[name] };
 
@@ -83,8 +83,17 @@ function registerPreparedProvider(map: Map<Token<any>, PreparedProvider>, module
 }
 
 export function findModuleForConfig(config: ClassType, modules: InjectorModule[]): InjectorModule | undefined {
-    for (const m of modules) {
-        if (m.configDefinition === config) return m;
+    //go first through first level tree, then second, the third, etc, until no left
+    const next: InjectorModule[] = modules.slice();
+
+    while(next.length) {
+        const iterateOver: InjectorModule[] = next.slice();
+        next.length = 0;
+
+        for (const m of iterateOver) {
+            if (m.configDefinition === config) return m;
+            next.push(...m.imports);
+        }
     }
 
     return undefined;
@@ -343,7 +352,8 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
         if (isType(token)) {
             let last = undefined as { token: Token, provider: PreparedProvider } | undefined;
             for (const [key, value] of this.preparedProviders.entries()) {
-                if (isType(key) && isExtendable(key, token)) last = { token: key, provider: value };
+                // if (isType(key) && isExtendable(key, token)) last = { token: key, provider: value };
+                if (isClass(key) && hasTypeInformation(key) && isExtendable(reflect(key), token)) last = { token: key, provider: value };
             }
             if (last) return last;
         }

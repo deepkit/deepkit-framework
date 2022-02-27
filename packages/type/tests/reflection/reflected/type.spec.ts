@@ -1,8 +1,9 @@
 import { describe, expect, test } from '@jest/globals';
 import { ReceiveType, resolveReceiveType, typeOf } from '../../../src/reflection/reflection';
-import { assertType, Embedded, indexAccess, isSameType, ReflectionKind, stringifyResolvedType, stringifyType, UUID } from '../../../src/reflection/type';
+import { assertType, Embedded, indexAccess, isSameType, ReflectionKind, stringifyResolvedType, stringifyType, TypeObjectLiteral, UUID } from '../../../src/reflection/type';
 import { isExtendable } from '../../../src/reflection/extends';
 import { expectEqualType } from '../../utils';
+import { ClassType } from '@deepkit/core';
 
 //note: this needs to run in a strict TS mode to infer correctly in the IDE
 type Extends<A, B> = [A] extends [B] ? true : false;
@@ -686,6 +687,36 @@ test('parent embedded', () => {
     expect(t1.types[0].type.parent).toBe(t1.types[0]);
 });
 
+test('enum extends', () => {
+    enum EnumA {
+        a, b, c
+    }
+
+    enum EnumB {
+        a, b, c, d
+    }
+
+    validExtend<EnumA, EnumA>();
+    invalidExtend<EnumA, EnumB>();
+    invalidExtend<EnumB, EnumA>();
+});
+
+test('circular extends', () => {
+    interface LoggerInterface {
+        scoped(name: string): LoggerInterface;
+    }
+
+    interface Another {
+        scoped(name: string): Another;
+
+        method(): Another;
+    }
+
+    validExtend<LoggerInterface, LoggerInterface>();
+    invalidExtend<LoggerInterface, Another>();
+    validExtend<Another, LoggerInterface>();
+});
+
 test('tuple extends', () => {
     validExtend<[string], [string]>();
     invalidExtend<[], [string]>();
@@ -722,6 +753,64 @@ test('tuple extends', () => {
     invalidExtend<boolean[], [boolean]>();
     invalidExtend<(boolean | undefined)[], [boolean]>();
     validExtend<(boolean | undefined)[], [boolean?]>();
+});
+
+test('enum as literal type', () => {
+    enum MessageType {
+        add,
+        delete,
+    }
+
+    interface MessageDelete {
+        type: MessageType.delete,
+        id: number;
+    }
+
+    const type = typeOf<MessageDelete>();
+    console.log('type', type);
+    expect(type).toMatchObject({
+        annotations: {},
+        typeName: 'MessageDelete',
+        kind: ReflectionKind.objectLiteral, types: [
+            { kind: ReflectionKind.propertySignature, name: 'type', type: { kind: ReflectionKind.literal, literal: 1 } },
+            { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.number } },
+        ]
+    } as TypeObjectLiteral as any);
+});
+
+test('class extends interface', () => {
+    interface LoggerInterface {
+        log(): boolean;
+    }
+
+    class Logger {
+        constructor(verbose: boolean) {
+        }
+
+        log(): boolean {
+            return true;
+        }
+    }
+
+    class Logger2 {
+        constructor(nothing: string) {
+        }
+
+        log(): boolean {
+            return true;
+        }
+    }
+
+    type t = Logger extends LoggerInterface ? true : false;
+    type t2 = LoggerInterface extends Logger ? true : false;
+    type t3 = Logger2 extends Logger ? true : false;
+    type t4 = ClassType<Logger> extends ClassType<Logger2> ? true : false;
+
+    validExtend<LoggerInterface, Logger>();
+    validExtend<Logger, LoggerInterface>();
+    validExtend<Logger, Logger2>();
+    validExtend<Logger2, Logger>();
+    validExtend<ClassType<Logger>, ClassType<Logger2>>();
 });
 
 class User {

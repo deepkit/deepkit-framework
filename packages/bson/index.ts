@@ -9,8 +9,8 @@
  */
 
 export { ObjectId } from './src/model';
-export { deserializeBSONWithoutOptimiser } from './src/bson-parser';
-export { getBSONDeserializer, deserializeBSON, BSONDeserializer, } from './src/bson-deserializer';
+export { deserializeBSONWithoutOptimiser, ParserV2 as Parser } from './src/bson-parser';
+export { getBSONDeserializer, deserializeBSON, BSONDeserializer } from './src/bson-deserializer';
 export {
-    BSONSerializer, getBSONSizer, getBSONSerializer, bsonBinarySerializer, serializeBSON, serializeWithoutOptimiser, Writer, BSONBinarySerializer, ValueWithBSONSerializer
+    stringByteLength, BSONSerializer, getBSONSizer, getBSONSerializer, bsonBinarySerializer, serializeBSON, serializeWithoutOptimiser, Writer, BSONBinarySerializer, ValueWithBSONSerializer
 } from './src/bson-serializer';

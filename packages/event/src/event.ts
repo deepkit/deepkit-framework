@@ -10,7 +10,7 @@
 
 import { ClassType, CompilerContext, isClass, isFunction } from '@deepkit/core';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
-import { createClassDecoratorContext, createPropertyDecoratorContext } from '@deepkit/type';
+import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, PropertyDecoratorResult } from '@deepkit/type';
 
 export type EventListenerCallback<T> = (event: T) => void | Promise<void>;
 
@@ -68,40 +68,39 @@ class EventClassStore {
     listeners: { eventToken: EventToken<any>, methodName: string, order: number }[] = [];
 }
 
-export const eventClass = createClassDecoratorContext(
-    class {
-        t = new EventClassStore;
+class EventClassApi {
+    t = new EventClassStore;
 
-        addListener(eventToken: EventToken<any>, methodName: string, order: number) {
-            this.t.listeners.push({ eventToken, methodName, order: order });
-        }
+    addListener(eventToken: EventToken<any>, methodName: string, order: number) {
+        this.t.listeners.push({ eventToken, methodName, order: order });
     }
-);
+}
 
-export const eventDispatcher = createPropertyDecoratorContext(
-    class {
-        t = new EventStore;
+export const eventClass: ClassDecoratorResult<typeof EventClassApi> = createClassDecoratorContext(EventClassApi);
 
-        onDecorator(target: ClassType, property?: string) {
-            if (!this.t.token) throw new Error('@eventDispatcher.listen(eventToken) is the correct syntax.');
-            if (!property) throw new Error('@eventDispatcher.listen(eventToken) works only on class properties.');
+class EventDispatcherApi {
+    t = new EventStore;
 
-            eventClass.addListener(this.t.token, property, this.t.order)(target);
-        }
+    onDecorator(target: ClassType, property?: string) {
+        if (!this.t.token) throw new Error('@eventDispatcher.listen(eventToken) is the correct syntax.');
+        if (!property) throw new Error('@eventDispatcher.listen(eventToken) works only on class properties.');
 
-        /**
-         * Register a new event listener for given token.
-         *
-         * order: The lower the order, the sooner the listener is called.
-         */
-        listen(eventToken: EventToken<any>, order: number = 0) {
-            if (!eventToken) new Error('@eventDispatcher.listen() No event token given');
-            this.t.token = eventToken;
-            this.t.order = order;
-        }
+        eventClass.addListener(this.t.token, property, this.t.order)(target);
     }
-);
 
+    /**
+     * Register a new event listener for given token.
+     *
+     * order: The lower the order, the sooner the listener is called.
+     */
+    listen(eventToken: EventToken<any>, order: number = 0) {
+        if (!eventToken) new Error('@eventDispatcher.listen() No event token given');
+        this.t.token = eventToken;
+        this.t.order = order;
+    }
+}
+
+export const eventDispatcher: PropertyDecoratorResult<typeof EventDispatcherApi> = createPropertyDecoratorContext(EventDispatcherApi);
 
 export type EventListenerContainerEntryCallback = { order: number, fn: EventListenerCallback<any>, module?: InjectorModule, };
 export type EventListenerContainerEntryService = { module: InjectorModule, order: number, classType: ClassType, methodName: string };

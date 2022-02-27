@@ -52,7 +52,7 @@ import {
 } from './type';
 import { MappedModifier, ReflectionOp } from '@deepkit/type-spec';
 import { isExtendable } from './extends';
-import { ClassType, getClassName, isArray, isClass, isFunction } from '@deepkit/core';
+import { ClassType, getClassName, isArray, isClass, isFunction, stringifyValueWithType } from '@deepkit/core';
 import { isWithDeferredDecorators } from '../decorator';
 import { ReflectionClass, TData } from './reflection';
 
@@ -308,7 +308,7 @@ export class Processor {
     reflect(object: ClassType | Function | Packed | any, inputs: RuntimeStackEntry[] = [], options: ReflectOptions = {}): Type {
         const packed: Packed | undefined = isPack(object) ? object : object.__type;
         if (!packed) {
-            throw new Error('No valid runtime type given. Is @deepkit/type-compiler correctly installed? Execute deepkit-type-install to check');
+            throw new Error(`No valid runtime type for ${stringifyValueWithType(object)} given. Is @deepkit/type-compiler correctly installed? Execute deepkit-type-install to check`);
         }
 
         for (let i = 0; i < inputs.length; i++) {
@@ -929,10 +929,13 @@ export class Processor {
                             break;
                         }
                         case ReflectionOp.arg: {
+                            //used by InlineRuntimeType too
                             const arg = this.eatParameter() as number;
-                            const t = program.stack[arg] as Type | ReflectionClass<any>;
+                            const t = program.stack[arg] as Type | ReflectionClass<any> | number | string | boolean | bigint;
                             if (t instanceof ReflectionClass) {
                                 this.push(t.type);
+                            } else if ('string' === typeof t || 'number' === typeof t || 'boolean' === typeof t || 'bigint' === typeof t) {
+                                this.push({ kind: ReflectionKind.literal, literal: t });
                             } else {
                                 this.push(t);
                             }
@@ -1459,7 +1462,7 @@ export function typeInfer(value: any): OuterType {
 
         if (isClass(value)) {
             //unknown class
-            return { kind: ReflectionKind.class, classType: value, types: [] };
+            return { kind: ReflectionKind.class, classType: value as ClassType, types: [] };
         }
 
         return { kind: ReflectionKind.function, name: value.name, return: { kind: ReflectionKind.any }, parameters: [] };

@@ -9,7 +9,9 @@
  */
 import { asyncOperation, ClassType, CompilerContext, getClassName, isClass, isObject, urlJoin } from '@deepkit/core';
 import {
+    assertType,
     entity,
+    findMember,
     getSerializeFunction,
     getValidatorFunction,
     metaAnnotation,
@@ -20,16 +22,16 @@ import {
     SerializationOptions,
     serializer,
     Serializer,
+    stringifyType,
     typeToObject,
-    ValidationError,
-    ValidationFailedItem
+    ValidationError
 } from '@deepkit/type';
 // @ts-ignore
 import formidable from 'formidable';
 import { IncomingMessage } from 'http';
 import querystring from 'querystring';
 import { httpClass } from './decorator';
-import { HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters } from './model';
+import { BodyValidationError, HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters, ValidatedBody } from './model';
 import { InjectorContext, InjectorModule, TagRegistry } from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
 import { HttpControllers } from './controllers';
@@ -112,9 +114,6 @@ export class RouteConfig {
     public groups: string[] = [];
     public category: string = '';
 
-    /**
-     * This is set when the route action has a manual return type defined using @t.
-     */
     public returnType?: OuterType;
 
     public serializationOptions?: SerializationOptions;
@@ -160,40 +159,8 @@ export class RouteConfig {
     }
 }
 
-/**
- * When this class is injected into a route, then validation errors are not automatically thrown (using onHttpControllerValidationError event),
- * but injected to the route itself. The user is then responsible to handle the errors.
- *
- * Note: The body parameter is still passed, however it might contain now invalid data. The BodyValidation tells what data is invalid.
- */
-export class BodyValidation {
-    constructor(
-        public readonly errors: ValidationFailedItem[] = []
-    ) {
-    }
-
-    hasErrors(prefix?: string): boolean {
-        return this.getErrors(prefix).length > 0;
-    }
-
-    getErrors(prefix?: string): ValidationFailedItem[] {
-        if (prefix) return this.errors.filter(v => v.path.startsWith(prefix));
-
-        return this.errors;
-    }
-
-    getErrorsForPath(path: string): ValidationFailedItem[] {
-        return this.errors.filter(v => v.path === path);
-    }
-
-    getErrorMessageForPath(path: string): string {
-        return this.getErrorsForPath(path).map(v => v.message).join(', ');
-    }
-}
-
 class ParsedRoute {
     public regex?: string;
-    public customValidationErrorHandling?: ParsedRouteParameter;
 
     public pathParameterNames: { [name: string]: number } = {};
 
@@ -230,6 +197,20 @@ class ParsedRouteParameter {
 
     get body() {
         return metaAnnotation.getForName(this.parameter.type, 'httpBody') !== undefined;
+    }
+
+    get bodyValidation() {
+        return metaAnnotation.getForName(this.parameter.type, 'httpBodyValidation') !== undefined;
+    }
+
+    getType(): OuterType {
+        if (this.bodyValidation) {
+            assertType(this.parameter.type, ReflectionKind.class);
+            const valueType = findMember('value', this.parameter.type);
+            if (!valueType || valueType.kind !== ReflectionKind.property) throw new Error(`No property value found at ${stringifyType(this.parameter.type)}`);
+            return valueType.type as OuterType;
+        }
+        return this.parameter.parameter;
     }
 
     get query() {
@@ -282,10 +263,6 @@ export function parseRouteControllerAction(routeConfig: RouteConfig): ParsedRout
 
     for (const property of methodArgumentProperties) {
         const parsedParameter = parsedRoute.addParameter(property);
-
-        if (property.type.kind === ReflectionKind.class && property.type.classType === BodyValidation) {
-            parsedRoute.customValidationErrorHandling = parsedParameter;
-        }
         parsedParameter.regexPosition = parsedPath.parameterNames[property.name];
     }
 
@@ -453,22 +430,25 @@ export class Router {
         const middlewareConfigs = filterMiddlewaresForRoute(this.middlewareRegistry.configs, routeConfig, fullPath);
 
         for (const parameter of parsedRoute.getParameters()) {
-            if (parsedRoute.customValidationErrorHandling === parameter) {
-                compiler.context.set('BodyValidation', BodyValidation);
-                bodyValidationErrorHandling = '';
-                setParameters.push(`parameters.${parameter.parameter.name} = new BodyValidation(bodyErrors);`);
-                parameterNames.push(`parameters.${parameter.parameter.name}`);
-            } else if (parameter.body) {
-                const validatorVar = compiler.reserveVariable('argumentValidator', getValidatorFunction(undefined, parameter.parameter.parameter));
-                const converterVar = compiler.reserveVariable('argumentConverter', getSerializeFunction(parameter.parameter.parameter, serializer.deserializeRegistry));
+            if (parameter.body || parameter.bodyValidation) {
+                const type = parameter.getType();
+                const validatorVar = compiler.reserveVariable('argumentValidator', getValidatorFunction(undefined, type));
+                const converterVar = compiler.reserveVariable('argumentConverter', getSerializeFunction(type, serializer.deserializeRegistry));
 
                 enableParseBody = true;
                 setParameters.push(`parameters.${parameter.parameter.name} = ${converterVar}(bodyFields, {loosely: true});`);
-                parameterValidator.push(`${validatorVar}(parameters.${parameter.parameter.name}, ${JSON.stringify(parameter.typePath || '')}, bodyErrors);`);
-                parameterNames.push(`parameters.${parameter.parameter.name}`);
+                parameterValidator.push(`${validatorVar}(parameters.${parameter.parameter.name}, {errors: bodyErrors});`);
+                if (parameter.bodyValidation) {
+                    compiler.context.set('BodyValidation', ValidatedBody);
+                    compiler.context.set('BodyValidationError', BodyValidationError);
+                    parameterNames.push(`new BodyValidation(new BodyValidationError(bodyErrors), bodyErrors.length === 0 ? parameters.${parameter.parameter.name} : undefined)`);
+                    bodyValidationErrorHandling = '';
+                } else {
+                    parameterNames.push(`parameters.${parameter.parameter.name}`);
+                }
             } else if (parameter.query || parameter.queries) {
                 const converted = getSerializeFunction(parameter.parameter.parameter, serializer.deserializeRegistry, undefined, parameter.getName());
-                const validator = getValidatorFunction(undefined, parameter.parameter.parameter, );
+                const validator = getValidatorFunction(undefined, parameter.parameter.parameter,);
                 const converterVar = compiler.reserveVariable('argumentConverter', converted);
                 const validatorVar = compiler.reserveVariable('argumentValidator', validator);
 

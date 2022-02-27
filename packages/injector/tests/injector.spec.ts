@@ -568,3 +568,52 @@ test('setup provider', () => {
         expect(i1.get(MyService).transporter).toEqual(['a', 'b', 'c']);
     }
 });
+
+test('loggerInterface', () => {
+    type LogData = { [name: string]: any };
+
+    enum LoggerLevel {
+        none,
+        alert,
+        error,
+        warning,
+        log,
+        info,
+        debug,
+    }
+
+    interface LoggerInterface {
+        level: LoggerLevel;
+
+        scoped(name: string): LoggerInterface;
+
+        data(data: LogData): LoggerInterface;
+
+        is(level: LoggerLevel): boolean;
+
+        alert(...message: any[]): void;
+
+        error(...message: any[]): void;
+
+        warning(...message: any[]): void;
+
+        log(...message: any[]): void;
+
+        info(...message: any[]): void;
+
+        debug(...message: any[]): void;
+    }
+
+    class MyServer {
+        constructor(public logger: LoggerInterface) {
+        }
+    }
+
+    class Logger {
+    }
+
+    const injector = Injector.from([MyServer, provide<LoggerInterface>(Logger)]);
+    const server = injector.get(MyServer);
+    expect(server).toBeInstanceOf(MyServer);
+    expect(server.logger).toBeInstanceOf(Logger);
+});

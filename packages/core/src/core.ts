@@ -224,7 +224,7 @@ export function isPromise<T>(obj: any | Promise<T>): obj is Promise<T> {
  *
  * @public
  */
-export function isClass(obj: any): obj is ClassType {
+export function isClass(obj: any): obj is AbstractClassType {
     if ('function' === typeof obj) {
         return obj.toString().startsWith('class ') || obj.toString().startsWith('class{');
     }
@@ -655,7 +655,7 @@ export function isConstructable(fn: any): boolean {
     }
 }
 
-export function isPrototypeOfBase(prototype: ClassType | undefined, base: ClassType): boolean {
+export function isPrototypeOfBase(prototype: AbstractClassType | undefined, base: ClassType): boolean {
     if (!prototype) return false;
     if (prototype === base) return true;
     let currentProto = Object.getPrototypeOf(prototype);

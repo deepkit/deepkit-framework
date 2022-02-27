@@ -71,6 +71,7 @@ import {
     isOptionalTypeNode,
     isParenthesizedTypeNode,
     isPropertyAccessExpression,
+    isQualifiedName,
     isStringLiteral,
     isTypeAliasDeclaration,
     isTypeParameterDeclaration,
@@ -1433,6 +1434,40 @@ export class ReflectionTransformer {
 
             const resolved = this.resolveDeclaration(typeName);
             if (!resolved) {
+
+                //maybe reference to enum
+                if (isQualifiedName(typeName)) {
+                    if (isIdentifier(typeName.left)) {
+                        const resolved = this.resolveDeclaration(typeName.left);
+                        if (resolved && isEnumDeclaration(resolved.declaration)) {
+                            let lastExpression: Expression | undefined;
+                            let indexValue: number = 0;
+                            for (const member of resolved.declaration.members) {
+                                if (getNameAsString(member.name) === getNameAsString(typeName.right)) {
+                                    if (member.initializer) {
+                                        program.pushOp(ReflectionOp.arg, program.pushStack(this.nodeConverter.toExpression(member.initializer)));
+                                    } else if (lastExpression) {
+                                        const exp = this.nodeConverter.toExpression(lastExpression);
+                                        program.pushOp(ReflectionOp.arg, program.pushStack(
+                                            this.f.createBinaryExpression(exp, SyntaxKind.PlusToken, this.nodeConverter.toExpression(indexValue))
+                                        ));
+                                    } else {
+                                        program.pushOp(ReflectionOp.arg, program.pushStack(this.nodeConverter.toExpression(indexValue)));
+                                    }
+                                    return;
+                                } else {
+                                    indexValue++;
+                                    if (member.initializer) {
+                                        lastExpression = member.initializer;
+                                        //restart index
+                                        indexValue = 0;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 //non existing references are ignored.
                 program.pushOp(ReflectionOp.never);
                 return;

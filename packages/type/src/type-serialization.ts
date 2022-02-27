@@ -471,6 +471,9 @@ interface DeserializeState {
  * @reflection never
  */
 function deserialize(type: SerializedType | SerializedTypeReference, state: DeserializeState, parent?: Type): Type {
+    if (!type) {
+        throw new Error('wat')
+    }
     if ('number' === typeof type) {
         if (!state.types[type]) return { kind: ReflectionKind.unknown };
         const typeState = state.deserialized[type];
@@ -656,5 +659,6 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
 }
 
 export function deserializeType(types: SerializedTypes, state: Partial<DeserializeState> = {}): Type {
+    if (types.length === 0) return { kind: ReflectionKind.unknown };
     return deserialize(types[0], { ...state, deserialized: {}, types });
 }

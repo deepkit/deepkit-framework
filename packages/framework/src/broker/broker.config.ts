@@ -8,11 +8,19 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { t } from '@deepkit/type';
-import { AppModuleConfig } from '@deepkit/app';
+export class BrokerConfig {
+    /**
+     * @description If startOnBootstrap is true, the broker server stats at this address. Unix socket path or host:port combination
+     */
+    listen: string = 'localhost:8811';
 
-export const brokerConfig = new AppModuleConfig({
-    listen: t.string.default('localhost:8811').description('Unix socket path or host:port combination'),
-    host: t.string.default('localhost:8811').description('Unix socket path or host:port combination'),
-    startOnBootstrap: t.boolean.default(false).description('Automatically starts a single broker in the main process. Disable it if you have a custom broker node.'),
-});
+    /**
+     * @description If a different broker server should be used, this is its address. Unix socket path or host:port combination.
+     */
+    host: string = 'localhost:8811';
+
+    /**
+     * @description Automatically starts a single broker in the main process. Disable it if you have a custom broker node.
+     */
+    startOnBootstrap: boolean = false;
+}

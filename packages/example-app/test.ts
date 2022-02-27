@@ -1,7 +1,8 @@
-import { t } from '@deepkit/type';
-
 interface FilterQuery<T> {}
 
 class Peter {
-    @t.map(t.any) query?: FilterQuery<any>;
+    query?: FilterQuery<any>;
 }
+
+
+console.log((Peter as any).__type);

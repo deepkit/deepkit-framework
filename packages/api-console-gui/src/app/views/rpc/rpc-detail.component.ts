@@ -31,7 +31,7 @@ import { isSubject } from '@deepkit/core-rxjs';
                 </div>
 
                 <div class="container overlay-scrollbar-small">
-                    <ng-container *ngIf="action.getParametersSchema() as schema">
+                    <ng-container *ngIf="action.getParametersType() as schema">
                         <deepkit-box title="Parameter">
                             <ng-container *ngFor="let p of schema.getProperties(); trackBy: trackByIndex">
                                 <api-console-input [decoration]="true" (keyDown)="consoleInputKeyDown($event)"
@@ -42,7 +42,7 @@ import { isSubject } from '@deepkit/core-rxjs';
                         </deepkit-box>
                     </ng-container>
 
-                    <deepkit-box title="Return type" style="padding: 12px" *ngIf="action.getResultsSchema() as schema">
+                    <deepkit-box title="Return type" style="padding: 12px" *ngIf="action.getResultsType() as schema">
                         <div class="ts text-selection">
                             <div class="ts text-selection" *ngIf="schema.getProperty('v') as property">
                                 <div codeHighlight [code]="propertyToTSInterface(property)"></div>
@@ -343,7 +343,7 @@ export class RpcDetailComponent implements OnChanges {
         if (!this.actionState) return;
 
         const args: any[] = [];
-        const paramSchema = this.action.getParametersSchema();
+        const paramSchema = this.action.getParametersType();
         if (paramSchema) {
             const parameter: any = {};
             Object.assign(parameter, extractDataStructureFromSchema(this.actionState.params, paramSchema));

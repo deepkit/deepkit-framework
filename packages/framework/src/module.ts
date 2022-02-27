@@ -9,21 +9,20 @@
  */
 
 import { ClassType, isClass, isPrototypeOfBase, ProcessLocker } from '@deepkit/core';
-import { DebugRequest } from '@deepkit/framework-debug-api';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
 import { ApplicationServer, ApplicationServerListener } from './application-server';
 import { BrokerModule } from './broker/broker.module';
-import { LiveDatabase } from './database/live-database';
+// import { LiveDatabase } from './database/live-database';
 import { DebugRouterController } from './cli/debug-router';
 import { DebugDIController } from './cli/debug-di';
 import { ServerStartController } from './cli/server-start';
 import { DebugController } from './debug/debug.controller';
 import { registerDebugHttpController } from './debug/http-debug.controller';
 import { HttpLogger, HttpModule, HttpRequest, serveStaticListener } from '@deepkit/http';
-import { inject, InjectorContext, injectorReference, ProviderWithScope, Token } from '@deepkit/injector';
-import { frameworkConfig } from './module.config';
-import { ConsoleTransport, Logger } from '@deepkit/logger';
+import { InjectorContext, injectorReference, provide, ProviderWithScope, Token } from '@deepkit/injector';
+import { FrameworkConfig } from './module.config';
+import { ConsoleTransport, Logger, LoggerInterface } from '@deepkit/logger';
 import { SessionHandler } from './session';
 import { RpcServer, WebWorkerFactory } from './worker';
 import { Stopwatch } from '@deepkit/stopwatch';
@@ -43,22 +42,20 @@ import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rp
 import { normalizeDirectory } from './utils';
 
 export class FrameworkModule extends createModule({
-    config: frameworkConfig,
+    config: FrameworkConfig,
     providers: [
         ProcessLocker,
         ApplicationServer,
         WebWorkerFactory,
         RpcServer,
         ConsoleTransport,
-        Logger,
+        provide<LoggerInterface>(Logger),
         RpcKernelSecurity,
         MigrationProvider,
         DebugController,
-        { provide: DatabaseRegistry, deps: [InjectorContext], useFactory: (ic) => new DatabaseRegistry(ic) },
-
+        { provide: DatabaseRegistry, useFactory: (ic: InjectorContext) => new DatabaseRegistry(ic) },
         {
             provide: RpcKernel,
-            deps: [RpcControllers, InjectorContext, RpcKernelSecurity, Logger, inject(Stopwatch).optional],
             useFactory(rpcControllers: RpcControllers, injectorContext: InjectorContext, rpcKernelSecurity: RpcKernelSecurity, logger: Logger, stopwatch?: Stopwatch) {
                 const classType = stopwatch ? RpcKernelWithStopwatch : RpcKernel;
                 const kernel: RpcKernel = new classType(injectorContext, rpcKernelSecurity, logger.scoped('rpc'));
@@ -78,13 +75,15 @@ export class FrameworkModule extends createModule({
         //move to HttpModule?
         { provide: SessionHandler, scope: 'http' },
 
-        { provide: LiveDatabase, scope: 'rpc' },
-        { provide: HttpRequest, scope: 'rpc' },
-        { provide: RpcInjectorContext, scope: 'rpc' },
-        { provide: SessionState, scope: 'rpc' },
-        { provide: RpcKernelBaseConnection, scope: 'rpc' },
-        { provide: RpcKernelConnection, scope: 'rpc' },
-        { provide: ConnectionWriter, scope: 'rpc' },
+        // { provide: LiveDatabase, scope: 'rpc' },
+
+        //all of these will be set on scope creation
+        { provide: HttpRequest, scope: 'rpc', useValue: undefined },
+        { provide: RpcInjectorContext, scope: 'rpc', useValue: undefined },
+        { provide: SessionState, scope: 'rpc', useValue: undefined },
+        { provide: RpcKernelBaseConnection, scope: 'rpc', useValue: undefined },
+        { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
+        { provide: ConnectionWriter, scope: 'rpc', useValue: undefined },
     ],
     workflows: [
         // rpcWorkflow,
@@ -119,7 +118,7 @@ export class FrameworkModule extends createModule({
         DatabaseRegistry,
         SessionHandler,
 
-        LiveDatabase,
+        // LiveDatabase,
         HttpRequest,
         RpcInjectorContext,
         SessionState,
@@ -189,7 +188,7 @@ export class FrameworkModule extends createModule({
                 this.addExport(Stopwatch);
             }
 
-            this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
+            // this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
         }
     }
 
@@ -213,7 +212,7 @@ export class FrameworkModule extends createModule({
     processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
         if (!isClass(token)) return;
         if (isPrototypeOfBase(token, Database)) {
-            this.dbs.push({ classType: token, module });
+            this.dbs.push({ classType: token as ClassType, module });
         }
     }
 

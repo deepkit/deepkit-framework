@@ -113,7 +113,7 @@ export function applyScheduledAnnotations(type: Type) {
 }
 
 export function hasTypeInformation(object: ClassType | Function): boolean {
-    return '__type' in object && isArray((object as any)._type);
+    return '__type' in object && isArray((object as any).__type);
 }
 
 /**
@@ -501,11 +501,13 @@ export type FindType<T extends Type, LOOKUP extends ReflectionKind> = T extends 
  *
  * ```typescript
  * const stringType = {kind: ReflectionKind.string};
- *
  * type t = {a: InlineRuntimeType<typeof stringType>}
+ *
+ * const value = 34;
+ * type t = {a: InlineRuntimeType<typeof value>}
  * ```
  */
-export type InlineRuntimeType<T extends ReflectionClass<any> | Type> = T extends ReflectionClass<infer K> ? K : any;
+export type InlineRuntimeType<T extends ReflectionClass<any> | Type | number | string | boolean | bigint> = T extends ReflectionClass<infer K> ? K : any;
 
 export function isType(entry: any): entry is Type {
     return 'object' === typeof entry && entry.constructor === Object && 'kind' in entry && 'number' === typeof entry.kind;
@@ -1169,8 +1171,8 @@ export function widenLiteral(type: OuterType): OuterType {
     return type;
 }
 
-export function assertType<K extends ReflectionKind, T>(t: Type, kind: K): asserts t is FindType<Type, K> {
-    if (t.kind !== kind) throw new Error(`Invalid type ${t.kind}, expected ${kind}`);
+export function assertType<K extends ReflectionKind, T>(t: Type | undefined, kind: K): asserts t is FindType<Type, K> {
+    if (!t || t.kind !== kind) throw new Error(`Invalid type ${t ? t.kind : undefined}, expected ${kind}`);
 }
 
 export function getClassType(type: Type): ClassType {
@@ -1219,6 +1221,7 @@ export function getTypeObjectLiteralFromTypeClass<T extends Type>(type: T): T ex
  */
 export function isOptional(type: Type): boolean {
     if (isMember(type) && type.optional === true) return true;
+    if (type.kind === ReflectionKind.parameter) return type.optional || isOptional(type.type);
     if (type.kind === ReflectionKind.property || type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.indexSignature) return isOptional(type.type);
     return type.kind === ReflectionKind.any || type.kind === ReflectionKind.undefined || (type.kind === ReflectionKind.union && type.types.some(isOptional));
 }
@@ -1853,7 +1856,7 @@ export function stringifyResolvedType(type: Type): string {
 }
 
 export function stringifyShortResolvedType(type: Type, stateIn: Partial<StringifyTypeOptions> = {}): string {
-    return stringifyType(type, { depth: 0, stack: [], ...stateIn, showNames: false, showFullDefinition: false,  });
+    return stringifyType(type, { depth: 0, stack: [], ...stateIn, showNames: false, showFullDefinition: false, });
 }
 
 interface StringifyTypeOptions {

@@ -1,16 +1,15 @@
 import { ClassType, getObjectKeysSize, isArray } from '@deepkit/core';
-import { ClassSchema, getClassSchema, plainToClass, t, ValidationFailed } from '@deepkit/type';
 import { AppModule } from '@deepkit/app';
-import { http, httpClass, JSONResponse } from '@deepkit/http';
+import { http, HttpBody, httpClass, HttpQueries, JSONResponse } from '@deepkit/http';
 import { Database, DatabaseRegistry, Query, UniqueConstraintFailure } from '@deepkit/orm';
-import { PropertySchema } from '../../type';
+import { InlineRuntimeType, Maximum, Positive, ReflectionClass, ReflectionKind, TypeUnion, ValidationError } from '@deepkit/type';
 
 function applySelect(query: Query<any>, select: string[] | string): Query<any> {
     const names: string[] = isArray(select) ? select.map(v => v.trim()) : select.replace(/\s+/g, '').split(',');
     try {
         return query.select(...names);
-    } catch (error) {
-        throw ValidationFailed.from([{ message: String(error.message), path: 'select', code: 'invalid_select' }]);
+    } catch (error: any) {
+        throw ValidationError.from([{ message: String(error.message), path: 'select', code: 'invalid_select' }]);
     }
 }
 
@@ -83,58 +82,62 @@ interface AutoCrudOptions {
     defaultLimit?: number;
 }
 
-function createController(schema: ClassSchema, options: AutoCrudOptions = {}): ClassType {
+function createController(schema: ReflectionClass<any>, options: AutoCrudOptions = {}): ClassType {
     if (!schema.name) throw new Error(`Class ${schema.getClassName()} needs an entity name via @entity.name()`);
 
-    const joinNames: string[] = options.joins || schema.getProperties().filter(v => v.isReference || v.backReference).map(v => v.name);
-    const sortNames: string[] = options.sortFields || schema.getProperties().filter(v => !v.isReference && !v.backReference).map(v => v.name);
-    const selectNames: string[] = options.selectableFields || schema.getProperties().filter(v => !v.isReference && !v.backReference).map(v => v.name);
+    const joinNames: string[] = options.joins || schema.getProperties().filter(v => v.isReference() || v.isBackReference()).map(v => v.name);
+    const sortNames: string[] = options.sortFields || schema.getProperties().filter(v => !v.isReference() && !v.isBackReference()).map(v => v.name);
+    const selectNames: string[] = options.selectableFields || schema.getProperties().filter(v => !v.isReference() && !v.isBackReference()).map(v => v.name);
 
-    const identifier = options.identifier ? schema.getProperty(options.identifier) : schema.getPrimaryField();
+    const joinNamesType: TypeUnion = { kind: ReflectionKind.union, types: joinNames.map(v => ({ kind: ReflectionKind.literal, literal: v })) };
+    const sortNamesType: TypeUnion = { kind: ReflectionKind.union, types: sortNames.map(v => ({ kind: ReflectionKind.literal, literal: v })) };
+    const selectNamesType: TypeUnion = { kind: ReflectionKind.union, types: selectNames.map(v => ({ kind: ReflectionKind.literal, literal: v })) };
+
+    type JoinNames = InlineRuntimeType<typeof joinNamesType>;
+    type SortNames = InlineRuntimeType<typeof sortNamesType>;
+    type SelectNames = InlineRuntimeType<typeof selectNamesType>;
+    type SchemaType = InlineRuntimeType<typeof schema>;
+
+    const identifier = options.identifier ? schema.getProperty(options.identifier) : schema.getPrimary();
+    const identifierType = identifier.type;
+    type IdentifierType = InlineRuntimeType<typeof identifierType>
+
+    const maxLimit = options.maxLimit || 1000;
 
     interface ListQuery {
-        filter?: Partial<any>;
-        select?: string;
-        orderBy: { [name: string]: 'asc' | 'desc' };
-        joins?: { [name: string]: string };
-        offset: number;
-        limit: number;
+        filter?: Partial<SchemaType>;
+        /**
+         * @description List of or string of comma separated field names
+         */
+        select?: SelectNames[] | string;
+        orderBy: { [name in SortNames]?: 'asc' | 'desc' };
+        /**
+         * @description Each entry with field names, comma separated, or all with *
+         */
+        joins?: { [name in JoinNames]?: string };
+        offset: number & Positive;
+        limit: number & Positive & Maximum<InlineRuntimeType<typeof maxLimit>>;
     }
-
-    let listQuery = t.schema({
-        filter: t.partial(schema).optional,
-        select: t.union(t.array(t.union(...selectNames)), t.string.name('fields')).description('List of or string of comma separated field names').optional,
-        orderBy: t.map(t.union('asc', 'desc'), t.union(...sortNames)).default({}),
-        offset: t.number.default(0).positive(),
-        limit: t.number.default(0).positive().maximum(options.maxLimit || 1000),
-    });
 
     interface GetQuery {
-        select?: string;
-        joins?: { [name: string]: string };
+        /**
+         * @description List of or string of comma separated field names.
+         */
+        select?: SelectNames[] | string;
+        joins?: { [name in JoinNames]?: string };
     }
 
-    let getQuery = t.schema({
-        select: t.union(t.array(t.union(...selectNames)), t.string).description('List of or string of comma separated field names').optional,
-    });
+    // const createDto = schema.getPrimaryField().isAutoIncrement ? schema.exclude(schema.getPrimaryField().name) : schema;
 
-    if (joinNames.length) {
-        const joins = t.map(t.string, t.union(...joinNames)).description('Each entry with field names, comma separated, or all with *').optional;
-        listQuery.addProperty('joins', joins);
-        getQuery.addProperty('joins', joins);
+    // const error = t.schema({
+    //     message: t.string,
+    // });
+
+    interface ErrorMessage {
+        message: string;
     }
-
-    const createDto = schema.getPrimaryField().isAutoIncrement ? schema.exclude(schema.getPrimaryField().name) : schema;
-
-    const error = t.schema({
-        message: t.string,
-    });
 
     const identifierChangeable = options && options.identifierChangeable ? true : false;
-
-    function applyIdentifier(target: object, property: PropertySchema) {
-        identifier.clone(property);
-    }
 
     @http.controller('/entity/' + schema.name).group('crud')
     class RestController {
@@ -147,13 +150,13 @@ function createController(schema: ClassSchema, options: AutoCrudOptions = {}): C
 
         @http.GET('')
             .description(`A list of ${schema.name}.`)
-            .response(200, `List of ${schema.name}.`, t.array(schema))
-            .response(400, `When parameter validation failed.`, ValidationFailed)
-        async readMany(@t.type(listQuery) @http.queries() listQuery: ListQuery) {
+            .response<SchemaType[]>(200, `List of ${schema.name}.`)
+            .response<ValidationError>(400, `When parameter validation failed.`)
+        async readMany(listQuery: HttpQueries<ListQuery>) {
             listQuery.limit = Math.min(options.maxLimit || 1000, listQuery.limit || options.defaultLimit || 30);
             let query = this.getDatabase().query(schema);
 
-            if (listQuery.joins) query = applyJoins(query, listQuery.joins);
+            if (listQuery.joins) query = applyJoins(query, listQuery.joins as any);
             if (listQuery.select) query = applySelect(query, listQuery.select);
 
             if (getObjectKeysSize(listQuery.orderBy) > 0) {
@@ -172,12 +175,14 @@ function createController(schema: ClassSchema, options: AutoCrudOptions = {}): C
 
         @http.POST('')
             .description(`Add a new ${schema.name}.`)
-            .response(201, 'When successfully created.', schema)
-            .response(400, `When parameter validation failed`, ValidationFailed)
-            .response(409, 'When unique entity already exists.', error)
-        async create(@t.type(createDto) @http.body() body: any) {
+            .response<SchemaType>(201, 'When successfully created.')
+            .response<ValidationError>(400, `When parameter validation failed`)
+            .response<ErrorMessage>(409, 'When unique entity already exists.')
+        async create(body: HttpBody<SchemaType>) {
             //body is automatically validated
-            const item = plainToClass(schema, body);
+            //is cast really necessary?
+            // const item = cast(body, undefined, undefined, schema.type);
+            const item = body;
             try {
                 await this.getDatabase().persist(item);
             } catch (e) {
@@ -191,25 +196,25 @@ function createController(schema: ClassSchema, options: AutoCrudOptions = {}): C
 
         @http.DELETE(':' + identifier.name)
             .description(`Delete a single ${schema.name}.`)
-            .response(400, `When parameter validation failed`, ValidationFailed)
-            .response(200, `When deletion was successful`, t.type({ deleted: t.number }))
-        async delete(@t.use(applyIdentifier).description(`The identifier of ${schema.name}`) id: any) {
+            .response<ValidationError>(400, `When parameter validation failed`)
+            .response<{ deleted: number }>(200, `When deletion was successful`)
+        async delete(id: IdentifierType) {
             const result = await this.getDatabase().query(schema).filter({ [identifier.name]: id }).deleteOne();
             return { deleted: result.modified };
         }
 
         @http.GET(':' + identifier.name)
             .description(`Get a single ${schema.name}.`)
-            .response(200, `When ${schema.name} was found.`, schema)
-            .response(400, `When parameter validation failed`, ValidationFailed)
-            .response(404, `When ${schema.name} was not found.`, error)
+            .response<SchemaType>(200, `When ${schema.name} was found.`)
+            .response<ValidationError>(400, `When parameter validation failed`)
+            .response<ErrorMessage>(404, `When ${schema.name} was not found.`)
         async read(
-            @t.use(applyIdentifier).description(`The identifier of ${schema.name}`) id: any,
-            @t.type(getQuery) @http.queries() options: GetQuery
+            id: IdentifierType,
+            options: HttpQueries<GetQuery>
         ) {
             let query = this.getDatabase().query(schema).filter({ [identifier.name]: id });
             if (options.select) query = applySelect(query, options.select);
-            if (options.joins) query = applyJoins(query, options.joins);
+            if (options.joins) query = applyJoins(query, options.joins as any);
 
             const item = await query.findOneOrUndefined();
             if (item) return item;
@@ -219,13 +224,12 @@ function createController(schema: ClassSchema, options: AutoCrudOptions = {}): C
 
         @http.PUT(':' + identifier.name)
             .description(`Update a single ${schema.name}.`)
-            .response(200, `When ${schema.name} was successfully updated.`, schema)
-            .response(400, `When parameter validation failed`, ValidationFailed)
-            .response(404, `When ${schema.name} was not found.`, error)
-        @t.type(schema)
+            .response<SchemaType>(200, `When ${schema.name} was successfully updated.`)
+            .response<ValidationError>(400, `When parameter validation failed`)
+            .response<ErrorMessage>(404, `When ${schema.name} was not found.`)
         async update(
-            @t.use(applyIdentifier).description(`The identifier of ${schema.name}`) id: any,
-            @t.type(createDto) @http.body() body: any
+            id: IdentifierType,
+            body: Partial<SchemaType>,
         ) {
             let query = this.getDatabase().query(schema).filter({ [identifier.name]: id });
 
@@ -256,13 +260,14 @@ function createController(schema: ClassSchema, options: AutoCrudOptions = {}): C
     return RestController;
 }
 
-export class CrudAppModule<T> extends AppModule<T> {}
+export class CrudAppModule<T> extends AppModule<T> {
+}
 
 /**
  * Create a module that provides CRUD routes for given entities.
  */
-export function createCrudRoutes(schemas: (ClassType | ClassSchema)[], options: AutoCrudOptions = {}) {
-    const controllers = schemas.map(getClassSchema).map(v => createController(v, options));
+export function createCrudRoutes(schemas: (ClassType | ReflectionClass<any>)[], options: AutoCrudOptions = {}) {
+    const controllers = schemas.map(v => ReflectionClass.from(v)).map(v => createController(v, options));
 
     return new CrudAppModule({
         controllers: controllers

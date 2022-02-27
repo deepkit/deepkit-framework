@@ -31,7 +31,7 @@ test('router parameters', async () => {
 
     expect((await httpHandler.request(HttpRequest.GET('/user/peter'))).json).toBe('peter');
     expect((await httpHandler.request(HttpRequest.GET('/user-id/123'))).json).toBe(123);
-    expect((await httpHandler.request(HttpRequest.GET('/user-id/asd'))).json).toMatchObject({ message: 'Validation failed: id(invalid_number): No valid number given, got NaN' });
+    expect((await httpHandler.request(HttpRequest.GET('/user-id/asd'))).json).toMatchObject({ message: 'Serialization failed. id: Cannot convert asd to number' });
     expect((await httpHandler.request(HttpRequest.GET('/boolean/1'))).json).toBe(true);
     expect((await httpHandler.request(HttpRequest.GET('/boolean/false'))).json).toBe(false);
 

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { asyncOperation, CustomError, ExtractClassType } from '@deepkit/core';
+import { asyncOperation, CustomError } from '@deepkit/core';
 import { ReceiveType } from '@deepkit/type';
 import { RpcTypes } from '../model';
 import type { RpcMessage } from '../protocol';
@@ -90,7 +90,7 @@ export class RpcMessageSubject {
         });
     }
 
-    async waitNext<T>(type: number, schema?: ReceiveType<T>): Promise<undefined extends T ? undefined : ExtractClassType<T>> {
+    async waitNext<T>(type: number, schema?: ReceiveType<T>): Promise<T> {
         return asyncOperation<any>((resolve, reject) => {
             this.onReply((next) => {
                 this.onReplyCallback = this.catchOnReplyCallback;
@@ -115,7 +115,7 @@ export class RpcMessageSubject {
                 this.release();
 
                 if (next.type === type) {
-                    return resolve(schema ? next.parseBody(schema) : next);
+                    return resolve(schema ? next.parseBody(schema) : undefined);
                 }
 
                 if (next.isError()) {

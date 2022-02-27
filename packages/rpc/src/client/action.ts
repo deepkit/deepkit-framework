@@ -419,7 +419,7 @@ export class RpcActionClient {
                     timeout: options.timeout,
                 });
 
-                const parsed = await a.firstThenClose<rpcResponseActionType>(RpcTypes.ResponseActionType);
+                const parsed = await a.firstThenClose<rpcResponseActionType>(RpcTypes.ResponseActionType, typeOf<rpcResponseActionType>());
 
                 const returnType = deserializeType(parsed.type, { disableReuse: typeReuseDisabled });
 

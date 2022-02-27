@@ -21,7 +21,7 @@ export interface ProviderBase {
 }
 
 /** @reflection never */
-export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | InjectorToken<T> | AbstractClassType<T> | OuterType;
+export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | InjectorToken<T> | AbstractClassType<T> | OuterType | T;
 
 export function provide<T>(provider: Omit<ProviderProvide, 'provide'> | ClassType, type?: ReceiveType<T>): Provider {
     if (isClass(provider)) return { provide: resolveReceiveType(type), useClass: provider };

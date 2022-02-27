@@ -1,4 +1,4 @@
-import { deserialize, getBSONSerializer, getBSONSizer, ParserV2, stringByteLength, Writer } from '@deepkit/bson';
+import { deserializeBSONWithoutOptimiser, getBSONSerializer, getBSONSizer, Parser, stringByteLength, Writer } from '@deepkit/bson';
 import { categorySchemas, FrameCategory, FrameData, FrameEnd, FrameStart, FrameType } from '@deepkit/stopwatch';
 
 export function encodeFrames(frames: (FrameStart | FrameEnd)[]): Uint8Array {
@@ -46,7 +46,7 @@ export function encodeFrameData(dataItems: FrameData[]) {
     for (const data of dataItems) {
         const schema = categorySchemas[data.category];
         if (!schema) throw new Error(`Frame category ${FrameCategory[data.category]} has no schema declared.`);
-        size += ((32 + 8) / 8) + getBSONSizer(schema)(data.data);
+        size += ((32 + 8) / 8) + getBSONSizer(undefined, schema)(data.data);
     }
 
     const buffer = Buffer.allocUnsafe(size);
@@ -56,14 +56,14 @@ export function encodeFrameData(dataItems: FrameData[]) {
         writer.writeUint32(data.id);
         writer.writeByte(data.worker);
         const schema = categorySchemas[data.category]!;
-        getBSONSerializer(schema)(data.data, writer);
+        getBSONSerializer(undefined, schema)(data.data, {writer});
     }
 
     return buffer;
 }
 
 export function decodeFrameData(buffer: Uint8Array): { id: number, worker: number, data: Uint8Array }[] {
-    const parser = new ParserV2(buffer);
+    const parser = new Parser(buffer);
 
     const data: { id: number, worker: number, data: Uint8Array }[] = [];
 
@@ -71,14 +71,14 @@ export function decodeFrameData(buffer: Uint8Array): { id: number, worker: numbe
         const id = parser.eatUInt32();
         const worker = parser.eatByte();
         const end = parser.peekUInt32() + parser.offset;
-        data.push({ id, worker, data: deserialize(parser.buffer.slice(parser.offset, end)) });
+        data.push({ id, worker, data: deserializeBSONWithoutOptimiser(parser.buffer.slice(parser.offset, end)) });
         parser.offset = end;
     }
     return data;
 }
 
 export function decodeFrames(buffer: Uint8Array): (FrameStart | FrameEnd)[] {
-    const parser = new ParserV2(buffer);
+    const parser = new Parser(buffer);
     const frames: (FrameStart | FrameEnd)[] = [];
 
     while (parser.offset < buffer.byteLength) {

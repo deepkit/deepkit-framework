@@ -1,8 +1,6 @@
 import { App } from '@deepkit/app';
 import { http, HttpKernel, HttpModule, HttpRequest, HttpResponse } from '@deepkit/http';
 import { Server } from 'http';
-import { injectable } from '@deepkit/injector';
-import { getClassSchema, t } from '@deepkit/type';
 
 class MyService {
     helloWorld () {
@@ -10,14 +8,6 @@ class MyService {
     }
 }
 
-class Entity {
-    @t tags: string[] = [];
-}
-
-const schema = getClassSchema(Entity);
-console.log('schema read', schema.toString());
-
-@injectable
 class MyController {
     constructor(private myService: MyService) {
     }

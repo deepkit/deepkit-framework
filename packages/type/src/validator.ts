@@ -22,7 +22,14 @@ export type Excludes<T extends string | number | boolean> = ValidatorMeta<'exclu
 export type Minimum<T extends number | bigint> = ValidatorMeta<'minimum', [T]>;
 export type Maximum<T extends number | bigint> = ValidatorMeta<'maximum', [T]>;
 
+/**
+ Includes 0. Use PositiveNoZero to exclude 0.
+ */
 export type Positive = ValidatorMeta<'positive', [true]>;
+
+/**
+ * Includes 0. Use NegativeNoZero to exclude 0.
+ */
 export type Negative = ValidatorMeta<'negative', [true]>;
 
 export type PositiveNoZero = ValidatorMeta<'positive', [false]>;

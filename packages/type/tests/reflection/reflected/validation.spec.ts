@@ -121,3 +121,19 @@ test('named tuple', () => {
     expect(validate<[name: string]>(['asd'])).toEqual([]);
     expect(validate<[name: string]>([23])).toEqual([{code: 'type', message: 'Not a string', path: 'name'}]);
 });
+
+test('inherited validations', () => {
+    class User {
+        username!: string & MinLength<3>;
+    }
+
+    class AddUserDto extends User {
+        image?: string;
+    }
+
+    expect(validate<User>({ username: 'Pe' })).toEqual([{code: 'minLength', message: 'Min length is 3', path: 'username'}]);
+    expect(validate<User>({ username: 'Peter' })).toEqual([]);
+
+    expect(validate<AddUserDto>({ username: 'Pe' })).toEqual([{code: 'minLength', message: 'Min length is 3', path: 'username'}]);
+    expect(validate<AddUserDto>({ username: 'Peter' })).toEqual([]);
+});

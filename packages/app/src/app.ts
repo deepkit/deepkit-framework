@@ -10,7 +10,7 @@
 
 import { ClassType, ExtractClassType, isFunction, isObject, setPathValue } from '@deepkit/core';
 import { ConfigLoader, ServiceContainer } from './service-container';
-import { InjectorContext, ResolveToken, Token } from '@deepkit/injector';
+import { InjectorContext, ResolveToken } from '@deepkit/injector';
 import { AppModule, RootModuleDefinition } from './module';
 import { Command, Config, Options } from '@oclif/config';
 import { basename, relative } from 'path';
@@ -251,7 +251,7 @@ export class App<T extends RootModuleDefinition> {
         if (exitCode > 0) process.exit(exitCode);
     }
 
-    public get<T>(token: T | Token, moduleOrClass?: AppModule<any> | ClassType<AppModule<any>>): ResolveToken<T> {
+    get<T>(token: T, moduleOrClass?: AppModule<any> | ClassType<AppModule<any>>): ResolveToken<T> {
         return this.serviceContainer.getInjector(moduleOrClass || this.appModule).get(token) as ResolveToken<T>;
     }
 

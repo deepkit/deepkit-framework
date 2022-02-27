@@ -12,7 +12,6 @@ import { BrokerKernel } from '@deepkit/broker';
 import { ClassType } from '@deepkit/core';
 import { ConsoleTransport, Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { Database, DatabaseRegistry, MemoryDatabaseAdapter } from '@deepkit/orm';
-import { ClassSchema } from '@deepkit/type';
 import { ApplicationServer } from './application-server';
 import { Broker, BrokerServer, DirectBroker } from './broker/broker';
 import { injectorReference } from '@deepkit/injector';
@@ -104,7 +103,7 @@ export class BrokerMemoryServer extends BrokerServer {
  * Creates a new App instance, but with kernel services in place that work in memory.
  * For example RPC/Broker/HTTP communication without TCP stack. Logger uses MemoryLogger.
  */
-export function createTestingApp<O extends RootModuleDefinition>(options: O, entities: (ClassType | ClassSchema)[] = [], setup?: (module: AppModule<any>) => void): TestingFacade<App<O>> {
+export function createTestingApp<O extends RootModuleDefinition>(options: O, entities: ClassType[] = [], setup?: (module: AppModule<any>) => void): TestingFacade<App<O>> {
     const module = new RootAppModule(options);
 
     module.setupProvider(Logger).removeTransport(injectorReference(ConsoleTransport));
@@ -112,6 +111,7 @@ export function createTestingApp<O extends RootModuleDefinition>(options: O, ent
 
     module.addProvider({ provide: WebWorkerFactory, useClass: WebMemoryWorkerFactory }); //don't start HTTP-server
     module.addProvider({ provide: BrokerServer, useClass: BrokerMemoryServer }); //don't start Broker TCP-server
+    module.addProvider(BrokerMemoryServer);
     module.addProvider(MemoryLoggerTransport);
     module.addProvider({
         provide: Broker, deps: [BrokerServer], useFactory: (server: BrokerMemoryServer) => {

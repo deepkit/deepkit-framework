@@ -44,6 +44,9 @@ const options: CompilerOptions = {
     target: ScriptTarget.ES2020,
 };
 
+/**
+ * @reflection never
+ */
 function transpile<T extends string | { [file: string]: string }>(source: T, optionsToUse: CompilerOptions = options): T extends string ? string : Record<string, string> {
     if ('string' === typeof source) {
         return transpileModule(source, {
@@ -87,10 +90,16 @@ function transpile<T extends string | { [file: string]: string }>(source: T, opt
     return result as any;
 }
 
+/**
+ * @reflection never
+ */
 function packRaw(...args: Parameters<typeof pack>): string {
     return `${(pack(...args) as string[]).join().replace(/'/g, '\\\'')}`;
 }
 
+/**
+ * @reflection never
+ */
 function packString(...args: Parameters<typeof pack>): string {
     return `'${packRaw(...args)}'`;
 }
@@ -1768,4 +1777,26 @@ test('multiple exports', () => {
 
     `);
     console.log(js);
+});
+
+test('enum literals', () => {
+    //not supported yet
+    const code = `
+        enum Type {
+            add,
+            delete
+        }
+
+        interface Message {
+            type: Type.delete;
+            id: number;
+        }
+
+        return typeOf<Message>();
+    `;
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+    console.log('type', type);
+    // expect(type).toMatchObject({ kind: ReflectionKind.unknown });
 });

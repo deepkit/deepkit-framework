@@ -1,12 +1,12 @@
 import { expect, test } from '@jest/globals';
-import { dotToUrlPath, RouteParameterResolverContext, Router } from '../src/router';
+import { dotToUrlPath, RouteParameterResolverContext, Router, UploadedFile } from '../src/router';
 import { http, httpClass } from '../src/decorator';
-import { httpWorkflow, JSONResponse } from '../src/http';
+import { HttpBadRequestError, httpWorkflow, JSONResponse } from '../src/http';
 import { eventDispatcher } from '@deepkit/event';
-import { HttpBody, HttpQueries, HttpQuery, HttpRequest } from '../src/model';
+import { HttpBody, HttpBodyValidation, HttpQueries, HttpQuery, HttpRequest } from '../src/model';
 import { getClassName, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils';
-import { Group } from '@deepkit/type';
+import { Group, MinLength } from '@deepkit/type';
 
 test('router', async () => {
     class Controller {
@@ -587,11 +587,11 @@ test('unions', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/list?page=true'))).json).toEqual(true);
 
     expect((await httpKernel.request(HttpRequest.GET('/list?page=asdasdc'))).json).toMatchObject({
-        "errors": [
+        'errors': [
             {
-                "code": "type",
-                "message": "No value given",
-                "path": "page"
+                'code': 'type',
+                'message': 'No value given',
+                'path': 'page'
             }
         ],
     });
@@ -708,4 +708,51 @@ test('use http.response for serialization', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/action1'))).json).toEqual([{ title: 'a' }, { title: '1' }]);
     expect((await httpKernel.request(HttpRequest.GET('/action2'))).json).toEqual([{ title: 'a' }, { title: '1' }]);
     expect((await httpKernel.request(HttpRequest.GET('/action3'))).json).toEqual([{ message: 'error' }, { message: '1' }]);
+});
+
+test('BodyValidation', async () => {
+    class User {
+        username!: string & MinLength<3>;
+    }
+
+    class AddUserDto extends User {
+        imageUpload?: UploadedFile;
+    }
+
+    class Controller {
+        @http.POST('/action1')
+        action1(user: HttpBody<User>): any {
+            return user;
+        }
+
+        @http.POST('/action2')
+        action2(user: HttpBodyValidation<User>): User {
+            if (user.valid()) {
+                return user.value;
+            }
+
+            throw new HttpBadRequestError('Invalid: ' + user.error.getErrorMessageForPath('username'));
+        }
+
+        @http.POST('/action3')
+        action3(user: HttpBodyValidation<AddUserDto>): User {
+            if (user.valid()) {
+                return user.value;
+            }
+
+            throw new HttpBadRequestError('Invalid: ' + user.error.getErrorMessageForPath('username'));
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    expect((await httpKernel.request(HttpRequest.POST('/action1').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
+    expect((await httpKernel.request(HttpRequest.POST('/action1').json({ username: 'Pe' }))).json).toEqual({
+        errors: [{ code: 'minLength', message: 'Min length is 3', path: 'username' }], message: 'Validation error:\nusername(minLength): Min length is 3'
+    });
+
+    expect((await httpKernel.request(HttpRequest.POST('/action2').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
+    expect((await httpKernel.request(HttpRequest.POST('/action2').json({ username: 'Pe' }))).bodyString).toEqual(`{"message":"Invalid: Min length is 3"}`);
+
+    expect((await httpKernel.request(HttpRequest.POST('/action3').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
+    expect((await httpKernel.request(HttpRequest.POST('/action3').json({ username: 'Pe' }))).bodyString).toEqual(`{"message":"Invalid: Min length is 3"}`);
 });

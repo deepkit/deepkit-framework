@@ -1021,3 +1021,42 @@ test('exported scoped can be replaced for another scope', () => {
     expect(httpRequest2).toBeInstanceOf(HttpRequest);
     expect(httpRequest2 !== httpRequest1).toBe(true);
 });
+
+test('consume config from imported modules', () => {
+    class ModuleConfig {
+        host: string = '0.0.0.0';
+    }
+
+    class ModuleService {
+        constructor(public host: ModuleConfig['host']) {
+        }
+    }
+
+    const moduleModule = new InjectorModule([ModuleService]).setConfigDefinition(ModuleConfig);
+
+    class OverriddenService extends ModuleService {}
+
+    const root = new InjectorModule([OverriddenService]).addImport(moduleModule);
+
+    const injector = new InjectorContext(root);
+    const service = injector.get(OverriddenService);
+    expect(service.host).toBe('0.0.0.0');
+});
+
+test('injector.get by type', () => {
+    interface LoggerInterface {
+        log(): boolean;
+    }
+
+    class Logger {
+        log(): boolean {
+            return true;
+        }
+    }
+
+    const root = new InjectorModule([Logger]);
+
+    const injector = new InjectorContext(root);
+    const service = injector.get<LoggerInterface>();
+    expect(service.log()).toBe(true);
+});

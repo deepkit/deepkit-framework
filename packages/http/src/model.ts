@@ -12,6 +12,7 @@ import { IncomingMessage, ServerResponse } from 'http';
 import { UploadedFile } from './router';
 import * as querystring from 'querystring';
 import { Writable } from 'stream';
+import { ValidationFailedItem } from '@deepkit/type';
 
 export class HttpResponse extends ServerResponse {
     status(code: number) {
@@ -23,9 +24,44 @@ export class HttpResponse extends ServerResponse {
 export type HttpRequestQuery = { [name: string]: string };
 export type HttpRequestResolvedParameters = { [name: string]: any };
 
+export class BodyValidationError {
+    constructor(
+        public readonly errors: ValidationFailedItem[] = []
+    ) {
+    }
+
+    hasErrors(prefix?: string): boolean {
+        return this.getErrors(prefix).length > 0;
+    }
+
+    getErrors(prefix?: string): ValidationFailedItem[] {
+        if (prefix) return this.errors.filter(v => v.path.startsWith(prefix));
+
+        return this.errors;
+    }
+
+    getErrorsForPath(path: string): ValidationFailedItem[] {
+        return this.errors.filter(v => v.path === path);
+    }
+
+    getErrorMessageForPath(path: string): string {
+        return this.getErrorsForPath(path).map(v => v.message).join(', ');
+    }
+}
+
+export class ValidatedBody<T> {
+    constructor(public error: BodyValidationError, public value?: T) {
+    }
+
+    valid(): this is { value: T } {
+        return this.value !== undefined;
+    }
+}
+
 export type HttpBody<T> = T & { __meta?: ['httpBody'] };
-export type HttpQuery<T, Options extends {name?: string} = {}> = T & { __meta?: ['httpQuery', Options] };
-export type HttpQueries<T, Options extends {name?: string} = {}> = T & { __meta?: ['httpQueries', Options] };
+export type HttpBodyValidation<T> = ValidatedBody<T> & { __meta?: ['httpBodyValidation'] };
+export type HttpQuery<T, Options extends { name?: string } = {}> = T & { __meta?: ['httpQuery', Options] };
+export type HttpQueries<T, Options extends { name?: string } = {}> = T & { __meta?: ['httpQueries', Options] };
 
 export class RequestBuilder {
     protected contentBuffer: Buffer = Buffer.alloc(0);

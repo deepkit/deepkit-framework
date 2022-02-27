@@ -57,7 +57,7 @@ export class BrokerConnection extends RpcKernelBaseConnection {
 
         for (const connection of this.connections.connections) {
             if (connection === this) continue;
-            promises.push(connection.sendMessage(BrokerType.EntityFields, brokerEntityFields, { name, fields }).ackThenClose());
+            promises.push(connection.sendMessage<brokerEntityFields>(BrokerType.EntityFields, { name, fields }).ackThenClose());
         }
 
         await Promise.all(promises);
@@ -66,25 +66,25 @@ export class BrokerConnection extends RpcKernelBaseConnection {
     async onMessage(message: RpcMessage, response: RpcMessageBuilder): Promise<void> {
         switch (message.type) {
             case BrokerType.PublishEntityFields: {
-                const body = message.parseBody(brokerEntityFields);
+                const body = message.parseBody<brokerEntityFields>();
                 const changed = this.state.publishEntityFields(body.name, body.fields);
                 if (changed) {
                     await this.sendEntityFields(body.name);
                 }
-                response.reply(
-                    BrokerType.EntityFields, brokerEntityFields,
+                response.reply<brokerEntityFields>(
+                    BrokerType.EntityFields,
                     { name: body.name, fields: this.state.getEntityFields(body.name) }
                 );
                 break;
             }
             case BrokerType.UnsubscribeEntityFields: {
-                const body = message.parseBody(brokerEntityFields);
+                const body = message.parseBody<brokerEntityFields>();
                 const changed = this.state.unsubscribeEntityFields(body.name, body.fields);
                 if (changed) {
                     await this.sendEntityFields(body.name);
                 }
-                response.reply(
-                    BrokerType.EntityFields, brokerEntityFields,
+                response.reply<brokerEntityFields>(
+                    BrokerType.EntityFields,
                     { name: body.name, fields: this.state.getEntityFields(body.name) }
                 );
                 break;
@@ -92,13 +92,13 @@ export class BrokerConnection extends RpcKernelBaseConnection {
             case BrokerType.AllEntityFields: {
                 const composite = response.composite(BrokerType.AllEntityFields);
                 for (const name of this.state.entityFields.keys()) {
-                    composite.add(BrokerType.EntityFields, brokerEntityFields, { name, fields: this.state.getEntityFields(name) });
+                    composite.add<brokerEntityFields>(BrokerType.EntityFields, { name, fields: this.state.getEntityFields(name) });
                 }
                 composite.send();
                 break;
             }
             case BrokerType.Lock: {
-                const body = message.parseBody(brokerLock);
+                const body = message.parseBody<brokerLock>();
                 this.state.lock(body.id, body.ttl, body.timeout).then(lock => {
                     this.locks.set(message.id, lock);
                     response.reply(BrokerType.ResponseLock);
@@ -119,12 +119,12 @@ export class BrokerConnection extends RpcKernelBaseConnection {
                 break;
             }
             case BrokerType.IsLocked: {
-                const body = message.parseBody(brokerLockId);
-                response.reply(BrokerType.ResponseIsLock, brokerResponseIsLock, { v: this.state.isLocked(body.id) });
+                const body = message.parseBody<brokerLockId>();
+                response.reply<brokerResponseIsLock>(BrokerType.ResponseIsLock, { v: this.state.isLocked(body.id) });
                 break;
             }
             case BrokerType.TryLock: {
-                const body = message.parseBody(brokerLock);
+                const body = message.parseBody<brokerLock>();
                 this.state.tryLock(body.id, body.ttl).then(lock => {
                     if (lock) {
                         this.locks.set(message.id, lock);
@@ -136,46 +136,46 @@ export class BrokerConnection extends RpcKernelBaseConnection {
                 break;
             }
             case BrokerType.Subscribe: {
-                const body = message.parseBody(brokerSubscribe);
+                const body = message.parseBody<brokerSubscribe>();
                 this.state.subscribe(body.c, this);
                 this.subscribedChannels.push(body.c);
                 response.ack();
                 break;
             }
             case BrokerType.Unsubscribe: {
-                const body = message.parseBody(brokerSubscribe);
+                const body = message.parseBody<brokerSubscribe>();
                 this.state.unsubscribe(body.c, this);
                 arrayRemoveItem(this.subscribedChannels, body.c);
                 response.ack();
                 break;
             }
             case BrokerType.Publish: {
-                const body = message.parseBody(brokerPublish);
+                const body = message.parseBody<brokerPublish>();
                 this.state.publish(body.c, body.v);
                 response.ack();
                 break;
             }
             case BrokerType.Set: {
-                const body = message.parseBody(brokerSet);
+                const body = message.parseBody<brokerSet>();
                 this.state.set(body.n, body.v);
                 response.ack();
                 break;
             }
             case BrokerType.Increment: {
-                const body = message.parseBody(brokerIncrement);
+                const body = message.parseBody<brokerIncrement>();
                 const newValue = this.state.increment(body.n, body.v);
-                response.reply(BrokerType.ResponseIncrement, brokerResponseIncrement, { v: newValue });
+                response.reply<brokerResponseIncrement>(BrokerType.ResponseIncrement, { v: newValue });
                 break;
             }
             case BrokerType.Delete: {
-                const body = message.parseBody(brokerDelete);
+                const body = message.parseBody<brokerDelete>();
                 this.state.delete(body.n);
                 response.ack();
                 break;
             }
             case BrokerType.Get: {
-                const body = message.parseBody(brokerGet);
-                response.reply(BrokerType.ResponseGet, this.state.get(body.n));
+                const body = message.parseBody<brokerGet>();
+                response.replyBinary(BrokerType.ResponseGet, this.state.get(body.n));
                 break;
             }
         }
@@ -260,9 +260,9 @@ export class BrokerState {
     public publish(channel: string, v: Uint8Array) {
         const subscriptions = this.subscriptions.get(channel);
         if (!subscriptions) return;
-        const message = createRpcMessage(
+        const message = createRpcMessage<brokerResponseSubscribeMessage>(
             0, BrokerType.ResponseSubscribeMessage,
-            brokerResponseSubscribeMessage, { c: channel, v: v }, RpcMessageRouteType.server
+            { c: channel, v: v }, RpcMessageRouteType.server
         );
 
         for (const connection of subscriptions) {

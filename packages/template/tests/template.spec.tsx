@@ -19,6 +19,18 @@ test('template simple', async () => {
     expect(await render(Injector.from([]), <div><b>Link2</b><strong>Link2</strong></div>)).toBe('<div><b>Link2</b><strong>Link2</strong></div>');
 });
 
+test('template injection', async () => {
+    class Database {
+        users: any[] = [{ username: 'Peter' }];
+    }
+
+    function Bla(props: {}, children: any, database: Database) {
+        return <div>{database.users.length}</div>;
+    }
+
+    expect(await render(Injector.from([Database]), <Bla></Bla>)).toBe('<div>1</div>');
+});
+
 test('template html escape', async () => {
     expect(await render(Injector.from([]), <div>{'<strong>MyHTML</strong>'}</div>)).toBe('<div>&lt;strong&gt;MyHTML&lt;/strong&gt;</div>');
 

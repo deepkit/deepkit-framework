@@ -9,15 +9,7 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import {
-    ClassDecoratorResult,
-    createClassDecoratorContext,
-    createPropertyDecoratorContext,
-    mergeDecorator,
-    PropertyDecoratorResult,
-    ReflectionClass,
-    ReflectionParameter
-} from '@deepkit/type';
+import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, mergeDecorator, PropertyDecoratorResult } from '@deepkit/type';
 import { ControllerDefinition } from './model';
 
 class RpcController {
@@ -94,10 +86,6 @@ class RpcProperty {
 export const rpcProperty: PropertyDecoratorResult<typeof RpcProperty> = createPropertyDecoratorContext(RpcProperty);
 
 export const rpc: typeof rpcClass & typeof rpcProperty = mergeDecorator(rpcClass, rpcProperty) as any;
-
-export function getActionParameters<T>(target: ClassType<T>, method: string): ReflectionParameter[] {
-    return ReflectionClass.from(target).getMethodParameters(method);
-}
 
 export function getActions<T>(target: ClassType<T>): Map<string, RpcAction> {
     const parent = Object.getPrototypeOf(target);

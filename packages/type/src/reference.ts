@@ -51,7 +51,7 @@ export interface ReferenceItemInfo<T> {
 export const referenceSymbol = Symbol('reference');
 export const referenceItemSymbol = Symbol('reference/item');
 
-export function createReference<T extends ClassType | OuterType>(type: T, pk: { [name: string]: any }): T extends ClassType<infer K> ? K : object {
+export function createReference<T>(type: ClassType<T> | OuterType | ReflectionClass<any>, pk: { [name: string]: any }): T {
     const args: any[] = [];
 
     const reflection = ReflectionClass.from(type);

@@ -18,7 +18,9 @@ import { classSchemaToTSJSONInterface, headerStatusCodes, methods, propertyToTSJ
                                     [value]="m"
                                     [disabled]="!route.httpMethods.includes(m)">{{m}}</dui-option>
                     </dui-select>
-                    <div class="url text-selection"><div>{{route.path}}</div></div>
+                    <div class="url text-selection">
+                        <div>{{route.path}}</div>
+                    </div>
                     <dui-button icon="play" textured (click)="execute(route)"></dui-button>
                 </dui-button-group>
             </div>
@@ -31,10 +33,10 @@ import { classSchemaToTSJSONInterface, headerStatusCodes, methods, propertyToTSJ
                 </dui-button-group>
 
                 <deepkit-box *ngIf="routeTab === 'body'">
-                    <ng-container *ngIf="!route.getBodySchema()">
+                    <ng-container *ngIf="!route.getBodyType()">
                         <div class="box-info-text">This route has no body defined.</div>
                     </ng-container>
-                    <ng-container *ngIf="route.getBodySchema() as schema">
+                    <ng-container *ngIf="route.getBodyType() as schema">
                         <ng-container *ngFor="let p of schema.getProperties(); trackBy: trackByIndex">
                             <api-console-input [decoration]="true" (keyDown)="consoleInputKeyDown($event, route)"
                                                [model]="routeState.body.getProperty(p.name)"
@@ -52,10 +54,10 @@ import { classSchemaToTSJSONInterface, headerStatusCodes, methods, propertyToTSJ
                 </deepkit-box>
 
                 <deepkit-box style="padding-top: 0;" *ngIf="routeTab === 'query'">
-                    <ng-container *ngIf="!route.getQuerySchema() && !route.getUrlSchema()">
+                    <ng-container *ngIf="!route.getQueryType() && !route.getUrlType()">
                         <div class="box-info-text">This route has no query parameters defined.</div>
                     </ng-container>
-                    <ng-container *ngIf="route.getUrlSchema() as schema">
+                    <ng-container *ngIf="route.getUrlType() as schema">
                         <ng-container *ngFor="let p of schema.getProperties(); trackBy: trackByIndex">
                             <api-console-input [decoration]="true" (keyDown)="consoleInputKeyDown($event, route)"
                                                [model]="routeState.urls.getProperty(p.name)"
@@ -64,7 +66,7 @@ import { classSchemaToTSJSONInterface, headerStatusCodes, methods, propertyToTSJ
                         </ng-container>
                     </ng-container>
 
-                    <ng-container *ngIf="route.getQuerySchema() as schema">
+                    <ng-container *ngIf="route.getQueryType() as schema">
                         <ng-container *ngFor="let p of schema.getProperties(); trackBy: trackByIndex">
                             <api-console-input [decoration]="true" (keyDown)="consoleInputKeyDown($event, route)"
                                                [model]="routeState.params.getProperty(p.name)"
@@ -95,7 +97,7 @@ import { classSchemaToTSJSONInterface, headerStatusCodes, methods, propertyToTSJ
                 </deepkit-box>
 
                 <ng-container *ngIf="!route.responses.length">
-                    <deepkit-box title="Default response" *ngIf="route.getResultSchema() as schema">
+                    <deepkit-box title="Default response" *ngIf="route.getResultType() as schema">
                         <div class="ts text-selection">
                             <div codeHighlight [code]="propertyToTSJSONInterface(schema.getProperty('v'), {strictRequired: true})"></div>
                         </div>
@@ -107,7 +109,7 @@ import { classSchemaToTSJSONInterface, headerStatusCodes, methods, propertyToTSJ
                     <div class="response-description">
                         {{response.description}}
                     </div>
-                    <ng-container *ngIf="response.getSchemas() as schemas">
+                    <ng-container *ngIf="response.getType() as schemas">
                         <ng-container *ngIf="schemas.length && schemas[schemas.length - 1] as s">
                             <div class="ts text-selection" *ngIf="s.getProperty('v').type !== 'any'">
                                 <div codeHighlight [code]="propertyToTSJSONInterface(s.getProperty('v'), {strictRequired: true})"></div>
@@ -233,7 +235,7 @@ export class HttpRouteDetailComponent implements OnChanges {
             }
         }
 
-        const querySchema = route.getQuerySchema();
+        const querySchema = route.getQueryType();
         if (querySchema) {
             const queryData: any = {};
             Object.assign(queryData, extractDataStructureFromSchema(routeState.params, querySchema));
@@ -243,7 +245,7 @@ export class HttpRouteDetailComponent implements OnChanges {
             }
         }
 
-        const urlSchema = route.getUrlSchema();
+        const urlSchema = route.getUrlType();
         if (urlSchema) {
             for (const property of urlSchema.getProperties()) {
                 const regexp = property.data['.deepkit/api-console/url-regex'] ||= new RegExp(`(:${property.name})([^\w]|$)`);
@@ -262,7 +264,7 @@ export class HttpRouteDetailComponent implements OnChanges {
             }
         }
 
-        const bodySchema = route.getBodySchema();
+        const bodySchema = route.getBodyType();
         if (bodySchema) {
             routeState.resolvedBody = extractDataStructureFromSchema(routeState.body, bodySchema);
         }

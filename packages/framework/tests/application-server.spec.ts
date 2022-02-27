@@ -32,7 +32,6 @@ jest.mock('http', () => ({
     })),
 }));
 
-
 describe('application-server', () => {
     afterEach(() => {
         jest.clearAllMocks();
