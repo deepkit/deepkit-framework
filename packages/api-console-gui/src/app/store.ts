@@ -1,22 +1,35 @@
 import { ApiAction, ApiRoute } from '../api';
-import { ClassSchema, classToPlain, plainToClass, PropertySchema, t } from '@deepkit/type';
 import { RemoteController, RpcClient, RpcClientEventIncomingMessage, RpcClientEventOutgoingMessage } from '@deepkit/rpc';
 import { Observable, Subject, Subscription } from 'rxjs';
+import {
+    deserialize,
+    Excluded,
+    isBackReferenceType,
+    isMapType,
+    isOptional,
+    isReferenceType,
+    isSetType,
+    ReflectionClass,
+    ReflectionKind,
+    serialize,
+    Type,
+    TypeParameter,
+} from '@deepkit/type';
 
 export class DataStructure {
-    @t active: boolean = false;
-    @t asReference: boolean = false;
+    active: boolean = false;
+    asReference: boolean = false;
 
-    @t templateIndex: number = -1; //for unions
+    typeIndex: number = -1; //for unions
 
     constructor(
-        @t.any.name('value') public value: any,
+        public value: any,
     ) {
     }
 
-    @t.array(DataStructure) children: DataStructure[] = [];
+    children: DataStructure[] = [];
 
-    @t.map(DataStructure) properties: { [propertyName: string]: DataStructure } = {};
+    properties: { [propertyName: string]: DataStructure } = {};
 
     getProperty(name: string | number): DataStructure {
         if (!this.properties[name]) this.properties[name] = new DataStructure(undefined);
@@ -24,42 +37,41 @@ export class DataStructure {
     }
 }
 
-export function extractDataStructure(ds: DataStructure, property: PropertySchema): any {
-    if (property.type === 'class' || property.type === 'partial') {
-        if ((property.isReference || property.backReference) && ds.asReference) {
-            const primary = property.getResolvedClassSchema().getPrimaryField();
-            return extractDataStructure(ds.properties[primary.name], primary);
+export function extractDataStructure(ds: DataStructure, type: Type): any {
+    if (type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral) {
+        if ((isReferenceType(type) || isBackReferenceType(type)) && ds.asReference) {
+            const primary = ReflectionClass.from(type).getPrimary();
+            return extractDataStructure(ds.properties[primary.name], primary.type);
         }
 
-        return extractDataStructureFromSchema(ds, property.getResolvedClassSchema());
-    } else if (property.type === 'record') {
+        return extractDataStructureFromSchema(ds, ReflectionClass.from(type));
+    } else if (isMapType(type)) {
         const v: any = {};
-        const keyProperty = property.templateArgs[0];
-        const valueProperty = property.templateArgs[1];
+        if (!type.typeArguments) return;
+        const keyProperty = type.typeArguments[0];
+        const valueProperty = type.typeArguments[1];
 
         for (const childDs of ds.children) {
-            if (!childDs.properties[keyProperty.name]) continue;
-            if (!childDs.properties[valueProperty.name]) continue;
-            v[extractDataStructure(childDs.properties[keyProperty.name], keyProperty)] = extractDataStructure(childDs.properties[valueProperty.name], valueProperty);
+            v[extractDataStructure(childDs.properties['key'], keyProperty)] = extractDataStructure(childDs.properties['value'], valueProperty);
         }
 
         return v;
-    } else if (property.type === 'union') {
-        if (ds.templateIndex >= 0) {
-            if (!ds.properties[ds.templateIndex]) return undefined;
-            if (!property.templateArgs[ds.templateIndex]) return undefined;
-            return extractDataStructure(ds.properties[ds.templateIndex], property.templateArgs[ds.templateIndex]);
+    } else if (type.kind === ReflectionKind.union) {
+        if (ds.typeIndex >= 0) {
+            if (!ds.properties[ds.typeIndex]) return undefined;
+            if (!type.types[ds.typeIndex]) return undefined;
+            return extractDataStructure(ds.properties[ds.typeIndex], type.types[ds.typeIndex]);
         }
         return ds.value;
-    } else if (property.type === 'array') {
+    } else if (type.kind === ReflectionKind.array || isSetType(type)) {
         const list: any = [];
-        const valueProperty = property.templateArgs[0];
+        const valueProperty = isSetType(type) ? type.typeArguments![0] : type.kind === ReflectionKind.array ? type.type : undefined;
         if (!valueProperty) return list;
 
         for (const childDs of ds.children) {
-            if (!childDs.properties[valueProperty.name]) continue;
-            const v = extractDataStructure(childDs.properties[valueProperty.name], valueProperty);
-            if (v === undefined && valueProperty.isValueRequired) continue;
+            if (!childDs.properties['value']) continue;
+            const v = extractDataStructure(childDs.properties['value'], valueProperty);
+            if (v === undefined && !isOptional(valueProperty)) continue;
             list.push(v);
         }
 
@@ -69,15 +81,30 @@ export function extractDataStructure(ds: DataStructure, property: PropertySchema
     }
 }
 
-export function extractDataStructureFromSchema(ds: DataStructure, schema: ClassSchema): any {
+export function extractDataStructureFromSchema(ds: DataStructure, schema: ReflectionClass<any>): any {
     const data: any = {};
 
     for (const property of schema.getProperties()) {
         const pds = ds.properties[property.name];
         if (!pds) continue;
-        if (!property.isValueRequired && !pds.active) continue;
-        const v = extractDataStructure(pds, property);
-        if (v === undefined && property.isValueRequired) continue;
+        if (!property.isValueRequired() && !pds.active) continue;
+        const v = extractDataStructure(pds, property.type);
+        if (v === undefined && property.isValueRequired()) continue;
+        data[property.name] = v;
+    }
+
+    return data;
+}
+
+export function extractDataStructureFromParameters(ds: DataStructure, parameters: TypeParameter[]): any {
+    const data: any = {};
+
+    for (const property of parameters) {
+        const pds = ds.properties[property.name];
+        if (!pds) continue;
+        if (property.optional && !pds.active) continue;
+        const v = extractDataStructure(pds, property.type);
+        if (v === undefined && !property.optional) continue;
         data[property.name] = v;
     }
 
@@ -86,27 +113,27 @@ export function extractDataStructureFromSchema(ds: DataStructure, schema: ClassS
 
 export class RouteState {
     constructor(
-        @t.name('id') public id: string,
-        @t.name('fullUrl') public fullUrl: string,
-        @t.name('method') public method: string = 'GET',
+        public id: string,
+        public fullUrl: string,
+        public method: string = 'GET',
     ) {
     }
 
-    @t.array(t.any) headers: { name: string, value: string }[] = [];
+    headers: { name: string, value: string }[] = [];
 
-    @t.array(t.any) fullHeaders: { name: string, value: string }[] = [];
+    fullHeaders: { name: string, value: string }[] = [];
 
-    @t urls: DataStructure = new DataStructure(undefined);
-    @t params: DataStructure = new DataStructure(undefined);
-    @t body: DataStructure = new DataStructure(undefined);
+    urls: DataStructure = new DataStructure(undefined);
+    params: DataStructure = new DataStructure(undefined);
+    body: DataStructure = new DataStructure(undefined);
 
-    resolvedBody?: any;
+    resolvedBody?: any & Excluded;
+
 }
 
 export class Request {
-
-    private loadedJson?: string;
-    private loadedResult?: string;
+    private loadedJson?: string & Excluded;
+    private loadedResult?: string & Excluded;
 
     get result() {
         if (this.loadedResult === undefined) {
@@ -132,18 +159,18 @@ export class Request {
         if (v) localStorage.setItem('@deepkit/api-console/request/json/' + this.bodyStoreId, v);
     }
 
-    @t.any headers: { name: string, value: string }[] = [];
+    headers: { name: string, value: string }[] = [];
 
-    @t took: number = 0;
-    @t error: string = '';
-    @t status: number = 0;
-    @t statusText: string = '';
+    took: number = 0;
+    error: string = '';
+    status: number = 0;
+    statusText: string = '';
 
-    @t tab: string = 'body';
+    tab: string = 'body';
 
-    @t open?: boolean;
+    open?: boolean;
 
-    @t created: Date = new Date();
+    created: Date = new Date();
 
     getHeader(name: string): string {
         for (const h of this.headers) if (h.name === name) return h.value;
@@ -155,81 +182,81 @@ export class Request {
     }
 
     constructor(
-        @t.name('id') public id: string,
-        @t.name('method') public method: string,
-        @t.name('url') public url: string) {
+        public id: string,
+        public method: string,
+        public url: string) {
     }
 }
 
 export class ViewHttp {
-    @t showDescription: boolean = false;
-    @t filterCategory: string = '';
-    @t filterGroup: string = '';
-    @t filterMethod: string = '';
-    @t filterPath: string = '';
+    showDescription: boolean = false;
+    filterCategory: string = '';
+    filterGroup: string = '';
+    filterMethod: string = '';
+    filterPath: string = '';
 
-    @t codeGenerationType: string = 'curl';
-    @t codeGenerationVisible: boolean = true;
+    codeGenerationType: string = 'curl';
+    codeGenerationVisible: boolean = true;
 
-    @t serverStatsVisible: boolean = false;
+    serverStatsVisible: boolean = false;
 
-    @t viewRequests: 'all' | 'selected' = 'selected';
+    viewRequests: 'all' | 'selected' = 'selected';
 
-    @t groupBy: 'none' | 'controller' | 'method' = 'controller';
+    groupBy: 'none' | 'controller' | 'method' = 'controller';
 
-    @t.map(t.boolean) closed: { [name: string]: boolean } = {};
+    closed: { [name: string]: boolean } = {};
 }
 
 export class ViewRpc {
-    @t showDescription: boolean = false;
-    @t filterCategory: string = '';
-    @t filterGroup: string = '';
-    @t filterPath: string = '';
+    showDescription: boolean = false;
+    filterCategory: string = '';
+    filterGroup: string = '';
+    filterPath: string = '';
 
-    @t viewRequests: 'all' | 'selected' = 'selected';
-    @t displayClients: boolean = false;
-    @t displayClientsHeight: number = 170;
+    viewRequests: 'all' | 'selected' = 'selected';
+    displayClients: boolean = false;
+    displayClientsHeight: number = 170;
 
-    @t groupBy: 'none' | 'controller' = 'controller';
+    groupBy: 'none' | 'controller' = 'controller';
 
-    @t.map(t.boolean) closed: { [name: string]: boolean } = {};
+    closed: { [name: string]: boolean } = {};
 }
 
 export class Environment {
-    @t.array(t.any) headers: { name: string, value: string }[] = [];
+    headers: { name: string, value: string }[] = [];
 
-    constructor(@t.name('name') public name: string) {
+    constructor(public name: string) {
     }
 }
 
-export type RpcExecutionSubscription = {id: number, emitted: any[], unsubscribed: boolean, unsubscribe: () => void, completed: boolean, error?: any, sub: Subscription};
+export type RpcExecutionSubscription = { id: number, emitted: any[], unsubscribed: boolean, unsubscribe: () => void, completed: boolean, error?: any, sub: Subscription };
 
 export class RpcExecution {
-    @t created: Date = new Date();
+    created: Date = new Date();
 
     //we don't store a reference because the client could be deleted anytime.
-    @t clientName: string = '';
+    clientName: string = '';
 
-    @t open?: boolean;
+    open?: boolean;
 
-    @t address?: string;
-    @t took: number = -1;
+    address?: string;
+    took: number = -1;
 
-    @t.any error?: any;
+    error?: any;
 
-    protected _result?: any;
+    protected _result?: any & Excluded;
 
-    @t type: 'subject' | 'observable' | 'static' = 'static';
+    type: 'subject' | 'observable' | 'static' = 'static';
 
     isObservable(): boolean {
         return this.type === 'subject' || this.type === 'observable';
     }
 
-    public subject?: Subject<any>;
-    public observable?: Observable<any>;
+    public subject?: Subject<any> & Excluded;
+    public observable?: Observable<any> & Excluded;
 
-    public subscriptionsId: number = 0;
-    public subscriptions: RpcExecutionSubscription[] = [];
+    public subscriptionsId: number & Excluded = 0;
+    public subscriptions: RpcExecutionSubscription[] & Excluded = [];
 
     get result() {
         if (this._result === undefined) {
@@ -251,10 +278,10 @@ export class RpcExecution {
     }
 
     constructor(
-        @t.name('controllerClassName') public controllerClassName: string,
-        @t.name('controllerPath') public controllerPath: string,
-        @t.name('method') public method: string,
-        @t.array(t.any).name('args') public args: any[],
+        public controllerClassName: string,
+        public controllerPath: string,
+        public method: string,
+        public args: any[],
     ) {
     }
 
@@ -265,46 +292,46 @@ export class RpcExecution {
 
 export class RpcActionState {
     constructor(
-        @t.name('id') public id: string,
+        public id: string,
     ) {
     }
 
-    @t params: DataStructure = new DataStructure(undefined);
+    params: DataStructure = new DataStructure(undefined);
 }
 
 export class RpcClientConfiguration {
-    public client?: RpcClient;
+    public client?: RpcClient & Excluded;
 
-    controller: {[path: string]: RemoteController<any>} = {};
+    controller: { [path: string]: RemoteController<any> } & Excluded = {};
 
-    incomingMessages: RpcClientEventIncomingMessage[] = [];
-    outgoingMessages: RpcClientEventOutgoingMessage[] = [];
+    incomingMessages: RpcClientEventIncomingMessage[] & Excluded = [];
+    outgoingMessages: RpcClientEventOutgoingMessage[] & Excluded = [];
 
     constructor(
-        @t.name('name') public name: string,
+        public name: string,
     ) {
     }
 }
 
 export class StoreValue {
-    @t.map(RouteState) routeStates: { [name: string]: RouteState } = {};
-    @t.map(RpcActionState) rpcActionStates: { [name: string]: RpcActionState } = {};
+    routeStates: { [name: string]: RouteState } = {};
+    rpcActionStates: { [name: string]: RpcActionState } = {};
 
-    @t.array(Request) requests: Request[] = [];
-    @t.array(RpcExecution) rpcExecutions: RpcExecution[] = [];
+    requests: Request[] = [];
+    rpcExecutions: RpcExecution[] = [];
 
-    @t selectedRoute?: string;
+    selectedRoute?: string;
 
-    @t viewRpc: ViewRpc = new ViewRpc;
-    @t viewHttp: ViewHttp = new ViewHttp;
+    viewRpc: ViewRpc = new ViewRpc;
+    viewHttp: ViewHttp = new ViewHttp;
 
-    @t.array(Environment) environments: Environment[] = [new Environment('default')];
-    @t activeEnvironmentIndex: number = 0;
+    environments: Environment[] = [new Environment('default')];
+    activeEnvironmentIndex: number = 0;
 
-    @t.array(RpcClientConfiguration) rpcClients: RpcClientConfiguration[] = [new RpcClientConfiguration('Client 1')];
-    @t activeRpcClientIndex: number = 0;
+    rpcClients: RpcClientConfiguration[] = [new RpcClientConfiguration('Client 1')];
+    activeRpcClientIndex: number = 0;
 
-    @t activeDebugRpcClientIndex: number = 0;
+    activeDebugRpcClientIndex: number = 0;
 
     get rpcClient(): RpcClientConfiguration | undefined {
         return this.rpcClients[this.activeRpcClientIndex];
@@ -331,8 +358,8 @@ export class StoreValue {
         return rpcState;
     }
 
-    route?: ApiRoute;
-    action?: ApiAction;
+    route?: ApiRoute & Excluded;
+    action?: ApiAction & Excluded;
 }
 
 export class Store {
@@ -346,7 +373,7 @@ export class Store {
         const t = localStorage.getItem('@deepkit/api-console');
         if (!t) return;
         try {
-            this.state = plainToClass(StoreValue, JSON.parse(t));
+            this.state = deserialize<StoreValue>(JSON.parse(t));
             console.log('this.state', this.state);
         } catch {
         }
@@ -354,7 +381,7 @@ export class Store {
     }
 
     store() {
-        localStorage.setItem('@deepkit/api-console', JSON.stringify(classToPlain(StoreValue, this.state)));
+        localStorage.setItem('@deepkit/api-console', JSON.stringify(serialize<StoreValue>(this.state)));
     }
 
     set(cb: (store: StoreValue) => void) {

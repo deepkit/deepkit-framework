@@ -96,7 +96,20 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
     type JoinNames = InlineRuntimeType<typeof joinNamesType>;
     type SortNames = InlineRuntimeType<typeof sortNamesType>;
     type SelectNames = InlineRuntimeType<typeof selectNamesType>;
-    type SchemaType = InlineRuntimeType<typeof schema>;
+
+    const selectSchema = schema.clone();
+    //make sure references are `PrimaryKey<T> | T`
+    for (const property of selectSchema.getProperties().slice()) {
+        if ((property.isReference() || property.isBackReference()) && !property.isArray()) {
+            selectSchema.removeProperty(property.name);
+            const foreign = property.getResolvedReflectionClass();
+            selectSchema.addProperty({
+                ...property.property,
+                type: { kind: ReflectionKind.union, types: [foreign.getPrimary().type, property.type] }
+            });
+        }
+    }
+    type SchemaType = InlineRuntimeType<typeof selectSchema>;
 
     const identifier = options.identifier ? schema.getProperty(options.identifier) : schema.getPrimary();
     const identifierType = identifier.type;
@@ -110,13 +123,13 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
          * @description List of or string of comma separated field names
          */
         select?: SelectNames[] | string;
-        orderBy: { [name in SortNames]?: 'asc' | 'desc' };
+        orderBy?: { [name in SortNames]?: 'asc' | 'desc' };
         /**
-         * @description Each entry with field names, comma separated, or all with *
+         * @description Each entry with field names, comma separated, or all with '*'.
          */
         joins?: { [name in JoinNames]?: string };
-        offset: number & Positive;
-        limit: number & Positive & Maximum<InlineRuntimeType<typeof maxLimit>>;
+        offset?: number & Positive;
+        limit?: number & Positive & Maximum<InlineRuntimeType<typeof maxLimit>>;
     }
 
     interface GetQuery {
@@ -126,12 +139,6 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
         select?: SelectNames[] | string;
         joins?: { [name in JoinNames]?: string };
     }
-
-    // const createDto = schema.getPrimaryField().isAutoIncrement ? schema.exclude(schema.getPrimaryField().name) : schema;
-
-    // const error = t.schema({
-    //     message: t.string,
-    // });
 
     interface ErrorMessage {
         message: string;
@@ -159,7 +166,7 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
             if (listQuery.joins) query = applyJoins(query, listQuery.joins as any);
             if (listQuery.select) query = applySelect(query, listQuery.select);
 
-            if (getObjectKeysSize(listQuery.orderBy) > 0) {
+            if (listQuery.orderBy && getObjectKeysSize(listQuery.orderBy) > 0) {
                 for (const field of Object.keys(listQuery.orderBy)) {
                     if (!schema.hasProperty(field)) throw new Error(`Can not order by '${field}' since it does not exist.`);
                 }

@@ -1,5 +1,5 @@
 import { HtmlResponse, http, HttpBodyValidation, HttpQuery, HttpResponse, Redirect, UploadedFile } from '@deepkit/http';
-import { Logger } from '@deepkit/logger';
+import { LoggerInterface } from '@deepkit/logger';
 import { readFile } from 'fs/promises';
 import { SQLiteDatabase, User } from '../database';
 import { UserList } from '../views/user-list';
@@ -10,7 +10,7 @@ class AddUserDto extends User {
 
 @http.controller()
 export class MainController {
-    constructor(protected logger: Logger, protected database: SQLiteDatabase) {
+    constructor(protected logger: LoggerInterface, protected database: SQLiteDatabase) {
     }
 
     @http.GET('/').name('startPage').description('List all users')

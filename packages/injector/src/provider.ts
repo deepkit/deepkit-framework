@@ -10,7 +10,7 @@
 import { AbstractClassType, ClassType, isClass } from '@deepkit/core';
 import { InjectorModule } from './module';
 import { InjectorToken } from './injector';
-import { OuterType, ReceiveType, resolveReceiveType } from '@deepkit/type';
+import { ReceiveType, resolveReceiveType, Type } from '@deepkit/type';
 
 export interface ProviderBase {
     /**
@@ -21,9 +21,9 @@ export interface ProviderBase {
 }
 
 /** @reflection never */
-export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | InjectorToken<T> | AbstractClassType<T> | OuterType | T;
+export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | InjectorToken<T> | AbstractClassType<T> | Type | T;
 
-export function provide<T>(provider: Omit<ProviderProvide, 'provide'> | ClassType, type?: ReceiveType<T>): Provider {
+export function provide<T>(provider: Omit<ProviderProvide, 'provide'> | ClassType, type?: ReceiveType<T>): NormalizedProvider {
     if (isClass(provider)) return { provide: resolveReceiveType(type), useClass: provider };
     return { ...provider, provide: resolveReceiveType(type) };
 }

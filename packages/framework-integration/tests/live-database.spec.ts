@@ -4,10 +4,10 @@ import { App, AppModule, RootModuleDefinition } from '@deepkit/app';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { Collection, IdInterface, rpc } from '@deepkit/rpc';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
-import { ClassSchema, Entity, t, uuid } from '@deepkit/type';
+import { AutoIncrement, BackReference, entity, PrimaryKey, Reference, uuid, UUID } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 
-export function createTestingApp<O extends RootModuleDefinition>(options: O, entities?: (ClassType | ClassSchema)[]): TestingFacade<App<O>> {
+export function createTestingApp<O extends RootModuleDefinition>(options: O, entities?: (ClassType)[]): TestingFacade<App<O>> {
     return createTestingAppOriginal(options, [], (module: AppModule<any>) => {
         module.addProvider({ provide: Database, useValue: new Database(new SQLiteDatabaseAdapter('/tmp/live-database.sqlite'), entities) })
         module.setupGlobalProvider(DatabaseRegistry).addDatabase(Database, { migrateOnStartup: true }, module);
@@ -17,42 +17,37 @@ export function createTestingApp<O extends RootModuleDefinition>(options: O, ent
 (global as any)['createTestingApp'] ||= createTestingApp;
 
 test('test entity collection reactive find', async () => {
-    @Entity('entitySyncTeam')
+    @entity.name.name('entitySyncTeam')
     class Team implements IdInterface {
-        @t.primary.uuid
-        id: string = uuid();
+        id: UUID & PrimaryKey = uuid();
 
-        @t
         version: number = 0;
 
-        constructor(@t public name: string) {
+        constructor(public name: string) {
         }
     }
 
-    @Entity('entitySyncUser')
+    @entity.name('entitySyncUser')
     class User implements IdInterface {
-        @t.primary.uuid
-        id: string = uuid();
+        id: UUID & PrimaryKey = uuid();
 
-        @t
         version: number = 0;
 
-        @t.array(Team).backReference({ via: () => UserTeam })
-        teams: Team[] = [];
+        teams: Team[] & BackReference<{via: UserTeam}> = [];
 
-        constructor(@t public name: string) {
+        constructor(public name: string) {
         }
     }
 
-    @Entity('entitySyncUserTeam')
+    @entity.name('entitySyncUserTeam')
     class UserTeam {
-        @t.primary.autoIncrement id: number = 0;
+        id: number & PrimaryKey & AutoIncrement = 0;
 
-        @t version: number = 0;
+        version: number = 0;
 
         constructor(
-            @t.reference() public team: Team,
-            @t.reference() public user: User,
+            public team: Team & Reference,
+            public user: User & Reference,
         ) {
         }
     }

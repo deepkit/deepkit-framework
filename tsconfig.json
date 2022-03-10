@@ -53,9 +53,6 @@
       "path": "packages/mongo/tsconfig.json"
     },
     {
-      "path": "packages/type-angular/tsconfig.json"
-    },
-    {
       "path": "packages/sql/tsconfig.json"
     },
     {

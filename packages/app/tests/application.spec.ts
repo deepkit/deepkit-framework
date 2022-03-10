@@ -392,7 +392,7 @@ test('config deps and @inject() in FactoryProvider', async () => {
             ]
         });
         const app = App.fromModule(module);
-        expect(() => app.get('undefinedDep')).toThrow(`Undefined dependency "host: string" of useFactory(?). Type string has no provider`);
+        expect(() => app.get('undefinedDep')).toThrow(`Undefined dependency "host: string" of useFactory(?). Type has no provider`);
     }
 });
 
@@ -479,6 +479,6 @@ test('App.get generic', () => {
         }]
     });
 
-    const service = app.get<Service>('service');
+    const service = app.get<Service>('service' as any);
     service.add();
 });

@@ -10,7 +10,7 @@
 
 import { toFastProperties } from '@deepkit/core';
 import { BaseResponse, Command } from './command';
-import { InlineRuntimeType, OuterType, ReflectionClass, typeOf, UUID } from '@deepkit/type';
+import { InlineRuntimeType, ReflectionClass, Type, typeOf, UUID } from '@deepkit/type';
 import { MongoError } from '../error';
 
 interface AggregateMessage {
@@ -51,7 +51,7 @@ export class AggregateCommand<T, R = BaseResponse> extends Command {
         const resultSchema = this.resultSchema || this.schema;
 
         const jit = resultSchema.getJitContainer();
-        let specialisedResponse: OuterType | undefined = this.partial ? jit.mdbAggregatePartial : jit.mdbAggregate;
+        let specialisedResponse: Type | undefined = this.partial ? jit.mdbAggregatePartial : jit.mdbAggregate;
 
         if (!specialisedResponse) {
             const schema = resultSchema;

@@ -10,7 +10,7 @@
 
 import { cli, flag } from '@deepkit/app';
 import { empty } from '@deepkit/core';
-import { Logger } from '@deepkit/logger';
+import { LoggerInterface } from '@deepkit/logger';
 import { MigrationProvider } from '../migration/migration-provider';
 import { SqlMigrationHandler } from '../sql-adapter';
 import { BaseCommand } from './base-command';
@@ -20,7 +20,7 @@ import { BaseCommand } from './base-command';
 })
 export class MigrationPendingCommand extends BaseCommand {
     constructor(
-        protected logger: Logger,
+        protected logger: LoggerInterface,
         protected provider: MigrationProvider,
     ) {
         super()

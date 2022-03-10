@@ -13,7 +13,7 @@ import { handleErrorResponse, MongoError } from '../error';
 import { MongoClientConfig } from '../config';
 import { Host } from '../host';
 import type { MongoDatabaseTransaction } from '../connection';
-import { OuterType, ReceiveType, ReflectionClass, resolveReceiveType, SerializationError, stringifyType, typeOf } from '@deepkit/type';
+import { ReceiveType, ReflectionClass, resolveReceiveType, SerializationError, stringifyType, Type, typeOf } from '@deepkit/type';
 import { BSONDeserializer, deserializeBSONWithoutOptimiser, getBSONDeserializer } from '@deepkit/bson';
 import { mongoBinarySerializer } from '../../mongo-serializer';
 import { inspect } from 'util';
@@ -50,9 +50,9 @@ export interface BaseResponse {
 }
 
 export abstract class Command {
-    protected current?: { responseType?: OuterType, resolve: Function, reject: Function };
+    protected current?: { responseType?: Type, resolve: Function, reject: Function };
 
-    public sender?: <T>(schema: OuterType, message: T) => void;
+    public sender?: <T>(schema: Type, message: T) => void;
 
     public sendAndWait<T, R = BaseResponse>(
         message: T, messageType?: ReceiveType<T>, responseType?: ReceiveType<R>

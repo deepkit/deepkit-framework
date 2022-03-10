@@ -22,6 +22,10 @@
       "dom"
     ]
   },
+  "reflection": [
+    "src/api.ts",
+    "src/app/store.ts"
+  ],
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,

@@ -1,7 +1,8 @@
 import { expect, test } from '@jest/globals';
 import { InjectorContext, injectorReference, InjectorToken } from '../src/injector';
-import { Tag } from '../src/provider';
+import { provide, Tag } from '../src/provider';
 import { InjectorModule } from '../src/module';
+import { typeOf } from '@deepkit/type';
 
 test('basic', () => {
     class Service {
@@ -370,10 +371,10 @@ test('scope merging', () => {
     const injector = new InjectorContext(root);
     injector.getInjector(root); //trigger build
     const preparedProvider = root.getPreparedProvider(Request);
-    expect(preparedProvider!.provider.providers).toHaveLength(3);
-    expect(preparedProvider!.provider.providers[0].scope).toBe('rpc');
-    expect(preparedProvider!.provider.providers[1].scope).toBe('http');
-    expect(preparedProvider!.provider.providers[2].scope).toBe(undefined);
+    expect(preparedProvider!.providers).toHaveLength(3);
+    expect(preparedProvider!.providers[0].scope).toBe('rpc');
+    expect(preparedProvider!.providers[1].scope).toBe('http');
+    expect(preparedProvider!.providers[2].scope).toBe(undefined);
 
     {
         const request1 = injector.createChildScope('rpc').get(Request);
@@ -594,7 +595,7 @@ test('forRoot module keeps reference to config', () => {
     expect(service.listen).toBe('localhost');
 });
 
-test('setup provider', () => {
+test('setup provider by class', () => {
     class Service {
         list: any[] = [];
 
@@ -605,11 +606,60 @@ test('setup provider', () => {
 
     const root = new InjectorModule([Service]);
 
-    root.setupProvider(Service).add('a');
-    root.setupProvider(Service).add('b');
+    root.setupProvider<Service>().add('a');
+    root.setupProvider<Service>().add('b');
 
     const injector = new InjectorContext(root);
     const service = injector.get(Service);
+
+    expect(service.list).toEqual(['a', 'b']);
+});
+
+test('setup provider by interface 1', () => {
+    class Service {
+        list: any[] = [];
+
+        add(item: any) {
+            this.list.push(item);
+        }
+    }
+
+    interface ServiceInterface {
+        add(item: any): any;
+    }
+
+    const root = new InjectorModule([Service]);
+
+    root.setupProvider<ServiceInterface>().add('a');
+    root.setupProvider<ServiceInterface>().add('b');
+
+    const injector = new InjectorContext(root);
+    const service = injector.get(Service);
+
+    expect(service.list).toEqual(['a', 'b']);
+});
+
+test('setup provider by interface 2', () => {
+    class Service {
+        list: any[] = [];
+
+        add(item: any) {
+            this.list.push(item);
+        }
+    }
+
+    interface ServiceInterface {
+        list: any[];
+        add(item: any): any;
+    }
+
+    const root = new InjectorModule([provide<ServiceInterface>(Service)]);
+
+    root.setupProvider<ServiceInterface>().add('a');
+    root.setupProvider<ServiceInterface>().add('b');
+
+    const injector = new InjectorContext(root);
+    const service = injector.get<ServiceInterface>();
 
     expect(service.list).toEqual(['a', 'b']);
 });
@@ -627,8 +677,8 @@ test('setup provider in sub module', () => {
     const root = new InjectorModule([]);
     const module = new InjectorModule([Service], root);
 
-    module.setupProvider(Service).add('a');
-    module.setupProvider(Service).add('b');
+    module.setupProvider<Service>().add('a');
+    module.setupProvider<Service>().add('b');
 
     const injector = new InjectorContext(root);
     const service = injector.get(Service, module);
@@ -648,8 +698,8 @@ test('setup provider in exported sub module', () => {
     const root = new InjectorModule([]);
     const module = new InjectorModule([Service], root, {}, [Service]);
 
-    module.setupProvider(Service).add('a');
-    module.setupProvider(Service).add('b');
+    module.setupProvider<Service>().add('a');
+    module.setupProvider(0, Service).add('b');
 
     const injector = new InjectorContext(root);
     const service = injector.get(Service);
@@ -670,8 +720,8 @@ test('global setup provider', () => {
 
     const module = new InjectorModule([], root);
 
-    module.setupGlobalProvider(Service).add('a');
-    module.setupGlobalProvider(Service).add('b');
+    module.setupGlobalProvider<Service>().add('a');
+    module.setupGlobalProvider<Service>().add('b');
 
     const injector = new InjectorContext(root);
     const service = injector.get(Service);
@@ -772,9 +822,9 @@ test('global service from another module is available in sibling module', () => 
     httpModule.forRoot().setParent(root);
     apiModule.setParent(root);
 
-    const properties = root.getPreparedProviders({} as any);
-    (root as any).handleExports({} as any);
-    expect(properties.has(HttpRequest)).toBe(true);
+    // const properties = root.getPreparedProviders({} as any);
+    // (root as any).handleExports({} as any);
+    // expect(properties.has(HttpRequest)).toBe(true);
 
     const injector = new InjectorContext(root);
     const scope = injector.createChildScope('http');
@@ -832,7 +882,7 @@ test('injectorReference from other module', () => {
     const module1 = new InjectorModule([Service]);
     const module2 = new InjectorModule([Registry]);
 
-    module2.setupProvider(Registry).register(injectorReference(Service, module1));
+    module2.setupProvider<Registry>().register(injectorReference(Service, module1));
 
     const root = new InjectorModule([]).addImport(module1, module2);
     const injector = new InjectorContext(root);
@@ -1034,7 +1084,8 @@ test('consume config from imported modules', () => {
 
     const moduleModule = new InjectorModule([ModuleService]).setConfigDefinition(ModuleConfig);
 
-    class OverriddenService extends ModuleService {}
+    class OverriddenService extends ModuleService {
+    }
 
     const root = new InjectorModule([OverriddenService]).addImport(moduleModule);
 
@@ -1054,9 +1105,74 @@ test('injector.get by type', () => {
         }
     }
 
-    const root = new InjectorModule([Logger]);
+    class Controller {
+        constructor(public logger: LoggerInterface) {
+        }
+    }
+
+    const root = new InjectorModule([Controller, Logger]);
 
     const injector = new InjectorContext(root);
     const service = injector.get<LoggerInterface>();
-    expect(service.log()).toBe(true);
+    expect(service).toBeInstanceOf(Logger);
+    const controller = injector.get<Controller>();
+    expect(controller.logger).toBeInstanceOf(Logger);
+});
+
+test('exported token from interface', () => {
+    interface LoggerInterface {
+        log(): boolean;
+    }
+
+    class Logger {
+        log(): boolean {
+            return true;
+        }
+    }
+
+    class ModuleController {
+        constructor(public logger: LoggerInterface) {
+        }
+    }
+
+    class Controller {
+        constructor(public logger: LoggerInterface) {
+        }
+    }
+
+    {
+        const module = new InjectorModule([provide<LoggerInterface>(Logger), ModuleController]).addExport(typeOf<LoggerInterface>(), ModuleController);
+        const root = new InjectorModule([Controller]).addImport(module);
+
+        const injector = new InjectorContext(root);
+        const service = injector.get<LoggerInterface>();
+        expect(service).toBeInstanceOf(Logger);
+
+        const controller = injector.get<Controller>();
+        expect(controller.logger).toBeInstanceOf(Logger);
+
+        const moduleController = injector.get<ModuleController>();
+        expect(moduleController.logger).toBeInstanceOf(Logger);
+    }
+
+    {
+        class OverwrittenLogger {
+            log(): boolean {
+                return true;
+            }
+        }
+
+        const module = new InjectorModule([provide<LoggerInterface>(Logger), ModuleController]).addExport(typeOf<LoggerInterface>(), ModuleController);
+        const root = new InjectorModule([Controller, OverwrittenLogger]).addImport(module);
+
+        const injector = new InjectorContext(root);
+        const service = injector.get<LoggerInterface>();
+        expect(service).toBeInstanceOf(OverwrittenLogger);
+
+        const controller = injector.get<Controller>();
+        expect(controller.logger).toBeInstanceOf(OverwrittenLogger);
+
+        const moduleController = injector.get<ModuleController>();
+        expect(moduleController.logger).toBeInstanceOf(OverwrittenLogger);
+    }
 });

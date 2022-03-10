@@ -15,7 +15,7 @@ import { Router } from '@deepkit/http';
 import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
 import { InjectorContext } from '@deepkit/injector';
 import { FrameworkConfig } from './module.config';
-import { Logger } from '@deepkit/logger';
+import { LoggerInterface } from '@deepkit/logger';
 import { createRpcConnection, WebWorker, WebWorkerFactory } from './worker';
 import { RpcControllers } from './rpc';
 import '@deepkit/type';
@@ -87,7 +87,7 @@ function needsHttpWorker(config: { publicDir?: string }, rpcControllers: RpcCont
 
 export class ApplicationServerListener {
     constructor(
-        protected logger: Logger,
+        protected logger: LoggerInterface,
         protected rpcControllers: RpcControllers,
         protected router: Router,
         protected config: ApplicationServerConfig,
@@ -147,7 +147,7 @@ export class ApplicationServer {
     protected needsHttpWorker: boolean;
 
     constructor(
-        protected logger: Logger,
+        protected logger: LoggerInterface,
         protected webWorkerFactory: WebWorkerFactory,
         protected eventDispatcher: EventDispatcher,
         protected rootScopedContext: InjectorContext,

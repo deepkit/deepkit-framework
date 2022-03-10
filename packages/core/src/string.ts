@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export function indent(indentation: number) {
+export function indent(indentation: number, prefix: string = '') {
     return (str: string = '') => {
-        return ' '.repeat(indentation) + str.replace(/\n/g, '\n' + (' '.repeat(indentation)));
+        return ' '.repeat(indentation) + str.replace(/\n/g, '\n' + (' '.repeat(indentation)) + prefix);
     };
 }
 

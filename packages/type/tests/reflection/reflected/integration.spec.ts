@@ -37,11 +37,11 @@ import {
     ReflectionKind,
     ReflectionVisibility,
     SQLite,
-    stringifyResolvedType,
+    stringifyResolvedType, stringifyType,
     Type,
     TypeClass,
     TypeFunction,
-    TypeIndexSignature,
+    TypeIndexSignature, TypeMethod,
     TypeNumber,
     TypeObjectLiteral,
     TypeTuple,
@@ -51,6 +51,7 @@ import { TypeNumberBrand } from '@deepkit/type-spec';
 import { validate, ValidatorError } from '../../../src/validator';
 import { expectEqualType } from '../../utils';
 import { MyAlias } from './types';
+import { resolveRuntimeType } from '../../../src/reflection/processor';
 
 test('class', () => {
     class Entity {
@@ -1559,7 +1560,6 @@ test('set constructor parameter manually', () => {
         ]
     } as Type);
 
-
     function StreamApiResponse<T>(responseBodyClass: ClassType<T>) {
         class A extends StreamApiResponseClass<T> {
             constructor(@t.type(responseBodyClass) public response: T) {
@@ -1599,6 +1599,8 @@ test('set constructor parameter manually', () => {
 
     {
         const classType = StreamApiResponse2(Response);
+        const type = resolveRuntimeType(classType) as TypeClass;
+        expect((type.types[0] as TypeMethod).parameters[0].type.kind).toBe(ReflectionKind.class);
         const reflection = ReflectionClass.from(classType);
         expect(reflection.getMethods().length).toBe(1);
         expect(reflection.getProperties().length).toBe(1);

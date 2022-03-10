@@ -4,7 +4,7 @@ import { HttpRouteFilter, HttpRouterFilterResolver, parseRouteControllerAction }
 import { ClassType, getClassName } from '@deepkit/core';
 import { Config } from './module.config';
 import { readFile } from 'fs/promises';
-import { OuterType, parametersToTuple, ReflectionClass, ReflectionKind, serializeType, TypeClass, TypeObjectLiteral, TypePropertySignature } from '@deepkit/type';
+import { ReflectionClass, ReflectionKind, serializeType, Type, TypeClass, TypeObjectLiteral, TypePropertySignature } from '@deepkit/type';
 
 class ControllerNameGenerator {
     controllers = new Map<ClassType, string>();
@@ -83,15 +83,9 @@ export class ApiConsoleController implements ApiConsoleApi {
 
                 try {
                     //todo: Collection, SubjectEntity, Observable get pretty big
-                    rpcAction.resultType = serializeType(reflectionMethod.getReturnType());
+                    rpcAction.methodType = serializeType(reflectionMethod.method);
                 } catch (error: any) {
                     console.log(`Could not serialize result type of ${of}: ${error.message}`);
-                }
-
-                try {
-                    rpcAction.parameterType = serializeType(parametersToTuple(reflectionMethod.getParameters().map(v => v.parameter)));
-                } catch (error: any) {
-                    console.log(`Could not serialize parameter types of ${of}: ${error.message}`);
                 }
 
                 rpcActions.push(rpcAction);
@@ -138,7 +132,7 @@ export class ApiConsoleController implements ApiConsoleApi {
 
             for (const parameter of parsedRoute.getParameters()) {
                 if (parameter.body || parameter.bodyValidation) {
-                    routeD.bodySchemas = serializeType(parameter.getType());
+                    routeD.bodySchemas = serializeType(parameter.parameter.type);
                 } else if (parameter.query || parameter.queries) {
                     if (parameter.queries) {
                         //if there is a typePath set, all sub properties get their own property
@@ -146,7 +140,7 @@ export class ApiConsoleController implements ApiConsoleApi {
                             // property.name = parameter.typePath;
                             // querySchema.registerProperty(property);
                             (queryType as TypeObjectLiteral).types.push({
-                                kind: ReflectionKind.propertySignature, name: parameter.typePath, type: parameter.parameter.type as OuterType
+                                kind: ReflectionKind.propertySignature, name: parameter.typePath, type: parameter.parameter.type as Type
                             } as TypePropertySignature)
                         } else {
                             if (parameter.parameter.type.kind !== ReflectionKind.class && parameter.parameter.type.kind !== ReflectionKind.objectLiteral) {
@@ -159,14 +153,14 @@ export class ApiConsoleController implements ApiConsoleApi {
                         (queryType as TypeObjectLiteral).types.push({
                             kind: ReflectionKind.propertySignature,
                             name: parameter.typePath || parameter.getName(),
-                            type: parameter.parameter.type as OuterType
+                            type: parameter.parameter.type as Type
                         } as TypePropertySignature)
                     }
                 } else if (parameter.isPartOfPath()) {
                     urlType.types.push({
                         kind: ReflectionKind.propertySignature,
                         name: parameter.typePath || parameter.getName(),
-                        type: parameter.parameter.type as OuterType
+                        type: parameter.parameter.type as Type
                     } as TypePropertySignature)
                 } else {
                     //its a dependency injection token
@@ -176,8 +170,8 @@ export class ApiConsoleController implements ApiConsoleApi {
             const reflectionMethod = ReflectionClass.from(route.action.controller).getMethod(route.action.methodName);
 
             routeD.resultType = serializeType(reflectionMethod.getReturnType());
-            routeD.urlType = serializeType(urlType);
-            routeD.queryType = serializeType(queryType);
+            if (urlType.types.length) routeD.urlType = serializeType(urlType);
+            if (queryType.types.length) routeD.queryType = serializeType(queryType);
             routes.push(routeD);
         }
 

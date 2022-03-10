@@ -13,7 +13,7 @@ import { Host } from './host';
 import { createConnection, Socket } from 'net';
 import { connect as createTLSConnection, TLSSocket } from 'tls';
 import { Command } from './command/command';
-import { OuterType, stringifyType, uuid } from '@deepkit/type';
+import { stringifyType, Type, uuid } from '@deepkit/type';
 import { BSONBinarySerializer, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
 import { HandshakeCommand } from './command/handshake';
 import { MongoClientConfig } from './config';
@@ -391,7 +391,7 @@ export class MongoConnection {
         }
     }
 
-    protected sendMessage<T>(type: OuterType, message: T) {
+    protected sendMessage<T>(type: Type, message: T) {
         const messageSerializer = getBSONSerializer(this.serializer, type);
         const messageSizer = getBSONSizer(this.serializer, type);
 

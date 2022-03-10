@@ -13,13 +13,13 @@ import { join } from 'path';
 import { readFileSync, unlinkSync } from 'fs';
 import { decodeFrameData, decodeFrames } from '@deepkit/framework-debug-api';
 import { FrameworkConfig } from '../module.config';
-import { Logger } from '@deepkit/logger';
+import { LoggerInterface } from '@deepkit/logger';
 
 @cli.controller('debug:debug:frames', {})
 export class DebugDebugFramesCommand implements Command {
     constructor(
         protected config: Pick<FrameworkConfig, 'varPath' | 'debugStorePath'>,
-        protected logger: Logger,
+        protected logger: LoggerInterface,
     ) {
     }
 

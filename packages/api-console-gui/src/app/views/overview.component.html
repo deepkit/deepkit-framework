@@ -73,7 +73,7 @@
                             <div>URL</div>
                         </div>
                         <div class="ts text-selection" style="margin-top: 10px">
-                            <div codeHighlight [code]="classSchemaToTSInterface(schema)"></div>
+                            <div codeHighlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></div>
                         </div>
                     </div>
                 </ng-container>
@@ -88,7 +88,7 @@
 
                     <ng-container *ngIf="route.getQueryType() as schema">
                         <div class="ts text-selection" style="margin-top: 10px">
-                            <div codeHighlight [code]="classSchemaToTSInterface(schema)"></div>
+                            <div codeHighlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></div>
                         </div>
                     </ng-container>
                 </div>
@@ -103,7 +103,7 @@
 
                     <ng-container *ngIf="route.getBodyType() as schema">
                         <div class="ts text-selection" style="margin-top: 10px">
-                            <div codeHighlight [code]="classSchemaToTSInterface(schema, {direction: 'serialize'})"></div>
+                            <div codeHighlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></div>
                         </div>
                     </ng-container>
                 </div>
@@ -117,7 +117,7 @@
                         <div>Default response</div>
                     </div>
                     <div class="ts text-selection">
-                        <div codeHighlight [code]="propertyToTSInterface(schema.getProperty('v'), {strictRequired: true})"></div>
+                        <div codeHighlight [code]="typeToTSJSONInterface(schema)"></div>
                     </div>
                 </div>
 
@@ -128,12 +128,10 @@
                     <div class="response-description">
                         {{response.description}}
                     </div>
-                    <ng-container *ngIf="response.getType() as schemas">
-                        <ng-container *ngIf="schemas.length && schemas[schemas.length - 1] as s">
-                            <div class="ts text-selection" *ngIf="s.getProperty('v').type !== 'any'">
-                                <div codeHighlight  [code]="propertyToTSInterface(s.getProperty('v'), {strictRequired: true})"></div>
-                            </div>
-                        </ng-container>
+                    <ng-container *ngIf="response.getType() as s">
+                        <div class="ts text-selection">
+                            <div codeHighlight  [code]="typeToTSJSONInterface(s)"></div>
+                        </div>
                     </ng-container>
                 </div>
             </div>

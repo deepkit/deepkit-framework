@@ -25,7 +25,6 @@ import {
     isWithAnnotations,
     merge,
     narrowOriginalLiteral,
-    OuterType,
     ReflectionKind,
     ReflectionVisibility,
     Type,
@@ -58,7 +57,7 @@ import { ReflectionClass, TData } from './reflection';
 
 export type RuntimeStackEntry = Type | Object | (() => ClassType | Object) | string | number | boolean | bigint;
 
-export type Packed = (RuntimeStackEntry | string)[] & { __is?: (data: any) => boolean } & { __type?: OuterType } & { __unpack?: PackStruct };
+export type Packed = (RuntimeStackEntry | string)[] & { __is?: (data: any) => boolean } & { __type?: Type } & { __unpack?: PackStruct };
 
 export class PackStruct {
     constructor(
@@ -107,8 +106,8 @@ export function unpack(pack: Packed): PackStruct {
     return { ops, stack: pack.length > 1 ? pack.slice(0, -1) : [] };
 }
 
-export function resolvePacked(type: Packed, args: any[] = []): OuterType {
-    return resolveRuntimeType(type, args) as OuterType;
+export function resolvePacked(type: Packed, args: any[] = []): Type {
+    return resolveRuntimeType(type, args) as Type;
 }
 
 function isPack(o: any): o is Packed {
@@ -118,18 +117,18 @@ function isPack(o: any): o is Packed {
 /**
  * Computes a type of given object. This function caches the result on the object itself.
  */
-export function resolveRuntimeType(o: ClassType | Function | Packed | any, args: any[] = [], options?: ReflectOptions): OuterType {
+export function resolveRuntimeType(o: ClassType | Function | Packed | any, args: any[] = [], options?: ReflectOptions): Type {
     const type = Processor.get().reflect(o, args, options || { reuseCached: true });
 
     if (isType(type)) {
-        return type as OuterType;
+        return type as Type;
     }
 
     throw new Error('No type returned from runtime type program');
 }
 
 interface Frame {
-    index: number;
+    index: number; //just the general frame index
     startIndex: number; //when the frame started, index of the stack
     variables: number;
     inputs: RuntimeStackEntry[];
@@ -169,7 +168,7 @@ interface Program {
     inputs: RuntimeStackEntry[];
     resultTypes?: Type[];
     started: number;
-    typeParameters?: OuterType[];
+    typeParameters?: Type[];
     previous?: Program;
     object?: ClassType | Function | Packed | any;
 }
@@ -345,7 +344,7 @@ export class Processor {
 
         // process.stdout.write(`${options.reuseCached} Cache miss ${stringifyValueWithType(object)}(...${inputs.length})\n`);
         const pack = packed.__unpack ||= unpack(packed);
-        const type = this.run(pack.ops, pack.stack, inputs, object) as OuterType;
+        const type = this.run(pack.ops, pack.stack, inputs, object) as Type;
 
         if (options.reuseCached && inputs.length === 0) {
             packed.__type = type;
@@ -367,7 +366,7 @@ export class Processor {
 
         // process.stdout.write(`jump to program: ${stringifyValueWithType(program.object)}\n`);
         if (!loopRunning) {
-            return this.loop(program) as OuterType;
+            return this.loop(program) as Type;
         }
 
         return program.resultType;
@@ -542,7 +541,7 @@ export class Processor {
                         }
                         case ReflectionOp.parameter: {
                             const ref = this.eatParameter() as number;
-                            const t: Type = { kind: ReflectionKind.parameter, parent: undefined as any, name: program.stack[ref] as string, type: this.pop() as OuterType };
+                            const t: Type = { kind: ReflectionKind.parameter, parent: undefined as any, name: program.stack[ref] as string, type: this.pop() as Type };
                             t.type.parent = t;
                             this.pushType(t);
                             break;
@@ -550,7 +549,7 @@ export class Processor {
                         case ReflectionOp.classReference: {
                             const ref = this.eatParameter() as number;
                             const classType = resolveFunction(program.stack[ref] as Function, program.object);
-                            const inputs = this.popFrame() as OuterType[];
+                            const inputs = this.popFrame() as Type[];
                             if (!classType) throw new Error('No class reference given in ' + String(program.stack[ref]));
 
                             if (!classType.__type) {
@@ -663,7 +662,7 @@ export class Processor {
                                 program.typeParameters.push({ kind: ReflectionKind.any });
                                 this.pushType({ kind: ReflectionKind.typeParameter, name: program.stack[nameRef] as string });
                             } else {
-                                program.typeParameters.push(type as OuterType);
+                                program.typeParameters.push(type as Type);
                                 this.pushType(type as Type);
                             }
                             break;
@@ -684,7 +683,7 @@ export class Processor {
                             break;
                         }
                         case ReflectionOp.promise: {
-                            const t: Type = { kind: ReflectionKind.promise, type: this.pop() as OuterType };
+                            const t: Type = { kind: ReflectionKind.promise, type: this.pop() as Type };
                             t.type.parent = t;
                             this.pushType(t);
                             break;
@@ -707,7 +706,7 @@ export class Processor {
                             let t: TypeFunction = {
                                 kind: ReflectionKind.function,
                                 name: name || undefined,
-                                return: types.length > 0 ? types[types.length - 1] as OuterType : { kind: ReflectionKind.any } as OuterType,
+                                return: types.length > 0 ? types[types.length - 1] as Type : { kind: ReflectionKind.any } as Type,
                                 parameters: types.length > 1 ? types.slice(0, -1) as TypeParameter[] : []
                             };
                             if (this.isEnded()) t = Object.assign(program.resultType, t);
@@ -759,7 +758,7 @@ export class Processor {
                         case ReflectionOp.methodSignature: {
                             const name = program.stack[this.eatParameter() as number] as number | string | symbol;
                             const types = this.popFrame() as Type[];
-                            const returnType = types.length > 0 ? types[types.length - 1] as OuterType : { kind: ReflectionKind.any } as OuterType;
+                            const returnType = types.length > 0 ? types[types.length - 1] as Type : { kind: ReflectionKind.any } as Type;
                             const parameters: TypeParameter[] = types.length > 1 ? types.slice(0, -1) as TypeParameter[] : [];
 
                             let t: TypeMethod | TypeMethodSignature = op === ReflectionOp.method
@@ -933,7 +932,7 @@ export class Processor {
                             const arg = this.eatParameter() as number;
                             const t = program.stack[arg] as Type | ReflectionClass<any> | number | string | boolean | bigint;
                             if (t instanceof ReflectionClass) {
-                                this.push(t.type);
+                                this.push({ ...t.type, typeName: t.getClassName() });
                             } else if ('string' === typeof t || 'number' === typeof t || 'boolean' === typeof t || 'bigint' === typeof t) {
                                 this.push({ kind: ReflectionKind.literal, literal: t });
                             } else {
@@ -980,7 +979,7 @@ export class Processor {
                                 //when it's just a simple reference resolution like typeOf<Class>() then enable cache re-use (so always the same type is returned)
                                 const reuseCached = !!(this.isEnded() && program.previous && program.previous.end === 0);
                                 const result = this.reflect(p, [], { reuseCached });
-                                if (isWithAnnotations(result)) {
+                                if (isWithAnnotations(result) && !result.typeName) {
                                     result.typeName = isFunction(pOrFn) ? pOrFn.toString().replace('() => __Ω', '') : '';
                                 }
                                 this.push(result, program);
@@ -997,10 +996,10 @@ export class Processor {
                         case ReflectionOp.inlineCall: {
                             const pPosition = this.eatParameter() as number;
                             const argumentSize = this.eatParameter() as number;
-                            const inputs: OuterType[] = [];
+                            const inputs: Type[] = [];
                             for (let i = 0; i < argumentSize; i++) {
-                                let input = this.pop() as OuterType;
-                                if ((input.kind === ReflectionKind.never || input.kind === ReflectionKind.unknown) && program.inputs[i]) input = program.inputs[i] as OuterType;
+                                let input = this.pop() as Type;
+                                if ((input.kind === ReflectionKind.never || input.kind === ReflectionKind.unknown) && program.inputs[i]) input = program.inputs[i] as Type;
                                 inputs.unshift(input);
                             }
                             const pOrFn = program.stack[pPosition] as number | Packed | (() => Packed);
@@ -1033,14 +1032,14 @@ export class Processor {
                             } else {
                                 const result = this.reflect(p, inputs);
 
-                                if (isWithAnnotations(result)) {
+                                if (isWithAnnotations(result) && !result.typeName) {
                                     result.typeName = isFunction(pOrFn) ? pOrFn.toString().replace('() => __Ω', '') : '';
+                                }
 
-                                    if (isWithAnnotations(result) && inputs.length) {
-                                        result.typeArguments = result.typeArguments || [];
-                                        for (let i = 0; i < inputs.length; i++) {
-                                            result.typeArguments[i] = inputs[i];
-                                        }
+                                if (isWithAnnotations(result) && inputs.length) {
+                                    result.typeArguments = result.typeArguments || [];
+                                    for (let i = 0; i < inputs.length; i++) {
+                                        result.typeArguments[i] = inputs[i];
                                     }
                                 }
 
@@ -1234,7 +1233,7 @@ export class Processor {
 
             const t: Type = indexAccess(left, right);
             if (isWithAnnotations(t)) {
-                t.indexAccessOrigin = { container: left as TypeObjectLiteral, index: right as OuterType };
+                t.indexAccessOrigin = { container: left as TypeObjectLiteral, index: right as Type };
             }
 
             t.parent = undefined;
@@ -1444,7 +1443,7 @@ function typeInferFromContainer(container: Iterable<any>): Type {
     return union.types.length === 0 ? { kind: ReflectionKind.any } : union.types.length === 1 ? union.types[0] : union;
 }
 
-export function typeInfer(value: any): OuterType {
+export function typeInfer(value: any): Type {
     if ('string' === typeof value || 'number' === typeof value || 'boolean' === typeof value || 'bigint' === typeof value || 'symbol' === typeof value) {
         return { kind: ReflectionKind.literal, literal: value };
     } else if (null === value) {
@@ -1457,7 +1456,7 @@ export function typeInfer(value: any): OuterType {
         if (isArray(value.__type)) {
             //with emitted types: function or class
             //don't use resolveRuntimeType since we don't allow cache here
-            return Processor.get().reflect(value) as OuterType;
+            return Processor.get().reflect(value) as Type;
         }
 
         if (isClass(value)) {
@@ -1473,7 +1472,7 @@ export function typeInfer(value: any): OuterType {
         if ('function' === typeof constructor && constructor !== Object && isArray(constructor.__type)) {
             //with emitted types
             //don't use resolveRuntimeType since we don't allow cache here
-            return Processor.get().reflect(constructor) as OuterType;
+            return Processor.get().reflect(constructor) as Type;
         }
 
         if (constructor === RegExp) return { kind: ReflectionKind.regexp };
@@ -1509,7 +1508,7 @@ export function typeInfer(value: any): OuterType {
 
         ops.push(ReflectionOp.objectLiteral);
 
-        return Processor.get().runProgram(createProgram({ ops, stack, resultType })) as OuterType;
+        return Processor.get().runProgram(createProgram({ ops, stack, resultType })) as Type;
     }
     return { kind: ReflectionKind.any };
 }
@@ -1538,7 +1537,7 @@ function applyClassDecorators(type: TypeClass) {
     }
 }
 
-function applyPropertyDecorator(type: OuterType, data: TData) {
+function applyPropertyDecorator(type: Type, data: TData) {
     //map @t.validate to Validate<>
     if (data.validators.length && isWithAnnotations(type)) {
         const annotations = getAnnotations(type);
@@ -1556,7 +1555,7 @@ function pushObjectLiteralTypes(
     types: (TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeObjectLiteral)[],
 ) {
     let annotations: Annotations = {};
-    const decorators: OuterType[] = [];
+    const decorators: Type[] = [];
 
     outer:
         for (const member of types) {
@@ -1610,7 +1609,7 @@ function pushObjectLiteralTypes(
     Object.assign(type.annotations, annotations);
 }
 
-export function getEnumType(values: any[]): OuterType {
+export function getEnumType(values: any[]): Type {
     let allowUndefined = false;
     let allowNull = false;
     let allowString = false;

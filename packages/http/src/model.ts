@@ -12,7 +12,7 @@ import { IncomingMessage, ServerResponse } from 'http';
 import { UploadedFile } from './router';
 import * as querystring from 'querystring';
 import { Writable } from 'stream';
-import { ValidationFailedItem } from '@deepkit/type';
+import { metaAnnotation, ReflectionKind, Type, ValidationFailedItem } from '@deepkit/type';
 
 export class HttpResponse extends ServerResponse {
     status(code: number) {
@@ -62,6 +62,29 @@ export type HttpBody<T> = T & { __meta?: ['httpBody'] };
 export type HttpBodyValidation<T> = ValidatedBody<T> & { __meta?: ['httpBodyValidation'] };
 export type HttpQuery<T, Options extends { name?: string } = {}> = T & { __meta?: ['httpQuery', Options] };
 export type HttpQueries<T, Options extends { name?: string } = {}> = T & { __meta?: ['httpQueries', Options] };
+
+/**
+ * For all parameters used in the URL path, a regular expression of /[^/]+/ is used. To change that, use getRegExp.
+ *
+ * @example
+ * ```typescript
+ *
+ * class Controller {
+ *     @http.GET('/user/:username')
+ *     route(username: HttpRegExp<string, '.*'>) {
+ *         //username is string
+ *     }
+ * }
+ * ```
+ */
+export type HttpRegExp<T, Pattern extends string> = T & { __meta?: ['httpRegExp', Pattern] };
+
+export function getRegExp(type: Type): string | undefined {
+    const options = metaAnnotation.getForName(type, 'httpRegExp');
+    if (!options || !options[0]) return;
+    if (options[0].kind !== ReflectionKind.literal || 'string' !== typeof options[0].literal) return;
+    return options[0].literal;
+}
 
 export class RequestBuilder {
     protected contentBuffer: Buffer = Buffer.alloc(0);

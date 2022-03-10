@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { PropertySchema } from '@deepkit/type';
+import { TypeClass } from '@deepkit/type';
 import { DataStructure } from '../../store';
 
 @Component({
@@ -15,7 +15,7 @@ export class DateInputComponent {
     @Input() model!: DataStructure;
     @Output() modelChange = new EventEmitter();
 
-    @Input() property!: PropertySchema;
+    @Input() type!: TypeClass;
 
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
 }

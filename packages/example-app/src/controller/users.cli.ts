@@ -1,10 +1,10 @@
 import { cli, Command } from '@deepkit/app';
-import { Logger } from '@deepkit/logger';
+import { LoggerInterface } from '@deepkit/logger';
 import { SQLiteDatabase, User } from '../database';
 
 @cli.controller('users')
 export class UsersCommand implements Command {
-    constructor(protected logger: Logger, protected database: SQLiteDatabase) {
+    constructor(protected logger: LoggerInterface, protected database: SQLiteDatabase) {
     }
 
     async execute(): Promise<any> {

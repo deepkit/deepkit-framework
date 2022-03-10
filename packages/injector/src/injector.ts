@@ -2,17 +2,18 @@ import { isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider
 import { AbstractClassType, ClassType, CompilerContext, CustomError, getClassName, isArray, isClass, isFunction, isPrototypeOfBase } from '@deepkit/core';
 import { findModuleForConfig, getScope, InjectorModule, PreparedProvider } from './module';
 import {
+    hasTypeInformation,
+    isExtendable,
     isOptional,
     isType,
     isWithAnnotations,
     metaAnnotation,
-    OuterType,
     ReceiveType,
+    reflect,
     ReflectionClass,
     ReflectionFunction,
     ReflectionKind,
     resolveReceiveType,
-    stringifyShortResolvedType,
     stringifyType,
     Type
 } from '@deepkit/type';
@@ -24,7 +25,7 @@ export class InjectorError extends CustomError {
 export class CircularDependencyError extends InjectorError {
 }
 
-export class TokenNotFoundError extends InjectorError {
+export class ServiceNotFoundError extends InjectorError {
 }
 
 export class DependenciesUnmetError extends InjectorError {
@@ -71,11 +72,12 @@ export class InjectorToken<T> {
     }
 }
 
-export function tokenLabel(token: any): string {
+export function tokenLabel(token: Token): string {
     if (token === null) return 'null';
     if (token === undefined) return 'undefined';
     if (token instanceof TagProvider) return 'Tag(' + getClassName(token.provider.provide) + ')';
     if (isClass(token)) return getClassName(token);
+    if (isType(token)) return stringifyType(token).replace(/\n/gm, '');
     if (isFunction(token.toString)) return token.name;
 
     return token + '';
@@ -91,9 +93,9 @@ function constructorParameterNotFound(ofName: string, name: string, position: nu
     );
 }
 
-function tokenNotfoundError(token: any, moduleName: string) {
-    throw new TokenNotFoundError(
-        `Token '${tokenLabel(token)}' in ${moduleName} not found. Make sure '${tokenLabel(token)}' is provided.`
+function serviceNotfoundError(token: any, moduleName: string) {
+    throw new ServiceNotFoundError(
+        `Service '${tokenLabel(token)}' in ${moduleName} not found. Make sure it is provided.`
     );
 }
 
@@ -133,24 +135,42 @@ export type SetupProviderCalls = {
     | { type: 'stop', order: number }
     ;
 
-export class SetupProviderRegistry {
-    public calls = new Map<Token, SetupProviderCalls[]>();
+function matchType(left: Type, right: Type): boolean {
+    if (left.kind === ReflectionKind.class) {
+        if (right.kind === ReflectionKind.class) return left.classType === right.classType;
+    }
 
-    public add(token: any, ...newCalls: SetupProviderCalls[]) {
-        this.get(token).push(...newCalls);
+    return isExtendable(left, right);
+}
+
+export class SetupProviderRegistry {
+    public calls: { type: Type, call: SetupProviderCalls }[] = [];
+
+    public add(type: Type, call: SetupProviderCalls) {
+        this.calls.push({ type, call });
     }
 
     mergeInto(registry: SetupProviderRegistry): void {
-        for (const [token, calls] of this.calls) {
-            registry.add(token, ...calls);
+        for (const { type, call } of this.calls) {
+            registry.add(type, call);
         }
     }
 
     public get(token: Token): SetupProviderCalls[] {
-        let calls = this.calls.get(token);
-        if (!calls) {
-            calls = [];
-            this.calls.set(token, calls);
+        const calls: SetupProviderCalls[] = [];
+        for (const call of this.calls) {
+            if (call.type === token) {
+                calls.push(call.call);
+            } else {
+                if (isClass(token)) {
+                    const type = hasTypeInformation(token) ? reflect(token) : undefined;
+                    if (type && matchType(type, call.type)) {
+                        calls.push(call.call);
+                    }
+                } else if (matchType(token, call.type)) {
+                    calls.push(call.call);
+                }
+            }
         }
         return calls;
     }
@@ -177,11 +197,11 @@ export interface InjectorInterface {
 /**
  * Returns the injector token type if the given type was decorated with `Inject<T>`.
  */
-function getInjectOptions(type: OuterType): OuterType | undefined {
+function getInjectOptions(type: Type): Type | undefined {
     const annotations = metaAnnotation.getAnnotations(type);
     for (const annotation of annotations) {
         if (annotation.name === 'inject') {
-            const t = annotation.options[0] as OuterType;
+            const t = annotation.options[0] as Type;
             return t.kind !== ReflectionKind.never ? t : type;
         }
     }
@@ -191,6 +211,8 @@ function getInjectOptions(type: OuterType): OuterType | undefined {
 /**
  * This is the actual dependency injection container.
  * Every module has its own injector.
+ *
+ * @reflection never
  */
 export class Injector implements InjectorInterface {
     private resolver?: (token: any, scope?: Scope) => any;
@@ -243,7 +265,7 @@ export class Injector implements InjectorInterface {
         resolverCompiler.context.set('CircularDetector', CircularDetector);
         resolverCompiler.context.set('CircularDetectorResets', CircularDetectorResets);
         resolverCompiler.context.set('throwCircularDependency', throwCircularDependency);
-        resolverCompiler.context.set('tokenNotfoundError', tokenNotfoundError);
+        resolverCompiler.context.set('tokenNotfoundError', serviceNotfoundError);
         resolverCompiler.context.set('injector', this);
 
         const lines: string[] = [];
@@ -258,7 +280,7 @@ export class Injector implements InjectorInterface {
         setterCompiler.context.set('injector', this);
         const setterLines: string[] = [];
 
-        for (const [token, prepared] of this.module.getPreparedProviders(buildContext).entries()) {
+        for (const prepared of this.module.getPreparedProviders(buildContext)) {
             //scopes will be created first, so they are returned instead of the unscoped instance
             prepared.providers.sort((a, b) => {
                 if (a.scope && !b.scope) return -1;
@@ -275,7 +297,7 @@ export class Injector implements InjectorInterface {
                 const scopeObjectCheck = scope ? ` && scope && scope.name === ${JSON.stringify(scope)}` : '';
                 const scopeCheck = scope ? ` && scope === ${JSON.stringify(scope)}` : '';
 
-                setterLines.push(`case token === ${setterCompiler.reserveVariable('token', token)}${scopeObjectCheck}: {
+                setterLines.push(`case token === ${setterCompiler.reserveVariable('token', prepared.token)}${scopeObjectCheck}: {
                     if (${accessor} === undefined) {
                         injector.instantiated.${name} = injector.instantiated.${name} ? injector.instantiated.${name} + 1 : 1;
                     }
@@ -286,22 +308,22 @@ export class Injector implements InjectorInterface {
                 if (prepared.resolveFrom) {
                     //its a redirect
                     lines.push(`
-                    case token === ${resolverCompiler.reserveConst(token, 'token')}${scopeObjectCheck}: {
-                        return ${resolverCompiler.reserveConst(prepared.resolveFrom, 'resolveFrom')}.injector.resolver(${resolverCompiler.reserveConst(token, 'token')}, scope);
+                    case token === ${resolverCompiler.reserveConst(prepared.token, 'token')}${scopeObjectCheck}: {
+                        return ${resolverCompiler.reserveConst(prepared.resolveFrom, 'resolveFrom')}.injector.resolver(${resolverCompiler.reserveConst(prepared.token, 'token')}, scope);
                     }
                     `);
 
                     instantiationLines.push(`
-                    case token === ${instantiationCompiler.reserveConst(token, 'token')}${scopeCheck}: {
-                        return ${instantiationCompiler.reserveConst(prepared.resolveFrom, 'resolveFrom')}.injector.instantiations(${instantiationCompiler.reserveConst(token, 'token')}, scope);
+                    case token === ${instantiationCompiler.reserveConst(prepared.token, 'token')}${scopeCheck}: {
+                        return ${instantiationCompiler.reserveConst(prepared.resolveFrom, 'resolveFrom')}.injector.instantiations(${instantiationCompiler.reserveConst(prepared.token, 'token')}, scope);
                     }
                     `);
                 } else {
                     //we own and instantiate the service
-                    lines.push(this.buildProvider(buildContext, resolverCompiler, name, accessor, scope, provider, prepared.modules));
+                    lines.push(this.buildProvider(buildContext, resolverCompiler, name, accessor, scope, prepared.token, provider, prepared.modules));
 
                     instantiationLines.push(`
-                    case token === ${instantiationCompiler.reserveConst(token, 'token')}${scopeCheck}: {
+                    case token === ${instantiationCompiler.reserveConst(prepared.token, 'token')}${scopeCheck}: {
                         return injector.instantiated.${name} || 0;
                     }
                     `);
@@ -348,11 +370,11 @@ export class Injector implements InjectorInterface {
         name: string,
         accessor: string,
         scope: string,
+        token: Token,
         provider: NormalizedProvider,
         resolveDependenciesFrom: InjectorModule[],
     ) {
         let transient = false;
-        const token = provider.provide;
         let factory: { code: string, dependencies: number } = { code: '', dependencies: 0 };
         const tokenVar = compiler.reserveConst(token);
 
@@ -394,6 +416,7 @@ export class Injector implements InjectorInterface {
         }
 
         const configureProvider: string[] = [];
+
         const configuredProviderCalls = resolveDependenciesFrom[0].setupProviderRegistry?.get(token);
         configuredProviderCalls.push(...buildContext.globalSetupProviderRegistry.get(token));
 
@@ -420,7 +443,13 @@ export class Injector implements InjectorInterface {
                 }
                 if (call.type === 'property') {
                     const property = 'symbol' === typeof call.property ? '[' + compiler.reserveVariable('property', call.property) + ']' : call.property;
-                    const value = call.value instanceof InjectorReference ? `frontInjector.get(${compiler.reserveVariable('forward', call.value.to)})` : compiler.reserveVariable('value', call.value);
+                    let value: string = '';
+                    if (call.value instanceof InjectorReference) {
+                        const injector = call.value.module ? compiler.reserveConst(call.value.module) + '.injector' : 'injector';
+                        value = `${injector}.resolver(${compiler.reserveConst(call.value.to)}, scope)`;
+                    } else {
+                        value = compiler.reserveVariable('value', call.value);
+                    }
                     configureProvider.push(`${accessor}.${property} = ${value};`);
                 }
             }
@@ -435,6 +464,10 @@ export class Injector implements InjectorInterface {
         const creatingVar = `creating_${name}`;
         const circularDependencyCheckStart = factory.dependencies ? `if (${creatingVar}) throwCircularDependency();${creatingVar} = true;` : '';
         const circularDependencyCheckEnd = factory.dependencies ? `${creatingVar} = false;` : '';
+
+        if (tokenLabel(token) === 'DebugBroker') {
+            debugger;
+        }
 
         return `
             //${tokenLabel(token)}, from ${resolveDependenciesFrom.map(getClassName).join(', ')}
@@ -471,10 +504,10 @@ export class Injector implements InjectorInterface {
         if (constructor) {
             for (const parameter of constructor.getParameters()) {
                 dependencies++;
-                const tokenType = getInjectOptions(parameter.getType() as OuterType);
+                const tokenType = getInjectOptions(parameter.getType() as Type);
                 args.push(this.createFactoryProperty({
                     name: parameter.name,
-                    type: tokenType || parameter.getType() as OuterType,
+                    type: tokenType || parameter.getType() as Type,
                     optional: !parameter.isValueRequired()
                 }, provider, compiler, resolveDependenciesFrom, getClassName(classType), args.length, 'constructorParameterNotFound'));
             }
@@ -504,7 +537,7 @@ export class Injector implements InjectorInterface {
     }
 
     protected createFactoryProperty(
-        options: { name: string, type: OuterType, optional: boolean },
+        options: { name: string, type: Type, optional: boolean },
         fromProvider: NormalizedProvider,
         compiler: CompilerContext,
         resolveDependenciesFrom: InjectorModule[],
@@ -597,14 +630,14 @@ export class Injector implements InjectorInterface {
             }
         }
 
-        let foundPreparedProvider: { token: Token, provider: PreparedProvider } | undefined = undefined;
+        let foundPreparedProvider: PreparedProvider | undefined = undefined;
         for (const module of resolveDependenciesFrom) {
             foundPreparedProvider = module.getPreparedProvider(findToken);
             if (foundPreparedProvider) {
                 if (foundPreparedProvider) {
                     //check if the found provider was actually exported to this current module.
                     //if not it means that provider is encapsulated living only in its module and can not be accessed from other modules.
-                    const moduleHasAccessToThisProvider = foundPreparedProvider.provider.modules.some(m => m === module);
+                    const moduleHasAccessToThisProvider = foundPreparedProvider.modules.some(m => m === module);
                     if (!moduleHasAccessToThisProvider) {
                         foundPreparedProvider = undefined;
                     }
@@ -631,10 +664,10 @@ export class Injector implements InjectorInterface {
                 of = `${ofName}(${argsCheck.join(', ')})`;
             }
 
-            const type = stringifyShortResolvedType(options.type).replace(/\n/g, '').replace(/\s\s+/g, ' ').replace(' & InjectMeta', '');
+            const type = stringifyType(options.type, { showFullDefinition: false }).replace(/\n/g, '').replace(/\s\s+/g, ' ').replace(' & InjectMeta', '');
             if (options.optional) return 'undefined';
             throw new DependenciesUnmetError(
-                `Undefined dependency "${options.name}: ${type}" of ${of}. Type ${type} has no provider in ${fromScope ? 'scope ' + fromScope : 'no scope'}.`
+                `Undefined dependency "${options.name}: ${type}" of ${of}. Type has no provider in ${fromScope ? 'scope ' + fromScope : 'no scope'}.`
             );
 
             // throw new DependenciesUnmetError(
@@ -643,7 +676,7 @@ export class Injector implements InjectorInterface {
         }
 
         const tokenVar = compiler.reserveVariable('token', foundPreparedProvider.token);
-        const allPossibleScopes = foundPreparedProvider.provider.providers.map(getScope);
+        const allPossibleScopes = foundPreparedProvider.providers.map(getScope);
         const unscoped = allPossibleScopes.includes('') && allPossibleScopes.length === 1;
 
         if (!unscoped && !allPossibleScopes.includes(fromScope)) {
@@ -658,7 +691,7 @@ export class Injector implements InjectorInterface {
         //in this case, if the dependency is not optional, we throw an error.
         const orThrow = options.optional ? '' : `?? ${notFoundFunction}(${JSON.stringify(ofName)}, ${JSON.stringify(options.name)}, ${argPosition}, ${tokenVar})`;
 
-        const resolveFromModule = foundPreparedProvider.provider.resolveFrom || foundPreparedProvider.provider.modules[0];
+        const resolveFromModule = foundPreparedProvider.resolveFrom || foundPreparedProvider.modules[0];
         if (resolveFromModule === this.module) {
             return `injector.resolver(${tokenVar}, scope)`;
         }
@@ -753,14 +786,14 @@ export class Injector implements InjectorInterface {
             }
         }
 
-        let foundPreparedProvider: { token: Token, provider: PreparedProvider } | undefined = undefined;
+        let foundPreparedProvider: PreparedProvider | undefined = undefined;
         for (const module of resolveDependenciesFrom) {
             foundPreparedProvider = module.getPreparedProvider(findToken);
             if (foundPreparedProvider) {
                 if (foundPreparedProvider) {
                     //check if the found provider was actually exported to this current module.
                     //if not it means that provider is encapsulated living only in its module and can not be accessed from other modules.
-                    const moduleHasAccessToThisProvider = foundPreparedProvider.provider.modules.some(m => m === module);
+                    const moduleHasAccessToThisProvider = foundPreparedProvider.modules.some(m => m === module);
                     if (!moduleHasAccessToThisProvider) {
                         foundPreparedProvider = undefined;
                     }
@@ -781,17 +814,17 @@ export class Injector implements InjectorInterface {
         if (!foundPreparedProvider) {
             if (optional) return () => undefined;
             const t = stringifyType(type, { showFullDefinition: false });
-            throw new TokenNotFoundError(
+            throw new ServiceNotFoundError(
                 `Undefined service "${t}". Type has no matching provider in ${fromScope ? 'scope ' + fromScope : 'no scope'}.`
             );
         }
 
-        const allPossibleScopes = foundPreparedProvider.provider.providers.map(getScope);
+        const allPossibleScopes = foundPreparedProvider.providers.map(getScope);
         const unscoped = allPossibleScopes.includes('') && allPossibleScopes.length === 1;
 
         if (!unscoped && !allPossibleScopes.includes(fromScope)) {
             const t = stringifyType(type, { showFullDefinition: false });
-            throw new TokenNotFoundError(
+            throw new ServiceNotFoundError(
                 `Service "${t}" can not be received from ${fromScope ? 'scope ' + fromScope : 'no scope'}, ` +
                 `since it only exists in scope${allPossibleScopes.length === 1 ? '' : 's'} ${allPossibleScopes.join(', ')}.`
             );
@@ -799,9 +832,9 @@ export class Injector implements InjectorInterface {
 
         const foundToken = foundPreparedProvider.token;
 
-        const resolveFromModule = foundPreparedProvider.provider.resolveFrom || foundPreparedProvider.provider.modules[0];
+        const resolveFromModule = foundPreparedProvider.resolveFrom || foundPreparedProvider.modules[0];
 
-        return (scopeIn?: Scope) => resolveFromModule.injector!.resolver!(foundToken, scopeIn || scope);
+        return (scopeIn?: Scope) => resolveFromModule.injector!.resolver!(foundPreparedProvider!.token, scopeIn || scope);
     }
 }
 
@@ -853,7 +886,7 @@ export class InjectorContext {
             'boolean' === typeof token || 'symbol' === typeof token || isFunction(token) || isClass(token) || token instanceof InjectorToken || token instanceof RegExp) {
             return injector.get(token, this.scope) as ResolveToken<T>;
         } else if (isType(token)) {
-            return injector.createResolver(isType(token) ? token as OuterType : resolveReceiveType(token), this.scope)(this.scope);
+            return injector.createResolver(isType(token) ? token as Type : resolveReceiveType(token), this.scope)(this.scope);
         } else if (isArray(token)) {
             return injector.createResolver(resolveReceiveType(token), this.scope)(this.scope);
         }

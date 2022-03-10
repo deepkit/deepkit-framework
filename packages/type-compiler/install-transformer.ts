@@ -11,21 +11,26 @@ import { readFileSync, writeFileSync } from 'fs';
 
 let to = process.argv[2] || process.cwd();
 
-function getPatchId(id: string): string{
-     return 'deepkit_type_patch_' + id;
+function getPatchId(id: string): string {
+    return 'deepkit_type_patch_' + id;
 }
 
 function getCode(deepkitDistPath: string, varName: string, id: string): string {
     return `
         //${getPatchId(id)}
         try {
-        var typeTransformer = require('${deepkitDistPath}/src/compiler');
+        var typeTransformer = require('@deepkit/type-compiler');
         if (typeTransformer) {
-            if (!${varName}) ${varName} = {};
+            if (!customTransformers) ${varName} = {};
             if (!${varName}.before) ${varName}.before = [];
             if (!${varName}.before.includes(typeTransformer.transformer)) ${varName}.before.push(typeTransformer.transformer);
+
+            if (!${varName}.afterDeclarations) ${varName}.afterDeclarations = [];
+            if (!${varName}.afterDeclarations.includes(typeTransformer.declarationTransformer)) ${varName}.afterDeclarations.push(typeTransformer.declarationTransformer);
         }
-        } catch (e) {}
+        } catch (e) {
+            console.error('failed loading @deepkit/type transformer: ' + e);
+        }
     `;
 }
 
@@ -33,11 +38,11 @@ function isPatched(code: string, id: string) {
     return code.includes(getPatchId(id));
 }
 
-function patchGetScriptTransformers(deepkitDistPath: string, code: string): string {
-    const id = 'patchGetScriptTransformers';
+function patchGetTransformers(deepkitDistPath: string, code: string): string {
+    const id = 'patchGetTransformers';
     if (isPatched(code, id)) return code;
 
-    code = code.replace(/function getScriptTransformers\([^)]+\)\s*{/, function (a) {
+    code = code.replace(/function getTransformers\([^)]+\)\s*{/, function (a) {
         return a + '\n    ' + getCode(deepkitDistPath, 'customTransformers', id);
     });
 
@@ -59,20 +64,19 @@ if (to + '/dist/cjs' === __dirname) {
     to = join(to, '..'); //we exclude type-compiler/node_modules
 }
 
-const typeScriptPath = dirname(require.resolve('typescript', {paths: [to]}));
+const typeScriptPath = dirname(require.resolve('typescript', { paths: [to] }));
 const deepkitDistPath = relative(typeScriptPath, __dirname);
 
 {
     let tscContent = readFileSync(join(typeScriptPath, 'tsc.js'), 'utf8');
-    tscContent = patchGetScriptTransformers(deepkitDistPath, tscContent)
-    tscContent = patchCustomTransformers(deepkitDistPath, tscContent)
+    tscContent = patchGetTransformers(deepkitDistPath, tscContent);
     writeFileSync(join(typeScriptPath, 'tsc.js'), tscContent);
 }
 
 {
     let tscContent = readFileSync(join(typeScriptPath, 'typescript.js'), 'utf8');
-    // tscContent = patchGetScriptTransformers(deepkitDistPath, tscContent) //this breaks source-maps, since ts-jest loads the transformer then twice
-    tscContent = patchCustomTransformers(deepkitDistPath, tscContent)
+    tscContent = patchGetTransformers(deepkitDistPath, tscContent); //this breaks source-maps, since ts-jest loads the transformer then twice
+    // tscContent = patchCustomTransformers(deepkitDistPath, tscContent)
     writeFileSync(join(typeScriptPath, 'typescript.js'), tscContent);
 }
 

@@ -23,7 +23,6 @@ import {
     isNullable,
     isOptional,
     mongoIdAnnotation,
-    OuterType,
     ReflectionClass,
     ReflectionKind,
     RuntimeCode,
@@ -59,12 +58,12 @@ function getNameComparator(name: string): string {
     return bufferCompare.join(' && ');
 }
 
-function throwInvalidBsonType(type: OuterType, state: TemplateState) {
+function throwInvalidBsonType(type: Type, state: TemplateState) {
     state.setContext({ BSONType });
     return state.throwCode(type, JSON.stringify('invalid BSON type'), `'bson type ' + BSONType[state.elementType]`);
 }
 
-export function deserializeBinary(type: OuterType, state: TemplateState) {
+export function deserializeBinary(type: Type, state: TemplateState) {
     const typeVar = state.setVariable('type', type);
     state.addCode(`
         if (state.elementType === ${BSONType.BINARY}) {
@@ -75,13 +74,13 @@ export function deserializeBinary(type: OuterType, state: TemplateState) {
     `);
 }
 
-export function deserializeAny(type: OuterType, state: TemplateState) {
+export function deserializeAny(type: Type, state: TemplateState) {
     state.addCode(`
         ${state.setter} = state.parser.parse(state.elementType);
     `);
 }
 
-export function deserializeNumber(type: OuterType, state: TemplateState) {
+export function deserializeNumber(type: Type, state: TemplateState) {
     const readBigInt = type.kind === ReflectionKind.bigint ? `state.parser.parseBinaryBigInt()` : `Number(state.parser.parseBinaryBigInt())`;
 
     state.addCode(`
@@ -108,7 +107,7 @@ export function deserializeNumber(type: OuterType, state: TemplateState) {
     `);
 }
 
-export function deserializeBigInt(type: OuterType, state: TemplateState) {
+export function deserializeBigInt(type: Type, state: TemplateState) {
     const binaryBigInt = binaryBigIntAnnotation.getFirst(type);
     const parseBigInt = binaryBigInt === BinaryBigIntType.signed ? 'parseSignedBinaryBigInt' : 'parseBinaryBigInt';
 
@@ -133,7 +132,7 @@ export function deserializeBigInt(type: OuterType, state: TemplateState) {
     `);
 }
 
-export function deserializeString(type: OuterType, state: TemplateState) {
+export function deserializeString(type: Type, state: TemplateState) {
     const branches: string[] = [];
 
     if (uuidAnnotation.getFirst(type)) {
@@ -192,7 +191,7 @@ export function deserializeTemplateLiteral(type: TypeTemplateLiteral, state: Tem
     `);
 }
 
-export function deserializeNull(type: OuterType, state: TemplateState) {
+export function deserializeNull(type: Type, state: TemplateState) {
     state.addCode(`
         if (state.elementType === ${BSONType.NULL} || state.elementType === ${BSONType.UNDEFINED}) {
             ${state.setter} = null;
@@ -202,7 +201,7 @@ export function deserializeNull(type: OuterType, state: TemplateState) {
     `);
 }
 
-export function deserializeUndefined(type: OuterType, state: TemplateState) {
+export function deserializeUndefined(type: Type, state: TemplateState) {
     state.addCode(`
         if (state.elementType === ${BSONType.NULL} || state.elementType === ${BSONType.UNDEFINED}) {
             ${state.setter} = undefined;
@@ -212,7 +211,7 @@ export function deserializeUndefined(type: OuterType, state: TemplateState) {
     `);
 }
 
-export function deserializeBoolean(type: OuterType, state: TemplateState) {
+export function deserializeBoolean(type: Type, state: TemplateState) {
     state.addCode(`
         if (state.elementType === ${BSONType.BOOLEAN}) {
             ${state.setter} = state.parser.parseBoolean();
@@ -230,7 +229,7 @@ export function deserializeBoolean(type: OuterType, state: TemplateState) {
     `);
 }
 
-export function deserializeDate(type: OuterType, state: TemplateState) {
+export function deserializeDate(type: Type, state: TemplateState) {
     state.addCode(`
         if (state.elementType === ${BSONType.DATE}) {
             ${state.setter} = state.parser.parseDate();
@@ -248,7 +247,7 @@ export function deserializeDate(type: OuterType, state: TemplateState) {
     `);
 }
 
-export function deserializeRegExp(type: OuterType, state: TemplateState) {
+export function deserializeRegExp(type: Type, state: TemplateState) {
     state.addCode(`
         if (state.elementType === ${BSONType.REGEXP}) {
             ${state.setter} = state.parser.parseRegExp();
@@ -543,7 +542,7 @@ export function bsonTypeGuardTuple(type: TypeTuple, state: TemplateState) {
     `);
 }
 
-export function deserializeArray(elementType: OuterType, state: TemplateState) {
+export function deserializeArray(elementType: Type, state: TemplateState) {
     const result = state.compilerContext.reserveName('result');
     const v = state.compilerContext.reserveName('v');
     const i = state.compilerContext.reserveName('i');
@@ -582,7 +581,7 @@ export function deserializeArray(elementType: OuterType, state: TemplateState) {
  * This array type guard goes through all array elements in order to determine the correct type.
  * This is only necessary when a union has at least 2 array members, otherwise a simple array check is enough.
  */
-export function bsonTypeGuardArray(elementType: OuterType, state: TemplateState) {
+export function bsonTypeGuardArray(elementType: Type, state: TemplateState) {
     const v = state.compilerContext.reserveName('v');
     const i = state.compilerContext.reserveName('i');
     state.setContext({ digitByteSize, seekElementSize });
@@ -734,7 +733,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
         const staticDefault = getStaticDefaultCodeForProperty(member, setter, state);
         let throwInvalidTypeError = '';
         if (!isOptional(member) && !hasDefaultValue(member)) {
-            throwInvalidTypeError = state.fork().extendPath(member.name).throwCode(member.type as OuterType, '', `'undefined value'`);
+            throwInvalidTypeError = state.fork().extendPath(member.name).throwCode(member.type as Type, '', `'undefined value'`);
         }
         setDefaults.push(`if (!${valueSetVar}) { ${staticDefault || throwInvalidTypeError} } `);
 
@@ -1013,7 +1012,7 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
     extract.setFunction(buildFunction(state, type));
 }
 
-export function bsonTypeGuardForBsonTypes(types: BSONType[]): (type: OuterType, state: TemplateState) => void {
+export function bsonTypeGuardForBsonTypes(types: BSONType[]): (type: Type, state: TemplateState) => void {
     return (type, state) => {
         state.addSetter(types.map(v => `state.elementType === ${v}`).join(' || '));
 

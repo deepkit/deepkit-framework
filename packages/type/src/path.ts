@@ -1,9 +1,9 @@
-import { getTypeJitContainer, OuterType, ReflectionKind, Type } from './reflection/type';
+import { getTypeJitContainer, ReflectionKind, Type } from './reflection/type';
 import { CompilerContext, toFastProperties } from '@deepkit/core';
 import { JitStack } from './serializer';
 import { ReceiveType, resolveReceiveType } from './reflection/reflection';
 
-export type Resolver = (path: string) => OuterType | undefined;
+export type Resolver = (path: string) => Type | undefined;
 
 function pathResolverCode(type: Type, compilerContext: CompilerContext, jitStack: JitStack): string {
     const typeVar = compilerContext.reserveVariable('type', type);
@@ -30,7 +30,7 @@ function pathResolverCode(type: Type, compilerContext: CompilerContext, jitStack
     return `return ${typeVar}`;
 }
 
-export function resolvePath<T>(path: string, type?: ReceiveType<T>): OuterType {
+export function resolvePath<T>(path: string, type?: ReceiveType<T>): Type {
     const t = pathResolver(resolveReceiveType(type))(path);
     if (!t) throw new Error(`No type found for path ${path}`);
     return t;

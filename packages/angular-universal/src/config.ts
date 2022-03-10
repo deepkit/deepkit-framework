@@ -8,11 +8,20 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AppModuleConfig } from '@deepkit/app';
-import { t } from '@deepkit/type';
+export class Config {
 
-export const config = new AppModuleConfig({
-    browserPath: t.string.description('The path to the built dist file for the browser (with all the assets), usually something like ../../dist/browser'),
-    serverPath: t.string.description('The path to the built dist file for the server, usually something like ../../dist/server'),
-    serverModuleName: t.string.default('AppServerModule').description('The exported server module name, usually AppServerModule'),
-});
+    /**
+     * @description The path to the built dist file for the browser (with all the assets), usually something like ../../dist/browser.
+     */
+    browserPath!: string
+
+    /**
+     * @description The path to the built dist file for the server, usually something like ../../dist/server
+     */
+    serverPath!: string;
+
+    /**
+     * @description The exported server module name, usually AppServerModule
+     */
+    serverModuleName!: string;
+}

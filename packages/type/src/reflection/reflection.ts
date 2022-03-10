@@ -32,7 +32,6 @@ import {
     isReferenceType,
     isType,
     memberNameToString,
-    OuterType,
     primaryKeyAnnotation,
     ReferenceOptions,
     ReflectionKind,
@@ -73,16 +72,16 @@ import { SerializedTypes, serializeType } from '../type-serialization';
  */
 export type ReceiveType<T> = Packed | Type | ClassType<T>;
 
-export function resolveReceiveType(type?: Packed | Type | ClassType): OuterType {
+export function resolveReceiveType(type?: Packed | Type | ClassType): Type {
     if (!type) throw new NoTypeReceived();
     if (isArray(type) && type.__type) return type.__type;
-    if (isType(type)) return type as OuterType;
-    if (isClass(type)) return resolveRuntimeType(type) as OuterType;
+    if (isType(type)) return type as Type;
+    if (isClass(type)) return resolveRuntimeType(type) as Type;
     return resolvePacked(type);
 }
 
-export function reflect(o: any, ...args: any[]): OuterType {
-    return resolveRuntimeType(o, args) as OuterType;
+export function reflect(o: any, ...args: any[]): Type {
+    return resolveRuntimeType(o, args) as Type;
 }
 
 export function valuesOf<T>(args: any[] = [], p?: ReceiveType<T>): (string | number | symbol | Type)[] {
@@ -119,9 +118,9 @@ export function propertiesOf<T>(args: any[] = [], p?: ReceiveType<T>): (string |
     return [];
 }
 
-export function typeOf<T>(args: any[] = [], p?: ReceiveType<T>): OuterType {
+export function typeOf<T>(args: any[] = [], p?: ReceiveType<T>): Type {
     if (p) {
-        return resolveRuntimeType(p, args) as OuterType;
+        return resolveRuntimeType(p, args) as Type;
     }
 
     throw new Error('No type given');
@@ -151,67 +150,75 @@ export function toSignature(type: TypeProperty | TypeMethod | TypePropertySignat
 }
 
 export function hasCircularReference(type: Type) {
+    const jit = getTypeJitContainer(type);
+    if (jit.hasCircularReference !== undefined) return jit.hasCircularReference;
+
     let hasCircular = false;
     visit(type, () => undefined, () => {
         hasCircular = true;
     });
-    return hasCircular;
+
+    return jit.hasCircularReference = hasCircular;
 }
 
-function reflectionName(kind: ReflectionKind): string {
-    return kind + '';
-}
+let visitStackId: number = 0;
 
-export function visit(type: Type, visitor: (type: Type, path: string, parent?: Type) => false | void, onCircular?: (stack: Type[]) => void, stack: Type[] = [], path: string = '', parent?: Type): void {
-    if (stack.includes(type)) {
-        if (onCircular) onCircular(stack);
-        return;
+export function visit(type: Type, visitor: (type: Type) => false | void, onCircular?: () => void): void {
+    const stack: { type: Type, depth: number }[] = [];
+    stack.push({ type, depth: 0 });
+    const stackId: number = visitStackId++;
+
+    while (stack.length) {
+        const entry = stack.shift();
+        if (!entry) break;
+        const type = entry.type;
+
+        const jit = getTypeJitContainer(type);
+        if (jit.visitStack && jit.visitStack.id === stackId && jit.visitStack.depth < entry.depth) {
+            if (onCircular) onCircular();
+            return;
+        }
+        jit.visitStack = { id: stackId, depth: entry.depth };
+        visitor(type);
+
+        switch (type.kind) {
+            case ReflectionKind.objectLiteral:
+            case ReflectionKind.tuple:
+            case ReflectionKind.union:
+            case ReflectionKind.class:
+            case ReflectionKind.intersection:
+            case ReflectionKind.templateLiteral:
+                for (const member of type.types) stack.push({ type: member, depth: entry.depth + 1 });
+                break;
+            case ReflectionKind.string:
+            case ReflectionKind.number:
+            case ReflectionKind.bigint:
+            case ReflectionKind.symbol:
+            case ReflectionKind.regexp:
+            case ReflectionKind.boolean:
+                if (type.origin) stack.push({ type: type.origin, depth: entry.depth + 1 });
+                break;
+            case ReflectionKind.function:
+            case ReflectionKind.method:
+            case ReflectionKind.methodSignature:
+                stack.push({ type: type.return, depth: entry.depth + 1 });
+                for (const member of type.parameters) stack.push({ type: member, depth: entry.depth + 1 });
+                break;
+            case ReflectionKind.propertySignature:
+            case ReflectionKind.property:
+            case ReflectionKind.array:
+            case ReflectionKind.promise:
+            case ReflectionKind.parameter:
+            case ReflectionKind.tupleMember:
+            case ReflectionKind.rest:
+                stack.push({ type: type.type, depth: entry.depth + 1 });
+                break;
+            case ReflectionKind.indexSignature:
+                stack.push({ type: type.index, depth: entry.depth + 1 });
+                stack.push({ type: type.type, depth: entry.depth + 1 });
+                break;
+        }
     }
-    stack.push(type);
-
-    if (!path) path = '[' + reflectionName(type.kind) + ']';
-
-    if (visitor(type, path, parent) === false) return;
-
-    switch (type.kind) {
-        case ReflectionKind.objectLiteral:
-        case ReflectionKind.tuple:
-        case ReflectionKind.union:
-        case ReflectionKind.class:
-        case ReflectionKind.intersection:
-        case ReflectionKind.templateLiteral:
-            for (const member of type.types) visit(member, visitor, onCircular, stack, (path && path + '.') + 'types[' + reflectionName(member.kind) + ']', type);
-            break;
-        case ReflectionKind.string:
-        case ReflectionKind.number:
-        case ReflectionKind.bigint:
-        case ReflectionKind.symbol:
-        case ReflectionKind.regexp:
-        case ReflectionKind.boolean:
-            if (type.origin) visit(type.origin, visitor, onCircular, stack, (path && path + '.') + 'origin[' + reflectionName(type.origin.kind) + ']', type);
-            break;
-        case ReflectionKind.function:
-        case ReflectionKind.method:
-        case ReflectionKind.methodSignature:
-            visit(type.return, visitor, onCircular, stack, (path && path + '.') + 'return[' + reflectionName(type.return.kind) + ']', type);
-            for (const member of type.parameters) visit(member, visitor, onCircular, stack, (path && path + '.') + 'parameters[' + reflectionName(member.kind) + ']', type);
-            break;
-        case ReflectionKind.propertySignature:
-        case ReflectionKind.property:
-        case ReflectionKind.array:
-        case ReflectionKind.promise:
-        case ReflectionKind.parameter:
-        case ReflectionKind.tupleMember:
-        case ReflectionKind.rest:
-            visit(type.type, visitor, onCircular, stack, (path && path + '.') + 'type[' + reflectionName(type.type.kind) + ']', type);
-            break;
-        case ReflectionKind.indexSignature:
-            visit(type.index, visitor, onCircular, stack, (path && path + '.') + 'index[' + reflectionName(type.index.kind) + ']', type);
-            visit(type.type, visitor, onCircular, stack, (path && path + '.') + 'type[' + reflectionName(type.type.kind) + ']', type);
-            break;
-    }
-
-    stack.pop();
 }
 
 function hasFunctionExpression(fn: Function): boolean {
@@ -363,7 +370,7 @@ export class ReflectionMethod {
         return this.parameters;
     }
 
-    getReturnType(): OuterType {
+    getReturnType(): Type {
         return this.method.return;
     }
 
@@ -456,14 +463,14 @@ export function resolveClassType(type: Type): ReflectionClass<any> {
 
 export class ReflectionProperty {
     //is this really necessary?
-    jsonType?: OuterType;
+    jsonType?: Type;
 
     serializer?: SerializerFn;
     deserializer?: SerializerFn;
 
     data: { [name: string]: any } = {};
 
-    type: OuterType;
+    type: Type;
 
     symbol: symbol;
 
@@ -476,7 +483,7 @@ export class ReflectionProperty {
         this.symbol = Symbol(memberNameToString(this.getName()));
     }
 
-    setType(type: OuterType) {
+    setType(type: Type) {
         this.type = type;
     }
 
@@ -493,8 +500,8 @@ export class ReflectionProperty {
      *
      * @throws Error if the property type does not support sub types.
      */
-    getSubType(): OuterType {
-        if (this.type.kind === ReflectionKind.array) return this.type.type as OuterType;
+    getSubType(): Type {
+        if (this.type.kind === ReflectionKind.array) return this.type.type as Type;
 
         throw new Error(`Type ${this.type.kind} does not support sub types`);
     }
@@ -627,8 +634,8 @@ export class ReflectionProperty {
         return this.type.kind;
     }
 
-    getType(): OuterType {
-        return this.type as OuterType;
+    getType(): Type {
+        return this.type as Type;
     }
 
     getDescription(): string {
@@ -739,6 +746,9 @@ export class EntityData {
     singleTableInheritance?: true;
 }
 
+/**
+ * @reflection never
+ */
 export class ReflectionClass<T> {
     /**
      * The description, extracted from the class JSDoc @description.
@@ -981,7 +991,8 @@ export class ReflectionClass<T> {
 
     removeProperty(name: string | number | symbol) {
         const property = this.properties.find(v => v.getName() === name);
-        if (!property) throw new Error(`Property ${String(name)} not known in ${this.getClassName()}`);;
+        if (!property) throw new Error(`Property ${String(name)} not known in ${this.getClassName()}`);
+        ;
 
         const stringName = memberNameToString(name);
         arrayRemoveItem(this.propertyNames, stringName);
@@ -1037,7 +1048,7 @@ export class ReflectionClass<T> {
         readonly?: true;
         description?: string;
         visibility?: ReflectionVisibility
-        type: OuterType;
+        type: Type;
     }): ReflectionProperty {
         const type = {
             kind: this.type.kind === ReflectionKind.class ? ReflectionKind.property : ReflectionKind.propertySignature,

@@ -13,7 +13,7 @@ import { OutgoingHttpHeaders, ServerResponse } from 'http';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpRequest, HttpResponse } from './model';
 import { InjectorContext } from '@deepkit/injector';
-import { Logger } from '@deepkit/logger';
+import { LoggerInterface } from '@deepkit/logger';
 import { RouteConfig, RouteParameterResolverForInjector, Router } from './router';
 import { createWorkflow, WorkflowEvent } from '@deepkit/workflow';
 import type { ElementStruct, render } from '@deepkit/template';
@@ -449,7 +449,7 @@ export class HttpResultFormatter {
 export class HttpListener {
     constructor(
         protected router: Router,
-        protected logger: Logger,
+        protected logger: LoggerInterface,
         protected resultFormatter: HttpResultFormatter,
         protected stopwatch?: Stopwatch,
     ) {

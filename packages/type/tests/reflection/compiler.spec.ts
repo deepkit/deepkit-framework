@@ -12,7 +12,7 @@ import {
     TransformationContext,
     transpileModule
 } from 'typescript';
-import { ReflectionTransformer, transformer } from '@deepkit/type-compiler';
+import { DeclarationTransformer, ReflectionTransformer, transformer } from '@deepkit/type-compiler';
 import { reflect, reflect as reflect2, ReflectionClass, removeTypeName, typeOf as typeOf2 } from '../../src/reflection/reflection';
 import {
     assertType,
@@ -54,6 +54,7 @@ function transpile<T extends string | { [file: string]: string }>(source: T, opt
             compilerOptions: optionsToUse,
             transformers: {
                 before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflectionMode('always')],
+                afterDeclarations: [(context: TransformationContext) => new DeclarationTransformer(context).withReflectionMode('always')],
             }
         }).outputText as any;
     }
@@ -86,6 +87,7 @@ function transpile<T extends string | { [file: string]: string }>(source: T, opt
     const program = createProgram(Object.keys(files), optionsToUse, host);
     program.emit(undefined, undefined, undefined, undefined, {
         before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflectionMode('always')],
+        afterDeclarations: [(context: TransformationContext) => new DeclarationTransformer(context).withReflectionMode('always')],
     });
     return result as any;
 }
@@ -749,15 +751,19 @@ test('infer parameter in returned class constructor', () => {
         }
     }
 
-    return function StreamApiResponse2<ResponseType>(responseBodyClass: ClassType<ResponseType>) {
-        class A extends StreamApiResponseClass<ResponseType> {
-            constructor(public response: ResponseType) {
+    function StreamApiResponse2<T>(responseBodyClass: ClassType<T>) {
+        if (!responseBodyClass) throw new Error();
+
+        class A extends StreamApiResponseClass<T> {
+            constructor(public response: T) {
                 super(response);
             }
         }
 
         return A;
     }
+
+    return StreamApiResponse2;
     `;
     const js = transpile(code);
     console.log('js', js);
@@ -1674,12 +1680,13 @@ test('import types named import esm', () => {
         `,
         'user': `export interface User {id: number}`
     });
-    expect(js['app.js']).toContain(`import { __ΩUser } from './user';`);
+    expect(js['app.js']).toContain(`__ΩUser`);
     expect(js['app.js']).toContain(`var __ΩPartial = [`);
     expect(js['app.js']).toContain(`export { __Ωbla };`);
     expect(js['app.js']).toContain(`var __Ωa = [`);
 
     expect(js['user.js']).toContain(`export { __ΩUser };`);
+    expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
 
     console.log(js);
 });
@@ -1695,13 +1702,14 @@ test('import types named import cjs', () => {
         `,
         'user': `export interface User {id: number}`
     }, { ...options, module: ModuleKind.CommonJS });
-    expect(js['app.js']).toContain(`var { __ΩUser } = require('./user');`);
+    console.log(js);
+    expect(js['app.js']).toContain(`__ΩUser`);
     expect(js['app.js']).toContain(`var __ΩPartial = [`);
     expect(js['app.js']).toContain(`exports.__Ωbla = __Ωbla`);
     expect(js['app.js']).toContain(`var __Ωa = [`);
 
     expect(js['user.js']).toContain(`exports.__ΩUser = __ΩUser`);
-    console.log(js);
+    expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
 });
 
 test('import types named import typeOnly', () => {
@@ -1715,14 +1723,14 @@ test('import types named import typeOnly', () => {
         `,
         'user': `export interface User {id: number}`
     });
-    expect(js['app.js']).not.toContain(`var { __ΩUser } = require('./user');`);
+    console.log(js);
+    expect(js['app.js']).not.toContain(`__ΩUser`);
     expect(js['app.js']).toContain(`var __ΩPartial = [`);
     expect(js['app.js']).toContain(`export { __Ωbla };`);
     expect(js['app.js']).toContain(`var __Ωa = [`);
 
     expect(js['user.js']).toContain(`export { __ΩUser };`);
-
-    console.log(js);
+    expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
 });
 
 test('import types named import with disabled reflection', () => {
@@ -1736,11 +1744,12 @@ test('import types named import with disabled reflection', () => {
         `,
         'user': `/** @reflection never */ export interface User {id: number}`
     });
-    expect(js['app.js']).not.toContain(`var { __ΩUser } = require('./user');`);
+    expect(js['app.js']).not.toContain(`__ΩUser`);
     expect(js['app.js']).toContain(`var __ΩPartial = [`);
     expect(js['app.js']).toContain(`export { __Ωbla };`);
     expect(js['app.js']).toContain(`var __Ωa = [`);
     expect(js['user.js']).not.toContain(`export { __ΩUser };`);
+    expect(js['user.d.ts']).not.toContain(`__ΩUser`);
 
     console.log(js);
 });

@@ -1,5 +1,5 @@
 import { ControllerSymbol } from '@deepkit/rpc';
-import { deserializeType, entity, Type } from '@deepkit/type';
+import { deserializeType, entity, Excluded, ReflectionClass, ReflectionKind, Type, TypeMethod, TypeParameter } from '@deepkit/type';
 
 export class ApiRouteParameter {
     name!: string;
@@ -9,6 +9,7 @@ export class ApiRouteParameter {
 
 @entity.name('.deepkit/api-console/route/response')
 export class ApiRouteResponse {
+    /** @reflection never */
     public type?: Type;
 
     constructor(
@@ -33,14 +34,11 @@ export class ApiDocument {
 
 @entity.name('.deepkit/api-console/action')
 export class ApiAction {
-    protected deserializedResultType?: Type;
-    protected deserializedParameterType?: Type;
+    /** @reflection never */
+    protected deserializedMethodType?: TypeMethod & Excluded;
 
     //last entry is the actual schema, all other dependencies
-    public parameterType: any; //SerializedTypes
-
-    //last entry is the actual schema, all other dependencies
-    public resultType: any; //SerializedTypes
+    public methodType: any; //SerializedTypeMethod
 
     public parameterSignature: string = '';
     public returnSignature: string = '';
@@ -55,20 +53,24 @@ export class ApiAction {
     ) {
     }
 
-    getParametersType(): Type | undefined {
-        if (!this.deserializedParameterType) {
-            this.deserializedParameterType = deserializeType(this.parameterType);
+    getMethodType(): TypeMethod {
+        if (!this.deserializedMethodType) {
+            this.deserializedMethodType = deserializeType(this.methodType) as TypeMethod;
         }
-        return this.deserializedParameterType;
+        return this.deserializedMethodType;
     }
 
+    /** @reflection never */
+    getParametersType(): TypeParameter[] {
+        return this.getMethodType().parameters;
+    }
+
+    /** @reflection never */
     getResultsType(): Type | undefined {
-        if (!this.deserializedResultType) {
-            this.deserializedResultType = deserializeType(this.resultType);
-        }
-        return this.deserializedResultType;
+        return this.getMethodType().return;
     }
 
+    /** @reflection never */
     get id(): string {
         return this.controllerPath + '.' + this.methodName;
     }
@@ -76,10 +78,12 @@ export class ApiAction {
 
 @entity.name('.deepkit/api-console/route')
 export class ApiRoute {
-    public deserializedBodyType?: Type
-    public deserializedQueryType?: Type;
-    public deserializedUrlType?: Type;
-    protected deserializedResultType?: Type;
+    public deserializedBodyType?: ReflectionClass<any> & Excluded;
+    public deserializedQueryType?: ReflectionClass<any> & Excluded;
+    public deserializedUrlType?: ReflectionClass<any> & Excluded;
+
+    /** @reflection never */
+    protected deserializedResultType?: Type & Excluded;
 
     //last entry is the actual schema, all other dependencies
     public queryType: any; //SerializedTypes
@@ -103,14 +107,19 @@ export class ApiRoute {
         public bodySchemas?: any, //SerializedTypes
     ) {
         if (bodySchemas) {
-            this.deserializedBodyType = deserializeType(bodySchemas);
+            const type = deserializeType(bodySchemas);
+            if (type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral) {
+                this.deserializedBodyType = ReflectionClass.from(type);
+            }
         }
     }
 
-    getBodyType(): Type | undefined {
+    /** @reflection never */
+    getBodyType(): ReflectionClass<any> | undefined {
         return this.deserializedBodyType;
     }
 
+    /** @reflection never */
     getResultType(): Type | undefined {
         if (!this.deserializedResultType && this.resultType) {
             this.deserializedResultType = deserializeType(this.resultType);
@@ -118,16 +127,24 @@ export class ApiRoute {
         return this.deserializedResultType;
     }
 
-    getQueryType(): Type | undefined {
+    /** @reflection never */
+    getQueryType(): ReflectionClass<any> | undefined {
         if (!this.deserializedQueryType && this.queryType) {
-            this.deserializedQueryType = deserializeType(this.queryType);
+            const type = deserializeType(this.queryType);
+            if (type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral) {
+                this.deserializedQueryType = ReflectionClass.from(type);
+            }
         }
         return this.deserializedQueryType;
     }
 
-    getUrlType(): Type | undefined {
+    /** @reflection never */
+    getUrlType(): ReflectionClass<any> | undefined {
         if (!this.deserializedUrlType && this.urlType) {
-            this.deserializedUrlType = deserializeType(this.urlType);
+            const type = deserializeType(this.urlType);
+            if (type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral) {
+                this.deserializedUrlType = ReflectionClass.from(type);
+            }
         }
         return this.deserializedUrlType;
     }
@@ -136,7 +153,6 @@ export class ApiRoute {
         return this.controller + '.' + this.action;
     }
 }
-
 
 export class ApiEntryPoints {
     httpRoutes: ApiRoute[] = [];

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BSONDeserializer, BSONSerializer, getBSONDeserializer, getBSONSerializer } from '@deepkit/bson';
+import { BSONDeserializer, BSONSerializer, deserializeBSONWithoutOptimiser, getBSONDeserializer, getBSONSerializer } from '@deepkit/bson';
 import { arrayRemoveItem, asyncOperation, ClassType } from '@deepkit/core';
 import { AsyncSubscription } from '@deepkit/core-rxjs';
 import { createRpcMessage, RpcBaseClient, RpcDirectClientAdapter, RpcMessage, RpcMessageRouteType } from '@deepkit/rpc';
@@ -42,7 +42,8 @@ export class BrokerChannel<T> {
         protected type: Type,
         protected client: BrokerClient,
     ) {
-        if (type.kind !== ReflectionKind.objectLiteral && type.kind !== ReflectionKind.class) {
+        const standaloneType = type.kind === ReflectionKind.objectLiteral || (type.kind === ReflectionKind.class && type.types.length);
+        if (!standaloneType) {
             this.type = {
                 kind: ReflectionKind.objectLiteral,
                 types: [{
@@ -74,8 +75,13 @@ export class BrokerChannel<T> {
 
     async subscribe(callback: (next: T) => void): Promise<AsyncSubscription> {
         const parsedCallback = (next: Uint8Array) => {
-            const parsed = this.decoder(next);
-            callback(this.wrapped ? parsed.v : parsed);
+            try {
+                const parsed = this.decoder(next);
+                callback(this.wrapped ? parsed.v : parsed);
+            } catch (error: any) {
+                console.log('message', Buffer.from(next).toString('utf8'), deserializeBSONWithoutOptimiser(next));
+                console.error(`Could not parse channel message ${this.channel}: ${error}`);
+            }
         };
 
         this.listener++;

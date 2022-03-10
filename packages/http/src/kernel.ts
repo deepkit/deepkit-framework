@@ -1,7 +1,7 @@
 import { InjectorContext } from '@deepkit/injector';
 import { Router } from './router';
 import { EventDispatcher } from '@deepkit/event';
-import { Logger } from '@deepkit/logger';
+import { LoggerInterface } from '@deepkit/logger';
 import { HttpRequest, HttpResponse, MemoryHttpResponse, RequestBuilder } from './model';
 import { HttpRequestEvent, httpWorkflow } from './http';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
@@ -12,7 +12,7 @@ export class HttpKernel {
         protected router: Router,
         protected eventDispatcher: EventDispatcher,
         protected injectorContext: InjectorContext,
-        protected logger: Logger,
+        protected logger: LoggerInterface,
         protected stopwatch?: Stopwatch,
     ) {
 

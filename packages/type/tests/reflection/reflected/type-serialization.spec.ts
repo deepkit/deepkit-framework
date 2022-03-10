@@ -1,7 +1,7 @@
 import { getClassName } from '@deepkit/core';
 import { expect, test } from '@jest/globals';
-import { ReceiveType, resolveReceiveType, typeOf } from '../../../src/reflection/reflection';
-import { assertType, PrimaryKey, primaryKeyAnnotation, ReflectionKind, Type } from '../../../src/reflection/type';
+import { ReceiveType, reflect, resolveReceiveType, typeOf } from '../../../src/reflection/reflection';
+import { assertType, findMember, isSameType, PrimaryKey, primaryKeyAnnotation, ReflectionKind, stringifyType, Type, TypeClass, TypeProperty } from '../../../src/reflection/type';
 import { deserializeType, serializeType } from '../../../src/type-serialization';
 
 test('serialize basics', () => {
@@ -95,6 +95,7 @@ test('serialize enum', () => {
 
     expect(serializeType(typeOf<MyEnum>())).toEqual([{
         kind: ReflectionKind.enum,
+        typeName: 'MyEnum',
         enum: { a: 3, b: 'abc' },
         values: [3, 'abc'],
         indexType: 1
@@ -291,4 +292,24 @@ test('globals Date', () => {
     const type = deserializeType(json);
     assertType(type, ReflectionKind.class);
     expect(type.classType === Date).toBe(true);
+});
+
+test('Type excluded', () => {
+    const type = typeOf<Type>();
+
+    class Validation {
+        constructor(public message: string, public type?: Type) {
+        }
+    }
+
+    const member = findMember('type', reflect(Validation) as TypeClass) as TypeProperty;
+    expect(isSameType(type, member.type)).toBe(true);
+
+    const json = serializeType(typeOf<Validation>());
+    const back = deserializeType(json);
+    assertType(back, ReflectionKind.class);
+    const typeMember = findMember('type', back);
+    assertType(typeMember, ReflectionKind.property);
+    expect(typeMember.type.typeName).toBe('Type');
+    expect(typeMember.type.kind).toBe(ReflectionKind.any);
 });

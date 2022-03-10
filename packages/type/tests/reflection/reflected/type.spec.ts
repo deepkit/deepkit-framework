@@ -1,6 +1,21 @@
 import { describe, expect, test } from '@jest/globals';
-import { ReceiveType, resolveReceiveType, typeOf } from '../../../src/reflection/reflection';
-import { assertType, Embedded, indexAccess, isSameType, ReflectionKind, stringifyResolvedType, stringifyType, TypeObjectLiteral, UUID } from '../../../src/reflection/type';
+import { hasCircularReference, ReceiveType, reflect, ReflectionClass, resolveReceiveType, typeOf, visit } from '../../../src/reflection/reflection';
+import {
+    assertType,
+    Embedded,
+    findMember,
+    indexAccess,
+    InlineRuntimeType,
+    isSameType,
+    ReflectionKind,
+    stringifyResolvedType,
+    stringifyType,
+    Type,
+    TypeClass,
+    TypeObjectLiteral,
+    TypeProperty,
+    UUID
+} from '../../../src/reflection/type';
 import { isExtendable } from '../../../src/reflection/extends';
 import { expectEqualType } from '../../utils';
 import { ClassType } from '@deepkit/core';
@@ -19,8 +34,8 @@ test('stringify primitives', () => {
 });
 
 test('stringify array', () => {
-    expect(stringifyType(typeOf<string[]>())).toBe('string[]');
-    expect(stringifyType(typeOf<number[]>())).toBe('number[]');
+    expect(stringifyType(typeOf<string[]>())).toBe('Array<string>');
+    expect(stringifyType(typeOf<number[]>())).toBe('Array<number>');
 });
 
 test('stringify date/set/map', () => {
@@ -47,7 +62,7 @@ test('stringify class', () => {
     }
 
     expect(stringifyResolvedType(typeOf<User>())).toBe(`User {\n  id: number;\n  username: string;\n}`);
-    expect(stringifyResolvedType(typeOf<Partial<User>>())).toBe(`{\n  id?: number;\n  username?: string;\n}`);
+    expect(stringifyResolvedType(typeOf<Partial<User>>())).toBe(`Partial {\n  id?: number;\n  username?: string;\n}`);
     expect(stringifyType(typeOf<Partial<User>>())).toBe(`Partial<User {\n  id: number;\n  username: string;\n}>`);
 });
 
@@ -57,7 +72,8 @@ test('stringify class generic', () => {
         username!: T;
     }
 
-    expect(stringifyType(typeOf<User<string>>())).toBe(`User<string> {\n  id: number;\n  username: string;\n}`);
+    expect(stringifyType(typeOf<User<string>>())).toBe(`User {\n  id: number;\n  username: string;\n}`);
+    expect(stringifyType(typeOf<User<string>>(), {showFullDefinition: false})).toBe(`User<string>`);
 });
 
 test('stringify interface', () => {
@@ -66,7 +82,7 @@ test('stringify interface', () => {
         username: string;
     }
 
-    expect(stringifyResolvedType(typeOf<User>())).toBe(`{\n  id: number;\n  username: string;\n}`);
+    expect(stringifyResolvedType(typeOf<User>())).toBe(`User {\n  id: number;\n  username: string;\n}`);
 });
 
 test('stringify nested class', () => {
@@ -80,7 +96,7 @@ test('stringify nested class', () => {
         config!: Config;
     }
 
-    expect(stringifyType(typeOf<User>())).toBe(`User {\n  id: number;\n  username?: string;\n  config: Config {\n    color: number;\n  };\n}`);
+    expect(stringifyType(typeOf<User>())).toBe(`User {\n  id: number;\n  username?: string;\n  config: Config {color: number};\n}`);
 });
 
 test('stringify nested interface', () => {
@@ -94,7 +110,7 @@ test('stringify nested interface', () => {
         config: Config;
     }
 
-    expect(stringifyResolvedType(typeOf<User>())).toBe(`{\n  id: number;\n  username?: string;\n  config: {\n    color: number;\n  };\n}`);
+    expect(stringifyResolvedType(typeOf<User>())).toBe(`User {\n  id: number;\n  username?: string;\n  config: Config {color: number};\n}`);
 });
 
 function validExtend<A, B>(a?: ReceiveType<A>, b?: ReceiveType<B>) {
@@ -717,6 +733,27 @@ test('circular extends', () => {
     validExtend<Another, LoggerInterface>();
 });
 
+test('union extends', () => {
+    validExtend<string | number, string | number>();
+});
+
+test('extends regexp', () => {
+    validExtend<RegExp, RegExp>();
+});
+
+test('extends complex type', () => {
+    const type = typeOf<Type>();
+
+    class Validation {
+        constructor(public message: string, public type?: Type) {
+        }
+    }
+
+    const member = findMember('type', reflect(Validation) as TypeClass) as TypeProperty;
+    expect(isSameType(type, member.type)).toBe(true);
+    expect(isExtendable(type, member.type)).toBe(true);
+});
+
 test('tuple extends', () => {
     validExtend<[string], [string]>();
     invalidExtend<[], [string]>();
@@ -811,6 +848,90 @@ test('class extends interface', () => {
     validExtend<Logger, Logger2>();
     validExtend<Logger2, Logger>();
     validExtend<ClassType<Logger>, ClassType<Logger2>>();
+});
+
+test('InlineRuntimeType', () => {
+    class User {
+        id: number = 0;
+    }
+
+    const schema = ReflectionClass.from(User);
+    type SchemaType = InlineRuntimeType<typeof schema>;
+    const type = typeOf<SchemaType>();
+    assertType(type, ReflectionKind.class);
+    expect(type.typeName).toBe('User');
+
+    assertType(type.types[0], ReflectionKind.property);
+    expect(type.types[0].name).toBe('id');
+});
+
+test('visit complex type', () => {
+    const type = typeOf<Type>();
+    let visited = 0;
+    visit(type, () => {
+        visited++;
+    });
+    console.log('visited', visited);
+});
+
+test('hasCircularReference Type', () => {
+    const type = typeOf<Type>();
+    expect(hasCircularReference(type)).toBe(true);
+});
+
+test('hasCircularReference no', () => {
+    interface User {
+        id: number;
+    }
+
+    interface Bag {
+        a: User;
+        b: User;
+    }
+
+    const type = typeOf<Bag>();
+    expect(hasCircularReference(type)).toBe(false);
+    let visited = 0;
+    visit(type, () => {
+        visited++;
+    });
+    expect(visited).toBe(9);
+
+    expect(stringifyResolvedType(type)).toBe(`Bag {
+  a: User {id: number};
+  b: User {id: number};
+}`);
+});
+
+test('hasCircularReference yes', () => {
+    interface User {
+        id: number;
+        sub?: User;
+    }
+
+    interface Bag {
+        a: User;
+        b: User;
+    }
+
+    const type = typeOf<Bag>();
+    expect(hasCircularReference(type)).toBe(true);
+    let visited = 0;
+    visit(type, () => {
+        visited++;
+    });
+    expect(visited).toBe(10);
+
+    expect(stringifyResolvedType(type)).toBe(`Bag {
+  a: User {
+    id: number;
+    sub?: User;
+  };
+  b: User {
+    id: number;
+    sub?: User;
+  };
+}`);
 });
 
 class User {

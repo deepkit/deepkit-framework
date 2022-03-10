@@ -12,7 +12,7 @@ import { deserializeBSONWithoutOptimiser, getBSONDeserializer, getBSONSerializer
 import { ClassType } from '@deepkit/core';
 import { rpcChunk, rpcError, RpcTypes } from './model';
 import type { SingleProgress } from './writer';
-import { deserialize, OuterType, ReceiveType, ReflectionClass, serialize, typeSettings } from '@deepkit/type';
+import { deserialize, ReceiveType, ReflectionClass, serialize, Type, typeSettings } from '@deepkit/type';
 
 export const enum RpcMessageRouteType {
     client = 0,
@@ -220,7 +220,7 @@ export const createBuffer: (size: number) => Uint8Array = 'undefined' !== typeof
 
 export interface RpcCreateMessageDef<T> {
     type: number;
-    schema?: OuterType;
+    schema?: Type;
     body?: T;
 }
 

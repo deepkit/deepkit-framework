@@ -684,7 +684,7 @@ export const bookstoreTests = {
         const reflectionReview = ReflectionClass.from(Review);
         const status = reflectionReview.getProperty('status').type;
         assertType(status, ReflectionKind.enum);
-        expect(status.indexType).toEqual({ kind: ReflectionKind.number });
+        expect(status.indexType).toMatchObject({ kind: ReflectionKind.number });
 
         const review = new Review(user, book);
         review.status = ReviewStatus.hidden;

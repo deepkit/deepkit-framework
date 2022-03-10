@@ -12,7 +12,7 @@ import { indent } from '@deepkit/core';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { cli, Command, flag } from '@deepkit/app';
-import { Logger } from '@deepkit/logger';
+import { LoggerInterface } from '@deepkit/logger';
 import { SQLDatabaseAdapter } from '../sql-adapter';
 import { DatabaseComparator, DatabaseModel } from '../schema/table';
 import { MigrationProvider } from '../migration/migration-provider';
@@ -27,7 +27,7 @@ function serializeSQLLine(sql: string): string {
 })
 export class MigrationCreateController extends BaseCommand implements Command {
     constructor(
-        protected logger: Logger,
+        protected logger: LoggerInterface,
         protected provider: MigrationProvider,
     ) {
         super()

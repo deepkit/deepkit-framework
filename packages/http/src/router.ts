@@ -15,7 +15,6 @@ import {
     getSerializeFunction,
     getValidatorFunction,
     metaAnnotation,
-    OuterType,
     ReflectionClass,
     ReflectionKind,
     ReflectionParameter,
@@ -23,6 +22,7 @@ import {
     serializer,
     Serializer,
     stringifyType,
+    Type,
     typeToObject,
     ValidationError
 } from '@deepkit/type';
@@ -31,9 +31,9 @@ import formidable from 'formidable';
 import { IncomingMessage } from 'http';
 import querystring from 'querystring';
 import { httpClass } from './decorator';
-import { BodyValidationError, HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters, ValidatedBody } from './model';
+import { BodyValidationError, getRegExp, HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters, ValidatedBody } from './model';
 import { InjectorContext, InjectorModule, TagRegistry } from '@deepkit/injector';
-import { Logger } from '@deepkit/logger';
+import { Logger, LoggerInterface } from '@deepkit/logger';
 import { HttpControllers } from './controllers';
 import { MiddlewareRegistry, MiddlewareRegistryEntry } from '@deepkit/app';
 import { HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware';
@@ -106,15 +106,14 @@ function getRouterControllerActionName(action: RouteControllerAction): string {
 
 export class RouteConfig {
     public baseUrl: string = '';
-    public parameterRegularExpressions: { [name: string]: any } = {};
 
-    public responses: { statusCode: number, description: string, type?: OuterType }[] = [];
+    public responses: { statusCode: number, description: string, type?: Type }[] = [];
 
     public description: string = '';
     public groups: string[] = [];
     public category: string = '';
 
-    public returnType?: OuterType;
+    public returnType?: Type;
 
     public serializationOptions?: SerializationOptions;
     public serializer?: Serializer;
@@ -144,7 +143,7 @@ export class RouteConfig {
     ) {
     }
 
-    getSchemaForResponse(statusCode: number): OuterType | undefined {
+    getSchemaForResponse(statusCode: number): Type | undefined {
         if (!this.responses.length) return;
         for (const response of this.responses) {
             if (response.statusCode === statusCode) return response.type;
@@ -203,12 +202,12 @@ class ParsedRouteParameter {
         return metaAnnotation.getForName(this.parameter.type, 'httpBodyValidation') !== undefined;
     }
 
-    getType(): OuterType {
+    getType(): Type {
         if (this.bodyValidation) {
             assertType(this.parameter.type, ReflectionKind.class);
             const valueType = findMember('value', this.parameter.type);
             if (!valueType || valueType.kind !== ReflectionKind.property) throw new Error(`No property value found at ${stringifyType(this.parameter.type)}`);
-            return valueType.type as OuterType;
+            return valueType.type as Type;
         }
         return this.parameter.parameter;
     }
@@ -242,11 +241,18 @@ function parseRoutePathToRegex(routeConfig: RouteConfig): { regex: string, param
     const parameterNames: { [name: string]: number } = {};
     let path = routeConfig.getFullPath();
 
+    const method = ReflectionClass.from(routeConfig.action.controller).getMethod(routeConfig.action.methodName);
+
     let argumentIndex = 0;
     path = path.replace(/:(\w+)/g, (a, name) => {
         parameterNames[name] = argumentIndex;
         argumentIndex++;
-        return routeConfig.parameterRegularExpressions[name] ? '(' + routeConfig.parameterRegularExpressions[name] + ')' : String.raw`([^/]+)`;
+        const parameter = method.getParameterOrUndefined(name);
+        if (parameter) {
+            const regExp = getRegExp(parameter.type);
+            if (regExp) return '(' + regExp + ')';
+        }
+        return String.raw`([^/]+)`;
     });
 
     return { regex: path, parameterNames };
@@ -385,7 +391,7 @@ export class Router {
 
     constructor(
         controllers: HttpControllers,
-        private logger: Logger,
+        private logger: LoggerInterface,
         tagRegistry: TagRegistry,
         private middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry,
     ) {
@@ -648,7 +654,6 @@ export class Router {
                 methodName: action.methodName
             });
             routeConfig.module = module;
-            routeConfig.parameterRegularExpressions = action.parameterRegularExpressions;
             routeConfig.responses = action.responses;
             routeConfig.description = action.description;
             routeConfig.category = action.category;

@@ -12,7 +12,7 @@
 
 import { AbstractControl, AbstractControlOptions, AsyncValidatorFn, FormArray, FormControl, FormGroup, ValidationErrors, ValidatorFn } from '@angular/forms';
 import { ClassType, isFunction } from '@deepkit/core';
-import { getClassSchema, handleCustomValidator, jitValidateProperty, PropertySchema, PropertyValidator, PropertyValidatorError, ValidationFailedItem } from '@deepkit/type';
+import { ReflectionClass, ReflectionKind, Type, ValidationFailedItem } from '@deepkit/type';
 import { Subscription } from 'rxjs';
 
 export function requiredIfValidator(predicate: () => boolean, validator: ValidatorFn): any {
@@ -46,7 +46,7 @@ function getPropPath(propPath?: PropPath, append?: string | number): string {
 
 function createControl<T>(
     propPath: PropPath,
-    prop: PropertySchema,
+    prop: Type,
     parent?: FormGroup | FormArray,
     conditionalValidators: TypedFormGroupConditionalValidators<any, any> = {},
     limitControls: LimitControls<T> = {}
@@ -98,11 +98,9 @@ function createControl<T>(
 
     let control: AbstractControl;
 
-    if (prop.isArray) {
-        conditionalValidators[prop.name + '_0'] = conditionalValidators[prop.name];
+    if (prop.kind === ReflectionKind.array) {
+        conditionalValidators['0'] = conditionalValidators[prop.name];
         control = new TypedFormArray(propPath, prop.getSubType(), limitControls, conditionalValidators);
-    } else if (prop.isRecord) {
-        throw new Error('Map not supported');
     } else {
         if (prop.type === 'class') {
             const t = prop.name ? conditionalValidators[prop.name] : conditionalValidators;
@@ -162,7 +160,7 @@ export class TypedFormArray<T> extends FormArray {
 
     constructor(
         private propPath: PropPath,
-        private prop: PropertySchema,
+        private prop: Type,
         private limitControls: LimitControls<T> = {},
         private conditionalValidators: TypedFormGroupConditionalValidators<any, any> = {}
     ) {
@@ -335,20 +333,20 @@ export class TypedFormGroup<T extends object> extends FormGroup {
         conditionalValidators: TypedFormGroupConditionalValidators<T, T> = {},
         path?: PropPath
     ): TypedFormGroup<T> {
-        const entitySchema = getClassSchema(classType);
+        const entitySchema = ReflectionClass.from(classType);
 
         const t = new TypedFormGroup<T>({}, validation as ValidatorFn);
         t.classType = classType;
         const validNames = Object.keys(limitControls);
 
-        for (const [name, prop] of entitySchema.getPropertiesMap().entries()) {
+        for (const prop of entitySchema.getProperties()) {
 
-            if (validNames.length && !validNames.includes(name as keyof T & string)) {
+            if (validNames.length && !validNames.includes(prop.name)) {
                 continue;
             }
 
-            const limitControlsForProp = limitControls[name as keyof T & string] === 1 ? {} : limitControls[name as keyof T & string];
-            t.registerControl(name, createControl(() => getPropPath(path, name), prop, t, conditionalValidators, limitControlsForProp));
+            const limitControlsForProp = limitControls[prop.name as keyof T & string] === 1 ? {} : limitControls[prop.name as keyof T & string];
+            t.registerControl(prop.name, createControl(() => getPropPath(path, prop.name), prop.type, t, conditionalValidators, limitControlsForProp));
         }
         return t;
     }

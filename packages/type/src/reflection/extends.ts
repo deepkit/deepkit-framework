@@ -66,12 +66,12 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
         if (right === left) return true;
 
         if (left.kind === ReflectionKind.infer) {
-            left.set(right);
+            left.set(right as Type);
             return true;
         }
 
         if (right.kind === ReflectionKind.infer) {
-            right.set(left);
+            right.set(left as Type);
             return true;
         }
 
@@ -116,6 +116,7 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
         if (left.kind === ReflectionKind.boolean && right.kind === ReflectionKind.boolean) return true;
         if (left.kind === ReflectionKind.bigint && right.kind === ReflectionKind.bigint) return true;
         if (left.kind === ReflectionKind.symbol && right.kind === ReflectionKind.symbol) return true;
+        if (left.kind === ReflectionKind.regexp && right.kind === ReflectionKind.regexp) return true;
 
         if (left.kind === ReflectionKind.enum) {
             if (right.kind === ReflectionKind.enum) {
@@ -223,6 +224,7 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
             if (left.kind === ReflectionKind.class && right.kind === ReflectionKind.class && left.types.length === 0 && right.types.length === 0) {
                 //class User extends Base {}
                 //User extends Base = true
+                if (left.classType === right.classType) return true;
                 return isPrototypeOfBase(left.classType, right.classType);
             }
 
@@ -274,7 +276,7 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
 
         return false;
     } finally {
-        extendStack.pop();
+        // extendStack.pop();
     }
 }
 

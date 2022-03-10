@@ -11,7 +11,7 @@
 import { ClassType, isObject } from '@deepkit/core';
 import { ReflectionClass, reflectionClassSymbol } from './reflection/reflection';
 import { typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core';
-import { OuterType, ReflectionKind } from './reflection/type';
+import { ReflectionKind, Type } from './reflection/type';
 
 export function isReferenceInstance(obj: any): boolean {
     return isObject(obj) && referenceSymbol in obj;
@@ -51,7 +51,7 @@ export interface ReferenceItemInfo<T> {
 export const referenceSymbol = Symbol('reference');
 export const referenceItemSymbol = Symbol('reference/item');
 
-export function createReference<T>(type: ClassType<T> | OuterType | ReflectionClass<any>, pk: { [name: string]: any }): T {
+export function createReference<T>(type: ClassType<T> | Type | ReflectionClass<any>, pk: { [name: string]: any }): T {
     const args: any[] = [];
 
     const reflection = ReflectionClass.from(type);

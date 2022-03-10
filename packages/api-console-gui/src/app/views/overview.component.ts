@@ -1,9 +1,10 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ControllerClient } from '../client';
-import { ApiRoute } from '../../api';
+import { ApiDocument, ApiRoute } from '../../api';
 import { filterAndSortRoutes } from './view-helper';
-import { classSchemaToTSJSONInterface, headerStatusCodes, propertyToTSJSONInterface, trackByIndex } from '../utils';
+import { headerStatusCodes, trackByIndex, typeToTSJSONInterface } from '../utils';
 import { Subscriptions } from '@deepkit/core-rxjs';
+import { typeSettings } from '@deepkit/type';
 
 @Component({
     templateUrl: './overview.component.html',
@@ -11,8 +12,7 @@ import { Subscriptions } from '@deepkit/core-rxjs';
 })
 export class OverviewComponent implements OnDestroy, OnInit {
     trackByIndex = trackByIndex;
-    propertyToTSInterface = propertyToTSJSONInterface;
-    classSchemaToTSInterface = classSchemaToTSJSONInterface;
+    typeToTSJSONInterface = typeToTSJSONInterface;
     headerStatusCodes = headerStatusCodes;
     public filteredRoutes: ApiRoute[] = [];
 
@@ -75,11 +75,14 @@ export class OverviewComponent implements OnDestroy, OnInit {
         this.error =  '';
         this.cd.detectChanges();
 
+        console.log('ApiDocument type', ApiDocument, typeSettings);
+
         try {
             //wait for the first initial load
             await Promise.all([this.client.document.valueArrival, this.client.entryPoints.valueArrival]);
+            console.log('this.client.entryPoints', this.client.entryPoints.value);
             this.initiallyLoaded = true;
-        } catch (error) {
+        } catch (error: any) {
             this.error = error.message;
         } finally {
             this.loading = false;

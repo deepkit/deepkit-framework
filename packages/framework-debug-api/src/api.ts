@@ -11,7 +11,7 @@
 import { ControllerSymbol } from '@deepkit/rpc';
 import { DebugRequest } from './model';
 import { Subject } from 'rxjs';
-import { deserializeType, entity, Type } from '@deepkit/type';
+import { deserializeType, entity, Excluded, Type } from '@deepkit/type';
 
 export class ConfigOption {
     name!: string;
@@ -55,7 +55,8 @@ export class RouteParameter {
 
 @entity.name('.deepkit/debugger/route')
 export class Route {
-    public bodyPropertySchema?: Type;
+    /** @reflection never */
+    public bodyPropertySchema?: Type & Excluded;
 
     constructor(
         public path: string,
@@ -81,7 +82,8 @@ export class Route {
 
 @entity.name('.deepkit/debugger/rpc/action/parameter')
 export class RpcActionParameter {
-    public propertySchema: Type;
+    /** @reflection never */
+    public propertySchema: Type & Excluded;
 
     constructor(
         public name: string,
@@ -159,7 +161,8 @@ export class ModuleImportedService {
 
 @entity.name('.deepkit/debugger/module')
 export class ModuleApi {
-    public deserializedConfigSchema?: Type;
+    /** @reflection never */
+    public deserializedConfigSchema?: Type & Excluded;
 
     public configSchemas: any;
 
@@ -180,6 +183,7 @@ export class ModuleApi {
     ) {
     }
 
+    /** @reflection never */
     getConfigSchema(): Type | undefined {
         if (!this.deserializedConfigSchema && this.configSchemas.length > 0) {
             this.deserializedConfigSchema = deserializeType(this.configSchemas[0]);

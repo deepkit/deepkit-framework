@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { jsonSerializer, PropertySchema } from '@deepkit/type';
+import { getSerializeFunction, ReflectionKind, serializer, Type } from '@deepkit/type';
 import { DataStructure } from '../../store';
 
 @Component({
@@ -24,15 +24,14 @@ import { DataStructure } from '../../store';
 export class JsonInputComponent {
     @Input() model!: DataStructure;
     @Output() modelChange = new EventEmitter();
-
-    @Input() property!: PropertySchema;
+    @Input() type!: Type;
 
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
 
     jsonContent = '';
 
     getType(): string {
-        if (this.property.type === 'number') return 'number';
+        if (this.type.kind === ReflectionKind.number || this.type.kind === ReflectionKind.bigint) return 'number';
 
         return 'text';
     }
@@ -40,7 +39,7 @@ export class JsonInputComponent {
     jsonDone() {
         try {
             const obj = JSON.parse(this.jsonContent);
-            this.model.value = jsonSerializer.deserializeProperty(this.property, obj);
+            this.model.value = getSerializeFunction(this.type, serializer.deserializeRegistry)(obj);
             this.modelChange.emit(this.model);
 
         } catch (error) {

@@ -1,36 +1,35 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
-import { ClassSchema, PropertySchema } from '@deepkit/type';
-import { trackByIndex } from '../../utils';
+import { isBackReferenceType, isReferenceType, ReflectionClass, TypeClass, TypeObjectLiteral } from '@deepkit/type';
+import { isReferenceLike, trackByIndex } from '../../utils';
 import { DataStructure } from '../../store';
-
 
 @Component({
     template: `
         <ng-container *ngIf="!schema">
-            No schema {{property.type}}
+            No schema
         </ng-container>
 
         <div class="box children" *ngIf="schema">
             <dui-select textured style="width: 100%; margin-bottom: 5px;"
-                        [(ngModel)]="model.asReference" *ngIf="property.isReference || property.backReference"
+                        [(ngModel)]="model.asReference" *ngIf="isReferenceLike(type)"
                         (ngModelChange)="modelChange.emit(model)"
             >
                 <dui-option [value]="false">{{schema.getClassName()}}</dui-option>
                 <dui-option [value]="true">Reference</dui-option>
             </dui-select>
 
-            <div style="padding: 4px;" *ngIf="showOnlyPrimaryKey && schema.getPrimaryField() as p">
+            <div style="padding: 4px;" *ngIf="showOnlyPrimaryKey && schema.getPrimary() as p">
                 <api-console-input
-                    [decoration]="false"
                     [optional]="false"
-                    [model]="model.getProperty(p.name)" [property]="p"
+                    [model]="model.getProperty(p.name)" [type]="p.property"
                     (modelChange)="modelChange.emit(model)"></api-console-input>
             </div>
             <ng-container *ngIf="!showOnlyPrimaryKey">
                 <ng-container *ngFor="let p of schema.getProperties(); let last = last; trackBy: trackByIndex">
                     <api-console-input
-                                       [decoration]="true" [class.last]="last"
-                                       [model]="model.getProperty(p.name)" [property]="p"
+                                       [class.last]="last"
+                                       [decoration]="p.property"
+                                       [model]="model.getProperty(p.name)" [type]="p.property"
                                        (modelChange)="modelChange.emit(model)"></api-console-input>
                 </ng-container>
             </ng-container>
@@ -48,12 +47,14 @@ import { DataStructure } from '../../store';
 })
 export class ClassInputComponent implements OnChanges, OnInit {
     trackByIndex = trackByIndex;
+    isReferenceLike = isReferenceLike;
+
     @Input() model!: DataStructure;
     @Output() modelChange = new EventEmitter();
 
-    schema?: ClassSchema;
+    schema?: ReflectionClass<any>;
 
-    @Input() property!: PropertySchema;
+    @Input() type!: TypeClass | TypeObjectLiteral;
 
     ngOnInit(): void {
         this.init();
@@ -64,14 +65,10 @@ export class ClassInputComponent implements OnChanges, OnInit {
     }
 
     get showOnlyPrimaryKey(): boolean {
-        return (this.property.isReference || Boolean(this.property.backReference)) && this.model.asReference;
+        return (isReferenceType(this.type) || isBackReferenceType(this.type)) && this.model.asReference;
     }
 
     init() {
-        this.schema = undefined;
-
-        if (this.property.type === 'class' || this.property.type === 'partial') {
-            this.schema = this.property.getResolvedClassSchema();
-        }
+        this.schema = ReflectionClass.from(this.type);
     }
 }

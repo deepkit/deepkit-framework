@@ -10,7 +10,7 @@
 
 import { BSON_BINARY_SUBTYPE_BYTE_ARRAY, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils';
 import { buildStringDecoder, decodeUTF8 } from './strings';
-import { nodeBufferToArrayBuffer, OuterType, ReflectionKind, SerializationError } from '@deepkit/type';
+import { nodeBufferToArrayBuffer, ReflectionKind, SerializationError, Type } from '@deepkit/type';
 import { hexTable } from './model';
 
 declare var Buffer: any;
@@ -38,14 +38,14 @@ export class BaseParser {
         this.dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     }
 
-    peek(elementType: number, type?: OuterType) {
+    peek(elementType: number, type?: Type) {
         const offset = this.offset;
         const v = this.parse(elementType, type);
         this.offset = offset;
         return v;
     }
 
-    parse(elementType: number, type?: OuterType) {
+    parse(elementType: number, type?: Type) {
         switch (elementType) {
             case BSONType.STRING:
                 return this.parseString();
@@ -88,7 +88,7 @@ export class BaseParser {
     /**
      * read the content without moving the parser offset.
      */
-    read(elementType: number, type?: OuterType) {
+    read(elementType: number, type?: Type) {
         const start = this.offset;
         try {
             return this.parse(elementType, type);
@@ -138,7 +138,7 @@ export class BaseParser {
         return v;
     }
 
-    parseBinary(type?: OuterType): any {
+    parseBinary(type?: Type): any {
         let size = this.eatUInt32();
         const subType = this.eatByte();
 

@@ -20,7 +20,7 @@ import { ServerStartController } from './cli/server-start';
 import { DebugController } from './debug/debug.controller';
 import { registerDebugHttpController } from './debug/http-debug.controller';
 import { HttpLogger, HttpModule, HttpRequest, serveStaticListener } from '@deepkit/http';
-import { InjectorContext, injectorReference, provide, ProviderWithScope, Token } from '@deepkit/injector';
+import { InjectorContext, injectorReference, ProviderWithScope, Token } from '@deepkit/injector';
 import { FrameworkConfig } from './module.config';
 import { ConsoleTransport, Logger, LoggerInterface } from '@deepkit/logger';
 import { SessionHandler } from './session';
@@ -49,14 +49,14 @@ export class FrameworkModule extends createModule({
         WebWorkerFactory,
         RpcServer,
         ConsoleTransport,
-        provide<LoggerInterface>(Logger),
+        Logger,
         RpcKernelSecurity,
         MigrationProvider,
         DebugController,
         { provide: DatabaseRegistry, useFactory: (ic: InjectorContext) => new DatabaseRegistry(ic) },
         {
             provide: RpcKernel,
-            useFactory(rpcControllers: RpcControllers, injectorContext: InjectorContext, rpcKernelSecurity: RpcKernelSecurity, logger: Logger, stopwatch?: Stopwatch) {
+            useFactory(rpcControllers: RpcControllers, injectorContext: InjectorContext, rpcKernelSecurity: RpcKernelSecurity, logger: LoggerInterface, stopwatch?: Stopwatch) {
                 const classType = stopwatch ? RpcKernelWithStopwatch : RpcKernel;
                 const kernel: RpcKernel = new classType(injectorContext, rpcKernelSecurity, logger.scoped('rpc'));
 
@@ -142,8 +142,8 @@ export class FrameworkModule extends createModule({
         this.addImport();
         this.addProvider({ provide: RpcControllers, useValue: this.rpcControllers });
 
-        this.setupProvider(MigrationProvider).setMigrationDir(this.config.migrationDir);
-        this.setupProvider(DatabaseRegistry).setMigrateOnStartup(this.config.migrateOnStartup);
+        this.setupProvider<MigrationProvider>().setMigrationDir(this.config.migrationDir);
+        this.setupProvider<DatabaseRegistry>().setMigrateOnStartup(this.config.migrateOnStartup);
 
         if (this.config.httpLog) {
             this.addListener(HttpLogger);
@@ -153,7 +153,7 @@ export class FrameworkModule extends createModule({
             this.addListener(serveStaticListener(this, normalizeDirectory(this.config.publicDirPrefix), this.config.publicDir));
         }
 
-        this.setupProvider(Logger).addTransport(injectorReference(ConsoleTransport));
+        this.setupProvider<Logger>().addTransport(injectorReference(ConsoleTransport));
 
         if (this.config.debug) {
             mkdirSync(join(this.config.varPath, this.config.debugStorePath), { recursive: true });
@@ -199,12 +199,12 @@ export class FrameworkModule extends createModule({
 
     protected setupDatabase() {
         for (const db of this.dbs) {
-            this.setupProvider(DatabaseRegistry).addDatabase(db.classType, {}, db.module);
+            this.setupProvider<DatabaseRegistry>().addDatabase(db.classType, {}, db.module);
         }
 
         if (this.config.debug && this.config.debugProfiler) {
             for (const db of this.dbs) {
-                this.setupProvider(db.classType).stopwatch = injectorReference(Stopwatch);
+                this.setupProvider(0, db.classType).stopwatch = injectorReference(Stopwatch);
             }
         }
     }

@@ -22,7 +22,7 @@ import { SecureContextOptions, TlsOptions } from 'tls';
 // @ts-ignore
 import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { Logger } from '@deepkit/logger';
+import { LoggerInterface } from '@deepkit/logger';
 
 export interface WebServerOptions {
     host: string;
@@ -140,7 +140,7 @@ export class RpcServer implements RpcServerInterface {
 export class WebWorkerFactory {
     constructor(
         protected httpKernel: HttpKernel,
-        public logger: Logger,
+        public logger: LoggerInterface,
         protected rpcControllers: RpcControllers,
         protected injectorContext: InjectorContext,
         protected rpcServer: RpcServer,
@@ -180,7 +180,7 @@ export class WebWorker {
 
     constructor(
         public readonly id: number,
-        public logger: Logger,
+        public logger: LoggerInterface,
         public httpKernel: HttpKernel,
         public rpcKernel: RpcKernel,
         protected injectorContext: InjectorContext,

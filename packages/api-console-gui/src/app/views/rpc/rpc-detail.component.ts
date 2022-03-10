@@ -1,12 +1,12 @@
 import { ChangeDetectorRef, Component, Input, OnChanges } from '@angular/core';
-import { propertyToTSInterface, trackByIndex } from '@deepkit/ui-library';
+import { trackByIndex } from '@deepkit/ui-library';
 import { ApiAction } from '../../../api';
-import { extractDataStructureFromSchema, RpcActionState, RpcClientConfiguration, RpcExecution, RpcExecutionSubscription, Store } from '../../store';
+import { extractDataStructureFromParameters, RpcActionState, RpcClientConfiguration, RpcExecution, RpcExecutionSubscription, Store } from '../../store';
 import { DuiDialog } from '@deepkit/desktop-ui';
 import { DisconnectableObservable, RpcWebSocketClient } from '@deepkit/rpc';
 import { ControllerClient } from '../../client';
 import { Observable, Subject } from 'rxjs';
-import { inspect } from '../../utils';
+import { inspect, typeToTSJSONInterface } from '../../utils';
 import { isSubject } from '@deepkit/core-rxjs';
 
 @Component({
@@ -31,22 +31,20 @@ import { isSubject } from '@deepkit/core-rxjs';
                 </div>
 
                 <div class="container overlay-scrollbar-small">
-                    <ng-container *ngIf="action.getParametersType() as schema">
+                    <ng-container *ngIf="action.getParametersType() as parameters">
                         <deepkit-box title="Parameter">
-                            <ng-container *ngFor="let p of schema.getProperties(); trackBy: trackByIndex">
-                                <api-console-input [decoration]="true" (keyDown)="consoleInputKeyDown($event)"
+                            <ng-container *ngFor="let p of parameters; trackBy: trackByIndex">
+                                <api-console-input [decoration]="p" (keyDown)="consoleInputKeyDown($event)"
                                                    [model]="actionState.params.getProperty(p.name)"
-                                                   [property]="p"
+                                                   [type]="p.type"
                                                    (modelChange)="updateState()"></api-console-input>
                             </ng-container>
                         </deepkit-box>
                     </ng-container>
 
-                    <deepkit-box title="Return type" style="padding: 12px" *ngIf="action.getResultsType() as schema">
+                    <deepkit-box title="Return type" style="padding: 12px" *ngIf="action.getResultsType() as s">
                         <div class="ts text-selection">
-                            <div class="ts text-selection" *ngIf="schema.getProperty('v') as property">
-                                <div codeHighlight [code]="propertyToTSInterface(property)"></div>
-                            </div>
+                            <div codeHighlight [code]="typeToTSJSONInterface(s)"></div>
                         </div>
                     </deepkit-box>
                 </div>
@@ -175,7 +173,7 @@ import { isSubject } from '@deepkit/core-rxjs';
 })
 export class RpcDetailComponent implements OnChanges {
     trackByIndex = trackByIndex;
-    propertyToTSInterface = propertyToTSInterface;
+    typeToTSJSONInterface = typeToTSJSONInterface;
     @Input() action!: ApiAction;
     actionState?: RpcActionState;
 
@@ -343,10 +341,10 @@ export class RpcDetailComponent implements OnChanges {
         if (!this.actionState) return;
 
         const args: any[] = [];
-        const paramSchema = this.action.getParametersType();
-        if (paramSchema) {
+        const parametersType = this.action.getParametersType();
+        if (parametersType) {
             const parameter: any = {};
-            Object.assign(parameter, extractDataStructureFromSchema(this.actionState.params, paramSchema));
+            Object.assign(parameter, extractDataStructureFromParameters(this.actionState.params, parametersType));
             args.push(...Object.values(parameter));
         }
 

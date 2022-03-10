@@ -1,7 +1,6 @@
 import { AfterViewInit, Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
-import { getEnumKeyLabelMap } from '@deepkit/core';
 import { SelectboxComponent, unsubscribe } from '@deepkit/desktop-ui';
-import { PropertySchema } from '@deepkit/type';
+import { TypeEnum } from '@deepkit/type';
 import { Subscription } from 'rxjs';
 import { DataStructure } from '../../store';
 
@@ -17,9 +16,9 @@ export class EnumInputComponent implements OnChanges, OnInit, AfterViewInit, OnD
     @Input() model!: DataStructure;
     @Output() modelChange = new EventEmitter();
 
-    @Input() property!: PropertySchema;
+    @Input() type!: TypeEnum;
 
-    keyValues: { value: any, label: string }[] = [];
+    keyValues: { value: any, label: string | number | undefined | null }[] = [];
 
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
 
@@ -47,8 +46,8 @@ export class EnumInputComponent implements OnChanges, OnInit, AfterViewInit, OnD
     }
 
     load() {
-        const keyValueMap = getEnumKeyLabelMap(this.property.classType || {});
-        for (const [value, label] of keyValueMap.entries()) {
+        this.type.enum
+        for (const [label, value] of Object.entries(this.type.enum)) {
             this.keyValues.push({ value, label });
         }
     }

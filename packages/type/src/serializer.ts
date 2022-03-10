@@ -45,7 +45,6 @@ import {
     isType,
     isUUIDType,
     memberNameToString,
-    OuterType,
     referenceAnnotation,
     ReflectionKind,
     stringifyType,
@@ -170,7 +169,7 @@ export function getPartialSerializeFunction(type: TypeClass | TypeObjectLiteral,
 /**
  * Returns a (cached) serializer function for the given registry (serialize or deserialize).
  */
-export function getSerializeFunction(type: OuterType, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): SerializeFunction {
+export function getSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): SerializeFunction {
     const jit = getTypeJitContainer(type);
     const id = registry.id + '_' + namingStrategy.id + '_' + path;
     if (jit[id]) return jit[id];
@@ -181,7 +180,7 @@ export function getSerializeFunction(type: OuterType, registry: TemplateRegistry
     return jit[id];
 }
 
-export function createSerializeFunction(type: OuterType, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): SerializeFunction {
+export function createSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): SerializeFunction {
     const compiler = new CompilerContext();
 
     const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, jitStack, path ? [path] : []);
@@ -431,7 +430,7 @@ export class TemplateState {
         return `if (state.errors) state.errors.push(new ValidationFailedItem(${collapsePath(this.path)}, ${JSON.stringify(code)}, ${JSON.stringify(message)}));`;
     }
 
-    throwCode(type: OuterType | string, error?: string, accessor: string | ContainerAccessor = this.originalAccessor) {
+    throwCode(type: Type | string, error?: string, accessor: string | ContainerAccessor = this.originalAccessor) {
         this.setContext({ SerializationError, stringifyValueWithType });
         const to = JSON.stringify(('string' === typeof type ? type : stringifyType(type)).replace(/\n/g, '').replace(/\s+/g, ' ').trim());
         return `throw new SerializationError('Cannot convert ' + ${accessor} + ' to ' + ${to} ${error ? ` + '. ' + ${error}` : ''}, ${collapsePath(this.path)});`;
@@ -501,7 +500,7 @@ export function noopTemplate(type: Type, state: TemplateState): void {
 }
 
 interface TemplateDecorator {
-    predicate: (type: OuterType) => boolean,
+    predicate: (type: Type) => boolean,
     template: Template<any>
 }
 
@@ -522,6 +521,7 @@ export class TemplateRegistry {
 
     clear() {
         this.templates = {};
+        this.classTemplates.clear();
         this.preHooks = [];
         this.postHooks = [];
     }
@@ -536,7 +536,7 @@ export class TemplateRegistry {
     }
 
     getDecorator(type: Type): Template<Type>[] {
-        return this.decorator.filter(v => v.predicate(type as OuterType)).map(v => v.template);
+        return this.decorator.filter(v => v.predicate(type)).map(v => v.template);
     }
 
     /**
@@ -605,14 +605,14 @@ export class TemplateRegistry {
      * This allows to fetch only decorator templates and decide upon the result whether additional code is necessary or not. (this would not be possible
      * if everything is added to the `register` call that does always the basic checks).
      */
-    addDecorator(predicate: (type: OuterType) => boolean, template: Template<OuterType>) {
+    addDecorator(predicate: (type: Type) => boolean, template: Template<Type>) {
         this.decorator.push({ predicate, template });
     }
 
     /**
      * Removes all registered decorators for a certain type.
      */
-    removeDecorator(type: OuterType) {
+    removeDecorator(type: Type) {
         this.decorator = this.decorator.filter(v => !v.predicate(type));
     }
 
@@ -664,10 +664,6 @@ export function buildFunction(state: TemplateState, type: Type): Function {
         circularCheckEnd = `if (state._stack) state._stack.pop();`;
     }
     const code = `
-        /*
-         Jit code for
-         ${stringifyType(type)}
-        */
         var result;
         if (_path === undefined) _path = '';
         ${circularCheckBeginning}

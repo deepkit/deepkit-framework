@@ -36,7 +36,7 @@ import { unlink } from 'fs/promises';
 import { getScope, InjectorToken, resolveToken, Token } from '@deepkit/injector';
 import { AppModule, ServiceContainer } from '@deepkit/app';
 import { RpcControllers } from '../rpc';
-import { ReflectionClass, serializeType, stringifyType } from '@deepkit/type';
+import { ReflectionClass, serializeType } from '@deepkit/type';
 
 @rpc.controller(DebugControllerInterface)
 export class DebugController implements DebugControllerInterface {
@@ -170,7 +170,8 @@ export class DebugController implements DebugControllerInterface {
                         type: 'query',
                         schema: serializeType(parameter.parameter.type),
                     });
-                    queryParameters.push(`${parameter.getName()}=${stringifyType(parameter.parameter.type)}`);
+                    queryParameters.push(`${parameter.getName()}=TODO`);
+                    // queryParameters.push(`${parameter.getName()}=${stringifyType(parameter.parameter.type)}`);
                 } else if (parameter.isPartOfPath()) {
                     routeD.parameters.push({
                         name: parameter.getName(),

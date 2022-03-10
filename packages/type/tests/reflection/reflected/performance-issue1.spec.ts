@@ -7,11 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { expect, test } from '@jest/globals';
+import { test } from '@jest/globals';
 import { AbstractClassType, arrayRemoveItem, ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction, urlJoin } from '@deepkit/core';
 import { isExtendable } from '../../../src/reflection/extends';
 import { ReceiveType, reflect, resolveReceiveType } from '../../../src/reflection/reflection';
-import { isType, metaAnnotation, OuterType, ReflectionKind } from '../../../src/reflection/type';
+import { isType, metaAnnotation, ReflectionKind, Type } from '../../../src/reflection/type';
 import { IncomingMessage, ServerResponse } from 'http';
 import { Writable } from 'stream';
 import querystring from 'querystring';
@@ -26,7 +26,7 @@ export interface ProviderBase {
     transient?: true;
 }
 
-export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | InjectorToken<T> | AbstractClassType<T> | OuterType;
+export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | InjectorToken<T> | AbstractClassType<T> | Type;
 
 export function provide<T>(provider: Omit<ProviderProvide, 'provide'> | ClassType, type?: ReceiveType<T>): Provider {
     if (isClass(provider)) return { provide: resolveReceiveType(type), useClass: provider };
@@ -789,11 +789,11 @@ export interface InjectorInterface {
 /**
  * Returns the injector token type if the given type was decorated with `Inject<T>`.
  */
-function getInjectOptions(type: OuterType): OuterType | undefined {
+function getInjectOptions(type: Type): Type | undefined {
     const annotations = metaAnnotation.getAnnotations(type);
     for (const annotation of annotations) {
         if (annotation.name === 'inject') {
-            const t = annotation.options[0] as OuterType;
+            const t = annotation.options[0] as Type;
             return t.kind !== ReflectionKind.never ? t : type;
         }
     }
@@ -879,7 +879,7 @@ export class Injector implements InjectorInterface {
     }
 
     protected createFactoryProperty(
-        options: { name: string, type: OuterType, optional: boolean },
+        options: { name: string, type: Type, optional: boolean },
         fromProvider: NormalizedProvider,
         compiler: CompilerContext,
         resolveDependenciesFrom: InjectorModule[],
@@ -1217,7 +1217,7 @@ export class RouteConfig {
     public baseUrl: string = '';
     public parameterRegularExpressions: { [name: string]: any } = {};
 
-    public responses: { statusCode: number, description: string, type?: OuterType }[] = [];
+    public responses: { statusCode: number, description: string, type?: Type }[] = [];
 
     public description: string = '';
     public groups: string[] = [];
@@ -1226,7 +1226,7 @@ export class RouteConfig {
     /**
      * This is set when the route action has a manual return type defined using @t.
      */
-    public returnType?: OuterType;
+    public returnType?: Type;
 
     public serializationOptions?: SerializationOptions;
     public serializer?: Serializer;
@@ -1260,7 +1260,7 @@ export class RouteConfig {
     ) {
     }
 
-    getSchemaForResponse(statusCode: number): OuterType | undefined {
+    getSchemaForResponse(statusCode: number): Type | undefined {
         if (!this.responses.length) return;
         for (const response of this.responses) {
             if (response.statusCode === statusCode) return response.type;

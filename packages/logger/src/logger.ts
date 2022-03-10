@@ -35,6 +35,7 @@ export interface LogMessage {
 
 export class ConsoleTransport implements LoggerTransport {
     constructor(protected withColors: boolean = true) {
+        debugger;
     }
 
     write(message: LogMessage): void {

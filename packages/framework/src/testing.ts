@@ -106,8 +106,8 @@ export class BrokerMemoryServer extends BrokerServer {
 export function createTestingApp<O extends RootModuleDefinition>(options: O, entities: ClassType[] = [], setup?: (module: AppModule<any>) => void): TestingFacade<App<O>> {
     const module = new RootAppModule(options);
 
-    module.setupProvider(Logger).removeTransport(injectorReference(ConsoleTransport));
-    module.setupProvider(Logger).addTransport(injectorReference(MemoryLoggerTransport));
+    module.setupProvider<Logger>().removeTransport(injectorReference(ConsoleTransport));
+    module.setupProvider<Logger>().addTransport(injectorReference(MemoryLoggerTransport));
 
     module.addProvider({ provide: WebWorkerFactory, useClass: WebMemoryWorkerFactory }); //don't start HTTP-server
     module.addProvider({ provide: BrokerServer, useClass: BrokerMemoryServer }); //don't start Broker TCP-server
@@ -123,7 +123,7 @@ export function createTestingApp<O extends RootModuleDefinition>(options: O, ent
 
     if (entities.length) {
         module.addProvider({ provide: Database, useValue: new Database(new MemoryDatabaseAdapter, entities) });
-        module.setupGlobalProvider(DatabaseRegistry).addDatabase(Database, {}, module);
+        module.setupGlobalProvider<DatabaseRegistry>().addDatabase(Database, {}, module);
     }
 
     if (setup) module.setup(setup as any);

@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { http, HttpKernel, HttpRequest, JSONResponse, RouteParameterResolverContext } from '@deepkit/http';
+import { http, HttpKernel, HttpRegExp, HttpRequest, JSONResponse, RouteParameterResolverContext } from '@deepkit/http';
 import { App } from '@deepkit/app';
 import { FrameworkModule } from '../src/module';
 
@@ -20,8 +20,8 @@ test('router parameters', async () => {
             return new JSONResponse(yes);
         }
 
-        @http.GET(':path').regexp('path', '.*')
-        any(path: string) {
+        @http.GET(':path')
+        any(path: HttpRegExp<string, '.*'>) {
             return new JSONResponse(path);
         }
     }

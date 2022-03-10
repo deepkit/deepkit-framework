@@ -70,7 +70,7 @@ export const enum ReflectionKind {
 
 export type TypeDecorator = (annotations: Annotations, decorator: TypeObjectLiteral) => boolean;
 
-export type Annotations = { [name: symbol]: any[] };
+export type Annotations = any; //actual { [name: symbol]: any[] };, but not support in older TS
 
 /**
  * @reflection never
@@ -84,17 +84,22 @@ export interface TypeAnnotations {
     /**
      * If the type was created by a type function, this contains the arguments passed the function.
      */
-    typeArguments?: OuterType[];
+    typeArguments?: Type[];
 
     /**
      * Set for index access expressions, e.g. Config['property'].
      */
-    indexAccessOrigin?: { container: TypeClass | TypeObjectLiteral, index: OuterType };
+    indexAccessOrigin?: { container: TypeClass | TypeObjectLiteral, index: Type };
 
     annotations?: Annotations; //parsed decorator types as annotations
-    decorators?: OuterType[]; //original decorator type
+    decorators?: Type[]; //original decorator type
 
     scheduleDecorators?: TypeObjectLiteral[];
+
+    /**
+     * A place where arbitrary jit functions and its cache data is stored.
+     */
+    jit?: JitContainer;
 }
 
 export function applyScheduledAnnotations(type: Type) {
@@ -119,54 +124,47 @@ export function hasTypeInformation(object: ClassType | Function): boolean {
 /**
  * Object to hold runtime jit data.
  */
-export type JitContainer = { [name: string | symbol]: any };
+export type JitContainer = any; //actual { [name: string | symbol]: any }; but not supported in older TS
 
-export interface TypeRuntimeData {
-    /**
-     * A place where arbitrary jit functions and its cache data is stored.
-     */
-    jit?: JitContainer;
-}
-
-export function getTypeJitContainer(type: OuterType): JitContainer {
+export function getTypeJitContainer(type: Type): JitContainer {
     if (!type.jit) type.jit = {};
     return type.jit;
 }
 
-export function clearTypeJitContainer(type: OuterType): void {
+export function clearTypeJitContainer(type: Type): void {
     type.jit = {};
 }
 
-export interface TypeNever extends TypeAnnotations, TypeRuntimeData {
+export interface TypeNever extends TypeAnnotations {
     kind: ReflectionKind.never,
     parent?: Type;
 }
 
-export interface TypeAny extends TypeAnnotations, TypeRuntimeData {
+export interface TypeAny extends TypeAnnotations {
     kind: ReflectionKind.any,
     parent?: Type;
 }
 
-export interface TypeUnknown extends TypeAnnotations, TypeRuntimeData {
+export interface TypeUnknown extends TypeAnnotations {
     kind: ReflectionKind.unknown,
     parent?: Type;
 }
 
-export interface TypeVoid extends TypeAnnotations, TypeRuntimeData {
+export interface TypeVoid extends TypeAnnotations {
     kind: ReflectionKind.void,
     parent?: Type;
 }
 
-export interface TypeObject extends TypeAnnotations, TypeRuntimeData {
+export interface TypeObject extends TypeAnnotations {
     kind: ReflectionKind.object,
     parent?: Type;
 }
 
 export interface TypeOrigin {
-    origin?: OuterType;
+    origin?: Type;
 }
 
-export interface TypeString extends TypeOrigin, TypeAnnotations, TypeRuntimeData {
+export interface TypeString extends TypeOrigin, TypeAnnotations {
     kind: ReflectionKind.string,
     parent?: Type;
 }
@@ -175,65 +173,65 @@ export function isIntegerType(type: Type): type is TypeNumber {
     return type.kind === ReflectionKind.number && type.brand !== undefined && type.brand >= TypeNumberBrand.integer && type.brand <= TypeNumberBrand.uint32;
 }
 
-export interface TypeNumber extends TypeOrigin, TypeAnnotations, TypeRuntimeData {
+export interface TypeNumber extends TypeOrigin, TypeAnnotations {
     kind: ReflectionKind.number,
     brand?: TypeNumberBrand; //built in brand
     parent?: Type;
 }
 
-export interface TypeBoolean extends TypeOrigin, TypeAnnotations, TypeRuntimeData {
+export interface TypeBoolean extends TypeOrigin, TypeAnnotations {
     kind: ReflectionKind.boolean,
     parent?: Type;
 }
 
-export interface TypeBigInt extends TypeOrigin, TypeAnnotations, TypeRuntimeData {
+export interface TypeBigInt extends TypeOrigin, TypeAnnotations {
     kind: ReflectionKind.bigint,
     parent?: Type;
 }
 
-export interface TypeSymbol extends TypeOrigin, TypeAnnotations, TypeRuntimeData {
+export interface TypeSymbol extends TypeOrigin, TypeAnnotations {
     kind: ReflectionKind.symbol,
     parent?: Type;
 }
 
-export interface TypeNull extends TypeAnnotations, TypeRuntimeData {
+export interface TypeNull extends TypeAnnotations {
     kind: ReflectionKind.null,
     parent?: Type;
 }
 
-export interface TypeUndefined extends TypeAnnotations, TypeRuntimeData {
+export interface TypeUndefined extends TypeAnnotations {
     kind: ReflectionKind.undefined,
     parent?: Type;
 }
 
-export interface TypeLiteral extends TypeAnnotations, TypeRuntimeData {
+export interface TypeLiteral extends TypeAnnotations {
     kind: ReflectionKind.literal,
     literal: symbol | string | number | boolean | bigint | RegExp;
     parent?: Type;
 }
 
-export interface TypeTemplateLiteral extends TypeAnnotations, TypeRuntimeData {
+export interface TypeTemplateLiteral extends TypeAnnotations {
     kind: ReflectionKind.templateLiteral,
     types: (TypeString | TypeAny | TypeNumber | TypeLiteral | TypeInfer)[]
     parent?: Type;
 }
 
-export interface TypeRegexp extends TypeOrigin, TypeAnnotations, TypeRuntimeData {
+export interface TypeRegexp extends TypeOrigin, TypeAnnotations {
     kind: ReflectionKind.regexp;
     parent?: Type;
 }
 
-export interface TypeBaseMember {
+export interface TypeBaseMember extends TypeAnnotations {
     visibility: ReflectionVisibility,
     abstract?: true;
     optional?: true,
     readonly?: true;
 }
 
-export interface TypeParameter extends TypeRuntimeData {
+export interface TypeParameter extends TypeAnnotations {
     kind: ReflectionKind.parameter,
     name: string;
-    type: OuterType;
+    type: Type;
     parent: TypeFunction | TypeMethod | TypeMethodSignature;
 
     //parameter could be a property as well if visibility is set
@@ -255,10 +253,10 @@ export interface TypeMethod extends TypeBaseMember {
     parameters: TypeParameter[];
     optional?: true,
     abstract?: true;
-    return: OuterType;
+    return: Type;
 }
 
-export interface TypeProperty extends TypeBaseMember, TypeRuntimeData {
+export interface TypeProperty extends TypeBaseMember {
     kind: ReflectionKind.property,
     parent: TypeClass;
     visibility: ReflectionVisibility,
@@ -267,7 +265,7 @@ export interface TypeProperty extends TypeBaseMember, TypeRuntimeData {
     readonly?: true;
     abstract?: true;
     description?: string;
-    type: OuterType;
+    type: Type;
 
     /**
      * Set when the property has a default value aka initializer.
@@ -275,22 +273,22 @@ export interface TypeProperty extends TypeBaseMember, TypeRuntimeData {
     default?: () => any
 }
 
-export interface TypeFunction extends TypeAnnotations, TypeRuntimeData {
+export interface TypeFunction extends TypeAnnotations {
     kind: ReflectionKind.function,
     parent?: Type;
     name?: number | string | symbol,
     function?: Function; //reference to the real function if available
     parameters: TypeParameter[];
-    return: OuterType;
+    return: Type;
 }
 
-export interface TypePromise extends TypeAnnotations, TypeRuntimeData {
+export interface TypePromise extends TypeAnnotations {
     kind: ReflectionKind.promise,
     parent?: Type;
-    type: OuterType;
+    type: Type;
 }
 
-export interface TypeClass extends TypeAnnotations, TypeRuntimeData {
+export interface TypeClass extends TypeAnnotations {
     kind: ReflectionKind.class,
     parent?: Type;
     classType: ClassType;
@@ -314,88 +312,88 @@ export interface TypeClass extends TypeAnnotations, TypeRuntimeData {
     types: (TypeIndexSignature | TypeProperty | TypeMethod)[];
 }
 
-export interface TypeEnum extends TypeAnnotations, TypeRuntimeData {
+export interface TypeEnum extends TypeAnnotations {
     kind: ReflectionKind.enum,
     parent?: Type;
     enum: { [name: string]: string | number | undefined | null };
     values: (string | number | undefined | null)[];
-    indexType: OuterType;
+    indexType: Type;
 }
 
-export interface TypeEnumMember {
+export interface TypeEnumMember extends TypeAnnotations {
     kind: ReflectionKind.enumMember,
     parent: TypeEnum;
     name: string;
     default?: () => string | number;
 }
 
-export interface TypeTypeParameter extends TypeRuntimeData {
+export interface TypeTypeParameter extends TypeAnnotations {
     kind: ReflectionKind.typeParameter,
     parent?: Type;
     name: string,
 }
 
-export interface TypeUnion extends TypeRuntimeData {
+export interface TypeUnion extends TypeAnnotations {
     kind: ReflectionKind.union,
     parent?: Type;
     types: Type[];
 }
 
-export interface TypeIntersection {
+export interface TypeIntersection extends TypeAnnotations {
     kind: ReflectionKind.intersection,
     parent?: Type;
     types: Type[];
 }
 
-export interface TypeArray extends TypeAnnotations, TypeRuntimeData {
+export interface TypeArray extends TypeAnnotations {
     kind: ReflectionKind.array,
     parent?: Type;
     type: Type;
 }
 
-export interface TypePropertySignature extends TypeRuntimeData {
+export interface TypePropertySignature extends TypeAnnotations {
     kind: ReflectionKind.propertySignature,
     parent: TypeObjectLiteral;
     name: number | string | symbol;
     optional?: true;
     readonly?: true;
     description?: string;
-    type: OuterType;
+    type: Type;
 }
 
-export interface TypeMethodSignature {
+export interface TypeMethodSignature extends TypeAnnotations {
     kind: ReflectionKind.methodSignature,
     parent: TypeObjectLiteral;
     name: number | string | symbol;
     optional?: true;
     parameters: TypeParameter[];
-    return: OuterType;
+    return: Type;
 }
 
 /**
  * Object literals or interfaces.
  */
-export interface TypeObjectLiteral extends TypeAnnotations, TypeRuntimeData {
+export interface TypeObjectLiteral extends TypeAnnotations {
     kind: ReflectionKind.objectLiteral,
     parent?: Type;
     types: (TypeIndexSignature | TypePropertySignature | TypeMethodSignature)[];
 }
 
-export interface TypeIndexSignature {
+export interface TypeIndexSignature extends TypeAnnotations {
     kind: ReflectionKind.indexSignature,
     parent: TypeClass | TypeObjectLiteral;
     index: Type;
     type: Type;
 }
 
-export interface TypeInfer {
+export interface TypeInfer extends TypeAnnotations {
     kind: ReflectionKind.infer,
     parent?: Type;
 
     set(type: Type): void;
 }
 
-export interface TypeTupleMember {
+export interface TypeTupleMember extends TypeAnnotations {
     kind: ReflectionKind.tupleMember,
     parent: TypeTuple;
     type: Type;
@@ -403,13 +401,13 @@ export interface TypeTupleMember {
     name?: string;
 }
 
-export interface TypeTuple extends TypeAnnotations, TypeRuntimeData {
+export interface TypeTuple extends TypeAnnotations {
     kind: ReflectionKind.tuple,
     parent?: Type;
     types: TypeTupleMember[]
 }
 
-export interface TypeRest {
+export interface TypeRest extends TypeAnnotations {
     kind: ReflectionKind.rest,
     parent: TypeTypeParameter | TypeTupleMember;
     type: Type
@@ -453,40 +451,6 @@ export type Type =
     | TypeRegexp
     ;
 
-/**
- * Types that can be created and passed to type arguments.
- * Excludes things like PropertySignature (which needs ObjectLiteral as parent), TupleMember (which needs Tuple as parent), etc.
- */
-export type OuterType =
-    TypeNever
-    | TypeAny
-    | TypeUnknown
-    | TypeVoid
-    | TypeObject
-    | TypeString
-    | TypeNumber
-    | TypeBoolean
-    | TypeBigInt
-    | TypeSymbol
-    | TypeNull
-    | TypeUndefined
-    | TypeLiteral
-    | TypeTemplateLiteral
-    | TypePropertySignature
-    | TypeProperty
-    | TypeParameter
-    | TypeFunction
-    | TypePromise
-    | TypeClass
-    | TypeEnum
-    | TypeUnion
-    | TypeArray
-    | TypeObjectLiteral
-    | TypeTuple
-    | TypeRegexp
-    | TypeTypeParameter
-    ;
-
 export type Widen<T> =
     T extends string ? string
         : T extends number ? number
@@ -527,9 +491,9 @@ export function isPrimitive<T extends Type>(type: T): boolean {
  *
  * If a non-property parameter is in the constructor, the type is given instead, e.g. `constructor(public title: string, anotherOne:number)` => [TypeProperty, TypeNumber]
  */
-export function getConstructorProperties(type: TypeClass): { parameters: (TypeProperty | OuterType)[], properties: TypeProperty[] } {
+export function getConstructorProperties(type: TypeClass): { parameters: (TypeProperty | Type)[], properties: TypeProperty[] } {
     const constructor = findMember('constructor', type) as TypeMethod | undefined;
-    const result: { parameters: (TypeProperty | OuterType)[], properties: TypeProperty[] } = { parameters: [], properties: [] };
+    const result: { parameters: (TypeProperty | Type)[], properties: TypeProperty[] } = { parameters: [], properties: [] };
     if (!constructor) return result;
 
     for (const parameter of constructor.parameters) {
@@ -538,7 +502,7 @@ export function getConstructorProperties(type: TypeClass): { parameters: (TypePr
             result.properties.push(property);
             result.parameters.push(property);
         } else {
-            result.parameters.push(parameter.type as OuterType);
+            result.parameters.push(parameter.type as Type);
         }
     }
     return result;
@@ -574,14 +538,29 @@ export function getAnnotations(type: WithAnnotations): Annotations {
     return type.annotations ||= {};
 }
 
+type StackEntry = {
+    left: Type,
+    right: Type,
+}
+
+function hasStack(stack: StackEntry[], left: Type, right: Type): boolean {
+    for (const entry of stack) {
+        if (entry.left === left && entry.right === right) return true;
+    }
+    return false;
+}
+
+
 /**
  * Checks if the structure of a and b are identical.
  */
-export function isSameType(a: Type, b: Type, stack: Type[] = []): boolean {
+export function isSameType(a: Type, b: Type, stack: StackEntry[] = []): boolean {
     if (a === b) return true;
 
-    if (stack.includes(a)) return false;
-    stack.push(a);
+    if (hasStack(stack, a, b)) return true;
+
+    stack.push({ left: a, right: b });
+
     try {
         if (a.kind !== b.kind) return false;
         if (a.kind === ReflectionKind.infer || b.kind === ReflectionKind.infer) return false;
@@ -707,16 +686,19 @@ export function isSameType(a: Type, b: Type, stack: Type[] = []): boolean {
             if (b.kind !== ReflectionKind.union) return false;
             if (a.types.length !== b.types.length) return false;
             for (let i = 0; i < a.types.length; i++) {
-                if (!a.types[i] || !b.types[i]) return false;
-                if (a.types[i] === b.types[i]) continue;
+                const left = a.types[i];
+                const right = b.types[i];
+                if (!left || !right) return false;
+                if (left === right) continue;
 
-                if (!isSameType(a.types[i], b.types[i], stack)) return false;
+                const same = isSameType(left, right, stack);
+                if (!same) return false;
             }
         }
 
         return a.kind === b.kind;
     } finally {
-        stack.pop();
+        // stack.pop();
     }
 }
 
@@ -725,7 +707,7 @@ export function addType<T extends Type>(container: T, type: Type): T {
         if (type.kind === ReflectionKind.tupleMember) {
             container.types.push({ ...type, parent: container });
         } else {
-            container.types.push({ kind: ReflectionKind.tupleMember, parent: container, type });
+            container.types.push({ kind: ReflectionKind.tupleMember, parent: container, type: type as Type });
         }
     } else if (container.kind === ReflectionKind.union) {
         if (type.kind === ReflectionKind.union) {
@@ -749,7 +731,7 @@ export function addType<T extends Type>(container: T, type: Type): T {
     return container;
 }
 
-export function isTypeIncluded(types: Type[], type: Type, stack: Type[] = []): boolean {
+export function isTypeIncluded(types: Type[], type: Type, stack: StackEntry[] = []): boolean {
     for (const t of types) {
         if (isSameType(t, type, stack)) return true;
     }
@@ -790,9 +772,9 @@ export function flattenUnionTypes(types: Type[]): Type[] {
  * union with one member => member
  * otherwise the union is returned
  */
-export function unboxUnion(union: TypeUnion): OuterType {
+export function unboxUnion(union: TypeUnion): Type {
     if (union.types.length === 0) return { kind: ReflectionKind.never };
-    if (union.types.length === 1) return union.types[0] as OuterType;
+    if (union.types.length === 1) return union.types[0] as Type;
 
     // //convert union of {a: string} | {b: number} | {c: any} to {a?: string, b?: number, c?: any};
     // //this does work: {a?: string, b?: string} | {b2?: number} | {c: any} to {a?: string, b?: number, c?: any};
@@ -1158,7 +1140,7 @@ export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type
     // return type as any;
 }
 
-export function widenLiteral(type: OuterType): OuterType {
+export function widenLiteral(type: Type): Type {
     if (type.kind === ReflectionKind.literal) {
         if ('number' === typeof type.literal) return copyAndSetParent({ kind: ReflectionKind.number, origin: type });
         if ('boolean' === typeof type.literal) return copyAndSetParent({ kind: ReflectionKind.boolean, origin: type });
@@ -1317,7 +1299,7 @@ export class AnnotationDefinition<T = true> {
         annotations[this.symbol].push(data);
     }
 
-    registerType<Type extends OuterType>(type: Type, data: T): Type {
+    registerType<TType extends Type>(type: TType, data: T): TType {
         if (isWithAnnotations(type)) {
             type.annotations ||= {};
             this.register(type.annotations, data);
@@ -1530,6 +1512,49 @@ export function getBackReferenceType(type: Type): BackReferenceOptionsResolved {
     return options;
 }
 
+export function isSetType(type: Type): boolean {
+    return type.kind === ReflectionKind.class && type.classType === Set;
+}
+
+export function isMapType(type: Type): boolean {
+    return type.kind === ReflectionKind.class && type.classType === Map;
+}
+
+/**
+ * Get the key type of a Map or object literal with index signatures.
+ */
+export function getKeyType(type: Type): Type {
+    if (type.kind === ReflectionKind.class && type.classType === Map && type.typeArguments) return type.typeArguments[0] || { kind: ReflectionKind.any };
+    if (type.kind === ReflectionKind.objectLiteral) {
+        const type: TypeUnion = { kind: ReflectionKind.union, types: [] };
+        for (const t of type.types) {
+            if (t.kind === ReflectionKind.indexSignature) type.types.push(t.index);
+        }
+        if (type.types.length === 1) return type.types[0];
+        if (type.types.length === 0) return { kind: ReflectionKind.any };
+        return type;
+    }
+    return { kind: ReflectionKind.any };
+}
+
+/**
+ * Get the value type of a Map or object literal with index signatures.
+ */
+export function getValueType(type: Type): Type {
+    if (type.kind === ReflectionKind.class && type.classType === Map && type.typeArguments) return type.typeArguments[1] || { kind: ReflectionKind.any };
+    if (type.kind === ReflectionKind.objectLiteral) {
+        const type: TypeUnion = { kind: ReflectionKind.union, types: [] };
+        for (const t of type.types) {
+            if (t.kind === ReflectionKind.indexSignature) type.types.push(t.type);
+        }
+        if (type.types.length === 1) return type.types[0];
+        if (type.types.length === 0) return { kind: ReflectionKind.any };
+        return type;
+    }
+    return { kind: ReflectionKind.any };
+}
+
+
 export interface EmbeddedOptions {
     prefix?: string;
 }
@@ -1619,8 +1644,8 @@ export const excludedAnnotation = new class extends AnnotationDefinition<string>
     }
 }('excluded');
 export const dataAnnotation = new AnnotationDefinition<{ [name: string]: any }>('data');
-export const metaAnnotation = new class extends AnnotationDefinition<{ name: string, options: OuterType[] }> {
-    getForName(type: Type, metaName: string): OuterType[] | undefined {
+export const metaAnnotation = new class extends AnnotationDefinition<{ name: string, options: Type[] }> {
+    getForName(type: Type, metaName: string): Type[] | undefined {
         for (const v of this.getAnnotations(type)) {
             if (v.name === metaName) return v.options;
         }
@@ -1764,7 +1789,7 @@ export const typeDecorators: TypeDecorator[] = [
                 return true;
             }
             default: {
-                const optionsType = meta.type.types.slice(1).map(v => v.type) as OuterType[];
+                const optionsType = meta.type.types.slice(1).map(v => v.type) as Type[];
                 metaAnnotation.register(annotations, { name: id.type.literal as string, options: optionsType });
                 return true;
             }
@@ -1851,208 +1876,432 @@ export const binaryTypes: ClassType[] = [
     ArrayBuffer,
 ];
 
+
+export function collapseClassInheritance(type: TypeClass): (TypeIndexSignature | TypeProperty | TypeMethod)[] {
+    const types = type.types.slice();
+
+    let current = getParentClass(type.classType);
+    while (current) {
+        try {
+            const parentType = reflect(current);
+            if (parentType.kind === ReflectionKind.objectLiteral || parentType.kind === ReflectionKind.class) {
+                for (const property of parentType.types) {
+                    if (property.kind === ReflectionKind.indexSignature) {
+                        types.unshift(property);
+                    } else {
+                        if (!findMember(property.name, { types })) {
+                            if (property.kind === ReflectionKind.property || property.kind === ReflectionKind.method) {
+                                types.unshift(property);
+                            } else if (property.kind === ReflectionKind.propertySignature) {
+                                types.unshift({
+                                    ...property,
+                                    parent: type,
+                                    visibility: ReflectionVisibility.public,
+                                    kind: ReflectionKind.property
+                                } as TypeProperty);
+                            } else if (property.kind === ReflectionKind.methodSignature) {
+                                types.unshift({
+                                    ...property,
+                                    parent: type,
+                                    visibility: ReflectionVisibility.public,
+                                    kind: ReflectionKind.method
+                                } as TypeMethod);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch {
+        }
+
+        current = getParentClass(current);
+    }
+
+    return types;
+}
+
 export function stringifyResolvedType(type: Type): string {
-    return stringifyType(type, { depth: 0, stack: [], showNames: false, showFullDefinition: true });
+    return stringifyType(type, { showNames: false, showFullDefinition: true });
 }
 
 export function stringifyShortResolvedType(type: Type, stateIn: Partial<StringifyTypeOptions> = {}): string {
-    return stringifyType(type, { depth: 0, stack: [], ...stateIn, showNames: false, showFullDefinition: false, });
+    return stringifyType(type, { ...stateIn, showNames: false, showFullDefinition: false, });
 }
 
 interface StringifyTypeOptions {
-    depth: number;
-    stack: Type[];
     //show type alias names
     showNames: boolean;
     showFullDefinition: boolean;
-    skipNameOnce?: true;
-    skipNextRecursion?: true;
+    showDescription: boolean;
+    defaultIsOptional: boolean;
+    showHeritage: boolean;
+    stringify?: (type: Type) => string | undefined;
 }
 
+let stringifyTypeId: number = 1;
+
 export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions> = {}): string {
-    const state: StringifyTypeOptions = { depth: 0, stack: [], showNames: true, showFullDefinition: true, ...stateIn };
-    if (state.stack.includes(type) && !state.skipNextRecursion) {
-        return '* Recursion *';
-    }
-    if (state.skipNextRecursion) state.skipNextRecursion = undefined;
-    state.stack.push(type);
+    const state: StringifyTypeOptions = { showNames: true, defaultIsOptional: false, showDescription: false, showHeritage: false, showFullDefinition: true, ...stateIn };
+    const stack: { type?: Type, before?: string, after?: string, depth?: number }[] = [];
+    stack.push({ type, depth: 1 });
+    const stackId: number = stringifyTypeId++;
+    const result: string[] = [];
 
-    try {
-        let name = type.kind + '';
-        if (!state.skipNameOnce && state.showNames && isWithAnnotations(type) && type.typeName) {
-            const args = type.typeArguments ? '<' + type.typeArguments.map(v => stringifyType(v, { ...state, skipNameOnce: true, skipNextRecursion: true })).join(', ') + '>' : '';
-            return type.typeName + args;
+    while (stack.length) {
+        const entry = stack.pop();
+        if (!entry) break;
+        const type = entry.type;
+
+        const depth = entry.depth || 1;
+        if (type && stateIn.stringify) {
+            const manual = stateIn.stringify(type);
+            if ('string' === typeof manual) {
+                if (manual !== '') {
+                    if (entry.before) {
+                        result.push(entry.before);
+                    }
+                    result.push(manual);
+                    if (entry.after) {
+                        result.push(entry.after);
+                    }
+                }
+                continue;
+            }
         }
 
-        if (state.skipNameOnce) state.skipNameOnce = undefined;
+        if (entry.before) {
+            result.push(entry.before);
+        }
 
-        switch (type.kind) {
-            case ReflectionKind.never:
-                name = `never`;
-                break;
-            case ReflectionKind.any:
-                name = `any`;
-                break;
-            case ReflectionKind.void:
-                name = `void`;
-                break;
-            case ReflectionKind.undefined:
-                name = `undefined`;
-                break;
-            case ReflectionKind.null:
-                name = `null`;
-                break;
-            case ReflectionKind.string:
-                name = 'string';
-                break;
-            case ReflectionKind.number:
-                name = 'number';
-                break;
-            case ReflectionKind.bigint:
-                name = 'bigint';
-                break;
-            case ReflectionKind.regexp:
-                name = 'RegExp';
-                break;
-            case ReflectionKind.boolean:
-                name = 'boolean';
-                break;
-            case ReflectionKind.literal:
-                if ('number' === typeof type.literal) {
-                    name = type.literal + '';
-                } else if ('boolean' === typeof type.literal) {
-                    name = type.literal + '';
-                } else {
-                    name = `'${String(type.literal).replace(/'/g, '\\\'')}'`;
+        if (type) {
+            const jit = getTypeJitContainer(type);
+            if (entry.depth !== undefined && jit.visitStack && jit.visitStack.id === stackId && jit.visitStack.depth < entry.depth) {
+                result.push((type.typeName ? type.typeName : '* Recursion *'));
+                continue;
+            }
+            jit.visitStack = { id: stackId, depth };
+
+            const manual = stateIn.stringify ? stateIn.stringify(type) : undefined;
+            if ('string' === typeof manual) {
+                result.push(jit.stringifyTypeResult = manual);
+                continue;
+            }
+
+            if (state.showNames && type.typeName) {
+                if (type.typeArguments && type.typeArguments.length) {
+                    stack.push({ before: '>' });
+                    for (let i = type.typeArguments.length - 1; i >= 0; i--) {
+                        stack.push({ type: type.typeArguments[i], before: i === 0 ? undefined : ', ', depth });
+                    }
+                    stack.push({ before: '<' });
                 }
-                break;
-            case ReflectionKind.promise:
-                name = `Promise<${stringifyType(type.type, state)}>`;
-                break;
-            case ReflectionKind.templateLiteral:
-                name = '`' + type.types.map(v => {
-                    return v.kind === ReflectionKind.literal ? v.literal : '${' + stringifyType(v, state) + '}';
-                }).join('') + '`';
-                break;
-            case ReflectionKind.class: {
-                if (type.classType === Date) {
-                    name = `Date`;
+                result.push(type.typeName);
+                continue;
+            }
+
+            switch (type.kind) {
+                case ReflectionKind.never:
+                    result.push(`never`);
                     break;
-                }
-                if (type.classType === Set) {
-                    name = `Set<${stringifyType(type.arguments![0], state)}>`;
+                case ReflectionKind.any:
+                    result.push(`any`);
                     break;
-                }
-                if (type.classType === Map) {
-                    name = `Map<${stringifyType(type.arguments![0], state)}, ${stringifyType(type.arguments![1], state)}>`;
+                case ReflectionKind.void:
+                    result.push(`void`);
                     break;
-                }
-                const indentation = indent((state.depth + 1) * 2);
-                const args = type.arguments ? '<' + type.arguments.map(v => stringifyType(v, state)).join(', ') + '>' : '';
-                let heritage = '';
-                const superClass = getParentClass(type.classType);
-                if (superClass) {
-                    try {
-                        const superClassType = reflect(superClass);
-                        if (superClassType.kind === ReflectionKind.class) {
-                            heritage = ' extends ' + (superClassType.typeName || superClass.name);
+                case ReflectionKind.undefined:
+                    result.push(`undefined`);
+                    break;
+                case ReflectionKind.null:
+                    result.push(`null`);
+                    break;
+                case ReflectionKind.string:
+                    result.push('string');
+                    break;
+                case ReflectionKind.number:
+                    result.push('number');
+                    break;
+                case ReflectionKind.bigint:
+                    result.push('bigint');
+                    break;
+                case ReflectionKind.regexp:
+                    result.push('RegExp');
+                    break;
+                case ReflectionKind.boolean:
+                    result.push('boolean');
+                    break;
+                case ReflectionKind.literal:
+                    if ('number' === typeof type.literal) {
+                        result.push(type.literal + '');
+                    } else if ('boolean' === typeof type.literal) {
+                        result.push(type.literal + '');
+                    } else {
+                        result.push(`'${String(type.literal).replace(/'/g, '\\\'')}'`);
+                    }
+                    break;
+                case ReflectionKind.promise:
+                    result.push('Promise<');
+                    stack.push({ before: '>' });
+                    stack.push({ type: type.type, depth: depth + 1 });
+                    break;
+                case ReflectionKind.templateLiteral:
+                    stack.push({ before: '`' });
+                    for (let i = type.types.length - 1; i >= 0; i--) {
+                        const sub = type.types[i];
+                        if (sub.kind === ReflectionKind.literal) {
+                            stack.push({ before: String(sub.literal) });
+                        } else {
+                            stack.push({ type: sub, before: '${', after: '}', depth: depth + 1 });
                         }
-                    } catch (error: any) {
-                        heritage = ' extends ' + superClass.name;
                     }
-                    if (type.extendsArguments && type.extendsArguments.length) {
-                        heritage += '<' + type.extendsArguments.map(v => stringifyShortResolvedType(v, state)).join(', ') + '>';
+                    stack.push({ before: '`' });
+                    break;
+                case ReflectionKind.class: {
+                    if (type.classType === Date) {
+                        result.push(`Date`);
+                        break;
                     }
-                }
-                const className = type.typeName || getClassName(type.classType);
-                if (state.showFullDefinition) {
-                    name = `${className}${args}${heritage} {\n${type.types.map(v => indentation(stringifyType(v, state))).join(';\n')};\n}`;
-                } else {
-                    name = `${className}${args}${heritage}`;
-                }
-                break;
-            }
-            case ReflectionKind.objectLiteral: {
-                //todo: return name if available
-                const indentation = indent((state.depth + 1) * 2);
-                const sub = type.types.map(v => indentation(stringifyType(v, state)));
-                if (sub.length) {
-                    name = `{\n${sub.join(';\n')};\n}`;
-                } else {
-                    name = `{}`;
-                }
-                break;
-            }
-            case ReflectionKind.union:
-                name = type.types.map(v => stringifyType(v, state)).join(' | ');
-                break;
-            case ReflectionKind.intersection:
-                name = type.types.map(v => stringifyType(v, state)).join(' & ');
-                break;
-            case ReflectionKind.parameter: {
-                const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
-                name = `${type.readonly ? 'readonly ' : ''}${visibility}${type.name}${type.optional ? '?' : ''}: ${stringifyType(type.type, state)}`;
-                break;
-            }
-            case ReflectionKind.function:
-                name = `(${type.parameters.map(v => stringifyType(v, state)).join(', ')}) => ${stringifyType(type.return, state)}`;
-                break;
-            case ReflectionKind.enum:
-                name = `enum todo`;
-                break;
-            case ReflectionKind.array:
-                if (type.type.kind === ReflectionKind.union) {
-                    name = `(${stringifyType(type.type, state)})[]`;
-                } else {
-                    name = `${stringifyType(type.type, state)}[]`;
-                }
-                break;
-            case ReflectionKind.rest:
-                name = `...${stringifyType(type.type, state)}[]`;
-                break;
-            case ReflectionKind.tupleMember:
-                if (type.name) {
-                    name = `${type.name}${type.optional ? '?' : ''}: ${stringifyType(type.type, state)}`;
+                    if (type.classType === Set) {
+                        result.push('Set<');
+                        stack.push({ before: '>' });
+                        stack.push({ type: type.arguments![0], depth: depth + 1 });
+                        break;
+                    }
+                    if (binaryTypes.includes(type.classType)) {
+                        result.push(getClassName(type.classType));
+                        break;
+                    }
+                    if (type.classType === Map) {
+                        result.push('Map<');
+                        stack.push({ before: '>' });
+                        stack.push({ type: type.arguments![1], depth: depth + 1 });
+                        stack.push({ before: ', ' });
+                        stack.push({ type: type.arguments![0], depth: depth + 1 });
+                        break;
+                    }
+
+                    const typeName = type.typeName || getClassName(type.classType);
+                    const superClass = getParentClass(type.classType);
+
+                    if (state.showFullDefinition) {
+                        const types = state.showHeritage ? type.types : collapseClassInheritance(type);
+                        stack.push({ before: '}' });
+                        for (let i = types.length - 1; i >= 0; i--) {
+                            const sub = types[i];
+                            const showDescription = stateIn.showDescription && sub.kind === ReflectionKind.property && sub.description;
+                            const withIndentation = types.length > 1 || showDescription;
+
+                            if (withIndentation && i === types.length - 1) {
+                                stack.push({ before: '\n' + (' '.repeat((depth - 1) * 2)) });
+                            }
+                            if (state.stringify) {
+                                const manual = state.stringify(sub);
+                                if ('string' === typeof manual) {
+                                    if (manual !== '') {
+                                        stack.push({ before: manual });
+                                    }
+                                    continue;
+                                }
+                            }
+                            if (showDescription || (types.length > 1 && (withIndentation || i !== types.length - 1))) {
+                                stack.push({ before: withIndentation ? ';' : '; ' });
+                            }
+                            stack.push({ type: sub, depth: depth + 1 });
+                            if (withIndentation) {
+                                stack.push({ before: '\n' + (' '.repeat(depth * 2)) });
+                            }
+                            if (showDescription) {
+                                const indentation = indent(depth * 2, ' * ');
+                                stack.push({ before: '\n' + indentation('/* ' + sub.description + ' */') });
+                            }
+                        }
+
+                        stack.push({ before: ' {' });
+                    }
+
+                    if (superClass && state.showHeritage) {
+                        try {
+                            const superClassType = reflect(superClass);
+                            if (superClassType.kind === ReflectionKind.class) {
+
+                                if (type.extendsArguments && type.extendsArguments.length) {
+                                    stack.push({ before: '>' });
+                                    for (let i = type.extendsArguments.length - 1; i >= 0; i--) {
+                                        stack.push({ type: type.extendsArguments[i], before: i === 0 ? undefined : ', ', depth: depth + 1 });
+                                    }
+                                    stack.push({ before: '<' });
+                                }
+
+                                stack.push({ before: ' extends ' + (superClassType.typeName || superClass.name) });
+                            }
+                        } catch {
+                            stack.push({ before: ' extends ' + (superClass.name) });
+                        }
+                    }
+
+                    const typeArguments = type.arguments || type.typeArguments;
+                    if ((!state.showFullDefinition || type.types.length === 0) && typeArguments && typeArguments.length) {
+                        stack.push({ before: '>' });
+                        for (let i = typeArguments.length - 1; i >= 0; i--) {
+                            stack.push({ type: typeArguments[i], before: i === 0 ? undefined : ', ', depth: depth + 1 });
+                        }
+                        stack.push({ before: '<' });
+                    }
+
+                    stack.push({ before: typeName });
                     break;
                 }
-                name = `${stringifyType(type.type, state)}${type.optional ? '?' : ''}`;
-                break;
-            case ReflectionKind.tuple:
-                name = `[${type.types.map(v => stringifyType(v, state)).join(', ')}]`;
-                break;
-            case ReflectionKind.indexSignature:
-                name = `{[index: ${stringifyType(type.index, state)}]: ${stringifyType(type.type, state)}`;
-                break;
-            case ReflectionKind.propertySignature:
-                name = `${type.readonly ? 'readonly ' : ''}${memberNameToString(type.name)}${type.optional ? '?' : ''}: ${stringifyType(type.type, state)}`;
-                break;
-            case ReflectionKind.property: {
-                const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
-                name = `${type.readonly ? 'readonly ' : ''}${visibility}${memberNameToString(type.name)}${type.optional ? '?' : ''}: ${stringifyType(type.type, state)}`;
-                break;
-            }
-            case ReflectionKind.methodSignature:
-                name = `${memberNameToString(type.name)}${type.optional ? '?' : ''}(${type.parameters.map(v => stringifyType(v, state)).join(', ')}): ${stringifyType(type.return, state)}`;
-                break;
-            case ReflectionKind.method: {
-                const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
-                name = `${type.abstract ? 'abstract ' : ''}${visibility}${memberNameToString(type.name)}${type.optional ? '?' : ''}`
-                    + `(${type.parameters.map(v => stringifyType(v, state)).join(', ')}): ${stringifyType(type.return, state)}`;
-                break;
+                case ReflectionKind.objectLiteral: {
+                    const typeName = type.typeName ? type.typeName + ' ' : '';
+                    // const indentation = indent((state.depth + 1) * 2);
+                    result.push(typeName + '{');
+
+                    stack.push({ before: '}' });
+                    for (let i = type.types.length - 1; i >= 0; i--) {
+                        const sub = type.types[i];
+                        const showDescription = stateIn.showDescription && sub.kind === ReflectionKind.propertySignature && sub.description;
+                        const withIndentation = type.types.length > 1 || showDescription;
+
+                        if (state.stringify) {
+                            const manual = state.stringify(sub);
+                            if ('string' === typeof manual) {
+                                if (manual !== '') {
+                                    stack.push({ before: manual });
+                                }
+                                continue;
+                            }
+                        }
+
+                        if (withIndentation && i === type.types.length - 1) {
+                            stack.push({ before: '\n' + (' '.repeat((depth - 1) * 2)) });
+                        }
+                        if (state.stringify) {
+                            const manual = state.stringify(sub);
+                            if ('string' === typeof manual) {
+                                if (manual !== '') {
+                                    stack.push({ before: manual });
+                                }
+                                continue;
+                            }
+                        }
+                        if (showDescription || (type.types.length > 1 && (withIndentation || i !== type.types.length - 1))) {
+                            stack.push({ before: withIndentation ? ';' : '; ' });
+                        }
+                        stack.push({ type: sub, depth: depth + 1 });
+
+                        if (withIndentation) {
+                            stack.push({ before: '\n' + (' '.repeat(depth * 2)) });
+                        }
+                        if (showDescription) {
+                            const indentation = indent(depth * 2, ' * ');
+                            stack.push({ before: '\n' + indentation('/* ' + sub.description + ' */') });
+                        }
+                    }
+                    break;
+                }
+                case ReflectionKind.union:
+                    for (let i = type.types.length - 1; i >= 0; i--) {
+                        stack.push({ type: type.types[i], before: i === 0 ? undefined : ' | ', depth: depth + 1 });
+                    }
+                    break;
+                case ReflectionKind.intersection:
+                    for (let i = type.types.length - 1; i >= 0; i--) {
+                        stack.push({ type: type.types[i], before: i === 0 ? undefined : ' & ', depth: depth + 1 });
+                    }
+                    break;
+                case ReflectionKind.parameter: {
+                    const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
+                    const dotdotdot = type.type.kind === ReflectionKind.rest ? '...' : '';
+                    result.push(`${type.readonly ? 'readonly ' : ''}${visibility}${dotdotdot}${type.name}${type.optional ? '?' : ''}: `);
+                    stack.push({ type: type.type, depth: depth + 1 });
+                    break;
+                }
+                case ReflectionKind.function:
+                    stack.push({ type: type.return, depth: depth + 1 });
+                    stack.push({ before: ') => ' });
+                    for (let i = type.parameters.length - 1; i >= 0; i--) {
+                        stack.push({ type: type.parameters[i], before: i === 0 ? undefined : ', ', depth: depth + 1 });
+                    }
+                    stack.push({ before: '(' });
+                    break;
+                case ReflectionKind.enum:
+                    const members = Object.entries(type.enum).map(([label, value]) => `${label}: ${value}`).join(', ');
+                    stack.push({ before: `${type.typeName ? type.typeName : 'Enum'} {` + (members) + '}' });
+                    break;
+                case ReflectionKind.array:
+                    stack.push({ before: '>' });
+                    stack.push({ type: type.type, before: 'Array<', depth: depth + 1 });
+                    break;
+                case ReflectionKind.rest:
+                    stack.push({ before: '[]' });
+                    stack.push({ type: type.type, depth: depth + 1 });
+                    break;
+                case ReflectionKind.tupleMember:
+                    if (type.name) {
+                        result.push(`${type.name}${type.optional ? '?' : ''}: `);
+                        stack.push({ type: type.type, depth: depth + 1 });
+                        break;
+                    }
+                    if (type.optional) {
+                        stack.push({ before: '?' });
+                    }
+                    stack.push({ type: type.type, depth: depth + 1 });
+                    break;
+                case ReflectionKind.tuple:
+                    stack.push({ before: ']' });
+                    for (let i = type.types.length - 1; i >= 0; i--) {
+                        stack.push({ type: type.types[i], before: i === 0 ? undefined : ', ', depth: depth + 1 });
+                    }
+                    stack.push({ before: '[' });
+                    break;
+                case ReflectionKind.indexSignature:
+                    stack.push({ type: type.type, depth: depth + 1 });
+                    stack.push({ before: ']: ' });
+                    stack.push({ type: type.index, depth: depth + 1 });
+                    stack.push({ before: '[index: ' });
+                    // name = `{[index: ${stringifyType(type.index, state)}]: ${stringifyType(type.type, state)}`;
+                    break;
+                case ReflectionKind.propertySignature:
+                    result.push(`${type.readonly ? 'readonly ' : ''}${memberNameToString(type.name)}${type.optional ? '?' : ''}: `);
+                    stack.push({ type: type.type, depth });
+                    break;
+                case ReflectionKind.property: {
+                    const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
+                    const optional = type.optional || (stateIn.defaultIsOptional && type.default !== undefined);
+                    result.push(`${type.readonly ? 'readonly ' : ''}${visibility}${memberNameToString(type.name)}${optional ? '?' : ''}: `);
+                    stack.push({ type: type.type, depth });
+                    break;
+                }
+                case ReflectionKind.methodSignature:
+                    stack.push({ type: type.return, depth });
+                    stack.push({ before: '): ' });
+                    for (let i = type.parameters.length - 1; i >= 0; i--) {
+                        stack.push({ type: type.parameters[i], before: i === 0 ? undefined : ', ', depth });
+                    }
+                    stack.push({ before: `${memberNameToString(type.name)}${type.optional ? '?' : ''}(` });
+                    break;
+                case ReflectionKind.method: {
+                    const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
+                    const abstract = type.abstract ? 'abstract ' : '';
+                    if (type.name === 'constructor') {
+                        stack.push({ before: ')' });
+                    } else {
+                        stack.push({ type: type.return, depth });
+                        stack.push({ before: '): ' });
+                    }
+                    for (let i = type.parameters.length - 1; i >= 0; i--) {
+                        stack.push({ type: type.parameters[i], before: i === 0 ? undefined : ', ', depth });
+                    }
+                    stack.push({ before: `${abstract}${visibility}${memberNameToString(type.name)}${type.optional ? '?' : ''}(` });
+                    break;
+                }
             }
         }
 
-        if (isWithAnnotations(type) && type.decorators) {
-            name = name + ' & ' + type.decorators.map(v => (isWithAnnotations(v) && v.typeName) || stringifyType(v, {
-                ...state,
-                showNames: true,
-                showFullDefinition: false
-            })).join(' & ');
+        if (entry.after) {
+            result.push(entry.after);
         }
-
-        if (state.depth > 0) return '(' + name + ')';
-        return name;
-    } finally {
-        state.stack.pop();
     }
+
+    return result.join('');
 }

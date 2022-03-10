@@ -19,12 +19,12 @@ import {
     ExtractClass,
     isDecoratorContext,
     mergeDecorator,
-    OuterType,
     PropertyDecoratorFn,
     ReceiveType,
     resolveReceiveType,
     SerializationOptions,
     Serializer,
+    Type,
     UnionToIntersection
 } from '@deepkit/type';
 import { RouteParameterResolver } from './router';
@@ -99,8 +99,6 @@ export class HttpAction {
     middlewares: (() => HttpMiddlewareConfig)[] = [];
     serializationOptions?: SerializationOptions;
 
-    parameterRegularExpressions: { [name: string]: any } = {};
-
     resolverForToken: Map<any, ClassType> = new Map();
     resolverForParameterName: Map<string, ClassType> = new Map();
 
@@ -109,7 +107,7 @@ export class HttpAction {
      */
     data = new Map<any, any>();
 
-    responses: { statusCode: number, description: string, type?: OuterType }[] = [];
+    responses: { statusCode: number, description: string, type?: Type }[] = [];
 }
 
 export class HttpDecorator {
@@ -382,10 +380,6 @@ export class HttpActionDecorator {
      */
     resolveParameterByName(name: string, resolver: ClassType<RouteParameterResolver>) {
         this.t.resolverForParameterName.set(name, resolver);
-    }
-
-    regexp(parameterName: string, regex: any) {
-        this.t.parameterRegularExpressions[parameterName] = regex;
     }
 }
 

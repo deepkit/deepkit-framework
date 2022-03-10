@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
-import { PropertySchema } from '@deepkit/type';
+import { getKeyType, getValueType, Type, TypeClass, TypeObjectLiteral } from '@deepkit/type';
 import { trackByIndex } from '../../utils';
 import { DataStructure } from '../../store';
 import { arrayMoveItem } from '@deepkit/core';
@@ -8,9 +8,9 @@ import { arrayMoveItem } from '@deepkit/core';
     template: `
         <ng-container *ngIf="model && valueType && keyType">
             <div class="item" *ngFor="let item of model.children; trackBy: trackByIndex; let i = index; let last = last">
-                <api-console-input style="margin-right: 5px;" [property]="keyType" [model]="item.getProperty(keyType.name)"
+                <api-console-input style="margin-right: 5px;" [type]="keyType" [model]="item.getProperty('key')"
                                    (modelChange)="emit()" (keyDown)="keyDown.emit($event)"></api-console-input>
-                <api-console-input [property]="valueType" [model]="item.getProperty(valueType.name)"
+                <api-console-input [type]="valueType" [model]="item.getProperty('value')"
                                    (modelChange)="emit()" (keyDown)="keyDown.emit($event)"></api-console-input>
                 <dui-icon clickable name="arrow_up" [disabled]="i === 0" (click)="up(item)"></dui-icon>
                 <dui-icon clickable name="arrow_down" [disabled]="last" (click)="down(item)"></dui-icon>
@@ -43,24 +43,24 @@ export class MapInputComponent implements OnInit, OnChanges {
     trackByIndex = trackByIndex;
     @Input() model!: DataStructure;
     @Output() modelChange = new EventEmitter();
-    @Input() property!: PropertySchema;
+    @Input() type!: TypeObjectLiteral | TypeClass; //object literal with index signature or type class with Map classType
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
 
-    keyType?: PropertySchema;
-    valueType?: PropertySchema;
+    keyType?: Type;
+    valueType?: Type;
 
     emit() {
         this.modelChange.emit(this.model);
     }
 
     ngOnChanges(): void {
-        this.keyType = this.property.templateArgs[0];
-        this.valueType = this.property.getSubType();
+        this.keyType = getKeyType(this.type);
+        this.valueType = getValueType(this.type);
     }
 
     ngOnInit(): void {
-        this.keyType = this.property.templateArgs[0];
-        this.valueType = this.property.getSubType();
+        this.keyType = getKeyType(this.type);
+        this.valueType = getValueType(this.type);
     }
 
     up(i: DataStructure) {

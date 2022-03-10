@@ -492,6 +492,10 @@ export class ReflectionTransformer {
     }
 
     transformSourceFile(sourceFile: SourceFile): SourceFile {
+        if ((sourceFile as any).deepkitTransformed) return sourceFile;
+        (sourceFile as any).deepkitTransformed = true;
+
+        this.addImports = [];
         this.sourceFile = sourceFile;
 
         const reflection = this.findReflectionConfig(sourceFile);
@@ -499,11 +503,17 @@ export class ReflectionTransformer {
             return sourceFile;
         }
 
+        if (sourceFile.kind !== SyntaxKind.SourceFile) {
+            const path = require.resolve('typescript');
+            throw new Error(`Invalid TypeScript library imported. SyntaxKind different ${sourceFile.kind} !== ${SyntaxKind.SourceFile}. typescript package path: ${path}`);
+        }
+
         const visitor = (node: Node): any => {
             node = visitEachChild(node, visitor, this.context);
 
             if ((isInterfaceDeclaration(node) || isTypeAliasDeclaration(node) || isEnumDeclaration(node))) {
                 const reflection = this.findReflectionConfig(node);
+
                 if (reflection.mode !== 'never') {
                     this.compileDeclarations.set(node, {
                         name: node.name,
@@ -654,7 +664,10 @@ export class ReflectionTransformer {
         if (this.addImports.length) {
             const compilerOptions = this.context.getCompilerOptions();
             const imports: Statement[] = [];
+            const handledIdentifier: string[] = [];
             for (const imp of this.addImports) {
+                if (handledIdentifier.includes(getIdentifierName(imp.identifier))) continue;
+                handledIdentifier.push(getIdentifierName(imp.identifier));
                 if (compilerOptions.module === ModuleKind.CommonJS) {
                     //var {identifier} = require('./bar')
                     const variable = this.f.createVariableStatement(undefined, this.f.createVariableDeclarationList([this.f.createVariableDeclaration(
@@ -665,7 +678,9 @@ export class ReflectionTransformer {
                     imports.push(variable);
                 } else {
                     //import {identifier} from './bar'
-                    const specifier = this.f.createImportSpecifier(false, undefined, imp.identifier);
+                    // import { identifier as identifier } is used to avoid automatic elision of imports (in angular builds for example)
+                    // that's probably a bit unstable.
+                    const specifier = this.f.createImportSpecifier(false, imp.identifier, imp.identifier);
                     const namedImports = this.f.createNamedImports([specifier]);
                     const importStatement = this.f.createImportDeclaration(undefined, undefined,
                         this.f.createImportClause(false, undefined, namedImports), imp.from
@@ -1377,7 +1392,7 @@ export class ReflectionTransformer {
     //     return node;
     // }
 
-    protected getDeclarationVariableName(typeName: EntityName) {
+    protected getDeclarationVariableName(typeName: EntityName): Identifier {
         if (isIdentifier(typeName)) {
             return this.f.createIdentifier('__Ω' + getIdentifierName(typeName));
         }
@@ -1546,6 +1561,12 @@ export class ReflectionTransformer {
                             this.addImports.push({ identifier: this.getDeclarationVariableName(typeName), from: originImportStatement.moduleSpecifier });
                         }
                     } else {
+                        const reflection = this.findReflectionConfig(declaration, program);
+                        if (reflection.mode === 'never') {
+                            program.pushOp(ReflectionOp.any);
+                            return;
+                        }
+
                         this.compileDeclarations.set(declaration, {
                             name: typeName,
                             sourceFile: declarationSourceFile,
@@ -1873,7 +1894,9 @@ export class ReflectionTransformer {
      */
     protected decorateClass(node: ClassDeclaration | ClassExpression): Node {
         const reflection = this.findReflectionConfig(node);
-        if (reflection.mode === 'never') return node;
+        if (reflection.mode === 'never') {
+            return node;
+        }
         const type = this.getTypeOfType(node);
         const __type = this.f.createPropertyDeclaration(undefined, this.f.createModifiersFromModifierFlags(ModifierFlags.Static), '__type', undefined, undefined, type);
         if (isClassDeclaration(node)) {
@@ -1942,7 +1965,17 @@ export class ReflectionTransformer {
         ]);
     }
 
-    protected parseReflectionMode(mode?: typeof reflectionModes[number] | '' | boolean): typeof reflectionModes[number] {
+    protected parseReflectionMode(mode?: typeof reflectionModes[number] | '' | boolean | string[], configPathDir?: string): typeof reflectionModes[number] {
+        if (Array.isArray(mode)) {
+            if (!configPathDir) return 'never';
+            if (this.sourceFile.fileName.startsWith(configPathDir)) {
+                const fileName = this.sourceFile.fileName.slice(configPathDir.length + 1);
+                for (const entry of mode) {
+                    if (entry === fileName) return 'default';
+                }
+            }
+            return 'never';
+        }
         if ('boolean' === typeof mode) return mode ? 'default' : 'never';
         return mode || 'never';
     }
@@ -1950,7 +1983,7 @@ export class ReflectionTransformer {
     protected resolvedTsConfig: { [path: string]: { data: Record<string, any>, exists: boolean } } = {};
 
     protected findReflectionConfig(node: Node, program?: CompilerProgram): { mode: typeof reflectionModes[number] } {
-        if (program && program.sourceFile !== this.sourceFile) {
+        if (program && program.sourceFile.fileName !== this.sourceFile.fileName) {
             //when the node is from another module it was already decided that it will be reflected, so
             //make sure it returns correct mode. for globals this would read otherwise to `mode: never`.
             return { mode: 'always' };
@@ -1995,7 +2028,7 @@ export class ReflectionTransformer {
                 }
             }
             if (reflection === undefined && tsConfig.reflection !== undefined) {
-                return { mode: this.parseReflectionMode(tsConfig.reflection) };
+                return { mode: this.parseReflectionMode(tsConfig.reflection, currentDir) };
             }
             const next = join(currentDir, '..');
             if (resolve(next) === resolve(currentDir)) break; //we are at root
@@ -2006,11 +2039,70 @@ export class ReflectionTransformer {
     }
 }
 
+export class DeclarationTransformer extends ReflectionTransformer {
+
+    protected addExports: { identifier: string }[] = [];
+
+    transformSourceFile(sourceFile: SourceFile): SourceFile {
+        if ((sourceFile as any).deepkitDeclarationTransformed) return sourceFile;
+        (sourceFile as any).deepkitDeclarationTransformed = true;
+
+        this.sourceFile = sourceFile;
+        this.addExports = [];
+
+        const reflection = this.findReflectionConfig(sourceFile);
+        if (reflection.mode === 'never') {
+            return sourceFile;
+        }
+
+        const visitor = (node: Node): any => {
+            node = visitEachChild(node, visitor, this.context);
+
+            if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && hasModifier(node, SyntaxKind.ExportKeyword)) {
+                const reflection = this.findReflectionConfig((node as any).original || node); //original needed here since TS does not emit jsDoc in the declaration transformer. I don't know why.
+                if (reflection.mode !== 'never') {
+                    this.addExports.push({ identifier: getIdentifierName(this.getDeclarationVariableName(node.name)) });
+                }
+            }
+
+            return node;
+        };
+        this.sourceFile = visitNode(this.sourceFile, visitor);
+
+        if (this.addExports.length) {
+            const exports: Statement[] = [];
+            const handledIdentifier: string[] = [];
+            for (const imp of this.addExports) {
+                if (handledIdentifier.includes(imp.identifier)) continue;
+                handledIdentifier.push(imp.identifier);
+
+                //export declare type __ΩXY = any[];
+                exports.push(this.f.createTypeAliasDeclaration(undefined, [
+                        this.f.createModifier(SyntaxKind.ExportKeyword),
+                        this.f.createModifier(SyntaxKind.DeclareKeyword)
+                    ], this.f.createIdentifier(imp.identifier),
+                    undefined,
+                    this.f.createArrayTypeNode(this.f.createKeywordTypeNode(SyntaxKind.AnyKeyword))
+                ));
+            }
+
+            this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...this.sourceFile.statements, ...exports]);
+        }
+
+        return this.sourceFile;
+    }
+}
+
 let loaded = false;
-export const transformer: CustomTransformerFactory = (context) => {
+export const transformer: CustomTransformerFactory = function deepkitTransformer(context) {
     if (!loaded) {
         process.stderr.write('@deepkit/type transformer loaded\n');
         loaded = true;
     }
     return new ReflectionTransformer(context);
 };
+
+export const declarationTransformer: CustomTransformerFactory = function deepkitDeclarationTransformer(context) {
+    return new DeclarationTransformer(context);
+};
+

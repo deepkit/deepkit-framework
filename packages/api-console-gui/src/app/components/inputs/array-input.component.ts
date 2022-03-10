@@ -1,14 +1,14 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
-import { PropertySchema } from '@deepkit/type';
 import { arrayMoveItem } from '@deepkit/core';
 import { trackByIndex } from '../../utils';
 import { DataStructure } from '../../store';
+import { TypeArray } from '@deepkit/type';
 
 @Component({
     template: `
-        <ng-container *ngIf="model && property.templateArgs[0] as subType">
+        <ng-container *ngIf="model && type.type as subType">
             <div class="item" *ngFor="let item of model.children; trackBy: trackByIndex; let i = index; let last = last">
-                <api-console-input [property]="subType" [model]="item.getProperty(subType.name)"
+                <api-console-input [type]="subType" [model]="item.getProperty('value')"
                                    (modelChange)="emit()" (keyDown)="keyDown.emit($event)"></api-console-input>
                 <dui-icon clickable name="arrow_up" [disabled]="i === 0" (click)="up(item)"></dui-icon>
                 <dui-icon clickable name="arrow_down" [disabled]="last" (click)="down(item)"></dui-icon>
@@ -42,7 +42,7 @@ export class ArrayInputComponent implements OnInit, OnChanges {
     trackByIndex = trackByIndex;
     @Input() model!: DataStructure;
     @Output() modelChange = new EventEmitter();
-    @Input() property!: PropertySchema;
+    @Input() type!: TypeArray;
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
 
     emit() {

@@ -1,12 +1,13 @@
 #!/usr/bin/env ts-node-script
 import { createCrudRoutes, FrameworkModule } from '@deepkit/framework';
-import { Author, Book, SQLiteDatabase } from './src/database';
+import { Author, Book, SQLiteDatabase, User } from './src/database';
 import { MainController } from './src/controller/main.http';
 import { UsersCommand } from './src/controller/users.cli';
 import { Config } from './src/config';
 import { JSONTransport, Logger } from '@deepkit/logger';
 import { App } from '@deepkit/app';
 import { RpcController } from './src/controller/rpc.controller';
+import { ApiConsoleModule } from '@deepkit/api-console-module';
 
 const bookStoreCrud = createCrudRoutes([Author, Book]);
 
@@ -21,20 +22,20 @@ new App({
         // }, Logger, config.token('environment')),
     ],
     imports: [
-        // createCrudRoutes([User], { identifier: 'username', identifierChangeable: true }),
-        // bookStoreCrud,
+        createCrudRoutes([User], { identifier: 'username', identifierChangeable: true }),
+        bookStoreCrud,
 
-        // new ApiConsoleModule({ path: '/api' }).filter(filter => filter.excludeModules(bookStoreCrud)),
-        // new ApiConsoleModule({
-        //     path: '/api/bookstore',
-        //     markdown: `
-        //      # Bookstore
-        //
-        //      Welcome to my little bookstore API. Feel free to manage the content.
-        //
-        //      Have fun
-        //     `
-        // }).filter(filter => filter.forModules(bookStoreCrud)),
+        new ApiConsoleModule({ path: '/api' }).filter(filter => filter.excludeModules(bookStoreCrud)),
+        new ApiConsoleModule({
+            path: '/api/bookstore',
+            markdown: `
+             # Bookstore
+
+             Welcome to my little bookstore API. Feel free to manage the content.
+
+             Have fun
+            `
+        }).filter(filter => filter.forModules(bookStoreCrud)),
 
         new FrameworkModule({
             publicDir: 'public',
@@ -49,7 +50,7 @@ new App({
 
     if (config.environment === 'production') {
         //enable logging JSON messages instead of formatted strings
-        module.setupProvider(Logger).setTransport([new JSONTransport]);
+        module.setupProvider<Logger>().setTransport([new JSONTransport]);
     }
 })
     .loadConfigFromEnv()

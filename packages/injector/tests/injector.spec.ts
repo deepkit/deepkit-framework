@@ -326,7 +326,7 @@ test('injector optional dependency', () => {
 
     {
         const injector = Injector.from([MyServer]);
-        expect(() => injector.get(Connection)).toThrow(`Token 'Connection' in InjectorModule not found`);
+        expect(() => injector.get(Connection)).toThrow(`Service 'Connection' in InjectorModule not found`);
         expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
     }
 });
@@ -552,8 +552,8 @@ test('setup provider', () => {
 
     {
         const module = new InjectorModule([MyService]);
-        module.setupProvider(MyService).addTransporter('a');
-        module.setupProvider(MyService).addTransporter('b');
+        module.setupProvider<MyService>().addTransporter('a');
+        module.setupProvider<MyService>().addTransporter('b');
         expect(module.setupProviderRegistry.get(MyService).length).toBe(2);
         const i1 = Injector.fromModule(module);
         expect(i1.get(MyService).transporter).toEqual(['a', 'b']);
@@ -561,8 +561,8 @@ test('setup provider', () => {
 
     {
         const module = new InjectorModule([MyService]);
-        module.setupProvider(MyService).transporter = ['a'];
-        module.setupProvider(MyService).transporter = ['a', 'b', 'c'];
+        module.setupProvider<MyService>().transporter = ['a'];
+        module.setupProvider<MyService>().transporter = ['a', 'b', 'c'];
         expect(module.setupProviderRegistry.get(MyService).length).toBe(2);
         const i1 = Injector.fromModule(module);
         expect(i1.get(MyService).transporter).toEqual(['a', 'b', 'c']);

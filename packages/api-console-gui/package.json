@@ -4,9 +4,10 @@
   "description": "API Console GUI",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build --prod",
-    "watch": "ng build --watch --configuration development"
+    "start": "NODE_OPTIONS=--preserve-symlinks ng serve",
+    "build": "NODE_OPTIONS=--preserve-symlinks ng build --prod",
+    "build:dev": "NODE_OPTIONS=--preserve-symlinks ng build",
+    "watch": "NODE_OPTIONS=--preserve-symlinks ng build --watch --configuration development"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -39,6 +40,7 @@
     "@deepkit/logger": "^1.0.1-alpha.58",
     "@deepkit/rpc": "^1.0.1-alpha.58",
     "@deepkit/stopwatch": "^1.0.1-alpha.58",
+    "@deepkit/type-compiler": "^1.0.1-alpha.58",
     "@deepkit/type": "^1.0.1-alpha.58",
     "@deepkit/ui-library": "^1.0.1-alpha.56",
     "@types/node": "^12.11.1",

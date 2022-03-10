@@ -12,7 +12,7 @@ import { InjectorModule, InjectorToken, ProviderWithScope, Token } from '@deepki
 import { AbstractClassType, ClassType, CustomError, ExtractClassType, isClass } from '@deepkit/core';
 import { EventListener } from '@deepkit/event';
 import { WorkflowDefinition } from '@deepkit/workflow';
-import { getPartialSerializeFunction, reflect, serializer, TypeClass } from '@deepkit/type';
+import { getPartialSerializeFunction, reflect, serializer, Type, TypeClass } from '@deepkit/type';
 
 export type DefaultObject<T> = T extends undefined ? {} : T;
 
@@ -22,7 +22,7 @@ export interface MiddlewareConfig {
 
 export type MiddlewareFactory = () => MiddlewareConfig;
 
-export type ExportType = AbstractClassType | InjectorToken<any> | string | AppModule<any>;
+export type ExportType = AbstractClassType | InjectorToken<any> | string | AppModule<any> | Type;
 
 export interface ModuleDefinition {
     /**

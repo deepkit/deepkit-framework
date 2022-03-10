@@ -1,4 +1,4 @@
-import { AutoIncrement, Email, entity, MaxLength, MinLength, PrimaryKey, Reference, t, Unique } from '@deepkit/type';
+import { AutoIncrement, Email, entity, MaxLength, MinLength, PrimaryKey, Reference, Unique } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { Config } from './config';
@@ -18,7 +18,7 @@ export class User {
 @entity.name('author')
 export class Author {
     id: number & PrimaryKey & AutoIncrement = 0;
-    @t created: Date = new Date;
+    created: Date = new Date;
 
     email?: string & Email & MaxLength<100>;
 
@@ -33,10 +33,18 @@ export class Author {
     }
 }
 
+enum BookStatus {
+    reserved,
+    published,
+    revoked,
+}
+
 @entity.name('book')
 export class Book {
     id: number & PrimaryKey & AutoIncrement = 0;
     created: Date = new Date;
+
+    status: BookStatus = BookStatus.reserved;
 
     description: string & MaxLength<4096> = '';
 

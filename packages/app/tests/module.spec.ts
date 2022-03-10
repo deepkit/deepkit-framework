@@ -65,7 +65,7 @@ class MyAppModule extends createModule({
 
 function getServiceOnNewServiceContainer<T>(module: AppModule<any>, service: ClassType<T>): T {
     const serviceContainer = new ServiceContainer(module);
-    return serviceContainer.getInjectorContext().get(service);
+    return serviceContainer.getInjectorContext().get(service) as T;
 }
 
 test('import', () => {
@@ -164,7 +164,7 @@ test('configured provider', () => {
     {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider(Logger).addTransport('first').addTransport('second');
+            module.setupProvider<Logger>().addTransport('first').addTransport('second');
         })).getInjector(module).get(Logger);
         expect(logger.transporter).toEqual(['first', 'second']);
     }
@@ -172,7 +172,7 @@ test('configured provider', () => {
     {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider(Logger).transporter = ['first', 'second', 'third'];
+            module.setupProvider<Logger>().transporter = ['first', 'second', 'third'];
         })).getInjector(module).get(Logger);
         expect(logger.transporter).toEqual(['first', 'second', 'third']);
     }
@@ -180,7 +180,7 @@ test('configured provider', () => {
     {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider(Logger).addTransport(new Transporter);
+            module.setupProvider<Logger>().addTransport(new Transporter);
         })).getInjector(module).get(Logger);
         expect(logger.transporter[0] instanceof Transporter).toBe(true);
     }
@@ -188,7 +188,7 @@ test('configured provider', () => {
     {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider(Logger).addTransport(injectorReference(Transporter));
+            module.setupProvider<Logger>().addTransport(injectorReference(Transporter));
         })).getInjector(module).get(Logger);
         expect(logger.transporter[0] instanceof Transporter).toBe(true);
     }

@@ -415,9 +415,9 @@ test('brands', () => {
 
 test('throw', () => {
     expect(() => cast<number>('123abc')).toThrow('Cannot convert 123abc to number');
-    expect(() => cast<{ a: string }>(false)).toThrow('Cannot convert false to { a: string;}');
+    expect(() => cast<{ a: string }>(false)).toThrow('Cannot convert false to {a: string}');
     expect(() => cast<{ a: number }>({ a: 'abc' })).toThrow('a: Cannot convert abc to number');
-    expect(() => cast<{ a: { b: number } }>({ a: 'abc' })).toThrow('a: Cannot convert abc to { b: number;}');
+    expect(() => cast<{ a: { b: number } }>({ a: 'abc' })).toThrow('a: Cannot convert abc to {b: number}');
     expect(() => cast<{ a: { b: number } }>({ a: { b: 'abc' } })).toThrow('a.b: Cannot convert abc to number');
 });
 

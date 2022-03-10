@@ -39,7 +39,6 @@ import {
     SyntaxKind,
     unescapeLeadingUnderscores
 } from 'typescript';
-import { isArray } from '@deepkit/core';
 import { cloneNode as tsNodeClone, CloneNodeHook } from 'ts-clone-node';
 import { SourceFile } from './ts-types';
 
@@ -64,7 +63,7 @@ export function extractJSDocAttribute(node: Node, attribute: string): string {
     for (const doc of node.jsDoc) {
         if (!doc.tags) continue;
         for (const tag of doc.tags) {
-            if (tag.tagName.text === attribute && 'string' === typeof tag.comment) return tag.comment;
+            if (getIdentifierName(tag.tagName) === attribute && 'string' === typeof tag.comment) return tag.comment;
         }
     }
 
@@ -123,7 +122,7 @@ export class NodeConverter {
     toExpression<T extends PackExpression | PackExpression[]>(value?: T): Expression {
         if (value === undefined) return this.f.createIdentifier('undefined');
 
-        if (isArray(value)) {
+        if (Array.isArray(value)) {
             return this.f.createArrayLiteralExpression(this.f.createNodeArray(value.map(v => this.toExpression(v))) as NodeArray<Expression>);
         }
 
@@ -177,7 +176,7 @@ export function getGlobalsOfSourceFile(file: SourceFile): SymbolTable | void {
  * For imports that can removed (like a class import only used as type only, like `p: Model[]`) we have
  * to modify the import so TS does not remove it.
  */
-export function ensureImportIsEmitted(importSpecifier?: ImportSpecifier) {
+export function ensureImportIsEmitted(importSpecifier?: Node) {
     if (importSpecifier) {
         //make synthetic. Let the TS compiler keep this import
         (importSpecifier.flags as any) |= NodeFlags.Synthesized;

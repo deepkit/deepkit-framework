@@ -1,7 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { ReceiveType, resolveReceiveType, typeOf } from '../../../src/reflection/reflection';
-import { OuterType, ReflectionKind, Type } from '../../../src/reflection/type';
-import { Packed } from '../../../src/reflection/processor';
+import { ReflectionKind, Type } from '../../../src/reflection/type';
 
 test('typeOf', () => {
     const type = typeOf<string>();
@@ -32,7 +31,7 @@ test('method call', () => {
 });
 
 test('decorator call', () => {
-    let got: OuterType | undefined;
+    let got: Type | undefined;
 
     class HttpDecorator {
         something(): HttpDecorator {

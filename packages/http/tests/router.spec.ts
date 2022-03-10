@@ -3,7 +3,7 @@ import { dotToUrlPath, RouteParameterResolverContext, Router, UploadedFile } fro
 import { http, httpClass } from '../src/decorator';
 import { HttpBadRequestError, httpWorkflow, JSONResponse } from '../src/http';
 import { eventDispatcher } from '@deepkit/event';
-import { HttpBody, HttpBodyValidation, HttpQueries, HttpQuery, HttpRequest } from '../src/model';
+import { HttpBody, HttpBodyValidation, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model';
 import { getClassName, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils';
 import { Group, MinLength } from '@deepkit/type';
@@ -77,8 +77,8 @@ test('router parameters', async () => {
             return new JSONResponse(yes);
         }
 
-        @http.GET(':path').regexp('path', '.*')
-        any(path: string) {
+        @http.GET(':path')
+        any(path: HttpRegExp<string, '.*'>) {
             return new JSONResponse(path);
         }
     }
@@ -100,8 +100,8 @@ test('router parameters', async () => {
 
 test('router HttpRequest', async () => {
     class Controller {
-        @http.GET(':path').regexp('path', '.*')
-        anyReq(req: HttpRequest, path: string) {
+        @http.GET(':path')
+        anyReq(req: HttpRequest, path: HttpRegExp<string, '.*'>) {
             return [req.url, path];
         }
     }

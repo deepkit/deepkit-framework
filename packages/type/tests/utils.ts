@@ -1,4 +1,4 @@
-import { ParentLessType, ReflectionKind, Type } from '../src/reflection/type';
+import { getTypeJitContainer, ParentLessType, ReflectionKind, Type } from '../src/reflection/type';
 import { Processor, RuntimeStackEntry } from '../src/reflection/processor';
 import { expect } from '@jest/globals';
 import { visit } from '../src/reflection/reflection';
@@ -6,13 +6,71 @@ import { ReflectionOp } from '@deepkit/type-spec';
 import { isArray, isObject } from '@deepkit/core';
 
 export function assertValidParent(a: Type): void {
-    visit(a, (type, path, parent) => {
+    visitWithParent(a, (type, path, parent) => {
         if (type.parent && type.parent !== parent) {
             if (!parent) throw new Error('Parent was set, but not expected at ' + path);
             throw new Error('Invalid parent set at ' + path);
         }
     });
 }
+
+function reflectionName(kind: ReflectionKind): string {
+    return kind + '';
+}
+
+let visitStackId: number = 0;
+export function visitWithParent(type: Type, visitor: (type: Type, path: string, parent?: Type) => false | void, onCircular?: () => void, stack: number = visitStackId++, path: string = '', parent?: Type): void {
+    const jit = getTypeJitContainer(type);
+    if (jit.visitId === visitStackId) {
+        if (onCircular) onCircular();
+        return;
+    }
+    jit.visitId = visitStackId;
+
+    if (!path) path = '[' + reflectionName(type.kind) + ']';
+
+    if (visitor(type, path, parent) === false) return;
+
+    switch (type.kind) {
+        case ReflectionKind.objectLiteral:
+        case ReflectionKind.tuple:
+        case ReflectionKind.union:
+        case ReflectionKind.class:
+        case ReflectionKind.intersection:
+        case ReflectionKind.templateLiteral:
+            for (const member of type.types) visitWithParent(member, visitor, onCircular, stack, (path && path + '.') + 'types[' + reflectionName(member.kind) + ']', type);
+            break;
+        case ReflectionKind.string:
+        case ReflectionKind.number:
+        case ReflectionKind.bigint:
+        case ReflectionKind.symbol:
+        case ReflectionKind.regexp:
+        case ReflectionKind.boolean:
+            if (type.origin) visitWithParent(type.origin, visitor, onCircular, stack, (path && path + '.') + 'origin[' + reflectionName(type.origin.kind) + ']', type);
+            break;
+        case ReflectionKind.function:
+        case ReflectionKind.method:
+        case ReflectionKind.methodSignature:
+            visitWithParent(type.return, visitor, onCircular, stack, (path && path + '.') + 'return[' + reflectionName(type.return.kind) + ']', type);
+            for (const member of type.parameters) visitWithParent(member, visitor, onCircular, stack, (path && path + '.') + 'parameters[' + reflectionName(member.kind) + ']', type);
+            break;
+        case ReflectionKind.propertySignature:
+        case ReflectionKind.property:
+        case ReflectionKind.array:
+        case ReflectionKind.promise:
+        case ReflectionKind.parameter:
+        case ReflectionKind.tupleMember:
+        case ReflectionKind.rest:
+            const name = 'name' in type ? String(type.name) : 'type';
+            visitWithParent(type.type, visitor, onCircular, stack, (path && path + '.') + name + '[' + reflectionName(type.type.kind) + ']', type);
+            break;
+        case ReflectionKind.indexSignature:
+            visitWithParent(type.index, visitor, onCircular, stack, (path && path + '.') + 'index[' + reflectionName(type.index.kind) + ']', type);
+            visitWithParent(type.type, visitor, onCircular, stack, (path && path + '.') + 'type[' + reflectionName(type.type.kind) + ']', type);
+            break;
+    }
+}
+
 
 export function expectType<E extends ParentLessType>(
     pack: ReflectionOp[] | { ops: ReflectionOp[], stack: RuntimeStackEntry[], inputs?: RuntimeStackEntry[] },

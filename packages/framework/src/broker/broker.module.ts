@@ -14,13 +14,11 @@ import { eventDispatcher } from '@deepkit/event';
 import { onServerMainBootstrap, onServerMainShutdown } from '../application-server';
 import { BrokerConfig } from './broker.config';
 import { Broker, BrokerServer } from './broker';
-import { Logger } from '@deepkit/logger';
-import '@deepkit/core';
-import '@deepkit/type';
+import { LoggerInterface } from '@deepkit/logger';
 
 export class BrokerListener {
     constructor(
-        protected logger: Logger,
+        protected logger: LoggerInterface,
         protected broker: Broker,
         protected brokerServer: BrokerServer,
         protected listen: BrokerConfig['listen'],
