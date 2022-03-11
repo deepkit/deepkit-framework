@@ -650,6 +650,7 @@ test('setup provider by interface 2', () => {
 
     interface ServiceInterface {
         list: any[];
+
         add(item: any): any;
     }
 
@@ -1175,4 +1176,97 @@ test('exported token from interface', () => {
         const moduleController = injector.get<ModuleController>();
         expect(moduleController.logger).toBeInstanceOf(OverwrittenLogger);
     }
+});
+
+
+test('2 level deep module keeps its instances encapsulated', () => {
+    class Logger {
+    }
+
+
+    class QualificationRepository {
+    }
+
+    class QualificationService {
+        constructor(public qualificationRepo: QualificationRepository, public logger: Logger) {
+        }
+    }
+
+    class QualificationModule extends InjectorModule {
+        constructor() {
+            super();
+            this.addProvider(QualificationRepository, QualificationService);
+            this.addExport(QualificationService);
+        }
+    }
+
+    class EmergencyService {
+        constructor(public qualificationService: QualificationService) {
+        }
+    }
+
+    class EmergencyModule extends InjectorModule {
+    }
+
+    const emergencyModule = new EmergencyModule([EmergencyService]).addImport(new QualificationModule).addExport(EmergencyService);
+
+    class AnotherModule extends InjectorModule {
+    }
+
+    class AnotherService {
+        constructor(public qualificationService: QualificationService) {
+        }
+    }
+
+    const anotherModule = new AnotherModule([AnotherService]).addImport(new QualificationModule);
+
+    /**
+     * Module hierarchy is like
+     * app
+     *    - EmergencyModule
+     *        - QualificationModule
+     *    - AnotherModule
+     *        - QualificationModule
+     *
+     *  Each sub-module of app has its own QualificationModule and thus its instances are scoped and not moved to root app.
+     *
+     */
+    const app = new InjectorModule([Logger]).addImport(emergencyModule, anotherModule);
+
+    const injector = new InjectorContext(app);
+    const emergencyService = injector.get(EmergencyService, emergencyModule);
+    expect(emergencyService).toBeInstanceOf(EmergencyService);
+    expect(emergencyService === injector.get(EmergencyService)); //it's moved to the root module
+    expect(emergencyService.qualificationService).toBeInstanceOf(QualificationService);
+    expect(emergencyService.qualificationService.qualificationRepo).toBeInstanceOf(QualificationRepository);
+    expect(emergencyService.qualificationService.logger).toBeInstanceOf(Logger);
+
+    const emergencyService2 = injector.get(AnotherService, anotherModule);
+    expect(emergencyService.qualificationService !== emergencyService2.qualificationService).toBe(true);
+});
+
+test('encapsulated module services cannot be used', () => {
+    //encapsulated service
+    class Module1Service {
+    }
+
+    class MyModule1 extends InjectorModule {
+    }
+
+    const myModule1 = new MyModule1([Module1Service]);
+
+    class Module2Service {
+        //this should not be possible, even if we import MyModule1
+        constructor(public module1: Module1Service) {
+        }
+    }
+
+    class MyModule2 extends InjectorModule {
+    }
+
+    const myModule2 = new MyModule2([Module2Service]).addImport(myModule1);
+
+    const app = new InjectorModule([]).addImport(myModule2);
+    const injector = new InjectorContext(app);
+    expect(() => injector.get(Module2Service, myModule2)).toThrow(`Undefined dependency "module1: Module1Service" of Module2Service(?)`);
 });

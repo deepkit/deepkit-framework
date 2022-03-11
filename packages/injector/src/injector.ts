@@ -633,16 +633,6 @@ export class Injector implements InjectorInterface {
         let foundPreparedProvider: PreparedProvider | undefined = undefined;
         for (const module of resolveDependenciesFrom) {
             foundPreparedProvider = module.getPreparedProvider(findToken);
-            if (foundPreparedProvider) {
-                if (foundPreparedProvider) {
-                    //check if the found provider was actually exported to this current module.
-                    //if not it means that provider is encapsulated living only in its module and can not be accessed from other modules.
-                    const moduleHasAccessToThisProvider = foundPreparedProvider.modules.some(m => m === module);
-                    if (!moduleHasAccessToThisProvider) {
-                        foundPreparedProvider = undefined;
-                    }
-                }
-            }
         }
 
         if (!foundPreparedProvider) {
@@ -789,16 +779,6 @@ export class Injector implements InjectorInterface {
         let foundPreparedProvider: PreparedProvider | undefined = undefined;
         for (const module of resolveDependenciesFrom) {
             foundPreparedProvider = module.getPreparedProvider(findToken);
-            if (foundPreparedProvider) {
-                if (foundPreparedProvider) {
-                    //check if the found provider was actually exported to this current module.
-                    //if not it means that provider is encapsulated living only in its module and can not be accessed from other modules.
-                    const moduleHasAccessToThisProvider = foundPreparedProvider.modules.some(m => m === module);
-                    if (!moduleHasAccessToThisProvider) {
-                        foundPreparedProvider = undefined;
-                    }
-                }
-            }
         }
 
         if (!foundPreparedProvider) {
