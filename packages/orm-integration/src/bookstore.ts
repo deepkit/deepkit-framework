@@ -714,7 +714,7 @@ export const bookstoreTests = {
         }
     },
 
-    async enum(databaseFactory: DatabaseFactory) {
+    async enumTest(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
 
         const user = new User('Peter');
