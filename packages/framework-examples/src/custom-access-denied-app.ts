@@ -1,11 +1,15 @@
 #!/usr/bin/env ts-node
-import { Application, eventDispatcher, HtmlResponse, http, HttpAccessDeniedError, httpWorkflow } from '@deepkit/framework';
 
 /*
 
 This example demonstrates how to overwrite the AccessDenied event and print your own response.
 
 */
+
+import { App } from '@deepkit/app';
+import { eventDispatcher } from '@deepkit/event';
+import { HtmlResponse, http, HttpAccessDeniedError, httpWorkflow } from '@deepkit/http';
+import { FrameworkModule } from '@deepkit/framework';
 
 @http.controller()
 class ApiController {
@@ -22,9 +26,12 @@ class AuthListener {
     }
 }
 
-Application.create({
+new App({
     listeners: [
         AuthListener
     ],
-    controllers: [ApiController]
+    controllers: [ApiController],
+    imports: [
+        new FrameworkModule(),
+    ],
 }).run();

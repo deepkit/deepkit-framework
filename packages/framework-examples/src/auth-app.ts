@@ -1,16 +1,4 @@
 #!/usr/bin/env ts-node
-import {
-    Application,
-    eventDispatcher,
-    http,
-    HttpAction,
-    httpWorkflow,
-    injectable,
-    JSONResponse,
-    Logger,
-    RouteParameterResolverContext,
-    RouteParameterResolverTag
-} from '@deepkit/framework';
 
 /*
 
@@ -28,6 +16,12 @@ $ curl -H "Authorization: bar" http://localhost:8080
 $ curl http://localhost:8080
 
 */
+
+import { http, HttpAction, httpWorkflow, JSONResponse, RouteParameterResolverContext } from '@deepkit/http';
+import { eventDispatcher } from '@deepkit/event';
+import { Logger } from '@deepkit/logger';
+import { App } from '@deepkit/app';
+import { FrameworkModule } from '@deepkit/framework';
 
 class User {
     constructor(
@@ -47,7 +41,14 @@ function authGroup(group: 'api' | 'frontend') {
     }
 }
 
-@http.controller()
+class MyRouteParameterResolver {
+    resolve(context: RouteParameterResolverContext): any | Promise<any> {
+        if (!context.request.store.user) throw new Error('No user loaded');
+        return context.request.store.user;
+    }
+}
+
+@http.controller().resolveParameter(User, MyRouteParameterResolver)
 class ApiController {
     @http.GET().use(authGroup('api'))
     api(user: User) {
@@ -55,7 +56,6 @@ class ApiController {
     }
 }
 
-@injectable
 class AuthListener {
     constructor(protected logger: Logger) {}
 
@@ -78,19 +78,15 @@ class AuthListener {
     }
 }
 
-class MyRouteParameterResolver {
-    resolve(context: RouteParameterResolverContext): any | Promise<any> {
-        if (!context.request.store.user) throw new Error('No user loaded');
-        return context.request.store.user;
-    }
-}
-
-Application.create({
+new App({
+    controllers: [ApiController],
     providers: [
-        RouteParameterResolverTag.provide(MyRouteParameterResolver).forClassType(User),
+        MyRouteParameterResolver,
     ],
     listeners: [
         AuthListener
     ],
-    controllers: [ApiController]
+    imports: [
+        new FrameworkModule(),
+    ],
 }).run();
