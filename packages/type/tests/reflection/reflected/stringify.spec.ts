@@ -94,7 +94,7 @@ test('stringifyType methods', () => {
   a(b: string): void;
   b: string;
 }`);
-    expect(stringifyType(typeOf<C>(), {defaultIsOptional: true})).toBe(`C {
+    expect(stringifyType(typeOf<C>(), { showFullDefinition: true, defaultIsOptional: true })).toBe(`C {
   a(b: string): void;
   b?: string;
 }`);
@@ -130,7 +130,7 @@ test('stringifyType recursive', () => {
   admin: User;
 }`);
 
-    expect(stringifyType(typeOf<User>(), {showNames: false, showDescription: true})).toBe(`User {
+    expect(stringifyType(typeOf<User>(), { showNames: false, showFullDefinition: true, showDescription: true })).toBe(`User {
   id: number;
   /* the user */
   admin: User;
@@ -150,16 +150,17 @@ test('description interface', () => {
         username: string;
     }
 
-    expect(stringifyType(typeOf<User>(), {showNames: false, showDescription: true})).toBe(`User {
+    expect(stringifyType(typeOf<User>(), { showNames: false, showFullDefinition: true, showDescription: true })).toBe(`User {
   id: number;
   /* the user
    * another line? */
   username: string;
-}`);;
+}`);
+    ;
 
     const json = serializeType(typeOf<User>());
     const back = deserializeType(json);
-    expect(stringifyType(back, {showNames: false, showDescription: true})).toBe(`User {
+    expect(stringifyType(back, { showNames: false, showFullDefinition: true, showDescription: true })).toBe(`User {
   id: number;
   /* the user
    * another line? */
@@ -171,7 +172,7 @@ test('description interface', () => {
         id: number;
     }
 
-    expect(stringifyType(typeOf<small>(), {showNames: false, showDescription: true})).toBe(`small {\n  /* thats the number */\n  id: number;\n}`);
+    expect(stringifyType(typeOf<small>(), { showNames: false, showFullDefinition: true, showDescription: true })).toBe(`small {\n  /* thats the number */\n  id: number;\n}`);
 });
 
 test('description class', () => {
@@ -184,7 +185,7 @@ test('description class', () => {
         username?: string;
     }
 
-    expect(stringifyType(typeOf<User>(), {showNames: false, showDescription: true})).toBe(`User {
+    expect(stringifyType(typeOf<User>(), { showNames: false, showFullDefinition: true, showDescription: true })).toBe(`User {
   id: number;
   /* the user
    * another line? */
@@ -202,14 +203,14 @@ test('stringifyType heritage', () => {
         username!: string;
     }
 
-    expect(stringifyType(typeOf<User>())).toBe(`User {
+    expect(stringifyResolvedType(typeOf<User>())).toBe(`User {
   id: number;
   username: string;
 }`);
 
     const serialized = serializeType(typeOf<User>());
     const back = deserializeType(serialized);
-    expect(stringifyType(back)).toBe(`User {
+    expect(stringifyResolvedType(back)).toBe(`User {
   id: number;
   username: string;
 }`);
@@ -223,16 +224,89 @@ test('enum', () => {
     interface User {
         status: MyEnum;
     }
-    expect(stringifyType(typeOf<MyEnum>(), {showNames: false})).toBe('MyEnum {a: 0, b: 1, c: 4}');
-    expect(stringifyType(typeOf<User>(), {showNames: false})).toBe('User {status: MyEnum {a: 0, b: 1, c: 4}}');
+
+    expect(stringifyResolvedType(typeOf<MyEnum>())).toBe('MyEnum {a: 0, b: 1, c: 4}');
+    expect(stringifyResolvedType(typeOf<User>())).toBe('User {status: MyEnum {a: 0, b: 1, c: 4}}');
 
     const json = serializeType(typeOf<MyEnum>());
     const back = deserializeType(json);
-    expect(stringifyType(back, {showNames: false})).toBe('MyEnum {a: 0, b: 1, c: 4}');
-})
+    expect(stringifyResolvedType(back)).toBe('MyEnum {a: 0, b: 1, c: 4}');
+});
+
+test('stringifyType class default', () => {
+    class Config {
+        a?: string;
+        url: string = '0.0.0.0';
+    }
+
+    expect(stringifyType(typeOf<Config>(), { showFullDefinition: true, showDefaults: true })).toBe(`Config {
+  a?: string;
+  url: string = "0.0.0.0";
+}`);
+
+    expect(stringifyType(typeOf<Config>(), { showFullDefinition: true, showDefaults: true, defaultValues: { a: 'bar', url: '127.0.0.1' } })).toBe(`Config {
+  a?: string = "bar";
+  url: string = "127.0.0.1";
+}`);
+});
+
+test('stringifyType interface default', () => {
+    interface Config {
+        a?: string;
+        url: string;
+    }
+
+    expect(stringifyType(typeOf<Config>(), { showFullDefinition: true, showDefaults: true })).toBe(`Config {
+  a?: string;
+  url: string;
+}`);
+
+    expect(stringifyType(typeOf<Config>(), { showFullDefinition: true, showDefaults: true, defaultValues: { a: 'bar', url: '127.0.0.1' } })).toBe(`Config {
+  a?: string = "bar";
+  url: string = "127.0.0.1";
+}`);
+});
+
+test('stringifyType class deep default', () => {
+    class Config {
+        a?: string;
+        sub?: { url: string };
+    }
+
+    expect(stringifyType(typeOf<Config>(), { showFullDefinition: true, showDefaults: true })).toBe(`Config {
+  a?: string;
+  sub?: {url: string};
+}`);
+
+    expect(stringifyType(typeOf<Config>(), { showFullDefinition: true, showDefaults: true, defaultValues: { sub: { url: '127.0.0.1' } } })).toBe(`Config {
+  a?: string;
+  sub?: {url: string = "127.0.0.1"};
+}`);
+});
+
+test('stringifyType interface deep default', () => {
+    interface Config {
+        a?: string;
+        sub: { url: string };
+    }
+
+    expect(stringifyType(typeOf<Config>(), { showFullDefinition: true, showDefaults: true })).toBe(`Config {
+  a?: string;
+  sub: {url: string};
+}`);
+
+    expect(stringifyType(typeOf<Config>(), { showFullDefinition: true, showDefaults: true, defaultValues: { sub: { url: '127.0.0.1' } } })).toBe(`Config {
+  a?: string;
+  sub: {url: string = "127.0.0.1"};
+}`);
+});
+
+test('stringifyType object literal inline', () => {
+    expect(stringifyType(typeOf<{ a: string }>())).toBe(`{a: string}`);
+});
 
 test('stringifyType type', () => {
     const type = typeOf<Type>();
-    const s = stringifyType(type);
+    const s = stringifyType(type, {showFullDefinition: true});
     console.log(s);
 });

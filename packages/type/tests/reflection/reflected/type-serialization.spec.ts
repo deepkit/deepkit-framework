@@ -1,8 +1,23 @@
 import { getClassName } from '@deepkit/core';
 import { expect, test } from '@jest/globals';
-import { ReceiveType, reflect, resolveReceiveType, typeOf } from '../../../src/reflection/reflection';
-import { assertType, findMember, isSameType, PrimaryKey, primaryKeyAnnotation, ReflectionKind, stringifyType, Type, TypeClass, TypeProperty } from '../../../src/reflection/type';
+import { ReceiveType, reflect, ReflectionClass, resolveReceiveType, typeOf } from '../../../src/reflection/reflection';
+import {
+    assertType,
+    Entity,
+    entityAnnotation,
+    findMember,
+    isSameType,
+    PrimaryKey,
+    primaryKeyAnnotation,
+    Reference,
+    ReflectionKind,
+    Type,
+    TypeClass,
+    TypeProperty
+} from '../../../src/reflection/type';
 import { deserializeType, serializeType } from '../../../src/type-serialization';
+import { entity } from '../../../src/decorator';
+import { deserialize } from '../../../src/serializer-facade';
 
 test('serialize basics', () => {
     expect(serializeType(typeOf<string>())).toEqual([{ kind: ReflectionKind.string }]);
@@ -312,4 +327,92 @@ test('Type excluded', () => {
     assertType(typeMember, ReflectionKind.property);
     expect(typeMember.type.typeName).toBe('Type');
     expect(typeMember.type.kind).toBe(ReflectionKind.any);
+});
+
+test('entity classes', () => {
+    @entity.name('user').collection('users').databaseSchema('db').index(['id'], { name: 'primary' })
+    class User {
+        id: number = 0;
+    }
+
+    const reflection1 = ReflectionClass.from(User);
+
+    const json = serializeType(typeOf<User>());
+    const back = deserializeType(json, { disableReuse: true });
+
+    const entityAttributes = entityAnnotation.getFirst(back);
+    expect(entityAttributes).not.toBeUndefined();
+    if (entityAttributes) {
+        expect(entityAttributes.name).toBe('user');
+        expect(entityAttributes.collection).toBe('users');
+        expect(entityAttributes.database).toBe('db');
+        expect(entityAttributes.singleTableInheritance).toBe(undefined);
+        expect(entityAttributes.indexes).toEqual([{ names: ['id'], options: { name: 'primary' } }]);
+    }
+
+    const reflection = ReflectionClass.from(back);
+    expect(reflection1 !== reflection).toBe(true);
+
+    expect(reflection.name).toBe('user');
+    expect(reflection.collectionName).toBe('users');
+    expect(reflection.databaseSchemaName).toBe('db');
+    expect(reflection.singleTableInheritance).toBe(false);
+    expect(reflection.indexes).toEqual([{ names: ['id'], options: { name: 'primary' } }]);
+});
+
+test('entity interface', () => {
+    interface User extends Entity<{ name: 'user', collection: 'users', database: 'db', indexes: [{ names: ['id'], options: { name: 'primary' } }] }> {
+        id: number;
+    }
+
+    const json = serializeType(typeOf<User>());
+    const back = deserializeType(json, { disableReuse: true });
+
+    const entityAttributes = entityAnnotation.getFirst(back);
+    expect(entityAttributes).not.toBeUndefined();
+    if (entityAttributes) {
+        expect(entityAttributes.name).toBe('user');
+        expect(entityAttributes.collection).toBe('users');
+        expect(entityAttributes.database).toBe('db');
+        expect(entityAttributes.singleTableInheritance).toBe(undefined);
+        expect(entityAttributes.indexes).toEqual([{ names: ['id'], options: { name: 'primary' } }]);
+    }
+});
+
+test('class constructor back serialized', () => {
+    class User {
+        id: number = 0;
+
+        constructor(unused: string, public username: string) {
+        }
+    }
+
+    const json = serializeType(typeOf<User>());
+    const back = deserializeType(json, { disableReuse: true });
+
+    const instance = deserialize({id: 2, username: 'Peter'}, undefined, undefined, back);
+    expect(instance).toEqual({id: 2, username: 'Peter'});
+});
+
+test('class reference with entity options', () => {
+    @entity.name('author')
+    class Author {
+        id: number & PrimaryKey = 0;
+        firstName?: string;
+    }
+
+    class Book {
+        author?: Author & Reference;
+    }
+
+    const json = serializeType(typeOf<Book>());
+    const back = deserializeType(json, {disableReuse: true});
+    assertType(back, ReflectionKind.class);
+    const author = findMember('author', back);
+    assertType(author, ReflectionKind.property);
+    const authorReflection = ReflectionClass.from(author.type);
+    expect(authorReflection.getName()).toBe('author');
+    expect(authorReflection.getPrimary().name).toBe('id');
+
+    expect(authorReflection.getProperty('firstName').isOptional()).toBe(true);
 });

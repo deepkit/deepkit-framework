@@ -210,7 +210,6 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
                 //todo: call signature
                 //todo: index signatures
 
-
                 if (isMember(member)) {
                     if (member.name === 'constructor') continue;
                     const leftMember = (left.types as Type[]).find(v => isMember(v) && v.name === member.name);

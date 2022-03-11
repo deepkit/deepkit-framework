@@ -66,7 +66,6 @@ export class MigrationInfo {
 
 export type SeedResult = { function: string, example: any }[];
 
-
 export type EntityPropertySeedReference = 'random' | 'random-seed' | 'create';
 
 @entity.name('orm-browser/seed/property')

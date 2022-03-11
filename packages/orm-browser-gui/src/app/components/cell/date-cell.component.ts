@@ -1,5 +1,5 @@
 import { Component, Input } from '@angular/core';
-import { PropertySchema } from '@deepkit/type';
+import { Type } from '@deepkit/type';
 
 @Component({
     template: `
@@ -15,5 +15,5 @@ import { PropertySchema } from '@deepkit/type';
 })
 export class DateCellComponent {
     @Input() model: any;
-    @Input() property!: PropertySchema;
+    @Input() type!: Type;
 }

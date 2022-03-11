@@ -1,5 +1,5 @@
-import { ClassType } from '@deepkit/core';
-import { Types } from '@deepkit/type';
+import { ClassType, getClassName } from '@deepkit/core';
+import { isMongoIdType, isSetType, isUUIDType, ReflectionKind, TypeRegistry } from '@deepkit/type';
 import { ClassCellComponent } from './components/cell/class-cell.component';
 import { DateCellComponent } from './components/cell/date-cell.component';
 import { EnumCellComponent } from './components/cell/enum-cell.component';
@@ -15,58 +15,71 @@ import { JsonCellComponent } from './components/cell/json-cell.component';
 import { BinaryInputComponent } from './components/edit/binary-input.component';
 import { BinaryCellComponent } from './components/cell/binary-cell.component';
 
-export class Registry {
-    inputComponents: { [name in Types]?: ClassType } = {
-        string: StringInputComponent,
-        array: ArrayInputComponent,
-        number: StringInputComponent,
-        uuid: StringInputComponent,
-        objectId: StringInputComponent,
-        class: ClassInputComponent,
-        date: DateInputComponent,
-        enum: EnumInputComponent,
-        map: JsonInputComponent,
-        union: JsonInputComponent,
-        any: JsonInputComponent,
-        partial: ClassInputComponent,
-        literal: JsonInputComponent,
-        patch: JsonInputComponent,
-        arrayBuffer: BinaryInputComponent,
-        Uint8Array: BinaryInputComponent,
-        Int8Array: BinaryInputComponent,
-        Uint8ClampedArray: BinaryInputComponent,
-        Int16Array: BinaryInputComponent,
-        Uint16Array: BinaryInputComponent,
-        Int32Array: BinaryInputComponent,
-        Uint32Array: BinaryInputComponent,
-        Float32Array: BinaryInputComponent,
-        Float64Array: BinaryInputComponent,
-    };
+export const inputRegistry = new TypeRegistry<ClassType>();
 
-    cellComponents: { [name in Types]?: ClassType } = {
-        string: StringCellComponent,
-        array: ArrayCellComponent,
-        number: StringCellComponent,
-        uuid: StringCellComponent,
-        objectId: StringCellComponent,
-        date: DateCellComponent,
-        class: ClassCellComponent,
-        enum: EnumCellComponent,
-        map: JsonCellComponent,
-        union: JsonCellComponent,
-        any: JsonCellComponent,
-        partial: ClassInputComponent,
-        literal: JsonCellComponent,
-        patch: JsonCellComponent,
-        arrayBuffer: BinaryCellComponent,
-        Uint8Array: BinaryCellComponent,
-        Uint8ClampedArray: BinaryCellComponent,
-        Int16Array: BinaryCellComponent,
-        Uint16Array: BinaryCellComponent,
-        Int32Array: BinaryCellComponent,
-        Uint32Array: BinaryCellComponent,
-        Float32Array: BinaryCellComponent,
-        Float64Array: BinaryCellComponent,
-    };
+inputRegistry.set(ReflectionKind.string, StringInputComponent);
+inputRegistry.set(ReflectionKind.number, StringInputComponent);
+inputRegistry.set(ReflectionKind.bigint, StringInputComponent);
+// inputRegistry.set(ReflectionKind.union, UnionInputComponent);
+inputRegistry.set(type => type.kind === ReflectionKind.array || isSetType(type), ArrayInputComponent);
+inputRegistry.set(ReflectionKind.any, JsonInputComponent);
 
-}
+//todo: needs new component
+inputRegistry.set(ReflectionKind.literal, JsonInputComponent);
+inputRegistry.set(ReflectionKind.rest, JsonInputComponent);
+inputRegistry.set(ReflectionKind.promise, JsonInputComponent);
+inputRegistry.set(ReflectionKind.tuple, JsonInputComponent);
+inputRegistry.set(ReflectionKind.regexp, JsonInputComponent);
+
+inputRegistry.set([ReflectionKind.object, ReflectionKind.unknown], JsonInputComponent);
+inputRegistry.setClass(Date, DateInputComponent);
+inputRegistry.setBinary(BinaryInputComponent);
+inputRegistry.set(ReflectionKind.enum, EnumInputComponent);
+inputRegistry.set([ReflectionKind.class, ReflectionKind.objectLiteral], ClassInputComponent);
+inputRegistry.set(isUUIDType, StringInputComponent);
+inputRegistry.set(isMongoIdType, StringInputComponent);
+// inputRegistry.set(type => {
+//     if (type.kind === ReflectionKind.objectLiteral && type.types.length && type.types.every(v => v.kind === ReflectionKind.indexSignature)) return true;
+//     return isMapType(type);
+// }, MapInputComponent);
+inputRegistry.set(type => {
+    return type.kind === ReflectionKind.class && getClassName(type.classType) === 'UploadedFile';
+}, BinaryInputComponent);
+
+
+
+
+
+
+
+
+export const cellRegistry = new TypeRegistry<ClassType>();
+
+cellRegistry.set(ReflectionKind.string, StringCellComponent);
+cellRegistry.set(ReflectionKind.number, StringCellComponent);
+cellRegistry.set(ReflectionKind.bigint, StringCellComponent);
+// cellRegistry.set(ReflectionKind.union, UnionCellComponent);
+cellRegistry.set(type => type.kind === ReflectionKind.array || isSetType(type), ArrayCellComponent);
+cellRegistry.set(ReflectionKind.any, JsonCellComponent);
+
+//todo: needs new component
+cellRegistry.set(ReflectionKind.literal, JsonCellComponent);
+cellRegistry.set(ReflectionKind.rest, JsonCellComponent);
+cellRegistry.set(ReflectionKind.promise, JsonCellComponent);
+cellRegistry.set(ReflectionKind.tuple, JsonCellComponent);
+cellRegistry.set(ReflectionKind.regexp, JsonCellComponent);
+
+cellRegistry.set([ReflectionKind.object, ReflectionKind.unknown], JsonCellComponent);
+cellRegistry.setClass(Date, DateCellComponent);
+cellRegistry.setBinary(BinaryCellComponent);
+cellRegistry.set(ReflectionKind.enum, EnumCellComponent);
+cellRegistry.set([ReflectionKind.class, ReflectionKind.objectLiteral], ClassCellComponent);
+cellRegistry.set(isUUIDType, StringCellComponent);
+cellRegistry.set(isMongoIdType, StringCellComponent);
+// cellRegistry.set(type => {
+//     if (type.kind === ReflectionKind.objectLiteral && type.types.length && type.types.every(v => v.kind === ReflectionKind.indexSignature)) return true;
+//     return isMapType(type);
+// }, MapCellComponent);
+cellRegistry.set(type => {
+    return type.kind === ReflectionKind.class && getClassName(type.classType) === 'UploadedFile';
+}, BinaryCellComponent);

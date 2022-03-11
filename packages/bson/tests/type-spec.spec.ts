@@ -10,7 +10,6 @@ import {
     hasEmbedded,
     integer,
     MongoId,
-    OuterType,
     PrimaryKey,
     ReceiveType,
     Reference,
@@ -18,6 +17,7 @@ import {
     ReflectionKind,
     resolveReceiveType,
     SignedBinaryBigInt,
+    Type,
     typeOf,
     TypePropertySignature,
     UUID
@@ -36,7 +36,7 @@ Error.stackTraceLimit = 150;
 /**
  * @reflection never
  */
-function needsWrapper(type: OuterType): boolean {
+function needsWrapper(type: Type): boolean {
     return hasEmbedded(type) || (type.kind == ReflectionKind.class && type.types.length === 0) || (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral);
 }
 
@@ -46,7 +46,7 @@ function needsWrapper(type: OuterType): boolean {
 export function roundTrip<T>(value: T | any, type?: ReceiveType<T>): T {
     type = resolveReceiveType(type);
     if (needsWrapper(type)) {
-        const t: OuterType = copyAndSetParent({
+        const t: Type = copyAndSetParent({
             kind: ReflectionKind.objectLiteral,
             types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: { kind: ReflectionKind.never } }]
         });
@@ -68,7 +68,7 @@ export function roundTrip<T>(value: T | any, type?: ReceiveType<T>): T {
 export function serialize<T>(value: T | any, type?: ReceiveType<T>): T {
     type = resolveReceiveType(type);
     if (needsWrapper(type)) {
-        const t: OuterType = copyAndSetParent({
+        const t: Type = copyAndSetParent({
             kind: ReflectionKind.objectLiteral,
             types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: { kind: ReflectionKind.never } }]
         });
@@ -88,7 +88,7 @@ export function serialize<T>(value: T | any, type?: ReceiveType<T>): T {
 export function deserialize<T>(value: any, type?: ReceiveType<T>): T {
     type = resolveReceiveType(type);
     if (needsWrapper(type)) {
-        const t: OuterType = copyAndSetParent({
+        const t: Type = copyAndSetParent({
             kind: ReflectionKind.objectLiteral,
             types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: { kind: ReflectionKind.never } }]
         });

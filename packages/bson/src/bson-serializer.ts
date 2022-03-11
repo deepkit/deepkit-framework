@@ -618,9 +618,9 @@ function handleObjectLiteral(
     let before: string = 'state.size += 4; //object size';
     let after: string = 'state.size += 1; //null';
     if (target === 'serialization') {
-        const start = state.setVariable('start');
+        const start = state.compilerContext.reserveName('start');
         before = `
-        ${start} = state.writer.offset;
+        var ${start} = state.writer.offset;
         state.writer.offset += 4; //size`;
         after = `
         state.writer.writeNull();
@@ -795,6 +795,7 @@ function handleObjectLiteral(
     }
 
     state.addCode(`
+        //handle objectLiteral via propertyName ${state.propertyName ? collapsePath([state.propertyName]) : ''}
         ${before}
         ${lines.join('\n')}
         ${after}
@@ -913,9 +914,9 @@ function serializeString(type: Type, state: TemplateState) {
         serializePropertyNameAware(type, state, BSONType.OID, `typeof ${state.accessor} === 'string' && ${state.accessor}.length === 24`, `state.writer.writeObjectId(${state.accessor});`);
         return;
     }
-    const start = state.setVariable('start', 0);
+    const start = state.compilerContext.reserveName('start');
     serializePropertyNameAware(type, state, BSONType.STRING, `typeof ${state.accessor} === 'string'`, `
-        ${start} = state.writer.offset;
+        var ${start} = state.writer.offset;
         state.writer.offset += 4; //size placeholder
         state.writer.writeString(${state.accessor});
         state.writer.writeByte(0); //null
@@ -1082,11 +1083,11 @@ function sizerArray(elementType: Type, state: TemplateState) {
 function serializeArray(elementType: Type, state: TemplateState) {
     state.setContext({ isIterable });
 
-    const start = state.setVariable('start', 0);
+    const start = state.compilerContext.reserveName('start');
     const i = state.compilerContext.reserveName('i');
     const item = state.compilerContext.reserveName('item');
     serializePropertyNameAware(elementType, state, BSONType.ARRAY, `isIterable(${state.accessor})`, `
-        ${start} = state.writer.offset;
+        var ${start} = state.writer.offset;
         state.writer.offset += 4; //size
 
         let ${i} = 0;
@@ -1131,11 +1132,11 @@ function serializeTuple(type: TypeTuple, state: TemplateState) {
         }
     }
 
-    const start = state.setVariable('start', 0);
+    const start = state.compilerContext.reserveName('start');
     state.setContext({ isArray });
     serializePropertyNameAware(type, state, BSONType.ARRAY, `isArray(${state.accessor})`, `
         let ${i} = 0;
-        ${start} = state.writer.offset;
+        var ${start} = state.writer.offset;
         state.writer.offset += 4; //size
 
         ${lines.join('\n')}
@@ -1265,7 +1266,7 @@ export class BSONBinarySerializer extends Serializer {
         this.bsonSerializeRegistry.register(ReflectionKind.bigint, serializeBigInt);
         this.bsonSerializeRegistry.register(ReflectionKind.literal, serializeLiteral);
         this.bsonSerializeRegistry.register(ReflectionKind.regexp, serializeRegExp);
-        this.bsonSerializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type as Type, state));
+        this.bsonSerializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
         this.bsonSerializeRegistry.register(ReflectionKind.tuple, serializeTuple);
         this.bsonSerializeRegistry.register(ReflectionKind.promise, (type, state) => executeTemplates(state, type.type));
         this.bsonSerializeRegistry.register(ReflectionKind.enum, (type, state) => executeTemplates(state, type.indexType));

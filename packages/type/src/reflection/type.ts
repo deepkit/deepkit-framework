@@ -853,9 +853,15 @@ function resolveObjectIndexType(type: TypeObjectLiteral | TypeClass, index: Type
         } else {
             return { kind: ReflectionKind.never };
         }
-    } else {
-        return { kind: ReflectionKind.never };
+    } else if (index.kind === ReflectionKind.string || index.kind === ReflectionKind.number || index.kind === ReflectionKind.symbol) {
+        //check if index signature match
+        for (const member of type.types) {
+            if (member.kind === ReflectionKind.indexSignature) {
+                if (isExtendable(index, member.index)) return member.type;
+            }
+        }
     }
+    return { kind: ReflectionKind.never };
 }
 
 interface CStack {
@@ -1039,6 +1045,8 @@ export function indexAccess(container: Type, index: Type): Type {
         } else {
             return { kind: ReflectionKind.never };
         }
+    } else if (container.kind === ReflectionKind.any) {
+        return container;
     }
     return { kind: ReflectionKind.never };
 }
@@ -1076,18 +1084,12 @@ type RemoveParentHomomorphic<T> = RemoveParent<T, Exclude<keyof T, 'parent'>>;
 type RemoveDeepParent<T extends Type> = T extends infer K ? RemoveParentHomomorphic<K> : never;
 export type ParentLessType = RemoveDeepParent<Type>;
 
-//todo: this whole function is way too slow. either make it fast, or find a solution that does not need such a function at all.
 /**
  * This function does not do a deep copy, only shallow. A deep copy makes it way to inefficient, so much that router.spec.ts takes up to 20-30seconds
  * to complete instead of barely 30ms.
  */
 export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type): FindType<Type, T['kind']> {
-    // return inc as any;
-    // const existing = stack.get(inc);
-    // if (existing) return existing as any;
-
     const type = parent ? { ...inc, parent: parent } as Type : { ...inc } as Type;
-    // stack.set(inc, type);
 
     if (isWithAnnotations(type) && isWithAnnotations(inc)) {
         if (inc.annotations) type.annotations = { ...inc.annotations };
@@ -1097,47 +1099,45 @@ export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type
         type.jit = {};
     }
 
-    return type as any;
+    switch (type.kind) {
+        case ReflectionKind.objectLiteral:
+        case ReflectionKind.tuple:
+        case ReflectionKind.union:
+        case ReflectionKind.class:
+        case ReflectionKind.intersection:
+        case ReflectionKind.templateLiteral:
+            type.types = type.types.slice();
+            break;
+        case ReflectionKind.string:
+        case ReflectionKind.number:
+        case ReflectionKind.bigint:
+        case ReflectionKind.symbol:
+        case ReflectionKind.regexp:
+        case ReflectionKind.boolean:
+            // if (type.origin) type.origin = copyAndSetParent(type.origin, type, stack);
+            break;
+        case ReflectionKind.function:
+        case ReflectionKind.method:
+        case ReflectionKind.methodSignature:
+            // type.return = copyAndSetParent(type.return, type, stack);
+            // type.parameters = type.parameters.map(member => copyAndSetParent(member, type, stack));
+            break;
+        case ReflectionKind.propertySignature:
+        case ReflectionKind.property:
+        case ReflectionKind.array:
+        case ReflectionKind.promise:
+        case ReflectionKind.parameter:
+        case ReflectionKind.tupleMember:
+        case ReflectionKind.rest:
+            // type.type = copyAndSetParent(type.type, type, stack);
+            break;
+        case ReflectionKind.indexSignature:
+            // type.index = copyAndSetParent(type.index, type, stack);
+            // type.type = copyAndSetParent(type.type, type, stack);
+            break;
+    }
 
-    // switch (type.kind) {
-    //     case ReflectionKind.objectLiteral:
-    //     case ReflectionKind.tuple:
-    //     case ReflectionKind.union:
-    //     case ReflectionKind.class:
-    //     case ReflectionKind.intersection:
-    //     case ReflectionKind.templateLiteral:
-    //         type.types = type.types.map(member => copyAndSetParent(member, type, stack));
-    //         break;
-    //     case ReflectionKind.string:
-    //     case ReflectionKind.number:
-    //     case ReflectionKind.bigint:
-    //     case ReflectionKind.symbol:
-    //     case ReflectionKind.regexp:
-    //     case ReflectionKind.boolean:
-    //         if (type.origin) type.origin = copyAndSetParent(type.origin, type, stack);
-    //         break;
-    //     case ReflectionKind.function:
-    //     case ReflectionKind.method:
-    //     case ReflectionKind.methodSignature:
-    //         type.return = copyAndSetParent(type.return, type, stack);
-    //         type.parameters = type.parameters.map(member => copyAndSetParent(member, type, stack));
-    //         break;
-    //     case ReflectionKind.propertySignature:
-    //     case ReflectionKind.property:
-    //     case ReflectionKind.array:
-    //     case ReflectionKind.promise:
-    //     case ReflectionKind.parameter:
-    //     case ReflectionKind.tupleMember:
-    //     case ReflectionKind.rest:
-    //         type.type = copyAndSetParent(type.type, type, stack);
-    //         break;
-    //     case ReflectionKind.indexSignature:
-    //         type.index = copyAndSetParent(type.index, type, stack);
-    //         type.type = copyAndSetParent(type.type, type, stack);
-    //         break;
-    // }
-    //
-    // return type as any;
+    return type as any;
 }
 
 export function widenLiteral(type: Type): Type {
@@ -1300,10 +1300,8 @@ export class AnnotationDefinition<T = true> {
     }
 
     registerType<TType extends Type>(type: TType, data: T): TType {
-        if (isWithAnnotations(type)) {
-            type.annotations ||= {};
-            this.register(type.annotations, data);
-        }
+        type.annotations ||= {};
+        this.register(type.annotations, data);
         return type;
     }
 
@@ -1311,8 +1309,13 @@ export class AnnotationDefinition<T = true> {
         annotations[this.symbol] = annotation;
     }
 
+    replaceType(type: Type, annotation: T[]) {
+        type.annotations ||= {};
+        type.annotations[this.symbol] = annotation;
+    }
+
     getAnnotations(type: Type): T[] {
-        if (isWithAnnotations(type) && type.annotations) return type.annotations[this.symbol] || [];
+        if (type.annotations) return type.annotations[this.symbol] || [];
         return [];
     }
 
@@ -1341,10 +1344,16 @@ export interface ReferenceOptions {
     onUpdate?: ReferenceActions
 }
 
+/**
+ * note: if this is adjusted, make sure to adjust ReflectionClass, entityAnnotation, and type serializer accordingly.
+ */
 export interface EntityOptions {
     name?: string;
+    description?: string;
     collection?: string;
-    databaseSchema?: string;
+    database?: string;
+    singleTableInheritance?: boolean;
+    indexes?: { names: string[], options: IndexOptions }[];
 }
 
 /**
@@ -1480,6 +1489,10 @@ export const defaultAnnotation = new AnnotationDefinition('default');
 
 export function isUUIDType(type: Type): boolean {
     return uuidAnnotation.getFirst(type) !== undefined;
+}
+
+export function isPrimaryKeyType(type: Type): boolean {
+    return primaryKeyAnnotation.isPrimaryKey(type);
 }
 
 export function isAutoIncrementType(type: Type): boolean {
@@ -1877,7 +1890,17 @@ export const binaryTypes: ClassType[] = [
 ];
 
 
-export function collapseClassInheritance(type: TypeClass): (TypeIndexSignature | TypeProperty | TypeMethod)[] {
+/**
+ * TypeClass has in its `types` only the properties of the class itself and not its super classes,
+ * while TypeObjectLiteral has all resolved properties in its types already.
+ *
+ * It's thus necessary to resolve super class properties as well. This function does this and caches the result.
+ */
+export function resolveTypeMembers<T extends TypeClass | TypeObjectLiteral>(type: T): T['types'] {
+    if (type.kind === ReflectionKind.objectLiteral) return type.types;
+    const jit = getTypeJitContainer(type);
+    if (jit.collapsedInheritance) return jit.collapsedInheritance;
+
     const types = type.types.slice();
 
     let current = getParentClass(type.classType);
@@ -1917,7 +1940,7 @@ export function collapseClassInheritance(type: TypeClass): (TypeIndexSignature |
         current = getParentClass(current);
     }
 
-    return types;
+    return jit.collapsedInheritance = types;
 }
 
 export function stringifyResolvedType(type: Type): string {
@@ -1935,15 +1958,26 @@ interface StringifyTypeOptions {
     showDescription: boolean;
     defaultIsOptional: boolean;
     showHeritage: boolean;
+    showDefaults: boolean;
+    defaultValues: any;
     stringify?: (type: Type) => string | undefined;
 }
 
 let stringifyTypeId: number = 1;
 
 export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions> = {}): string {
-    const state: StringifyTypeOptions = { showNames: true, defaultIsOptional: false, showDescription: false, showHeritage: false, showFullDefinition: true, ...stateIn };
-    const stack: { type?: Type, before?: string, after?: string, depth?: number }[] = [];
-    stack.push({ type, depth: 1 });
+    const state: StringifyTypeOptions = {
+        showNames: true,
+        defaultIsOptional: false,
+        showDefaults: false,
+        defaultValues: undefined,
+        showDescription: false,
+        showHeritage: false,
+        showFullDefinition: false,
+        ...stateIn
+    };
+    const stack: { type?: Type, defaultValue?: any, before?: string, after?: string, depth?: number }[] = [];
+    stack.push({ type, defaultValue: state.defaultValues, depth: 1 });
     const stackId: number = stringifyTypeId++;
     const result: string[] = [];
 
@@ -1987,7 +2021,7 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                 continue;
             }
 
-            if (state.showNames && type.typeName) {
+            if (state.showNames && type.typeName && !state.showFullDefinition) {
                 if (type.typeArguments && type.typeArguments.length) {
                     stack.push({ before: '>' });
                     for (let i = type.typeArguments.length - 1; i >= 0; i--) {
@@ -2030,6 +2064,9 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                 case ReflectionKind.boolean:
                     result.push('boolean');
                     break;
+                case ReflectionKind.symbol:
+                    result.push('symbol');
+                    break;
                 case ReflectionKind.literal:
                     if ('number' === typeof type.literal) {
                         result.push(type.literal + '');
@@ -2067,10 +2104,6 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                         stack.push({ type: type.arguments![0], depth: depth + 1 });
                         break;
                     }
-                    if (binaryTypes.includes(type.classType)) {
-                        result.push(getClassName(type.classType));
-                        break;
-                    }
                     if (type.classType === Map) {
                         result.push('Map<');
                         stack.push({ before: '>' });
@@ -2079,12 +2112,16 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                         stack.push({ type: type.arguments![0], depth: depth + 1 });
                         break;
                     }
+                    if (binaryTypes.includes(type.classType)) {
+                        result.push(getClassName(type.classType));
+                        break;
+                    }
 
                     const typeName = type.typeName || getClassName(type.classType);
                     const superClass = getParentClass(type.classType);
 
                     if (state.showFullDefinition) {
-                        const types = state.showHeritage ? type.types : collapseClassInheritance(type);
+                        const types = state.showHeritage ? type.types : resolveTypeMembers(type);
                         stack.push({ before: '}' });
                         for (let i = types.length - 1; i >= 0; i--) {
                             const sub = types[i];
@@ -2106,7 +2143,19 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                             if (showDescription || (types.length > 1 && (withIndentation || i !== types.length - 1))) {
                                 stack.push({ before: withIndentation ? ';' : '; ' });
                             }
-                            stack.push({ type: sub, depth: depth + 1 });
+                            const defaultValue = entry.defaultValue && (sub.kind === ReflectionKind.property) ? entry.defaultValue[sub.name] : undefined;
+                            const showDefault = sub.kind === ReflectionKind.property && sub.type.kind !== ReflectionKind.class && sub.type.kind !== ReflectionKind.objectLiteral;
+                            if (state.showDefaults && showDefault) {
+                                if (defaultValue !== undefined) {
+                                    stack.push({ before: ' = ' + JSON.stringify(defaultValue) });
+                                } else if (sub.kind === ReflectionKind.property && sub.default) {
+                                    try {
+                                        stack.push({ before: ' = ' + JSON.stringify(sub.default()) });
+                                    } catch {
+                                    }
+                                }
+                            }
+                            stack.push({ type: sub, defaultValue, depth: depth + 1 });
                             if (withIndentation) {
                                 stack.push({ before: '\n' + (' '.repeat(depth * 2)) });
                             }
@@ -2152,49 +2201,60 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                     break;
                 }
                 case ReflectionKind.objectLiteral: {
-                    const typeName = type.typeName ? type.typeName + ' ' : '';
-                    // const indentation = indent((state.depth + 1) * 2);
-                    result.push(typeName + '{');
+                    const typeName = type.typeName || '';
+                    result.push(typeName);
 
-                    stack.push({ before: '}' });
-                    for (let i = type.types.length - 1; i >= 0; i--) {
-                        const sub = type.types[i];
-                        const showDescription = stateIn.showDescription && sub.kind === ReflectionKind.propertySignature && sub.description;
-                        const withIndentation = type.types.length > 1 || showDescription;
+                    if (!typeName || state.showFullDefinition) {
+                        result.push(typeName ? ' {' : '{');
 
-                        if (state.stringify) {
-                            const manual = state.stringify(sub);
-                            if ('string' === typeof manual) {
-                                if (manual !== '') {
-                                    stack.push({ before: manual });
+                        stack.push({ before: '}' });
+                        for (let i = type.types.length - 1; i >= 0; i--) {
+                            const sub = type.types[i];
+                            const showDescription = stateIn.showDescription && sub.kind === ReflectionKind.propertySignature && sub.description;
+                            const withIndentation = type.types.length > 1 || showDescription;
+
+                            if (state.stringify) {
+                                const manual = state.stringify(sub);
+                                if ('string' === typeof manual) {
+                                    if (manual !== '') {
+                                        stack.push({ before: manual });
+                                    }
+                                    continue;
                                 }
-                                continue;
                             }
-                        }
 
-                        if (withIndentation && i === type.types.length - 1) {
-                            stack.push({ before: '\n' + (' '.repeat((depth - 1) * 2)) });
-                        }
-                        if (state.stringify) {
-                            const manual = state.stringify(sub);
-                            if ('string' === typeof manual) {
-                                if (manual !== '') {
-                                    stack.push({ before: manual });
+                            if (withIndentation && i === type.types.length - 1) {
+                                stack.push({ before: '\n' + (' '.repeat((depth - 1) * 2)) });
+                            }
+                            if (state.stringify) {
+                                const manual = state.stringify(sub);
+                                if ('string' === typeof manual) {
+                                    if (manual !== '') {
+                                        stack.push({ before: manual });
+                                    }
+                                    continue;
                                 }
-                                continue;
                             }
-                        }
-                        if (showDescription || (type.types.length > 1 && (withIndentation || i !== type.types.length - 1))) {
-                            stack.push({ before: withIndentation ? ';' : '; ' });
-                        }
-                        stack.push({ type: sub, depth: depth + 1 });
+                            if (showDescription || (type.types.length > 1 && (withIndentation || i !== type.types.length - 1))) {
+                                stack.push({ before: withIndentation ? ';' : '; ' });
+                            }
 
-                        if (withIndentation) {
-                            stack.push({ before: '\n' + (' '.repeat(depth * 2)) });
-                        }
-                        if (showDescription) {
-                            const indentation = indent(depth * 2, ' * ');
-                            stack.push({ before: '\n' + indentation('/* ' + sub.description + ' */') });
+                            const defaultValue = entry.defaultValue && (sub.kind === ReflectionKind.propertySignature) ? entry.defaultValue[sub.name] : undefined;
+                            const showDefault = sub.kind === ReflectionKind.propertySignature && sub.type.kind !== ReflectionKind.class && sub.type.kind !== ReflectionKind.objectLiteral;
+                            if (state.showDefaults && showDefault) {
+                                if (defaultValue !== undefined) {
+                                    stack.push({ before: ' = ' + JSON.stringify(defaultValue) });
+                                }
+                            }
+                            stack.push({ type: sub, defaultValue, depth: depth + 1 });
+
+                            if (withIndentation) {
+                                stack.push({ before: '\n' + (' '.repeat(depth * 2)) });
+                            }
+                            if (showDescription) {
+                                const indentation = indent(depth * 2, ' * ');
+                                stack.push({ before: '\n' + indentation('/* ' + sub.description + ' */') });
+                            }
                         }
                     }
                     break;
@@ -2263,13 +2323,13 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                     break;
                 case ReflectionKind.propertySignature:
                     result.push(`${type.readonly ? 'readonly ' : ''}${memberNameToString(type.name)}${type.optional ? '?' : ''}: `);
-                    stack.push({ type: type.type, depth });
+                    stack.push({ type: type.type, defaultValue: entry.defaultValue, depth });
                     break;
                 case ReflectionKind.property: {
                     const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
                     const optional = type.optional || (stateIn.defaultIsOptional && type.default !== undefined);
                     result.push(`${type.readonly ? 'readonly ' : ''}${visibility}${memberNameToString(type.name)}${optional ? '?' : ''}: `);
-                    stack.push({ type: type.type, depth });
+                    stack.push({ type: type.type, defaultValue: entry.defaultValue, depth });
                     break;
                 }
                 case ReflectionKind.methodSignature:

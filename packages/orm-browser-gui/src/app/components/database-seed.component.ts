@@ -1,11 +1,11 @@
 import { ChangeDetectorRef, Component, Input, OnChanges } from '@angular/core';
 import { DatabaseInfo, EntityPropertySeed, FakerTypes, SeedDatabase } from '@deepkit/orm-browser-api';
-import { filterEntitiesToList, trackByIndex, trackBySchema } from '../utils';
+import { trackByIndex, trackBySchema } from '../utils';
 import { ControllerClient } from '../client';
-import { ClassSchema } from '@deepkit/type';
 import { BrowserState } from '../browser-state';
 import { DuiDialog } from '@deepkit/desktop-ui';
 import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
+import { ReflectionClass } from '@deepkit/type';
 
 @Component({
     selector: 'orm-browser-seed',
@@ -14,7 +14,7 @@ import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
             <dui-button [disabled]="seeding" (click)="seed()">Seed</dui-button>
         </div>
         <div class="entities" *ngIf="database && fakerTypes">
-            <div class="entity" *ngFor="let entity of filterEntitiesToList(database.getClassSchemas()); trackBy: trackBySchema">
+            <div class="entity" *ngFor="let entity of database.getClassSchemas(); trackBy: trackBySchema">
                 <ng-container
                     *ngIf="state.getSeedSettings(fakerTypes, database.name, entity.getName()) as settings">
                     <h3>
@@ -41,7 +41,6 @@ export class DatabaseSeedComponent implements OnChanges {
     fakerTypesArray?: ({ name: string, type: string })[];
     trackBySchema = trackBySchema;
     trackByIndex = trackByIndex;
-    filterEntitiesToList = filterEntitiesToList;
 
     seeding: boolean = false;
 
@@ -69,7 +68,7 @@ export class DatabaseSeedComponent implements OnChanges {
         this.cd.detectChanges();
     }
 
-    chooseType(entity: ClassSchema, propertyName: string) {
+    chooseType(entity: ReflectionClass<any>, propertyName: string) {
         if (!this.fakerTypes) return;
         const settings = this.state.getSeedSettings(this.fakerTypes, this.database.name, entity.getName());
         const property = settings.properties[propertyName] ||= new EntityPropertySeed(propertyName);
@@ -85,7 +84,7 @@ export class DatabaseSeedComponent implements OnChanges {
         });
     }
 
-    typeChanged(entity: ClassSchema) {
+    typeChanged(entity: ReflectionClass<any>) {
         this.state.storeSeedSettings(this.database.name, entity.getName());
     }
 
@@ -97,7 +96,7 @@ export class DatabaseSeedComponent implements OnChanges {
 
         try {
             const dbSeeding: SeedDatabase = { entities: {} };
-            for (const entity of filterEntitiesToList(this.database.getClassSchemas())) {
+            for (const entity of this.database.getClassSchemas()) {
                 const key = this.state.getStoreKey(this.database.name, entity.getName());
                 const settings = this.state.seedSettings[key];
                 if (!settings || !settings.active) continue;
@@ -105,8 +104,8 @@ export class DatabaseSeedComponent implements OnChanges {
                 dbSeeding.entities[entity.getName()] = settings;
             }
             await this.controllerClient.browser.seed(this.database.name, dbSeeding);
-        } catch (error) {
-            await this.duiDialog.alert('Error seeding', error);
+        } catch (error: any) {
+            await this.duiDialog.alert('Error seeding', String(error));
         }
 
         this.state.onDataChange.emit();

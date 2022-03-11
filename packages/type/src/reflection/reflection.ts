@@ -857,8 +857,11 @@ export class ReflectionClass<T> {
         const entityOptions = entityAnnotation.getFirst(this.type);
         if (entityOptions) {
             if (entityOptions.name !== undefined) this.name = entityOptions.name;
+            if (entityOptions.description !== undefined) this.description = entityOptions.description;
             if (entityOptions.collection !== undefined) this.collectionName = entityOptions.collection;
-            if (entityOptions.databaseSchema !== undefined) this.databaseSchemaName = entityOptions.databaseSchema;
+            if (entityOptions.database !== undefined) this.databaseSchemaName = entityOptions.database;
+            if (entityOptions.singleTableInheritance !== undefined) this.singleTableInheritance = entityOptions.singleTableInheritance;
+            if (entityOptions.indexes !== undefined) this.indexes = entityOptions.indexes;
         }
 
         //apply decorators
@@ -1345,6 +1348,14 @@ export class ReflectionClass<T> {
         throw new Error(`Class ${this.getClassName()} has no reference to class ${getClassName(toClassType)} defined.`);
     }
 
+    public extractPrimaryKey(item: object): Partial<T> {
+        const primaryKey: Partial<T> = {};
+        for (const pk of this.getPrimaries()) {
+            (primaryKey as any)[pk.name] = (item as any)[pk.name];
+        }
+
+        return primaryKey;
+    }
 }
 
 // old function to decorate an interface

@@ -5,6 +5,7 @@ import bson from 'bson';
 import { randomBytes } from 'crypto';
 import { BSON_BINARY_SUBTYPE_DEFAULT, BSONType } from '../src/utils';
 import { deserializeBSONWithoutOptimiser } from '../src/bson-parser';
+import { deserializeBSON } from '../src/bson-deserializer';
 
 const { Binary, calculateObjectSize, deserialize, Long, ObjectId: OfficialObjectId, serialize } = bson;
 
@@ -1213,5 +1214,66 @@ test('Excluded', () => {
     const bson = fn({ insert: 'a', $db: 'b', documents: [model] });
 
     const back = deserializeBSONWithoutOptimiser(bson);
-    console.log('back', back);
+    expect(back.documents[0].name).toBe('asd');
+    expect(back.documents[0].excludedForMongo).toBeUndefined();
+});
+
+test('complex recursive', () => {
+    class ModuleApi {
+        api?: ModuleApi;
+
+        imports: ModuleApi[] = [];
+
+        constructor(
+            public name: string,
+        ) {
+        }
+    }
+
+    const data = {
+        name: 'a',
+        api: {
+            imports: [],
+            name: 'a2',
+        },
+        imports: [
+            {
+                name: 'b',
+                api: {
+                    imports: [],
+                    name: 'b2',
+                },
+                imports: [
+                    {
+                        imports: [],
+                        name: 'c',
+                    }
+                ],
+            }
+        ],
+    };
+    const fn = getBSONSerializer<ModuleApi>();
+
+    {
+        const bson = fn(data);
+        console.log('first', Buffer.from(bson).toString('hex'));
+        const back1 = deserializeBSONWithoutOptimiser(bson);
+        console.log('back 1', back1);
+        expect(back1).toEqual(data);
+    }
+
+    {
+        const bson = fn(data);
+        console.log('second', Buffer.from(bson).toString('hex'));
+        const back1 = deserializeBSONWithoutOptimiser(bson);
+        console.log('back 1', back1);
+        expect(back1).toEqual(data);
+    }
+
+    {
+        const bson = fn(data);
+        const back1 = deserializeBSON<ModuleApi>(bson);
+        console.log('back 1', back1);
+        expect(back1).toEqual(data);
+    }
 });

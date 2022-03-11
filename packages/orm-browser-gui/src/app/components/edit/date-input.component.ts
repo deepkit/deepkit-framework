@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { PropertySchema } from '@deepkit/type';
+import { Type } from '@deepkit/type';
 
 @Component({
     template: `
@@ -16,7 +16,7 @@ export class DateInputComponent {
     @Input() model: any;
     @Output() modelChange = new EventEmitter();
 
-    @Input() property!: PropertySchema;
+    @Input() type!: Type;
 
     @Output() done = new EventEmitter<void>();
     @Output() change = new EventEmitter<void>();

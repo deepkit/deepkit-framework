@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { PropertySchema } from '@deepkit/type';
+import { ReflectionKind, Type } from '@deepkit/type';
 
 @Component({
     template: `
@@ -16,13 +16,13 @@ export class StringInputComponent {
     @Input() model: any;
     @Output() modelChange = new EventEmitter();
 
-    @Input() property!: PropertySchema;
+    @Input() type!: Type;
 
     @Output() done = new EventEmitter<void>();
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
 
     getType(): string {
-        if (this.property.type === 'number') return 'number';
+        if (this.type.kind === ReflectionKind.number || this.type.kind === ReflectionKind.bigint) return 'number';
 
         return 'text';
     }

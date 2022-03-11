@@ -1,6 +1,7 @@
 import { Component, Input, OnChanges } from '@angular/core';
 import { ModuleApi, ModuleService } from '@deepkit/framework-debug-api';
-import { classSchemaToTSInterface, trackByIndex } from '@deepkit/ui-library';
+import { stringifyType } from '@deepkit/type';
+import { trackByIndex } from '@deepkit/ui-library';
 import { ModuleImportedService } from '../../../../../framework-debug-api/src/api';
 
 @Component({
@@ -27,9 +28,9 @@ import { ModuleImportedService } from '../../../../../framework-debug-api/src/ap
         }
 
         :host:hover {
-             border-radius: 3px;
-             background-color: rgba(128, 128, 128, 0.24);
-         }
+            border-radius: 3px;
+            background-color: rgba(128, 128, 128, 0.24);
+        }
 
         .exported {
             color: var(--color-orange);
@@ -91,7 +92,7 @@ export class ModuleDetailServiceComponent {
                 </div>
             </div>
             <div class="imported-services" *ngIf="importedServices.length">
-                <div class="title" (click)="showImportedServices = !showImportedServices" >
+                <div class="title" (click)="showImportedServices = !showImportedServices">
                     <dui-icon clickable [name]="showImportedServices ? 'arrow_down' : 'arrow_right'"></dui-icon>
                     Imported services ({{importedServices.length}})
                 </div>
@@ -118,7 +119,6 @@ export class ModuleDetailServiceComponent {
     styleUrls: ['./module-detail.component.scss']
 })
 export class ModuleDetailComponent implements OnChanges {
-    classSchemaToTSInterface = classSchemaToTSInterface;
     trackByIndex = trackByIndex;
     @Input() m!: ModuleApi;
 
@@ -138,7 +138,7 @@ export class ModuleDetailComponent implements OnChanges {
 
         const schema = this.m.getConfigSchema();
         if (schema) {
-            this.schemaCode = classSchemaToTSInterface(schema, { defaultValues: this.m.config });
+            this.schemaCode = stringifyType(schema, { showDefaults: true, showFullDefinition: true, defaultValues: this.m.config });
         }
     }
 }

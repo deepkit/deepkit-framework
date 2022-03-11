@@ -303,14 +303,14 @@ export class DebugController implements DebugControllerInterface {
             }
 
             for (const provider of module.getProviders()) {
-                const token = resolveToken(provider) as ClassType;
+                const token = resolveToken(provider);
                 const service = new ModuleService(getTokenId(token), getTokenLabel(token));
                 service.scope = getScope(provider);
                 service.instantiations = injectorContext.instantiationCount(token, module, service.scope);
 
-                if (isClass(token) && module.controllers.includes(token)) {
+                if (isClass(token) && module.controllers.includes(token as ClassType)) {
                     service.type = 'controller';
-                } else if (isClass(token) && module.listeners.includes(token)) {
+                } else if (isClass(token) && module.listeners.includes(token as ClassType)) {
                     service.type = 'listener';
                 }
 
@@ -322,7 +322,8 @@ export class DebugController implements DebugControllerInterface {
 
             const builtPreparedProviders = module.getBuiltPreparedProviders();
             if (builtPreparedProviders) {
-                for (const [token, preparedProvider] of builtPreparedProviders.entries()) {
+                for (const preparedProvider of builtPreparedProviders) {
+                    const token = preparedProvider.token;
                     //We want to know which token has been imported by whom
                     if (preparedProvider.modules[0] !== module) {
                         //was imported from originally preparedProvider.modules[0]

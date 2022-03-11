@@ -97,6 +97,7 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
     type SortNames = InlineRuntimeType<typeof sortNamesType>;
     type SelectNames = InlineRuntimeType<typeof selectNamesType>;
 
+    //note: only shallows clone (including members shallow copy)
     const selectSchema = schema.clone();
     //make sure references are `PrimaryKey<T> | T`
     for (const property of selectSchema.getProperties().slice()) {

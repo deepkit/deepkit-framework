@@ -288,7 +288,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
         db.logger.setLogger(new Logger([loggerTransport]));
 
         try {
-            const fn = new Function(`return function(database, ${entity.getName()}) {return ${query}}`)();
+            const fn = new Function(`return function(database, ${entity.getClassName()}) {return ${query}}`)();
             const start = performance.now();
             res.result = await fn(db, entity);
             res.executionTime = performance.now() - start;

@@ -1,7 +1,8 @@
 import { ChangeDetectorRef, Component, Input, OnChanges, OnInit } from '@angular/core';
-import { PropertySchema } from '@deepkit/type';
 import { fromBuffer } from 'file-type/browser';
 import * as FileSaver from 'file-saver';
+import { Type } from '@deepkit/type';
+import { TypeDecoration } from './utils';
 
 @Component({
     selector: 'orm-browser-binary-cell',
@@ -38,8 +39,9 @@ import * as FileSaver from 'file-saver';
 })
 export class BinaryCellComponent implements OnInit, OnChanges {
     @Input() model: any;
-    @Input() property?: PropertySchema;
+    @Input() type?: Type;
     @Input() fileName: string = 'untitled';
+    @Input() decoration?: TypeDecoration;
 
     image?: Uint8Array;
     ext: string = 'bin';
@@ -62,7 +64,7 @@ export class BinaryCellComponent implements OnInit, OnChanges {
 
     download() {
         const blob = new Blob([this.model]);
-        FileSaver.saveAs(blob, (this.property?.name || this.fileName) + '.' + this.ext);
+        FileSaver.saveAs(blob, String(this.decoration?.name || this.fileName) + '.' + this.ext);
     }
 
     ngOnChanges(): void {

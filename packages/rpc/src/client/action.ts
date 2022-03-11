@@ -134,8 +134,13 @@ export class RpcActionClient {
 
                             case RpcTypes.ResponseActionSimple: {
                                 subject.release();
-                                const result = reply.parseBody<WrappedV>(types.resultSchema);
-                                resolve(result.v);
+                                try {
+                                    const result = reply.parseBody<WrappedV>(types.resultSchema);
+                                    resolve(result.v);
+                                } catch (error: any) {
+                                    console.log('parse error, got', reply.parseBody<WrappedV>());
+                                    throw error;
+                                }
                                 break;
                             }
 
@@ -182,6 +187,8 @@ export class RpcActionClient {
                             }
 
                             case RpcTypes.ResponseActionBehaviorSubject: {
+                                if (!types.observableNextSchema) throw new Error('No observableNextSchema set');
+
                                 const body = reply.parseBody<WrappedV>(types.observableNextSchema);
                                 observableSubject = new BehaviorSubject(body.v);
                                 resolve(observableSubject);
@@ -300,7 +307,7 @@ export class RpcActionClient {
                         }
                     } catch (error) {
                         console.warn('reply error', reply.id, RpcTypes[reply.type], error);
-                        reject(error);
+                        reject(`Reply failed for ${controller.controller}.${method}: ${error}`);
                     }
                 });
             } catch (error) {

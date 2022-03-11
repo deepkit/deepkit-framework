@@ -25,6 +25,7 @@ export * from './src/change-detector';
 export * from './src/path';
 export * from './src/type-serialization';
 export * from './src/registry';
+export * from './src/default';
 
 export * from './src/reflection/type';
 export * from './src/reflection/processor';

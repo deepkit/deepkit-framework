@@ -1118,78 +1118,74 @@ export class Processor {
 
     private handleIntersection() {
         const types = this.popFrame() as Type[];
-        let primitive = undefined as Type | undefined;
+        let result: Type | undefined = types[0];
+        if (!result) {
+            this.pushType({ kind: ReflectionKind.never });
+            return;
+        }
         const annotations: Annotations = {};
         const decorators: TypeObjectLiteral[] = [];
-        const candidates: (TypeObjectLiteral | TypeClass)[] = [];
+        const defaultDecorators: Type[] = [];
 
-        function extractTypes(types: Type[]) {
-            outer:
-                for (const type of types) {
-                    if (type.kind === ReflectionKind.never) continue;
+        function collapse(a: Type, b: Type): Type {
+            if (a.kind === ReflectionKind.any) return a;
+            if (b.kind === ReflectionKind.any) return b;
 
-                    if (type.kind === ReflectionKind.intersection) {
-                        extractTypes(type.types);
-                        continue;
-                    }
-                    if (type.kind === ReflectionKind.objectLiteral) {
-                        for (const decorator of typeDecorators) {
-                            if (decorator(annotations, type)) {
-                                decorators.push(type);
-                                continue outer;
-                            }
+            if (a.kind === ReflectionKind.union) {
+                return unboxUnion({ kind: ReflectionKind.union, types: a.types.filter(v => isExtendable(v, b)) });
+            }
+
+            if (b.kind === ReflectionKind.union) {
+                return unboxUnion({ kind: ReflectionKind.union, types: b.types.filter(v => isExtendable(v, a)) });
+            }
+
+            if ((a.kind === ReflectionKind.objectLiteral || a.kind === ReflectionKind.class) && (b.kind === ReflectionKind.objectLiteral || b.kind === ReflectionKind.class)) {
+                return merge([a, b]);
+            }
+
+            if (isPrimitive(a) && b.kind === ReflectionKind.objectLiteral) {
+                defaultDecorators.push(b);
+                annotations[defaultAnnotation.symbol] = defaultDecorators;
+                return a;
+            }
+
+            if (isPrimitive(b) && a.kind === ReflectionKind.objectLiteral) {
+                defaultDecorators.push(a);
+                annotations[defaultAnnotation.symbol] = defaultDecorators;
+                return b;
+            }
+
+            if (a.kind === ReflectionKind.objectLiteral || a.kind === ReflectionKind.class || a.kind === ReflectionKind.never || a.kind === ReflectionKind.unknown) return b;
+
+            return a;
+        }
+
+        outer:
+            for (const type of types) {
+                if (type === result) continue;
+                if (type.kind === ReflectionKind.never) continue;
+                if (type.kind === ReflectionKind.objectLiteral) {
+                    for (const decorator of typeDecorators) {
+                        if (decorator(annotations, type)) {
+                            decorators.push(type);
+                            continue outer;
                         }
                     }
-
-                    //it's unknown for not-yet resolved types (issues references for circular types
-                    if (!primitive && (isPrimitive(type) || type.kind === ReflectionKind.unknown || type.kind === ReflectionKind.any || type.kind === ReflectionKind.array
-                        || type.kind === ReflectionKind.union || type.kind === ReflectionKind.tuple || type.kind === ReflectionKind.regexp || type.kind === ReflectionKind.symbol)) {
-                        //at the moment, we globally assume that people don't add types to array/tuple/regexp/symbols e.g. no `(string[] & {doSomething: () => void})`.
-                        //we treat all additional types in the intersection as decorators.
-                        primitive = type;
-                    } else if (type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.class) {
-                        candidates.push(type);
-                    }
                 }
-        }
-
-        extractTypes(types);
-
-        let result = undefined as Type | undefined;
-
-        if (primitive) {
-            result = primitive;
-            annotations[defaultAnnotation.symbol] = candidates;
-        } else if (candidates.length > 0) {
-            if (candidates.length === 1) {
-                result = candidates[0];
-            } else {
-                const isMergeAble = candidates.every(v => v.kind === ReflectionKind.objectLiteral || v.kind === ReflectionKind.class);
-                if (isMergeAble) {
-                    result = merge(candidates);
-                } else {
-                    result = candidates[0];
-                }
+                result = collapse(result, type);
             }
-        }
 
-        if (result) {
-            if (isWithAnnotations(result)) {
-                if (result.kind === ReflectionKind.unknown) {
-                    //type not calculated yet, so schedule annotations. Those will be applied once the type is fully computed.
-                    result.scheduleDecorators = decorators;
-                } else {
-                    //copy so the original type is not modified
-                    result = copyAndSetParent(result);
-                    result.annotations = result.annotations || {};
-                    if (decorators.length) result.decorators = decorators;
-                    Object.assign(result.annotations, annotations);
-                }
-            }
-            this.pushType(result);
+        if (result.kind === ReflectionKind.unknown) {
+            //type not calculated yet, so schedule annotations. Those will be applied once the type is fully computed.
+            result.scheduleDecorators = decorators;
         } else {
-            this.pushType({ kind: ReflectionKind.never });
+            //copy so the original type is not modified
+            result = copyAndSetParent(result);
+            result.annotations = result.annotations || {};
+            if (decorators.length) result.decorators = decorators;
+            Object.assign(result.annotations, annotations);
         }
+        this.pushType(result);
     }
 
     private handleDistribute(program: Program) {
@@ -1254,7 +1250,7 @@ export class Processor {
             }
             this.push(union);
         } else if (type.kind === ReflectionKind.any) {
-            this.push({ kind: ReflectionKind.string });
+            this.push({ kind: ReflectionKind.union, types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.number }, { kind: ReflectionKind.symbol }] });
         }
     }
 
@@ -1262,11 +1258,20 @@ export class Processor {
         const functionPointer = this.eatParameter() as number;
         const modifier = this.eatParameter() as number;
 
+        function isSimpleIndex(index: Type): boolean {
+            if (index.kind === ReflectionKind.string || index.kind === ReflectionKind.number || index.kind === ReflectionKind.symbol) return true;
+            if (index.kind === ReflectionKind.union) {
+                const types = index.types.filter(v => isSimpleIndex(v));
+                return types.length === 0;
+            }
+            return false;
+        }
+
         if (program.frame.mappedType) {
             const type = this.pop() as Type;
             let index: Type | string | boolean | symbol | number | bigint = program.stack[program.frame.startIndex + 1] as Type;
 
-            if (index.kind === ReflectionKind.any || index.kind === ReflectionKind.string || index.kind === ReflectionKind.number || index.kind === ReflectionKind.symbol) {
+            if (index.kind === ReflectionKind.any || isSimpleIndex(index)) {
                 this.push({ kind: ReflectionKind.indexSignature, type, index });
             } else {
                 if (index.kind === ReflectionKind.literal && !(index.literal instanceof RegExp)) {

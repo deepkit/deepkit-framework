@@ -1,4 +1,4 @@
-import { ReflectionKind, ReflectionProperty } from '@deepkit/type';
+import { ReflectionKind, Type } from '@deepkit/type';
 
 export type FakerDataType = 'string' | 'date' | 'number' | 'boolean' | 'any';
 
@@ -25,19 +25,19 @@ export function findFakerForName(types: FakerTypes, name: string, type: FakerDat
     return undefined;
 }
 
-export function findFaker(types: FakerTypes, property: ReflectionProperty): string {
-    const name = property.name.toLowerCase();
+export function findFaker(types: FakerTypes, propertyName: string, type: Type): string {
+    const name = propertyName.toLowerCase();
 
-    if (property.isDate()) {
+    if (type.kind === ReflectionKind.class && type.classType === Date) {
         if (name.includes('birthdate')) return 'date.past';
         if (name.endsWith('ed')) return 'date.past';
 
         return 'date.future';
-    } else if (property.isNumber()) {
+    } else if (type.kind === ReflectionKind.number || type.kind === ReflectionKind.bigint) {
         return findFakerForName(types, name, 'number') || 'random.number';
-    } else if (property.type.kind === ReflectionKind.boolean) {
+    } else if (type.kind === ReflectionKind.boolean) {
         return 'random.boolean';
-    } else if (property.type.kind === ReflectionKind.string) {
+    } else if (type.kind === ReflectionKind.string) {
         if (name.includes('first')) return 'name.firstName';
         if (name.includes('last')) return 'name.lastName';
         if (name.includes('iban')) return 'finance.iban';

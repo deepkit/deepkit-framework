@@ -692,7 +692,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
         if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
 
         const nameInBson = String(state.namingStrategy.getPropertyName(member));
-        const valueSetVar = state.setVariable('valueSetVar', false);
+        const valueSetVar = state.compilerContext.reserveName('valueSetVar');
 
         //since Embedded<T> can have arbitrary prefix, we have to collect all fields first, and then after the loop, build everything together.
         const embeddedClasses = getEmbeddedClassesForProperty(member);
@@ -728,7 +728,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
             }
         }
 
-        resetDefaultSets.push(`${valueSetVar} = false;`);
+        resetDefaultSets.push(`var ${valueSetVar} = false;`);
         const setter = new ContainerAccessor(object, JSON.stringify(member.name));
         const staticDefault = getStaticDefaultCodeForProperty(member, setter, state);
         let throwInvalidTypeError = '';
@@ -904,8 +904,8 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
 
         const nameInBson = String(state.namingStrategy.getPropertyName(member));
 
-        const valueSetVar = state.setVariable('valueSetVar', false);
-        resetDefaultSets.push(`${valueSetVar} = false;`);
+        const valueSetVar = state.compilerContext.reserveName('valueSetVar');
+        resetDefaultSets.push(`var ${valueSetVar} = false;`);
         let invalidType = '';
         if (!isOptional(member) && !hasDefaultValue(member)) {
             invalidType = `${valid} = false`;

@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { BrowserState } from '../browser-state';
 import { ControllerClient } from '../client';
-import { filterEntitiesToList, trackByDatabase, trackBySchema } from '../utils';
+import { trackByDatabase, trackBySchema } from '../utils';
 import { detectChangesNextFrame } from '@deepkit/desktop-ui';
 
 @Component({
@@ -10,7 +10,7 @@ import { detectChangesNextFrame } from '@deepkit/desktop-ui';
         <ng-container *ngFor="let db of state.databases; trackBy: trackByDatabase; let i = index">
             <dui-list-item [routerLink]="['/database', encodeURIComponent(db.name)]" [routerLinkExact]="true">{{db.name}} ({{db.adapter}})</dui-list-item>
             <dui-list-item [routerLink]="['/database', encodeURIComponent(db.name), encodeURIComponent(entity.getName())]"
-                           *ngFor="let entity of filterEntitiesToList(db.getClassSchemas()); trackBy: trackBySchema">
+                           *ngFor="let entity of db.getClassSchemas(); trackBy: trackBySchema">
                 <div class="item">
                     <div>{{entity.getClassName()}}</div>
                     <div class="add" *ngIf="state.hasAddedItems(db.name, entity.getName()) as items">
@@ -41,7 +41,6 @@ import { detectChangesNextFrame } from '@deepkit/desktop-ui';
 export class DatabaseBrowserListComponent implements OnInit {
     encodeURIComponent = encodeURIComponent;
     public counts: { [storeKey: string]: number } = {};
-    filterEntitiesToList = filterEntitiesToList;
     trackBySchema = trackBySchema;
     trackByDatabase = trackByDatabase;
 
@@ -64,7 +63,7 @@ export class DatabaseBrowserListComponent implements OnInit {
     protected async loadCounts() {
         const promises: Promise<any>[] = [];
         for (const db of this.state.databases) {
-            for (const entity of filterEntitiesToList(db.getClassSchemas())) {
+            for (const entity of db.getClassSchemas()) {
                 const key = this.state.getStoreKey(db.name, entity.getName());
                 promises.push(this.controllerClient.browser.getCount(db.name, entity.getName(), {}).then((count) => {
                     this.counts[key] = count;

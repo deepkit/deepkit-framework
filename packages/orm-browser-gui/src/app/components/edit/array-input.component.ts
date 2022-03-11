@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
-import { jsonSerializer, PropertySchema } from '@deepkit/type';
+import { defaultValue, Type, TypeArray } from '@deepkit/type';
 import { isArray } from '@deepkit/core';
 import { trackByIndex } from '../../utils';
 
@@ -8,7 +8,7 @@ import { trackByIndex } from '../../utils';
         <dui-dialog *ngIf="subType" [visible]="true" (closed)="done.emit()" [backDropCloses]="true">
             <ng-container *ngIf="model">
                 <div class="item" *ngFor="let item of model; trackBy: trackByIndex; let i = index">
-                    <orm-browser-property-editing [property]="subType" [(model)]="model[i]"
+                    <orm-browser-property-editing [type]="subType" [(model)]="model[i]"
                                                   (modelChange)="modelChange.emit(this.model)"></orm-browser-property-editing>
                     <dui-button icon="garbage" tight (click)="remove(i)"></dui-button>
                 </div>
@@ -38,21 +38,21 @@ export class ArrayInputComponent implements OnInit, OnChanges {
     @Input() model: any;
     @Output() modelChange = new EventEmitter();
 
-    @Input() property!: PropertySchema;
+    @Input() type!: TypeArray;
 
-    subType?: PropertySchema;
+    subType?: Type;
 
     @Output() done = new EventEmitter<void>();
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
 
     ngOnChanges(): void {
         if (!isArray(this.model)) this.model = [];
-        this.subType = this.property.getSubType();
+        this.subType = this.type.type;
     }
 
     ngOnInit(): void {
         if (!isArray(this.model)) this.model = [];
-        this.subType = this.property.getSubType();
+        this.subType = this.type.type;
     }
 
     remove(i: number) {
@@ -65,7 +65,7 @@ export class ArrayInputComponent implements OnInit, OnChanges {
     add() {
         if (!this.subType) return;
         if (!isArray(this.model)) this.model = [];
-        this.model.push(jsonSerializer.deserializeProperty(this.subType, undefined));
+        this.model.push(defaultValue(this.subType));
         this.modelChange.emit(this.model);
     }
 }

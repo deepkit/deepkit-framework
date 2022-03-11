@@ -159,7 +159,7 @@ export class ApiEntryPoints {
     rpcActions: ApiAction[] = [];
 }
 
-export const ApiConsoleApi = ControllerSymbol<ApiConsoleApi>('.deepkit/api-console', [ApiRoute, ApiDocument]);
+export const ApiConsoleApi = ControllerSymbol<ApiConsoleApi>('.deepkit/api-console', [ApiRoute, ApiDocument, ApiAction]);
 
 export interface ApiConsoleApi {
     getEntryPoints(): ApiEntryPoints;

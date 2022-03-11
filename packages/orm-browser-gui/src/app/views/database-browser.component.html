@@ -38,7 +38,8 @@
                 <div class="results-header">
                     <ng-container *ngIf="query.executed && !query.javascriptError">
                         <span class="executing-progress" *ngIf="query.progress" [class.visible]="query.loading">
-                            <dui-indicator [step]="(query.progress?.download|asyncRender)?.progress || 0"></dui-indicator>
+                            <dui-indicator
+                                [step]="(query.progress?.download|asyncRender)?.progress || 0"></dui-indicator>
                         </span>
                         <span *ngIf="!query.loading">
                             Query time {{query.executionTime|number:'0.3-6'}} ms,
@@ -57,7 +58,8 @@
 
                 <div class="results-header-actions">
                     <dui-button-group padding="none">
-                        <dui-button textured icon="play" [disabled]="query.loading" (click)="executeQuery(query)"></dui-button>
+                        <dui-button textured icon="play" [disabled]="query.loading"
+                                    (click)="executeQuery(query)"></dui-button>
                         <dui-button textured (click)="openQueryJson(query)">JSON</dui-button>
                     </dui-button-group>
                 </div>
@@ -169,8 +171,10 @@
                             of {{entityState.totalPages}} page{{entityState.totalPages === 1 ? '' : 's'}}
                             ({{entityState.count}} records).
                         </span>
-                        <span class="executing-progress" *ngIf="entityState.progress" [class.visible]="entityState.loading">
-                            <dui-indicator [step]="(entityState.progress.download|asyncRender)?.progress || 0"></dui-indicator>
+                        <span class="executing-progress" *ngIf="entityState.progress"
+                              [class.visible]="entityState.loading">
+                            <dui-indicator
+                                [step]="(entityState.progress.download|asyncRender)?.progress || 0"></dui-indicator>
                         </span>
                         <span *ngIf="!entityState.loading">
                             Query time {{entityState.executionTime|number:'0.3-6'}} ms,
@@ -198,11 +202,11 @@
                         </ng-container>
                     </dui-table-column>
                     <dui-table-column *ngFor="let property of entityState.properties; trackBy: trackByProperty"
-                                      [name]="property.name"
+                                      [name]="String(property.name)"
                                       [width]="150">
                         <ng-container *duiTableHeader>
                             {{property.name}} <span
-                            style="color: var(--text-light)">{{property.toString()}}</span>
+                            style="color: var(--text-light)">{{showTypeString(property.type)}}</span>
                         </ng-container>
 
                         <ng-container *duiTableCell="let row">

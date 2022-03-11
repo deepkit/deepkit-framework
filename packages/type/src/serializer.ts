@@ -635,7 +635,7 @@ export function callExtractedFunctionIfAvailable(state: TemplateState, type: Typ
     const jit = state.jitStack.get(state.registry, type);
     if (!jit) return false;
     state.addCode(`
-    //call jit for ${state.setter}
+    //call jit for ${state.setter} via propertyName ${state.propertyName ? collapsePath([state.propertyName]) : ''}
     ${state.setterDisabled || !state.setter ? '' : `${state.setter} = `}${state.setVariable('jit', jit)}.fn(${state.accessor || 'undefined'}, state, ${collapsePath(state.path)});
     `);
     return true;

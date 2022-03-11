@@ -169,8 +169,6 @@ export class ModuleApi {
     config: Record<string, any> = {};
 
     services: ModuleService[] = [];
-    // @t.array(ModuleController) controllers: ModuleController[] = [];
-    // @t.array(ModuleListener) listeners: ModuleListener[] = [];
 
     imports: ModuleApi[] = [];
 
@@ -185,8 +183,8 @@ export class ModuleApi {
 
     /** @reflection never */
     getConfigSchema(): Type | undefined {
-        if (!this.deserializedConfigSchema && this.configSchemas.length > 0) {
-            this.deserializedConfigSchema = deserializeType(this.configSchemas[0]);
+        if (!this.deserializedConfigSchema && this.configSchemas) {
+            this.deserializedConfigSchema = deserializeType(this.configSchemas);
         }
 
         return this.deserializedConfigSchema;

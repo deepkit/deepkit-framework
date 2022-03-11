@@ -1,15 +1,7 @@
-import {
-    Component,
-    ComponentFactoryResolver,
-    ComponentRef,
-    Input,
-    OnChanges,
-    OnInit,
-    ViewContainerRef
-} from '@angular/core';
-import { PropertySchema } from '@deepkit/type';
+import { Component, ComponentFactoryResolver, ComponentRef, Input, OnChanges, OnInit, ViewContainerRef } from '@angular/core';
 import { isArray } from '@deepkit/core';
-import { Registry } from '../../registry';
+import { TypeArray } from '@deepkit/type';
+import { inputRegistry } from '../../registry';
 
 @Component({
     template: ``,
@@ -21,14 +13,13 @@ import { Registry } from '../../registry';
 })
 export class ArrayCellComponent implements OnChanges, OnInit  {
     @Input() model: any;
-    @Input() property!: PropertySchema;
+    @Input() type!: TypeArray;
 
     protected componentRefs: ComponentRef<any>[] = [];
 
     constructor(
         private containerRef: ViewContainerRef,
-        private resolver: ComponentFactoryResolver,
-        private registry: Registry,
+        private resolver: ComponentFactoryResolver
     ) {
     }
 
@@ -41,7 +32,7 @@ export class ArrayCellComponent implements OnChanges, OnInit  {
     }
 
     setLabel(): void {
-        const subType = this.property.getSubType();
+        const subType = this.type.type;
 
         if (!isArray(this.model)) return;
 
@@ -49,7 +40,7 @@ export class ArrayCellComponent implements OnChanges, OnInit  {
             ref.destroy();
         }
 
-        const component = this.registry.cellComponents[subType.type];
+        const component = inputRegistry.get(subType);
         if (!component) return;
         const componentFactory = this.resolver.resolveComponentFactory(component);
 

@@ -19,6 +19,7 @@ import {
 import { isExtendable } from '../../../src/reflection/extends';
 import { expectEqualType } from '../../utils';
 import { ClassType } from '@deepkit/core';
+import { Partial } from '../../../src/changes';
 
 //note: this needs to run in a strict TS mode to infer correctly in the IDE
 type Extends<A, B> = [A] extends [B] ? true : false;
@@ -63,7 +64,7 @@ test('stringify class', () => {
 
     expect(stringifyResolvedType(typeOf<User>())).toBe(`User {\n  id: number;\n  username: string;\n}`);
     expect(stringifyResolvedType(typeOf<Partial<User>>())).toBe(`Partial {\n  id?: number;\n  username?: string;\n}`);
-    expect(stringifyType(typeOf<Partial<User>>())).toBe(`Partial<User {\n  id: number;\n  username: string;\n}>`);
+    expect(stringifyType(typeOf<Partial<User>>())).toBe(`Partial<User>`);
 });
 
 test('stringify class generic', () => {
@@ -72,8 +73,8 @@ test('stringify class generic', () => {
         username!: T;
     }
 
-    expect(stringifyType(typeOf<User<string>>())).toBe(`User {\n  id: number;\n  username: string;\n}`);
-    expect(stringifyType(typeOf<User<string>>(), {showFullDefinition: false})).toBe(`User<string>`);
+    expect(stringifyResolvedType(typeOf<User<string>>())).toBe(`User {\n  id: number;\n  username: string;\n}`);
+    expect(stringifyType(typeOf<User<string>>())).toBe(`User<string>`);
 });
 
 test('stringify interface', () => {
@@ -96,7 +97,7 @@ test('stringify nested class', () => {
         config!: Config;
     }
 
-    expect(stringifyType(typeOf<User>())).toBe(`User {\n  id: number;\n  username?: string;\n  config: Config {color: number};\n}`);
+    expect(stringifyResolvedType(typeOf<User>())).toBe(`User {\n  id: number;\n  username?: string;\n  config: Config {color: number};\n}`);
 });
 
 test('stringify nested interface', () => {
@@ -932,6 +933,97 @@ test('hasCircularReference yes', () => {
     sub?: User;
   };
 }`);
+});
+
+test('union and intersection filters', () => {
+    expect(stringifyResolvedType(typeOf<string & ('a' | 'b')>())).toBe(`'a' | 'b'`);
+    expect(stringifyResolvedType(typeOf<('a' | 'b') & string>())).toBe(`'a' | 'b'`);
+    expect(stringifyResolvedType(typeOf<keyof any>())).toBe(`string | number | symbol`);
+    expect(stringifyResolvedType(typeOf<keyof any & string>())).toBe(`string`);
+    expect(stringifyResolvedType(typeOf<keyof any & number>())).toBe(`number`);
+    expect(stringifyResolvedType(typeOf<(123 | 'asd') & string>())).toBe(`'asd'`);
+    expect(stringifyResolvedType(typeOf<(1 | 123 | 'asd') & number>())).toBe(`1 | 123`);
+    expect(stringifyResolvedType(typeOf<(true | 123 | 'asd') & (number | string)>())).toBe(`123 | 'asd'`);
+    expect(stringifyResolvedType(typeOf<(true | 123 | 'asd') & ('asd')>())).toBe(`'asd'`);
+    expect(stringifyResolvedType(typeOf<((true | 123) | 'asd') & (string | number)>())).toBe(`123 | 'asd'`);
+    expect(stringifyResolvedType(typeOf<(true | 'asd' | number) & ('asd' & string)>())).toBe(`'asd'`);
+    expect(stringifyResolvedType(typeOf<((true | 123) | 'asd') & any>())).toBe(`any`);
+    expect(stringifyResolvedType(typeOf<('a' | 'c' | 'b') & ('a' | 'b') | number>())).toBe(`'a' | 'b' | number`);
+
+    expect(stringifyResolvedType(typeOf<{ a: string } & { b: number }>())).toBe(`{\n  a: string;\n  b: number;\n}`);
+});
+
+test('index access on any', () => {
+    {
+        type Map2<T> = { [K in keyof T]: T[K] };
+        type t = Map2<any>;
+
+        expect(stringifyResolvedType(typeOf<t>())).toContain(`[index: string]: any`);
+    }
+
+    {
+        type Map2<T> = { [K in keyof T]: K };
+        type t = Map2<any>;
+
+        expect(stringifyResolvedType(typeOf<t>())).toContain(`[index: string]: string`);
+    }
+
+    {
+        type Map2<T> = { [K in keyof T]: T[K] extends number ? K : 34 };
+        type t = Map2<any>;
+
+        expect(stringifyResolvedType(typeOf<t>())).toContain(`[index: string]: string`);
+    }
+
+    {
+        type Map2<T> = { [K in keyof T]: T[K] extends number ? K : 34 }[keyof T];
+        type t = Map2<any>;
+
+        expect(stringifyResolvedType(typeOf<t>())).toContain(`string | number | symbol`);
+    }
+});
+
+test('weird keyof any', () => {
+    type a = keyof any;
+    type b = { [K in keyof any]: string }
+    type c = { [K in a]: string }
+
+    expect(stringifyResolvedType(typeOf<a>())).toBe(`string | number | symbol`);
+    expect(stringifyResolvedType(typeOf<b>())).toContain(`{
+  [index: string]: string;
+  [index: number]: string;
+  [index: symbol]: string;
+}`);
+    expect(stringifyResolvedType(typeOf<c>())).toContain(`{
+  [index: string]: string;
+  [index: number]: string;
+  [index: symbol]: string;
+}`);
+});
+
+test('any with partial', () => {
+    type NumberFields<T> = { [K in keyof T]: T[K] extends number | bigint ? K : never }[keyof T]
+    type Expression<T> = { [P in keyof T & string]?: string; }
+    type Partial<T> = { [P in keyof T & string]?: T[P] }
+
+    type t1 = NumberFields<any>;
+    //ts says string, but that's probably not correct, see 'weird keyof any'
+    expect(stringifyResolvedType(typeOf<t1>())).toBe(`string | number | symbol`);
+
+    type t2 = Partial<any>;
+    expect(stringifyResolvedType(typeOf<t2>())).toContain(`{[index: string]: any}`);
+
+    interface ChangesInterface<T> {
+        $set?: Partial<T> | T;
+        $unset?: { [path: string]: number };
+        $inc?: Partial<Pick<T, NumberFields<T>>>;
+    }
+
+    type t = ChangesInterface<any>;
+
+    const type = typeOf<ChangesInterface<any>>();
+    assertType(type, ReflectionKind.objectLiteral);
+    console.log(type);
 });
 
 class User {

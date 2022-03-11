@@ -48,7 +48,6 @@ import { RpcMessageBuilder } from './kernel';
 import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 
-
 export type ActionTypes = {
     actionCallSchema: TypeObjectLiteral, //with args as property
     parametersValidate: Guard,

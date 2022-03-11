@@ -1,4 +1,7 @@
 import {
+    entityAnnotation,
+    EntityOptions,
+    findMember,
     isSameType,
     isTypeIncluded,
     isWithAnnotations,
@@ -25,6 +28,8 @@ import { typeSettings } from './core';
 import { regExpFromString } from './utils';
 
 export interface SerializedTypeAnnotations {
+    entityOptions?: EntityOptions;
+
     typeName?: string;
 
     typeArguments?: SerializedTypeReference[];
@@ -243,6 +248,55 @@ function filterRemoveFunctions(v: Type): boolean {
     return v.kind !== ReflectionKind.function && v.kind !== ReflectionKind.method && v.kind !== ReflectionKind.methodSignature;
 }
 
+function exportEntityOptions(type: TypeClass | TypeObjectLiteral, result: SerializedType): void {
+    const reflection = ReflectionClass.from(type);
+
+    let changed = false;
+    const entityAttributes: EntityOptions = {};
+    if (reflection.name !== undefined) {
+        changed = true;
+        entityAttributes.name = reflection.name;
+    }
+    if (reflection.description) {
+        changed = true;
+        entityAttributes.description = reflection.description;
+    }
+    if (reflection.databaseSchemaName !== undefined) {
+        changed = true;
+        entityAttributes.database = reflection.databaseSchemaName;
+    }
+    if (reflection.collectionName !== undefined) {
+        changed = true;
+        entityAttributes.collection = reflection.collectionName;
+    }
+    if (reflection.singleTableInheritance) {
+        changed = true;
+        entityAttributes.singleTableInheritance = reflection.singleTableInheritance;
+    }
+    if (reflection.indexes.length) {
+        changed = true;
+        entityAttributes.indexes = reflection.indexes;
+    }
+
+    if (changed) {
+        result.entityOptions = entityAttributes;
+    }
+}
+
+function assignEntityOptions(type: TypeClass | TypeObjectLiteral, serialized: SerializedType): void {
+    if (!serialized.entityOptions) return;
+    const entity = entityAnnotation.getFirst(type) || {};
+
+    if (serialized.entityOptions.name !== undefined) entity.name = serialized.entityOptions.name;
+    if (serialized.entityOptions.description !== undefined) entity.description = serialized.entityOptions.description;
+    if (serialized.entityOptions.database !== undefined) entity.database = serialized.entityOptions.database;
+    if (serialized.entityOptions.collection !== undefined) entity.collection = serialized.entityOptions.collection;
+    if (serialized.entityOptions.singleTableInheritance !== undefined) entity.singleTableInheritance = serialized.entityOptions.singleTableInheritance;
+    if (serialized.entityOptions.indexes !== undefined) entity.indexes = serialized.entityOptions.indexes;
+
+    entityAnnotation.replaceType(type, [entity]);
+}
+
 function serialize(type: Type, state: SerializerState): SerializedTypeReference {
     const serialized = state.refs.get(type);
     if (serialized) return serialized;
@@ -280,6 +334,7 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
                 kind: ReflectionKind.objectLiteral,
                 types: types.map(member => serialize(member, state)),
             } as SerializedTypeObjectLiteral);
+            exportEntityOptions(type, result);
             break;
         }
         case ReflectionKind.class: {
@@ -304,6 +359,7 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
                 extendsArguments: type.extendsArguments ? type.extendsArguments.map(member => serialize(member, state)) : undefined,
                 superClass,
             } as SerializedTypeClassType);
+            exportEntityOptions(type, result);
             break;
         }
         case ReflectionKind.literal: {
@@ -319,7 +375,7 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
         case ReflectionKind.tuple: {
             Object.assign(result, {
                 kind: ReflectionKind.tuple,
-                types: type.types.map(member => ({ ...member, parent: undefined, type: serialize(member.type, state) })),
+                types: type.types.map(member => ({ ...member, jit: undefined, parent: undefined, type: serialize(member.type, state) })),
 
             } as SerializedTypeTuple);
             break;
@@ -377,7 +433,13 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
             }
             Object.assign(result, {
                 kind: ReflectionKind.function,
-                parameters: type.parameters.map(v => ({ ...v, parent: undefined, type: serialize(v.type, state), default: v.default !== undefined ? true : undefined })),
+                parameters: type.parameters.map(v => ({
+                    ...v,
+                    jit: undefined,
+                    parent: undefined,
+                    type: serialize(v.type, state),
+                    default: v.default !== undefined ? true : undefined
+                })),
                 return: serialize(type.return, state)
             } as SerializedTypeFunction);
             break;
@@ -389,9 +451,11 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
             }
             Object.assign(result, {
                 ...type,
+                jit: undefined,
                 parent: undefined,
                 parameters: type.parameters.map(v => ({
                     ...v,
+                    jit: undefined,
                     parent: undefined,
                     type: serialize(v.type, state),
                     default: v.default !== undefined ? true : undefined
@@ -407,9 +471,11 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
             }
             Object.assign(result, {
                 ...type,
+                jit: undefined,
                 parent: undefined,
                 parameters: type.parameters.map(v => ({
                     ...v,
+                    jit: undefined,
                     parent: undefined,
                     type: serialize(v.type, state),
                     default: v.default !== undefined ? true : undefined
@@ -421,6 +487,7 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
         case ReflectionKind.propertySignature: {
             Object.assign(result, {
                 ...type,
+                jit: undefined,
                 parent: undefined,
                 type: serialize(type.type, state),
             } as SerializedTypePropertySignature);
@@ -429,6 +496,7 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
         case ReflectionKind.property: {
             Object.assign(result, {
                 ...type,
+                jit: undefined,
                 parent: undefined,
                 default: type.default !== undefined ? true : undefined,
                 type: serialize(type.type, state),
@@ -536,6 +604,7 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
                 kind: ReflectionKind.objectLiteral,
                 types: type.types.map(v => deserialize(v, state, result))
             } as TypeObjectLiteral);
+            assignEntityOptions(result as TypeObjectLiteral, type);
             break;
         }
         case ReflectionKind.class: {
@@ -549,11 +618,34 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
 
             const newClass = !type.globalObject && state.disableReuse === true || (!type.name || !typeSettings.registeredEntities[type.name]);
 
+            const args = type.arguments ? type.arguments.map(v => deserialize(v, state, result)) : undefined;
+            const extendsArguments = type.extendsArguments ? type.extendsArguments.map(v => deserialize(v, state, result)) : undefined;
+            const types = type.types.map(v => deserialize(v, state, result));
+            const constructor = findMember('constructor', { types });
+            const initialize: { name: string, index: number }[] = [];
+            if (constructor && constructor.kind === ReflectionKind.method) {
+                for (let i = 0; i < constructor.parameters.length; i++) {
+                    if (constructor.parameters[i].visibility !== undefined) {
+                        initialize.push({ name: constructor.parameters[i].name, index: i });
+                    }
+                }
+            }
+
             const classType = type.globalObject ? (global as any)[type.classType] : newClass
                 ? (type.superClass ? class extends (deserialize(type.superClass, state) as TypeClass).classType {
+                    constructor(...args: any[]) {
+                        super(...args);
+                        for (const init of initialize) {
+                            this[init.name] = args[init.index];
+                        }
+                    }
                 } : class {
+                    constructor(...args: any[]) {
+                        for (const init of initialize) {
+                            (this as any)[init.name] = args[init.index];
+                        }
+                    }
                 }) : typeSettings.registeredEntities[type.name!];
-
 
             if (newClass) {
                 Object.defineProperty(classType, 'name', { value: type.classType, writable: true, enumerable: false });
@@ -562,13 +654,15 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
                     classType.__type.__type = result;
                 }
             }
+
             Object.assign(result, {
                 kind: ReflectionKind.class,
                 classType,
-                arguments: type.arguments ? type.arguments.map(v => deserialize(v, state, result)) : undefined,
-                extendsArguments: type.extendsArguments ? type.extendsArguments.map(v => deserialize(v, state, result)) : undefined,
-                types: type.types.map(v => deserialize(v, state, result)),
+                arguments: args,
+                extendsArguments,
+                types,
             } as TypeClass);
+            assignEntityOptions(result as TypeClass, type);
             break;
         }
         case ReflectionKind.literal: {
@@ -688,7 +782,7 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
     }
 
     if (isWithSerializedAnnotations(type) && isWithAnnotations(result) && type.decorators) {
-        result.annotations = {};
+        result.annotations ||= {};
         for (const scheduledDecorator of type.decorators) {
             for (const decorator of typeDecorators) {
                 const dec = deserialize(scheduledDecorator, state) as TypeObjectLiteral;
@@ -699,7 +793,7 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
     return result;
 }
 
-export function deserializeType(types: SerializedTypes, state: Partial<DeserializeState> = {}): Type {
-    if (types.length === 0) return { kind: ReflectionKind.unknown };
+export function deserializeType(types?: SerializedTypes, state: Partial<DeserializeState> = {}): Type {
+    if (!types || types.length === 0) return { kind: ReflectionKind.unknown };
     return deserialize(types[0], { ...state, deserialized: {}, types });
 }

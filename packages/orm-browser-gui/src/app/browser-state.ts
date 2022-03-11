@@ -1,13 +1,23 @@
 import { EventEmitter, Injectable } from '@angular/core';
 import { arrayRemoveItem, empty, isObject } from '@deepkit/core';
 import { DatabaseCommit, DatabaseInfo, EntityPropertySeed, EntitySeed, FakerTypes, findFaker } from '@deepkit/orm-browser-api';
-import { Changes, changeSetSymbol, ClassSchema, getChangeDetector, getConverterForSnapshot, PropertySchema, PropertyValidatorError } from '@deepkit/type';
+import {
+    Changes,
+    changeSetSymbol,
+    getChangeDetector,
+    getConverterForSnapshot,
+    isBackReferenceType,
+    ReflectionClass,
+    TypeProperty,
+    TypePropertySignature,
+    ValidatorError
+} from '@deepkit/type';
 import { ControllerClient } from './client';
 import { Progress } from '@deepkit/rpc';
 import { getInstanceStateFromItem } from '@deepkit/orm';
 
 export type ChangesStore = { [pkHash: string]: { pk: { [name: string]: any }, changes: Changes<any> } };
-export type ValidationErrors = { [fieldName: string]: PropertyValidatorError };
+export type ValidationErrors = { [fieldName: string]: ValidatorError };
 export type ValidationErrorStore = Map<any, ValidationErrors>;
 
 export type IdWrapper = { $___newId: any };
@@ -53,15 +63,15 @@ export class BrowserQuery {
             //we can not use eval at the beginning since it tries to actually execute the code.
             try {
                 eval(this.javascript);
-            } catch (error) {
-                this.javascriptError = error;
+            } catch (error: any) {
+                this.javascriptError = String(error);
             }
         }
     }
 }
 
 export class BrowserEntityState {
-    properties: PropertySchema[] = [];
+    properties: (TypeProperty | TypePropertySignature)[] = [];
     queryId: number = 0;
 
     error?: string;
@@ -96,7 +106,7 @@ export class BrowserEntityState {
     validationStore?: ValidationErrorStore;
     deletions: { [pkHash: string]: any } = {};
 
-    constructor(public schema: ClassSchema) {
+    constructor(public schema: ReflectionClass<any>) {
     }
 
     addQuery() {
@@ -135,7 +145,7 @@ export class BrowserState {
     changes: { [storeKey: string]: ChangesStore } = {};
     validationErrors: { [storeKey: string]: ValidationErrorStore } = {};
 
-    connectedNewItems = new Map<any, { row: any, property: PropertySchema }[]>();
+    connectedNewItems = new Map<any, { row: any, property: TypeProperty | TypePropertySignature }[]>();
 
     onDataChange = new EventEmitter();
 
@@ -152,13 +162,12 @@ export class BrowserState {
 
             const properties: EntitySeed['properties'] = {};
             for (const property of this.getEntity(db, entity).getProperties()) {
-                if (property.backReference) continue;
-                if (property.isParentReference) continue;
+                if (isBackReferenceType(property.type)) continue;
 
                 const propertyPredefined = predefined[property.name];
                 const seed = properties[property.name] = new EntityPropertySeed(property.name);
                 seed.fake = propertyPredefined?.fake || false;
-                seed.faker = propertyPredefined?.faker || findFaker(fakerTypes, property);
+                seed.faker = propertyPredefined?.faker || findFaker(fakerTypes, property.name, property.type);
             }
             settings = this.seedSettings[key] = new EntitySeed();
             settings.properties = properties;
@@ -284,12 +293,12 @@ export class BrowserState {
         this.onDataChange.emit();
     }
 
-    getEntityFromCacheKey(key: string): ClassSchema {
+    getEntityFromCacheKey(key: string): ReflectionClass<any> {
         const [dbName, entityName] = key.split(storeKeySeparator);
         return this.getEntity(dbName, entityName);
     }
 
-    getEntity(dbName: string, name: string): ClassSchema {
+    getEntity(dbName: string, name: string): ReflectionClass<any> {
         for (const db of this.databases) {
             for (const entity of db.getClassSchemas()) {
                 if (entity.name === name) return entity;
@@ -299,7 +308,7 @@ export class BrowserState {
         throw new Error(`No entity ${name} in db ${dbName} found`);
     }
 
-    connectNewItem(newItem: any, row: any, property: PropertySchema) {
+    connectNewItem(newItem: any, row: any, property: TypeProperty | TypePropertySignature) {
         let connections = this.connectedNewItems.get(newItem);
         if (!connections) {
             connections = [];

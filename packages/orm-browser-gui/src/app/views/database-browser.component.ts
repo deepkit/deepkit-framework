@@ -1,13 +1,23 @@
 import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Optional, Output } from '@angular/core';
 import { DuiDialog, unsubscribe } from '@deepkit/desktop-ui';
-import { ClassSchema, getPrimaryKeyHashGenerator, jsonSerializer, plainToClass, PropertySchema, validate } from '@deepkit/type';
+import {
+    deserialize,
+    getPrimaryKeyHashGenerator,
+    isBackReferenceType,
+    isNullable,
+    isPrimaryKeyType,
+    ReflectionClass,
+    TypeProperty,
+    TypePropertySignature,
+    validate
+} from '@deepkit/type';
 import { Subscription } from 'rxjs';
 import { BrowserEntityState, BrowserQuery, BrowserState, ValidationErrors, } from '../browser-state';
 import { DatabaseInfo } from '@deepkit/orm-browser-api';
 import { getInstanceStateFromItem } from '@deepkit/orm';
 import { ControllerClient } from '../client';
 import { arrayRemoveItem, isArray } from '@deepkit/core';
-import { trackByIndex } from '../utils';
+import { showTypeString, trackByIndex } from '../utils';
 import { ClientProgress } from '@deepkit/rpc';
 import { ActivatedRoute } from '@angular/router';
 
@@ -19,11 +29,13 @@ import { ActivatedRoute } from '@angular/router';
 export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
     trackByIndex = trackByIndex;
     isArray = isArray;
+    String = String;
+    showTypeString = showTypeString;
 
     entityState?: BrowserEntityState;
 
     @Input() database!: DatabaseInfo;
-    @Input() entity!: ClassSchema;
+    @Input() entity!: ReflectionClass<any>;
 
     @Input() dialog: boolean = false;
 
@@ -53,7 +65,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
         return this.state.isNew(item) ? 'new' : '';
     };
 
-    trackByProperty(index: number, property: PropertySchema) {
+    trackByProperty(index: number, property: TypeProperty | TypePropertySignature) {
         return property.name;
     }
 
@@ -85,8 +97,8 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
             query.executionTime = res.executionTime;
             query.downloadBytes = query.progress.download.total;
             query.downloadTime = performance.now() - start;
-        } catch (error) {
-            this.duiDialog.alert('Error', error);
+        } catch (error: any) {
+            this.duiDialog.alert('Error', String(error));
         }
         query.loading = false;
         this.cd.detectChanges();
@@ -175,18 +187,18 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
         this.loadEntity(true);
     }
 
-    unset = (row: any, property: PropertySchema) => {
+    unset = (row: any, property: TypeProperty | TypePropertySignature) => {
         this.ignoreNextCellClick = true;
-        row[property.name] = property.isNullable ? null : undefined;
+        row[property.name] = isNullable(property.type) ? null : undefined;
         this.changed(row);
     };
 
-    reset = (item: any, column: string) => {
+    reset = (item: any, column: string | number | symbol) => {
         if (!this.entity) return;
 
         this.ignoreNextCellClick = true;
         const snapshot = getInstanceStateFromItem(item).getSnapshot();
-        item[column] = jsonSerializer.deserializeProperty(this.entity.getProperty(column), snapshot[column]);
+        item[column] = deserialize(snapshot[column], undefined, undefined, this.entity.getProperty(column).property);
 
         this.changed(item);
     };
@@ -214,8 +226,8 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
         try {
             await this.state.commit();
             await this.state.resetAll();
-        } catch (error) {
-            this.duiDialog.alert('Error saving', error);
+        } catch (error: any) {
+            this.duiDialog.alert('Error saving', String(error));
             console.log(error);
         }
 
@@ -239,7 +251,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
 
         if (this.entityState.validationStore) {
             //validation
-            const errors = validate(this.entity, row);
+            const errors = validate(row, this.entity.type);
             if (errors.length) {
                 const validationErrors: ValidationErrors = {};
                 for (const error of errors) {
@@ -277,7 +289,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
 
         try {
             const jsonItem = await this.controllerClient.browser.create(this.database.name, this.entity.getName());
-            const item = plainToClass(this.entity, jsonItem);
+            const item = deserialize(jsonItem, undefined, undefined, this.entity.type);
             const state = getInstanceStateFromItem(item);
             state.markAsPersisted();
             state.markAsFromDatabase();
@@ -288,8 +300,8 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
             addedItems.push(item);
             this.entityState.items = this.entityState.items.slice();
             this.cd.detectChanges();
-        } catch (error) {
-            this.duiDialog.alert('Could not create item', error.message);
+        } catch (error: any) {
+            this.duiDialog.alert('Could not create item', String(error));
             console.log(error);
         }
     }
@@ -302,14 +314,10 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
         this.entityState.validationStore = this.state.getValidationStore(this.database.name, this.entity.getName());
         this.pkHasher = getPrimaryKeyHashGenerator(this.entity);
 
-        this.entityState.properties = [...this.entity.getProperties()].filter(v => !v.backReference);
+        this.entityState.properties = [...this.entity.getProperties()].map(v => v.property).filter(v => !isBackReferenceType(v.type));
         this.entityState.properties.sort((a, b) => {
-            if (a.isId && !b.isId) return -1;
-            if (!a.isId && b.isId) return +1;
-            if (!a.isId && !b.isId) {
-                if (a.methodName === 'constructor' && b.methodName !== 'constructor') return -1;
-                if (a.methodName !== 'constructor' && b.methodName === 'constructor') return +1;
-            }
+            if (isPrimaryKeyType(a) && !isPrimaryKeyType(b)) return -1;
+            if (!isPrimaryKeyType(a) && isPrimaryKeyType(b)) return +1;
             return 0;
         });
 
@@ -426,7 +434,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
             }
 
             for (const jsonItem of items) {
-                const item = plainToClass(this.entity, jsonItem);
+                const item: any = deserialize(jsonItem, undefined, undefined, this.entity.type);
                 const state = getInstanceStateFromItem(item);
 
                 state.markAsPersisted();
@@ -457,9 +465,9 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
             }
 
             this.selectedAll = this.entityState.selection.length === this.entityState.items.length && this.entityState.items.length > 0;
-        } catch (error) {
+        } catch (error: any) {
             this.entityState.loading = false;
-            this.entityState.error = error instanceof Error ? error.stack : error;
+            this.entityState.error = String(error);
             console.log(error);
         }
 
