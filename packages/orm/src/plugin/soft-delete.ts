@@ -9,14 +9,14 @@
  */
 
 import { AsyncEventSubscription, ClassType } from '@deepkit/core';
-import { ClassSchema, getClassSchema } from '@deepkit/type';
 import { DatabaseSession } from '../database-session';
 import { Database } from '../database';
 import { DatabaseAdapter } from '../database-adapter';
 import { Query } from '../query';
-import { Entity } from '../type';
+import { OrmEntity } from '../type';
+import { ReflectionClass } from '@deepkit/type';
 
-interface SoftDeleteEntity extends Entity {
+interface SoftDeleteEntity extends OrmEntity {
     deletedAt?: Date;
     deletedBy?: any;
 }
@@ -24,7 +24,7 @@ interface SoftDeleteEntity extends Entity {
 const deletedAtName = 'deletedAt';
 
 export class SoftDeleteSession {
-    protected deletedBy = new Map<ClassSchema, any>();
+    protected deletedBy = new Map<ReflectionClass<any>, any>();
     protected restoreItems: SoftDeleteEntity[] = [];
 
     constructor(protected session: DatabaseSession<any>) {
@@ -47,8 +47,8 @@ export class SoftDeleteSession {
         });
     }
 
-    setDeletedBy<T extends SoftDeleteEntity>(classType: ClassType<T> | ClassSchema<T>, deletedBy: T['deletedBy']): this {
-        this.deletedBy.set(getClassSchema(classType), deletedBy);
+    setDeletedBy<T extends SoftDeleteEntity>(classType: ClassType<T> | ReflectionClass<T>, deletedBy: T['deletedBy']): this {
+        this.deletedBy.set(ReflectionClass.from(classType), deletedBy);
         return this;
     }
 
@@ -115,7 +115,7 @@ export class SoftDeleteQuery<T extends SoftDeleteEntity> extends Query<T> {
 }
 
 export class SoftDelete {
-    protected listeners = new Map<ClassSchema, {
+    protected listeners = new Map<ReflectionClass<any>, {
         queryFetch: AsyncEventSubscription, queryPatch: AsyncEventSubscription,
         queryDelete: AsyncEventSubscription, uowDelete: AsyncEventSubscription
     }>();
@@ -123,16 +123,16 @@ export class SoftDelete {
     constructor(protected database: Database<DatabaseAdapter>) {
     }
 
-    enable<T extends SoftDeleteEntity>(...classSchemaOrTypes: (ClassSchema<T> | ClassType<T>)[]) {
+    enable<T extends SoftDeleteEntity>(...classSchemaOrTypes: (ReflectionClass<T> | ClassType<T>)[]) {
         for (const type of classSchemaOrTypes) this.enableForSchema(type);
     }
 
-    disable(...classSchemaOrTypes: (ClassSchema | ClassType)[]) {
+    disable(...classSchemaOrTypes: (ReflectionClass<any> | ClassType)[]) {
         for (const type of classSchemaOrTypes) this.disableForSchema(type);
     }
 
-    protected disableForSchema(classSchemaOrType: ClassSchema | ClassType) {
-        const schema = getClassSchema(classSchemaOrType);
+    protected disableForSchema(classSchemaOrType: ReflectionClass<any> | ClassType) {
+        const schema = ReflectionClass.from(classSchemaOrType);
         const listener = this.listeners.get(schema);
         if (listener) {
             listener.queryFetch.unsubscribe();
@@ -143,15 +143,15 @@ export class SoftDelete {
         }
     }
 
-    protected enableForSchema<T extends SoftDeleteEntity>(classSchemaOrType: ClassSchema<T> | ClassType<T>) {
-        const schema = getClassSchema(classSchemaOrType);
+    protected enableForSchema<T extends SoftDeleteEntity>(classSchemaOrType: ReflectionClass<T> | ClassType<T>) {
+        const schema = ReflectionClass.from(classSchemaOrType);
         const hasDeletedBy = schema.hasProperty('deletedBy');
 
         if (!schema.hasProperty(deletedAtName)) {
             throw new Error(`Entity ${schema.getClassName()} has no ${deletedAtName} property. Please define one as type '${deletedAtName}: t.date.optional'`);
         }
 
-        function queryFilter(event: { classSchema: ClassSchema, query: Query<any> }) {
+        function queryFilter(event: { classSchema: ReflectionClass<any>, query: Query<any> }) {
             //this is for each query method: count, find, findOne(), etc.
 
             //we don't change SoftDeleteQuery instances as they operate on the raw records without filter

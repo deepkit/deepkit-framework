@@ -23,7 +23,7 @@ export class ControllerClient {
     }
 
     static getServerHost(): string {
-        return (location.port === '4200' ? location.hostname + ':9090' : location.host);
+        return (location.port === '4200' ? location.hostname + ':8080' : location.host);
     }
 
     getDatabases(): Promise<DatabaseInfo[]> {

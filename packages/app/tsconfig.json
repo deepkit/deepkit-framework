@@ -15,9 +15,9 @@
     "declaration": true,
     "composite": true
   },
+  "reflection": true,
   "include": [
     "src",
-    "tests",
     "index.ts"
   ],
   "references": [

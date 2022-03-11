@@ -10,7 +10,7 @@
 
 import { ApplicationServer } from '../application-server';
 import { AppModule, cli, Command, flag, ServiceContainer } from '@deepkit/app';
-import { DefaultFormatter, Logger } from '@deepkit/logger';
+import { DefaultFormatter, Logger, LoggerInterface } from '@deepkit/logger';
 import { FrameworkModule } from '../module';
 
 @cli.controller('server:start', {
@@ -18,19 +18,21 @@ import { FrameworkModule } from '../module';
 })
 export class ServerStartController implements Command {
     constructor(
-        protected logger: Logger,
+        protected logger: LoggerInterface,
         protected serviceContainer: ServiceContainer,
     ) {
     }
 
     async execute(
-        @flag.optional host?: string,
-        @flag.optional port?: number,
-        @flag.optional workers?: number,
-        @flag.optional ssl?: boolean,
-        @flag.optional selfSigned?: boolean,
+        @flag host?: string,
+        @flag port?: number,
+        @flag workers?: number,
+        @flag ssl?: boolean,
+        @flag selfSigned?: boolean,
     ): Promise<void> {
-        if (!this.logger.hasFormatters()) this.logger.addFormatter(new DefaultFormatter);
+        if (this.logger instanceof Logger) {
+            if (!this.logger.hasFormatters()) this.logger.addFormatter(new DefaultFormatter);
+        }
 
         const overwrite: { [name: string]: any } = {};
         if (host) overwrite.host = host;

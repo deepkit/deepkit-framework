@@ -1,10 +1,9 @@
-import 'reflect-metadata';
 import { expect, test } from '@jest/globals';
-import { getClassSchema, t } from '@deepkit/type';
-import { CircularDependencyError, Injector } from '../src/injector';
-import { inject, injectable, InjectOptions, InjectorToken } from '../src/decorator';
-import { createConfig } from '../src/config';
+import { CircularDependencyError, Injector, InjectorToken } from '../src/injector';
 import { InjectorModule } from '../src/module';
+import { ReflectionClass, ReflectionKind } from '@deepkit/type';
+import { Inject } from '../src/types';
+import { provide } from '../src/provider';
 
 export const a = 'asd';
 
@@ -12,7 +11,6 @@ test('injector basics', () => {
     class Connection {
     }
 
-    @injectable
     class MyServer {
         constructor(private connection: Connection) {
             expect(connection).toBeInstanceOf(Connection);
@@ -31,53 +29,67 @@ test('missing dep', () => {
     class Missing {
     }
 
-    @injectable
     class MyServer {
         constructor(private connection: Connection, private missing: Missing) {
             expect(connection).toBeInstanceOf(Connection);
         }
     }
 
-    expect(() => Injector.from([MyServer, Connection])).toThrow(`Unknown dependency 'missing: Missing' of MyServer.missing`);
+    expect(() => Injector.from([MyServer, Connection])).toThrow(`Undefined dependency "missing: Missing" of MyServer(✓, ?)`);
 });
 
 test('wrong dep 1', () => {
     class Connection {
     }
 
-    @injectable
     class MyServer {
         constructor(private connection: Connection, private missing: any) {
             expect(connection).toBeInstanceOf(Connection);
         }
     }
 
-    expect(() => Injector.from([MyServer, Connection])).toThrow(`Undefined dependency 'missing: undefined' of MyServer(✓, ?).`);
+    expect(() => Injector.from([MyServer, Connection])).toThrow(`Undefined dependency "missing: any" of MyServer(✓, ?).`);
 });
 
 test('wrong dep 2', () => {
-    @injectable
     class MyServer {
         constructor(private missing: any) {
         }
     }
 
-    expect(() => Injector.from([MyServer])).toThrow(`Undefined dependency 'missing: undefined' of MyServer(?).`);
+    expect(() => Injector.from([MyServer])).toThrow(`Undefined dependency "missing: any" of MyServer(?).`);
 });
 
 test('wrong dep 3', () => {
-    @injectable
     class MyServer {
-        @inject() private missing: any;
+        private missing: Inject<any>;
     }
 
-    expect(() => Injector.from([MyServer])).toThrow(`Undefined dependency 'missing: undefined' of MyServer.missing.`);
+    expect(() => Injector.from([MyServer])).toThrow(`Undefined dependency "missing: any" of MyServer.missing.`);
+});
+
+test('wrong optional dep 3', () => {
+    class MyServer {
+        private missing?: Inject<any>;
+    }
+
+    const server = Injector.from([MyServer]).get(MyServer);
+    expect(server).toBeInstanceOf(MyServer);
+});
+
+test('dont touch normal property', () => {
+    class MyServer {
+        missing: any = 2;
+    }
+
+    const server = Injector.from([MyServer]).get(MyServer);
+    expect(server).toBeInstanceOf(MyServer);
+    expect(server.missing).toBe(2);
 });
 
 test('injector key', () => {
-    @injectable
     class MyServer {
-        constructor(@inject('foo') private foo: string) {
+        constructor(private foo: Inject<string, 'foo'>) {
             expect(foo).toBe('bar');
         }
     }
@@ -87,12 +99,126 @@ test('injector key', () => {
     expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
 });
 
+test('interface dependency direct match', () => {
+    interface Connection {
+        id: number;
+
+        write(data: Uint16Array): void;
+    }
+
+    class MyConnection implements Connection {
+        id: number = 0;
+
+        write(data: Uint16Array): void {
+        }
+    }
+
+    class MyServer {
+        constructor(public connection: Connection) {
+        }
+    }
+
+    const injector = Injector.from([MyServer, provide<Connection>(MyConnection)]);
+    const server = injector.get(MyServer);
+    expect(server).toBeInstanceOf(MyServer);
+    expect(server.connection).toBeInstanceOf(MyConnection);
+    expect(server.connection.id).toBe(0);
+});
+
+test('interface dependency over specified', () => {
+    interface Connection {
+        id: number;
+
+        write(data: Uint16Array): void;
+    }
+
+    class MyConnection implements Connection {
+        id: number = 0;
+
+        write(data: Uint16Array): void {
+        }
+
+        additional(): void {
+
+        }
+    }
+
+    class MyServer {
+        constructor(public connection: Connection) {
+        }
+    }
+
+    const injector = Injector.from([MyServer, provide<MyConnection>(MyConnection)]);
+    const server = injector.get(MyServer);
+    expect(server).toBeInstanceOf(MyServer);
+    expect(server.connection).toBeInstanceOf(MyConnection);
+    expect(server.connection.id).toBe(0);
+});
+
+test('interface dependency multiple matches', () => {
+    interface Connection {
+        write(data: Uint16Array): void;
+    }
+
+    class MyConnection1 implements Connection {
+        write(data: Uint16Array): void {
+        }
+    }
+
+    class MyConnection2 implements Connection {
+        write(data: Uint16Array): void {
+        }
+    }
+
+    class MyServer {
+        constructor(public connection: Connection) {
+        }
+    }
+
+    {
+        expect(() => Injector.from([MyServer, provide<{ write(invalid: Uint32Array): void }>(MyConnection1)])).toThrow('Undefined dependency "connection');
+    }
+
+    {
+        const injector = Injector.from([MyServer, provide<{ write(): void }>(MyConnection1)]);
+        const server = injector.get(MyServer);
+        expect(server.connection).toBeInstanceOf(MyConnection1);
+    }
+
+    {
+        //last match wins
+        const injector = Injector.from([MyServer, provide<{ write(): void }>(MyConnection1), provide<{ write(): void }>(MyConnection2)]);
+        const server = injector.get(MyServer);
+        expect(server.connection).toBeInstanceOf(MyConnection2);
+    }
+});
+
+test('interface dependency under specified', () => {
+    interface Connection {
+        id: number;
+
+        write(data: Uint16Array): void;
+    }
+
+    class MyConnection implements Connection {
+        id: number = 0;
+
+        write(data: Uint16Array): void {
+        }
+    }
+
+    class MyServer {
+        constructor(public connection: Connection) {
+        }
+    }
+
+    expect(() => Injector.from([MyServer, provide<{ id: number }>(MyConnection)])).toThrow(`Undefined dependency "connection: `);
+});
 
 test('injector transient', () => {
     class Connection {
     }
 
-    @injectable
     class MyServer {
         constructor(public connection: Connection) {
             expect(connection).toBeInstanceOf(Connection);
@@ -124,12 +250,10 @@ test('injector property injection', () => {
     class Connection {
     }
 
-    @injectable
     class MyServer {
-        @inject()
-        public connection!: Connection;
+        public connection!: Inject<Connection>;
 
-        constructor(@inject('name') public name: string) {
+        constructor(public name: Inject<string, 'name'>) {
         }
     }
 
@@ -146,9 +270,8 @@ test('injector overwrite token', () => {
     class Connection2 extends Connection {
     }
 
-    @injectable
     class MyServer {
-        constructor(@inject(Connection2) private connection: Connection) {
+        constructor(private connection: Inject<Connection, Connection2>) {
             expect(connection).toBeInstanceOf(Connection2);
         }
     }
@@ -164,15 +287,14 @@ test('injector unmet dependency', () => {
     class Connection {
     }
 
-    @injectable
     class MyServer {
-        constructor(private connection?: Connection) {
+        constructor(private connection: Connection) {
             expect(connection).toBeUndefined();
         }
     }
 
     {
-        expect(() => Injector.from([MyServer])).toThrow(`Unknown dependency 'connection: Connection' of MyServer.connection`);
+        expect(() => Injector.from([MyServer])).toThrow(`Undefined dependency "connection: Connection" of MyServer(?)`);
     }
 });
 
@@ -180,9 +302,8 @@ test('injector optional unmet dependency', () => {
     class Connection {
     }
 
-    @injectable
     class MyServer {
-        constructor(@t.optional private connection?: Connection) {
+        constructor(private connection?: Connection) {
             expect(connection).toBeUndefined();
         }
     }
@@ -197,46 +318,28 @@ test('injector optional dependency', () => {
     class Connection {
     }
 
-    @injectable
     class MyServer {
-        constructor(@inject().optional private connection?: Connection) {
+        constructor(private connection?: Connection) {
             expect(connection).toBeUndefined();
         }
     }
 
     {
         const injector = Injector.from([MyServer]);
-        expect(() => injector.get(Connection)).toThrow(`Token 'Connection' in InjectorModule not found`);
+        expect(() => injector.get(Connection)).toThrow(`Service 'Connection' in InjectorModule not found`);
         expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
     }
 });
 
-test('injector via t.optional', () => {
+test('injector Inject<, T>', () => {
+    interface ConnectionInterface {
+    }
+
     class Connection {
     }
 
-    @injectable
     class MyServer {
-        constructor(@t.optional private connection?: Connection) {
-            expect(connection).toBeUndefined();
-        }
-    }
-
-    {
-        const injector = Injector.from([MyServer]);
-        expect(() => injector.get(Connection)).toThrow(`Token 'Connection' in InjectorModule not found`);
-        expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
-    }
-});
-
-test('injector via t.type', () => {
-    interface ConnectionInterface {}
-    class Connection {
-    }
-
-    @injectable
-    class MyServer {
-        constructor(@t.type(Connection) public connection: ConnectionInterface) {
+        constructor(public connection: Inject<ConnectionInterface, Connection>) {
         }
     }
 
@@ -247,19 +350,20 @@ test('injector via t.type', () => {
     }
 });
 
-test('injector via t.type string', () => {
-    interface ConnectionInterface {}
+test('injector via Inject string', () => {
+    interface ConnectionInterface {
+    }
+
     class Connection {
     }
 
-    @injectable
     class MyServer {
-        constructor(@t.type('connection') public connection: ConnectionInterface) {
+        constructor(public connection: Inject<ConnectionInterface, 'connection'>) {
         }
     }
 
     {
-        const injector = Injector.from([MyServer, {provide: 'connection', useClass: Connection}]);
+        const injector = Injector.from([MyServer, { provide: 'connection', useClass: Connection }]);
         expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
         expect(injector.get(MyServer).connection).toBeInstanceOf(Connection);
     }
@@ -273,7 +377,13 @@ test('injector token', () => {
     const Connection = new InjectorToken<ConnectionInterface>('connection');
 
     {
-        const injector = Injector.from([{provide: Connection, useValue: {doIt() {return 'hi'}}}]);
+        const injector = Injector.from([{
+            provide: Connection, useValue: {
+                doIt() {
+                    return 'hi';
+                }
+            }
+        }]);
         expect(injector.get(Connection).doIt()).toBe('hi');
     }
 });
@@ -285,7 +395,6 @@ test('injector overwrite provider', () => {
     class Connection2 extends Connection {
     }
 
-    @injectable
     class MyServer {
         constructor(private connection: Connection) {
             expect(connection).toBeInstanceOf(Connection2);
@@ -302,7 +411,6 @@ test('injector overwrite provider', () => {
 });
 
 test('injector direct circular dependency', () => {
-    @injectable
     class MyServer {
         constructor(private myServer: MyServer) {
         }
@@ -314,17 +422,14 @@ test('injector direct circular dependency', () => {
     }
 });
 
-
 test('injector circular dependency', () => {
-    @injectable
     class Connection {
-        constructor(@inject(() => MyServer) myServer: any) {
+        constructor(myServer: MyServer) {
             expect(myServer).not.toBeUndefined();
             expect(myServer).toBeInstanceOf(MyServer);
         }
     }
 
-    @injectable
     class MyServer {
         constructor(connection: Connection) {
             expect(connection).not.toBeUndefined();
@@ -340,7 +445,6 @@ test('injector circular dependency', () => {
 });
 
 test('injector factory', () => {
-
     class Service {
     }
 
@@ -356,57 +460,79 @@ test('injector factory', () => {
     }
 });
 
+test('injector factory deps', () => {
+    class Service {
+        constructor(public config: Config) {
+        }
+    }
+
+    class Config {
+    }
+
+    {
+        const injector = Injector.from([Config, { provide: Service, useFactory: (config: Config) => new Service(config) }]);
+
+        const s1 = injector.get(Service);
+        expect(s1).toBeInstanceOf(Service);
+        expect(s1.config).toBeInstanceOf(Config);
+
+        const s2 = injector.get(Service);
+        expect(s2).toBeInstanceOf(Service);
+        expect(s2).toBe(s1);
+    }
+});
+
 test('injector config', () => {
-    const moduleConfig = createConfig({
-        debug: t.boolean.default(false)
+    class ModuleConfig {
+        debug: boolean = false;
+        title: string = '';
+        db: { url: string } = { url: '' };
+    }
+
+    class MyService {
+        constructor(public config: Pick<ModuleConfig, 'debug'>) {
+        }
+    }
+
+    const reflection = ReflectionClass.from(MyService);
+    const parameters = reflection.getMethodParameters('constructor');
+    expect(parameters[0].getType()).toMatchObject({
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            { kind: ReflectionKind.propertySignature, name: 'debug', type: { kind: ReflectionKind.boolean } },
+        ]
     });
 
-    class ServiceConfig extends moduleConfig.slice('debug') {
-    }
-
-    @injectable
-    class MyService {
-        constructor(public config: ServiceConfig) {
-        }
-    }
-
-    @injectable
     class MyService2 {
-        constructor(@inject(moduleConfig) public config: typeof moduleConfig.type) {
+        constructor(public config: ModuleConfig) {
         }
     }
 
-    @injectable
     class MyService3 {
-        constructor(@inject(moduleConfig.all()) public config: typeof moduleConfig.type) {
+        constructor(public title: ModuleConfig['title']) {
         }
     }
 
-    class Slice extends moduleConfig.slice('debug') {
-    }
-
-    @injectable
     class MyService4 {
-        constructor(public config: Slice) {
+        constructor(public dbUrl: ModuleConfig['db']['url']) {
         }
     }
 
     {
-        const i1 = Injector.fromModule(new InjectorModule([MyService, MyService2, MyService3, MyService4]).setConfigDefinition(moduleConfig));
-        i1.module.configure({debug: false});
-        expect(i1.get(MyService).config.debug).toBe(false);
-        expect(i1.get(MyService2).config.debug).toBe(false);
-        expect(i1.get(MyService3).config.debug).toBe(false);
-        expect(i1.get(MyService4).config.debug).toBe(false);
+        const i1 = Injector.fromModule(new InjectorModule([MyService, MyService2, MyService3, MyService4]).setConfigDefinition(ModuleConfig));
+        expect(i1.get(MyService).config).toEqual({ debug: false });
+        expect(i1.get(MyService2).config).toEqual({ debug: false, title: '', db: { url: '' } });
+        expect(i1.get(MyService3).title).toBe('');
+        expect(i1.get(MyService4).dbUrl).toBe('');
     }
 
     {
-        const i1 = Injector.fromModule(new InjectorModule([MyService, MyService2, MyService3, MyService4]).setConfigDefinition(moduleConfig));
-        i1.module.configure({debug: true});
-        expect(i1.get(MyService).config.debug).toBe(true);
-        expect(i1.get(MyService2).config.debug).toBe(true);
-        expect(i1.get(MyService3).config.debug).toBe(true);
-        expect(i1.get(MyService4).config.debug).toBe(true);
+        const i1 = Injector.fromModule(new InjectorModule([MyService, MyService2, MyService3, MyService4]).setConfigDefinition(ModuleConfig));
+        i1.module.configure({ debug: true, title: 'MyTitle', db: { url: 'mongodb://localhost' } });
+        expect(i1.get(MyService).config).toEqual({ debug: true });
+        expect(i1.get(MyService2).config).toEqual({ debug: true, title: 'MyTitle', db: { url: 'mongodb://localhost' } });
+        expect(i1.get(MyService3).title).toBe('MyTitle');
+        expect(i1.get(MyService4).dbUrl).toBe('mongodb://localhost');
     }
 });
 
@@ -426,8 +552,8 @@ test('setup provider', () => {
 
     {
         const module = new InjectorModule([MyService]);
-        module.setupProvider(MyService).addTransporter('a');
-        module.setupProvider(MyService).addTransporter('b');
+        module.setupProvider<MyService>().addTransporter('a');
+        module.setupProvider<MyService>().addTransporter('b');
         expect(module.setupProviderRegistry.get(MyService).length).toBe(2);
         const i1 = Injector.fromModule(module);
         expect(i1.get(MyService).transporter).toEqual(['a', 'b']);
@@ -435,59 +561,59 @@ test('setup provider', () => {
 
     {
         const module = new InjectorModule([MyService]);
-        module.setupProvider(MyService).transporter = ['a'];
-        module.setupProvider(MyService).transporter = ['a', 'b', 'c'];
+        module.setupProvider<MyService>().transporter = ['a'];
+        module.setupProvider<MyService>().transporter = ['a', 'b', 'c'];
         expect(module.setupProviderRegistry.get(MyService).length).toBe(2);
         const i1 = Injector.fromModule(module);
         expect(i1.get(MyService).transporter).toEqual(['a', 'b', 'c']);
     }
 });
 
-test('constructor one with @inject', () => {
-    class HttpKernel {
+test('loggerInterface', () => {
+    type LogData = { [name: string]: any };
+
+    enum LoggerLevel {
+        none,
+        alert,
+        error,
+        warning,
+        log,
+        info,
+        debug,
+    }
+
+    interface LoggerInterface {
+        level: LoggerLevel;
+
+        scoped(name: string): LoggerInterface;
+
+        data(data: LogData): LoggerInterface;
+
+        is(level: LoggerLevel): boolean;
+
+        alert(...message: any[]): void;
+
+        error(...message: any[]): void;
+
+        warning(...message: any[]): void;
+
+        log(...message: any[]): void;
+
+        info(...message: any[]): void;
+
+        debug(...message: any[]): void;
+    }
+
+    class MyServer {
+        constructor(public logger: LoggerInterface) {
+        }
     }
 
     class Logger {
     }
 
-    class Stopwatch {
-    }
-
-    @injectable
-    class MyService {
-        constructor(
-            protected httpKernel: HttpKernel,
-            public logger: Logger,
-            @inject().optional protected stopwatch?: Stopwatch,
-        ) {
-        }
-    }
-
-    class SubService extends MyService {
-    }
-
-    {
-        const schema = getClassSchema(SubService);
-        const methods = schema.getMethodProperties('constructor');
-        expect(methods.length).toBe(3);
-
-        expect(methods[0].name).toBe('httpKernel');
-        expect(methods[1].name).toBe('logger');
-        expect(methods[2].name).toBe('stopwatch');
-
-        expect((methods[2].data['deepkit/inject'] as InjectOptions).optional).toBe(true);
-    }
-
-    @injectable
-    class Service {
-        constructor(public stopwatch: Stopwatch, @inject(Logger) public logger: any) {}
-    }
-
-    {
-        const schema = getClassSchema(Service);
-        const methods = schema.getMethodProperties('constructor');
-        expect(methods.length).toBe(2);
-        expect(methods[0].name).toBe('stopwatch');
-        expect(methods[1].name).toBe('logger');
-    }
+    const injector = Injector.from([MyServer, provide<LoggerInterface>(Logger)]);
+    const server = injector.get(MyServer);
+    expect(server).toBeInstanceOf(MyServer);
+    expect(server.logger).toBeInstanceOf(Logger);
 });

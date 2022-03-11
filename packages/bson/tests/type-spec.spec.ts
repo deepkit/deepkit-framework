@@ -1,120 +1,131 @@
-import { ClassType } from '@deepkit/core';
-import { ClassSchema, cloneClass, FieldDecoratorResult, getClassSchema, isFieldDecorator, plainToClass, propertyDefinition, t, unpopulatedSymbol } from '@deepkit/type';
-import 'reflect-metadata';
-import { getBSONDecoder } from '../src/bson-jit-parser';
-import { getBSONSerializer, serialize } from '../src/bson-serialize';
+import {
+    AutoIncrement,
+    BackReference,
+    BinaryBigInt,
+    cast,
+    copyAndSetParent,
+    createReference,
+    Embedded,
+    hasCircularReference,
+    hasEmbedded,
+    integer,
+    MongoId,
+    PrimaryKey,
+    ReceiveType,
+    Reference,
+    ReflectionClass,
+    ReflectionKind,
+    resolveReceiveType,
+    SignedBinaryBigInt,
+    Type,
+    typeOf,
+    TypePropertySignature,
+    UUID
+} from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { deserialize } from '../src/bson-parser';
-import crypto from 'crypto';
-import { ObjectId, UUID } from '../src/model';
+import { deserializeBSON } from '../src/bson-deserializer';
+import { deserializeBSONWithoutOptimiser } from '../src/bson-parser';
+import { serializeBSON, serializeWithoutOptimiser } from '../src/bson-serializer';
 
 (BigInt.prototype as any).toJSON = function () {
     return this.toString();
 };
 
-Object.defineProperty(global, 'crypto', { value: { getRandomValues: arr => crypto.randomBytes(arr.length) } });
+Error.stackTraceLimit = 150;
 
 /**
- * When the value is not existent anymore (don't confuse with being undefined).
- * Equal to check with `in`.
+ * @reflection never
  */
-export const RoundTripExcluded: unique symbol = Symbol('RoundTripExcluded');
+function needsWrapper(type: Type): boolean {
+    return hasEmbedded(type) || (type.kind == ReflectionKind.class && type.types.length === 0) || (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral);
+}
 
-export function roundTrip<T>(s: ClassSchema<T> | ClassType<T> | FieldDecoratorResult<T>, value: T): T {
-    if (isFieldDecorator(s)) {
-        const wrapped = t.schema({ field: s });
-        const serializer = getBSONSerializer(wrapped);
-        const deserializer = getBSONDecoder(wrapped);
-        const bson = serializer({ field: value });
-        // console.log('serialized', deserialize(bson));
-        const item = deserializer(bson);
-        if ('field' in item) return (item as any).field;
-        return RoundTripExcluded as any;
+/**
+ * @reflection never
+ */
+export function roundTrip<T>(value: T | any, type?: ReceiveType<T>): T {
+    type = resolveReceiveType(type);
+    if (needsWrapper(type)) {
+        const t: Type = copyAndSetParent({
+            kind: ReflectionKind.objectLiteral,
+            types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: { kind: ReflectionKind.never } }]
+        });
+        //important to not give `type` a parent, so the code acts as if it was not in `v`
+        (t.types[0] as TypePropertySignature).type = type;
+        const bson = serializeBSON({ v: value }, undefined, t);
+        const res = (deserializeBSON<T>(bson, 0, undefined, t) as any).v;
+        return res;
     } else {
-        const serializer = getBSONSerializer(s);
-        const deserializer = getBSONDecoder(s);
-        const bson = serializer(value);
-        // console.log('serialized', deserialize(bson));
-        const item = deserializer(bson);
-        return item as any;
+        const bson = serializeBSON(value, undefined, type);
+        const res = deserializeBSON<T>(bson, 0, undefined, type);
+        return res;
     }
 }
 
-export function serializeToJson<T>(s: ClassSchema<T> | ClassType<T> | FieldDecoratorResult<T>, value: T): T {
-    if (isFieldDecorator(s)) {
-        const wrapped = t.schema({ v: s });
-        const serializer = getBSONSerializer(wrapped);
-        const bson = serializer({ v: value });
-        return deserialize(bson).v;
+/**
+ * @reflection never
+ */
+export function serialize<T>(value: T | any, type?: ReceiveType<T>): T {
+    type = resolveReceiveType(type);
+    if (needsWrapper(type)) {
+        const t: Type = copyAndSetParent({
+            kind: ReflectionKind.objectLiteral,
+            types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: { kind: ReflectionKind.never } }]
+        });
+        //important to not give `type` a parent, so the code acts as if it was not in `v`
+        (t.types[0] as TypePropertySignature).type = type;
+        const bson = serializeBSON({ v: value }, undefined, t);
+        return deserializeBSONWithoutOptimiser(bson).v as any;
     } else {
-        const serializer = getBSONSerializer(s);
-        const bson = serializer(value);
-        return deserialize(bson) as any;
+        const bson = serializeBSON(value, undefined, type);
+        return deserializeBSONWithoutOptimiser(bson) as any;
     }
 }
 
-export function deserializeFromJson<T>(s: ClassSchema<T> | ClassType<T> | FieldDecoratorResult<T>, value: T): T {
-    if (isFieldDecorator(s)) {
-        const wrapped = t.schema({ v: s });
-        const deserializer = getBSONDecoder(wrapped);
-        const bson = serialize({ v: value });
-        return (deserializer(bson) as any).v;
+/**
+ * @reflection never
+ */
+export function deserialize<T>(value: any, type?: ReceiveType<T>): T {
+    type = resolveReceiveType(type);
+    if (needsWrapper(type)) {
+        const t: Type = copyAndSetParent({
+            kind: ReflectionKind.objectLiteral,
+            types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: { kind: ReflectionKind.never } }]
+        });
+        //important to not give `type` a parent, so the code acts as if it was not in `v`
+        (t.types[0] as TypePropertySignature).type = type;
+        const bson = serializeWithoutOptimiser({ v: value });
+        const res = (deserializeBSON<T>(bson, 0, undefined, t) as any).v;
+        return res;
     } else {
-        const deserializer = getBSONDecoder(s);
-        const bson = serialize(value);
-        return deserializer(bson);
+        const bson = serializeWithoutOptimiser(value);
+        const res = deserializeBSON<T>(bson, 0, undefined, type);
+        return res;
     }
 }
-
-test('wrapper types', () => {
-    expect(roundTrip(t.uuid, new UUID('5c58e474-82ad-4e92-ad9f-487bbc11e8ed') as any)).toEqual('5c58e474-82ad-4e92-ad9f-487bbc11e8ed');
-    expect(roundTrip(t.mongoId, new ObjectId('507f1f77bcf86cd799439011') as any)).toEqual('507f1f77bcf86cd799439011');
-
-    expect(roundTrip(t.any, new UUID('5c58e474-82ad-4e92-ad9f-487bbc11e8ed') as any)).toEqual('5c58e474-82ad-4e92-ad9f-487bbc11e8ed');
-    expect(roundTrip(t.any, new ObjectId('507f1f77bcf86cd799439011') as any)).toEqual('507f1f77bcf86cd799439011');
-});
-
-test('objectid generate', () => {
-    expect(ObjectId.generate().length).toBe(24);
-    expect(ObjectId.generate()).not.toBe(ObjectId.generate());
-});
-
-test('uuid and objectId not detected as class type', () => {
-    class Model {
-        constructor(@t public name: string) { }
-    }
-    expect(serializeToJson(t.type(Model), new Model('foo'))).toEqual({ name: 'foo' });
-    expect(serializeToJson(t.type(Model), new UUID('adasd') as any)).toEqual(undefined);
-    expect(serializeToJson(t.type(Model), new ObjectId('adasd') as any)).toEqual(undefined);
-});
-
-//
-//
-//! Beginning from here, the content is copied from @deepkit/type/tests/type-spec.spec.ts
-//
-//
 
 enum MyEnum {
     a, b, c
 }
 
 class Config {
-    @t color: string = '#fff';
-    @t big: boolean = false;
+    color: string = '#fff';
+    big: boolean = false;
 }
 
 class Model {
-    @t id: number = 0;
-    @t title: string = '';
-
-    @t config?: Config;
+    id: number = 0;
+    title: string = '';
+    config?: Config;
 }
 
 test('basics with value', () => {
-    expect(roundTrip(t.string, 'asd')).toBe('asd');
-    expect(roundTrip(t.number, 22)).toBe(22);
-    expect(roundTrip(t.boolean, false)).toBe(false);
-    expect(roundTrip(t.date, new Date)).toBeInstanceOf(Date);
+    expect(serialize<string>('asd')).toBe('asd');
+    expect(deserialize<string>('asd')).toBe('asd');
+    expect(roundTrip<string>('asd')).toBe('asd');
+    expect(roundTrip<number>(22)).toBe(22);
+    expect(roundTrip<boolean>(false)).toBe(false);
+    expect(roundTrip<Date>(new Date)).toBeInstanceOf(Date);
 });
 
 test('model', () => {
@@ -122,144 +133,124 @@ test('model', () => {
         const item = new Model;
         item.id = 23;
         item.title = '2322';
-        const back = roundTrip(Model, item);
+        const back = roundTrip<Model>(item);
         expect(back).toEqual({ id: 23, title: '2322' });
         expect(back).toBeInstanceOf(Model);
     }
-});
-test('string', () => {
-    expect(roundTrip(t.string, "0123456789")).toEqual("0123456789");
-    expect(roundTrip(t.string, "012345678901234567890123456789")).toEqual("012345678901234567890123456789");
-    expect(roundTrip(t.string, "0123456789012345678901234567890123456789")).toEqual("0123456789012345678901234567890123456789");
-    expect(roundTrip(t.string, "0123456789".repeat(64))).toEqual("0123456789".repeat(64));
 });
 
 test('with implicit default value', () => {
     const defaultDate = new Date;
 
     class Product {
-        @t id: number = 0;
+        id: number = 0;
 
-        @t created: Date = defaultDate;
+        created: Date = defaultDate;
     }
 
     //having a default value doesn't mean we are optional;
-    expect(getClassSchema(Product).getProperty('created').isOptional).toBe(false);
+    expect(ReflectionClass.from(Product).getProperty('created')!.isOptional()).toBe(false);
 
-    expect(roundTrip(Product, { id: 23 } as any)).toEqual({ id: 23, created: defaultDate });
-    expect(roundTrip(Product, { id: 23, created: undefined } as any)).toEqual({ id: 23, created: defaultDate });
+    expect(roundTrip<Product>({ id: 23 } as any)).toEqual({ id: 23, created: defaultDate });
+    expect(deserialize<Product>({ id: 23, created: undefined } as any)).toEqual({ id: 23, created: defaultDate });
+    expect(deserialize<Product>({ id: 23, created: null } as any)).toEqual({ id: 23, created: defaultDate });
+    expect(roundTrip<Product>({ id: 23, created: undefined } as any)).toEqual({ id: 23, created: defaultDate });
 
-    expect(roundTrip(t.partial(Product), { id: 23 } as any)).toEqual({ id: 23 });
-    expect(roundTrip(t.partial(Product), { id: 23, created: undefined } as any)).toEqual({ id: 23 });
+    expect(roundTrip<Partial<Product>>({ id: 23 } as any)).toEqual({ id: 23 });
+    expect(roundTrip<Partial<Product>>({ id: 23, created: undefined } as any)).toEqual({ id: 23 });
 
-    //not set properties are ommited
-    expect('created' in roundTrip(t.partial(Product), { id: 23 } as any)).toEqual(false);
+    //not set properties are omitted
+    expect('created' in roundTrip<Partial<Product>>({ id: 23 } as any)).toEqual(false);
 
-    //we need to keep undefined values otherwise there is not way to reset a value
-    //for JSON/BSON on the transport layer is null used to communicate the fact that we set explictely `created` to undefined
-    expect('created' in roundTrip(t.partial(Product), { id: 23, created: undefined } as any)).toEqual(true);
-});
-
-test('t.schema', () => {
-    {
-        const s = t.schema({ type: t.literal('m'), name: t.string });
-        const item = roundTrip(s, { type: 'm' as 'm', name: 'peter' });
-        expect(item).toEqual({ type: 'm', name: 'peter' });
-        expect(item).toBeInstanceOf(s.classType);
-    }
+    //we need to keep undefined values otherwise there is no way to reset a value
+    //for JSON/BSON on the transport layer is null used to communicate the fact that we set explicitly `created` to undefined
+    expect(deserialize<Partial<Product>>({ id: 23, created: null } as any)).toEqual({ id: 23, created: undefined });
+    expect('created' in serialize<Partial<Product>>({ id: 23, created: undefined } as any)).toEqual(true);
+    expect('created' in roundTrip<Partial<Product>>({ id: 23, created: undefined } as any)).toEqual(true);
 });
 
 test('partial keeps explicitely undefined fields', () => {
-    expect(roundTrip(t.partial(Model), {})).toEqual({});
-    expect('name' in roundTrip(t.partial(Model), {})).toBe(false);
-    expect(roundTrip(t.partial(Model), { title: undefined })).toEqual({ title: undefined });
+    expect(roundTrip<Partial<Model>>({})).toEqual({});
+    expect('name' in roundTrip<Partial<Model>>({})).toBe(false);
+    expect(roundTrip<Partial<Model>>({ title: undefined })).toEqual({ title: undefined });
 
     {
-        const item = roundTrip(t.partial(Model), { title: undefined });
+        const item = serialize<Partial<Model>>({ title: undefined });
+    }
+
+    {
+        const item = roundTrip<Partial<Model>>({ title: undefined });
         expect('title' in item).toBe(true); //all fields in partial become optional
     }
 
     {
-        const item = roundTrip(t.partial(Model), {});
+        const item = roundTrip<Partial<Model>>({});
         expect('title' in item).toBe(false);
     }
 
     class Purchase {
-        @t.primary.autoIncrement id: number = 0;
+        id: number & PrimaryKey & AutoIncrement = 0;
 
-        @t sentAt?: Date;
-        @t canceledAt?: Date;
+        sentAt?: Date;
+        canceledAt?: Date;
     }
 
-    expect(roundTrip(t.partial(Purchase), { sentAt: undefined })).toEqual({ sentAt: undefined });
-    expect('sentAt' in roundTrip(t.partial(Purchase), { sentAt: undefined })).toEqual(true);
+    expect(roundTrip<Partial<Purchase>>({ sentAt: undefined })).toEqual({ sentAt: undefined });
+    expect('sentAt' in roundTrip<Partial<Purchase>>({ sentAt: undefined })).toEqual(true);
 });
 
-test('any undefined', () => {
-    expect(serializeToJson(t.any, undefined)).toEqual(null);
+test('record removes undefined when not allowed', () => {
+    expect(roundTrip<Record<string, string>>({})).toEqual({});
+    expect(roundTrip<Record<string, string>>({ foo: 'bar' })).toEqual({ foo: 'bar' });
+    expect(deserialize<Record<string, string>>({ foo: undefined } as any)).toEqual({});
+    expect(serialize<Record<string, string>>({ foo: undefined } as any)).toEqual({});
+    expect(roundTrip<Record<string, string>>({ foo: undefined } as any)).toEqual({});
+    expect('foo' in roundTrip<Record<string, string>>({ foo: undefined } as any)).toEqual(false);
 });
 
-test('any invalid structure', () => {
-    class SQLiteDatabase {}
+test('record allows undefined when allowed', () => {
+    expect(serialize<Record<string, string | undefined>>({})).toEqual({});
+    expect(serialize<Record<string, string | undefined>>({ foo: 'bar' })).toEqual({ foo: 'bar' });
+    expect(serialize<Record<string, string | undefined>>({ foo: undefined } as any)).toEqual({ foo: null });
+    expect(deserialize<Record<string, string | undefined>>({ foo: null } as any)).toEqual({ foo: undefined });
+    expect('foo' in deserialize<Record<string, string | undefined>>({ foo: null } as any)).toEqual(true);
 
-    expect(serializeToJson(t.any, SQLiteDatabase)).toEqual(undefined);
-});
-
-test('any keys', () => {
-    const o = {$___newId: 5};
-    expect(serializeToJson(t.any, o)).toEqual(o);
-});
-
-test('map removes undefined when not allowed', () => {
-    expect(roundTrip(t.map(t.string), {})).toEqual({});
-    expect(roundTrip(t.map(t.string), { foo: 'bar' })).toEqual({ foo: 'bar' });
-    expect(roundTrip(t.map(t.string), { foo: undefined } as any)).toEqual({});
-    expect('foo' in roundTrip(t.map(t.string), { foo: undefined } as any)).toEqual(false);
-});
-
-test('map allows undefined when allowed', () => {
-    expect(roundTrip(t.map(t.string.optional), {})).toEqual({});
-    expect(roundTrip(t.map(t.string.optional), { foo: 'bar' })).toEqual({ foo: 'bar' });
-    expect(roundTrip(t.map(t.string.optional), { foo: undefined } as any)).toEqual({ foo: undefined });
-    expect('foo' in roundTrip(t.map(t.string.optional), { foo: undefined } as any)).toEqual(true);
+    expect(roundTrip<Record<string, string | undefined>>({})).toEqual({});
+    expect(roundTrip<Record<string, string | undefined>>({ foo: 'bar' })).toEqual({ foo: 'bar' });
+    expect(roundTrip<Record<string, string | undefined>>({ foo: undefined } as any)).toEqual({ foo: undefined });
+    expect('foo' in roundTrip<Record<string, string | undefined>>({ foo: undefined } as any)).toEqual(true);
 });
 
 test('bigint', () => {
-    expect(roundTrip(t.bigint, -12n)).toEqual(-12n);
-    expect(roundTrip(t.bigint, -5n)).toEqual(-5n);
-    expect(roundTrip(t.bigint, -1n)).toEqual(-1n);
-    expect(roundTrip(t.bigint, 0n)).toEqual(0n);
-    expect(roundTrip(t.bigint, 5n)).toEqual(5n);
-    expect(roundTrip(t.bigint, 12n)).toEqual(12n);
-    expect(roundTrip(t.bigint, 12012020202020202020202020202020202020n)).toEqual(12012020202020202020202020202020202020n);
-    expect(roundTrip(t.bigint, 16n**16n**2n)).toEqual(16n**16n**2n);
-    expect(roundTrip(t.bigint, 16n**16n**3n)).toEqual(16n**16n**3n);
-});
-
-test('propertyDefinition', () => {
-    const property = t.string.optional.default('asd').buildPropertySchema();
-    const json = property.toJSONNonReference();
-    expect(roundTrip(propertyDefinition, json)).toEqual(json);
+    expect(roundTrip<bigint>(0n)).toEqual(0n);
+    expect(roundTrip<bigint>(5n)).toEqual(5n);
+    expect(roundTrip<bigint>(12n)).toEqual(12n);
+    expect(roundTrip<bigint>(9223372036854775807n)).toEqual(9223372036854775807n);
+    expect(roundTrip<BinaryBigInt>(12012020202020202020202020202020202020n)).toEqual(12012020202020202020202020202020202020n);
+    expect(roundTrip<BinaryBigInt>(16n ** 16n ** 2n)).toEqual(16n ** 16n ** 2n);
+    expect(roundTrip<BinaryBigInt>(16n ** 16n ** 3n)).toEqual(16n ** 16n ** 3n);
+    expect(roundTrip<SignedBinaryBigInt>(12012020202020202020202020202020202020n)).toEqual(12012020202020202020202020202020202020n);
+    expect(roundTrip<SignedBinaryBigInt>(-12012020202020202020202020202020202020n)).toEqual(-12012020202020202020202020202020202020n);
+    expect(roundTrip<SignedBinaryBigInt>(16n ** 16n ** 2n)).toEqual(16n ** 16n ** 2n);
+    expect(roundTrip<SignedBinaryBigInt>(16n ** 16n ** 3n)).toEqual(16n ** 16n ** 3n);
 });
 
 test('union basics', () => {
-    expect(roundTrip(t.union(t.string, t.number), 'asd')).toEqual('asd');
-    expect(roundTrip(t.union(t.string, t.number), 23)).toEqual(23);
+    expect(roundTrip<string | number>('asd')).toEqual('asd');
+    expect(roundTrip<string | number>(23)).toEqual(23);
 
-    expect(roundTrip(t.union(t.boolean, t.number), true)).toEqual(true);
-    expect(roundTrip(t.union(t.boolean, t.number), 23)).toEqual(23);
+    expect(roundTrip<boolean | number>(true)).toEqual(true);
+    expect(roundTrip<boolean | number>(23)).toEqual(23);
 
-    expect(roundTrip(t.union(t.bigint, t.number), 23)).toEqual(23);
-    expect(roundTrip(t.union(t.bigint, t.number), 23n)).toEqual(23n);
+    expect(roundTrip<bigint | number>(23)).toEqual(23n);
+    expect(roundTrip<bigint | number>(23n)).toEqual(23n);
 
-    expect(roundTrip(t.union(t.bigint, t.number), 9223372036854775810n)).toEqual(9223372036854775810n);
-
-    expect(roundTrip(t.union(t.string, Model), new Model)).toBeInstanceOf(Model);
+    expect(roundTrip<string | Model>(new Model)).toBeInstanceOf(Model);
     {
         const item = new Model;
         item.id = 23;
         item.title = '23';
-        const back = roundTrip(t.union(t.string, Model), item);
+        const back = roundTrip<string | Model>(item);
         expect(back).toEqual({ id: 23, title: '23' });
     }
 
@@ -267,75 +258,73 @@ test('union basics', () => {
         const item = new Model;
         item.id = 23;
         item.title = '23';
-        const back = roundTrip(t.union(Model), item);
+        const back = roundTrip<Model>(item);
         expect(back).toEqual({ id: 23, title: '23' });
     }
 
-    expect(roundTrip(t.union(t.string, Model), 'asd')).toEqual('asd');
+    expect(roundTrip<string | Model>('asd')).toEqual('asd');
 
-    expect(roundTrip(t.union(t.string, Model).optional, undefined)).toEqual(undefined);
-    expect(roundTrip(t.union(t.string, Model).optional, null)).toEqual(undefined);
+    expect(roundTrip<string | Model | undefined>(undefined)).toEqual(undefined);
+    expect(serialize<string | Model | undefined>(null)).toEqual(null);
+    expect(deserialize<string | Model | undefined>(null)).toEqual(undefined);
+    expect(roundTrip<string | Model | undefined>(null)).toEqual(undefined);
 
-    expect(roundTrip(t.union(t.string, Model).nullable, undefined)).toEqual(null);
-    expect(roundTrip(t.union(t.string, Model).nullable, null)).toEqual(null);
+    expect(roundTrip<string | Model | null>(undefined)).toEqual(null);
+    expect(roundTrip<string | Model | null>(null)).toEqual(null);
 });
 
 test('union 2', () => {
-    const s = t.schema({ type: t.literal('m'), name: t.string });
+    interface s {
+        type: 'm';
+        name: string;
+    }
 
-    expect(deserializeFromJson(t.union(s), { type: 'm', name: 'Peter' })).toEqual({ type: 'm', name: 'Peter' });
-    expect(deserializeFromJson(t.union(s), { name: 'Peter' } as any)).toEqual({ type: 'm', name: 'Peter' });
-
-    expect(serializeToJson(t.union(s), { type: 'm', name: 'Peter' })).toEqual({ type: 'm', name: 'Peter' });
-    expect(serializeToJson(t.union(s), { name: 'Peter' } as any)).toEqual({ type: 'm', name: 'Peter' });
-
-    expect(roundTrip(t.union(s), { type: 'm', name: 'Peter' })).toEqual({ type: 'm', name: 'Peter' });
-    expect(roundTrip(t.union(s), { name: 'Peter' } as any)).toEqual({ type: 'm', name: 'Peter' });
+    expect(deserialize<undefined | s>({ type: 'm', name: 'Peter' })).toEqual({ type: 'm', name: 'Peter' });
+    expect(serialize<undefined | s>({ type: 'm', name: 'Peter' })).toEqual({ type: 'm', name: 'Peter' });
+    expect(roundTrip<undefined | s>({ type: 'm', name: 'Peter' })).toEqual({ type: 'm', name: 'Peter' });
 });
 
 test('union 3', () => {
-    expect(roundTrip(t.union(t.string, Model), 'asd')).toBe('asd');
-    expect(roundTrip(t.union(t.string, Model), { title: 'foo' } as any)).toBeInstanceOf(Model);
+    expect(deserialize<string | Model>('asd')).toBe('asd');
+    expect(deserialize<string | Model>({ title: 'foo' } as any)).toEqual({ id: 0, title: 'foo' });
 
-    expect(deserializeFromJson(t.union(t.string, Model), 'asd')).toBe('asd');
-    expect(deserializeFromJson(t.union(t.string, Model), { title: 'foo' } as any)).toEqual({ id: 0, title: 'foo' });
+    expect(deserialize<string | Model | undefined>(undefined)).toBe(undefined);
+    expect(deserialize<string | Model | null>(null)).toBe(null);
 
-    expect(deserializeFromJson(t.union(t.string, Model).optional, undefined)).toBe(undefined);
-    expect(deserializeFromJson(t.union(t.string, Model).nullable, null)).toBe(null);
+    expect(serialize<string | Model>('asd')).toBe('asd');
+    expect(serialize<string | Model>({ id: 0, title: 'foo' } as any)).toEqual({ id: 0, title: 'foo' });
 
-    expect(serializeToJson(t.union(t.string, Model), 'asd')).toBe('asd');
-    expect(serializeToJson(t.union(t.string, Model), { title: 'foo' } as any)).toEqual({ title: 'foo' });
+    expect(serialize<string | Model | undefined>(undefined)).toBe(null);
+    expect(serialize<string | Model | null>(null)).toBe(null);
 
-    expect(serializeToJson(t.union(t.string, Model).optional, undefined)).toBe(null);
-    expect(serializeToJson(t.union(t.string, Model).nullable, null)).toBe(null);
+    expect(roundTrip<string | Model>('asd')).toBe('asd');
+    expect(roundTrip<string | Model>({ id: 0, title: 'foo' } as any)).toBeInstanceOf(Model);
 });
-
 
 test('model 1', () => {
     class Model {
         //filter is not used yet
-        @t.map(t.any).optional
-        filter?: any;
+        filter?: Record<string, string | number | boolean | RegExp>;
 
-        @t.number.optional
         skip?: number;
 
-        @t.number
         itemsPerPage: number = 50;
 
-        @t.number.optional
         limit?: number;
 
-        @t.map(t.any)
-        parameters: { [name: string]: any } = {};
+        parameters: { [name: string]: string } = {};
 
-        @t.map(t.any).optional
-        sort?: any;
+        sort?: Record<any, any>;
     }
 
     {
         const model = { filter: { $regex: /Peter/ }, itemsPerPage: 50, parameters: {} };
-        expect(roundTrip(Model, model as any)).toEqual(model);
+        expect(roundTrip<Model>(model as any)).toEqual(model);
+    }
+
+    {
+        const o = { parameters: { teamName: 'Team a' } };
+        expect(serialize<Model>(o)).toEqual(o);
     }
 
     {
@@ -347,44 +336,36 @@ test('model 1', () => {
             limit: undefined,
             sort: undefined
         };
-        expect(roundTrip(Model, model as any)).toEqual(model);
+        expect(roundTrip<Model>(model as any)).toEqual(model);
     }
 });
 
 class Team {
-    @t.primary.autoIncrement
-    id: number = 0;
+    id: number & PrimaryKey & AutoIncrement = 0;
+    version: number = 0;
+    lead?: User & Reference;
 
-    @t version: number = 0;
-
-    @t.type(() => User).reference() lead: User | undefined;
-
-    constructor(@t public name: string) {
+    constructor(public name: string) {
     }
 }
 
 class User {
-    @t.primary.autoIncrement
-    id: number = 0;
-
-    @t
+    id: number & PrimaryKey & AutoIncrement = 0;
     version: number = 0;
+    teams: Team[] & BackReference<{ via: typeof UserTeam }> = [];
 
-    @t.array(Team).backReference({ via: () => UserTeam })
-    teams: Team[] = [];
-
-    constructor(@t public name: string) {
+    constructor(public name: string) {
     }
 }
 
 class UserTeam {
-    @t.primary.autoIncrement id: number = 0;
+    id: number & PrimaryKey & AutoIncrement = 0;
 
-    @t version: number = 0;
+    version: number = 0;
 
     constructor(
-        @t.reference() public team: Team,
-        @t.reference() public user: User,
+        public team: Team & Reference,
+        public user: User & Reference,
     ) {
     }
 }
@@ -392,12 +373,12 @@ class UserTeam {
 test('relation 1', () => {
     {
         const user = new User('foo');
-        expect(roundTrip(User, user)).toEqual(user);
+        expect(roundTrip<User>(user)).toEqual(user);
     }
 
     {
         const team = new Team('foo');
-        expect(roundTrip(Team, team)).toEqual(team);
+        expect(roundTrip<Team>(team)).toEqual(team);
     }
 
     {
@@ -405,460 +386,302 @@ test('relation 1', () => {
         const user = new User('foo');
         user.id = 12;
         team.lead = user;
-        expect(serializeToJson(Team, team)).toEqual(team);
-        expect(deserializeFromJson(Team, team)).toEqual(team);
-        expect(roundTrip(Team, team)).toEqual(team);
+        expect(serialize<Team>(team)).toEqual(team);
+        expect(deserialize<Team>(team)).toEqual(team);
+        expect(roundTrip<Team>(team)).toEqual(team);
     }
 
     {
         const team = new Team('foo');
-        (team as any).lead = 12; //an ORM might set the primary key directly
-        expect(serializeToJson(Team, team)).toEqual(team);
-        expect(deserializeFromJson(Team, team)).toEqual(team);
-        expect(roundTrip(Team, team)).toEqual(team);
+        team.id = 1;
+        team.version = 2;
+        team.lead = createReference(User, { id: 12 });
+        const json = { id: 1, version: 2, name: 'foo', lead: 12 as any };
+
+        expect(serialize<Team>(team)).toEqual(json);
+        const back = deserialize<Team>(json);
+        expect(back).toEqual(team);
+        expect(back.lead).toBeInstanceOf(User);
+        expect(back.lead!.id).toBe(12);
+        expect(roundTrip<Team>(team)).toEqual(team);
     }
 });
 
 
 test('relation 2', () => {
-    {
-        const user = new User('foo');
-        user.teams = unpopulatedSymbol as any; //emulates an unpopulated relation
-        const user2 = cloneClass(user);
-        user2.teams = [];
-        expect(roundTrip(User, user)).toEqual(user2);
-    }
+    // {
+    //     const user = new User('foo');
+    //     user.teams = unpopulatedSymbol as any; //emulates an unpopulated relation
+    //     const user2 = cloneClass(user);
+    //     user2.teams = [];
+    //     expect(roundTrip<User>(user)).toEqual(user2);
+    // }
 
     {
         const user = new User('foo');
         user.teams.push(new Team('bar'));
-        expect(serializeToJson(User, user)).toEqual(user);
-        expect(roundTrip(User, user)).toEqual(user);
+        expect(serialize<User>(user)).toEqual(user);
+        expect(roundTrip<User>(user)).toEqual(user);
     }
 
     {
         const items: User[] = [
-            plainToClass(User, {
+            cast<User>({
                 name: 'Peter 1',
-                id: '3f217d3d-4dc4-478f-a969-31e02de37190',
+                id: 1,
                 version: 0,
             }),
-            plainToClass(User, {
+            cast<User>({
                 name: 'Peter 2',
-                id: '48f7e8a2-3342-4cee-8de0-c41dcb557454',
+                id: 2,
                 version: 0,
             }),
-            plainToClass(User, {
+            cast<User>({
                 name: 'Marc 1',
-                id: 'f673a85b-c31d-41b5-8ccd-67f2bbc2d02e',
+                id: 3,
                 version: 0,
             })
         ];
 
-        expect(roundTrip(t.array(User), items)).toEqual(items);
+        expect(roundTrip<User[]>(items)).toEqual(items);
     }
 });
 
-test('invalid', () => {
-    expect(roundTrip(t.uuid, new Model as any)).toEqual(RoundTripExcluded);
-});
+// test('invalid', () => {
+//     expect(roundTrip<UUID>(new Model as any)).toEqual(RoundTripExcluded);
+// });
 
 test('regex', () => {
-    expect(roundTrip(t.any, /foo/)).toEqual(/foo/);
+    expect(roundTrip<RegExp>(/foo/)).toEqual(/foo/);
 });
 
-test('explicitely set undefined on optional triggers default value', () => {
+test('explicitly set undefined on optional triggers default value', () => {
     class Product {
-        @t id: number = 0;
-        @t.optional created?: Date = new Date;
+        id: number = 0;
+        created?: Date = new Date;
     }
 
     //no value means the default triggers
-    expect(roundTrip(Product, { id: 23 }).created).toBeInstanceOf(Date);
+    expect(roundTrip<Product>({ id: 23 }).created).toBeInstanceOf(Date);
 
     //this is important for database patches
-    expect(roundTrip(Product, { id: 23, created: undefined }).created).toBe(undefined);
-    expect('created' in roundTrip(Product, { id: 23, created: undefined })).toBe(true);
+    expect(roundTrip<Product>({ id: 23, created: undefined }).created).toBe(undefined);
+    expect('created' in roundTrip<Product>({ id: 23, created: undefined })).toBe(true);
 });
 
-test('partial explicitely set undefined on optional is handled', () => {
+test('partial explicitly set undefined on optional is handled', () => {
     class Product {
-        @t id: number = 0;
-        @t.optional created?: Date = new Date;
+        id: number = 0;
+        created?: Date = new Date;
     }
 
     //no value means the default triggers
-    expect(roundTrip(t.partial(Product), { id: 23 }).created).toBe(undefined);
+    expect(roundTrip<Partial<Product>>({ id: 23 }).created).toBe(undefined);
 
     //this is important for database patches
-    expect(roundTrip(t.partial(Product), { id: 23, created: undefined }).created).toBe(undefined);
-    expect('created' in roundTrip(t.partial(Product), { id: 23, created: undefined })).toBe(true);
+    expect(roundTrip<Partial<Product>>({ id: 23, created: undefined }).created).toBe(undefined);
+    expect('created' in roundTrip<Partial<Product>>({ id: 23, created: undefined })).toBe(true);
 });
 
-test('partial explicitely set undefined on required is not ignored', () => {
+test('partial explicitly set undefined on required is not ignored', () => {
     class Product {
-        @t id: number = 0;
-        @t created: Date = new Date;
+        id: number = 0;
+        created: Date = new Date;
     }
 
     //no value means the default triggers
-    expect(roundTrip(t.partial(Product), { id: 23 }).created).toBe(undefined);
+    expect(roundTrip<Partial<Product>>({ id: 23 }).created).toBe(undefined);
 
     //this is important for database patches
     //important to keep undefined, as t.partial() makes all properties optional, no matter what it originally was, otherwise it would be a partial
-    expect(roundTrip(t.partial(Product), { id: 23, created: undefined }).created).toBe(undefined);
-    expect('created' in roundTrip(t.partial(Product), { id: 23, created: undefined } as any)).toBe(true);
+    expect(roundTrip<Partial<Product>>({ id: 23, created: undefined }).created).toBe(undefined);
+    expect('created' in roundTrip<Partial<Product>>({ id: 23, created: undefined } as any)).toBe(true);
 });
 
 test('explicitely set undefined on required is ignored', () => {
     class Product {
-        @t id: number = 0;
-        @t created: Date = new Date;
+        id: number = 0;
+        created: Date = new Date;
     }
 
-    expect(roundTrip(Product, { id: 23 } as any).created).toBeInstanceOf(Date);
-    expect(roundTrip(Product, { id: 23, created: undefined } as any).created).toBeInstanceOf(Date);
+    expect(roundTrip<Product>({ id: 23 } as any).created).toBeInstanceOf(Date);
+    expect(roundTrip<Product>({ id: 23, created: undefined } as any).created).toBeInstanceOf(Date);
 });
 
 test('partial does not return the model on root', () => {
-    expect(roundTrip(t.partial(Model), { id: 23 } as any)).toEqual({ id: 23 });
-    expect(roundTrip(t.partial(Model), { id: 23 } as any)).not.toBeInstanceOf(Model);
+    expect(roundTrip<Partial<Model>>({ id: 23 } as any)).toEqual({ id: 23 });
+    expect(roundTrip<Partial<Model>>({ id: 23 } as any)).not.toBeInstanceOf(Model);
 });
 
 test('partial returns the model at second level', () => {
     const config = new Config;
     config.color = 'red';
 
-    expect(roundTrip(t.partial(Model), { id: 23, config: config } as any)).toEqual({
+    expect(roundTrip<Partial<Model>>({ id: 23, config: config } as any)).toEqual({
         id: 23,
         config: { big: false, color: 'red' }
     });
-    expect(roundTrip(t.partial(Model), { id: 23, config: config } as any).config).toBeInstanceOf(Config);
+    expect(roundTrip<Partial<Model>>({ id: 23, config: config } as any).config).toBeInstanceOf(Config);
 });
 
 test('partial allowed undefined', () => {
     class Product {
-        @t id: number = 0;
-        @t created?: Date;
+        id: number = 0;
+        created?: Date;
     }
 
-    expect(roundTrip(t.partial(Product), { id: 23, created: undefined } as any)).not.toBeInstanceOf(Product);
+    expect(roundTrip<Partial<Product>>({ id: 23, created: undefined } as any)).not.toBeInstanceOf(Product);
 
-    expect(roundTrip(t.partial(Product), { id: 23 } as any).created).toBe(undefined);
-    expect('created' in roundTrip(t.partial(Product), { id: 23 } as any)).toBe(false);
+    expect(roundTrip<Partial<Product>>({ id: 23 } as any).created).toBe(undefined);
+    expect('created' in roundTrip<Partial<Product>>({ id: 23 } as any)).toBe(false);
 
-    //important for databas epatches
-    expect(roundTrip(t.partial(Product), { id: 23, created: undefined } as any).created).toBe(undefined);
-    expect('created' in roundTrip(t.partial(Product), { id: 23, created: undefined } as any)).toBe(true);
-})
+    //important for database patches
+    expect(roundTrip<Partial<Product>>({ id: 23, created: undefined } as any).created).toBe(undefined);
+    expect('created' in roundTrip<Partial<Product>>({ id: 23, created: undefined } as any)).toBe(true);
+});
 
 test('optional basics', () => {
-    expect(roundTrip(t.string.optional, undefined)).toBe(undefined);
-    expect(roundTrip(t.string.optional, null)).toBe(undefined);
+    expect(roundTrip<string | undefined>(undefined)).toBe(undefined);
+    expect(roundTrip<string | undefined>(null)).toBe(undefined);
 
-    expect(roundTrip(t.number.optional, undefined)).toBe(undefined);
-    expect(roundTrip(t.number.optional, null)).toBe(undefined);
+    expect(roundTrip<number | undefined>(undefined)).toBe(undefined);
+    expect(roundTrip<number | undefined>(null)).toBe(undefined);
 
-    expect(roundTrip(t.boolean.optional, undefined)).toBe(undefined);
-    expect(roundTrip(t.boolean.optional, null)).toBe(undefined);
+    expect(roundTrip<boolean | undefined>(undefined)).toBe(undefined);
+    expect(roundTrip<boolean | undefined>(null)).toBe(undefined);
 
-    expect(roundTrip(t.uuid.optional, undefined)).toBe(undefined);
-    expect(roundTrip(t.uuid.optional, null)).toBe(undefined);
+    expect(roundTrip<UUID | undefined>(undefined)).toBe(undefined);
+    expect(roundTrip<UUID | undefined>(null)).toBe(undefined);
 
-    expect(roundTrip(t.mongoId.optional, undefined)).toBe(undefined);
-    expect(roundTrip(t.mongoId.optional, null)).toBe(undefined);
+    expect(roundTrip<MongoId | undefined>(undefined)).toBe(undefined);
+    expect(roundTrip<MongoId | undefined>(null)).toBe(undefined);
 
-    expect(roundTrip(t.date.optional, undefined)).toBe(undefined);
-    expect(roundTrip(t.date.optional, null)).toBe(undefined);
+    expect(roundTrip<Date | undefined>(undefined)).toBe(undefined);
+    expect(roundTrip<Date | undefined>(null)).toBe(undefined);
 
-    expect(roundTrip(t.map(t.any).optional, undefined)).toBe(undefined);
-    expect(roundTrip(t.map(t.any).optional, null)).toBe(undefined);
+    expect(roundTrip<Record<string, string> | undefined>(undefined)).toBe(undefined);
+    expect(roundTrip<Record<string, string> | undefined>(null)).toBe(undefined);
 
-    expect(roundTrip(t.array(t.any).optional, undefined)).toBe(undefined);
-    expect(roundTrip(t.array(t.any).optional, null)).toBe(undefined);
+    expect(roundTrip<any[] | undefined>(undefined)).toBe(undefined);
+    expect(roundTrip<any[] | undefined>(null)).toBe(undefined);
 
-    expect(roundTrip(t.partial({ a: t.string }).optional, undefined)).toBe(undefined);
-    expect(roundTrip(t.partial({ a: t.string }).optional, null)).toBe(undefined);
+    expect(roundTrip<Partial<{ a: string }> | undefined>(undefined)).toBe(undefined);
+    expect(roundTrip<Partial<{ a: string }> | undefined>(null)).toBe(undefined);
 
     // expect(roundTrip(t.patch({a: t.string}).optional, undefined)).toBe(undefined);
     // expect(roundTrip(t.patch({a: t.string}).optional, null)).toBe(undefined);
 
-    expect(roundTrip(t.union(t.string).optional, undefined)).toBe(undefined);
-    expect(roundTrip(t.union(t.string).optional, null)).toBe(undefined);
+    expect(roundTrip<'a' | undefined>(undefined)).toBe(undefined);
+    expect(roundTrip<'a' | undefined>(null)).toBe(undefined);
 
-    expect(roundTrip(t.literal('a').optional, undefined)).toBe(undefined);
-    expect(roundTrip(t.literal('a').optional, null)).toBe(undefined);
+    expect(roundTrip<MyEnum | undefined>(undefined)).toBe(undefined);
+    expect(roundTrip<MyEnum | undefined>(null)).toBe(undefined);
 
-    expect(roundTrip(t.enum(MyEnum).optional, undefined)).toBe(undefined);
-    expect(roundTrip(t.enum(MyEnum).optional, null)).toBe(undefined);
+    expect(roundTrip<Model | undefined>(undefined)).toBe(undefined);
+    expect(roundTrip<Model | undefined>(null)).toBe(undefined);
 
-    expect(roundTrip(t.type(Model).optional, undefined)).toBe(undefined);
-    expect(roundTrip(t.type(Model).optional, null)).toBe(undefined);
+    expect(roundTrip<ArrayBuffer | undefined>(undefined)).toBe(undefined);
+    expect(roundTrip<ArrayBuffer | undefined>(null)).toBe(undefined);
 
-    expect(roundTrip(t.type(ArrayBuffer).optional, undefined)).toBe(undefined);
-    expect(roundTrip(t.type(ArrayBuffer).optional, null)).toBe(undefined);
-
-    expect(roundTrip(t.type(Uint8Array).optional, undefined)).toBe(undefined);
-    expect(roundTrip(t.type(Uint8Array).optional, null)).toBe(undefined);
+    expect(roundTrip<Uint8Array | undefined>(undefined)).toBe(undefined);
+    expect(roundTrip<Uint8Array | undefined>(null)).toBe(undefined);
 });
 
 test('nullable container', () => {
-    const s = t.schema({
-        tags: t.array(t.string).nullable,
-        tagMap: t.map(t.string).nullable,
-        tagPartial: t.partial({ name: t.string }).nullable,
-    });
+    interface s {
+        tags: string[] | null;
+        tagMap: Record<string, string> | null;
+        tagPartial: Partial<{ name: string }> | null;
+    }
 
-    expect(roundTrip(s, { tags: null, tagMap: null, tagPartial: null })).toEqual({ tags: null, tagMap: null, tagPartial: null });
-    expect(roundTrip(s, {} as any)).toEqual({ tags: null, tagMap: null, tagPartial: null });
+    expect(roundTrip<s>({ tags: null, tagMap: null, tagPartial: null })).toEqual({ tags: null, tagMap: null, tagPartial: null });
+    expect(roundTrip<s>({} as any)).toEqual({ tags: null, tagMap: null, tagPartial: null });
 
-    expect(serializeToJson(s, {} as any)).toEqual({ tags: null, tagMap: null, tagPartial: null });
-});
-
-test('map serializes default', () => {
-    const defaultMap = {};
-    expect(serializeToJson(t.map(t.any).optional.default(defaultMap), undefined)).not.toBe(defaultMap);
-    expect(serializeToJson(t.map(t.any).optional.default(defaultMap), undefined)).toBeInstanceOf(Object);
-
-    expect(serializeToJson(t.map(t.any).optional.default(defaultMap), null)).toBeInstanceOf(Object);
-    expect(serializeToJson(t.map(t.any).optional.default(defaultMap), null)).not.toBe(defaultMap);
-});
-
-test('serialize default', () => {
-    expect(serializeToJson(t.string.optional.default('123'), undefined)).toBe('123');
-    expect(serializeToJson(t.string.optional.default('123'), null)).toBe('123');
-
-    expect(serializeToJson(t.number.optional.default(123), undefined)).toBe(123);
-    expect(serializeToJson(t.number.optional.default(123), null)).toBe(123);
-
-    expect(serializeToJson(t.boolean.optional.default(false), undefined)).toBe(false);
-    expect(serializeToJson(t.boolean.optional.default(false), null)).toBe(false);
-
-    expect(serializeToJson(t.uuid.optional.default('5c58e474-82ad-4e92-ad9f-487bbc11e8ed'), undefined)).toBe('5c58e474-82ad-4e92-ad9f-487bbc11e8ed');
-    expect(serializeToJson(t.uuid.optional.default('5c58e474-82ad-4e92-ad9f-487bbc11e8ed'), null)).toBe('5c58e474-82ad-4e92-ad9f-487bbc11e8ed');
-
-    expect(serializeToJson(t.mongoId.optional.default('507f1f77bcf86cd799439011'), undefined)).toBe('507f1f77bcf86cd799439011');
-    expect(serializeToJson(t.mongoId.optional.default('507f1f77bcf86cd799439011'), null)).toBe('507f1f77bcf86cd799439011');
-
-    expect(serializeToJson(t.date.optional.default(new Date), undefined)).toBeInstanceOf(Date);
-    expect(serializeToJson(t.date.optional.default(new Date), null)).toBeInstanceOf(Date);
-
-    const defaultMap = {};
-    expect(serializeToJson(t.map(t.any).optional.default(defaultMap), undefined)).not.toBe(defaultMap);
-    expect(serializeToJson(t.map(t.any).optional.default(defaultMap), undefined)).toBeInstanceOf(Object);
-    expect(serializeToJson(t.map(t.any).optional.default(defaultMap), null)).toBeInstanceOf(Object);
-    expect(serializeToJson(t.map(t.any).optional.default(defaultMap), null)).not.toBe(defaultMap);
-
-    const defaultArray: any[] = [];
-    expect(serializeToJson(t.array(t.any).optional.default(defaultArray), undefined)).not.toBe(defaultArray);
-    expect(serializeToJson(t.array(t.any).optional.default(defaultArray), undefined)).toBeInstanceOf(Array);
-    expect(serializeToJson(t.array(t.any).optional.default(defaultArray), null)).toBeInstanceOf(Array);
-    expect(serializeToJson(t.array(t.any).optional.default(defaultArray), null)).not.toBe(defaultArray);
-
-    expect(serializeToJson(t.partial({ a: t.string }).optional.default(defaultMap), undefined)).not.toBe(defaultMap);
-    expect(serializeToJson(t.partial({ a: t.string }).optional.default(defaultMap), undefined)).toBeInstanceOf(Object);
-    expect(serializeToJson(t.partial({ a: t.string }).optional.default(defaultMap), null)).not.toBe(defaultMap);
-    expect(serializeToJson(t.partial({ a: t.string }).optional.default(defaultMap), null)).toBeInstanceOf(Object);
-
-    expect(serializeToJson(t.union(t.string).optional.default('asd'), undefined)).toBe('asd');
-    expect(serializeToJson(t.union(t.string).optional.default('asd'), null)).toBe('asd');
-
-    expect(serializeToJson(t.literal('a').optional.default('a'), undefined)).toBe('a');
-    expect(serializeToJson(t.literal('a').optional.default('a'), null)).toBe('a');
-
-    expect(serializeToJson(t.enum(MyEnum).optional.default(MyEnum.b), undefined)).toBe(MyEnum.b);
-    expect(serializeToJson(t.enum(MyEnum).optional.default(MyEnum.b), null)).toBe(MyEnum.b);
-
-    expect(serializeToJson(t.type(Model).optional.default(() => new Model), undefined)).toBeInstanceOf(Object);
-    expect(serializeToJson(t.type(Model).optional.default(() => new Model), null)).toBeInstanceOf(Object);
-});
-
-test('deserialize default', () => {
-    expect(deserializeFromJson(t.string.optional.default('123'), undefined)).toBe('123');
-    expect(deserializeFromJson(t.string.optional.default('123'), null)).toBe('123');
-
-    expect(deserializeFromJson(t.number.optional.default(123), undefined)).toBe(123);
-    expect(deserializeFromJson(t.number.optional.default(123), null)).toBe(123);
-
-    expect(deserializeFromJson(t.boolean.optional.default(false), undefined)).toBe(false);
-    expect(deserializeFromJson(t.boolean.optional.default(false), null)).toBe(false);
-
-    expect(deserializeFromJson(t.uuid.optional.default('5c58e474-82ad-4e92-ad9f-487bbc11e8ed'), undefined)).toBe('5c58e474-82ad-4e92-ad9f-487bbc11e8ed');
-    expect(deserializeFromJson(t.uuid.optional.default('5c58e474-82ad-4e92-ad9f-487bbc11e8ed'), null)).toBe('5c58e474-82ad-4e92-ad9f-487bbc11e8ed');
-
-    expect(deserializeFromJson(t.mongoId.optional.default('507f1f77bcf86cd799439011'), undefined)).toBe('507f1f77bcf86cd799439011');
-    expect(deserializeFromJson(t.mongoId.optional.default('507f1f77bcf86cd799439011'), null)).toBe('507f1f77bcf86cd799439011');
-
-    expect(deserializeFromJson(t.date.optional.default(new Date), undefined)).toBeInstanceOf(Date);
-    expect(deserializeFromJson(t.date.optional.default(new Date), null)).toBeInstanceOf(Date);
-
-    const defaultMap = {};
-    expect(deserializeFromJson(t.map(t.any).optional.default(defaultMap), undefined)).not.toBe(defaultMap);
-    expect(deserializeFromJson(t.map(t.any).optional.default(defaultMap), undefined)).toBeInstanceOf(Object);
-    expect(deserializeFromJson(t.map(t.any).optional.default(defaultMap), null)).toBeInstanceOf(Object);
-    expect(deserializeFromJson(t.map(t.any).optional.default(defaultMap), null)).not.toBe(defaultMap);
-
-    const defaultArray: any[] = [];
-    expect(deserializeFromJson(t.array(t.any).optional.default(defaultArray), undefined)).not.toBe(defaultArray);
-    expect(deserializeFromJson(t.array(t.any).optional.default(defaultArray), undefined)).toBeInstanceOf(Array);
-    expect(deserializeFromJson(t.array(t.any).optional.default(defaultArray), null)).toBeInstanceOf(Array);
-    expect(deserializeFromJson(t.array(t.any).optional.default(defaultArray), null)).not.toBe(defaultArray);
-
-    expect(deserializeFromJson(t.partial({ a: t.string }).optional.default(defaultMap), undefined)).not.toBe(defaultMap);
-    expect(deserializeFromJson(t.partial({ a: t.string }).optional.default(defaultMap), undefined)).toBeInstanceOf(Object);
-    expect(deserializeFromJson(t.partial({ a: t.string }).optional.default(defaultMap), null)).not.toBe(defaultMap);
-    expect(deserializeFromJson(t.partial({ a: t.string }).optional.default(defaultMap), null)).toBeInstanceOf(Object);
-
-    expect(deserializeFromJson(t.union(t.string).optional.default('asd'), undefined)).toBe('asd');
-    expect(deserializeFromJson(t.union(t.string).optional.default('asd'), null)).toBe('asd');
-
-    expect(deserializeFromJson(t.literal('a').optional.default('a'), undefined)).toBe('a');
-    expect(deserializeFromJson(t.literal('a').optional.default('a'), null)).toBe('a');
-
-    expect(deserializeFromJson(t.enum(MyEnum).optional.default(MyEnum.b), undefined)).toBe(MyEnum.b);
-    expect(deserializeFromJson(t.enum(MyEnum).optional.default(MyEnum.b), null)).toBe(MyEnum.b);
-
-    const defaultModel = new Model;
-    expect(deserializeFromJson(t.type(Model).optional.default(() => new Model), undefined)).not.toBe(defaultModel);
-    expect(deserializeFromJson(t.type(Model).optional.default(() => new Model), undefined)).toBeInstanceOf(Model);
-    expect(deserializeFromJson(t.type(Model).optional.default(() => new Model), null)).not.toBe(defaultModel);
-    expect(deserializeFromJson(t.type(Model).optional.default(() => new Model), null)).toBeInstanceOf(Model);
-});
-
-test('default basics', () => {
-    expect(roundTrip(t.string.optional.default('123'), undefined)).toBe('123');
-    expect(roundTrip(t.string.optional.default('123'), null)).toBe('123');
-
-    expect(roundTrip(t.number.optional.default(123), undefined)).toBe(123);
-    expect(roundTrip(t.number.optional.default(123), null)).toBe(123);
-
-    expect(roundTrip(t.boolean.optional.default(false), undefined)).toBe(false);
-    expect(roundTrip(t.boolean.optional.default(false), null)).toBe(false);
-
-    expect(roundTrip(t.uuid.optional.default('5c58e474-82ad-4e92-ad9f-487bbc11e8ed'), undefined)).toBe('5c58e474-82ad-4e92-ad9f-487bbc11e8ed');
-    expect(roundTrip(t.uuid.optional.default('5c58e474-82ad-4e92-ad9f-487bbc11e8ed'), null)).toBe('5c58e474-82ad-4e92-ad9f-487bbc11e8ed');
-
-    expect(roundTrip(t.mongoId.optional.default('507f1f77bcf86cd799439011'), undefined)).toBe('507f1f77bcf86cd799439011');
-    expect(roundTrip(t.mongoId.optional.default('507f1f77bcf86cd799439011'), null)).toBe('507f1f77bcf86cd799439011');
-
-    expect(roundTrip(t.date.optional.default(new Date), undefined)).toBeInstanceOf(Date);
-    expect(roundTrip(t.date.optional.default(new Date), null)).toBeInstanceOf(Date);
-
-    const defaultMap = {};
-    expect(roundTrip(t.map(t.any).optional.default(defaultMap), undefined)).not.toBe(defaultMap);
-    expect(roundTrip(t.map(t.any).optional.default(defaultMap), undefined)).toBeInstanceOf(Object);
-    expect(roundTrip(t.map(t.any).optional.default(defaultMap), null)).toBeInstanceOf(Object);
-    expect(roundTrip(t.map(t.any).optional.default(defaultMap), null)).not.toBe(defaultMap);
-
-    const defaultArray: any[] = [];
-    expect(roundTrip(t.array(t.any).optional.default(defaultArray), undefined)).not.toBe(defaultArray);
-    expect(roundTrip(t.array(t.any).optional.default(defaultArray), undefined)).toBeInstanceOf(Array);
-    expect(roundTrip(t.array(t.any).optional.default(defaultArray), null)).toBeInstanceOf(Array);
-    expect(roundTrip(t.array(t.any).optional.default(defaultArray), null)).not.toBe(defaultArray);
-
-    expect(roundTrip(t.partial({ a: t.string }).optional.default(defaultMap), undefined)).not.toBe(defaultMap);
-    expect(roundTrip(t.partial({ a: t.string }).optional.default(defaultMap), undefined)).toBeInstanceOf(Object);
-    expect(roundTrip(t.partial({ a: t.string }).optional.default(defaultMap), null)).not.toBe(defaultMap);
-    expect(roundTrip(t.partial({ a: t.string }).optional.default(defaultMap), null)).toBeInstanceOf(Object);
-
-    expect(roundTrip(t.union(t.string).optional.default('asd'), undefined)).toBe('asd');
-    expect(roundTrip(t.union(t.string).optional.default('asd'), null)).toBe('asd');
-
-    expect(roundTrip(t.literal('a').optional.default('a'), undefined)).toBe('a');
-    expect(roundTrip(t.literal('a').optional.default('a'), null)).toBe('a');
-
-    expect(roundTrip(t.enum(MyEnum).optional.default(MyEnum.b), undefined)).toBe(MyEnum.b);
-    expect(roundTrip(t.enum(MyEnum).optional.default(MyEnum.b), null)).toBe(MyEnum.b);
-
-    const defaultModel = new Model;
-    expect(roundTrip(t.type(Model).optional.default(defaultModel), undefined)).not.toBe(defaultModel);
-    expect(roundTrip(t.type(Model).optional.default(defaultModel), undefined)).toBeInstanceOf(Model);
-    expect(roundTrip(t.type(Model).optional.default(defaultModel), null)).not.toBe(defaultModel);
-    expect(roundTrip(t.type(Model).optional.default(defaultModel), null)).toBeInstanceOf(Model);
+    expect(serialize<s>({} as any)).toEqual({ tags: null, tagMap: null, tagPartial: null });
 });
 
 test('nullable basics', () => {
-    expect(roundTrip(t.string.nullable, undefined)).toBe(null);
-    expect(roundTrip(t.string.nullable, null)).toBe(null);
+    expect(roundTrip<string | null>(undefined)).toBe(null);
+    expect(roundTrip<string | null>(null)).toBe(null);
 
-    expect(roundTrip(t.number.nullable, undefined)).toBe(null);
-    expect(roundTrip(t.number.nullable, null)).toBe(null);
+    expect(roundTrip<number | null>(undefined)).toBe(null);
+    expect(roundTrip<number | null>(null)).toBe(null);
 
-    expect(roundTrip(t.boolean.nullable, undefined)).toBe(null);
-    expect(roundTrip(t.boolean.nullable, null)).toBe(null);
+    expect(roundTrip<boolean | null>(undefined)).toBe(null);
+    expect(roundTrip<boolean | null>(null)).toBe(null);
 
-    expect(roundTrip(t.date.nullable, undefined)).toBe(null);
-    expect(roundTrip(t.date.nullable, null)).toBe(null);
+    expect(roundTrip<Date | null>(undefined)).toBe(null);
+    expect(roundTrip<Date | null>(null)).toBe(null);
 
-    expect(roundTrip(t.uuid.nullable, undefined)).toBe(null);
-    expect(roundTrip(t.uuid.nullable, null)).toBe(null);
+    expect(roundTrip<UUID | null>(undefined)).toBe(null);
+    expect(roundTrip<UUID | null>(null)).toBe(null);
 
-    expect(roundTrip(t.mongoId.nullable, undefined)).toBe(null);
-    expect(roundTrip(t.mongoId.nullable, null)).toBe(null);
+    expect(roundTrip<MongoId | null>(undefined)).toBe(null);
+    expect(roundTrip<MongoId | null>(null)).toBe(null);
 
-    expect(roundTrip(t.map(t.any).nullable, undefined)).toBe(null);
-    expect(roundTrip(t.map(t.any).nullable, null)).toBe(null);
+    expect(roundTrip<Record<string, string> | null>(undefined)).toBe(null);
+    expect(roundTrip<Record<string, string> | null>(null)).toBe(null);
 
-    expect(roundTrip(t.array(t.any).nullable, undefined)).toBe(null);
-    expect(roundTrip(t.array(t.any).nullable, null)).toBe(null);
+    expect(roundTrip<any[] | null>(undefined)).toBe(null);
+    expect(roundTrip<any[] | null>(null)).toBe(null);
 
-    expect(roundTrip(t.partial({ a: t.string }).nullable, undefined)).toBe(null);
-    expect(roundTrip(t.partial({ a: t.string }).nullable, null)).toBe(null);
+    expect(roundTrip<Partial<{ a: string }> | null>(undefined)).toBe(null);
+    expect(roundTrip<Partial<{ a: string }> | null>(null)).toBe(null);
 
-    expect(roundTrip(t.union(t.string).nullable, undefined)).toBe(null);
-    expect(roundTrip(t.union(t.string).nullable, null)).toBe(null);
+    expect(roundTrip<'a' | null>(undefined)).toBe(null);
+    expect(roundTrip<'a' | null>(null)).toBe(null);
 
-    expect(roundTrip(t.literal('a').nullable, undefined)).toBe('a');
-    expect(roundTrip(t.literal('a').nullable, null)).toBe(null);
+    expect(roundTrip<MyEnum | null>(undefined)).toBe(null);
+    expect(roundTrip<MyEnum | null>(null)).toBe(null);
 
-    expect(roundTrip(t.enum(MyEnum).nullable, undefined)).toBe(null);
-    expect(roundTrip(t.enum(MyEnum).nullable, null)).toBe(null);
+    expect(roundTrip<Model | null>(undefined)).toBe(null);
+    expect(roundTrip<Model | null>(null)).toBe(null);
 
-    expect(roundTrip(t.type(Model).nullable, undefined)).toBe(null);
-    expect(roundTrip(t.type(Model).nullable, null)).toBe(null);
+    expect(roundTrip<ArrayBuffer | null>(undefined)).toBe(null);
+    expect(roundTrip<ArrayBuffer | null>(null)).toBe(null);
 
-    expect(roundTrip(t.type(ArrayBuffer).nullable, undefined)).toBe(null);
-    expect(roundTrip(t.type(ArrayBuffer).nullable, null)).toBe(null);
-
-    expect(roundTrip(t.type(Uint8Array).nullable, undefined)).toBe(null);
-    expect(roundTrip(t.type(Uint8Array).nullable, null)).toBe(null);
+    expect(roundTrip<Uint8Array | null>(undefined)).toBe(null);
+    expect(roundTrip<Uint8Array | null>(null)).toBe(null);
 });
 
 test('constructor argument', () => {
     class Product {
-        @t id: number = 0;
+        id: number = 0;
 
-        constructor(@t public title: string) {
+        constructor(public title: string) {
         }
     }
 
     class Purchase {
-        @t id: number = 0;
+        id: number = 0;
 
-        constructor(@t public product: Product) {
+        constructor(public product: Product) {
         }
     }
 
     {
-        const item = roundTrip(Purchase, { id: 4, product: new Product('asd') });
+        const item = roundTrip<Purchase>({ id: 4, product: new Product('asd') });
         expect(item.product).toBeInstanceOf(Product);
     }
 });
 
 test('omit circular reference 1', () => {
     class Model {
-        @t another?: Model;
+        another?: Model;
+
         constructor(
-            @t public id: number = 0
-        ) { }
+            public id: number = 0
+        ) {
+        }
     }
-    expect(getClassSchema(Model).hasCircularReference()).toBe(true);
+
+    expect(ReflectionClass.from(Model).hasCircularReference()).toBe(true);
 
     {
         const model = new Model(1);
         const model2 = new Model(2);
         model.another = model2;
-        const plain = serializeToJson(Model, model);
+        const plain = serialize<Model>(model);
         expect(plain.another).toBeInstanceOf(Object);
         expect(plain.another!.id).toBe(2);
     }
@@ -866,27 +689,54 @@ test('omit circular reference 1', () => {
     {
         const model = new Model(1);
         model.another = model;
-        const plain = serializeToJson(Model, model);
+        const plain = serialize<Model>(model);
+        expect(plain.another).toBe(undefined);
+    }
+});
+
+test('omit circular reference 1 interface', () => {
+    interface Model {
+        id: number;
+        another?: Model;
+    }
+
+    expect(hasCircularReference(typeOf<Model>())).toBe(true);
+
+    {
+        const model: Model = { id: 1 };
+        const model2: Model = { id: 2 };
+        model.another = model2;
+        const plain = serialize<Model>(model);
+        expect(plain.another!.id).toBe(2);
+    }
+
+    {
+        const model: Model = { id: 1 };
+        model.another = model;
+        const plain = serialize<Model>(model);
         expect(plain.another).toBe(undefined);
     }
 });
 
 test('omit circular reference 2', () => {
     class Config {
-        constructor(@t.type(() => Model) public model: any) { }
+        constructor(public model: Model) {
+        }
     }
+
     class Model {
-        @t id: number = 0;
-        @t config?: Config;
+        id: number = 0;
+        config?: Config;
     }
-    expect(getClassSchema(Model).hasCircularReference()).toBe(true);
-    expect(getClassSchema(Config).hasCircularReference()).toBe(true);
+
+    expect(ReflectionClass.from(Model).hasCircularReference()).toBe(true);
+    expect(ReflectionClass.from(Config).hasCircularReference()).toBe(true);
 
     {
         const model = new Model;
         const config = new Config(model);
         model.config = config;
-        const plain = serializeToJson(Model, model);
+        const plain = serialize<Model>(model);
         expect(plain.config).toBeInstanceOf(Object);
         expect(plain.config!.model).toBe(undefined);
     }
@@ -896,7 +746,7 @@ test('omit circular reference 2', () => {
         const model2 = new Model;
         const config = new Config(model2);
         model.config = config;
-        const plain = serializeToJson(Model, model);
+        const plain = serialize<Model>(model);
         expect(plain.config).toBeInstanceOf(Object);
         expect(plain.config!.model).toBeInstanceOf(Object);
     }
@@ -904,21 +754,20 @@ test('omit circular reference 2', () => {
 
 test('omit circular reference 3', () => {
     class User {
-        @t id: number = 0;
+        id: number = 0;
 
-        @t.array(() => Image)
         public images: Image[] = [];
 
-        constructor(@t public name: string) {
+        constructor(public name: string) {
         }
     }
 
     class Image {
-        @t id: number = 0;
+        id: number = 0;
 
         constructor(
-            @t public user: User,
-            @t public title: string,
+            public user: User,
+            public title: string,
         ) {
             if (user.images && !user.images.includes(this)) {
                 user.images.push(this);
@@ -926,21 +775,21 @@ test('omit circular reference 3', () => {
         }
     }
 
-    expect(getClassSchema(User).hasCircularReference()).toBe(true);
-    expect(getClassSchema(Image).hasCircularReference()).toBe(true);
+    expect(ReflectionClass.from(User).hasCircularReference()).toBe(true);
+    expect(ReflectionClass.from(Image).hasCircularReference()).toBe(true);
 
     {
         const user = new User('foo');
         const image = new Image(user, 'bar');
         {
-            const plain = serializeToJson(User, user);
+            const plain = serialize<User>(user);
             expect(plain.images.length).toBe(1);
             expect(plain.images[0]).toBeInstanceOf(Object);
             expect(plain.images[0].title).toBe('bar');
         }
 
         {
-            const plain = serializeToJson(Image, image);
+            const plain = serialize<Image>(image);
             expect(plain.user).toBeInstanceOf(Object);
             expect(plain.user.name).toBe('foo');
         }
@@ -948,16 +797,159 @@ test('omit circular reference 3', () => {
 
     {
         const user = new User('foo');
-        const plain = serializeToJson(User, user);
+        const plain = serialize<User>(user);
         expect(plain.images.length).toBe(0);
     }
 });
 
 test('promise', () => {
-    //make sure promise is automatically forward to its first generic type
-    expect(serializeToJson(t.promise(t.string), "1" as any)).toBe("1");
+    //make sure promise is automatically forwarded to its first generic type
+    expect(serialize<Promise<string>>('1')).toBe('1');
+    expect(deserialize<Promise<string>>('1' as any)).toBe('1');
+    expect(roundTrip<Promise<string>>('1' as any)).toBe('1');
+});
 
-    expect(deserializeFromJson(t.promise(t.string), "1" as any)).toBe("1");
+test('embedded single', () => {
+    class Price {
+        constructor(public amount: integer) {
+        }
+    }
 
-    expect(roundTrip(t.promise(t.string), "1" as any)).toBe("1");
+    class Product {
+        constructor(public title: string, public price: Embedded<Price>) {
+        }
+    }
+
+    // expect(serialize<Embedded<Price>>(new Price(34))).toEqual(34);
+    // expect(serialize<Embedded<Price>[]>([new Price(34)])).toEqual([34]);
+    // expect(serialize<Embedded<Price, { prefix: '' }>[]>([new Price(34)])).toEqual([34]);
+    // expect(serialize<Embedded<Price, { prefix: 'price_' }>[]>([new Price(34)])).toEqual([34]);
+    // expect(serialize<{ a: Embedded<Price> }>({ a: new Price(34) })).toEqual({ a: 34 });
+    // expect(serialize<{ a: Embedded<Price, { prefix: '' }> }>({ a: new Price(34) })).toEqual({ amount: 34 });
+    // expect(serialize<{ a: Embedded<Price, { prefix: 'price_' }> }>({ a: new Price(34) })).toEqual({ price_amount: 34 });
+    // expect(serialize<Product>(new Product('Brick', new Price(34)))).toEqual({ title: 'Brick', price: 34 });
+    //
+    // expect(deserialize<Embedded<Price>>(34)).toEqual(new Price(34));
+    // expect(deserialize<(Embedded<Price> | string)[]>([34])).toEqual([new Price(34)]);
+    // expect(deserialize<(Embedded<Price> | string)[]>(['abc'])).toEqual(['abc']);
+    //
+    // expect(deserialize<Embedded<Price, { prefix: '' }>[]>([34])).toEqual([new Price(34)]);
+    // expect(deserialize<Embedded<Price, { prefix: 'price_' }>[]>([34])).toEqual([new Price(34)]);
+    // expect(deserialize<{ a: Embedded<Price> }>({ a: 34 })).toEqual({ a: new Price(34) });
+    // expect(deserialize<{ a: Embedded<Price, { prefix: '' }> }>({ amount: 34 })).toEqual({ a: new Price(34) });
+    // expect(deserialize<{ a: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: 34 })).toEqual({ a: new Price(34) });
+    // expect(deserialize<Product>({ title: 'Brick', price: 34 })).toEqual(new Product('Brick', new Price(34)));
+    //
+    // // check if union works correctly
+    // expect(serialize<{ v: Embedded<Price> | string }>({ v: new Price(34) })).toEqual({ v: 34 });
+    // expect(serialize<{ v: Embedded<Price> | string }>({ v: '123' })).toEqual({ v: '123' });
+    // expect(serialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: new Price(34) })).toEqual({ amount: 34 });
+    // expect(serialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: '34' })).toEqual({ v: '34' });
+    // expect(serialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: new Price(34) })).toEqual({ price_amount: 34 });
+    // expect(serialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: '34' })).toEqual({ v: '34' });
+
+    // expect(deserialize<{ v: Embedded<Price> | string }>({ v: 34 })).toEqual({ v: new Price(34) });
+    //todo: embedded type guards are complicated and not yet completely implemented
+    // expect(deserialize<{ v: Embedded<Price> | string }>({ v: '123' })).toEqual({ v: '123' });
+    // expect(deserialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ amount: 34 })).toEqual({ v: new Price(34) });
+    // expect(deserialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: '34' })).toEqual({ v: '34' });
+    // expect(deserialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ price_amount: 34 })).toEqual({ v: new Price(34) });
+    // expect(deserialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: '34' })).toEqual({ v: '34' });
+});
+
+test('embedded single optional', () => {
+    class Price {
+        constructor(public amount: integer) {
+        }
+    }
+
+    expect(deserialize<{ v?: Embedded<Price> }>({ v: 34 })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v?: Embedded<Price> }>({})).toEqual({});
+    expect(deserialize<{ v?: Embedded<Price, { prefix: '' }> }>({ amount: 34 })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v?: Embedded<Price, { prefix: '' }> }>({})).toEqual({});
+    expect(deserialize<{ v?: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: 34 })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v?: Embedded<Price, { prefix: 'price_' }> }>({})).toEqual({});
+
+    class Product1 {
+        constructor(public title: string, public price: Embedded<Price> = new Price(15)) {
+        }
+    }
+
+    class Product2 {
+        constructor(public title: string, public price?: Embedded<Price>) {
+        }
+    }
+
+    class Product3 {
+        public price: Embedded<Price> | undefined = new Price(15);
+    }
+
+    class Product4 {
+        public price: Embedded<Price> | null = new Price(15);
+    }
+
+    expect(deserialize<{ a?: Embedded<Price> }>({})).toEqual({});
+    expect(deserialize<{ a?: Embedded<Price> }>({ a: undefined })).toEqual({});
+    expect(deserialize<{ a?: Embedded<Price, { prefix: '' }> }>({})).toEqual({});
+    expect(deserialize<{ a?: Embedded<Price, { prefix: '' }> }>({ amount: undefined })).toEqual({});
+    expect(deserialize<{ a?: Embedded<Price, { prefix: 'price_' }> }>({})).toEqual({});
+    expect(deserialize<{ a?: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: undefined })).toEqual({});
+    expect(deserialize<Product1>({ title: 'Brick' })).toEqual(new Product1('Brick'));
+    expect(deserialize<Product2>({ title: 'Brick' })).toEqual(new Product2('Brick'));
+    expect(deserialize<Product3>({})).toEqual({ price: new Price(15) });
+    expect(deserialize<Product3>({ price: null })).toEqual({ price: undefined });
+    expect(deserialize<Product4>({})).toEqual({ price: new Price(15) });
+    expect(deserialize<Product4>({ price: null })).toEqual({ price: null });
+});
+
+test('embedded multi parameter', () => {
+    class Price {
+        constructor(public amount: integer, public currency: string = 'EUR') {
+        }
+    }
+
+    class Product {
+        constructor(public title: string, public price: Embedded<Price>) {
+        }
+    }
+
+    expect(serialize<Embedded<Price>>(new Price(34))).toEqual({ amount: 34, currency: 'EUR' });
+    expect(serialize<Embedded<Price>[]>([new Price(34)])).toEqual([{ amount: 34, currency: 'EUR' }]);
+    expect(serialize<Embedded<Price, { prefix: '' }>[]>([new Price(34)])).toEqual([{ amount: 34, currency: 'EUR' }]);
+    expect(serialize<Embedded<Price, { prefix: 'price_' }>[]>([new Price(34)])).toEqual([{ price_amount: 34, price_currency: 'EUR' }]);
+    expect(serialize<{ a: Embedded<Price> }>({ a: new Price(34) })).toEqual({ a_amount: 34, a_currency: 'EUR' });
+    expect(serialize<{ a: Embedded<Price, { prefix: '' }> }>({ a: new Price(34) })).toEqual({ amount: 34, currency: 'EUR' });
+    expect(serialize<{ a: Embedded<Price, { prefix: 'price_' }> }>({ a: new Price(34) })).toEqual({ price_amount: 34, price_currency: 'EUR' });
+    expect(serialize<Product>(new Product('Brick', new Price(34)))).toEqual({ title: 'Brick', price_amount: 34, price_currency: 'EUR' });
+
+    expect(deserialize<Embedded<Price>>({ amount: 34 })).toEqual(new Price(34));
+    expect(deserialize<Embedded<Price>>({ amount: 34, currency: '$' })).toEqual(new Price(34, '$'));
+    expect(deserialize<Embedded<Price>[]>([{ amount: 34 }])).toEqual([new Price(34)]);
+    expect(deserialize<Embedded<Price>[]>([{ amount: 34, currency: '$' }])).toEqual([new Price(34, '$')]);
+    expect(deserialize<Embedded<Price, { prefix: '' }>[]>([{ amount: 34 }])).toEqual([new Price(34)]);
+    expect(deserialize<Embedded<Price, { prefix: 'price_' }>[]>([{ price_amount: 34 }])).toEqual([new Price(34)]);
+    expect(deserialize<{ a: Embedded<Price> }>({ a_amount: 34 })).toEqual({ a: new Price(34) });
+    expect(deserialize<{ a: Embedded<Price, { prefix: '' }> }>({ amount: 34 })).toEqual({ a: new Price(34) });
+    expect(deserialize<{ a: Embedded<Price, { prefix: '' }> }>({ amount: 34, currency: '$' })).toEqual({ a: new Price(34, '$') });
+    expect(deserialize<{ a: Embedded<Price, { prefix: '' }> }>({ amount: 34, currency: undefined })).toEqual({ a: new Price(34) });
+    expect(deserialize<{ a: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: 34 })).toEqual({ a: new Price(34) });
+    expect(deserialize<{ a: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: 34, price_currency: '$' })).toEqual({ a: new Price(34, '$') });
+    expect(deserialize<Product>({ title: 'Brick', price_amount: 34 })).toEqual(new Product('Brick', new Price(34)));
+
+    //check if union works correctly
+    expect(serialize<{ v: Embedded<Price> | string }>({ v: new Price(34) })).toEqual({ v_amount: 34, v_currency: 'EUR' });
+    expect(serialize<{ v: Embedded<Price> | string }>({ v: new Price(34, '$') })).toEqual({ v_amount: 34, v_currency: '$' });
+    expect(serialize<{ v: Embedded<Price> | string }>({ v: '123' })).toEqual({ v: '123' });
+    expect(serialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: new Price(34) })).toEqual({ amount: 34, currency: 'EUR' });
+    expect(serialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: '34' })).toEqual({ v: '34' });
+    expect(serialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: new Price(34) })).toEqual({ price_amount: 34, price_currency: 'EUR' });
+    expect(serialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: '34' })).toEqual({ v: '34' });
+
+    expect(deserialize<{ v: Embedded<Price> | string }>({ v_amount: 34 })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v: Embedded<Price> | string }>({ v_amount: 34, v_currency: '$' })).toEqual({ v: new Price(34, '$') });
+    expect(deserialize<{ v: Embedded<Price> | string }>({ v: '123' })).toEqual({ v: '123' });
+    expect(deserialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ amount: 34 })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v: Embedded<Price, { prefix: '' }> | string }>({ v: '34' })).toEqual({ v: '34' });
+    expect(deserialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ price_amount: 34 })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: '34' })).toEqual({ v: '34' });
 });

@@ -9,7 +9,7 @@
  */
 
 import { asyncOperation, CustomError } from '@deepkit/core';
-import { ClassSchema, ExtractClassType } from '@deepkit/type';
+import { ReceiveType } from '@deepkit/type';
 import { RpcTypes } from '../model';
 import type { RpcMessage } from '../protocol';
 
@@ -26,7 +26,7 @@ export class RpcMessageSubject {
     protected catchOnReplyCallback = this.onReplyCallback.bind(this);
 
     constructor(
-        private continuation: <T>(type: number, schema?: ClassSchema<T>, body?: T,) => void,
+        private continuation: <T>(type: number, body?: T, schema?: ReceiveType<T>) => void,
 
         /**
          * Releases this subject. It is necessary that eventually every created subject is released,
@@ -55,10 +55,10 @@ export class RpcMessageSubject {
      */
     public send<T>(
         type: number,
-        schema?: ClassSchema<T>,
         body?: T,
+        schema?: ReceiveType<T>,
     ): this {
-        this.continuation(type, schema, body);
+        this.continuation(type, body, schema);
         return this;
     }
 
@@ -81,7 +81,7 @@ export class RpcMessageSubject {
         });
     }
 
-    async waitNextMessage<T extends ClassSchema>(): Promise<RpcMessage> {
+    async waitNextMessage<T>(): Promise<RpcMessage> {
         return asyncOperation<any>((resolve, reject) => {
             this.onReply((next) => {
                 this.onReplyCallback = this.catchOnReplyCallback;
@@ -90,7 +90,7 @@ export class RpcMessageSubject {
         });
     }
 
-    async waitNext<T extends ClassSchema>(type: number, schema?: T): Promise<undefined extends T ? undefined : ExtractClassType<T>> {
+    async waitNext<T>(type: number, schema?: ReceiveType<T>): Promise<T> {
         return asyncOperation<any>((resolve, reject) => {
             this.onReply((next) => {
                 this.onReplyCallback = this.catchOnReplyCallback;
@@ -108,14 +108,14 @@ export class RpcMessageSubject {
         });
     }
 
-    async firstThenClose<T extends ClassSchema>(type: number, schema?: T): Promise<undefined extends T ? RpcMessage : ExtractClassType<T>> {
+    async firstThenClose<T = undefined>(type: number, schema?: ReceiveType<T>): Promise<T> {
         return asyncOperation<any>((resolve, reject) => {
             this.onReply((next) => {
                 this.onReplyCallback = this.catchOnReplyCallback;
                 this.release();
 
                 if (next.type === type) {
-                    return resolve(schema ? next.parseBody(schema) : next);
+                    return resolve(schema ? next.parseBody(schema) : undefined);
                 }
 
                 if (next.isError()) {

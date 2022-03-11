@@ -10,7 +10,7 @@
 
 import style from 'ansi-styles';
 import format from 'format-util';
-import { arrayRemoveItem, ClassType, isPlainObject } from '@deepkit/core';
+import { arrayRemoveItem, ClassType } from '@deepkit/core';
 
 export enum LoggerLevel {
     none,
@@ -35,6 +35,7 @@ export interface LogMessage {
 
 export class ConsoleTransport implements LoggerTransport {
     constructor(protected withColors: boolean = true) {
+        debugger;
     }
 
     write(message: LogMessage): void {
@@ -149,6 +150,28 @@ export interface LoggerInterface {
 
     scoped(name: string): LoggerInterface;
 
+    /**
+     * Sends additional log data for the very next log/error/alert/warning/etc call.
+     *
+     * @example
+     * ```typescript
+     *
+     * logger.data({user: user}).log('User logged in');
+     *
+     * //or
+     *
+     * //the given data is only used for the very next log (or error/alert/warning etc) call.
+     * logger.data({user: user})
+     * logger.log('User logged in');
+     *
+     * //at this point `data` is consumed, and for all other log calls not used anymore.
+     * logger.log('another message without data');
+     *
+     *
+     * ```
+     */
+    data(data: LogData): LoggerInterface;
+
     is(level: LoggerLevel): boolean;
 
     alert(...message: any[]): void;
@@ -173,6 +196,8 @@ export class Logger implements LoggerInterface {
      */
     level: LoggerLevel = LoggerLevel.info;
 
+    protected logData?: LogData;
+
     scopedLevel: { [scope: string]: LoggerLevel } = {};
     protected scopes: { [scope: string]: Logger } = {};
 
@@ -181,6 +206,11 @@ export class Logger implements LoggerInterface {
         protected formatter: LoggerFormatter[] = [],
         protected scope: string = '',
     ) {
+    }
+
+    data(data: LogData): this {
+        this.logData = data;
+        return this;
     }
 
     scoped(name: string): Logger {
@@ -228,13 +258,12 @@ export class Logger implements LoggerInterface {
         return level <= this.level;
     }
 
-    protected send(messages: any[], level: LoggerLevel) {
+    protected send(messages: any[], level: LoggerLevel, data: LogData = {}) {
         if (!this.is(level)) return;
 
-        let data = {};
-        if (messages.length > 1 && isPlainObject(messages[messages.length - 1])) {
-            data = messages[messages.length - 1];
-            messages.splice(messages.length - 1);
+        if (this.logData) {
+            data = this.logData;
+            this.logData = undefined;
         }
 
         const rawMessage: string = (format as any)(...messages);

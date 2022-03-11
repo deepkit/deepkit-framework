@@ -1,5 +1,4 @@
 import { test } from '@jest/globals';
-import 'reflect-metadata';
 import '../src/optimize-tsx';
 
 Error.stackTraceLimit = 200;

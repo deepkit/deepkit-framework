@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Entity, Query } from '@deepkit/orm';
+import { OrmEntity, Query } from '@deepkit/orm';
 import { MongoQueryModel } from './query.model';
 
-export class MongoDatabaseQuery<T extends Entity,
+export class MongoDatabaseQuery<T extends OrmEntity,
     MODEL extends MongoQueryModel<T> = MongoQueryModel<T>> extends Query<T> {
 }

@@ -9,7 +9,6 @@
  */
 
 import { AsyncSubscription } from '@deepkit/core-rxjs';
-import { injectable } from '@deepkit/injector';
 import { Broker } from './broker';
 
 export class AppLock {
@@ -25,7 +24,6 @@ export class AppLock {
  * An global application lock (across workers, processes, and nodes).
  * It provides a way to acquire locks on the central broker process atomically.
 */
-@injectable
 export class AppLocker {
     constructor(protected broker: Broker) {
     }

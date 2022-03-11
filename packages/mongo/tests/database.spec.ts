@@ -1,16 +1,14 @@
-import {expect, test} from '@jest/globals';
-import 'reflect-metadata';
-import {Database} from "@deepkit/orm";
-import {MongoDatabaseAdapter} from "../src/adapter";
-import {Entity, t} from "@deepkit/type";
+import { expect, test } from '@jest/globals';
+import { Database } from '@deepkit/orm';
+import { MongoDatabaseAdapter } from '../src/adapter';
+import { entity, MongoId, PrimaryKey } from '@deepkit/type';
 
 test('simple', async () => {
-    @Entity('asd')
+    @entity.name('asd')
     class Test {
-        @t.primary.mongoId
-        _id!: string;
+        _id: MongoId & PrimaryKey = '';
 
-        constructor(@t public name: string) {
+        constructor(public name: string) {
         }
     }
 
@@ -32,12 +30,11 @@ test('simple', async () => {
 });
 
 test('unit of work', async () => {
-    @Entity('asd2')
+    @entity.name('asd2')
     class Test {
-        @t.primary.mongoId
-        _id!: string;
+        _id: MongoId & PrimaryKey = '';
 
-        constructor(@t public name: string) {
+        constructor(public name: string) {
         }
     }
 
@@ -64,12 +61,11 @@ test('unit of work', async () => {
 });
 
 test('repository', async () => {
-    @Entity('asd3')
+    @entity.name('asd3')
     class Test {
-        @t.primary.mongoId
-        _id!: string;
+        _id: MongoId & PrimaryKey = '';
 
-        constructor(@t public name: string) {
+        constructor(public name: string) {
         }
     }
 
@@ -96,12 +92,11 @@ test('repository', async () => {
 });
 
 test('session', async () => {
-    @Entity('asd4')
+    @entity.name('asd4')
     class Test {
-        @t.primary.mongoId
-        _id!: string;
+        _id: MongoId & PrimaryKey = '';
 
-        constructor(@t public name: string) {
+        constructor(public name: string) {
         }
     }
 

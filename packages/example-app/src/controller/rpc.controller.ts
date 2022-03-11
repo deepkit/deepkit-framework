@@ -1,12 +1,10 @@
 import { rpc } from '@deepkit/rpc';
 import { Observable, Subject } from 'rxjs';
-import { t } from '@deepkit/type';
 
 @rpc.controller('test-rpc')
 export class RpcController {
 
     @rpc.action()
-    @t.generic(Date)
     timesSubject(): Subject<Date> {
         const subject = new Subject<Date>();
 
@@ -26,7 +24,6 @@ export class RpcController {
     }
 
     @rpc.action()
-    @t.generic(Date)
     timesObservable(): Observable<Date> {
         return new Observable((observer) => {
             const interval = setInterval(() => {

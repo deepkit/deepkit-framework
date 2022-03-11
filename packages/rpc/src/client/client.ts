@@ -9,7 +9,7 @@
  */
 
 import { asyncOperation, ClassType, sleep } from '@deepkit/core';
-import { ClassSchema } from '@deepkit/type';
+import { ReceiveType, resolveReceiveType } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { ControllerDefinition, rpcAuthenticate, rpcClientId, rpcPeerDeregister, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model';
 import { createRpcMessage, createRpcMessagePeer, ErroredRpcMessage, RpcMessage, RpcMessageReader, RpcMessageRouteType } from '../protocol';
@@ -66,8 +66,8 @@ export interface ClientTransportAdapter {
 export interface WritableClient {
     sendMessage<T>(
         type: number,
-        schema?: ClassSchema<T>,
         body?: T,
+        receiveType?: ReceiveType<T>,
         options?: {
             dontWaitForConnection?: boolean,
             connectionId?: number,
@@ -280,7 +280,7 @@ export class RpcClientTransporter {
 
         try {
             this.writer.write(message, progress);
-        } catch (error) {
+        } catch (error: any) {
             throw new OfflineError(error);
         }
     }
@@ -370,13 +370,13 @@ export class RpcBaseClient implements WritableClient {
     protected async onAuthenticate(): Promise<void> {
         if (!this.token.has()) return;
 
-        const reply = await this.sendMessage(RpcTypes.Authenticate, rpcAuthenticate, { token: this.token.get()! }, { dontWaitForConnection: true })
+        const reply: RpcMessage = await this.sendMessage<rpcAuthenticate>(RpcTypes.Authenticate, { token: this.token.get()! }, undefined, { dontWaitForConnection: true })
             .waitNextMessage();
 
         if (reply.isError()) throw reply.getError();
 
         if (reply.type === RpcTypes.AuthenticateResponse) {
-            const body = reply.parseBody(rpcResponseAuthenticate);
+            const body = reply.parseBody<rpcResponseAuthenticate>();
             this.username = body.username;
             return;
         }
@@ -415,8 +415,8 @@ export class RpcBaseClient implements WritableClient {
 
     public sendMessage<T>(
         type: number,
-        schema?: ClassSchema<T>,
         body?: T,
+        schema?: ReceiveType<T>,
         options: {
             dontWaitForConnection?: boolean,
             connectionId?: number,
@@ -424,12 +424,14 @@ export class RpcBaseClient implements WritableClient {
             timeout?: number
         } = {}
     ): RpcMessageSubject {
+        const resolvedSchema = schema ? resolveReceiveType(schema) : undefined;
+        if (body && !schema) throw new Error('Body given, but not type');
         const id = this.messageId++;
         const connectionId = options && options.connectionId ? options.connectionId : this.transporter.connectionId;
         const dontWaitForConnection = !!options.dontWaitForConnection;
         // const timeout = options && options.timeout ? options.timeout : 0;
 
-        const continuation = <T>(type: number, schema?: ClassSchema<T>, body?: T) => {
+        const continuation = <T>(type: number, body?: T, schema?: ReceiveType<T>,) => {
             if (connectionId === this.transporter.connectionId) {
                 //send a message with the same id. Don't use sendMessage() again as this would lead to a memory leak
                 // and a new id generated. We want to use the same id.
@@ -440,7 +442,7 @@ export class RpcBaseClient implements WritableClient {
                         id, type, body, messages: [], composite: false
                     });
                 }
-                const message = createRpcMessage(id, type, schema, body);
+                const message = createRpcMessage(id, type, body, undefined, schema);
                 this.transporter.send(message);
             }
         };
@@ -458,8 +460,8 @@ export class RpcBaseClient implements WritableClient {
 
         if (dontWaitForConnection || this.transporter.isConnected()) {
             const message = options && options.peerId
-                ? createRpcMessagePeer(id, type, this.getId(), options.peerId, schema, body)
-                : createRpcMessage(id, type, schema, body);
+                ? createRpcMessagePeer(id, type, this.getId(), options.peerId, body, resolvedSchema)
+                : createRpcMessage(id, type, body, undefined, resolvedSchema);
 
             if (this.events.observers.length) {
                 this.events.next({
@@ -475,8 +477,8 @@ export class RpcBaseClient implements WritableClient {
                 () => {
                     //this.getId() only now available
                     const message = options && options.peerId
-                        ? createRpcMessagePeer(id, type, this.getId(), options.peerId, schema, body)
-                        : createRpcMessage(id, type, schema, body);
+                        ? createRpcMessagePeer(id, type, this.getId(), options.peerId, body, resolvedSchema)
+                        : createRpcMessage(id, type, body, undefined, resolvedSchema);
 
                     if (this.events.observers.length) {
                         this.events.next({
@@ -535,7 +537,7 @@ export class RpcClient extends RpcBaseClient {
         this.clientKernelConnection = undefined;
 
         const reply = await this.sendMessage(RpcTypes.ClientId, undefined, undefined, { dontWaitForConnection: true })
-            .firstThenClose(RpcTypes.ClientIdResponse, rpcClientId);
+            .firstThenClose<rpcClientId>(RpcTypes.ClientIdResponse);
         return reply.id;
     }
 
@@ -634,12 +636,12 @@ export class RpcClient extends RpcBaseClient {
 
         this.peerKernel = new RpcKernel();
 
-        await this.sendMessage(RpcTypes.PeerRegister, rpcPeerRegister, { id }).firstThenClose(RpcTypes.Ack);
+        await this.sendMessage<rpcPeerRegister>(RpcTypes.PeerRegister, { id }).firstThenClose(RpcTypes.Ack);
         this.registeredAsPeer = id;
 
         return {
             deregister: async () => {
-                await this.sendMessage(RpcTypes.PeerDeregister, rpcPeerDeregister, { id }).firstThenClose(RpcTypes.Ack);
+                await this.sendMessage<rpcPeerDeregister>(RpcTypes.PeerDeregister, { id }).firstThenClose(RpcTypes.Ack);
                 this.registeredAsPeer = undefined;
             }
         };

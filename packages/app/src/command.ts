@@ -13,14 +13,14 @@ import {
     ClassDecoratorResult,
     createClassDecoratorContext,
     createPropertyDecoratorContext,
+    deserialize,
     FreeFluidDecorator,
-    getClassSchema,
-    getPropertyXtoClassFunction,
-    jitValidateProperty,
-    jsonSerializer,
     PropertyApiTypeInterface,
-    PropertySchema,
-    t,
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionParameter,
+    ReflectionProperty,
+    validate,
     ValidationFailedItem
 } from '@deepkit/type';
 import { Command as OclifCommandBase } from '@oclif/command';
@@ -34,11 +34,6 @@ class ArgDefinitions {
     name: string = '';
     description: string = '';
     args: ArgDefinition[] = [];
-
-    getArg(name: string): ArgDefinition {
-        for (const arg of this.args) if (arg.name === name) return arg;
-        throw new Error(`No argument with name ${name} found`);
-    }
 }
 
 class CommandDecorator {
@@ -58,16 +53,19 @@ class CommandDecorator {
 
 export const cli: ClassDecoratorResult<typeof CommandDecorator> = createClassDecoratorContext(CommandDecorator);
 
+function getProperty(classType: ClassType, ref: {property: string; parameterIndex?: number;}): ReflectionProperty | ReflectionParameter {
+    return ref.parameterIndex !== undefined
+        ? ReflectionClass.from(classType).getMethodParameters(ref.property)[ref.parameterIndex]
+        : ReflectionClass.from(classType).getProperty(ref.property);
+}
+
 class ArgDefinition {
-    name: string = '';
     isFlag: boolean = false;
-    propertySchema!: PropertySchema;
     multiple: boolean = false;
     hidden: boolean = false;
     char: string = '';
-    optional: boolean = false;
-    description: string = '';
-    default: any;
+    property!: string;
+    parameterIndex?: number;
 }
 
 export class ArgDecorator implements PropertyApiTypeInterface<ArgDefinition> {
@@ -75,21 +73,9 @@ export class ArgDecorator implements PropertyApiTypeInterface<ArgDefinition> {
 
     onDecorator(classType: ClassType, property: string | undefined, parameterIndex?: number): void {
         if (!property) throw new Error('arg|flag needs to be on a method argument or class property, .e.g execute(@arg hostname: string) {}');
-        const schema = getClassSchema(classType);
 
-        if (parameterIndex === undefined && !schema.hasProperty(property)) {
-            //make sure its known in ClassSchema
-            t(classType.prototype, property);
-        }
-
-        const propertySchema = parameterIndex !== undefined
-            ? getClassSchema(classType).getMethodProperties(property)[parameterIndex]
-            : getClassSchema(classType).getProperty(property);
-
-        this.t.name = propertySchema.name;
-        this.t.propertySchema = propertySchema;
-
-        if (this.t.optional) propertySchema.isOptional = true;
+        this.t.property = property;
+        this.t.parameterIndex = parameterIndex;
 
         const aBase = cli._fetch(Object.getPrototypeOf(classType.prototype)?.constructor);
         if (aBase) {
@@ -100,21 +86,6 @@ export class ArgDecorator implements PropertyApiTypeInterface<ArgDefinition> {
         }
 
         cli.addArg(this.t)(classType);
-    }
-
-    description(description: string) {
-        this.t.description = description;
-    }
-
-    get optional() {
-        this.t.optional = true;
-        return;
-    }
-
-    default(value: any) {
-        this.t.default = value;
-        this.t.optional = true;
-        return;
     }
 
     get multiple() {
@@ -159,17 +130,16 @@ export function buildOclifCommand(name: string, injector: InjectorContext, class
     if (!argDefinitions) throw new Error(`No command name set. use @cli.controller('name')`);
     if (!argDefinitions.name) throw new Error(`No command name set. use @cli.controller('name')`);
 
-    let converters = new Map<PropertySchema, (v: any) => any>();
+    let converters = new Map<ReflectionProperty | ReflectionParameter, (v: any) => any>();
 
     for (const property of argDefinitions.args) {
-        converters.set(property.propertySchema, (value: any) => {
-            value = getPropertyXtoClassFunction(property.propertySchema, jsonSerializer)(value);
-            const errors: ValidationFailedItem[] = [];
-            jitValidateProperty(property.propertySchema)(
-                value,
-                property.propertySchema.name,
-                errors
-            );
+        const propertySchema = getProperty(classType, property);
+        converters.set(propertySchema, (value: any) => {
+            if (value === undefined && !propertySchema.isValueRequired()) {
+                return undefined;
+            }
+            value = deserialize(value, undefined, undefined, propertySchema.type);
+            const errors = validate(value, propertySchema.type);
             if (errors.length) {
                 throw errors[0];
             }
@@ -180,19 +150,20 @@ export function buildOclifCommand(name: string, injector: InjectorContext, class
     for (const i in argDefinitions.args) {
         if (!argDefinitions.args.hasOwnProperty(i)) continue;
         const t = argDefinitions.args[i];
+        const propertySchema = getProperty(classType, t);
 
         const options = {
-            name: t.name,
-            description: t.description,
+            name: propertySchema.name,
+            description: 'todo',
             hidden: t.hidden,
-            required: !t.optional,
+            required: !(propertySchema.isOptional() || propertySchema.hasDefault()),
             multiple: t.multiple,
-            default: t.default,
+            default: propertySchema.getDefaultValue(),
         };
 
         //todo, add `parse(i)` and make sure type is correct depending on t.propertySchema.type
         if (t.isFlag) {
-            oclifFlags[t.name] = t.propertySchema.type === 'boolean' ? flags.boolean(options) : flags.string(options);
+            oclifFlags[propertySchema.name] = propertySchema.type.kind === ReflectionKind.boolean ? flags.boolean(options) : flags.string(options);
         } else {
             oclifArgs.push(options);
         }
@@ -218,12 +189,14 @@ export function buildOclifCommand(name: string, injector: InjectorContext, class
 
                     for (const property of argDefinitions!.args) {
                         try {
-                            const v = converters.get(property.propertySchema)!(args[property.name] ?? flags[property.name]);
-                            if (property.propertySchema.methodName === 'execute') {
+                            const propertySchema = getProperty(classType, property);
+
+                            const v = converters.get(propertySchema)!(args[propertySchema.name] ?? flags[propertySchema.name]);
+                            if (propertySchema instanceof ReflectionParameter) {
                                 methodArgs.push(v);
-                            } else if (!property.propertySchema.methodName) {
+                            } else if (propertySchema instanceof ReflectionProperty) {
                                 if (v !== undefined) {
-                                    instance[property.name as keyof typeof instance] = v;
+                                    instance[propertySchema.name as keyof typeof instance] = v;
                                 }
                             }
                         } catch (e) {

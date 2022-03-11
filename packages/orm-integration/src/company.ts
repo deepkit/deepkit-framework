@@ -1,53 +1,53 @@
-import { entity, plainToClass, t } from '@deepkit/type';
+import { AutoIncrement, cast, entity, PrimaryKey, Reference, t } from '@deepkit/type';
 import { expect } from '@jest/globals';
 import { DatabaseFactory } from './test';
 
-@entity.collectionName('persons')
+@entity.collection('persons')
 abstract class Person {
-    @t.primary.autoIncrement id: number = 0;
-    @t firstName?: string;
-    @t lastName?: string;
-    @t.discriminant abstract type: string;
+    id: number & PrimaryKey & AutoIncrement = 0;
+    firstName?: string;
+    lastName?: string;
+    abstract type: string;
 }
 
 @entity.singleTableInheritance()
 class Employee extends Person {
     @t email?: string;
 
-    @t.literal('employee') type: 'employee' = 'employee';
+    type: 'employee' = 'employee';
 }
 
 @entity.singleTableInheritance()
 class Freelancer extends Person {
     @t budget: number = 10_000;
 
-    @t.literal('freelancer') type: 'freelancer' = 'freelancer';
+    type: 'freelancer' = 'freelancer';
 }
 
-@entity.collectionName('projects')
+@entity.collection('projects')
 class Project {
-    @t.primary.autoIncrement id: number = 0;
+    id: number & PrimaryKey & AutoIncrement = 0;
 
     constructor(
-        @t.reference() public owner: Person,
-        @t public title: string
+        public owner: Person & Reference,
+        public title: string
     ) {
     }
 }
 
-const entities = [Employee, Freelancer, Project];
+const entities = [Employee, Freelancer, Project, Person];
 
 export const companyTests = {
-    async tableLevelInheritance(databaseFactory: DatabaseFactory) {
+    async tableLevelInheritanceBasics(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
 
-        const freelance1 = plainToClass(Freelancer, { firstName: 'Peter' });
+        const freelance1 = cast<Freelancer>({ firstName: 'Peter' });
         expect(freelance1.type).toBe('freelancer');
         await database.persist(freelance1);
 
-        await database.persist(plainToClass(Freelancer, { firstName: 'Marie' }));
-        await database.persist(plainToClass(Employee, { firstName: 'Marc' }));
-        await database.persist(plainToClass(Employee, { firstName: 'Lui' }));
+        await database.persist(cast<Freelancer>({ firstName: 'Marie' }));
+        await database.persist(cast<Employee>({ firstName: 'Marc' }));
+        await database.persist(cast<Employee>({ firstName: 'Lui' }));
 
         const freelancers = await database.query(Freelancer).find();
         expect(freelancers.length).toBe(2);
@@ -80,13 +80,22 @@ export const companyTests = {
         expect(persons[3].id).toBe(4);
         expect(persons[3].type).toBe('employee');
         expect(persons[3]).toBeInstanceOf(Employee);
+        database.disconnect();
     },
 
     async tableLevelInheritanceJoins(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
 
-        const peter = plainToClass(Freelancer, { firstName: 'Peter' });
-        await database.persist(peter, plainToClass(Freelancer, { firstName: 'Marie' }), plainToClass(Employee, { firstName: 'Marc' }), plainToClass(Employee, { firstName: 'Lui' }));
+        const peter = cast<Freelancer>({ firstName: 'Peter' });
+        expect(peter.firstName).toBe('Peter')
+
+        const marie = cast<Freelancer>({ firstName: 'Marie' });
+        expect(marie.firstName).toBe('Marie')
+
+        const marc = cast<Employee>({ firstName: 'Marc' });
+        expect(marc.firstName).toBe('Marc')
+
+        await database.persist(peter, marie, marc, cast<Employee>({ firstName: 'Lui' }));
 
         {
             const project = new Project(peter, 'My project');
@@ -99,5 +108,6 @@ export const companyTests = {
             expect(project.owner.id).toBe(1);
             expect(project.owner.firstName).toBe('Peter');
         }
+        database.disconnect();
     },
 };

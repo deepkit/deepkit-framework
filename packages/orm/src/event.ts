@@ -9,7 +9,8 @@
  */
 
 import { AsyncEmitterEvent, AsyncEventEmitter, ClassType } from '@deepkit/core';
-import type { Changes, ClassSchema, ExtractPrimaryKeyType } from '@deepkit/type';
+import type { Changes } from '@deepkit/type';
+import { PrimaryKeyType, ReflectionClass } from '@deepkit/type';
 import type { DatabasePersistenceChangeSet } from './database-adapter';
 import type { DatabaseSession } from './database-session';
 import type { Query } from './query';
@@ -25,22 +26,22 @@ export class UnitOfWorkCommitEvent<T> extends AsyncEmitterEvent {
 
 export class UnitOfWorkEvent<T> extends AsyncEmitterEvent {
     constructor(
-        public readonly classSchema: ClassSchema<T>,
+        public readonly classSchema: ReflectionClass<T>,
         public readonly databaseSession: DatabaseSession<any>,
         public readonly items: T[]
     ) {
         super();
     }
 
-    isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is UnitOfWorkEvent<T> {
-        return this.classSchema.isSchemaOf(classTypeOrSchema);
+    isSchemaOf<T>(classType: ClassType<T>): this is UnitOfWorkEvent<T> {
+        return this.classSchema.isSchemaOf(classType);
     }
 
-    getPrimaryKeys(): ExtractPrimaryKeyType<T>[] {
-        const ids: ExtractPrimaryKeyType<T>[] = [];
-        const primaryKeyField = this.classSchema.getPrimaryFieldName();
+    getPrimaryKeys(): PrimaryKeyType<T>[] {
+        const ids: PrimaryKeyType<T>[] = [];
+        const primaryKeyField = this.classSchema.getPrimary();
         for (const item of this.items) {
-            ids.push(item[primaryKeyField] as any);
+            ids.push(item[primaryKeyField.getNameAsString() as keyof T] as any);
         }
         return ids;
     }
@@ -48,15 +49,15 @@ export class UnitOfWorkEvent<T> extends AsyncEmitterEvent {
 
 export class UnitOfWorkUpdateEvent<T> extends AsyncEmitterEvent {
     constructor(
-        public readonly classSchema: ClassSchema<T>,
+        public readonly classSchema: ReflectionClass<T>,
         public readonly databaseSession: DatabaseSession<any>,
         public readonly changeSets: DatabasePersistenceChangeSet<T>[]
     ) {
         super();
     }
 
-    isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is UnitOfWorkUpdateEvent<T> {
-        return this.classSchema.isSchemaOf(classTypeOrSchema);
+    isSchemaOf<T>(classType: ClassType<T>): this is UnitOfWorkUpdateEvent<T> {
+        return this.classSchema.isSchemaOf(classType);
     }
 }
 
@@ -83,29 +84,29 @@ export class UnitOfWorkDatabaseEmitter {
 export class QueryDatabaseEvent<T> extends AsyncEmitterEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
-        public readonly classSchema: ClassSchema<T>,
+        public readonly classSchema: ReflectionClass<T>,
         public query: Query<T>
     ) {
         super();
     }
 
-    isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is QueryDatabaseDeleteEvent<T> {
-        return this.classSchema.isSchemaOf(classTypeOrSchema);
+    isSchemaOf<T>(classType: ClassType<T>): this is QueryDatabaseDeleteEvent<T> {
+        return this.classSchema.isSchemaOf(classType);
     }
 }
 
 export class QueryDatabaseDeleteEvent<T> extends AsyncEmitterEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
-        public readonly classSchema: ClassSchema<T>,
+        public readonly classSchema: ReflectionClass<T>,
         public query: Query<T>,
         public readonly deleteResult: DeleteResult<T>
     ) {
         super();
     }
 
-    isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is QueryDatabaseDeleteEvent<T> {
-        return this.classSchema.isSchemaOf(classTypeOrSchema);
+    isSchemaOf<T>(classType: ClassType<T>): this is QueryDatabaseDeleteEvent<T> {
+        return this.classSchema.isSchemaOf(classType);
     }
 }
 
@@ -114,7 +115,7 @@ export class QueryDatabasePatchEvent<T> extends AsyncEmitterEvent {
 
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
-        public readonly classSchema: ClassSchema<T>,
+        public readonly classSchema: ReflectionClass<T>,
         public query: Query<T>,
         public readonly patch: Changes<T>,
         public readonly patchResult: PatchResult<T>
@@ -122,8 +123,8 @@ export class QueryDatabasePatchEvent<T> extends AsyncEmitterEvent {
         super();
     }
 
-    isSchemaOf<T>(classTypeOrSchema: ClassType<T> | ClassSchema<T>): this is QueryDatabasePatchEvent<T> {
-        return this.classSchema.isSchemaOf(classTypeOrSchema);
+    isSchemaOf<T>(classType: ClassType<T>): this is QueryDatabasePatchEvent<T> {
+        return this.classSchema.isSchemaOf(classType);
     }
 }
 

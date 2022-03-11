@@ -8,9 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseSession, Entity } from '@deepkit/orm';
-import { ClassSchema, getClassSchema, t } from '@deepkit/type';
-import { ClassType } from '@deepkit/core';
+import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseEntityRegistry, DatabaseSession, OrmEntity } from '@deepkit/orm';
+import { AbstractClassType } from '@deepkit/core';
 import { MongoDatabaseQuery } from './query';
 import { MongoPersistence } from './persistence';
 import { MongoClient } from './client/client';
@@ -20,6 +19,7 @@ import { MongoDatabaseTransaction } from './client/connection';
 import { CreateIndex, CreateIndexesCommand } from './client/command/createIndexes';
 import { DropIndexesCommand } from './client/command/dropIndexes';
 import { CreateCollectionCommand } from './client/command/createCollection';
+import { entity, ReceiveType, ReflectionClass } from '@deepkit/type';
 
 export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     constructor(
@@ -29,10 +29,8 @@ export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
         super();
     }
 
-    createQuery<T extends Entity>(
-        classType: ClassType<T> | ClassSchema<T>
-    ): MongoDatabaseQuery<T> {
-        const schema = getClassSchema(classType);
+    createQuery<T extends OrmEntity>(type?: ReceiveType<T> | AbstractClassType<T> | ReflectionClass<T>): MongoDatabaseQuery<T> {
+        const schema = ReflectionClass.from(type);
         return new MongoDatabaseQuery(schema, this.databaseSession, new MongoQueryResolver(schema, this.databaseSession, this.client));
     }
 }
@@ -40,16 +38,21 @@ export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
 export class MongoDatabaseAdapter extends DatabaseAdapter {
     public readonly client: MongoClient;
 
-    protected ormSequences = t.schema({
-        name: t.string,
-        value: t.number,
-    }, { name: this.getAutoIncrementSequencesCollection() });
+    protected ormSequences: ReflectionClass<any>;
 
     constructor(
         connectionString: string
     ) {
         super();
         this.client = new MongoClient(connectionString);
+
+        @entity.name(this.getAutoIncrementSequencesCollection())
+        class OrmSequence {
+            name!: string;
+            value!: number;
+        }
+
+        this.ormSequences = ReflectionClass.from(OrmSequence);
     }
 
     getName(): string {
@@ -88,12 +91,12 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
         await this.client.execute(new DeleteCommand(this.ormSequences));
     }
 
-    async migrate(classSchemas: Iterable<ClassSchema>) {
-        let withOrmSequences = false;
-        for (const schema of classSchemas) {
+    async migrate(entityRegistry: DatabaseEntityRegistry) {
+        let withOrmSequences = true;
+        for (const schema of entityRegistry.entities) {
             await this.migrateClassSchema(schema);
             for (const property of schema.getProperties()) {
-                if (property.isAutoIncrement) withOrmSequences = true;
+                if (property.isAutoIncrement()) withOrmSequences = true;
             }
         }
 
@@ -102,24 +105,26 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
         }
     };
 
-    async migrateClassSchema(schema: ClassSchema) {
+    async migrateClassSchema(schema: ReflectionClass<any>) {
         try {
             await this.client.execute(new CreateCollectionCommand(schema));
         } catch (error) {
             //its fine to fail
         }
 
-        for (const [name, index] of schema.indices.entries()) {
+        for (const index of schema.indexes) {
             const fields: { [name: string]: 1 } = {};
 
-            if (index.fields.length === 1 && index.fields[0] === '_id') continue;
+            if (index.names.length === 1 && index.names[0] === '_id') continue;
 
-            for (const f of index.fields) {
+            //todo: namingStrategy
+            for (const f of index.names) {
                 fields[f] = 1;
             }
 
+            const indexName = index.options.name || index.names.join('_');
             const createIndex: CreateIndex = {
-                name: name || index.fields.join('_'),
+                name: index.options.name || index.names.join('_'),
                 key: fields,
                 unique: !!index.options.unique,
                 sparse: !!index.options.sparse,
@@ -128,12 +133,13 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
             try {
                 await this.client.execute(new CreateIndexesCommand(schema, [createIndex]));
             } catch (error) {
-                console.log('failed index', name, '. Recreate ...');
+                console.log('failed index', indexName, '. Recreate ...');
                 //failed (because perhaps of incompatibilities). Dropping and creating a fresh index
                 //can resolve that. If the second create also fails, then it throws.
                 try {
-                    await this.client.execute(new DropIndexesCommand(schema, [name]));
-                } catch (error) {}
+                    await this.client.execute(new DropIndexesCommand(schema, [indexName]));
+                } catch (error) {
+                }
 
                 await this.client.execute(new CreateIndexesCommand(schema, [createIndex]));
             }

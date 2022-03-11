@@ -96,7 +96,11 @@ export class CodeHighlightComponent implements OnInit, OnChanges, AfterViewInit,
         if (!this.code) return;
 
         const lang = this.codeHighlight || 'typescript';
-        const highlighted = highlight(this.code, languages[lang], lang);
-        this.pre!.innerHTML = highlighted;
+        try {
+            const highlighted = highlight(this.code, languages[lang], lang);
+            this.pre!.innerHTML = highlighted;
+        } catch (error: any) {
+            this.pre!.innerHTML = error.message + ': ' + this.code;
+        }
     }
 }

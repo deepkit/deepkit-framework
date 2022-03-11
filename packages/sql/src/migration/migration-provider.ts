@@ -12,10 +12,8 @@ import { ClassType } from '@deepkit/core';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
 import glob from 'fast-glob';
 import { basename, join } from 'path';
-import { injectable } from '@deepkit/injector';
 import { Migration } from './migration';
 
-@injectable
 export class MigrationProvider {
     protected databaseMap = new Map<string, Database<any>>();
     protected migrationDir: string = 'migrations/';

@@ -1,7 +1,6 @@
 import { App } from '@deepkit/app';
 import { http, HttpKernel, HttpModule, HttpRequest, HttpResponse } from '@deepkit/http';
 import { Server } from 'http';
-import { injectable } from '@deepkit/injector';
 
 class MyService {
     helloWorld () {
@@ -9,7 +8,6 @@ class MyService {
     }
 }
 
-@injectable
 class MyController {
     constructor(private myService: MyService) {
     }

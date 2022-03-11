@@ -30,8 +30,7 @@
     "@deepkit/rpc": "^1.0.1-alpha.57",
     "@angular/core": "~12.2.0",
     "@angular/common": "~12.2.0",
-    "rxjs": "~6.6.0",
-    "reflect-metadata": "^0.1.13"
+    "rxjs": "~6.6.0"
   },
   "jest": {
     "transform": {

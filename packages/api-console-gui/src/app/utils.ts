@@ -1,75 +1,34 @@
-import { ClassSchema, PropertySchema } from '@deepkit/type';
 //@ts-ignore
 import objectInspect from 'object-inspect';
 import { getClassName } from '@deepkit/core';
+import { getTypeJitContainer, isBackReferenceType, isReferenceType, ReflectionKind, stringifyType, Type } from '@deepkit/type';
 
 export function trackByIndex(index: number) {
     return index;
 }
 
-interface ToTSInterfaceOptions {
-    /**
-     * When true `|undefined` is inferred from isOptional instead of !isValueRequired.
-     */
-    strictRequired?: true;
-
-    direction?: 'serialize';
+export function isReferenceLike(type: Type): boolean {
+    return isReferenceType(type) || isBackReferenceType(type);
 }
 
-function isOptional(property: PropertySchema, options: ToTSInterfaceOptions) {
-    if (!options.direction && (property.isReference || property.backReference)) return true;
-
-    return options.strictRequired ? property.isOptional : !property.isValueRequired;
+function manualTypeStringify(type: Type): string | undefined {
+    if (type.kind === ReflectionKind.class && getClassName(type.classType) === 'UploadedFile') return 'UploadedFile';
+    //we are not interested in the methods
+    if (type.kind === ReflectionKind.method || type.kind === ReflectionKind.methodSignature) return '';
+    return;
 }
 
-export function classSchemaToTSJSONInterface(schema: ClassSchema, options: ToTSInterfaceOptions = {}, depth: number = 1): string {
-    const name = schema.getClassName();
-    const lines: string[] = [];
-    for (const v of schema.getProperties()) {
-        lines.push('   '.repeat(depth) + v.name + (isOptional(v.jsonType || v, options) ? '?' : '') + ': ' + propertyToTSJSONInterface(v, options, false, depth + 1, ';'));
-    }
-
-    return `${name}${name ? ' ' : ''}{\n` + lines.join('\n') + '\n' + '   '.repeat(depth - 1) + '}';
+export function typeToTSJSONInterface(type: Type, options: { defaultIsOptional?: boolean } = {}): string {
+    if (type.kind === ReflectionKind.promise) type = type.type;
+    const id = options.defaultIsOptional ? 'typeToTSJSONInterfaceDefaultOptional' : 'typeToTSJSONInterface';
+    const jit = getTypeJitContainer(type);
+    if (jit[id]) return jit[id];
+    return jit[id] = stringifyType(type, { ...options, showDescription: true, showNames: false, showFullDefinition: true, stringify: manualTypeStringify });
 }
 
-export function propertyToTSJSONInterface(property: PropertySchema, options: ToTSInterfaceOptions = {}, withOptional: boolean = true, depth: number = 1, affix: string = ''): string {
-    if (property.jsonType) return propertyToTSJSONInterface(property.jsonType, {}, withOptional, depth, affix) + ' //' + property.toString(false);
-
-    if (property.type === 'class') {
-        let pre = options.direction === 'serialize' && (property.isReference || property.backReference)
-            ? propertyToTSJSONInterface(property.getResolvedClassSchema().getPrimaryField(), options, false, depth) + ' | '
-            : '';
-        return pre + classSchemaToTSJSONInterface(property.getResolvedClassSchema(), options, depth);
-    }
-
-    if (withOptional && isOptional(property, options)) affix += '|undefined';
-    if (property.isNullable) affix += '|null';
-
-    if (property.isBinary) return `{$type: 'binary', data: string}` + affix + ' //' + property.toString(false);
-
-    if (property.type === 'array') {
-        return `Array<${propertyToTSJSONInterface(property.templateArgs[0], options, true, depth, undefined)}>${affix}`;
-    }
-    if (property.type === 'promise') {
-        if (property.templateArgs[0]) return propertyToTSJSONInterface(property.templateArgs[0], options, true, depth, undefined);
-        return 'any';
-    }
-    if (property.type === 'map') {
-        return `Record<${propertyToTSJSONInterface(property.templateArgs[0], {}, true, depth)}, ${propertyToTSJSONInterface(property.templateArgs[1], options, true, depth, undefined)}>${affix}`;
-    }
-    if (property.type === 'partial') {
-        return `Partial<${propertyToTSJSONInterface(property.templateArgs[0], options, true, depth, undefined)}>${affix}`;
-    }
-    if (property.type === 'union') {
-        return property.templateArgs.map(v => propertyToTSJSONInterface(v, options, true, depth, undefined)).join(' | ') + affix;
-    }
-    if (property.type === 'enum') return 'enum' + affix;
-
-    if (property.type === 'date') return 'string' + affix + ' //Date';
-
-    if (property.type === 'literal') return JSON.stringify(property.literalValue);
-
-    return `${property.type}${affix}`;
+export interface TypeDecoration {
+    name: number | string | symbol;
+    description?: string;
 }
 
 function toHex(number: number): string {

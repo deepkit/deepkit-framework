@@ -1,14 +1,7 @@
-import {
-    Component,
-    ComponentFactoryResolver,
-    ComponentRef,
-    Input,
-    OnChanges,
-    OnDestroy,
-    ViewContainerRef
-} from '@angular/core';
-import { PropertySchema } from '@deepkit/type';
-import { Registry } from '../../registry';
+import { Component, ComponentFactoryResolver, ComponentRef, Input, OnChanges, OnDestroy, ViewContainerRef } from '@angular/core';
+import { Type } from '@deepkit/type';
+import { cellRegistry } from '../../registry';
+import { TypeDecoration } from './utils';
 
 @Component({
     selector: 'orm-browser-property-view',
@@ -20,15 +13,15 @@ import { Registry } from '../../registry';
     `]
 })
 export class CellComponent implements OnDestroy, OnChanges {
-    @Input() property!: PropertySchema;
+    @Input() type!: Type;
     @Input() model!: any;
+    @Input() decoration?: TypeDecoration;
 
     protected componentRef?: ComponentRef<any>;
 
     constructor(
         private containerRef: ViewContainerRef,
         private resolver: ComponentFactoryResolver,
-        private registry: Registry,
     ) {
     }
 
@@ -45,7 +38,7 @@ export class CellComponent implements OnDestroy, OnChanges {
     }
 
     link() {
-        const component = this.registry.cellComponents[this.property.type];
+        const component = cellRegistry.get(this.type);
         if (!component) {
             return;
         }
@@ -53,7 +46,8 @@ export class CellComponent implements OnDestroy, OnChanges {
 
         const componentFactory = this.resolver.resolveComponentFactory(component);
         this.componentRef = this.containerRef.createComponent(componentFactory);
-        this.componentRef.instance.property = this.property;
+        this.componentRef.instance.type = this.type;
+        this.componentRef.instance.decoration = this.decoration;
         this.componentRef.instance.model = this.model;
         this.componentRef.changeDetectorRef.detectChanges();
     }

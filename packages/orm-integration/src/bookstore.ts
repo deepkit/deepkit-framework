@@ -1,6 +1,5 @@
 import { expect } from '@jest/globals';
-import 'reflect-metadata';
-import { entity, getClassSchema, plainToClass, t, uuid } from '@deepkit/type';
+import { assertType, AutoIncrement, cast, entity, PrimaryKey, Reference, ReflectionClass, ReflectionKind, UUID, uuid } from '@deepkit/type';
 import { User, UserGroup } from './bookstore/user';
 import { UserCredentials } from './bookstore/user-credentials';
 import { atomicChange, getInstanceStateFromItem } from '@deepkit/orm';
@@ -9,40 +8,40 @@ import { Group } from './bookstore/group';
 import { DatabaseFactory } from './test';
 
 class BookModeration {
-    @t locked: boolean = false;
+    locked: boolean = false;
 
-    @t.optional maxDate?: Date;
+    maxDate?: Date;
 
-    @t.optional admin?: User;
+    admin?: User;
 
-    @t.array(User) moderators: User[] = [];
+    moderators: User[] = [];
 }
 
 @entity.name('book')
 class Book {
-    @t.primary.autoIncrement public id?: number;
+    public id?: number & PrimaryKey & AutoIncrement;
 
-    @t moderation: BookModeration = new BookModeration;
+    moderation: BookModeration = new BookModeration;
 
     constructor(
-        @t.reference() public author: User,
-        @t public title: string,
+        public author: User & Reference,
+        public title: string,
     ) {
     }
 }
 
 @entity.name('image')
 class Image {
-    @t.primary.uuid id: string = uuid();
+    id: UUID & PrimaryKey = uuid();
 
-    @t downloads: number = 0;
+    downloads: number = 0;
 
-    @t.uuid privateToken: string = uuid();
+    privateToken: UUID = uuid();
 
-    @t image: Uint8Array = new Uint8Array([128, 255]);
+    image: Uint8Array = new Uint8Array([128, 255]);
 
     constructor(
-        @t public path: string) {
+        public path: string) {
     }
 }
 
@@ -54,14 +53,14 @@ enum ReviewStatus {
 
 @entity.name('review')
 class Review {
-    @t.primary.autoIncrement public id?: number;
-    @t created: Date = new Date;
-    @t stars: number = 0;
-    @t.enum(ReviewStatus) status: ReviewStatus = ReviewStatus.published;
+    public id?: number & PrimaryKey & AutoIncrement;
+    created: Date = new Date;
+    stars: number = 0;
+    status: ReviewStatus = ReviewStatus.published;
 
     constructor(
-        @t.reference() public user: User,
-        @t.reference() public book: Book,
+        public user: User & Reference,
+        public book: Book & Reference,
     ) {
     }
 }
@@ -70,15 +69,19 @@ const entities = [User, UserCredentials, Book, Review, Image, Group, UserGroup];
 
 export const bookstoreTests = {
     schema() {
-        const book = getClassSchema(Book);
+        const book = ReflectionClass.from(Book);
         expect(book.name).toBe('book');
 
-        const user = getClassSchema(User);
+        const user = ReflectionClass.from(User);
         expect(user.name).toBe('user');
-        expect(book.getProperty('author').classType).toBe(User);
-        expect(book.getProperty('author').getResolvedClassSchema()).toBe(user);
+        expect(book.getProperty('author').getResolvedReflectionClass().getClassType()).toBe(User);
+        expect(book.getProperty('author').getResolvedReflectionClass()).toBe(user);
+        expect(user.getProperty('birthdate').isOptional()).toBe(true);
 
-        expect(user.getProperty('birthdate').isOptional).toBe(true);
+        const userGroup = ReflectionClass.from(UserGroup);
+
+        expect(userGroup.getProperty('user').isReference()).toBe(true);
+        expect(userGroup.getProperty('group').isReference()).toBe(true);
     },
 
     async deleteManyParallel(databaseFactory: DatabaseFactory) {
@@ -98,6 +101,7 @@ export const bookstoreTests = {
 
         await Promise.all(promises);
         expect(await database.query(User).count()).toBe(0);
+        database.disconnect();
     },
 
     async filterIn(databaseFactory: DatabaseFactory) {
@@ -139,6 +143,7 @@ export const bookstoreTests = {
             expect(items.length).toBe(1);
             expect(items[0].name).toBe('c');
         }
+        database.disconnect();
     },
 
     async binary(databaseFactory: DatabaseFactory) {
@@ -162,6 +167,7 @@ export const bookstoreTests = {
             const imageDB = await database.query(Image).filter({ id: image.id }).findOne();
             expect(imageDB.image).toEqual(new Uint8Array(['s'.charCodeAt(0)]));
         }
+        database.disconnect();
     },
 
     async uuid(databaseFactory: DatabaseFactory) {
@@ -205,6 +211,7 @@ export const bookstoreTests = {
             expect(deleted.primaryKeys).toEqual([image.id]);
             expect(deleted.modified).toBe(1);
         }
+        database.disconnect();
     },
 
     async userGroup(databaseFactory: DatabaseFactory) {
@@ -246,6 +253,7 @@ export const bookstoreTests = {
             const allUsersInB = await database.query(User).useInnerJoin('groups').filter({ name: 'b' }).end().find();
             expect(allUsersInB.length).toBe(2);
         }
+        database.disconnect();
     },
 
     async reference(databaseFactory: DatabaseFactory) {
@@ -254,6 +262,9 @@ export const bookstoreTests = {
         const peter = new User('Peter');
         const marie = new User('Marie');
         await database.persist(peter, marie);
+
+        expect(peter.id).toBe(1);
+        expect(marie.id).toBe(2);
 
         const book1 = new Book(peter, 'Super book');
         await database.persist(book1);
@@ -269,7 +280,7 @@ export const bookstoreTests = {
         }
 
         {
-            const book = plainToClass(Book, {
+            const book = cast<Book>({
                 author: marie.id,
                 title: 'Maries path'
             });
@@ -277,13 +288,12 @@ export const bookstoreTests = {
             expect(book.author.id).toBe(marie.id);
             await database.persist(book);
 
-            const book1 = await database.query(Book).filter({title: 'Maries path'}).findOne();
+            const book1 = await database.query(Book).filter({ title: 'Maries path' }).findOne();
             expect(book1.author.id).toBe(marie.id);
         }
 
-
         {
-            const book = plainToClass(Book, {
+            const book = cast<Book>({
                 author: database.getReference(User, peter.id),
                 title: 'Peters path'
             });
@@ -291,12 +301,12 @@ export const bookstoreTests = {
             expect(book.author.id).toBe(peter.id);
             await database.persist(book);
 
-            const book1 = await database.query(Book).filter({title: 'Peters path'}).findOne();
+            const book1 = await database.query(Book).filter({ title: 'Peters path' }).findOne();
             expect(book1.author.id).toBe(peter.id);
         }
-
+        database.disconnect();
     },
-    async basics(databaseFactory: DatabaseFactory) {
+    async basicsCrud(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
         {
             const session = database.createSession();
@@ -321,6 +331,10 @@ export const bookstoreTests = {
 
             expect(await session.query(User).count()).toBe(2);
             expect(await session.query(Book).count()).toBe(2);
+            {
+                const titles = await session.query(Book).select('title').find();
+                expect(titles).toEqual([{ title: 'Peters book' }, { title: 'Herberts book' }]);
+            }
             {
                 const ids = await session.query(Book).ids(true);
                 expect(ids[0]).toBe(book1.id);
@@ -392,6 +406,7 @@ export const bookstoreTests = {
             //cascade foreign key deletes also the book
             expect(await session.query(Book).count()).toBe(1);
         }
+        database.disconnect();
     },
 
     async subDocuments(databaseFactory: DatabaseFactory) {
@@ -433,6 +448,7 @@ export const bookstoreTests = {
             const book = await database.query(Book).filter({ 'moderation.locked': true }).findOne();
             expect(book.title).toBe('Peters book');
         }
+        database.disconnect();
     },
 
     async instanceState(databaseFactory: DatabaseFactory) {
@@ -464,6 +480,7 @@ export const bookstoreTests = {
             expect(getInstanceStateFromItem(peter).isKnownInDatabase()).toBe(false);
             expect(getInstanceStateFromItem(herbert).isKnownInDatabase()).toBe(false);
         }
+        database.disconnect();
     },
 
     async primaryKeyChange(databaseFactory: DatabaseFactory) {
@@ -486,12 +503,19 @@ export const bookstoreTests = {
 
         const res = await database.query(UserCredentials).filter({ user: user1 }).patchOne({ user: user2 });
         expect(res.modified).toEqual(1);
-        expect(res.primaryKeys).toEqual([user2.id]); //we want to new primaryKey, not the old one
+        expect(res.primaryKeys).toMatchObject([{ id: user2.id }]); //we want the new primaryKey, not the old one
 
         {
             const creds = await database.query(UserCredentials).filter({ user: user2 }).findOne();
             expect(creds.user.id).toBe(user2.id);
         }
+
+        {
+            const res = await database.query(User).filter({ id: user1.id }).patchOne({ id: 125 });
+            expect(res.modified).toEqual(1);
+            expect(res.primaryKeys).toEqual([125]); //we want the new primaryKey, not the old one
+        }
+        database.disconnect();
     },
 
     async userAccount(databaseFactory: DatabaseFactory) {
@@ -533,6 +557,7 @@ export const bookstoreTests = {
             expect(userWrongPwButLeftJoin.id).toBe(1);
             expect(userWrongPwButLeftJoin.credentials).toBeUndefined();
         }
+        database.disconnect();
     },
 
     async userEvents(databaseFactory: DatabaseFactory) {
@@ -647,6 +672,7 @@ export const bookstoreTests = {
             sub2.unsubscribe();
             sub3.unsubscribe();
         }
+        database.disconnect();
     },
 
     async multipleJoins(databaseFactory: DatabaseFactory) {
@@ -688,11 +714,16 @@ export const bookstoreTests = {
         }
     },
 
-    async enum(databaseFactory: DatabaseFactory) {
+    async enumTest(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
 
         const user = new User('Peter');
         const book = new Book(user, 'Great');
+
+        const reflectionReview = ReflectionClass.from(Review);
+        const status = reflectionReview.getProperty('status').type;
+        assertType(status, ReflectionKind.enum);
+        expect(status.indexType).toMatchObject({ kind: ReflectionKind.number });
 
         const review = new Review(user, book);
         review.status = ReviewStatus.hidden;
@@ -704,8 +735,8 @@ export const bookstoreTests = {
             expect(review.book.id).toBe(book.id);
             expect(review.status).toBe(ReviewStatus.hidden);
         }
+        database.disconnect();
     },
-
 
     async atomic(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
@@ -748,5 +779,6 @@ export const bookstoreTests = {
 
             expect((await database.query(User).filter(user).findOne()).logins).toBe(1 + 2 + 10);
         }
+        database.disconnect();
     },
 };

@@ -3,13 +3,13 @@
   "version": "1.0.1-alpha.60",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build --configuration production",
-    "build:dev": "ng build",
-    "watch": "ng build --watch",
-    "test": "ng test",
-    "lint": "ng lint",
-    "e2e": "ng e2e"
+    "start": "NODE_OPTIONS=--preserve-symlinks ng serve",
+    "build": "NODE_OPTIONS=--preserve-symlinks ng build --configuration production",
+    "build:dev": "NODE_OPTIONS=--preserve-symlinks ng build",
+    "watch": "NODE_OPTIONS=--preserve-symlinks ng build --watch",
+    "test": "NODE_OPTIONS=--preserve-symlinks ng test",
+    "lint": "NODE_OPTIONS=--preserve-symlinks ng lint",
+    "e2e": "NODE_OPTIONS=--preserve-symlinks ng e2e"
   },
   "publishConfig": {
     "access": "public"
@@ -46,6 +46,7 @@
     "@deepkit/rpc": "^1.0.1-alpha.59",
     "@deepkit/stopwatch": "^1.0.1-alpha.59",
     "@deepkit/topsort": "^1.0.1-alpha.35",
+    "@deepkit/type-compiler": "^1.0.1-alpha.59",
     "@deepkit/type": "^1.0.1-alpha.59",
     "@deepkit/ui-library": "^1.0.1-alpha.56",
     "@types/dagre": "^0.7.44",

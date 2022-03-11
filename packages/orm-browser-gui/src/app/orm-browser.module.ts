@@ -44,7 +44,6 @@ import { BinaryCellComponent } from './components/cell/binary-cell.component';
 import { BrowserCellComponent } from './components/browser-cell.component';
 import { FormsModule } from '@angular/forms';
 import { BrowserState } from './browser-state';
-import { Registry } from './registry';
 import { ControllerClient } from './client';
 import { PropertyComponent } from './components/property.component';
 import { DatabaseSeedComponent } from './components/database-seed.component';
@@ -144,7 +143,6 @@ import { DeepkitClient } from '@deepkit/rpc';
     ],
     providers: [
         BrowserState,
-        Registry,
         ControllerClient,
     ],
 })

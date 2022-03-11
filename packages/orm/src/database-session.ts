@@ -9,21 +9,10 @@
  */
 
 import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
-import { DatabaseValidationError, Entity } from './type';
-import { ClassType, CustomError, isArray } from '@deepkit/core';
-import {
-    ClassSchema,
-    getClassSchema,
-    getClassTypeFromInstance,
-    getGlobalStore,
-    getPrimaryKeyExtractor,
-    GlobalStore,
-    isReference,
-    markAsHydrated,
-    PrimaryKeyFields,
-    UnpopulatedCheck,
-    validate
-} from '@deepkit/type';
+import { DatabaseEntityRegistry } from './database-adapter';
+import { DatabaseValidationError, OrmEntity } from './type';
+import { ClassType, CustomError } from '@deepkit/core';
+import { getPrimaryKeyExtractor, isReferenceInstance, markAsHydrated, PrimaryKeyFields, ReflectionClass, typeSettings, UnpopulatedCheck, validate } from '@deepkit/type';
 import { GroupArraySort } from '@deepkit/topsort';
 import { getClassState, getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map';
 import { getClassSchemaInstancePairs } from './utils';
@@ -36,12 +25,11 @@ import { Stopwatch } from '@deepkit/stopwatch';
 let SESSION_IDS = 0;
 
 export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
-    protected addQueue = new Set<Entity>();
-    protected removeQueue = new Set<Entity>();
+    protected addQueue = new Set<OrmEntity>();
+    protected removeQueue = new Set<OrmEntity>();
 
     protected inCommit: boolean = false;
     protected committed: boolean = false;
-    protected global: GlobalStore = getGlobalStore();
 
     constructor(
         protected session: DatabaseSession<any>,
@@ -60,7 +48,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         return this.committed;
     }
 
-    public add(...items: Entity[]): void {
+    public add(...items: OrmEntity[]): void {
         if (this.isInCommit()) throw new Error('Already in commit. Can not change queues.');
 
         for (const item of items) {
@@ -75,39 +63,39 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         }
     }
 
-    protected getReferenceDependencies<T extends Entity>(item: T): Entity[] {
-        const result: Entity[] = [];
-        const classSchema = getClassSchema(getClassTypeFromInstance(item));
+    protected getReferenceDependencies<T extends OrmEntity>(item: T): OrmEntity[] {
+        const result: OrmEntity[] = [];
+        const classSchema = this.session.entityRegistry.getFromInstance(item)
 
-        const old = this.global.unpopulatedCheck;
-        this.global.unpopulatedCheck = UnpopulatedCheck.None;
+        const old = typeSettings.unpopulatedCheck;
+        typeSettings.unpopulatedCheck = UnpopulatedCheck.None;
         try {
-            for (const reference of classSchema.references.values()) {
-                if (reference.backReference) continue;
+            for (const reference of classSchema.getReferences()) {
+                if (reference.isBackReference()) continue;
 
                 //todo, check if join was populated. will throw otherwise
-                const v = item[reference.name as keyof T] as any;
-                if (v === undefined) continue;
+                const v = item[reference.getNameAsString() as keyof T] as any;
+                if (v == undefined) continue;
 
-                if (reference.isArray) {
-                    if (isArray(v)) {
-                        for (const i of v) {
-                            if (isReference(v)) continue;
-                            if (i instanceof reference.getResolvedClassType()) result.push(i);
-                        }
-                    }
-                } else {
-                    if (v instanceof reference.getResolvedClassType() && !isReference(v)) result.push(v);
-                }
+                // if (reference.isArray) {
+                //     if (isArray(v)) {
+                //         for (const i of v) {
+                //             if (isReference(v)) continue;
+                //             if (i instanceof reference.getResolvedClassType()) result.push(i);
+                //         }
+                //     }
+                // } else {
+                if (!isReferenceInstance(v)) result.push(v);
+                // }
             }
         } finally {
-            this.global.unpopulatedCheck = old;
+            typeSettings.unpopulatedCheck = old;
         }
 
         return result;
     }
 
-    public remove(...items: Entity[]) {
+    public remove(...items: OrmEntity[]) {
         if (this.isInCommit()) throw new Error('Already in commit. Can not change queues.');
 
         for (const item of items) {
@@ -149,15 +137,15 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
     }
 
     protected async doPersist(persistence: DatabasePersistence) {
-        const sorter = new GroupArraySort<Entity, ClassSchema>();
+        const sorter = new GroupArraySort<OrmEntity, ReflectionClass<any>>();
         sorter.sameTypeExtraGrouping = true;
         sorter.throwOnNonExistingDependency = false;
-        const unpopulatedCheck = getGlobalStore().unpopulatedCheck;
-        getGlobalStore().unpopulatedCheck = UnpopulatedCheck.None;
+        const unpopulatedCheck = typeSettings.unpopulatedCheck;
+        typeSettings.unpopulatedCheck = UnpopulatedCheck.None;
 
         try {
             for (const item of this.addQueue.values()) {
-                const classSchema = getClassSchema(getClassTypeFromInstance(item));
+                const classSchema = this.session.entityRegistry.getFromInstance(item);
                 sorter.add(item, classSchema, this.getReferenceDependencies(item));
             }
 
@@ -165,13 +153,13 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
             const groups = sorter.getGroups();
 
             for (const group of groups) {
-                const inserts: Entity[] = [];
-                const changeSets: DatabasePersistenceChangeSet<Entity>[] = [];
+                const inserts: OrmEntity[] = [];
+                const changeSets: DatabasePersistenceChangeSet<OrmEntity>[] = [];
                 const classState = getClassState(group.type);
 
                 for (const item of group.items) {
                     const state = getInstanceState(classState, item);
-                    const errors = validate(classState.classSchema, item);
+                    const errors = validate(item, classState.classSchema.type);
                     if (errors.length) {
                         throw new DatabaseValidationError(classState.classSchema, errors);
                     }
@@ -235,7 +223,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                 }
             }
         } finally {
-            getGlobalStore().unpopulatedCheck = unpopulatedCheck;
+            typeSettings.unpopulatedCheck = unpopulatedCheck;
         }
     }
 }
@@ -297,6 +285,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
         public readonly adapter: ADAPTER,
         public readonly unitOfWorkEmitter: UnitOfWorkDatabaseEmitter = new UnitOfWorkDatabaseEmitter,
         public readonly queryEmitter: QueryDatabaseEmitter = new QueryDatabaseEmitter(),
+        public readonly entityRegistry: DatabaseEntityRegistry = new DatabaseEntityRegistry(),
         public logger: DatabaseLogger = new DatabaseLogger,
         public stopwatch?: Stopwatch,
     ) {
@@ -408,8 +397,8 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
      * const user = session.getReference(User, 1);
      * ```
      */
-    public getReference<T>(classType: ClassType<T> | ClassSchema<T>, primaryKey: any | PrimaryKeyFields<T>): T {
-        const schema = getClassSchema(classType);
+    public getReference<T>(classType: ClassType<T> | ReflectionClass<T>, primaryKey: any | PrimaryKeyFields<T>): T {
+        const schema = ReflectionClass.from(classType);
         const pk = getNormalizedPrimaryKey(schema, primaryKey);
         return getReference(schema, pk, this.identityMap);
     }
@@ -429,7 +418,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
      *
      * This works like Git: you add files, and later commit all in one batch.
      */
-    public add(...items: Entity[]): void {
+    public add(...items: OrmEntity[]): void {
         if (this.getCurrentRound().isInCommit()) {
             this.enterNewRound();
         }
@@ -440,7 +429,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     /**
      * Adds a item to the remove queue. Use session.commit() to remove queued items from the database all at once.
      */
-    public remove(...items: Entity[]) {
+    public remove(...items: OrmEntity[]) {
         if (this.getCurrentRound().isInCommit()) {
             this.enterNewRound();
         }
@@ -467,22 +456,21 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     }
 
     public async hydrateEntity<T extends object>(item: T) {
-        const classType = getClassTypeFromInstance(item);
-        const classSchema = getClassSchema(classType);
+        const classSchema = this.entityRegistry.getFromInstance(item);
         const pk = getPrimaryKeyExtractor(classSchema)(item);
 
-        const itemDB = await this.query(classType).filter(pk).findOne();
+        const itemDB = await this.query(classSchema).filter(pk).findOne();
 
         for (const property of classSchema.getProperties()) {
-            if (property.isId) continue;
-            if (property.isReference || property.backReference) continue;
+            if (property.isPrimaryKey()) continue;
+            if (property.isReference() || property.isBackReference()) continue;
 
             //we set only not overwritten values
             if (!item.hasOwnProperty(property.symbol)) {
                 Object.defineProperty(item, property.symbol, {
                     enumerable: false,
                     configurable: true,
-                    value: itemDB[property.name as keyof T]
+                    value: itemDB[property.getNameAsString() as keyof T]
                 });
             }
         }

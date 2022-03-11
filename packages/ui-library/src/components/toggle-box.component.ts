@@ -1,6 +1,5 @@
 import { ChangeDetectorRef, Component, EventEmitter, Input, Output, SkipSelf } from '@angular/core';
 
-
 @Component({
     selector: 'deepkit-toggle-box',
     template: `

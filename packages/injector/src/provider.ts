@@ -8,8 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { AbstractClassType, ClassType, isClass } from '@deepkit/core';
-import { InjectorToken } from './decorator';
 import { InjectorModule } from './module';
+import { InjectorToken } from './injector';
+import { ReceiveType, resolveReceiveType, Type } from '@deepkit/type';
 
 export interface ProviderBase {
     /**
@@ -19,11 +20,17 @@ export interface ProviderBase {
     transient?: true;
 }
 
-export type Token<T = any> = symbol | string | InjectorToken<T> | AbstractClassType<T>;
+/** @reflection never */
+export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | InjectorToken<T> | AbstractClassType<T> | Type | T;
+
+export function provide<T>(provider: Omit<ProviderProvide, 'provide'> | ClassType, type?: ReceiveType<T>): NormalizedProvider {
+    if (isClass(provider)) return { provide: resolveReceiveType(type), useClass: provider };
+    return { ...provider, provide: resolveReceiveType(type) };
+}
 
 export interface ValueProvider<T> extends ProviderBase {
     /**
-     * An injection token. Typically a class.
+     * An injection token.
      */
     provide: Token<T>;
 
@@ -35,7 +42,7 @@ export interface ValueProvider<T> extends ProviderBase {
 
 export interface ClassProvider<T> extends ProviderBase {
     /**
-     * An injection token. Typically a class.
+     * An injection token.
      */
     provide: Token<T>;
 
@@ -47,7 +54,7 @@ export interface ClassProvider<T> extends ProviderBase {
 
 export interface ExistingProvider<T> extends ProviderBase {
     /**
-     * An injection token. Typically a class.
+     * An injection token.
      */
     provide: Token<T>;
 
@@ -59,7 +66,7 @@ export interface ExistingProvider<T> extends ProviderBase {
 
 export interface FactoryProvider<T> extends ProviderBase {
     /**
-     * An injection token. Typically a class.
+     * An injection token.
      */
     provide: Token<T>;
 
@@ -72,19 +79,25 @@ export interface FactoryProvider<T> extends ProviderBase {
     /**
      * A list of `token`s which need to be resolved by the injector. The list of values is then
      * used as arguments to the `useFactory` function.
+     *
+     * @deprecated not necessary anymore
      */
     deps?: any[];
 }
 
+/** @reflection never */
 export type Provider<T = any> = ClassType | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T> | TagProvider<T>;
 
+/** @reflection never */
 export type ProviderProvide<T = any> = ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>;
 
+/** @reflection never */
 interface TagRegistryEntry<T> {
     tagProvider: TagProvider<T>;
     module: InjectorModule;
 }
 
+/** @reflection never */
 export class TagRegistry {
     constructor(
         public tags: TagRegistryEntry<any>[] = []
@@ -92,7 +105,7 @@ export class TagRegistry {
     }
 
     register(tagProvider: TagProvider<any>, module: InjectorModule) {
-        return this.tags.push({tagProvider, module});
+        return this.tags.push({ tagProvider, module });
     }
 
     resolve<T extends ClassType<Tag<any>>>(tag: T): TagRegistryEntry<InstanceType<T>>[] {
@@ -100,6 +113,7 @@ export class TagRegistry {
     }
 }
 
+/** @reflection never */
 export class TagProvider<T> {
     constructor(
         public provider: NormalizedProvider<T>,
@@ -108,6 +122,7 @@ export class TagProvider<T> {
     }
 }
 
+/** @reflection never */
 export class Tag<T, TP extends TagProvider<T> = TagProvider<T>> {
     _!: () => T;
     _2!: () => TP;
@@ -121,8 +136,7 @@ export class Tag<T, TP extends TagProvider<T> = TagProvider<T>> {
         return new TagProvider(provider, this) as TP;
     }
 
-    static provide<
-        P extends ClassType<T> | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>,
+    static provide<P extends ClassType<T> | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>,
         T extends ReturnType<InstanceType<B>['_']>,
         TP extends ReturnType<InstanceType<B>['_2']>,
         B extends ClassType<Tag<any>>>(this: B, provider: P): TP {
@@ -136,12 +150,15 @@ export class Tag<T, TP extends TagProvider<T> = TagProvider<T>> {
     }
 }
 
+/** @reflection never */
 export interface ProviderScope {
     scope?: 'module' | 'rpc' | 'http' | 'cli' | string;
 }
 
+/** @reflection never */
 export type NormalizedProvider<T = any> = ProviderProvide<T> & ProviderScope;
 
+/** @reflection never */
 export type ProviderWithScope<T = any> = ClassType | (ProviderProvide<T> & ProviderScope) | TagProvider<any>;
 
 export function isScopedProvider(obj: any): obj is ProviderProvide & ProviderScope {
@@ -173,7 +190,6 @@ export function isTransient(provider: ProviderWithScope): boolean {
     if (provider instanceof TagProvider) return false;
     return provider.transient === true;
 }
-
 
 export function getProviders(
     providers: ProviderWithScope[],

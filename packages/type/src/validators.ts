@@ -1,22 +1,16 @@
-/*
- * Deepkit Framework
- * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the MIT License.
- *
- * You should have received a copy of the MIT License along with this program.
- */
-
 import { isArray } from '@deepkit/core';
-import { PropertyValidatorError } from './jit-validation';
+import { ValidatorError } from './validator';
+import { TypeLiteral } from './reflection/type';
 
-export const validators = {
-    pattern(regex: RegExp) {
+export const validators: { [name in string]?: (...args: any[]) => (value: any) => ValidatorError | undefined } = {
+    pattern(type: TypeLiteral) {
         return (value: any) => {
             if ('string' !== typeof value) return;
-            if (regex.exec(value)) return;
-            throw new PropertyValidatorError('pattern', `Pattern ${regex.source} does not match`);
+            if (type.literal instanceof RegExp) {
+                if (type.literal.exec(value)) return;
+                return new ValidatorError('pattern', `Pattern ${type.literal.source} does not match`);
+            }
+            return;
         };
     },
 
@@ -25,7 +19,7 @@ export const validators = {
             if ('string' !== typeof value) return;
             if (value.length === 0) return;
             if (/^[A-Z]+$/i.test(value)) return;
-            throw new PropertyValidatorError('alpha', 'Not alpha');
+            return new ValidatorError('alpha', 'Not alpha');
         };
     },
 
@@ -34,7 +28,7 @@ export const validators = {
             if ('string' !== typeof value) return;
             if (value.length === 0) return;
             if (/^[0-9A-Z]+$/i.test(value)) return;
-            throw new PropertyValidatorError('alphanumeric', 'Not alphanumeric');
+            return new ValidatorError('alphanumeric', 'Not alphanumeric');
         };
     },
 
@@ -43,7 +37,7 @@ export const validators = {
             if ('string' !== typeof value) return;
             if (value.length === 0) return;
             if (/^[\x00-\x7F]+$/.test(value)) return;
-            throw new PropertyValidatorError('ascii', 'Not ASCII');
+            return new ValidatorError('ascii', 'Not ASCII');
         };
     },
 
@@ -51,107 +45,147 @@ export const validators = {
         return (value: any) => {
             if ('string' !== typeof value) return;
             if (/^(data:)([\w\/\+-]*)(;charset=[\w-]+|;base64){0,1},(.*)/gi.test(value)) return;
-            throw new PropertyValidatorError('dataURI', 'Not a data URI');
+            return new ValidatorError('dataURI', 'Not a data URI');
         };
     },
 
-    decimal(minDigits: number = 1, maxDigits: number = 100) {
-        const regexp = new RegExp('^-?\\d+\\.\\d{' + minDigits + ',' + maxDigits + '}$');
+    decimal(minDigits: TypeLiteral & { literal: number }, maxDigits: TypeLiteral & { literal: number }) {
+        const regexp = new RegExp('^-?\\d+\\.\\d{' + minDigits.literal + ',' + maxDigits.literal + '}$');
         return (value: any) => {
             if ('string' !== typeof value) return;
             if (regexp.test(value)) return;
-            throw new PropertyValidatorError('decimal', `Not a decimal(x.${minDigits}-${maxDigits})`);
+            return new ValidatorError('decimal', `Not a decimal(x.${minDigits.literal}-${maxDigits.literal})`);
         };
     },
 
-    multipleOf(num: any) {
+    multipleOf(num: TypeLiteral & { literal: number }) {
         return (value: any) => {
             if ('number' !== typeof value) return;
-            if (value % num === 0) return;
-            throw new PropertyValidatorError('multipleOf', 'Not a multiple of ' + num);
+            if (value % num.literal === 0) return;
+            return new ValidatorError('multipleOf', 'Not a multiple of ' + num.literal);
         };
     },
 
-    minLength(length: number) {
+    minLength(length: TypeLiteral & { literal: number }) {
         return (value: any) => {
             if ('string' !== typeof value && !isArray(value)) return;
-            if (value.length >= length) return;
+            if (value.length >= length.literal) return;
 
-            throw new PropertyValidatorError('minLength', 'Min length is ' + length);
+            return new ValidatorError('minLength', 'Min length is ' + length.literal);
         };
     },
 
-    maxLength(length: number) {
+    maxLength(length: TypeLiteral & { literal: number }) {
         return (value: any) => {
             if ('string' !== typeof value && !isArray(value)) return;
-            if (value.length <= length) return;
+            if (value.length <= length.literal) return;
 
-            throw new PropertyValidatorError('maxLength', 'Max length is ' + length);
+            return new ValidatorError('maxLength', 'Max length is ' + length.literal);
         };
     },
 
-    includes(include: any) {
+    includes(include: TypeLiteral) {
         return (value: any) => {
             if ('string' !== typeof value && !isArray(value)) return;
-            if (value.includes(include)) return;
+            if (value.includes(include.literal as any)) return;
 
-            throw new PropertyValidatorError('includes', `Needs to include '${include}'`);
+            return new ValidatorError('includes', `Needs to include '${String(include.literal)}'`);
         };
     },
 
-    excludes(excludes: any) {
+    excludes(excludes: TypeLiteral) {
         return (value: any) => {
             if ('string' !== typeof value && !isArray(value)) return;
-            if (!value.includes(excludes)) return;
-            throw new PropertyValidatorError('excludes', `Needs to exclude '${excludes}'`);
+            if (!value.includes(excludes.literal as any)) return;
+            return new ValidatorError('excludes', `Needs to exclude '${String(excludes.literal)}'`);
         };
     },
 
-    minimum(min: number) {
+    minimum(min: TypeLiteral & { literal: number | bigint }) {
         return (value: any) => {
             if ('number' !== typeof value && 'bigint' !== typeof value) return;
-            if (value < min) throw new PropertyValidatorError('minimum', 'Number needs to be greater than or equal to ' + min);
+            if (value < min.literal) return new ValidatorError('minimum', 'Number needs to be greater than or equal to ' + min.literal);
+            return;
         };
     },
 
-    exclusiveMinimum(min: number) {
+    exclusiveMinimum(min: TypeLiteral & { literal: number | bigint }) {
         return (value: any) => {
             if ('number' !== typeof value && 'bigint' !== typeof value) return;
-            if (value <= min) throw new PropertyValidatorError('minimum', 'Number needs to be greater than ' + min);
+            if (value <= min.literal) return new ValidatorError('minimum', 'Number needs to be greater than ' + min.literal);
+            return;
         };
     },
 
-    maximum(max: number) {
+    maximum(max: TypeLiteral & { literal: number | bigint }) {
         return (value: any) => {
             if ('number' !== typeof value && 'bigint' !== typeof value) return;
-            if (value > max) throw new PropertyValidatorError('maximum', 'Number needs to be smaller than or equal to ' + max);
+            if (value > max.literal) return new ValidatorError('maximum', 'Number needs to be smaller than or equal to ' + max.literal);
+            return;
         };
     },
 
-    exclusiveMaximum(max: number) {
+    exclusiveMaximum(max: TypeLiteral & { literal: number | bigint }) {
         return (value: any) => {
             if ('number' !== typeof value && 'bigint' !== typeof value) return;
-            if (value >= max) throw new PropertyValidatorError('maximum', 'Number needs to be smaller than ' + max);
+            if (value >= max.literal) return new ValidatorError('maximum', 'Number needs to be smaller than ' + max.literal);
+            return;
         };
     },
 
-    positive(includingZero: boolean = true) {
+    positive(includingZero: TypeLiteral & { literal: boolean }) {
         return (value: any) => {
             if ('number' !== typeof value && 'bigint' !== typeof value) return;
             if (value > 0) return;
-            if (includingZero && value === 0) return;
+            if (includingZero.literal && value === 0) return;
 
-            throw new PropertyValidatorError('positive', 'Number needs to be positive');
+            return new ValidatorError('positive', 'Number needs to be positive');
         };
     },
 
-    negative(includingZero: boolean = true) {
+    negative(includingZero: TypeLiteral & { literal: boolean }) {
         return (value: any) => {
             if ('number' !== typeof value && 'bigint' !== typeof value) return;
             if (value < 0) return;
-            if (includingZero && value === 0) return;
+            if (includingZero.literal && value === 0) return;
 
-            throw new PropertyValidatorError('negative', 'Number needs to be negative');
+            return new ValidatorError('negative', 'Number needs to be negative');
+        };
+    },
+
+    beforeDate(date: TypeLiteral & { literal: number }) {
+        return (value: any) => {
+            if (!(value instanceof Date)) return;
+            if (value.getTime() < date.literal) return;
+
+            return new ValidatorError('beforeDate', `Dates needs to be before ${date.literal}`);
+        };
+    },
+
+    afterDate(date: TypeLiteral & { literal: number }) {
+        return (value: any) => {
+            if (!(value instanceof Date)) return;
+            if (value.getTime() > date.literal) return;
+
+            return new ValidatorError('beforeDate', `Dates needs to be after ${date.literal}`);
+        };
+    },
+
+    beforeNow() {
+        return (value: any) => {
+            if (!(value instanceof Date)) return;
+            if (value.getTime() < Date.now()) return;
+
+            return new ValidatorError('beforeDate', `Dates needs to be in the past`);
+        };
+    },
+
+    afterNow() {
+        return (value: any) => {
+            if (!(value instanceof Date)) return;
+            if (value.getTime() > Date.now()) return;
+
+            return new ValidatorError('beforeDate', `Dates needs to be in the future`);
         };
     },
 };

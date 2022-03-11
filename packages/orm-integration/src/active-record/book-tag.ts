@@ -1,16 +1,15 @@
-import { entity, MultiIndex, t } from '@deepkit/type';
+import { AutoIncrement, entity, PrimaryKey, Reference } from '@deepkit/type';
 import { ActiveRecord } from '@deepkit/orm';
 import { Book } from './book';
 import { Tag } from './tag';
 
-@entity.name('active-record-book-tag')
-@MultiIndex(['book', 'tag'])
+@entity.name('active-record-book-tag').index(['book', 'tag'])
 export class BookTag extends ActiveRecord {
-    @t.primary.autoIncrement public id?: number;
+    public id?: number & AutoIncrement & PrimaryKey;
 
     constructor(
-        @t.type(() => Book).reference() public book: Book,
-        @t.reference() public tag: Tag,
+        public book: Book & Reference,
+        public tag: Tag & Reference,
     ) {
         super()
     }

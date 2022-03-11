@@ -1,13 +1,13 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
-import { entity, t } from '@deepkit/type';
+import { AutoIncrement, entity, PrimaryKey } from '@deepkit/type';
 import { databaseFactory } from './factory';
 
 test('transaction', async () => {
-    @entity.collectionName('users')
+    @entity.collection('users')
     class User {
-        @t.primary.autoIncrement public id: number = 0;
-        constructor(@t public username: string) {
+        public id: number & AutoIncrement & PrimaryKey = 0;
+
+        constructor(public username: string) {
         }
     }
 
@@ -25,15 +25,15 @@ test('transaction', async () => {
         await session.flush(); //no transaction commit
         expect(session.hasTransaction()).toBe(true);
 
-        expect(await session.query(User).filter({username: 'user1 changed'}).has()).toBe(true);
+        expect(await session.query(User).filter({ username: 'user1 changed' }).has()).toBe(true);
 
         //in another connection we still have the old changed
-        expect(await database.query(User).filter({username: 'user1 changed'}).has()).toBe(false);
+        expect(await database.query(User).filter({ username: 'user1 changed' }).has()).toBe(false);
 
         await session.commit();
         expect(session.hasTransaction()).toBe(false);
 
         //in another connection we now have the changes
-        expect(await database.query(User).filter({username: 'user1 changed'}).has()).toBe(true);
+        expect(await database.query(User).filter({ username: 'user1 changed' }).has()).toBe(true);
     }
 });

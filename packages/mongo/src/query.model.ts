@@ -8,7 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseQueryModel, Entity, SORT_ORDER } from '@deepkit/orm';
+import { DatabaseQueryModel, OrmEntity, SORT_ORDER } from '@deepkit/orm';
+import { MongoId, UUID } from '@deepkit/type';
 
 type BSONTypeAlias =
     | 'number'
@@ -21,7 +22,8 @@ type BSONTypeAlias =
 /** https://docs.mongodb.com/manual/reference/operator/query-bitwise */
 type BitwiseQuery =
     | number    /** <numeric bitmask> */
-    | number[]; /** [ <position1>, <position2>, ... ] */
+    | number[];
+/** [ <position1>, <position2>, ... ] */
 
 // we can search using alternative types in mongodb e.g.
 // string types can be searched using a regex in mongo
@@ -29,7 +31,7 @@ type BitwiseQuery =
 type RegExpForString<T> = T extends string ? (RegExp | T) : T;
 type MongoAltQuery<T> =
     T extends Array<infer U> ? (T | RegExpForString<U>) :
-    RegExpForString<T>;
+        RegExpForString<T>;
 
 /** https://docs.mongodb.com/manual/reference/operator/query/#query-selectors */
 export type QuerySelector<T> = {
@@ -97,9 +99,10 @@ export type RootQuerySelector<T> = {
     $where?: string | Function;
     /** https://docs.mongodb.com/manual/reference/operator/query/comment/#op._S_comment */
     $comment?: string;
+
     // we could not find a proper TypeScript generic to support nested queries e.g. 'user.friends.name'
     // this will mark all unrecognized properties as any (including nested queries)
-    [key: string]: any;
+    [key: string]: UUID | MongoId | any;
 };
 
 export type ObjectQuerySelector<T> = T extends object ? { [key in keyof T]?: QuerySelector<T[key]> } : QuerySelector<T>;
@@ -111,8 +114,8 @@ export type FilterQuery<T> = {
 } &
     RootQuerySelector<T>;
 
-export type SORT_TYPE = SORT_ORDER | { $meta: "textScore" };
-export type DEEP_SORT<T extends Entity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };
+export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
+export type DEEP_SORT<T extends OrmEntity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };
 
-export class MongoQueryModel<T extends Entity> extends DatabaseQueryModel<T, FilterQuery<T>, DEEP_SORT<T>> {
+export class MongoQueryModel<T extends OrmEntity> extends DatabaseQueryModel<T, FilterQuery<T>, DEEP_SORT<T>> {
 }

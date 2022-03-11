@@ -10,11 +10,11 @@
 
 import { createModule } from '@deepkit/app';
 import { AngularUniversalListener } from './listener';
-import { config } from './config';
+import { Config } from './config';
 import '@deepkit/type';
 
 export class AngularUniversalModule extends createModule({
-    config,
+    config: Config,
 }) {
     process() {
         this.addListener(AngularUniversalListener);

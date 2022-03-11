@@ -8,64 +8,65 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, deserializeSchemas, entity, PropertySchema, PropertySchemaSerialized, SerializedSchema, serializedSchemaDefinition, t } from '@deepkit/type';
 import { ControllerSymbol } from '@deepkit/rpc';
 import { DebugRequest } from './model';
 import { Subject } from 'rxjs';
+import { deserializeType, entity, Excluded, Type } from '@deepkit/type';
 
 export class ConfigOption {
-    @t name!: string;
-    @t type!: string;
-    @t.any defaultValue!: any;
-    @t.any value!: any;
-    @t.optional description?: string;
+    name!: string;
+    type!: string;
+    defaultValue!: any;
+    value!: any;
+    description?: string;
 }
 
 @entity.name('.deepkit/debugger/workflow')
 export class Workflow {
-    @t.array(t.string) places!: string[];
-    @t.array(t.schema({ from: t.string, to: t.string, label: t.string.optional })) transitions!: { from: string, to: string, label?: string; }[];
+    places!: string[];
+    transitions!: { from: string, to: string, label?: string; }[];
 }
 
 @entity.name('.deepkit/debugger/database/entity')
 export class DatabaseEntity {
-    @t.optional name?: string;
-    @t className!: string;
+    name?: string;
+    className!: string;
 }
 
 @entity.name('.deepkit/debugger/database')
 export class Database {
-    @t name!: string;
-    @t adapter!: string;
+    name!: string;
+    adapter!: string;
 
-    @t.array(DatabaseEntity) entities: DatabaseEntity[] = [];
+    entities: DatabaseEntity[] = [];
 }
 
 @entity.name('.deepkit/debugger/config')
 export class Config {
-    @t.array(ConfigOption) appConfig!: ConfigOption[];
-    @t.array(ConfigOption) modulesConfig!: ConfigOption[];
+    appConfig!: ConfigOption[];
+    modulesConfig!: ConfigOption[];
 }
 
 export class RouteParameter {
-    @t name!: string;
-    @t.string type!: 'body' | 'query' | 'url';
-    @t.any schema: any;
+    name!: string;
+    type!: 'body' | 'query' | 'url';
+    schema: any;
 }
 
 @entity.name('.deepkit/debugger/route')
 export class Route {
-    public bodyPropertySchema?: PropertySchema;
+    /** @reflection never */
+    public bodyPropertySchema?: Type & Excluded;
 
     constructor(
-        @t.name('path') public path: string,
-        @t.array(t.string).name('httpMethods') public httpMethods: string[],
-        @t.name('controller') public controller: string,
-        @t.name('description') public description: string,
-        @t.array(RouteParameter).name('parameters') public parameters: RouteParameter[],
-        @t.array(t.string).name('groups') public groups: string[],
-        @t.string.name('category') public category: string,
-        @t.any.name('bodySchema') public bodySchema?: PropertySchemaSerialized,
+        public path: string,
+        public httpMethods: string[],
+        public controller: string,
+        public description: string,
+        public parameters: RouteParameter[],
+        public groups: string[],
+        public category: string,
+        public bodySchema?: any,
     ) {
         if (bodySchema) {
             if (bodySchema.classType) {
@@ -74,43 +75,44 @@ export class Route {
                 bodySchema.classTypeName = bodySchema.classType;
                 bodySchema.classType = undefined;
             }
-            this.bodyPropertySchema = PropertySchema.fromJSON(bodySchema);
+            this.bodyPropertySchema = deserializeType(bodySchema);
         }
     }
 }
 
 @entity.name('.deepkit/debugger/rpc/action/parameter')
 export class RpcActionParameter {
-    public propertySchema: PropertySchema;
+    /** @reflection never */
+    public propertySchema: Type & Excluded;
 
     constructor(
-        @t.name('name') public name: string,
-        @t.any.name('schema') public schema: any,
+        public name: string,
+        public schema: any,
     ) {
-        this.propertySchema = PropertySchema.fromJSON(schema);
+        this.propertySchema = deserializeType(schema);
     }
 }
 
 @entity.name('.deepkit/debugger/rpc/action')
 export class RpcAction {
-    @t path!: string;
-    @t controller!: string;
-    @t methodName!: string;
-    @t.array(RpcActionParameter) parameters!: RpcActionParameter[];
+    path!: string;
+    controller!: string;
+    methodName!: string;
+    parameters!: RpcActionParameter[];
 }
 
 @entity.name('.deepkit/debugger/rpc/event')
 export class Event {
-    @t event!: string;
-    @t controller!: string;
-    @t methodName!: string;
-    @t priority!: number;
+    event!: string;
+    controller!: string;
+    methodName!: string;
+    priority!: number;
 }
 
 // @entity.name('.deepkit/debugger/module/controller')
 // export class ModuleController {
-//     @t scope: string = '';
-//     @t exported: boolean = false;
+//     scope: string = '';
+//     exported: boolean = false;
 //
 //     constructor(
 //         @t.name('id') public id: number,
@@ -121,8 +123,8 @@ export class Event {
 //
 // @entity.name('.deepkit/debugger/module/listener')
 // export class ModuleListener {
-//     @t scope: string = '';
-//     @t exported: boolean = false;
+//     scope: string = '';
+//     exported: boolean = false;
 //
 //     constructor(
 //         @t.name('id') public id: number,
@@ -134,15 +136,15 @@ export class Event {
 
 @entity.name('.deepkit/debugger/module/service')
 export class ModuleService {
-    @t instantiations: number = 0;
-    @t scope: string = '';
-    @t exported: boolean = false;
-    @t forRoot: boolean = false;
-    @t type: 'service' | 'controller' | 'listener' = 'service';
+    instantiations: number = 0;
+    scope: string = '';
+    exported: boolean = false;
+    forRoot: boolean = false;
+    type: 'service' | 'controller' | 'listener' = 'service';
 
     constructor(
-        @t.name('id') public id: number,
-        @t.name('token') public token: string,
+        public id: number,
+        public token: string,
     ) {
     }
 }
@@ -150,39 +152,39 @@ export class ModuleService {
 @entity.name('.deepkit/debugger/module/importedService')
 export class ModuleImportedService {
     constructor(
-        @t.name('id') public id: number,
-        @t.name('token') public token: string,
-        @t.name('fromModule') public fromModule: string,
+        public id: number,
+        public token: string,
+        public fromModule: string,
     ) {
     }
 }
 
 @entity.name('.deepkit/debugger/module')
 export class ModuleApi {
-    public deserializedConfigSchema?: ClassSchema;
+    /** @reflection never */
+    public deserializedConfigSchema?: Type & Excluded;
 
-    @t.array(serializedSchemaDefinition) public configSchemas: SerializedSchema[] = [];
+    public configSchemas: any;
 
-    @t.map(t.any) config: Record<string, any> = {};
+    config: Record<string, any> = {};
 
-    @t.array(ModuleService) services: ModuleService[] = [];
-    // @t.array(ModuleController) controllers: ModuleController[] = [];
-    // @t.array(ModuleListener) listeners: ModuleListener[] = [];
+    services: ModuleService[] = [];
 
-    @t.array(ModuleApi) imports: ModuleApi[] = [];
+    imports: ModuleApi[] = [];
 
-    @t.array(ModuleImportedService) importedServices: ModuleImportedService[] = [];
+    importedServices: ModuleImportedService[] = [];
 
     constructor(
-        @t.name('name') public name: string,
-        @t.name('id') public id: number,
-        @t.name('className') public className: string,
+        public name: string,
+        public id: number,
+        public className: string,
     ) {
     }
 
-    getConfigSchema(): ClassSchema | undefined {
-        if (!this.deserializedConfigSchema && this.configSchemas.length > 0) {
-            this.deserializedConfigSchema = deserializeSchemas(this.configSchemas)[0];
+    /** @reflection never */
+    getConfigSchema(): Type | undefined {
+        if (!this.deserializedConfigSchema && this.configSchemas) {
+            this.deserializedConfigSchema = deserializeType(this.configSchemas);
         }
 
         return this.deserializedConfigSchema;

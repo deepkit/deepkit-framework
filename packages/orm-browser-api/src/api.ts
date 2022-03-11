@@ -9,9 +9,8 @@
  */
 
 import { ControllerSymbol } from '@deepkit/rpc';
-import { ChangesInterface, ClassSchema, deserializeSchemas, entity, SerializedSchema, serializedSchemaDefinition, t } from '@deepkit/type';
+import { ChangesInterface, deserializeType, entity, ReflectionClass } from '@deepkit/type';
 import { FakerTypes } from './faker';
-import { Forward } from '@deepkit/core';
 
 export type DatabaseCommit = {
     [dbName: string]: {
@@ -30,57 +29,54 @@ export type DatabaseCommit = {
 @entity.name('orm-browser/database')
 export class DatabaseInfo {
     constructor(
-        @t.name('name') public name: string,
-        @t.name('adapter') public adapter: string,
-        @t.array(serializedSchemaDefinition).name('serializedSchemas') public serializedSchemas: SerializedSchema[] = []
+        public name: string,
+        public adapter: string,
+        public serializedTypes: any[] = []
     ) {
     }
 
-    protected classSchemas?: ClassSchema[];
+    protected classSchemas?: ReflectionClass<any>[];
 
-    getClassSchemas(): ClassSchema[] {
+    getClassSchemas(): ReflectionClass<any>[] {
         if (!this.classSchemas) {
-            this.classSchemas = deserializeSchemas(this.serializedSchemas);
+            this.classSchemas = this.serializedTypes.map(v => ReflectionClass.from(deserializeType(v)));
         }
 
         return this.classSchemas;
     }
 
-    getEntity(name: string): ClassSchema {
+    getEntity(name: string): ReflectionClass<any> {
         for (const schema of this.getClassSchemas()) {
-            if (schema.name === name) return schema;
+            if (schema.getName() === name) return schema;
         }
-        throw new Error(`No schema for ${name} found`);
+        throw new Error(`No type for ${name} found`);
     }
 }
 
 @entity.name('orm-broser/migration/entity')
 export class MigrationEntityInfo {
-    constructor(
-        @t.name('name') public name: string,
-    ) {
+    constructor(public name: string) {
     }
 }
 
 @entity.name('orm-broser/migration')
 export class MigrationInfo {
-    @t.map(MigrationEntityInfo) entites: { [name: string]: MigrationEntityInfo } = {};
+    entites: { [name: string]: MigrationEntityInfo } = {};
 }
 
 export type SeedResult = { function: string, example: any }[];
-
 
 export type EntityPropertySeedReference = 'random' | 'random-seed' | 'create';
 
 @entity.name('orm-browser/seed/property')
 export class EntityPropertySeed {
-    @t fake: boolean = false;
-    @t.string reference: EntityPropertySeedReference = 'create';
-    @t.any value?: any;
-    @t.type(() => EntityPropertyArraySeed).optional array?: Forward<EntityPropertyArraySeed>;
-    @t.type(() => EntityPropertyMapSeed).optional map?: Forward<EntityPropertyMapSeed>;
-    @t.any faker: string = '';
-    @t.map(EntityPropertySeed) properties: { [name: string]: EntityPropertySeed } = {};
+    fake: boolean = false;
+    reference: EntityPropertySeedReference = 'create';
+    value?: any;
+    array?: EntityPropertyArraySeed;
+    map?: EntityPropertyMapSeed;
+    faker: string = '';
+    properties: { [name: string]: EntityPropertySeed } = {};
 
     constructor(public name: string = '') {
     }
@@ -98,32 +94,30 @@ export class EntityPropertySeed {
 
 @entity.name('orm-browser/seed/property/array')
 export class EntityPropertyArraySeed {
-    @t min: number = 1;
-    @t max: number = 5;
-    @t.type(EntityPropertySeed) seed: EntityPropertySeed = new EntityPropertySeed;
+    min: number = 1;
+    max: number = 5;
+    seed: EntityPropertySeed = new EntityPropertySeed;
 }
 
 @entity.name('orm-browser/seed/property/map')
 export class EntityPropertyMapSeed {
-    @t.any key: { fake: boolean, faker: string } = { fake: true, faker: 'random.word' };
-    @t min: number = 1;
-    @t max: number = 5;
-    @t.type(EntityPropertySeed) seed: EntityPropertySeed = new EntityPropertySeed();
+    key: { fake: boolean, faker: string } = { fake: true, faker: 'random.word' };
+    min: number = 1;
+    max: number = 5;
+    seed: EntityPropertySeed = new EntityPropertySeed();
 }
 
 @entity.name('orm-browser/seed/entity')
 export class EntitySeed {
-    @t truncate: boolean = true;
-    @t active: boolean = false;
-    @t amount: number = 1000;
+    truncate: boolean = true;
+    active: boolean = false;
+    amount: number = 1000;
 
-    @t.map(EntityPropertySeed)
     properties: { [name: string]: EntityPropertySeed } = {};
 }
 
 @entity.name('orm-browser/seed/database')
 export class SeedDatabase {
-    @t.map(EntitySeed)
     entities: { [name: string]: EntitySeed } = {};
 }
 

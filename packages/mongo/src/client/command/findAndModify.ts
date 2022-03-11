@@ -9,35 +9,33 @@
  */
 
 import { BaseResponse, Command } from './command';
-import { ClassSchema, getClassSchema, t } from '@deepkit/type';
-import { ClassType } from '@deepkit/core';
+import { ReflectionClass, UUID } from '@deepkit/type';
 
-class FindAndModifyResponse extends t.extendClass(BaseResponse, {
-    value: t.any,
-}) {
+interface FindAndModifyResponse extends BaseResponse {
+    value: any;
 }
 
-const findAndModifySchema = t.schema({
-    findAndModify: t.string,
-    $db: t.string,
-    query: t.any,
-    update: t.any,
-    new: t.boolean,
-    upsert: t.boolean,
-    fields: t.map(t.number),
-    lsid: t.type({ id: t.uuid }).optional,
-    txnNumber: t.number.optional,
-    autocommit: t.boolean.optional,
-    startTransaction: t.boolean.optional,
-});
+interface findAndModifySchema {
+    findAndModify: string;
+    $db: string;
+    query: any;
+    update: any;
+    new: boolean;
+    upsert: boolean;
+    fields: Record<string, number>;
+    lsid?: { id: UUID };
+    txnNumber?: number;
+    autocommit?: boolean;
+    startTransaction?: boolean;
+}
 
-export class FindAndModifyCommand<T extends ClassSchema | ClassType> extends Command {
+export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Command {
     public upsert = false;
     public fields: string[] = [];
     public returnNew: boolean = false;
 
     constructor(
-        public classSchema: T,
+        public schema: T,
         public query: any,
         public update: any,
     ) {
@@ -45,14 +43,12 @@ export class FindAndModifyCommand<T extends ClassSchema | ClassType> extends Com
     }
 
     async execute(config, host, transaction): Promise<FindAndModifyResponse> {
-        const schema = getClassSchema(this.classSchema);
-
         const fields = {};
         for (const name of this.fields) fields[name] = 1;
 
         const cmd: any = {
-            findAndModify: schema.collectionName || schema.name || 'unknown',
-            $db: schema.databaseSchemaName || config.defaultDb || 'admin',
+            findAndModify: this.schema.collectionName || this.schema.name || 'unknown',
+            $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             query: this.query,
             update: this.update,
             new: this.returnNew,
@@ -62,7 +58,7 @@ export class FindAndModifyCommand<T extends ClassSchema | ClassType> extends Com
 
         if (transaction) transaction.applyTransaction(cmd);
 
-        return await this.sendAndWait(findAndModifySchema, cmd, FindAndModifyResponse);
+        return await this.sendAndWait<findAndModifySchema, FindAndModifyResponse>(cmd);
     }
 
     needsWritableHost(): boolean {

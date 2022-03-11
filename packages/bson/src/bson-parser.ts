@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BSON_BINARY_SUBTYPE_BIGINT, BSON_BINARY_SUBTYPE_BYTE_ARRAY, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils';
+import { BSON_BINARY_SUBTYPE_BYTE_ARRAY, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils';
 import { buildStringDecoder, decodeUTF8 } from './strings';
-import { nodeBufferToArrayBuffer, PropertySchema, typedArrayNamesMap } from '@deepkit/type';
+import { nodeBufferToArrayBuffer, ReflectionKind, SerializationError, Type } from '@deepkit/type';
 import { hexTable } from './model';
 
 declare var Buffer: any;
@@ -38,14 +38,14 @@ export class BaseParser {
         this.dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     }
 
-    peek(elementType: number, property?: PropertySchema) {
+    peek(elementType: number, type?: Type) {
         const offset = this.offset;
-        const v = this.parse(elementType, property);
+        const v = this.parse(elementType, type);
         this.offset = offset;
         return v;
     }
 
-    parse(elementType: number, property?: PropertySchema) {
+    parse(elementType: number, type?: Type) {
         switch (elementType) {
             case BSONType.STRING:
                 return this.parseString();
@@ -67,17 +67,33 @@ export class BaseParser {
             case BSONType.UNDEFINED:
                 return undefined;
             case BSONType.BINARY:
-                return this.parseBinary(property);
+                return this.parseBinary(type);
             case BSONType.REGEXP:
-                const source = this.eatString(this.stringSize());
-                const options = this.eatString(this.stringSize());
-                return new RegExp(source, options.replace('s', 'g'));
+                return this.parseRegExp();
             case BSONType.OBJECT:
                 return parseObject(this);
             case BSONType.ARRAY:
                 return parseArray(this);
             default:
-                throw new Error('Unsupported BSON type ' + elementType);
+                throw new SerializationError('Unsupported BSON type ' + elementType, '');
+        }
+    }
+
+    parseRegExp(): RegExp {
+        const source = this.eatString(this.stringSize());
+        const options = this.eatString(this.stringSize());
+        return new RegExp(source, options.replace('s', 'g'));
+    }
+
+    /**
+     * read the content without moving the parser offset.
+     */
+    read(elementType: number, type?: Type) {
+        const start = this.offset;
+        try {
+            return this.parse(elementType, type);
+        } finally {
+            this.offset = start;
         }
     }
 
@@ -96,7 +112,33 @@ export class BaseParser {
         return this.eatString(this.eatUInt32());
     }
 
-    parseBinary(property?: PropertySchema): any {
+    parseBinaryBigInt(): BigInt {
+        let size = this.eatUInt32();
+        const subType = this.eatByte();
+        if (subType === BSON_BINARY_SUBTYPE_BYTE_ARRAY) {
+            size = this.eatUInt32();
+        }
+
+        const nextPosition = this.offset + size;
+        const v = this.readBigIntBinary(size);
+        this.offset = nextPosition;
+        return v;
+    }
+
+    parseSignedBinaryBigInt(): BigInt {
+        let size = this.eatUInt32();
+        const subType = this.eatByte();
+        if (subType === BSON_BINARY_SUBTYPE_BYTE_ARRAY) {
+            size = this.eatUInt32();
+        }
+
+        const nextPosition = this.offset + size;
+        const v = this.readSignedBigIntBinary(size);
+        this.offset = nextPosition;
+        return v;
+    }
+
+    parseBinary(type?: Type): any {
         let size = this.eatUInt32();
         const subType = this.eatByte();
 
@@ -107,40 +149,53 @@ export class BaseParser {
             return v;
         }
 
-        if (subType === BSON_BINARY_SUBTYPE_BIGINT) {
-            const nextPosition = this.offset + size;
-            const v = this.parseBigIntBinary(size);
-            this.offset = nextPosition;
-            return v;
-        }
-
         if (subType === BSON_BINARY_SUBTYPE_BYTE_ARRAY) {
             size = this.eatUInt32();
         }
 
         const b = this.buffer.slice(this.offset, this.offset + size);
         this.seek(size);
-        if (property && property.type === 'arrayBuffer') {
+        if (type && type.kind === ReflectionKind.class && type.classType === ArrayBuffer) {
             return nodeBufferToArrayBuffer(b);
         }
-        if (property && property.isTypedArray) {
-            const type = typedArrayNamesMap.get(property.type);
-            return new type(nodeBufferToArrayBuffer(b));
+        if (type && type.kind === ReflectionKind.class) {
+            const typedArrayConstructor = type.classType;
+            return new typedArrayConstructor(nodeBufferToArrayBuffer(b));
         }
 
         return b;
     }
 
-    parseBigIntBinary(size: number): bigint {
+    readBigIntBinary(size: number): bigint {
+        if (size === 0) return BigInt(0);
+
+        //todo: check if that is faster than the string concatenation
+        // let r = BigInt(0);
+        // const n8 = BigInt(8);
+        // for (let i = 0; i < size; i++) {
+        //     if (i !== 0) r = r << n8;
+        //     r += BigInt(this.buffer[this.offset + i]);
+        // }
+        // return r;
+
+        let s = '';
+        for (let i = 0; i < size; i++) {
+            s += hexTable[this.buffer[this.offset + i]];
+        }
+        return BigInt('0x' + s);
+    }
+
+    readSignedBigIntBinary(size: number): bigint {
+        if (size === 0) return BigInt(0);
+
         let s = '';
         const signum = this.buffer[this.offset];
-        if (signum === 0) return BigInt(0);
 
         for (let i = 1; i < size; i++) {
             s += hexTable[this.buffer[this.offset + i]];
         }
 
-        //255 === -1, means negative
+        //255 means negative
         if (signum === 255) return BigInt('0x' + s) * BigInt(-1);
         return BigInt('0x' + s);
     }
@@ -149,7 +204,7 @@ export class BaseParser {
         return this.eatDouble();
     }
 
-    parseOid() {
+    parseOid(): string {
         const offset = this.offset, b = this.buffer;
         let o = hexTable[b[offset]]
             + hexTable[b[offset + 1]]
@@ -169,7 +224,7 @@ export class BaseParser {
         return o;
     }
 
-    parseUUID() {
+    parseUUID(): string {
         //e.g. bef8de96-41fe-442f-b70c-c3a150f8c96c
         //         4      2    2    2       6
         const offset = this.offset, b = this.buffer;
@@ -375,7 +430,7 @@ export function parseArray(parser: BaseParser): any[] {
     return result;
 }
 
-export function deserialize(buffer: Uint8Array, offset = 0) {
+export function deserializeBSONWithoutOptimiser(buffer: Uint8Array, offset = 0) {
     return parseObject(new ParserV2(buffer, offset));
 }
 

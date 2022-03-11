@@ -9,7 +9,7 @@
  */
 
 import { isArray, isPlainObject } from '@deepkit/core';
-import { ClassSchema, resolvePropertySchema, Serializer } from '@deepkit/type';
+import { isBackReferenceType, isReferenceType, ReflectionClass, ReflectionKind, resolvePath, Serializer, Type } from '@deepkit/type';
 import { SqlPlaceholderStrategy } from './platform/default-platform';
 
 type Filter = { [name: string]: any };
@@ -18,7 +18,7 @@ export class SQLFilterBuilder {
     public params: any[] = [];
 
     constructor(
-        protected schema: ClassSchema,
+        protected schema: ReflectionClass<any>,
         protected tableName: string,
         protected serializer: Serializer,
         public placeholderStrategy: SqlPlaceholderStrategy,
@@ -65,6 +65,10 @@ export class SQLFilterBuilder {
         return `${this.quoteId(id)}`;
     }
 
+    requiresJson(type: Type): boolean {
+        return type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.array;
+    }
+
     protected condition(fieldName: string | undefined, value: any, comparison: 'eq' | 'gt' | 'gte' | 'in' | 'lt' | 'lte' | 'ne' | 'nin' | string): string {
         if (fieldName === undefined) {
             throw new Error('No comparison operators at root level allowed');
@@ -88,16 +92,16 @@ export class SQLFilterBuilder {
         else if (comparison === 'regex') cmpSign = this.regexpComparator();
         else throw new Error(`Comparator ${comparison} not supported.`);
 
-        const isReference = 'string' === typeof value && value[0] === '$';
+        const referenceValue = 'string' === typeof value && value[0] === '$';
         let rvalue = '';
-        if (isReference) {
+        if (referenceValue) {
             rvalue = `${this.quoteIdWithTable(value.substr(1))}`;
         } else {
             if (value === undefined || value === null) {
                 cmpSign = this.isNull();
                 rvalue = '';
             } else {
-                const property = resolvePropertySchema(this.schema, fieldName);
+                const property = resolvePath(fieldName, this.schema.type);
 
                 if (comparison === 'in' || comparison === 'nin') {
                     if (isArray(value)) {
@@ -105,7 +109,7 @@ export class SQLFilterBuilder {
                         for (let item of value) {
                             params.push(this.placeholderStrategy.getPlaceholder());
 
-                            if (!property.isReference && !property.backReference && (property.type === 'class' || property.type === 'map' || property.type === 'array')) {
+                            if (!isReferenceType(property) && !isBackReferenceType(property) && this.requiresJson(property)) {
                                 item = JSON.stringify(item);
                             }
                             this.params.push(this.bindValue(item));
@@ -115,7 +119,7 @@ export class SQLFilterBuilder {
                 } else {
                     rvalue = this.placeholderStrategy.getPlaceholder();
 
-                    if (!property.isReference && !property.backReference && (property.type === 'class' || property.type === 'map' || property.type === 'array')) {
+                    if (!isReferenceType(property) && !isBackReferenceType(property) && this.requiresJson(property)) {
                         value = JSON.stringify(value);
                     }
                     this.params.push(this.bindValue(value));
@@ -162,3 +166,4 @@ export class SQLFilterBuilder {
         return sql.join(` AND `);
     }
 }
+

@@ -11,11 +11,11 @@
 import { asyncOperation, getClassName, urlJoin } from '@deepkit/core';
 import { RpcClient } from '@deepkit/rpc';
 import cluster from 'cluster';
-import { HttpControllers, Router } from '@deepkit/http';
+import { Router } from '@deepkit/http';
 import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
-import { injectable, InjectorContext } from '@deepkit/injector';
-import { frameworkConfig } from './module.config';
-import { Logger } from '@deepkit/logger';
+import { InjectorContext } from '@deepkit/injector';
+import { FrameworkConfig } from './module.config';
+import { LoggerInterface } from '@deepkit/logger';
 import { createRpcConnection, WebWorker, WebWorkerFactory } from './worker';
 import { RpcControllers } from './rpc';
 import '@deepkit/type';
@@ -76,22 +76,19 @@ export const onServerMainShutdown = new EventToken('server.main.shutdown', Serve
  */
 export const onServerWorkerShutdown = new EventToken('server.worker.shutdown', ServerBootstrapEvent);
 
-class ApplicationServerConfig extends frameworkConfig.slice('server', 'port', 'host', 'httpsPort',
-    'ssl', 'sslKey', 'sslCertificate', 'sslCa', 'sslCrl',
-    'varPath', 'selfSigned', 'keepAliveTimeout', 'workers', 'publicDir',
-    'debug', 'debugUrl') {
-}
+type ApplicationServerConfig = Pick<FrameworkConfig, 'server' | 'port' | 'host' | 'httpsPort' |
+    'ssl' | 'sslKey' | 'sslCertificate' | 'sslCa' | 'sslCrl' |
+    'varPath' | 'selfSigned' | 'keepAliveTimeout' | 'workers' | 'publicDir' |
+    'debug' | 'debugUrl'>;
 
 function needsHttpWorker(config: { publicDir?: string }, rpcControllers: RpcControllers, router: Router) {
     return Boolean(config.publicDir || rpcControllers.controllers.size || router.getRoutes().length);
 }
 
-@injectable
 export class ApplicationServerListener {
     constructor(
-        protected logger: Logger,
+        protected logger: LoggerInterface,
         protected rpcControllers: RpcControllers,
-        protected httpControllers: HttpControllers,
         protected router: Router,
         protected config: ApplicationServerConfig,
     ) {
@@ -142,7 +139,6 @@ export class ApplicationServerListener {
     }
 }
 
-@injectable
 export class ApplicationServer {
     protected httpWorker?: WebWorker;
     protected started = false;
@@ -151,7 +147,7 @@ export class ApplicationServer {
     protected needsHttpWorker: boolean;
 
     constructor(
-        protected logger: Logger,
+        protected logger: LoggerInterface,
         protected webWorkerFactory: WebWorkerFactory,
         protected eventDispatcher: EventDispatcher,
         protected rootScopedContext: InjectorContext,

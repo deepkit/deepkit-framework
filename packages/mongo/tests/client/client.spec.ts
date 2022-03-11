@@ -3,12 +3,31 @@ import { MongoClient } from '../../src/client/client';
 import { HostType } from '../../src/client/host';
 import { IsMasterCommand } from '../../src/client/command/ismaster';
 import { sleep } from '@deepkit/core';
+import { ConnectionOptions } from '../../src/client/options';
+import { cast, validatedDeserialize } from '@deepkit/type';
+
+test('ConnectionOptions', async () => {
+    {
+        const options = cast<ConnectionOptions>({});
+        expect(options.readConcernLevel).toBe('majority');
+    }
+    {
+        const options = validatedDeserialize<ConnectionOptions>({});
+        expect(options.readConcernLevel).toBe('majority');
+    }
+});
 
 test('connect invalid', async () => {
     const client = new MongoClient('mongodb://invalid/');
 
     await expect(client.connect()).rejects.toThrow('getaddrinfo');
     client.close();
+});
+
+test('connect valid', async () => {
+    const client = new MongoClient('mongodb://localhost/');
+
+    expect(client.config.hosts[0].hostname).toEqual('localhost');
 });
 
 test('connect handshake', async () => {

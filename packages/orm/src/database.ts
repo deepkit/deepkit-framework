@@ -9,17 +9,17 @@
  */
 
 import { AbstractClassType, ClassType, getClassName } from '@deepkit/core';
-import { ClassSchema, getClassSchema, getReferenceInfo, isReferenceHydrated, PrimaryKeyFields } from '@deepkit/type';
-import { DatabaseAdapter } from './database-adapter';
+import { getReferenceInfo, isReferenceHydrated, PrimaryKeyFields, ReflectionClass, Type } from '@deepkit/type';
+import { DatabaseAdapter, DatabaseEntityRegistry } from './database-adapter';
 import { DatabaseSession } from './database-session';
 import { QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter } from './event';
-import { getNormalizedPrimaryKey } from './identity-map';
 import { DatabaseLogger } from './logger';
 import { Query } from './query';
 import { getReference } from './reference';
-import { Entity } from './type';
+import { OrmEntity } from './type';
 import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint';
 import { Stopwatch } from '@deepkit/stopwatch';
+import { getNormalizedPrimaryKey } from './identity-map';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -61,6 +61,8 @@ export function isDatabaseOf<T extends DatabaseAdapter>(database: Database<any>,
  * Using this class in your code indicates that you can work with common and most basic database semantics.
  * This means that you can use the deepkit/type database API that works across a variety of database engines
  * like MySQL, PostgreSQL, SQLite, and MongoDB.
+ *
+ * @reflection never
  */
 export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     public name: string = 'default';
@@ -73,7 +75,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     /**
      * The entity schema registry.
      */
-    public readonly entities = new Set<ClassSchema>();
+    public readonly entityRegistry: DatabaseEntityRegistry = new DatabaseEntityRegistry();
 
     /**
      * Event API for DatabaseQuery events.
@@ -112,11 +114,12 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     constructor(
         public readonly adapter: ADAPTER,
-        schemas: (ClassType | ClassSchema)[] = []
+        schemas: (Type | ClassType | ReflectionClass<any>)[] = []
     ) {
+        this.entityRegistry.add(...schemas);
         if (Database.registry) Database.registry.push(this);
 
-        this.query = (classType: ClassType | ClassSchema) => {
+        this.query = (classType: ClassType | ReflectionClass<any>) => {
             const session = this.createSession();
             session.withIdentityMap = false;
             return session.query(classType);
@@ -148,7 +151,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         }
     }
 
-    static createClass<T extends DatabaseAdapter>(name: string, adapter: T, schemas: (ClassType | ClassSchema)[] = []): ClassType<Database<T>> {
+    static createClass<T extends DatabaseAdapter>(name: string, adapter: T, schemas: (ClassType | ReflectionClass<any>)[] = []): ClassType<Database<T>> {
         return class extends Database<T> {
             constructor(oAdapter = adapter, oSchemas = schemas) {
                 super(oAdapter, oSchemas);
@@ -190,7 +193,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * ```
      */
     public createSession(): DatabaseSession<ADAPTER> {
-        return new DatabaseSession(this.adapter, this.unitOfWorkEvents, this.queryEvents, this.logger, this.stopwatch);
+        return new DatabaseSession(this.adapter, this.unitOfWorkEvents, this.queryEvents, this.entityRegistry, this.logger, this.stopwatch);
     }
 
     /**
@@ -241,8 +244,8 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * const user = database.getReference(User, 1);
      * ```
      */
-    public getReference<T>(classType: ClassType<T> | ClassSchema<T>, primaryKey: any | PrimaryKeyFields<T>): T {
-        const schema = getClassSchema(classType);
+    public getReference<T>(classType: ClassType<T> | ReflectionClass<any>, primaryKey: PrimaryKeyFields<T>): T {
+        const schema = ReflectionClass.from(classType);
         const pk = getNormalizedPrimaryKey(schema, primaryKey);
         return getReference(schema, pk);
     }
@@ -252,19 +255,19 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * This is mainly used for db migration utilities and active record.
      * If you want to use active record, you have to assign your entities first to a database using this method.
      */
-    registerEntity(...entities: (ClassType | ClassSchema)[]): void {
+    registerEntity(...entities: (Type | AbstractClassType | ReflectionClass<any>)[]): void {
         for (const entity of entities) {
-            const schema = getClassSchema(entity);
+            const schema = ReflectionClass.from(entity);
 
-            this.entities.add(schema);
+            this.entityRegistry.add(schema);
 
             schema.data['orm.database'] = this;
             if (isActiveRecordClassType(entity)) entity.registerDatabase(this);
         }
     }
 
-    getEntity(name: string): ClassSchema {
-        for (const entity of this.entities.values()) {
+    getEntity(name: string): ReflectionClass<any> {
+        for (const entity of this.entityRegistry.entities) {
             if (entity.getName() === name) return entity;
         }
 
@@ -278,7 +281,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * SEE THE MIGRATION DOCUMENTATION TO UNDERSTAND ITS IMPLICATIONS.
      */
     async migrate() {
-        await this.adapter.migrate([...this.entities.values()]);
+        await this.adapter.migrate(this.entityRegistry);
     }
 
     /**
@@ -290,7 +293,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      *
      * You should prefer the add/remove and commit() workflow to fully utilizing database performance.
      */
-    public async persist(...items: Entity[]) {
+    public async persist(...items: OrmEntity[]) {
         const session = this.createSession();
         session.withIdentityMap = false;
         session.add(...items);
@@ -305,7 +308,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      *
      * You should prefer the add/remove and commit() workflow to fully utilizing database performance.
      */
-    public async remove(...items: Entity[]) {
+    public async remove(...items: OrmEntity[]) {
         const session = this.createSession();
         session.withIdentityMap = false;
         session.remove(...items);
@@ -327,18 +330,21 @@ export function isActiveRecordClassType(entity: any): entity is ActiveRecordClas
     return 'function' === entity.getDatabase || 'function' === entity.registerDatabase || 'function' === entity.query;
 }
 
+/**
+ * @reflection never
+ */
 export class ActiveRecord {
     constructor(...args: any[]) {
     }
 
     public static getDatabase(): Database<any> {
-        const database = getClassSchema(this).data['orm.database'] as Database<any> | undefined;
+        const database = ReflectionClass.from(this).data['orm.database'] as Database<any> | undefined;
         if (!database) throw new Error(`No database assigned to ${getClassName(this)}. Use Database.registerEntity(${getClassName(this)}) first.`);
         return database;
     }
 
     public static registerDatabase(database: Database<any>): void {
-        getClassSchema(this).data['orm.database'] = database;
+        ReflectionClass.from(this).data['orm.database'] = database;
     }
 
     public async save(): Promise<void> {

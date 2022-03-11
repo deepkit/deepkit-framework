@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { rpc } from '@deepkit/rpc';
 import { App, AppModule, createModule, ServiceContainer } from '@deepkit/app';
 import { FrameworkModule } from '../src/module';

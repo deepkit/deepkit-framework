@@ -1,17 +1,25 @@
-import { AppModuleConfig } from '@deepkit/app';
-import { t } from '@deepkit/type';
+export class Config {
+    /**
+     * @description If true serves the application at given URL path.
+     */
+    listen: boolean = true;
 
-export const config = new AppModuleConfig({
-    listen: t.boolean.default(true).description('If true serves the application at given URL path.'),
-    path: t.string.default('/api'),
-    markdown: t.string.description('Markdown to display at the overview page')
-        .default(`
+    path: string = '/api';
+
+    /**
+     * @description Markdown to display at the overview page.
+     */
+    markdown: string = `
         # API
 
         Welcome to this official API. Click on a route and press "Open console" to execute a HTTP call right in your browser.
 
         You can change this markdown content with "markdown" or "markdownFile" option.
 
-        `),
-    markdownFile: t.string.description('Path to a markdown file to display at the overview page').optional
-});
+        `;
+
+    /**
+     * @description Path to a markdown file to display at the overview page.
+     */
+    markdownFile?: string
+}

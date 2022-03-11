@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ControllerClient } from '../client';
 import { ApiAction, ApiEntryPoints, ApiRoute } from '../../api';
-import { methods, propertyToTSJSONInterface, trackByIndex } from '../utils';
+import { methods, trackByIndex } from '../utils';
 import { Environment, RouteState, Store } from '../store';
 import { copy } from '@deepkit/core';
 import { Subscription } from 'rxjs';
@@ -11,13 +11,13 @@ import { filterAndSortActions, filterAndSortRoutes } from './view-helper';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpRouteDetailComponent } from './http/route-detail.component';
 import { HttpRequestsComponent } from './http/results.component';
+import { ReflectionKind, stringifyType } from '@deepkit/type';
 
 @Component({
     templateUrl: './console.component.html',
     styleUrls: ['./console.component.scss']
 })
 export class ConsoleComponent implements OnInit, OnDestroy {
-    propertyToTSInterface = propertyToTSJSONInterface;
     trackByIndex = trackByIndex;
     methods = methods;
 
@@ -170,27 +170,20 @@ export class ConsoleComponent implements OnInit, OnDestroy {
 
     async loadEntryPoints() {
         this.entryPoints = await this.client.api.getEntryPoints();
+        console.log('entryPoints', this.entryPoints);
 
         for (const action of this.entryPoints.rpcActions) {
-            const schema = action.getParametersSchema();
-            if (schema) {
-                const args: string[] = [];
-                for (const property of schema.getProperties()) {
-                    args.push(property.name + (property.isOptional ? '?' : '') + ': ' + property.toString(false));
-                }
-
-                action.parameterSignature = args.join(', ');
+            const args: string[] = [];
+            for (const property of action.getParametersType()) {
+                args.push(property.name + (property.optional || property.default !== undefined ? '?' : '') + ': ' + stringifyType(property.type, {showNames: true, showFullDefinition: false}));
             }
 
-            const resultSchema = action.getResultsSchema();
-            if (resultSchema) {
-                let type = resultSchema.getProperty('v');
-                if (type.type === 'promise') type = type.templateArgs[0];
-                if (type) {
-                    action.returnSignature = type.toString(false) + (type.isOptional ? '|undefined' : '');
-                } else {
-                    action.returnSignature = 'any';
-                }
+            action.parameterSignature = args.join(', ');
+
+            let resultsType = action.getResultsType();
+            if (resultsType) {
+                if (resultsType.kind === ReflectionKind.promise) resultsType = resultsType.type;
+                action.returnSignature = stringifyType(resultsType, {showNames: true, showFullDefinition: false});
             }
         }
 

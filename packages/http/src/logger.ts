@@ -1,11 +1,9 @@
-import { injectable } from '@deepkit/injector';
-import { Logger } from '@deepkit/logger';
+import { LoggerInterface } from '@deepkit/logger';
 import { eventDispatcher } from '@deepkit/event';
 import { httpWorkflow } from './http';
 
-@injectable
 export class HttpLogger {
-    constructor(private logger: Logger) {
+    constructor(private logger: LoggerInterface) {
     }
 
     @eventDispatcher.listen(httpWorkflow.onResponse, 101) //101 is right after 100 default listener

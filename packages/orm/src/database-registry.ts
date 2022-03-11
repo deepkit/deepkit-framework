@@ -9,10 +9,10 @@
  */
 
 import { ClassType, getClassName, getClassTypeFromInstance } from '@deepkit/core';
-import { ClassSchema, getClassSchema } from '@deepkit/type';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { Database } from './database';
 import { isAbsolute, join } from 'path';
+import { ReflectionClass } from '@deepkit/type';
 
 /**
  * Class to register a new database and resolve a schema/type to a database.
@@ -26,7 +26,7 @@ export class DatabaseRegistry {
 
     constructor(
         protected injectorContext: InjectorContext,
-        protected readonly databaseTypes: {module: InjectorModule<any>, classType: ClassType<Database<any>>}[] = [],
+        protected readonly databaseTypes: { module: InjectorModule<any>, classType: ClassType<Database<any>> }[] = [],
         protected migrateOnStartup: boolean = false,
     ) {
         if (!injectorContext) throw new Error('no scopedContext');
@@ -66,11 +66,11 @@ export class DatabaseRegistry {
                 throw new Error(
                     `Database class ${getClassName(db)} has a name '${db.name}' that is already registered. ` +
                     `Choose a different name via class ${getClassName(db)} {\n  name = 'anotherName';\n    }`
-                )
+                );
             }
             this.databaseNameMap.set(db.name, db);
             this.databaseMap.set(classType, db);
-            this.databaseTypes.push({classType, module: new InjectorModule()});
+            this.databaseTypes.push({ classType, module: new InjectorModule() });
         }
     }
 
@@ -83,7 +83,7 @@ export class DatabaseRegistry {
     public addDatabase(database: ClassType, options: { migrateOnStartup?: boolean } = {}, module: InjectorModule<any>) {
 
         if (!this.databaseTypes.find(v => v.classType === database)) {
-            this.databaseTypes.push({classType: database, module});
+            this.databaseTypes.push({ classType: database, module });
         }
         let o = this.databaseOptions.get(database);
         if (o) {
@@ -118,16 +118,15 @@ export class DatabaseRegistry {
 
             const database = this.injectorContext.get(databaseType.classType);
 
-            for (const classSchema of database.entities) {
+            for (const classSchema of database.entityRegistry.entities) {
                 classSchema.data['orm.database'] = database;
             }
-
 
             if (this.databaseNameMap.has(database.name)) {
                 throw new Error(
                     `Database class ${getClassName(database)} has a name '${database.name}' that is already registered. ` +
                     `Choose a different name via class ${getClassName(database)} {\n  name = 'anotherName';\n}`
-                )
+                );
             }
 
             this.databaseNameMap.set(database.name, database);
@@ -138,8 +137,8 @@ export class DatabaseRegistry {
         this.initialized = true;
     }
 
-    getDatabaseForEntity(entity: ClassSchema | ClassType): Database<any> {
-        const schema = getClassSchema(entity);
+    getDatabaseForEntity(entity: ReflectionClass<any> | ClassType): Database<any> {
+        const schema = ReflectionClass.from(entity);
         const database = schema.data['orm.database'];
         if (!database) throw new Error(`Class ${schema.getClassName()} is not assigned to a database`);
         return database;

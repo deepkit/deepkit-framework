@@ -1,6 +1,6 @@
 /*
  * Deepkit Framework
- * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
+ * Copyright (c) Deepkit UG, Marc J. Schmidt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the MIT License.
@@ -9,6 +9,23 @@
  */
 
 import { Buffer } from 'buffer';
+import { ClassType } from '@deepkit/core';
+
+//on unpopulated properties access
+export enum UnpopulatedCheck {
+    None, //returns undefined
+    Throw, //throws regular error
+    ReturnSymbol, //returns `unpopulatedSymbol`
+}
+
+export const unpopulatedSymbol = Symbol('unpopulated');
+
+export interface TypeSettings {
+    registeredEntities: { [name: string]: ClassType };
+    unpopulatedCheck: UnpopulatedCheck;
+}
+
+export const typeSettings: TypeSettings = { registeredEntities: {}, unpopulatedCheck: UnpopulatedCheck.Throw };
 
 export interface TypedArrayClassType<T> {
     new(...args: any[]): T;

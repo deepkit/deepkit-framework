@@ -22,7 +22,6 @@ import { ConsoleComponent } from './views/console.component';
 import { DeepkitClient } from '@deepkit/rpc';
 import { ControllerClient } from './client';
 import { Store } from './store';
-import { InputRegistry } from './components/inputs/registry';
 import { StringInputComponent } from './components/inputs/string-input.component';
 import { InputComponent } from './components/inputs/input.component';
 import { ArrayInputComponent } from './components/inputs/array-input.component';
@@ -94,7 +93,6 @@ import { RpcInspectMessageComponent } from './views/rpc/rpc-inspect-message.comp
     providers: [
         { provide: DeepkitClient, useFactory: () => new DeepkitClient(ControllerClient.getServerHost()) },
         Store,
-        InputRegistry,
         ControllerClient,
     ],
 })

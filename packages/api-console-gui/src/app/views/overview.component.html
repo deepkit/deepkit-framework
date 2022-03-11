@@ -67,13 +67,13 @@
                 </div>
 
 
-                <ng-container *ngIf="route.getUrlSchema() as schema">
+                <ng-container *ngIf="route.getUrlType() as schema">
                     <div class="box" style="margin-top: 5px; padding-top: 0;">
                         <div class="box-title">
                             <div>URL</div>
                         </div>
                         <div class="ts text-selection" style="margin-top: 10px">
-                            <div codeHighlight [code]="classSchemaToTSInterface(schema)"></div>
+                            <div codeHighlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></div>
                         </div>
                     </div>
                 </ng-container>
@@ -82,13 +82,13 @@
                     <div class="box-title">
                         <div>Query</div>
                     </div>
-                    <ng-container *ngIf="!route.getQuerySchema()">
+                    <ng-container *ngIf="!route.getQueryType()">
                         <div class="box-info-text">This route has no query parameters defined.</div>
                     </ng-container>
 
-                    <ng-container *ngIf="route.getQuerySchema() as schema">
+                    <ng-container *ngIf="route.getQueryType() as schema">
                         <div class="ts text-selection" style="margin-top: 10px">
-                            <div codeHighlight [code]="classSchemaToTSInterface(schema)"></div>
+                            <div codeHighlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></div>
                         </div>
                     </ng-container>
                 </div>
@@ -97,27 +97,27 @@
                     <div class="box-title">
                         <div>Body</div>
                     </div>
-                    <ng-container *ngIf="!route.getBodySchema()">
+                    <ng-container *ngIf="!route.getBodyType()">
                         <div class="box-info-text">This route has no body defined.</div>
                     </ng-container>
 
-                    <ng-container *ngIf="route.getBodySchema() as schema">
+                    <ng-container *ngIf="route.getBodyType() as schema">
                         <div class="ts text-selection" style="margin-top: 10px">
-                            <div codeHighlight [code]="classSchemaToTSInterface(schema, {direction: 'serialize'})"></div>
+                            <div codeHighlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></div>
                         </div>
                     </ng-container>
                 </div>
 
-                <div class="responses-title" *ngIf="route.responses.length || route.getResultSchema()">
+                <div class="responses-title" *ngIf="route.responses.length || route.getResultType()">
                     Available response types
                 </div>
 
-                <div class="box" *ngIf="route.getResultSchema() as schema">
+                <div class="box" *ngIf="route.getResultType() as schema">
                     <div class="box-title">
                         <div>Default response</div>
                     </div>
                     <div class="ts text-selection">
-                        <div codeHighlight [code]="propertyToTSInterface(schema.getProperty('v'), {strictRequired: true})"></div>
+                        <div codeHighlight [code]="typeToTSJSONInterface(schema)"></div>
                     </div>
                 </div>
 
@@ -128,12 +128,10 @@
                     <div class="response-description">
                         {{response.description}}
                     </div>
-                    <ng-container *ngIf="response.getSchemas() as schemas">
-                        <ng-container *ngIf="schemas.length && schemas[schemas.length - 1] as s">
-                            <div class="ts text-selection" *ngIf="s.getProperty('v').type !== 'any'">
-                                <div codeHighlight  [code]="propertyToTSInterface(s.getProperty('v'), {strictRequired: true})"></div>
-                            </div>
-                        </ng-container>
+                    <ng-container *ngIf="response.getType() as s">
+                        <div class="ts text-selection">
+                            <div codeHighlight  [code]="typeToTSJSONInterface(s)"></div>
+                        </div>
                     </ng-container>
                 </div>
             </div>

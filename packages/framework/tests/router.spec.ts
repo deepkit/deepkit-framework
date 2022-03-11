@@ -1,6 +1,5 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
-import { http, HttpKernel, HttpRequest, JSONResponse, RouteParameterResolverContext } from '@deepkit/http';
+import { http, HttpKernel, HttpRegExp, HttpRequest, JSONResponse, RouteParameterResolverContext } from '@deepkit/http';
 import { App } from '@deepkit/app';
 import { FrameworkModule } from '../src/module';
 
@@ -21,8 +20,8 @@ test('router parameters', async () => {
             return new JSONResponse(yes);
         }
 
-        @http.GET(':path').regexp('path', '.*')
-        any(path: string) {
+        @http.GET(':path')
+        any(path: HttpRegExp<string, '.*'>) {
             return new JSONResponse(path);
         }
     }
@@ -32,7 +31,7 @@ test('router parameters', async () => {
 
     expect((await httpHandler.request(HttpRequest.GET('/user/peter'))).json).toBe('peter');
     expect((await httpHandler.request(HttpRequest.GET('/user-id/123'))).json).toBe(123);
-    expect((await httpHandler.request(HttpRequest.GET('/user-id/asd'))).json).toMatchObject({ message: 'Validation failed: id(invalid_number): No valid number given, got NaN' });
+    expect((await httpHandler.request(HttpRequest.GET('/user-id/asd'))).json).toMatchObject({ message: 'Serialization failed. id: Cannot convert asd to number' });
     expect((await httpHandler.request(HttpRequest.GET('/boolean/1'))).json).toBe(true);
     expect((await httpHandler.request(HttpRequest.GET('/boolean/false'))).json).toBe(false);
 

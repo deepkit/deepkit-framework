@@ -1,15 +1,13 @@
 import { afterAll, expect, test } from '@jest/globals';
-import 'reflect-metadata';
-import { JSONError, ValidationError, ValidationErrorItem } from '@deepkit/rpc';
+import { ClientProgress, JSONError, rpc, ValidationError, ValidationErrorItem } from '@deepkit/rpc';
 import { appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait } from './util';
 import { Observable } from 'rxjs';
 import { bufferCount, first, skip } from 'rxjs/operators';
-import { Entity, getClassSchema, PropertySchema, t } from '@deepkit/type';
 import { ObserverTimer } from '@deepkit/core-rxjs';
 import { isArray } from '@deepkit/core';
-import { ClientProgress, rpc } from '@deepkit/rpc';
 import { fail } from 'assert';
 import ws from 'ws';
+import { entity } from '@deepkit/type';
 
 // @ts-ignore
 global['WebSocket'] = ws;
@@ -18,19 +16,18 @@ afterAll(async () => {
     await closeAllCreatedServers();
 });
 
-@Entity('controller-basic/user')
+@entity.name('controller-basic/user')
 class User {
-    constructor(@t public name: string) {
+    constructor(public name: string) {
         this.name = name;
     }
 }
 
-@Entity('error:custom-error')
+@entity.name('error:custom-error')
 class MyCustomError {
-    @t
     additional?: string;
 
-    constructor(@t public readonly message: string) {
+    constructor(public readonly message: string) {
 
     }
 }
@@ -39,7 +36,6 @@ test('basic setup and methods', async () => {
     @rpc.controller('test')
     class TestController {
         @rpc.action()
-        @t.array(String)
         names(last: string): string[] {
             return ['a', 'b', 'c', last];
         }
@@ -71,14 +67,14 @@ test('basic setup and methods', async () => {
         }
     }
 
-    const schema = getClassSchema(TestController);
-    {
-        const u = schema.getMethodProperties('validationError')[0];
-        expect(u).toBeInstanceOf(PropertySchema);
-        expect(u.type).toBe('class');
-        expect(u.classType).toBe(User);
-        expect(u.toJSON()).toMatchObject({ name: 'user', type: 'class', classType: 'controller-basic/user' });
-    }
+    // const schema = getClassSchema(TestController);
+    // {
+    //     const u = schema.getMethodProperties('validationError')[0];
+    //     expect(u).toBeInstanceOf(PropertySchema);
+    //     expect(u.type).toBe('class');
+    //     expect(u.classType).toBe(User);
+    //     expect(u.toJSON()).toMatchObject({ name: 'user', type: 'class', classType: 'controller-basic/user' });
+    // }
 
     const { client, close } = await createServerClientPair('basic setup and methods', appModuleForControllers([TestController]));
 
@@ -91,7 +87,7 @@ test('basic setup and methods', async () => {
         try {
             const error = await controller.myErrorNormal();
             fail('should error');
-        } catch (error) {
+        } catch (error: any) {
             expect(error).toBeInstanceOf(Error);
             expect(error.message).toBe('Nothing to see here');
         }
@@ -147,18 +143,16 @@ test('basic serialisation return: entity', async () => {
         }
 
         @rpc.action()
-        async optionalUser(@t.optional returnUser: boolean = false): Promise<User | undefined> {
+        async optionalUser(returnUser: boolean = false): Promise<User | undefined> {
             return returnUser ? new User('optional') : undefined;
         }
 
         @rpc.action()
-        @t.array(User)
         async users(name: string): Promise<User[]> {
             return [new User(name)];
         }
 
         @rpc.action()
-        @t.any
         async allowPlainObject(name: string): Promise<{ mowla: boolean, name: string, date: Date }> {
             return { mowla: true, name, date: new Date('1987-12-12T11:00:00.000Z') };
         }
@@ -223,15 +217,13 @@ test('basic serialisation param: entity', async () => {
 });
 
 test('basic serialisation partial param: entity', async () => {
-    @Entity('user3')
+    @entity.name('user3')
     class User {
-        @t
         defaultVar: string = 'yes';
 
-        @t
         birthdate?: Date;
 
-        constructor(@t public name: string) {
+        constructor(public name: string) {
             this.name = name;
         }
     }
@@ -251,7 +243,6 @@ test('basic serialisation partial param: entity', async () => {
         }
 
         @rpc.action()
-        @t.partial(User)
         partialUser(name: string, date: Date): Partial<User> {
             return {
                 name: name,
@@ -260,7 +251,7 @@ test('basic serialisation partial param: entity', async () => {
         }
 
         @rpc.action()
-        user(@t.partial(User) user: Partial<User>): boolean {
+        user(user: Partial<User>): boolean {
             return !(user instanceof User) && user.name === 'peter2' && !user.defaultVar;
         }
     }
@@ -299,13 +290,11 @@ test('test basic promise', async () => {
     @rpc.controller('test')
     class TestController {
         @rpc.action()
-        @t.array(String)
         async names(last: string): Promise<string[]> {
             return ['a', 'b', 'c', last];
         }
 
         @rpc.action()
-        @t.type(User)
         async user(name: string): Promise<User> {
             return new User(name);
         }
@@ -328,7 +317,6 @@ test('test observable', async () => {
     @rpc.controller('test')
     class TestController {
         @rpc.action()
-        @t.generic(t.string)
         observer(): Observable<string> {
             return new Observable((observer) => {
                 observer.next('a');
@@ -350,7 +338,6 @@ test('test observable', async () => {
         }
 
         @rpc.action()
-        @t.generic(User)
         user(name: string): Observable<User> {
             return new Observable((observer) => {
                 observer.next(new User('first'));
@@ -387,12 +374,12 @@ test('test param serialization', async () => {
     @rpc.controller('test')
     class TestController {
         @rpc.action()
-        actionString(@t.type(String) array: string): boolean {
+        actionString(array: string): boolean {
             return 'string' === typeof array;
         }
 
         @rpc.action()
-        actionArray(@t.array(String) array: string[]): boolean {
+        actionArray(array: string[]): boolean {
             return isArray(array) && 'string' === typeof array[0];
         }
     }
@@ -410,12 +397,12 @@ test('test batcher', async () => {
     @rpc.controller('test')
     class TestController {
         @rpc.action()
-        uploadBig(@t.type(Buffer) file: Buffer): boolean {
+        uploadBig(file: Uint8Array): boolean {
             return file.length === 550_000;
         }
 
         @rpc.action()
-        downloadBig(): Buffer {
+        downloadBig(): Uint8Array {
             return new Buffer(650_000);
         }
     }

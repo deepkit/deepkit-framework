@@ -25,7 +25,7 @@ import { ClassType } from '@deepkit/core';
 import { AppModule } from '@deepkit/app';
 
 export class RpcControllers {
-    public readonly controllers = new Map<string, {controller: ClassType, module: AppModule<any>}>();
+    public readonly controllers = new Map<string, { controller: ClassType, module: AppModule<any> }>();
 }
 
 export class RpcInjectorContext extends InjectorContext {
@@ -45,12 +45,12 @@ export class RpcServerActionWithStopwatch extends RpcServerAction {
     }
 
     async handleAction(message: RpcMessage, response: RpcMessageBuilder): Promise<void> {
-        const body = message.parseBody(rpcActionType);
+        const body = message.parseBody<rpcActionType>();
         const frame = this.stopwatch ? this.stopwatch.start(body.method + '() [' + body.controller + ']', FrameCategory.rpc, true) : undefined;
         if (frame) {
             const types = await this.loadTypes(body.controller, body.method);
-            const value = message.parseBody(types.parameterSchema);
-            frame.data({method: body.method, controller: body.controller, arguments: Object.values(value.args)});
+            const value: { args: any[] } = message.parseBody(types.actionCallSchema);
+            frame.data({ method: body.method, controller: body.controller, arguments: value.args });
         }
 
         try {

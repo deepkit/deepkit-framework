@@ -10,7 +10,7 @@
 
 import { indent } from '@deepkit/core';
 import { cli, flag } from '@deepkit/app';
-import { Logger } from '@deepkit/logger';
+import { LoggerInterface } from '@deepkit/logger';
 import { MigrationProvider } from '../migration/migration-provider';
 import { SQLDatabaseAdapter, SqlMigrationHandler } from '../sql-adapter';
 import { BaseCommand } from './base-command';
@@ -20,15 +20,21 @@ import { BaseCommand } from './base-command';
 })
 export class MigrationUpCommand extends BaseCommand {
     constructor(
-        protected logger: Logger,
+        protected logger: LoggerInterface,
         protected provider: MigrationProvider,
     ) {
         super();
     }
 
     async execute(
-        @flag.optional.description('Limit migrations to a specific database.') database?: string,
-        @flag.optional.description('Sets the migration version without executing actual SQL commands') fake: boolean = false,
+        /**
+         * @description Limit migrations to a specific database
+         */
+        @flag database?: string,
+        /**
+         * @description Sets the migration version without executing actual SQL commands
+         */
+        @flag fake: boolean = false,
     ): Promise<void> {
         if (this.path.length) this.provider.databases.readDatabase(this.path);
         if (this.migrationDir) this.provider.setMigrationDir(this.migrationDir);

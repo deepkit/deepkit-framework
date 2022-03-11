@@ -1,7 +1,6 @@
-import {expect, test} from '@jest/globals';
-import 'reflect-metadata';
-import {User} from "./testcase-b/user";
-import {createDatabase} from "./utils";
+import { expect, test } from '@jest/globals';
+import { User } from './testcase-b/user';
+import { createDatabase } from './utils';
 
 async function setupTestCase(name: string) {
     const db = await createDatabase(name);

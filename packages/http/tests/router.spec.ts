@@ -1,14 +1,12 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
-import { dotToUrlPath, RouteParameterResolverContext, Router } from '../src/router';
+import { dotToUrlPath, RouteParameterResolverContext, Router, UploadedFile } from '../src/router';
 import { http, httpClass } from '../src/decorator';
-import { getClassSchema, t } from '@deepkit/type';
-import { httpWorkflow, JSONResponse } from '../src/http';
+import { HttpBadRequestError, httpWorkflow, JSONResponse } from '../src/http';
 import { eventDispatcher } from '@deepkit/event';
-import { inject } from '@deepkit/injector';
-import { HttpRequest } from '../src/model';
+import { HttpBody, HttpBodyValidation, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model';
 import { getClassName, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils';
+import { Group, MinLength } from '@deepkit/type';
 
 test('router', async () => {
     class Controller {
@@ -62,7 +60,6 @@ test('any', async () => {
     expect((await router.resolve('OPTIONS', '/any'))!.routeConfig.action.methodName).toEqual('any');
 });
 
-
 test('router parameters', async () => {
     class Controller {
         @http.GET('/user/:name')
@@ -80,8 +77,8 @@ test('router parameters', async () => {
             return new JSONResponse(yes);
         }
 
-        @http.GET(':path').regexp('path', '.*')
-        any(path: string) {
+        @http.GET(':path')
+        any(path: HttpRegExp<string, '.*'>) {
             return new JSONResponse(path);
         }
     }
@@ -93,7 +90,7 @@ test('router parameters', async () => {
 
     expect((await httpKernel.request(HttpRequest.GET('/user/peter'))).json).toBe('peter');
     expect((await httpKernel.request(HttpRequest.GET('/user-id/123'))).json).toBe(123);
-    expect((await httpKernel.request(HttpRequest.GET('/user-id/asd'))).json).toMatchObject({ message: 'Validation failed: id(invalid_number): No valid number given, got NaN' });
+    expect((await httpKernel.request(HttpRequest.GET('/user-id/asd'))).json).toMatchObject({ message: 'Serialization failed. id: Cannot convert asd to number' });
     expect((await httpKernel.request(HttpRequest.GET('/boolean/1'))).json).toBe(true);
     expect((await httpKernel.request(HttpRequest.GET('/boolean/false'))).json).toBe(false);
 
@@ -103,8 +100,8 @@ test('router parameters', async () => {
 
 test('router HttpRequest', async () => {
     class Controller {
-        @http.GET(':path').regexp('path', '.*')
-        anyReq(req: HttpRequest, path: string) {
+        @http.GET(':path')
+        anyReq(req: HttpRequest, path: HttpRegExp<string, '.*'>) {
             return [req.url, path];
         }
     }
@@ -246,14 +243,14 @@ test('router parameter resolver by name', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/nonClass'))).json).toEqual(['auth', 'MyAuth']);
 });
 
-test('router body', async () => {
+test('router body class', async () => {
     class Body {
-        @t username!: string;
+        username!: string;
     }
 
     class Controller {
         @http.POST()
-        anyReq(@http.body() body: Body, req: HttpRequest) {
+        anyReq(body: HttpBody<Body>, req: HttpRequest) {
             return [body.username, body instanceof Body, req.url];
         }
     }
@@ -265,12 +262,12 @@ test('router body', async () => {
 
 test('router body is safe for simultaneous requests', async () => {
     class Body {
-        @t username!: string;
+        username!: string;
     }
 
     class Controller {
         @http.POST()
-        anyReq(@http.body() body: Body, req: HttpRequest) {
+        anyReq(body: HttpBody<Body>, req: HttpRequest) {
             return [body.username, body instanceof Body, req.url];
         }
     }
@@ -286,15 +283,31 @@ test('router body is safe for simultaneous requests', async () => {
     )
 });
 
-
-test('router body double', async () => {
-    class Body {
-        @t username!: string;
+test('router body interface', async () => {
+    interface Body {
+        username: string;
     }
 
     class Controller {
         @http.POST()
-        anyReq(@http.body() body: Body, @http.body() body2: Body, req: HttpRequest) {
+        anyReq(body: HttpBody<Body>, req: HttpRequest) {
+            return [body.username, typeof body.username, req.url];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    expect((await httpKernel.request(HttpRequest.POST('/').json({ username: 'Peter' }))).json).toEqual(['Peter', 'string', '/']);
+});
+
+test('router body double', async () => {
+    class Body {
+        username!: string;
+    }
+
+    class Controller {
+        @http.POST()
+        anyReq(body: HttpBody<Body>, body2: HttpBody<Body>, req: HttpRequest) {
             return [body2.username, body2 instanceof Body && body instanceof Body, req.url];
         }
     }
@@ -304,10 +317,6 @@ test('router body double', async () => {
     const action = [...httpData.getActions()][0];
     expect(action.methodName).toBe('anyReq');
     expect(action.httpMethods).toEqual(['POST']);
-    expect(action.parameters['body']).not.toBeUndefined();
-    expect(action.parameters['body'].name).toBe('body');
-    expect(action.parameters['body2']).not.toBeUndefined();
-    expect(action.parameters['body2'].name).toBe('body2');
 
     const httpKernel = createHttpKernel([Controller]);
 
@@ -364,7 +373,7 @@ test('router groups', async () => {
 test('router query', async () => {
     class Controller {
         @http.GET('my-action')
-        anyReq(@http.query().optional test?: number) {
+        anyReq(test?: HttpQuery<number>) {
             return test;
         }
     }
@@ -374,9 +383,6 @@ test('router query', async () => {
     const action = [...httpData.getActions()][0];
     expect(action.methodName).toBe('anyReq');
     expect(action.httpMethods).toEqual(['GET']);
-    expect(action.parameters['test']).not.toBeUndefined();
-    expect(action.parameters['test'].name).toBe('test');
-    expect(action.parameters['test'].type).toBe('query');
 
     const httpKernel = createHttpKernel([Controller]);
 
@@ -386,14 +392,14 @@ test('router query', async () => {
 
 test('router query all', async () => {
     class AnyReqQuery {
-        @t.optional test?: string;
-        @t.optional filter?: string;
-        @t.optional page?: number;
+        test?: string;
+        filter?: string;
+        page?: number;
     }
 
     class Controller {
         @http.GET('my-action')
-        anyReq(@http.queries() anyReqQuery: AnyReqQuery) {
+        anyReq(anyReqQuery: HttpQueries<AnyReqQuery>) {
             return anyReqQuery;
         }
     }
@@ -407,14 +413,13 @@ test('router query all', async () => {
 
 test('serializer options', async () => {
     class User {
-        @t username!: string;
-        @t.group('sensitive') password!: string;
+        username!: string;
+        password!: string & Group<'sensitive'>;
     }
 
     class Controller {
         @http.GET().serialization({ groupsExclude: ['sensitive'] })
-        @t.type(User)
-        anyReq() {
+        anyReq(): User {
             return { username: 'Peter', password: 'secret' };
         }
     }
@@ -426,14 +431,13 @@ test('serializer options', async () => {
 
 test('hook after serializer', async () => {
     class User {
-        @t username!: string;
-        @t.group('sensitive') password!: string;
+        username!: string;
+        password!: string & Group<'sensitive'>;
     }
 
     class Controller {
         @http.GET().serialization({ groupsExclude: ['sensitive'] })
-        @t.type(User)
-        async anyReq() {
+        async anyReq(): Promise<User> {
             await sleep(0.1);
             return { username: 'Peter', password: 'secret' };
         }
@@ -461,9 +465,8 @@ test('invalid route definition', async () => {
     }
 
     const httpKernel = createHttpKernel([Controller]);
-    expect((await httpKernel.request(HttpRequest.GET('/'))).bodyString).toEqual('Not found');
+    expect((await httpKernel.request(HttpRequest.GET('/'))).bodyString).toEqual('Internal error');
 });
-
 
 test('inject request storage ClassType', async () => {
     class User {
@@ -478,7 +481,7 @@ test('inject request storage ClassType', async () => {
         }
 
         @http.GET('optional')
-        doItOptional(@inject().optional user?: User) {
+        doItOptional(user?: User) {
             return { isUser: user instanceof User };
         }
     }
@@ -494,7 +497,7 @@ test('inject request storage ClassType', async () => {
 
     const httpKernel = createHttpKernel([Controller], [
         {
-            provide: User, scope: 'http', deps: [HttpRequest], useFactory(request: HttpRequest) {
+            provide: User, scope: 'http', useFactory(request: HttpRequest) {
                 return request.store.user;
             }
         }
@@ -504,40 +507,6 @@ test('inject request storage ClassType', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/').headers({ authorization: 'no' }))).bodyString).toEqual('Internal error');
 
     expect((await httpKernel.request(HttpRequest.GET('/optional').headers({ authorization: 'no' }))).json).toEqual({ isUser: false });
-});
-
-
-test('inject request storage @inject', async () => {
-    class User {
-        constructor(public username: string) {
-        }
-    }
-
-    class Controller {
-        @http.GET()
-        doIt(@inject('user') user: any) {
-            return { isUser: user instanceof User, username: user.username };
-        }
-    }
-
-    class Listener {
-        @eventDispatcher.listen(httpWorkflow.onAuth)
-        onAuth(event: typeof httpWorkflow.onAuth.event) {
-            event.request.store.user = new User('bar');
-        }
-    }
-
-    const httpKernel = createHttpKernel([Controller], [
-        {
-            provide: 'user', scope: 'http', deps: [HttpRequest], useFactory(request: HttpRequest) {
-                return request.store.user;
-            }
-        }
-    ], [Listener]);
-
-    const result = (await httpKernel.request(HttpRequest.GET('/'))).json;
-    expect(result.isUser).toBe(true);
-    expect(result.username).toBe('bar');
 });
 
 test('custom request handling', async () => {
@@ -613,9 +582,8 @@ test('promise serializer', async () => {
         }
 
         @http.GET('2')
-        @t.string
-        async anyReq2() {
-            return 1;
+        async anyReq2(): Promise<string> {
+            return 1 as any;
         }
     }
 
@@ -625,20 +593,31 @@ test('promise serializer', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/2'))).json).toBe('1');
 });
 
-
 test('unions', async () => {
     class Controller {
         @http.GET('/list')
-        list(@http.query() @t.union(t.number, t.boolean) page: number | boolean) {
+        list(page: HttpQuery<number | boolean>) {
             return page;
         }
     }
 
     const httpKernel = createHttpKernel([Controller]);
 
+    expect((await httpKernel.request(HttpRequest.GET('/list?page=0'))).json).toEqual(0);
     expect((await httpKernel.request(HttpRequest.GET('/list?page=1'))).json).toEqual(1);
     expect((await httpKernel.request(HttpRequest.GET('/list?page=2222'))).json).toEqual(2222);
     expect((await httpKernel.request(HttpRequest.GET('/list?page=false'))).json).toEqual(false);
+    expect((await httpKernel.request(HttpRequest.GET('/list?page=true'))).json).toEqual(true);
+
+    expect((await httpKernel.request(HttpRequest.GET('/list?page=asdasdc'))).json).toMatchObject({
+        'errors': [
+            {
+                'code': 'type',
+                'message': 'No value given',
+                'path': 'page'
+            }
+        ],
+    });
 });
 
 test('router dotToUrlPath', () => {
@@ -650,9 +629,9 @@ test('router dotToUrlPath', () => {
 
 test('router url resolve', async () => {
     class AnyReqQuery {
-        @t.optional test?: string;
-        @t.optional filter?: string;
-        @t.optional page?: number;
+        test?: string;
+        filter?: string;
+        page?: number;
     }
 
     class Controller {
@@ -667,22 +646,22 @@ test('router url resolve', async () => {
         }
 
         @http.GET('').name('secondQuery')
-        secondQuery(@http.query() peter: string) {
+        secondQuery(peter: HttpQuery<string>) {
             return '';
         }
 
         @http.GET('').name('secondQuery2')
-        secondQuery2(@http.query('changed') peter: string) {
+        secondQuery2(peter: HttpQuery<string, { name: 'changed' }>) {
             return '';
         }
 
         @http.GET('third').name('third')
-        third(@http.queries() params: AnyReqQuery) {
+        third(params: HttpQueries<AnyReqQuery>) {
             return params;
         }
 
         @http.GET('third2').name('third2')
-        third2(@http.queries('deep') params: AnyReqQuery) {
+        third2(params: HttpQueries<AnyReqQuery, { name: 'deep' }>) {
             return params;
         }
     }
@@ -703,15 +682,14 @@ test('router url resolve', async () => {
 });
 
 test('destructing params', async () => {
-
-    class DTO {
-        @t.required name!: string;
-        @t.required title!: string;
+    interface DTO {
+        name: string;
+        title: string;
     }
 
     class Controller {
         @http.GET('')
-        first(@http.body() { name, title }: DTO) {
+        first({ name, title }: HttpBody<DTO>) {
             return [name, title];
         }
     }
@@ -721,63 +699,83 @@ test('destructing params', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/').json({ name: 'Peter', title: 'CTO' }))).json).toEqual(['Peter', 'CTO']);
 });
 
-test('dynamic parameter name', async () => {
-    @http.controller()
-    class Controller {
-        @http.GET('first/:another')
-        first(@t.description('The identifier').name('another') id: string) {
-            return [id];
-        }
-
-        @http.GET('second/:another2')
-        second(@t.description('The identifier').name('another2') id: string, @http.query() second: string) {
-            return [id, second];
-        }
+test('use http.response for serialization', async () => {
+    interface DefaultResponse {
+        title: string;
     }
 
-    const schema = getClassSchema(Controller);
-    expect(schema.getMethodProperties('first')[0].name).toBe('another');
-    expect(schema.getMethodProperties('second')[0].name).toBe('another2');
-    expect(schema.getMethodProperties('second')[1].name).toBe('second');
-
-    const httpKernel = createHttpKernel([Controller]);
-
-    expect((await httpKernel.request(HttpRequest.GET('/first/peter'))).json).toEqual(['peter']);
-    expect((await httpKernel.request(HttpRequest.GET('/second/peter?second=true'))).json).toEqual(['peter', 'true']);
-});
-
-
-test('use http.response for serialization', async () => {
-    const schemaString = t.schema({
-        title: t.string
-    });
-
-    const errorSchema = t.schema({
-        message: t.string
-    });
+    interface ErrorResponse {
+        message: string;
+    }
 
     class Controller {
         @http.GET('/action1')
-        @t.array(schemaString)
-        action1() {
-            return [{title: 'a'}, {title: 1}];
+        action1(): DefaultResponse[] {
+            return [{ title: 'a' }, { title: '1' }];
         }
 
-        @http.GET('/action2').response(200, `List`, t.array(schemaString))
+        @http.GET('/action2').response<DefaultResponse[]>(200, `List`)
         action2() {
-            return [{title: 'a'}, {title: 1}];
+            return [{ title: 'a' }, { title: 1 }];
         }
 
         @http.GET('/action3')
-            .response(200, `List`, t.array(schemaString))
-            .response(400, `Error`, t.array(errorSchema))
+            .response<DefaultResponse[]>(200, `List`)
+            .response<ErrorResponse[]>(400, `Error`)
         action3() {
-            return new JSONResponse([{message: 'error'}, {message: 1}]).status(400);
+            return new JSONResponse([{ message: 'error' }, { message: 1 }]).status(400);
         }
     }
 
     const httpKernel = createHttpKernel([Controller]);
-    expect((await httpKernel.request(HttpRequest.GET('/action1'))).json).toEqual([{title: 'a'}, {title: '1'}]);
-    expect((await httpKernel.request(HttpRequest.GET('/action2'))).json).toEqual([{title: 'a'}, {title: '1'}]);
-    expect((await httpKernel.request(HttpRequest.GET('/action3'))).json).toEqual([{message: 'error'}, {message: '1'}]);
+    expect((await httpKernel.request(HttpRequest.GET('/action1'))).json).toEqual([{ title: 'a' }, { title: '1' }]);
+    expect((await httpKernel.request(HttpRequest.GET('/action2'))).json).toEqual([{ title: 'a' }, { title: '1' }]);
+    expect((await httpKernel.request(HttpRequest.GET('/action3'))).json).toEqual([{ message: 'error' }, { message: '1' }]);
+});
+
+test('BodyValidation', async () => {
+    class User {
+        username!: string & MinLength<3>;
+    }
+
+    class AddUserDto extends User {
+        imageUpload?: UploadedFile;
+    }
+
+    class Controller {
+        @http.POST('/action1')
+        action1(user: HttpBody<User>): any {
+            return user;
+        }
+
+        @http.POST('/action2')
+        action2(user: HttpBodyValidation<User>): User {
+            if (user.valid()) {
+                return user.value;
+            }
+
+            throw new HttpBadRequestError('Invalid: ' + user.error.getErrorMessageForPath('username'));
+        }
+
+        @http.POST('/action3')
+        action3(user: HttpBodyValidation<AddUserDto>): User {
+            if (user.valid()) {
+                return user.value;
+            }
+
+            throw new HttpBadRequestError('Invalid: ' + user.error.getErrorMessageForPath('username'));
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    expect((await httpKernel.request(HttpRequest.POST('/action1').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
+    expect((await httpKernel.request(HttpRequest.POST('/action1').json({ username: 'Pe' }))).json).toEqual({
+        errors: [{ code: 'minLength', message: 'Min length is 3', path: 'username' }], message: 'Validation error:\nusername(minLength): Min length is 3'
+    });
+
+    expect((await httpKernel.request(HttpRequest.POST('/action2').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
+    expect((await httpKernel.request(HttpRequest.POST('/action2').json({ username: 'Pe' }))).bodyString).toEqual(`{"message":"Invalid: Min length is 3"}`);
+
+    expect((await httpKernel.request(HttpRequest.POST('/action3').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
+    expect((await httpKernel.request(HttpRequest.POST('/action3').json({ username: 'Pe' }))).bodyString).toEqual(`{"message":"Invalid: Min length is 3"}`);
 });

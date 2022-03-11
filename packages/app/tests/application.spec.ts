@@ -1,9 +1,7 @@
-import { t } from '@deepkit/type';
 import { beforeEach, expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { App } from '../src/app';
-import { inject, ProviderWithScope, Token } from '@deepkit/injector';
-import { AppModule, AppModuleConfig, createModule } from '../src/module';
+import { Inject, ProviderWithScope, Token } from '@deepkit/injector';
+import { AppModule, createModule } from '../src/module';
 import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
 import { cli, Command } from '../src/command';
 import { ClassType } from '../../core';
@@ -12,25 +10,24 @@ import { ServiceContainer } from '../src/service-container';
 
 Error.stackTraceLimit = 100;
 
-const baseConfig = new AppModuleConfig({
-    db: t.string.default('notSet'),
-});
-
+class BaseConfig {
+    db: string = 'notSet';
+}
 class BaseService {
-    constructor(@inject(baseConfig.token('db')) public db: string) {
+    constructor(public db: BaseConfig['db']) {
     }
 }
 
-class BaseModule extends createModule({ config: baseConfig, providers: [BaseService] }, 'base') {
+class BaseModule extends createModule({ config: BaseConfig, providers: [BaseService] }, 'base') {
     root = true;
 }
 
-const config = new AppModuleConfig({
-    token: t.string.default('notSet'),
-});
+class Config {
+    token: string = 'notSet';
+}
 
 class Service {
-    constructor(@inject(config.token('token')) public token: string) {
+    constructor(public token: Config['token']) {
     }
 }
 
@@ -41,7 +38,7 @@ beforeEach(() => {
 test('loadConfigFromEnvVariables', async () => {
     process.env.APP_TOKEN = 'fromBefore';
     process.env.APP_BASE_DB = 'changed2';
-    const app = new App({ config, providers: [Service], imports: [new BaseModule] });
+    const app = new App({ config: Config, providers: [Service], imports: [new BaseModule] });
     app.loadConfigFromEnv();
 
     const service = app.get(Service);
@@ -55,7 +52,7 @@ test('loadConfigFromEnvVariables', async () => {
 });
 
 test('loadConfigFromEnvFile', async () => {
-    const app = new App({ config, providers: [Service], imports: [new BaseModule] });
+    const app = new App({ config: Config, providers: [Service], imports: [new BaseModule] });
     app.loadConfigFromEnv({ envFilePath: __dirname + '/test.env' });
 
     const service = app.get(Service);
@@ -72,7 +69,7 @@ test('loadConfigFromEnvVariable', async () => {
             db: 'changed4'
         }
     });
-    const app = new App({ config, providers: [Service], imports: [new BaseModule] });
+    const app = new App({ config: Config, providers: [Service], imports: [new BaseModule] });
     app.loadConfigFromEnvVariable('APP_CONFIG');
 
     const service = app.get(Service);
@@ -83,16 +80,16 @@ test('loadConfigFromEnvVariable', async () => {
 });
 
 test('loadConfigFromEnvVariables non-root import', async () => {
-    const baseConfig = new AppModuleConfig({
-        db: t.string.default('notSet'),
-    });
+    class BaseConfig {
+        db: string = 'notSet';
+    }
 
     class BaseService {
-        constructor(@inject(baseConfig.token('db')) public db: string) {
+        constructor(public db: BaseConfig['db']) {
         }
     }
 
-    const baseModule = new AppModule({ config: baseConfig, providers: [BaseService] }, 'base');
+    const baseModule = new AppModule({ config: BaseConfig, providers: [BaseService] }, 'base');
     const app = new App({ imports: [baseModule] });
     process.env.APP_BASE_DB = 'changed2';
     app.loadConfigFromEnv();
@@ -102,11 +99,11 @@ test('loadConfigFromEnvVariables non-root import', async () => {
 });
 
 test('validation fails when setupConfig sets wrong values', async () => {
-    const baseConfig = new AppModuleConfig({
-        log: t.boolean.default(false),
-    });
+    class BaseConfig {
+        log: boolean = false;
+    }
 
-    const baseModule = new AppModule({ config: baseConfig, providers: [BaseService] })
+    const baseModule = new AppModule({ config: BaseConfig, providers: [BaseService] })
         .setupConfig((module, config) => {
             (config as any).log = 'asda';
         })
@@ -116,15 +113,15 @@ test('validation fails when setupConfig sets wrong values', async () => {
     ;
 
     const app = new App({ imports: [baseModule] });
-    expect(() => app.serviceContainer.process()).toThrow('No Boolean given');
+    expect(() => app.serviceContainer.process()).toThrow('log(type): Not a boolean');
 });
 
 test('validation fails when env is wrong', async () => {
-    const baseConfig = new AppModuleConfig({
-        log: t.boolean.default(false),
-    });
+    class BaseConfig {
+        log: boolean = false;
+    }
 
-    const baseModule = new AppModule({ config: baseConfig, providers: [BaseService] })
+    const baseModule = new AppModule({ config: BaseConfig, providers: [BaseService] })
         .setup((module, config) => {
             if (!config.log) throw new Error('log needs to be true');
         })
@@ -138,11 +135,11 @@ test('validation fails when env is wrong', async () => {
 });
 
 test('required value can be set via env or setupConfig', async () => {
-    const baseConfig = new AppModuleConfig({
-        log: t.boolean,
-    });
+    class BaseConfig {
+        log!: boolean;
+    }
 
-    class BaseModule extends createModule({ config: baseConfig }, 'base') {
+    class BaseModule extends createModule({ config: BaseConfig }, 'base') {
         process() {
             if (!this.config.log) throw new Error('log needs to be true');
         }
@@ -150,7 +147,7 @@ test('required value can be set via env or setupConfig', async () => {
 
     {
         const app = new App({ imports: [new BaseModule()] });
-        expect(() => app.serviceContainer.process()).toThrow('log(required): Required value is undefined');
+        expect(() => app.serviceContainer.process()).toThrow('base.log(type): Not a boolean');
     }
 
     {
@@ -170,11 +167,12 @@ test('required value can be set via env or setupConfig', async () => {
     }
 
     {
+        //will be converted to false
         process.env['APP_BASE_LOG'] = 'asdf';
 
         const app = new App({ imports: [new BaseModule()] });
         app.loadConfigFromEnv();
-        expect(() => app.serviceContainer.process()).toThrow('log(invalid_boolean): No Boolean given');
+        expect(() => app.serviceContainer.process()).toThrow('log needs to be true');
     }
 
     {
@@ -182,7 +180,7 @@ test('required value can be set via env or setupConfig', async () => {
 
         const app = new App({ imports: [new BaseModule()] });
         app.loadConfigFromEnvVariable('APP_CONFIG');
-        expect(() => app.serviceContainer.process()).toThrow('log(required): Required value is undefined');
+        expect(() => app.serviceContainer.process()).toThrow('base.log(type): Not a boolean');
     }
 
     {
@@ -195,11 +193,11 @@ test('required value can be set via env or setupConfig', async () => {
 });
 
 test('loadConfigFromEnvVariables() happens before setup() calls', async () => {
-    const baseConfig = new AppModuleConfig({
-        log: t.boolean.default(false),
-    });
+    class BaseConfig {
+        log: boolean = false;
+    }
 
-    const baseModule = new AppModule({ config: baseConfig }, 'base')
+    const baseModule = new AppModule({ config: BaseConfig }, 'base')
         .setup((module, config) => {
             expect(config.log).toBe(true);
         });
@@ -212,11 +210,11 @@ test('loadConfigFromEnvVariables() happens before setup() calls', async () => {
 });
 
 test('config uppercase naming strategy', async () => {
-    const config = new AppModuleConfig({
-        dbHost: t.string,
-    });
+    class Config {
+        dbHost!: string
+    }
 
-    const app = new App({ config }).setup((module, config) => {
+    const app = new App({ config: Config }).setup((module, config) => {
         expect(config.dbHost).toBe('mongodb://localhost');
     });
     process.env.APP_DB_HOST = 'mongodb://localhost';
@@ -226,11 +224,11 @@ test('config uppercase naming strategy', async () => {
 });
 
 test('config lowercase naming strategy', async () => {
-    const config = new AppModuleConfig({
-        dbHost: t.string,
-    });
+    class Config {
+        dbHost!: string;
+    }
 
-    const app = new App({ config }).setup((module, config) => {
+    const app = new App({ config: Config }).setup((module, config) => {
         expect(config.dbHost).toBe('mongodb://localhost');
     });
     process.env.app_db_host = 'mongodb://localhost';
@@ -240,11 +238,11 @@ test('config lowercase naming strategy', async () => {
 });
 
 test('loadConfigFromEnvVariable() happens before setup() calls', async () => {
-    const baseConfig = new AppModuleConfig({
-        log: t.boolean.default(false),
-    });
+    class BaseConfig {
+        log: boolean = false;
+    }
 
-    const baseModule = new AppModule({ config: baseConfig }, 'base')
+    const baseModule = new AppModule({ config: BaseConfig }, 'base')
         .setup((module, config) => {
             expect(config.log).toBe(true);
         });
@@ -301,7 +299,7 @@ test('cli controllers in sub modules are in correct injector context', async () 
 
     @cli.controller('test')
     class MyController implements Command {
-        constructor(private service: MyService, @inject('onlyInCLI') protected yes: boolean) {
+        constructor(private service: MyService, protected yes: Inject<boolean, 'onlyInCLI'>) {
             created++;
         }
 
@@ -346,64 +344,33 @@ test('cli controllers in sub modules are in correct injector context', async () 
 });
 
 test('config deps and @inject() in FactoryProvider', async () => {
-    const config = new AppModuleConfig({
-        host: t.string.default('0.0.0.0'),
-    });
+    class Config {
+        host: string = '0.0.0.0';
+    }
 
     class MyClass {
         constructor(public readonly host: string) {
         }
     }
 
-    class MyClassConfig extends config.slice('host') {
-    }
+    type MyClassConfig = Pick<Config, 'host'>;
 
     class Unknown {
     }
 
     const module = new AppModule({
-        config,
+        config: Config,
         providers: [
             {
-                provide: MyClass, deps: [MyClassConfig], useFactory(config: MyClassConfig) {
+                provide: MyClass, useFactory(config: MyClassConfig) {
                     return new MyClass(config.host);
                 }
             },
             {
-                provide: 'myToken', deps: [inject(Unknown).optional], useFactory(config?: Unknown) {
-                    return !!config;
-                }
-            },
-            {
-                provide: 'myToken2', deps: [inject(MyClassConfig).optional], useFactory(config: MyClassConfig) {
-                    return config instanceof MyClassConfig;
-                }
-            },
-            {
-                provide: 'myToken3', deps: [inject(MyClassConfig)], useFactory(config: MyClassConfig) {
-                    return config instanceof MyClassConfig;
-                }
-            },
-            {
-                provide: 'myToken4', deps: [inject(Unknown).optional, MyClassConfig], useFactory(unknown: Unknown | undefined, config: MyClassConfig) {
-                    return [!!unknown, config instanceof MyClassConfig];
-                }
-            },
-            {
-                provide: 'configHost', deps: [config.token('host')], useFactory(host: string) {
+                provide: 'configHost', useFactory(host: Config['host']) {
                     return host;
                 }
             },
-            {
-                provide: 'configHost2', deps: [config.all()], useFactory(c: typeof config.type) {
-                    return c.host;
-                }
-            },
-            {
-                provide: 'configHost3', deps: [inject(config.all())], useFactory(c: typeof config.type) {
-                    return c.host;
-                }
-            }
         ]
     });
 
@@ -411,33 +378,21 @@ test('config deps and @inject() in FactoryProvider', async () => {
         const app = App.fromModule(module);
         expect(app.get(MyClass).host).toBe('0.0.0.0');
 
-        expect(app.get('myToken')).toBe(false);
-
-        expect(app.get('myToken2')).toBe(true);
-
-        expect(app.get('myToken3')).toBe(true);
-
-        expect(app.get('myToken4')).toEqual([false, true]);
-
         expect(app.get('configHost')).toEqual('0.0.0.0');
-
-        expect(app.get('configHost2')).toEqual('0.0.0.0');
-
-        expect(app.get('configHost3')).toEqual('0.0.0.0');
     }
 
     {
         const module = new AppModule({
             providers: [
                 {
-                    provide: 'undefinedDep', deps: [undefined], useFactory(host: string) {
+                    provide: 'undefinedDep', useFactory(host: string) {
                         return host;
                     }
                 },
             ]
         });
         const app = App.fromModule(module);
-        expect(() => app.get('undefinedDep')).toThrow(`No token defined for dependency 0 in 'deps' of useFactory for undefined`);
+        expect(() => app.get('undefinedDep')).toThrow(`Undefined dependency "host: string" of useFactory(?). Type has no provider`);
     }
 });
 
@@ -524,6 +479,6 @@ test('App.get generic', () => {
         }]
     });
 
-    const service = app.get<Service>('service');
+    const service = app.get<Service>('service' as any);
     service.add();
 });

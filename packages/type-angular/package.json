@@ -21,7 +21,6 @@
     "@angular/forms": "~10.2.3 || ~11.0.0",
     "@deepkit/core": "^1.0.1-alpha.59",
     "@deepkit/type": "^1.0.1-alpha.59",
-    "reflect-metadata": "^0.1.13",
     "rxjs": "~6.6.0"
   },
   "jest": {

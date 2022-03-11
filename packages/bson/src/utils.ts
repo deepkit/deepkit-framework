@@ -8,6 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+import { EmbeddedOptions, getEmbeddedProperty, NamingStrategy, ReflectionKind, Type, TypeClass, TypeProperty } from '@deepkit/type';
+
 export const TWO_PWR_32_DBL_N = (1 << 16) * (1 << 16);
 
 export const BSON_DATA_NUMBER = 1;
@@ -32,7 +34,7 @@ export const BSON_DATA_DECIMAL128 = 19;
 export const BSON_DATA_MIN_KEY = 0xff;
 export const BSON_DATA_MAX_KEY = 0x7f;
 
-export const enum BSONType {
+export enum BSONType {
     NUMBER = 1,
     STRING = 2,
     OBJECT = 3,
@@ -62,10 +64,9 @@ export const BSON_BINARY_SUBTYPE_BYTE_ARRAY = 2;
 export const BSON_BINARY_SUBTYPE_UUID_OLD = 3;
 export const BSON_BINARY_SUBTYPE_UUID = 4;
 export const BSON_BINARY_SUBTYPE_MD5 = 5;
+export const BSON_BINARY_SUBTYPE_ENCRYPT = 6;
+export const BSON_BINARY_SUBTYPE_COLUMN = 7;
 export const BSON_BINARY_SUBTYPE_USER_DEFINED = 128;
-
-//our custom type. Not supported by MongoDB natively. We need to adjust once MongoDB supports bigint
-export const BSON_BINARY_SUBTYPE_BIGINT = 127;
 
 export function digitByteSize(v: number): number {
     if (v < 10) return 2;
@@ -78,4 +79,37 @@ export function digitByteSize(v: number): number {
     if (v < 100000000) return 9;
     if (v < 1000000000) return 10;
     return 11;
+}
+
+export function getEmbeddedPropertyName(namingStrategy: NamingStrategy, property: TypeProperty, embedded: EmbeddedOptions): string {
+    let embeddedPropertyName = String(namingStrategy.getPropertyName(property));
+    if (embedded.prefix !== undefined) {
+        embeddedPropertyName = embedded.prefix + embeddedPropertyName;
+    }
+    return embeddedPropertyName;
+}
+
+export function getEmbeddedAccessor(type: TypeClass, autoPrefix: boolean, accessor: string, namingStrategy: NamingStrategy, property: TypeProperty, embedded: EmbeddedOptions, container?: string): string {
+    const containerProperty = getEmbeddedProperty(type);
+
+    let embeddedPropertyName = String(namingStrategy.getPropertyName(property));
+    if (embedded.prefix !== undefined) {
+        embeddedPropertyName = embedded.prefix + embeddedPropertyName;
+    } else if (containerProperty) {
+        embeddedPropertyName = String(containerProperty.name) + '_' + embeddedPropertyName;
+    }
+
+    if ((autoPrefix || embedded.prefix !== undefined)) {
+        //if autoPrefix or a prefix is set the embeddedPropertyName is emitted in a container, either manually provided or from accessor.
+        if (containerProperty) return embeddedPropertyName;
+        if (container) return embeddedPropertyName;
+    }
+
+    if (containerProperty) return String(containerProperty.name);
+
+    return accessor;
+}
+
+export function isSerializable(type: Type): boolean {
+    return type.kind !== ReflectionKind.methodSignature && type.kind !== ReflectionKind.method && type.kind !== ReflectionKind.function;
 }

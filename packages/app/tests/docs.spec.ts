@@ -2,7 +2,7 @@ import { expect, test } from '@jest/globals';
 import { ClassType } from '@deepkit/core';
 import { App } from '../src/app';
 import { AppModule, createModule } from '../src/module';
-import { injectable, InjectorContext } from '@deepkit/injector';
+import { InjectorContext } from '@deepkit/injector';
 
 test('controller instantiation', () => {
     class Registry {
@@ -19,7 +19,6 @@ test('controller instantiation', () => {
         }
     }
 
-    @injectable
     class Router {
         constructor(
             protected injectorContext: InjectorContext,

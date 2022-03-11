@@ -10,39 +10,33 @@
 
 import { AppLocker } from './app-locker';
 import { createModule } from '@deepkit/app';
-import { injectable } from '@deepkit/injector';
 import { eventDispatcher } from '@deepkit/event';
 import { onServerMainBootstrap, onServerMainShutdown } from '../application-server';
-import { brokerConfig } from './broker.config';
+import { BrokerConfig } from './broker.config';
 import { Broker, BrokerServer } from './broker';
-import { Logger } from '@deepkit/logger';
-import '@deepkit/core';
-import '@deepkit/type';
+import { LoggerInterface } from '@deepkit/logger';
 
-class BrokerStartConfig extends brokerConfig.slice('startOnBootstrap', 'listen') {
-}
-
-@injectable
 export class BrokerListener {
     constructor(
-        protected logger: Logger,
+        protected logger: LoggerInterface,
         protected broker: Broker,
         protected brokerServer: BrokerServer,
-        protected config: BrokerStartConfig,
+        protected listen: BrokerConfig['listen'],
+        protected startOnBootstrap: BrokerConfig['startOnBootstrap'],
     ) {
     }
 
     @eventDispatcher.listen(onServerMainBootstrap)
     async onMainBootstrap() {
-        if (this.config.startOnBootstrap) {
+        if (this.startOnBootstrap) {
             await this.brokerServer.start();
-            this.logger.log(`Broker started at <green>${this.config.listen}</green>`);
+            this.logger.log(`Broker started at <green>${this.listen}</green>`);
         }
     }
 
     @eventDispatcher.listen(onServerMainShutdown)
     async onMainShutdown() {
-        if (this.config.startOnBootstrap) {
+        if (this.startOnBootstrap) {
             this.brokerServer.close();
         }
         await this.broker.disconnect();
@@ -53,7 +47,7 @@ export class BrokerModule extends createModule({
     listeners: [
         BrokerListener
     ],
-    config: brokerConfig,
+    config: BrokerConfig,
     providers: [
         Broker,
         AppLocker,
@@ -64,4 +58,5 @@ export class BrokerModule extends createModule({
         AppLocker,
         BrokerServer,
     ]
-}, 'broker') {}
+}, 'broker') {
+}

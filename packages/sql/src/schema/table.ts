@@ -9,20 +9,20 @@
  */
 
 import { arrayRemoveItem } from '@deepkit/core';
-import { ClassSchema, PropertySchema } from '@deepkit/type';
 import { cyrb53 } from '../hash';
+import { genericEqual, ReflectionClass, ReflectionProperty } from '@deepkit/type';
 
 export class DatabaseModel {
     public schemaName: string = '';
 
-    public schemaMap = new Map<ClassSchema, Table>();
+    public schemaMap = new Map<ReflectionClass<any>, Table>();
 
     constructor(public tables: Table[] = []) {
     }
 
-    getTableForSchema(schema: ClassSchema): Table {
+    getTableForClass(schema: ReflectionClass<any>): Table {
         const table = this.schemaMap.get(schema);
-        if (!table) throw new Error(`No table for entity ${schema.getName()}`);
+        if (!table) throw new Error(`No table for entity ${schema.getClassName()}`);
         return table;
     }
 
@@ -57,9 +57,9 @@ export class Table {
     public schemaName: string = '';
     public alias: string = '';
 
-    public columnForProperty: Map<PropertySchema, Column> = new Map;
+    public columnForProperty: Map<ReflectionProperty, Column> = new Map;
     public columns: Column[] = [];
-    public indices: Index[] = [];
+    public indices: IndexModel[] = [];
     public foreignKeys: ForeignKey[] = [];
 
     constructor(
@@ -80,15 +80,15 @@ export class Table {
         return (this.schemaName ? this.schemaName + schemaDelimiter : '') + this.name;
     }
 
-    addColumn(name: string, property?: PropertySchema): Column {
+    addColumn(name: string, property?: ReflectionProperty): Column {
         const column = new Column(this, name);
         this.columns.push(column);
         if (property) this.columnForProperty.set(property, column);
         return column;
     }
 
-    addIndex(name: string, unique = false): Index {
-        const index = new Index(this, name, unique);
+    addIndex(name: string, unique = false): IndexModel {
+        const index = new IndexModel(this, name, unique);
         this.indices.push(index);
         return index;
     }
@@ -109,9 +109,9 @@ export class Table {
         return column;
     }
 
-    getColumnForProperty(property: PropertySchema): Column {
+    getColumnForProperty(property: ReflectionProperty): Column {
         const column = this.columnForProperty.get(property);
-        if (!column) throw new Error(`Column ${property.name} not found at table ${this.name}`);
+        if (!column) throw new Error(`Column ${property.getNameAsString()} not found at table ${this.name}`);
         return column;
     }
 
@@ -176,7 +176,12 @@ export class Column {
     public type?: string;
     public size?: number;
     public scale?: number;
-    public defaultValue?: string;
+    public unsigned: boolean = false;
+
+    public defaultValue?: any;
+
+    //e.g. 'NOW()'
+    public defaultExpression?: string;
 
     public isNotNull = false;
     public isPrimaryKey = false;
@@ -203,7 +208,7 @@ export class Column {
     }
 }
 
-export class Index {
+export class IndexModel {
     public columns: Column[] = [];
 
     public spatial: boolean = false;
@@ -312,16 +317,18 @@ export class ColumnComparator {
 
         if (from.scale !== to.scale) changedProperties.set('scale', new ColumnPropertyDiff(from.scale, to.scale));
         if (from.size !== to.size) changedProperties.set('size', new ColumnPropertyDiff(from.size, to.size));
+        if (from.unsigned !== to.unsigned) changedProperties.set('unsigned', new ColumnPropertyDiff(from.unsigned, to.unsigned));
         if (from.isNotNull !== to.isNotNull) changedProperties.set('isNotNull', new ColumnPropertyDiff(from.isNotNull, to.isNotNull));
         if (from.isAutoIncrement !== to.isAutoIncrement) changedProperties.set('isAutoIncrement', new ColumnPropertyDiff(from.isAutoIncrement, to.isAutoIncrement));
-        if (from.defaultValue !== to.defaultValue) changedProperties.set('defaultValue', new ColumnPropertyDiff(from.defaultValue, to.defaultValue));
+        if (!genericEqual(from.defaultValue, to.defaultValue)) changedProperties.set('defaultValue', new ColumnPropertyDiff(from.defaultValue, to.defaultValue));
+        if (from.defaultExpression !== to.defaultExpression) changedProperties.set('defaultExpression', new ColumnPropertyDiff(from.defaultExpression, to.defaultExpression));
 
         return changedProperties;
     }
 }
 
 export class IndexComparator {
-    static computeDiff(from: Index, to: Index) {
+    static computeDiff(from: IndexModel, to: IndexModel) {
         //check if order has changed.
         const fromColumnNames = from.columns.map(v => v.name).join(',').toLowerCase();
         const toColumnNames = to.columns.map(v => v.name).join(',').toLowerCase();
@@ -360,9 +367,9 @@ export class TableDiff {
     public removedPKColumns: Column[] = [];
     public renamedPKColumns: [from: Column, to: Column][] = [];
 
-    public addedIndices: Index[] = [];
-    public removedIndices: Index[] = [];
-    public modifiedIndices: [from: Index, to: Index][] = [];
+    public addedIndices: IndexModel[] = [];
+    public removedIndices: IndexModel[] = [];
+    public modifiedIndices: [from: IndexModel, to: IndexModel][] = [];
 
     public addedFKs: ForeignKey[] = [];
     public modifiedFKs: [from: ForeignKey, to: ForeignKey][] = [];

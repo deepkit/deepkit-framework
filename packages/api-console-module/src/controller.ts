@@ -1,15 +1,10 @@
-import 'reflect-metadata';
 import { ApiAction, ApiConsoleApi, ApiDocument, ApiEntryPoints, ApiRoute, ApiRouteResponse } from '@deepkit/api-console-gui/src/api';
-import { getActionParameters, getActions, rpc, RpcKernel } from '@deepkit/rpc';
+import { getActions, rpc, RpcKernel } from '@deepkit/rpc';
 import { HttpRouteFilter, HttpRouterFilterResolver, parseRouteControllerAction } from '@deepkit/http';
-import { createClassSchema, getClassSchema, SerializedSchema, serializeSchemas, t } from '@deepkit/type';
 import { ClassType, getClassName } from '@deepkit/core';
-import { config } from './module.config';
+import { Config } from './module.config';
 import { readFile } from 'fs/promises';
-import { injectable } from '@deepkit/injector';
-
-class Config extends config.slice('markdown', 'markdownFile') {
-}
+import { ReflectionClass, ReflectionKind, serializeType, Type, TypeClass, TypeObjectLiteral, TypePropertySignature } from '@deepkit/type';
 
 class ControllerNameGenerator {
     controllers = new Map<ClassType, string>();
@@ -33,18 +28,16 @@ class ControllerNameGenerator {
     }
 }
 
-@injectable
 export class ApiConsoleController implements ApiConsoleApi {
     constructor(
         protected config: Config,
         protected filterResolver: HttpRouterFilterResolver,
         protected filter: HttpRouteFilter,
-        @t.optional protected rpcKernel?: RpcKernel,
+        protected rpcKernel?: RpcKernel,
     ) {
     }
 
     @rpc.action()
-    @t.generic(ApiDocument)
     async getDocument(): Promise<ApiDocument> {
         const document = new ApiDocument();
 
@@ -58,7 +51,6 @@ export class ApiConsoleController implements ApiConsoleApi {
     }
 
     @rpc.action()
-    @t.type(ApiEntryPoints)
     getEntryPoints(): ApiEntryPoints {
         const entryPoints = new ApiEntryPoints;
         entryPoints.httpRoutes = this.getHttpRoutes();
@@ -85,47 +77,15 @@ export class ApiConsoleController implements ApiConsoleApi {
                     action.category
                 );
 
-                let resultProperty = getClassSchema(controller.controller).getMethod(methodName).clone();
-
-                if (resultProperty.classType) {
-                    // if (isPrototypeOfBase(resultProperty.classType, Promise)) {
-                    //     resultProperty.type = 'any';
-                    //     resultProperty.typeSet = false; //to signal type wasn't set
-                    // } else if ((isPrototypeOfBase(resultProperty.classType, Observable)
-                    //         || isPrototypeOfBase(resultProperty.classType, Collection)
-                    //         || isPrototypeOfBase(resultProperty.classType, Promise))
-                    //     || isPrototypeOfBase(resultProperty.classType, EntitySubject)
-                    // ) {
-                    //     resultProperty.classTypeName = 'Promise';
-                    //     if (!resultProperty.templateArgs[0]) {
-                    //         resultProperty.templateArgs[0] = new PropertySchema('T');
-                    //         resultProperty.templateArgs[0].type = 'any';
-                    //     }
-                    // }
-                }
+                const reflectionMethod = ReflectionClass.from(controller.controller).getMethod(methodName);
 
                 const of = `${getClassName(controller.controller)}.${methodName}`;
 
                 try {
-                    const resultSchema = createClassSchema();
-                    resultProperty.name = 'v';
-                    resultSchema.registerProperty(resultProperty);
-                    rpcAction.resultSchemas = serializeSchemas([resultSchema]);
-                } catch (error) {
+                    //todo: Collection, SubjectEntity, Observable get pretty big
+                    rpcAction.methodType = serializeType(reflectionMethod.method);
+                } catch (error: any) {
                     console.log(`Could not serialize result type of ${of}: ${error.message}`);
-                }
-
-                try {
-                    const parameters = getActionParameters(controller.controller, methodName);
-                    if (parameters.length) {
-                        const argSchema = createClassSchema();
-                        for (let i = 0; i < parameters.length; i++) {
-                            argSchema.registerProperty(parameters[i]);
-                        }
-                        rpcAction.parameterSchemas = serializeSchemas([argSchema]);
-                    }
-                } catch (error) {
-                    console.log(`Could not serialize parameter types of ${of}: ${error.message}`);
                 }
 
                 rpcActions.push(rpcAction);
@@ -155,72 +115,63 @@ export class ApiConsoleController implements ApiConsoleApi {
             );
 
             for (const response of route.responses) {
-                let schemas: SerializedSchema[] = [];
-                if (response.type && response.type.type !== 'any') {
-                    const schema = createClassSchema();
-                    response.type.name = 'v';
-                    schema.registerProperty(response.type);
-                    schemas = serializeSchemas([schema]);
-                }
                 routeD.responses.push(new ApiRouteResponse(
-                    response.statusCode, response.description, schemas
+                    response.statusCode, response.description, response.type ? serializeType(response.type) : undefined
                 ));
             }
 
             const parsedRoute = parseRouteControllerAction(route);
-            const querySchema = createClassSchema();
-            const urlSchema = createClassSchema();
+            const urlType: TypeObjectLiteral = {
+                kind: ReflectionKind.objectLiteral,
+                types: [],
+            };
+            let queryType: TypeObjectLiteral | TypeClass = {
+                kind: ReflectionKind.objectLiteral,
+                types: [],
+            };
 
             for (const parameter of parsedRoute.getParameters()) {
-                if (parameter === parsedRoute.customValidationErrorHandling) continue;
-                if (parameter.body) {
-                    const bodySchema = parameter.property.getResolvedClassSchema();
-                    routeD.bodySchemas = serializeSchemas([bodySchema]);
+                if (parameter.body || parameter.bodyValidation) {
+                    routeD.bodySchemas = serializeType(parameter.parameter.type);
                 } else if (parameter.query || parameter.queries) {
-                    const property = parameter.property.clone();
-
                     if (parameter.queries) {
                         //if there is a typePath set, all sub properties get their own property
                         if (parameter.typePath) {
-                            property.name = parameter.typePath;
-                            querySchema.registerProperty(property);
+                            // property.name = parameter.typePath;
+                            // querySchema.registerProperty(property);
+                            (queryType as TypeObjectLiteral).types.push({
+                                kind: ReflectionKind.propertySignature, name: parameter.typePath, type: parameter.parameter.type as Type
+                            } as TypePropertySignature)
                         } else {
-                            //anything else is on the root level
-                            for (const subProperty of property.getResolvedClassSchema().getProperties()) {
-                                querySchema.registerProperty(subProperty);
+                            if (parameter.parameter.type.kind !== ReflectionKind.class && parameter.parameter.type.kind !== ReflectionKind.objectLiteral) {
+                                continue;
                             }
+                            //anything else is on the root level
+                            queryType = parameter.parameter.type;
                         }
                     } else {
-                        if (parameter.typePath) property.name = parameter.typePath;
-                        querySchema.registerProperty(property);
+                        (queryType as TypeObjectLiteral).types.push({
+                            kind: ReflectionKind.propertySignature,
+                            name: parameter.typePath || parameter.getName(),
+                            type: parameter.parameter.type as Type
+                        } as TypePropertySignature)
                     }
                 } else if (parameter.isPartOfPath()) {
-                    const p = parameter.property.clone();
-                    if (parameter.typePath) p.name = parameter.typePath;
-                    p.data['.deepkit/api-console/regex'] = route.parameterRegularExpressions[p.name];
-                    urlSchema.registerProperty(p);
+                    urlType.types.push({
+                        kind: ReflectionKind.propertySignature,
+                        name: parameter.typePath || parameter.getName(),
+                        type: parameter.parameter.type as Type
+                    } as TypePropertySignature)
                 } else {
                     //its a dependency injection token
                 }
             }
 
-            const schema = getClassSchema(route.action.controller);
-            const prop = schema.getMethod(route.action.methodName).clone();
-            if (prop.type !== 'any') {
-                const resultSchema = createClassSchema();
-                prop.name = 'v';
-                resultSchema.registerProperty(prop);
-                routeD.resultSchemas = serializeSchemas([resultSchema]);
-            }
+            const reflectionMethod = ReflectionClass.from(route.action.controller).getMethod(route.action.methodName);
 
-            if (urlSchema.getProperties().length) {
-                routeD.urlSchemas = serializeSchemas([urlSchema]);
-            }
-
-            if (querySchema.getProperties().length) {
-                routeD.querySchemas = serializeSchemas([querySchema]);
-            }
-
+            routeD.resultType = serializeType(reflectionMethod.getReturnType());
+            if (urlType.types.length) routeD.urlType = serializeType(urlType);
+            if (queryType.types.length) routeD.queryType = serializeType(queryType);
             routes.push(routeD);
         }
 

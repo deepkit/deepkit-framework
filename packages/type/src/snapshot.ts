@@ -8,48 +8,45 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { CompilerContext, toFastProperties } from '@deepkit/core';
-import { JitStack } from './jit';
-import { jsonSerializer } from './json-serializer';
-import { isExcluded } from './mapper';
-import { ClassSchema, getGlobalStore, PropertySchema, UnpopulatedCheck } from './model';
-import { Serializer, SerializerCompilers } from './serializer';
-import { getDataConverterJS } from './serializer-compiler';
-import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64 } from './core';
-
+import { CompilerContext, isObject, toFastProperties } from '@deepkit/core';
+import { typeSettings, UnpopulatedCheck } from './core';
+import { ReflectionClass, ReflectionProperty } from './reflection/reflection';
+import { ContainerAccessor, executeTemplates, noopTemplate, serializer, Serializer, TemplateRegistry, TemplateState } from './serializer';
+import { ReflectionKind } from './reflection/type';
 
 function createJITConverterForSnapshot(
-    schema: ClassSchema,
-    properties: PropertySchema[],
-    serializerCompilers: SerializerCompilers,
+    schema: ReflectionClass<any>,
+    properties: ReflectionProperty[],
+    registry: TemplateRegistry,
 ) {
     const compiler = new CompilerContext();
-    const jitStack = new JitStack();
     const setProperties: string[] = [];
+    const state = new TemplateState('', '', compiler, registry);
 
     for (const property of properties) {
-        if (property.isParentReference) continue;
+        // if (isExcluded(schema, property.name, 'json')) continue;
+        const accessor = new ContainerAccessor('_value', JSON.stringify(property.getNameAsString()));
+        const setter = new ContainerAccessor('_result', JSON.stringify(property.getNameAsString()));
 
-        if (isExcluded(schema, property.name, 'json')) continue;
-
-        if (property.isReference) {
+        if (property.isReference()) {
             const referenceCode: string[] = [];
 
-            for (const pk of property.getResolvedClassSchema().getPrimaryFields()) {
+            for (const pk of property.getResolvedReflectionClass().getPrimaries()) {
+                const deepAccessor = new ContainerAccessor(accessor, JSON.stringify(pk.getNameAsString()));
+                const deepSetter = new ContainerAccessor(setter, JSON.stringify(pk.getNameAsString()));
+
                 referenceCode.push(`
-                //createJITConverterForSnapshot ${property.name}->${pk.name} class:snapshot:${property.type} reference
-                ${getDataConverterJS(`_result.${property.name}.${pk.name}`, `_value.${property.name}.${pk.name}`, pk, serializerCompilers, compiler, jitStack)}
+                //createJITConverterForSnapshot ${property.getNameAsString()}->${pk.getNameAsString()} class:snapshot:${property.type.kind} reference
+                ${executeTemplates(state.fork(deepSetter, deepAccessor), pk.type)}
                 `);
             }
 
             setProperties.push(`
-            //createJITConverterForSnapshot ${property.name} class:snapshot:${property.type} reference
-            if (undefined === _value.${property.name}) {
-                _result.${property.name} = null;
-            } else if (null === _value.${property.name}) {
-                _result.${property.name} = null;
+            //createJITConverterForSnapshot ${property.getNameAsString()} class:snapshot:${property.getKind()} reference
+            if (undefined === ${accessor} || null === ${accessor}) {
+                ${setter} = null;
             } else {
-                _result.${property.name} = {};
+                ${setter} = {};
                 ${referenceCode.join('\n')}
             }
             `);
@@ -57,12 +54,13 @@ function createJITConverterForSnapshot(
         }
 
         setProperties.push(`
-            //createJITConverterForSnapshot ${property.name} class:snapshot:${property.type}
-            ${getDataConverterJS(
-            `_result.${property.name}`, `_value.${property.name}`, property, serializerCompilers, compiler, jitStack,
-            `_result.${property.name} = null`, `_result.${property.name} = null`,
-        )}
-            `);
+            //createJITConverterForSnapshot ${property.getNameAsString()} class:snapshot:${property.getKind()}
+            if (undefined === ${accessor} || null === ${accessor}) {
+                ${setter} = null;
+            } else {
+                ${executeTemplates(state.fork(setter, accessor), property.type)}
+            }
+        `);
     }
 
     let circularCheckBeginning = '';
@@ -70,19 +68,20 @@ function createJITConverterForSnapshot(
 
     if (schema.hasCircularReference()) {
         circularCheckBeginning = `
-        if (_stack) {
-            if (_stack.includes(_value)) return undefined;
+        if (state._stack) {
+            if (state._stack.includes(_value)) return undefined;
         } else {
-            _stack = [];
+            state._stack = [];
         }
-        _stack.push(_value);
+        state._stack.push(_value);
         `;
-        circularCheckEnd = `_stack.pop();`;
+        circularCheckEnd = `state._stack.pop();`;
     }
 
     const functionCode = `
-        ${circularCheckBeginning}
         var _result = {};
+        state = state || {};
+        ${circularCheckBeginning}
         var oldUnpopulatedCheck = _global.unpopulatedCheck;
         _global.unpopulatedCheck = UnpopulatedCheckNone;
         ${setProperties.join('\n')}
@@ -91,45 +90,26 @@ function createJITConverterForSnapshot(
         return _result;
         `;
 
-    compiler.context.set('_global', getGlobalStore());
+    compiler.context.set('_global', typeSettings);
     compiler.context.set('UnpopulatedCheckNone', UnpopulatedCheck.None);
 
-    const fn = compiler.build(functionCode, '_value', '_parents', '_options', '_stack', '_depth');
-    fn.buildId = schema.buildId;
-    return fn;
+    return compiler.build(functionCode, '_value', 'state');
 }
 
-export const snapshotSerializer = new class extends jsonSerializer.fork('snapshot') {
-    constructor() {
-        super();
+class SnapshotSerializer extends Serializer {
+    name = 'snapshot';
+
+    protected registerSerializers() {
+        super.registerSerializers();
 
         //we keep bigint as is
-        this.fromClass.noop('bigint');
-        this.toClass.noop('bigint');
-
-        //convert binary to base64 (instead of hex, important for primary key hash)
-        this.fromClass.registerForBinary((property, compiler) => {
-            if (property.type === 'arrayBuffer') {
-                compiler.setContext({ arrayBufferToBase64 });
-                compiler.addSetter(`${compiler.accessor} instanceof ArrayBuffer ? arrayBufferToBase64(${compiler.accessor}) : null`);
-                return;
-            }
-            compiler.setContext({ typedArrayToBase64 });
-            compiler.addSetter(`${compiler.accessor} instanceof ${property.type} ? typedArrayToBase64(${compiler.accessor}) : null`);
-        });
-
-        this.toClass.registerForBinary((property, compiler) => {
-            if (property.type === 'arrayBuffer') {
-                compiler.setContext({ base64ToArrayBuffer });
-                compiler.addSetter(`base64ToArrayBuffer(${compiler.accessor})`);
-                return;
-            }
-
-            compiler.setContext({ base64ToTypedArray });
-            compiler.addSetter(`base64ToTypedArray(${compiler.accessor}, ${property.type})`);
-        });
+        this.serializeRegistry.register(ReflectionKind.bigint, noopTemplate);
+        this.deserializeRegistry.register(ReflectionKind.bigint, noopTemplate);
     }
-};
+}
+
+
+export const snapshotSerializer = new SnapshotSerializer;
 
 /**
  * Creates a new JIT compiled function to convert the class instance to a snapshot.
@@ -139,12 +119,12 @@ export const snapshotSerializer = new class extends jsonSerializer.fork('snapsho
  * Generated function is cached.
  */
 export function getConverterForSnapshot(
-    classSchema: ClassSchema
+    reflectionClass: ReflectionClass<any>
 ): (value: any) => any {
-    const jit = classSchema.jit;
+    const jit = reflectionClass.getJitContainer();
     if (jit.snapshotConverter) return jit.snapshotConverter;
 
-    jit.snapshotConverter = createJITConverterForSnapshot(classSchema, classSchema.getProperties(), snapshotSerializer.fromClass);
+    jit.snapshotConverter = createJITConverterForSnapshot(reflectionClass, reflectionClass.getProperties(), snapshotSerializer.serializeRegistry);
     toFastProperties(jit);
     return jit.snapshotConverter;
 }
@@ -152,20 +132,20 @@ export function getConverterForSnapshot(
 /**
  * Creates a snapshot using getConverterForSnapshot().
  */
-export function createSnapshot<T>(classSchema: ClassSchema<T>, item: T) {
-    return getConverterForSnapshot(classSchema)(item);
+export function createSnapshot<T>(reflectionClass: ReflectionClass<T>, item: T) {
+    return getConverterForSnapshot(reflectionClass)(item);
 }
 
 /**
- * Extracts the primary key of JSONPartial (snapshot) and converts to class type.
+ * Extracts the primary key of a snapshot and converts to class type.
  */
 export function getPrimaryKeyExtractor<T>(
-    classSchema: ClassSchema<T>
+    reflectionClass: ReflectionClass<T>
 ): (value: any) => Partial<T> {
-    const jit = classSchema.jit;
+    const jit = reflectionClass.getJitContainer();
     if (jit.primaryKey) return jit.primaryKey;
 
-    jit.primaryKey = createJITConverterForSnapshot(classSchema, classSchema.getPrimaryFields(), snapshotSerializer.toClass);
+    jit.primaryKey = createJITConverterForSnapshot(reflectionClass, reflectionClass.getPrimaries(), snapshotSerializer.deserializeRegistry);
     toFastProperties(jit);
     return jit.primaryKey;
 }
@@ -177,21 +157,21 @@ export function getPrimaryKeyExtractor<T>(
  * This function is designed to work on the plain values (db records or json values)
  */
 export function getPrimaryKeyHashGenerator(
-    classSchema: ClassSchema,
-    serializer: Serializer = jsonSerializer
+    reflectionClass: ReflectionClass<any>,
+    serializerToUse: Serializer = serializer
 ): (value: any) => string {
-    const jit = classSchema.jit;
+    const jit = reflectionClass.getJitContainer();
 
     if (!jit.pkHash) {
         jit.pkHash = {};
         toFastProperties(jit);
     }
 
-    if (jit.pkHash[serializer.name]) return jit.pkHash[serializer.name];
+    if (jit.pkHash[serializerToUse.name]) return jit.pkHash[serializerToUse.name];
 
-    jit.pkHash[serializer.name] = createPrimaryKeyHashGenerator(classSchema, serializer);
+    jit.pkHash[serializerToUse.name] = createPrimaryKeyHashGenerator(reflectionClass, serializerToUse);
     toFastProperties(jit.pkHash);
-    return jit.pkHash[serializer.name];
+    return jit.pkHash[serializerToUse.name];
 }
 
 // export function getForeignKeyHash(row: any, property: PropertySchema): string {
@@ -203,42 +183,58 @@ function simplePrimaryKeyHash(value: any): string {
     return '\0' + value;
 }
 
-export function getSimplePrimaryKeyHashGenerator(classSchema: ClassSchema) {
+export function getSimplePrimaryKeyHashGenerator(reflectionClass: ReflectionClass<any>) {
     return simplePrimaryKeyHash;
 }
 
 function createPrimaryKeyHashGenerator(
-    schema: ClassSchema,
+    reflectionClass: ReflectionClass<any>,
     serializer: Serializer
 ) {
     const context = new CompilerContext();
     const setProperties: string[] = [];
-    const jitStack = new JitStack();
+    context.context.set('isObject', isObject);
 
-    for (const property of schema.getPrimaryFields()) {
-        if (property.isParentReference) continue;
+    const state = new TemplateState('', '', context, serializer.serializeRegistry);
 
-        if (property.isReference) {
+    for (const property of reflectionClass.getPrimaries()) {
+        // if (property.isParentReference) continue;
+
+        const accessor = new ContainerAccessor('_value', JSON.stringify(property.getNameAsString()));
+
+        if (property.isReference()) {
             const referenceCode: string[] = [];
 
-            for (const pk of property.getResolvedClassSchema().getPrimaryFields()) {
-                if (pk.type === 'class') {
-                    throw new Error(`Class as primary key (${property.getResolvedClassSchema().getClassName()}.${pk.name}) is not supported`);
+            for (const pk of property.getResolvedReflectionClass().getPrimaries()) {
+                if (pk.type.kind === ReflectionKind.class && pk.type.types.length) {
+                    throw new Error(`Class as primary key (${property.getResolvedReflectionClass().getClassName()}.${pk.getNameAsString()}) is not supported`);
                 }
 
+                const deepAccessor = new ContainerAccessor(accessor, JSON.stringify(pk.getNameAsString()));
+
                 referenceCode.push(`
-                //getPrimaryKeyExtractor ${property.name}->${pk.name} class:snapshot:${property.type} reference
+                //getPrimaryKeyExtractor ${property.getNameAsString()}->${pk.getNameAsString()} class:snapshot:${property.getKind()} reference
                 lastValue = '';
-                ${getDataConverterJS(`lastValue`, `_value.${property.name}.${pk.name}`, pk, serializer.toClass, context, jitStack)}
-                ${getDataConverterJS(`lastValue`, `lastValue`, pk, snapshotSerializer.fromClass, context, jitStack)}
+                if (${deepAccessor} !== null && ${deepAccessor} !== undefined) {
+                    ${executeTemplates(state.fork('lastValue', deepAccessor).forRegistry(serializer.deserializeRegistry), pk.type)}
+                    ${executeTemplates(state.fork('lastValue', 'lastValue'), pk.type)}
+                }
                 _result += '\\0' + lastValue;
-            `);
+                `);
             }
 
             setProperties.push(`
-            //getPrimaryKeyExtractor ${property.name} class:snapshot:${property.type} reference
-            if (undefined !== _value.${property.name} && null !== _value.${property.name}) {
-                ${referenceCode.join('\n')}
+            //getPrimaryKeyExtractor ${property.getNameAsString()} class:snapshot:${property.getKind()} reference
+            if (undefined !== ${accessor} && null !== ${accessor}) {
+                if (isObject(${accessor})) {
+                    ${referenceCode.join('\n')}
+                } else {
+                    //might be a primary key directly
+                    lastValue = '';
+                    ${executeTemplates(state.fork('lastValue', accessor).forRegistry(serializer.deserializeRegistry), property.getResolvedReflectionClass().getPrimary().type)}
+                    ${executeTemplates(state.fork('lastValue', 'lastValue'), property.getResolvedReflectionClass().getPrimary().type)}
+                    _result += '\\0' + lastValue;
+                    }
             } else {
                 _result += '\\0';
             }
@@ -246,15 +242,17 @@ function createPrimaryKeyHashGenerator(
             continue;
         }
 
-        if (property.type === 'class') {
-            throw new Error(`Class as primary key (${schema.getClassName()}.${property.name}) is not supported`);
+        if (property.type.kind === ReflectionKind.class && property.type.types.length) {
+            throw new Error(`Class as primary key (${reflectionClass.getClassName()}.${property.getNameAsString()}) is not supported`);
         }
 
         setProperties.push(`
-            //getPrimaryKeyHashGenerator ${property.name} class:plain:${property.type}
+            //getPrimaryKeyHashGenerator ${property.getNameAsString()} class:plain:${property.getKind()}
             lastValue = '';
-            ${getDataConverterJS(`lastValue`, `_value.${property.name}`, property, serializer.toClass, context, jitStack)}
-            ${getDataConverterJS(`lastValue`, `lastValue`, property, snapshotSerializer.fromClass, context, jitStack)}
+            if (${accessor} !== null && ${accessor} !== undefined) {
+                ${executeTemplates(state.fork('lastValue', accessor).forRegistry(serializer.deserializeRegistry), property.type)}
+                ${executeTemplates(state.fork('lastValue', 'lastValue'), property.type)}
+            }
             _result += '\\0' + lastValue;
         `);
     }
@@ -262,28 +260,27 @@ function createPrimaryKeyHashGenerator(
     let circularCheckBeginning = '';
     let circularCheckEnd = '';
 
-    if (schema.hasCircularReference()) {
+    if (reflectionClass.hasCircularReference()) {
         circularCheckBeginning = `
-        if (_stack) {
-            if (_stack.includes(_value)) return undefined;
+        if (state._stack) {
+            if (state._stack.includes(_value)) return undefined;
         } else {
-            _stack = [];
+            state._stack = [];
         }
-        _stack.push(_value);
+        state._stack.push(_value);
         `;
-        circularCheckEnd = `_stack.pop();`;
+        circularCheckEnd = `state._stack.pop();`;
     }
 
     const functionCode = `
         var _result = '';
         var lastValue;
+        state = state || {};
         ${circularCheckBeginning}
         ${setProperties.join('\n')}
         ${circularCheckEnd}
         return _result;
     `;
 
-    const fn = context.build(functionCode, '_value', '_stack');
-    fn.buildId = schema.buildId;
-    return fn;
+    return context.build(functionCode, '_value', 'state');
 }

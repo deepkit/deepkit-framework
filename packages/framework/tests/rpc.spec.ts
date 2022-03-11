@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { ControllerSymbol, rpc, RpcKernelConnection, RpcKernelSecurity, Session, SessionState } from '@deepkit/rpc';
 import { createTestingApp } from '../src/testing';
 import { AppModule } from '@deepkit/app';

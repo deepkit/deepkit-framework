@@ -8,9 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { t } from '@deepkit/type';
-import { injectable } from '@deepkit/injector';
-
 /**
  * This is the default session object, that can be used in your application.
  *
@@ -24,15 +21,15 @@ import { injectable } from '@deepkit/injector';
  * in a session storage (either memory, local file system, or external databases like redis/mysql/etc).
 */
 export class Session {
-    @t.map(t.any) data: { [name: string]: any } = {};
+    data: { [name: string]: any } = {};
 
-    @t createdAt: Date = new Date;
+    createdAt: Date = new Date;
 
-    @t.array(t.string) groups: string[] = [];
+    groups: string[] = [];
 
     constructor(
-        @t public readonly id: string,
-        @t public readonly username?: string
+        public readonly id: string,
+        public readonly username?: string
     ) {
     }
 
@@ -44,7 +41,6 @@ export class Session {
 /**
  *
  */
-@injectable
 export class SessionHandler {
     protected session?: Session;
 

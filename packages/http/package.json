@@ -30,8 +30,7 @@
     "@deepkit/stopwatch": "^1.0.1-alpha.13",
     "@deepkit/template": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/workflow": "^1.0.1-alpha.13",
-    "reflect-metadata": "^0.1.13"
+    "@deepkit/workflow": "^1.0.1-alpha.13"
   },
   "dependencies": {
     "formidable": "^1.2.2",
@@ -49,8 +48,7 @@
     "@deepkit/type": "^1.0.1-alpha.59",
     "@deepkit/workflow": "^1.0.1-alpha.59",
     "@types/node": "14.14.28",
-    "@types/send": "^0.14.6",
-    "reflect-metadata": "^0.1.13"
+    "@types/send": "^0.14.6"
   },
   "jest": {
     "transform": {

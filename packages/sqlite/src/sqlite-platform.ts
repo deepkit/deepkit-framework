@@ -8,26 +8,33 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Column, DefaultPlatform, ForeignKey, isSet, parseType, Sql, Table, TableDiff } from '@deepkit/sql';
-import { ClassSchema, isArray, PropertySchema, SqliteOptions } from '@deepkit/type';
+import { Column, DefaultPlatform, ForeignKey, isSet, Sql, Table, TableDiff } from '@deepkit/sql';
+import { isIntegerType, isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer } from '@deepkit/type';
 import { SQLiteSchemaParser } from './sqlite-schema-parser';
-import { SqliteSerializer } from './sqlite-serializer';
+import { sqliteSerializer } from './sqlite-serializer';
 import { SQLiteFilterBuilder } from './sql-filter-builder.sqlite';
-import { isObject } from '@deepkit/core';
+import { isArray, isObject } from '@deepkit/core';
 import sqlstring from 'sqlstring-sqlite';
 
 export class SQLitePlatform extends DefaultPlatform {
-    protected defaultSqlType = 'text';
-    schemaParserType = SQLiteSchemaParser;
+    protected override defaultSqlType = 'text';
+    protected override annotationId = 'sqlite';
+    override schemaParserType = SQLiteSchemaParser;
 
-    public readonly serializer = SqliteSerializer;
+    public override readonly serializer: Serializer = sqliteSerializer;
 
     constructor() {
         super();
-        this.addType('number', 'float');
-        this.addType('date', 'text');
-        this.addType('boolean', 'integer', 1);
-        this.addType('uuid', 'blob');
+        this.addType(ReflectionKind.number, 'float');
+        this.addType((type => type.kind === ReflectionKind.class && type.classType === Date), 'text');
+        this.addType(ReflectionKind.boolean, 'integer', 1);
+        this.addType((type => isUUIDType(type)), 'blob');
+        this.addType(isIntegerType, 'integer');
+
+        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.number, 'float');
+        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.string, 'text');
+        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.union, 'text'); //as json
+
         this.addBinaryType('blob');
     }
 
@@ -44,7 +51,7 @@ export class SQLitePlatform extends DefaultPlatform {
         super.applyLimitAndOffset(sql, limit, offset);
     }
 
-    createSqlFilterBuilder(schema: ClassSchema, tableName: string): SQLiteFilterBuilder {
+    createSqlFilterBuilder(schema: ReflectionClass<any>, tableName: string): SQLiteFilterBuilder {
         return new SQLiteFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
     }
 
@@ -63,7 +70,7 @@ export class SQLitePlatform extends DefaultPlatform {
             || diff.addedIndices.length > 0
             || diff.addedFKs.length > 0
             || diff.addedPKColumns.length > 0
-            ;
+        ;
 
         for (const column of diff.addedColumns) {
             const sqlChangeNotSupported = false
@@ -77,7 +84,7 @@ export class SQLitePlatform extends DefaultPlatform {
 
                 //If a NOT NULL constraint is specified, then the field must have a default value other than NULL.
                 || column.isNotNull && column.defaultValue === undefined
-                ;
+            ;
 
             if (sqlChangeNotSupported) {
                 changeViaMigrationTableNeeded = true;
@@ -135,14 +142,8 @@ export class SQLitePlatform extends DefaultPlatform {
         return lines.filter(isSet);
     }
 
-    protected setColumnType(column: Column, typeProperty: PropertySchema) {
-        const db = (typeProperty.data['sqlite'] || {}) as SqliteOptions;
-        if (db.type) {
-            parseType(column, db.type);
-            return;
-        }
-
-        if (typeProperty.isAutoIncrement) {
+    protected setColumnType(column: Column, typeProperty: ReflectionProperty) {
+        if (typeProperty.isAutoIncrement()) {
             column.type = 'integer';
             return;
         }

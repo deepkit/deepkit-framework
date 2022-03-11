@@ -1,15 +1,14 @@
 import { Component, Input, OnChanges, OnInit } from '@angular/core';
-import { getEnumKeyLabelMap } from '@deepkit/core';
-import { PropertySchema } from '@deepkit/type';
+import { TypeEnum } from '@deepkit/type';
 
 @Component({
-    template: `{{keyValueMap ? keyValueMap.get(model) : model}}`
+    template: `{{keyValueMap ? keyValueMap[model] : model}}`
 })
 export class EnumCellComponent implements OnChanges, OnInit {
     @Input() model: any;
-    @Input() property!: PropertySchema;
+    @Input() type!: TypeEnum;
 
-    keyValueMap?: Map<any, string>;
+    keyValueMap?: any;
 
     ngOnInit() {
         this.load();
@@ -20,6 +19,9 @@ export class EnumCellComponent implements OnChanges, OnInit {
     }
 
     load() {
-        this.keyValueMap = getEnumKeyLabelMap(this.property.classType || {});
+        this.keyValueMap = {};
+        for (const [label, value] of Object.entries(this.type.enum)) {
+            this.keyValueMap[value as any] = label;
+        }
     }
 }

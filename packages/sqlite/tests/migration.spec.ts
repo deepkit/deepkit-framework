@@ -1,46 +1,48 @@
-import 'reflect-metadata';
 import { expect, test } from '@jest/globals';
 import { schemaMigrationRoundTrip } from '@deepkit/sql';
-import { t } from '../../type';
+import { AutoIncrement, Entity, integer, PrimaryKey, Reference, SQLite, stringifyResolvedType, typeOf, Unique } from '@deepkit/type';
 import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter';
+import { DatabaseEntityRegistry } from '@deepkit/orm';
 
-test('sqlite custom type', async () => {
-    const post = t.schema({
-        id: t.number.autoIncrement.primary,
-        slug: t.string.sqlite({ type: 'text' }),
-        content: t.string,
-        size: t.number.sqlite({ type: 'integer(4)' })
-    }, { name: 'post' });
+test('custom type', async () => {
+    interface Post extends Entity<{ name: 'post' }> {
+        id: integer & AutoIncrement & PrimaryKey;
+        slug: string & SQLite<{ type: 'text' }>;
+        content: string;
+        size: number & SQLite<{ type: 'integer(4)' }>;
+        float: number;
+    }
 
     const adapter = new SQLiteDatabaseAdapter(':memory:');
-    const [postTable] = adapter.platform.createTables([post]);
+    const [postTable] = adapter.platform.createTables(DatabaseEntityRegistry.from([typeOf<Post>()]));
+    expect(postTable.getColumn('id').type).toBe('integer');
+    expect(postTable.getColumn('slug').type).toBe('text');
     expect(postTable.getColumn('size').type).toBe('integer');
     expect(postTable.getColumn('size').size).toBe(4);
 
     expect(postTable.getColumn('content').type).toBe('text');
+    expect(postTable.getColumn('float').type).toBe('float');
 
-    await schemaMigrationRoundTrip([post], adapter);
+    await schemaMigrationRoundTrip([typeOf<Post>()], adapter);
 });
 
-const user = t.schema({
-    id: t.number.autoIncrement.primary,
-    username: t.string.index({ unique: true }),
-    created: t.date,
-    deleted: t.boolean,
-    logins: t.number,
-}, { name: 'user' });
-user.addIndex(['deleted'], '', { unique: true });
-user.addIndex(['deleted', 'created']);
+interface User extends Entity<{ name: 'user' }> {
+    id: number & AutoIncrement & PrimaryKey;
+    username: string & Unique;
+    created: Date;
+    deleted: boolean;
+    logins: number;
+}
 
-const post = t.schema({
-    id: t.number.autoIncrement.primary,
-    user: t.type(user).reference(),
-    created: t.date,
-    slag: t.string.index({ unique: true }),
-    title: t.string,
-    content: t.string,
-}, { name: 'post' });
+interface Post extends Entity<{ name: 'post' }> {
+    id: number & AutoIncrement & PrimaryKey;
+    user: User & Reference,
+    created: Date,
+    slag: string & Unique,
+    title: string,
+    content: string,
+}
 
 test('sqlite', async () => {
-    await schemaMigrationRoundTrip([user, post], new SQLiteDatabaseAdapter(':memory:'));
+    await schemaMigrationRoundTrip([typeOf<User>(), typeOf<Post>()], new SQLiteDatabaseAdapter(':memory:'));
 });

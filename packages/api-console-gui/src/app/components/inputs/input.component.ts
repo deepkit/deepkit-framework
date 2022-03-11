@@ -13,11 +13,11 @@ import {
     ViewContainerRef
 } from '@angular/core';
 import { unsubscribe } from '@deepkit/desktop-ui';
-import { PropertySchema, Types } from '@deepkit/type';
+import { hasDefaultValue, isOptional, ReflectionKind, Type } from '@deepkit/type';
 import { Subscription } from 'rxjs';
-import { InputRegistry } from './registry';
-import { propertyToTSJSONInterface } from '../../utils';
 import { DataStructure } from '../../store';
+import { TypeDecoration, typeToTSJSONInterface } from '../../utils';
+import { inputRegistry } from './registry';
 
 @Component({
     selector: 'api-console-input',
@@ -27,11 +27,11 @@ import { DataStructure } from '../../store';
                 <dui-checkbox [ngModel]="enabled"
                               (ngModelChange)="setEnabled($event)"
                               *ngIf="!isValueRequired"
-                >{{property.name}}</dui-checkbox>
-                <div *ngIf="isValueRequired">{{property.name}}</div>
+                >{{decoration.name}}</dui-checkbox>
+                <div *ngIf="isValueRequired">{{decoration.name}}</div>
                 <dui-icon class="help-icon" clickable [openDropdown]="helpDropdown" name="help"></dui-icon>
             </div>
-            <div class="description" *ngIf="property.description">{{property.description}}</div>
+            <div class="description" *ngIf="decoration.description">{{decoration.description}}</div>
             <ng-container #container></ng-container>
         </div>
         <div *ngIf="!decoration" class="non-decoration">
@@ -45,7 +45,7 @@ import { DataStructure } from '../../store';
         <dui-dropdown #helpDropdown>
             <ng-container *dropdownContainer>
                 <div class="help-code">
-                    <div codeHighlight [code]="propertyName + propertyToTSInterface(property)"></div>
+                    <div codeHighlight [code]="typeToTSJSONInterface(type)"></div>
                 </div>
             </ng-container>
         </dui-dropdown>
@@ -53,22 +53,17 @@ import { DataStructure } from '../../store';
     styleUrls: ['./input.component.scss']
 })
 export class InputComponent implements OnDestroy, OnChanges, AfterViewInit {
-    propertyToTSInterface = propertyToTSJSONInterface;
+    typeToTSJSONInterface = typeToTSJSONInterface;
     /**
      * Whether name and description is displayed as well, or only the input field.
      */
-    @Input() decoration: boolean = false;
+    @Input() decoration?: TypeDecoration;
     @Input() model!: DataStructure;
     @Output() modelChange = new EventEmitter();
 
-    @Input() property!: PropertySchema;
+    @Input() type!: Type;
 
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
-
-    /**
-     * To force a different component input type than the one in property
-     */
-    @Input() type?: Types;
 
     @Input() optional?: false;
 
@@ -80,20 +75,15 @@ export class InputComponent implements OnDestroy, OnChanges, AfterViewInit {
     @unsubscribe()
     protected subChange?: Subscription;
 
-    @ViewChild('container', {read: ViewContainerRef}) container?: ViewContainerRef;
+    @ViewChild('container', { read: ViewContainerRef }) container?: ViewContainerRef;
 
     constructor(
-        private registry: InputRegistry,
         private resolver: ComponentFactoryResolver,
     ) {
     }
 
     get isValueRequired(): boolean {
-        return this.optional === undefined ? this.property.isValueRequired : true;
-    }
-
-    get propertyName(): string {
-        return this.property.name === 'undefined' ? '' : this.property.name + ': ';
+        return !isOptional(this.type) && !hasDefaultValue(this.type);
     }
 
     get enabled(): boolean {
@@ -137,8 +127,10 @@ export class InputComponent implements OnDestroy, OnChanges, AfterViewInit {
         if (!this.enabled) return;
         if (!this.container) return;
 
-        const component = this.registry.inputComponents[this.type || this.property.type];
+        const type = this.type.kind === ReflectionKind.propertySignature || this.type.kind === ReflectionKind.property ? this.type.type : this.type;
+        const component = inputRegistry.get(type);
         if (!component) {
+            console.log('no component for', type);
             return;
         }
 
@@ -146,7 +138,8 @@ export class InputComponent implements OnDestroy, OnChanges, AfterViewInit {
         this.componentRef = this.container.createComponent(componentFactory);
         this.componentRef.instance.model = this.model;
         this.componentRef.instance.modelChange = this.modelChange;
-        this.componentRef.instance.property = this.property;
+        this.componentRef.instance.decoration = this.decoration;
+        this.componentRef.instance.type = type;
         this.componentRef.changeDetectorRef.detectChanges();
 
         if (this.componentRef.instance.keyDown) {

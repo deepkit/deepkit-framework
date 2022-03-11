@@ -1,46 +1,41 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
-import { Entity, t } from '@deepkit/type';
+import { BackReference, entity, PrimaryKey, Reference, ReflectionClass } from '@deepkit/type';
 import { createDatabase } from './utils';
 import { getInstanceStateFromItem } from '@deepkit/orm';
 
-@Entity('image')
+@entity.name('image')
 class Image {
-    @t.array(() => User).backReference()
-    users: User[] = [];
+    users: User[] & BackReference = [];
 
-    @t.array(() => User).backReference({via: () => UserPicture})
-    usersForPictures: User[] = [];
+    usersForPictures: User[] & BackReference<{via: typeof UserPicture}> = [];
 
     constructor(
-        @t.primary public id: number,
-        @t public path: string,
+        public id: number & PrimaryKey,
+        public path: string,
     ) {
     }
 }
 
-@Entity('user')
+@entity.name('user')
 class User {
-    @t.reference().optional
-    profileImage?: Image;
+    profileImage?: Image & Reference;
 
-    @t.array(Image).optional.backReference({via: () => UserPicture})
-    pictures?: Image[];
+    pictures?: Image[] & BackReference<{via: typeof UserPicture}>;
 
     constructor(
-        @t.primary public id: number,
-        @t public username: string,
+        public id: number & PrimaryKey,
+        public username: string,
     ) {
     }
 }
 
-@Entity('userImage')
+@entity.name('userImage')
 class UserPicture {
-    @t id!: number;
+    id!: number;
 
     constructor(
-        @t.reference() user: User,
-        @t.reference() image: Image,
+        public user: User & Reference,
+        public image: Image & Reference,
     ) {
     }
 }
@@ -55,6 +50,10 @@ test('test back reference', async () => {
     session.add(peter);
 
     await session.commit();
+
+    const schema = ReflectionClass.from(Image);
+    expect(schema.getProperty('users').isBackReference()).toBe(true);
+    expect(schema.clone().getProperty('users').isBackReference()).toBe(true);
 
     expect(getInstanceStateFromItem(peter).isKnownInDatabase()).toBe(true);
     expect(getInstanceStateFromItem(image1).isKnownInDatabase()).toBe(true);

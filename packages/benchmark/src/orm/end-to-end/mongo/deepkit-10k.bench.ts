@@ -8,22 +8,20 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import 'reflect-metadata';
-import { Entity, t } from '@deepkit/type';
+import { MongoId, PrimaryKey } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { MongoDatabaseAdapter } from '@deepkit/mongo';
 import { BenchSuite } from '../../../bench';
 
-@Entity('deepkit')
 export class Model {
-    @t.mongoId.primary public _id?: string;
-    @t ready?: boolean;
+    public _id: PrimaryKey & MongoId = '';
+    ready?: boolean;
 
-    @t priority: number = 0;
+    priority: number = 0;
 
     constructor(
-        @t public id: number,
-        @t public name: string
+        public id: number,
+        public name: string
     ) {
     }
 }

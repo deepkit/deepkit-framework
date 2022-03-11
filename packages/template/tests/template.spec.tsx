@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import '../src/optimize-tsx';
 import { html, render } from '../src/template';
 import { Injector } from '@deepkit/injector';
@@ -18,6 +17,18 @@ test('template simple', async () => {
     expect(await render(Injector.from([]), <div><a href="google.de">Link</a></div>)).toBe('<div><a href="google.de">Link</a></div>');
 
     expect(await render(Injector.from([]), <div><b>Link2</b><strong>Link2</strong></div>)).toBe('<div><b>Link2</b><strong>Link2</strong></div>');
+});
+
+test('template injection', async () => {
+    class Database {
+        users: any[] = [{ username: 'Peter' }];
+    }
+
+    function Bla(props: {}, children: any, database: Database) {
+        return <div>{database.users.length}</div>;
+    }
+
+    expect(await render(Injector.from([Database]), <Bla></Bla>)).toBe('<div>1</div>');
 });
 
 test('template html escape', async () => {

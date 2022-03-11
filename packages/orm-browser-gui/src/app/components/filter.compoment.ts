@@ -1,8 +1,8 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
-import { ClassSchema, PropertySchema } from '@deepkit/type';
 import { trackByIndex } from '../utils';
 import { arrayRemoveItem } from '@deepkit/core';
 import { FilterItem } from '../browser-state';
+import { isBackReferenceType, ReflectionClass, ReflectionKind, Type, TypeProperty, TypePropertySignature } from '@deepkit/type';
 
 @Component({
     selector: 'orm-browser-filter-item',
@@ -25,8 +25,8 @@ import { FilterItem } from '../browser-state';
             <dui-option value="$in">IN</dui-option>
             <dui-option value="$nin">NOT IN</dui-option>
         </dui-select>
-        <div class="value" *ngIf="property && propertyToShow">
-            <orm-browser-property [model]="value" (modelChange)="value = $event; changed()" [property]="propertyToShow"></orm-browser-property>
+        <div class="value" *ngIf="property && typeToShow">
+            <orm-browser-property [model]="value" (modelChange)="value = $event; changed()" [type]="typeToShow"></orm-browser-property>
         </div>
     `,
     styles: [`
@@ -48,22 +48,22 @@ export class FilterItemComponent implements OnChanges, OnInit {
     @Input() model!: FilterItem;
     @Output() modelChange = new EventEmitter<FilterItem>();
 
-    @Input() entity!: ClassSchema;
-    @Input() properties: PropertySchema[] = [];
+    @Input() entity!: ReflectionClass<any>;
+    @Input() properties: (TypeProperty | TypePropertySignature)[] = [];
     trackByIndex = trackByIndex;
 
     value: string = '';
     comparator: string = '$eq';
-    propertyToShow?: PropertySchema;
-    property?: PropertySchema;
+    typeToShow?: Type;
+    property?: TypeProperty | TypePropertySignature;
 
     changed() {
         if (this.comparator !== this.model.comparator || (this.property && this.property.name !== this.model.name)) {
-            this.propertyToShow = undefined;
+            this.typeToShow = undefined;
         }
 
         if (this.property) {
-            this.model.name = this.property.name;
+            this.model.name = String(this.property.name);
         }
 
         this.model.comparator = this.comparator;
@@ -80,7 +80,7 @@ export class FilterItemComponent implements OnChanges, OnInit {
 
     ngOnChanges(changes: SimpleChanges) {
         if (changes.model) {
-            this.propertyToShow = undefined;
+            this.typeToShow = undefined;
             this.load();
         }
     }
@@ -92,17 +92,14 @@ export class FilterItemComponent implements OnChanges, OnInit {
     protected loadProperty() {
         if (!this.property) this.property = this.properties[0];
 
-        if (this.propertyToShow) return;
-        this.propertyToShow = this.property;
+        if (this.typeToShow) return;
+        this.typeToShow = this.property.type;
 
         if (this.model.comparator === '$regex') {
             this.model.value = new RegExp(this.model.value);
-            this.propertyToShow = new PropertySchema(this.property.name);
-            this.propertyToShow.type = 'string';
+            this.typeToShow = { kind: ReflectionKind.string };
         } else if (this.model.comparator === '$in' || this.model.comparator === '$nin') {
-            this.propertyToShow = new PropertySchema(this.property.name);
-            this.propertyToShow.type = 'array';
-            this.propertyToShow.templateArgs.push(this.property);
+            this.typeToShow = { kind: ReflectionKind.array, type: this.property.type };
         }
     }
 
@@ -145,9 +142,9 @@ export class FilterItemComponent implements OnChanges, OnInit {
     styleUrls: ['./filter.component.scss']
 })
 export class FilterComponent implements OnChanges {
-    @Input() entity!: ClassSchema;
+    @Input() entity!: ReflectionClass<any>;
 
-    properties: PropertySchema[] = [];
+    properties: (TypeProperty | TypePropertySignature)[] = [];
     trackByIndex = trackByIndex;
 
     @Input() items: FilterItem[] = [];
@@ -158,16 +155,15 @@ export class FilterComponent implements OnChanges {
     }
 
     add() {
-        this.items.push({ name: this.properties[0].name, comparator: '$eq', value: '' });
+        this.items.push({ name: String(this.properties[0].name), comparator: '$eq', value: '' });
         this.itemsChange.emit(this.items);
     }
 
     ngOnChanges(changes: any) {
         this.properties = [];
         for (const property of this.entity.getProperties()) {
-            if (property.backReference) continue;
-            if (property.isParentReference) continue;
-            this.properties.push(property);
+            if (isBackReferenceType(property.type)) continue;
+            this.properties.push(property.property);
         }
     }
 }

@@ -90,8 +90,8 @@ export class DatabaseCommitComponent {
             await this.state.resetAll();
             this.done.emit();
             this.dialog.close();
-        } catch (error) {
-            this.duiDialog.alert('Error saving', error);
+        } catch (error: any) {
+            this.duiDialog.alert('Error saving', String(error));
             console.log(error);
         }
     }

@@ -1,8 +1,8 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import bson from 'bson';
-import { getClassSchema, t } from '@deepkit/type';
+import { t } from '@deepkit/type';
 import { getBSONDecoder } from '../../src/bson-jit-parser';
+
 const { deserialize, serialize } = bson;
 
 test('basic', () => {

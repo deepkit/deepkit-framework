@@ -28,3 +28,8 @@ export function objToString(obj: { [s: string]: any } | ArrayLike<any>): string 
     }
     return '{' + strings.join(', ') + '}';
 }
+
+export interface TypeDecoration {
+    name: number | string | symbol;
+    description?: string;
+}

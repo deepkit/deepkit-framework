@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
-import { PropertySchema } from '@deepkit/type';
 import { FilePickerItem } from '@deepkit/desktop-ui';
 import { isArray } from '@deepkit/core';
+import { ReflectionKind, Type } from '@deepkit/type';
 
 @Component({
     template: `
@@ -14,7 +14,7 @@ export class BinaryInputComponent implements OnInit, OnChanges {
     @Input() model: any;
     @Output() modelChange = new EventEmitter();
 
-    @Input() property!: PropertySchema;
+    @Input() type!: Type;
 
     @Output() done = new EventEmitter<void>();
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
@@ -24,7 +24,7 @@ export class BinaryInputComponent implements OnInit, OnChanges {
         const file = event[0];
         if (!file) return;
 
-        this.model = this.property.type === 'arrayBuffer' ? file.data.buffer : file.data;
+        this.model = this.type.kind === ReflectionKind.class && this.type.classType === ArrayBuffer ? file.data.buffer : file.data;
         this.modelChange.emit(this.model);
 
         this.done.emit();

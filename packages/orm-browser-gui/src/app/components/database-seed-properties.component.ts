@@ -1,7 +1,8 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { EntityPropertySeed, FakerTypes } from '@deepkit/orm-browser-api';
-import { ClassSchema } from '@deepkit/type';
 import { autoTypes } from './seed';
+import { ReflectionClass } from '@deepkit/type';
+import { showTypeString } from '../utils';
 
 @Component({
     selector: 'orm-browser-seed-properties',
@@ -16,7 +17,7 @@ import { autoTypes } from './seed';
             <dui-table-column name="type" [width]="100">
                 <ng-container *duiTableCell="let row">
                     <ng-container *ngIf="entity.getProperty(row.name) as property">
-                        <span style="color: var(--text-grey)">{{property.toString()}}</span>
+                        <span style="color: var(--text-grey)">{{showTypeString(property.type)}}</span>
                     </ng-container>
                 </ng-container>
             </dui-table-column>
@@ -27,7 +28,7 @@ import { autoTypes } from './seed';
                         <orm-browser-seed-property [fakerTypes]="fakerTypes"
                                                    [model]="row"
                                                    (modelChange)="changed.emit()"
-                                                   [property]="property"></orm-browser-seed-property>
+                                                   [type]="property.type"></orm-browser-seed-property>
                     </ng-container>
                 </ng-container>
             </dui-table-column>
@@ -35,7 +36,7 @@ import { autoTypes } from './seed';
             <dui-table-column name="example" [width]="350">
                 <ng-container *duiTableCell="let row">
                     <ng-container *ngIf="entity.getProperty(row.name) as property">
-                        <ng-container *ngIf="row.fake && !property.isAutoIncrement && !property.isReference">
+                        <ng-container *ngIf="row.fake && !property.isAutoIncrement() && !property.isReference()">
                             {{fakerTypes[row.faker]?.example}}
                         </ng-container>
                     </ng-container>
@@ -45,7 +46,8 @@ import { autoTypes } from './seed';
     `
 })
 export class DatabaseSeedPropertiesComponent {
-    @Input() entity!: ClassSchema;
+    showTypeString = showTypeString;
+    @Input() entity!: ReflectionClass<any>;
     @Input() fakerTypes!: FakerTypes;
     @Input() properties!: { [name: string]: EntityPropertySeed };
 

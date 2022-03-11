@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, Input, OnChanges, OnInit } from '@angular/core';
-import { ClassSchema, PropertySchema } from '@deepkit/type';
+import { isReferenceType, ReflectionClass, TypeClass, TypeObjectLiteral } from '@deepkit/type';
 import { objToString } from './utils';
 import { BrowserState } from '../../browser-state';
 
@@ -8,9 +8,9 @@ import { BrowserState } from '../../browser-state';
 })
 export class ClassCellComponent implements OnChanges, OnInit {
     @Input() model: any;
-    @Input() property!: PropertySchema;
+    @Input() type!: TypeClass | TypeObjectLiteral;
 
-    foreignSchema?: ClassSchema;
+    schema?: ReflectionClass<any>;
 
     label: string = '';
 
@@ -18,7 +18,7 @@ export class ClassCellComponent implements OnChanges, OnInit {
     }
 
     ngOnChanges() {
-        this.foreignSchema = this.property.getResolvedClassSchema();
+        this.schema = ReflectionClass.from(this.type);
         this.setLabel();
     }
 
@@ -27,19 +27,19 @@ export class ClassCellComponent implements OnChanges, OnInit {
     }
 
     setLabel(): void {
-        if (!this.foreignSchema) this.foreignSchema = this.property.getResolvedClassSchema();
+        this.schema = ReflectionClass.from(this.type);
 
         this.label = '';
         if (this.model === undefined || this.model === null) return;
 
         const value = this.model;
 
-        if (this.property.isReference) {
+        if (isReferenceType(this.type)) {
             if (value === undefined) return;
             if (this.state.isIdWrapper(value)) {
                 this.label = '#new-' + this.state.extractIdWrapper(value);
             } else {
-                this.label = this.foreignSchema.getClassName() + '#' + value[this.foreignSchema.getPrimaryFields()[0].name];
+                this.label = this.schema.getClassName() + '#' + value[this.schema.getPrimary().name];
             }
         } else {
             this.label = objToString(value);

@@ -1,6 +1,12 @@
 import { expect, test } from '@jest/globals';
-import { createClassDecoratorContext, createFreeDecoratorContext, createPropertyDecoratorContext, DualDecorator, isDecoratorContext, mergeDecorator } from '../src/decorator-builder';
-import { entity, getClassSchema, t } from '../index';
+import {
+    APIProperty,
+    createClassDecoratorContext,
+    createFreeDecoratorContext,
+    createPropertyDecoratorContext, DecoratorAndFetchSignature, DualDecorator, ExtractApiDataType, ExtractClass, FluidDecorator,
+    isDecoratorContext,
+    mergeDecorator, PropertyDecoratorFn, PropertyDecoratorResult
+} from '../src/decorator-builder';
 
 test('without host', () => {
     class Dec1Model {
@@ -22,13 +28,13 @@ test('without host', () => {
     expect(isDecoratorContext(dec1, () => true)).toBe(false);
 
     {
-        const c2 = dec1.name('Peter')();
+        const c2 = dec1.name('Peter')._data;
         expect(c2).toBeInstanceOf(Dec1Model);
         expect(c2.name).toBe('Peter');
     }
 
     {
-        const c2 = dec1();
+        const c2 = dec1._data;
         expect(c2).toBeInstanceOf(Dec1Model);
         expect(c2.name).toBe('');
     }
@@ -63,13 +69,13 @@ test('collapsing correctly', () => {
     expect(isDecoratorContext(dec1, () => true)).toBe(false);
 
     {
-        const c2 = dec1.optional.default('Peter')();
+        const c2 = dec1.optional.default('Peter')._data;
         expect(c2).toBeInstanceOf(ArgDefinition);
         expect(c2.default).toBe('Peter');
     }
 
     {
-        const c2 = dec1.optional();
+        const c2 = dec1.optional._data;
         expect(c2).toBeInstanceOf(ArgDefinition);
         expect(c2.default).toBe(undefined);
     }
@@ -98,12 +104,12 @@ test('inheritance', () => {
     const dec1 = createFreeDecoratorContext(B);
 
     {
-        const r = dec1.methodB()();
+        const r = dec1.methodB()._data;
         expect(r).toBeInstanceOf(Dec1Model);
     }
 
     {
-        const r = dec1.methodA()();
+        const r = dec1.methodA()._data;
         expect(r).toBeInstanceOf(Dec1Model);
     }
 });
@@ -173,28 +179,40 @@ test('dual decorator', () => {
         }
     );
 
-    const dec2 = createPropertyDecoratorContext(
-        class {
-            t = new class {
-                name = '';
-                resolver: string[] = [];
-            };
+    class Dec2 {
+        t = new class {
+            name = '';
+            resolver: string[] = [];
+        };
 
-            name(name: string) {
-                this.t.name = name;
-            };
+        name(name: string) {
+            this.t.name = name;
+        };
 
-            resolve(name: string): DualDecorator {
-                this.t.resolver.push(name);
-            };
+        resolve(name: string): DualDecorator {
+            this.t.resolver.push(name);
+        };
+
+        typeArg<T>(a: T) {
         }
-    );
+    }
+
+    type Dec2FluidDecorator<T, D extends Function> = {
+        [name in keyof T]: name extends 'typeArg' ? <A>(a: A) => D & Dec2FluidDecorator<T, D> : T[name] extends (...args: infer K) => any ? (...args: K) => D & Dec2FluidDecorator<T, D>
+            : D & Dec2FluidDecorator<T, D> & { _data: ExtractApiDataType<T> };
+    };
+
+    type PropertyDecoratorResult2 = Dec2FluidDecorator<ExtractClass<typeof Dec2>, PropertyDecoratorFn> & DecoratorAndFetchSignature<typeof Dec2, PropertyDecoratorFn>;
+
+    const dec2: PropertyDecoratorResult2 = createPropertyDecoratorContext(Dec2);
 
     const merged = mergeDecorator(dec1, dec2);
 
     {
         @merged.controller('asd').resolve('a').resolve('b')
         class MyClass {
+            @dec2.name('dd')
+            @dec2.typeArg<string>('dd')
             @merged.resolve('c').resolve('d')
             property!: string;
         }
@@ -219,15 +237,15 @@ test('dual decorator', () => {
             @merged.name('b')
             class MyClass {
             }
-        }).toThrow(`Decorator 'name' can not be used on class MyClass`)
+        }).toThrow(`Decorator 'name' can not be used on class MyClass`);
     }
     {
         expect(() => {
             class MyClass {
-                 @(merged as any).controller('b')
-                 prop!: string;
+                @(merged as any).controller('b')
+                prop!: string;
             }
-        }).toThrow(`Decorator 'controller' can not be used on class property MyClass.prop`)
+        }).toThrow(`Decorator 'controller' can not be used on class property MyClass.prop`);
     }
 });
 
@@ -451,18 +469,4 @@ test('basic property', () => {
         expect(dec._fetch(Peter, 'name')!.name).toBe('peter');
         expect(dec._fetch(Peter, 'name')!.important).toBe(true);
     }
-});
-
-test('@entity', () => {
-    @entity.name('book')
-    class Book {
-        constructor(
-            @t.primary public id: number,
-            @t public name: string,
-        ) {
-        }
-    }
-
-    const book = getClassSchema(Book);
-    expect(book.name).toBe('book');
 });

@@ -1,4 +1,4 @@
-import { ClassSchema, t } from '@deepkit/type';
+import { ClassType } from '@deepkit/core';
 
 export enum FrameCategory {
     none,
@@ -10,51 +10,51 @@ export enum FrameType {
     start, end
 }
 
-export const categorySchemas: { [name in FrameCategory]: ClassSchema } = {
-    [FrameCategory.none]: t.schema({
-    }),
-    [FrameCategory.http]: t.schema({
-        url: t.string.optional,
-        method: t.string.optional,
-        clientIp: t.string.optional,
-        responseStatus: t.number.optional,
-    }),
-    [FrameCategory.httpController]: t.schema({
-    }),
-    [FrameCategory.rpc]: t.schema({
-        method: t.string,
-        controller: t.string,
-        arguments: t.array(t.any)
-    }),
-    [FrameCategory.cli]: t.schema({
-    }),
-    [FrameCategory.job]: t.schema({
-    }),
-    [FrameCategory.rpcAuthenticate]: t.schema({
-    }),
-    [FrameCategory.function]: t.schema({
-    }),
-    [FrameCategory.lock]: t.schema({
-    }),
-    [FrameCategory.workflow]: t.schema({
-    }),
-    [FrameCategory.event]: t.schema({
-    }),
-    [FrameCategory.database]: t.schema({
-        collection: t.string.optional,
-        className: t.string.optional,
-    }),
-    [FrameCategory.databaseQuery]: t.schema({
-        sql: t.string.optional,
-        sqlParams: t.array(t.any).optional
-    }),
-    [FrameCategory.email]: t.schema({
-    }),
-    [FrameCategory.template]: t.schema({
-    }),
+export const categorySchemas: { [name in FrameCategory]: ClassType } = {
+    [FrameCategory.none]: class {
+    },
+    [FrameCategory.http]: class {
+        url?: string;
+        method?: string;
+        clientIp?: string;
+        responseStatus?: number;
+    },
+    [FrameCategory.httpController]: class {
+    },
+    [FrameCategory.rpc]: class {
+        method!: string;
+        controller!: string;
+        arguments!: any[];
+    },
+    [FrameCategory.cli]: class {
+    },
+    [FrameCategory.job]: class {
+    },
+    [FrameCategory.rpcAuthenticate]: class {
+    },
+    [FrameCategory.function]: class {
+    },
+    [FrameCategory.lock]: class {
+    },
+    [FrameCategory.workflow]: class {
+    },
+    [FrameCategory.event]: class {
+    },
+    [FrameCategory.database]: class {
+        collection?: string;
+        className?: string;
+    },
+    [FrameCategory.databaseQuery]: class {
+        sql!: string;
+        sqlParams?: any[];
+    },
+    [FrameCategory.email]: class {
+    },
+    [FrameCategory.template]: class {
+    },
 };
 
-export type FrameCategoryModel = {[T in keyof typeof categorySchemas]: (typeof categorySchemas)[T]['classType'] };
+export type FrameCategoryModel = { [T in keyof typeof categorySchemas]: (typeof categorySchemas)[T] };
 
 export interface FrameStart {
     id: number;
@@ -77,5 +77,5 @@ export interface FrameData {
     id: number;
     worker: number;
     category: FrameCategory;
-    data: any
+    data: any;
 }

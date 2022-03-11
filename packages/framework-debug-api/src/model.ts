@@ -8,15 +8,15 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { entity, t } from '@deepkit/type';
+import { AutoIncrement, entity, PrimaryKey } from '@deepkit/type';
 
 @entity.name('deepkit/debugger/request')
 export class DebugRequest {
-    @t.primary.autoIncrement id: number = 0;
-    @t version: number = 0;
-    @t created: Date = new Date;
-    @t.optional statusCode?: number;
-    @t logs: number = 0;
+    id: number & PrimaryKey & AutoIncrement = 0;
+    version: number = 0;
+    created: Date = new Date;
+    statusCode?: number;
+    logs: number = 0;
 
     /*
         db time:
@@ -42,13 +42,13 @@ export class DebugRequest {
         logs:
      */
 
-    @t.map(t.number) times: { [name: string]: number } = {};
+    times: { [name: string]: number } = {};
 
     constructor(
-        @t.name('method') public method: string,
+        public method: string,
 
-        @t.name('url') public url: string,
-        @t.name('clientIp') public clientIp: string,
+        public url: string,
+        public clientIp: string,
     ) {
     }
 }

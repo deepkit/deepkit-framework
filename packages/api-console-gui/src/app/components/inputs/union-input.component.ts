@@ -1,10 +1,10 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
-import { PropertySchema } from '@deepkit/type';
+import { isType, ReflectionKind, stringifyType, Type, TypeUnion } from '@deepkit/type';
 import { DataStructure } from '../../store';
 import { trackByIndex } from '../../utils';
 
 interface Entry {
-    property?: PropertySchema;
+    type?: Type;
     value?: any;
     label: string;
 }
@@ -16,12 +16,12 @@ interface Entry {
                     (ngModelChange)="set($event)"
         >
             <ng-container *ngFor="let item of items; trackBy: trackByIndex">
-                <dui-option *ngIf="!item.property" [value]="item.value">{{item.label}}</dui-option>
-                <dui-option *ngIf="item.property" [value]="item.property">{{item.label}}</dui-option>
+                <dui-option *ngIf="!item.type" [value]="item.value">{{item.label}}</dui-option>
+                <dui-option *ngIf="item.type" [value]="item.type">{{item.label}}</dui-option>
             </ng-container>
         </dui-select>
         <div class="sub" *ngIf="subProperty">
-            <api-console-input [model]="model.getProperty(model.templateIndex)" [property]="subProperty"
+            <api-console-input [model]="model.getProperty(model.typeIndex)" [type]="subProperty"
                                (modelChange)="modelChange.emit(model)" (keyDown)="keyDown.emit($event)"></api-console-input>
         </div>
     `,
@@ -36,12 +36,12 @@ export class UnionInputComponent implements OnInit, OnChanges {
     trackByIndex = trackByIndex;
     @Input() model!: DataStructure;
     @Output() modelChange = new EventEmitter();
-    @Input() property!: PropertySchema;
+    @Input() type!: TypeUnion;
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
 
     items: Entry[] = [];
 
-    subProperty?: PropertySchema;
+    subProperty?: Type;
 
     ngOnChanges(): void {
         this.init();
@@ -51,13 +51,13 @@ export class UnionInputComponent implements OnInit, OnChanges {
         this.init();
     }
 
-    set(e: PropertySchema | any) {
-        if (e instanceof PropertySchema) {
+    set(e: Type | any) {
+        if (isType(e)) {
             this.subProperty = e;
-            this.model.templateIndex = this.property.templateArgs.indexOf(e);
+            this.model.typeIndex = this.type.types.indexOf(e);
         } else {
             this.subProperty = undefined;
-            this.model.templateIndex = -1;
+            this.model.typeIndex = -1;
             this.model.value = e;
         }
 
@@ -68,28 +68,28 @@ export class UnionInputComponent implements OnInit, OnChanges {
         this.items = [];
         this.subProperty = undefined;
 
-        if (!this.property.templateArgs.length) return;
+        if (!this.type.types.length) return;
 
-        for (const p of this.property.templateArgs) {
-            if (p.type === 'literal') {
-                this.items.push({ value: p.literalValue, label: String(p.literalValue) });
+        for (const p of this.type.types) {
+            if (p.kind === ReflectionKind.literal) {
+                this.items.push({ value: p.literal, label: String(p.literal) });
             } else {
-                const label = p.type === 'class' ? p.getResolvedClassSchema().getClassName() : p.type;
-                this.items.push({ property: p, label: label });
+                const label = stringifyType(p, { showFullDefinition: false });
+                this.items.push({ type: p, label: label });
             }
         }
 
-        if (this.model.templateIndex >= 0) {
-            this.subProperty = this.property.templateArgs[this.model.templateIndex];
+        if (this.model.typeIndex >= 0) {
+            this.subProperty = this.type.types[this.model.typeIndex];
         } else if (this.model.value === undefined) {
-            const first = this.property.templateArgs[0];
-            setTimeout(() => {
-                if (first.type === 'literal') {
-                    this.set(first.literalValue);
-                } else {
-                    this.set(first);
-                }
-            });
+            const first = this.type.types[0];
+            // setTimeout(() => {
+            if (first.kind === ReflectionKind.literal) {
+                this.set(first.literal);
+            } else {
+                this.set(first);
+            }
+            // });
         }
     }
 

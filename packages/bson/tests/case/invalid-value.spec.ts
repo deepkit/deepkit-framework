@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import bson from 'bson';
 import { t } from '@deepkit/type';
 import { getBSONDecoder } from '../../src/bson-jit-parser';
-import { getBSONSerializer, getBSONSizer } from '../../src/bson-serialize';
+import { getBSONSerializer } from '../../src/bson-serialize';
+
 const { deserialize, serialize } = bson;
 
 test('invalid', () => {

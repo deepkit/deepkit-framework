@@ -15,14 +15,12 @@ import { HtmlResponse, httpWorkflow } from './http';
 import { AppModule } from '@deepkit/app';
 import { normalizeDirectory } from './utils';
 import { ClassType, urlJoin } from '@deepkit/core';
-import { injectable } from '@deepkit/injector';
 import { HttpRequest, HttpResponse } from './model';
 import send from 'send';
 import { eventDispatcher } from '@deepkit/event';
 import { RouteConfig, Router } from './router';
 
 export function serveStaticListener(module: AppModule<any>, path: string, localPath: string = path): ClassType {
-    @injectable
     class HttpRequestStaticServingListener {
         serve(path: string, request: HttpRequest, response: HttpResponse) {
             return new Promise((resolve, reject) => {
@@ -133,7 +131,7 @@ export function registerStaticHttpController(module: AppModule<any>, options: St
         methodName: 'serveIndex'
     });
     route1.groups = groups;
-    module.setupGlobalProvider(Router).addRoute(route1);
+    module.setupGlobalProvider<Router>().addRoute(route1);
 
     const route2 = new RouteConfig('static', ['GET'], normalizeDirectory(options.path).slice(0, -1), {
         controller: StaticController,
@@ -141,7 +139,7 @@ export function registerStaticHttpController(module: AppModule<any>, options: St
         methodName: 'serveIndex'
     });
     route2.groups = groups;
-    module.setupGlobalProvider(Router).addRoute(route2);
+    module.setupGlobalProvider<Router>().addRoute(route2);
 
     module.addProvider(StaticController);
     module.addListener(serveStaticListener(module, normalizeDirectory(options.path), options.localPath));

@@ -1,51 +1,48 @@
-import 'reflect-metadata';
 import { DatabaseFactory } from './test';
-import { entity, t } from '@deepkit/type';
+import { AutoIncrement, BackReference, entity, PrimaryKey, Reference } from '@deepkit/type';
 import { expect } from '@jest/globals';
 import { getObjectKeysSize } from '@deepkit/core';
 
 @entity.name('users_user')
 class User {
-    @t.primary.autoIncrement public id: number = 0;
-    @t created: Date = new Date;
+    public id: number & AutoIncrement & PrimaryKey = 0;
+    created: Date = new Date;
 
-    @t.array(() => Post).backReference()
-    posts?: Post[];
+    posts?: Post[] & BackReference;
 
-    @t.array(() => Group).backReference({via: () => UserGroup})
-    groups?: Group[];
+    groups?: Group[] & BackReference<{via: typeof UserGroup}>;
 
-    constructor(@t public username: string) {
+    constructor(public username: string) {
     }
 }
 
 @entity.name('users_group')
 class Group {
-    @t.primary.autoIncrement public id: number = 0;
+    public id: number & AutoIncrement & PrimaryKey = 0;
 
-    constructor(@t public name: string) {
+    constructor(public name: string) {
     }
 }
 
 @entity.name('users_userGroup')
 class UserGroup {
-    @t.primary.autoIncrement public id: number = 0;
+    public id: number & AutoIncrement & PrimaryKey = 0;
 
     constructor(
-        @t.reference() public user: User,
-        @t.reference() public group: Group,
+        public user: User & Reference,
+        public group: Group & Reference,
     ) {
     }
 }
 
 @entity.name('users_post')
 class Post {
-    @t.primary.autoIncrement public id: number = 0;
-    @t created: Date = new Date;
+    public id: number & AutoIncrement & PrimaryKey = 0;
+    created: Date = new Date;
 
     constructor(
-        @t.reference() public author: User,
-        @t public title: string) {
+        public author: User & Reference,
+        public title: string) {
     }
 }
 
@@ -75,14 +72,16 @@ export const usersTests = {
         }
 
         {
-            const q = database.query(User).select('username', 'groups');
             const users = await database.query(User).select('username', 'groups').joinWith('groups').find();
             expect(users.length).toBe(2);
-            expect(getObjectKeysSize(users[0])).toBe(3);
+            expect(Object.keys(users[0]).length).toBe(2)
+            expect(Object.keys(users[0])).toContain('username');
+            expect(Object.keys(users[0])).toContain('groups');
             expect(users[0].username).toBe('User1');
             expect(users[0].groups!.length).toBe(1);
             expect(users[1].groups!.length).toBe(1);
         }
+        database.disconnect();
     },
     async createSession(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
@@ -111,10 +110,11 @@ export const usersTests = {
         {
             const users = await session.query(User).disableIdentityMap().select('username', 'groups').joinWith('groups').find();
             expect(users.length).toBe(2);
-            expect(getObjectKeysSize(users[0])).toBe(3);
+            expect(getObjectKeysSize(users[0])).toBe(2);
             expect(users[0].username).toBe('User1');
             expect(users[0].groups!.length).toBe(1);
             expect(users[1].groups!.length).toBe(1);
         }
+        database.disconnect();
     },
 };

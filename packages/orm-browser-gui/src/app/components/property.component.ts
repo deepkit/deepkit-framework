@@ -1,5 +1,6 @@
-import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
-import { PropertySchema } from '@deepkit/type';
+import { ChangeDetectorRef, Component, EventEmitter, Input, Output } from '@angular/core';
+import { defaultValue, isAutoIncrementType, Type } from '@deepkit/type';
+import { isRequired } from '../utils';
 
 @Component({
     selector: 'orm-browser-property',
@@ -13,17 +14,17 @@ import { PropertySchema } from '@deepkit/type';
             </ng-container>
             <ng-container *ngIf="editing || (model !== null && model !== undefined)">
                 <orm-browser-property-view *ngIf="!editing" [model]="model"
-                                           [property]="property"></orm-browser-property-view>
+                                           [type]="type"></orm-browser-property-view>
                 <orm-browser-property-editing *ngIf="editing" (modelChange)="model = $event; modelChange.emit(model)"
                                               (done)="editing=false"
-                                              [property]="property" [model]="model"
+                                              [type]="type" [model]="model"
                 ></orm-browser-property-editing>
             </ng-container>
         </div>
         <div class="actions"
-             *ngIf="!property.isAutoIncrement && !editing">
+             *ngIf="!isAutoIncrementType(type) && !editing">
             <dui-icon name="clear" clickable title="Unset" (click)="unset(); $event.stopPropagation()"
-                      [class.active]="property.isOptional ||property.isNullable"></dui-icon>
+                      [class.active]="!isRequired(type)"></dui-icon>
         </div>
     `,
     styles: [`
@@ -75,14 +76,16 @@ import { PropertySchema } from '@deepkit/type';
 export class PropertyComponent {
     @Input() model!: any;
     @Output() modelChange = new EventEmitter<any>();
-    @Input() property!: PropertySchema;
+    @Input() type!: Type;
     editing: boolean = false;
+    isRequired = isRequired;
+    isAutoIncrementType = isAutoIncrementType;
 
     constructor(protected cd: ChangeDetectorRef) {
     }
 
     unset() {
-        this.model = this.property.isNullable ? null : undefined;
+        this.model = defaultValue(this.type);
         this.modelChange.emit(this.model);
         this.cd.detectChanges();
     }

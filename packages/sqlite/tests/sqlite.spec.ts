@@ -1,70 +1,125 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { SQLitePlatform } from '../src/sqlite-platform';
-import { Entity, plainToClass, t } from '@deepkit/type';
 import { databaseFactory } from './factory';
 import { User, UserCredentials } from '@deepkit/orm-integration';
 import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter';
 import { sleep } from '@deepkit/core';
+import { AutoIncrement, cast, Entity, entity, PrimaryKey, Reference, ReflectionClass, typeOf } from '@deepkit/type';
+import { DatabaseEntityRegistry } from '@deepkit/orm';
+
+test('reflection circular reference', () => {
+    const user = ReflectionClass.from(User);
+    const credentials = ReflectionClass.from(UserCredentials);
+
+    expect(user.getProperty('credentials').isBackReference()).toBe(true);
+    expect(user.getProperty('credentials').getResolvedReflectionClass()).toBe(credentials);
+    const userProperty = credentials.getProperty('user');
+    expect(userProperty.getResolvedReflectionClass()).toBe(user);
+    expect(userProperty.isPrimaryKey()).toBe(true);
+    expect(userProperty.isReference()).toBe(true);
+});
 
 test('tables', () => {
-    const [user] = new SQLitePlatform().createTables([User]);
+    const [user] = new SQLitePlatform().createTables(DatabaseEntityRegistry.from([User]));
     expect(user.getColumn('birthdate').isNotNull).toBe(false);
 
-    const [userCredentials] = new SQLitePlatform().createTables([UserCredentials, User]);
+    const [userCredentials] = new SQLitePlatform().createTables(DatabaseEntityRegistry.from([UserCredentials, User]));
     expect(userCredentials.getColumn('user').isPrimaryKey).toBe(true);
     expect(userCredentials.getColumn('user').type).toBe('integer');
 });
 
-test('sqlite basic', async () => {
-    const User = t.schema({
-        id: t.number.primary,
-        name: t.string,
-        created: t.date,
-    }, { name: 'user' });
+test('class basic', async () => {
+    class Product {
+        id: number & PrimaryKey = 0;
+        created: Date = new Date;
 
-    const database = await databaseFactory([User]);
+        constructor(public name: string) {
+        }
+    }
 
-    const user1 = plainToClass(User, { id: 1, name: 'Yes', created: new Date() });
-    const user2 = plainToClass(User, { id: 2, name: 'Wow', created: new Date() });
-    const user3 = plainToClass(User, { id: 3, name: 'asdadasd', created: new Date() });
+    const database = await databaseFactory([Product]);
+
+    const product1 = cast<Product>({ id: 1, name: 'Yes', created: new Date() });
+    const product2 = cast<Product>({ id: 2, name: 'Wow', created: new Date() });
+    const product3 = cast<Product>({ id: 3, name: 'asdadasd', created: new Date() });
 
     {
         const session = database.createSession();
 
-        expect(await session.query(User).count()).toBe(0);
+        expect(await session.query(Product).count()).toBe(0);
 
-        session.add(user1, user2, user3);
+        session.add(product1, product2, product3);
         await session.commit();
-        expect(await session.query(User).count()).toBe(3);
+        expect(await session.query(Product).count()).toBe(3);
 
-        user1.name = 'Changed';
+        product1.name = 'Changed';
         await session.commit();
-        expect(await session.query(User).count()).toBe(3);
-        expect((await session.query(User).disableIdentityMap().filter(user1).findOne()).name).toBe('Changed');
+        expect(await session.query(Product).count()).toBe(3);
+        expect((await session.query(Product).disableIdentityMap().filter(product1).findOne()).name).toBe('Changed');
     }
 
     {
         const session = database.createSession();
-        const user1db = await session.query(User).filter({ id: user1.id }).findOne();
+        const user1db = await session.query(Product).filter({ id: product1.id }).findOne();
         expect(user1db.name).toBe('Changed');
     }
 
     {
         const session = database.createSession();
-        expect((await session.query(User).deleteMany()).modified).toBe(3);
-        expect((await session.query(User).deleteMany()).modified).toBe(0);
+        expect((await session.query(Product).deleteMany()).modified).toBe(3);
+        expect((await session.query(Product).deleteMany()).modified).toBe(0);
+    }
+});
+
+test('interface basic', async () => {
+    interface Product extends Entity<{ name: 'product' }> {
+        id: number & PrimaryKey;
+        name: string;
+        created: Date;
+    }
+
+    const database = await databaseFactory([typeOf<Product>()]);
+
+    const product1: Product = { id: 1, name: 'Yes', created: new Date() };
+    const product2: Product = { id: 2, name: 'Wow', created: new Date() };
+    const product3: Product = { id: 3, name: 'asdadasd', created: new Date() };
+
+    {
+        const session = database.createSession();
+
+        expect(await session.query<Product>().count()).toBe(0);
+
+        session.add(product1, product2, product3);
+        await session.commit();
+        expect(await session.query<Product>().count()).toBe(3);
+
+        product1.name = 'Changed';
+        await session.commit();
+        expect(await session.query<Product>().count()).toBe(3);
+        expect((await session.query<Product>().disableIdentityMap().filter(product1).findOne()).name).toBe('Changed');
+    }
+
+    {
+        const session = database.createSession();
+        const user1db = await session.query<Product>().filter({ id: product1.id }).findOne();
+        expect(user1db.name).toBe('Changed');
+    }
+
+    {
+        const session = database.createSession();
+        expect((await session.query<Product>().deleteMany()).modified).toBe(3);
+        expect((await session.query<Product>().deleteMany()).modified).toBe(0);
     }
 });
 
 test('sqlite autoincrement', async () => {
-    @Entity('sqlite-user')
+    @entity.name('sqlite-user')
     class User {
-        @t.primary.autoIncrement id?: number;
-        @t created: Date = new Date;
+        id?: number & PrimaryKey & AutoIncrement;
+        created: Date = new Date;
 
         constructor(
-            @t public name: string
+            public name: string
         ) {
         }
     }
@@ -88,23 +143,23 @@ test('sqlite autoincrement', async () => {
 });
 
 test('sqlite relation', async () => {
-    @Entity('sqlite-author')
+    @entity.name('sqlite-author')
     class Author {
-        @t created: Date = new Date;
+        created: Date = new Date;
 
         constructor(
-            @t.primary public id: number,
-            @t public name: string,
+            public id: number & PrimaryKey,
+            public name: string,
         ) {
         }
     }
 
-    @Entity('sqlite-book')
+    @entity.name('sqlite-book')
     class Book {
         constructor(
-            @t.primary public id: number,
-            @t.reference() public author: Author,
-            @t public name: string,
+            public id: number & PrimaryKey,
+            public author: Author & Reference,
+            public name: string,
         ) {
         }
     }

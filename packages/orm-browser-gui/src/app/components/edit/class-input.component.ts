@@ -1,8 +1,20 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Optional, Output, SkipSelf } from '@angular/core';
 import { arrayRemoveItem } from '@deepkit/core';
 import { DuiDialog, ReactiveChangeDetectionModule } from '@deepkit/desktop-ui';
-import { ClassSchema, getPrimaryKeyHashGenerator, jsonSerializer, PropertySchema } from '@deepkit/type';
+import {
+    deserialize,
+    getPrimaryKeyHashGenerator,
+    isNullable,
+    isOptional,
+    isReferenceType,
+    ReflectionClass,
+    ReflectionKind,
+    resolveClassType,
+    serialize,
+    Type
+} from '@deepkit/type';
 import { BrowserState } from '../../browser-state';
+import { getParentProperty } from '../../utils';
 
 @Component({
     template: `
@@ -25,23 +37,23 @@ import { BrowserState } from '../../browser-state';
                     [visible]="browserStack.length > 0" (closed)="done.emit(); open = false" minWidth="80%"
                     minHeight="75%">
             <div class="layout">
-                <div class="header" *ngIf="foreignSchema">
+                <div class="header" *ngIf="schema">
                     <span *ngFor="let browser of browserStack">
-                         &raquo; {{browser.foreignSchema?.getClassName()}}
+                         &raquo; {{browser.schema?.getClassName()}}
                     </span>
                 </div>
 
                 <ng-container *ngFor="let browser of browserStack">
-                    <orm-browser-database-browser *ngIf="state.database && browser.foreignSchema"
+                    <orm-browser-database-browser *ngIf="state.database && browser.schema"
                                                   [class.hidden]="browserStack.length > 0 && browser !== browserStack[browserStack.length - 1]"
                                                   [dialog]="true"
                                                   [withBack]="browser !== browserStack[0]"
                                                   (back)="popBrowser()"
                                                   [selectedPkHashes]="browser.selectedPkHashes"
-                                                  [multiSelect]="browser.property.isArray"
+                                                  [multiSelect]="isArrayType(browser.type)"
                                                   (select)="browser.onSelect($event)"
                                                   [database]="state.database"
-                                                  [entity]="browser.foreignSchema"></orm-browser-database-browser>
+                                                  [entity]="browser.schema"></orm-browser-database-browser>
                 </ng-container>
             </div>
         </dui-dialog>
@@ -95,7 +107,7 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
     @Output() modelChange = new EventEmitter();
     @Input() row: any;
 
-    @Input() property!: PropertySchema;
+    @Input() type!: Type;
     @Input() autoOpen: boolean = true;
 
     open = false;
@@ -109,7 +121,11 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
 
     browserStack: ClassInputComponent[] = [];
 
-    foreignSchema?: ClassSchema;
+    schema?: ReflectionClass<any>;
+
+    isArrayType(type: Type): boolean {
+        return type.kind === ReflectionKind.array;
+    }
 
     getLastBrowser(): ClassInputComponent | undefined {
         if (!this.browserStack.length) return undefined;
@@ -129,13 +145,13 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
     jsonDone() {
         try {
             const obj = JSON.parse(this.jsonContent);
-            this.model = jsonSerializer.deserializeProperty(this.property, obj);
+            this.model = deserialize(obj, undefined, undefined, this.type);
             this.modelChange.emit(this.model);
 
             this.jsonEditor = false;
             this.done.emit();
-        } catch (error) {
-            this.duiDialog.alert('Invalid JSON');
+        } catch (error: any) {
+            this.duiDialog.alert('Invalid JSON: ' + error);
         }
     }
 
@@ -172,14 +188,14 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     load() {
-        this.foreignSchema = this.property.getResolvedClassSchema();
-        if (this.property.isReference) {
+        this.schema = resolveClassType(this.type);
+        if (isReferenceType(this.type)) {
             this.open = this.autoOpen;
             this.loadSelection();
         } else {
             this.jsonEditor = true;
             if (this.model !== undefined) {
-                this.jsonContent = JSON.stringify(jsonSerializer.serializeProperty(this.property, this.model));
+                this.jsonContent = JSON.stringify(serialize(this.model, undefined, undefined, this.type));
             } else {
                 this.jsonContent = '';
             }
@@ -188,31 +204,36 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     loadSelection() {
-        if (!this.foreignSchema) return;
+        if (!this.schema) return;
         this.selectedPkHashes = [];
 
         if (this.model !== undefined) {
             if (this.state.isIdWrapper(this.model)) {
                 this.selectedPkHashes.push(this.state.extractHashFromIdWrapper(this.model));
             } else {
-                this.selectedPkHashes.push(getPrimaryKeyHashGenerator(this.foreignSchema)(this.model));
+                this.selectedPkHashes.push(getPrimaryKeyHashGenerator(this.schema)(this.model));
             }
         }
     }
 
     onSelect(event: { items: any[], pkHashes: string[] }) {
-        if (!this.foreignSchema) return;
+        if (!this.schema) return;
 
         const selected = event.items[0];
         if (selected) {
             if (this.state.isNew(selected)) {
-                this.state.connectNewItem(selected, this.row, this.property);
+                const property = getParentProperty(this.type);
+                if (property) {
+                    this.state.connectNewItem(selected, this.row, property);
+                }
                 this.model = this.state.getNewItemIdWrapper(selected);
             } else {
-                this.model = this.foreignSchema.extractPrimaryKey(selected);
+                this.model = this.schema.extractPrimaryKey(selected);
             }
-        } else if (this.property.isOptional || this.property.isNullable) {
-            this.model = this.property.isNullable ? null : undefined;
+        } else if (this.type.parent && isOptional(this.type.parent)) {
+            this.model = undefined;
+        } else if (isOptional(this.type) || isNullable(this.type)) {
+            this.model = isNullable(this.type) ? null : undefined;
         }
         this.modelChange.emit(this.model);
 
@@ -224,8 +245,7 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
 
     ngAfterViewInit() {
         this.load();
-        if (this.property.isReference) {
-            this.foreignSchema = this.property.getResolvedClassSchema();
+        if (isReferenceType(this.type)) {
             this.loadSelection();
             if (this.parent) {
                 this.parent.registerBrowser(this);

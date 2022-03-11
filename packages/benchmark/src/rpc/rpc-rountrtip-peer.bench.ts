@@ -8,10 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType } from "@deepkit/core";
-import { DirectClient, rpc, RpcKernel } from "@deepkit/rpc";
-import 'reflect-metadata';
-import { BenchSuite } from "../bench";
+import { ClassType } from '@deepkit/core';
+import { DirectClient, rpc, RpcKernel } from '@deepkit/rpc';
+import { BenchSuite } from '../bench';
 
 class SimpleInjector {
     get(classType: ClassType) {

@@ -18,6 +18,7 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@deepkit/framework"
   },
+  "reflection": true,
   "include": [
     "./src/**/*.ts"
   ],

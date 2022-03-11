@@ -1,5 +1,5 @@
 import { HttpListener, HttpResultFormatter, httpWorkflow } from './http';
-import { config } from './module.config';
+import { HttpConfig } from './module.config';
 import { AppModule, createModule } from '@deepkit/app';
 import { Router } from './router';
 import { HttpKernel } from './kernel';
@@ -12,7 +12,7 @@ import { ClassType } from '@deepkit/core';
 import { httpClass } from './decorator';
 
 export class HttpModule extends createModule({
-    config: config,
+    config: HttpConfig,
     providers: [
         Router,
         HttpKernel,

@@ -1,6 +1,4 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
-import { injectable } from '@deepkit/injector';
 import { AppModule, createModule } from '../src/module';
 import { ServiceContainer } from '../src/service-container';
 
@@ -8,7 +6,6 @@ test('simple setup with import and overwrite', () => {
     class Connection {
     }
 
-    @injectable
     class HiddenDatabaseService {
         constructor(public connection: Connection) {
         }
@@ -137,7 +134,6 @@ test('for root with exported module', () => {
         exports: [SharedService]
     }, 'shared');
 
-    @injectable
     class BaseHandler {
         constructor(private sharedService: SharedService) {
             expect(sharedService).toBeInstanceOf(SharedService);
@@ -171,7 +167,6 @@ test('module with config object', () => {
 
     let bootstrapMainCalledConfig: any;
 
-    @injectable
     class ExchangeModuleBootstrap {
         constructor(protected config: ExchangeConfig) {
             bootstrapMainCalledConfig = this.config;

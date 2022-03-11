@@ -13,9 +13,8 @@
  * This collection "lives" in the sense that its items are automatically
  * updated, added and removed. When such a change happens, an event is triggered* you can listen on.
  */
-import { ClassType, getClassName, isArray, isObject } from '@deepkit/core';
+import { ClassType, getClassName, isArray } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
-import { t } from '@deepkit/type';
 import { ReplaySubject, Subject, TeardownLogic } from 'rxjs';
 import { EntitySubject, IdInterface } from './model';
 
@@ -119,22 +118,16 @@ export interface CollectionQueryModelInterface<T> {
  */
 export class CollectionQueryModel<T> implements CollectionQueryModelInterface<T> {
     //filter is not used yet
-    @t.map(t.any).optional
     filter?: FilterQuery<T>;
 
-    @t.number.optional
     skip?: number;
 
-    @t.number
     itemsPerPage: number = 50;
 
-    @t.number.optional
     limit?: number;
 
-    @t.map(t.any)
     parameters: { [name: string]: any } = {};
 
-    @t.map(t.any).optional
     sort?: Sort<T>;
 
     public readonly change = new Subject<void>();
@@ -172,22 +165,17 @@ export class CollectionState {
      *
      * Use count() to get the items count on the current page (which is equal to all().length)
      */
-    @t total: number = 0;
+    total: number = 0;
 }
 
-const IsCollection = Symbol.for('deepkit/collection');
-
-export function isCollection(v: any): v is Collection<any> {
-    return !!v && isObject(v) && v.hasOwnProperty(IsCollection);
-}
-
+/**
+ * @reflection never
+ */
 export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
     public readonly event: Subject<CollectionEvent<T>> = new Subject;
 
     public readonly removed = new Subject<T>();
     public readonly added = new Subject<T>();
-
-    [IsCollection] = true;
 
     protected readonly teardowns: TeardownLogic[] = [];
 

@@ -10,12 +10,12 @@
     "bootstrap": "lerna bootstrap --no-ci",
     "bootstrap:ci": "lerna bootstrap",
     "link": "npm-local-development --no-watcher",
-    "build": "tsc --build tsconfig.json && tsc --build tsconfig.esm.json && lerna run build",
+    "build": "tsc --build tsconfig.json packages/type-compiler && tsc --build tsconfig.json && tsc --build tsconfig.esm.json && lerna run build",
     "build:esm": "tsc --build tsconfig.esm.json",
     "tsc": "tsc --build",
     "tsc-watch": "tsc --build --watch",
     "tsc-watch:esm": "tsc --build --watch tsconfig.esm.json",
-    "clean": "rm -rf packages/*/dist/*",
+    "clean": "find packages/*/dist/* ! -name 'package.json' -type f -exec rm -f {} +",
     "clean:modules": "rm -rf packages/*/node_modules; rm -rf node_modules",
     "clean:lock": "rm -rf packages/*/package-lock.json",
     "docs": "rm -rf docs && typedoc",
@@ -38,7 +38,7 @@
     "ts-node": "^10.0.0",
     "ts-node-dev": "^1.1.1",
     "typedoc": "^0.21.0",
-    "typescript": "^4.3.4"
+    "typescript": "^4.5.0"
   },
   "engines": {
     "node": ">= 14.0.0"

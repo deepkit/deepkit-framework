@@ -8,13 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { arrayRemoveItem, asyncOperation, ClassType } from '@deepkit/core';
+import { arrayRemoveItem, asyncOperation } from '@deepkit/core';
 import { Host } from './host';
 import { createConnection, Socket } from 'net';
 import { connect as createTLSConnection, TLSSocket } from 'tls';
 import { Command } from './command/command';
-import { ClassSchema, getClassSchema, uuid } from '@deepkit/type';
-import { getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
+import { stringifyType, Type, uuid } from '@deepkit/type';
+import { BSONBinarySerializer, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
 import { HandshakeCommand } from './command/handshake';
 import { MongoClientConfig } from './config';
 import { MongoError } from './error';
@@ -48,7 +48,8 @@ export class MongoConnectionPool {
 
     protected nextConnectionClose: Promise<boolean> = Promise.resolve(true);
 
-    constructor(protected config: MongoClientConfig) {
+    constructor(protected config: MongoClientConfig,
+                protected serializer: BSONBinarySerializer) {
     }
 
     protected async waitForAllConnectionsToConnect(throws: boolean = false): Promise<void> {
@@ -100,7 +101,6 @@ export class MongoConnectionPool {
             if (!request.writable && host.isReadable()) return host;
         }
 
-        console.log('hosts', hosts);
         throw new MongoError(`Could not find host for connection request. (writable=${request.writable}, hosts=${hosts.length})`);
     }
 
@@ -112,7 +112,7 @@ export class MongoConnectionPool {
     }
 
     protected newConnection(host: Host): MongoConnection {
-        const connection = new MongoConnection(this.connectionId++, host, this.config, (connection) => {
+        const connection = new MongoConnection(this.connectionId++, host, this.config, this.serializer, (connection) => {
             arrayRemoveItem(host.connections, connection);
             arrayRemoveItem(this.connections, connection);
             //onClose does not automatically reconnect. Only new commands re-establish connections.
@@ -185,7 +185,7 @@ export class MongoConnectionPool {
 }
 
 export function readUint32LE(buffer: Uint8Array | ArrayBuffer, offset: number = 0): number {
-    return buffer[offset] + (buffer[offset + 1] * 2 ** 8) + (buffer[offset + 2] * 2 ** 16) + (buffer[offset + 3] * 2 ** 24)
+    return buffer[offset] + (buffer[offset + 1] * 2 ** 8) + (buffer[offset + 2] * 2 ** 16) + (buffer[offset + 3] * 2 ** 24);
 }
 
 
@@ -193,7 +193,7 @@ export class MongoDatabaseTransaction extends DatabaseTransaction {
     static txnNumber: bigint = 0n;
 
     connection?: MongoConnection;
-    lsid?: {id: string};
+    lsid?: { id: string };
     txnNumber: bigint = 0n;
     started: boolean = false;
 
@@ -202,7 +202,7 @@ export class MongoDatabaseTransaction extends DatabaseTransaction {
         cmd.lsid = this.lsid;
         cmd.txnNumber = this.txnNumber;
         cmd.autocommit = false;
-        if (!this.started && !cmd.abortTransaction&& !cmd.commitTransaction) {
+        if (!this.started && !cmd.abortTransaction && !cmd.commitTransaction) {
             this.started = true;
             cmd.startTransaction = true;
         }
@@ -262,6 +262,7 @@ export class MongoConnection {
         public id: number,
         public readonly host: Host,
         protected config: MongoClientConfig,
+        protected serializer: BSONBinarySerializer,
         protected onClose: (connection: MongoConnection) => void,
         protected onRelease: (connection: MongoConnection) => void,
     ) {
@@ -390,9 +391,9 @@ export class MongoConnection {
         }
     }
 
-    protected sendMessage<T>(schema: ClassType<T> | ClassSchema<T>, message: T) {
-        const messageSerializer = getBSONSerializer(schema);
-        const messageSizer = getBSONSizer(schema);
+    protected sendMessage<T>(type: Type, message: T) {
+        const messageSerializer = getBSONSerializer(this.serializer, type);
+        const messageSizer = getBSONSizer(this.serializer, type);
 
         const buffer = Buffer.allocUnsafe(16 + 4 + 1 + messageSizer(message));
         // const buffer = Buffer.alloc(16 + 4 + 10 + 1 + 4 + 4 + calculateObjectSize(message));
@@ -430,7 +431,7 @@ export class MongoConnection {
             //detect backPressure
             this.socket.write(buffer);
         } catch (error) {
-            console.log('failed sending message', message, 'using schema', getClassSchema(schema).toString());
+            console.log('failed sending message', message, 'for type', stringifyType(type));
             throw error;
         }
     }

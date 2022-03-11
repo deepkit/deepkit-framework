@@ -9,21 +9,20 @@
  */
 
 import { Command } from './command';
-import { ClassSchema, t } from '@deepkit/type';
-import { ClassType } from '@deepkit/core';
+import { ReflectionClass } from '@deepkit/type';
 
-const dropDatabase = t.schema({
-    dropDatabase: t.number,
-    $db: t.string,
-});
+interface DropDatabase {
+    dropDatabase: 1;
+    $db: string;
+}
 
-export class DropDatabaseCommand<T extends ClassSchema | ClassType> extends Command {
+export class DropDatabaseCommand<T extends ReflectionClass<any>> extends Command {
     constructor(protected dbName: any) {
         super();
     }
 
-    async execute(config): Promise<number> {
-        return await this.sendAndWait(dropDatabase, {
+    async execute(config): Promise<void> {
+        await this.sendAndWait<DropDatabase>({
             dropDatabase: 1, $db: this.dbName
         });
     }

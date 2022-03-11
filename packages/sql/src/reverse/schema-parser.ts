@@ -17,6 +17,10 @@ const type2Regex = /^([^(]+)\(\s*(\d+)\s*\)$/;
 
 export function parseType(column: Column, type: string) {
     type = type.trim().toLowerCase();
+    if (type.includes('unsigned')) {
+        type = type.replace('unsigned', '').trim();
+        column.unsigned = true;
+    }
 
     if (type3Regex.exec(type)) {
         const match = type3Regex.exec(type)!;

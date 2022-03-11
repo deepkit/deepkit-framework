@@ -32,8 +32,7 @@
     "@types/clone": "^0.1.30",
     "@types/fs-extra": "^9.0.1",
     "@types/tmp": "^0.0.33",
-    "@types/ws": "^7.4.0",
-    "reflect-metadata": "^0.1.13"
+    "@types/ws": "^7.4.0"
   },
   "jest": {
     "testEnvironment": "node",

@@ -26,7 +26,6 @@
     "@deepkit/core-rxjs": "^1.0.1-alpha.39",
     "@deepkit/rpc": "^1.0.1-alpha.41",
     "@deepkit/type": "^1.0.1-alpha.40",
-    "reflect-metadata": "^0.1.13",
     "rxjs": "~6.6.0"
   },
   "devDependencies": {
@@ -34,8 +33,7 @@
     "@deepkit/core": "^1.0.1-alpha.59",
     "@deepkit/core-rxjs": "^1.0.1-alpha.59",
     "@deepkit/rpc": "^1.0.1-alpha.59",
-    "@deepkit/type": "^1.0.1-alpha.59",
-    "reflect-metadata": "^0.1.13"
+    "@deepkit/type": "^1.0.1-alpha.59"
   },
   "jest": {
     "transform": {

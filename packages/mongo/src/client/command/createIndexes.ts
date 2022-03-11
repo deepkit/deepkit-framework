@@ -9,22 +9,8 @@
  */
 
 import { BaseResponse, Command } from './command';
-import { ClassSchema, getClassSchema, t } from '@deepkit/type';
-import { ClassType } from '@deepkit/core';
-
-class Response extends t.extendClass(BaseResponse, {}) {
-}
-
-const requestSchema = t.schema({
-    createIndexes: t.string,
-    $db: t.string,
-    indexes: t.array({
-        key: t.map(t.number),
-        name: t.string,
-        unique: t.boolean,
-        sparse: t.boolean,
-    }),
-});
+import { ReflectionClass } from '@deepkit/type';
+import { MongoError } from '../error';
 
 export interface CreateIndex {
     key: { [name: string]: 1 },
@@ -33,29 +19,33 @@ export interface CreateIndex {
     sparse: boolean
 }
 
-export class CreateIndexesCommand<T extends ClassSchema | ClassType> extends Command {
+interface RequestSchema {
+    createIndexes: string;
+    $db: string;
+    indexes: CreateIndex[];
+}
+
+export class CreateIndexesCommand<T extends ReflectionClass<any>> extends Command {
     constructor(
-        public classSchema: T,
+        public schema: T,
         public indexes: { key: { [name: string]: 1 }, name: string, unique: boolean, sparse: boolean }[],
     ) {
         super();
     }
 
-    async execute(config, host, transaction): Promise<Response> {
-        const schema = getClassSchema(this.classSchema);
-
+    async execute(config, host, transaction): Promise<BaseResponse> {
         const cmd: any = {
-            createIndexes: schema.collectionName || schema.name || 'unknown',
-            $db: schema.databaseSchemaName || config.defaultDb || 'admin',
+            createIndexes: this.schema.collectionName || this.schema.name || 'unknown',
+            $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             indexes: this.indexes,
         };
 
         // if (transaction) transaction.applyTransaction(cmd);
 
         try {
-            return await this.sendAndWait(requestSchema, cmd, Response);
+            return await this.sendAndWait<RequestSchema>(cmd);
         } catch (error) {
-            throw new Error(`Could not drop indexes ${JSON.stringify(this.indexes)}: ${error}`);
+            throw new MongoError(`Could not drop indexes ${JSON.stringify(this.indexes)}: ${error}`);
         }
     }
 

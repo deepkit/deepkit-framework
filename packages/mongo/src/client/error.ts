@@ -16,7 +16,7 @@ import { DatabaseError, UniqueConstraintFailure } from '@deepkit/orm';
 /**
  * Throws the correct ORM errors when responses returns an error
  */
-export function handleErrorResponse(response: InstanceType<typeof BaseResponse.classType>): DatabaseError | undefined {
+export function handleErrorResponse(response: BaseResponse): DatabaseError | undefined {
     const message = response.errmsg || (response.writeErrors && response.writeErrors.length ? response.writeErrors[0].errmsg : undefined);
     if (!message || 'string' !== typeof message) return;
 

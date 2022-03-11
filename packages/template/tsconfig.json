@@ -17,6 +17,7 @@
     "jsx": "react-jsx",
     "jsxImportSource": ".."
   },
+  "reflection": true,
   "include": [
     "src",
     "tests",

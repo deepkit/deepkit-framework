@@ -31,8 +31,10 @@ import {
     BSON_DATA_STRING,
     BSON_DATA_SYMBOL,
     BSON_DATA_TIMESTAMP,
-    BSON_DATA_UNDEFINED, BSONType
+    BSON_DATA_UNDEFINED,
+    BSONType
 } from './utils';
+import { BSONError } from './model';
 
 export function seekElementSize(elementType: number, parser: BaseParser): any {
     switch (elementType) {
@@ -86,9 +88,9 @@ export function seekElementSize(elementType: number, parser: BaseParser): any {
         case BSON_DATA_CODE:
         case BSON_DATA_CODE_W_SCOPE:
         case BSON_DATA_DBPOINTER:
-            throw new Error('Unsupported BSON type ' + elementType);
+            throw new BSONError('Unsupported BSON type ' + elementType);
         default:
-            throw new Error('Unknown BSON type ' + elementType);
+            throw new BSONError('Unknown BSON type ' + elementType);
     }
 }
 

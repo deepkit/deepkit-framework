@@ -105,8 +105,8 @@ export class DatabaseComponent implements OnDestroy {
 
         try {
             await this.controllerClient.browser.resetAllTables(this.database.name);
-        } catch (error) {
-            await this.duiDialog.alert('Error resetting all', error.message);
+        } catch (error: any) {
+            await this.duiDialog.alert('Error resetting all', String(error));
         }
         await this.loadMigration();
         this.state.onDataChange.emit();
@@ -117,8 +117,8 @@ export class DatabaseComponent implements OnDestroy {
 
         try {
             await this.controllerClient.browser.migrate(this.database.name);
-        } catch (error) {
-            await this.duiDialog.alert('Error migrating', error.message);
+        } catch (error: any) {
+            await this.duiDialog.alert('Error migrating', String(error));
         }
         await this.loadMigration();
         this.state.onDataChange.emit();

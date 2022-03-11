@@ -8,25 +8,22 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import 'reflect-metadata';
-import { Entity, t } from '@deepkit/type';
+import { AutoIncrement, PrimaryKey } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { BenchSuite } from '../../../bench';
 
-@Entity('deepkit')
+// @entity.name('deepkit')
 export class DeepkitModel {
-    @t.primary.autoIncrement public id?: number;
+    public id: number & PrimaryKey & AutoIncrement = 0;
 
-    @t ready?: boolean;
+    ready?: boolean;
 
     // @t.array(t.string) tags: string[] = [];
 
-    @t priority: number = 0;
+    priority: number = 0;
 
-    constructor(
-        @t public name: string
-    ) {
+    constructor(public name: string) {
     }
 }
 
@@ -34,7 +31,7 @@ export async function main() {
     const count = 10_000;
     const database = new Database(new SQLiteDatabaseAdapter(':memory:'));
     database.registerEntity(DeepkitModel);
-    await database.adapter.createTables([...database.entities]);
+    await database.adapter.createTables(database.entityRegistry);
     const bench = new BenchSuite('deepkit');
 
     for (let i = 0; i < 5; i++) {

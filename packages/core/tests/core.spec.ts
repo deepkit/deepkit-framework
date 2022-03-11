@@ -7,6 +7,7 @@ import {
     getClassName,
     getClassTypeFromInstance,
     getObjectKeysSize,
+    getParentClass,
     getPathValue,
     isArray,
     isAsyncFunction,
@@ -14,6 +15,7 @@ import {
     isClassInstance,
     isConstructable,
     isFunction,
+    isNumeric,
     isObject,
     isPlainObject,
     isPromise,
@@ -294,7 +296,7 @@ test('asyncOperation maintain error stack trace', async () => {
         }
 
         await doIt();
-    } catch (error) {
+    } catch (error: any) {
         fetched = true;
         expect(error).toBeInstanceOf(MyError);
         expect(error.stack).toContain('MyError1');
@@ -317,7 +319,7 @@ test('asyncOperation catches async errors', async () => {
         }
 
         await doIt();
-    } catch (error) {
+    } catch (error: any) {
         fetched = true;
         expect(error).toBeInstanceOf(MyError);
         expect(error.stack).toContain('MyError1');
@@ -344,7 +346,7 @@ test('asyncOperation deep', async () => {
         }
 
         await doIt1();
-    } catch (error) {
+    } catch (error: any) {
         fetched = true;
         expect(error.stack).toContain('MyError2');
         expect(error.stack).toContain('doIt1');
@@ -405,10 +407,8 @@ test('isConstructable', () => {
     })).toBe(false);
     expect(isConstructable(function* () {
     })).toBe(false);
-    expect(isConstructable({
-        foo() {
-        }
-    }.foo)).toBe(false);
+    //the runtime type transformer converts this to `{foo: function() {}}.foo` which is constructable again :(
+    // expect(isConstructable({foo() {}}.foo)).toBe(false);
     expect(isConstructable(URL)).toBe(true);
 });
 
@@ -437,13 +437,13 @@ test('stringifyValueWithType', async () => {
         id = 1;
     }
 
-    expect(stringifyValueWithType(new Peter)).toBe(`Peter {id: Number(1)}`);
-    expect(stringifyValueWithType({ id: 1 })).toBe(`Object {id: Number(1)}`);
-    expect(stringifyValueWithType('foo')).toBe(`String(foo)`);
-    expect(stringifyValueWithType(2)).toBe(`Number(2)`);
-    expect(stringifyValueWithType(true)).toBe(`Boolean(true)`);
+    expect(stringifyValueWithType(new Peter)).toBe(`Peter {id: number(1)}`);
+    expect(stringifyValueWithType({ id: 1 })).toBe(`object {id: number(1)}`);
+    expect(stringifyValueWithType('foo')).toBe(`string(foo)`);
+    expect(stringifyValueWithType(2)).toBe(`number(2)`);
+    expect(stringifyValueWithType(true)).toBe(`boolean(true)`);
     expect(stringifyValueWithType(function Peter() {
-    })).toBe(`Function Peter`);
+    })).toBe(`function Peter`);
 });
 
 test('getClassTypeFromInstance', async () => {
@@ -503,11 +503,35 @@ test('createDynamicClass', () => {
     expect(getClassName(new class1)).toBe('Model');
     expect(class1.toString()).toBe('class Model {}');
 
-    class Base {}
+    class Base {
+    }
 
     const class2 = createDynamicClass('Model2', Base);
     expect(getClassName(class2)).toBe('Model2');
     expect(getClassName(new class2)).toBe('Model2');
     expect(new class2).toBeInstanceOf(Base);
     expect(class2.toString()).toBe('class Model2 extends Base {}');
+});
+
+test('isNumeric', () => {
+    expect(isNumeric(12)).toBe(true);
+    expect(isNumeric(12.2)).toBe(true);
+    expect(isNumeric('12')).toBe(true);
+    expect(isNumeric('12.2')).toBe(true);
+    expect(isNumeric('12.2 ')).toBe(false);
+    expect(isNumeric('12..2')).toBe(false);
+});
+
+test('getParentClass', () => {
+    class User {}
+
+    class Admin extends User {}
+
+    class SuperAdmin extends Admin {}
+
+    expect(getParentClass({} as any)).toBe(undefined);
+    expect(getParentClass(Object)).toBe(undefined);
+    expect(getParentClass(User)).toBe(undefined);
+    expect(getParentClass(Admin)).toBe(User);
+    expect(getParentClass(SuperAdmin)).toBe(Admin);
 });

@@ -1,18 +1,7 @@
-import {
-    AfterViewInit,
-    Component,
-    EventEmitter,
-    Input,
-    OnChanges,
-    OnDestroy,
-    OnInit,
-    Output,
-    ViewChild
-} from '@angular/core';
-import { getEnumKeyLabelMap } from '@deepkit/core';
+import { AfterViewInit, Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
 import { SelectboxComponent, unsubscribe } from '@deepkit/desktop-ui';
-import { PropertySchema } from '@deepkit/type';
 import { Subscription } from 'rxjs';
+import { TypeEnum } from '@deepkit/type';
 
 @Component({
     template: `
@@ -26,7 +15,7 @@ export class EnumInputComponent implements OnChanges, OnInit, AfterViewInit, OnD
     @Input() model: any;
     @Output() modelChange = new EventEmitter();
 
-    @Input() property!: PropertySchema;
+    @Input() type!: TypeEnum;
 
     keyValues: { value: any, label: string }[] = [];
 
@@ -57,8 +46,7 @@ export class EnumInputComponent implements OnChanges, OnInit, AfterViewInit, OnD
     }
 
     load() {
-        const keyValueMap = getEnumKeyLabelMap(this.property.classType || {});
-        for (const [value, label] of keyValueMap.entries()) {
+        for (const [label, value] of Object.entries(this.type.enum)) {
             this.keyValues.push({ value, label });
         }
     }

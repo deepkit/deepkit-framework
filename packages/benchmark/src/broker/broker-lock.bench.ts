@@ -8,9 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BrokerDirectClient, BrokerKernel } from "@deepkit/broker";
-import 'reflect-metadata';
-import { BenchSuite } from "../bench";
+import { BrokerDirectClient, BrokerKernel } from '@deepkit/broker';
+import { BenchSuite } from '../bench';
 
 export async function main() {
     const kernel = new BrokerKernel();

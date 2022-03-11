@@ -8,77 +8,87 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, toFastProperties } from '@deepkit/core';
-import { ClassSchema, ExtractClassType, getClassSchema, t } from '@deepkit/type';
+import { toFastProperties } from '@deepkit/core';
 import { BaseResponse, Command } from './command';
+import { InlineRuntimeType, ReflectionClass, Type, typeOf, UUID } from '@deepkit/type';
+import { MongoError } from '../error';
 
-const aggregateSchema = t.schema({
-    aggregate: t.string,
-    $db: t.string,
-    pipeline: t.array(t.any),
+interface AggregateMessage {
+    aggregate: string;
+    $db: string;
+    pipeline: any[],
     cursor: {
-        batchSize: t.number,
+        batchSize: number,
     },
-    lsid: t.type({id: t.uuid}).optional,
-    txnNumber: t.number.optional,
-    startTransaction: t.boolean.optional,
-    autocommit: t.boolean.optional,
-});
+    lsid?: { id: UUID },
+    txnNumber?: number,
+    startTransaction?: boolean,
+    autocommit?: boolean,
+}
 
-export class AggregateCommand<T extends ClassSchema | ClassType, R extends ClassSchema> extends Command {
+export class AggregateCommand<T, R = BaseResponse> extends Command {
     partial: boolean = false;
 
     constructor(
-        public classSchema: T,
+        public schema: ReflectionClass<T>,
         public pipeline: any[] = [],
-        public resultSchema?: R,
+        public resultSchema?: ReflectionClass<R>,
     ) {
         super();
     }
 
-    async execute(config, host, transaction): Promise<ExtractClassType<R extends undefined ? T : R>[]> {
-        const schema = getClassSchema(this.classSchema);
-
+    async execute(config, host, transaction): Promise<R[]> {
         const cmd = {
-            aggregate: schema.collectionName || schema.name || 'unknown',
-            $db: schema.databaseSchemaName || config.defaultDb || 'admin',
+            aggregate: this.schema.collectionName || this.schema.name || 'unknown',
+            $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             pipeline: this.pipeline,
             cursor: {
-                batchSize: 20000,
+                batchSize: 1_000_000, //todo make configurable
             }
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        const resultSchema = this.resultSchema || schema;
+        const resultSchema = this.resultSchema || this.schema;
 
-        const jit = resultSchema.jit;
-        let specialisedResponse = this.partial ? jit.mdbAggregatePartial : jit.mdbAggregate;
+        const jit = resultSchema.getJitContainer();
+        let specialisedResponse: Type | undefined = this.partial ? jit.mdbAggregatePartial : jit.mdbAggregate;
+
         if (!specialisedResponse) {
+            const schema = resultSchema;
+            type resultSchema = InlineRuntimeType<typeof schema>;
+
             if (this.partial) {
-                specialisedResponse = t.extendSchema(BaseResponse, {
+                interface SpecialisedResponse extends BaseResponse {
                     cursor: {
-                        id: t.number,
-                        firstBatch: t.array(t.partial(resultSchema)),
-                        nextBatch: t.array(t.partial(resultSchema)),
+                        id: number;
+                        firstBatch?: Array<Partial<resultSchema>>;
+                        nextBatch?: Array<Partial<resultSchema>>;
                     },
-                });
-                jit.mdbAggregatePartial = specialisedResponse;
+                }
+
+                jit.mdbAggregatePartial = specialisedResponse = typeOf<SpecialisedResponse>();
             } else {
-                specialisedResponse = t.extendSchema(BaseResponse, {
+                interface SpecialisedResponse extends BaseResponse {
                     cursor: {
-                        id: t.number,
-                        firstBatch: t.array(resultSchema),
-                        nextBatch: t.array(resultSchema),
+                        id: number;
+                        firstBatch?: Array<resultSchema>;
+                        nextBatch?: Array<resultSchema>;
                     },
-                });
-                jit.mdbAggregate = specialisedResponse;
+                }
+
+                jit.mdbAggregate = specialisedResponse = typeOf<SpecialisedResponse>();
             }
             toFastProperties(jit);
         }
 
-        const res = await this.sendAndWait(aggregateSchema, cmd, specialisedResponse) as { cursor: { id: BigInt, firstBatch: any[], nextBatch: any[] } };
+        interface Response extends BaseResponse {
+            cursor: { id: BigInt, firstBatch?: any[], nextBatch?: any[] };
+        }
 
-        //todo: implement fetchMore
+        const res = await this.sendAndWait<AggregateMessage, Response>(cmd, undefined, specialisedResponse);
+        if (!res.cursor.firstBatch) throw new MongoError(`No firstBatch received`);
+
+        //todo: implement fetchMore and decrease batchSize
         return res.cursor.firstBatch;
     }
 

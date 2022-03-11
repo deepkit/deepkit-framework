@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { jsonSerializer, PropertySchema } from '@deepkit/type';
 import { DuiDialog } from '@deepkit/desktop-ui';
+import { deserialize, ReflectionKind, Type } from '@deepkit/type';
 
 @Component({
     template: `
@@ -35,7 +35,7 @@ export class JsonInputComponent {
     @Input() model: any;
     @Output() modelChange = new EventEmitter();
 
-    @Input() property!: PropertySchema;
+    @Input() type!: Type;
 
     @Output() done = new EventEmitter<void>();
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
@@ -49,7 +49,7 @@ export class JsonInputComponent {
     }
 
     getType(): string {
-        if (this.property.type === 'number') return 'number';
+        if (this.type.kind === ReflectionKind.number || this.type.kind === ReflectionKind.bigint) return 'number';
 
         return 'text';
     }
@@ -57,13 +57,13 @@ export class JsonInputComponent {
     jsonDone() {
         try {
             const obj = JSON.parse(this.jsonContent);
-            this.model = jsonSerializer.deserializeProperty(this.property, obj);
+            this.model = deserialize(obj, undefined, undefined, this.type);
             this.modelChange.emit(this.model);
 
             this.jsonEditor = false;
             this.done.emit();
-        } catch (error) {
-            this.duiDialog.alert('Invalid JSON');
+        } catch (error: any) {
+            this.duiDialog.alert('Invalid JSON: ' + error);
         }
     }
 

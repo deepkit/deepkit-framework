@@ -1,27 +1,22 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
-import { t } from '@deepkit/type';
-import { ConfigSlice, inject, injectable, injectorReference } from '@deepkit/injector';
+import { Minimum, MinLength } from '@deepkit/type';
+import { injectorReference } from '@deepkit/injector';
 import { ServiceContainer } from '../src/service-container';
 import { ClassType } from '@deepkit/core';
-import { AppModule, AppModuleConfig, createModule, createModuleConfig } from '../src/module';
+import { AppModule, createModule } from '../src/module';
 
-const myModuleConfig = new AppModuleConfig({
-    param1: t.string.minLength(5),
-    param2: t.number.minimum(100)
-});
-
-class MyModuleConfigFull extends myModuleConfig.all() {
+class MyModuleConfig {
+    param1!: string & MinLength<5>;
+    param2!: number & Minimum<100>;
 }
 
-@injectable
 class ModuleService {
-    constructor(public readonly config: MyModuleConfigFull) {
+    constructor(public readonly config: MyModuleConfig) {
     }
 }
 
 class MyModule extends createModule({
-    config: myModuleConfig,
+    config: MyModuleConfig,
     providers: [
         ModuleService
     ],
@@ -29,23 +24,17 @@ class MyModule extends createModule({
 }, 'myModule') {
 }
 
-const appModuleConfig = new AppModuleConfig({
-    database: t.string.default('mongodb://localhost/my-app'),
-    debug: t.boolean.default(false),
-    myModule: t.partial({
-        param1: t.string,
-        param2: t.number
-    }).optional
-});
-
-class MyServiceConfig extends appModuleConfig.slice('debug') {
+class AppModuleConfig {
+    database: string = 'mongodb://localhost/my-app';
+    debug: boolean = false;
+    myModule?: Partial<{
+        param1: string;
+        param2: number;
+    }>
 }
 
-const debugConfigToken = appModuleConfig.token('debug');
+type MyServiceConfig = Pick<AppModuleConfig, 'debug'>;
 
-expect(Object.getPrototypeOf(Object.getPrototypeOf(MyServiceConfig)) === ConfigSlice).toBe(true);
-
-@injectable
 class MyService {
     constructor(private config: MyServiceConfig) {
     }
@@ -55,9 +44,8 @@ class MyService {
     }
 }
 
-@injectable
 class MyService2 {
-    constructor(@inject(debugConfigToken) public debug: boolean) {
+    constructor(public debug: AppModuleConfig['debug']) {
     }
 }
 
@@ -66,7 +54,7 @@ class MyAppModule extends createModule({
         MyService,
         MyService2,
     ],
-    config: appModuleConfig,
+    config: AppModuleConfig,
 }) {
     imports = [new MyModule()];
 
@@ -77,25 +65,25 @@ class MyAppModule extends createModule({
 
 function getServiceOnNewServiceContainer<T>(module: AppModule<any>, service: ClassType<T>): T {
     const serviceContainer = new ServiceContainer(module);
-    return serviceContainer.getInjectorContext().get(service);
+    return serviceContainer.getInjectorContext().get(service) as T;
 }
 
 test('import', () => {
     {
         expect(() => getServiceOnNewServiceContainer(new MyAppModule, ModuleService)).toThrow(
-            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(required): Required value is undefined, myModule.param2(required): Required value is undefined'
+            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(type): Not a string'
         );
     }
 
     {
         expect(() => getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '23' } }), ModuleService)).toThrow(
-            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(minLength): Min length is 5, myModule.param2(required): Required value is undefined'
+            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(minLength): Min length is 5'
         );
     }
 
     {
         expect(() => getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '12345' } }), ModuleService)).toThrow(
-            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(required): Required value is undefined'
+            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(type): Not a number'
         );
     }
 
@@ -176,7 +164,7 @@ test('configured provider', () => {
     {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider(Logger).addTransport('first').addTransport('second');
+            module.setupProvider<Logger>().addTransport('first').addTransport('second');
         })).getInjector(module).get(Logger);
         expect(logger.transporter).toEqual(['first', 'second']);
     }
@@ -184,7 +172,7 @@ test('configured provider', () => {
     {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider(Logger).transporter = ['first', 'second', 'third'];
+            module.setupProvider<Logger>().transporter = ['first', 'second', 'third'];
         })).getInjector(module).get(Logger);
         expect(logger.transporter).toEqual(['first', 'second', 'third']);
     }
@@ -192,7 +180,7 @@ test('configured provider', () => {
     {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider(Logger).addTransport(new Transporter);
+            module.setupProvider<Logger>().addTransport(new Transporter);
         })).getInjector(module).get(Logger);
         expect(logger.transporter[0] instanceof Transporter).toBe(true);
     }
@@ -200,7 +188,7 @@ test('configured provider', () => {
     {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider(Logger).addTransport(injectorReference(Transporter));
+            module.setupProvider<Logger>().addTransport(injectorReference(Transporter));
         })).getInjector(module).get(Logger);
         expect(logger.transporter[0] instanceof Transporter).toBe(true);
     }
@@ -213,16 +201,17 @@ test('configured provider', () => {
 });
 
 test('same module loaded twice', () => {
-    const config = createModuleConfig({ path: t.string.default('/api') });
+    class Config {
+        path: string = '/api';
+    }
 
-    @injectable
     class Service {
-        constructor(@inject(config.token('path')) public path: string) {
+        constructor(public path: Config['path']) {
         }
     }
 
     class ApiModule extends createModule({
-        config,
+        config: Config,
         providers: [Service]
     }) {
     }
@@ -329,14 +318,16 @@ test('change config of a imported module dynamically', () => {
     }
 
     class Query {
-        constructor(@t.optional public logger?: Logger) {
+        constructor(public logger?: Logger) {
         }
     }
 
+    class DatabaseConfig {
+        logging: boolean = false;
+    }
+
     class DatabaseModule extends createModule({
-        config: createModuleConfig({
-            logging: t.boolean.default(false)
-        }),
+        config: DatabaseConfig,
         providers: [Query]
     }) {
         process() {
@@ -346,10 +337,11 @@ test('change config of a imported module dynamically', () => {
         }
     }
 
+    class ApiConfig {
+        debug: boolean = false;
+    }
     class ApiModule extends createModule({
-        config: createModuleConfig({
-            debug: t.boolean.default(false)
-        })
+        config: ApiConfig
     }) {
         imports = [new DatabaseModule({ logging: false })];
 

@@ -8,7 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import 'reflect-metadata';
 import { Entity, t } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { MySQLDatabaseAdapter } from '@deepkit/mysql';

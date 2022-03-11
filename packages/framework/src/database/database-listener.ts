@@ -10,16 +10,14 @@
 
 import { onServerMainBootstrap, onServerMainShutdown } from '../application-server';
 import { eventDispatcher } from '@deepkit/event';
-import { injectable } from '@deepkit/injector';
-import { Logger } from '@deepkit/logger';
+import { LoggerInterface } from '@deepkit/logger';
 import { DatabaseRegistry } from '@deepkit/orm';
 import { getClassName } from '@deepkit/core';
 
-@injectable
 export class DatabaseListener {
     constructor(
         protected databases: DatabaseRegistry,
-        protected logger: Logger,
+        protected logger: LoggerInterface,
     ) {
     }
 

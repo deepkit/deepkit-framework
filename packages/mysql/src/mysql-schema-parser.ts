@@ -8,10 +8,23 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseModel, ForeignKey, Index, parseType, SchemaParser, Table } from '@deepkit/sql';
+import { Column, DatabaseModel, ForeignKey, IndexModel, parseType, SchemaParser, Table } from '@deepkit/sql';
+import { isNumeric } from '@deepkit/core';
 
 export class MysqlSchemaParser extends SchemaParser {
     public defaultSchema = '';
+
+    protected numberTypes: string[] = [
+        'tinyint',
+        'smallint',
+        'mediumint',
+        'int',
+        'bigint',
+        'decimal',
+        'float',
+        'double',
+        'bit'
+    ];
 
     async parse(database: DatabaseModel, limitTableNames?: string[]) {
         if (!database.schemaName) {
@@ -38,7 +51,7 @@ export class MysqlSchemaParser extends SchemaParser {
         `);
 
         let lastId: string | undefined;
-        let index: Index | undefined;
+        let index: IndexModel | undefined;
         for (const row of rows) {
             if (row.Key_name === 'PRIMARY') {
                 const column = table.getColumn(row.Column_name);
@@ -59,12 +72,12 @@ export class MysqlSchemaParser extends SchemaParser {
 
     protected async addForeignKeys(database: DatabaseModel, table: Table) {
         const rows = await this.connection.execAndReturnAll(`
-        SELECT distinct k.constraint_name as constraint_name, 
-        k.column_name as column_name, k.referenced_table_name as referenced_table_name, k.referenced_column_name as referenced_column_name, 
+        SELECT distinct k.constraint_name as constraint_name,
+        k.column_name as column_name, k.referenced_table_name as referenced_table_name, k.referenced_column_name as referenced_column_name,
         c.update_rule as update_rule, c.delete_rule as delete_rule
         from information_schema.key_column_usage k
         inner join information_schema.referential_constraints c on c.constraint_name = k.constraint_name and c.table_name = k.table_name
-        where k.table_name = '${table.getName()}' and k.table_schema = database() and c.constraint_schema = database() and k.referenced_column_name is not null 
+        where k.table_name = '${table.getName()}' and k.table_schema = database() and c.constraint_schema = database() and k.referenced_column_name is not null
         `);
 
         let lastId: string | undefined;
@@ -94,13 +107,33 @@ export class MysqlSchemaParser extends SchemaParser {
             parseType(column, row.Type);
 
             column.isNotNull = row.Null === 'NO';
-            column.defaultValue = row.Default || undefined;
+
+            this.mapDefault(row.Default, column);
 
             if (row.Key === 'PRI') column.isPrimaryKey = true;
             if ('string' === typeof row.Extra) {
                 if (row.Extra.includes('auto_increment')) column.isAutoIncrement = true;
             }
         }
+    }
+
+    protected mapDefault(dbDefault: null | string, column: Column) {
+        //This is NULL if the column has an explicit default of NULL, or if the column definition includes no DEFAULT clause
+        if (dbDefault === null || dbDefault === undefined) return;
+
+        if (dbDefault.toUpperCase() === 'CURRENT_TIMESTAMP' || dbDefault.toUpperCase() === 'CURRENT_TIMESTAMP()' || dbDefault.toUpperCase() === 'NOW()') {
+            column.defaultExpression = 'NOW()';
+            return;
+        }
+
+        if (column.type) {
+            if (isNumeric(dbDefault) && this.numberTypes.includes(column.type)) {
+                column.defaultValue = parseFloat(dbDefault);
+                return;
+            }
+        }
+
+        column.defaultValue = dbDefault;
     }
 
     protected async parseTables(database: DatabaseModel, limitTableNames?: string[]) {

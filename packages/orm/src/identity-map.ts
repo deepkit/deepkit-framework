@@ -10,21 +10,19 @@
 
 import {
     changeSetSymbol,
-    ClassSchema,
     getChangeDetector,
-    getClassSchema,
     getConverterForSnapshot,
     getPrimaryKeyExtractor,
     getPrimaryKeyHashGenerator,
     getSimplePrimaryKeyHashGenerator,
     JSONPartial,
-    PartialEntity
+    ReflectionClass
 } from '@deepkit/type';
-import { Entity } from './type';
-import { isObject, toFastProperties } from '@deepkit/core';
+import { OrmEntity } from './type';
+import { getClassTypeFromInstance, isObject, toFastProperties } from '@deepkit/core';
 
-export function getNormalizedPrimaryKey(schema: ClassSchema, primaryKey: any) {
-    const primaryFields = schema.getPrimaryFields();
+export function getNormalizedPrimaryKey(schema: ReflectionClass<any>, primaryKey: any) {
+    const primaryFields = schema.getPrimaries();
 
     if (primaryFields.length > 1) {
         if (!isObject(primaryKey)) {
@@ -32,15 +30,15 @@ export function getNormalizedPrimaryKey(schema: ClassSchema, primaryKey: any) {
         }
         const res: { [name: string]: any } = {};
         for (const primaryField of primaryFields) {
-            res[primaryField.name] = primaryKey[primaryField.name];
+            res[primaryField.getNameAsString()] = primaryKey[primaryField.getNameAsString()];
         }
         return res;
     } else {
         const first = primaryFields[0];
-        if (isObject(primaryKey) && (primaryKey as any)[first.name] !== undefined) {
-            return { [first.name]: (primaryKey as any)[first.name] };
+        if (isObject(primaryKey) && (primaryKey as any)[first.getNameAsString()] !== undefined) {
+            return { [first.getNameAsString()]: (primaryKey as any)[first.getNameAsString()] };
         } else {
-            return { [first.name]: primaryKey };
+            return { [first.getNameAsString()]: primaryKey };
         }
     }
 }
@@ -52,18 +50,18 @@ export class ClassState<T = any> {
     public simplePrimaryKeyHashGenerator = getSimplePrimaryKeyHashGenerator(this.classSchema);
     public changeDetector = getChangeDetector(this.classSchema);
 
-    constructor(public classSchema: ClassSchema<T>) {
+    constructor(public classSchema: ReflectionClass<T>) {
     }
 }
 
-export function getClassState<T>(classSchema: ClassSchema<T>): ClassState<T> {
+export function getClassState<T>(classSchema: ReflectionClass<T>): ClassState<T> {
     if (classSchema.data.classState) return classSchema.data.classState;
     classSchema.data.classState = new ClassState(classSchema);
     toFastProperties(classSchema.data);
     return classSchema.data.classState;
 }
 
-class InstanceState<T extends Entity> {
+class InstanceState<T extends OrmEntity> {
     /**
      * Whether current state is known in database.
      */
@@ -145,7 +143,7 @@ class InstanceState<T extends Entity> {
 const instanceStateSymbol = Symbol('state');
 
 export function getInstanceStateFromItem<T>(item: T): InstanceState<T> {
-    return getInstanceState(getClassState(getClassSchema(item)), item);
+    return getInstanceState(getClassState(ReflectionClass.from(getClassTypeFromInstance(item))), item);
 }
 
 export function getInstanceState<T>(classState: ClassState<T>, item: T): InstanceState<T> {
@@ -179,9 +177,9 @@ type Store = {
 };
 
 export class IdentityMap {
-    registry = new Map<ClassSchema, Map<PKHash, Store>>();
+    registry = new Map<ReflectionClass<any>, Map<PKHash, Store>>();
 
-    deleteMany<T>(classSchema: ClassSchema<T>, pks: Partial<T>[]) {
+    deleteMany<T>(classSchema: ReflectionClass<T>, pks: Partial<T>[]) {
         const store = this.getStore(classSchema);
         const state = getClassState(classSchema);
         for (const pk of pks) {
@@ -195,7 +193,7 @@ export class IdentityMap {
         }
     }
 
-    deleteManyBySimplePK<T>(classSchema: ClassSchema<T>, pks: any[]) {
+    deleteManyBySimplePK<T>(classSchema: ReflectionClass<T>, pks: any[]) {
         const store = this.getStore(classSchema);
         const state = getClassState(classSchema);
 
@@ -214,7 +212,7 @@ export class IdentityMap {
     }
 
     isKnown<T>(item: T): boolean {
-        const classSchema = getClassSchema(item);
+        const classSchema = ReflectionClass.from(getClassTypeFromInstance(item));
         const store = this.getStore(classSchema);
         const state = getClassState(classSchema);
 
@@ -223,8 +221,8 @@ export class IdentityMap {
         return store.has(pkHash);
     }
 
-    storeMany<T>(classSchema: ClassSchema<T>, items: PartialEntity<T>[]) {
-        if (!classSchema.hasPrimaryFields()) throw new Error(`Entity ${classSchema.getClassName()} has no primary field defined. Use @f.primary to defined one.`);
+    storeMany<T>(classSchema: ReflectionClass<T>, items: T[]) {
+        if (!classSchema.hasPrimary()) throw new Error(`Entity ${classSchema.getClassName()} has no primary field defined. Use @f.primary to defined one.`);
         const store = this.getStore(classSchema);
         const state = getClassState(classSchema);
 
@@ -235,17 +233,17 @@ export class IdentityMap {
         }
     }
 
-    store<T>(classSchema: ClassSchema<T>, item: T) {
+    store<T>(classSchema: ReflectionClass<T>, item: T) {
         this.storeMany(classSchema, [item]);
     }
 
-    getByHash<T>(classSchema: ClassSchema<T>, pk: PKHash): T | undefined {
+    getByHash<T>(classSchema: ReflectionClass<T>, pk: PKHash): T | undefined {
         const store = this.getStore(classSchema);
 
         return store.has(pk) ? store.get(pk)!.ref : undefined;
     }
 
-    protected getStore(classSchema: ClassSchema): Map<PKHash, Store> {
+    protected getStore(classSchema: ReflectionClass<any>): Map<PKHash, Store> {
         const store = this.registry.get(classSchema);
         if (store) {
             return store;

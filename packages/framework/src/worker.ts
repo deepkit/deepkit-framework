@@ -15,14 +15,14 @@ import https from 'https';
 import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions } from 'ws';
 
 import { HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
-import { injectable, InjectorContext } from '@deepkit/injector';
+import { InjectorContext } from '@deepkit/injector';
 import { RpcControllers, RpcInjectorContext } from './rpc';
 import { SecureContextOptions, TlsOptions } from 'tls';
 
 // @ts-ignore
 import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { Logger } from '@deepkit/logger';
+import { LoggerInterface } from '@deepkit/logger';
 
 export interface WebServerOptions {
     host: string;
@@ -96,7 +96,6 @@ export interface RpcServerInterface {
     start(options: RpcServerOptions, createRpcConnection: RpcServerCreateConnection): void;
 }
 
-@injectable
 export class RpcServer implements RpcServerInterface {
     start(options: RpcServerOptions, createRpcConnection: RpcServerCreateConnection): RpcServerListener {
         const ws = require('ws');
@@ -138,11 +137,10 @@ export class RpcServer implements RpcServerInterface {
 }
 
 
-@injectable
 export class WebWorkerFactory {
     constructor(
         protected httpKernel: HttpKernel,
-        public logger: Logger,
+        public logger: LoggerInterface,
         protected rpcControllers: RpcControllers,
         protected injectorContext: InjectorContext,
         protected rpcServer: RpcServer,
@@ -175,7 +173,6 @@ export function createRpcConnection(rootScopedContext: InjectorContext, rpcKerne
     return connection;
 }
 
-@injectable
 export class WebWorker {
     protected rpcListener?: RpcServerListener;
     protected server?: http.Server | https.Server;
@@ -183,7 +180,7 @@ export class WebWorker {
 
     constructor(
         public readonly id: number,
-        public logger: Logger,
+        public logger: LoggerInterface,
         public httpKernel: HttpKernel,
         public rpcKernel: RpcKernel,
         protected injectorContext: InjectorContext,

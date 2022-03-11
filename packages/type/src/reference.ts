@@ -1,6 +1,6 @@
 /*
  * Deepkit Framework
- * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
+ * Copyright (c) Deepkit UG, Marc J. Schmidt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the MIT License.
@@ -9,9 +9,11 @@
  */
 
 import { ClassType, isObject } from '@deepkit/core';
-import { ClassSchema, classSchemaSymbol, getClassSchema, getGlobalStore, UnpopulatedCheck, unpopulatedSymbol } from './model';
+import { ReflectionClass, reflectionClassSymbol } from './reflection/reflection';
+import { typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core';
+import { ReflectionKind, Type } from './reflection/type';
 
-export function isReference(obj: any): boolean {
+export function isReferenceInstance(obj: any): boolean {
     return isObject(obj) && referenceSymbol in obj;
 }
 
@@ -24,7 +26,7 @@ export function getReferenceItemInfo<T>(obj: T): ReferenceItemInfo<T> | undefine
 }
 
 export function getOrCreateReferenceItemInfo<T>(obj: T): ReferenceItemInfo<T> {
-    if (!(obj as any)[referenceItemSymbol]) (obj as any)[referenceItemSymbol] = {hydrated: false};
+    if (!(obj as any)[referenceItemSymbol]) (obj as any)[referenceItemSymbol] = { hydrated: false };
     return (obj as any)[referenceItemSymbol] as ReferenceItemInfo<T>;
 }
 
@@ -49,85 +51,79 @@ export interface ReferenceItemInfo<T> {
 export const referenceSymbol = Symbol('reference');
 export const referenceItemSymbol = Symbol('reference/item');
 
-export function createReference<T>(referenceClass: ClassType<T>, pk: { [name: string]: any }) {
+export function createReference<T>(type: ClassType<T> | Type | ReflectionClass<any>, pk: { [name: string]: any }): T {
     const args: any[] = [];
 
-    const classSchema = getClassSchema(referenceClass);
+    const reflection = ReflectionClass.from(type);
 
-    if (!(referenceSymbol in referenceClass.prototype)) {
-        referenceClass = createReferenceClass(classSchema);
-    }
+    const reflectionClass = createReferenceClass(reflection);
 
-    for (const prop of classSchema.getMethodProperties('constructor')) {
-        args.push(pk[prop.name]);
-    }
-
-    const old = getGlobalStore().unpopulatedCheck;
-    getGlobalStore().unpopulatedCheck = UnpopulatedCheck.None;
+    const old = typeSettings.unpopulatedCheck;
+    typeSettings.unpopulatedCheck = UnpopulatedCheck.None;
 
     try {
-        const ref = new referenceClass(...args);
+        for (const prop of reflection.getMethodParameters('constructor')) {
+            args.push(pk[prop.getName()]);
+        }
+
+        const ref = new reflectionClass(...args);
         Object.assign(ref, pk);
-
-
-        return ref;
+        return ref as any;
     } finally {
-        getGlobalStore().unpopulatedCheck = old;
+        typeSettings.unpopulatedCheck = old;
     }
-
 }
+
 export function createReferenceClass<T>(
-    classSchema: ClassSchema<T>,
+    reflection: ReflectionClass<any>,
 ): ClassType<T> {
-    const type = classSchema.classType as any;
+    if (reflection.data.referenceClass) return reflection.data.referenceClass;
 
-    if (classSchema.data.referenceClass) return classSchema.data.referenceClass;
-
-    const Reference = class extends type {
-    };
+    const Reference = reflection.type.kind === ReflectionKind.class ? class extends reflection.type.classType {
+    } : class {};
 
     Object.defineProperty(Reference.prototype, referenceSymbol, { value: { hydrator: undefined }, enumerable: false });
     Object.defineProperty(Reference.prototype, referenceItemSymbol, { value: null, writable: true, enumerable: false });
-    Object.defineProperty(Reference.prototype, classSchemaSymbol, { writable: true, enumerable: false, value: classSchema });
-
-    Reference.buildId = classSchema.buildId;
-
-    const globalStore = getGlobalStore();
+    Object.defineProperty(Reference.prototype, reflectionClassSymbol, { writable: true, enumerable: false, value: reflection });
 
     Object.defineProperty(Reference, 'name', {
-        value: classSchema.getClassName() + 'Reference'
+        value: reflection.getClassName() + 'Reference'
     });
 
-    classSchema.data.referenceClass = Reference;
+    reflection.data.referenceClass = Reference;
 
-    for (const property of classSchema.getProperties()) {
-        if (property.isId) continue;
+    for (const property of reflection.getProperties()) {
+        if (property.isPrimaryKey()) continue;
 
-        const message = property.isReference || property.backReference ?
-            `Reference ${classSchema.getClassName()}.${property.name} was not loaded. Use joinWith(), useJoinWith(), etc to populate the reference.`
+        //if it is optional, it's fine to read undefined
+        if (property.isOptional()) continue;
+
+        const name = String(property.getName());
+
+        const message = property.isReference() || property.isBackReference() ?
+            `Reference ${reflection.getClassName()}.${name} was not loaded. Use joinWith(), useJoinWith(), etc to populate the reference.`
             :
-            `Can not access ${classSchema.getClassName()}.${property.name} since class was not completely hydrated. Use 'await hydrate(item)' to completely load it.`;
+            `Can not access ${reflection.getClassName()}.${name} since class was not completely hydrated. Use 'await hydrateEntity(${reflection.getClassName()})' to completely load it.`;
 
         Object.defineProperty(Reference.prototype, property.name, {
-            enumerable: false,
+            enumerable: true,
             configurable: true,
             get() {
                 if (this.hasOwnProperty(property.symbol)) {
                     return this[property.symbol];
                 }
 
-                if (globalStore.unpopulatedCheck === UnpopulatedCheck.Throw) {
+                if (typeSettings.unpopulatedCheck === UnpopulatedCheck.Throw) {
                     throw new Error(message);
                 }
 
-                if (globalStore.unpopulatedCheck === UnpopulatedCheck.ReturnSymbol) {
+                if (typeSettings.unpopulatedCheck === UnpopulatedCheck.ReturnSymbol) {
                     return unpopulatedSymbol;
                 }
             },
             set(v) {
-                if (globalStore.unpopulatedCheck === UnpopulatedCheck.None) {
-                    //when this check is off, this item is being constructed
-                    //so we ignore initial set operations
+                if (typeSettings.unpopulatedCheck === UnpopulatedCheck.None) {
+                    //when this check is off, this item is being constructed so we ignore initial set operations
                     return;
                 }
 

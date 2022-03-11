@@ -12,22 +12,19 @@ import { cli, Command, flag } from '@deepkit/app';
 import { join } from 'path';
 import { readFileSync, unlinkSync } from 'fs';
 import { decodeFrameData, decodeFrames } from '@deepkit/framework-debug-api';
-import { frameworkConfig } from '../module.config';
-import { Logger } from '@deepkit/logger';
-
-class Config extends frameworkConfig.slice('varPath', 'debugStorePath') {
-}
+import { FrameworkConfig } from '../module.config';
+import { LoggerInterface } from '@deepkit/logger';
 
 @cli.controller('debug:debug:frames', {})
 export class DebugDebugFramesCommand implements Command {
     constructor(
-        protected config: Config,
-        protected logger: Logger,
+        protected config: Pick<FrameworkConfig, 'varPath' | 'debugStorePath'>,
+        protected logger: LoggerInterface,
     ) {
     }
 
     async execute(
-        @flag.optional reset: boolean = false,
+        @flag reset: boolean = false,
     ): Promise<void> {
         const path = join(this.config.varPath, this.config.debugStorePath);
         if (reset) {

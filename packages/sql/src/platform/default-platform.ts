@@ -8,32 +8,33 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Column, ColumnDiff, DatabaseDiff, DatabaseModel, ForeignKey, Index, Table, TableDiff } from '../schema/table';
-import { binaryTypes, ClassSchema, getClassSchema, isArray, PropertySchema, Serializer, Types } from '@deepkit/type';
+import { Column, ColumnDiff, DatabaseDiff, DatabaseModel, ForeignKey, IndexModel, Table, TableDiff } from '../schema/table';
 import sqlstring from 'sqlstring';
-import { ClassType, isObject } from '@deepkit/core';
+import { ClassType, isArray, isObject } from '@deepkit/core';
 import { sqlSerializer } from '../serializer/sql-serializer';
-import { SchemaParser } from '../reverse/schema-parser';
+import { parseType, SchemaParser } from '../reverse/schema-parser';
 import { SQLFilterBuilder } from '../sql-filter-builder';
 import { Sql } from '../sql-builder';
+import { binaryTypes, databaseAnnotation, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
+import { DatabaseEntityRegistry } from '@deepkit/orm';
 
 export function isSet(v: any): boolean {
     return v !== '' && v !== undefined && v !== null;
 }
 
 export interface NamingStrategy {
-    getColumnName(property: PropertySchema): string;
+    getColumnName(property: ReflectionProperty): string;
 
-    getTableName(classSchema: ClassSchema): string;
+    getTableName(reflectionClass: ReflectionClass<any>): string;
 }
 
 export class DefaultNamingStrategy implements NamingStrategy {
-    getColumnName(property: PropertySchema): string {
-        return property.name;
+    getColumnName(property: ReflectionProperty): string {
+        return property.getNameAsString();
     }
 
-    getTableName(classSchema: ClassSchema): string {
-        return classSchema.getCollectionName();
+    getTableName(reflectionClass: ReflectionClass<any>): string {
+        return reflectionClass.getCollectionName();
     }
 }
 
@@ -51,9 +52,23 @@ interface NativeTypeInformation {
     defaultIndexSize: number;
 }
 
+export type TypeMappingChecker = (type: Type) => boolean;
+
+export interface TypeMapping {
+    sqlType: string;
+    size?: number;
+    scale?: number;
+    unsigned?: boolean;
+}
+
 export abstract class DefaultPlatform {
     protected defaultSqlType = 'text';
-    protected typeMapping = new Map<string, { sqlType: string, size?: number, scale?: number }>();
+
+    /**
+     * The ID used in annotation to get database related type information (like `type`, `default`, `defaultExpr`, ...) via databaseAnnotation.getDatabase.
+     */
+    protected annotationId = '*';
+    protected typeMapping = new Map<ReflectionKind | TypeMappingChecker, TypeMapping>();
     protected nativeTypeInformation = new Map<string, Partial<NativeTypeInformation>>();
 
     public abstract schemaParserType: ClassType<SchemaParser>;
@@ -62,13 +77,13 @@ export abstract class DefaultPlatform {
     public namingStrategy: NamingStrategy = new DefaultNamingStrategy();
     public placeholderStrategy: ClassType<SqlPlaceholderStrategy> = SqlPlaceholderStrategy;
 
-    typeCast(schema: ClassSchema, name: string): string {
+    typeCast(schema: ReflectionClass<any>, name: string): string {
         let property = schema.getProperty(name);
-        if (property.type === 'string') return '';
+        if (property.getType().kind === ReflectionKind.string) return '';
 
-        if (property.isReference) property = property.getResolvedClassSchema().getPrimaryField();
+        if (property.isReference()) property = property.getResolvedReflectionClass().getPrimary();
 
-        const type = this.typeMapping.get(property.type);
+        const type = this.getTypeMapping(property.type);
         if (!type) return '';
 
         return '::' + type.sqlType;
@@ -79,8 +94,8 @@ export abstract class DefaultPlatform {
         if (offset) sql.append('OFFSET ' + this.quoteValue(offset));
     }
 
-    createSqlFilterBuilder(schema: ClassSchema, tableName: string): SQLFilterBuilder {
-        return new SQLFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
+    createSqlFilterBuilder(reflectionClass: ReflectionClass<any>, tableName: string): SQLFilterBuilder {
+        return new SQLFilterBuilder(reflectionClass, tableName, this.serializer, new this.placeholderStrategy, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
     }
 
     getMigrationTableName() {
@@ -92,18 +107,18 @@ export abstract class DefaultPlatform {
         return sqlstring.escape(value);
     }
 
-    getAggregateSelect(tableName: string, property: PropertySchema, func: string) {
-        return `${func}(${tableName}.${this.quoteIdentifier(property.name)})`;
+    getAggregateSelect(tableName: string, property: ReflectionProperty, func: string) {
+        return `${func}(${tableName}.${this.quoteIdentifier(property.getNameAsString())})`;
     }
 
     addBinaryType(sqlType: string, size?: number, scale?: number) {
-        for (const type of binaryTypes) {
-            this.addType(type, sqlType, size, scale);
-        }
+        this.addType((type: Type) => {
+            return type.kind === ReflectionKind.class && binaryTypes.includes(type.classType);
+        }, sqlType, size, scale);
     }
 
-    addType(marshalType: Types, sqlType: string, size?: number, scale?: number) {
-        this.typeMapping.set(marshalType, { sqlType, size, scale });
+    addType(kind: ReflectionKind | TypeMappingChecker, sqlType: string, size?: number, scale?: number, unsigned?: boolean) {
+        this.typeMapping.set(kind, { sqlType, size, scale, unsigned });
     }
 
     getColumnListDDL(columns: Column[]) {
@@ -138,23 +153,40 @@ export abstract class DefaultPlatform {
 
     }
 
-    getEntityFields(schema: ClassSchema): PropertySchema[] {
-        const fields: PropertySchema[] = [];
+    getEntityFields(schema: ReflectionClass<any>): ReflectionProperty[] {
+        const fields: ReflectionProperty[] = [];
         for (const property of schema.getProperties()) {
-            if (property.isParentReference) continue;
-            if (property.backReference) continue;
+            if (property.isBackReference()) continue;
             fields.push(property);
         }
         return fields;
     }
 
-    protected setColumnType(column: Column, typeProperty: PropertySchema) {
+    protected getTypeMapping(type: Type): TypeMapping | undefined {
+        let mapping = undefined as TypeMapping | undefined;
+        for (const [checker, m] of this.typeMapping.entries()) {
+            if ('number' === typeof checker) {
+                if (checker === type.kind) mapping = m;
+            } else {
+                if (checker(type)) mapping = m;
+            }
+        }
+        return mapping;
+    }
+
+    protected setColumnType(column: Column, typeProperty: ReflectionProperty) {
         column.type = this.defaultSqlType;
-        const map = this.typeMapping.get(typeProperty.type);
-        if (map) {
-            column.type = map.sqlType;
-            column.size = map.size;
-            column.scale = map.scale;
+        const options = typeProperty.getDatabase(this.annotationId);
+        if (options && options.type) {
+            parseType(column, options.type);
+        } else {
+            const map = this.getTypeMapping(typeProperty.type);
+            if (map) {
+                column.type = map.sqlType;
+                column.size = map.size;
+                column.scale = map.scale;
+                column.unsigned = map.unsigned === true;
+            }
         }
     }
 
@@ -183,62 +215,72 @@ export abstract class DefaultPlatform {
         return lines.filter(isSet);
     }
 
-    createTables(schemas: (ClassSchema | ClassType)[], database: DatabaseModel = new DatabaseModel()): Table[] {
-        const mergedToSingleTable = new Set<ClassSchema>();
+    createTables(entityRegistry: DatabaseEntityRegistry, database: DatabaseModel = new DatabaseModel()): Table[] {
+        const mergedToSingleTable = new Set<ReflectionClass<any>>();
 
-        const refs = new Map<ClassSchema, ClassSchema>();
+        const refs = new Map<ReflectionClass<any>, ReflectionClass<any>>();
 
-        for (let schema of schemas) {
-            schema = getClassSchema(schema);
+        for (let schema of entityRegistry.entities) {
+            //a parent of a single-table inheritance might already be added
+            if (mergedToSingleTable.has(schema)) continue;
 
+            //if the schema is decorated with singleTableInheritance, all properties of all siblings will be copied, as all
+            //will be in one big table.
             if (schema.singleTableInheritance) {
-                if (!schema.superClass) throw new Error(`Class ${schema.getClassName()} has singleTableInheritance enabled but no super class.`);
+                const superClass = schema.getSuperReflectionClass();
+                if (!superClass) throw new Error(`Class ${schema.getClassName()} has singleTableInheritance enabled but has no super class.`);
 
-                if (mergedToSingleTable.has(schema.superClass)) continue;
-                mergedToSingleTable.add(schema.superClass);
+                if (mergedToSingleTable.has(superClass)) continue;
+                mergedToSingleTable.add(superClass);
 
-                const discriminant = schema.superClass.getSingleTableInheritanceDiscriminant();
+                const discriminant = superClass.getSingleTableInheritanceDiscriminantName();
 
-                const old = schema;
-                schema = schema.superClass.clone();
-                refs.set(old.superClass!, schema);
+                schema = superClass.clone();
+                refs.set(superClass, schema);
 
                 //add all properties from all sub classes.
                 for (const subSchema of schema.subClasses) {
                     for (let property of subSchema.getProperties()) {
-                        if (schema.hasProperty(property.name)) continue;
+                        if (schema.hasProperty(property.getName())) continue;
                         property = property.clone();
-                        property.isOptional = true;
+                        //make all newly added properties optional
+                        property.setOptional(true);
                         schema.registerProperty(property);
                     }
                 }
-
-                schema.getProperty(discriminant.name).isOptional = false;
             }
 
             const table = new Table(this.namingStrategy.getTableName(schema));
+
             database.schemaMap.set(schema, table);
 
             table.schemaName = schema.databaseSchemaName || database.schemaName;
 
             for (const property of this.getEntityFields(schema)) {
-                if (property.backReference) continue;
+                if (property.isBackReference()) continue;
 
                 const column = table.addColumn(this.namingStrategy.getColumnName(property), property);
+                const dbOptions = databaseAnnotation.getDatabase(property.type, this.annotationId) || {};
 
-                if (!property.isAutoIncrement) {
-                    column.defaultValue = property.getDefaultValue();
+                if (!property.isAutoIncrement()) {
+                    if (dbOptions.default !== undefined) {
+                        column.defaultValue = dbOptions.default;
+                    } else if (dbOptions.defaultExpr) {
+                        column.defaultExpression = dbOptions.defaultExpr;
+                    } else if (!dbOptions.noDefault && !property.hasDefaultFunctionExpression()) {
+                        column.defaultValue = property.getDefaultValue();
+                    }
                 }
 
-                const isNullable = property.isNullable || property.isOptional;
+                const isNullable = property.isNullable() || property.isOptional();
                 column.isNotNull = !isNullable;
-                column.isPrimaryKey = property.isId;
-                if (property.isAutoIncrement) {
+                column.isPrimaryKey = property.isPrimaryKey();
+                if (property.isAutoIncrement()) {
                     column.isAutoIncrement = true;
                     column.isNotNull = true;
                 }
 
-                const typeProperty = property.isReference ? property.getResolvedClassSchema().getPrimaryField() : property;
+                const typeProperty = property.isReference() ? property.getResolvedReflectionClass().getPrimary() : property;
                 this.setColumnType(column, typeProperty);
             }
         }
@@ -246,29 +288,31 @@ export abstract class DefaultPlatform {
         //set foreign keys
         for (let [schema, table] of database.schemaMap.entries()) {
             for (const property of schema.getProperties()) {
-                if (!property.isReference) continue;
+                const reference = property.getReference();
+                if (!reference) continue;
 
-                const foreignSchema = property.getResolvedClassSchema();
+                const foreignSchema = entityRegistry.get(property.type);
                 const foreignTable = database.schemaMap.get(refs.get(foreignSchema) || foreignSchema);
                 if (!foreignTable) {
-                    throw new Error(`Referenced entity ${foreignSchema.getClassName()} from ${schema.getClassName()}.${property.name} is not available`);
+                    throw new Error(`Referenced entity ${foreignSchema.getClassName()} from ${schema.getClassName()}.${property.getNameAsString()} is not available`);
                 }
                 const foreignKey = table.addForeignKey('', foreignTable);
-                foreignKey.localColumns = [table.getColumn(property.name)];
+                foreignKey.localColumns = [table.getColumn(property.getNameAsString())];
                 foreignKey.foreignColumns = foreignTable.getPrimaryKeys();
-                foreignKey.onDelete = property.referenceOptions.onDelete;
-                foreignKey.onUpdate = property.referenceOptions.onUpdate;
+                if (reference.onDelete) foreignKey.onDelete = reference.onDelete;
+                if (reference.onUpdate) foreignKey.onUpdate = reference.onUpdate;
             }
         }
 
         //create index
         for (let [schema, table] of database.schemaMap.entries()) {
-            for (const [name, index] of schema.indices.entries()) {
-                if (table.hasIndexByName(name)) continue;
-                const columns = index.fields.map(v => table.getColumn(v));
+            for (const index of schema.indexes) {
+                if (index.options.name && table.hasIndexByName(index.options.name)) continue;
+
+                const columns = index.names.map(v => table.getColumn(v));
                 if (table.hasIndex(columns, index.options.unique)) continue;
 
-                const addedIndex = table.addIndex(name, index.options.unique);
+                const addedIndex = table.addIndex(index.options.name || '', index.options.unique);
                 addedIndex.columns = columns;
                 addedIndex.spatial = index.options.spatial || false;
             }
@@ -288,13 +332,14 @@ export abstract class DefaultPlatform {
 
             //manual composite indices
             for (const property of schema.getProperties()) {
-                if (!property.index) continue;
+                const indexOptions = property.getIndex();
+                if (!indexOptions) continue;
 
                 const column = table.getColumnForProperty(property);
-                if (table.hasIndex([column], property.index.unique)) continue;
+                if (table.hasIndex([column], indexOptions.unique)) continue;
 
-                const index = table.addIndex('', property.index.unique);
-                index.columns = [column];
+                const addedIndex = table.addIndex('', indexOptions.unique);
+                addedIndex.columns = [column];
             }
         }
 
@@ -308,14 +353,14 @@ export abstract class DefaultPlatform {
         return `"${id.replace('.', '"."')}"`;
     }
 
-    getTableIdentifier(schema: ClassSchema): string {
+    getTableIdentifier(schema: ReflectionClass<any>): string {
         const collectionName = this.namingStrategy.getTableName(schema);
 
         if (schema.databaseSchemaName) return this.quoteIdentifier(schema.databaseSchemaName + this.getSchemaDelimiter() + collectionName);
         return this.quoteIdentifier(collectionName);
     }
 
-    getIdentifier(object: Table | Column | Index | ForeignKey, append: string = ''): string {
+    getIdentifier(object: Table | Column | IndexModel | ForeignKey, append: string = ''): string {
         if (object instanceof Table) return this.getFullIdentifier(object, append);
         return this.quoteIdentifier(object.getName() + append);
     }
@@ -484,7 +529,7 @@ export abstract class DefaultPlatform {
         return ddl.join(' ');
     }
 
-    getAddIndexDDL(index: Index): string {
+    getAddIndexDDL(index: IndexModel): string {
         const u = index.isUnique ? 'UNIQUE' : '';
 
         const columns: string[] = [];
@@ -538,11 +583,11 @@ export abstract class DefaultPlatform {
         return `ALTER TABLE ${this.getIdentifier(foreignKey.table)} DROP CONSTRAINT ${this.getIdentifier(foreignKey)}`;
     }
 
-    getDropIndexDDL(index: Index): string {
+    getDropIndexDDL(index: IndexModel): string {
         return `DROP INDEX ${this.getIdentifier(index)}`;
     }
 
-    getUniqueDDL(unique: Index): string {
+    getUniqueDDL(unique: IndexModel): string {
         return `UNIQUE INDEX ${this.getIdentifier(unique)} (${this.getColumnListDDL(unique.columns)})`;
     }
 
@@ -559,9 +604,13 @@ export abstract class DefaultPlatform {
     }
 
     getColumnDefaultValueDDL(column: Column) {
-        if (undefined === column.defaultValue) return '';
-        //todo: allow to add expressions, like CURRENT_TIMESTAMP
-        return 'DEFAULT ' + this.quoteValue(isObject(column.defaultValue) ? JSON.stringify(column.defaultValue) : column.defaultValue);
+        if (column.defaultExpression !== undefined) {
+            return 'DEFAULT ' + column.defaultExpression;
+        }
+        if (column.defaultValue !== undefined) {
+            return 'DEFAULT ' + this.quoteValue(column.defaultValue);
+        }
+        return '';
     }
 
     getAutoIncrement() {

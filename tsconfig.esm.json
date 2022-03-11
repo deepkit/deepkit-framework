@@ -11,6 +11,9 @@
       "path": "packages/type/tsconfig.esm.json"
     },
     {
+      "path": "packages/type-compiler/tsconfig.esm.json"
+    },
+    {
       "path": "packages/bson/tsconfig.esm.json"
     },
     {

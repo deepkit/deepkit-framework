@@ -1,20 +1,9 @@
-import {
-    Component,
-    ComponentFactoryResolver,
-    ComponentRef,
-    EventEmitter,
-    Input,
-    OnChanges,
-    OnDestroy,
-    Optional,
-    Output,
-    SimpleChanges,
-    ViewContainerRef
-} from '@angular/core';
+import { Component, ComponentFactoryResolver, ComponentRef, EventEmitter, Input, OnChanges, OnDestroy, Optional, Output, SimpleChanges, ViewContainerRef } from '@angular/core';
 import { TableComponent, unsubscribe } from '@deepkit/desktop-ui';
-import { PropertySchema, Types } from '@deepkit/type';
+import { Type } from '@deepkit/type';
 import { Subscription } from 'rxjs';
-import { Registry } from '../../registry';
+import { inputRegistry } from '../../registry';
+import { isProperty } from '../../utils';
 
 @Component({
     selector: 'orm-browser-property-editing',
@@ -30,14 +19,9 @@ export class InputEditingComponent implements OnDestroy, OnChanges {
     @Output() modelChange = new EventEmitter();
 
     @Input() row?: { [name: string]: any };
-    @Input() property!: PropertySchema;
+    @Input() type!: Type;
 
     @Input() autoOpen: boolean = true;
-
-    /**
-     * To force a different component input type than the one in property
-     */
-    @Input() type?: Types;
 
     @Output() done = new EventEmitter<any>();
 
@@ -50,7 +34,6 @@ export class InputEditingComponent implements OnDestroy, OnChanges {
     protected subChange?: Subscription;
 
     constructor(
-        private registry: Registry,
         private containerRef: ViewContainerRef,
         private resolver: ComponentFactoryResolver,
         @Optional() private table?: TableComponent<any>,
@@ -74,7 +57,7 @@ export class InputEditingComponent implements OnDestroy, OnChanges {
     protected link() {
         this.unlink();
 
-        const component = this.registry.inputComponents[this.type || this.property.type];
+        const component = inputRegistry.get(this.type);
         if (!component) {
             return;
         }
@@ -83,12 +66,14 @@ export class InputEditingComponent implements OnDestroy, OnChanges {
         this.componentRef = this.containerRef.createComponent(componentFactory);
         this.componentRef.instance.model = this.model;
         this.componentRef.instance.modelChange = this.modelChange;
-        this.componentRef.instance.property = this.property;
+        this.componentRef.instance.type = this.type;
         this.componentRef.instance.row = this.row;
         this.componentRef.instance.autoOpen = this.autoOpen;
 
+        const property = this.type.parent && isProperty(this.type.parent) ? this.type.parent : undefined;
+
         this.subDone = this.componentRef.instance.done.subscribe(() => {
-            if (this.row && this.row.$__activeColumn === this.property.name) this.row.$__activeColumn = undefined;
+            if (this.row && property && this.row.$__activeColumn === property.name) this.row.$__activeColumn = undefined;
             this.done.emit(this.row);
         });
 

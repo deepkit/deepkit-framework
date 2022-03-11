@@ -1,6 +1,5 @@
 import { t } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { getBSONDecoder } from '../../src/bson-jit-parser';
 import { getBSONSerializer } from '../../src/bson-serialize';
 

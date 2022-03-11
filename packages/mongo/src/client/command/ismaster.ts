@@ -10,42 +10,40 @@
 
 //see https://docs.mongodb.com/manual/reference/command/isMaster/
 //we add only fields we really need to increase parsing time.
-import { t } from '@deepkit/type';
 import { BaseResponse, Command } from './command';
 import { MongoClientConfig } from '../config';
 import { Host } from '../host';
 
-export class IsMasterResponse extends t.extendClass(BaseResponse, {
-    ismaster: t.boolean,
-    maxBsonObjectSize: t.number,
-    maxMessageSizeBytes: t.number,
-    maxWriteBatchSize: t.number,
-    minWireVersion: t.number,
-    maxWireVersion: t.number,
+export interface IsMasterResponse extends BaseResponse {
+    ismaster: boolean;
+    maxBsonObjectSize: number;
+    maxMessageSizeBytes: number;
+    maxWriteBatchSize: number;
+    minWireVersion: number;
+    maxWireVersion: number;
 
     //indicates that the mongod or mongos is running in read-only mode
-    readOnly: t.boolean,
+    readOnly?: boolean;
 
-    compression: t.array(t.string),
-    saslSupportedMechs: t.array(t.string),
+    compression?: string[];
+    saslSupportedMechs?: string[];
 
     //mongos instances add the following field to the isMaster response document:
-    msg: t.string,
+    msg?: string;
 
     //isMaster contains these fields when returned by a member of a replica set:
-    // hosts: t.array(t.string),
-    setName: t.string, //replica set name
-    // setVersion: t.number, //replica set version
-    secondary: t.boolean,
-    arbiterOnly: t.boolean,
-    hidden: t.boolean,
-}) {
+    // hosts: string[];
+    setName?: string; //replica set name
+    // setVersion: number; //replica set version
+    secondary?: boolean;
+    arbiterOnly?: boolean;
+    hidden?: boolean;
 }
 
-const isMasterSchema = t.schema({
-    isMaster: t.number,
-    $db: t.string,
-});
+interface IsMasterSchema {
+    isMaster: number;
+    $db: string;
+}
 
 export class IsMasterCommand extends Command {
     needsWritableHost() {
@@ -58,6 +56,6 @@ export class IsMasterCommand extends Command {
             $db: config.getAuthSource(),
         };
 
-        return this.sendAndWait(isMasterSchema, cmd, IsMasterResponse);
+        return this.sendAndWait<IsMasterSchema, IsMasterResponse>(cmd);
     }
 }

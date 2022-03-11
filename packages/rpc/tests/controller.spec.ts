@@ -1,14 +1,10 @@
-import 'reflect-metadata';
-import { entity, getClassSchema, getGlobalStore, PropertySchema, t } from '@deepkit/type';
+import { assertType, entity, Positive, ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { DirectClient } from '../src/client/client-direct';
 import { getActions, rpc } from '../src/decorators';
 import { RpcKernel, RpcKernelConnection } from '../src/server/kernel';
-import { injectable } from '@deepkit/injector';
 import { Session, SessionState } from '../src/server/security';
 import { BehaviorSubject } from 'rxjs';
-import { getBSONSerializer } from '../../bson';
-import { getBSONDecoder } from '@deepkit/bson';
 import { getClassName } from '@deepkit/core';
 
 test('decorator', async () => {
@@ -34,12 +30,12 @@ test('decorator', async () => {
 });
 
 test('inheritance', async () => {
-    class User {}
+    class User {
+    }
 
     @rpc.controller('name')
     class Controller {
         @rpc.action()
-        @t.type(User).optional
         action(): User | undefined {
             return new User();
         }
@@ -70,9 +66,12 @@ test('inheritance', async () => {
         expect(actions.get('second')!.name).toBe('second');
         expect(actions.get('second')!.groups).toEqual(['a']);
 
-        const resultProperty = getClassSchema(Controller).getMethod('action');
-        expect(resultProperty.type).toBe('class');
-        expect(resultProperty.classType).toBe(User);
+        const resultProperty = ReflectionClass.from(Controller).getMethod('action');
+        const returnType = resultProperty.getReturnType();
+        assertType(returnType, ReflectionKind.union);
+        assertType(returnType.types[0], ReflectionKind.class);
+        assertType(returnType.types[1], ReflectionKind.undefined);
+        expect(returnType.types[0].classType).toBe(User);
     }
 
     {
@@ -87,18 +86,19 @@ test('inheritance', async () => {
         expect(actions.get('third')!.name).toBe('third');
         expect(actions.get('third')!.groups).toEqual(['b']);
 
-        const resultProperty = getClassSchema(Extended).getMethod('action');
-        expect(resultProperty.type).toBe('class');
-        expect(resultProperty.classType).toBe(User);
+        const resultProperty = ReflectionClass.from(Extended).getMethod('action');
+        const returnType = resultProperty.getReturnType();
+        assertType(returnType, ReflectionKind.union);
+        assertType(returnType.types[0], ReflectionKind.class);
+        assertType(returnType.types[1], ReflectionKind.undefined);
+        expect(returnType.types[0].classType).toBe(User);
     }
 });
 
 test('basics', async () => {
     @entity.name('model/basics')
     class MyModel {
-        constructor(
-            @t public name: string
-        ) {
+        constructor(public name: string) {
         }
     }
 
@@ -108,9 +108,7 @@ test('basics', async () => {
 
     @entity.name('MyError2')
     class MyError2 extends Error {
-        constructor(
-            @t public id: number
-        ) {
+        constructor(public id: number) {
             super('critical');
         }
     }
@@ -189,27 +187,22 @@ test('basics', async () => {
 test('promise', async () => {
     @entity.name('model/promise')
     class MyModel {
-        constructor(
-            @t public name: string
-        ) {
+        constructor(public name: string) {
         }
     }
 
     class Controller {
         @rpc.action()
-        //MyModel is automatically detected once executed.
         async createModel(value: string): Promise<MyModel> {
             return new MyModel(value);
         }
 
         @rpc.action()
-        @t.type(MyModel)
         async createModel2(value: string): Promise<MyModel> {
             return new MyModel(value);
         }
 
         @rpc.action()
-        @t.generic(MyModel)
         async createModel3(value: string): Promise<MyModel> {
             return new MyModel(value);
         }
@@ -256,22 +249,16 @@ test('promise', async () => {
 test('wrong arguments', async () => {
     @entity.name('model/promise2')
     class MyModel {
-        constructor(
-            @t public id: number
-        ) {
+        constructor(public id: number) {
         }
     }
 
     class Controller {
         @rpc.action()
-        //MyModel is automatically detected once executed.
-        async getProduct(id: number): Promise<MyModel> {
+        async getProduct(id: number & Positive): Promise<MyModel> {
             return new MyModel(id);
         }
     }
-
-    expect(getClassSchema(Controller).getMethodProperties('getProduct')[0].isOptional).toBe(false);
-    expect(getClassSchema(Controller).getMethodProperties('getProduct')[0].isNullable).toBe(false);
 
     const kernel = new RpcKernel();
     kernel.registerController('myController', Controller);
@@ -279,21 +266,26 @@ test('wrong arguments', async () => {
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
 
+    await controller.getProduct(1);
+
     {
-        await expect(controller.getProduct(undefined as any)).rejects.toThrow('id(required): Required value is undefined');
+        await expect(controller.getProduct(undefined as any)).rejects.toThrow('args.id: Cannot convert undefined to number');
     }
 
     {
-        await expect(controller.getProduct('23' as any)).rejects.toThrow('id(required): Required value is undefined');
+        await expect(controller.getProduct('23' as any)).rejects.toThrow('args.id: Cannot convert 23 to number');
     }
 
     {
-        await expect(controller.getProduct(NaN as any)).rejects.toThrow('id(invalid_number): No valid number given, got NaN');
+        await expect(controller.getProduct(NaN as any)).rejects.toThrow('args.id: Cannot convert NaN to number');
+    }
+
+    {
+        await expect(controller.getProduct(-1)).rejects.toThrow('id(positive): Number needs to be positive');
     }
 });
 
 test('di', async () => {
-    @injectable
     class Controller {
         constructor(protected connection: RpcKernelConnection, protected sessionState: SessionState) {
         }
@@ -320,10 +312,8 @@ test('di', async () => {
 });
 
 test('connect disconnect', async () => {
-    @injectable
     class Controller {
         constructor(protected connection: RpcKernelConnection) {
-
         }
 
         @rpc.action()
@@ -375,10 +365,8 @@ test('types', async () => {
 
     }
 
-    @injectable
     class Controller {
         @rpc.action()
-        @t.type({ total: t.number, items: t.array(Model) })
         test(): { total: number, items: Model[] } {
             return { total: 5, items: [new Model] };
         }
@@ -398,45 +386,17 @@ test('types', async () => {
     }
 });
 
-
 test('disable type reuse', async () => {
     //per default its tried to reuse models that have an entity name set. with disableTypeReuse this can be disabled
 
     @entity.name('type/reuse')
     class Model {
-        @t child?: Model;
+        child?: Model;
 
-        constructor(@t public title: string) {
+        constructor(public title: string) {
         }
     }
 
-    delete getGlobalStore().RegisteredEntities['type/reuse'];
-
-    const schema = getClassSchema(Model);
-    expect(schema.getProperty('child').type).toBe('class');
-    expect(schema.getProperty('child').getResolvedClassType()).toBe(Model);
-
-    const c = class {};
-    Object.defineProperty(c, 'name', {value: 'Model'});
-    expect(getClassName(c)).toBe('Model');
-    expect(getClassName(new c)).toBe('Model');
-
-
-    const props = schema.getProperty('child').toJSONNonReference(undefined, true);
-    const property = PropertySchema.fromJSON(props, undefined, false);
-    const schema2 = property.getResolvedClassSchema();
-    expect(getClassName(schema2.classType)).toBe('Model');
-    expect(getClassName(new schema2.classType)).toBe('Model');
-
-    expect(schema2.getClassName()).toBe('Model');
-    const encoder = getBSONSerializer(schema2);
-    const decoder = getBSONDecoder(schema2);
-    const bson = encoder({title: 'asd'});
-    const back = decoder(bson);
-    expect(back).toEqual({title: 'asd'});
-    expect(getClassName(back)).toBe('Model');
-
-    @injectable
     class Controller {
         @rpc.action()
         test(): Model {
@@ -444,7 +404,6 @@ test('disable type reuse', async () => {
         }
 
         @rpc.action()
-        @t.type({ total: t.number, items: t.array(Model) })
         testDeep(): { total: number, items: Model[] } {
             return { total: 5, items: [new Model('123')] };
         }

@@ -4,7 +4,6 @@
     "sourceMap": true,
     "declaration": false,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
     "moduleResolution": "node",
     "target": "es2018",
     "module": "CommonJS",
@@ -18,6 +17,7 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@deepkit/template"
   },
+  "reflection": true,
   "includes": [
     "*.ts",
     "*.tsx"

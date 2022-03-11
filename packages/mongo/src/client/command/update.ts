@@ -9,48 +9,44 @@
  */
 
 import { BaseResponse, Command } from './command';
-import { ClassSchema, getClassSchema, t } from '@deepkit/type';
-import { ClassType } from '@deepkit/core';
+import { ReflectionClass, UUID } from '@deepkit/type';
 
-class UpdateResponse extends t.extendClass(BaseResponse, {
-    n: t.number,
-}) {
+interface UpdateResponse extends BaseResponse {
+    n: number;
 }
 
-const updateSchema = t.schema({
-    update: t.string,
-    $db: t.string,
-    updates: t.array({
-        q: t.any,
+interface UpdateSchema {
+    update: string;
+    $db: string;
+    updates: {
+        q: any,
         // maybe in the future support classSchema. But `u` supports update statements https://docs.mongodb.com/manual/reference/operator/update/#id1
-        u: t.any,
-        multi: t.boolean,
-    }),
-    lsid: t.type({id: t.uuid}).optional,
-    txnNumber: t.number.optional,
-    autocommit: t.boolean.optional,
-    startTransaction: t.boolean.optional,
-});
+        u: any,
+        multi: boolean,
+    }[],
+    lsid?: { id: UUID };
+    txnNumber?: number,
+    autocommit?: boolean,
+    startTransaction?: boolean;
+}
 
-export class UpdateCommand<T extends ClassSchema | ClassType> extends Command {
+export class UpdateCommand<T extends ReflectionClass<any>> extends Command {
     constructor(
-        public classSchema: T,
+        public schema: T,
         public updates: { q: any, u: any, multi: boolean }[] = [],
     ) {
         super();
     }
 
     async execute(config, host, transaction): Promise<number> {
-        const schema = getClassSchema(this.classSchema);
-
-        const cmd: any = {
-            update: schema.collectionName || schema.name || 'unknown',
-            $db: schema.databaseSchemaName || config.defaultDb || 'admin',
+        const cmd = {
+            update: this.schema.collectionName || this.schema.name || 'unknown',
+            $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             updates: this.updates
         };
         if (transaction) transaction.applyTransaction(cmd);
 
-        const res = await this.sendAndWait(updateSchema, cmd, UpdateResponse);
+        const res = await this.sendAndWait<UpdateSchema, UpdateResponse>(cmd);
         return res.n;
     }
 

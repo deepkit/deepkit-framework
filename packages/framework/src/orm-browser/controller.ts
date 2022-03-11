@@ -1,4 +1,4 @@
-import { getEnumValues, isArray, isObject } from '@deepkit/core';
+import { isArray, isObject } from '@deepkit/core';
 import { Database, DatabaseAdapter } from '@deepkit/orm';
 import {
     BrowserControllerInterface,
@@ -13,11 +13,11 @@ import {
     SeedDatabase
 } from '@deepkit/orm-browser-api';
 import { rpc } from '@deepkit/rpc';
-import { ClassSchema, jsonSerializer, plainToClass, PropertySchema, serializeSchemas, t } from '@deepkit/type';
 import { SQLDatabaseAdapter } from '@deepkit/sql';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { performance } from 'perf_hooks';
-import { http } from '@deepkit/http';
+import { http, HttpQuery } from '@deepkit/http';
+import { cast, getPartialSerializeFunction, isReferenceType, ReflectionClass, ReflectionKind, resolveClassType, serializer, Type } from '@deepkit/type';
 
 @rpc.controller(BrowserControllerInterface)
 export class OrmBrowserController implements BrowserControllerInterface {
@@ -29,7 +29,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
     }
 
     protected extractDatabaseInfo(db: Database): DatabaseInfo {
-        return new DatabaseInfo(db.name, (db.adapter as DatabaseAdapter).getName(), serializeSchemas([...db.entities]));
+        return new DatabaseInfo(db.name, (db.adapter as DatabaseAdapter).getName(), db.entityRegistry.entities.map(v => v.serializeType()));
     }
 
     protected getDb(dbName: string): Database {
@@ -39,10 +39,10 @@ export class OrmBrowserController implements BrowserControllerInterface {
         throw new Error(`No database ${dbName} found`);
     }
 
-    protected getDbEntity(dbName: string, entityName: string): [Database, ClassSchema] {
+    protected getDbEntity(dbName: string, entityName: string): [Database, ReflectionClass<any>] {
         for (const db of this.databases) {
             if (db.name === dbName) {
-                for (const entity of db.entities) {
+                for (const entity of db.entityRegistry.entities) {
                     if (entity.name === entityName) return [db, entity];
                 }
             }
@@ -52,7 +52,6 @@ export class OrmBrowserController implements BrowserControllerInterface {
     }
 
     @rpc.action()
-    @t.array(DatabaseInfo)
     getDatabases(): DatabaseInfo[] {
         const databases: DatabaseInfo[] = [];
 
@@ -64,7 +63,6 @@ export class OrmBrowserController implements BrowserControllerInterface {
     }
 
     @rpc.action()
-    @t.type(DatabaseInfo)
     getDatabase(name: string): DatabaseInfo {
         for (const db of this.databases) {
             if (db.name === name) return this.extractDatabaseInfo(db);
@@ -91,12 +89,11 @@ export class OrmBrowserController implements BrowserControllerInterface {
     async resetAllTables(name: string): Promise<void> {
         const db = this.findDatabase(name);
         if (db.adapter instanceof SQLDatabaseAdapter) {
-            await db.adapter.createTables([...db.entities.values()]);
+            await db.adapter.createTables(db.entityRegistry);
         }
     }
 
     @rpc.action()
-    @t.any
     async getFakerTypes(): Promise<FakerTypes> {
         const res: FakerTypes = {};
 
@@ -114,11 +111,10 @@ export class OrmBrowserController implements BrowserControllerInterface {
     }
 
     @rpc.action()
-    @t.any
     async getMigrations(name: string): Promise<{ [name: string]: { sql: string[], diff: string } }> {
         const db = this.findDatabase(name);
         if (db.adapter instanceof SQLDatabaseAdapter) {
-            return db.adapter.getMigrations([...db.entities.values()]);
+            return db.adapter.getMigrations(db.entityRegistry);
         }
         return {};
     }
@@ -140,6 +136,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
             }[] = [];
 
             const faker = require('faker');
+
             function fakerValue(path: string, fakerName: string): any {
                 const [p1, p2] = fakerName.split('.');
                 try {
@@ -149,77 +146,70 @@ export class OrmBrowserController implements BrowserControllerInterface {
                 }
             }
 
-            function fake(path: string, property: PropertySchema, propSeed: EntityPropertySeed, callback: (v: any) => any): any {
+            function fake(path: string, property: Type, propSeed: EntityPropertySeed, callback: (v: any) => any): any {
                 if (!propSeed.fake) {
                     if (propSeed.value !== undefined) callback(propSeed.value);
                     return;
                 }
 
-                if (property.isReference) {
-                    if (property.type !== 'class') throw new Error(`${path}: only class properties can be references`);
-                    assignReference.push({ path, entity: property.getResolvedClassSchema().getName(), reference: propSeed.reference, properties: propSeed.properties, callback });
+                if (isReferenceType(property)) {
+                    // if (property.type !== 'class') throw new Error(`${path}: only class properties can be references`);
+                    assignReference.push({
+                        path,
+                        entity: resolveClassType(property).getName(),
+                        reference: propSeed.reference,
+                        properties: propSeed.properties,
+                        callback
+                    });
                     return;
-                } else if (property.isArray) {
+                } else if (property.kind === ReflectionKind.array) {
                     const res: any[] = [];
                     if (!propSeed.array) return res;
                     const range = propSeed.array.max - propSeed.array.min;
-                    const subPath = path + '.' + property.getSubType().name;
                     for (let i = 0; i < Math.ceil(Math.random() * range); i++) {
-                        fake(subPath, property.getSubType(), propSeed.array.seed, (v) => {
+                        fake(path + '.' + i, property.type, propSeed.array.seed, (v) => {
                             res.push(v);
                         });
                     }
 
                     return callback(res);
-                } else if (property.isMap) {
-                    const res: { [name: string]: any } = {};
-                    if (!propSeed.map) return res;
-                    const map = propSeed.map;
-                    const range = propSeed.map.max - propSeed.map.min;
-                    const subPath = path + '.' + property.getSubType().name;
-                    for (let i = 0; i < Math.ceil(Math.random() * range); i++) {
-                        fake(subPath, property.getSubType(), propSeed.map.seed, (v) => {
-                            res[fakerValue(subPath, map.key.faker)] = v;
-                        });
-                    }
-                    return callback(res);
-                } else if (property.type === 'class' || property.type === 'partial') {
-                    const foreignSchema = property.getResolvedClassSchema();
-                    const item = plainToClass(foreignSchema, {});
-                    for (const prop of foreignSchema.getProperties()) {
+                } else if (property.kind === ReflectionKind.class || property.kind === ReflectionKind.objectLiteral) {
+                    const schema = ReflectionClass.from(property);
+                    const item = schema.createDefaultObject();
+                    for (const prop of schema.getProperties()) {
                         if (!propSeed.properties[prop.name]) continue;
 
-                        fake(path + '.' + prop.name, prop, propSeed.properties[prop.name], (v) => {
+                        fake(path + '.' + prop.name, prop.type, propSeed.properties[prop.name], (v) => {
                             item[prop.name] = v;
                         });
                     }
                     return callback(item);
-                } else if (property.type === 'boolean') {
+                } else if (property.kind === ReflectionKind.boolean) {
                     callback(Math.random() > 0.5);
-                } else if (property.type === 'enum') {
-                    const keys = getEnumValues(property.getResolvedClassType());
-                    callback(keys[keys.length * Math.random() | 0]);
+                } else if (property.kind === ReflectionKind.enum) {
+                    const values = property.values;
+                    callback(values[values.length * Math.random() | 0]);
                 } else {
                     return callback(fakerValue(path, propSeed.faker));
                 }
             }
 
-            function create(entity: ClassSchema, properties: { [name: string]: EntityPropertySeed }) {
+            function create(entity: ReflectionClass<any>, properties: { [name: string]: EntityPropertySeed }) {
                 if (!added[entity.getName()]) added[entity.getName()] = [];
 
-                const item = plainToClass(entity, {});
+                const item = entity.createDefaultObject();
 
                 for (const [propName, propSeed] of Object.entries(properties)) {
                     const property = entity.getProperty(propName);
-                    fake(entity.getClassName() + '.' + propName, property, propSeed, (v) => {
+                    fake(entity.getClassName() + '.' + propName, property.type, propSeed, (v) => {
                         item[property.name] = v;
                     });
                 }
 
-                for (const reference of entity.references) {
-                    if (reference.isArray) continue;
-                    if (reference.backReference) continue;
-                    item[reference.name] = db.getReference(reference.getResolvedClassSchema(), item[reference.name]);
+                for (const reference of entity.getReferences()) {
+                    if (reference.isArray()) continue;
+                    if (reference.isBackReference()) continue;
+                    item[reference.name] = db.getReference(reference.getResolvedReflectionClass(), item[reference.name]);
                 }
 
                 session.add(item);
@@ -274,24 +264,17 @@ export class OrmBrowserController implements BrowserControllerInterface {
     }
 
     @http.GET('_orm-browser/query')
-    @t.type({
-        error: t.string.optional,
-        log: t.array(t.string),
-        executionTime: t.number,
-        result: t.any
-    })
-    async httpQuery(@http.query() dbName: string, @http.query() entityName: string, @http.query() query: string): Promise<QueryResult> {
+    async httpQuery(dbName: HttpQuery<string>, entityName: HttpQuery<string>, query: HttpQuery<string>): Promise<QueryResult> {
         const [, entity] = this.getDbEntity(dbName, entityName);
         const res = await this.query(dbName, entityName, query);
         if (isArray(res.result)) {
-            const serialize = jsonSerializer.for(entity);
-            res.result = res.result.map(v => serialize.partialSerialize(v));
+            const partial = getPartialSerializeFunction(entity.type, serializer.deserializeRegistry);
+            res.result = res.result.map(v => partial(v));
         }
         return res;
     }
 
     @rpc.action()
-    @t.any
     async query(dbName: string, entityName: string, query: string): Promise<QueryResult> {
         const res: QueryResult = {
             executionTime: 0,
@@ -320,20 +303,18 @@ export class OrmBrowserController implements BrowserControllerInterface {
     }
 
     @rpc.action()
-    @t.number
-    async getCount(dbName: string, entityName: string, @t.map(t.any) filter: { [name: string]: any }): Promise<number> {
+    async getCount(dbName: string, entityName: string, filter: { [name: string]: any }): Promise<number> {
         const [db, entity] = this.getDbEntity(dbName, entityName);
 
         return await db.query(entity).filter(filter).count();
     }
 
     @rpc.action()
-    @t.any
     async getItems(
         dbName: string,
         entityName: string,
-        @t.map(t.any) filter: { [name: string]: any },
-        @t.map(t.any) sort: { [name: string]: any },
+        filter: { [name: string]: any },
+        sort: { [name: string]: any },
         limit: number,
         skip: number
     ): Promise<{ items: any[], executionTime: number }> {
@@ -344,15 +325,13 @@ export class OrmBrowserController implements BrowserControllerInterface {
     }
 
     @rpc.action()
-    @t.any
     async create(dbName: string, entityName: string): Promise<any> {
         const [db, entity] = this.getDbEntity(dbName, entityName);
-        return plainToClass(entity, {});
+        return entity.createDefaultObject();
     }
 
     @rpc.action()
-    @t.any
-    async commit(@t.any commit: DatabaseCommit) {
+    async commit(commit: DatabaseCommit) {
         // console.log(inspect(commit, false, 2133));
 
         function isNewIdWrapper(value: any): value is { $___newId: number } {
@@ -381,7 +360,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
                     const addedIds = c.addedIds[entityName];
 
                     for (let i = 0; i < added.length; i++) {
-                        addedItems.set(addedIds[i], plainToClass(entity, added[i]));
+                        addedItems.set(addedIds[i], cast(added[i], undefined, undefined, entity.type));
                     }
                 }
 
@@ -394,13 +373,13 @@ export class OrmBrowserController implements BrowserControllerInterface {
 
                         const item = addedItems.get(id);
 
-                        for (const reference of entity.references) {
-                            if (reference.backReference) continue;
+                        for (const reference of entity.getReferences()) {
+                            if (reference.isBackReference()) continue;
 
                             //note, we need to operate on `added` from commit
                             // since `item` from addedItems got already converted and $___newId is lost.
                             const v = add[reference.name];
-                            if (reference.isArray) {
+                            if (reference.isArray()) {
 
                             } else {
                                 if (isNewIdWrapper(v)) {
@@ -410,7 +389,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
                                 } else {
                                     //regular reference to already existing record,
                                     //so convert to reference
-                                    item[reference.name] = db.getReference(reference.getResolvedClassSchema(), item[reference.name]);
+                                    item[reference.name] = db.getReference(reference.getResolvedReflectionClass(), item[reference.name]);
                                 }
                             }
                         }
@@ -428,15 +407,15 @@ export class OrmBrowserController implements BrowserControllerInterface {
                         //todo: convert $set from json to class
                         const $set = change.changes.$set;
                         if (!$set) continue;
-                        for (const reference of entity.references) {
-                            if (reference.backReference) continue;
+                        for (const reference of entity.getReferences()) {
+                            if (reference.isBackReference()) continue;
 
                             const v = $set[reference.name];
                             if (v === undefined) continue;
                             if (isNewIdWrapper(v)) {
                                 $set[reference.name] = addedItems.get(v.$___newId);
                             } else {
-                                $set[reference.name] = db.getReference(reference.getResolvedClassSchema(), $set[reference.name]);
+                                $set[reference.name] = db.getReference(reference.getResolvedReflectionClass(), $set[reference.name]);
                             }
                         }
                         updates.push(query.filter(db.getReference(entity, change.pk)).patchOne(change.changes));

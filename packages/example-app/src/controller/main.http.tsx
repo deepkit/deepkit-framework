@@ -1,18 +1,16 @@
-import 'reflect-metadata';
-import { BodyValidation, HtmlResponse, http, HttpResponse, Redirect, UploadedFile } from '@deepkit/http';
-import { Logger } from '@deepkit/logger';
+import { HtmlResponse, http, HttpBodyValidation, HttpQuery, HttpResponse, Redirect, UploadedFile } from '@deepkit/http';
+import { LoggerInterface } from '@deepkit/logger';
 import { readFile } from 'fs/promises';
 import { SQLiteDatabase, User } from '../database';
-import { sliceClass, t } from '@deepkit/type';
 import { UserList } from '../views/user-list';
 
-class AddUserDto extends sliceClass(User).include('username') {
-    @t imageUpload?: UploadedFile;
+class AddUserDto extends User {
+    imageUpload?: UploadedFile;
 }
 
 @http.controller()
 export class MainController {
-    constructor(protected logger: Logger, protected database: SQLiteDatabase) {
+    constructor(protected logger: LoggerInterface, protected database: SQLiteDatabase) {
     }
 
     @http.GET('/').name('startPage').description('List all users')
@@ -21,20 +19,18 @@ export class MainController {
     }
 
     @http.GET('/api/users')
-    @t.array(User)
-    async users() {
+    async users(): Promise<User[]> {
         return await this.database.query(User).find();
     }
 
     @http.GET('/api/user/:id')
-    @t.type(User)
-    async user(id: number) {
-        return await this.database.query(User).filter({id}).findOne();
+    async user(id: number): Promise<User> {
+        return await this.database.query(User).filter({ id }).findOne();
     }
 
     @http.DELETE('/api/user/:id')
     async deleteUser(id: number) {
-        const res = await this.database.query(User).filter({id}).deleteOne();
+        const res = await this.database.query(User).filter({ id }).deleteOne();
         return res.modified === 1;
     }
 
@@ -45,7 +41,7 @@ export class MainController {
 
     @http.GET('/image/:id')
     async userImage(id: number, response: HttpResponse) {
-        const user = await this.database.query(User).filter({id}).findOne();
+        const user = await this.database.query(User).filter({ id }).findOne();
         if (!user.image) {
             return new HtmlResponse('Not found', 404);
         }
@@ -53,13 +49,13 @@ export class MainController {
     }
 
     @http.POST('/add').description('Adds a new user')
-    async add(@http.body() body: AddUserDto, bodyValidation: BodyValidation) {
-        if (bodyValidation.hasErrors()) return <UserList error={bodyValidation.getErrorMessageForPath('username')}/>;
+    async add(body: HttpBodyValidation<AddUserDto>) {
+        if (!body.valid()) return <UserList error={body.error.getErrorMessageForPath('username')}/>;
 
-        const user = new User(body.username);
-        if (body.imageUpload) {
+        const user = new User(body.value.username);
+        if (body.value.imageUpload) {
             //alternatively, move the file to `var/` and store its path into `user.image` (change it to a string)
-            user.image = await readFile(body.imageUpload.path);
+            user.image = await readFile(body.value.imageUpload.path);
         }
         this.logger.log('New user!', user);
         await this.database.persist(user);
@@ -73,7 +69,7 @@ export class MainController {
     }
 
     @http.GET('/query')
-    async queryParam(@http.query() peter: string) {
+    async queryParam(peter: HttpQuery<string>) {
         return peter;
     }
 }

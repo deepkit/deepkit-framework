@@ -9,35 +9,29 @@
  */
 
 import { BaseResponse, Command } from './command';
-import { ClassSchema, getClassSchema, t } from '@deepkit/type';
-import { ClassType } from '@deepkit/core';
+import { ReflectionClass } from '@deepkit/type';
 
-class Response extends t.extendClass(BaseResponse, {}) {
+interface RequestSchema {
+    create: string;
+    $db: string;
 }
 
-const requestSchema = t.schema({
-    create: t.string,
-    $db: t.string,
-});
-
-export class CreateCollectionCommand<T extends ClassSchema | ClassType> extends Command {
+export class CreateCollectionCommand<T extends ReflectionClass<any>> extends Command {
     constructor(
-        public classSchema: T,
+        public schema: T,
     ) {
         super();
     }
 
-    async execute(config, host, transaction): Promise<Response> {
-        const schema = getClassSchema(this.classSchema);
-
+    async execute(config, host, transaction): Promise<BaseResponse> {
         const cmd: any = {
-            create: schema.collectionName || schema.name || 'unknown',
-            $db: schema.databaseSchemaName || config.defaultDb || 'admin',
+            create: this.schema.collectionName || this.schema.name || 'unknown',
+            $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
         };
 
         // if (transaction) transaction.applyTransaction(cmd);
 
-        return await this.sendAndWait(requestSchema, cmd, Response);
+        return await this.sendAndWait<RequestSchema>(cmd);
     }
 
     needsWritableHost(): boolean {

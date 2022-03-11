@@ -8,44 +8,35 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassSchema, getClassSchema, jsonSerializer, resolvePropertySchema } from '@deepkit/type';
+import { deserialize, ReflectionClass, resolvePath, serialize, serializer } from '@deepkit/type';
 import { ClassType } from '@deepkit/core';
 import './mongo-serializer';
 import { mongoSerializer } from './mongo-serializer';
 import { convertQueryFilter, QueryCustomFields, QueryFieldNames } from '@deepkit/orm';
 import { FilterQuery } from './query.model';
 
-
-/**
- * Takes a mongo filter query and converts its class values to classType's mongo types, so you
- * can use it to send it to mongo.
- */
 export function convertClassQueryToMongo<T, K extends keyof T, Q extends FilterQuery<T>>(
-    classType: ClassType<T>,
+    classType: ReflectionClass<T> | ClassType,
     query: Q,
     fieldNamesMap: QueryFieldNames = {},
     customMapping: { [name: string]: (name: string, value: any, fieldNamesMap: { [name: string]: boolean }) => any } = {},
 ): Q {
-    const serializer = mongoSerializer.for(getClassSchema(classType));
-
-    return convertQueryFilter(classType, query, (convertClassType: ClassSchema, path: string, value: any) => {
-        return serializer.serializeProperty(path, value);
+    const schema = ReflectionClass.from(classType);
+    return convertQueryFilter(schema, query, (convertClassType: ReflectionClass<any>, path: string, value: any) => {
+        const type = resolvePath(path, schema.type);
+        return serialize(value, undefined, mongoSerializer, type);
     }, fieldNamesMap, customMapping);
 }
 
-/**
- * Takes a mongo filter query and converts its plain values to classType's mongo types, so you
- * can use it to send it to mongo.
- */
 export function convertPlainQueryToMongo<T, K extends keyof T>(
     classType: ClassType<T>,
     target: FilterQuery<T>,
     fieldNamesMap: QueryFieldNames = {},
     customMapping: QueryCustomFields = {},
 ): { [path: string]: any } {
-    return convertQueryFilter(classType, target, (convertClassType: ClassSchema, path: string, value: any) => {
-        const property = resolvePropertySchema(convertClassType, path);
-        const classValue = jsonSerializer.deserializeProperty(property, value);
-        return mongoSerializer.serializeProperty(property, classValue);
+    return convertQueryFilter(classType, target, (convertClassType: ReflectionClass<any>, path: string, value: any) => {
+        const type = resolvePath(path, convertClassType.type);
+        const classValue = deserialize(value, undefined, serializer, type);
+        return serialize(classValue, undefined, mongoSerializer, type);
     }, fieldNamesMap, customMapping);
 }

@@ -1,5 +1,5 @@
 import { expect } from '@jest/globals';
-import { entity, isReference, plainToClass, t } from '@deepkit/type';
+import { AutoIncrement, cast, entity, isReferenceInstance, PrimaryKey, Reference, Unique } from '@deepkit/type';
 import { identifier, sql, SQLDatabaseAdapter } from '@deepkit/sql';
 import { DatabaseFactory } from './test';
 import { isDatabaseOf, UniqueConstraintFailure } from '@deepkit/orm';
@@ -9,17 +9,18 @@ Error.stackTraceLimit = 20;
 
 export const variousTests = {
     async testRawQuery(databaseFactory: DatabaseFactory) {
-        const user = t.schema({
-            id: t.number.primary.autoIncrement,
-            username: t.string
-        }, { name: 'test_connection_user' });
+        @entity.name('test_connection_user')
+        class user {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            username!: string;
+        }
 
         const database = await databaseFactory([user]);
 
         if (!isDatabaseOf(database, SQLDatabaseAdapter)) return;
 
-        await database.persist(plainToClass(user, { username: 'peter' }));
-        await database.persist(plainToClass(user, { username: 'marie' }));
+        await database.persist(cast<user>({ username: 'peter' }));
+        await database.persist(cast<user>({ username: 'marie' }));
 
         {
             const result = await database.raw(sql`SELECT count(*) as count
@@ -67,18 +68,20 @@ export const variousTests = {
                                                   FROM ${user}`).findOne();
             expect(result.count).toBe(0);
         }
+        database.disconnect();
     },
     async testRawWhere(databaseFactory: DatabaseFactory) {
-        const user = t.schema({
-            id: t.number.primary.autoIncrement,
-            username: t.string
-        }, { name: 'test_connection_user' });
+        @entity.name('test_connection_user')
+        class user {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            username!: string;
+        }
 
         const database = await databaseFactory([user]);
         if (!isDatabaseOf(database, SQLDatabaseAdapter)) return;
 
         if (isDatabaseOf(database, SQLDatabaseAdapter)) {
-            await database.persist(plainToClass(user, { username: 'peter' }), plainToClass(user, { username: 'marie' }), plainToClass(user, { username: 'mueller' }));
+            await database.persist(cast<user>({ username: 'peter' }), cast<user>({ username: 'marie' }), cast<user>({ username: 'mueller' }));
 
             {
                 const result = await database.query(user).where(sql`id > 1`).findOne();
@@ -107,23 +110,23 @@ export const variousTests = {
 
             {
                 const result = await database.query(user).sqlSelect(sql`count(*) as count`).findOne();
-                console.log('result', result);
                 expect(result.count).toBe(3);
             }
         }
+        database.disconnect();
     },
     async testSelfReference(databaseFactory: DatabaseFactory) {
-        @entity.name('explorer/block').collectionName('blocks')
+        @entity.name('explorer/block').collection('blocks')
         class ExplorerBlock {
-            @t.primary.autoIncrement public id: number = 0;
+            public id: number & PrimaryKey & AutoIncrement = 0;
 
-            @t level: number = 0;
-            @t transactions: number = 0;
+            level: number = 0;
+            transactions: number = 0;
 
             constructor(
-                @t public hash: Uint8Array,
-                @t public created: Date,
-                @t.reference().optional public previous?: ExplorerBlock
+                public hash: Uint8Array,
+                public created: Date,
+                public previous?: ExplorerBlock & Reference
             ) {
             }
         }
@@ -148,20 +151,21 @@ export const variousTests = {
         const blocks = await database.query(ExplorerBlock).sort({ id: 'desc' }).find();
 
         for (const block of blocks) {
-            expect(isReference(block)).toBe(false);
+            expect(isReferenceInstance(block)).toBe(false);
             if (block.previous) {
                 expect(block.previous).toBeInstanceOf(ExplorerBlock);
-                expect(isReference(block.previous)).toBe(true);
+                expect(isReferenceInstance(block.previous)).toBe(true);
             }
             expect(block.level).toBeGreaterThan(0);
         }
+        database.disconnect();
     },
     async transactionSimple(databaseFactory: DatabaseFactory) {
-        @entity.collectionName('users')
+        @entity.collection('users')
         class User {
-            @t.primary.autoIncrement public id: number = 0;
+            public id: number & AutoIncrement & PrimaryKey = 0;
 
-            constructor(@t public username: string) {
+            constructor(public username: string) {
             }
         }
 
@@ -278,13 +282,14 @@ export const variousTests = {
 
             });
         }
+        database.disconnect();
     },
     async uniqueConstraintFailure(databaseFactory: DatabaseFactory) {
-        @entity.collectionName('usersConstraints')
+        @entity.collection('usersConstraints')
         class User {
-            @t.primary.autoIncrement public id: number = 0;
+            public id: number & PrimaryKey & AutoIncrement = 0;
 
-            constructor(@t.index({unique: true}) public username: string) {
+            constructor(public username: string & Unique) {
             }
         }
 
@@ -304,13 +309,14 @@ export const variousTests = {
 
         await expect(async () => {
             await database.persist(new User('Peter2'));
-            await database.query(User).filter({username: 'Peter2'}).patchOne({username: 'Peter'});
+            await database.query(User).filter({ username: 'Peter2' }).patchOne({ username: 'Peter' });
         }).rejects.toThrow(UniqueConstraintFailure);
+        database.disconnect();
     },
     async emptyEntity(databaseFactory: DatabaseFactory) {
         @entity.name('empty-entity')
         class EmptyEntity {
-            @t.primary.autoIncrement id: number = 0;
+            id: number & PrimaryKey & AutoIncrement = 0;
         }
 
         const database = await databaseFactory([EmptyEntity]);

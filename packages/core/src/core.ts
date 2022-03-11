@@ -47,14 +47,6 @@ export type AbstractClassType<T = any> = abstract new (...args: any[]) => T;
 
 export type ExtractClassType<T> = T extends AbstractClassType<infer K> ? K : never;
 
-declare const __forward: unique symbol;
-
-/**
- * This type maintains the actual type, but erases the decoratorMetadata, which is requires in a circular reference for ECMAScript modules.
- * Basically fixes like "ReferenceError: Cannot access 'MyClass' before initialization"
- */
-export type Forward<T> = T & { [__forward]?: true };
-
 /**
  * Returns the class name either of the class definition or of the class of an instance.
  *
@@ -74,7 +66,7 @@ export type Forward<T> = T & { [__forward]?: true };
 export function getClassName<T>(classTypeOrInstance: ClassType<T> | Object): string {
     if (!classTypeOrInstance) return 'undefined';
     const proto = (classTypeOrInstance as any)['prototype'] ? (classTypeOrInstance as any)['prototype'] : classTypeOrInstance;
-    return proto.constructor.name;
+    return proto.constructor.name || 'AnonymousClass';
 }
 
 /**
@@ -103,7 +95,7 @@ export function applyDefaults<T>(classType: ClassType<T>, target: { [k: string]:
 /**
  * Tries to identify the object by normalised result of Object.toString(obj).
  */
-export function typeOf(obj: any) {
+export function identifyType(obj: any) {
     return ((({}).toString.call(obj).match(/\s([a-zA-Z]+)/) || [])[1] || '').toLowerCase();
 }
 
@@ -145,12 +137,15 @@ export function isClassInstance(target: any): boolean {
  * Returns a human readable string representation from the given value.
  */
 export function stringifyValueWithType(value: any): string {
-    if ('string' === typeof value) return `String(${value})`;
-    if ('number' === typeof value) return `Number(${value})`;
-    if ('boolean' === typeof value) return `Boolean(${value})`;
-    if ('function' === typeof value) return `Function ${value.name}`;
-    if (isPlainObject(value)) return `Object ${prettyPrintObject(value)}`;
+    if ('string' === typeof value) return `string(${value})`;
+    if ('number' === typeof value) return `number(${value})`;
+    if ('boolean' === typeof value) return `boolean(${value})`;
+    if ('bigint' === typeof value) return `bigint(${value})`;
+    if (isPlainObject(value)) return `object ${prettyPrintObject(value)}`;
+    if (isArray(value)) return `Array`;
+    if (isClass(value)) return `${getClassName(value)}`;
     if (isObject(value)) return `${getClassName(getClassTypeFromInstance(value))} ${prettyPrintObject(value)}`;
+    if ('function' === typeof value) return `function ${value.name}`;
     if (null === value) return `null`;
     return 'undefined';
 }
@@ -229,7 +224,7 @@ export function isPromise<T>(obj: any | Promise<T>): obj is Promise<T> {
  *
  * @public
  */
-export function isClass(obj: any): obj is ClassType {
+export function isClass(obj: any): obj is AbstractClassType {
     if ('function' === typeof obj) {
         return obj.toString().startsWith('class ') || obj.toString().startsWith('class{');
     }
@@ -253,7 +248,7 @@ export function isObject(obj: any): obj is { [key: string]: any } {
  * @public
  */
 export function isArray(obj: any): obj is any[] {
-    return !!(obj && 'number' === typeof obj.length && 'function' === typeof obj.reduce);
+    return Array.isArray(obj);
 }
 
 /**
@@ -283,14 +278,45 @@ export function isSet(obj: any): boolean {
  * @public
  */
 export function isNumber(obj: any): obj is number {
-    return 'number' === typeOf(obj);
+    return 'number' === identifyType(obj);
 }
+
+/**
+ * Returns true if given value is strictly a numeric string value (or a number).
+ *
+ * ```typescript
+ * isNumeric(12); //true
+ * isNumeric('12'); //true
+ * isNumeric('12.3'); //true
+ * isNumeric('12.3 '); //false
+ * isNumeric('12px'); //false
+ * ```
+ * @public
+ */
+export function isNumeric(s: string | number): boolean {
+    if ('number' === typeof s) return true;
+    let points = 0;
+    for (let i = s.length - 1; i >= 0; i--) {
+        const d = s.charCodeAt(i);
+        if (d === 46) {
+            //46 = .
+            if (points++ > 0) return false;
+            continue;
+        }
+        if (d < 48 || d > 57) return false;
+    }
+    return true;
+}
+
+export const isInteger: (obj: any) => obj is number = Number.isInteger as any || function (obj: any) {
+    return (obj % 1) === 0;
+};
 
 /**
  * @public
  */
 export function isString(obj: any): obj is string {
-    return 'string' === typeOf(obj);
+    return 'string' === identifyType(obj);
 }
 
 /**
@@ -482,7 +508,7 @@ export async function asyncOperation<T>(executor: (resolve: (value: T) => void, 
                 reject(e);
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         mergeStack(error, createStack());
         throw error;
     }
@@ -627,9 +653,9 @@ export function isConstructable(fn: any): boolean {
     } catch (err) {
         return false;
     }
-};
+}
 
-export function isPrototypeOfBase(prototype: ClassType | undefined, base: ClassType): boolean {
+export function isPrototypeOfBase(prototype: AbstractClassType | undefined, base: ClassType): boolean {
     if (!prototype) return false;
     if (prototype === base) return true;
     let currentProto = Object.getPrototypeOf(prototype);
@@ -638,6 +664,12 @@ export function isPrototypeOfBase(prototype: ClassType | undefined, base: ClassT
         currentProto = Object.getPrototypeOf(currentProto);
     }
     return false;
+}
+
+export function getParentClass(classType: ClassType): ClassType | undefined {
+    const parent = Object.getPrototypeOf(classType);
+    if (parent === Object.prototype || Object.getPrototypeOf(parent) === Object.prototype) return;
+    return parent;
 }
 
 declare var v8debug: any;
@@ -657,4 +689,8 @@ export function createDynamicClass(name: string, base?: ClassType): ClassType {
         return new Function(baseName, `return class ${name} extends ${baseName} {}`)(base);
     }
     return new Function(`return class ${name} {}`)();
+}
+
+export function isIterable(value: any): boolean {
+    return isArray(value) || value instanceof Set || value instanceof Map;
 }

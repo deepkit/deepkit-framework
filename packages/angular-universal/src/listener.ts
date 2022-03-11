@@ -11,8 +11,7 @@
 import { HtmlResponse, httpWorkflow, RouteConfig } from '@deepkit/http';
 import { eventDispatcher } from '@deepkit/event';
 import { Logger } from '@deepkit/logger';
-import { inject, injectable } from '@deepkit/injector';
-import { config } from './config';
+import { Config } from './config';
 import { join } from 'path';
 import { readFileSync } from 'fs';
 import { Router } from '@angular/router';
@@ -22,7 +21,6 @@ import { AngularUniversalModule } from './module';
 (global as any).window = global;
 Object.assign(global, domino.createWindow());
 
-@injectable
 export class AngularUniversalListener {
     protected serverModule: any;
     protected renderModule: any;
@@ -37,9 +35,9 @@ export class AngularUniversalListener {
     protected router?: Router;
 
     constructor(
-        @inject(() => AngularUniversalModule) protected module: AngularUniversalModule,
+        protected module: AngularUniversalModule,
         protected logger: Logger,
-        @inject(config) protected fullConfig: typeof config.type,
+        protected fullConfig: Config,
     ) {
         this.indexHtml = readFileSync(join(this.fullConfig.browserPath, 'index.html')).toString('utf8');
     }
@@ -114,7 +112,7 @@ export class AngularUniversalListener {
                     this.routesFound.set(event.url, false);
                     return;
                 }
-            } catch (error) {
+            } catch (error: any) {
                 //we ignore that
                 this.logger.log('Error navigating to Angular route', event.url, error.toString());
             }

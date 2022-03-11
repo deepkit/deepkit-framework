@@ -18,7 +18,7 @@ export class DebugDIController implements Command {
     }
 
     async execute(
-        @flag.optional scope?: string,
+        @flag scope?: string,
     ): Promise<void> {
         const modules = [this.serviceContainer.appModule, ...this.serviceContainer.appModule.getImports()];
 

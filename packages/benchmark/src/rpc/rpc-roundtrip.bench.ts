@@ -8,7 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import 'reflect-metadata';
 import { createRpcMessage, DirectClient, readRpcMessage, rpc, rpcAction, RpcKernel } from '@deepkit/rpc';
 import { BenchSuite } from '../bench';
 

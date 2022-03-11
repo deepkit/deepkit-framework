@@ -8,12 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { CompilerContext, empty, getObjectKeysSize } from '@deepkit/core';
+import { CompilerContext, empty, toFastProperties } from '@deepkit/core';
 import { Changes, changeSetSymbol, ItemChanges } from './changes';
-import { JitStack } from './jit';
-import { ClassSchema, PropertySchema } from './model';
-import { reserveVariable } from './serializer-compiler';
 import { getConverterForSnapshot } from './snapshot';
+import { ReflectionClass } from './reflection/reflection';
+import { ContainerAccessor, getIndexCheck, sortSignatures, TemplateRegistry, TemplateState } from './serializer';
+import { referenceAnnotation, ReflectionKind, Type, TypeIndexSignature } from './reflection/type';
 
 function genericEqualArray(a: any[], b: any[]): boolean {
     if (a.length !== b.length) return false;
@@ -44,7 +44,7 @@ function genericEqualObject(a: { [name: string]: any }, b: { [name: string]: any
  * This is a comparator function for the snapshots. They are either string, number, boolean, array, or objects.
  * No date, moment, or custom classes involved here.
  */
-function genericEqual(a: any, b: any): boolean {
+export function genericEqual(a: any, b: any): boolean {
     //is array, the fast way
     const aIsArray = a && 'string' !== typeof a && 'function' === a.slice && 'number' === typeof a.length;
     const bIsArray = b && 'string' !== typeof b && 'function' === b.slice && 'number' === typeof b.length;
@@ -59,109 +59,122 @@ function genericEqual(a: any, b: any): boolean {
     return a === b;
 }
 
-function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitStack = new JitStack()): (lastSnapshot: any, currentSnapshot: any) => ItemChanges<any> {
+function createJITChangeDetectorForSnapshot(schema: ReflectionClass<any>, stateIn?: TemplateState): (lastSnapshot: any, currentSnapshot: any) => ItemChanges<any> {
     const compiler = new CompilerContext();
-    const prepared = jitStack.prepare(schema);
-    compiler.context.set('genericEqual', genericEqual);
-    compiler.context.set('empty', empty);
-    const props: string[] = [];
+    const state = new TemplateState('', '', compiler, stateIn ? stateIn.registry : new TemplateRegistry(), undefined, stateIn ? stateIn.jitStack : undefined);
+    state.setContext({
+        genericEqual, empty
+    });
+    const lines: string[] = [];
 
     function has(accessor: string): string {
-        return `(changeSet.$inc && '${accessor}' in changeSet.$inc) || (changeSet.$unset && '${accessor}' in changeSet.$unset)`;
+        return `(changeSet.$inc && ${accessor} in changeSet.$inc) || (changeSet.$unset && ${accessor} in changeSet.$unset)`;
     }
 
-    function getComparator(property: PropertySchema, last: string, current: string, accessor: string, changedName: string, onChanged: string, jitStack: JitStack): string {
-        if (property.isArray) {
-            const l = reserveVariable(compiler.context, 'l');
+    function getComparator(type: Type, last: ContainerAccessor, current: ContainerAccessor, accessor: ContainerAccessor, changedName: string, onChanged: string, state: TemplateState): string {
+        if (type.kind === ReflectionKind.array) {
+            const l = compiler.reserveName('l');
+
+            const lastAccessor = new ContainerAccessor(last, l);
+            const currentAccessor = new ContainerAccessor(current, l);
+            const itemAccessor = new ContainerAccessor(accessor, l);
             return `
                 if (!${has(changedName)}) {
                 if (!${current} && !${last}) {
 
                 } else if ((${current} && !${last}) || (!${current} && ${last})) {
-                    changes.${changedName} = item.${changedName};
+                    changes[${changedName}] = item[${changedName}];
                     ${onChanged}
                 } else if (${current}.length !== ${last}.length) {
-                    changes.${changedName} = item.${changedName};
+                    changes[${changedName}] = item[${changedName}];
                     ${onChanged}
                 } else {
                     let ${l} = ${last}.length;
                     ${onChanged ? '' : 'root:'}
                     while (${l}--) {
-                         ${getComparator(property.getSubType(), `${last}[${l}]`, `${current}[${l}]`, `${accessor}[${l}]`, changedName, 'break root;', jitStack)}
+                         ${getComparator(type.type, lastAccessor, currentAccessor, itemAccessor, changedName, 'break root;', state)}
                     }
                 }
                 }
             `;
 
-        } else if (property.isMap || property.isPartial) {
-            compiler.context.set('getObjectKeysSize', getObjectKeysSize);
-            const i = reserveVariable(compiler.context, 'i');
-            return `
-                if (!${has(changedName)}) {
-                if (!${current} && !${last}) {
+            // } else if (type.isMap || type.isPartial) {
+            //     compiler.context.set('getObjectKeysSize', getObjectKeysSize);
+            //     const i = reserveVariable(compiler.context, 'i');
+            //     return `
+            //         if (!${has(changedName)}) {
+            //         if (!${current} && !${last}) {
+            //
+            //         } else if ((${current} && !${last}) || (!${current} && ${last})) {
+            //             changes[${changedName}] = item[${changedName}];
+            //             ${onChanged}
+            //         } else if (getObjectKeysSize(${current}) !== getObjectKeysSize(${last})) {
+            //             changes[${changedName}] = item[${changedName}];
+            //             ${onChanged}
+            //         } else {
+            //             ${onChanged ? '' : 'root:'}
+            //             for (let ${i} in ${last}) {
+            //                 if (!${last}.hasOwnProperty(${i})) continue;
+            //                  ${getComparator(type.getSubType(), `${last}[${i}]`, `${current}[${i}]`, `${accessor}[${i}]`, changedName, 'break root;', jitStack)}
+            //             }
+            //         }
+            //         }
+            //     `;
+        } else if ((type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral) && type.types.length) {
+            const classSchema = ReflectionClass.from(type);
 
-                } else if ((${current} && !${last}) || (!${current} && ${last})) {
-                    changes.${changedName} = item.${changedName};
-                    ${onChanged}
-                } else if (getObjectKeysSize(${current}) !== getObjectKeysSize(${last})) {
-                    changes.${changedName} = item.${changedName};
-                    ${onChanged}
-                } else {
-                    ${onChanged ? '' : 'root:'}
-                    for (let ${i} in ${last}) {
-                        if (!${last}.hasOwnProperty(${i})) continue;
-                         ${getComparator(property.getSubType(), `${last}[${i}]`, `${current}[${i}]`, `${accessor}[${i}]`, changedName, 'break root;', jitStack)}
-                    }
-                }
-                }
-            `;
-        } else if (property.type === 'class') {
-            if (property.isReference) {
+            if (referenceAnnotation.getFirst(type) !== undefined) {
                 const checks: string[] = [];
 
-                for (const primaryField of property.getResolvedClassSchema().getPrimaryFields()) {
+                for (const primaryField of classSchema.getPrimaries()) {
+                    const name = JSON.stringify(primaryField.getNameAsString());
+                    const lastAccessor = new ContainerAccessor(last, name);
+                    const currentAccessor = new ContainerAccessor(current, name);
+                    const itemAccessor = new ContainerAccessor(accessor, name);
                     checks.push(`
-                         ${getComparator(primaryField, `${last}.${primaryField.name}`, `${current}.${primaryField.name}`, `${accessor}.${primaryField.name}`, changedName, onChanged, jitStack)}
+                         ${getComparator(primaryField.type, lastAccessor, currentAccessor, itemAccessor, changedName, onChanged, state)}
                     `);
                 }
-                return `
-                if (!${has(changedName)}) {
-                if (!${current} && !${last}) {
 
-                } else if ((${current} && !${last}) || (!${current} && ${last})) {
-                    changes.${changedName} = item.${changedName};
-                    ${onChanged}
-                } else {
-                    ${checks.join('\n')}
-                }
-                }
-            `;
+                return `
+                    if (!${has(changedName)}) {
+                    if (!${current} && !${last}) {
+
+                    } else if ((${current} && !${last}) || (!${current} && ${last})) {
+                        changes[${changedName}] = item[${changedName}];
+                        ${onChanged}
+                    } else {
+                        ${checks.join('\n')}
+                    }
+                    }
+                `;
             }
 
-            const classSchema = property.getResolvedClassSchema();
-            const jitChangeDetectorThis = compiler.reserveVariable('jitChangeDetector', jitStack.getOrCreate(classSchema, () => createJITChangeDetectorForSnapshot(classSchema, jitStack)));
+            const jitChangeDetectorThis = compiler.reserveVariable('jitChangeDetector', state.jitStack.getOrCreate(state.registry, type, () => {
+                return createJITChangeDetectorForSnapshot(classSchema, state);
+            }));
 
             return `
                 if (!${has(changedName)}) {
                     if (!${current} && !${last}) {
 
                     } else if ((${current} && !${last}) || (!${current} && ${last})) {
-                        changes.${changedName} = item.${changedName};
+                        changes[${changedName}] = item[${changedName}];
                         ${onChanged}
                     } else {
                         const thisChanged = ${jitChangeDetectorThis}.fn(${last}, ${current}, ${accessor});
                         if (!empty(thisChanged)) {
-                            changes.${changedName} = item.${changedName};
+                            changes[${changedName}] = item[${changedName}];
                             ${onChanged}
                         }
                     }
                 }
             `;
-        } else if (property.isBinary || property.type === 'any' || property.type === 'union') {
+        } else if (type.kind === ReflectionKind.any || type.kind === ReflectionKind.never || type.kind === ReflectionKind.union) {
             return `
                 if (!${has(changedName)}) {
                     if (!genericEqual(${last}, ${current})) {
-                        changes.${changedName} = item.${changedName};
+                        changes[${changedName}] = item[${changedName}];
                         ${onChanged}
                     }
                 }
@@ -171,7 +184,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
             return `
             if (!${has(changedName)}) {
                 if (${last} !== ${current}) {
-                    changes.${changedName} = item.${changedName};
+                    changes[${changedName}] = item[${changedName}];
                     ${onChanged}
                 }
             }
@@ -179,11 +192,58 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
         }
     }
 
-    for (const property of schema.getProperties()) {
-        if (property.isParentReference) continue;
-        if (property.backReference) continue;
+    const existing: string[] = [];
 
-        props.push(getComparator(property, `last.${property.name}`, `current.${property.name}`, 'item.' + property.name, property.name, '', jitStack));
+    for (const property of schema.getProperties()) {
+        // if (property.isParentReference) continue;
+        if (property.isBackReference()) continue;
+        const name = JSON.stringify(property.getNameAsString());
+        existing.push(name);
+
+        const lastAccessor = new ContainerAccessor('last', name);
+        const currentAccessor = new ContainerAccessor('current', name);
+        const itemAccessor = new ContainerAccessor('item', name);
+        lines.push(getComparator(property.type, lastAccessor, currentAccessor, itemAccessor, JSON.stringify(property.getNameAsString()), '', state));
+    }
+
+    for (const t of schema.type.types) {
+
+    }
+
+    const signatures = (schema.type.types as Type[]).filter(v => v.kind === ReflectionKind.indexSignature) as TypeIndexSignature[];
+    if (signatures.length) {
+        const i = compiler.reserveName('i');
+        const existingCheck = existing.map(v => `${i} === ${v}`).join(' || ') || 'false';
+        const signatureLines: string[] = [];
+        sortSignatures(signatures);
+
+        const lastAccessor = new ContainerAccessor('last', i);
+        const currentAccessor = new ContainerAccessor('current', i);
+        const itemAccessor = new ContainerAccessor('item', i);
+
+        for (const signature of signatures) {
+            signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)}) {
+            ${getComparator(signature.type, lastAccessor, currentAccessor, itemAccessor, i, '', state)}
+        }`);
+        }
+
+        //the index signature type could be: string, number, symbol.
+        //or a literal when it was constructed by a mapped type.
+        lines.push(`
+        for (const ${i} in current) {
+            if (!current.hasOwnProperty(${i})) continue;
+            if (${existingCheck}) continue;
+            if (false) {} ${signatureLines.join(' ')}
+        }
+
+        for (const ${i} in last) {
+            if (!last.hasOwnProperty(${i})) continue;
+            if (!current.hasOwnProperty(${i})) {
+               changes[${i}] = item[${i}];
+               break;
+            }
+        }
+        `);
     }
 
     compiler.context.set('changeSetSymbol', changeSetSymbol);
@@ -192,7 +252,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
     const functionCode = `
         var changeSet = item[changeSetSymbol] || new ItemChanges(undefined, item);
         var changes = {};
-        ${props.join('\n')}
+        ${lines.join('\n')}
         changeSet.mergeSet(changes);
         return changeSet.empty ? undefined : changeSet;
         `;
@@ -201,8 +261,7 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
 
     try {
         const fn = compiler.build(functionCode, 'last', 'current', 'item');
-        prepared(fn);
-        fn.buildId = schema.buildId;
+        // prepared(fn);
         return fn;
     } catch (error) {
         console.log('functionCode', functionCode);
@@ -212,11 +271,18 @@ function createJITChangeDetectorForSnapshot(schema: ClassSchema, jitStack: JitSt
 
 const changeDetectorSymbol = Symbol('changeDetector');
 
-export function getChangeDetector<T>(classSchema: ClassSchema<T>): (last: any, current: any, item: T) => ItemChanges<T> | undefined {
-    return classSchema.getJit(changeDetectorSymbol, () => createJITChangeDetectorForSnapshot(classSchema));
+export function getChangeDetector<T>(classSchema: ReflectionClass<T>): (last: any, current: any, item: T) => ItemChanges<T> | undefined {
+    const jit = classSchema.getJitContainer();
+    if (jit[changeDetectorSymbol]) return jit[changeDetectorSymbol];
+
+    jit[changeDetectorSymbol] = createJITChangeDetectorForSnapshot(classSchema);
+    toFastProperties(jit);
+
+    return jit[changeDetectorSymbol];
 }
 
-export function buildChanges<T>(classSchema: ClassSchema, lastSnapshot: any, item: T): Changes<T> {
+export function buildChanges<T>(classSchema: ReflectionClass<T>, lastSnapshot: any, item: T): Changes<T> {
     const currentSnapshot = getConverterForSnapshot(classSchema)(item);
-    return getChangeDetector(classSchema)(lastSnapshot, currentSnapshot, item) as Changes<T> || new Changes<T>();
+    const detector = getChangeDetector(classSchema);
+    return detector(lastSnapshot, currentSnapshot, item) as Changes<T> || new Changes<T>();
 }

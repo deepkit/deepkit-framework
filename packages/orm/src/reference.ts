@@ -9,11 +9,11 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { ClassSchema, createReference, getPrimaryKeyHashGenerator, jsonSerializer } from '@deepkit/type';
+import { createReference, getPrimaryKeyHashGenerator, ReflectionClass } from '@deepkit/type';
 import { IdentityMap } from './identity-map';
 
 export function getReference<T>(
-    classSchema: ClassSchema<T>,
+    reflectionClass: ReflectionClass<T>,
     pk: { [name: string]: any },
     identityMap?: IdentityMap,
     pool?: Map<string, T>,
@@ -21,19 +21,19 @@ export function getReference<T>(
 ): T {
     let pkHash = '';
     if (identityMap || pool) {
-        pkHash = getPrimaryKeyHashGenerator(classSchema, jsonSerializer)(pk);
+        pkHash = getPrimaryKeyHashGenerator(reflectionClass)(pk);
         if (pool) {
             const item = pool.get(pkHash);
             if (item) return item;
         }
         if (identityMap) {
-            const item = identityMap.getByHash(classSchema, pkHash);
-            if (item) return item;
+            const item = identityMap.getByHash(reflectionClass, pkHash);
+            if (item) return item as T;
         }
     }
 
-    const ref = createReference(ReferenceClass || classSchema.classType, pk);
+    const ref = createReference(ReferenceClass || reflectionClass, pk);
     if (pool) pool.set(pkHash, ref);
-    if (identityMap) identityMap.store(classSchema, ref);
+    if (identityMap) identityMap.store(reflectionClass, ref);
     return ref;
 }

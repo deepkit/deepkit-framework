@@ -31,7 +31,6 @@ declare namespace JSX {
         'a': ExtractProps<HTMLAnchorElement>;
         'abbr': ExtractProps<HTMLElement>;
         'address': ExtractProps<HTMLElement>;
-        'applet': ExtractProps<HTMLAppletElement>;
         'area': ExtractProps<HTMLAreaElement>;
         'article': ExtractProps<HTMLElement>;
         'aside': ExtractProps<HTMLElement>;

@@ -1,13 +1,13 @@
-import { ClassSchema, PropertySchema } from '@deepkit/type';
 import { EntityPropertySeed, FakerTypes, findFaker } from '@deepkit/orm-browser-api';
+import { isReferenceType, ReflectionClass, ReflectionKind, Type } from '@deepkit/type';
 
-export function autoTypes(fakerTypes: FakerTypes, entity: ClassSchema, properties: { [name: string]: EntityPropertySeed }, visited: Set<ClassSchema> = new Set()) {
-    const autoProperty = (property: PropertySchema, seed: EntityPropertySeed) => {
-        if (property.isArray) {
-            autoProperty(property.getSubType(), seed.getArray().seed);
-        } else if (property.isMap) {
-            autoProperty(property.getSubType(), seed.getMap().seed);
-        } else if (property.type === 'class' && !property.isReference) {
+export function autoTypes(fakerTypes: FakerTypes, entity: ReflectionClass<any>, properties: { [name: string]: EntityPropertySeed }, visited: Set<ReflectionClass<any>> = new Set()) {
+    const autoProperty = (type: Type, propertyName: string, seed: EntityPropertySeed) => {
+        if (type.kind === ReflectionKind.array) {
+            autoProperty(type.type, propertyName, seed.getArray().seed);
+            // } else if (type.isMap) {
+            //     autoProperty(type.getSubType(), seed.getMap().seed);
+        } else if ((type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral) && type.types.length && !isReferenceType(type)) {
             // if (visited.has(property.getResolvedClassSchema())) return;
             // visited.add(property.getResolvedClassSchema());
             //
@@ -18,13 +18,14 @@ export function autoTypes(fakerTypes: FakerTypes, entity: ClassSchema, propertie
             //     seed.properties[prop.name] = new EntityPropertySeed(prop.name);
             //     autoProperty(prop, seed.properties[prop.name]);
             // }
-        } else if (!property.isReference) {
-            seed.faker = findFaker(fakerTypes, property);
+        } else if (!isReferenceType(type)) {
+            seed.faker = findFaker(fakerTypes, propertyName, type);
             seed.fake = !!seed.faker;
+            console.log('faker', propertyName, seed.faker);
         }
     };
 
     for (const [propName, seed] of Object.entries(properties)) {
-        autoProperty(entity.getProperty(propName), seed);
+        autoProperty(entity.getProperty(propName).type, entity.getProperty(propName).name, seed);
     }
 }

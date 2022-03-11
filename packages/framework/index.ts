@@ -12,7 +12,7 @@ export * from './src/session';
 export * from './src/application-server';
 export * from './src/worker';
 export * from './src/database/database-listener';
-export * from './src/database/live-database';
+// export * from './src/database/live-database';
 export * from './src/orm-browser/controller';
 export * from './src/rpc';
 export * from './src/module.config';

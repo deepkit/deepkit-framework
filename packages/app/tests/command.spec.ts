@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import 'reflect-metadata';
 import { App } from '../src/app';
 import { arg, cli, Command } from '../src/command';
 import { ServiceContainer } from '../src/service-container';
@@ -12,16 +11,6 @@ class MyCli implements Command {
         return 'bar' === host ? 0 : 1;
     }
 }
-
-test('command simple', () => {
-    const cliConfig = cli._fetch(MyCli);
-    if (!cliConfig) throw new Error('cliConfig expected');
-
-    expect(cliConfig.name).toBe('my');
-    expect(cliConfig.getArg('host').name).toBe('host');
-    expect(cliConfig.getArg('host').optional).toBe(false);
-    expect(cliConfig.getArg('host').propertySchema!.type).toBe('string');
-});
 
 test('command execute', async () => {
     const app = new App({

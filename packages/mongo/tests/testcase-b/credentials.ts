@@ -1,18 +1,15 @@
-import {Entity, t, uuid} from '@deepkit/type';
-import {User} from './user';
-import {ClassType} from '@deepkit/core';
+import { entity, PrimaryKey, Reference, t, UUID, uuid } from '@deepkit/type';
+import { User } from './user';
 
-@Entity('b-user-credentials')
+@entity.name('b-user-credentials')
 export class UserCredentials {
-    @t.uuid.primary
-    id: string = uuid();
+    id: UUID & PrimaryKey = uuid();
 
     @t password: string = '';
 
     constructor(
         //one-to-one
-        @t.type(() => User).reference()
-        public user: User,
+        public user: User & Reference,
     ) {
     }
 }
