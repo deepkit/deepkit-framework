@@ -1,9 +1,25 @@
-import { test } from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import '../src/optimize-tsx';
+import { isOptimisedHtmlString, parseCode } from '../src/optimize-tsx';
 
 Error.stackTraceLimit = 200;
 
+function getExpression(code: string): any {
+    const node = parseCode(code);
+    return node.body[0].expression;
+}
+
+test('test check functions', () => {
+    expect(isOptimisedHtmlString(getExpression(`utils_1.escape(page).htmlString`))).toBe(true);
+    expect(isOptimisedHtmlString(getExpression(`(0, utils_1.escape)(page).htmlString`))).toBe(true);
+    expect(isOptimisedHtmlString(getExpression(`(0, utils_1.nope)(page).htmlString`))).toBe(false);
+});
+
 test('template test', async () => {
+    // console.dir(parseCode(`utils_1.escape(page).htmlString`), { depth: null });
+    // console.dir(parseCode(`(0, utils_1.escape)(page).htmlString`), { depth: null });
+    // console.dir(parseCode(`jsx_runtime_1.jsx()`), { depth: null });
+    // console.dir(parseCode(`(0, jsx_runtime_1.jsx)()`), { depth: null });
     // console.dir(parseCode(`'a' + props.children + 'b'`), { depth: null });
     // console.dir(parseCode(`'a' + this.children + 'b'`), { depth: null });
     // console.dir(parseCode(`jsx.safe('a')`), { depth: null });

@@ -134,7 +134,6 @@ test('template jsx for esm optimize', async () => {
     );
 });
 
-
 test('template jsx for cjs convert to createElement', async () => {
     expect(normalize(convertJsxCodeToCreateElement(`jsx_runtime_1.jsx("div", { id: "123" }, void 0);`))).toBe(
         `jsx_runtime_1.createElement("div", {id: "123"});`
@@ -168,6 +167,21 @@ test('template jsx for cjs convert to createElement', async () => {
 
     expect(normalize(convertJsxCodeToCreateElement(`jsx_runtime_1.jsx('div', {children: this.config.get('TEST') }, void 0);`))).toBe(
         `jsx_runtime_1.createElement("div", {}, this.config.get("TEST"));`
+    );
+
+    //since v4.6 `void 0` is removed
+    expect(normalize(convertJsxCodeToCreateElement(`jsx_runtime_1.jsx('div', {children: this.config.get('TEST') });`))).toBe(
+        `jsx_runtime_1.createElement("div", {}, this.config.get("TEST"));`
+    );
+
+    //since v4.4 calls to exported functions have no `this` anymore, so (0, x)() is used.
+    expect(normalize(convertJsxCodeToCreateElement(`(0, jsx_runtime_1.jsx)("div", {}, void 0);`))).toBe(
+        `jsx_runtime_1.createElement("div", {});`
+    );
+
+    // //since v4.4 calls to exported functions have no this anymore, so (0, x)() is used.
+    expect(normalize(convertJsxCodeToCreateElement(`(0, jsx_runtime_1.jsx)("div", { children: (0, jsx_runtime_1.jsx)(Sub, {}, void 0) }, void 0)`))).toBe(
+        `jsx_runtime_1.createElement("div", {}, jsx_runtime_1.createElement(Sub, {}));`
     );
 });
 
@@ -317,6 +331,7 @@ test('sub call be unwrapped', async () => {
         return <div><Sub/></div>;
     }
 
+    console.log(Comp.toString());
     expect(optimizeJSX(Comp.toString())).toContain(
         `[{
       [jsx_runtime_1.safeString]: "<div>"

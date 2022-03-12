@@ -114,12 +114,39 @@ function isPattern(e: Node): e is ObjectPattern | ArrayPattern | RestElement | A
     return e.type === 'ArrayPattern' || e.type === 'ObjectPattern' || e.type === 'AssignmentPattern' || e.type === 'RestElement' || e.type === 'MemberExpression';
 }
 
-function isCjsJSXCall(node: any): boolean {
-    return node.type === 'CallExpression' && (node.callee.property?.name === 'jsx' || node.callee.property?.name === 'jsxs');
+//jsx_runtime_1.jsx()
+function isCjsJSXCall(node: Node): boolean {
+    if (node.type === 'CallExpression' && node.callee.type === 'MemberExpression') {
+        const expression = node.callee;
+        return expression.property && expression.property.type === 'Identifier' && (expression.property.name === 'jsx' || expression.property?.name === 'jsxs');
+    }
+    return false;
 }
 
-function isESMJSXCall(node: any): boolean {
-    return node.type === 'CallExpression' && (node.callee.name === '_jsx' || node.callee.name === '_jsxs');
+function unwrapCallExpression(node: Node): MemberExpression | Identifier | undefined {
+    if (node.type === 'CallExpression' && node.callee.type === 'SequenceExpression'
+        && node.callee.expressions[0] && node.callee.expressions[0].type === 'Literal' && node.callee.expressions[0].value === 0
+        && node.callee.expressions[1]) {
+        if (node.callee.expressions[1].type === 'MemberExpression') return node.callee.expressions[1];
+        if (node.callee.expressions[1].type === 'Identifier') return node.callee.expressions[1];
+    }
+    if (node.type === 'CallExpression' && node.callee.type === 'MemberExpression') {
+        return node.callee;
+    }
+    return;
+}
+
+//(0, jsx_runtime_1.jsx)
+function isAvoidedThisCjsJSXCall(node: Node): boolean {
+    const expression = unwrapCallExpression(node);
+    if (expression && expression.type === 'MemberExpression') {
+        return !!expression.property && expression.property.type === 'Identifier' && (expression.property.name === 'jsx' || expression.property?.name === 'jsxs');
+    }
+    return false;
+}
+
+function isESMJSXCall(node: Node): boolean {
+    return node.type === 'CallExpression' && node.callee.type === 'Identifier' && (node.callee.name === '_jsx' || node.callee.name === '_jsxs');
 }
 
 /**
@@ -424,6 +451,7 @@ function normalizeLastStep(e: Expression): Expression {
 
     return e;
 }
+
 function toOptimisedArrayExpression(expressions: ConcatableType[]): ArrayExpression {
     const arrayExpression: OptimisedArrayExpression = {
         type: 'ArrayExpression',
@@ -579,17 +607,19 @@ function isHtmlCall(object: Expression | SpreadElement): boolean {
 }
 
 function getHtmlCallArg(e: Expression | SpreadElement): Expression | undefined {
-    if (e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
-        && e.callee.object.type === 'Identifier' && e.callee.object.name === '_jsx'
-        && e.callee.property.type === 'Identifier' && e.callee.property.name === 'html'
+    const expression = unwrapCallExpression(e);
+    if (!expression) return;
+    if (e.type === 'CallExpression' && expression.type === 'MemberExpression'
+        && expression.object.type === 'Identifier' && expression.object.name === '_jsx'
+        && expression.property.type === 'Identifier' && expression.property.name === 'html'
         && e.arguments[0]) return unwrapSpread(e.arguments[0]);
 
-    if (e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
-        && e.callee.object.type === 'Identifier'
-        && e.callee.property.type === 'Identifier' && e.callee.property.name === 'html'
+    if (e.type === 'CallExpression' && expression.type === 'MemberExpression'
+        && expression.object.type === 'Identifier'
+        && expression.property.type === 'Identifier' && expression.property.name === 'html'
         && e.arguments[0]) return unwrapSpread(e.arguments[0]);
 
-    if (e.type === 'CallExpression' && e.callee.type === 'Identifier' && e.callee.name === 'html' && e.arguments[0]) {
+    if (e.type === 'CallExpression' && expression.type === 'Identifier' && expression.name === 'html' && e.arguments[0]) {
         return unwrapSpread(e.arguments[0]);
     }
 
@@ -601,17 +631,20 @@ function isSafeCall(object: Expression | SpreadElement): boolean {
 }
 
 function getSafeCallArg(e: Expression | SpreadElement): Expression | undefined {
-    if (e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
-        && e.callee.object.type === 'Identifier' && e.callee.object.name === '_jsx'
-        && e.callee.property.type === 'Identifier' && e.callee.property.name === 'safe'
+    const expression = unwrapCallExpression(e);
+    if (!expression) return;
+
+    if (e.type === 'CallExpression' && expression.type === 'MemberExpression'
+        && expression.object.type === 'Identifier' && expression.object.name === '_jsx'
+        && expression.property.type === 'Identifier' && expression.property.name === 'safe'
         && e.arguments[0]) return unwrapSpread(e.arguments[0]);
 
-    if (e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
-        && e.callee.object.type === 'Identifier'
-        && e.callee.property.type === 'Identifier' && e.callee.property.name === 'safe'
+    if (e.type === 'CallExpression' && expression.type === 'MemberExpression'
+        && expression.object.type === 'Identifier'
+        && expression.property.type === 'Identifier' && expression.property.name === 'safe'
         && e.arguments[0]) return unwrapSpread(e.arguments[0]);
 
-    if (e.type === 'CallExpression' && e.callee.type === 'Identifier' && e.callee.name === 'safe' && e.arguments[0]) {
+    if (e.type === 'CallExpression' && expression.type === 'Identifier' && expression.name === 'safe' && e.arguments[0]) {
         return unwrapSpread(e.arguments[0]);
     }
 
@@ -662,28 +695,40 @@ function toSafeString(jsxRuntime: string, e: Expression): ObjectExpression {
 }
 
 function isEscapeCall(e: Expression | SpreadElement): boolean {
-    return e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
-        && e.callee.object.type === 'Identifier'
-        && e.callee.property.type === 'Identifier'
-        && (e.callee.property.name === 'escape' || e.callee.property.name === 'escapeAttribute')
+    const expression = unwrapCallExpression(e);
+    if (!expression) return false;
+
+    return e.type === 'CallExpression' && expression.type === 'MemberExpression'
+        && expression.object.type === 'Identifier'
+        && expression.property.type === 'Identifier'
+        && (expression.property.name === 'escape' || expression.property.name === 'escapeAttribute')
         ;
 }
 
-function isOptimisedHtmlString(e: Expression | SpreadElement): boolean {
-    return e.type === 'MemberExpression' && e.object.type === 'CallExpression' && e.object.callee.type === 'MemberExpression'
-        && e.object.callee.property.type === 'Identifier' && e.object.callee.property.name === 'escape'
+export function isOptimisedHtmlString(e: Expression | SpreadElement): boolean {
+    //utils_1.escape(page).htmlString
+    //or (0, utils_1.escape)(page).htmlString
+    if (e.type !== 'MemberExpression') return false;
+    const expression = unwrapCallExpression(e.object);
+    if (!expression) return false;
+
+    return expression.type === 'MemberExpression'
+        && expression.property.type === 'Identifier' && expression.property.name === 'escape'
         && e.property.type === 'Identifier' && e.property.name === 'htmlString';
 }
 
 function isUserEscapeCall(e: Expression | SpreadElement): boolean {
-    if (e.type === 'CallExpression' && e.callee.type === 'MemberExpression'
-        && e.callee.object.type === 'Identifier'
-        && e.callee.property.type === 'Identifier'
-        && (e.callee.property.name === 'escape')) {
+    const expression = unwrapCallExpression(e);
+    if (!expression) return false;
+
+    if (e.type === 'CallExpression' && expression.type === 'MemberExpression'
+        && expression.object.type === 'Identifier'
+        && expression.property.type === 'Identifier'
+        && (expression.property.name === 'escape')) {
         return true;
     }
 
-    return e.type === 'CallExpression' && e.callee.type === 'Identifier' && e.callee.name === 'escape' && e.arguments[0] !== undefined;
+    return e.type === 'CallExpression' && expression.type === 'Identifier' && expression.name === 'escape' && e.arguments[0] !== undefined;
 }
 
 function extractChildrenFromObjectExpressionProperties(props: Array<Property | SpreadElement>): Expression | undefined {
@@ -747,10 +792,11 @@ function extractBinaryExpressions(e: BinaryExpression, expressions?: Expression[
  */
 function convertNodeToCreateElement(node: Expression): Expression {
     if (node.type !== 'CallExpression') return node;
-    const isCJS = isCjsJSXCall(node);
+    let isCJS = isCjsJSXCall(node);
+    const isAvoidedCJS = isAvoidedThisCjsJSXCall(node);
     const isESM = isESMJSXCall(node);
 
-    if (!isCJS && !isESM) return node;
+    if (!isCJS && !isESM && !isAvoidedCJS) return node;
 
     if (isESM) {
         //rewrite to _jsx.createElement
@@ -760,8 +806,19 @@ function convertNodeToCreateElement(node: Expression): Expression {
             computed: false,
             property: { type: 'Identifier', name: 'createElement' }
         } as MemberExpression;
-    } else {
-        if (node.callee.type === 'MemberExpression' && node.callee.property.type === 'Identifier') node.callee.property.name = 'createElement';
+    } else if (isAvoidedCJS) {
+        //convert (0, x)() to x()
+        if (node.type === 'CallExpression' && node.callee.type === 'SequenceExpression') {
+            const expression = node.callee.expressions[1];
+            node.callee = expression;
+            isCJS = true;
+        }
+    }
+
+    if (isCJS) {
+        if (node.callee.type === 'MemberExpression' && node.callee.property.type === 'Identifier') {
+            node.callee.property.name = 'createElement';
+        }
     }
 
     node.arguments.splice(2); //remove void 0
@@ -814,7 +871,7 @@ export function optimizeJSX(code: string): string {
     const tree = parse(code);
 
     replace(tree, (node: any) => {
-        if (isESMJSXCall(node) || isCjsJSXCall(node)) {
+        if (isESMJSXCall(node) || isCjsJSXCall(node) || isAvoidedThisCjsJSXCall(node)) {
             return optimizeNode(convertNodeToCreateElement(node), true);
         }
         return node;
@@ -827,8 +884,7 @@ export function convertJsxCodeToCreateElement(code: string): string {
     const tree = parse(code);
 
     replace(tree, (node: any) => {
-
-        if (isESMJSXCall(node) || isCjsJSXCall(node)) {
+        if (isESMJSXCall(node) || isCjsJSXCall(node) || isAvoidedThisCjsJSXCall(node)) {
             return convertNodeToCreateElement(node);
         }
         return node;

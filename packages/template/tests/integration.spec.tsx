@@ -12,11 +12,20 @@ function normalize(string: string): string {
 }
 
 function optimiseFn(fn: Function): Function {
-    const code = 'function ' + fn.toString();
+    let code = fn.toString();
+    if (!code.startsWith('function ')) code = 'function ' + code;
     try {
-        return eval('(' + optimizeJSX(code) + ')');
-    } catch (error) {
-        throw new Error(`Could not optimise code ${code} error: ${error}`);
+        const optimised = optimizeJSX(code);
+        try {
+            return eval('(' + optimised + ')');
+        } catch (error) {
+            throw new Error(`Could not run optimised code ${optimised}. error: ${error}`);
+        }
+    } catch (error: any) {
+        if (error && 'string' === typeof error.message && !error.message.includes('Could not run optimised code')) {
+            throw new Error(`Could not optimise code ${code}. error: ${error}`);
+        }
+        throw error;
     }
 }
 
@@ -81,7 +90,7 @@ const tests: { t: Function, contains?: string, result: string }[] = [
             const page = '<h1>Hello World';
             return <title>{escape(page)}</title>;
         },
-        contains: `"<title>" + utils_1.escape(page).htmlString + "</title>"`,
+        contains: `"<title>" + (0, utils_1.escape)(page).htmlString + "</title>"`,
         result: '<title>&lt;h1&gt;Hello World</title>'
     },
     {
@@ -89,7 +98,7 @@ const tests: { t: Function, contains?: string, result: string }[] = [
             const page = '<h1>Hello World';
             return <html lang="en"><title>{escape(page)}</title></html>;
         },
-        contains: `"<html lang=\\"en\\"><title>" + utils_1.escape(page).htmlString + "</title></html>"`,
+        contains: `"<html lang=\\"en\\"><title>" + (0, utils_1.escape)(page).htmlString + "</title></html>"`,
         result: '<html lang="en"><title>&lt;h1&gt;Hello World</title></html>'
     },
     {
@@ -130,10 +139,12 @@ const tests: { t: Function, contains?: string, result: string }[] = [
             class Peter {
                 constructor(protected props: {}, protected children: any) {
                 }
+
                 render() {
                     return <div>{this.children}</div>;
                 }
             }
+
             const page = '<h1>Hello World';
             return <html lang="en"><Peter><h1>{page}</h1></Peter></html>;
         },
@@ -145,10 +156,12 @@ const tests: { t: Function, contains?: string, result: string }[] = [
             class Peter {
                 constructor(protected props: {}, protected children: any) {
                 }
+
                 render() {
                     return <div>{this.children}</div>;
                 }
             }
+
             const page = '<h1>Hello World';
             return <html lang="en"><Peter>{page}</Peter></html>;
         },
@@ -157,25 +170,26 @@ const tests: { t: Function, contains?: string, result: string }[] = [
     },
     {
         t() {
-            const users: {id: number, username: string}[] = [{id: 1, username: 'peter1'}, {id: 2, username: 'peter2'}];
+            const users: { id: number, username: string }[] = [{ id: 1, username: 'peter1' }, { id: 2, username: 'peter2' }];
             const user = users[0];
-            return <tr><td>{user.username}</td>
+            return <tr>
+                <td>{user.username}</td>
                 <td><img src={'/image/' + user.id}/></td>
-            </tr>
+            </tr>;
         },
         contains: `[{[jsx_runtime_1.safeString]: "<tr><td>"}, user.username, {[jsx_runtime_1.safeString]: "</td><td><img src=\\""}, jsx_runtime_1.escapeAttribute("/image/" + user.id), {[jsx_runtime_1.safeString]: "\\"/></td></tr>"}]`,
         result: '<tr><td>peter1</td><td><img src="/image/1"/></td></tr>'
     },
     {
         t() {
-            const users: {id: number, username: string}[] = [{id: 1, username: 'peter1'}, {id: 2, username: 'peter2'}];
+            const users: { id: number, username: string }[] = [{ id: 1, username: 'peter1' }, { id: 2, username: 'peter2' }];
 
             return <table class="pretty">
                 {users.map(user => <tr>
                     <td><strong>{user.username}</strong></td>
                     <td><img class="user-image" src={'/image/' + user.id}/></td>
                 </tr>)}
-            </table>
+            </table>;
         },
         // contains: `"<html lang=\\"en\\"><title>" + page + "</title></html>"`,
         result: '<table class="pretty"><tr><td><strong>peter1</strong></td><td><img class="user-image" src="/image/1"/></td></tr><tr><td><strong>peter2</strong></td><td><img class="user-image" src="/image/2"/></td></tr></table>'
