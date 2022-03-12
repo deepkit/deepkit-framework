@@ -68,8 +68,7 @@ jobs:
             packages/sqlite/tsconfig.json \
             packages/topsort/tsconfig.json \
             packages/type/tsconfig.json \
-            packages/type-spec/tsconfig.json \
-            packages/type-angular/tsconfig.json;
+            packages/type-spec/tsconfig.json
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
         run: |
@@ -92,8 +91,7 @@ jobs:
             packages/template/ \
             packages/stopwatch/ \
             packages/workflow/ \
-            packages/type/ \
-            packages/type-angular/
+            packages/type/
       - name: Send coverage
         run: ./node_modules/.bin/codecov -f coverage/*.json
 

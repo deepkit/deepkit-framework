@@ -19,15 +19,20 @@ function getCode(deepkitDistPath: string, varName: string, id: string): string {
     return `
         //${getPatchId(id)}
         try {
-        var typeTransformer = require('@deepkit/type-compiler');
-        if (typeTransformer) {
-            if (!customTransformers) ${varName} = {};
-            if (!${varName}.before) ${varName}.before = [];
-            if (!${varName}.before.includes(typeTransformer.transformer)) ${varName}.before.push(typeTransformer.transformer);
+            var typeTransformer;
+            try {
+                typeTransformer = require('@deepkit/type-compiler');
+            } catch (error) {
+                typeTransformer = require('${deepkitDistPath}');
+            }
+            if (typeTransformer) {
+                if (!customTransformers) ${varName} = {};
+                if (!${varName}.before) ${varName}.before = [];
+                if (!${varName}.before.includes(typeTransformer.transformer)) ${varName}.before.push(typeTransformer.transformer);
 
-            if (!${varName}.afterDeclarations) ${varName}.afterDeclarations = [];
-            if (!${varName}.afterDeclarations.includes(typeTransformer.declarationTransformer)) ${varName}.afterDeclarations.push(typeTransformer.declarationTransformer);
-        }
+                if (!${varName}.afterDeclarations) ${varName}.afterDeclarations = [];
+                if (!${varName}.afterDeclarations.includes(typeTransformer.declarationTransformer)) ${varName}.afterDeclarations.push(typeTransformer.declarationTransformer);
+            }
         } catch (e) {
             console.error('failed loading @deepkit/type transformer: ' + e);
         }
