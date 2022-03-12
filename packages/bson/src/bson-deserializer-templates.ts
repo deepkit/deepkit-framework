@@ -23,7 +23,6 @@ import {
     ReflectionKind,
     RuntimeCode,
     sortSignatures,
-    stringifyType,
     TemplateState,
     Type,
     TypeClass,
@@ -394,9 +393,6 @@ export function deserializeTuple(type: TypeTuple, state: TemplateState) {
     }
 
     state.addCode(`
-        /*
-            Deserialize tuple: ${stringifyType(type)}
-        */
         if (state.elementType && state.elementType !== ${BSONType.ARRAY}) ${throwInvalidBsonType({ kind: ReflectionKind.array, type: type }, state)}
         {
             var ${result} = [];
@@ -504,9 +500,6 @@ export function bsonTypeGuardTuple(type: TypeTuple, state: TemplateState) {
     }
 
     state.addCode(`
-        /*
-            Type guard tuple: ${stringifyType(type)}
-        */
         let ${valid} = state.elementType && state.elementType === ${BSONType.ARRAY};
         if (${valid}){
             let ${length} = 0;
@@ -543,9 +536,6 @@ export function deserializeArray(elementType: Type, state: TemplateState) {
     state.setContext({ digitByteSize });
 
     state.addCode(`
-        /*
-            Deserialize array: ${stringifyType(elementType)}
-        */
         if (state.elementType && state.elementType !== ${BSONType.ARRAY}) ${throwInvalidBsonType({ kind: ReflectionKind.array, type: elementType }, state)}
         {
             var ${result} = [];
@@ -583,9 +573,6 @@ export function bsonTypeGuardArray(elementType: Type, state: TemplateState) {
     const typeGuardCode = executeTemplates(state.fork(v, '').extendPath(new RuntimeCode(i)), elementType);
 
     state.addCode(`
-        /*
-            Type guard for array: ${stringifyType(elementType)}
-        */
         ${state.setter} = state.elementType && state.elementType === ${BSONType.ARRAY};
 
         if (${state.setter}) {
