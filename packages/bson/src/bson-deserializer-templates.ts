@@ -823,9 +823,6 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
     // }
 
     state.addCode(`
-        /*
-            Deserialize object: ${stringifyType(type)}
-        */
         if (state.elementType && state.elementType !== ${BSONType.OBJECT}) ${throwInvalidBsonType(type, state)}
         var ${object} = ${initializeObject};
         ${handleEmbeddedClasses.map(v => `const ${v.containerVar} = {};`).join('\n')}
@@ -970,9 +967,6 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
     state.setContext({ seekElementSize });
 
     state.addCode(`
-        /*
-            Deserialize object: ${stringifyType(type)}
-        */
         ${state.setter} = state.elementType && state.elementType === ${BSONType.OBJECT};
         if (${state.setter}) {
             let ${valid} = true;
