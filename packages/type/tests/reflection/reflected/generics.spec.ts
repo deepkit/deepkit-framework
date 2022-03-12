@@ -138,7 +138,7 @@ test('infer T from class', () => {
     expect(type.types).toMatchObject([
         { kind: ReflectionKind.property, name: 'typeNarrow', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.literal, literal: 'abc' }, } as Type,
         { kind: ReflectionKind.property, name: 'type', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string }, } as Type,
-    ]);
+    ] as any);
 });
 
 test('T as tuple rest', () => {

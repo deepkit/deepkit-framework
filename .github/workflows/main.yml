@@ -43,6 +43,7 @@ jobs:
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Build
         run: |
+          npm run install-compiler
           ./node_modules/.bin/tsc --build \
             packages/angular-universal/tsconfig.json \
             packages/api-console-module/tsconfig.json \
@@ -67,6 +68,7 @@ jobs:
             packages/sqlite/tsconfig.json \
             packages/topsort/tsconfig.json \
             packages/type/tsconfig.json \
+            packages/type-spec/tsconfig.json \
             packages/type-angular/tsconfig.json;
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
@@ -134,6 +136,7 @@ jobs:
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Build
         run: |
+          npm run install-compiler
           ./node_modules/.bin/tsc --build packages/postgres/tsconfig.json;
           ./node_modules/.bin/npm-local-development --no-watcher
 
@@ -181,6 +184,7 @@ jobs:
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Build
         run: |
+          npm run install-compiler
           ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
@@ -217,6 +221,7 @@ jobs:
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Build
         run: |
+          npm run install-compiler
           ./node_modules/.bin/tsc --build packages/sqlite/tsconfig.json
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
@@ -266,6 +271,7 @@ jobs:
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Build
         run: |
+          npm run install-compiler
           ./node_modules/.bin/tsc --build packages/mongo/tsconfig.json
           ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test

@@ -503,8 +503,6 @@ export class ReflectionTransformer {
             return sourceFile;
         }
 
-        console.log('transformSourceFile', sourceFile.fileName);
-
         if (sourceFile.kind !== SyntaxKind.SourceFile) {
             const path = require.resolve('typescript');
             throw new Error(`Invalid TypeScript library imported. SyntaxKind different ${sourceFile.kind} !== ${SyntaxKind.SourceFile}. typescript package path: ${path}`);

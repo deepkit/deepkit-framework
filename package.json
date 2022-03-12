@@ -13,6 +13,7 @@
     "build": "tsc --build tsconfig.json packages/type-compiler && tsc --build tsconfig.json && tsc --build tsconfig.esm.json && lerna run build",
     "build:esm": "tsc --build tsconfig.esm.json",
     "tsc": "tsc --build",
+    "install-compiler": "tsc --build packages/type-compiler/tsconfig.json && node packages/type-compiler/dist/cjs/install-transformer.js",
     "tsc-watch": "tsc --build --watch",
     "tsc-watch:esm": "tsc --build --watch tsconfig.esm.json",
     "clean": "find packages/*/dist/* ! -name 'package.json' -type f -exec rm -f {} +",
