@@ -65,7 +65,7 @@ import { hasCircularReference, ReflectionClass, ReflectionProperty } from './ref
 import { extendTemplateLiteral, isExtendable } from './reflection/extends';
 import { resolveRuntimeType } from './reflection/processor';
 import { createReference, isReferenceHydrated, isReferenceInstance } from './reference';
-import { ValidationFailedItem } from './validator';
+import { ValidationError, ValidationErrorItem } from './validator';
 import { validators } from './validators';
 import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core';
 
@@ -205,7 +205,7 @@ export function createSerializeFunction(type: Type, registry: TemplateRegistry, 
     return compiler.build(code, 'data', 'state');
 }
 
-export type Guard = (data: any, state?: { errors?: ValidationFailedItem[] }) => boolean;
+export type Guard = (data: any, state?: { errors?: ValidationErrorItem[] }) => boolean;
 
 export function createTypeGuardFunction(type: Type, state?: TemplateState, serializerToUse?: Serializer): undefined | Guard {
     const compiler = new CompilerContext();
@@ -426,14 +426,14 @@ export class TemplateState {
     }
 
     assignValidationError(code: string, message: string) {
-        this.setContext({ ValidationFailedItem });
-        return `if (state.errors) state.errors.push(new ValidationFailedItem(${collapsePath(this.path)}, ${JSON.stringify(code)}, ${JSON.stringify(message)}));`;
+        this.setContext({ ValidationErrorItem: ValidationErrorItem });
+        return `if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(this.path)}, ${JSON.stringify(code)}, ${JSON.stringify(message)}));`;
     }
 
     throwCode(type: Type | string, error?: string, accessor: string | ContainerAccessor = this.originalAccessor) {
-        this.setContext({ SerializationError, stringifyValueWithType });
+        this.setContext({ ValidationError, stringifyValueWithType });
         const to = JSON.stringify(('string' === typeof type ? type : stringifyType(type)).replace(/\n/g, '').replace(/\s+/g, ' ').trim());
-        return `throw new SerializationError('Cannot convert ' + ${accessor} + ' to ' + ${to} ${error ? ` + '. ' + ${error}` : ''}, ${collapsePath(this.path)});`;
+        return `throw ValidationError.from([{code: 'type', path: ${collapsePath(this.path)}, message: 'Cannot convert ' + ${accessor} + ' to ' + ${to} ${error ? ` + '. ' + ${error}` : ''} }])`;
     }
 
     /**
@@ -1276,7 +1276,7 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             customValidatorCall = `
             if (${state.setter}) {
                 ${resVar} = ${state.accessor}[${method}]();
-                if (${resVar} && state.errors) state.errors.push(new ValidationFailedItem(${resVar}.path || ${collapsePath(state.path)}, ${resVar}.code, ${resVar}.message));
+                if (${resVar} && state.errors) state.errors.push(new ValidationErrorItem(${resVar}.path || ${collapsePath(state.path)}, ${resVar}.code, ${resVar}.message));
             }
             `;
         }
@@ -1421,8 +1421,9 @@ function typeGuardTuple(type: TypeTuple, state: TemplateState) {
             }
             `);
         } else {
+            const optionalCheck = member.optional ? `${state.accessor}[${i}] !== undefined` : 'true';
             lines.push(`
-            if (${v}) {
+            if (${v} && ${optionalCheck}) {
                 ${executeTemplates(state.fork(v, new ContainerAccessor(state.accessor, i)).extendPath(member.name || new RuntimeCode(i)), member.type)}
                 ${i}++;
             }
@@ -2060,28 +2061,28 @@ export class Serializer {
                 const args = validation.args;
 
                 if (name === 'function') {
-                    state.setContext({ ValidationFailedItem });
+                    state.setContext({ ValidationErrorItem: ValidationErrorItem });
                     const validatorVar = state.setVariable('validator', (args[0] as TypeFunction).function);
                     state.addCode(`
                         {
                             let error = ${validatorVar}(${state.originalAccessor}, ${state.compilerContext.reserveConst(type, 'type')});
                             if (error) {
                                 ${state.setter} = false;
-                                if (state.errors) state.errors.push(new ValidationFailedItem(${collapsePath(state.path)}, error.code, error.message));
+                                if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(state.path)}, error.code, error.message));
                             }
                         }
                     `);
                 } else {
                     const validator = validators[name];
                     if (validator) {
-                        state.setContext({ ValidationFailedItem });
+                        state.setContext({ ValidationErrorItem: ValidationErrorItem });
                         const validatorVar = state.setVariable('validator', validator(...args));
                         state.addCode(`
                             {
                                 let error = ${validatorVar}(${state.originalAccessor}, ${state.compilerContext.reserveConst(type, 'type')});
                                 if (error) {
                                     ${state.setter} = false;
-                                    if (state.errors) state.errors.push(new ValidationFailedItem(${collapsePath(state.path)}, error.code, error.message));
+                                    if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(state.path)}, error.code, error.message));
                                 }
                             }
                         `);

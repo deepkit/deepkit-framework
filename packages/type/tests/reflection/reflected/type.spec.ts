@@ -642,10 +642,10 @@ test('template literal infer', () => {
 });
 
 test('tuple indexAccess', () => {
-    expect(indexAccess(typeOf<[string]>(), { kind: ReflectionKind.literal, literal: 0 })).toEqual({ kind: ReflectionKind.string });
-    expect(indexAccess(typeOf<[string]>(), { kind: ReflectionKind.literal, literal: 1 })).toEqual({ kind: ReflectionKind.undefined });
-    expect(indexAccess(typeOf<[string, string]>(), { kind: ReflectionKind.literal, literal: 1 })).toEqual({ kind: ReflectionKind.string });
-    expect(indexAccess(typeOf<[string, number]>(), { kind: ReflectionKind.literal, literal: 1 })).toEqual({ kind: ReflectionKind.number });
+    expect(indexAccess(typeOf<[string]>(), { kind: ReflectionKind.literal, literal: 0 })).toMatchObject({ kind: ReflectionKind.string });
+    expect(indexAccess(typeOf<[string]>(), { kind: ReflectionKind.literal, literal: 1 })).toMatchObject({ kind: ReflectionKind.undefined });
+    expect(indexAccess(typeOf<[string, string]>(), { kind: ReflectionKind.literal, literal: 1 })).toMatchObject({ kind: ReflectionKind.string });
+    expect(indexAccess(typeOf<[string, number]>(), { kind: ReflectionKind.literal, literal: 1 })).toMatchObject({ kind: ReflectionKind.number });
     expectEqualType(indexAccess(typeOf<[string, ...number[], boolean]>(), { kind: ReflectionKind.literal, literal: 1 }), {
         kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.boolean }]
     });

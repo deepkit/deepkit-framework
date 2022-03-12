@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, CustomError, isObject } from '@deepkit/core';
+import { ClassType, isObject } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
 import { arrayBufferTo, entity } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, TeardownLogic } from 'rxjs';
@@ -223,47 +223,6 @@ export function ControllerSymbol<T>(path: string, entities: ClassType[] = []): C
 @entity.name('@error:json')
 export class JSONError {
     constructor(public readonly json: any) {
-    }
-}
-
-export class ValidationErrorItem {
-    constructor(
-        public readonly path: string,
-        public readonly code: string,
-        public readonly message: string,
-    ) {
-    }
-
-    toString() {
-        return `${this.path}(${this.code}): ${this.message}`;
-    }
-}
-
-@entity.name('@error:validation')
-export class ValidationError extends CustomError {
-    constructor(
-        public readonly errors: ValidationErrorItem[]
-    ) {
-        super(errors.map(v => `${v.path}(${v.code}): ${v.message}`).join(','));
-    }
-
-    static from(errors: { path: string, message: string, code?: string }[]) {
-        return new ValidationError(errors.map(v => new ValidationErrorItem(v.path, v.message, v.code || '')));
-    }
-}
-
-@entity.name('@error:parameter')
-export class ValidationParameterError {
-    constructor(
-        public readonly controller: string,
-        public readonly action: string,
-        public readonly arg: number,
-        public readonly errors: ValidationErrorItem[]
-    ) {
-    }
-
-    get message(): string {
-        return this.errors.map(v => `${v.path}: ${v.message} (${v.code})`).join(',');
     }
 }
 

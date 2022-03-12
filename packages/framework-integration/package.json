@@ -16,7 +16,10 @@
     "@deepkit/rpc": "^1.0.1-alpha.0",
     "@deepkit/framework": "^1.0.1-alpha.0",
     "@deepkit/app": "^1.0.1-alpha.0",
+    "@deepkit/bson": "^1.0.1-alpha.0",
     "@deepkit/type": "^1.0.1-alpha.0",
+    "@deepkit/http": "^1.0.1-alpha.0",
+    "@deepkit/event": "^1.0.1-alpha.0",
     "@deepkit/injector": "^1.0.1-alpha.0",
     "@deepkit/orm": "^1.0.1-alpha.0",
     "@deepkit/sql": "^1.0.1-alpha.0",
@@ -39,10 +42,10 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    "resolver": "../../jest-resolver.js",
     "coverageDirectory": "<rootDir>/coverage/",
     "testMatch": [
-      "**/tests/**/controller-basic.spec.ts",
-      "**/tests/**/live-database.spec.ts"
+      "**/tests/**/controller-basic.spec.ts"
     ]
   }
 }

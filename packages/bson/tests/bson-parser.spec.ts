@@ -378,14 +378,14 @@ test('basic array', () => {
     const value = ['a', 'b', 'c'];
     expect(deserializeBSON<{ v: string[] }>(serialize({ v: value }))).toEqual({ v: value });
     expect(deserializeBSON<{ v: string[] }>(serialize({ v: [1, 'b'] }))).toEqual({ v: ['1', 'b'] });
-    expect(() => deserializeBSON<{ v: string[] }>(serialize({ v: 123 }))).toThrow('Cannot convert bson type INT to string[]');
+    expect(() => deserializeBSON<{ v: string[] }>(serialize({ v: 123 }))).toThrow('Cannot convert bson type INT to Array<string>');
     expect(() => deserializeBSON<{ v: string[] }>(serialize({ v: [{}] }))).toThrow('Cannot convert bson type OBJECT to string');
 });
 
 test('basic array union', () => {
     const value = ['a', 'b', false, 'c', true];
     expect(deserializeBSON<{ v: (string | boolean)[] }>(serialize({ v: value }))).toEqual({ v: value });
-    expect(() => deserializeBSON<{ v: (string | boolean)[] }>(serialize({ v: 123 }))).toThrow('Cannot convert bson type INT to (string | boolean)[]');
+    expect(() => deserializeBSON<{ v: (string | boolean)[] }>(serialize({ v: 123 }))).toThrow('Cannot convert bson type INT to Array<string | boolean>');
     expect(() => deserializeBSON<{ v: (string | boolean)[] }>(serialize({ v: ['a', {}] }))).toThrow('Cannot convert bson type OBJECT to string | boolean');
 });
 
@@ -697,7 +697,7 @@ test('index signature + object literal', () => {
     type t = A & { [P in 'abc']: string };
 
     expect(deserializeBSON<t>(serialize({ abc: 'yes' }))).toEqual({ abc: 'yes' });
-    expect(() => deserializeBSON<t>(serialize({ a23: 1 }))).toThrow('abc: Cannot convert undefined value to string');
+    expect(() => deserializeBSON<t>(serialize({ a23: 1 }))).toThrow('Cannot convert undefined value to string');
     expect(deserializeBSON<t>(serialize({ abc: 'yes', 12: true }))).toEqual({ abc: 'yes', 12: true });
     expect(deserializeBSON<t>(serialize({ abc: 'yes', 12: true, a23: 23 }))).toEqual({ abc: 'yes', 12: true, a23: 23 });
 });

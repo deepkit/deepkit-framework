@@ -1,5 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { removeTypeName, typeOf } from '../../../src/reflection/reflection';
+import { ReflectionKind } from '../../../src/reflection/type';
 import { expectEqualType } from '../../utils';
 
 test('distributed conditional type', () => {
@@ -11,7 +12,7 @@ test('distributed conditional type', () => {
     type OnlyStrings3<T, E> = T extends infer K ? boolean | (K extends string ? K : E) : never;
     type OnlyStrings4<T, T2, E> = T2 extends string ? T2[] : T;
     expect(removeTypeName(typeOf<OnlyStrings<string>>())).toEqual(typeOf<string>());
-    expect(removeTypeName(typeOf<OnlyStrings1<string>>())).toEqual(typeOf<string>());
+    expect(removeTypeName(typeOf<OnlyStrings1<string>>())).toMatchObject({kind: ReflectionKind.string});
 
     type r1 = OnlyStrings<'a' | 'b' | number>; //'a' | 'b'
     type r12 = OnlyStrings2<'a' | 'b' | number, 'nope'>; //boolean | 'a' | 'b' | 'nope'

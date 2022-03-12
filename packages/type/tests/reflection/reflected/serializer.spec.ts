@@ -10,10 +10,11 @@
 import { expect, test } from '@jest/globals';
 import { reflect, ReflectionClass } from '../../../src/reflection/reflection';
 import { AutoIncrement, BackReference, Embedded, Excluded, Group, int8, integer, PrimaryKey, Reference, ReflectionKind } from '../../../src/reflection/type';
-import { createSerializeFunction, getSerializeFunction, SerializationError, serializer } from '../../../src/serializer';
+import { createSerializeFunction, getSerializeFunction, serializer } from '../../../src/serializer';
 import { cast, deserialize, serialize } from '../../../src/serializer-facade';
 import { getClassName } from '@deepkit/core';
 import { t } from '../../../src/decorator';
+import { ValidationError } from '../../../src/validator';
 
 test('deserializer', () => {
     class User {
@@ -416,9 +417,9 @@ test('brands', () => {
 test('throw', () => {
     expect(() => cast<number>('123abc')).toThrow('Cannot convert 123abc to number');
     expect(() => cast<{ a: string }>(false)).toThrow('Cannot convert false to {a: string}');
-    expect(() => cast<{ a: number }>({ a: 'abc' })).toThrow('a: Cannot convert abc to number');
-    expect(() => cast<{ a: { b: number } }>({ a: 'abc' })).toThrow('a: Cannot convert abc to {b: number}');
-    expect(() => cast<{ a: { b: number } }>({ a: { b: 'abc' } })).toThrow('a.b: Cannot convert abc to number');
+    expect(() => cast<{ a: number }>({ a: 'abc' })).toThrow('Cannot convert abc to number');
+    expect(() => cast<{ a: { b: number } }>({ a: 'abc' })).toThrow('Cannot convert abc to {b: number}');
+    expect(() => cast<{ a: { b: number } }>({ a: { b: 'abc' } })).toThrow('Cannot convert abc to number');
 });
 
 test('index signature ', () => {
@@ -432,13 +433,13 @@ test('index signature ', () => {
 
     expect(cast<BagOfNumbers>({ a: 1 })).toEqual({ a: 1 });
     expect(cast<BagOfNumbers>({ a: 1, b: 2 })).toEqual({ a: 1, b: 2 });
-    expect(() => cast<BagOfNumbers>({ a: 'b' })).toThrow(SerializationError as any);
-    expect(() => cast<BagOfNumbers>({ a: 'b' })).toThrow('a: ');
+    expect(() => cast<BagOfNumbers>({ a: 'b' })).toThrow(ValidationError as any);
+    expect(() => cast<BagOfNumbers>({ a: 'b' })).toThrow('Cannot convert b to number');
     expect(cast<BagOfNumbers>({ a: '1' })).toEqual({ a: 1 });
-    expect(() => cast<BagOfNumbers>({ a: 'b', b: 'c' })).toThrow(SerializationError as any);
-    expect(() => cast<BagOfNumbers>({ a: 'b', b: 'c' })).toThrow('a: ');
+    expect(() => cast<BagOfNumbers>({ a: 'b', b: 'c' })).toThrow(ValidationError as any);
+    expect(() => cast<BagOfNumbers>({ a: 'b', b: 'c' })).toThrow('Cannot convert b to number');
 
-    +expect(cast<BagOfStrings>({ a: 1 })).toEqual({ a: '1' });
+    expect(cast<BagOfStrings>({ a: 1 })).toEqual({ a: '1' });
     expect(cast<BagOfStrings>({ a: 1, b: 2 })).toEqual({ a: '1', b: '2' });
     expect(cast<BagOfStrings>({ a: 'b' })).toEqual({ a: 'b' });
     expect(cast<BagOfStrings>({ a: 'b', b: 'c' })).toEqual({ a: 'b', b: 'c' });
@@ -727,7 +728,7 @@ test('class with union literal', () => {
 
 test('named tuple in error message', () => {
     expect(cast<[age: number]>([23])).toEqual([23]);
-    expect(() => cast<{ v: [age: number] }>({ v: ['123abc'] })).toThrow('v.age: Cannot convert 123abc to number');
+    expect(() => cast<{ v: [age: number] }>({ v: ['123abc'] })).toThrow('v.age(type): Cannot convert 123abc to number');
 });
 
 test('intersected mapped type key', () => {

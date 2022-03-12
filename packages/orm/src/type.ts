@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { PrimaryKeyType, ReflectionClass, ValidationFailedItem } from '@deepkit/type';
+import { PrimaryKeyType, ReflectionClass, ValidationErrorItem } from '@deepkit/type';
 import { CustomError } from '@deepkit/core';
 
 export interface OrmEntity {
@@ -23,7 +23,7 @@ export class DatabaseError extends CustomError {
 export class DatabaseValidationError extends DatabaseError {
     constructor(
         public readonly classSchema: ReflectionClass<any>,
-        public readonly errors: ValidationFailedItem[],
+        public readonly errors: ValidationErrorItem[],
     ) {
         super(`Validation error for class ${classSchema.name || classSchema.getClassName()}:\n${errors.map(v => v.toString()).join(',\n')}`);
     }

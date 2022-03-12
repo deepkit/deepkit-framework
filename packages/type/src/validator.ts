@@ -2,6 +2,7 @@ import { ReceiveType, resolveReceiveType } from './reflection/reflection';
 import { is } from './typeguard';
 import { CustomError } from '@deepkit/core';
 import { stringifyType, Type } from './reflection/type';
+import { entity } from './decorator';
 
 export type ValidatorMeta<Name extends string, Args extends [...args: any[]] = []> = { __meta?: ['validator', Name, Args] }
 
@@ -47,6 +48,18 @@ export const EMAIL_REGEX = /^\S+@\S+$/;
 export type Email = string & Pattern<typeof EMAIL_REGEX>;
 
 /**
+ * Used in validator functions.
+ */
+export class ValidatorError {
+    constructor(
+        public readonly code: string,
+        public readonly message: string,
+        public readonly path?: string,
+    ) {
+    }
+}
+
+/**
  * The structure of a validation error.
  *
  * Path defines the shallow or deep path (using dots).
@@ -54,7 +67,7 @@ export type Email = string & Pattern<typeof EMAIL_REGEX>;
  *
  * In validators please use and return `new ValidatorError('code', 'message')` instead.
  */
-export class ValidationFailedItem {
+export class ValidationErrorItem {
     constructor(
         /**
          * The path to the property. Might be a deep path separated by dot.
@@ -77,44 +90,33 @@ export class ValidationFailedItem {
     }
 }
 
-/**
- * Used in validator functions.
- */
-export class ValidatorError {
-    constructor(
-        public readonly code: string,
-        public readonly message: string,
-        public readonly path?: string,
-    ) {
-    }
-}
-
+@entity.name('@error:validation')
 export class ValidationError extends CustomError {
     constructor(
-        public readonly errors: ValidationFailedItem[],
+        public readonly errors: ValidationErrorItem[],
         public readonly type?: Type,
     ) {
         super(`Validation error${type ? ` for type ${stringifyType(type)}` : ''}:\n${errors.map(v => v.toString()).join(',\n')}`);
     }
 
     static from(errors: { path: string, message: string, code?: string }[]) {
-        return new ValidationError(errors.map(v => new ValidationFailedItem(v.path, v.code || '', v.message)));
+        return new ValidationError(errors.map(v => new ValidationErrorItem(v.path, v.code || '', v.message)));
     }
 }
 
 /**
- * Returns empty array when valid, or ValidationFailedItem[] with detailed error messages if not valid.
+ * Returns empty array when valid, or ValidationErrorItem[] with detailed error messages if not valid.
  *
  * Returns validation error items when failed. If successful returns an empty array.
  */
-export function validate<T>(data: any, type?: ReceiveType<T>): ValidationFailedItem[] {
-    const errors: ValidationFailedItem[] = [];
+export function validate<T>(data: any, type?: ReceiveType<T>): ValidationErrorItem[] {
+    const errors: ValidationErrorItem[] = [];
     is(data, undefined, errors, type!);
     return errors;
 }
 
 /**
- * Returns empty array when valid, or ValidationFailedItem[] with detailed error messages if not valid.
+ * Returns empty array when valid, or ValidationErrorItem[] with detailed error messages if not valid.
  *
  * @throws ValidationError when validation fails.
  */

@@ -21,7 +21,7 @@ import {
     ReflectionParameter,
     ReflectionProperty,
     validate,
-    ValidationFailedItem
+    ValidationErrorItem
 } from '@deepkit/type';
 import { Command as OclifCommandBase } from '@oclif/command';
 import { Command as OclifCommand } from '@oclif/config';
@@ -200,7 +200,7 @@ export function buildOclifCommand(name: string, injector: InjectorContext, class
                                 }
                             }
                         } catch (e) {
-                            if (e instanceof ValidationFailedItem) {
+                            if (e instanceof ValidationErrorItem) {
                                 console.log(`Validation error in ${e.path}: ${e.message} [${e.code}]`);
                                 return 8;
                             }

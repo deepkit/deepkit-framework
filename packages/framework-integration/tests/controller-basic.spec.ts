@@ -1,5 +1,5 @@
-import { afterAll, expect, test } from '@jest/globals';
-import { ClientProgress, JSONError, rpc, ValidationError, ValidationErrorItem } from '@deepkit/rpc';
+import { afterAll, expect, jest, test } from '@jest/globals';
+import { ClientProgress, JSONError, rpc } from '@deepkit/rpc';
 import { appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait } from './util';
 import { Observable } from 'rxjs';
 import { bufferCount, first, skip } from 'rxjs/operators';
@@ -7,10 +7,12 @@ import { ObserverTimer } from '@deepkit/core-rxjs';
 import { isArray } from '@deepkit/core';
 import { fail } from 'assert';
 import ws from 'ws';
-import { entity } from '@deepkit/type';
+import { entity, ValidationError, ValidationErrorItem } from '@deepkit/type';
 
 // @ts-ignore
 global['WebSocket'] = ws;
+
+jest.setTimeout(15_000);
 
 afterAll(async () => {
     await closeAllCreatedServers();
@@ -67,15 +69,6 @@ test('basic setup and methods', async () => {
         }
     }
 
-    // const schema = getClassSchema(TestController);
-    // {
-    //     const u = schema.getMethodProperties('validationError')[0];
-    //     expect(u).toBeInstanceOf(PropertySchema);
-    //     expect(u.type).toBe('class');
-    //     expect(u.classType).toBe(User);
-    //     expect(u.toJSON()).toMatchObject({ name: 'user', type: 'class', classType: 'controller-basic/user' });
-    // }
-
     const { client, close } = await createServerClientPair('basic setup and methods', appModuleForControllers([TestController]));
 
     const controller = client.controller<TestController>('test');
@@ -123,7 +116,7 @@ test('basic setup and methods', async () => {
         } catch (error) {
             expect(error).toBeInstanceOf(ValidationError);
             expect((error as ValidationError).errors[0]).toBeInstanceOf(ValidationErrorItem);
-            expect((error as ValidationError).errors[0]).toEqual({ code: 'required', message: 'Required value is undefined', path: 'user.name' });
+            expect((error as ValidationError).errors[0]).toEqual({ code: 'type', message: 'Cannot convert undefined value to string', path: 'user.name' });
         }
     }
 
@@ -191,7 +184,9 @@ test('basic serialisation return: entity', async () => {
 
 
     {
-        const u = await (await controller.observable('peter')).pipe(first()).toPromise();
+        const o = await controller.observable('peter');
+        expect(o).toBeInstanceOf(Observable);
+        const u = await o.pipe(first()).toPromise();
         expect(u).toBeInstanceOf(User);
     }
 
@@ -221,7 +216,7 @@ test('basic serialisation partial param: entity', async () => {
     class User {
         defaultVar: string = 'yes';
 
-        birthdate?: Date;
+        date?: Date;
 
         constructor(public name: string) {
             this.name = name;
@@ -231,22 +226,15 @@ test('basic serialisation partial param: entity', async () => {
     @rpc.controller('test')
     class TestController {
         @rpc.action()
-        failUser(user: Partial<User>) {
+        passUser(user: Partial<User>): any {
+            return user;
         }
 
         @rpc.action()
-        failPartialUser(name: string, date: Date): Partial<User> {
+        getPartialUser(name?: string, date?: Date): Partial<User> {
             return {
                 name: name,
-                birthdate: date
-            };
-        }
-
-        @rpc.action()
-        partialUser(name: string, date: Date): Partial<User> {
-            return {
-                name: name,
-                birthdate: date
+                date: date
             };
         }
 
@@ -259,29 +247,18 @@ test('basic serialisation partial param: entity', async () => {
     const { client, close } = await createServerClientPair('serialisation partial param: entity', appModuleForControllers([TestController]));
 
     const controller = client.controller<TestController>('test');
-    //
-    // try {
-    //     await test.failUser({name: 'asd'});
-    //     fail('Should fail');
-    // } catch (e) {
-    //     expect(e.message).toMatch('test::failUser argument 0 is an Object with unknown structure. ');
-    // }
-    //
-    // const date = new Date('1987-12-12T11:00:00.000Z');
-    //
-    // try {
-    //     await test.failPartialUser('asd', date);
-    //     fail('Should fail');
-    // } catch (e) {
-    //     expect(e.message).toMatch('test::failPartialUser result is an Object with unknown structure.');
-    // }
+
+    expect(await controller.passUser({name: 'asd'})).toEqual({name: 'asd'});
+    expect(await controller.passUser({})).toEqual({});
+
+    const date = new Date('1987-12-12T11:00:00.000Z');
+
+    expect(await controller.getPartialUser('asd', date)).toEqual({name: 'asd', date});
+    expect(await controller.getPartialUser('asd')).toEqual({name: 'asd', date: undefined});
+    expect(await controller.getPartialUser()).toEqual({name: undefined, date: undefined});
 
     const a = await controller.user({ name: 'peter2' });
-    expect(a).toBeTruthy();
-
-    // const partialUser = await test.partialUser('peter2', date);
-    // expect(partialUser.name).toBe('peter2');
-    // expect(partialUser.birthdate).toEqual(date);
+    expect(a).toBe(true);
 
     await close();
 });
@@ -391,7 +368,6 @@ test('test param serialization', async () => {
 
     await close();
 });
-
 
 test('test batcher', async () => {
     @rpc.controller('test')

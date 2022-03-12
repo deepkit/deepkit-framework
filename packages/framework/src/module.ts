@@ -13,7 +13,6 @@ import { mkdirSync } from 'fs';
 import { join } from 'path';
 import { ApplicationServer, ApplicationServerListener } from './application-server';
 import { BrokerModule } from './broker/broker.module';
-// import { LiveDatabase } from './database/live-database';
 import { DebugRouterController } from './cli/debug-router';
 import { DebugDIController } from './cli/debug-di';
 import { ServerStartController } from './cli/server-start';
@@ -29,7 +28,7 @@ import { Stopwatch } from '@deepkit/stopwatch';
 import { OrmBrowserController } from './orm-browser/controller';
 import { DatabaseListener } from './database/database-listener';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
-import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
+import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/dist/cjs/commands';
 import { FileStopwatchStore } from './debug/stopwatch/store';
 import { DebugDebugFramesCommand } from './cli/debug-debug-frames';
 import { ConnectionWriter, rpcClass, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
@@ -118,7 +117,6 @@ export class FrameworkModule extends createModule({
         DatabaseRegistry,
         SessionHandler,
 
-        // LiveDatabase,
         HttpRequest,
         RpcInjectorContext,
         SessionState,

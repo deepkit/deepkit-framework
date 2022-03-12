@@ -1,4 +1,3 @@
-import { getClassName } from '@deepkit/core';
 import {
     binaryBigIntAnnotation,
     BinaryBigIntType,
@@ -7,19 +6,16 @@ import {
     collapsePath,
     ContainerAccessor,
     createTypeGuardFunction,
-    deserializeEmbedded,
     embeddedAnnotation,
     EmbeddedOptions,
     excludedAnnotation,
     executeTemplates,
     extendTemplateLiteral,
     extractStateToFunctionAndCallIt,
-    getConstructorProperties,
     getIndexCheck,
     getNameExpression,
     getStaticDefaultCodeForProperty,
     hasDefaultValue,
-    inAccessor,
     isNullable,
     isOptional,
     mongoIdAnnotation,
@@ -31,7 +27,6 @@ import {
     TemplateState,
     Type,
     TypeClass,
-    typeGuardEmbedded,
     TypeGuardRegistry,
     TypeIndexSignature,
     TypeLiteral,
@@ -44,8 +39,7 @@ import {
     uuidAnnotation
 } from '@deepkit/type';
 import { seekElementSize } from './continuation';
-import { BSONType, digitByteSize, getEmbeddedAccessor, getEmbeddedPropertyName, isSerializable } from './utils';
-import { BSONError } from './model';
+import { BSONType, digitByteSize, isSerializable } from './utils';
 
 function getNameComparator(name: string): string {
     //todo: support utf8 names
@@ -354,7 +348,7 @@ export function deserializeTuple(type: TypeTuple, state: TemplateState) {
             lines.push(`
             //tuple rest item ${j}
             else if (${check}) {
-                ${executeTemplates(state.fork(v).extendPath(new RuntimeCode(i)), member.type.type)}
+                ${executeTemplates(state.fork(v).extendPath(member.name || new RuntimeCode(i)), member.type.type)}
                 if (${v} !== undefined || ${isOptional(member)}) {
                     ${result}.push(${v});
                 }
@@ -368,7 +362,7 @@ export function deserializeTuple(type: TypeTuple, state: TemplateState) {
             lines.push(`
             //tuple item ${j}
             else if (${check}) {
-                ${executeTemplates(state.fork(v).extendPath(new RuntimeCode(i)), member.type)}
+                ${executeTemplates(state.fork(v).extendPath(member.name || new RuntimeCode(i)), member.type)}
                 if (${v} !== undefined || ${isOptional(member)}) {
                     ${result}.push(${v});
                 }
@@ -645,20 +639,21 @@ export function getEmbeddedClassesForProperty(type: Type): { type: TypeClass, op
 }
 
 export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, state: TemplateState) {
-    const embedded = embeddedAnnotation.getFirst(type);
-    if (type.kind === ReflectionKind.class && embedded) {
-        const container = state.compilerContext.reserveName('container');
-
-        const embedded = deserializeEmbedded(type, state.fork(undefined, container).forRegistry(state.registry.serializer.deserializeRegistry));
-        if (embedded) {
-            state.addCode(`
-                const ${container} = state.parser.parse(state.elementType);
-                console.log('container data', '${state.setter}', ${container});
-                ${embedded}
-            `);
-            return;
-        }
-    }
+    //emdedded for the moment disabled. treat it as normal property.
+    // const embedded = embeddedAnnotation.getFirst(type);
+    // if (type.kind === ReflectionKind.class && embedded) {
+    //     const container = state.compilerContext.reserveName('container');
+    //
+    //     const embedded = deserializeEmbedded(type, state.fork(undefined, container).forRegistry(state.registry.serializer.deserializeRegistry));
+    //     if (embedded) {
+    //         state.addCode(`
+    //             const ${container} = state.parser.parse(state.elementType);
+    //             console.log('container data', '${state.setter}', ${container});
+    //             ${embedded}
+    //         `);
+    //         return;
+    //     }
+    // }
 
     if (callExtractedFunctionIfAvailable(state, type)) return;
     const extract = extractStateToFunctionAndCallIt(state, type);
@@ -694,39 +689,39 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
         const nameInBson = String(state.namingStrategy.getPropertyName(member));
         const valueSetVar = state.compilerContext.reserveName('valueSetVar');
 
-        //since Embedded<T> can have arbitrary prefix, we have to collect all fields first, and then after the loop, build everything together.
-        const embeddedClasses = getEmbeddedClassesForProperty(member);
-        //todo:
-        // 1. Embedded in a union need for each entry in the union (there can be multiple Embedded in one union) to collect all possible values. We collect them into own container
-        // then run the typeGuardObjectLiteral on it at the end of the loop, if the member was not already set. this works the same for non-union members as well, right?
-        // 2. we have to delay detecting the union, right? Otherwise `Embedded<T, {prefix: 'p'}> | string` will throw an error that it can't convert undefined to string, when
-        // ${member.name} is not provided.
-        // 3. we could also collect all values in a loop earlier?
-        if (embeddedClasses.length) {
-            for (const embedded of embeddedClasses) {
-                const constructorProperties = getConstructorProperties(embedded.type);
-                if (!constructorProperties.properties.length) throw new BSONError(`Can not embed class ${getClassName(embedded.type.classType)} since it has no constructor properties`);
-
-                const containerVar = state.compilerContext.reserveName('container');
-                const handleEmbedded: HandleEmbedded = {
-                    type: embedded.type, containerVar, property: member, valueSetVar
-                };
-                handleEmbeddedClasses.push(handleEmbedded);
-
-                for (const property of constructorProperties.properties) {
-                    const setter = getEmbeddedPropertyName(state.namingStrategy, property, embedded.options);
-                    const accessor = getEmbeddedAccessor(embedded.type, constructorProperties.properties.length !== 1, nameInBson, state.namingStrategy, property, embedded.options);
-                    //todo: handle explicit undefined and non-existing
-                    lines.push(`
-                    if (${getNameComparator(accessor)}) {
-                        state.parser.offset += ${accessor.length} + 1;
-                        ${executeTemplates(state.fork(new ContainerAccessor(containerVar, JSON.stringify(setter)), ''), property.type)};
-                        continue;
-                    }
-                    `);
-                }
-            }
-        }
+        // //since Embedded<T> can have arbitrary prefix, we have to collect all fields first, and then after the loop, build everything together.
+        // const embeddedClasses = getEmbeddedClassesForProperty(member);
+        // //todo:
+        // // 1. Embedded in a union need for each entry in the union (there can be multiple Embedded in one union) to collect all possible values. We collect them into own container
+        // // then run the typeGuardObjectLiteral on it at the end of the loop, if the member was not already set. this works the same for non-union members as well, right?
+        // // 2. we have to delay detecting the union, right? Otherwise `Embedded<T, {prefix: 'p'}> | string` will throw an error that it can't convert undefined to string, when
+        // // ${member.name} is not provided.
+        // // 3. we could also collect all values in a loop earlier?
+        // if (embeddedClasses.length) {
+        //     for (const embedded of embeddedClasses) {
+        //         const constructorProperties = getConstructorProperties(embedded.type);
+        //         if (!constructorProperties.properties.length) throw new BSONError(`Can not embed class ${getClassName(embedded.type.classType)} since it has no constructor properties`);
+        //
+        //         const containerVar = state.compilerContext.reserveName('container');
+        //         const handleEmbedded: HandleEmbedded = {
+        //             type: embedded.type, containerVar, property: member, valueSetVar
+        //         };
+        //         handleEmbeddedClasses.push(handleEmbedded);
+        //
+        //         for (const property of constructorProperties.properties) {
+        //             const setter = getEmbeddedPropertyName(state.namingStrategy, property, embedded.options);
+        //             const accessor = getEmbeddedAccessor(embedded.type, constructorProperties.properties.length !== 1, nameInBson, state.namingStrategy, property, embedded.options);
+        //             //todo: handle explicit undefined and non-existing
+        //             lines.push(`
+        //             if (${getNameComparator(accessor)}) {
+        //                 state.parser.offset += ${accessor.length} + 1;
+        //                 ${executeTemplates(state.fork(new ContainerAccessor(containerVar, JSON.stringify(setter)), ''), property.type)};
+        //                 continue;
+        //             }
+        //             `);
+        //         }
+        //     }
+        // }
 
         resetDefaultSets.push(`var ${valueSetVar} = false;`);
         const setter = new ContainerAccessor(object, JSON.stringify(member.name));
@@ -816,16 +811,16 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
     }
 
     const handleEmbeddedClassesLines: string[] = [];
-    for (const handle of handleEmbeddedClasses) {
-        // const constructorProperties = getConstructorProperties(handle.type);
-        const setter = new ContainerAccessor(object, JSON.stringify(handle.property.name));
-        handleEmbeddedClassesLines.push(`
-            ${deserializeEmbedded(handle.type, state.fork(setter, handle.containerVar).forRegistry(state.registry.serializer.deserializeRegistry), handle.containerVar)}
-            if (${inAccessor(setter)}) {
-                ${handle.valueSetVar} = true;
-            }
-        `);
-    }
+    // for (const handle of handleEmbeddedClasses) {
+    //     // const constructorProperties = getConstructorProperties(handle.type);
+    //     const setter = new ContainerAccessor(object, JSON.stringify(handle.property.name));
+    //     handleEmbeddedClassesLines.push(`
+    //         ${deserializeEmbedded(handle.type, state.fork(setter, handle.containerVar).forRegistry(state.registry.serializer.deserializeRegistry), handle.containerVar)}
+    //         if (${inAccessor(setter)}) {
+    //             ${handle.valueSetVar} = true;
+    //         }
+    //     `);
+    // }
 
     state.addCode(`
         /*
@@ -867,18 +862,19 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
 }
 
 export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, state: TemplateState) {
-    const embedded = embeddedAnnotation.getFirst(type);
-    if (type.kind === ReflectionKind.class && embedded && state.target === 'deserialize') {
-        const container = state.compilerContext.reserveName('container');
-        const sub = state.fork(undefined, container).forRegistry(state.registry.serializer.typeGuards.getRegistry(1));
-        typeGuardEmbedded(type, sub, embedded);
-        state.addCode(`
-            const ${container} = state.parser.read(state.elementType);
-            console.log('container data', '${state.setter}', ${container});
-            ${sub.template}
-        `);
-        return;
-    }
+    //emdedded for the moment disabled. treat it as normal property.
+    // const embedded = embeddedAnnotation.getFirst(type);
+    // if (type.kind === ReflectionKind.class && embedded && state.target === 'deserialize') {
+    //     const container = state.compilerContext.reserveName('container');
+    //     const sub = state.fork(undefined, container).forRegistry(state.registry.serializer.typeGuards.getRegistry(1));
+    //     typeGuardEmbedded(type, sub, embedded);
+    //     state.addCode(`
+    //         const ${container} = state.parser.read(state.elementType);
+    //         console.log('container data', '${state.setter}', ${container});
+    //         ${sub.template}
+    //     `);
+    //     return;
+    // }
 
     if (callExtractedFunctionIfAvailable(state, type)) return;
     const extract = extractStateToFunctionAndCallIt(state, type);

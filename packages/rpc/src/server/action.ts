@@ -23,7 +23,8 @@ import {
     TypeObjectLiteral,
     typeOf,
     TypeTuple,
-    ValidationFailedItem
+    ValidationError,
+    ValidationErrorItem
 } from '@deepkit/type';
 import { isObservable, Observable, Subject, Subscription } from 'rxjs';
 import { Collection, CollectionEvent, CollectionQueryModel, CollectionQueryModelInterface, CollectionState } from '../collection';
@@ -41,7 +42,6 @@ import {
     rpcResponseActionObservableSubscriptionError,
     rpcResponseActionType,
     RpcTypes,
-    ValidationError
 } from '../model';
 import { rpcEncodeError, RpcMessage } from '../protocol';
 import { RpcMessageBuilder } from './kernel';
@@ -353,14 +353,24 @@ export class RpcServerAction {
         if (!controller) throw new Error(`No controller registered for id ${body.controller}`);
 
         const types = await this.loadTypes(body.controller, body.method);
-        const value: { args: any[] } = message.parseBody(types.actionCallSchema);
+        let value: { args: any[] } = { args: [] };
+
+        try {
+            value = message.parseBody(types.actionCallSchema);
+        } catch (error: any) {
+            if (error instanceof ValidationError) {
+                //remove `.args` from path
+                error = ValidationError.from(error.errors.map(v => ({ ...v, path: v.path.replace('args.', '') })));
+            }
+            return response.error(error);
+        }
 
         const controllerClassType = this.injector.get(controller.controller, controller.module);
         if (!controllerClassType) {
             response.error(new Error(`No instance of ${getClassName(controller.controller)} found.`));
         }
         // const converted = types.parametersDeserialize(value.args);
-        const errors: ValidationFailedItem[] = [];
+        const errors: ValidationErrorItem[] = [];
         types.parametersValidate(value.args, { errors });
 
         if (errors.length) {

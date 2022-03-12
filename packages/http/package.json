@@ -54,6 +54,7 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    "resolver": "../../jest-resolver.js",
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

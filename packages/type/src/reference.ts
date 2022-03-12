@@ -95,6 +95,9 @@ export function createReferenceClass<T>(
     for (const property of reflection.getProperties()) {
         if (property.isPrimaryKey()) continue;
 
+        //if it has a default, we do not overwrite it with an error
+        if (property.hasDefault()) continue;
+
         //if it is optional, it's fine to read undefined
         if (property.isOptional()) continue;
 

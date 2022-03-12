@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { CompilerContext, getClassName, isArray, isIterable, isObject, toFastProperties } from '@deepkit/core';
+import { CompilerContext, isArray, isIterable, isObject, toFastProperties } from '@deepkit/core';
 import {
     binaryBigIntAnnotation,
     BinaryBigIntType,
@@ -18,12 +18,9 @@ import {
     ContainerAccessor,
     copyAndSetParent,
     createReference,
-    embeddedAnnotation,
     excludedAnnotation,
     executeTemplates,
     extractStateToFunctionAndCallIt,
-    getConstructorProperties,
-    getEmbeddedProperty,
     getIndexCheck,
     getNameExpression,
     getTypeJitContainer,
@@ -47,7 +44,6 @@ import {
     ReflectionKind,
     resolveReceiveType,
     RuntimeCode,
-    SerializationError,
     Serializer,
     sortSignatures,
     TemplateRegistry,
@@ -92,7 +88,7 @@ import {
 } from './bson-deserializer-templates';
 import { seekElementSize } from './continuation';
 import { BSONError } from './model';
-import { BSON_BINARY_SUBTYPE_DEFAULT, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, getEmbeddedAccessor, isSerializable, TWO_PWR_32_DBL_N } from './utils';
+import { BSON_BINARY_SUBTYPE_DEFAULT, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, isSerializable, TWO_PWR_32_DBL_N } from './utils';
 
 export function createBuffer(size: number): Uint8Array {
     return 'undefined' !== typeof Buffer && 'function' === typeof Buffer.allocUnsafe ? Buffer.allocUnsafe(size) : new Uint8Array(size);
@@ -626,50 +622,52 @@ function handleObjectLiteral(
         state.writer.writeNull();
         state.writer.writeDelayedSize(state.writer.offset - ${start}, ${start});`;
     }
-    const embedded = embeddedAnnotation.getFirst(type);
-    if (embedded) {
-        if (type.kind !== ReflectionKind.class) throw new SerializationError(`Object literals can not be embedded`, collapsePath(state.path));
-        const constructorProperties = getConstructorProperties(type);
-        if (!constructorProperties.properties.length) throw new BSONError(`Can not embed class ${getClassName(type.classType)} since it has no constructor properties`);
 
-        if (constructorProperties.properties.length === 1) {
-            const first = constructorProperties.properties[0];
-            let name = getNameExpression(state.namingStrategy.getPropertyName(first), state);
-            const setter = getEmbeddedAccessor(type, false, '', state.namingStrategy, first, embedded);
-            state.addCode(executeTemplates(state.fork('', new ContainerAccessor(state.accessor, name)).forPropertyName(setter || state.propertyName), first.type));
-        } else {
-            const lines: string[] = [];
-            const containerProperty = getEmbeddedProperty(type);
-
-            for (const property of constructorProperties.properties) {
-                const setter = getEmbeddedAccessor(type, true, '', state.namingStrategy, property, embedded);
-                lines.push(executeTemplates(state.fork('', new ContainerAccessor(state.accessor, JSON.stringify(property.name))).forPropertyName(setter), property.type));
-            }
-
-            if (containerProperty) {
-                state.addCode(`
-                    ${lines.join('\n')}
-                `);
-            } else {
-                if (target === 'serialization') {
-                    serializePropertyNameAware(type, state, BSONType.OBJECT, `'object' === typeof ${state.accessor}`, `
-                        //embedded class with multiple properties
-                        ${before}
-                        ${lines.join('\n')}
-                        ${after}
-                    `);
-                } else {
-                    sizerPropertyNameAware(type, state, `'object' === typeof ${state.accessor}`, `
-                        //embedded class with multiple properties
-                        ${before}
-                        ${lines.join('\n')}
-                        ${after}
-                    `);
-                }
-            }
-        }
-        return;
-    }
+    //emdedded for the moment disabled. treat it as normal property.
+    // const embedded = embeddedAnnotation.getFirst(type);
+    // if (embedded) {
+    //     if (type.kind !== ReflectionKind.class) throw new SerializationError(`Object literals can not be embedded`, collapsePath(state.path));
+    //     const constructorProperties = getConstructorProperties(type);
+    //     if (!constructorProperties.properties.length) throw new BSONError(`Can not embed class ${getClassName(type.classType)} since it has no constructor properties`);
+    //
+    //     if (constructorProperties.properties.length === 1) {
+    //         const first = constructorProperties.properties[0];
+    //         let name = getNameExpression(state.namingStrategy.getPropertyName(first), state);
+    //         const setter = getEmbeddedAccessor(type, false, '', state.namingStrategy, first, embedded);
+    //         state.addCode(executeTemplates(state.fork('', new ContainerAccessor(state.accessor, name)).forPropertyName(setter || state.propertyName), first.type));
+    //     } else {
+    //         const lines: string[] = [];
+    //         const containerProperty = getEmbeddedProperty(type);
+    //
+    //         for (const property of constructorProperties.properties) {
+    //             const setter = getEmbeddedAccessor(type, true, '', state.namingStrategy, property, embedded);
+    //             lines.push(executeTemplates(state.fork('', new ContainerAccessor(state.accessor, JSON.stringify(property.name))).forPropertyName(setter), property.type));
+    //         }
+    //
+    //         if (containerProperty) {
+    //             state.addCode(`
+    //                 ${lines.join('\n')}
+    //             `);
+    //         } else {
+    //             if (target === 'serialization') {
+    //                 serializePropertyNameAware(type, state, BSONType.OBJECT, `'object' === typeof ${state.accessor}`, `
+    //                     //embedded class with multiple properties
+    //                     ${before}
+    //                     ${lines.join('\n')}
+    //                     ${after}
+    //                 `);
+    //             } else {
+    //                 sizerPropertyNameAware(type, state, `'object' === typeof ${state.accessor}`, `
+    //                     //embedded class with multiple properties
+    //                     ${before}
+    //                     ${lines.join('\n')}
+    //                     ${after}
+    //                 `);
+    //             }
+    //         }
+    //     }
+    //     return;
+    // }
 
     const existingCalled = callExtractedFunctionIfAvailable(state, type);
     const extract = existingCalled ? undefined : extractStateToFunctionAndCallIt(state, type);
@@ -1125,8 +1123,11 @@ function serializeTuple(type: TypeTuple, state: TemplateState) {
             }
             `);
         } else {
+            const optionalCheck = member.optional ? `${state.accessor}[${i}] !== undefined` : 'true';
             lines.push(`
-            ${executeTemplates(state.fork('', `${state.accessor}[${i}]`).extendPath(member.name || new RuntimeCode(i)).forPropertyName(new DigitByteRuntimeCode(i)), member.type)}
+            if (${optionalCheck}) {
+                ${executeTemplates(state.fork('', `${state.accessor}[${i}]`).extendPath(member.name || new RuntimeCode(i)).forPropertyName(new DigitByteRuntimeCode(i)), member.type)}
+            }
             ${i}++;
             `);
         }
@@ -1170,8 +1171,11 @@ function sizerTuple(type: TypeTuple, state: TemplateState) {
             }
             `);
         } else {
+            const optionalCheck = member.optional ? `${state.accessor}[${i}] !== undefined` : 'true';
             lines.push(`
-            ${executeTemplates(state.fork('', `${state.accessor}[${i}]`).extendPath(member.name || new RuntimeCode(i)).forPropertyName(new DigitByteRuntimeCode(i)), member.type)}
+            if (${optionalCheck}) {
+                ${executeTemplates(state.fork('', `${state.accessor}[${i}]`).extendPath(member.name || new RuntimeCode(i)).forPropertyName(new DigitByteRuntimeCode(i)), member.type)}
+            }
             ${i}++;
             `);
         }

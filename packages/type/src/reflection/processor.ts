@@ -613,10 +613,12 @@ export class Processor {
                             break;
                         }
                         case ReflectionOp.tupleMember: {
-                            this.pushType({
+                            const t: TypeTupleMember = {
                                 kind: ReflectionKind.tupleMember, type: this.pop() as Type,
                                 parent: undefined as any,
-                            });
+                            };
+                            t.type.parent = t;
+                            this.pushType(t);
                             break;
                         }
                         case ReflectionOp.namedTupleMember: {
@@ -1099,6 +1101,7 @@ export class Processor {
                 parent: undefined as any,
                 type
             };
+            type.parent = resolved;
             if (resolved.type.kind === ReflectionKind.rest) {
                 if (resolved.type.type.kind === ReflectionKind.tuple) {
                     for (const sub of resolved.type.type.types) {

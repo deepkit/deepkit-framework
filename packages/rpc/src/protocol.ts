@@ -616,7 +616,7 @@ export function rpcEncodeError(error: Error | string): EncodedError {
         classType,
         properties,
         stack,
-        message: 'string' === typeof error ? error : error.message,
+        message: 'string' === typeof error ? error : error.message || '',
     };
 }
 

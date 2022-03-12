@@ -44,6 +44,9 @@
       "path": "packages/type/tsconfig.json"
     },
     {
+      "path": "packages/type-compiler/tsconfig.json"
+    },
+    {
       "path": "packages/bson/tsconfig.json"
     },
     {

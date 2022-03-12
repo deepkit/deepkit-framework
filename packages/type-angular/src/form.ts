@@ -12,7 +12,7 @@
 
 import { AbstractControl, AbstractControlOptions, AsyncValidatorFn, FormArray, FormControl, FormGroup, ValidationErrors, ValidatorFn } from '@angular/forms';
 import { ClassType, isFunction } from '@deepkit/core';
-import { ReflectionClass, ReflectionKind, Type, ValidationFailedItem } from '@deepkit/type';
+import { ReflectionClass, ReflectionKind, Type, ValidationErrorItem } from '@deepkit/type';
 import { Subscription } from 'rxjs';
 
 export function requiredIfValidator(predicate: () => boolean, validator: ValidatorFn): any {
@@ -59,7 +59,7 @@ function createControl<T>(
             return null;
         }
 
-        function errorsToAngularErrors(errors: ValidationFailedItem[]): any {
+        function errorsToAngularErrors(errors: ValidationErrorItem[]): any {
             if (errors.length) {
                 const res: ValidationErrors = {};
 
@@ -73,7 +73,7 @@ function createControl<T>(
             return null;
         }
 
-        const errors: ValidationFailedItem[] = [];
+        const errors: ValidationErrorItem[] = [];
         const val = conditionalValidators[prop.name];
         if (isConditionalValidatorFn(val)) {
             const res = val(rootFormGroup.value, control.parent!.value);

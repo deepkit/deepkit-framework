@@ -12,7 +12,7 @@ import { IncomingMessage, ServerResponse } from 'http';
 import { UploadedFile } from './router';
 import * as querystring from 'querystring';
 import { Writable } from 'stream';
-import { metaAnnotation, ReflectionKind, Type, ValidationFailedItem } from '@deepkit/type';
+import { metaAnnotation, ReflectionKind, Type, ValidationErrorItem } from '@deepkit/type';
 
 export class HttpResponse extends ServerResponse {
     status(code: number) {
@@ -26,7 +26,7 @@ export type HttpRequestResolvedParameters = { [name: string]: any };
 
 export class BodyValidationError {
     constructor(
-        public readonly errors: ValidationFailedItem[] = []
+        public readonly errors: ValidationErrorItem[] = []
     ) {
     }
 
@@ -34,13 +34,13 @@ export class BodyValidationError {
         return this.getErrors(prefix).length > 0;
     }
 
-    getErrors(prefix?: string): ValidationFailedItem[] {
+    getErrors(prefix?: string): ValidationErrorItem[] {
         if (prefix) return this.errors.filter(v => v.path.startsWith(prefix));
 
         return this.errors;
     }
 
-    getErrorsForPath(path: string): ValidationFailedItem[] {
+    getErrorsForPath(path: string): ValidationErrorItem[] {
         return this.errors.filter(v => v.path === path);
     }
 

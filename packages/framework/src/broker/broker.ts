@@ -57,7 +57,6 @@ export class EntityBrokerChannel<T extends IdInterface> extends BrokerChannel<En
     }
 
     publishRemove(ids: (string | number)[]) {
-        console.log('publishRemove', this.type);
         return this.publish({ type: EntityChannelMessageType.remove, ids });
     }
 

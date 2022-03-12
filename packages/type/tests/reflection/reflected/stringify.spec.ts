@@ -43,6 +43,8 @@ test('stringifyType tuple', () => {
     expect(stringifyResolvedType(typeOf<[a: string, b: number]>())).toBe('[a: string, b: number]');
     expect(stringifyResolvedType(typeOf<[a: string, b?: number]>())).toBe('[a: string, b?: number]');
     expect(stringifyResolvedType(typeOf<[string, number[]]>())).toBe('[string, Array<number>]');
+    expect(stringifyResolvedType(typeOf<[...number[]]>())).toBe('[...number[]]');
+    expect(stringifyResolvedType(typeOf<[...numbers: number[]]>())).toBe('[...numbers: number[]]');
 });
 
 test('stringifyType function', () => {
@@ -308,5 +310,4 @@ test('stringifyType object literal inline', () => {
 test('stringifyType type', () => {
     const type = typeOf<Type>();
     const s = stringifyType(type, {showFullDefinition: true});
-    console.log(s);
 });

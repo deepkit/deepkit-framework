@@ -1204,6 +1204,7 @@ export function getTypeObjectLiteralFromTypeClass<T extends Type>(type: T): T ex
 export function isOptional(type: Type): boolean {
     if (isMember(type) && type.optional === true) return true;
     if (type.kind === ReflectionKind.parameter) return type.optional || isOptional(type.type);
+    if (type.kind === ReflectionKind.tupleMember) return type.optional || isOptional(type.type);
     if (type.kind === ReflectionKind.property || type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.indexSignature) return isOptional(type.type);
     return type.kind === ReflectionKind.any || type.kind === ReflectionKind.undefined || (type.kind === ReflectionKind.union && type.types.some(isOptional));
 }
@@ -2040,6 +2041,9 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                 case ReflectionKind.any:
                     result.push(`any`);
                     break;
+                case ReflectionKind.unknown:
+                    result.push(`unknown`);
+                    break;
                 case ReflectionKind.void:
                     result.push(`void`);
                     break;
@@ -2295,10 +2299,14 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                 case ReflectionKind.rest:
                     stack.push({ before: '[]' });
                     stack.push({ type: type.type, depth: depth + 1 });
+                    if (type.parent && type.parent.kind === ReflectionKind.tupleMember && !type.parent.name) {
+                        stack.push({ before: '...' });
+                    }
                     break;
                 case ReflectionKind.tupleMember:
                     if (type.name) {
-                        result.push(`${type.name}${type.optional ? '?' : ''}: `);
+                        const dotdotdot = type.type.kind === ReflectionKind.rest ? '...' : '';
+                        result.push(`${dotdotdot}${type.name}${type.optional ? '?' : ''}: `);
                         stack.push({ type: type.type, depth: depth + 1 });
                         break;
                     }

@@ -286,7 +286,7 @@ export function parametersToTuple(parameters: TypeParameter[]): TypeTuple {
     } as TypeTuple;
 
     for (const v of parameters) {
-        tuple.types.push({ kind: ReflectionKind.tupleMember, parent: tuple, name: v.name, optional: v.optional, type: v.type });
+        tuple.types.push({ kind: ReflectionKind.tupleMember, parent: tuple, name: v.name, optional: (v.optional || v.default !== undefined) ? true : undefined, type: v.type });
     }
     return tuple;
 }

@@ -159,8 +159,7 @@ export class ApplicationServer {
     }
 
     /**
-     * Closes all server listener and triggers shutdown events.
-     * This is only used for integration tests.
+     * Closes all server listener and triggers shutdown events. This is only used for integration tests.
      */
     public async close() {
         if (!this.started) return;

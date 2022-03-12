@@ -49,7 +49,7 @@ import {
     TypePropertySignature,
     TypeTemplateLiteral
 } from './type';
-import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, isArray, isClass } from '@deepkit/core';
+import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, isArray, isClass, stringifyValueWithType } from '@deepkit/core';
 import { Packed, resolvePacked, resolveRuntimeType } from './processor';
 import { NoTypeReceived } from '../utils';
 import { findCommonLiteral } from '../inheritance';
@@ -1193,7 +1193,8 @@ export class ReflectionClass<T> {
         } as TypeClass);
 
         if (type.kind !== ReflectionKind.class) {
-            throw new Error(`Given class is not a class ${classType}`);
+            console.log('__type', classType ? (classType as any).__type : '');
+            throw new Error(`Given class is not a class but kind ${type.kind}. classType: ${stringifyValueWithType(classType)}`);
         }
 
         const parentProto = Object.getPrototypeOf(classType.prototype);

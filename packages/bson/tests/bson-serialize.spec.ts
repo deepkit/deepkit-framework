@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { getBSONSerializer, getBSONSizer, getValueSize, hexToByte, uuidStringToByte } from '../src/bson-serializer';
-import { BinaryBigInt, createReference, Embedded, Excluded, MongoId, nodeBufferToArrayBuffer, PrimaryKey, Reference, SignedBinaryBigInt, typeOf, uuid, UUID } from '@deepkit/type';
+import { BinaryBigInt, createReference, Excluded, MongoId, nodeBufferToArrayBuffer, PrimaryKey, Reference, SignedBinaryBigInt, typeOf, uuid, UUID } from '@deepkit/type';
 import bson from 'bson';
 import { randomBytes } from 'crypto';
 import { BSON_BINARY_SUBTYPE_DEFAULT, BSONType } from '../src/utils';
@@ -897,52 +897,53 @@ test('complex', () => {
     expect(bson).toEqual(bsonOfficial);
 });
 
-test('embedded', () => {
-    class DecoratedValue {
-        constructor(public items: string[] = []) {
-        }
-    }
-
-    const object = { v: new DecoratedValue(['Peter3']) };
-
-    const expectedSize =
-            4 //size uint32
-            + 1 //type (array)
-            + 'v\0'.length
-            + (
-                4 //size uint32 of array
-                + 1 //type (string)
-                + '0\0'.length //key
-                + (
-                    4 //string size uint32
-                    + 'Peter3'.length + 1 //string content + null
-                )
-                + 1 //object null
-            )
-            + 1 //object null
-    ;
-
-    expect(calculateObjectSize({ v: ['Peter3'] })).toBe(expectedSize);
-
-    const schema = typeOf<{
-        v: Embedded<DecoratedValue>
-    }>();
-
-    const bson = getBSONSerializer(undefined, schema)(object);
-
-    const officialDeserialize = deserialize(Buffer.from(bson));
-    expect(officialDeserialize.v).toEqual(['Peter3']);
-
-    expect(bson.byteLength).toBe(expectedSize);
-    expect(getBSONSizer(undefined, schema)(object)).toBe(expectedSize);
-
-    expect(bson).toEqual(serialize({ v: ['Peter3'] }));
-
-    // const back = getBSONDecoder(schema)(bson);
-    // expect(back.v).toBeInstanceOf(DecoratedValue);
-    // expect(back.v.items).toEqual(['Peter3']);
-    // expect(back).toEqual(object);
-});
+//for the moment, bson does not support embedded
+// test('embedded', () => {
+//     class DecoratedValue {
+//         constructor(public items: string[] = []) {
+//         }
+//     }
+//
+//     const object = { v: new DecoratedValue(['Peter3']) };
+//
+//     const expectedSize =
+//             4 //size uint32
+//             + 1 //type (array)
+//             + 'v\0'.length
+//             + (
+//                 4 //size uint32 of array
+//                 + 1 //type (string)
+//                 + '0\0'.length //key
+//                 + (
+//                     4 //string size uint32
+//                     + 'Peter3'.length + 1 //string content + null
+//                 )
+//                 + 1 //object null
+//             )
+//             + 1 //object null
+//     ;
+//
+//     expect(calculateObjectSize({ v: ['Peter3'] })).toBe(expectedSize);
+//
+//     const schema = typeOf<{
+//         v: Embedded<DecoratedValue>
+//     }>();
+//
+//     const bson = getBSONSerializer(undefined, schema)(object);
+//
+//     const officialDeserialize = deserialize(Buffer.from(bson));
+//     expect(officialDeserialize.v).toEqual(['Peter3']);
+//
+//     expect(bson.byteLength).toBe(expectedSize);
+//     expect(getBSONSizer(undefined, schema)(object)).toBe(expectedSize);
+//
+//     expect(bson).toEqual(serialize({ v: ['Peter3'] }));
+//
+//     // const back = getBSONDecoder(schema)(bson);
+//     // expect(back.v).toBeInstanceOf(DecoratedValue);
+//     // expect(back.v.items).toEqual(['Peter3']);
+//     // expect(back).toEqual(object);
+// });
 
 test('reference', () => {
     class Entity {

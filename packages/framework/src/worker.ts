@@ -136,7 +136,6 @@ export class RpcServer implements RpcServerInterface {
     }
 }
 
-
 export class WebWorkerFactory {
     constructor(
         protected httpKernel: HttpKernel,

@@ -108,14 +108,14 @@ export class RpcMessageSubject {
         });
     }
 
-    async firstThenClose<T = undefined>(type: number, schema?: ReceiveType<T>): Promise<T> {
+    async firstThenClose<T = RpcMessage>(type: number, schema?: ReceiveType<T>): Promise<T> {
         return asyncOperation<any>((resolve, reject) => {
             this.onReply((next) => {
                 this.onReplyCallback = this.catchOnReplyCallback;
                 this.release();
 
                 if (next.type === type) {
-                    return resolve(schema ? next.parseBody(schema) : undefined);
+                    return resolve(schema ? next.parseBody(schema) : next);
                 }
 
                 if (next.isError()) {

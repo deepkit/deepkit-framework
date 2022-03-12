@@ -44,6 +44,9 @@
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ],
+    "testPathIgnorePatterns": [
+        "tests/"
+    ],
     "globals": {
       "ts-jest": {
         "tsconfig": "<rootDir>/tsconfig.test.json"

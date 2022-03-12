@@ -184,6 +184,31 @@ test('basics', async () => {
     }
 });
 
+test('parameters', async () => {
+    class Controller {
+        @rpc.action()
+        get(value: string = 'nope'): string {
+            return value;
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController('myController', Controller);
+
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    {
+        const v = await controller.get('foo');
+        expect(v).toBe('foo');
+    }
+
+    {
+        const v = await controller.get();
+        expect(v).toBe('nope');
+    }
+});
+
 test('promise', async () => {
     @entity.name('model/promise')
     class MyModel {
@@ -269,15 +294,15 @@ test('wrong arguments', async () => {
     await controller.getProduct(1);
 
     {
-        await expect(controller.getProduct(undefined as any)).rejects.toThrow('args.id: Cannot convert undefined to number');
+        await expect(controller.getProduct(undefined as any)).rejects.toThrow('args.id(type): Cannot convert undefined to number');
     }
 
     {
-        await expect(controller.getProduct('23' as any)).rejects.toThrow('args.id: Cannot convert 23 to number');
+        await expect(controller.getProduct('23' as any)).rejects.toThrow('args.id(type): Cannot convert 23 to number');
     }
 
     {
-        await expect(controller.getProduct(NaN as any)).rejects.toThrow('args.id: Cannot convert NaN to number');
+        await expect(controller.getProduct(NaN as any)).rejects.toThrow('args.id(type): Cannot convert NaN to number');
     }
 
     {
