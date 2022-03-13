@@ -45,7 +45,7 @@ export class TestHttpResponse extends HttpResponse {
         return true;
     }
 
-    end(chunk: any, encoding?: any, callback?: any): void {
+    end(chunk: any, encoding?: any, callback?: any): any {
         if (typeof chunk === 'function') {
             callback = chunk;
             chunk = null;
@@ -62,6 +62,7 @@ export class TestHttpResponse extends HttpResponse {
             this.body = Buffer.concat([this.body, chunk]);
         }
         if (callback) callback();
+        return this;
     }
 }
 

@@ -253,7 +253,7 @@ export class MemoryHttpResponse extends HttpResponse {
         chunk: any,
         encoding: any,
         callback?: any
-    ): boolean {
+    ): any {
         if (typeof encoding === 'function') {
             callback = encoding;
             encoding = null;
@@ -270,7 +270,7 @@ export class MemoryHttpResponse extends HttpResponse {
         return true;
     }
 
-    end(chunk: any, encoding?: any, callback?: any): void {
+    end(chunk: any, encoding?: any, callback?: any): any {
         if (typeof chunk === 'function') {
             callback = chunk;
             chunk = null;
@@ -286,7 +286,7 @@ export class MemoryHttpResponse extends HttpResponse {
             }
             this.body = Buffer.concat([this.body, chunk]);
         }
-        super.end(chunk, encoding, callback);
+        return super.end(chunk, encoding, callback);
         // if (callback) callback();
     }
 }
