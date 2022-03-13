@@ -28,7 +28,7 @@ import { Stopwatch } from '@deepkit/stopwatch';
 import { OrmBrowserController } from './orm-browser/controller';
 import { DatabaseListener } from './database/database-listener';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
-import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/dist/cjs/commands';
+import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
 import { FileStopwatchStore } from './debug/stopwatch/store';
 import { DebugDebugFramesCommand } from './cli/debug-debug-frames';
 import { ConnectionWriter, rpcClass, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';

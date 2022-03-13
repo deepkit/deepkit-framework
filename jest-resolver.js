@@ -28,15 +28,16 @@ const resolve2 = require('resolve');
 const myResolve = resolve.create.sync({
     extensions: ['.js', '.jsx', '.ts', '.tsx', '.json', '.node'],
     symlinks: false,
-    conditionNames: ["require"]
+    conditionNames: ['require', 'node', 'default'],
 });
 
 module.exports = (request, options) => {
     try {
-        const res = resolve2.sync(request, {
-            ...options,
-            preserveSymlinks: true,
-        });
+        const res = myResolve(options.basedir, request);
+        // const res = resolve2.sync(request, {
+        //     ...options,
+        //     preserveSymlinks: true,
+        // });
         return res;
     } catch (e) {
         if (e.code === 'MODULE_NOT_FOUND') {
