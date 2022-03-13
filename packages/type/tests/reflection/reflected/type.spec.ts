@@ -866,20 +866,6 @@ test('InlineRuntimeType', () => {
     expect(type.types[0].name).toBe('id');
 });
 
-test('visit complex type', () => {
-    const type = typeOf<Type>();
-    let visited = 0;
-    visit(type, () => {
-        visited++;
-    });
-    console.log('visited', visited);
-});
-
-test('hasCircularReference Type', () => {
-    const type = typeOf<Type>();
-    expect(hasCircularReference(type)).toBe(true);
-});
-
 test('hasCircularReference no', () => {
     interface User {
         id: number;

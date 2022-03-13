@@ -1394,7 +1394,7 @@ export class ReflectionTransformer {
 
     protected getDeclarationVariableName(typeName: EntityName): Identifier {
         if (isIdentifier(typeName)) {
-            return this.f.createIdentifier('__Ω' + getIdentifierName(typeName));
+            return this.f.createIdentifier('__Ω' + getIdentifierName(typeName));
         }
 
         function joinQualifiedName(name: EntityName): string {
@@ -1402,7 +1402,7 @@ export class ReflectionTransformer {
             return joinQualifiedName(name.left) + '_' + getIdentifierName(name.right);
         }
 
-        return this.f.createIdentifier('__Ω' + joinQualifiedName(typeName));
+        return this.f.createIdentifier('__Ω' + joinQualifiedName(typeName));
     }
 
     protected extractPackStructOfTypeReference(type: TypeReferenceNode | ExpressionWithTypeArguments, program: CompilerProgram): void {

@@ -413,6 +413,9 @@ export interface TypeRest extends TypeAnnotations {
     type: Type
 }
 
+/**
+ * @reflection never
+ */
 export type Type =
     TypeNever
     | TypeAny

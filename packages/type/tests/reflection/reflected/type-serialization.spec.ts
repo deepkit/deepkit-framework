@@ -325,7 +325,6 @@ test('Type excluded', () => {
     assertType(back, ReflectionKind.class);
     const typeMember = findMember('type', back);
     assertType(typeMember, ReflectionKind.property);
-    expect(typeMember.type.typeName).toBe('Type');
     expect(typeMember.type.kind).toBe(ReflectionKind.any);
 });
 

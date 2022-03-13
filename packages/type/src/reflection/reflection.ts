@@ -690,7 +690,11 @@ export class ReflectionProperty {
 
     getDefaultValue(): any {
         if (this.property.kind === ReflectionKind.property && this.property.default !== undefined) {
-            return this.property.default();
+            try {
+                return this.property.default();
+            } catch {
+                return;
+            }
         }
     }
 

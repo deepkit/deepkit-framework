@@ -116,7 +116,7 @@ function isPack(o: any): o is Packed {
 
 function extractTypeNameFromFunction(fn: Function): string {
     const str = fn.toString();
-    const match = str.match(/__Ω([\w]+)/);
+    const match = str.match(/__Ω([\w]+)/);
     if (match) {
         return match[1];
     }

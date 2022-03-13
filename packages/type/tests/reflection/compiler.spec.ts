@@ -200,21 +200,21 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
     // [`export interface MyInterface {id: number}; class Controller { public p: MyInterface[] = [];}`,
     //     [
     //         `['id', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral])}]`,
-    //         `[__ΩMyInterface, 'p', () => [], ${packString([ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.defaultValue, 2, ReflectionOp.class])}]`
+    //         `[__ΩMyInterface, 'p', () => [], ${packString([ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.defaultValue, 2, ReflectionOp.class])}]`
     //     ]
     // ],
     //
     // [`interface Base {title: string}; interface MyInterface extends Base {id: number}; class Controller { public p: MyInterface[] = [];}`,
     //     [
     //         `['id', 'title', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.string, ReflectionOp.propertySignature, 1, ReflectionOp.objectLiteral])}]`,
-    //         `[__ΩMyInterface, 'p', () => [], ${packString([ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.defaultValue, 2, ReflectionOp.class])}]`
+    //         `[__ΩMyInterface, 'p', () => [], ${packString([ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.defaultValue, 2, ReflectionOp.class])}]`
     //     ]
     // ],
     //
     // [`export type MyAlias = string; class Controller { public p: MyAlias[] = [];}`,
     //     [
     //         `${packString([ReflectionOp.string])}`,
-    //         `[__ΩMyAlias, 'p', () => [], ${packString([ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.defaultValue, 2, ReflectionOp.class])}]`,
+    //         `[__ΩMyAlias, 'p', () => [], ${packString([ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.defaultValue, 2, ReflectionOp.class])}]`,
     //     ]
     // ],
     //
@@ -245,7 +245,7 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
     // [{
     //     app: `import {Message, Model} from './model'; class Entity { p: Message[]; m: Model[];}`,
     //     model: `export type Message = number; export class Model {};`
-    // }, [`import { Model } from './model'`, `[__ΩMessage, 'p', () => Model, 'm', ${packString([
+    // }, [`import { Model } from './model'`, `[__ΩMessage, 'p', () => Model, 'm', ${packString([
     //     ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1,
     //     ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
     //
@@ -259,21 +259,21 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
     //     app: `import {Type, Model} from './myPackage'; class Entity { p: Type[]; p2: Model[]};`,
     //     myPackage: `export * from './myPackageModel';`,
     //     myPackageModel: `export interface Type {title: string}; export class Model {}`
-    // }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
+    // }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
     //     ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
     //
     // [{
     //     app: `import {Type, Model} from './myPackage'; class Entity { p: Type[]; p2: Model[]};`,
     //     myPackage: `export {Model, Type} from './myPackageModel';`,
     //     myPackageModel: `export interface Type {title: string}; export class Model {}`
-    // }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
+    // }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
     //     ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
     //
     // [{
     //     app: `import {Type, Model} from './myPackage'; class Entity { p: Type[]; p2: Model[]};`,
     //     myPackage: `export {MM as Model, TT as Type} from './myPackageModel';`,
     //     myPackageModel: `export interface TT {title: string}; export class MM {}`
-    // }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
+    // }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
     //     ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
     //
     // [`
@@ -436,7 +436,7 @@ test('external object literal', () => {
     return class Container {data: o}`;
     const js = transpile(code);
 
-    expect(js).toContain(`var __Ωo = `);
+    expect(js).toContain(`var __Ωo = `);
 
     const clazz = transpileAndReturn(code);
 
@@ -522,7 +522,7 @@ test('type emitted at the right place', () => {
 
     const js = transpile(code);
     console.log('js', js);
-    expect(js).toContain(`() => {\n    var __Ωo = ['a', '${packRaw([ReflectionOp.frame])}`);
+    expect(js).toContain(`() => {\n    var __Ωo = ['a', '${packRaw([ReflectionOp.frame])}`);
     const type = transpileAndReturn(code);
     console.log(type);
 });
@@ -552,8 +552,8 @@ test('no global clash', () => {
 
     const js = transpile(code);
     console.log('js', js);
-    expect(js).toContain(`var __Ωo = ['a', '${packRaw([ReflectionOp.frame])}`);
-    expect(js).toContain(`var __Ωo = ['a', 'b', '${packRaw([ReflectionOp.frame])}`);
+    expect(js).toContain(`var __Ωo = ['a', '${packRaw([ReflectionOp.frame])}`);
+    expect(js).toContain(`var __Ωo = ['a', 'b', '${packRaw([ReflectionOp.frame])}`);
     // const clazz = transpileAndReturn(code);
 });
 
@@ -1680,13 +1680,13 @@ test('import types named import esm', () => {
         `,
         'user': `export interface User {id: number}`
     });
-    expect(js['app.js']).toContain(`__ΩUser`);
-    expect(js['app.js']).toContain(`var __ΩPartial = [`);
-    expect(js['app.js']).toContain(`export { __Ωbla };`);
-    expect(js['app.js']).toContain(`var __Ωa = [`);
+    expect(js['app.js']).toContain(`__ΩUser`);
+    expect(js['app.js']).toContain(`var __ΩPartial = [`);
+    expect(js['app.js']).toContain(`export { __Ωbla };`);
+    expect(js['app.js']).toContain(`var __Ωa = [`);
 
-    expect(js['user.js']).toContain(`export { __ΩUser };`);
-    expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
+    expect(js['user.js']).toContain(`export { __ΩUser };`);
+    expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
 
     console.log(js);
 });
@@ -1703,13 +1703,13 @@ test('import types named import cjs', () => {
         'user': `export interface User {id: number}`
     }, { ...options, module: ModuleKind.CommonJS });
     console.log(js);
-    expect(js['app.js']).toContain(`__ΩUser`);
-    expect(js['app.js']).toContain(`var __ΩPartial = [`);
-    expect(js['app.js']).toContain(`exports.__Ωbla = __Ωbla`);
-    expect(js['app.js']).toContain(`var __Ωa = [`);
+    expect(js['app.js']).toContain(`__ΩUser`);
+    expect(js['app.js']).toContain(`var __ΩPartial = [`);
+    expect(js['app.js']).toContain(`exports.__Ωbla = __Ωbla`);
+    expect(js['app.js']).toContain(`var __Ωa = [`);
 
-    expect(js['user.js']).toContain(`exports.__ΩUser = __ΩUser`);
-    expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
+    expect(js['user.js']).toContain(`exports.__ΩUser = __ΩUser`);
+    expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
 });
 
 test('import types named import typeOnly', () => {
@@ -1724,13 +1724,13 @@ test('import types named import typeOnly', () => {
         'user': `export interface User {id: number}`
     });
     console.log(js);
-    expect(js['app.js']).not.toContain(`__ΩUser`);
-    expect(js['app.js']).toContain(`var __ΩPartial = [`);
-    expect(js['app.js']).toContain(`export { __Ωbla };`);
-    expect(js['app.js']).toContain(`var __Ωa = [`);
+    expect(js['app.js']).not.toContain(`__ΩUser`);
+    expect(js['app.js']).toContain(`var __ΩPartial = [`);
+    expect(js['app.js']).toContain(`export { __Ωbla };`);
+    expect(js['app.js']).toContain(`var __Ωa = [`);
 
-    expect(js['user.js']).toContain(`export { __ΩUser };`);
-    expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
+    expect(js['user.js']).toContain(`export { __ΩUser };`);
+    expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
 });
 
 test('import types named import with disabled reflection', () => {
@@ -1744,12 +1744,12 @@ test('import types named import with disabled reflection', () => {
         `,
         'user': `/** @reflection never */ export interface User {id: number}`
     });
-    expect(js['app.js']).not.toContain(`__ΩUser`);
-    expect(js['app.js']).toContain(`var __ΩPartial = [`);
-    expect(js['app.js']).toContain(`export { __Ωbla };`);
-    expect(js['app.js']).toContain(`var __Ωa = [`);
-    expect(js['user.js']).not.toContain(`export { __ΩUser };`);
-    expect(js['user.d.ts']).not.toContain(`__ΩUser`);
+    expect(js['app.js']).not.toContain(`__ΩUser`);
+    expect(js['app.js']).toContain(`var __ΩPartial = [`);
+    expect(js['app.js']).toContain(`export { __Ωbla };`);
+    expect(js['app.js']).toContain(`var __Ωa = [`);
+    expect(js['user.js']).not.toContain(`export { __ΩUser };`);
+    expect(js['user.d.ts']).not.toContain(`__ΩUser`);
 
     console.log(js);
 });
