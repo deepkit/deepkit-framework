@@ -1943,7 +1943,7 @@ export class ReflectionTransformer {
         const statements: Statement[] = [declaration];
 
         statements.push(this.f.createExpressionStatement(
-            this.f.createAssignment(this.f.createPropertyAccessExpression(declaration.name!, '__type'), encodedType)
+            this.f.createAssignment(this.f.createPropertyAccessExpression(this.nodeConverter.clone(declaration.name), '__type'), encodedType)
         ));
         return statements;
     }

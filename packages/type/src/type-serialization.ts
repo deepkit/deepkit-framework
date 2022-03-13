@@ -647,7 +647,7 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
                     }
                 }) : typeSettings.registeredEntities[type.name!];
 
-            if (newClass) {
+            if (newClass && !type.globalObject) {
                 Object.defineProperty(classType, 'name', { value: type.classType, writable: true, enumerable: false });
                 if (!classType.__type) {
                     classType.__type = [];

@@ -114,6 +114,15 @@ function isPack(o: any): o is Packed {
     return isArray(o);
 }
 
+function extractTypeNameFromFunction(fn: Function): string {
+    const str = fn.toString();
+    const match = str.match(/__Ω([\w]+)/);
+    if (match) {
+        return match[1];
+    }
+    return 'UnknownTypeName:'+str;
+}
+
 /**
  * Computes a type of given object. This function caches the result on the object itself.
  */
@@ -326,8 +335,9 @@ export class Processor {
         //and will be GC correctly (and with it this cache). Its crucial that not all reflect() calls cache the content, otherwise it would pollute the
         //memory with useless types. For example a global type Partial<> would hold all its instances, what we do not want.
         //We cache only direct non-generic (inputs empty) types passed to typeOf<>() or resolveRuntimeType(). all other reflect() calls do not use this cache.
-        //make sure the same type is returned if already known
-        if (options.reuseCached && packed.__type && inputs.length === 0) {
+        //make sure the same type is returned if already known.
+        //packed.length === 0 for deserialized TypeClass with reconstructed classes.
+        if ((options.reuseCached || packed.length === 0) && packed.__type && inputs.length === 0) {
             return packed.__type;
         }
 
@@ -383,7 +393,7 @@ export class Processor {
         let result = this.program.stack[0];
 
         programLoop:
-            while (this.program.end !== 0) {
+            while (this.program.active) {
                 const program = this.program;
                 // process.stdout.write(`jump to program: ${stringifyValueWithType(program.object)}\n`);
                 for (; program.program < program.end; program.program++) {
@@ -982,7 +992,7 @@ export class Processor {
                                 const reuseCached = !!(this.isEnded() && program.previous && program.previous.end === 0);
                                 const result = this.reflect(p, [], { reuseCached });
                                 if (isWithAnnotations(result) && !result.typeName) {
-                                    result.typeName = isFunction(pOrFn) ? pOrFn.toString().replace('() => __Ω', '') : '';
+                                    result.typeName = isFunction(pOrFn) ? extractTypeNameFromFunction(pOrFn) : '';
                                 }
                                 this.push(result, program);
 
@@ -1035,7 +1045,7 @@ export class Processor {
                                 const result = this.reflect(p, inputs);
 
                                 if (isWithAnnotations(result) && !result.typeName) {
-                                    result.typeName = isFunction(pOrFn) ? pOrFn.toString().replace('() => __Ω', '') : '';
+                                    result.typeName = isFunction(pOrFn) ? extractTypeNameFromFunction(pOrFn) : '';
                                 }
 
                                 if (isWithAnnotations(result) && inputs.length) {

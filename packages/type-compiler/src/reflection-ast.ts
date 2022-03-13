@@ -119,6 +119,22 @@ export class NodeConverter {
     constructor(protected f: NodeFactory) {
     }
 
+    clone<T extends Node>(node?: T): T {
+        try {
+            return tsNodeClone(node, {
+                preserveComments: false,
+                factory: this.f,
+                setOriginalNodes: false,
+                preserveSymbols: false,
+                setParents: false,
+                hook: cloneHook
+            }) as any;
+        } catch (error) {
+            console.log('node', node);
+            throw error;
+        }
+    }
+
     toExpression<T extends PackExpression | PackExpression[]>(value?: T): Expression {
         if (value === undefined) return this.f.createIdentifier('undefined');
 

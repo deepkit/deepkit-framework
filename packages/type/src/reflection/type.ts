@@ -577,35 +577,36 @@ export function isSameType(a: Type, b: Type, stack: StackEntry[] = []): boolean 
         }
 
         if (a.kind === ReflectionKind.class && b.kind === ReflectionKind.class) {
-            if (a.classType !== b.classType) return false;
-            if (!a.arguments && !b.arguments) return true;
-            if (!a.arguments || !b.arguments) return false;
-
-            if (a.arguments && !b.arguments) return false;
-            if (!a.arguments && b.arguments) return false;
-
-            for (let i = 0; a.arguments.length; i++) {
-                if (!a.arguments[i] || !b.arguments[i]) return false;
-                const aMember = a.arguments[i];
-                const bMember = b.arguments[i];
-                if (aMember === bMember) continue;
-
-                if (aMember.kind === ReflectionKind.property) {
-                    if (bMember.kind === ReflectionKind.property) {
-                        if (aMember.name !== bMember.name) return false;
-                        if (aMember.readonly !== bMember.readonly) return false;
-                        if (aMember.optional !== bMember.optional) return false;
-                        if (aMember.abstract !== bMember.abstract) return false;
-                        if (aMember.visibility !== bMember.visibility) return false;
-                        if (!isSameType(aMember.type, bMember.type, stack)) return false;
-                    } else {
-                        return false;
-                    }
-                } else {
-                    if (!isSameType(aMember, bMember)) return false;
-                }
-            }
-            return true;
+            return a.classType === b.classType;
+            // if (a.classType !== b.classType) return false;
+            // if (!a.arguments && !b.arguments) return true;
+            // if (!a.arguments || !b.arguments) return false;
+            //
+            // if (a.arguments && !b.arguments) return false;
+            // if (!a.arguments && b.arguments) return false;
+            //
+            // for (let i = 0; a.arguments.length; i++) {
+            //     if (!a.arguments[i] || !b.arguments[i]) return false;
+            //     const aMember = a.arguments[i];
+            //     const bMember = b.arguments[i];
+            //     if (aMember === bMember) continue;
+            //
+            //     if (aMember.kind === ReflectionKind.property) {
+            //         if (bMember.kind === ReflectionKind.property) {
+            //             if (aMember.name !== bMember.name) return false;
+            //             if (aMember.readonly !== bMember.readonly) return false;
+            //             if (aMember.optional !== bMember.optional) return false;
+            //             if (aMember.abstract !== bMember.abstract) return false;
+            //             if (aMember.visibility !== bMember.visibility) return false;
+            //             if (!isSameType(aMember.type, bMember.type, stack)) return false;
+            //         } else {
+            //             return false;
+            //         }
+            //     } else {
+            //         if (!isSameType(aMember, bMember)) return false;
+            //     }
+            // }
+            // return true;
         }
 
         if (a.kind === ReflectionKind.objectLiteral && b.kind === ReflectionKind.objectLiteral) {

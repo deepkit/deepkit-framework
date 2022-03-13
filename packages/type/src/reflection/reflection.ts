@@ -1193,7 +1193,6 @@ export class ReflectionClass<T> {
         } as TypeClass);
 
         if (type.kind !== ReflectionKind.class) {
-            console.log('__type', classType ? (classType as any).__type : '');
             throw new Error(`Given class is not a class but kind ${type.kind}. classType: ${stringifyValueWithType(classType)}`);
         }
 

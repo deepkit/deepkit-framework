@@ -573,51 +573,49 @@ export class Injector implements InjectorInterface {
             return `new ${tokenVar}(${resolvedVar} || (${resolvedVar} = [${args.join(', ')}]))`;
         }
 
-        if (isWithAnnotations(options.type)) {
-            if (options.type.kind === ReflectionKind.objectLiteral) {
-                if (options.type.typeName === 'Pick' && options.type.typeArguments && options.type.typeArguments.length === 2) {
-                    if (options.type.typeArguments[0].kind === ReflectionKind.class) {
-                        const module = findModuleForConfig(options.type.typeArguments[0].classType, resolveDependenciesFrom);
-                        if (module) {
-                            const fullConfig = compiler.reserveVariable('fullConfig', module.getConfig());
-                            let index = options.type.typeArguments[1];
-                            if (index.kind === ReflectionKind.literal) {
-                                index = { kind: ReflectionKind.union, types: [index] };
-                            }
-                            if (index.kind === ReflectionKind.union) {
-                                const members: string[] = [];
-                                for (const t of index.types) {
-                                    if (t.kind === ReflectionKind.literal) {
-                                        const index = JSON.stringify(t.literal);
-                                        members.push(`${index}: ${fullConfig}[${index}]`);
-                                    }
+        if (options.type.kind === ReflectionKind.objectLiteral) {
+            if (options.type.typeName === 'Pick' && options.type.typeArguments && options.type.typeArguments.length === 2) {
+                if (options.type.typeArguments[0].kind === ReflectionKind.class) {
+                    const module = findModuleForConfig(options.type.typeArguments[0].classType, resolveDependenciesFrom);
+                    if (module) {
+                        const fullConfig = compiler.reserveVariable('fullConfig', module.getConfig());
+                        let index = options.type.typeArguments[1];
+                        if (index.kind === ReflectionKind.literal) {
+                            index = { kind: ReflectionKind.union, types: [index] };
+                        }
+                        if (index.kind === ReflectionKind.union) {
+                            const members: string[] = [];
+                            for (const t of index.types) {
+                                if (t.kind === ReflectionKind.literal) {
+                                    const index = JSON.stringify(t.literal);
+                                    members.push(`${index}: ${fullConfig}[${index}]`);
                                 }
-
-                                return `{${members.join(', ')}}`;
                             }
+
+                            return `{${members.join(', ')}}`;
                         }
                     }
                 }
             }
+        }
 
-            if (isWithAnnotations(options.type) && options.type.indexAccessOrigin) {
-                let current = options.type;
-                let module = undefined as InjectorModule | undefined;
-                const accesses: string[] = [];
+        if (options.type.indexAccessOrigin) {
+            let current = options.type;
+            let module = undefined as InjectorModule | undefined;
+            const accesses: string[] = [];
 
-                while (current && current.indexAccessOrigin) {
-                    if (current.indexAccessOrigin.container.kind === ReflectionKind.class) {
-                        module = findModuleForConfig(current.indexAccessOrigin.container.classType, resolveDependenciesFrom);
-                    }
-                    if (current.indexAccessOrigin.index.kind === ReflectionKind.literal) {
-                        accesses.unshift(`[${JSON.stringify(current.indexAccessOrigin.index.literal)}]`);
-                    }
-                    current = current.indexAccessOrigin.container;
+            while (current && current.indexAccessOrigin) {
+                if (current.indexAccessOrigin.container.kind === ReflectionKind.class) {
+                    module = findModuleForConfig(current.indexAccessOrigin.container.classType, resolveDependenciesFrom);
                 }
-                if (module) {
-                    const fullConfig = compiler.reserveVariable('fullConfig', module.getConfig());
-                    return `${fullConfig}${accesses.join('')}`;
+                if (current.indexAccessOrigin.index.kind === ReflectionKind.literal) {
+                    accesses.unshift(`[${JSON.stringify(current.indexAccessOrigin.index.literal)}]`);
                 }
+                current = current.indexAccessOrigin.container;
+            }
+            if (module) {
+                const fullConfig = compiler.reserveVariable('fullConfig', module.getConfig());
+                return `${fullConfig}${accesses.join('')}`;
             }
         }
 
