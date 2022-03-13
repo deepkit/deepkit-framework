@@ -5,8 +5,5 @@
     "module": "ES2020"
   },
   "references": [
-    {
-      "path": "../core/tsconfig.esm.json"
-    }
   ]
 }
