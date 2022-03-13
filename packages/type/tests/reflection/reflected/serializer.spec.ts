@@ -748,3 +748,12 @@ test('intersected mapped type key', () => {
     expect(cast<sortAny>({username: 'asc'})).toEqual({username: 'asc'});
     expect(cast<sortAny>({id: 'desc', username: 'asc'})).toEqual({id: 'desc', username: 'asc'});
 });
+
+test('wild property names', () => {
+    interface A {
+        ['asd-344']: string;
+        ['#$%^^x']: number;
+    }
+
+    expect(cast<A>({'asd-344': 'abc', '#$%^^x': 3})).toEqual({'asd-344': 'abc', '#$%^^x': 3});
+});
