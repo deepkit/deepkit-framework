@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/type-angular",
-  "version": "1.0.1-alpha.61",
+  "version": "1.0.1-alpha.62",
   "description": "Types angular forms",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -20,7 +20,7 @@
     "@angular/core": "~10.2.3 || ~11.0.0",
     "@angular/forms": "~10.2.3 || ~11.0.0",
     "@deepkit/core": "^1.0.1-alpha.61",
-    "@deepkit/type": "^1.0.1-alpha.61",
+    "@deepkit/type": "^1.0.1-alpha.62",
     "rxjs": "~6.6.0"
   },
   "jest": {
