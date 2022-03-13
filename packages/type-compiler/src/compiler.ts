@@ -2094,8 +2094,10 @@ export class DeclarationTransformer extends ReflectionTransformer {
 }
 
 let loaded = false;
+declare var process: any;
+
 export const transformer: CustomTransformerFactory = function deepkitTransformer(context) {
-    if (!loaded) {
+    if (!loaded && process && 'string' === typeof process.env.DEBUG && process.env.DEBUG.includes('deepkit')) {
         process.stderr.write('@deepkit/type transformer loaded\n');
         loaded = true;
     }
