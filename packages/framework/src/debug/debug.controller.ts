@@ -36,7 +36,7 @@ import { unlink } from 'fs/promises';
 import { getScope, InjectorToken, resolveToken, Token } from '@deepkit/injector';
 import { AppModule, ServiceContainer } from '@deepkit/app';
 import { RpcControllers } from '../rpc';
-import { ReflectionClass, serializeType } from '@deepkit/type';
+import { ReflectionClass, serializeType, stringifyType } from '@deepkit/type';
 
 @rpc.controller(DebugControllerInterface)
 export class DebugController implements DebugControllerInterface {
@@ -155,7 +155,6 @@ export class DebugController implements DebugControllerInterface {
                 groups: route.groups,
                 category: route.category,
                 controller: getClassName(route.action.controller) + '.' + route.action.methodName,
-
                 description: route.description,
             };
             const parsedRoute = parseRouteControllerAction(route);
@@ -163,12 +162,12 @@ export class DebugController implements DebugControllerInterface {
             const queryParameters: string[] = [];
             for (const parameter of parsedRoute.getParameters()) {
                 if (parameter.body || parameter.bodyValidation) {
-                    routeD.bodySchema = serializeType(parameter.getType());
+                    routeD.bodyType = stringifyType(parameter.getType());
                 } else if (parameter.query) {
                     routeD.parameters.push({
                         name: parameter.getName(),
                         type: 'query',
-                        schema: serializeType(parameter.parameter.type),
+                        stringType: stringifyType(parameter.parameter.parameter),
                     });
                     queryParameters.push(`${parameter.getName()}=TODO`);
                     // queryParameters.push(`${parameter.getName()}=${stringifyType(parameter.parameter.type)}`);
@@ -176,7 +175,7 @@ export class DebugController implements DebugControllerInterface {
                     routeD.parameters.push({
                         name: parameter.getName(),
                         type: 'url',
-                        schema: serializeType(parameter.parameter.type),
+                        stringType: stringifyType(parameter.parameter.parameter),
                     });
                 } else {
                     //its a dependency injection token
@@ -197,15 +196,16 @@ export class DebugController implements DebugControllerInterface {
     configuration(): Config {
         const appConfig: ConfigOption[] = [];
 
-        if (this.serviceContainer.appModule.options.config) {
-            const schema = this.serviceContainer.appModule.options.config.schema;
+        if (this.serviceContainer.appModule.configDefinition) {
+            const schema = ReflectionClass.from(this.serviceContainer.appModule.configDefinition);
             for (const [name, value] of Object.entries(this.serviceContainer.appModule.getConfig())) {
+                const property = schema.getProperty(name);
                 appConfig.push({
                     name: name,
                     value: value,
-                    defaultValue: schema.getProperty(name).getDefaultValue(),
-                    description: schema.getProperty(name).description,
-                    type: schema.getProperty(name).toString(),
+                    defaultValue: property.getDefaultValue(),
+                    description: property.getDescription(),
+                    type: stringifyType(property.property),
                 });
             }
         }
@@ -213,16 +213,17 @@ export class DebugController implements DebugControllerInterface {
         const modulesConfig: ConfigOption[] = [];
 
         for (const module of this.serviceContainer.appModule.getImports()) {
-            if (!module.options.config) continue;
+            if (!module.configDefinition) continue;
 
-            const schema = module.options.config.schema;
+            const schema = ReflectionClass.from(module.configDefinition);
             for (const [name, value] of Object.entries(module.getConfig())) {
+                const property = schema.getProperty(name);
                 modulesConfig.push({
                     name: module.getName() + '.' + name,
                     value: value,
-                    defaultValue: schema.getProperty(name).getDefaultValue(),
-                    description: schema.getProperty(name).description,
-                    type: schema.getProperty(name).toString(),
+                    defaultValue: property.getDefaultValue(),
+                    description: property.getDescription(),
+                    type: stringifyType(property.property),
                 });
             }
         }
@@ -243,7 +244,7 @@ export class DebugController implements DebugControllerInterface {
             for (const action of rpcConfig.actions.values()) {
                 const parameters: RpcActionParameter[] = [];
                 for (const parameter of ReflectionClass.from(controller).getMethodParameters(action.name || '')) {
-                    parameters.push(new RpcActionParameter(parameter.name, serializeType(parameter.type)));
+                    parameters.push(new RpcActionParameter(parameter.name, stringifyType(parameter.parameter)));
                 }
 
                 result.push({

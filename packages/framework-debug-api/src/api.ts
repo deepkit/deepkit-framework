@@ -50,14 +50,11 @@ export class Config {
 export class RouteParameter {
     name!: string;
     type!: 'body' | 'query' | 'url';
-    schema: any;
+    stringType!: string;
 }
 
 @entity.name('.deepkit/debugger/route')
 export class Route {
-    /** @reflection never */
-    public bodyPropertySchema?: Type & Excluded;
-
     constructor(
         public path: string,
         public httpMethods: string[],
@@ -66,30 +63,17 @@ export class Route {
         public parameters: RouteParameter[],
         public groups: string[],
         public category: string,
-        public bodySchema?: any,
+        public bodyType?: any,
     ) {
-        if (bodySchema) {
-            if (bodySchema.classType) {
-                //we don't and can't instantiate the full PropertySchema, since the
-                //type is not available at runtime.
-                bodySchema.classTypeName = bodySchema.classType;
-                bodySchema.classType = undefined;
-            }
-            this.bodyPropertySchema = deserializeType(bodySchema);
-        }
     }
 }
 
 @entity.name('.deepkit/debugger/rpc/action/parameter')
 export class RpcActionParameter {
-    /** @reflection never */
-    public propertySchema: Type & Excluded;
-
     constructor(
         public name: string,
-        public schema: any,
+        public type: string,
     ) {
-        this.propertySchema = deserializeType(schema);
     }
 }
 

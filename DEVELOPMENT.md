@@ -13,6 +13,7 @@ cd deepkit-framework
 npm install
 npm run bootstrap
 npm run link
+npm run install-compiler
 ```
 
 ## Making changes

@@ -10,7 +10,7 @@
     "bootstrap": "lerna bootstrap --no-ci",
     "bootstrap:ci": "lerna bootstrap",
     "link": "npm-local-development --no-watcher",
-    "build": "tsc --build tsconfig.json packages/type-compiler && tsc --build tsconfig.json && tsc --build tsconfig.esm.json && lerna run build",
+    "build": "tsc --build tsconfig.json && tsc --build tsconfig.esm.json && lerna run build",
     "build:esm": "tsc --build tsconfig.esm.json",
     "tsc": "tsc --build",
     "install-compiler": "tsc --build packages/type-compiler/tsconfig.json && node packages/type-compiler/dist/cjs/install-transformer.js",

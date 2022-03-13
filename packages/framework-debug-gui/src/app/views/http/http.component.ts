@@ -36,7 +36,7 @@ import { Route, Workflow } from '@deepkit/framework-debug-api';
       <dui-table-column [width]="220" name="controller"></dui-table-column>
       <dui-table-column [width]="220" name="body">
         <ng-container *duiTableCell="let row">
-          {{row.bodyPropertySchema ? row.bodyPropertySchema.toString() : ''}}
+          {{row.bodyType}}
         </ng-container>
       </dui-table-column>
       <dui-table-column [width]="220" name="groups">

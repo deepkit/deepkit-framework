@@ -196,7 +196,7 @@ class ParsedRouteParameter {
             if (!valueType || valueType.kind !== ReflectionKind.property) throw new Error(`No property value found at ${stringifyType(this.parameter.type)}`);
             return valueType.type as Type;
         }
-        return this.parameter.parameter;
+        return this.parameter.type;
     }
 
     get query() {

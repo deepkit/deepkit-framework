@@ -72,7 +72,7 @@ export class RpcComponent implements OnInit {
   }
 
   getParameters(action: RpcAction): string {
-    return action.parameters.map(p => p.name + ':' + p.propertySchema.toString()).join(', ');
+    return action.parameters.map(p => p.type).join(', ');
   }
 
   filter(items: RpcAction[], filter: string): any[] {
