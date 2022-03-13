@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/type-compiler",
-  "version": "1.0.1-alpha.59",
+  "version": "1.0.1-alpha.61",
   "description": "Deepkit/type compiler/Typescript transformer",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -27,7 +27,7 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@deepkit/type-spec": "^1.0.1-alpha.13",
+    "@deepkit/type-spec": "^1.0.1-alpha.61",
     "strip-json-comments": "^3.1.1",
     "ts-clone-node": "^0.3.29"
   },
