@@ -4,6 +4,7 @@ import * as vm from 'vm';
 import { BenchmarkRun } from './model';
 import * as si from 'systeminformation';
 import { execSync } from 'child_process';
+import { serialize } from '@deepkit/type';
 
 const fg = require('fast-glob');
 
@@ -56,7 +57,9 @@ async function main() {
 
     const resultsPath = join(__dirname, 'results');
     mkdirSync(resultsPath, { recursive: true });
-    writeFileSync(resultsPath + '/' + (new Date().toJSON()) + '.json', JSON.stringify(totalResults, undefined, 4));
+    const jsonPath = resultsPath + '/' + (new Date().toJSON()) + '.json';
+    console.log('Write benchmark result to', jsonPath);
+    writeFileSync(jsonPath, JSON.stringify(totalResults, undefined, 4));
 
     if (sendResultsTo) {
         console.log('Send to' + sendResultsTo);
@@ -74,15 +77,16 @@ async function main() {
         benchmarkRun.os = `${os.platform} ${os.distro} ${os.release} ${os.kernel} ${os.arch}`;
         benchmarkRun.commit = execSync('git rev-parse HEAD').toString('utf8').trim();
 
-        // await fetch(sendResultsTo, {
-        //     method: 'POST',
-        //     headers: {
-        //         'authorization': process.env.AUTH_TOKEN || '',
-        //         'content-type': 'application/json'
-        //     },
-        //     body: JSON.stringify(classToPlain(BenchmarkRun, benchmarkRun)),
-        // });
+        await fetch(sendResultsTo, {
+            method: 'POST',
+            headers: {
+                'authorization': process.env.AUTH_TOKEN || '',
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify(serialize<BenchmarkRun>(benchmarkRun)),
+        });
     }
+    process.exit(0);
 }
 
 main().catch(console.error);

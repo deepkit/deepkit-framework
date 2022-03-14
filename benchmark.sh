@@ -1,7 +1,8 @@
 #!/bin/sh
 
 git checkout .
-git pull --rebase
+git fetch origin master
+git checkout origin/master
 
 npm ci
 npm run bootstrap:ci
