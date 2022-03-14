@@ -38,11 +38,14 @@ export async function main() {
         ready: true,
     };
 
+    const item = deserializer(plain);
+    if (!(item instanceof Model)) throw new Error('Should be Model');
+    if ((serializer(item) instanceof Model)) throw new Error('Should not be Model');
+
     suite.add('deserialize', () => {
         deserializer(plain);
     });
 
-    const item = deserializer(plain);
     suite.add('serialize', () => {
         serializer(item);
     });
