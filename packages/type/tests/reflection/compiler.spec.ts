@@ -1682,10 +1682,10 @@ test('import types named import esm', () => {
     });
     expect(js['app.js']).toContain(`__ΩUser`);
     expect(js['app.js']).toContain(`var __ΩPartial = [`);
-    expect(js['app.js']).toContain(`export { __Ωbla };`);
+    expect(js['app.js']).toContain(`export { __Ωbla as __Ωbla };`);
     expect(js['app.js']).toContain(`var __Ωa = [`);
 
-    expect(js['user.js']).toContain(`export { __ΩUser };`);
+    expect(js['user.js']).toContain(`export { __ΩUser as __ΩUser };`);
     expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
 
     console.log(js);
@@ -1726,10 +1726,10 @@ test('import types named import typeOnly', () => {
     console.log(js);
     expect(js['app.js']).not.toContain(`__ΩUser`);
     expect(js['app.js']).toContain(`var __ΩPartial = [`);
-    expect(js['app.js']).toContain(`export { __Ωbla };`);
+    expect(js['app.js']).toContain(`export { __Ωbla as __Ωbla };`);
     expect(js['app.js']).toContain(`var __Ωa = [`);
 
-    expect(js['user.js']).toContain(`export { __ΩUser };`);
+    expect(js['user.js']).toContain(`export { __ΩUser as __ΩUser };`);
     expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
 });
 
@@ -1746,7 +1746,7 @@ test('import types named import with disabled reflection', () => {
     });
     expect(js['app.js']).not.toContain(`__ΩUser`);
     expect(js['app.js']).toContain(`var __ΩPartial = [`);
-    expect(js['app.js']).toContain(`export { __Ωbla };`);
+    expect(js['app.js']).toContain(`export { __Ωbla as __Ωbla };`);
     expect(js['app.js']).toContain(`var __Ωa = [`);
     expect(js['user.js']).not.toContain(`export { __ΩUser };`);
     expect(js['user.d.ts']).not.toContain(`__ΩUser`);

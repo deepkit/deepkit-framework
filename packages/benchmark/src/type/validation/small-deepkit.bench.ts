@@ -8,36 +8,31 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { getClassSchema, jitValidate, t, validateFactory } from '@deepkit/type';
+import { Maximum, Negative, guard } from '@deepkit/type';
 import { good } from './validation';
 import { BenchSuite } from '../../bench';
 
-const Model = t.schema({
-    number: t.number,
-    negNumber: t.number.negative(),
-    maxNumber: t.number.maximum(500),
-    strings: t.array(t.string),
-    longString: t.string,
-    boolean: t.boolean,
-    deeplyNested: t.type({
-        foo: t.string,
-        num: t.number,
-        bool: t.boolean
-    })
-});
-const validate = validateFactory(Model);
+interface Model {
+    number: number;
+    negNumber: number & Negative;
+    maxNumber: number & Maximum<500>;
+    strings: string[];
+    longString: string;
+    boolean: boolean;
+    deeplyNested: {
+        foo: string;
+        num: number;
+        bool: boolean;
+    }
+}
+
+const validate = guard<Model>();
 
 export async function main() {
     const suite = new BenchSuite('deepkit');
 
     if (!validate(good)) throw new Error('Should be valid');
-
-    const schema = getClassSchema(Model);
-
-    suite.add('JIT creation', () => {
-        schema.jit.validation = undefined;
-        jitValidate(schema);
-    });
+    if (validate({...good, negNumber: 100})) throw new Error('Should be invalid');
 
     suite.add('validate', () => {
         validate(good);

@@ -12,5 +12,5 @@ export { ObjectId } from './src/model';
 export { deserializeBSONWithoutOptimiser, ParserV2 as Parser } from './src/bson-parser';
 export { getBSONDeserializer, deserializeBSON, BSONDeserializer } from './src/bson-deserializer';
 export {
-    stringByteLength, BSONSerializer, getBSONSizer, getBSONSerializer, bsonBinarySerializer, serializeBSON, serializeWithoutOptimiser, Writer, BSONBinarySerializer, ValueWithBSONSerializer
+    stringByteLength, BSONSerializer, createBSONSizer, getBSONSizer, getBSONSerializer, bsonBinarySerializer, serializeBSON, serializeWithoutOptimiser, Writer, BSONBinarySerializer, ValueWithBSONSerializer
 } from './src/bson-serializer';

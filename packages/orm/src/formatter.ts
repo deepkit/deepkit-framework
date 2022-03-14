@@ -146,7 +146,7 @@ export class Formatter {
                     if (dbRecord[foreignKey] === undefined || dbRecord[foreignKey] === null) {
                         allFilled--;
                     } else {
-                        const v = deserialize(dbRecord[foreignKey], undefined, this.serializer, property.type);
+                        const v = deserialize(dbRecord[foreignKey], undefined, this.serializer, undefined, property.type);
                         if (v === undefined || v === null) allFilled--;
                         foreignPrimaryKey[property.name] = v;
                     }
@@ -220,7 +220,7 @@ export class Formatter {
                 if (fromDatabase && !isReferenceHydrated(item)) {
                     //we automatically hydrate proxy object once someone fetches them from the database.
                     //or we update a stale instance
-                    const converted: any = deserialize(dbRecord, undefined, this.serializer, classSchema.type);
+                    const converted: any = deserialize(dbRecord, undefined, this.serializer, undefined, classSchema.type);
 
                     for (const propName of classSchema.getPropertyNames()) {
                         const property = classSchema.getProperty(propName);

@@ -673,7 +673,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
         if (!isSerializable(member.type)) continue;
         if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
 
-        const nameInBson = String(state.namingStrategy.getPropertyName(member));
+        const nameInBson = String(state.namingStrategy.getPropertyName(member, state.registry.serializer.name));
         const valueSetVar = state.compilerContext.reserveName('valueSetVar');
 
         // //since Embedded<T> can have arbitrary prefix, we have to collect all fields first, and then after the loop, build everything together.
@@ -882,7 +882,7 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
         if (!isSerializable(member.type)) continue;
         if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
 
-        const nameInBson = String(state.namingStrategy.getPropertyName(member));
+        const nameInBson = String(state.namingStrategy.getPropertyName(member, state.registry.serializer.name));
 
         const valueSetVar = state.compilerContext.reserveName('valueSetVar');
         resetDefaultSets.push(`var ${valueSetVar} = false;`);

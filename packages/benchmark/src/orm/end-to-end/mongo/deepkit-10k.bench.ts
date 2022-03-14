@@ -14,7 +14,7 @@ import { MongoDatabaseAdapter } from '@deepkit/mongo';
 import { BenchSuite } from '../../../bench';
 
 export class Model {
-    public _id: PrimaryKey & MongoId = '';
+    public _id: MongoId & PrimaryKey = '';
     ready?: boolean;
 
     priority: number = 0;
@@ -56,6 +56,7 @@ export async function main() {
             await database.query(Model).disableChangeDetection().findOne();
         });
 
+        // const session = database.createSession();
         // const dbItems = await session.query(Model).find();
         // for (const item of dbItems) {
         //     item.priority++;

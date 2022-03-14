@@ -44,6 +44,7 @@ import {
     isReferenceType,
     isType,
     isUUIDType,
+    mapNameAnnotation,
     memberNameToString,
     referenceAnnotation,
     ReflectionKind,
@@ -78,8 +79,11 @@ export class NamingStrategy {
     constructor(public id: string = 'default') {
     }
 
+    getPropertyName(type: TypeProperty | TypePropertySignature, forSerializer: string): string | undefined {
+        for (const mapName of mapNameAnnotation.getAnnotations(type.type)) {
+            if (!mapName.serializer || mapName.serializer === forSerializer) return mapName.name;
+        }
 
-    getPropertyName(type: TypeProperty | TypePropertySignature): string | undefined {
         return memberNameToString(type.name);
     }
 }
@@ -184,7 +188,7 @@ export function createSerializeFunction(type: Type, registry: TemplateRegistry, 
     const compiler = new CompilerContext();
 
     const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, jitStack, path ? [path] : []);
-    if (state.isDeserialization) {
+    if (state.registry === state.registry.serializer.deserializeRegistry) {
         state.target = 'deserialize';
     }
 
@@ -413,11 +417,11 @@ export class TemplateState {
     }
 
     get isSerialization(): boolean {
-        return this.registry.serializer.serializeRegistry === this.registry;
+        return this.target === 'serialize';
     }
 
     get isDeserialization(): boolean {
-        return this.registry.serializer.deserializeRegistry === this.registry;
+        return this.target === 'deserialize';
     }
 
     extendPath(path: string | RuntimeCode | number | symbol): this {
@@ -803,7 +807,7 @@ export function deserializeEmbedded(type: TypeClass, state: TemplateState, conta
                 }
             }
 
-            const accessor = getEmbeddedAccessor(type, constructorProperties.properties.length !== 1, state.accessor, state.namingStrategy, parameter, embedded, container);
+            const accessor = getEmbeddedAccessor(type, constructorProperties.properties.length !== 1, state.accessor, state.registry.serializer, state.namingStrategy, parameter, embedded, container);
             const propertyState = state.fork(setter, accessor).extendPath(String(parameter.name));
             if (hasEmbedded(parameter.type)) {
                 loadArgs.push(executeTemplates(propertyState, parameter.type));
@@ -870,8 +874,9 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
             }
             const argumentName = state.compilerContext.reserveVariable('c_' + parameter.getName());
 
-            const name = JSON.stringify(property.getName());
-            const propertyState = state.fork(argumentName, new ContainerAccessor(state.accessor, name)).extendPath(String(property.getName()));
+            const readName = getNameExpression(state.namingStrategy.getPropertyName(property.property, state.registry.serializer.name), state);
+
+            const propertyState = state.fork(argumentName, new ContainerAccessor(state.accessor, readName)).extendPath(String(property.getName()));
             const staticDefault = property.type.kind === ReflectionKind.literal ? `${argumentName} = ${state.compilerContext.reserveConst(property.type.literal)};` : '';
 
             const embedded = property.getEmbedded();
@@ -895,7 +900,7 @@ export function deserializeClass(type: TypeClass, state: TemplateState) {
     for (const property of clazz.getProperties()) {
         if (constructor && constructor.hasParameter(property.name)) continue; //already handled in the constructor
 
-        const name = getNameExpression(state.namingStrategy.getPropertyName(property.property), state);
+        const name = getNameExpression(state.namingStrategy.getPropertyName(property.property, state.registry.serializer.name), state);
 
         if (property.isSerializerExcluded(state.registry.serializer.name)) {
             continue;
@@ -987,10 +992,10 @@ export function getEmbeddedProperty(type: TypeClass): TypeProperty | TypePropert
     return;
 }
 
-function getEmbeddedAccessor(type: TypeClass, autoPrefix: boolean, accessor: string | ContainerAccessor, namingStrategy: NamingStrategy, property: TypeProperty, embedded: EmbeddedOptions, container?: string): string | ContainerAccessor {
+function getEmbeddedAccessor(type: TypeClass, autoPrefix: boolean, accessor: string | ContainerAccessor, serializer: Serializer, namingStrategy: NamingStrategy, property: TypeProperty, embedded: EmbeddedOptions, container?: string): string | ContainerAccessor {
     const containerProperty = getEmbeddedProperty(type);
 
-    let embeddedPropertyName = JSON.stringify(namingStrategy.getPropertyName(property));
+    let embeddedPropertyName = JSON.stringify(namingStrategy.getPropertyName(property, serializer.name));
     if (embedded.prefix !== undefined) {
         embeddedPropertyName = embedded.prefix ? JSON.stringify(embedded.prefix) + ' + ' + embeddedPropertyName : embeddedPropertyName;
     } else if (!container && containerProperty) {
@@ -1023,8 +1028,8 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
 
         if (constructorProperties.properties.length === 1) {
             const first = constructorProperties.properties[0];
-            let name = getNameExpression(state.namingStrategy.getPropertyName(first), state);
-            const setter = getEmbeddedAccessor(type, false, state.setter, state.namingStrategy, first, embedded);
+            let name = getNameExpression(state.namingStrategy.getPropertyName(first, state.registry.serializer.name), state);
+            const setter = getEmbeddedAccessor(type, false, state.setter, state.registry.serializer, state.namingStrategy, first, embedded);
             state.addCode(`
             if (${inAccessor(state.accessor)}) {
                 ${executeTemplates(state.fork(setter, new ContainerAccessor(state.accessor, name)), first.type)}
@@ -1043,7 +1048,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             }
 
             for (const property of constructorProperties.properties) {
-                const setter = getEmbeddedAccessor(type, true, state.setter, state.namingStrategy, property, embedded, container);
+                const setter = getEmbeddedAccessor(type, true, state.setter, state.registry.serializer, state.namingStrategy, property, embedded, container);
                 lines.push(createConverterJSForMember(property, state.fork(setter, new ContainerAccessor(state.accessor, JSON.stringify(property.name)))));
             }
 
@@ -1077,19 +1082,19 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         } else if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
             if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
 
-            const name = getNameExpression(state.namingStrategy.getPropertyName(member), state);
-            existing.push(name);
+            const name = state.namingStrategy.getPropertyName(member, state.registry.serializer.name);
+            const readName = getNameExpression(state.isDeserialization ? name : memberNameToString(member.name), state);
+            existing.push(readName);
+            const writeName = getNameExpression(state.isDeserialization ? memberNameToString(member.name) : name, state);
+            const setter = new ContainerAccessor(v, writeName);
+            const propertyState = state.fork(setter, new ContainerAccessor(state.accessor, readName)).extendPath(String(member.name));
 
-            const setter = new ContainerAccessor(v, name);
             const staticDefault = getStaticDefaultCodeForProperty(member, setter, state);
-
-            const propertyState = state.fork(setter, new ContainerAccessor(state.accessor, name)).extendPath(String(member.name));
-
             if (hasEmbedded(member.type)) {
                 lines.push(executeTemplates(propertyState, member.type));
             } else {
                 lines.push(`
-                if (${name} in ${state.accessor} && ${groupFilter(member.type)}) {
+                if (${readName} in ${state.accessor} && ${groupFilter(member.type)}) {
                     ${createConverterJSForMember(member, propertyState)}
                 } else { ${staticDefault} }
             `);
@@ -1155,7 +1160,7 @@ export function typeGuardEmbedded(type: TypeClass, state: TemplateState, embedde
         for (const parameter of constructorProperties.parameters) {
             if (parameter.kind === ReflectionKind.property) {
                 //we pass 'data' as container, since type guards for TypeClass get their own function always and operate on `data` accessor.
-                const accessor = getEmbeddedAccessor(type, constructorProperties.properties.length !== 1, state.accessor, state.namingStrategy, parameter, embedded);
+                const accessor = getEmbeddedAccessor(type, constructorProperties.properties.length !== 1, state.accessor, state.registry.serializer, state.namingStrategy, parameter, embedded);
                 const propertyState = state.fork(state.setter, accessor).extendPath(String(parameter.name));
                 if (hasEmbedded(parameter.type)) {
                     state.addCode(executeTemplates(propertyState, parameter.type));
@@ -1204,11 +1209,11 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
 
             if (member.name === 'constructor') continue;
 
-            const name = member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
+            const readName = member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
                 ? getNameExpression(member.name, state)
-                : getNameExpression(state.namingStrategy.getPropertyName(member), state);
+                : getNameExpression(state.isDeserialization ? state.namingStrategy.getPropertyName(member, state.registry.serializer.name) : memberNameToString(member.name), state);
 
-            const propertyAccessor = new ContainerAccessor(state.accessor, name);
+            const propertyAccessor = new ContainerAccessor(state.accessor, readName);
             const propertyState = state.fork(v, propertyAccessor).extendPath(String(member.name));
 
             const isEmbedded = member.kind === ReflectionKind.property || member.kind === ReflectionKind.propertySignature
@@ -1222,7 +1227,7 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 lines.push(template);
             } else {
                 const optionalCheck = member.optional ? `&& ${propertyAccessor} !== undefined` : '';
-                existing.push(name);
+                existing.push(readName);
 
                 state.setContext({ unpopulatedSymbol });
                 lines.push(`

@@ -12,18 +12,18 @@ import { unpopulatedSymbol } from '../../../src/core';
 function roundTrip<T>(value: T | any, type?: ReceiveType<T>): T {
     const t = resolveReceiveType(type);
     // console.log('roundTrip', stringifyType(t));
-    const json = serialize(value, {}, undefined, type);
-    const res = cast<T>(json, {}, undefined, type);
+    const json = serialize(value, {}, undefined, undefined, type);
+    const res = cast<T>(json, {}, undefined, undefined, type);
     return res;
 }
 
 function serializeToJson<T>(value: T | any, type?: ReceiveType<T>): T {
-    const json = serialize(value, {}, undefined, type);
+    const json = serialize(value, {}, undefined, undefined, type);
     return json;
 }
 
 function deserializeFromJson<T>(value: T, type?: ReceiveType<T>): T {
-    const res = cast<T>(value, {}, undefined, type);
+    const res = cast<T>(value, {}, undefined, undefined, type);
     return res;
 }
 

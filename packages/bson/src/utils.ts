@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { EmbeddedOptions, getEmbeddedProperty, NamingStrategy, ReflectionKind, Type, TypeClass, TypeProperty } from '@deepkit/type';
+import { EmbeddedOptions, getEmbeddedProperty, NamingStrategy, ReflectionKind, Serializer, Type, TypeClass, TypeProperty } from '@deepkit/type';
 
 export const TWO_PWR_32_DBL_N = (1 << 16) * (1 << 16);
 
@@ -81,18 +81,18 @@ export function digitByteSize(v: number): number {
     return 11;
 }
 
-export function getEmbeddedPropertyName(namingStrategy: NamingStrategy, property: TypeProperty, embedded: EmbeddedOptions): string {
-    let embeddedPropertyName = String(namingStrategy.getPropertyName(property));
+export function getEmbeddedPropertyName(serializer: Serializer, namingStrategy: NamingStrategy, property: TypeProperty, embedded: EmbeddedOptions): string {
+    let embeddedPropertyName = String(namingStrategy.getPropertyName(property, serializer.name));
     if (embedded.prefix !== undefined) {
         embeddedPropertyName = embedded.prefix + embeddedPropertyName;
     }
     return embeddedPropertyName;
 }
 
-export function getEmbeddedAccessor(type: TypeClass, autoPrefix: boolean, accessor: string, namingStrategy: NamingStrategy, property: TypeProperty, embedded: EmbeddedOptions, container?: string): string {
+export function getEmbeddedAccessor(type: TypeClass, autoPrefix: boolean, accessor: string, serializer: Serializer, namingStrategy: NamingStrategy, property: TypeProperty, embedded: EmbeddedOptions, container?: string): string {
     const containerProperty = getEmbeddedProperty(type);
 
-    let embeddedPropertyName = String(namingStrategy.getPropertyName(property));
+    let embeddedPropertyName = String(namingStrategy.getPropertyName(property, serializer.name));
     if (embedded.prefix !== undefined) {
         embeddedPropertyName = embedded.prefix + embeddedPropertyName;
     } else if (containerProperty) {

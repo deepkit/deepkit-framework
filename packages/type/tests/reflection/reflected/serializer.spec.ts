@@ -9,12 +9,12 @@
  */
 import { expect, test } from '@jest/globals';
 import { reflect, ReflectionClass } from '../../../src/reflection/reflection';
-import { AutoIncrement, BackReference, Embedded, Excluded, Group, int8, integer, PrimaryKey, Reference, ReflectionKind } from '../../../src/reflection/type';
+import { AutoIncrement, BackReference, Embedded, Excluded, Group, int8, integer, MapName, PrimaryKey, Reference, ReflectionKind } from '../../../src/reflection/type';
 import { createSerializeFunction, getSerializeFunction, serializer } from '../../../src/serializer';
 import { cast, deserialize, serialize } from '../../../src/serializer-facade';
 import { getClassName } from '@deepkit/core';
 import { t } from '../../../src/decorator';
-import { ValidationError } from '../../../src/validator';
+import { validate, validates, ValidationError } from '../../../src/validator';
 
 test('deserializer', () => {
     class User {
@@ -739,14 +739,15 @@ test('intersected mapped type key', () => {
         username: string;
         id: number;
     }
+
     type sortA = Sort<A>;
 
-    expect(cast<sortA>({username: 'asc'})).toEqual({username: 'asc'});
-    expect(cast<sortA>({id: 'desc', username: 'asc'})).toEqual({id: 'desc', username: 'asc'});
+    expect(cast<sortA>({ username: 'asc' })).toEqual({ username: 'asc' });
+    expect(cast<sortA>({ id: 'desc', username: 'asc' })).toEqual({ id: 'desc', username: 'asc' });
 
     type sortAny = Sort<any>;
-    expect(cast<sortAny>({username: 'asc'})).toEqual({username: 'asc'});
-    expect(cast<sortAny>({id: 'desc', username: 'asc'})).toEqual({id: 'desc', username: 'asc'});
+    expect(cast<sortAny>({ username: 'asc' })).toEqual({ username: 'asc' });
+    expect(cast<sortAny>({ id: 'desc', username: 'asc' })).toEqual({ id: 'desc', username: 'asc' });
 });
 
 test('wild property names', () => {
@@ -755,5 +756,38 @@ test('wild property names', () => {
         ['#$%^^x']: number;
     }
 
-    expect(cast<A>({'asd-344': 'abc', '#$%^^x': 3})).toEqual({'asd-344': 'abc', '#$%^^x': 3});
+    expect(cast<A>({ 'asd-344': 'abc', '#$%^^x': 3 })).toEqual({ 'asd-344': 'abc', '#$%^^x': 3 });
+});
+
+test('mapName interface', () => {
+    interface A {
+        type: string & MapName<'~type'>;
+    }
+
+    expect(cast<A>({ '~type': 'abc' })).toEqual({ 'type': 'abc' });
+    expect(deserialize<A>({ '~type': 'abc' })).toEqual({ 'type': 'abc' });
+    expect(serialize<A>({ 'type': 'abc' })).toEqual({ '~type': 'abc' });
+
+    expect(deserialize<A | string>({ '~type': 'abc' })).toEqual({ 'type': 'abc' });
+    expect(serialize<A | string>({ 'type': 'abc' })).toEqual({ '~type': 'abc' });
+    expect(validate<A | string>({ 'type': 'abc' })).toEqual([]);
+    expect(serialize<A | string>('abc')).toEqual('abc');
+});
+
+test('mapName class', () => {
+    class A {
+        id: string & MapName<'~id'> = '';
+
+        constructor(public type: string & MapName<'~type'>) {
+        }
+    }
+
+    expect(cast<A>({ '~id': '1', '~type': 'abc' })).toEqual({ 'id': '1', 'type': 'abc' });
+    expect(deserialize<A>({ '~id': '1', '~type': 'abc' })).toEqual({ 'id': '1', 'type': 'abc' });
+    expect(serialize<A>({ id: '1', 'type': 'abc' })).toEqual({ '~id': '1', '~type': 'abc' });
+
+    expect(deserialize<A | string>({ '~id': '', '~type': 'abc' })).toEqual({ id: '', 'type': 'abc' });
+    expect(serialize<A | string>({ id: '1', 'type': 'abc' })).toEqual({ '~id': '1', '~type': 'abc' });
+    expect(validate<A | string>({ id: '1', 'type': 'abc' })).toEqual([]);
+    expect(serialize<A | string>('abc')).toEqual('abc');
 });

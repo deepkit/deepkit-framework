@@ -126,7 +126,7 @@ export class ServiceContainer {
             }
 
             //config loads can set arbitrary values (like string for numbers), so we try deserialize them automatically
-            Object.assign(config, deserialize(config, undefined, undefined, schema.type));
+            Object.assign(config, deserialize(config, undefined, undefined, undefined, schema.type));
 
             for (const setupConfig of module.setupConfigs) setupConfig(module, config);
 

@@ -607,7 +607,7 @@ export function rpcEncodeError(error: Error | string): EncodedError {
         if (schema.name) {
             classType = schema.name;
             if (schema.getProperties().length) {
-                properties = serialize(error, undefined, undefined, schema.type);
+                properties = serialize(error, undefined, undefined, undefined, schema.type);
             }
         }
     }
@@ -629,7 +629,7 @@ export function rpcDecodeError(error: EncodedError): Error {
         }
         const schema = ReflectionClass.from(entity);
         if (error.properties) {
-            const e = deserialize(error.properties, undefined, undefined, schema.type) as Error;
+            const e = deserialize(error.properties, undefined, undefined, undefined, schema.type) as Error;
             e.stack = error.stack + '\nat ___SERVER___';
             return e;
         }

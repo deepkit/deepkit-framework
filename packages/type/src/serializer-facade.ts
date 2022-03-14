@@ -1,6 +1,6 @@
 import { getClassTypeFromInstance } from '@deepkit/core';
 import { ReceiveType, resolveReceiveType } from './reflection/reflection';
-import { getSerializeFunction, SerializationOptions, serializer, Serializer } from './serializer';
+import { getSerializeFunction, NamingStrategy, SerializationOptions, serializer, Serializer } from './serializer';
 import { JSONPartial, JSONSingle } from './utils';
 import { typeInfer } from './reflection/processor';
 import { validates } from './validator';
@@ -10,8 +10,8 @@ import { validates } from './validator';
  *
  * Same as deserialize().
  */
-export function cast<T>(data: JSONPartial<T> | unknown, options?: SerializationOptions, serializerToUse: Serializer = serializer, type?: ReceiveType<T>): T {
-    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry);
+export function cast<T>(data: JSONPartial<T> | unknown, options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): T {
+    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy);
     return fn(data, options) as T;
 }
 
@@ -20,8 +20,8 @@ export function cast<T>(data: JSONPartial<T> | unknown, options?: SerializationO
  *
  * Same as deserialize().
  */
-export function castFunction<T>(options?: SerializationOptions, serializerToUse: Serializer = serializer, type?: ReceiveType<T>): (data: JSONPartial<T> | unknown) => T {
-    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry);
+export function castFunction<T>(options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): (data: JSONPartial<T> | unknown) => T {
+    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy);
     return (data: JSONPartial<T> | unknown) => fn(data, options);
 }
 
@@ -39,9 +39,16 @@ export function castFunction<T>(options?: SerializationOptions, serializerToUse:
  * //data is {created: Date(2009-02-13T23:31:30.123Z)}
  * ```
  */
-export function deserialize<T>(data: JSONPartial<T> | unknown, options?: SerializationOptions, serializerToUse: Serializer = serializer, type?: ReceiveType<T>): T {
-    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry);
+export function deserialize<T>(data: JSONPartial<T> | unknown, options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): T {
+    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy);
     return fn(data, options) as T;
+}
+
+/**
+ * Same as deserialize but returns a ready to use function. Used to improve performance.
+ */
+export function deserializeFunction<T>(options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): (data: JSONPartial<T> | unknown) => T {
+    return getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy);
 }
 
 /**
@@ -61,9 +68,16 @@ export function deserialize<T>(data: JSONPartial<T> | unknown, options?: Seriali
  * //jsonString is '{"created":"2009-02-13T23:31:30.123Z"}'
  * ```
  */
-export function serialize<T>(data: T, options?: SerializationOptions, serializerToUse: Serializer = serializer, type?: ReceiveType<T>): JSONSingle<T> {
-    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.serializeRegistry);
+export function serialize<T>(data: T, options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): JSONSingle<T> {
+    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.serializeRegistry, namingStrategy);
     return fn(data, options) as JSONSingle<T>;
+}
+
+/**
+ * Same as serialize but returns a ready to use function. Used to improve performance.
+ */
+export function serializeFunction<T>(options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): (data: T) => any {
+    return getSerializeFunction(resolveReceiveType(type), serializerToUse.serializeRegistry, namingStrategy);
 }
 
 /**
@@ -82,8 +96,8 @@ export function cloneClass<T>(target: T, options?: SerializationOptions): T {
  *
  * @throws ValidationError when validation fails.
  */
-export function validatedDeserialize<T>(data: any, options?: SerializationOptions, serializerToUse: Serializer = serializer, type?: ReceiveType<T>) {
-    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry);
+export function validatedDeserialize<T>(data: any, options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>) {
+    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy);
     const item = fn(data, options) as T;
     validates(item, type);
     return item;

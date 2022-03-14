@@ -13,16 +13,16 @@ import { BenchSuite } from '../bench';
 
 export async function main() {
     const bench1 = new BenchSuite('protocol');
-    const bson = createRpcMessage(0, 4, rpcAction, { controller: 'asd', method: 'asd' });
-    readRpcMessage(bson).parseBody(rpcAction);
+    const bson = createRpcMessage<rpcAction>(0, 4, { controller: 'asd', method: 'asd' });
+    readRpcMessage(bson).parseBody<rpcAction>();
 
     bench1.add('encode', () => {
-        const message = createRpcMessage(0, 4, rpcAction, { controller: 'asd', method: 'asd' });
+        const message = createRpcMessage<rpcAction>(0, 4, { controller: 'asd', method: 'asd' });
     });
 
     bench1.add('decode', () => {
         const message = readRpcMessage(bson);
-        const body = message.parseBody(rpcAction);
+        const body = message.parseBody<rpcAction>();
     });
 
     bench1.run();

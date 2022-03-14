@@ -389,7 +389,7 @@ test('class constructor back serialized', () => {
     const json = serializeType(typeOf<User>());
     const back = deserializeType(json, { disableReuse: true });
 
-    const instance = deserialize({id: 2, username: 'Peter'}, undefined, undefined, back);
+    const instance = deserialize({id: 2, username: 'Peter'}, undefined, undefined, undefined, back);
     expect(instance).toEqual({id: 2, username: 'Peter'});
 });
 

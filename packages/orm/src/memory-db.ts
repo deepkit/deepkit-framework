@@ -76,7 +76,6 @@ export class MemoryQuery<T> extends Query<T> {
     }
 }
 
-
 const find = <T>(adapter: MemoryDatabaseAdapter, classSchema: ReflectionClass<any>, model: DatabaseQueryModel<T>): T[] => {
     const rawItems = [...adapter.getStore(classSchema).items.values()];
     const serializer = getSerializeFunction(classSchema.type, memorySerializer.deserializeRegistry);
@@ -85,7 +84,7 @@ const find = <T>(adapter: MemoryDatabaseAdapter, classSchema: ReflectionClass<an
     if (model.filter) {
         model.filter = convertQueryFilter(classSchema, model.filter, (convertClassType: ReflectionClass<any>, path: string, value: any) => {
             //this is important to convert relations to its foreignKey value
-            return serialize(value, undefined, memorySerializer, resolvePath(path, classSchema.type));
+            return serialize(value, undefined, memorySerializer, undefined, resolvePath(path, classSchema.type));
         }, {}, {
             $parameter: (name, value) => {
                 if (undefined === model.parameters[value]) {

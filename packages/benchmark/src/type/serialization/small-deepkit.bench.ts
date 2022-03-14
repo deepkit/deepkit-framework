@@ -8,24 +8,25 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { createClassToXFunction, createXToClassFunction, f, getClassSchema, jsonSerializer } from '@deepkit/type';
 import { BenchSuite } from '../../bench';
+import { serializeFunction, deserializeFunction } from '@deepkit/type';
 
 class Model {
-    @f ready?: boolean;
+    ready?: boolean;
 
-    @f.array(String) tags: string[] = [];
+    tags: string[] = [];
 
-    @f priority: number = 0;
+    priority: number = 0;
 
     constructor(
-        @f public id: number,
-        @f public name: string
+        public id: number,
+        public name: string
     ) {
     }
 }
 
-const ModelSerializer = jsonSerializer.for(Model);
+const serializer = serializeFunction<Model>();
+const deserializer = deserializeFunction<Model>();
 
 export async function main() {
     const suite = new BenchSuite('deepkit');
@@ -37,26 +38,13 @@ export async function main() {
         ready: true,
     };
 
-    const schema = getClassSchema(Model);
-
-    suite.add('JIT XToClass', () => {
-        createXToClassFunction(schema, jsonSerializer);
-    });
-
-    suite.add('JIT ClassToX', () => {
-        createClassToXFunction(schema, jsonSerializer);
-    });
-
-    ModelSerializer.deserialize(plain);
     suite.add('deserialize', () => {
-        ModelSerializer.deserialize(plain);
+        deserializer(plain);
     });
 
-    const item = jsonSerializer.for(Model).deserialize(plain);
-    ModelSerializer.serialize(item);
-
+    const item = deserializer(plain);
     suite.add('serialize', () => {
-        ModelSerializer.serialize(item);
+        serializer(item);
     });
 
     suite.run();

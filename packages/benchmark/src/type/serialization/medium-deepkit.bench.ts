@@ -8,22 +8,15 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { createClassToXFunction, createXToClassFunction, Entity, f, getClassSchema, jsonSerializer } from '@deepkit/type';
+import { deserializeFunction, Excluded, serializeFunction } from '@deepkit/type';
 import { BenchSuite } from '../../bench';
 
-
-@Entity('sub')
 export class SubModel {
-    @f
-    label: string;
-
-    @f.optional
     age?: number;
 
     constructorUsed = false;
 
-    constructor(label: string) {
-        this.label = label;
+    constructor(public label: string) {
         this.constructorUsed = true;
     }
 }
@@ -35,43 +28,32 @@ export enum Plan {
 }
 
 export class Model {
-    @f
-    name: string;
-
-    @f
     type: number = 0;
 
-    @f
     yesNo: boolean = false;
 
-    @f.enum(Plan)
     plan: Plan = Plan.DEFAULT;
 
-    @f
     created: Date = new Date;
 
-    @f.array(String)
     types: string[] = [];
 
-    @f.array(SubModel)
     children: SubModel[] = [];
 
-    @f.map(SubModel)
     childrenMap: { [key: string]: SubModel } = {};
 
     notMapped: { [key: string]: any } = {};
 
-    @f.exclude()
-    excluded: string = 'default';
+    excluded: string & Excluded = 'default';
 
-    @f.exclude('json')
-    excludedForPlain: string = 'excludedForPlain';
+    excludedForPlain: string & Excluded<'json'> = 'excludedForPlain';
 
-    constructor(name: string) {
-        this.name = name;
+    constructor(public name: string) {
     }
 }
-const ModelSerializer = jsonSerializer.for(Model);
+
+const serializer = serializeFunction<Model>();
+const deserializer = deserializeFunction<Model>();
 
 export async function main() {
     const suite = new BenchSuite('deepkit');
@@ -84,23 +66,13 @@ export async function main() {
         types: ['a', 'b', 'c']
     };
 
-    const schema = getClassSchema(Model);
-
-    suite.add('JIT XToClass', () => {
-        createXToClassFunction(schema, jsonSerializer);
-    });
-
-    suite.add('JIT ClassToX', () => {
-        createClassToXFunction(schema, jsonSerializer);
-    });
-
     suite.add('deserialize', () => {
-        ModelSerializer.deserialize(plain);
+        deserializer(plain);
     });
 
-    const item = jsonSerializer.for(Model).deserialize(plain);
+    const item = deserializer(plain);
     suite.add('serialize', () => {
-        ModelSerializer.serialize(item);
+        serializer(item);
     });
 
     suite.run();

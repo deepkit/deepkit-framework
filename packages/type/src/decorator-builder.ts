@@ -199,7 +199,7 @@ export interface ClassApiTypeInterface<T> {
 }
 
 export type APIClass<T> = ClassType<ClassApiTypeInterface<T>>;
-export type ExtractClass<T> = T extends AbstractClassType<infer K> ? K : never;
+export type ExtractClass<T> = T extends ClassType<infer K> ? K : never;
 export type ExtractApiDataType<T> = T extends AbstractClassType<infer K> ? K extends { t: infer P } ? P : never : (T extends { t: infer P } ? P : never);
 
 export type ClassDecoratorResult<API extends APIClass<any>> = FluidDecorator<ExtractClass<API>, ClassDecoratorFn> & DecoratorAndFetchSignature<API, ClassDecoratorFn>;

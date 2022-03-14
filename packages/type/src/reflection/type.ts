@@ -1461,8 +1461,11 @@ export type BackReference<Options extends BackReferenceOptions = {}> = { __meta?
 export type EmbeddedMeta<Options> = { __meta?: ['embedded', Options] };
 export type Embedded<T, Options extends { prefix?: string } = {}> = T & EmbeddedMeta<Options>;
 
+export type MapName<Alias extends string, ForSerializer extends string = ''> = { __meta?: ['mapName', Alias, ForSerializer] };
+
 export const referenceAnnotation = new AnnotationDefinition<ReferenceOptions>('reference');
 export const entityAnnotation = new AnnotationDefinition<EntityOptions>('entity');
+export const mapNameAnnotation = new AnnotationDefinition<{name: string, serializer?: string}>('entity');
 
 export const autoIncrementAnnotation = new AnnotationDefinition('autoIncrement');
 export const primaryKeyAnnotation = new class extends AnnotationDefinition {
@@ -1710,6 +1713,15 @@ export const typeDecorators: TypeDecorator[] = [
                 entityAnnotation.replace(annotations, [options]);
                 return true;
             }
+            case 'mapName': {
+                const name = typeToObject(meta.type.types[1].type);
+                const serializer = meta.type.types[2] ? typeToObject(meta.type.types[2].type) : undefined;
+
+                if ('string' === typeof name && (!serializer || 'string' === typeof serializer)) {
+                    mapNameAnnotation.replace(annotations, [{name, serializer}]);
+                }
+                return true;
+            }
             case 'autoIncrement':
                 autoIncrementAnnotation.register(annotations, true);
                 return true;
@@ -1815,7 +1827,9 @@ export const typeDecorators: TypeDecorator[] = [
     }
 ];
 
-export function typeToObject(type: Type, state: { stack: Type[] } = { stack: [] }): any {
+export function typeToObject(type?: Type, state: { stack: Type[] } = { stack: [] }): any {
+    if (!type) return;
+
     if (state.stack.includes(type)) return undefined;
     state.stack.push(type);
 

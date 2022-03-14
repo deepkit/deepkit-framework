@@ -11,7 +11,7 @@ import { MigrationProvider } from './migration/migration-provider';
 export const appModule = new AppModule({
     providers: [
         MigrationProvider,
-        { provide: DatabaseRegistry, deps: [InjectorContext], useFactory: (ic) => new DatabaseRegistry(ic) },
+        { provide: DatabaseRegistry, useFactory: (ic: InjectorContext) => new DatabaseRegistry(ic) },
         { provide: Logger, useValue: new Logger([new ConsoleTransport]) }
     ],
     controllers: [

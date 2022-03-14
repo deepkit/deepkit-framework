@@ -1,8 +1,9 @@
 import { ReceiveType, resolveReceiveType } from './reflection/reflection';
-import { is } from './typeguard';
+import { getValidatorFunction, is } from './typeguard';
 import { CustomError } from '@deepkit/core';
 import { stringifyType, Type } from './reflection/type';
 import { entity } from './decorator';
+import { serializer, Serializer } from './serializer';
 
 export type ValidatorMeta<Name extends string, Args extends [...args: any[]] = []> = { __meta?: ['validator', Name, Args] }
 
@@ -113,6 +114,15 @@ export function validate<T>(data: any, type?: ReceiveType<T>): ValidationErrorIt
     const errors: ValidationErrorItem[] = [];
     is(data, undefined, errors, type!);
     return errors;
+}
+
+export function validateFunction<T>(serializerToUse: Serializer = serializer, type?: ReceiveType<T>): (data: T) => ValidationErrorItem[] {
+    const fn = getValidatorFunction(serializerToUse, type);
+    return (data: T) => {
+        const errors: ValidationErrorItem[] = [];
+        fn(data, { errors });
+        return errors;
+    };
 }
 
 /**

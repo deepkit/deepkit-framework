@@ -9,6 +9,7 @@ import {
     hasCircularReference,
     hasEmbedded,
     integer,
+    MapName,
     MongoId,
     PrimaryKey,
     ReceiveType,
@@ -820,7 +821,7 @@ test('embedded single', () => {
         }
     }
 
-    expect(serialize<Embedded<Price>>(new Price(34))).toEqual({amount: 34});
+    expect(serialize<Embedded<Price>>(new Price(34))).toEqual({ amount: 34 });
     // expect(serialize<Embedded<Price>>(new Price(34))).toEqual(34);
     // expect(serialize<Embedded<Price>[]>([new Price(34)])).toEqual([34]);
     // expect(serialize<Embedded<Price, { prefix: '' }>[]>([new Price(34)])).toEqual([34]);
@@ -865,7 +866,7 @@ test('embedded single optional', () => {
     }
 
     //for the moment, bson does not support emebbed structures. it's serialized as is.
-    expect(deserialize<{ v?: Embedded<Price> }>({ v: {amount: 34} })).toEqual({ v: new Price(34) });
+    expect(deserialize<{ v?: Embedded<Price> }>({ v: { amount: 34 } })).toEqual({ v: new Price(34) });
     // expect(deserialize<{ v?: Embedded<Price> }>({})).toEqual({});
     // expect(deserialize<{ v?: Embedded<Price, { prefix: '' }> }>({ amount: 34 })).toEqual({ v: new Price(34) });
     // expect(deserialize<{ v?: Embedded<Price, { prefix: '' }> }>({})).toEqual({});
@@ -955,3 +956,32 @@ test('embedded single optional', () => {
 //     expect(deserialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ price_amount: 34 })).toEqual({ v: new Price(34) });
 //     expect(deserialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: '34' })).toEqual({ v: '34' });
 // });
+
+test('mapName interface', () => {
+    interface A {
+        type: string & MapName<'~type'>;
+    }
+
+    expect(deserialize<A>({ '~type': 'abc' })).toEqual({ 'type': 'abc' });
+    expect(serialize<A>({ 'type': 'abc' })).toEqual({ '~type': 'abc' });
+
+    expect(deserialize<A | string>({ '~type': 'abc' })).toEqual({ 'type': 'abc' });
+    expect(serialize<A | string>({ 'type': 'abc' })).toEqual({ '~type': 'abc' });
+    expect(serialize<A | string>('abc')).toEqual('abc');
+});
+
+test('mapName class', () => {
+    class A {
+        id: string & MapName<'~id'> = '';
+
+        constructor(public type: string & MapName<'~type'>) {
+        }
+    }
+
+    expect(deserialize<A>({ '~id': '1', '~type': 'abc' })).toEqual({ 'id': '1', 'type': 'abc' });
+    expect(serialize<A>({ id: '1', 'type': 'abc' })).toEqual({ '~id': '1', '~type': 'abc' });
+
+    expect(deserialize<A | string>({ '~id': '', '~type': 'abc' })).toEqual({ id: '', 'type': 'abc' });
+    expect(serialize<A | string>({ id: '1', 'type': 'abc' })).toEqual({ '~id': '1', '~type': 'abc' });
+    expect(serialize<A | string>('abc')).toEqual('abc');
+});

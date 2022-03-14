@@ -733,8 +733,11 @@ export class ReflectionTransformer {
         //when its commonJS, the `variable` would be exported as `exports.$name = $value`, but all references point just to $name.
         //so the idea is, that we create a normal variable and export it via `export {$name}`.
         if (hasModifier(node, SyntaxKind.ExportKeyword)) {
+            //propertyName in ExportSpecifier is set to avoid a TS compile error:
+            // TypeError: Cannot read properties of undefined (reading 'escapedText')
+            //   at Object.idText (/Users/marc/bude/deepkit-framework/packages/benchmark/node_modules/typescript/lib/typescript.js:11875:67)
             const exportNode = this.f.createExportDeclaration(undefined, undefined, false, this.f.createNamedExports([
-                this.f.createExportSpecifier(false, undefined, this.getDeclarationVariableName(name))
+                this.f.createExportSpecifier(false, this.getDeclarationVariableName(name), this.getDeclarationVariableName(name))
             ]));
             return [variable, exportNode];
         }

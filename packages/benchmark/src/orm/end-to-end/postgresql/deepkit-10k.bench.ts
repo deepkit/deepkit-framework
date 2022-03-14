@@ -8,33 +8,34 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Entity, t } from '@deepkit/type';
+import { PrimaryKey, entity } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { PostgresDatabaseAdapter } from '@deepkit/postgres';
 import { BenchSuite } from '../../../bench';
 import { Model } from '../mongo/deepkit-10k.bench';
 
-@Entity('deepkit')
+@entity.name('deepkit')
 export class DeepkitModel {
-    @t.primary.autoIncrement public id: number = 0;
+    public id: number & PrimaryKey = 0;
 
-    @t ready?: boolean;
+    ready?: boolean;
 
     // @t.array(t.string) tags: string[] = [];
 
-    @t priority: number = 0;
+    priority: number = 0;
 
     constructor(
-        @t public name: string
+        public name: string
     ) {
     }
 }
+
 
 export async function main() {
     const count = 10_000;
     const database = new Database(new PostgresDatabaseAdapter({ host: 'localhost', database: 'postgres', user: 'postgres' }));
     database.registerEntity(DeepkitModel);
-    await database.adapter.createTables([...database.entities]);
+    await database.adapter.createTables(database.entityRegistry);
 
     const bench = new BenchSuite('deepkit');
 
@@ -42,7 +43,7 @@ export async function main() {
         console.log('round', i);
         await database.query(DeepkitModel).deleteMany();
 
-        const users: Model[] = [];
+        const users: DeepkitModel[] = [];
         for (let i = 1; i <= count; i++) {
             const user = new DeepkitModel('Peter ' + i);
             user.id = i;

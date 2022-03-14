@@ -407,7 +407,7 @@ export class HttpResultFormatter {
 
         const serializerToUse = route && route?.serializer ? route.serializer : serializer;
 
-        context.response.end(JSON.stringify(serialize(instance, route ? route.serializationOptions : undefined, serializerToUse, resolveReceiveType(classType))));
+        context.response.end(JSON.stringify(serialize(instance, route ? route.serializationOptions : undefined, serializerToUse, undefined, resolveReceiveType(classType))));
     }
 
     handleBinary(result: Uint8Array, context: HttpResultFormatterContext): void {

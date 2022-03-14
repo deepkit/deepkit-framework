@@ -138,7 +138,7 @@ export function buildOclifCommand(name: string, injector: InjectorContext, class
             if (value === undefined && !propertySchema.isValueRequired()) {
                 return undefined;
             }
-            value = deserialize(value, undefined, undefined, propertySchema.type);
+            value = deserialize(value, undefined, undefined, undefined, propertySchema.type);
             const errors = validate(value, propertySchema.type);
             if (errors.length) {
                 throw errors[0];

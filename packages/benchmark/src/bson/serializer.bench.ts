@@ -20,14 +20,14 @@ const { calculateObjectSize, serialize } = bson;
 
 export async function main() {
 
-    const itemSchema = t.schema({
-        id: t.number,
-        name: t.string,
-        ready: t.boolean,
-        priority: t.number,
-        tags: t.array(t.string),
-    });
-    const items: any[] = [];
+    interface itemSchema {
+        id: number;
+        name: string;
+        ready: boolean;
+        priority: number;
+        tags: string[]
+    }
+    const items: itemSchema[] = [];
 
     const count = 10_000;
     for (let i = 0; i < count; i++) {
@@ -41,21 +41,21 @@ export async function main() {
         });
     }
 
-    const schema = t.schema({
+    interface schema {
         cursor: {
-            firstBatch: t.array(itemSchema)
+            firstBatch: itemSchema[]
         }
-    });
+    }
 
     const suite = new BenchSuite(`BSON serializer array of ${count} items`);
     const data = { cursor: { firstBatch: items } };
 
-    const serializer = getBSONSerializer(schema);
+    const serializer = getBSONSerializer<schema>();
     const bson = serializer({ cursor: { firstBatch: [items[0]] } });
     console.log('buffer official size', calculateObjectSize(items[0]));
-    console.log('buffer deepkit size', createBSONSizer(itemSchema)(items[0]));
+    console.log('buffer deepkit size', createBSONSizer<itemSchema>()(items[0]));
 
-    console.log('buffer deepkit', getBSONSerializer(itemSchema)(items[0]));
+    console.log('buffer deepkit', getBSONSerializer<itemSchema>()(items[0]));
     console.log('buffer official', serialize(items[0]));
     // const parsed = createBSONParser(itemSchema)(serializer({cursor: {firstBatch: [items[0]]}}));
     // console.log('buffer parsed', parsed.cursor.firstBatch[0]);
@@ -84,7 +84,7 @@ export async function main() {
     // });
 
 
-    const sizer = createBSONSizer(schema);
+    const sizer = createBSONSizer<schema>();
     suite.add('deepkit/bson sizer', () => {
         const size = sizer(data);
         Buffer.alloc(size);
@@ -95,7 +95,7 @@ export async function main() {
         Buffer.alloc(size);
     });
 
-    const serializer1Item = getBSONSerializer(itemSchema);
+    const serializer1Item = getBSONSerializer<itemSchema>();
     suite.add('deepkit/bson stringify 1 item', () => {
         serializer1Item(items[0]);
     });

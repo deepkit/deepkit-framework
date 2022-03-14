@@ -35,7 +35,7 @@ import {
     isReferenceInstance,
     isReferenceType,
     isUUIDType,
-    JitStack,
+    JitStack, memberNameToString,
     mongoIdAnnotation,
     NamingStrategy,
     ReceiveType,
@@ -720,21 +720,23 @@ function handleObjectLiteral(
 
         if (member.kind !== ReflectionKind.property && member.kind !== ReflectionKind.propertySignature) continue;
         if (!isSerializable(member.type)) continue;
-        const name = getNameExpression(state.namingStrategy.getPropertyName(member), state);
-        existing.push(name);
+
+        const writeName = String(state.namingStrategy.getPropertyName(member, state.registry.serializer.name));
+        const readName = getNameExpression(memberNameToString(member.name), state);
+        existing.push(readName);
 
         //back references are only serialized when it's not forMongoDatabase
         if (isBackReferenceType(member.type) && options.forMongoDatabase === true) continue;
 
         if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
 
-        const accessor = `${state.accessor}[${name}]`;
-        const propertyState = state.fork('', accessor).extendPath(member.name);
+        const accessor = `${state.accessor}[${readName}]`;
+        const propertyState = state.fork('', accessor).extendPath(writeName);
         const setUndefined = isOptional(member)
-            ? executeTemplates(propertyState.fork().forPropertyName(member.name), { kind: ReflectionKind.undefined })
-            : isNullable(member) ? executeTemplates(propertyState.fork().forPropertyName(member.name), { kind: ReflectionKind.null }) : '';
+            ? executeTemplates(propertyState.fork().forPropertyName(writeName), { kind: ReflectionKind.undefined })
+            : isNullable(member) ? executeTemplates(propertyState.fork().forPropertyName(writeName), { kind: ReflectionKind.null }) : '';
 
-        const template = executeTemplates(propertyState.fork().forPropertyName(member.name), member.type);
+        const template = executeTemplates(propertyState.fork().forPropertyName(writeName), member.type);
         if (!template) {
             throw new BSONError(`No template found for ${member.type.kind}`);
         }
@@ -749,7 +751,7 @@ function handleObjectLiteral(
 
         if (isOptional(member)) {
             lines.push(`
-            if (${name} in ${state.accessor}) {
+            if (${readName} in ${state.accessor}) {
                 ${converter}
             }
             `);
@@ -1450,8 +1452,9 @@ function createBSONSerializer(type: Type, serializer: BSONBinarySerializer, nami
     return compiler.build(code, 'data', 'state');
 }
 
-export function createBSONSizer(type: Type, serializer: BSONBinarySerializer, jitStack: JitStack = new JitStack()): (data: object) => number {
+export function createBSONSizer<T>(type?: ReceiveType<T>, serializer: BSONBinarySerializer = bsonBinarySerializer, jitStack: JitStack = new JitStack()): (data: object) => number {
     const compiler = new CompilerContext();
+    type = resolveReceiveType(type);
     compiler.context.set('typeSettings', typeSettings);
     compiler.context.set('unpopulatedSymbol', unpopulatedSymbol);
     compiler.context.set('UnpopulatedCheck', UnpopulatedCheck);

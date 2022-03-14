@@ -13,7 +13,7 @@ import { ReflectionClass, resolvePath, serialize, Serializer } from '@deepkit/ty
 
 export function getSqlFilter<T>(classSchema: ReflectionClass<any>, filter: FilterQuery<T>, parameters: { [name: string]: any } = {}, serializer: Serializer): any {
     return convertQueryFilter(classSchema.getClassType(), (filter || {}), (convertClass: ReflectionClass<any>, path: string, value: any) => {
-        return serialize(value, undefined, serializer, resolvePath(path, classSchema.type));
+        return serialize(value, undefined, serializer, undefined, resolvePath(path, classSchema.type));
     }, {}, {
         $parameter: (name, value) => {
             if (undefined === parameters[value]) {

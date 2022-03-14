@@ -224,6 +224,10 @@ export abstract class DefaultPlatform {
             //a parent of a single-table inheritance might already be added
             if (mergedToSingleTable.has(schema)) continue;
 
+            if (!schema.getProperties().length) {
+                throw new Error(`Entity ${schema.getClassName()} has no properties. Is reflection enabled?`);
+            }
+
             //if the schema is decorated with singleTableInheritance, all properties of all siblings will be copied, as all
             //will be in one big table.
             if (schema.singleTableInheritance) {

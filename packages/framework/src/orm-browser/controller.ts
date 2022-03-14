@@ -360,7 +360,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
                     const addedIds = c.addedIds[entityName];
 
                     for (let i = 0; i < added.length; i++) {
-                        addedItems.set(addedIds[i], cast(added[i], undefined, undefined, entity.type));
+                        addedItems.set(addedIds[i], cast(added[i], undefined, undefined, undefined, entity.type));
                     }
                 }
 
