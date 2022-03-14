@@ -5,6 +5,7 @@ import { BenchmarkRun } from './model';
 import * as si from 'systeminformation';
 import { execSync } from 'child_process';
 import { serialize } from '@deepkit/type';
+import fetch from 'node-fetch';
 
 const fg = require('fast-glob');
 
