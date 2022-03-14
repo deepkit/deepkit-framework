@@ -56,7 +56,7 @@
     "memoizee": "^0.4.15",
     "mikro-orm": "^4.1.0",
     "mongoose": "^6.2.6",
-    "node-fetch": "^2.6.1",
+    "node-fetch": "^2.6.7",
     "objection": "^2.2.15",
     "patch-package": "^6.4.7",
     "prisma": "^3.10.0",
