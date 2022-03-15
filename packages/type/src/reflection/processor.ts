@@ -1149,8 +1149,8 @@ export class Processor {
 
     private handleIntersection() {
         const types = this.popFrame() as Type[];
-        let result: Type | undefined = types[0];
-        if (!result) {
+        let result: Type | undefined = { kind: ReflectionKind.unknown };
+        if (!types.length) {
             this.pushType({ kind: ReflectionKind.never });
             return;
         }
@@ -1193,7 +1193,6 @@ export class Processor {
 
         outer:
             for (const type of types) {
-                if (type === result) continue;
                 if (type.kind === ReflectionKind.never) continue;
                 if (type.kind === ReflectionKind.objectLiteral) {
                     for (const decorator of typeDecorators) {
@@ -1203,7 +1202,11 @@ export class Processor {
                         }
                     }
                 }
-                result = collapse(result, type);
+                if (result.kind === ReflectionKind.unknown) {
+                    result = type;
+                } else {
+                    result = collapse(result, type);
+                }
             }
 
         if (result.kind === ReflectionKind.unknown) {

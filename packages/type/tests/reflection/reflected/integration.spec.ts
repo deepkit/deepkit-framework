@@ -27,6 +27,7 @@ import {
     Group,
     Index,
     integer,
+    MapName,
     metaAnnotation,
     MySQL,
     Postgres,
@@ -1919,4 +1920,21 @@ test('default function expression', () => {
     expect(reflection.getProperty('created').hasDefaultFunctionExpression()).toBe(false);
     expect(reflection.getProperty('type').hasDefaultFunctionExpression()).toBe(false);
 
+});
+
+test('type decorator first position', () => {
+    class author {
+    }
+
+    class post {
+        id: PrimaryKey & number = 0;
+        author?: Reference & MapName<'_author'> & author;
+    }
+
+    const reflection = ReflectionClass.from(post);
+    expect(reflection.getProperty('id').type.kind).toBe(ReflectionKind.number);
+    expect(reflection.getProperty('id').isPrimaryKey()).toBe(true);
+    expect(reflection.getProperty('author').type.kind).toBe(ReflectionKind.class);
+    expect(reflection.getProperty('author').isPrimaryKey()).toBe(false);
+    expect(reflection.getProperty('author').isReference()).toBe(true);
 });
