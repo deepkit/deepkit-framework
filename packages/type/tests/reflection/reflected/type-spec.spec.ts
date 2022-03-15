@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { ReceiveType, ReflectionClass, resolveReceiveType } from '../../../src/reflection/reflection';
-import { AutoIncrement, BackReference, isReferenceType, MongoId, PrimaryKey, Reference, UUID } from '../../../src/reflection/type';
+import { AutoIncrement, BackReference, isReferenceType, MapName, MongoId, PrimaryKey, Reference, UUID } from '../../../src/reflection/type';
 import { cast, cloneClass, serialize } from '../../../src/serializer-facade';
 import { createReference } from '../../../src/reference';
 import { unpopulatedSymbol } from '../../../src/core';
@@ -22,7 +22,7 @@ function serializeToJson<T>(value: T | any, type?: ReceiveType<T>): T {
     return json;
 }
 
-function deserializeFromJson<T>(value: T, type?: ReceiveType<T>): T {
+function deserializeFromJson<T>(value: any, type?: ReceiveType<T>): T {
     const res = cast<T>(value, {}, undefined, undefined, type);
     return res;
 }
@@ -699,4 +699,65 @@ test('promise', () => {
     expect(serializeToJson<Promise<string>>('1')).toBe('1');
     expect(deserializeFromJson<Promise<string>>('1' as any)).toBe('1');
     expect(roundTrip<Promise<string>>('1' as any)).toBe('1');
+});
+
+test('class inheritance', () => {
+    class A {
+        id: number = 0;
+    }
+
+    class B extends A {
+        username: string = '';
+    }
+
+    expect(deserializeFromJson<A>({ id: 2 })).toEqual({ id: 2 });
+    expect(serializeToJson<A>({ id: 2 })).toEqual({ id: 2 });
+
+    expect(deserializeFromJson<B>({ id: 2, username: 'Peter' })).toEqual({ id: 2, username: 'Peter' });
+    expect(serializeToJson<B>({ id: 2, username: 'Peter' })).toEqual({ id: 2, username: 'Peter' });
+});
+
+test('mapName interface', () => {
+    interface A {
+        type: string & MapName<'~type'>;
+    }
+
+    expect(deserializeFromJson<A>({ '~type': 'abc' })).toEqual({ 'type': 'abc' });
+    expect(serializeToJson<A>({ 'type': 'abc' })).toEqual({ '~type': 'abc' });
+
+    expect(deserializeFromJson<A | string>({ '~type': 'abc' })).toEqual({ 'type': 'abc' });
+    expect(serializeToJson<A | string>({ 'type': 'abc' })).toEqual({ '~type': 'abc' });
+    expect(serializeToJson<A | string>('abc')).toEqual('abc');
+});
+
+test('mapName class', () => {
+    class A {
+        id: string & MapName<'~id'> = '';
+
+        constructor(public type: string & MapName<'~type'>) {
+        }
+    }
+
+    expect(deserializeFromJson<A>({ '~id': '1', '~type': 'abc' })).toEqual({ 'id': '1', 'type': 'abc' });
+    expect(serializeToJson<A>({ id: '1', 'type': 'abc' })).toEqual({ '~id': '1', '~type': 'abc' });
+
+    expect(deserializeFromJson<A | string>({ '~id': '', '~type': 'abc' })).toEqual({ id: '', 'type': 'abc' });
+    expect(serializeToJson<A | string>({ id: '1', 'type': 'abc' })).toEqual({ '~id': '1', '~type': 'abc' });
+    expect(serializeToJson<A | string>('abc')).toEqual('abc');
+});
+
+test('dynamic properties', () => {
+    class A {
+        [index: string]: any;
+
+        getType(): string {
+            return String(this['~type'] || this['type'] || '');
+        }
+    }
+
+    const back1 = deserializeFromJson<A>({'~type': 'abc'});
+    expect(back1.getType()).toBe('abc');
+
+    const back2 = deserializeFromJson<A>({'type': 'abc'});
+    expect(back2.getType()).toBe('abc');
 });

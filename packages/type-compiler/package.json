@@ -27,10 +27,10 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "typescript": "^4.5.0"
+    "typescript": "~"
   },
   "devDependencies": {
-    "typescript": "^4.5.0"
+    "typescript": "^4.6.2"
   },
   "dependencies": {
     "@deepkit/type-spec": "^1.0.1-alpha.61",

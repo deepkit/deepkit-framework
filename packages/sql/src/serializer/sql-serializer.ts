@@ -10,7 +10,6 @@
 
 import {
     ContainerAccessor,
-    deserializeClass,
     executeTemplates,
     isReferenceType,
     isUUIDType,
@@ -88,12 +87,7 @@ function deserializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state:
         state.addSetter(`${state.accessor} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor}`);
     }
 
-    //apply regular class/object deserializer
-    if (type.kind === ReflectionKind.class) {
-        deserializeClass(type, state);
-    } else {
-        serializeObjectLiteral(type, state);
-    }
+    serializeObjectLiteral(type, state);
 }
 
 export class SqlSerializer extends Serializer {

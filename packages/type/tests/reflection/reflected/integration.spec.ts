@@ -52,6 +52,7 @@ import { validate, ValidatorError } from '../../../src/validator';
 import { expectEqualType } from '../../utils';
 import { MyAlias } from './types';
 import { resolveRuntimeType } from '../../../src/reflection/processor';
+import { uuid } from '../../../src/utils';
 
 test('class', () => {
     class Entity {
@@ -1902,4 +1903,20 @@ test('singleTableInheritance', () => {
 test('Array<T>', () => {
     expect(typeOf<string[]>()).toMatchObject({ kind: ReflectionKind.array, type: { kind: ReflectionKind.string } });
     expect(typeOf<Array<string>>()).toMatchObject({ kind: ReflectionKind.array, type: { kind: ReflectionKind.string } });
+});
+
+test('default function expression', () => {
+    class post {
+        uuid: string = uuid();
+        id: integer & AutoIncrement & PrimaryKey = 0;
+        created: Date = new Date;
+        type: string = 'asd';
+    }
+
+    const reflection = ReflectionClass.from(post);
+    expect(reflection.getProperty('uuid').hasDefaultFunctionExpression()).toBe(true);
+    expect(reflection.getProperty('id').hasDefaultFunctionExpression()).toBe(false);
+    expect(reflection.getProperty('created').hasDefaultFunctionExpression()).toBe(false);
+    expect(reflection.getProperty('type').hasDefaultFunctionExpression()).toBe(false);
+
 });

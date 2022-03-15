@@ -1017,7 +1017,10 @@ export class ReflectionTransformer {
                     if (hasModifier(narrowed, SyntaxKind.AbstractKeyword)) program.pushOp(ReflectionOp.abstract);
 
                     if (narrowed.initializer) {
-                        program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, narrowed.initializer)));
+                        //important to use Function, since it will be called using a different `this`
+                        program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(this.f.createFunctionExpression(undefined, undefined, undefined, undefined, undefined, undefined,
+                            this.f.createBlock([this.f.createReturnStatement(narrowed.initializer)]))
+                        ));
                     }
 
                     const description = extractJSDocAttribute(narrowed, 'description');

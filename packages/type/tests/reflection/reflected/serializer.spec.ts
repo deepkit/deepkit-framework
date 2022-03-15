@@ -13,8 +13,8 @@ import { AutoIncrement, BackReference, Embedded, Excluded, Group, int8, integer,
 import { createSerializeFunction, getSerializeFunction, serializer } from '../../../src/serializer';
 import { cast, deserialize, serialize } from '../../../src/serializer-facade';
 import { getClassName } from '@deepkit/core';
-import { t } from '../../../src/decorator';
-import { validate, validates, ValidationError } from '../../../src/validator';
+import { entity, t } from '../../../src/decorator';
+import { ValidationError } from '../../../src/validator';
 
 test('deserializer', () => {
     class User {
@@ -635,7 +635,8 @@ test('embedded single optional', () => {
     expect(deserialize<Product2>({ title: 'Brick' })).toEqual(new Product2('Brick'));
     expect(deserialize<Product3>({})).toEqual({ price: new Price(15) });
     expect(deserialize<Product3>({ price: null })).toEqual({ price: undefined });
-    expect(deserialize<Product4>({})).toEqual({ price: new Price(15) });
+    expect(deserialize<Product4>({ price: undefined })).toEqual({ price: null });
+    expect(deserialize<Product4>({})).toEqual({ price: null });
     expect(deserialize<Product4>({ price: null })).toEqual({ price: null });
 });
 
@@ -756,38 +757,80 @@ test('wild property names', () => {
         ['#$%^^x']: number;
     }
 
-    expect(cast<A>({ 'asd-344': 'abc', '#$%^^x': 3 })).toEqual({ 'asd-344': 'abc', '#$%^^x': 3 });
+    expect(deserialize<A>({ 'asd-344': 'abc', '#$%^^x': 3 })).toEqual({ 'asd-344': 'abc', '#$%^^x': 3 });
 });
 
-test('mapName interface', () => {
-    interface A {
-        type: string & MapName<'~type'>;
+test('embedded with lots of properties', () => {
+    interface LotsOfIt {
+        a?: string;
+        lot?: string;
+        of?: string;
+        additional?: string;
+        properties?: string;
     }
 
-    expect(cast<A>({ '~type': 'abc' })).toEqual({ 'type': 'abc' });
-    expect(deserialize<A>({ '~type': 'abc' })).toEqual({ 'type': 'abc' });
-    expect(serialize<A>({ 'type': 'abc' })).toEqual({ '~type': 'abc' });
-
-    expect(deserialize<A | string>({ '~type': 'abc' })).toEqual({ 'type': 'abc' });
-    expect(serialize<A | string>({ 'type': 'abc' })).toEqual({ '~type': 'abc' });
-    expect(validate<A | string>({ 'type': 'abc' })).toEqual([]);
-    expect(serialize<A | string>('abc')).toEqual('abc');
-});
-
-test('mapName class', () => {
     class A {
-        id: string & MapName<'~id'> = '';
-
-        constructor(public type: string & MapName<'~type'>) {
+        constructor(public options: Embedded<LotsOfIt, { prefix: '' }> = {}) {
         }
     }
 
-    expect(cast<A>({ '~id': '1', '~type': 'abc' })).toEqual({ 'id': '1', 'type': 'abc' });
-    expect(deserialize<A>({ '~id': '1', '~type': 'abc' })).toEqual({ 'id': '1', 'type': 'abc' });
-    expect(serialize<A>({ id: '1', 'type': 'abc' })).toEqual({ '~id': '1', '~type': 'abc' });
+    const back1 = deserialize<A>({ a: 'abc', lot: 'string' });
+    expect(back1.options).toEqual({ a: 'abc', lot: 'string' });
 
-    expect(deserialize<A | string>({ '~id': '', '~type': 'abc' })).toEqual({ id: '', 'type': 'abc' });
-    expect(serialize<A | string>({ id: '1', 'type': 'abc' })).toEqual({ '~id': '1', '~type': 'abc' });
-    expect(validate<A | string>({ id: '1', 'type': 'abc' })).toEqual([]);
-    expect(serialize<A | string>('abc')).toEqual('abc');
+    class A2 {
+        public options: Embedded<LotsOfIt, { prefix: '' }> = {};
+    }
+
+    const back2 = deserialize<A2>({ a: 'abc', lot: 'string' });
+    expect(back2.options).toEqual({ a: 'abc', lot: 'string' });
+});
+
+test('embedded in super class', () => {
+    class Thread {
+        public parentThreadId?: string;
+        public senderOrder?: number;
+
+        constructor(
+            public id: string & MapName<'~thread'>
+        ) {
+        }
+    }
+
+    class ComposedMessage {
+        thread?: Embedded<Thread, { prefix: '' }>;
+    }
+
+    class Message extends ComposedMessage {
+        public readonly type: string = Message.type;
+        public static readonly type = 'my-id';
+
+        public routingKeys?: string[];
+        public endpoint?: string;
+    }
+
+    const back1 = deserialize<Message>({ '~thread': 'foo' });
+    expect(back1).toEqual({ type: Message.type, thread: { id: 'foo' } });
+
+    const plain = serialize<Message>(back1);
+    expect(plain).toEqual({ type: Message.type, parentThreadId: null, senderOrder: null, '~thread': 'foo' });
+});
+
+test('disabled constructor', () => {
+    let called = false;
+    @entity.disableConstructor()
+    class User {
+        id: number = 0;
+        title: string = 'id:' + this.id;
+
+        constructor(public type: string) {
+            called = true;
+        }
+    }
+
+    expect(ReflectionClass.from(User).disableConstructor).toBe(true);
+
+    const user = deserialize<User>({ type: 'nix' });
+    expect(called).toBe(false);
+    expect(user).toBeInstanceOf(User);
+    expect(user).toEqual({ id: 0, title: 'id:' + 0, type: 'nix' });
 });

@@ -120,7 +120,7 @@ function extractTypeNameFromFunction(fn: Function): string {
     if (match) {
         return match[1];
     }
-    return 'UnknownTypeName:'+str;
+    return 'UnknownTypeName:' + str;
 }
 
 /**
@@ -858,22 +858,40 @@ export class Processor {
                             const frameOffset = this.eatParameter() as number;
                             const stackEntryIndex = this.eatParameter() as number;
                             const frame = program.frame;
+
+                            let last: Type = { kind: ReflectionKind.unknown };
                             this.push({
                                 kind: ReflectionKind.infer, set: (type: Type) => {
+                                    if (last.kind !== ReflectionKind.unknown) {
+                                        if (last.kind === ReflectionKind.union || last.kind === ReflectionKind.intersection) {
+                                            if (!isTypeIncluded(last.types, type)) {
+                                                last.types.push(type);
+                                            }
+                                        } else {
+                                            if (type.parent && type.parent.kind === ReflectionKind.parameter) {
+                                                last = { kind: ReflectionKind.intersection, types: [last, type] };
+                                            } else {
+                                                last = { kind: ReflectionKind.union, types: [last, type] };
+                                            }
+                                        }
+                                    } else {
+                                        last = type;
+                                    }
+
                                     if (frameOffset === 0) {
-                                        program.stack[frame.startIndex + 1 + stackEntryIndex] = type;
+                                        program.stack[frame.startIndex + 1 + stackEntryIndex] = last;
                                     } else if (frameOffset === 1) {
-                                        program.stack[frame.previous!.startIndex + 1 + stackEntryIndex] = type;
+                                        program.stack[frame.previous!.startIndex + 1 + stackEntryIndex] = last;
                                     } else if (frameOffset === 2) {
-                                        program.stack[frame.previous!.previous!.startIndex + 1 + stackEntryIndex] = type;
+                                        program.stack[frame.previous!.previous!.startIndex + 1 + stackEntryIndex] = last;
                                     } else if (frameOffset === 3) {
-                                        program.stack[frame.previous!.previous!.previous!.startIndex + 1 + stackEntryIndex] = type;
+                                        program.stack[frame.previous!.previous!.previous!.startIndex + 1 + stackEntryIndex] = last;
                                     } else if (frameOffset === 4) {
-                                        program.stack[frame.previous!.previous!.previous!.previous!.startIndex + 1 + stackEntryIndex] = type;
+                                        program.stack[frame.previous!.previous!.previous!.previous!.startIndex + 1 + stackEntryIndex] = last;
                                     } else {
                                         let current = frame;
                                         for (let i = 0; i < frameOffset; i++) current = current.previous!;
-                                        program.stack[current.startIndex + 1 + stackEntryIndex] = type;
+                                        program.stack[current.startIndex + 1 + stackEntryIndex] = last;
                                     }
                                 }
                             } as TypeInfer);

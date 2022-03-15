@@ -489,14 +489,19 @@ export function isPrimitive<T extends Type>(type: T): boolean {
         || type.kind === ReflectionKind.literal || type.kind === ReflectionKind.null || type.kind === ReflectionKind.undefined;
 }
 
+export function isPropertyType(type: Type): type is TypePropertySignature | TypeProperty {
+    return type.kind === ReflectionKind.property || type.kind === ReflectionKind.propertySignature;
+}
+
 /**
  * Return all properties created in the constructor (via `constructor(public title: string)`)
  *
  * If a non-property parameter is in the constructor, the type is given instead, e.g. `constructor(public title: string, anotherOne:number)` => [TypeProperty, TypeNumber]
  */
-export function getConstructorProperties(type: TypeClass): { parameters: (TypeProperty | Type)[], properties: TypeProperty[] } {
-    const constructor = findMember('constructor', type) as TypeMethod | undefined;
+export function getConstructorProperties(type: TypeClass | TypeObjectLiteral): { parameters: (TypeProperty | Type)[], properties: TypeProperty[] } {
     const result: { parameters: (TypeProperty | Type)[], properties: TypeProperty[] } = { parameters: [], properties: [] };
+    if (type.kind === ReflectionKind.objectLiteral) return result;
+    const constructor = findMember('constructor', type) as TypeMethod | undefined;
     if (!constructor) return result;
 
     for (const parameter of constructor.parameters) {
@@ -1228,14 +1233,6 @@ export function isNullable(type: Type): boolean {
     return type.kind === ReflectionKind.null || (type.kind === ReflectionKind.union && type.types.some(isNullable));
 }
 
-export function getPropertiesOfClassOrObject(type: TypeObjectLiteral | TypeClass): (TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeProperty | TypeMethod)[] {
-    if (type.kind === ReflectionKind.class) {
-        return ReflectionClass.from(type).getProperties().map(v => v.property);
-    }
-
-    return type.types;
-}
-
 /**
  * Integer
  */
@@ -1465,7 +1462,7 @@ export type MapName<Alias extends string, ForSerializer extends string = ''> = {
 
 export const referenceAnnotation = new AnnotationDefinition<ReferenceOptions>('reference');
 export const entityAnnotation = new AnnotationDefinition<EntityOptions>('entity');
-export const mapNameAnnotation = new AnnotationDefinition<{name: string, serializer?: string}>('entity');
+export const mapNameAnnotation = new AnnotationDefinition<{ name: string, serializer?: string }>('entity');
 
 export const autoIncrementAnnotation = new AnnotationDefinition('autoIncrement');
 export const primaryKeyAnnotation = new class extends AnnotationDefinition {
@@ -1585,7 +1582,7 @@ export const embeddedAnnotation = new AnnotationDefinition<EmbeddedOptions>('emb
 export function hasEmbedded(type: Type): boolean {
     if (type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property) return hasEmbedded(type.type);
     if (type.kind === ReflectionKind.union) return type.types.some(hasEmbedded);
-    return type.kind === ReflectionKind.class && embeddedAnnotation.getFirst(type) !== undefined;
+    return embeddedAnnotation.getFirst(type) !== undefined;
 }
 
 //`never` is here to allow using a decorator multiple times on the same type without letting the TS complaining about incompatible types.
@@ -1718,7 +1715,7 @@ export const typeDecorators: TypeDecorator[] = [
                 const serializer = meta.type.types[2] ? typeToObject(meta.type.types[2].type) : undefined;
 
                 if ('string' === typeof name && (!serializer || 'string' === typeof serializer)) {
-                    mapNameAnnotation.replace(annotations, [{name, serializer}]);
+                    mapNameAnnotation.replace(annotations, [{ name, serializer }]);
                 }
                 return true;
             }
@@ -1915,7 +1912,7 @@ export const binaryTypes: ClassType[] = [
  *
  * It's thus necessary to resolve super class properties as well. This function does this and caches the result.
  */
-export function resolveTypeMembers<T extends TypeClass | TypeObjectLiteral>(type: T): T['types'] {
+export function resolveTypeMembers(type: TypeClass | TypeObjectLiteral): (TypeProperty | TypePropertySignature | TypeMethodSignature | TypeMethod | TypeIndexSignature)[] {
     if (type.kind === ReflectionKind.objectLiteral) return type.types;
     const jit = getTypeJitContainer(type);
     if (jit.collapsedInheritance) return jit.collapsedInheritance;

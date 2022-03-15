@@ -8,20 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ClassType,
-    CompilerContext,
-    CustomError,
-    getClassName,
-    isArray,
-    isFunction,
-    isInteger,
-    isIterable,
-    isNumeric,
-    isObject,
-    stringifyValueWithType,
-    toFastProperties
-} from '@deepkit/core';
+import { ClassType, CompilerContext, CustomError, isArray, isFunction, isInteger, isIterable, isNumeric, isObject, stringifyValueWithType, toFastProperties } from '@deepkit/core';
 import {
     AnnotationDefinition,
     binaryTypes,
@@ -31,7 +18,6 @@ import {
     excludedAnnotation,
     FindType,
     getConstructorProperties,
-    getPropertiesOfClassOrObject,
     getTypeJitContainer,
     getTypeObjectLiteralFromTypeClass,
     groupAnnotation,
@@ -41,6 +27,7 @@ import {
     isMongoIdType,
     isNullable,
     isOptional,
+    isPropertyType,
     isReferenceType,
     isType,
     isUUIDType,
@@ -48,6 +35,7 @@ import {
     memberNameToString,
     referenceAnnotation,
     ReflectionKind,
+    resolveTypeMembers,
     stringifyType,
     Type,
     TypeClass,
@@ -778,160 +766,82 @@ export function inAccessor(accessor: ContainerAccessor | string): string {
     return `'object' === typeof ${accessor.container} && ${accessor.property} in ${accessor.container}`;
 }
 
-export function deserializeEmbedded(type: TypeClass, state: TemplateState, container?: string): string {
+export function deserializeEmbedded(type: TypeClass | TypeObjectLiteral, state: TemplateState, container?: string): string {
     const embedded = embeddedAnnotation.getFirst(type);
     if (!embedded) return '';
 
-    const classType = state.compilerContext.reserveConst(type.classType);
-    const constructorProperties = getConstructorProperties(type);
-    if (!constructorProperties.properties.length) throw new Error(`Can not embed class ${getClassName(type.classType)} since it has no constructor properties`);
+    const properties = resolveTypeMembers(type).filter(isPropertyType);
     const args: (ContainerAccessor | string)[] = [];
+    const assign: (ContainerAccessor | string)[] = [];
     const loadArgs: string[] = [];
     const setToUndefined = state.compilerContext.reserveName('setToUndefined');
     const params = state.compilerContext.reserveName('params');
     const requiredSet: string[] = ['true'];
 
-    const containerProperty = getEmbeddedProperty(type);
-    for (const parameter of constructorProperties.parameters) {
-        if (parameter.kind !== ReflectionKind.property) {
-            args.push('undefined');
-        } else {
-            const setter = new ContainerAccessor(params, JSON.stringify(parameter.name));
-            args.push(setter);
-
-            if (!isOptional(parameter) && !hasDefaultValue(parameter)) {
-                if (isNullable(parameter)) {
-                    requiredSet.push(`${setter} !== undefined`);
-                } else {
-                    requiredSet.push(`${setter} !== undefined && ${setter} !== null`);
-                }
-            }
-
-            const accessor = getEmbeddedAccessor(type, constructorProperties.properties.length !== 1, state.accessor, state.registry.serializer, state.namingStrategy, parameter, embedded, container);
-            const propertyState = state.fork(setter, accessor).extendPath(String(parameter.name));
-            if (hasEmbedded(parameter.type)) {
-                loadArgs.push(executeTemplates(propertyState, parameter.type));
+    function loadProperty(setter: ContainerAccessor, property: TypeProperty | TypePropertySignature) {
+        if (!isOptional(property) && !hasDefaultValue(property)) {
+            if (isNullable(property)) {
+                requiredSet.push(`${setter} !== undefined`);
             } else {
-                if (accessor instanceof ContainerAccessor) {
-                    const check = !containerProperty ? 'true' : isNullable(containerProperty) ? `${accessor} === undefined` : `(${accessor} === undefined || ${accessor} === null)`;
-                    const setUndefined = containerProperty ? `if (${check}) { ${setToUndefined}++; }` : 'if (false) {} ';
-                    loadArgs.push(`
-                        if (${inAccessor(accessor)}) {
-                            ${setUndefined} else {
-                                ${executeTemplates(propertyState, parameter.type)}
-                            }
-                        }`);
-                } else {
-                    loadArgs.push(executeTemplates(propertyState, parameter.type));
-                }
+                requiredSet.push(`${setter} !== undefined && ${setter} !== null`);
+            }
+        }
+
+        const accessor = getEmbeddedAccessor(type, properties.length !== 1, state.accessor, state.registry.serializer, state.namingStrategy, property, embedded!, container);
+        const propertyState = state.fork(setter, accessor).extendPath(String(property.name));
+        if (hasEmbedded(property.type)) {
+            loadArgs.push(executeTemplates(propertyState, property.type));
+        } else {
+            if (accessor instanceof ContainerAccessor) {
+                const check = !containerProperty ? 'true' : isNullable(containerProperty) ? `${accessor} === undefined` : `(${accessor} === undefined || ${accessor} === null)`;
+                const setUndefined = containerProperty ? `if (${check}) { ${setToUndefined}++; }` : 'if (false) {} ';
+                loadArgs.push(`
+                    if (${inAccessor(accessor)}) {
+                        ${setUndefined} else {
+                            ${executeTemplates(propertyState, property.type)}
+                        }
+                    }`);
+            } else {
+                loadArgs.push(executeTemplates(propertyState, property.type));
             }
         }
     }
+
+    const containerProperty = getEmbeddedProperty(type);
+    const constructorAssigned: string[] = [];
+    for (const property of getConstructorProperties(type).parameters) {
+        if ((property.kind == ReflectionKind.property || property.kind === ReflectionKind.propertySignature) && !excludedAnnotation.isExcluded(property.type, state.registry.serializer.name)) {
+            constructorAssigned.push(memberNameToString(property.name));
+            const setter = new ContainerAccessor(params, JSON.stringify(property.name));
+            loadProperty(setter, property);
+            args.push(setter);
+        } else {
+            args.push('undefined');
+        }
+    }
+
+    for (const property of properties) {
+        if ((property.kind == ReflectionKind.property || property.kind === ReflectionKind.propertySignature) && !excludedAnnotation.isExcluded(property.type, state.registry.serializer.name)) {
+            if (constructorAssigned.includes(memberNameToString(property.name))) continue;
+            const setter = new ContainerAccessor(params, JSON.stringify(property.name));
+            loadProperty(setter, property);
+            assign.push(`${new ContainerAccessor(state.setter, JSON.stringify(property.name))} = ` + setter);
+        }
+    }
+
+    const createObject = type.kind === ReflectionKind.objectLiteral ? `{}` : `new ${state.compilerContext.reserveConst(type.classType)}(${args.join(',')})`;
 
     return `
         const ${params} = {};
         let ${setToUndefined} = 0;
         ${loadArgs.join('\n')}
         if (${requiredSet.join(' && ')}) {
-            ${state.setter} = new ${classType}(${args.join(',')});
-        } else if (${setToUndefined} === ${constructorProperties.properties.length}) {
+            ${state.setter} = ${createObject};
+            ${assign.join(';\n')}
+        } else if (${setToUndefined} === ${properties.length}) {
             ${state.setter} = undefined;
         }
     `;
-}
-
-export function deserializeClass(type: TypeClass, state: TemplateState) {
-    const embedded = deserializeEmbedded(type, state);
-    if (embedded) {
-        state.addCode(embedded);
-        return;
-    }
-
-    if (callExtractedFunctionIfAvailable(state, type)) return;
-    const extract = extractStateToFunctionAndCallIt(state, type);
-    state = extract.state;
-    state.setContext({ isGroupAllowed });
-
-    const preLines: string[] = [];
-    const lines: string[] = [];
-    const clazz = ReflectionClass.from(type.classType);
-
-    const constructor = clazz.getConstructorOrUndefined();
-    const constructorArguments: string[] = [];
-    if (constructor) {
-        const parameters = constructor.getParameters();
-        for (const parameter of parameters) {
-            if (parameter.getVisibility() === undefined) {
-                constructorArguments.push('undefined');
-                continue;
-            }
-
-            const property = clazz.getProperty(parameter.getName());
-            if (!property) continue;
-
-            if (property.isSerializerExcluded(state.registry.serializer.name)) {
-                continue;
-            }
-            const argumentName = state.compilerContext.reserveVariable('c_' + parameter.getName());
-
-            const readName = getNameExpression(state.namingStrategy.getPropertyName(property.property, state.registry.serializer.name), state);
-
-            const propertyState = state.fork(argumentName, new ContainerAccessor(state.accessor, readName)).extendPath(String(property.getName()));
-            const staticDefault = property.type.kind === ReflectionKind.literal ? `${argumentName} = ${state.compilerContext.reserveConst(property.type.literal)};` : '';
-
-            const embedded = property.getEmbedded();
-            if (embedded) {
-                preLines.push(executeTemplates(propertyState, property.type));
-            } else {
-                preLines.push(`
-                    ${argumentName} = undefined;
-                    if (${inAccessor(propertyState.accessor as ContainerAccessor)} && ${groupFilter(parameter.type)}) {
-                        ${createConverterJSForMember(property, propertyState)}
-                    } else {
-                        ${staticDefault}
-                    }
-                `);
-            }
-
-            constructorArguments.push(argumentName);
-        }
-    }
-
-    for (const property of clazz.getProperties()) {
-        if (constructor && constructor.hasParameter(property.name)) continue; //already handled in the constructor
-
-        const name = getNameExpression(state.namingStrategy.getPropertyName(property.property, state.registry.serializer.name), state);
-
-        if (property.isSerializerExcluded(state.registry.serializer.name)) {
-            continue;
-        }
-
-        const setter = new ContainerAccessor(state.setter, JSON.stringify(property.getName()));
-        const staticDefault = !property.hasDefault() && property.type.kind === ReflectionKind.literal ? `${setter} = ${state.compilerContext.reserveConst(property.type.literal)};` : '';
-
-        const propertyState = state.fork(setter, new ContainerAccessor(state.accessor, name)).extendPath(String(property.getName()));
-        const embedded = property.getEmbedded();
-        if (embedded) {
-            lines.push(executeTemplates(propertyState, property.type));
-        } else {
-            lines.push(`
-                if (${name} in ${state.accessor} && ${groupFilter(property.type)}) {
-                    ${createConverterJSForMember(property, propertyState)}
-                } else { ${staticDefault} }
-            `);
-        }
-    }
-
-    const classType = state.compilerContext.reserveConst(type.classType);
-
-    state.addCode(`
-        if ('object' !== typeof ${state.accessor}) ${state.throwCode(`class ${getClassName(type.classType)}`)}
-        ${preLines.join('\n')}
-        ${state.setter} = new ${classType}(${constructorArguments.join(', ')});
-        ${lines.join('\n')}
-    `);
-
-    extract.setFunction(buildFunction(state, type));
 }
 
 export function getIndexCheck(state: TemplateState, i: string, type: Type): string {
@@ -984,7 +894,7 @@ export function getStaticDefaultCodeForProperty(member: TypeProperty | TypePrope
     return staticDefault;
 }
 
-export function getEmbeddedProperty(type: TypeClass): TypeProperty | TypePropertySignature | undefined {
+export function getEmbeddedProperty(type: TypeClass | TypeObjectLiteral): TypeProperty | TypePropertySignature | undefined {
     if (!type.parent) return;
     let resolved: Type = type.parent;
     if (resolved.kind === ReflectionKind.union && resolved.parent) resolved = resolved.parent;
@@ -992,7 +902,7 @@ export function getEmbeddedProperty(type: TypeClass): TypeProperty | TypePropert
     return;
 }
 
-function getEmbeddedAccessor(type: TypeClass, autoPrefix: boolean, accessor: string | ContainerAccessor, serializer: Serializer, namingStrategy: NamingStrategy, property: TypeProperty, embedded: EmbeddedOptions, container?: string): string | ContainerAccessor {
+function getEmbeddedAccessor(type: TypeClass | TypeObjectLiteral, autoPrefix: boolean, accessor: string | ContainerAccessor, serializer: Serializer, namingStrategy: NamingStrategy, property: TypeProperty | TypePropertySignature, embedded: EmbeddedOptions, container?: string): string | ContainerAccessor {
     const containerProperty = getEmbeddedProperty(type);
 
     let embeddedPropertyName = JSON.stringify(namingStrategy.getPropertyName(property, serializer.name));
@@ -1022,43 +932,49 @@ function groupFilter(type: Type): string {
 export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState) {
     const embedded = embeddedAnnotation.getFirst(type);
     if (embedded) {
-        if (type.kind !== ReflectionKind.class) throw new SerializationError(`Object literals can not be embedded`, collapsePath(state.path));
-        const constructorProperties = getConstructorProperties(type);
-        if (!constructorProperties.properties.length) throw new Error(`Can not embed class ${getClassName(type.classType)} since it has no constructor properties`);
+        if (state.isDeserialization) {
+            const embedded = deserializeEmbedded(type, state);
+            if (embedded) {
+                state.addCode(embedded);
+                return;
+            }
+        } else {
+            const properties = resolveTypeMembers(type).filter(isPropertyType);
 
-        if (constructorProperties.properties.length === 1) {
-            const first = constructorProperties.properties[0];
-            let name = getNameExpression(state.namingStrategy.getPropertyName(first, state.registry.serializer.name), state);
-            const setter = getEmbeddedAccessor(type, false, state.setter, state.registry.serializer, state.namingStrategy, first, embedded);
-            state.addCode(`
+            if (properties.length === 1) {
+                const first = properties[0];
+                let name = getNameExpression(state.namingStrategy.getPropertyName(first, state.registry.serializer.name), state);
+                const setter = getEmbeddedAccessor(type, false, state.setter, state.registry.serializer, state.namingStrategy, first, embedded);
+                state.addCode(`
             if (${inAccessor(state.accessor)}) {
                 ${executeTemplates(state.fork(setter, new ContainerAccessor(state.accessor, name)), first.type)}
             }`);
-        } else {
-            const lines: string[] = [];
+            } else {
+                const lines: string[] = [];
 
-            let pre = '';
-            let post = '';
-            let container = '';
-            if (!(state.setter instanceof ContainerAccessor)) {
-                //create own container
-                container = state.compilerContext.reserveName('container');
-                pre = `let ${container} = {}`;
-                post = `${state.setter} = ${container}`;
-            }
+                let pre = '';
+                let post = '';
+                let container = '';
+                if (!(state.setter instanceof ContainerAccessor)) {
+                    //create own container
+                    container = state.compilerContext.reserveName('container');
+                    pre = `let ${container} = {}`;
+                    post = `${state.setter} = ${container}`;
+                }
 
-            for (const property of constructorProperties.properties) {
-                const setter = getEmbeddedAccessor(type, true, state.setter, state.registry.serializer, state.namingStrategy, property, embedded, container);
-                lines.push(createConverterJSForMember(property, state.fork(setter, new ContainerAccessor(state.accessor, JSON.stringify(property.name)))));
-            }
+                for (const property of properties) {
+                    const setter = getEmbeddedAccessor(type, true, state.setter, state.registry.serializer, state.namingStrategy, property, embedded, container);
+                    lines.push(createConverterJSForMember(property, state.fork(setter, new ContainerAccessor(state.accessor, JSON.stringify(property.name)))));
+                }
 
-            state.addCode(`
+                state.addCode(`
                 if (${inAccessor(state.accessor)}) {
                     ${pre}
                     ${lines.join('\n')}
                     ${post}
                 }
             `);
+            }
         }
         return;
     }
@@ -1074,13 +990,60 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     const signatures: TypeIndexSignature[] = [];
     const existing: string[] = [];
 
-    const properties = getPropertiesOfClassOrObject(type);
-    for (const member of properties) {
+    const constructorArguments: string[] = [];
+    const handledPropertiesInConstructor: string[] = [];
+    const preLines: string[] = [];
+    if (state.isDeserialization && type.kind === ReflectionKind.class) {
+        const clazz = ReflectionClass.from(type.classType);
+        const constructor = clazz.getConstructorOrUndefined();
+        if (!clazz.disableConstructor && constructor) {
+            const parameters = constructor.getParameters();
+            for (const parameter of parameters) {
+                if (parameter.getVisibility() === undefined) {
+                    constructorArguments.push('undefined');
+                    continue;
+                }
+
+                const property = clazz.getProperty(parameter.getName());
+                if (!property) continue;
+
+                if (property.isSerializerExcluded(state.registry.serializer.name)) {
+                    continue;
+                }
+                handledPropertiesInConstructor.push(parameter.getName());
+                const argumentName = state.compilerContext.reserveVariable('c_' + parameter.getName());
+
+                const readName = getNameExpression(state.namingStrategy.getPropertyName(property.property, state.registry.serializer.name), state);
+
+                const propertyState = state.fork(argumentName, new ContainerAccessor(state.accessor, readName)).extendPath(String(property.getName()));
+                const staticDefault = property.type.kind === ReflectionKind.literal ? `${argumentName} = ${state.compilerContext.reserveConst(property.type.literal)};` : '';
+
+                const embedded = property.getEmbedded();
+                if (embedded) {
+                    preLines.push(executeTemplates(propertyState, property.type));
+                } else {
+                    preLines.push(`
+                    ${argumentName} = undefined;
+                    if (${inAccessor(propertyState.accessor as ContainerAccessor)} && ${groupFilter(parameter.type)}) {
+                        ${createConverterJSForMember(property, propertyState)}
+                    } else {
+                        ${staticDefault}
+                    }
+                `);
+                }
+
+                constructorArguments.push(argumentName);
+            }
+        }
+    }
+
+    for (const member of resolveTypeMembers(type)) {
         if (member.kind === ReflectionKind.indexSignature) {
             if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
             signatures.push(member);
         } else if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
             if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
+            if (handledPropertiesInConstructor.includes(memberNameToString(member.name))) continue;
 
             const name = state.namingStrategy.getPropertyName(member, state.registry.serializer.name);
             const readName = getNameExpression(state.isDeserialization ? name : memberNameToString(member.name), state);
@@ -1126,9 +1089,26 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         `);
     }
 
+    let createObject = '{}';
+    if (state.isDeserialization && type.kind === ReflectionKind.class) {
+        const classType = state.compilerContext.reserveConst(type.classType);
+        const clazz = ReflectionClass.from(type.classType);
+        if (clazz.disableConstructor) {
+            createObject = `Object.create(${classType}.prototype);`;
+            for (const property of clazz.getProperties()) {
+                if (property.property.kind !== ReflectionKind.property || property.property.default === undefined) continue;
+                const defaultFn = state.compilerContext.reserveConst(property.property.default);
+                createObject += `\n${v}.${memberNameToString(property.name)} = ${defaultFn}.apply(${v});`;
+            }
+        } else {
+            createObject = `new ${classType}(${constructorArguments.join(', ')})`;
+        }
+    }
+
     state.addCode(`
         if ('object' !== typeof ${state.accessor}) ${state.throwCode(type)}
-        let ${v} = {};
+        ${preLines.join('\n')}
+        let ${v} = ${createObject};
         ${lines.join('\n')}
         ${state.setter} = ${v};
     `);
@@ -1154,21 +1134,21 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     extract.setFunction(buildFunction(state, type));
 }
 
-export function typeGuardEmbedded(type: TypeClass, state: TemplateState, embedded: EmbeddedOptions) {
-    const constructorProperties = getConstructorProperties(type);
-    if (constructorProperties.properties.length) {
-        for (const parameter of constructorProperties.parameters) {
-            if (parameter.kind === ReflectionKind.property) {
+export function typeGuardEmbedded(type: TypeClass | TypeObjectLiteral, state: TemplateState, embedded: EmbeddedOptions) {
+    const properties = resolveTypeMembers(type).filter(isPropertyType);
+    if (properties.length) {
+        for (const property of properties) {
+            if ((property.kind == ReflectionKind.property || property.kind === ReflectionKind.propertySignature) && !excludedAnnotation.isExcluded(property.type, state.registry.serializer.name)) {
                 //we pass 'data' as container, since type guards for TypeClass get their own function always and operate on `data` accessor.
-                const accessor = getEmbeddedAccessor(type, constructorProperties.properties.length !== 1, state.accessor, state.registry.serializer, state.namingStrategy, parameter, embedded);
-                const propertyState = state.fork(state.setter, accessor).extendPath(String(parameter.name));
-                if (hasEmbedded(parameter.type)) {
-                    state.addCode(executeTemplates(propertyState, parameter.type));
+                const accessor = getEmbeddedAccessor(type, properties.length !== 1, state.accessor, state.registry.serializer, state.namingStrategy, property, embedded);
+                const propertyState = state.fork(state.setter, accessor).extendPath(String(property.name));
+                if (hasEmbedded(property.type)) {
+                    state.addCode(executeTemplates(propertyState, property.type));
                 } else {
                     if (accessor instanceof ContainerAccessor) {
-                        state.addCode(`if (${inAccessor(accessor)}) {${createConverterJSForMember(parameter, propertyState)} }`);
+                        state.addCode(`if (${inAccessor(accessor)}) {${createConverterJSForMember(property, propertyState)} }`);
                     } else {
-                        state.addCode(createConverterJSForMember(parameter, propertyState));
+                        state.addCode(createConverterJSForMember(property, propertyState));
                     }
                 }
             }
@@ -1179,9 +1159,10 @@ export function typeGuardEmbedded(type: TypeClass, state: TemplateState, embedde
 export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState) {
     //this function is used for both, serialize and deserialization. When serializing the type of `type` is strictly correct, so checking embedded fields would lead to wrong results.
     //this embedded check is only necessary when checking types in deserializing.
-    if (type.kind === ReflectionKind.class && state.target === 'deserialize') {
+    if (state.target === 'deserialize') {
         const embedded = embeddedAnnotation.getFirst(type);
         if (embedded) {
+            state.addCode('//typeguard for embedded');
             typeGuardEmbedded(type, state, embedded);
             return;
         }
@@ -1732,7 +1713,7 @@ export class Serializer {
         this.deserializeRegistry.register(ReflectionKind.any, (type, state) => state.addSetter(state.accessor));
         this.serializeRegistry.register(ReflectionKind.any, (type, state) => state.addSetter(state.accessor));
 
-        this.deserializeRegistry.register(ReflectionKind.class, deserializeClass);
+        this.deserializeRegistry.register(ReflectionKind.class, serializeObjectLiteral);
         this.serializeRegistry.register(ReflectionKind.class, serializeObjectLiteral);
         this.deserializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
         this.serializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
@@ -2144,7 +2125,7 @@ export class EmptySerializer extends Serializer {
         for (const kind of serializableKinds) this.serializeRegistry.register(kind, assignAccessorTemplate);
         for (const kind of serializableKinds) this.deserializeRegistry.register(kind, assignAccessorTemplate);
 
-        this.deserializeRegistry.register(ReflectionKind.class, deserializeClass);
+        this.deserializeRegistry.register(ReflectionKind.class, serializeObjectLiteral);
         this.serializeRegistry.register(ReflectionKind.class, serializeObjectLiteral);
         this.deserializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
         this.serializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);

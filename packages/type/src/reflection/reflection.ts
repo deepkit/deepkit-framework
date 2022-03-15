@@ -224,7 +224,14 @@ export function visit(type: Type, visitor: (type: Type) => false | void, onCircu
 function hasFunctionExpression(fn: Function): boolean {
     let code = fn.toString();
     if (code.startsWith('() => ')) code = code.slice('() => '.length);
-    if (code.startsWith('function() { return ')) code = code.slice('function() { return '.length);
+    if (code.startsWith('function () { return ')) {
+        code = code.slice('function () { return '.length);
+        if (code.endsWith('; }')) code = code.slice(0, -3);
+    }
+    if (code.startsWith('function() { return ')) {
+        code = code.slice('function() { return '.length);
+        if (code.endsWith('; }')) code = code.slice(0, -3);
+    }
     if (code[0] === '\'' && code[code.length - 1] === '\'') return false;
     if (code[0] === '"' && code[code.length - 1] === '"') return false;
     if (code[0] === '`' && code[code.length - 1] === '`') return false;
@@ -699,7 +706,7 @@ export class ReflectionProperty {
     }
 
     hasDefaultFunctionExpression(): boolean {
-        return !!(this.property.kind === ReflectionKind.property && this.property.default && hasFunctionExpression(this.property.default));
+        return this.property.kind === ReflectionKind.property && !!this.property.default && hasFunctionExpression(this.property.default);
     }
 
     getDefaultValueFunction(): (() => any) | undefined {
@@ -745,6 +752,7 @@ export class EntityData {
     name?: string;
     collectionName?: string;
     databaseSchemaName?: string;
+    disableConstructor: boolean = false;
     data: { [name: string]: any } = {};
     indexes: { names: string[], options: IndexOptions }[] = [];
     singleTableInheritance?: true;
@@ -777,6 +785,8 @@ export class ReflectionClass<T> {
     name?: string;
 
     databaseSchemaName?: string;
+
+    disableConstructor: boolean = false;
 
     /**
      * The collection name, used in database context (also known as table name).
@@ -1032,6 +1042,7 @@ export class ReflectionClass<T> {
             this.type.types.push(property.property as any);
         }
 
+        property.property.parent = this.type;
         this.properties.push(property);
         this.propertyNames.push(property.name);
         if (property.isReference() || property.isBackReference()) {
@@ -1154,6 +1165,7 @@ export class ReflectionClass<T> {
         if (data.name !== undefined) this.name = data.name;
         if (data.collectionName !== undefined) this.collectionName = data.collectionName;
         if (data.databaseSchemaName !== undefined) this.databaseSchemaName = data.databaseSchemaName;
+        this.disableConstructor = data.disableConstructor;
 
         this.indexes.push(...data.indexes);
         if (data.singleTableInheritance) {

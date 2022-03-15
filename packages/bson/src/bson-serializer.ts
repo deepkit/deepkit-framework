@@ -43,6 +43,7 @@ import {
     ReflectionClass,
     ReflectionKind,
     resolveReceiveType,
+    resolveTypeMembers,
     RuntimeCode,
     Serializer,
     sortSignatures,
@@ -712,7 +713,7 @@ function handleObjectLiteral(
     const existing: string[] = [];
     state.setContext({ unpopulatedSymbol });
 
-    for (const member of type.types) {
+    for (const member of resolveTypeMembers(type)) {
         if (member.kind === ReflectionKind.indexSignature) {
             if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
             signatures.push(member);

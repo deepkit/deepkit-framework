@@ -21,6 +21,7 @@ import {
     mongoIdAnnotation,
     ReflectionClass,
     ReflectionKind,
+    resolveTypeMembers,
     RuntimeCode,
     sortSignatures,
     TemplateState,
@@ -664,7 +665,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
 
     const handleEmbeddedClasses: HandleEmbedded[] = [];
 
-    for (const member of type.types) {
+    for (const member of resolveTypeMembers(type)) {
         if (member.kind === ReflectionKind.indexSignature) {
             if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
             signatures.push(member);
@@ -873,7 +874,7 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
     //run code for properties that had no value in the BSON. either set static values (literal, or null), or throw an error.
     const setDefaults: string[] = [];
 
-    for (const member of type.types) {
+    for (const member of resolveTypeMembers(type)) {
         if (member.kind === ReflectionKind.indexSignature) {
             if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
             signatures.push(member);

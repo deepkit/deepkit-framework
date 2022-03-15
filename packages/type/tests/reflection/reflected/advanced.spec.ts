@@ -21,6 +21,25 @@ test('array stack', () => {
     type Unshift<T extends unknown[], U> = [U, ...T]
 });
 
+test('union to intersection', () => {
+    {
+        type UnionToIntersection<U> = (U extends any ? { k: U } : never) extends { k: infer I } ? I : never;
+        type t1 = UnionToIntersection<{ a: string } | { b: number }>;
+        const type = typeOf<t1>();
+        expect(stringifyResolvedType(type)).toBe('{a: string} | {b: number}');
+        // console.log('result', stringifyResolvedType(type), type);
+    }
+
+    {
+        type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never;
+
+        type t1 = UnionToIntersection<{ a: string } | { b: number }>;
+        const type = typeOf<t1>();
+        expect(stringifyResolvedType(type)).toBe('{a: string} & {b: number}');
+        // console.log('result', stringifyType(type, {showNames: false}));
+    }
+});
+
 test('StringToNum', () => {
     type test<A extends 0[] = []> = `${A['length']}`;
     expectEqualType(typeOf<test>(), { kind: ReflectionKind.literal, literal: '0', typeName: 'test' } as Type);
@@ -72,8 +91,8 @@ test('circular generic 1', () => {
     type t = FilterQuery<Product>;
     const type = typeOf<t>();
 
-    expect(serialize<t>({id: 5})).toEqual({id: 5});
-    expect(serialize<t>({id: {$lt: 5}})).toEqual({id: {$lt: 5}});
+    expect(serialize<t>({ id: 5 })).toEqual({ id: 5 });
+    expect(serialize<t>({ id: { $lt: 5 } })).toEqual({ id: { $lt: 5 } });
 });
 
 test('circular generic 1', () => {
@@ -121,14 +140,14 @@ test('circular generic 1', () => {
     type t = FilterQuery<Product>;
     const type = typeOf<t>();
 
-    expect(serialize<t>({id: 5})).toEqual({id: 5});
-    expect(serialize<t>({id: {$lt: 5}})).toEqual({id: {$lt: 5}});
+    expect(serialize<t>({ id: 5 })).toEqual({ id: 5 });
+    expect(serialize<t>({ id: { $lt: 5 } })).toEqual({ id: { $lt: 5 } });
 
     type t2 = FilterQuery<any>;
     const type2 = typeOf<t2>();
 
-    expect(serialize<t2>({id: 5})).toEqual({id: 5});
-    expect(serialize<t2>({id: {$lt: 5}})).toEqual({id: {$lt: 5}});
+    expect(serialize<t2>({ id: 5 })).toEqual({ id: 5 });
+    expect(serialize<t2>({ id: { $lt: 5 } })).toEqual({ id: { $lt: 5 } });
 
     console.log('type2', type2);
 });
