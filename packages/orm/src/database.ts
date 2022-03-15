@@ -198,7 +198,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     /**
      * Executes given callback in a new session and automatically commits it when executed successfully.
-     * Automatically does a rollback when callback throws an error. This has the same semantics as `createSession`.
+     * This has the same semantics as `createSession`.
      */
     public async session<T>(worker: (session: DatabaseSession<ADAPTER>) => Promise<T>): Promise<T> {
         const session = this.createSession();

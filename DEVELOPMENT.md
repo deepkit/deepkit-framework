@@ -3,8 +3,6 @@
 ## Prerequisites
 Deepkit uses NPM and Lerna to manage this monorepo. Local package linking is managed through the [npm-local-development](https://www.npmjs.com/package/npm-local-development) CLI.
 
-> We recommend that for the time being you use NPM v6.x. and lockfile format v1
-
 ## Getting Started
 
 ```shell
