@@ -20,7 +20,8 @@ cd packages/benchmark;
 node node_modules/@deepkit/type-compiler/dist/cjs/install-transformer.js
 
 docker rm -f bench-mongo
-docker run -d --rm --name bench-mongo -d -p 127.0.0.1:27017:27017 mongo:4.2
+#docker run -d --rm --name bench-mongo -d -p 127.0.0.1:27017:27017 mongo:4.2
+#docker run -d --rm --name bench-mongo -d -p 127.0.0.1:27017:27017 mongo:4.2 mongod --replSet rs0
 
 docker rm -f bench-mysql
 docker run -d --rm --name bench-mysql -d -e MYSQL_DATABASE=default -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -p 127.0.0.1:3306:3306 mysql:8
