@@ -120,7 +120,7 @@ export class OverlayStack {
 export class DuiApp {
     protected darkMode?: boolean = false;
     protected platform: 'web' | 'darwin' | 'linux' | 'win32' = 'darwin';
-    public themeDetection: boolean = false;
+    public themeDetection: boolean = true;
 
     constructor(
         protected app: ApplicationRef,
