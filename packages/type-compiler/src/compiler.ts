@@ -2061,6 +2061,10 @@ export class ReflectionTransformer {
     }
 
     protected findReflectionFromPath(path: string): { mode: typeof reflectionModes[number] } {
+        if (!serverEnv) {
+            return { mode: 'default' };
+        }
+
         let currentDir = dirname(path);
         let reflection: typeof reflectionModes[number] | undefined;
 

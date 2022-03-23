@@ -378,11 +378,7 @@ export class RpcServerAction {
         }
 
         try {
-            let result = controllerClassType[body.method](...value.args);
-            const isPromise = result instanceof Promise;
-            if (isPromise) {
-                result = await result;
-            }
+            const result = await controllerClassType[body.method](...value.args);
 
             if (isEntitySubject(result)) {
                 response.reply(RpcTypes.ResponseEntity, { v: result.value }, types.resultSchema);
