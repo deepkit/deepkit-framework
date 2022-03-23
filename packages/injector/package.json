@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/injector",
-  "version": "1.0.1-alpha.63",
+  "version": "1.0.1-alpha.65",
   "description": "Deepkit Dependency Injection",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -26,8 +26,8 @@
     "@deepkit/type": "^1.0.1-alpha.13"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.63",
-    "@deepkit/type": "^1.0.1-alpha.63",
+    "@deepkit/core": "^1.0.1-alpha.65",
+    "@deepkit/type": "^1.0.1-alpha.65",
     "benchmark": "^2.1.4"
   },
   "jest": {
