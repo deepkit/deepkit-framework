@@ -1840,7 +1840,7 @@ export class ReflectionTransformer {
 
         let source = this.resolver.getExternalModuleFileFromDeclaration(importOrExport);
         if (!source) {
-            debug('module not found', importOrExport.getText(), '. Is transpileOnly enabled? It needs to be disabled.');
+            debug('module not found', 'Is transpileOnly enabled? It needs to be disabled.');
             return;
         }
 
