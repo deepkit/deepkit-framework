@@ -36,6 +36,9 @@ export function guard<T>(serializerToUse: Serializer = serializer, receiveType?:
     return ((data: any) => fn(data, { errors: [] })) as Guard<T>;
 }
 
+/**
+ * @throws ValidationError when type is invalid.
+ */
 export function assert<T>(data: any, serializerToUse: Serializer = serializer, receiveType?: ReceiveType<T>): asserts data is T {
     const errors: ValidationErrorItem[] = [];
     is(data, serializerToUse, errors, receiveType);

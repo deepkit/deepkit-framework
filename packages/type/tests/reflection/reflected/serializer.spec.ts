@@ -9,12 +9,26 @@
  */
 import { expect, test } from '@jest/globals';
 import { reflect, ReflectionClass } from '../../../src/reflection/reflection';
-import { AutoIncrement, BackReference, BinaryBigInt, Embedded, Excluded, Group, int8, integer, MapName, PrimaryKey, Reference, ReflectionKind, SignedBinaryBigInt } from '../../../src/reflection/type';
+import {
+    AutoIncrement,
+    BackReference,
+    BinaryBigInt,
+    Embedded,
+    Excluded,
+    Group,
+    int8,
+    integer,
+    MapName,
+    PrimaryKey,
+    Reference,
+    ReflectionKind,
+    SignedBinaryBigInt
+} from '../../../src/reflection/type';
 import { createSerializeFunction, getSerializeFunction, serializer } from '../../../src/serializer';
 import { cast, deserialize, serialize } from '../../../src/serializer-facade';
 import { getClassName } from '@deepkit/core';
 import { entity, t } from '../../../src/decorator';
-import { ValidationError } from '../../../src/validator';
+import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../../../src/validator';
 
 test('deserializer', () => {
     class User {
@@ -289,7 +303,8 @@ test('union loose string boolean', () => {
 });
 
 test('union loose number boolean', () => {
-    expect(cast<number | boolean>('a', { loosely: true })).toEqual(undefined);
+    expect(() => cast<number | boolean>('a', { loosely: true })).toThrow('Validation error for type');
+    expect(deserialize<number | boolean>('a', { loosely: true })).toEqual(undefined);
     expect(cast<string | boolean>(1, { loosely: true })).toEqual(true);
     expect(cast<number | boolean>(1, { loosely: true })).toEqual(1);
     expect(cast<string | boolean>('1', { loosely: true })).toEqual(true);
@@ -301,8 +316,9 @@ test('union loose number boolean', () => {
     expect(cast<number | boolean>(2, { loosely: true })).toEqual(2);
     expect(cast<number | boolean>('2', { loosely: true })).toEqual(2);
     expect(cast<number | boolean>('true', { loosely: true })).toEqual(true);
-    expect(cast<number | boolean>('true')).toEqual(undefined);
-    expect(cast<number | boolean>('true2', { loosely: true })).toEqual(undefined);
+    expect(() => cast<number | boolean>('true')).toThrow('Validation error for type');
+    expect(() => cast<number | boolean>('true2', { loosely: true })).toThrow('Validation error for type');
+    expect(deserialize<number | boolean>('true2', { loosely: true })).toEqual(undefined);
 });
 
 test('union string date', () => {
@@ -360,6 +376,13 @@ test('literal', () => {
     expect(serialize<1n>(1n)).toEqual(1n);
 });
 
+test('cast runs validators', () => {
+    type Username = string & MinLength<3> & MaxLength<23> & Alphanumeric;
+    expect(() => cast<Username>('ab')).toThrow('Validation error for type');
+    expect(() => cast<Username>('$ab')).toThrow('Validation error for type');
+    expect(cast<Username>('Peter')).toBe('Peter');
+});
+
 test('union literal', () => {
     expect(cast<'a' | number>('a')).toEqual('a');
     expect(cast<'a' | number>(23)).toEqual(23);
@@ -387,7 +410,7 @@ test('union primitive and class', () => {
     expect(cast<number | User>('2')).toEqual(2);
     expect(cast<number | User>({ id: 23 })).toEqual({ id: 23 });
     expect(cast<number | User>({ id: 23 })).toBeInstanceOf(User);
-    expect(cast<number | User>('2asd')).toEqual(undefined);
+    expect(() => cast<number | User>('2asd')).toThrow('Validation error for type');
 
     expect(serialize<number | User>(2)).toEqual(2);
     expect(serialize<number | User>({ id: 23 })).toEqual({ id: 23 });
