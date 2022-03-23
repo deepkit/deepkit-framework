@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/angular-universal",
-  "version": "1.0.1-alpha.65",
+  "version": "1.0.1-alpha.66",
   "description": "Angular server side rendering for Deepkit Framework",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
