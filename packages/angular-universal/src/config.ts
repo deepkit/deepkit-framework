@@ -9,7 +9,6 @@
  */
 
 export class Config {
-
     /**
      * @description The path to the built dist file for the browser (with all the assets), usually something like ../../dist/browser.
      */
@@ -23,5 +22,5 @@ export class Config {
     /**
      * @description The exported server module name, usually AppServerModule
      */
-    serverModuleName!: string;
+    serverModuleName: string = 'AppServerModule';
 }

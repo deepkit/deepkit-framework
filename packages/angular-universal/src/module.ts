@@ -11,7 +11,6 @@
 import { createModule } from '@deepkit/app';
 import { AngularUniversalListener } from './listener';
 import { Config } from './config';
-import '@deepkit/type';
 
 export class AngularUniversalModule extends createModule({
     config: Config,

@@ -106,7 +106,8 @@ export class AngularUniversalListener {
             const router = await this.getRouter();
 
             try {
-                if (await router.navigateByUrl(event.url, { skipLocationChange: true })) {
+                const found = await router.navigateByUrl(event.url, { skipLocationChange: true });
+                if (found) {
                     this.routesFound.set(event.url, true);
                 } else {
                     this.routesFound.set(event.url, false);

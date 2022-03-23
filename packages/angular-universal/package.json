@@ -23,7 +23,8 @@
   "scripts": {
     "test": "jest --coverage",
     "tsc": "tsc",
-    "tsc-watch": "rm -rf dist && tsc --watch"
+    "tsc-watch": "rm -rf dist && tsc --watch",
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
