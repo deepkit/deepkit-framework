@@ -10,7 +10,7 @@
 
 import { Injectable } from '@angular/core';
 import { DeepkitClient } from '@deepkit/rpc';
-import { ApiConsoleApi, ApiDocument, ApiEntryPoints } from '../api';
+import { ApiConsoleApi, ApiDocument, ApiEntryPoints } from '@deepkit/api-console-api';
 import { LiveSubject } from '@deepkit/ui-library';
 
 @Injectable()

@@ -8,12 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, ExtractClassType, isFunction, isObject, setPathValue } from '@deepkit/core';
+import { ClassType, ExtractClassType, getCurrentFileName, isFunction, isObject, setPathValue } from '@deepkit/core';
 import { ConfigLoader, ServiceContainer } from './service-container';
 import { InjectorContext, ResolveToken } from '@deepkit/injector';
 import { AppModule, RootModuleDefinition } from './module';
 import { Command, Config, Options } from '@oclif/config';
-import { basename, relative } from 'path';
+import { basename, dirname, relative } from 'path';
 import { Main } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { buildOclifCommand } from './command';
@@ -318,7 +318,7 @@ export class App<T extends RootModuleDefinition> {
         }
 
         try {
-            const config = new MyConfig({ root: __dirname });
+            const config = new MyConfig({ root: dirname(getCurrentFileName()) });
             const scopedInjectorContext = this.getInjectorContext().createChildScope('cli');
 
             for (const [name, info] of this.serviceContainer.cliControllerRegistry.controllers.entries()) {

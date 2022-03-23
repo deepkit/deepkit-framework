@@ -15,11 +15,7 @@ import { Config } from './config';
 import { join } from 'path';
 import { readFileSync } from 'fs';
 import { Router } from '@angular/router';
-import domino from 'domino';
 import { AngularUniversalModule } from './module';
-
-(global as any).window = global;
-Object.assign(global, domino.createWindow());
 
 export class AngularUniversalListener {
     protected serverModule: any;
@@ -45,9 +41,10 @@ export class AngularUniversalListener {
     protected async loadServer() {
         if (this.serverModule) return;
         const serverMainPath = join(this.fullConfig.serverPath, 'main');
-        const server = await import(serverMainPath);
+        let server = await import(serverMainPath);
+        if (server.default) server = server.default;
         if (!server[this.fullConfig.serverModuleName]) {
-            throw new Error(`No export named ${this.fullConfig.serverModuleName} found in ${serverMainPath}`);
+            throw new Error(`No export named ${this.fullConfig.serverModuleName} found in ${serverMainPath}: Found ${Object.keys(server)}`);
         }
         this.serverModule = server[this.fullConfig.serverModuleName];
         this.renderModule = server.renderModule;

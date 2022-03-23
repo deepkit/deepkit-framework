@@ -37,6 +37,9 @@ import { HttpControllers } from './controllers';
 import { MiddlewareRegistry, MiddlewareRegistryEntry } from '@deepkit/app';
 import { HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware';
 
+//@ts-ignore
+import qs from 'qs';
+
 export type RouteParameterResolverForInjector = ((injector: InjectorContext) => any[] | Promise<any[]>);
 
 interface ResolvedController {
@@ -686,7 +689,7 @@ export class Router {
     protected build(): (request: HttpRequest) => ResolvedController | undefined {
         const compiler = new CompilerContext;
         compiler.context.set('ValidationError', ValidationError);
-        compiler.context.set('qs', require('qs'));
+        compiler.context.set('qs', qs);
 
         const code: string[] = [];
 

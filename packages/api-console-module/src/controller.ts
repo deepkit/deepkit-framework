@@ -1,4 +1,4 @@
-import { ApiAction, ApiConsoleApi, ApiDocument, ApiEntryPoints, ApiRoute, ApiRouteResponse } from '@deepkit/api-console-gui/src/api';
+import { ApiAction, ApiConsoleApi, ApiDocument, ApiEntryPoints, ApiRoute, ApiRouteResponse } from '@deepkit/api-console-api';
 import { getActions, rpc, RpcKernel } from '@deepkit/rpc';
 import { HttpRouteFilter, HttpRouterFilterResolver, parseRouteControllerAction } from '@deepkit/http';
 import { ClassType, getClassName } from '@deepkit/core';

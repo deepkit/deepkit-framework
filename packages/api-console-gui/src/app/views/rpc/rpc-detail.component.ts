@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component, Input, OnChanges } from '@angular/core';
 import { trackByIndex } from '@deepkit/ui-library';
-import { ApiAction } from '../../../api';
+import { ApiAction } from '@deepkit/api-console-api';
 import { extractDataStructureFromParameters, RpcActionState, RpcClientConfiguration, RpcExecution, RpcExecutionSubscription, Store } from '../../store';
 import { DuiDialog } from '@deepkit/desktop-ui';
 import { DisconnectableObservable, RpcWebSocketClient } from '@deepkit/rpc';

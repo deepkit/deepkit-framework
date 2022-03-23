@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ControllerClient } from '../client';
-import { ApiAction, ApiEntryPoints, ApiRoute } from '../../api';
+import { ApiAction, ApiEntryPoints, ApiRoute } from '@deepkit/api-console-api';
 import { methods, trackByIndex } from '../utils';
 import { Environment, RouteState, Store } from '../store';
 import { copy } from '@deepkit/core';

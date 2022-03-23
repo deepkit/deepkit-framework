@@ -31,6 +31,7 @@
     "@angular/platform-browser": "~12.2.0",
     "@angular/platform-browser-dynamic": "~12.2.0",
     "@angular/router": "~12.2.0",
+    "@deepkit/api-console-api": "^1.0.1-alpha.63",
     "@deepkit/bson": "^1.0.1-alpha.63",
     "@deepkit/core": "^1.0.1-alpha.63",
     "@deepkit/core-rxjs": "^1.0.1-alpha.63",

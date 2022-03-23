@@ -40,6 +40,9 @@
       "path": "../core/tsconfig.json"
     },
     {
+      "path": "../api-console-api/tsconfig.json"
+    },
+    {
       "path": "../core-rxjs/tsconfig.json"
     },
     {

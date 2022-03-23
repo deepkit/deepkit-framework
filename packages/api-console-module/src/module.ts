@@ -1,9 +1,11 @@
 import { createModule, findParentPath } from '@deepkit/app';
 import { HttpRouteFilter, normalizeDirectory, registerStaticHttpController } from '@deepkit/http';
-import { ApiConsoleApi } from '@deepkit/api-console-gui/src/api';
+import { ApiConsoleApi } from '@deepkit/api-console-api';
 import { Config } from './module.config';
 import { rpc } from '@deepkit/rpc';
 import { ApiConsoleController } from './controller';
+import { dirname } from 'path';
+import { getCurrentFileName } from '@deepkit/core';
 
 export class ApiConsoleModule extends createModule({
     config: Config,
@@ -35,8 +37,8 @@ export class ApiConsoleModule extends createModule({
 
         this.addController(NamedApiConsoleController);
 
-        const localPath = findParentPath('node_modules/@deepkit/api-console-gui/dist/api-console-gui', __dirname);
-        if (!localPath) throw new Error('node_modules/@deepkit/api-console-gui not installed in ' + __dirname);
+        const localPath = findParentPath('node_modules/@deepkit/api-console-gui/dist/api-console-gui', dirname(getCurrentFileName()));
+        if (!localPath) throw new Error('node_modules/@deepkit/api-console-gui not installed in ' + dirname(getCurrentFileName()));
 
         registerStaticHttpController(this, {
             path: this.config.path,

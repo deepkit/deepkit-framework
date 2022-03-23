@@ -40,6 +40,9 @@
       "path": "../crypto/tsconfig.json"
     },
     {
+      "path": "../api-console-api/tsconfig.json"
+    },
+    {
       "path": "../framework-debug-api/tsconfig.json"
     },
     {

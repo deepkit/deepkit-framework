@@ -1,4 +1,4 @@
-import { ApiAction, ApiRoute } from '../api';
+import { ApiAction, ApiRoute } from '@deepkit/api-console-api';
 import { RemoteController, RpcClient, RpcClientEventIncomingMessage, RpcClientEventOutgoingMessage } from '@deepkit/rpc';
 import { Observable, Subject, Subscription } from 'rxjs';
 import {

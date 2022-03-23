@@ -8,47 +8,21 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
+    "preserveSymlinks": true,
     "target": "es2018",
     "module": "CommonJS",
     "esModuleInterop": true,
+    "baseUrl": ".",
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true
   },
   "reflection": true,
   "include": [
-    "src",
     "index.ts",
-    "node_modules/@deepkit/api-console-gui/src/api.ts"
+    "src"
   ],
   "references": [
-    {
-      "path": "../api-console-api/tsconfig.json"
-    },
-    {
-      "path": "../app/tsconfig.json"
-    },
-    {
-      "path": "../broker/tsconfig.json"
-    },
-    {
-      "path": "../bson/tsconfig.json"
-    },
-    {
-      "path": "../core/tsconfig.json"
-    },
-    {
-      "path": "../crypto/tsconfig.json"
-    },
-    {
-      "path": "../http/tsconfig.json"
-    },
-    {
-      "path": "../injector/tsconfig.json"
-    },
-    {
-      "path": "../logger/tsconfig.json"
-    },
     {
       "path": "../rpc/tsconfig.json"
     },

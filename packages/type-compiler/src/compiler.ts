@@ -1272,14 +1272,14 @@ export class ReflectionTransformer {
                 //TypeScript does not narrow types down
                 const narrowed = node as TypeQueryNode;
 
-                if (program.importSpecifier) {
-                    //if this is set, the current program is embedded into another file. All locally used symbols like a variable in `typeof` need to be imported
-                    //in the other file as well.
-                    if (isIdentifier(narrowed.exprName)) {
-                        const originImportStatement = program.importSpecifier.parent.parent.parent;
-                        this.addImports.push({ identifier: narrowed.exprName, from: originImportStatement.moduleSpecifier });
-                    }
-                }
+                // if (program.importSpecifier) {
+                //     //if this is set, the current program is embedded into another file. All locally used symbols like a variable in `typeof` need to be imported
+                //     //in the other file as well.
+                //     if (isIdentifier(narrowed.exprName)) {
+                //         const originImportStatement = program.importSpecifier.parent.parent.parent;
+                //         this.addImports.push({ identifier: narrowed.exprName, from: originImportStatement.moduleSpecifier });
+                //     }
+                // }
                 if (isIdentifier(narrowed.exprName)) {
                     const resolved = this.resolveDeclaration(narrowed.exprName);
                     if (resolved && findSourceFile(resolved.declaration) !== this.sourceFile) {
@@ -1574,19 +1574,34 @@ export class ReflectionTransformer {
                         });
                     } else if (isFromImport) {
                         if (resolved.importSpecifier) {
-                            //check if the referenced file has reflection info emitted. if not, any is emitted for that reference
-                            const reflection = this.findReflectionConfig(declaration, program);
-                            if (reflection.mode === 'never') {
-                                program.pushOp(ReflectionOp.any);
-                                return;
-                            }
-
                             //if explicit `import {type T}`, we do not emit an import and instead push any
                             if (resolved.importSpecifier.isTypeOnly || resolved.importSpecifier.parent.parent.isTypeOnly) {
                                 program.pushOp(ReflectionOp.any);
                                 return;
                             }
+
+                            //check if the referenced declaration has reflection disabled
+                            const declarationReflection = this.findReflectionConfig(declaration, program);
+                            if (declarationReflection.mode === 'never') {
+                                program.pushOp(ReflectionOp.any);
+                                return;
+                            }
+
                             const originImportStatement = resolved.importSpecifier.parent.parent.parent;
+                            const found = this.resolver.getExternalModuleFileFromDeclaration(originImportStatement);
+                            if (!found) {
+                                debug('module not found');
+                                program.pushOp(ReflectionOp.any);
+                                return;
+                            }
+
+                            //check if the referenced file has reflection info emitted. if not, any is emitted for that reference
+                            const reflection = this.findReflectionFromPath(found.fileName);
+                            if (reflection.mode === 'never') {
+                                program.pushOp(ReflectionOp.any);
+                                return;
+                            }
+
                             this.addImports.push({ identifier: this.getDeclarationVariableName(typeName), from: originImportStatement.moduleSpecifier });
                         }
                     } else {
@@ -2042,10 +2057,16 @@ export class ReflectionTransformer {
         }
 
         const sourceFile = findSourceFile(node) || this.sourceFile;
-        let currentDir = dirname(sourceFile.fileName);
+        return this.findReflectionFromPath(sourceFile.fileName);
+    }
+
+    protected findReflectionFromPath(path: string): { mode: typeof reflectionModes[number] } {
+        let currentDir = dirname(path);
+        let reflection: typeof reflectionModes[number] | undefined;
 
         while (currentDir) {
             const tsconfigPath = join(currentDir, 'tsconfig.json');
+            const packageJson = join(currentDir, 'package.json');
             let tsConfig: Record<string, any> = {};
             const cache = this.resolvedTsConfig[tsconfigPath];
             if (cache) {
@@ -2067,6 +2088,13 @@ export class ReflectionTransformer {
             if (reflection === undefined && tsConfig.reflection !== undefined) {
                 return { mode: this.parseReflectionMode(tsConfig.reflection, currentDir) };
             }
+
+            if (existsSync(packageJson)) {
+                //we end the search at package.json so that package in node_modules without reflection option
+                //do not inherit the tsconfig from the project.
+                break;
+            }
+
             const next = join(currentDir, '..');
             if (resolve(next) === resolve(currentDir)) break; //we are at root
             currentDir = next;

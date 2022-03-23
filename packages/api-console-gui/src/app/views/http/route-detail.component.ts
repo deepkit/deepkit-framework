@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
-import { ApiRoute } from '../../../api';
+import { ApiRoute } from '@deepkit/api-console-api';
 import { isArray, isObject } from '@deepkit/core';
 import { extractDataStructure, extractDataStructureFromSchema, Request, RouteState, Store } from '../../store';
 import { ControllerClient } from '../../client';

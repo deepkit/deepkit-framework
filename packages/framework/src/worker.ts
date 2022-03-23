@@ -11,6 +11,8 @@
 import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, SessionState } from '@deepkit/rpc';
 import http, { Server } from 'http';
 import https from 'https';
+import ws from 'ws';
+import selfsigned from 'selfsigned';
 
 import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions } from 'ws';
 
@@ -98,7 +100,6 @@ export interface RpcServerInterface {
 
 export class RpcServer implements RpcServerInterface {
     start(options: RpcServerOptions, createRpcConnection: RpcServerCreateConnection): RpcServerListener {
-        const ws = require('ws');
         const { Server }: { Server: { new(options: WebSocketServerOptions): WebSocketServer } } = ws;
 
         const server = new Server(options);
@@ -203,7 +204,6 @@ export class WebWorker {
                         options.key = readFileSync(keyPath, 'utf8');
                         options.cert = readFileSync(certificatePath, 'utf8');
                     } else {
-                        const selfsigned = require('selfsigned');
                         const attrs = [{ name: 'commonName', value: this.options.host }];
                         const pems = selfsigned.generate(attrs, { days: 365 });
                         options.cert = pems.cert;

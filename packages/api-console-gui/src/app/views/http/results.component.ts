@@ -4,7 +4,7 @@ import { Request, Store } from '../../store';
 import { DuiDialog } from '@deepkit/desktop-ui';
 import { Router } from '@angular/router';
 import { trackByIndex } from '../../utils';
-import { ApiRoute } from '../../../api';
+import { ApiRoute } from '@deepkit/api-console-api';
 
 @Component({
     selector: 'api-console-http-routes',
