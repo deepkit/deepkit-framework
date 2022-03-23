@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/mongo",
-  "version": "1.0.1-alpha.62",
+  "version": "1.0.1-alpha.63",
   "description": "Deepkit ORM MongoDB adapter",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -34,12 +34,12 @@
     "turbo-net": "deepkit/turbo-net#1.5.0"
   },
   "devDependencies": {
-    "@deepkit/bson": "^1.0.1-alpha.62",
-    "@deepkit/core": "^1.0.1-alpha.61",
+    "@deepkit/bson": "^1.0.1-alpha.63",
+    "@deepkit/core": "^1.0.1-alpha.63",
     "@deepkit/crypto": "^1.0.1-alpha.35",
-    "@deepkit/orm": "^1.0.1-alpha.62",
+    "@deepkit/orm": "^1.0.1-alpha.63",
     "@deepkit/orm-integration": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.62",
+    "@deepkit/type": "^1.0.1-alpha.63",
     "@types/mongodb": "3.5.25",
     "@types/node": "14.14.28",
     "mongodb": "3.6.0"
