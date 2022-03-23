@@ -14,7 +14,7 @@ import { Logger } from '@deepkit/logger';
 import { Config } from './config';
 import { join } from 'path';
 import { readFileSync } from 'fs';
-import { Router } from '@angular/router';
+import type { Router } from '@angular/router';
 import { AngularUniversalModule } from './module';
 
 export class AngularUniversalListener {
