@@ -42,7 +42,7 @@
     border-radius: var(--knob-size);
 }
 
-:host-context(.dark) {
+:host-context(.dui-theme-dark) {
     --knob-size: 15px;
 
     .knob {
@@ -65,7 +65,7 @@
     }
 }
 
-:host-context(.dark).mini {
+:host-context(.dui-theme-dark).mini {
     --knob-size: 9px;
 }
 

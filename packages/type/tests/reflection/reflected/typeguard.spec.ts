@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { expect, test } from '@jest/globals';
-import { float, int8, integer, PrimaryKey, Reference } from '../../../src/reflection/type';
+import { float, float32, int8, integer, PrimaryKey, Reference } from '../../../src/reflection/type';
 import { is } from '../../../src/typeguard';
 
 test('primitive string', () => {
@@ -39,10 +39,10 @@ test('primitive number int8', () => {
     expect(is<int8>(123.4)).toEqual(false);
     expect(is<int8>(true)).toEqual(false);
     expect(is<int8>({})).toEqual(false);
-    expect(is<int8>(128)).toEqual(true);
-    expect(is<int8>(129)).toEqual(false);
-    expect(is<int8>(-127)).toEqual(true);
-    expect(is<int8>(-128)).toEqual(false);
+    expect(is<int8>(127)).toEqual(true);
+    expect(is<int8>(128)).toEqual(false);
+    expect(is<int8>(-128)).toEqual(true);
+    expect(is<int8>(-129)).toEqual(false);
     expect(is<int8>(129)).toEqual(false);
 });
 
@@ -52,6 +52,19 @@ test('primitive number float', () => {
     expect(is<float>(123.4)).toEqual(true);
     expect(is<float>(true)).toEqual(false);
     expect(is<float>({})).toEqual(false);
+});
+
+test('primitive number float32', () => {
+    expect(is<float32>('a')).toEqual(false);
+    expect(is<float32>(123)).toEqual(true);
+    expect(is<float32>(123.4)).toEqual(true);
+    expect(is<float32>(3.40282347e+38)).toEqual(true);
+    //JS precision issue:
+    expect(is<float32>(3.40282347e+38 + 100000000000000000000000)).toEqual(false);
+    expect(is<float32>(-3.40282347e+38)).toEqual(true);
+    expect(is<float32>(-3.40282347e+38 - 100000000000000000000000)).toEqual(false);
+    expect(is<float32>(true)).toEqual(false);
+    expect(is<float32>({})).toEqual(false);
 });
 
 test('enum', () => {

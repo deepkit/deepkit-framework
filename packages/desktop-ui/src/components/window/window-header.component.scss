@@ -59,7 +59,7 @@
     }
 }
 
-:host-context(.platform-linux.light) {
+:host-context(.platform-linux.dui-theme-light) {
     .closer > div {
         &:active {
             border-radius: 4px;
@@ -68,7 +68,7 @@
     }
 }
 
-:host-context(.platform-linux.dark) {
+:host-context(.platform-linux.dui-theme-dark) {
     .closer {
         top: 1px;
     }
@@ -107,7 +107,7 @@
     }
 }
 
-:host-context(.platform-native.light) {
+:host-context(.platform-native.dui-theme-light) {
     background-image: linear-gradient(-180deg, white 1px, #e6e5e5 0%, #cfcfd0 100%);
 
     &.inactive {
@@ -118,7 +118,7 @@
     }
 }
 
-:host-context(.platform-native.dark) {
+:host-context(.platform-native.dui-theme-dark) {
     background-image: linear-gradient(-180deg, #424242 0%, #353535 100%);
 
     .title {
@@ -134,7 +134,7 @@
     }
 }
 
-:host-context(:not(.platform-native).dark) {
+:host-context(:not(.platform-native).dui-theme-dark) {
 
     .title {
         color: #bbc3cc;
@@ -181,7 +181,7 @@
     }
 }
 
-:host-context(.dark) .toolbar {
+:host-context(.dui-theme-dark) .toolbar {
     ::ng-deep {
         dui-input,
         dui-select,

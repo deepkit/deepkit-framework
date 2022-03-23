@@ -11,6 +11,9 @@
 import { ClassType, CompilerContext, CustomError, isArray, isFunction, isInteger, isIterable, isNumeric, isObject, stringifyValueWithType, toFastProperties } from '@deepkit/core';
 import {
     AnnotationDefinition,
+    assertType,
+    binaryBigIntAnnotation,
+    BinaryBigIntType,
     binaryTypes,
     copyAndSetParent,
     embeddedAnnotation,
@@ -45,6 +48,7 @@ import {
     TypeParameter,
     TypeProperty,
     TypePropertySignature,
+    typeToObject,
     TypeTuple,
     TypeUnion,
     validationAnnotation
@@ -54,7 +58,7 @@ import { hasCircularReference, ReflectionClass, ReflectionProperty } from './ref
 import { extendTemplateLiteral, isExtendable } from './reflection/extends';
 import { resolveRuntimeType } from './reflection/processor';
 import { createReference, isReferenceHydrated, isReferenceInstance } from './reference';
-import { ValidationError, ValidationErrorItem } from './validator';
+import { validate, ValidationError, ValidationErrorItem } from './validator';
 import { validators } from './validators';
 import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core';
 
@@ -197,9 +201,9 @@ export function createSerializeFunction(type: Type, registry: TemplateRegistry, 
     return compiler.build(code, 'data', 'state');
 }
 
-export type Guard = (data: any, state?: { errors?: ValidationErrorItem[] }) => boolean;
+export type Guard<T> = (data: any, state?: { errors?: ValidationErrorItem[] }) => data is T;
 
-export function createTypeGuardFunction(type: Type, state?: TemplateState, serializerToUse?: Serializer): undefined | Guard {
+export function createTypeGuardFunction(type: Type, state?: TemplateState, serializerToUse?: Serializer): undefined | Guard<any> {
     const compiler = new CompilerContext();
 
     if (state) {
@@ -1691,9 +1695,7 @@ export class Serializer {
     typeGuards = new TypeGuardRegistry(this);
     validators = new TemplateRegistry(this);
 
-    public name: string = 'json';
-
-    constructor() {
+    constructor(public name: string = 'json') {
         this.registerSerializers();
         this.registerTypeGuards();
         this.registerValidators();
@@ -1743,8 +1745,6 @@ export class Serializer {
         this.deserializeRegistry.register(ReflectionKind.property, serializePropertyOrParameter);
         this.deserializeRegistry.register(ReflectionKind.parameter, serializePropertyOrParameter);
 
-        this.serializeRegistry.register(ReflectionKind.bigint, (type, state) => state.addSetter(`${state.accessor}.toString()`));
-
         this.deserializeRegistry.registerClass(Date, (type, state) => state.addSetter(`new Date(${state.accessor})`));
         this.serializeRegistry.registerClass(Date, (type, state) => state.addSetter(`${state.accessor}.toJSON()`));
 
@@ -1784,10 +1784,21 @@ export class Serializer {
         this.serializeRegistry.register(ReflectionKind.promise, (type, state) => executeTemplates(state, type.type));
         this.deserializeRegistry.register(ReflectionKind.promise, (type, state) => executeTemplates(state, type.type));
 
-        this.serializeRegistry.register(ReflectionKind.bigint, (type, state) => state.addSetter(state.accessor));
+        this.serializeRegistry.register(ReflectionKind.bigint, (type, state) => {
+            if (binaryBigIntAnnotation.getFirst(type) === BinaryBigIntType.unsigned) {
+                state.addSetter(`${state.accessor} >= 0 ? ${state.accessor}.toString() : '0'`);
+            } else {
+                state.addSetter(`${state.accessor}.toString()`);
+            }
+        });
         this.deserializeRegistry.register(ReflectionKind.bigint, (type, state) => {
             state.setContext({ BigInt });
-            state.addSetter(`'bigint' !== typeof ${state.accessor} ? BigInt(${state.accessor}) : ${state.accessor}`);
+            if (binaryBigIntAnnotation.getFirst(type) === BinaryBigIntType.unsigned) {
+                state.addSetter(`'bigint' !== typeof ${state.accessor} ? BigInt(${state.accessor}) : ${state.accessor}`);
+                state.addSetter(`${state.accessor} < 0 ? BigInt(0) : ${state.accessor}`);
+            } else {
+                state.addSetter(`'bigint' !== typeof ${state.accessor} ? BigInt(${state.accessor}) : ${state.accessor}`);
+            }
         });
 
         this.serializeRegistry.register(ReflectionKind.enum, (type, state) => state.addSetter(state.accessor));
@@ -1827,7 +1838,7 @@ export class Serializer {
                 } else if (type.brand === TypeNumberBrand.uint32) {
                     state.addSetter(`${state.accessor} > 4294967295 ? 4294967295 : ${state.accessor} < 0 ? 0 : ${state.accessor}`);
                 } else if (type.brand === TypeNumberBrand.int8) {
-                    state.addSetter(`${state.accessor} > 128 ? 128 : ${state.accessor} < -127 ? -127 : ${state.accessor}`);
+                    state.addSetter(`${state.accessor} > 127 ? 127 : ${state.accessor} < -128 ? -128 : ${state.accessor}`);
                 } else if (type.brand === TypeNumberBrand.int16) {
                     state.addSetter(`${state.accessor} > 32767 ? 32767 : ${state.accessor} < -32768 ? -32768 : ${state.accessor}`);
                 } else if (type.brand === TypeNumberBrand.int32) {
@@ -1836,7 +1847,7 @@ export class Serializer {
             } else {
                 state.setContext({ Number });
                 state.addSetter(`'number' !== typeof ${state.accessor} ? Number(${state.accessor}) : ${state.accessor}`);
-                if (type.brand === TypeNumberBrand.uint8) {
+                if (type.brand === TypeNumberBrand.float32) {
                     state.addSetter(`${state.accessor} > 3.40282347e+38 ? 3.40282347e+38 : ${state.accessor} < -3.40282347e+38 ? -3.40282347e+38 : ${state.accessor}`);
                 }
             }
@@ -1956,7 +1967,7 @@ export class Serializer {
                 } else if (type.brand === TypeNumberBrand.uint32) {
                     check += `&& ${state.accessor} <= 4294967295 && ${state.accessor} >= 0`;
                 } else if (type.brand === TypeNumberBrand.int8) {
-                    check += `&& ${state.accessor} <= 128 && ${state.accessor} >= -127`;
+                    check += `&& ${state.accessor} <= 127 && ${state.accessor} >= -128`;
                 } else if (type.brand === TypeNumberBrand.int16) {
                     check += `&& ${state.accessor} <= 32767 && ${state.accessor} >= -32768`;
                 } else if (type.brand === TypeNumberBrand.int32) {
@@ -1964,7 +1975,13 @@ export class Serializer {
                 }
                 state.addSetterAndReportErrorIfInvalid('type', `Not a ${type.brand === undefined ? 'number' : TypeNumberBrand[type.brand]}`, check);
             } else {
-                state.addSetterAndReportErrorIfInvalid('type', 'Not a number', `'number' === typeof ${state.accessor}`);
+                let check = `'number' === typeof ${state.accessor}`;
+
+                if (type.brand === TypeNumberBrand.float32) {
+                    check += `&& ${state.accessor} <= 3.40282347e+38 && ${state.accessor} >= -3.40282347e+38`;
+                }
+
+                state.addSetterAndReportErrorIfInvalid('type', `Not a ${type.brand === undefined ? 'number' : TypeNumberBrand[type.brand]}`, check);
             }
         });
 
@@ -2048,10 +2065,26 @@ export class Serializer {
 
                 if (name === 'function') {
                     state.setContext({ ValidationErrorItem: ValidationErrorItem });
-                    const validatorVar = state.setVariable('validator', (args[0] as TypeFunction).function);
+                    assertType(args[0], ReflectionKind.function);
+                    const validatorVar = state.setVariable('validator', args[0].function);
+                    let optionVar: any = undefined;
+                    if (args[1]) {
+                        const optionParameter = args[0].parameters[2];
+                        if (optionParameter) {
+                            const option = typeToObject(args[1]);
+                            if (option === undefined && optionParameter.optional) {
+                            } else {
+                                const errors = validate(option, optionParameter.type);
+                                if (errors.length) {
+                                    throw new Error(`Invalid option value given to validator function ${String(args[0].name)}, expected ${stringifyType(optionParameter)}`);
+                                }
+                                optionVar = state.compilerContext.reserveConst(option);
+                            }
+                        }
+                    }
                     state.addCode(`
                         {
-                            let error = ${validatorVar}(${state.originalAccessor}, ${state.compilerContext.reserveConst(type, 'type')});
+                            let error = ${validatorVar}(${state.originalAccessor}, ${state.compilerContext.reserveConst(type, 'type')}, ${optionVar ? optionVar : 'undefined'});
                             if (error) {
                                 ${state.setter} = false;
                                 if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(state.path)}, error.code, error.message));
@@ -2118,6 +2151,10 @@ export const serializableKinds: ReflectionKind[] = [
 ];
 
 export class EmptySerializer extends Serializer {
+    constructor(name: string = 'empty') {
+        super(name);
+    }
+
     protected registerValidators() {
     }
 

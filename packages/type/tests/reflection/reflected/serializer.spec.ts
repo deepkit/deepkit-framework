@@ -9,7 +9,7 @@
  */
 import { expect, test } from '@jest/globals';
 import { reflect, ReflectionClass } from '../../../src/reflection/reflection';
-import { AutoIncrement, BackReference, Embedded, Excluded, Group, int8, integer, MapName, PrimaryKey, Reference, ReflectionKind } from '../../../src/reflection/type';
+import { AutoIncrement, BackReference, BinaryBigInt, Embedded, Excluded, Group, int8, integer, MapName, PrimaryKey, Reference, ReflectionKind, SignedBinaryBigInt } from '../../../src/reflection/type';
 import { createSerializeFunction, getSerializeFunction, serializer } from '../../../src/serializer';
 import { cast, deserialize, serialize } from '../../../src/serializer-facade';
 import { getClassName } from '@deepkit/core';
@@ -171,7 +171,7 @@ test('cast primitives', () => {
 
 test('cast integer', () => {
     expect(cast<integer>(123.456)).toBe(123);
-    expect(cast<int8>(1000)).toBe(128);
+    expect(cast<int8>(1000)).toBe(127);
 });
 
 test('tuple 2', () => {
@@ -326,6 +326,24 @@ test('union loose string bigint', () => {
     expect(cast<string | bigint>(2, { loosely: true })).toEqual(2n);
     expect(cast<string | bigint>('2', { loosely: true })).toEqual(2n);
     expect(cast<string | bigint>('2a', { loosely: true })).toEqual('2a');
+});
+
+test('BinaryBigInt', () => {
+    expect(serialize<bigint>(24n)).toBe('24');
+    expect(serialize<BinaryBigInt>(24n)).toBe('24');
+    expect(serialize<BinaryBigInt>(-4n)).toBe('0');
+
+    expect(deserialize<BinaryBigInt>(24n)).toBe(24n);
+    expect(deserialize<BinaryBigInt>('24')).toBe(24n);
+    expect(deserialize<BinaryBigInt>(-4n)).toBe(0n);
+    expect(deserialize<BinaryBigInt>('-4')).toBe(0n);
+
+    expect(serialize<SignedBinaryBigInt>(24n)).toBe('24');
+    expect(serialize<SignedBinaryBigInt>(-4n)).toBe('-4');
+    expect(deserialize<SignedBinaryBigInt>(24n)).toBe(24n);
+    expect(deserialize<SignedBinaryBigInt>('24')).toBe(24n);
+    expect(deserialize<SignedBinaryBigInt>(-4n)).toBe(-4n);
+    expect(deserialize<SignedBinaryBigInt>('-4')).toBe(-4n);
 });
 
 test('literal', () => {
@@ -817,6 +835,7 @@ test('embedded in super class', () => {
 
 test('disabled constructor', () => {
     let called = false;
+
     @entity.disableConstructor()
     class User {
         id: number = 0;

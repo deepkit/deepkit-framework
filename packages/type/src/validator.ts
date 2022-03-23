@@ -7,8 +7,8 @@ import { serializer, Serializer } from './serializer';
 
 export type ValidatorMeta<Name extends string, Args extends [...args: any[]] = []> = { __meta?: ['validator', Name, Args] }
 
-export type ValidatorFunction = (value: any) => ValidatorError | void;
-export type Validate<T extends ValidatorFunction> = ValidatorMeta<'function', [T]>;
+export type ValidateFunction = (value: any, type: Type, options: any) => ValidatorError | void;
+export type Validate<T extends ValidateFunction, Options extends Parameters<T>[2] = unknown> = ValidatorMeta<'function', [T, Options]>;
 export type Pattern<T extends RegExp> = ValidatorMeta<'pattern', [T]>;
 export type Alpha = ValidatorMeta<'alpha'>;
 export type Alphanumeric = ValidatorMeta<'alphanumeric'>;
@@ -112,7 +112,7 @@ export class ValidationError extends CustomError {
  */
 export function validate<T>(data: any, type?: ReceiveType<T>): ValidationErrorItem[] {
     const errors: ValidationErrorItem[] = [];
-    is(data, undefined, errors, type!);
+    is(data, undefined, errors, type);
     return errors;
 }
 
@@ -126,13 +126,9 @@ export function validateFunction<T>(serializerToUse: Serializer = serializer, ty
 }
 
 /**
- * Returns empty array when valid, or ValidationErrorItem[] with detailed error messages if not valid.
- *
- * @throws ValidationError when validation fails.
+ * Returns true when valid, and false if not.
  */
-export function validates<T>(data: any, type?: ReceiveType<T>): void {
+export function validates<T>(data: any, type?: ReceiveType<T>): boolean {
     const errors = validate(data, type);
-    if (errors.length) {
-        throw new ValidationError(errors, resolveReceiveType(type));
-    }
+    return errors.length === 0;
 }

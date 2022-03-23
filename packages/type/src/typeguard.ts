@@ -14,7 +14,7 @@ import { getTypeJitContainer } from './reflection/type';
  * if (errors.length) console.log(errors); //validation failed if not empty
  * ```
  */
-export function getValidatorFunction<T>(serializerToUse: Serializer = serializer, receiveType?: ReceiveType<T>): Guard {
+export function getValidatorFunction<T>(serializerToUse: Serializer = serializer, receiveType?: ReceiveType<T>): Guard<T> {
     if (!receiveType) throw new NoTypeReceived();
     const type = resolveReceiveType(receiveType);
     const jit = getTypeJitContainer(type);
@@ -23,7 +23,7 @@ export function getValidatorFunction<T>(serializerToUse: Serializer = serializer
     }
     const fn = createTypeGuardFunction(type, undefined, serializerToUse) || (() => undefined);
     jit.__is = fn;
-    return fn as Guard;
+    return fn as Guard<T>;
 }
 
 export function is<T>(data: any, serializerToUse: Serializer = serializer, errors: ValidationErrorItem[] = [], receiveType?: ReceiveType<T>): data is T {
@@ -31,9 +31,9 @@ export function is<T>(data: any, serializerToUse: Serializer = serializer, error
     return getValidatorFunction(serializerToUse, receiveType)(data, { errors }) as boolean;
 }
 
-export function guard<T>(serializerToUse: Serializer = serializer, receiveType?: ReceiveType<T>): Guard {
+export function guard<T>(serializerToUse: Serializer = serializer, receiveType?: ReceiveType<T>): Guard<T> {
     const fn = getValidatorFunction(serializerToUse, receiveType);
-    return (data: any) => fn(data, { errors: [] });
+    return ((data: any) => fn(data, { errors: [] })) as Guard<T>;
 }
 
 export function assert<T>(data: any, serializerToUse: Serializer = serializer, receiveType?: ReceiveType<T>): asserts data is T {

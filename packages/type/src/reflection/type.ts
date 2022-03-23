@@ -8,10 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, getClassName, getParentClass, indent, isArray } from '@deepkit/core';
+import { AbstractClassType, ClassType, getClassName, getParentClass, indent, isArray } from '@deepkit/core';
 import { TypeNumberBrand } from '@deepkit/type-spec';
-import { getProperty, reflect, ReflectionClass, toSignature } from './reflection';
+import { getProperty, ReceiveType, reflect, ReflectionClass, resolveReceiveType, toSignature } from './reflection';
 import { isExtendable } from './extends';
+import { isClass } from '@deepkit/core';
 
 export enum ReflectionVisibility {
     public,
@@ -1428,7 +1429,6 @@ export type BinaryBigInt = bigint & { __meta?: ['binaryBigInt'] };
 
 /**
  * Same as `bigint` but serializes to signed binary with unlimited size (instead of 8 bytes in most databases).
- * Negative values will be stored using a signed number representation.
  * The binary has an additional leading sign byte and is represented as an uint: 255 for negative, 0 for zero, or 1 for positive.
  *
  * ```typescript
@@ -1879,7 +1879,7 @@ export function typeToObject(type?: Type, state: { stack: Type[] } = { stack: []
                 return type.types.map(v => typeToObject(v.type, state));
         }
 
-        return type.kind + '';
+        return undefined;
     } finally {
         state.stack.pop();
     }
@@ -2311,6 +2311,9 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                     stack.push({ before: '>' });
                     stack.push({ type: type.type, before: 'Array<', depth: depth + 1 });
                     break;
+                case ReflectionKind.typeParameter:
+                    stack.push({ before: type.name });
+                    break;
                 case ReflectionKind.rest:
                     stack.push({ before: '[]' });
                     stack.push({ type: type.type, depth: depth + 1 });
@@ -2387,4 +2390,11 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
     }
 
     return result.join('');
+}
+
+export function annotateClass<T>(clazz: ClassType | AbstractClassType, type?: ReceiveType<T>) {
+    (clazz as any).__type = isClass(type) ? (type as any).__type || [] : [];
+    type = resolveReceiveType(type);
+    (clazz as any).__type.__type = type;
+    type.typeName = getClassName(clazz);
 }

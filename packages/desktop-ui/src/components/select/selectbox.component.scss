@@ -114,7 +114,7 @@ select {
     }
 }
 
-:host-context(.light):not(.split) {
+:host-context(.dui-theme-light):not(.split) {
     background: white;
     border-top: 1px solid #c9c9c9;
     border-bottom: 1px solid #acacac;
@@ -150,7 +150,7 @@ select {
     }
 }
 
-:host-context(.dark):not(.split).textured {
+:host-context(.dui-theme-dark):not(.split).textured {
     background-color: #62696f;
 
     &.active,
@@ -159,7 +159,7 @@ select {
     }
 }
 
-:host-context(.dark):not(.split) {
+:host-context(.dui-theme-dark):not(.split) {
     background-image: linear-gradient(-180deg, #787878 1px, #696969 1px, #696969 95%);
     border-left: 1px solid #303030;
     border-right: 1px solid #303030;

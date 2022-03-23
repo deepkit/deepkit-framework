@@ -50,7 +50,7 @@ import { InjectorContext, InjectorModule } from '@deepkit/injector';
 
 export type ActionTypes = {
     actionCallSchema: TypeObjectLiteral, //with args as property
-    parametersValidate: Guard,
+    parametersValidate: Guard<any>,
 
     parameters: TypeTuple,
     mode: ActionMode;

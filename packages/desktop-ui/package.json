@@ -37,8 +37,7 @@
   "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/core-rxjs": "^1.0.1-alpha.13",
-    "electron": ">7.1.9",
-    "rxjs": "^6.5.3"
+    "electron": ">7.1.9"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^12.1.1",

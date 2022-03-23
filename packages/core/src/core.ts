@@ -616,7 +616,7 @@ export function deletePathValue(bag: object, parameterPath: string) {
 }
 
 /**
- * Returns the human readable byte representation.
+ * Returns the human-readable byte representation.
  *
  * @public
  */

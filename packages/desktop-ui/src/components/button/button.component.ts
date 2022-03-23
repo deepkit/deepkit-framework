@@ -209,10 +209,10 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy {
     // protected init = false;
 
     constructor(
-        private windowState: WindowState,
-        private windowComponent: WindowComponent,
         private element: ElementRef<HTMLElement>,
         @SkipSelf() protected cd: ChangeDetectorRef,
+        @Optional() private windowState?: WindowState,
+        @Optional() private windowComponent?: WindowComponent,
     ) {
     }
 
@@ -232,14 +232,14 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy {
     }
 
     ngAfterViewInit(): void {
-        if (this.float === 'sidebar') {
+        if (this.float === 'sidebar' && this.windowState) {
             this.windowState.buttonGroupAlignedToSidebar = this;
         }
         this.updatePaddingLeft();
     }
 
     updatePaddingLeft() {
-        if (this.float === 'sidebar') {
+        if (this.float === 'sidebar' && this.windowComponent) {
             if (this.windowComponent.content) {
                 if (this.windowComponent.content!.isSidebarVisible()) {
                     const newLeft = Math.max(0, this.windowComponent.content!.getSidebarWidth() - this.element.nativeElement.offsetLeft) + 'px';

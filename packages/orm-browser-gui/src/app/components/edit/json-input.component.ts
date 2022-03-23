@@ -57,7 +57,7 @@ export class JsonInputComponent {
     jsonDone() {
         try {
             const obj = JSON.parse(this.jsonContent);
-            this.model = deserialize(obj, undefined, undefined, this.type);
+            this.model = deserialize(obj, undefined, undefined, undefined, this.type);
             this.modelChange.emit(this.model);
 
             this.jsonEditor = false;

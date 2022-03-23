@@ -1,22 +1,23 @@
-@import "~@angular/cdk/overlay";
-@include cdk-overlay();
+@import '@angular/cdk/overlay-prebuilt.css';
 
 .dui-body {
     @import "./reset";
 
+    &body {
+        height: 100%;
+        overflow: hidden;
+        scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
+        background: var(--dui-window-content-bg-trans);
+    }
+
     font: normal 13px -apple-system, system-ui, sans-serif;
-
-    height: 100%;
-    overflow: hidden;
     text-align: left;
-
-    font-size: 13px;
-    line-height: 18px;
     -webkit-font-smoothing: antialiased;
     text-rendering: geometricPrecision;
     -moz-osx-font-smoothing: grayscale;
-
-    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--color-black);
 
     --dui-selection: #016dea;
     --dui-selection-hover: #016dea80;
@@ -48,9 +49,7 @@
 
     --dui-window-content-bg-trans: #f6f6f6;
     --dui-toolbar-bg-trans: #f6f6f6;
-    background: var(--dui-window-content-bg-trans);
 
-    color: var(--color-black);
 
     h1, h2, h3, h4, h5, h6 {
         color: unset;
@@ -218,7 +217,7 @@
     }
 }
 
-body.dark {
+body.dui-theme-dark {
     .panel {
         background-color: #1e1e1e;
         border: 1px solid #565656;
@@ -276,7 +275,7 @@ body.dark {
     }
 }
 
-body.light {
+body.dui-theme-light {
     .dui-panel {
         background-color: #e3e3e3;
         border: 1px solid #dfdfdf;

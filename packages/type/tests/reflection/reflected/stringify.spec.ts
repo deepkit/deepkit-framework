@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { stringifyResolvedType, stringifyShortResolvedType, stringifyType, Type } from '../../../src/reflection/type';
-import { typeOf } from '../../../src/reflection/reflection';
+import { reflect, typeOf } from '../../../src/reflection/reflection';
 import { deserializeType, serializeType } from '../../../src/type-serialization';
 
 test('stringifyType basic', () => {
@@ -311,3 +311,12 @@ test('stringifyType type', () => {
     const type = typeOf<Type>();
     const s = stringifyType(type, {showFullDefinition: true});
 });
+
+test('generic', () => {
+    class Gen<T> {
+        id!: T;
+    }
+
+    expect(stringifyResolvedType(reflect(Gen))).toBe('Gen {id: T}');
+    expect(stringifyResolvedType(reflect(Gen, typeOf<number>()))).toBe('Gen {id: number}');
+})

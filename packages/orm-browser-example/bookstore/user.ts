@@ -1,41 +1,36 @@
-import { entity, PrimaryKey, Reference, t } from '@deepkit/type';
+import { AutoIncrement, BackReference, entity, MinLength, PrimaryKey, Reference } from '@deepkit/type';
 import { UserCredentials } from './user-credentials';
 import { Group } from './group';
-import { Forward } from '@deepkit/core';
 
 @entity.name('user')
 export class User {
-    @t.primary.autoIncrement public id: number = 0;
-    @t created: Date = new Date;
+    public id: number & PrimaryKey & AutoIncrement = 0;
+    created: Date = new Date;
 
-    @t firstName: string = '';
-    @t lastName: string = '';
-    @t email: string = '';
-    @t birthdate?: Date;
+    firstName: string = '';
+    lastName: string = '';
+    email: string = '';
+    birthdate?: Date;
 
-    @t logins: number = 0;
+    logins: number = 0;
 
-    @t version: number = 0;
+    version: number = 0;
 
-    @t.type(() => UserCredentials).optional.backReference()
-    credentials?: Forward<UserCredentials>;
+    credentials?: UserCredentials & BackReference;
 
-    @t.array(() => Group).backReference({ via: () => UserGroup })
-    groups: Group[] = [];
+    groups: Group[] & BackReference<{ via: UserGroup }> = [];
 
-    constructor(
-        @t.minLength(3) public username: string,
-    ) {
+    constructor(public username: string & MinLength<3>) {
     }
 }
 
 @entity.name('user-group')
 export class UserGroup {
-    @t.primary.autoIncrement public id: number = 0;
+    public id: number & PrimaryKey & AutoIncrement = 0;
 
     constructor(
-        @t.reference() public user: User,
-        @t.reference() public group: Group,
+        public user: User & Reference,
+        public group: Group & Reference,
     ) {
     }
 }

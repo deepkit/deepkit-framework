@@ -19,6 +19,7 @@ import {
     DatabaseFieldOptions,
     embeddedAnnotation,
     entityAnnotation,
+    EntityOptions,
     excludedAnnotation,
     getBackReferenceType,
     getClassType,
@@ -53,7 +54,7 @@ import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, isArray, i
 import { Packed, resolvePacked, resolveRuntimeType } from './processor';
 import { NoTypeReceived } from '../utils';
 import { findCommonLiteral } from '../inheritance';
-import type { ValidatorFunction } from '../validator';
+import type { ValidateFunction } from '../validator';
 import { isWithDeferredDecorators } from '../decorator';
 import { SerializedTypes, serializeType } from '../type-serialization';
 
@@ -72,8 +73,9 @@ import { SerializedTypes, serializeType } from '../type-serialization';
  */
 export type ReceiveType<T> = Packed | Type | ClassType<T>;
 
-export function resolveReceiveType(type?: Packed | Type | ClassType): Type {
+export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractClassType | ReflectionClass<any>): Type {
     if (!type) throw new NoTypeReceived();
+    if (type instanceof ReflectionClass) return type.type;
     if (isArray(type) && type.__type) return type.__type;
     if (isType(type)) return type as Type;
     if (isClass(type)) return resolveRuntimeType(type) as Type;
@@ -741,7 +743,7 @@ export interface SerializerFn {
 
 export class TData {
     validator: boolean = false;
-    validators: ValidatorFunction[] = [];
+    validators: ValidateFunction[] = [];
     type?: Packed | Type | ClassType;
     data: { [name: string]: any } = {};
     serializer?: SerializerFn;
@@ -756,6 +758,15 @@ export class EntityData {
     data: { [name: string]: any } = {};
     indexes: { names: string[], options: IndexOptions }[] = [];
     singleTableInheritance?: true;
+}
+
+function applyEntityOptions(reflection: ReflectionClass<any>, entityOptions: EntityOptions) {
+    if (entityOptions.name !== undefined) reflection.name = entityOptions.name;
+    if (entityOptions.description !== undefined) reflection.description = entityOptions.description;
+    if (entityOptions.collection !== undefined) reflection.collectionName = entityOptions.collection;
+    if (entityOptions.database !== undefined) reflection.databaseSchemaName = entityOptions.database;
+    if (entityOptions.singleTableInheritance !== undefined) reflection.singleTableInheritance = entityOptions.singleTableInheritance;
+    if (entityOptions.indexes !== undefined) reflection.indexes = entityOptions.indexes;
 }
 
 /**
@@ -870,12 +881,7 @@ export class ReflectionClass<T> {
 
         const entityOptions = entityAnnotation.getFirst(this.type);
         if (entityOptions) {
-            if (entityOptions.name !== undefined) this.name = entityOptions.name;
-            if (entityOptions.description !== undefined) this.description = entityOptions.description;
-            if (entityOptions.collection !== undefined) this.collectionName = entityOptions.collection;
-            if (entityOptions.database !== undefined) this.databaseSchemaName = entityOptions.database;
-            if (entityOptions.singleTableInheritance !== undefined) this.singleTableInheritance = entityOptions.singleTableInheritance;
-            if (entityOptions.indexes !== undefined) this.indexes = entityOptions.indexes;
+            applyEntityOptions(this, entityOptions);
         }
 
         //apply decorators

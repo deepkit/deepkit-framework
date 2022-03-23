@@ -28,7 +28,7 @@
     "@deepkit/injector": "^1.0.1-alpha.13",
     "@deepkit/logger": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13",
-    "rxjs": "~6.6.0"
+    "rxjs": "*"
   },
   "dependencies": {
     "dot-prop": "^5.1.1"

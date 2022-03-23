@@ -1,7 +1,8 @@
 import { expect, test } from '@jest/globals';
-import { executeTemplates, Serializer, TemplateRegistry, TemplateState, TypeGuardRegistry } from '../src/serializer';
+import { EmptySerializer, executeTemplates, Serializer, TemplateRegistry, TemplateState, TypeGuardRegistry } from '../src/serializer';
 import { ReflectionKind } from '../src/reflection/type';
 import { CompilerContext } from '@deepkit/core';
+import { deserialize } from '../src/serializer-facade';
 
 test('TypeGuardRegistry', () => {
     const serializer = new Serializer();
@@ -41,4 +42,24 @@ test('asd', () => {
     `;
 
     console.log(code);
+});
+
+test('new serializer', () => {
+    class User {
+        name: string = '';
+        created: Date = new Date;
+    }
+
+    const mySerializer = new EmptySerializer('mySerializer');
+
+    mySerializer.deserializeRegistry.registerClass(Date, (type, state) => {
+        state.addSetter(`new Date(${state.accessor})`);
+    });
+
+    mySerializer.serializeRegistry.registerClass(Date, (type, state) => {
+        state.addSetter(`${state.accessor}.toJSON()`);
+    });
+
+    const user = deserialize<User>({ name: 'Peter', created: 0 }, undefined, mySerializer);
+    console.log('empty serializer', user);
 });

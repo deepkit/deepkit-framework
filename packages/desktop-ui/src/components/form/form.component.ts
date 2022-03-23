@@ -107,7 +107,7 @@ export class FormComponent implements OnChanges {
                 try {
                     await this.submit();
                     this.success.emit();
-                } catch (error) {
+                } catch (error: any) {
                     this.error.emit(error);
 
                     if (error.errors && error.errors[0]) {

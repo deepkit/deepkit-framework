@@ -21,7 +21,7 @@
     --text-light: #d1d1d1;
 }
 
-:host-context(.light).white {
+:host-context(.dui-theme-light).white {
     background-color: white;
     border: 1px solid #c5c5c5;
 
@@ -30,11 +30,10 @@
     }
 }
 
-:host-context(.dark).white {
+:host-context(.dui-theme-dark).white {
     background-color: #1e1e1e;
     border: 1px solid #565656;
 }
-
 
 :host.delimiter-line {
     ::ng-deep dui-list-item {

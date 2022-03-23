@@ -9,7 +9,7 @@
  */
 
 import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseEntityRegistry, DatabaseSession, OrmEntity } from '@deepkit/orm';
-import { AbstractClassType } from '@deepkit/core';
+import { AbstractClassType, ClassType } from '@deepkit/core';
 import { MongoDatabaseQuery } from './query';
 import { MongoPersistence } from './persistence';
 import { MongoClient } from './client/client';
@@ -29,7 +29,7 @@ export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
         super();
     }
 
-    createQuery<T extends OrmEntity>(type?: ReceiveType<T> | AbstractClassType<T> | ReflectionClass<T>): MongoDatabaseQuery<T> {
+    createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): MongoDatabaseQuery<T> {
         const schema = ReflectionClass.from(type);
         return new MongoDatabaseQuery(schema, this.databaseSession, new MongoQueryResolver(schema, this.databaseSession, this.client));
     }

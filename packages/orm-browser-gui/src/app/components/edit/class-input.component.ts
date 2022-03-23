@@ -145,7 +145,7 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
     jsonDone() {
         try {
             const obj = JSON.parse(this.jsonContent);
-            this.model = deserialize(obj, undefined, undefined, this.type);
+            this.model = deserialize(obj, undefined, undefined, undefined, this.type);
             this.modelChange.emit(this.model);
 
             this.jsonEditor = false;
@@ -195,7 +195,7 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
         } else {
             this.jsonEditor = true;
             if (this.model !== undefined) {
-                this.jsonContent = JSON.stringify(serialize(this.model, undefined, undefined, this.type));
+                this.jsonContent = JSON.stringify(serialize(this.model, undefined, undefined, undefined, this.type));
             } else {
                 this.jsonContent = '';
             }

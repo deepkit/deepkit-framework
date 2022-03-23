@@ -30,7 +30,7 @@
     transition: padding-left 300ms ease-in-out;
 }
 
-:host-context(.dark).padding-none {
+:host-context(.dui-theme-dark).padding-none {
     ::ng-deep dui-select:not(:first-child),
     ::ng-deep dui-input:not(:first-child),
     ::ng-deep dui-button:not(.square):not(:first-child) {

@@ -125,7 +125,9 @@ export function registerStaticHttpController(module: AppModule<any>, options: St
         Object.defineProperty(StaticController, 'name', { value: options.controllerName, writable: true });
     }
 
-    const route1 = new RouteConfig('static', ['GET'], normalizeDirectory(options.path), {
+    const path = normalizeDirectory(options.path);
+
+    const route1 = new RouteConfig('static', ['GET'], path, {
         controller: StaticController,
         module,
         methodName: 'serveIndex'
@@ -133,13 +135,15 @@ export function registerStaticHttpController(module: AppModule<any>, options: St
     route1.groups = groups;
     module.setupGlobalProvider<Router>().addRoute(route1);
 
-    const route2 = new RouteConfig('static', ['GET'], normalizeDirectory(options.path).slice(0, -1), {
-        controller: StaticController,
-        module,
-        methodName: 'serveIndex'
-    });
-    route2.groups = groups;
-    module.setupGlobalProvider<Router>().addRoute(route2);
+    if (path !== '/') {
+        const route2 = new RouteConfig('static', ['GET'], path.slice(0, -1), {
+            controller: StaticController,
+            module,
+            methodName: 'serveIndex'
+        });
+        route2.groups = groups;
+        module.setupGlobalProvider<Router>().addRoute(route2);
+    }
 
     module.addProvider(StaticController);
     module.addListener(serveStaticListener(module, normalizeDirectory(options.path), options.localPath));

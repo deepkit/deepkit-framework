@@ -24,8 +24,8 @@ import {
 } from '@deepkit/sql';
 import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, OrmEntity, PatchResult, UniqueConstraintFailure } from '@deepkit/orm';
 import { MySQLPlatform } from './mysql-platform';
-import { Changes, getPartialSerializeFunction, getSerializeFunction, ReflectionClass, resolvePath } from '@deepkit/type';
-import { asyncOperation, ClassType, empty, isArray } from '@deepkit/core';
+import { Changes, getPartialSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath, resolveReceiveType } from '@deepkit/type';
+import { AbstractClassType, asyncOperation, ClassType, empty, isArray } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
 function handleError(error: Error | string): void {
@@ -528,9 +528,9 @@ export class MySQLDatabaseQuery<T> extends SQLDatabaseQuery<T> {
 }
 
 export class MySQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
-    createQuery<T extends OrmEntity>(classType: ClassType<T> | ReflectionClass<T>): MySQLDatabaseQuery<T> {
-        return new MySQLDatabaseQuery(ReflectionClass.from(classType), this.databaseSession,
-            new MySQLQueryResolver(this.connectionPool, this.platform, ReflectionClass.from(classType), this.databaseSession)
+    createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): MySQLDatabaseQuery<T> {
+        return new MySQLDatabaseQuery<T>(ReflectionClass.from(type), this.databaseSession,
+            new MySQLQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession)
         );
     }
 }

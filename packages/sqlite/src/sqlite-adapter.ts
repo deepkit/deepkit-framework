@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { asyncOperation, ClassType, empty } from '@deepkit/core';
+import { AbstractClassType, asyncOperation, ClassType, empty } from '@deepkit/core';
 import {
     DatabaseAdapter,
     DatabaseLogger,
@@ -33,7 +33,7 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from '@deepkit/sql';
-import { Changes, getPartialSerializeFunction, getSerializeFunction, ReflectionClass, resolvePath } from '@deepkit/type';
+import { Changes, getPartialSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
 import sqlite3 from 'better-sqlite3';
 import { SQLitePlatform } from './sqlite-platform';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
@@ -559,9 +559,9 @@ export class SQLiteDatabaseQueryFactory extends SQLDatabaseQueryFactory {
         super(connectionPool, platform, databaseSession);
     }
 
-    createQuery<T extends OrmEntity>(classType: ClassType<T> | ReflectionClass<T>): SQLiteDatabaseQuery<T> {
-        return new SQLiteDatabaseQuery(ReflectionClass.from(classType), this.databaseSession,
-            new SQLiteQueryResolver(this.connectionPool, this.platform, ReflectionClass.from(classType), this.databaseSession)
+    createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): SQLiteDatabaseQuery<T> {
+        return new SQLiteDatabaseQuery<T>(ReflectionClass.from(type), this.databaseSession,
+            new SQLiteQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession)
         );
     }
 }
@@ -596,7 +596,7 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
         return new SQLitePersistence(this.platform, this.connectionPool, session);
     }
 
-    queryFactory(databaseSession: DatabaseSession<any>): SQLDatabaseQueryFactory {
+    queryFactory(databaseSession: DatabaseSession<any>): SQLiteDatabaseQueryFactory {
         return new SQLiteDatabaseQueryFactory(this.connectionPool, this.platform, databaseSession);
     }
 

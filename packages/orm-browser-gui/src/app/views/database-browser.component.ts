@@ -198,7 +198,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
 
         this.ignoreNextCellClick = true;
         const snapshot = getInstanceStateFromItem(item).getSnapshot();
-        item[column] = deserialize(snapshot[column], undefined, undefined, this.entity.getProperty(column).property);
+        item[column] = deserialize(snapshot[column], undefined, undefined, undefined, this.entity.getProperty(column).property);
 
         this.changed(item);
     };
@@ -289,7 +289,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
 
         try {
             const jsonItem = await this.controllerClient.browser.create(this.database.name, this.entity.getName());
-            const item = deserialize(jsonItem, undefined, undefined, this.entity.type);
+            const item = deserialize(jsonItem, undefined, undefined, undefined, this.entity.type);
             const state = getInstanceStateFromItem(item);
             state.markAsPersisted();
             state.markAsFromDatabase();
@@ -434,7 +434,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
             }
 
             for (const jsonItem of items) {
-                const item: any = deserialize(jsonItem, undefined, undefined, this.entity.type);
+                const item: any = deserialize(jsonItem, undefined, undefined, undefined, this.entity.type);
                 const state = getInstanceStateFromItem(item);
 
                 state.markAsPersisted();

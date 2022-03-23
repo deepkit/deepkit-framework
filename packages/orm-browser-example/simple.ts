@@ -1,14 +1,14 @@
-import { entity, t } from '@deepkit/type';
+import { AutoIncrement, entity, PrimaryKey, t } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 
 @entity.name('group')
 export class Group {
-    @t.primary.autoIncrement public id?: number;
-    @t created: Date = new Date;
+    public id: number & PrimaryKey & AutoIncrement = 0;
+    created: Date = new Date;
 
     constructor(
-        @t public name: string
+        public name: string
     ) {
     }
 }

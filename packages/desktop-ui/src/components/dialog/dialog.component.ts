@@ -154,7 +154,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         protected overlay: Overlay,
         protected injector: Injector,
         protected registry: WindowRegistry,
-        @SkipSelf() protected cdParent: ChangeDetectorRef,
+        @Optional() @SkipSelf() protected cdParent?: ChangeDetectorRef,
         @Optional() protected window?: WindowComponent,
     ) {
     }
@@ -281,7 +281,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         this.wrapperComponentRef!.changeDetectorRef.detectChanges();
 
         this.cd.detectChanges();
-        this.cdParent.detectChanges();
+        if (this.cdParent) this.cdParent.detectChanges();
     }
 
     protected beforeUnload() {

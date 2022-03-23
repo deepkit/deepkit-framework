@@ -81,7 +81,7 @@ textarea, input {
     width: 100%;
 
     &::placeholder {
-        color: #c5c5c5;
+        color: #b6b6b6;
     }
 
     &:focus {
@@ -89,7 +89,7 @@ textarea, input {
     }
 }
 
-:host-context(.dark) {
+:host-context(.dui-theme-dark) {
     textarea, input {
         &::placeholder {
             color: rgba(197, 197, 197, 0.4);
@@ -165,7 +165,7 @@ textarea {
     }
 }
 
-:host-context(.dark) {
+:host-context(.dui-theme-dark) {
     color: white;
     background-image: linear-gradient(-180deg, #3D3D3D 0%, #414141 10%, #414141 100%);
 
@@ -197,6 +197,6 @@ textarea {
     }
 }
 
-:host-context(.dark).textured {
+:host-context(.dui-theme-dark).textured {
     @include box-textured-dark-toolbar;
 }

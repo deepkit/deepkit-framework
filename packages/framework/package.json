@@ -42,8 +42,7 @@
     "@deepkit/stopwatch": "^1.0.1-alpha.13",
     "@deepkit/template": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/workflow": "^1.0.1-alpha.13",
-    "rxjs": "~6.6.0"
+    "@deepkit/workflow": "^1.0.1-alpha.13"
   },
   "dependencies": {
     "@deepkit/api-console-module": "^1.0.1-alpha.62",

@@ -25,9 +25,10 @@ import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, Database
 import { PostgresPlatform } from './postgres-platform';
 import type { Pool, PoolClient, PoolConfig } from 'pg';
 import pg from 'pg';
-import { asyncOperation, ClassType, empty } from '@deepkit/core';
+import { AbstractClassType, asyncOperation, ClassType, empty } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
-import { Changes, getPartialSerializeFunction, getSerializeFunction, ReflectionClass, ReflectionKind, ReflectionProperty, resolvePath } from '@deepkit/type';
+import { Changes, getPartialSerializeFunction, getSerializeFunction, ReflectionClass, ReflectionKind, ReflectionProperty, resolvePath, resolveReceiveType } from '@deepkit/type';
+import { ReceiveType } from '@deepkit/type';
 
 function handleError(error: Error | string): void {
     const message = 'string' === typeof error ? error : error.message;
@@ -550,9 +551,9 @@ export class PostgresSQLDatabaseQuery<T> extends SQLDatabaseQuery<T> {
 }
 
 export class PostgresSQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
-    createQuery<T extends OrmEntity>(classType: ClassType<T> | ReflectionClass<T>): PostgresSQLDatabaseQuery<T> {
-        return new PostgresSQLDatabaseQuery(ReflectionClass.from(classType), this.databaseSession,
-            new PostgresSQLQueryResolver(this.connectionPool, this.platform, ReflectionClass.from(classType), this.databaseSession)
+    createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): PostgresSQLDatabaseQuery<T> {
+        return new PostgresSQLDatabaseQuery<T>(ReflectionClass.from(type), this.databaseSession,
+            new PostgresSQLQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession)
         );
     }
 }

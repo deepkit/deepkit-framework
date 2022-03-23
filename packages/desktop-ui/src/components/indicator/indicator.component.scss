@@ -35,7 +35,7 @@
     }
 }
 
-:host-context(.light) {
+:host-context(.dui-theme-light) {
     //border-top: 1px solid #dddddd;
     //border-bottom: 1px solid #dddddd;
 
@@ -51,7 +51,7 @@
     }
 }
 
-:host-context(.dark) {
+:host-context(.dui-theme-dark) {
     background-color: #58534f;
 
     .active {

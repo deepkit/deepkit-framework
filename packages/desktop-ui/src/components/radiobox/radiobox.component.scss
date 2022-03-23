@@ -54,8 +54,7 @@
     }
 }
 
-
-:host-context(.dark) {
+:host-context(.dui-theme-dark) {
     .box {
         background: linear-gradient(-180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.28) 100%);
         box-shadow: 0 0 1px 0 rgba(0, 0, 0, 0.40), 0 0 1px 0 rgba(0, 0, 0, 0.20), inset 0 0 0 0 rgba(255, 255, 255, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.06);

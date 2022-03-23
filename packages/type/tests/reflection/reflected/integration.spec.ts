@@ -13,20 +13,22 @@ import { expect, test } from '@jest/globals';
 import { entity, t } from '../../../src/decorator';
 import { propertiesOf, reflect, ReflectionClass, ReflectionFunction, typeOf, valuesOf } from '../../../src/reflection/reflection';
 import {
+    annotateClass,
     assertType,
     AutoIncrement,
     autoIncrementAnnotation,
     BackReference,
     Data,
-    databaseAnnotation,
+    databaseAnnotation, DatabaseField,
     defaultAnnotation,
     Embedded,
     Entity,
     entityAnnotation,
     Excluded,
     Group,
+    groupAnnotation,
     Index,
-    integer,
+    integer, isPrimaryKeyType,
     MapName,
     metaAnnotation,
     MySQL,
@@ -38,11 +40,12 @@ import {
     ReflectionKind,
     ReflectionVisibility,
     SQLite,
-    stringifyResolvedType, stringifyType,
+    stringifyResolvedType,
     Type,
     TypeClass,
     TypeFunction,
-    TypeIndexSignature, TypeMethod,
+    TypeIndexSignature,
+    TypeMethod,
     TypeNumber,
     TypeObjectLiteral,
     TypeTuple,
@@ -54,6 +57,7 @@ import { expectEqualType } from '../../utils';
 import { MyAlias } from './types';
 import { resolveRuntimeType } from '../../../src/reflection/processor';
 import { uuid } from '../../../src/utils';
+import { deserialize } from '../../../src/serializer-facade';
 
 test('class', () => {
     class Entity {
@@ -1931,10 +1935,52 @@ test('type decorator first position', () => {
         author?: Reference & MapName<'_author'> & author;
     }
 
+    type a = Omit<post, 'author'>;
+
     const reflection = ReflectionClass.from(post);
     expect(reflection.getProperty('id').type.kind).toBe(ReflectionKind.number);
     expect(reflection.getProperty('id').isPrimaryKey()).toBe(true);
     expect(reflection.getProperty('author').type.kind).toBe(ReflectionKind.class);
     expect(reflection.getProperty('author').isPrimaryKey()).toBe(false);
     expect(reflection.getProperty('author').isReference()).toBe(true);
+
+});
+
+test('annotateClass static', () => {
+    class ExternalClass {
+    }
+
+    interface AnnotatedClass {
+        id: number;
+    }
+
+    annotateClass<AnnotatedClass>(ExternalClass);
+
+    expect(stringifyResolvedType(reflect(ExternalClass))).toBe('ExternalClass {id: number}');
+});
+
+test('annotateClass generic', () => {
+    class ExternalClass {
+    }
+
+    class AnnotatedClass<T> {
+        id!: T;
+    }
+
+    annotateClass(ExternalClass, AnnotatedClass);
+
+    expect(stringifyResolvedType(reflect(ExternalClass))).toBe('ExternalClass {id: T}');
+    expect(stringifyResolvedType(reflect(ExternalClass, typeOf<number>()))).toBe('ExternalClass {id: number}');
+});
+
+test('test', () => {
+    interface Article {
+        id: number;
+        title?: string;
+    }
+
+    validate<Article>({id: 1}).length; //0, means it validated successfully
+    validate<Article>({}).length; //1, means there are validation errors
+
+    console.log(validate<Article>({}));
 });

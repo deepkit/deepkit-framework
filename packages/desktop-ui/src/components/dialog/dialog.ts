@@ -13,6 +13,7 @@ import {
     ChangeDetectorRef,
     Component,
     ComponentFactoryResolver,
+    ComponentRef,
     Directive,
     ElementRef,
     Inject,
@@ -28,6 +29,8 @@ import { isTargetChildOf } from '../../core/utils';
 import { DuiDialogProgress, ProgressDialogState } from './progress-dialog.component';
 import { DOCUMENT } from '@angular/common';
 import { WindowRegistry } from '../window/window-state';
+import { Overlay, OverlayConfig } from '@angular/cdk/overlay';
+import { ComponentPortal } from '@angular/cdk/portal';
 
 
 @Component({
@@ -47,7 +50,7 @@ export class DuiDialogConfirm {
 
     static dialogDefaults = {
         maxWidth: '700px'
-    }
+    };
 }
 
 @Component({
@@ -66,7 +69,7 @@ export class DuiDialogAlert {
 
     static dialogDefaults = {
         maxWidth: '700px'
-    }
+    };
 }
 
 @Component({
@@ -104,7 +107,31 @@ export class DuiDialog {
         protected app: ApplicationRef,
         protected injector: Injector,
         protected registry: WindowRegistry,
+        protected overlay: Overlay,
     ) {
+    }
+
+    protected getComponentRef(viewContainerRef: ViewContainerRef | null = null): ComponentRef<DialogComponent> {
+        if (!viewContainerRef && !this.registry.activeWindow) {
+            //create portal
+            const overlayRef = this.overlay.create();
+            const portal = new ComponentPortal(DialogComponent);
+
+            const comp = overlayRef.attach(portal);
+            comp.instance.closed.subscribe((v) => {
+                overlayRef.dispose();
+            });
+
+            return comp;
+        }
+
+        if (!viewContainerRef) {
+            viewContainerRef = this.registry.getCurrentViewContainerRef();
+        }
+
+        console.log('this.registry.activeWindow', this.registry.activeWindow, viewContainerRef);
+        const factory = this.resolver.resolveComponentFactory(DialogComponent);
+        return viewContainerRef.createComponent(factory);
     }
 
     public open<T>(
@@ -113,13 +140,7 @@ export class DuiDialog {
         dialogInputs: { [name: string]: any } = {},
         viewContainerRef: ViewContainerRef | null = null,
     ): { dialog: DialogComponent, close: Promise<any>, component: T } {
-        if (!viewContainerRef) {
-            viewContainerRef = this.registry.getCurrentViewContainerRef();
-        }
-
-        const factory = this.resolver.resolveComponentFactory(DialogComponent);
-        const comp = viewContainerRef.createComponent(factory);
-
+        const comp = this.getComponentRef(viewContainerRef);
         comp.instance.visible = true;
         comp.instance.component = component;
         comp.instance.componentInputs = inputs;

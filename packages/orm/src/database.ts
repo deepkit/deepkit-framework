@@ -9,7 +9,18 @@
  */
 
 import { AbstractClassType, ClassType, getClassName } from '@deepkit/core';
-import { getReferenceInfo, isReferenceHydrated, PrimaryKeyFields, ReflectionClass, Type } from '@deepkit/type';
+import {
+    entityAnnotation,
+    EntityOptions,
+    getReferenceInfo,
+    isReferenceHydrated,
+    PrimaryKeyFields,
+    ReceiveType,
+    ReflectionClass,
+    ReflectionKind,
+    resolveReceiveType,
+    Type
+} from '@deepkit/type';
 import { DatabaseAdapter, DatabaseEntityRegistry } from './database-adapter';
 import { DatabaseSession } from './database-session';
 import { QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter } from './event';
@@ -264,6 +275,20 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
             schema.data['orm.database'] = this;
             if (isActiveRecordClassType(entity)) entity.registerDatabase(this);
         }
+    }
+
+    register<T>(options?: EntityOptions, type?: ReceiveType<T>): this {
+        type = resolveReceiveType(type);
+        const existingEntityOptions: EntityOptions = entityAnnotation.getFirst(type) || {};
+        Object.assign(existingEntityOptions, options);
+        entityAnnotation.replaceType(type, [existingEntityOptions]);
+
+        const schema = ReflectionClass.from(type);
+        this.entityRegistry.add(schema);
+        schema.data['orm.database'] = this;
+
+        if (schema.type.kind === ReflectionKind.class && isActiveRecordClassType(schema.type.classType)) schema.type.classType.registerDatabase(this);
+        return this;
     }
 
     getEntity(name: string): ReflectionClass<any> {

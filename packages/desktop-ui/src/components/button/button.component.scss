@@ -45,13 +45,18 @@ In macOS we have 4 types of buttons:
         }
     }
 
-    &:not(.square):not(.tight).with-text > dui-icon {
+    &:not(.icon-right):not(.square):not(.tight).with-text > dui-icon {
         position: relative;
         left: -4px;
     }
+
+    &.icon-right:not(.square):not(.tight).with-text > dui-icon {
+        position: relative;
+        right: -4px;
+    }
 }
 
-:host-context(.light) {
+:host-context(.dui-theme-light) {
     &:not(.disabled):not(.square):not(.textured):active {
         color: white;
         background-image: linear-gradient(180deg, #4990fe 0%, #005ee5 100%);
@@ -122,7 +127,7 @@ In macOS we have 4 types of buttons:
     align-items: start;
 }
 
-:host-context(.light) {
+:host-context(.dui-theme-light) {
     background: white;
     border-top: 1px solid #c9c9c9;
     border-bottom: 1px solid #acacac;
@@ -140,7 +145,7 @@ In macOS we have 4 types of buttons:
     }
 }
 
-:host-context(.light) {
+:host-context(.dui-theme-light) {
     &:not(.disabled):not(.primary):not(.square).active {
         color: white;
         background-image: linear-gradient(-180deg, #6C6D6D 0%, #646464 100%);
@@ -159,7 +164,7 @@ In macOS we have 4 types of buttons:
     }
 }
 
-:host-context(.dark) {
+:host-context(.dui-theme-dark) {
     color: white;
     background-image: linear-gradient(-180deg, #787878 1px, #696969 1px, #696969 95%);
     //border-top: 1px solid #313131;
@@ -203,7 +208,7 @@ In macOS we have 4 types of buttons:
 }
 
 
-:host-context(.dark).textured {
+:host-context(.dui-theme-dark).textured {
     background-color: #62696f;
     box-shadow: none;
 

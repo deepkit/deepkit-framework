@@ -75,7 +75,7 @@ export class ExecutionState {
 
         try {
             return await this.func(...args);
-        } catch (error) {
+        } catch (error: any) {
             this.error = error.message || error.toString();
             throw error;
         } finally {

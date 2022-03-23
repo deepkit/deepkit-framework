@@ -38,6 +38,7 @@ export class WindowFrameComponent {
     styleUrls: ['./window.component.scss'],
     host: {
         '[class.in-dialog]': 'isInDialog()',
+        '[class.dui-theme-light]': '!app.themeDetection',
         '[class.dui-body]': 'true',
     },
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -69,9 +70,9 @@ export class WindowComponent implements OnChanges, OnDestroy {
         protected registry: WindowRegistry,
         public windowState: WindowState,
         cd: ChangeDetectorRef,
-        app: DuiApp,
+        public app: DuiApp,
         windowMenuState: WindowMenuState,
-        protected viewContainerRef: ViewContainerRef,
+        public viewContainerRef: ViewContainerRef,
         @Inject(IN_DIALOG) protected inDialog: boolean,
         @SkipSelf() @Optional() protected parentWindow?: WindowComponent,
         @Inject(ELECTRON_WINDOW) public electronWindow?: any

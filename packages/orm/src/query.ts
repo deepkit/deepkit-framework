@@ -246,7 +246,6 @@ export class BaseQuery<T extends OrmEntity> {
         c.model.aggregate.set((as as any), { property: this.classSchema.getProperty(field), func });
         return c as any;
     }
-
     select<K extends (keyof Resolve<this>)[]>(...select: K): Replace<this, Pick<Resolve<this>, K[number]>> {
         const c = this.clone();
         for (const field of select) {

@@ -15,7 +15,7 @@ import { Query } from './query';
 import { DatabaseSession, DatabaseTransaction } from './database-session';
 
 export abstract class DatabaseAdapterQueryFactory {
-    abstract createQuery<T extends OrmEntity>(type?: ReceiveType<T> | AbstractClassType<T> | ReflectionClass<T>): Query<T>;
+    abstract createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): Query<T>;
 }
 
 export interface DatabasePersistenceChangeSet<T> {

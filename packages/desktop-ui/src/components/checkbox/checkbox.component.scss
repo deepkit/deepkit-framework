@@ -51,7 +51,7 @@ dui-icon {
     }
 }
 
-:host-context(.dark) {
+:host-context(.dui-theme-dark) {
     .box {
         background-image: linear-gradient(-180deg, #515151 0%, #6A6A6A 100%);
         //background: linear-gradient(-180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.28) 100%);

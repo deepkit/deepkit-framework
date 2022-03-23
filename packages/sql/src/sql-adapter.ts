@@ -32,7 +32,7 @@ import {
     Resolve,
     SORT_ORDER
 } from '@deepkit/orm';
-import { ClassType, isArray, isClass } from '@deepkit/core';
+import { AbstractClassType, ClassType, isArray, isClass } from '@deepkit/core';
 import { Changes, getPartialSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass } from '@deepkit/type';
 import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform';
 import { SqlBuilder } from './sql-builder';
@@ -456,9 +456,7 @@ export class SQLDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
         super();
     }
 
-    createQuery<T extends OrmEntity>(
-        classType: ReceiveType<T> | ClassType<T> | ReflectionClass<T>
-    ): SQLDatabaseQuery<T> {
+    createQuery<T extends OrmEntity>(classType: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): SQLDatabaseQuery<T> {
         return new SQLDatabaseQuery(ReflectionClass.from(classType), this.databaseSession,
             new SQLQueryResolver(this.connectionPool, this.platform, ReflectionClass.from(classType), this.databaseSession)
         );

@@ -80,7 +80,7 @@
     }
 }
 
-:host-context(.dark) {
+:host-context(.dui-theme-dark) {
     &.no-vibrancy {
         .sidebar {
             background-color: #2a3136;

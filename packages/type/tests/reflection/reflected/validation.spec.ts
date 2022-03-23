@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { Email, MaxLength, MinLength, Positive, Validate, validate, ValidatorError } from '../../../src/validator';
 import { is } from '../../../src/typeguard';
-import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Unique } from '../../../src/reflection/type';
+import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Type, Unique } from '../../../src/reflection/type';
 import { t } from '../../../src/decorator';
 import { ReflectionClass, typeOf } from '../../../src/reflection/reflection';
 
@@ -27,7 +27,7 @@ test('minLength', () => {
     expect(validate<Username>('ab')).toEqual([{ path: '', code: 'minLength', message: `Min length is 3` }]);
 });
 
-test('custom validator', () => {
+test('custom validator pre defined', () => {
     function startsWith(v: string) {
         return (value: any) => {
             const valid = 'string' === typeof value && value.startsWith(v);
@@ -41,6 +41,22 @@ test('custom validator', () => {
     expect(is<MyType>('aah')).toBe(true);
     expect(is<MyType>('nope')).toBe(false);
     expect(validate<MyType>('nope')).toEqual([{ path: '', code: 'startsWith', message: `Does not start with a` }]);
+});
+
+test('custom validator with arguments', () => {
+    function startsWith(value: any, type: Type, letter: string) {
+        const valid = 'string' === typeof value && value.startsWith(letter);
+        return valid ? undefined : new ValidatorError('startsWith', `Does not start with ${letter}`);
+    }
+
+    type MyType = string & Validate<typeof startsWith, 'a'>;
+
+    expect(is<MyType>('aah')).toBe(true);
+    expect(is<MyType>('nope')).toBe(false);
+    expect(validate<MyType>('nope')).toEqual([{ path: '', code: 'startsWith', message: `Does not start with a` }]);
+
+    type InvalidValidatorOption = string & Validate<typeof startsWith>;
+    expect(() => is<InvalidValidatorOption>('aah')).toThrow(`Invalid option value given to validator function startsWith, expected letter: string`);
 });
 
 test('decorator validator', () => {

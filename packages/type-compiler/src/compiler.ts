@@ -86,6 +86,8 @@ import {
     ModuleKind,
     Node,
     NodeFactory,
+    NodeFlags,
+    Program,
     PropertyAccessExpression,
     PropertyDeclaration,
     PropertySignature,
@@ -132,7 +134,15 @@ export function encodeOps(ops: ReflectionOp[]): string {
     return ops.map(v => String.fromCharCode(v + 33)).join('');
 }
 
+function debug(...message: any[]): void {
+    if ('undefined' !== typeof process && 'string' === typeof process.env.DEBUG && process.env.DEBUG.includes('deepkit')) {
+        console.debug(...message);
+    }
+}
+
 export const packSizeByte: number = 6;
+
+const serverEnv = 'undefined' !== typeof process;
 
 /**
  * It can't be more ops than this given number
@@ -419,6 +429,7 @@ class CompilerProgram {
  */
 export class ReflectionTransformer {
     sourceFile!: SourceFile;
+    protected program?: Program;
     protected host: EmitHost;
     protected resolver: EmitResolver;
     protected f: NodeFactory;
@@ -452,11 +463,17 @@ export class ReflectionTransformer {
     ) {
         this.f = context.factory;
         this.host = (context as any).getEmitHost();
-        this.resolver = (context as any).getEmitResolver() as EmitResolver;
+        this.resolver = (context as any).getEmitResolver();
         this.nodeConverter = new NodeConverter(this.f);
     }
 
+    forProgram(program?: Program): this {
+        this.program = program;
+        return this;
+    }
+
     protected getTypeChecker(file: SourceFile): TypeChecker {
+        if (this.program) return this.program.getTypeChecker();
         if ((file as any)._typeChecker) return (file as any)._typeChecker;
         const options = this.context.getCompilerOptions();
         const host = createCompilerHost(options);
@@ -466,6 +483,7 @@ export class ReflectionTransformer {
     }
 
     protected getTypeCheckerForHost(): TypeChecker {
+        if (this.program) return this.program.getTypeChecker();
         if ((this.host as any)._typeChecker) return (this.host as any)._typeChecker;
         const options = this.context.getCompilerOptions();
         const host = createCompilerHost(options);
@@ -567,8 +585,13 @@ export class ReflectionTransformer {
                     const found = this.resolveDeclaration(node.expression);
                     if (found) type = found.declaration;
                 } else if (isPropertyAccessExpression(node.expression)) {
-                    const found = this.getTypeCheckerForHost().getTypeAtLocation(node.expression);
-                    if (found && found.symbol && found.symbol.declarations) type = found.symbol.declarations[0];
+                    try {
+                        const found = this.getTypeCheckerForHost().getTypeAtLocation(node.expression);
+                        if (found && found.symbol && found.symbol.declarations) type = found.symbol.declarations[0];
+                    } catch {
+                        // mysteriously it can fail with "TypeError: Cannot read properties of undefined (reading 'flags')"
+                        // at getTypeFromFlowType (../type-compiler/node_modules/typescript/lib/typescript.js:68607:29)
+                    }
                 }
 
                 if (type && (isFunctionDeclaration(type) || isMethodDeclaration(type) || isMethodSignature(type) || isFunctionTypeNode(type)) && type.typeParameters) {
@@ -674,7 +697,7 @@ export class ReflectionTransformer {
                         this.f.createObjectBindingPattern([this.f.createBindingElement(undefined, undefined, imp.identifier)]),
                         undefined, undefined,
                         this.f.createCallExpression(this.f.createIdentifier('require'), undefined, [imp.from])
-                    )]));
+                    )], NodeFlags.Const));
                     imports.push(variable);
                 } else {
                     //import {identifier} from './bar'
@@ -727,7 +750,7 @@ export class ReflectionTransformer {
                     undefined,
                     typeProgramExpression,
                 )
-            ]),
+            ], NodeFlags.Const),
         );
 
         //when its commonJS, the `variable` would be exported as `exports.$name = $value`, but all references point just to $name.
@@ -1815,8 +1838,11 @@ export class ReflectionTransformer {
         if (!importOrExport.moduleSpecifier) return;
         if (!isStringLiteral(importOrExport.moduleSpecifier)) return;
 
-        const source = this.resolver.getExternalModuleFileFromDeclaration(importOrExport);
-        if (!source) return;
+        let source = this.resolver.getExternalModuleFileFromDeclaration(importOrExport);
+        if (!source) {
+            debug('module not found', importOrExport.getText(), '. Is transpileOnly enabled? It needs to be disabled.');
+            return;
+        }
 
         const declaration = this.findDeclarationInFile(source, declarationName);
 
@@ -2010,6 +2036,11 @@ export class ReflectionTransformer {
 
         //nothing found, look in tsconfig.json
         if (this.reflectionMode !== undefined) return { mode: this.reflectionMode };
+
+        if (!serverEnv) {
+            return { mode: 'default' };
+        }
+
         const sourceFile = findSourceFile(node) || this.sourceFile;
         let currentDir = dirname(sourceFile.fileName);
 
@@ -2100,11 +2131,10 @@ export class DeclarationTransformer extends ReflectionTransformer {
 }
 
 let loaded = false;
-declare var process: any;
 
 export const transformer: CustomTransformerFactory = function deepkitTransformer(context) {
-    if (!loaded && process && 'string' === typeof process.env.DEBUG && process.env.DEBUG.includes('deepkit')) {
-        process.stderr.write('@deepkit/type transformer loaded\n');
+    if (!loaded) {
+        debug('@deepkit/type transformer loaded\n');
         loaded = true;
     }
     return new ReflectionTransformer(context);

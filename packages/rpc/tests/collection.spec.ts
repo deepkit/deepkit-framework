@@ -115,7 +115,6 @@ test('collection state', async () => {
 
     {
         const c = await controller.changedModel();
-        console.log('c', c);
         expect(c.model.itemsPerPage).toBe(30);
         expect(c.model.skip).toBe(30);
         expect(c.model.limit).toBe(5);
