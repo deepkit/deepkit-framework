@@ -26,7 +26,7 @@
     "@deepkit/core-rxjs": "^1.0.1-alpha.39",
     "@deepkit/rpc": "^1.0.1-alpha.41",
     "@deepkit/type": "^1.0.1-alpha.40",
-    "rxjs": "~6.6.0"
+    "rxjs": "*"
   },
   "devDependencies": {
     "@deepkit/bson": "^1.0.1-alpha.68",
