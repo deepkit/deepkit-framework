@@ -1270,3 +1270,26 @@ test('encapsulated module services cannot be used', () => {
     const injector = new InjectorContext(app);
     expect(() => injector.get(Module2Service, myModule2)).toThrow(`Undefined dependency "module1: Module1Service" of Module2Service(?)`);
 });
+
+test('external pseudo class without annotation', () => {
+    const Stripe = eval('(function Stripe() {this.isStripe = true;})');
+
+    class MyService {
+        constructor(public stripe: typeof Stripe) {
+        }
+    }
+
+    const app = new InjectorModule([
+        {
+            provide: Stripe, useFactory() {
+                return new Stripe;
+            }
+        },
+        MyService
+    ]);
+    const injector = new InjectorContext(app);
+
+    const service = injector.get<MyService>();
+    expect(service.stripe).toBeInstanceOf(Stripe);
+    expect(service.stripe.isStripe).toBe(true);
+});
