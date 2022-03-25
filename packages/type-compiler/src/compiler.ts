@@ -1617,6 +1617,17 @@ export class ReflectionTransformer {
 
                             this.addImports.push({ identifier: this.getDeclarationVariableName(typeName), from: resolved.importDeclaration.moduleSpecifier });
                         }
+                    } else {
+                        const reflection = this.findReflectionConfig(declaration, program);
+                        if (reflection.mode === 'never') {
+                            program.pushOp(ReflectionOp.any);
+                            return;
+                        }
+
+                        this.compileDeclarations.set(declaration, {
+                            name: typeName,
+                            sourceFile: declarationSourceFile,
+                        });
                     }
                 }
 
@@ -1630,7 +1641,6 @@ export class ReflectionTransformer {
                     program.pushOp(ReflectionOp.inline, index);
                 }
 
-                //
                 // if (type.typeArguments) {
                 //     for (const argument of type.typeArguments) {
                 //         this.extractPackStructOfType(argument, program);
