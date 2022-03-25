@@ -14,11 +14,11 @@ import {
     ComputedPropertyName,
     EntityName,
     Expression,
-    Identifier,
+    Identifier, ImportDeclaration,
     ImportSpecifier,
     isArrowFunction,
     isComputedPropertyName,
-    isIdentifier,
+    isIdentifier, isNamedImports,
     isNumericLiteral,
     isPrivateIdentifier,
     isStringLiteral,
@@ -192,11 +192,20 @@ export function getGlobalsOfSourceFile(file: SourceFile): SymbolTable | void {
  * For imports that can removed (like a class import only used as type only, like `p: Model[]`) we have
  * to modify the import so TS does not remove it.
  */
-export function ensureImportIsEmitted(importSpecifier?: Node) {
-    if (importSpecifier) {
-        //make synthetic. Let the TS compiler keep this import
-        (importSpecifier.flags as any) |= NodeFlags.Synthesized;
+export function ensureImportIsEmitted(importDeclaration: ImportDeclaration, specifierName?: Identifier) {
+    if (specifierName && importDeclaration.importClause && importDeclaration.importClause.namedBindings) {
+        // const binding = importDeclaration.importClause.namedBindings;
+        if (isNamedImports(importDeclaration.importClause.namedBindings)) {
+            for (const element of importDeclaration.importClause.namedBindings.elements) {
+                if (element.name.escapedText === specifierName.escapedText) {
+                    (element.flags as any) |= NodeFlags.Synthesized;
+                    return;
+                }
+            }
+        }
     }
+
+    (importDeclaration.flags as any) |= NodeFlags.Synthesized;
 }
 
 

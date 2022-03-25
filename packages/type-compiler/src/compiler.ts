@@ -38,7 +38,6 @@ import {
     getJSDocTags,
     Identifier,
     ImportDeclaration,
-    ImportSpecifier,
     IndexedAccessTypeNode,
     IndexSignatureDeclaration,
     InferTypeNode,
@@ -60,11 +59,14 @@ import {
     isFunctionLike,
     isFunctionTypeNode,
     isIdentifier,
+    isImportClause,
+    isImportDeclaration,
     isImportSpecifier,
     isInferTypeNode,
     isInterfaceDeclaration,
     isMethodDeclaration,
     isMethodSignature,
+    isModuleDeclaration,
     isNamedExports,
     isNamedTupleMember,
     isObjectLiteralExpression,
@@ -72,6 +74,7 @@ import {
     isParenthesizedTypeNode,
     isPropertyAccessExpression,
     isQualifiedName,
+    isSourceFile,
     isStringLiteral,
     isTypeAliasDeclaration,
     isTypeParameterDeclaration,
@@ -83,6 +86,7 @@ import {
     MethodDeclaration,
     MethodSignature,
     ModifierFlags,
+    ModuleDeclaration,
     ModuleKind,
     Node,
     NodeFactory,
@@ -256,9 +260,6 @@ class CompilerProgram {
 
     protected activeCoRoutines: { ops: ReflectionOp[] }[] = [];
     protected coRoutines: { ops: ReflectionOp[] }[] = [];
-
-    //this was used for embedding external programs. not necessary anymore, since we rely on types being reflected in external modules.
-    public importSpecifier?: ImportSpecifier;
 
     constructor(public forNode: Node, public sourceFile: SourceFile) {
     }
@@ -440,13 +441,13 @@ export class ReflectionTransformer {
      * Types added to this map will get a type program directly under it.
      * This is for types used in the very same file.
      */
-    protected compileDeclarations = new Map<TypeAliasDeclaration | InterfaceDeclaration | EnumDeclaration, { name: EntityName, sourceFile: SourceFile, importSpecifier?: ImportSpecifier }>();
+    protected compileDeclarations = new Map<TypeAliasDeclaration | InterfaceDeclaration | EnumDeclaration, { name: EntityName, sourceFile: SourceFile }>();
 
     /**
      * Types added to this map will get a type program at the top root level of the program.
      * This is for imported types, which need to be inlined into the current file, as we do not emit type imports (TS will omit them).
      */
-    protected embedDeclarations = new Map<Node, { name: EntityName, sourceFile: SourceFile, importSpecifier?: ImportSpecifier }>();
+    protected embedDeclarations = new Map<Node, { name: EntityName, sourceFile: SourceFile }>();
 
     /**
      * When a node was embedded or compiled (from the maps above), we store it here to know to not add it again.
@@ -659,7 +660,7 @@ export class ReflectionTransformer {
                 const d = this.compileDeclarations.get(node)!;
                 this.compileDeclarations.delete(node);
                 this.compiledDeclarations.add(node);
-                return [...this.createProgramVarFromNode(node, d.name, d.sourceFile, d.importSpecifier), node];
+                return [...this.createProgramVarFromNode(node, d.name, d.sourceFile), node];
             }
 
             return node;
@@ -678,7 +679,7 @@ export class ReflectionTransformer {
                 const entries = Array.from(this.embedDeclarations.entries());
                 this.embedDeclarations.clear();
                 for (const [node, d] of entries) {
-                    embedded.push(...this.createProgramVarFromNode(node, d.name, d.sourceFile, d.importSpecifier));
+                    embedded.push(...this.createProgramVarFromNode(node, d.name, d.sourceFile));
                 }
                 this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...embedded, ...this.sourceFile.statements]);
             }
@@ -720,9 +721,8 @@ export class ReflectionTransformer {
         return this.sourceFile;
     }
 
-    protected createProgramVarFromNode(node: Node, name: EntityName, sourceFile: SourceFile, importSpecifier?: ImportSpecifier) {
+    protected createProgramVarFromNode(node: Node, name: EntityName, sourceFile: SourceFile) {
         const typeProgram = new CompilerProgram(node, sourceFile);
-        typeProgram.importSpecifier = importSpecifier;
 
         if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && node.typeParameters) {
             for (const param of node.typeParameters) {
@@ -1282,12 +1282,12 @@ export class ReflectionTransformer {
                 // }
                 if (isIdentifier(narrowed.exprName)) {
                     const resolved = this.resolveDeclaration(narrowed.exprName);
-                    if (resolved && findSourceFile(resolved.declaration) !== this.sourceFile) {
-                        ensureImportIsEmitted(resolved.importSpecifier);
+                    if (resolved && findSourceFile(resolved.declaration) !== this.sourceFile && resolved.importDeclaration) {
+                        ensureImportIsEmitted(resolved.importDeclaration, narrowed.exprName);
                     }
                 }
 
-                const expression = program.importSpecifier ? this.f.createIdentifier(getNameAsString(narrowed.exprName)) : serializeEntityNameAsExpression(this.f, narrowed.exprName);
+                const expression = serializeEntityNameAsExpression(this.f, narrowed.exprName);
                 program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, expression)));
                 break;
             }
@@ -1351,7 +1351,7 @@ export class ReflectionTransformer {
      * This is a custom resolver based on populated `locals` from the binder. It uses a custom resolution algorithm since
      * we have no access to the binder/TypeChecker directly and instantiating a TypeChecker per file/transformer is incredible slow.
      */
-    protected resolveDeclaration(typeName: EntityName): { declaration: Declaration, importSpecifier?: ImportSpecifier } | void {
+    protected resolveDeclaration(typeName: EntityName): { declaration: Declaration, importDeclaration?: ImportDeclaration, typeOnly?: boolean } | void {
         let current: Node = typeName.parent;
         if (typeName.kind === SyntaxKind.QualifiedName) return; //namespace access not supported yet, e.g. type a = Namespace.X;
 
@@ -1385,10 +1385,22 @@ export class ReflectionTransformer {
             // console.log('look in global');
         }
 
-        let importSpecifier: ImportSpecifier | undefined = declaration && isImportSpecifier(declaration) ? declaration : undefined;
+        let importDeclaration: ImportDeclaration | undefined = undefined;
+        let typeOnly = false;
 
         if (declaration && isImportSpecifier(declaration)) {
-            declaration = this.resolveImportSpecifier(typeName.escapedText, declaration.parent.parent.parent);
+            if (declaration.isTypeOnly) typeOnly = true;
+            importDeclaration = declaration.parent.parent.parent;
+        } else if (declaration && isImportDeclaration(declaration)) {
+            // declaration = this.resolveImportSpecifier(typeName.escapedText, declaration);
+            importDeclaration = declaration;
+        } else if (declaration && isImportClause(declaration)) {
+            importDeclaration = declaration.parent;
+        }
+
+        if (importDeclaration) {
+            if (importDeclaration.importClause && importDeclaration.importClause.isTypeOnly) typeOnly = true;
+            declaration = this.resolveImportSpecifier(typeName.escapedText, importDeclaration);
         }
 
         if (declaration && declaration.kind === SyntaxKind.TypeParameter && declaration.parent.kind === SyntaxKind.TypeAliasDeclaration) {
@@ -1398,7 +1410,7 @@ export class ReflectionTransformer {
 
         if (!declaration) return;
 
-        return { declaration, importSpecifier };
+        return { declaration, importDeclaration, typeOnly };
     }
 
     // protected resolveType(node: TypeNode): Declaration | Node {
@@ -1478,7 +1490,6 @@ export class ReflectionTransformer {
 
             const resolved = this.resolveDeclaration(typeName);
             if (!resolved) {
-
                 //maybe reference to enum
                 if (isQualifiedName(typeName)) {
                     if (isIdentifier(typeName.left)) {
@@ -1518,8 +1529,12 @@ export class ReflectionTransformer {
             }
 
             const declaration = resolved.declaration;
+            if (isModuleDeclaration(declaration) && resolved.importDeclaration) {
+                if (isIdentifier(typeName)) ensureImportIsEmitted(resolved.importDeclaration, typeName);
 
-            if (isTypeAliasDeclaration(declaration) || isInterfaceDeclaration(declaration) || isEnumDeclaration(declaration)) {
+                //we can not infer from module declaration, so do `typeof T` in runtime
+                program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, serializeEntityNameAsExpression(this.f, typeName))));
+            } else if (isTypeAliasDeclaration(declaration) || isInterfaceDeclaration(declaration) || isEnumDeclaration(declaration)) {
                 //Set/Map are interface declarations
                 const name = getNameAsString(typeName);
                 if (name === 'Array') {
@@ -1562,20 +1577,19 @@ export class ReflectionTransformer {
                 //to break recursion, we track which declaration has already been compiled
                 if (!this.compiledDeclarations.has(declaration)) {
                     const declarationSourceFile = findSourceFile(declaration) || this.sourceFile;
-                    const isGlobal = resolved.importSpecifier === undefined && declarationSourceFile.fileName !== this.sourceFile.fileName;
-                    const isFromImport = resolved.importSpecifier !== undefined;
+                    const isGlobal = resolved.importDeclaration === undefined && declarationSourceFile.fileName !== this.sourceFile.fileName;
+                    const isFromImport = resolved.importDeclaration !== undefined;
 
                     if (isGlobal) {
                         //we don't embed non-global imported declarations anymore, only globals
                         this.embedDeclarations.set(declaration, {
                             name: typeName,
-                            sourceFile: declarationSourceFile,
-                            importSpecifier: resolved!.importSpecifier || program.importSpecifier
+                            sourceFile: declarationSourceFile
                         });
                     } else if (isFromImport) {
-                        if (resolved.importSpecifier) {
+                        if (resolved.importDeclaration) {
                             //if explicit `import {type T}`, we do not emit an import and instead push any
-                            if (resolved.importSpecifier.isTypeOnly || resolved.importSpecifier.parent.parent.isTypeOnly) {
+                            if (resolved.typeOnly) {
                                 program.pushOp(ReflectionOp.any);
                                 return;
                             }
@@ -1587,8 +1601,7 @@ export class ReflectionTransformer {
                                 return;
                             }
 
-                            const originImportStatement = resolved.importSpecifier.parent.parent.parent;
-                            const found = this.resolver.getExternalModuleFileFromDeclaration(originImportStatement);
+                            const found = this.resolver.getExternalModuleFileFromDeclaration(resolved.importDeclaration);
                             if (!found) {
                                 debug('module not found');
                                 program.pushOp(ReflectionOp.any);
@@ -1602,20 +1615,8 @@ export class ReflectionTransformer {
                                 return;
                             }
 
-                            this.addImports.push({ identifier: this.getDeclarationVariableName(typeName), from: originImportStatement.moduleSpecifier });
+                            this.addImports.push({ identifier: this.getDeclarationVariableName(typeName), from: resolved.importDeclaration.moduleSpecifier });
                         }
-                    } else {
-                        const reflection = this.findReflectionConfig(declaration, program);
-                        if (reflection.mode === 'never') {
-                            program.pushOp(ReflectionOp.any);
-                            return;
-                        }
-
-                        this.compileDeclarations.set(declaration, {
-                            name: typeName,
-                            sourceFile: declarationSourceFile,
-                            importSpecifier: resolved!.importSpecifier || program.importSpecifier
-                        });
                     }
                 }
 
@@ -1647,12 +1648,12 @@ export class ReflectionTransformer {
                 //     return;
             } else if (isClassDeclaration(declaration)) {
                 //if explicit `import {type T}`, we do not emit an import and instead push any
-                if (resolved.importSpecifier && (resolved.importSpecifier.isTypeOnly || resolved.importSpecifier.parent.parent.isTypeOnly)) {
+                if (resolved.typeOnly) {
                     program.pushOp(ReflectionOp.any);
                     return;
                 }
 
-                ensureImportIsEmitted(resolved.importSpecifier);
+                if (resolved.importDeclaration && isIdentifier(typeName)) ensureImportIsEmitted(resolved.importDeclaration, typeName);
                 program.pushFrame();
 
                 if (type.typeArguments) {
@@ -1839,7 +1840,7 @@ export class ReflectionTransformer {
         return this.f.createPropertyAccessExpression(isIdentifier(e.left) ? e.left : this.createAccessorForEntityName(e.left), e.right);
     }
 
-    protected findDeclarationInFile(sourceFile: SourceFile, declarationName: __String): Declaration | undefined {
+    protected findDeclarationInFile(sourceFile: SourceFile | ModuleDeclaration, declarationName: __String): Declaration | undefined {
         if (isNodeWithLocals(sourceFile) && sourceFile.locals) {
             const declarationSymbol = sourceFile.locals.get(declarationName);
             if (declarationSymbol && declarationSymbol.declarations && declarationSymbol.declarations[0]) {
@@ -1853,9 +1854,16 @@ export class ReflectionTransformer {
         if (!importOrExport.moduleSpecifier) return;
         if (!isStringLiteral(importOrExport.moduleSpecifier)) return;
 
-        let source = this.resolver.getExternalModuleFileFromDeclaration(importOrExport);
+        let source: SourceFile | ModuleDeclaration | undefined = this.resolver.getExternalModuleFileFromDeclaration(importOrExport);
         if (!source) {
-            debug('module not found', 'Is transpileOnly enabled? It needs to be disabled.');
+            const found = this.getTypeCheckerForHost().getSymbolAtLocation(importOrExport.moduleSpecifier);
+            if (found && found.valueDeclaration && isModuleDeclaration(found.valueDeclaration)) {
+                source = found.valueDeclaration;
+            }
+        }
+
+        if (!source) {
+            debug('module not found', (importOrExport as any).text, 'Is transpileOnly enabled? It needs to be disabled.');
             return;
         }
 
@@ -1873,10 +1881,12 @@ export class ReflectionTransformer {
         }
 
         //not found, look in exports
-        for (const statement of source.statements) {
-            if (!isExportDeclaration(statement)) continue;
-            const found = this.followExport(declarationName, statement);
-            if (found) return found;
+        if (isSourceFile(source)) {
+            for (const statement of source.statements) {
+                if (!isExportDeclaration(statement)) continue;
+                const found = this.followExport(declarationName, statement);
+                if (found) return found;
+            }
         }
 
         return;
