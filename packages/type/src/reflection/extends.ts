@@ -156,6 +156,8 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
             }
         }
 
+        if (left.kind === ReflectionKind.function && right.kind === ReflectionKind.function && left.function && left.function === right.function) return true;
+
         if ((left.kind === ReflectionKind.function || left.kind === ReflectionKind.method || left.kind === ReflectionKind.methodSignature) &&
             (right.kind === ReflectionKind.function || right.kind === ReflectionKind.method || right.kind === ReflectionKind.methodSignature || right.kind === ReflectionKind.objectLiteral)
         ) {

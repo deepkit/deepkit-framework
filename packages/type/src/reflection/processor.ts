@@ -1503,7 +1503,7 @@ export function typeInfer(value: any): Type {
             return { kind: ReflectionKind.class, classType: value as ClassType, types: [] };
         }
 
-        return { kind: ReflectionKind.function, name: value.name, return: { kind: ReflectionKind.any }, parameters: [] };
+        return { kind: ReflectionKind.function, function: value, name: value.name, return: { kind: ReflectionKind.any }, parameters: [] };
     } else if (isArray(value)) {
         return { kind: ReflectionKind.array, type: typeInferFromContainer(value) };
     } else if ('object' === typeof value) {
