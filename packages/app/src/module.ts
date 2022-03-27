@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { InjectorModule, InjectorToken, ProviderWithScope, Token } from '@deepkit/injector';
+import { InjectorModule, ProviderWithScope, Token } from '@deepkit/injector';
 import { AbstractClassType, ClassType, CustomError, ExtractClassType, isClass } from '@deepkit/core';
 import { EventListener } from '@deepkit/event';
 import { WorkflowDefinition } from '@deepkit/workflow';
@@ -22,7 +22,7 @@ export interface MiddlewareConfig {
 
 export type MiddlewareFactory = () => MiddlewareConfig;
 
-export type ExportType = AbstractClassType | InjectorToken<any> | string | AppModule<any> | Type;
+export type ExportType = AbstractClassType | string | AppModule<any> | Type;
 
 export interface ModuleDefinition {
     /**

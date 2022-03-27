@@ -33,7 +33,7 @@ import { FrameworkConfig } from '../module.config';
 import { FileStopwatchStore } from './stopwatch/store';
 import { Subject } from 'rxjs';
 import { unlink } from 'fs/promises';
-import { getScope, InjectorToken, resolveToken, Token } from '@deepkit/injector';
+import { getScope, resolveToken, Token } from '@deepkit/injector';
 import { AppModule, ServiceContainer } from '@deepkit/app';
 import { RpcControllers } from '../rpc';
 import { ReflectionClass, serializeType, stringifyType } from '@deepkit/type';
@@ -291,7 +291,6 @@ export class DebugController implements DebugControllerInterface {
 
         function getTokenLabel(token: Token): string {
             if (isClass(token)) return getClassName(token);
-            if (token instanceof InjectorToken) return `InjectorToken('${token.name}')`;
 
             return String(token);
         }
