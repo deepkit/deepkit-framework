@@ -1,8 +1,9 @@
 import { expect, test } from '@jest/globals';
-import { InjectorContext, injectorReference, InjectorToken } from '../src/injector';
+import { InjectorContext, injectorReference } from '../src/injector';
 import { provide, Tag } from '../src/provider';
 import { InjectorModule } from '../src/module';
 import { typeOf } from '@deepkit/type';
+import { Inject } from '../src/types';
 
 test('basic', () => {
     class Service {
@@ -849,23 +850,34 @@ test('string reference manually type', () => {
     expect(service).toBeInstanceOf(Service);
 });
 
-test('InjectorToken reference with interface', () => {
-    interface Service {
-        add(): void;
+test('provide() with provider', () => {
+    interface Redis {
+        get(key: string): any;
     }
 
-    const serviceToken = new InjectorToken<Service>('service');
-
-    const root = new InjectorModule([{
-        provide: serviceToken, useClass: class {
-            add() {
-            }
+    class RedisImplementation implements Redis {
+        get(key: string): any {
+            return true;
         }
-    }]);
+    }
+    class Service {
+        constructor(public redis: Redis) {
+        }
+    }
+
+    const root = new InjectorModule([
+        Service,
+        provide<Redis>({
+            useFactory: () => {
+                return new RedisImplementation;
+            }
+        })
+    ]);
+
     const injector = new InjectorContext(root);
 
-    const service = injector.get(serviceToken);
-    service.add();
+    const service = injector.get(Service);
+    expect(service.redis.get('abc')).toBe(true);
 });
 
 test('injectorReference from other module', () => {
@@ -1292,4 +1304,92 @@ test('external pseudo class without annotation', () => {
     const service = injector.get<MyService>();
     expect(service.stripe).toBeInstanceOf(Stripe);
     expect(service.stripe.isStripe).toBe(true);
+});
+
+test('external class without annotation', () => {
+    const Stripe = eval('(class Stripe { constructor() {this.isStripe = true}})');
+
+    class MyService {
+        constructor(public stripe: typeof Stripe) {
+        }
+    }
+
+    const app = new InjectorModule([
+        {
+            provide: Stripe, useFactory() {
+                return new Stripe;
+            }
+        },
+        MyService
+    ]);
+    const injector = new InjectorContext(app);
+
+    const service = injector.get<MyService>();
+    expect(service.stripe).toBeInstanceOf(Stripe);
+    expect(service.stripe.isStripe).toBe(true);
+});
+
+test('inject via string', () => {
+    const symbol1 = 'string1';
+    const symbol2 = 'string2';
+
+    class MyService {
+        constructor(
+            public service1: Inject<any, typeof symbol1>,
+            public service2: Inject<any, typeof symbol2>,
+        ) {
+        }
+    }
+
+    const app = new InjectorModule([
+        {
+            provide: symbol1, useFactory() {
+                return { value: 1 };
+            }
+        },
+        {
+            provide: symbol2, useFactory() {
+                return { value: 2 };
+            }
+        },
+        MyService
+    ]);
+    const injector = new InjectorContext(app);
+
+    const service = injector.get<MyService>();
+    expect(service.service1.value).toBe(1);
+    expect(service.service2.value).toBe(2);
+});
+
+
+test('inject via symbols', () => {
+    const symbol1 = Symbol();
+    const symbol2 = Symbol();
+
+    class MyService {
+        constructor(
+            public service1: Inject<any, typeof symbol1>,
+            public service2: Inject<any, typeof symbol2>,
+        ) {
+        }
+    }
+
+    const app = new InjectorModule([
+        {
+            provide: symbol1, useFactory() {
+                return { value: 1 };
+            }
+        },
+        {
+            provide: symbol2, useFactory() {
+                return { value: 2 };
+            }
+        },
+        MyService
+    ]);
+    const injector = new InjectorContext(app);
+
+    const service = injector.get<MyService>();
+    expect(service.service1.value).toBe(1);
+    expect(service.service2.value).toBe(2);
 });

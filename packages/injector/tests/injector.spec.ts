@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { CircularDependencyError, Injector, InjectorToken } from '../src/injector';
+import { CircularDependencyError, Injector } from '../src/injector';
 import { InjectorModule } from '../src/module';
 import { ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { Inject } from '../src/types';
@@ -366,25 +366,6 @@ test('injector via Inject string', () => {
         const injector = Injector.from([MyServer, { provide: 'connection', useClass: Connection }]);
         expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
         expect(injector.get(MyServer).connection).toBeInstanceOf(Connection);
-    }
-});
-
-test('injector token', () => {
-    interface ConnectionInterface {
-        doIt(): string;
-    }
-
-    const Connection = new InjectorToken<ConnectionInterface>('connection');
-
-    {
-        const injector = Injector.from([{
-            provide: Connection, useValue: {
-                doIt() {
-                    return 'hi';
-                }
-            }
-        }]);
-        expect(injector.get(Connection).doIt()).toBe('hi');
     }
 });
 

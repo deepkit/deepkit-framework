@@ -40,38 +40,6 @@ export function injectorReference<T>(classTypeOrToken: T, module?: InjectorModul
     return new InjectorReference(classTypeOrToken, module);
 }
 
-
-/**
- * An injector token for tokens that have no unique class or interface.
- *
- * ```typescript
- *  export interface ServiceInterface {
- *      doIt(): void;
- *  }
- *  export const Service = new InjectorToken<ServiceInterface>('service');
- *
- *  {
- *      providers: [
- *          {provide: Service, useFactory() => ... },
- *      ]
- *  }
- *
- *  //user side
- *  const service = injector.get(Service);
- *  service.doIt();
- * ```
- */
-export class InjectorToken<T> {
-    type!: T;
-
-    constructor(public readonly name: string) {
-    }
-
-    toString() {
-        return 'InjectToken=' + this.name;
-    }
-}
-
 export function tokenLabel(token: Token): string {
     if (token === null) return 'null';
     if (token === undefined) return 'undefined';
@@ -181,7 +149,7 @@ interface Scope {
     instances: { [name: string]: any };
 }
 
-export type ResolveToken<T> = T extends AbstractClassType<infer R> ? R : T extends InjectorToken<infer R> ? R : T;
+export type ResolveToken<T> = T extends ClassType<infer R> ? R : T extends AbstractClassType<infer R> ? R : T;
 
 export function resolveToken(provider: ProviderWithScope): Token {
     if (isClass(provider)) return provider;
@@ -861,7 +829,7 @@ export class InjectorContext {
     get<T>(token?: ReceiveType<T> | Token<T>, module?: InjectorModule): ResolveToken<T> {
         const injector = this.getInjector(module || this.rootModule);
         if ('string' === typeof token || 'number' === typeof token || 'bigint' === typeof token ||
-            'boolean' === typeof token || 'symbol' === typeof token || isFunction(token) || isClass(token) || token instanceof InjectorToken || token instanceof RegExp) {
+            'boolean' === typeof token || 'symbol' === typeof token || isFunction(token) || isClass(token) || token instanceof RegExp) {
             return injector.get(token, this.scope) as ResolveToken<T>;
         } else if (isType(token)) {
             return injector.createResolver(isType(token) ? token as Type : resolveReceiveType(token), this.scope)(this.scope);
