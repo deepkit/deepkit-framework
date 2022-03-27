@@ -38,13 +38,8 @@ export class DataStructure {
 }
 
 export function extractDataStructure(ds: DataStructure, type: Type): any {
-    if (type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral) {
-        if ((isReferenceType(type) || isBackReferenceType(type)) && ds.asReference) {
-            const primary = ReflectionClass.from(type).getPrimary();
-            return extractDataStructure(ds.properties[primary.name], primary.type);
-        }
-
-        return extractDataStructureFromSchema(ds, ReflectionClass.from(type));
+    if (type.kind === ReflectionKind.class && type.classType === Date) {
+        return ds.value;
     } else if (isMapType(type)) {
         const v: any = {};
         if (!type.typeArguments) return;
@@ -76,6 +71,13 @@ export function extractDataStructure(ds: DataStructure, type: Type): any {
         }
 
         return list;
+    } else if (type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral) {
+        if ((isReferenceType(type) || isBackReferenceType(type)) && ds.asReference) {
+            const primary = ReflectionClass.from(type).getPrimary();
+            return extractDataStructure(ds.properties[primary.name], primary.type);
+        }
+
+        return extractDataStructureFromSchema(ds, ReflectionClass.from(type));
     } else {
         return ds.value;
     }
