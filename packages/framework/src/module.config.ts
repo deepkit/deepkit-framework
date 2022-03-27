@@ -8,6 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+const isWindows = 'undefined' !== typeof process ? process.platform === 'win32' : false;
+
 export class FrameworkConfig {
     host: string = '0.0.0.0'; //binding to localhost is roughly 20% faster.
     port: number = 8080;
@@ -86,7 +88,7 @@ export class FrameworkConfig {
     /**
      * @description IP:Port or unix socket name or named pipes.
      */
-    debugBrokerHost: string = 'var/debug-broker.sock';
+    debugBrokerHost: string = isWindows ? '127.0.0.1:9882' : 'var/debug-broker.sock';
 
     varPath: string = 'var/';
 
