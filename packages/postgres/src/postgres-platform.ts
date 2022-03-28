@@ -67,6 +67,7 @@ export class PostgresPlatform extends DefaultPlatform {
         this.addType(ReflectionKind.boolean, 'boolean');
 
         this.addType(ReflectionKind.class, 'jsonb');
+        this.addType(ReflectionKind.objectLiteral, 'jsonb');
         this.addType(ReflectionKind.array, 'jsonb');
         this.addType(ReflectionKind.union, 'jsonb');
 

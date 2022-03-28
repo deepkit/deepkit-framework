@@ -7,21 +7,21 @@ import { isArray } from '@deepkit/core';
 import { Group } from './bookstore/group';
 import { DatabaseFactory } from './test';
 
-class BookModeration {
-    locked: boolean = false;
+interface BookModeration {
+    locked: boolean;
 
     maxDate?: Date;
 
     admin?: User;
 
-    moderators: User[] = [];
+    moderators: User[];
 }
 
 @entity.name('book')
 class Book {
     public id?: number & PrimaryKey & AutoIncrement;
 
-    moderation: BookModeration = new BookModeration;
+    moderation: BookModeration = { locked: false, moderators: [] };
 
     constructor(
         public author: User & Reference,
@@ -431,14 +431,12 @@ export const bookstoreTests = {
             const book1DB = await database.query(Book).filter({ author: peter }).findOne();
             expect(book1DB.title).toBe('Peters book');
             expect(book1DB.moderation === book1.moderation).toBe(false);
-            expect(book1DB.moderation).toBeInstanceOf(BookModeration);
             expect(book1DB.moderation.locked).toBe(true);
         }
 
         {
             const book2DB = await database.query(Book).filter({ author: herbert }).findOne();
             expect(book2DB.title).toBe('Herberts book');
-            expect(book2DB.moderation).toBeInstanceOf(BookModeration);
             expect(book2DB.moderation.locked).toBe(false);
             expect(book2DB.moderation.admin).toBeInstanceOf(User);
             expect(book2DB.moderation.admin?.name).toBe('Admin');

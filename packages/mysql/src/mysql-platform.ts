@@ -29,6 +29,7 @@ export class MySQLPlatform extends DefaultPlatform {
         this.nativeTypeInformation.set('longblob', { needsIndexPrefix: true, defaultIndexSize: 767 });
 
         this.addType(ReflectionKind.class, 'json');
+        this.addType(ReflectionKind.objectLiteral, 'json');
         this.addType(ReflectionKind.array, 'json');
         this.addType(ReflectionKind.union, 'json');
 

@@ -10,7 +10,7 @@ class User {
 
     posts?: Post[] & BackReference;
 
-    groups?: Group[] & BackReference<{via: typeof UserGroup}>;
+    groups?: Group[] & BackReference<{via: UserGroup}>;
 
     constructor(public username: string) {
     }
@@ -117,4 +117,34 @@ export const usersTests = {
         }
         database.disconnect();
     },
+
+    async limitWithJoins(databaseFactory: DatabaseFactory) {
+        const database = await databaseFactory(entities);
+
+        const user1 = new User('User1');
+        const user2 = new User('User2');
+
+        const post1 = new Post(user1, 'Post 1');
+        const post2 = new Post(user1, 'Post 2');
+        const post3 = new Post(user1, 'Post 3');
+
+        await database.persist(user1, user2, post1, post2, post3);
+
+        {
+            const user = await database.query(User).joinWith('posts').findOne();
+            expect(user).toBeInstanceOf(User);
+            expect(user.posts!.length).toBe(3);
+            expect(user.posts![0]).toBeInstanceOf(Post);
+        }
+
+        {
+            const users = await database.query(User).joinWith('posts').limit(1).find();
+            expect(users.length).toBe(1);
+            const user = users[0]!;
+
+            expect(user).toBeInstanceOf(User);
+            expect(user.posts!.length).toBe(3);
+            expect(user.posts![0]).toBeInstanceOf(Post);
+        }
+    }
 };

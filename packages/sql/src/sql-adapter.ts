@@ -259,51 +259,17 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
             if (formatterFrame) formatterFrame.end();
 
             return results;
-        } catch (error) {
-            throw error;
-            throw new DatabaseError(`Could not query ${this.classSchema.getClassName()} due to SQL error ${error}.\nSQL: ${sql.sql}\nParams: ${JSON.stringify(sql.params)}`);
+        } catch (error: any) {
+            throw new DatabaseError(`Could not query ${this.classSchema.getClassName()} due to SQL error ${error}.\nSQL: ${sql.sql}\nParams: ${JSON.stringify(sql.params)}. Error: ${error}`);
         } finally {
             connection.release();
         }
     }
 
     async findOneOrUndefined(model: SQLQueryModel<T>): Promise<T | undefined> {
-        const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
-        const sqlBuilder = new SqlBuilder(this.platform);
-        const sql = sqlBuilder.select(this.classSchema, model);
-        if (sqlBuilderFrame) sqlBuilderFrame.end();
-
-        const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
-        if (connectionFrame) connectionFrame.end();
-        let row: any;
-
-        try {
-            row = await connection.execAndReturnSingle(sql.sql, sql.params);
-            if (!row) return;
-        } catch (error) {
-            throw new DatabaseError(`Could not query ${this.classSchema.getClassName()} due to SQL error ${error}.\nSQL: ${sql.sql}\nParams: ${JSON.stringify(sql.params)}`);
-        } finally {
-            connection.release();
-        }
-
-        if (model.isAggregate() || model.sqlSelect) {
-            //when aggregate the field types could be completely different, so don't normalize
-            return row;
-        }
-
-        const formatterFrame = this.session.stopwatch ? this.session.stopwatch.start('Formatter') : undefined;
-        try {
-            const formatter = this.createFormatter(model.withIdentityMap);
-            if (model.hasJoins()) {
-                const [converted] = sqlBuilder.convertRows(this.classSchema, model, [row]);
-                return formatter.hydrate(model, converted);
-            } else {
-                return formatter.hydrate(model, row);
-            }
-        } finally {
-            if (formatterFrame) formatterFrame.end();
-        }
+        //when joins are used, it's important to fetch all rows
+        const items = await this.find(model);
+        return items[0];
     }
 
     async has(model: SQLQueryModel<T>): Promise<boolean> {
