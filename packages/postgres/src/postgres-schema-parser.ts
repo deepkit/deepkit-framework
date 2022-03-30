@@ -179,9 +179,7 @@ export class PostgresSchemaParser extends SchemaParser {
             try {
                 //don't judge me
                 column.defaultValue = eval(dbDefault);
-                if (column.type === 'jsonb' || column.type === 'json') {
-                    column.defaultValue = JSON.parse(column.defaultValue);
-                }
+                column.defaultValue = JSON.parse(column.defaultValue);
             } catch (error: any) {
             }
         }

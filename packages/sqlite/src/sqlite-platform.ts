@@ -9,17 +9,25 @@
  */
 
 import { Column, DefaultPlatform, ForeignKey, isSet, Sql, Table, TableDiff } from '@deepkit/sql';
-import { isIntegerType, isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer } from '@deepkit/type';
+import { isDateType, isIntegerType, isMapType, isSetType, isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
 import { SQLiteSchemaParser } from './sqlite-schema-parser';
 import { sqliteSerializer } from './sqlite-serializer';
 import { SQLiteFilterBuilder } from './sql-filter-builder.sqlite';
 import { isArray, isObject } from '@deepkit/core';
 import sqlstring from 'sqlstring-sqlite';
 
+export function isJsonLike(type: Type): boolean {
+    if (isSetType(type) || isMapType(type) || isDateType(type)) return false;
+
+    return type.kind === ReflectionKind.any || type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral
+        || type.kind === ReflectionKind.union;
+}
+
 export class SQLitePlatform extends DefaultPlatform {
     protected override defaultSqlType = 'text';
     protected override annotationId = 'sqlite';
     override schemaParserType = SQLiteSchemaParser;
+    protected override defaultNowExpression = `(datetime('now'))`;
 
     public override readonly serializer: Serializer = sqliteSerializer;
 
@@ -30,6 +38,8 @@ export class SQLitePlatform extends DefaultPlatform {
         this.addType(ReflectionKind.boolean, 'integer', 1);
         this.addType((type => isUUIDType(type)), 'blob');
         this.addType(isIntegerType, 'integer');
+
+        this.addType(isJsonLike, 'text');
 
         this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.number, 'float');
         this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.string, 'text');

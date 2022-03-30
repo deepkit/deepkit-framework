@@ -8,8 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseModel, ForeignKey, Table, parseType, SchemaParser } from '@deepkit/sql';
+import { DatabaseModel, ForeignKey, Table, parseType, SchemaParser, Column } from '@deepkit/sql';
 import { arrayRemoveItem } from '@deepkit/core';
+import { isJsonLike } from './sqlite-platform';
 
 export class SQLiteSchemaParser extends SchemaParser {
     async parse(database: DatabaseModel, limitTableNames?: string[]) {
@@ -77,8 +78,8 @@ export class SQLiteSchemaParser extends SchemaParser {
             parseType(column, fullType);
 
             column.isNotNull = row.notnull === 1;
-            column.defaultValue = row.dflt_value || undefined;
             column.isPrimaryKey = row.pk === 1;
+            this.mapDefault(row.dflt_value, column);
 
             if (column.isPrimaryKey) {
                 //check if auto-increment
@@ -92,6 +93,23 @@ export class SQLiteSchemaParser extends SchemaParser {
 
                 if (aiRow && aiRow.tbl_name === tableName) column.isAutoIncrement = true;
             }
+        }
+    }
+
+    protected mapDefault(dbDefault: null | string, column: Column) {
+        //https://www.sqlite.org/syntaxdiagrams.html#column-constraint its an expression;
+        if ('string' === typeof dbDefault) {
+            try {
+                //don't judge me
+                column.defaultValue = eval(dbDefault);
+                column.defaultValue = JSON.parse(column.defaultValue);
+            } catch (error: any) {
+                if (column.defaultValue === undefined) {
+                    column.defaultExpression = '(' + dbDefault + ')';
+                }
+            }
+        } else {
+            column.defaultValue = dbDefault || undefined;
         }
     }
 

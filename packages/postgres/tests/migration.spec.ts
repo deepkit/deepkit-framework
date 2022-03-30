@@ -45,8 +45,10 @@ test('default expression', async () => {
         id: number & AutoIncrement & PrimaryKey = 0;
         str: string & Postgres<{ type: 'VARCHAR(255)', default: 'abc' }> = '';
         no: number & Postgres<{ default: 34.5 }> = 3;
-        json: any & Postgres<{ type: 'jsonb', default: {} }> = {};
-        created: Date & Postgres<{ defaultExpr: 'now()' }> = new Date;
+        json: any & Postgres<{ default: {a: true} }> = {};
+        jsonAuto: any = {a: true};
+        created: Date & Postgres<{ defaultExpr: `now()` }> = new Date;
+        createdAuto: Date = new Date; //this is detected as datetime('now')
         opt?: boolean;
     }
 
@@ -55,7 +57,10 @@ test('default expression', async () => {
 
     expect(postTable.getColumn('str').defaultValue).toBe('abc');
     expect(postTable.getColumn('no').defaultValue).toBe(34.5);
-    expect(postTable.getColumn('created').defaultExpression).toBe('now()');
+    expect(postTable.getColumn('json').defaultValue).toEqual({a: true});
+    expect(postTable.getColumn('jsonAuto').defaultValue).toEqual({a: true});
+    expect(postTable.getColumn('created').defaultExpression).toBe(`now()`);
+    expect(postTable.getColumn('createdAuto').defaultExpression).toBe(`now()`);
 
     await schemaMigrationRoundTrip([post], adapter);
 });

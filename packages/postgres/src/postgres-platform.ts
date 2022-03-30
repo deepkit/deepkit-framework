@@ -55,6 +55,7 @@ export class PostgresPlaceholderStrategy extends SqlPlaceholderStrategy {
 export class PostgresPlatform extends DefaultPlatform {
     protected override defaultSqlType = 'text';
     protected override annotationId = 'postgres';
+    protected override defaultNowExpression = `now()`;
     public override readonly serializer: Serializer = postgresSerializer;
     override schemaParserType = PostgresSchemaParser;
 
@@ -74,6 +75,8 @@ export class PostgresPlatform extends DefaultPlatform {
         this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.number, 'integer');
         this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.string, 'text');
         this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.union, 'jsonb');
+
+        this.addType(v => v.kind === ReflectionKind.any, 'jsonb');
 
         this.addType(ReflectionKind.bigint, 'bigint');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.integer, 'integer');

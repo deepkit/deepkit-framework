@@ -36,13 +36,15 @@ test('uuid required', async () => {
     adapter.disconnect();
 });
 
-test('mysql default expression', async () => {
+test('default expression', async () => {
     class post {
         id: number & AutoIncrement & PrimaryKey = 0;
         str: string & MySQL<{ type: 'VARCHAR(255)', default: 'abc' }> = '';
         no: number & MySQL<{ default: 34.5 }> = 3;
-        json: any & MySQL<{ default: {} }> = {};
-        created: Date & MySQL<{ defaultExpr: 'NOW()' }> = new Date;
+        json: any & MySQL<{ default: {a: true} }> = {};
+        jsonAuto: any = {a: true};
+        created: Date & MySQL<{ defaultExpr: `now()` }> = new Date;
+        createdAuto: Date = new Date; //this is detected as now()
         opt?: boolean;
     }
 
@@ -51,7 +53,11 @@ test('mysql default expression', async () => {
 
     expect(postTable.getColumn('str').defaultValue).toBe('abc');
     expect(postTable.getColumn('no').defaultValue).toBe(34.5);
-    expect(postTable.getColumn('created').defaultExpression).toBe('NOW()');
+    //BLOB, TEXT, GEOMETRY or JSON column 'content' can't have a default value
+    expect(postTable.getColumn('json').defaultValue).toEqual(undefined);
+    expect(postTable.getColumn('jsonAuto').defaultValue).toEqual(undefined);
+    expect(postTable.getColumn('created').defaultExpression).toBe(`now()`);
+    expect(postTable.getColumn('createdAuto').defaultExpression).toBe(`now()`);
 
     await schemaMigrationRoundTrip([post], adapter);
 });

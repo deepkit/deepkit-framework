@@ -121,8 +121,12 @@ export class MysqlSchemaParser extends SchemaParser {
         //This is NULL if the column has an explicit default of NULL, or if the column definition includes no DEFAULT clause
         if (dbDefault === null || dbDefault === undefined) return;
 
-        if (dbDefault.toUpperCase() === 'CURRENT_TIMESTAMP' || dbDefault.toUpperCase() === 'CURRENT_TIMESTAMP()' || dbDefault.toUpperCase() === 'NOW()') {
-            column.defaultExpression = 'NOW()';
+        if (dbDefault.toUpperCase() === 'CURRENT_TIMESTAMP' || dbDefault.toUpperCase() === 'CURRENT_TIMESTAMP()') {
+            column.defaultExpression = 'now()';
+            return;
+        }
+        if (dbDefault.toUpperCase() === 'NOW()') {
+            column.defaultExpression = dbDefault;
             return;
         }
 

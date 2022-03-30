@@ -1530,6 +1530,10 @@ export function getBackReferenceType(type: Type): BackReferenceOptionsResolved {
     return options;
 }
 
+export function isDateType(type: Type): boolean {
+    return type.kind === ReflectionKind.class && type.classType === Date;
+}
+
 export function isSetType(type: Type): boolean {
     return type.kind === ReflectionKind.class && type.classType === Set;
 }

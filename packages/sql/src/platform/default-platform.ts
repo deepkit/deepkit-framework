@@ -63,6 +63,7 @@ export interface TypeMapping {
 
 export abstract class DefaultPlatform {
     protected defaultSqlType = 'text';
+    protected defaultNowExpression: string = ''; //e.g. NOW()
 
     /**
      * The ID used in annotation to get database related type information (like `type`, `default`, `defaultExpr`, ...) via databaseAnnotation.getDatabase.
@@ -186,6 +187,15 @@ export abstract class DefaultPlatform {
                 column.size = map.size;
                 column.scale = map.scale;
                 column.unsigned = map.unsigned === true;
+            }
+        }
+
+        if (!column.defaultExpression && this.defaultNowExpression && typeProperty.type.kind === ReflectionKind.class && typeProperty.type.classType === Date) {
+            const initializer = typeProperty.getDefaultValueFunction();
+            if (initializer && initializer.toString().includes('new Date')) {
+                //infer as NOW()
+                column.defaultValue = undefined;
+                column.defaultExpression = this.defaultNowExpression;
             }
         }
     }

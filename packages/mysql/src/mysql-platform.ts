@@ -17,6 +17,7 @@ import { MysqlSchemaParser } from './mysql-schema-parser';
 export class MySQLPlatform extends DefaultPlatform {
     protected override defaultSqlType = 'longtext';
     protected override annotationId = 'mysql';
+    protected override defaultNowExpression = 'now()';
     override schemaParserType = MysqlSchemaParser;
 
     public override readonly serializer: Serializer = mySqlSerializer;
@@ -36,6 +37,8 @@ export class MySQLPlatform extends DefaultPlatform {
         this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.number, 'integer');
         this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.string, 'VARCHAR', 255);
         this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.union, 'json');
+
+        this.addType(v => v.kind === ReflectionKind.any, 'json');
 
         this.addType(ReflectionKind.number, 'double');
         this.addType(ReflectionKind.bigint, 'bigint');
