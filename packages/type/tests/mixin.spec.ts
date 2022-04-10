@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
-import { mixin } from '../../../src/mixin';
-import { assertType, AutoIncrement, PrimaryKey, ReflectionKind, resolveTypeMembers } from '../../../src/reflection/type';
-import { MinLength } from '../../../src/validator';
-import { reflect, ReflectionClass } from '../../../src/reflection/reflection';
-import { deserialize } from '../../../src/serializer-facade';
+import { mixin } from '../src/mixin';
+import { assertType, AutoIncrement, PrimaryKey, ReflectionKind, resolveTypeMembers } from '../src/reflection/type';
+import { MinLength } from '../src/validator';
+import { reflect, ReflectionClass } from '../src/reflection/reflection';
+import { deserialize } from '../src/serializer-facade';
 
 test('mixin base', () => {
     class Timestampable {

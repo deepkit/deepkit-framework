@@ -9,14 +9,14 @@
  */
 import { test } from '@jest/globals';
 import { AbstractClassType, arrayRemoveItem, ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction, urlJoin } from '@deepkit/core';
-import { isExtendable } from '../../../src/reflection/extends';
-import { ReceiveType, reflect, resolveReceiveType } from '../../../src/reflection/reflection';
-import { isType, metaAnnotation, ReflectionKind, Type } from '../../../src/reflection/type';
+import { isExtendable } from '../src/reflection/extends';
+import { ReceiveType, reflect, resolveReceiveType } from '../src/reflection/reflection';
+import { isType, metaAnnotation, ReflectionKind, Type } from '../src/reflection/type';
 import { IncomingMessage, ServerResponse } from 'http';
 import { Writable } from 'stream';
 import querystring from 'querystring';
-import { entity } from '../../../src/decorator';
-import { SerializationOptions, Serializer } from '../../../src/serializer';
+import { entity } from '../src/decorator';
+import { SerializationOptions, Serializer } from '../src/serializer';
 
 export interface ProviderBase {
     /**

@@ -1911,7 +1911,7 @@ export const binaryTypes: ClassType[] = [
 
 
 /**
- * TypeClass has in its `types` only the properties of the class itself and not its super classes,
+ * TypeClass has in its `types` only the properties/methods of the class itself and not its super classes,
  * while TypeObjectLiteral has all resolved properties in its types already.
  *
  * It's thus necessary to resolve super class properties as well. This function does this and caches the result.

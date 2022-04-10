@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { removeTypeName, typeOf } from '../../../src/reflection/reflection';
-import { ReflectionKind } from '../../../src/reflection/type';
-import { expectEqualType } from '../../utils';
+import { removeTypeName, typeOf } from '../src/reflection/reflection';
+import { ReflectionKind } from '../src/reflection/type';
+import { expectEqualType } from './utils';
 
 test('distributed conditional type', () => {
     //when T is naked, it will be distributed

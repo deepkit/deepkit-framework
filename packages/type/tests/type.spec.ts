@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { hasCircularReference, ReceiveType, reflect, ReflectionClass, resolveReceiveType, typeOf, visit } from '../../../src/reflection/reflection';
+import { hasCircularReference, ReceiveType, reflect, ReflectionClass, resolveReceiveType, typeOf, visit } from '../src/reflection/reflection';
 import {
     assertType,
     Embedded,
@@ -15,11 +15,11 @@ import {
     TypeObjectLiteral,
     TypeProperty,
     UUID
-} from '../../../src/reflection/type';
-import { isExtendable } from '../../../src/reflection/extends';
-import { expectEqualType } from '../../utils';
+} from '../src/reflection/type';
+import { isExtendable } from '../src/reflection/extends';
+import { expectEqualType } from './utils';
 import { ClassType } from '@deepkit/core';
-import { Partial } from '../../../src/changes';
+import { Partial } from '../src/changes';
 
 //note: this needs to run in a strict TS mode to infer correctly in the IDE
 type Extends<A, B> = [A] extends [B] ? true : false;

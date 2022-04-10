@@ -13,7 +13,7 @@ import {
     transpileModule
 } from 'typescript';
 import { DeclarationTransformer, ReflectionTransformer, transformer } from '@deepkit/type-compiler';
-import { reflect, reflect as reflect2, ReflectionClass, removeTypeName, typeOf as typeOf2 } from '../../src/reflection/reflection';
+import { reflect, reflect as reflect2, ReflectionClass, removeTypeName, typeOf as typeOf2 } from '../src/reflection/reflection';
 import {
     assertType,
     defaultAnnotation,
@@ -28,11 +28,11 @@ import {
     TypeObjectLiteral,
     TypeProperty,
     TypeUnion
-} from '../../src/reflection/type';
+} from '../src/reflection/type';
 import { ReflectionOp } from '@deepkit/type-spec';
 import { ClassType, isObject } from '@deepkit/core';
-import { pack, resolveRuntimeType, typeInfer } from '../../src/reflection/processor';
-import { expectEqualType } from '../utils';
+import { pack, resolveRuntimeType, typeInfer } from '../src/reflection/processor';
+import { expectEqualType } from './utils';
 
 Error.stackTraceLimit = 200;
 
@@ -42,6 +42,7 @@ const options: CompilerOptions = {
     declaration: true,
     transpileOnly: true,
     target: ScriptTarget.ES2020,
+    reflection: true,
 };
 
 /**

@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
-import { Email, MaxLength, MinLength, Positive, Validate, validate, ValidatorError } from '../../../src/validator';
-import { is } from '../../../src/typeguard';
-import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Type, Unique } from '../../../src/reflection/type';
-import { t } from '../../../src/decorator';
-import { ReflectionClass, typeOf } from '../../../src/reflection/reflection';
+import { Email, MaxLength, MinLength, Positive, Validate, validate, ValidatorError } from '../src/validator';
+import { is } from '../src/typeguard';
+import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Type, Unique } from '../src/reflection/type';
+import { t } from '../src/decorator';
+import { ReflectionClass, typeOf } from '../src/reflection/reflection';
 
 test('email', () => {
     expect(is<Email>('peter@example.com')).toBe(true);
@@ -152,4 +152,14 @@ test('inherited validations', () => {
 
     expect(validate<AddUserDto>({ username: 'Pe' })).toEqual([{code: 'minLength', message: 'Min length is 3', path: 'username'}]);
     expect(validate<AddUserDto>({ username: 'Peter' })).toEqual([]);
+});
+
+test('asdasd', () => {
+    interface User {
+        id: number;
+        username: string;
+    }
+
+    const errors = validate<User>({});
+    console.log('errors', errors);
 });

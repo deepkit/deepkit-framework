@@ -1,8 +1,8 @@
 import { test } from '@jest/globals';
-import { typeInfer } from '../../../src/reflection/processor';
-import { typeOf } from '../../../src/reflection/reflection';
-import { ReflectionKind, Type, TypeLiteral, widenLiteral } from '../../../src/reflection/type';
-import { expectEqualType } from '../../utils';
+import { typeInfer } from '../src/reflection/processor';
+import { typeOf } from '../src/reflection/reflection';
+import { ReflectionKind, Type, TypeLiteral, widenLiteral } from '../src/reflection/type';
+import { expectEqualType } from './utils';
 
 const symbol = Symbol();
 

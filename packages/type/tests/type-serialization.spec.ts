@@ -1,6 +1,6 @@
 import { getClassName } from '@deepkit/core';
 import { expect, test } from '@jest/globals';
-import { ReceiveType, reflect, ReflectionClass, resolveReceiveType, typeOf } from '../../../src/reflection/reflection';
+import { ReceiveType, reflect, ReflectionClass, resolveReceiveType, typeOf } from '../src/reflection/reflection';
 import {
     assertType,
     Entity,
@@ -14,10 +14,10 @@ import {
     Type,
     TypeClass,
     TypeProperty
-} from '../../../src/reflection/type';
-import { deserializeType, serializeType } from '../../../src/type-serialization';
-import { entity } from '../../../src/decorator';
-import { deserialize } from '../../../src/serializer-facade';
+} from '../src/reflection/type';
+import { deserializeType, serializeType } from '../src/type-serialization';
+import { entity } from '../src/decorator';
+import { deserialize } from '../src/serializer-facade';
 
 test('serialize basics', () => {
     expect(serializeType(typeOf<string>())).toEqual([{ kind: ReflectionKind.string }]);

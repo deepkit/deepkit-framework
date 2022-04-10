@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
 import { Buffer } from 'buffer';
-import { ReflectionClass } from '../../../src/reflection/reflection';
-import { assertType, binaryTypes, ReflectionKind } from '../../../src/reflection/type';
-import { base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typedArrayToBuffer } from '../../../src/core';
-import { deserialize, serialize } from '../../../src/serializer-facade';
+import { ReflectionClass } from '../src/reflection/reflection';
+import { assertType, binaryTypes, ReflectionKind } from '../src/reflection/type';
+import { base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typedArrayToBuffer } from '../src/core';
+import { deserialize, serialize } from '../src/serializer-facade';
 
 test('mapping', async () => {
     class Clazz {

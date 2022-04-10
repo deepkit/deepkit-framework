@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { typeOf } from '../../../src/reflection/reflection';
-import { cast } from '../../../src/serializer-facade';
+import { typeOf } from '../src/reflection/reflection';
+import { cast } from '../src/serializer-facade';
 
 type BSONTypeAlias =
     | 'number'

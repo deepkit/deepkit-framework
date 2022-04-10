@@ -1,6 +1,6 @@
 /** @reflection never */
 import { expect, test } from '@jest/globals';
-import { pack, unpack } from '../../src/reflection/processor';
+import { pack, unpack } from '../src/reflection/processor';
 import { ReflectionOp } from '@deepkit/type-spec';
 
 Error.stackTraceLimit = 200;

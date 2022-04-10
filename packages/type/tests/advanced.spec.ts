@@ -9,10 +9,10 @@
  */
 
 import { expect, test } from '@jest/globals';
-import { typeOf } from '../../../src/reflection/reflection';
-import { assertType, ReflectionKind, stringifyResolvedType, Type } from '../../../src/reflection/type';
-import { serialize } from '../../../src/serializer-facade';
-import { expectEqualType } from '../../utils';
+import { typeOf } from '../src/reflection/reflection';
+import { assertType, ReflectionKind, stringifyResolvedType, Type } from '../src/reflection/type';
+import { serialize } from '../src/serializer-facade';
+import { expectEqualType } from './utils';
 
 test('array stack', () => {
     type Pop<T extends unknown[]> = T extends [...infer U, unknown] ? U : never

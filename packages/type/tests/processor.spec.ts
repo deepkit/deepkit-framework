@@ -1,10 +1,10 @@
 /** @reflection never */
 import { expect, test } from '@jest/globals';
-import { pack } from '../../src/reflection/processor';
-import { copyAndSetParent, ParentLessType, ReflectionKind, ReflectionVisibility, TypeObjectLiteral, TypePropertySignature, TypeUnion } from '../../src/reflection/type';
+import { pack } from '../src/reflection/processor';
+import { copyAndSetParent, ParentLessType, ReflectionKind, ReflectionVisibility, TypeObjectLiteral, TypePropertySignature, TypeUnion } from '../src/reflection/type';
 import { MappedModifier, ReflectionOp } from '@deepkit/type-spec';
-import { isExtendable } from '../../src/reflection/extends';
-import { assertValidParent, expectEqualType, expectType } from '../utils';
+import { isExtendable } from '../src/reflection/extends';
+import { assertValidParent, expectEqualType, expectType } from './utils';
 
 Error.stackTraceLimit = 200;
 

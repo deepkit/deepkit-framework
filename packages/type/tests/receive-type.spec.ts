@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { ReceiveType, resolveReceiveType, typeOf } from '../../../src/reflection/reflection';
-import { ReflectionKind, Type } from '../../../src/reflection/type';
+import { ReceiveType, resolveReceiveType, typeOf } from '../src/reflection/reflection';
+import { ReflectionKind, Type } from '../src/reflection/type';
 
 test('typeOf', () => {
     const type = typeOf<string>();
