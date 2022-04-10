@@ -598,3 +598,20 @@ test('loggerInterface', () => {
     expect(server).toBeInstanceOf(MyServer);
     expect(server.logger).toBeInstanceOf(Logger);
 });
+
+test('class inheritance', () => {
+    class A {}
+
+    class B {
+        constructor(public a: A) {
+        }
+    }
+
+    class C extends B {}
+
+    const injector = Injector.from([A, C]);
+    const c = injector.get(C);
+    expect(c).toBeInstanceOf(C);
+    expect(c).toBeInstanceOf(B);
+    expect(c.a).toBeInstanceOf(A);
+});

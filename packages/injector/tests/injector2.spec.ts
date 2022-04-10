@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { InjectorContext, injectorReference } from '../src/injector';
+import { Injector, InjectorContext, injectorReference } from '../src/injector';
 import { provide, Tag } from '../src/provider';
 import { InjectorModule } from '../src/module';
 import { typeOf } from '@deepkit/type';
@@ -1392,4 +1392,23 @@ test('inject via symbols', () => {
     const service = injector.get<MyService>();
     expect(service.service1.value).toBe(1);
     expect(service.service2.value).toBe(2);
+});
+
+test('class inheritance', () => {
+    class A {}
+
+    class B {
+        constructor(public a: A) {
+        }
+    }
+
+    class C extends B {}
+
+    const app = new InjectorModule([A, C]);
+    const injector = new InjectorContext(app);
+
+    const c = injector.get(C);
+    expect(c).toBeInstanceOf(C);
+    expect(c).toBeInstanceOf(B);
+    expect(c.a).toBeInstanceOf(A);
 });
