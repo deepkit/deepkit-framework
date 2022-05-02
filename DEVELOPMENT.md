@@ -3,6 +3,8 @@
 ## Prerequisites
 Deepkit uses NPM and Lerna to manage this monorepo. Local package linking is managed through the [npm-local-development](https://www.npmjs.com/package/npm-local-development) CLI.
 
+Make sure `libpq5` and `libpq-dev` are installed, and `python` refers Python2.
+
 ## Getting Started
 
 ```shell
