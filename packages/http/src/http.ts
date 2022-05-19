@@ -82,6 +82,9 @@ export class HttpBadRequestError extends createHttpError(400, 'Bad request') {
 export class HttpAccessDeniedError extends createHttpError(403, 'Access denied') {
 }
 
+export class HttpUnauthorizedError extends createHttpError(401, 'Unauthorized') {
+}
+
 export class HttpWorkflowEvent {
     stopped = false;
 
