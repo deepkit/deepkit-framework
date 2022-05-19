@@ -73,13 +73,40 @@ export function createHttpError<T extends number>(code: T, defaultMessage: strin
     } as any;
 }
 
-export class HttpNotFoundError extends createHttpError(404, 'Not found') {
-}
-
 export class HttpBadRequestError extends createHttpError(400, 'Bad request') {
 }
 
+export class HttpUnauthorizedError extends createHttpError(401, 'Unauthorized') {
+}
+
 export class HttpAccessDeniedError extends createHttpError(403, 'Access denied') {
+}
+
+export class HttpNotFoundError extends createHttpError(404, 'Not found') {
+}
+
+export class HttpMethodNotAllowedError extends createHttpError(405, 'Method not allowed') {
+}
+
+export class HttpNotAcceptableError extends createHttpError(406, 'Not acceptable') {
+}
+
+export class HttpTimeoutError extends createHttpError(408, 'Request timeout') {
+}
+
+export class HttpConflictError extends createHttpError(409, 'Conflict') {
+}
+
+export class HttpGoneError extends createHttpError(410, 'Gone') {
+}
+
+export class HttpTooManyRequestsError extends createHttpError(429, 'Too many requests') {
+}
+
+export class HttpInternalServerError extends createHttpError(500, 'Internal server error') {
+}
+
+export class HttpNotImplementedError extends createHttpError(501, 'Not implemented') {
 }
 
 export class HttpWorkflowEvent {
