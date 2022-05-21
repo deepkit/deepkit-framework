@@ -306,10 +306,11 @@ export class HttpRouteDetailComponent implements OnChanges {
         try {
             const start = performance.now();
             let body: any = undefined;
-            const headers = routeState.headers.reduce<Record<any, any>>((headers, { name, value }) => {
+
+            const headers: Record<any, any> = {}
+            for (const { name, value } of routeState.headers) {
                 headers[name] = value;
-                return headers;
-            }, {});
+            }
 
             if (routeState.resolvedBody) {
                 body = JSON.stringify(routeState.resolvedBody);
