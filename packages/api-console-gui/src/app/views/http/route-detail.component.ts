@@ -306,9 +306,12 @@ export class HttpRouteDetailComponent implements OnChanges {
         try {
             const start = performance.now();
             let body: any = undefined;
-            const headers: Record<any, any> = {};
 
-            Object.assign(headers, routeState.headers);
+            const headers: Record<any, any> = {}
+            for (const { name, value } of routeState.headers) {
+                headers[name] = value;
+            }
+
             if (routeState.resolvedBody) {
                 body = JSON.stringify(routeState.resolvedBody);
                 headers['Content-Type'] = 'application/json';
