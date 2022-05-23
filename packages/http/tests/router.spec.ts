@@ -7,6 +7,8 @@ import { HttpBody, HttpBodyValidation, HttpQueries, HttpQuery, HttpRegExp, HttpR
 import { getClassName, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils';
 import { Group, MinLength } from '@deepkit/type';
+import { Readable } from 'stream';
+import { createReadStream } from 'fs';
 
 test('router', async () => {
     class Controller {
@@ -778,4 +780,30 @@ test('BodyValidation', async () => {
 
     expect((await httpKernel.request(HttpRequest.POST('/action3').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
     expect((await httpKernel.request(HttpRequest.POST('/action3').json({ username: 'Pe' }))).bodyString).toEqual(`{"message":"Invalid: Min length is 3"}`);
+});
+
+test.only('stream', async () => {
+    class Controller {
+        @http.GET()
+        handle() {
+            return Readable.from(['test']);
+        }
+    }
+    const httpKernel = createHttpKernel([Controller]);
+    const response = (await httpKernel.request(HttpRequest.GET('/')));
+    expect(response.statusCode).toBe(200);
+    expect(response.bodyString).toBe('test');
+});
+
+test.only('stream error', async () => {
+    class Controller {
+        @http.GET()
+        handle() {
+            return new Readable().emit('error', new Error());
+        }
+    }
+    const httpKernel = createHttpKernel([Controller]);
+    const response = (await httpKernel.request(HttpRequest.GET('/')));
+    expect(response.statusCode).toBe(500);
+    expect(response.bodyString).toBe('Internal error');
 });
