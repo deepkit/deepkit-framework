@@ -830,7 +830,7 @@ test('BodyValidation', async () => {
     expect((await httpKernel.request(HttpRequest.POST('/action3').json({ username: 'Pe' }))).bodyString).toEqual(`{"message":"Invalid: Min length is 3"}`);
 });
 
-test.only('stream', async () => {
+test('stream', async () => {
     class Controller {
         @http.GET()
         handle() {
@@ -843,7 +843,7 @@ test.only('stream', async () => {
     expect(response.bodyString).toBe('test');
 });
 
-test.only('stream error', async () => {
+test('stream error', async () => {
     class Controller {
         @http.GET()
         handle() {
