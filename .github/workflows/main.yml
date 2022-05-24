@@ -45,6 +45,8 @@ jobs:
         run: |
           npm run install-compiler
           ./node_modules/.bin/tsc --build \
+            packages/cloudflare-rpc/tsconfig.json \
+            packages/cloudflare-http/tsconfig.json \
             packages/angular-universal/tsconfig.json \
             packages/api-console-module/tsconfig.json \
             packages/broker/tsconfig.json \
@@ -73,6 +75,8 @@ jobs:
       - name: Test
         run: |
           npm run test:coverage \
+            packages/cloudflare-rpc/ \
+            packages/cloudflare-http/ \
             packages/angular-universal/ \
             packages/broker/ \
             packages/bson/ \

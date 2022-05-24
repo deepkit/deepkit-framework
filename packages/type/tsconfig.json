@@ -23,10 +23,13 @@
   ],
   "references": [
     {
+      "path": "../type-spec/tsconfig.json"
+    },
+    {
       "path": "../core/tsconfig.json"
     },
     {
-      "path": "../type-spec/tsconfig.json"
+      "path": "../type-compiler/tsconfig.json"
     }
   ]
 }

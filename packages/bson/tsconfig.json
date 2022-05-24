@@ -23,10 +23,10 @@
   ],
   "references": [
     {
-      "path": "../core/tsconfig.json"
+      "path": "../crypto/tsconfig.json"
     },
     {
-      "path": "../crypto/tsconfig.json"
+      "path": "../core/tsconfig.json"
     },
     {
       "path": "../type/tsconfig.json"

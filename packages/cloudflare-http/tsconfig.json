@@ -14,7 +14,9 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": ["@cloudflare/workers-types"]
+    "types": [
+      "@cloudflare/workers-types"
+    ]
   },
   "reflection": true,
   "include": [
@@ -24,10 +26,10 @@
   ],
   "references": [
     {
-      "path": "../app/tsconfig.json"
+      "path": "../http/tsconfig.json"
     },
     {
-      "path": "../http/tsconfig.json"
+      "path": "../app/tsconfig.json"
     }
   ]
 }
