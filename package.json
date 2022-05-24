@@ -26,13 +26,15 @@
   },
   "peerDependencies": {},
   "devDependencies": {
+    "@cloudflare/workers-types": "^3.11.0",
     "@deepkit/core": "^1.0.1-alpha.13",
+    "@jest/globals": "^27.5.1",
     "@types/node": "14.14.28",
+    "cloc": "^2.7.0",
     "codecov": "^3.8.3",
     "coveralls": "^3.0.3",
-    "cloc": "^2.7.0",
     "jest": "^27.5.1",
-    "@jest/globals": "^27.5.1",
+    "jest-environment-miniflare": "^2.4.0",
     "lerna": "^4.0.0",
     "madge": "^4.0.0",
     "npm-local-development": "^0.4.0",
@@ -54,6 +56,8 @@
       "src/**/*.ts"
     ],
     "projects": [
+      "packages/cloudflare-http",
+      "packages/cloudflare-rpc",
       "packages/core",
       "packages/core-rxjs",
       "packages/ui-library",

@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "moduleResolution": "node",
+    "target": "es2019",
+    "module": "CommonJS",
+    "esModuleInterop": true,
+    "outDir": "./dist/cjs",
+    "declaration": true,
+    "composite": true,
+    "types": ["@cloudflare/workers-types"]
+  },
+  "reflection": true,
+  "include": [
+    "src",
+    "tests",
+    "index.ts"
+  ],
+  "references": [
+    {
+      "path": "../app/tsconfig.json"
+    },
+    {
+      "path": "../http/tsconfig.json"
+    }
+  ]
+}
