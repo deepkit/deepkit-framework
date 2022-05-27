@@ -263,6 +263,16 @@ test('injector property injection', () => {
     expect(s.name).toBe('peter');
 });
 
+test('factory with Inject<>', () => {
+    const injector = Injector.from([
+        { provide: "stripe", useValue: true },
+        { provide: "test", useFactory(name: Inject<any, 'stripe'>) { return name } },
+    ]);
+
+    const s = injector.get("test");
+    expect(s).toBe(true);
+});
+
 test('injector overwrite token', () => {
     class Connection {
     }

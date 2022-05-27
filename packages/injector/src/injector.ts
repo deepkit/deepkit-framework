@@ -369,13 +369,14 @@ export class Injector implements InjectorInterface {
             const args: string[] = [];
             const reflection = ReflectionFunction.from(provider.useFactory);
 
-            for (const dep of reflection.getParameters()) {
+            for (const parameter of reflection.getParameters()) {
                 factory.dependencies++;
+                const tokenType = getInjectOptions(parameter.getType() as Type);
                 args.push(this.createFactoryProperty({
-                    name: dep.name,
-                    type: dep.type,
-                    optional: dep.optional === true || dep.default !== undefined,
-                }, provider, compiler, resolveDependenciesFrom, 'useFactory', args.length, 'factoryDependencyNotFound'));
+                    name: parameter.name,
+                    type: tokenType || parameter.getType() as Type,
+                    optional: !parameter.isValueRequired()
+                }, provider, compiler, resolveDependenciesFrom, reflection.name || 'useFactory', args.length, 'constructorParameterNotFound'));
             }
 
             factory.code = `${accessor} = ${compiler.reserveVariable('factory', provider.useFactory)}(${args.join(', ')});`;
