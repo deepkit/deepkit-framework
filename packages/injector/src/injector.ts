@@ -220,9 +220,17 @@ export class Injector implements InjectorInterface {
         return new Injector(module, new BuildContext);
     }
 
-    get<T>(token: T, scope?: Scope): ResolveToken<T> {
+    get<T>(token?: ReceiveType<T> | Token<T>, scope?: Scope): ResolveToken<T> {
         if (!this.resolver) throw new Error('Injector was not built');
-        return this.resolver(token, scope);
+        if ('string' === typeof token || 'number' === typeof token || 'bigint' === typeof token ||
+            'boolean' === typeof token || 'symbol' === typeof token || isFunction(token) || isClass(token) || token instanceof RegExp) {
+            return this.resolver(token, scope) as ResolveToken<T>;
+        } else if (isType(token)) {
+            return this.createResolver(isType(token) ? token as Type : resolveReceiveType(token), scope)(scope);
+        } else if (isArray(token)) {
+            return this.createResolver(resolveReceiveType(token), scope)(scope);
+        }
+        throw new Error(`Invalid get<T> argument given ${token}`);
     }
 
     set<T>(token: T, value: any, scope?: Scope): void {
@@ -838,15 +846,7 @@ export class InjectorContext {
 
     get<T>(token?: ReceiveType<T> | Token<T>, module?: InjectorModule): ResolveToken<T> {
         const injector = this.getInjector(module || this.rootModule);
-        if ('string' === typeof token || 'number' === typeof token || 'bigint' === typeof token ||
-            'boolean' === typeof token || 'symbol' === typeof token || isFunction(token) || isClass(token) || token instanceof RegExp) {
-            return injector.get(token, this.scope) as ResolveToken<T>;
-        } else if (isType(token)) {
-            return injector.createResolver(isType(token) ? token as Type : resolveReceiveType(token), this.scope)(this.scope);
-        } else if (isArray(token)) {
-            return injector.createResolver(resolveReceiveType(token), this.scope)(this.scope);
-        }
-        throw new Error(`Invalid get<T> argument given ${token}`);
+        return injector.get(token, this.scope);
     }
 
     instantiationCount(token: Token, module?: InjectorModule, scope?: string): number {
