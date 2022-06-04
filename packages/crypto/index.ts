@@ -8,8 +8,16 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+function createBuffer(size: number): Uint8Array {
+    try {
+        return Buffer.alloc(size);
+    } catch {}
+
+    return new Uint8Array(size);
+}
+
 function insecureRandomBytes(size: number): Uint8Array {
-    const result = Buffer.alloc(size);
+    const result = createBuffer(size);
     for (let i = 0; i < size; ++i) result[i] = Math.floor(Math.random() * 256);
     return result;
 }
@@ -17,16 +25,19 @@ function insecureRandomBytes(size: number): Uint8Array {
 declare let window: any;
 declare let require: Function;
 
-export let randomBytes: (size: number) => Uint8Array = insecureRandomBytes;
+let randomBytesImpl: (size: number) => Uint8Array = insecureRandomBytes;
 
-if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
-    randomBytes = size => window.crypto.getRandomValues(Buffer.alloc(size));
+if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
+    randomBytesImpl = (size) =>
+        window.crypto.getRandomValues(createBuffer(size));
 } else {
     try {
-        randomBytes = require('crypto').randomBytes;
-    } catch (e) {
+        randomBytesImpl = require('crypto').randomBytes;
+    } catch {
         // keep the fallback
     }
-
-    if (!randomBytes) randomBytes = insecureRandomBytes;
 }
+
+if (!randomBytesImpl) randomBytesImpl = insecureRandomBytes;
+
+export const randomBytes = randomBytesImpl;
