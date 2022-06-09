@@ -343,26 +343,45 @@ export class BaseQuery<T extends OrmEntity> {
         return c;
     }
 
+    /**
+     * Narrow the query result.  
+     * 
+     * Note: previous filter conditions are preserved.
+     */
     filter(filter?: this['model']['filter']): this {
         const c = this.clone();
-        if (filter && !Object.keys(filter as object).length) filter = undefined;
 
+        if (filter && !Object.keys(filter as object).length) filter = undefined;
         if (filter instanceof this.classSchema.getClassType()) {
             const primaryKey = this.classSchema.getPrimary();
-            c.model.filter = { [primaryKey.name]: (filter as any)[primaryKey.name] } as this['model']['filter'];
-        } else {
-            c.model.filter = filter;
+            filter = { [primaryKey.name]: (filter as any)[primaryKey.name] } as this['model']['filter'];
         }
+        if (filter && c.model.filter) {
+            filter = { $and: [filter, c.model.filter] } as this['model']['filter'];
+        }
+
+        c.model.filter = filter;
         return c;
     }
 
-    addFilter<K extends keyof T & string>(name: K, value: FilterQuery<T>[K]): this {
+    /**
+     * Narrow the query result by field-specific conditions.
+     * 
+     * This can be helpful to work around the type issue that when `T` is another
+     * generic type there must be a type assertion to use {@link filter}.
+     * 
+     * Note: previous filter conditions are preserved.
+     */
+    filterField<K extends keyof T & string>(name: K, value: FilterQuery<T>[K]): this {
+        return this.filter({ [name]: value } as any);
+    }
+
+    /**
+     * Clear all filter conditions.
+     */
+    filterNone(): this {
         const c = this.clone();
-        if (c.model.filter) {
-            c.model.filter = { $and: [{ [name]: value }, c.model.filter] } as any;
-        } else {
-            c.model.filter = { [name]: value } as any;
-        }
+        c.model.filter = undefined;
         return c;
     }
 
@@ -588,7 +607,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
             const discriminant = query.classSchema.parent.getSingleTableInheritanceDiscriminantName();
             const property = query.classSchema.getProperty(discriminant);
             assertType(property.type, ReflectionKind.literal);
-            return query.addFilter(discriminant as keyof T & string, property.type.literal) as this;
+            return query.filterField(discriminant as keyof T & string, property.type.literal) as this;
         }
         return query as this;
     }
