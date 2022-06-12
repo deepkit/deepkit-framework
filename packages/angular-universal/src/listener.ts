@@ -117,7 +117,7 @@ export class AngularUniversalListener {
         }
 
         event.routeFound(
-            new RouteConfig('angular', ['GET'], event.url, { controller: AngularUniversalListener, module: this.module, methodName: 'render' }),
+            new RouteConfig('angular', ['GET'], event.url, { type: 'controller', controller: AngularUniversalListener, module: this.module, methodName: 'render' }),
             () => [event.url]
         );
     }

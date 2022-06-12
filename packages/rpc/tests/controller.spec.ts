@@ -113,6 +113,7 @@ test('basics', async () => {
         }
     }
 
+    @rpc.controller('myController')
     class Controller {
         @rpc.action()
         createModel(value: string): MyModel {
@@ -146,7 +147,7 @@ test('basics', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller);
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
@@ -193,7 +194,7 @@ test('parameters', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
@@ -239,7 +240,7 @@ test('promise', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
@@ -286,7 +287,7 @@ test('wrong arguments', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
@@ -327,7 +328,7 @@ test('di', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('test', Controller);
+    kernel.registerController(Controller, 'test');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('test');
@@ -352,7 +353,7 @@ test('connect disconnect', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
@@ -398,7 +399,7 @@ test('types', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
@@ -435,7 +436,7 @@ test('disable type reuse', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     client.disableTypeReuse();
@@ -444,13 +445,13 @@ test('disable type reuse', async () => {
     {
         const res = await controller.test();
         expect(res).not.toBeInstanceOf(Model);
-        expect(res).toEqual({title: '123'});
+        expect(res).toEqual({ title: '123' });
         expect(getClassName(res)).toBe('Model');
     }
 
     {
         const res = await controller.testDeep();
         expect(res.items[0]).not.toBeInstanceOf(Model);
-        expect(res.items[0]).toEqual({title: '123'});
+        expect(res.items[0]).toEqual({ title: '123' });
     }
 });

@@ -35,7 +35,7 @@ test('authentication', async () => {
     }
 
     const kernel = new RpcKernel(undefined, new MyKernelSecurity);
-    kernel.registerController('test', Controller);
+    kernel.registerController(Controller, 'test');
 
     {
         const client = new DirectClient(kernel);
@@ -58,7 +58,7 @@ test('authentication', async () => {
         const client2 = new DirectClient(kernel);
         client2.token.set('secret');
         await client2.registerAsPeer('asd');
-        client2.registerPeerController('controller', Controller);
+        client2.registerPeerController(Controller, 'controller');
 
         expect(await client.peer('asd').controller<Controller>('controller').test('foo')).toBe('foo');
         expect(client.username).toBe('user');
@@ -125,7 +125,7 @@ test('onAuthenticate controllers', async () => {
     }
 
     const kernel = new RpcKernel(undefined);
-    kernel.registerController('test', Controller);
+    kernel.registerController(Controller, 'test');
 
     class CustomAuthClient extends AsyncDirectClient {
         authCalled: number = 0;
@@ -210,7 +210,7 @@ test('transformError', async () => {
     }
 
     const kernel = new RpcKernel(undefined, new MyKernelSecurity);
-    kernel.registerController('test', Controller);
+    kernel.registerController(Controller, 'test');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('test');

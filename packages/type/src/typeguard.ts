@@ -1,8 +1,8 @@
-import { ReceiveType, resolveReceiveType } from './reflection/reflection';
-import { createTypeGuardFunction, Guard, serializer, Serializer } from './serializer';
-import { NoTypeReceived } from './utils';
-import { ValidationError, ValidationErrorItem } from './validator';
-import { getTypeJitContainer } from './reflection/type';
+import { ReceiveType, resolveReceiveType } from './reflection/reflection.js';
+import { createTypeGuardFunction, Guard, serializer, Serializer } from './serializer.js';
+import { NoTypeReceived } from './utils.js';
+import { ValidationError, ValidationErrorItem } from './validator.js';
+import { getTypeJitContainer } from './reflection/type.js';
 
 /**
  * ```typescript

@@ -9,7 +9,7 @@
  */
 import { ClassType, getClassName, isArray, isClass } from '@deepkit/core';
 import './optimize-tsx';
-import { Injector, Resolver } from '@deepkit/injector';
+import { injectedFunction, Injector, Resolver } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { escapeAttribute, escapeHtml, safeString } from './utils';
 import { reflect, ReflectionClass, ReflectionKind, Type } from '@deepkit/type';
@@ -199,21 +199,9 @@ export async function render(injector: Injector, struct: ElementStruct | string 
 
     if ('function' === typeof struct.render) {
         const frame = stopwatch?.start(struct.render.name, FrameCategory.template);
-        const element = struct.render as Function & TemplateCacheCall;
+        const element = struct.render as ((...args: any) => any) & TemplateCacheCall;
         if (!element.templateCall) {
-            const type = reflect(struct.render);
-            if (type.kind === ReflectionKind.function) {
-                const args: Resolver<any>[] = [];
-                for (let i = 2; i < type.parameters.length; i++) {
-                    args.push(injector.createResolver(type.parameters[i]));
-                }
-
-                element.templateCall = (attributes: any, children: any) => {
-                    return element(attributes, children, ...(args.map(v => v())));
-                };
-            } else {
-                element.templateCall = element as any;
-            }
+            element.templateCall = injectedFunction(element, injector, 2);
         }
 
         try {

@@ -42,7 +42,7 @@ test('observable basics', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
@@ -100,7 +100,7 @@ test('Subject', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
@@ -141,7 +141,7 @@ test('promise Subject', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
@@ -176,7 +176,7 @@ test('subject completes automatically when connection closes', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
@@ -221,7 +221,7 @@ test('subject redirect of global subject', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
@@ -286,7 +286,7 @@ test('observable unsubscribes automatically when connection closes', async () =>
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
@@ -350,7 +350,7 @@ test('observable different next type', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
@@ -399,7 +399,7 @@ test('Behavior', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
@@ -472,7 +472,7 @@ test('observable complete', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');

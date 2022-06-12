@@ -1,6 +1,17 @@
-import { isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider, NormalizedProvider, ProviderWithScope, Tag, TagProvider, TagRegistry, Token } from './provider';
+import {
+    isClassProvider,
+    isExistingProvider,
+    isFactoryProvider,
+    isValueProvider,
+    NormalizedProvider,
+    ProviderWithScope,
+    Tag,
+    TagProvider,
+    TagRegistry,
+    Token
+} from './provider.js';
 import { AbstractClassType, ClassType, CompilerContext, CustomError, getClassName, isArray, isClass, isFunction, isPrototypeOfBase } from '@deepkit/core';
-import { findModuleForConfig, getScope, InjectorModule, PreparedProvider } from './module';
+import { findModuleForConfig, getScope, InjectorModule, PreparedProvider } from './module.js';
 import {
     hasTypeInformation,
     isExtendable,
@@ -376,7 +387,7 @@ export class Injector implements InjectorInterface {
                     name: parameter.name,
                     type: tokenType || parameter.getType() as Type,
                     optional: !parameter.isValueRequired()
-                }, provider, compiler, resolveDependenciesFrom, reflection.name || 'useFactory', args.length, 'constructorParameterNotFound'));
+                }, provider, compiler, resolveDependenciesFrom, reflection.name || 'useFactory', args.length, 'factoryDependencyNotFound'));
             }
 
             factory.code = `${accessor} = ${compiler.reserveVariable('factory', provider.useFactory)}(${args.join(', ')});`;
@@ -713,7 +724,7 @@ export class Injector implements InjectorInterface {
                 }
             }
 
-            if (isWithAnnotations(type) && type.indexAccessOrigin) {
+            if (type.indexAccessOrigin) {
                 let current = type;
                 let module: InjectorModule | undefined;
                 let config: { [name: string]: any } = {};
@@ -725,8 +736,8 @@ export class Injector implements InjectorInterface {
                         config = module.getConfig();
                     }
                     if (current.indexAccessOrigin.index.kind === ReflectionKind.literal) {
-                        const index = JSON.stringify(current.indexAccessOrigin.index.literal);
-                        if (config) config = config[index];
+                        const index = current.indexAccessOrigin.index.literal;
+                        config = config[String(index)];
                     }
                     current = current.indexAccessOrigin.container;
                 }
@@ -766,18 +777,16 @@ export class Injector implements InjectorInterface {
             );
         }
 
-        const allPossibleScopes = foundPreparedProvider.providers.map(getScope);
-        const unscoped = allPossibleScopes.includes('') && allPossibleScopes.length === 1;
-
-        if (!unscoped && !allPossibleScopes.includes(fromScope)) {
-            const t = stringifyType(type, { showFullDefinition: false });
-            throw new ServiceNotFoundError(
-                `Service "${t}" can not be received from ${fromScope ? 'scope ' + fromScope : 'no scope'}, ` +
-                `since it only exists in scope${allPossibleScopes.length === 1 ? '' : 's'} ${allPossibleScopes.join(', ')}.`
-            );
-        }
-
-        const foundToken = foundPreparedProvider.token;
+        // const allPossibleScopes = foundPreparedProvider.providers.map(getScope);
+        // const unscoped = allPossibleScopes.includes('') && allPossibleScopes.length === 1;
+        //
+        // if (!unscoped && !allPossibleScopes.includes(fromScope)) {
+        //     const t = stringifyType(type, { showFullDefinition: false });
+        //     throw new ServiceNotFoundError(
+        //         `Service "${t}" can not be received from ${fromScope ? 'scope ' + fromScope : 'no scope'}, ` +
+        //         `since it only exists in scope${allPossibleScopes.length === 1 ? '' : 's'} ${allPossibleScopes.join(', ')}.`
+        //     );
+        // }
 
         const resolveFromModule = foundPreparedProvider.resolveFrom || foundPreparedProvider.modules[0];
 
@@ -866,4 +875,40 @@ export class InjectorContext {
     public createChildScope(scope: string): InjectorContext {
         return new InjectorContext(this.rootModule, { name: scope, instances: {} }, this.buildContext);
     }
+}
+
+export function injectedFunction<T extends (...args: any) => any>(fn: T, injector: Injector, skipParameters: number = 0): ((scope?: Scope, ...args: any[]) => ReturnType<T>) {
+    const type = reflect(fn);
+    if (type.kind === ReflectionKind.function) {
+        const args: Resolver<any>[] = [];
+        for (let i = skipParameters; i < type.parameters.length; i++) {
+            args.push(injector.createResolver(type.parameters[i]));
+        }
+
+        if (skipParameters === 0) {
+            return ((scope: Scope | undefined) => {
+                return fn(...(args.map(v => v(scope))));
+            }) as any;
+        } else if (skipParameters === 1) {
+            return ((scope: Scope | undefined, p1: any) => {
+                return fn(p1, ...(args.map(v => v(scope))));
+            }) as any;
+        } else if (skipParameters === 2) {
+            return ((scope: Scope | undefined, p1: any, p2: any) => {
+                return fn(p1, p2, ...(args.map(v => v(scope))));
+            }) as any;
+        } else if (skipParameters === 3) {
+            return ((scope: Scope | undefined, p1: any, p2: any, p3: any) => {
+                return fn(p1, p2, p3, ...(args.map(v => v(scope))));
+            }) as any;
+        } else {
+            return ((scope: Scope | undefined, ...input: any[]) => {
+                while (input.length !== skipParameters) {
+                    input.push(undefined);
+                }
+                return fn(...input.slice(0, skipParameters), ...(args.map(v => v(scope))));
+            }) as any;
+        }
+    }
+    return fn;
 }

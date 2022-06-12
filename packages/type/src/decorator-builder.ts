@@ -22,14 +22,14 @@ export type FluidDecorator<T, D extends Function> = {
 export function createFluidDecorator<API extends APIClass<any> | APIProperty<any>, D extends Function>
 (
     api: API,
-    modifier: { name: string, args?: any }[],
+    modifier: { name: string, args?: any, Ω?: any }[],
     collapse: (modifier: { name: string, args?: any }[], target: any, property?: string, parameterIndexOrDescriptor?: any) => void,
     returnCollapse: boolean = false,
     fluidFunctionSymbol?: symbol
 ): FluidDecorator<ExtractClass<API>, D> {
     const fn = function (target: object, property?: string, parameterIndexOrDescriptor?: any) {
         const res = collapse(modifier, target, property, parameterIndexOrDescriptor);
-        if (returnCollapse) return res;
+        if (returnCollapse || target === Object) return res;
     };
     Object.defineProperty(fn, 'name', { value: undefined });
     Object.defineProperty(fn, '_data', {
@@ -65,8 +65,8 @@ export function createFluidDecorator<API extends APIClass<any> | APIProperty<any
                 Object.defineProperty(fn, name, {
                     configurable: true,
                     enumerable: false,
-                    value: (...args: any[]) => {
-                        return createFluidDecorator(api, [...modifier, { name, args }], collapse, returnCollapse, fluidFunctionSymbol);
+                    value: function fn(...args: any[]) {
+                        return createFluidDecorator(api, [...modifier, { name, args, Ω: (fn as any).Ω }], collapse, returnCollapse, fluidFunctionSymbol);
                     }
                 });
             }
@@ -118,11 +118,12 @@ export function mergeDecorator<T extends any[]>(...args: T): Merge<Omit<UnionToI
     }
 
     function fluid(
-        modifier: { name: string, args?: any }[],
+        modifier: { name: string, args?: any, Ω?: any }[],
         collapse: (modifier: { name: string, args?: any }[], target: any, property?: string, parameterIndexOrDescriptor?: any) => void,
     ): any {
         const fn = function (target: object, property?: string, parameterIndexOrDescriptor?: any) {
-            collapse(modifier, target, property, parameterIndexOrDescriptor);
+            const res = collapse(modifier, target, property, parameterIndexOrDescriptor);
+            if (target === Object) return res;
         };
         Object.defineProperty(fn, 'name', { value: undefined });
 
@@ -144,10 +145,8 @@ export function mergeDecorator<T extends any[]>(...args: T): Merge<Omit<UnionToI
                 Object.defineProperty(fn, name, {
                     configurable: true,
                     enumerable: false,
-                    get: () => {
-                        return (...args: any[]) => {
-                            return fluid([...modifier, { name, args }], collapse);
-                        };
+                    value: function fn(...args: any[]) {
+                        return fluid([...modifier, { name, args, Ω: (fn as any).Ω }], collapse);
                     }
                 });
             }
@@ -155,16 +154,18 @@ export function mergeDecorator<T extends any[]>(...args: T): Merge<Omit<UnionToI
         return fn;
     }
 
-    function collapse(modifier: { name: string, args?: any }[], target: object, property?: string, parameterIndexOrDescriptor?: any) {
+    function collapse(modifier: { name: string, args?: any, Ω?: any }[], target: object, property?: string, parameterIndexOrDescriptor?: any) {
+        const results: any[] = [];
         if (property) {
             loop:
                 for (const mod of modifier) {
                     for (const decorator of args) {
                         if (decorator._type === 'propertyDecorator' && decorator[mod.name]) {
                             if (mod.args) {
-                                decorator[mod.name](...mod.args)(target, property, parameterIndexOrDescriptor);
+                                (decorator[mod.name] as any).Ω = mod.Ω;
+                                results.push(decorator[mod.name](...mod.args)(target, property, parameterIndexOrDescriptor));
                             } else {
-                                decorator[mod.name](target, property, parameterIndexOrDescriptor);
+                                results.push(decorator[mod.name](target, property, parameterIndexOrDescriptor));
                             }
                             continue loop;
                         }
@@ -177,9 +178,10 @@ export function mergeDecorator<T extends any[]>(...args: T): Merge<Omit<UnionToI
                     for (const decorator of args) {
                         if (decorator._type === 'classDecorator' && decorator[mod.name]) {
                             if (mod.args) {
-                                decorator[mod.name](...mod.args)(target);
+                                (decorator[mod.name] as any).Ω = mod.Ω;
+                                results.push(decorator[mod.name](...mod.args)(target));
                             } else {
-                                decorator[mod.name](target);
+                                results.push(decorator[mod.name](target));
                             }
                             continue loop;
                         }
@@ -188,6 +190,7 @@ export function mergeDecorator<T extends any[]>(...args: T): Merge<Omit<UnionToI
                     throw new Error(`Decorator '${mod.name}' can not be used on class ${getClassName(target)}`);
                 }
         }
+        return results;
     }
 
     return fluid([], collapse);
@@ -209,12 +212,14 @@ export function createClassDecoratorContext<API extends APIClass<any>, T = Extra
 ): ClassDecoratorResult<API> {
     const map = new Map<object, ClassApiTypeInterface<any>>();
 
-    function collapse(modifier: { name: string, args?: any }[], target: ClassType) {
+    function collapse(modifier: { name: string, args?: any, Ω?: any }[], target: ClassType): any {
         const api: ClassApiTypeInterface<any> = map.get(target) ?? new apiType(target);
 
         for (const fn of modifier) {
             if (fn.args) {
-                (api as any)[fn.name].bind(api)(...fn.args);
+                const f = (api as any)[fn.name];
+                f.Ω = fn.Ω;
+                f.call(api, ...fn.args);
             } else {
                 //just call the getter
                 (api as any)[fn.name];
@@ -224,6 +229,7 @@ export function createClassDecoratorContext<API extends APIClass<any>, T = Extra
         if (api.onDecorator) api.onDecorator(target);
 
         map.set(target, api);
+        if (target === Object) return api.t;
     }
 
     const fn = createFluidDecorator(apiType, [], collapse);
@@ -260,10 +266,10 @@ export function createPropertyDecoratorContext<API extends APIProperty<any>>(
 ): PropertyDecoratorResult<API> {
     const targetMap = new Map<object, Map<any, PropertyApiTypeInterface<any>>>();
 
-    function collapse(modifier: { name: string, args?: any }[], target: object, property?: string, parameterIndexOrDescriptor?: any) {
+    function collapse(modifier: { name: string, args?: any, Ω?: any }[], target: object, property?: string, parameterIndexOrDescriptor?: any): any {
         if (property === undefined && parameterIndexOrDescriptor === undefined) throw new Error('Property decorators can only be used on class properties');
 
-        target = (target as any)['constructor']; //property decorators get the prototype instead of the class.
+        target = target === Object ? target : (target as any)['constructor']; //property decorators get the prototype instead of the class.
         let map = targetMap.get(target);
         if (!map) {
             map = new Map();
@@ -275,7 +281,9 @@ export function createPropertyDecoratorContext<API extends APIProperty<any>>(
 
         for (const fn of modifier) {
             if (fn.args) {
-                (api as any)[fn.name].bind(api)(...fn.args);
+                const f = (api as any)[fn.name];
+                f.Ω = fn.Ω;
+                f.call(api, ...fn.args);
             } else {
                 //just call the getter
                 (api as any)[fn.name];
@@ -285,6 +293,7 @@ export function createPropertyDecoratorContext<API extends APIProperty<any>>(
         if (api.onDecorator) api.onDecorator(target as ClassType, property, ('number' === typeof parameterIndexOrDescriptor ? parameterIndexOrDescriptor : undefined));
 
         map.set(index, api);
+        if (target === Object) return api.t;
     }
 
     const fn = createFluidDecorator(apiType, [], collapse);
@@ -322,12 +331,14 @@ export type FreeDecoratorResult<API extends APIClass<any>> = FreeFluidDecorator<
 export function createFreeDecoratorContext<API extends APIClass<any>, T = ExtractApiDataType<API>>(
     apiType: API
 ): FreeDecoratorResult<API> {
-    function collapse(modifier: { name: string, args?: any }[], target?: any, property?: string, parameterIndexOrDescriptor?: any) {
+    function collapse(modifier: { name: string, args?: any, Ω?: any }[], target?: any, property?: string, parameterIndexOrDescriptor?: any) {
         const api = new apiType;
 
         for (const fn of modifier) {
             if (fn.args) {
-                (api as any)[fn.name].bind(api)(...fn.args);
+                const f = (api as any)[fn.name];
+                f.Ω = fn.Ω;
+                f.call(api, ...fn.args);
             } else {
                 //just call the getter
                 (api as any)[fn.name];

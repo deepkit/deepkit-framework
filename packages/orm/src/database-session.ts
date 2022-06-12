@@ -12,7 +12,17 @@ import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet
 import { DatabaseEntityRegistry } from './database-adapter';
 import { DatabaseValidationError, OrmEntity } from './type';
 import { ClassType, CustomError } from '@deepkit/core';
-import { getPrimaryKeyExtractor, isReferenceInstance, markAsHydrated, PrimaryKeyFields, ReflectionClass, typeSettings, UnpopulatedCheck, validate } from '@deepkit/type';
+import {
+    ReceiveType,
+    getPrimaryKeyExtractor,
+    isReferenceInstance,
+    markAsHydrated,
+    PrimaryKeyFields,
+    ReflectionClass,
+    typeSettings,
+    UnpopulatedCheck,
+    validate
+} from '@deepkit/type';
 import { GroupArraySort } from '@deepkit/topsort';
 import { getClassState, getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map';
 import { getClassSchemaInstancePairs } from './utils';
@@ -21,6 +31,7 @@ import { getReference } from './reference';
 import { QueryDatabaseEmitter, UnitOfWorkCommitEvent, UnitOfWorkDatabaseEmitter, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event';
 import { DatabaseLogger } from './logger';
 import { Stopwatch } from '@deepkit/stopwatch';
+import { AbstractClassType } from '@deepkit/core';
 
 let SESSION_IDS = 0;
 
@@ -65,7 +76,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 
     protected getReferenceDependencies<T extends OrmEntity>(item: T): OrmEntity[] {
         const result: OrmEntity[] = [];
-        const classSchema = this.session.entityRegistry.getFromInstance(item)
+        const classSchema = this.session.entityRegistry.getFromInstance(item);
 
         const old = typeSettings.unpopulatedCheck;
         typeSettings.unpopulatedCheck = UnpopulatedCheck.None;
@@ -290,7 +301,14 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
         public stopwatch?: Stopwatch,
     ) {
         const queryFactory = this.adapter.queryFactory(this);
-        this.query = queryFactory.createQuery.bind(queryFactory);
+
+        const self = this;
+
+        //we cannot use arrow functions, since they can't have ReceiveType<T>
+        function query<T>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
+            return queryFactory.createQuery(type);
+        };
+        this.query = query as any;
 
         const factory = this.adapter.rawFactory(this);
         this.raw = factory.create.bind(factory);

@@ -20,6 +20,7 @@
     "tests",
     "index.ts"
   ],
+  "reflection": true,
   "references": [
     {
       "path": "../core/tsconfig.json"

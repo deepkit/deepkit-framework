@@ -180,6 +180,7 @@ export function isNodeWithLocals(node: Node): node is (Node & { locals: SymbolTa
     return 'locals' in node;
 }
 
+//logic copied from typescript
 export function getGlobalsOfSourceFile(file: SourceFile): SymbolTable | void {
     if (file.redirectInfo) return;
     if (!isNodeWithLocals(file)) return;

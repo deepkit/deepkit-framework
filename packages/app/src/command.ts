@@ -21,7 +21,7 @@ import {
     ReflectionParameter,
     ReflectionProperty,
     validate,
-    ValidationErrorItem
+    ValidationError
 } from '@deepkit/type';
 import { Command as OclifCommandBase } from '@oclif/command';
 import { Command as OclifCommand } from '@oclif/config';
@@ -61,7 +61,7 @@ function getProperty(classType: ClassType, ref: {property: string; parameterInde
 
 class ArgDefinition {
     isFlag: boolean = false;
-    multiple: boolean = false;
+    description: string = '';
     hidden: boolean = false;
     char: string = '';
     property!: string;
@@ -88,14 +88,13 @@ export class ArgDecorator implements PropertyApiTypeInterface<ArgDefinition> {
         cli.addArg(this.t)(classType);
     }
 
-    get multiple() {
-        this.t.multiple = true;
-        return;
-    }
-
     get hidden() {
         this.t.hidden = true;
         return;
+    }
+
+    description(description: string) {
+        this.t.description = description;
     }
 
     char(char: string) {
@@ -154,16 +153,19 @@ export function buildOclifCommand(name: string, injector: InjectorContext, class
 
         const options = {
             name: propertySchema.name,
-            description: 'todo',
+            description: t.description,
             hidden: t.hidden,
             required: !(propertySchema.isOptional() || propertySchema.hasDefault()),
-            multiple: t.multiple,
+            multiple: propertySchema.getType().kind === ReflectionKind.array,
             default: propertySchema.getDefaultValue(),
         };
 
         //todo, add `parse(i)` and make sure type is correct depending on t.propertySchema.type
         if (t.isFlag) {
             oclifFlags[propertySchema.name] = propertySchema.type.kind === ReflectionKind.boolean ? flags.boolean(options) : flags.string(options);
+            if (t.char) {
+                oclifFlags[propertySchema.name].char = t.char as any;
+            }
         } else {
             oclifArgs.push(options);
         }
@@ -188,9 +190,9 @@ export function buildOclifCommand(name: string, injector: InjectorContext, class
                     const methodArgs: any[] = [];
 
                     for (const property of argDefinitions!.args) {
-                        try {
-                            const propertySchema = getProperty(classType, property);
+                        const propertySchema = getProperty(classType, property);
 
+                        try {
                             const v = converters.get(propertySchema)!(args[propertySchema.name] ?? flags[propertySchema.name]);
                             if (propertySchema instanceof ReflectionParameter) {
                                 methodArgs.push(v);
@@ -200,11 +202,13 @@ export function buildOclifCommand(name: string, injector: InjectorContext, class
                                 }
                             }
                         } catch (e) {
-                            if (e instanceof ValidationErrorItem) {
-                                console.log(`Validation error in ${e.path}: ${e.message} [${e.code}]`);
+                            if (e instanceof ValidationError) {
+                                for (const item of e.errors) {
+                                    console.error(`Validation error in ${propertySchema.name + (item.path ? '.' + item.path : '')}: ${item.message} [${item.code}]`);
+                                }
                                 return 8;
                             }
-                            console.log(e);
+                            console.error(e);
                             return 8;
                         }
                     }

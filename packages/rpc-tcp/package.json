@@ -25,7 +25,9 @@
     "@deepkit/rpc": "^1.0.1-alpha.13"
   },
   "dependencies": {
-    "turbo-net": "deepkit/turbo-net#1.6.0"
+    "turbo-net": "deepkit/turbo-net#1.6.0",
+    "@types/ws": "^8.5.3",
+    "ws": "^8.6.0"
   },
   "devDependencies": {
     "@deepkit/rpc": "^1.0.1-alpha.71"

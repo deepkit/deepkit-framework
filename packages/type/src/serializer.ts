@@ -52,17 +52,15 @@ import {
     TypeTuple,
     TypeUnion,
     validationAnnotation
-} from './reflection/type';
+} from './reflection/type.js';
 import { TypeNumberBrand } from '@deepkit/type-spec';
-import { hasCircularReference, ReflectionClass, ReflectionProperty } from './reflection/reflection';
-import { extendTemplateLiteral, isExtendable } from './reflection/extends';
-import { resolveRuntimeType } from './reflection/processor';
-import { createReference, isReferenceHydrated, isReferenceInstance } from './reference';
-import { validate, ValidationError, ValidationErrorItem } from './validator';
-import { validators } from './validators';
-import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core';
-
-if (!binaryTypes) throw new Error('WAT');
+import { hasCircularReference, ReflectionClass, ReflectionProperty } from './reflection/reflection.js';
+import { extendTemplateLiteral, isExtendable } from './reflection/extends.js';
+import { resolveRuntimeType } from './reflection/processor.js';
+import { createReference, isReferenceHydrated, isReferenceInstance } from './reference.js';
+import { validate, ValidationError, ValidationErrorItem } from './validator.js';
+import { validators } from './validators.js';
+import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core.js';
 
 /**
  * Make sure to change the id when a custom naming strategy is implemented, since caches are based on it.

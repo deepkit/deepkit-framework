@@ -213,6 +213,9 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
         connection.released = false;
         connection.stopwatch = stopwatch;
 
+        //first connection is always reused, so we update the logger
+        if (logger) connection.logger = logger;
+
         this.activeConnections++;
 
         if (transaction) {

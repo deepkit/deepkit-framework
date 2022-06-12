@@ -8,12 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext } from './decorator-builder';
-import { EntityData, ReceiveType, SerializerFn, TData } from './reflection/reflection';
+import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext } from './decorator-builder.js';
+import { EntityData, ReceiveType, SerializerFn, TData } from './reflection/reflection.js';
 import { ClassType, isArray } from '@deepkit/core';
-import { IndexOptions } from './reflection/type';
-import type { ValidateFunction } from './validator';
-import { typeSettings } from './core';
+import { IndexOptions } from './reflection/type.js';
+import type { ValidateFunction } from './validator.js';
+import { typeSettings } from './core.js';
 
 class TDecorator {
     t = new TData();

@@ -151,7 +151,9 @@ export class RpcMessage {
     }
 
     parseBody<T>(type?: ReceiveType<T>): T {
-        if (!this.bodySize) throw new Error('Message has no body');
+        if (!this.bodySize) {
+            throw new Error('Message has no body');
+        }
         if (!this.buffer) throw new Error('No buffer');
         if (this.composite) throw new Error('Composite message can not be read directly');
         // console.log('parseBody raw', deserializeBSONWithoutOptimiser(this.buffer, this.bodyOffset));

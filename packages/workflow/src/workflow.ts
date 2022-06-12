@@ -10,7 +10,7 @@
 
 import { capitalize, ClassType, CompilerContext, CustomError, ExtractClassType, getClassName, isArray, toFastProperties } from '@deepkit/core';
 import { BaseEvent, EventDispatcher, EventToken, isEventListenerContainerEntryCallback, isEventListenerContainerEntryService } from '@deepkit/event';
-import { InjectorContext } from '@deepkit/injector';
+import { injectedFunction, InjectorContext } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
 interface WorkflowTransition<T> {
@@ -96,7 +96,7 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
     }
 
     getEventToken<K extends keyof T>(name: K): EventToken<ExtractClassType<T[K]>> {
-        if (!this.tokens[name]) throw new Error(`No event token found for ${name}`);
+        if (!this.tokens[name]) throw new Error(`No event token found for ${String(name)}`);
 
         return this.tokens[name]!;
     }
@@ -107,8 +107,8 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
         this.next[from]!.push(to);
     }
 
-    public create(state: keyof T & string, eventDispatcher: EventDispatcher, injectorContext?: InjectorContext, stopwatch?: Stopwatch): Workflow<T> {
-        return new Workflow(this, new WorkflowStateSubject(state), eventDispatcher, injectorContext || eventDispatcher.scopedContext, stopwatch);
+    public create(state: keyof T & string, eventDispatcher: EventDispatcher, injector?: InjectorContext, stopwatch?: Stopwatch): Workflow<T> {
+        return new Workflow(this, new WorkflowStateSubject(state), eventDispatcher, injector || eventDispatcher.injector, stopwatch);
     }
 
     getTransitionsFrom(state: keyof T & string): (keyof T & string)[] {
@@ -141,12 +141,18 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
             const listenerCode: string[] = [];
             for (const listener of listeners) {
                 if (isEventListenerContainerEntryCallback(listener)) {
-                    const fnVar = compiler.reserveVariable('fn', listener.fn);
-                    listenerCode.push(`
+                    try {
+                        const injector = listener.module ? eventDispatcher.injector.getInjector(listener.module) : eventDispatcher.injector.getRootInjector();
+                        const fn = injectedFunction(listener.fn, injector, 1);
+                        const fnVar = compiler.reserveVariable('fn', fn);
+                        listenerCode.push(`
                         if (!event.isStopped()) {
-                            await ${fnVar}(event);
+                            await ${fnVar}(scopedContext.scope, event);
                         }
                     `);
+                    } catch (error: any) {
+                        throw new Error(`Could not build workflow listener ${listener.fn.name || 'anonymous function'} of event token ${eventToken.id}: ${error.message}`);
+                    }
                 } else if (isEventListenerContainerEntryService(listener)) {
                     const classTypeVar = compiler.reserveVariable('classType', listener.classType);
                     const moduleVar = listener.module ? ', ' + compiler.reserveVariable('module', listener.module) : '';
@@ -238,7 +244,7 @@ export class Workflow<T extends WorkflowPlaces> {
         public definition: WorkflowDefinition<T>,
         public state: WorkflowState<T>,
         private eventDispatcher: EventDispatcher,
-        private injectorContext: InjectorContext,
+        private injector: InjectorContext,
         private stopwatch?: Stopwatch
     ) {
     }
@@ -259,7 +265,7 @@ export class Workflow<T extends WorkflowPlaces> {
             fn = (this.eventDispatcher as any)[this.definition.symbol] = this.definition.buildApplier(this.eventDispatcher);
         }
 
-        return fn(this.injectorContext, this.state, nextState, event || new WorkflowEvent() as ExtractClassType<T[K]>, this.stopwatch);
+        return fn(this.injector, this.state, nextState, event || new WorkflowEvent() as ExtractClassType<T[K]>, this.stopwatch);
     }
 
     isDone(): boolean {

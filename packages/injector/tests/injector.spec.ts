@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { CircularDependencyError, Injector } from '../src/injector';
+import { CircularDependencyError, injectedFunction, Injector, InjectorContext } from '../src/injector';
 import { InjectorModule } from '../src/module';
 import { ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { Inject } from '../src/types';
@@ -624,4 +624,84 @@ test('class inheritance', () => {
     expect(c).toBeInstanceOf(C);
     expect(c).toBeInstanceOf(B);
     expect(c.a).toBeInstanceOf(A);
+});
+
+test('injectedFunction all', () => {
+    class A {}
+    class B {}
+    const injector = Injector.from([A, B]);
+
+    function render(a: A, b: B) {
+        expect(a).toBeInstanceOf(A);
+        expect(b).toBeInstanceOf(B);
+        return true;
+    }
+
+    const wrapped = injectedFunction(render, injector);
+
+    expect(wrapped()).toBe(true);
+});
+
+test('injectedFunction scope', () => {
+    class A {}
+    class B {
+        constructor(public id: number) {
+        }
+    }
+    const injector = InjectorContext.forProviders([A, {provide: B, scope: 'http', useValue: new B(0)}]);
+
+    function render(a: A, b: B) {
+        expect(a).toBeInstanceOf(A);
+        expect(b).toBeInstanceOf(B);
+        return b.id;
+    }
+
+    const wrapped = injectedFunction(render, injector.getRootInjector());
+
+    {
+        const scope = injector.createChildScope('http');
+        expect(wrapped(scope.scope)).toBe(0);
+    }
+    {
+        const scope = injector.createChildScope('http');
+        scope.set(B, new B(1));
+        expect(wrapped(scope.scope)).toBe(1);
+    }
+    {
+        const scope = injector.createChildScope('http');
+        scope.set(B, new B(2));
+        expect(wrapped(scope.scope)).toBe(2);
+    }
+});
+
+test('injectedFunction skip 1', () => {
+    class A {}
+    class B {}
+    const injector = Injector.from([A, B]);
+
+    function render(html: string, a: A, b: B) {
+        expect(a).toBeInstanceOf(A);
+        expect(b).toBeInstanceOf(B);
+        return html;
+    }
+
+    const wrapped = injectedFunction(render, injector, 1);
+
+    expect(wrapped(undefined, 'abc')).toBe('abc');
+});
+
+test('injectedFunction skip 2', () => {
+    class A {}
+    class B {}
+    const injector = Injector.from([A, B]);
+
+    function render(html: string, a: A, b: B) {
+        expect(a).toBeInstanceOf(A);
+        expect(b).toBeInstanceOf(B);
+        return html;
+    }
+
+    const wrapped = injectedFunction(render, injector, 2);
+
+    expect(wrapped(undefined, 'abc', new A)).toBe('abc');
 });

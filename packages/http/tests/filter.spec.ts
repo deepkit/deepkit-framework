@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { Router } from '../src/router';
+import { HttpRouter } from '../src/router';
 import { HttpRouteFilter, HttpRouterFilterResolver } from '../src/filter';
 import { http } from '../src/decorator';
 import { createModule } from '@deepkit/app';
@@ -17,7 +17,7 @@ test('filter by controller', async () => {
         }
     }
 
-    const resolver = new HttpRouterFilterResolver(Router.forControllers([
+    const resolver = new HttpRouterFilterResolver(HttpRouter.forControllers([
         ControllerA, ControllerB
     ]));
 
@@ -49,7 +49,7 @@ test('filter by route names', async () => {
         }
     }
 
-    const resolver = new HttpRouterFilterResolver(Router.forControllers([
+    const resolver = new HttpRouterFilterResolver(HttpRouter.forControllers([
         ControllerA, ControllerB
     ]));
 
@@ -79,7 +79,7 @@ test('filter by route names and controller', async () => {
         }
     }
 
-    const resolver = new HttpRouterFilterResolver(Router.forControllers([
+    const resolver = new HttpRouterFilterResolver(HttpRouter.forControllers([
         ControllerA, ControllerB
     ]));
 
@@ -105,7 +105,7 @@ test('filter by groups', async () => {
         }
     }
 
-    const resolver = new HttpRouterFilterResolver(Router.forControllers([
+    const resolver = new HttpRouterFilterResolver(HttpRouter.forControllers([
         ControllerA, ControllerB
     ]));
 
@@ -156,7 +156,7 @@ test('filter by modules', async () => {
     expect(moduleB instanceof ModuleA).toBe(false);
     expect(moduleB instanceof ModuleB).toBe(true);
 
-    const resolver = new HttpRouterFilterResolver(Router.forControllers([
+    const resolver = new HttpRouterFilterResolver(HttpRouter.forControllers([
         { controller: ControllerA, module: moduleA }, { controller: ControllerB, module: moduleA },
         { controller: ControllerC, module: moduleB },
     ]));

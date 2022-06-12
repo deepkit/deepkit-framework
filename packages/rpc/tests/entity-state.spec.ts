@@ -104,7 +104,7 @@ test('controller', async () => {
         { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
         { provide: Controller, scope: 'rpc' },
     ]));
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');

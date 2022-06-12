@@ -9,9 +9,9 @@
  */
 
 import { ClassType, isObject } from '@deepkit/core';
-import { ReflectionClass, reflectionClassSymbol } from './reflection/reflection';
-import { typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core';
-import { ReflectionKind, Type } from './reflection/type';
+import { ReflectionClass, reflectionClassSymbol } from './reflection/reflection.js';
+import { typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core.js';
+import { ReflectionKind, Type } from './reflection/type.js';
 
 export function isReferenceInstance(obj: any): boolean {
     return isObject(obj) && referenceSymbol in obj;
@@ -66,7 +66,7 @@ export function createReference<T>(type: ClassType<T> | Type | ReflectionClass<a
             args.push(pk[prop.getName()]);
         }
 
-        const ref = new reflectionClass(...args);
+        const ref: any = new reflectionClass(...args);
         Object.assign(ref, pk);
         return ref as any;
     } finally {

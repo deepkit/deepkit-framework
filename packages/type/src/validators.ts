@@ -1,6 +1,6 @@
 import { isArray } from '@deepkit/core';
-import { ValidatorError } from './validator';
-import { TypeLiteral } from './reflection/type';
+import { ValidatorError } from './validator.js';
+import { TypeLiteral } from './reflection/type.js';
 
 export const validators: { [name in string]?: (...args: any[]) => (value: any) => ValidatorError | undefined } = {
     pattern(type: TypeLiteral) {

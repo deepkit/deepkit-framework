@@ -14,7 +14,7 @@ import { eventDispatcher } from '@deepkit/event';
 import { HttpRequest, HttpResponse } from './model';
 import { InjectorContext } from '@deepkit/injector';
 import { LoggerInterface } from '@deepkit/logger';
-import { RouteConfig, RouteParameterResolverForInjector, Router } from './router';
+import { HttpRouter, RouteConfig, RouteParameterResolverForInjector } from './router';
 import { createWorkflow, WorkflowEvent } from '@deepkit/workflow';
 import type { ElementStruct, render } from '@deepkit/template';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
@@ -336,6 +336,10 @@ export class BaseResponse {
         return this;
     }
 
+    /**
+     * Per default a JSONResponse is serialized using the return type specified at the route.
+     * This disables that behaviour so that JSON.stringify is run on the result directly.
+     */
     disableAutoSerializing() {
         this.autoSerializing = false;
         return this;
@@ -357,6 +361,13 @@ export class BaseResponse {
     }
 }
 
+export class Response extends BaseResponse {
+    constructor(public content: string | Uint8Array, contentType: string, statusCode?: number) {
+        super(statusCode);
+        this.contentType(contentType);
+    }
+}
+
 export class HtmlResponse extends BaseResponse {
     constructor(public html: string, statusCode?: number) {
         super(statusCode);
@@ -369,7 +380,7 @@ export class JSONResponse extends BaseResponse {
     }
 }
 
-export type SupportedHttpResult = undefined | null | number | string | JSONResponse | HtmlResponse | HttpResponse | ServerResponse | Redirect | Uint8Array | Error;
+export type SupportedHttpResult = undefined | null | number | string | Response | JSONResponse | HtmlResponse | HttpResponse | ServerResponse | Redirect | Uint8Array | Error;
 
 export interface HttpResultFormatterContext {
     request: HttpRequest;
@@ -381,7 +392,7 @@ export class HttpResultFormatter {
     protected jsonContentType: string = 'application/json; charset=utf-8';
     protected htmlContentType: string = 'text/html; charset=utf-8';
 
-    constructor(protected router: Router) {
+    constructor(protected router: HttpRouter) {
     }
 
     protected setContentTypeIfNotSetAlready(response: HttpResponse, contentType: string): void {
@@ -423,6 +434,12 @@ export class HttpResultFormatter {
         context.response.end(result.html);
     }
 
+    handleGenericResponse(result: Response, context: HttpResultFormatterContext): void {
+        context.response.writeHead(result._statusCode || 200, result._headers);
+        console.log('generic response', result.content);
+        context.response.end(result.content);
+    }
+
     handleJSONResponse(result: JSONResponse, context: HttpResultFormatterContext): void {
         this.setContentTypeIfNotSetAlready(context.response, this.jsonContentType);
         context.response.writeHead(result._statusCode || 200, result._headers);
@@ -459,6 +476,8 @@ export class HttpResultFormatter {
             this.handleBinary(result, context);
         } else if (result instanceof JSONResponse) {
             this.handleJSONResponse(result, context);
+        } else if (result instanceof Response) {
+            this.handleGenericResponse(result, context);
         } else {
             if (isClassInstance(result)) {
                 const classType = getClassTypeFromInstance(result);
@@ -475,7 +494,7 @@ export class HttpResultFormatter {
 
 export class HttpListener {
     constructor(
-        protected router: Router,
+        protected router: HttpRouter,
         protected logger: LoggerInterface,
         protected resultFormatter: HttpResultFormatter,
         protected stopwatch?: Stopwatch,
@@ -611,13 +630,22 @@ export class HttpListener {
         if (event.sent) return;
         if (event.hasNext()) return;
 
-        const controllerInstance = event.injectorContext.get(event.route.action.controller, event.route.action.module);
 
         const start = Date.now();
-        const frame = this.stopwatch ? this.stopwatch.start(getClassName(event.route.action.controller) + '.' + event.route.action.methodName, FrameCategory.httpController) : undefined;
+        const stopWatchLabel = event.route.action.type === 'controller'
+            ? getClassName(event.route.action.controller) + '.' + event.route.action.methodName
+            : event.route.action.fn.name;
+
+        const frame = this.stopwatch ? this.stopwatch.start(stopWatchLabel, FrameCategory.httpController) : undefined;
         try {
-            const method = controllerInstance[event.route.action.methodName];
-            let result = await method.apply(controllerInstance, event.parameters);
+            let result: any;
+            if (event.route.action.type === 'controller') {
+                const controllerInstance = event.injectorContext.get(event.route.action.controller, event.route.action.module);
+                const method = controllerInstance[event.route.action.methodName];
+                result = await method.apply(controllerInstance, event.parameters);
+            } else {
+                result = await event.route.action.fn(...event.parameters);
+            }
 
             if (isElementStruct(result)) {
                 const html = await getTemplateRender()(event.injectorContext.getRootInjector(), result, this.stopwatch ? this.stopwatch : undefined);

@@ -9,7 +9,7 @@
  */
 
 import dotProp from 'dot-prop';
-import { eachPair } from './iterators';
+import { eachPair } from './iterators.js';
 
 /**
  * Makes sure the error once printed using console.log contains the actual class name.
@@ -66,7 +66,7 @@ export type ExtractClassType<T> = T extends AbstractClassType<infer K> ? K : nev
 export function getClassName<T>(classTypeOrInstance: ClassType<T> | Object): string {
     if (!classTypeOrInstance) return 'undefined';
     const proto = (classTypeOrInstance as any)['prototype'] ? (classTypeOrInstance as any)['prototype'] : classTypeOrInstance;
-    return proto.constructor.name || 'AnonymousClass';
+    return proto.constructor.name || 'anonymous class';
 }
 
 /**

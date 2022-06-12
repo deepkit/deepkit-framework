@@ -5,6 +5,14 @@ import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Type, Unique } fro
 import { t } from '../src/decorator';
 import { ReflectionClass, typeOf } from '../src/reflection/reflection';
 
+test('primitives', () => {
+    expect(validate<string>('Hello')).toEqual([]);
+    expect(validate<string>(123)).toEqual([{code: 'type', message: 'Not a string', path: ''}]);
+
+    expect(validate<number>('Hello')).toEqual([{code: 'type', message: 'Not a number', path: ''}]);
+    expect(validate<number>(123)).toEqual([]);
+});
+
 test('email', () => {
     expect(is<Email>('peter@example.com')).toBe(true);
     expect(is<Email>('nope')).toBe(false);
@@ -80,6 +88,18 @@ test('decorator validator', () => {
     expect(validate<User>({ username: 'Pe' })).toEqual([{ path: 'username', code: 'length', message: `Min length of 3` }]);
 });
 
+test('simple interface', () => {
+    interface User {
+        id: number;
+        username: string;
+    }
+
+    expect(validate<User>(undefined)).toEqual([{code: 'type', message: 'Not an object', path: ''}]);
+    expect(validate<User>({})).toEqual([{code: 'type', message: 'Not a number', path: 'id'}])
+    expect(validate<User>({id: 1})).toEqual([{code: 'type', message: 'Not a string', path: 'username'}])
+    expect(validate<User>({id: 1, username: 'Peter'})).toEqual([])
+});
+
 test('class', () => {
     class User {
         id: integer & PrimaryKey & AutoIncrement & Positive = 0;
@@ -152,14 +172,4 @@ test('inherited validations', () => {
 
     expect(validate<AddUserDto>({ username: 'Pe' })).toEqual([{code: 'minLength', message: 'Min length is 3', path: 'username'}]);
     expect(validate<AddUserDto>({ username: 'Peter' })).toEqual([]);
-});
-
-test('asdasd', () => {
-    interface User {
-        id: number;
-        username: string;
-    }
-
-    const errors = validate<User>({});
-    console.log('errors', errors);
 });

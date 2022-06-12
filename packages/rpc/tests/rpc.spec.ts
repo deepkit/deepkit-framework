@@ -222,7 +222,7 @@ test('rpc kernel', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
@@ -248,7 +248,7 @@ test('rpc peer', async () => {
     }
 
     await client1.registerAsPeer('peer1');
-    client1.registerPeerController('foo', Controller);
+    client1.registerPeerController(Controller, 'foo');
 
     const client2 = new DirectClient(kernel);
 

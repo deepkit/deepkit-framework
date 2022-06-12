@@ -11,7 +11,7 @@
 import { asyncOperation, getClassName, urlJoin } from '@deepkit/core';
 import { RpcClient } from '@deepkit/rpc';
 import cluster from 'cluster';
-import { Router } from '@deepkit/http';
+import { HttpRouter } from '@deepkit/http';
 import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
 import { InjectorContext } from '@deepkit/injector';
 import { FrameworkConfig } from './module.config';
@@ -81,7 +81,7 @@ type ApplicationServerConfig = Pick<FrameworkConfig, 'server' | 'port' | 'host' 
     'varPath' | 'selfSigned' | 'keepAliveTimeout' | 'workers' | 'publicDir' |
     'debug' | 'debugUrl'>;
 
-function needsHttpWorker(config: { publicDir?: string }, rpcControllers: RpcControllers, router: Router) {
+function needsHttpWorker(config: { publicDir?: string }, rpcControllers: RpcControllers, router: HttpRouter) {
     return Boolean(config.publicDir || rpcControllers.controllers.size || router.getRoutes().length);
 }
 
@@ -89,7 +89,7 @@ export class ApplicationServerListener {
     constructor(
         protected logger: LoggerInterface,
         protected rpcControllers: RpcControllers,
-        protected router: Router,
+        protected router: HttpRouter,
         protected config: ApplicationServerConfig,
     ) {
     }
@@ -108,7 +108,7 @@ export class ApplicationServerListener {
             let lastController: any = undefined;
             for (const route of routes) {
                 if (route.internal) continue;
-                if (lastController !== route.action.controller) {
+                if (route.action.type === 'controller' && lastController !== route.action.controller) {
                     lastController = route.action.controller;
                     this.logger.log(`HTTP Controller <green>${getClassName(lastController)}</green>`);
                 }
@@ -153,7 +153,7 @@ export class ApplicationServer {
         protected rootScopedContext: InjectorContext,
         public config: ApplicationServerConfig,
         protected rpcControllers: RpcControllers,
-        protected router: Router,
+        protected router: HttpRouter,
     ) {
         this.needsHttpWorker = needsHttpWorker(config, rpcControllers, router);
     }

@@ -1,19 +1,19 @@
 import { ApiAction, ApiConsoleApi, ApiDocument, ApiEntryPoints, ApiRoute, ApiRouteResponse } from '@deepkit/api-console-api';
 import { getActions, rpc, RpcKernel } from '@deepkit/rpc';
 import { HttpRouteFilter, HttpRouterFilterResolver, parseRouteControllerAction } from '@deepkit/http';
-import { ClassType, getClassName } from '@deepkit/core';
+import { ClassType, getClassName, isClass } from '@deepkit/core';
 import { Config } from './module.config';
 import { readFile } from 'fs/promises';
 import { ReflectionClass, ReflectionKind, serializeType, Type, TypeClass, TypeObjectLiteral, TypePropertySignature } from '@deepkit/type';
 
 class ControllerNameGenerator {
-    controllers = new Map<ClassType, string>();
+    controllers = new Map<ClassType | Function, string>();
     controllerNames = new Set<string>();
 
-    getName(controller: ClassType): string {
+    getName(controller: ClassType | Function): string {
         let controllerName = this.controllers.get(controller);
         if (!controllerName) {
-            controllerName = getClassName(controller);
+            controllerName = isClass(controller) ? getClassName(controller) : controller.name;
             let candidate = controllerName;
             let i = 2;
             while (this.controllerNames.has(candidate)) {
@@ -83,7 +83,7 @@ export class ApiConsoleController implements ApiConsoleApi {
 
                 try {
                     //todo: Collection, SubjectEntity, Observable get pretty big
-                    rpcAction.methodType = serializeType(reflectionMethod.method);
+                    rpcAction.methodType = serializeType(reflectionMethod.type);
                 } catch (error: any) {
                     console.log(`Could not serialize result type of ${of}: ${error.message}`);
                 }
@@ -103,12 +103,12 @@ export class ApiConsoleController implements ApiConsoleApi {
         for (const route of this.filterResolver.resolve(this.filter.model)) {
             if (route.internal) continue;
 
-            const controllerName = nameGenerator.getName(route.action.controller);
+            const controllerName = nameGenerator.getName( route.action.type === 'controller' ? route.action.controller : route.action.fn);
 
             const routeD = new ApiRoute(
                 route.getFullPath(), route.httpMethods,
                 controllerName,
-                route.action.methodName,
+                route.action.type === 'controller' ? route.action.methodName : '',
                 route.description,
                 route.groups,
                 route.category,
@@ -167,9 +167,9 @@ export class ApiConsoleController implements ApiConsoleApi {
                 }
             }
 
-            const reflectionMethod = ReflectionClass.from(route.action.controller).getMethod(route.action.methodName);
+            const fn = route.getReflectionFunction();
+            routeD.resultType = serializeType(fn.getReturnType());
 
-            routeD.resultType = serializeType(reflectionMethod.getReturnType());
             if (urlType.types.length) routeD.urlType = serializeType(urlType);
             if (queryType.types.length) routeD.queryType = serializeType(queryType);
             routes.push(routeD);

@@ -1,12 +1,14 @@
 import { expect, test } from '@jest/globals';
-import { dotToUrlPath, RouteParameterResolverContext, Router, UploadedFile } from '../src/router';
+import { dotToUrlPath, RouteParameterResolverContext, HttpRouter, UploadedFile, RouteClassControllerAction } from '../src/router';
 import { http, httpClass } from '../src/decorator';
-import { HttpBadRequestError, httpWorkflow, JSONResponse } from '../src/http';
+import { HttpBadRequestError, httpWorkflow, JSONResponse, Response } from '../src/http';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpBody, HttpBodyValidation, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model';
 import { getClassName, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils';
 import { Group, MinLength } from '@deepkit/type';
+import { HttpModule } from '../src/module.js';
+import { HttpKernel } from '../src/kernel.js';
 
 test('router', async () => {
     class Controller {
@@ -31,7 +33,7 @@ test('router', async () => {
         }
     }
 
-    const router = Router.forControllers([Controller]);
+    const router = HttpRouter.forControllers([Controller]);
 
     expect((await router.resolve('GET', '/'))?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'helloWorld' });
     expect((await router.resolve('GET', '/peter'))?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'hello' });
@@ -53,11 +55,11 @@ test('any', async () => {
         }
     }
 
-    const router = Router.forControllers([Controller]);
+    const router = HttpRouter.forControllers([Controller]);
 
-    expect((await router.resolve('GET', '/any'))!.routeConfig.action.methodName).toEqual('any');
-    expect((await router.resolve('POST', '/any'))!.routeConfig.action.methodName).toEqual('any');
-    expect((await router.resolve('OPTIONS', '/any'))!.routeConfig.action.methodName).toEqual('any');
+    expect(((await router.resolve('GET', '/any'))!.routeConfig.action as RouteClassControllerAction).methodName).toEqual('any');
+    expect(((await router.resolve('POST', '/any'))!.routeConfig.action as RouteClassControllerAction).methodName).toEqual('any');
+    expect(((await router.resolve('OPTIONS', '/any'))!.routeConfig.action as RouteClassControllerAction).methodName).toEqual('any');
 });
 
 test('router parameters', async () => {
@@ -83,7 +85,7 @@ test('router parameters', async () => {
         }
     }
 
-    const router = Router.forControllers([Controller]);
+    const router = HttpRouter.forControllers([Controller]);
     expect((await router.resolve('GET', '/user/peter'))?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'string' });
 
     const httpKernel = createHttpKernel([Controller]);
@@ -96,6 +98,21 @@ test('router parameters', async () => {
 
     expect((await httpKernel.request(HttpRequest.GET('/any'))).json).toBe('any');
     expect((await httpKernel.request(HttpRequest.GET('/any/path'))).json).toBe('any/path');
+});
+
+test('generic response', async () => {
+    class Controller {
+        @http.GET('xml')
+        xml() {
+            return new Response('<title>Hello</title>', 'text/xml');
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    const xmlResponse = await httpKernel.request(HttpRequest.GET('/xml'));
+    expect(xmlResponse.bodyString).toBe('<title>Hello</title>');
+    expect(xmlResponse.getHeader('content-type')).toBe('text/xml');
 });
 
 test('router HttpRequest', async () => {
@@ -280,7 +297,7 @@ test('router body is safe for simultaneous requests', async () => {
 
     expect(results).toEqual(
         results.map(() => ['Peter', true, '/']),
-    )
+    );
 });
 
 test('router body interface', async () => {
@@ -457,6 +474,17 @@ test('hook after serializer', async () => {
     expect(result.processingTime).toBeGreaterThanOrEqual(99);
 });
 
+test('functional hooks', async () => {
+    const httpKernel = createHttpKernel([], [], [
+        httpWorkflow.onResponse.listen((event) => {
+            event.result = { username: 'Peter' };
+        })
+    ]);
+
+    const result = (await httpKernel.request(HttpRequest.GET('/'))).json;
+    expect(result).toEqual({ username: 'Peter' });
+});
+
 test('invalid route definition', async () => {
     class Controller {
         @http.GET()
@@ -508,6 +536,29 @@ test('inject request storage ClassType', async () => {
 
     expect((await httpKernel.request(HttpRequest.GET('/optional').headers({ authorization: 'no' }))).json).toEqual({ isUser: false });
 });
+
+test('functional listener', async () => {
+    class Controller {
+        @http.GET('hello')
+        hello() {
+            return 'hi';
+        }
+    }
+
+    const gotUrls: string[] = [];
+
+    const httpKernel = createHttpKernel([Controller], [], [
+        httpWorkflow.onController.listen(event => {
+            gotUrls.push(event.request.url || '');
+        })
+    ]);
+
+    const response = await httpKernel.request(HttpRequest.GET('/hello'));
+    expect(response.statusCode).toBe(200);
+    expect(response.json).toBe('hi');
+    expect(gotUrls).toEqual(['/hello']);
+});
+
 
 test('custom request handling', async () => {
     class Listener {
@@ -666,7 +717,7 @@ test('router url resolve', async () => {
         }
     }
 
-    const router = Router.forControllers([Controller]);
+    const router = HttpRouter.forControllers([Controller]);
 
     expect(router.resolveUrl('first')).toBe('/');
     expect(router.resolveUrl('second', { peter: 'foo' })).toBe('/foo');

@@ -21,11 +21,11 @@ import {
     TypeRest,
     TypeTuple,
     TypeTupleMember
-} from './reflection/type';
+} from './reflection/type.js';
 import { getClassName, getParentClass } from '@deepkit/core';
-import { reflect, ReflectionClass, typeOf } from './reflection/reflection';
-import { typeSettings } from './core';
-import { regExpFromString } from './utils';
+import { reflect, ReflectionClass, typeOf } from './reflection/reflection.js';
+import { typeSettings } from './core.js';
+import { regExpFromString } from './utils.js';
 
 export interface SerializedTypeAnnotations {
     entityOptions?: EntityOptions;

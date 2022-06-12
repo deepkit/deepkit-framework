@@ -2,17 +2,19 @@ import { beforeEach, expect, test } from '@jest/globals';
 import { App } from '../src/app';
 import { Inject, ProviderWithScope, Token } from '@deepkit/injector';
 import { AppModule, createModule } from '../src/module';
-import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
+import { BaseEvent, EventDispatcher, eventDispatcher, EventToken, DataEventToken } from '@deepkit/event';
 import { cli, Command } from '../src/command';
 import { ClassType } from '../../core';
 import { isClass } from '@deepkit/core';
 import { ServiceContainer } from '../src/service-container';
+import { DataEvent } from '@deepkit/event';
 
 Error.stackTraceLimit = 100;
 
 class BaseConfig {
     db: string = 'notSet';
 }
+
 class BaseService {
     constructor(public db: BaseConfig['db']) {
     }
@@ -211,7 +213,7 @@ test('loadConfigFromEnvVariables() happens before setup() calls', async () => {
 
 test('config uppercase naming strategy', async () => {
     class Config {
-        dbHost!: string
+        dbHost!: string;
     }
 
     const app = new App({ config: Config }).setup((module, config) => {
@@ -272,6 +274,41 @@ test('non-forRoot module with class listeners works without exports', async () =
     const app = new App({ imports: [myModule] });
     await app.get(EventDispatcher).dispatch(myEvent, new BaseEvent());
     expect(executed).toBe(true);
+});
+
+test('listen() with dependencies', async () => {
+    interface EventData {
+        id: number;
+    }
+
+    const myEvent = new DataEventToken<EventData>('my-event');
+
+    class MyService {
+    }
+
+    class MyConfig {
+        environment: string = 'dev';
+    }
+    const gotEvents: number[] = [];
+    const myModule = new AppModule({
+        config: MyConfig,
+        providers: [MyService],
+        listeners: [
+            myEvent.listen((event, service: MyService, env: MyConfig['environment']) => {
+                if (!(service instanceof MyService)) throw new Error('Got no service');
+                expect(env).toBe('dev');
+                gotEvents.push(event.data.id);
+            })
+        ]
+    }, 'base');
+
+    const app = new App({ imports: [myModule] });
+    const dispatcher = app.get(EventDispatcher);
+
+    await dispatcher.dispatch(myEvent, new DataEvent({ id: 2 }));
+    await dispatcher.dispatch(myEvent, new DataEvent({ id: 3 }));
+
+    expect(gotEvents).toEqual([2, 3]);
 });
 
 test('non-forRoot module with fn listeners works without exports', async () => {
@@ -481,4 +518,33 @@ test('App.get generic', () => {
 
     const service = app.get<Service>('service' as any);
     service.add();
+});
+
+test('event dispatch', () => {
+    interface User {
+        username: string;
+    }
+
+
+    class Logger {
+        buffer: string[][] = [];
+
+        log(...message: string[]) {
+            console.log(...message);
+            this.buffer.push(message);
+        }
+    }
+
+    const app = new App({
+        providers: [Logger]
+    });
+
+    const UserAddedEvent = new DataEventToken<User>('user-added');
+
+    app.listen(UserAddedEvent, (event, logger: Logger) => {
+        logger.log('User added', event.data.username);
+    });
+    app.dispatch(UserAddedEvent, { username: 'Peter' });
+
+    expect(app.get(Logger).buffer).toEqual([['User added', 'Peter']]);
 });

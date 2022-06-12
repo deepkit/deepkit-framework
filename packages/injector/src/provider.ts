@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { AbstractClassType, ClassType, isClass } from '@deepkit/core';
-import { InjectorModule } from './module';
+import type { InjectorModule } from './module.js';
 import { ReceiveType, resolveReceiveType, Type } from '@deepkit/type';
 
 export interface ProviderBase {

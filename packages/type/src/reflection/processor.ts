@@ -48,12 +48,12 @@ import {
     unboxUnion,
     validationAnnotation,
     widenLiteral
-} from './type';
+} from './type.js';
 import { MappedModifier, ReflectionOp } from '@deepkit/type-spec';
-import { isExtendable } from './extends';
+import { isExtendable } from './extends.js';
 import { ClassType, getClassName, isArray, isClass, isFunction, stringifyValueWithType } from '@deepkit/core';
-import { isWithDeferredDecorators } from '../decorator';
-import { ReflectionClass, TData } from './reflection';
+import { isWithDeferredDecorators } from '../decorator.js';
+import { ReflectionClass, TData } from './reflection.js';
 
 export type RuntimeStackEntry = Type | Object | (() => ClassType | Object) | string | number | boolean | bigint;
 
@@ -316,6 +316,14 @@ export class Processor {
     reflect(object: ClassType | Function | Packed | any, inputs: RuntimeStackEntry[] = [], options: ReflectOptions = {}): Type {
         const packed: Packed | undefined = isPack(object) ? object : object.__type;
         if (!packed) {
+            if (isFunction(object) && object.length === 0) {
+                //functions without any type annotations do not have the overhead of an assigned __type
+                return {
+                    kind: ReflectionKind.function,
+                    function: object, name: object.name,
+                    parameters: [], return: { kind: ReflectionKind.any }
+                };
+            }
             throw new Error(`No valid runtime type for ${stringifyValueWithType(object)} given. Is @deepkit/type-compiler correctly installed? Execute deepkit-type-install to check`);
         }
 
@@ -323,9 +331,9 @@ export class Processor {
             if (isClass(inputs[i])) inputs[i] = resolveRuntimeType(inputs[i]);
         }
 
-        // //this checks if there is an active program still running for given packed. if so, issue a new reference.
-        // //this reference is changed (its content only via Object.assign(reference, computedValues)) once the program finished.
-        // //this is independent of reuseCache since it's the cache for the current 'run', not a global cache
+        //this checks if there is an active program still running for given packed. if so, issue a new reference.
+        //this reference is changed (its content only via Object.assign(reference, computedValues)) once the program finished.
+        //this is independent of reuseCache since it's the cache for the current 'run', not a global cache
         const found = findExistingProgram(this.program, object, inputs);
         if (found) {
             return createRef(found);
@@ -399,7 +407,7 @@ export class Processor {
                 for (; program.program < program.end; program.program++) {
                     const op = program.ops[program.program];
 
-                    // process.stdout.write(`[${program.depth}:${program.frame.index}] step ${program.program} ${ReflectionOp[op]}\n`);
+                    // process.stdout.write(`[${program.depth}:${program.frame.index}] step ${program.program} ${RuntimeReflectionOp[op]}\n`);
                     switch (op) {
                         case ReflectionOp.string:
                             this.pushType({ kind: ReflectionKind.string });
@@ -671,7 +679,7 @@ export class Processor {
 
                             if (type === undefined) {
                                 //generic not instantiated
-                                program.typeParameters.push({ kind: ReflectionKind.any });
+                                program.typeParameters.push({ kind: ReflectionKind.any, typeParameter: true } as any);
                                 this.pushType({ kind: ReflectionKind.typeParameter, name: program.stack[nameRef] as string });
                             } else {
                                 program.typeParameters.push(type as Type);
@@ -929,7 +937,7 @@ export class Processor {
                             break;
                         }
                         case ReflectionOp.var: {
-                            this.push({ kind: ReflectionKind.unknown });
+                            this.push({ kind: ReflectionKind.unknown, var: true });
                             program.frame.variables++;
                             break;
                         }
@@ -1285,6 +1293,8 @@ export class Processor {
             this.push(union);
         } else if (type.kind === ReflectionKind.any) {
             this.push({ kind: ReflectionKind.union, types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.number }, { kind: ReflectionKind.symbol }] });
+        } else {
+            this.push({ kind: ReflectionKind.never });
         }
     }
 
@@ -1420,6 +1430,7 @@ export class Processor {
 
     protected pop(): RuntimeStackEntry {
         if (this.program.stackPointer < 0) throw new Error('Stack empty');
+        // return this.program.stack.pop()!;
         return this.program.stack[this.program.stackPointer--];
     }
 

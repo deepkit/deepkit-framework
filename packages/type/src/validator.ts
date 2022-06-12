@@ -1,9 +1,9 @@
-import { ReceiveType, resolveReceiveType } from './reflection/reflection';
-import { getValidatorFunction, is } from './typeguard';
+import { ReceiveType } from './reflection/reflection.js';
+import { getValidatorFunction, is } from './typeguard.js';
 import { CustomError } from '@deepkit/core';
-import { stringifyType, Type } from './reflection/type';
-import { entity } from './decorator';
-import { serializer, Serializer } from './serializer';
+import { stringifyType, Type } from './reflection/type.js';
+import { entity } from './decorator.js';
+import { serializer, Serializer } from './serializer.js';
 
 export type ValidatorMeta<Name extends string, Args extends [...args: any[]] = []> = { __meta?: ['validator', Name, Args] }
 

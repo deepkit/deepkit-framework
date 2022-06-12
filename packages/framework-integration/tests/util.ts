@@ -40,11 +40,15 @@ export async function closeAllCreatedServers() {
 }
 
 export function appModuleForControllers(controllers: ClassType[], entities: ClassType[] = []): AppModule<any> {
-    const database = Database.createClass('default', new SQLiteDatabaseAdapter(), entities);
+    class MyDatabase extends Database {
+        constructor() {
+            super(new SQLiteDatabaseAdapter(), entities);
+        }
+    }
     return new AppModule({
         controllers: controllers,
         providers: [
-            { provide: Database, useClass: database },
+            { provide: Database, useClass: MyDatabase },
             { provide: Broker, useClass: NetBroker },
             { provide: BrokerServer, useClass: NetBrokerServer },
         ],

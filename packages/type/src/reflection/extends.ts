@@ -30,9 +30,9 @@ import {
     TypeTemplateLiteral,
     TypeTuple,
     TypeUnion
-} from './type';
+} from './type.js';
 import { isPrototypeOfBase } from '@deepkit/core';
-import { typeInfer } from './processor';
+import { typeInfer } from './processor.js';
 
 type AssignableType = Type | string | boolean | number | symbol | bigint | undefined | null;
 
@@ -76,6 +76,7 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
         }
 
         if (right.kind === ReflectionKind.any || right.kind === ReflectionKind.unknown) return true;
+        if (left.kind === ReflectionKind.promise && right.kind === ReflectionKind.promise) return isExtendable(left.type, right.type);
 
         if (right.kind !== ReflectionKind.union) {
             if (left.kind === ReflectionKind.null) {

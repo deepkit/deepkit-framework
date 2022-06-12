@@ -9,10 +9,10 @@
  */
 
 import { CompilerContext, isObject, toFastProperties } from '@deepkit/core';
-import { typeSettings, UnpopulatedCheck } from './core';
-import { ReflectionClass, ReflectionProperty } from './reflection/reflection';
-import { ContainerAccessor, executeTemplates, noopTemplate, serializer, Serializer, TemplateRegistry, TemplateState } from './serializer';
-import { ReflectionKind } from './reflection/type';
+import { typeSettings, UnpopulatedCheck } from './core.js';
+import { ReflectionClass, ReflectionProperty } from './reflection/reflection.js';
+import { ContainerAccessor, executeTemplates, noopTemplate, serializer, Serializer, TemplateRegistry, TemplateState } from './serializer.js';
+import { ReflectionKind } from './reflection/type.js';
 
 function createJITConverterForSnapshot(
     schema: ReflectionClass<any>,

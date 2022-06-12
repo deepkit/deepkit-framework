@@ -5,6 +5,7 @@
   "description": "",
   "scripts": {
     "start": "NODE_OPTIONS=--preserve-symlinks ts-node app server:start",
+    "start:prod": "NODE_OPTIONS=--preserve-symlinks APP_ENVIRONMENT=production ts-node app server:start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {

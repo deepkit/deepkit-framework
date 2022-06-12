@@ -476,7 +476,7 @@ export class BaseQuery<T extends OrmEntity> {
     }
 }
 
-export abstract class GenericQueryResolver<T, ADAPTER extends DatabaseAdapter = DatabaseAdapter, MODEL extends DatabaseQueryModel<T> = DatabaseQueryModel<T>> {
+export abstract class GenericQueryResolver<T extends object, ADAPTER extends DatabaseAdapter = DatabaseAdapter, MODEL extends DatabaseQueryModel<T> = DatabaseQueryModel<T>> {
     constructor(
         protected classSchema: ReflectionClass<T>,
         protected session: DatabaseSession<ADAPTER>,

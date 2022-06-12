@@ -47,7 +47,7 @@ export class UnitOfWorkEvent<T> extends AsyncEmitterEvent {
     }
 }
 
-export class UnitOfWorkUpdateEvent<T> extends AsyncEmitterEvent {
+export class UnitOfWorkUpdateEvent<T extends object> extends AsyncEmitterEvent {
     constructor(
         public readonly classSchema: ReflectionClass<T>,
         public readonly databaseSession: DatabaseSession<any>,
@@ -56,7 +56,7 @@ export class UnitOfWorkUpdateEvent<T> extends AsyncEmitterEvent {
         super();
     }
 
-    isSchemaOf<T>(classType: ClassType<T>): this is UnitOfWorkUpdateEvent<T> {
+    isSchemaOf<T extends object>(classType: ClassType<T>): this is UnitOfWorkUpdateEvent<T> {
         return this.classSchema.isSchemaOf(classType);
     }
 }
@@ -110,7 +110,7 @@ export class QueryDatabaseDeleteEvent<T> extends AsyncEmitterEvent {
     }
 }
 
-export class QueryDatabasePatchEvent<T> extends AsyncEmitterEvent {
+export class QueryDatabasePatchEvent<T extends object> extends AsyncEmitterEvent {
     public returning: (keyof T & string)[] = [];
 
     constructor(
@@ -123,7 +123,7 @@ export class QueryDatabasePatchEvent<T> extends AsyncEmitterEvent {
         super();
     }
 
-    isSchemaOf<T>(classType: ClassType<T>): this is QueryDatabasePatchEvent<T> {
+    isSchemaOf<T extends object>(classType: ClassType<T>): this is QueryDatabasePatchEvent<T> {
         return this.classSchema.isSchemaOf(classType);
     }
 }

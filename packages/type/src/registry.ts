@@ -1,5 +1,5 @@
 import { ClassType, isArray, isFunction } from '@deepkit/core';
-import { binaryTypes, ReflectionKind, Type } from './reflection/type';
+import { binaryTypes, ReflectionKind, Type } from './reflection/type.js';
 
 interface RegistryDecorator<T> {
     predicate: (type: Type) => boolean,

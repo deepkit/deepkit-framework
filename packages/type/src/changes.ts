@@ -20,7 +20,7 @@ export interface ChangesInterface<T> {
     $inc?: Partial<Pick<T, NumberFields<T>>>;
 }
 
-export class Changes<T> {
+export class Changes<T extends object> {
     $set?: Partial<T> | T;
     $unset?: { [path: string]: number };
     $inc?: Partial<Pick<T, NumberFields<T>>>;
@@ -96,7 +96,7 @@ export class Changes<T> {
     }
 }
 
-export class ItemChanges<T> extends Changes<T> {
+export class ItemChanges<T extends object> extends Changes<T> {
     constructor(
         changes: ChangesInterface<T> = {},
         protected item: T
@@ -122,7 +122,7 @@ export class ItemChanges<T> extends Changes<T> {
 
 export const changeSetSymbol = Symbol('changeSet');
 
-export class AtomicChangeInstance<T> {
+export class AtomicChangeInstance<T extends object> {
     public readonly changeSet: Changes<T> = new Changes<T>();
 
     constructor(protected object: any) {
@@ -137,6 +137,6 @@ export class AtomicChangeInstance<T> {
     }
 }
 
-export function atomicChange<T>(object: T) {
+export function atomicChange<T extends object>(object: T) {
     return new AtomicChangeInstance<T>(object);
 }

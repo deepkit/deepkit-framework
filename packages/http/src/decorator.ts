@@ -36,7 +36,7 @@ function isMiddlewareClassTypeOrFn(v: HttpActionMiddleware): v is ClassType<Http
     return isClass(v) || !isDecoratorContext(httpMiddleware, v);
 }
 
-class HttpController {
+export class HttpController {
     baseUrl: string = '';
     actions = new Set<HttpAction>();
     groups: string[] = [];
@@ -110,7 +110,7 @@ export class HttpAction {
     responses: { statusCode: number, description: string, type?: Type }[] = [];
 }
 
-export class HttpDecorator {
+export class HttpControllerDecorator {
     t = new HttpController;
 
     controller(baseUrl: string = '') {
@@ -182,13 +182,14 @@ export class HttpDecorator {
     }
 }
 
-export const httpClass: ClassDecoratorResult<typeof HttpDecorator> = createClassDecoratorContext(HttpDecorator);
+export const httpClass: ClassDecoratorResult<typeof HttpControllerDecorator> = createClassDecoratorContext(HttpControllerDecorator);
 
 export class HttpActionDecorator {
     t = new HttpAction;
 
     onDecorator(target: ClassType, property: string | undefined, parameterIndexOrDescriptor?: any) {
         if (!property) return;
+        if (target === Object) return;
         this.t.methodName = property;
         httpClass.setAction(this.t)(target);
     }
@@ -315,17 +316,17 @@ export class HttpActionDecorator {
      *
      * ```typescript
      *
-     * @http.GET().response<boolean>(200, 'All ok')
+     * http.GET().response<boolean>(200, 'All ok')
      *
      * interface User {
      *     username: string;
      * }
-     * @http.GET().response<User>(200, 'User object')
+     * http.GET().response<User>(200, 'User object')
      *
      * interface HttpErrorMessage {
      *     error: string;
      * }
-     * @http.GET().response<HttpErrorMessage>(500, 'Error')
+     * http.GET().response<HttpErrorMessage>(500, 'Error')
      * ```
      */
     response<T>(statusCode: number, description: string = '', type?: ReceiveType<T>) {
@@ -396,5 +397,7 @@ export const httpAction: HttpActionPropertyDecoratorResult = createPropertyDecor
 //this workaround is necessary since generic functions are lost during a mapped type and changed ReturnType
 type HttpMerge<U> = { [K in keyof U]: K extends 'response' ? <T2>(statusCode: number, description?: string, type?: ReceiveType<T2>) => PropertyDecoratorFn & U : U[K] extends ((...a: infer A) => infer R) ? R extends DualDecorator ? (...a: A) => PropertyDecoratorFn & R & U : (...a: A) => R : never };
 type MergedHttp<T extends any[]> = HttpMerge<Omit<UnionToIntersection<T[number]>, '_fetch' | 't'>>
+
+export type HttpDecorator = PropertyDecoratorFn & HttpActionFluidDecorator<HttpActionDecorator, PropertyDecoratorFn>;
 
 export const http: MergedHttp<[typeof httpClass, typeof httpAction]> = mergeDecorator(httpClass, httpAction) as any as MergedHttp<[typeof httpClass, typeof httpAction]>;

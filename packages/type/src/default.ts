@@ -1,4 +1,4 @@
-import { binaryTypes, ReflectionKind, resolveTypeMembers, Type } from './reflection/type';
+import { binaryTypes, ReflectionKind, resolveTypeMembers, Type } from './reflection/type.js';
 
 /**
  * Returns a sensible default value for a given type.

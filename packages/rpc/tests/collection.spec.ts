@@ -108,7 +108,7 @@ test('collection state', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('myController', Controller);
+    kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');

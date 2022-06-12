@@ -4,7 +4,7 @@ export class BaseCommand {
     /**
      * @description Database typescript files to import and read Database information
      */
-    @flag.multiple
+    @flag
     path: string[] = [];
 
     /**

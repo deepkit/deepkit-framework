@@ -10,8 +10,8 @@
 
 import { AbstractClassType, ClassType, getClassName, getParentClass, indent, isArray } from '@deepkit/core';
 import { TypeNumberBrand } from '@deepkit/type-spec';
-import { getProperty, ReceiveType, reflect, ReflectionClass, resolveReceiveType, toSignature } from './reflection';
-import { isExtendable } from './extends';
+import { getProperty, ReceiveType, reflect, ReflectionClass, resolveReceiveType, toSignature } from './reflection.js';
+import { isExtendable } from './extends.js';
 import { isClass } from '@deepkit/core';
 
 export enum ReflectionVisibility {
@@ -20,7 +20,7 @@ export enum ReflectionVisibility {
     private,
 }
 
-export const enum ReflectionKind {
+export enum ReflectionKind {
     never,
     any,
     unknown,
@@ -1302,6 +1302,10 @@ export class AnnotationDefinition<T = true> {
         annotations[this.symbol].push(data);
     }
 
+    reset(annotations: Annotations) {
+        annotations[this.symbol] = undefined;
+    }
+
     registerType<TType extends Type>(type: TType, data: T): TType {
         type.annotations ||= {};
         this.register(type.annotations, data);
@@ -1594,6 +1598,21 @@ export type Group<Name extends string> = { __meta?: ['group', never & Name] };
 export type Excluded<Name extends string = '*'> = { __meta?: ['excluded', never & Name] };
 export type Data<Name extends string, Value> = { __meta?: ['data', never & Name, never & Value] };
 
+/**
+ * Resets an already set decorator to undefined.
+ *
+ * The required Name is the name of the type decorator (its first tuple entry).
+ *
+ * ```typescript
+ * type Password = string & MinLength<6> & Excluded;
+ *
+ * interface UserCreationPayload {
+ *     password: Password & ResetDecorator<'excluded'>
+ * }
+ * ```
+ */
+export type ResetDecorator<Name extends string> = { __meta?: ['reset', Name] };
+
 export type IndexOptions = {
     name?: string;
     //index size. Necessary for blob/longtext, etc.
@@ -1774,6 +1793,25 @@ export const typeDecorators: TypeDecorator[] = [
                 const nameType = meta.type.types[1];
                 if (!nameType || nameType.type.kind !== ReflectionKind.literal || 'string' !== typeof nameType.type.literal) return false;
                 excludedAnnotation.register(annotations, nameType.type.literal);
+                return true;
+            }
+            case 'reset': {
+                const name = typeToObject(meta.type.types[1].type);
+                if ('string' !== typeof name) return false;
+                const map: { [name: string]: AnnotationDefinition<any> } = {
+                    excluded: excludedAnnotation,
+                    database: databaseAnnotation,
+                    index: indexAnnotation,
+                    data: dataAnnotation,
+                    group: groupAnnotation,
+                    embedded: excludedAnnotation,
+                    mapName: mapNameAnnotation,
+                    reference: referenceAnnotation,
+                    backReference: backReferenceAnnotation,
+                    validator: validationAnnotation,
+                };
+                const annotation = map[name] || metaAnnotation;
+                annotation.reset(annotations);
                 return true;
             }
             case 'data': {

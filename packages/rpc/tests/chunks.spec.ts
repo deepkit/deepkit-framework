@@ -20,7 +20,7 @@ test('chunks', async () => {
     }
 
     const kernel = new RpcKernel();
-    kernel.registerController('test', TestController);
+    kernel.registerController(TestController, 'test');
 
     const client = new DirectClient(kernel);
     const controller = client.controller<TestController>('test');

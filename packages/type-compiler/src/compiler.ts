@@ -8,6 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+import * as ts from 'typescript';
 import {
     __String,
     ArrayTypeNode,
@@ -16,18 +17,20 @@ import {
     ClassDeclaration,
     ClassElement,
     ClassExpression,
+    CompilerHost,
     ConditionalTypeNode,
     ConstructorDeclaration,
     ConstructorTypeNode,
     ConstructSignatureDeclaration,
     createCompilerHost,
     createPrinter,
-    createProgram,
+    CustomTransformer,
     CustomTransformerFactory,
     Declaration,
     EmitHint,
     EntityName,
     EnumDeclaration,
+    escapeLeadingUnderscores,
     ExportDeclaration,
     Expression,
     ExpressionWithTypeArguments,
@@ -57,7 +60,6 @@ import {
     isFunctionDeclaration,
     isFunctionExpression,
     isFunctionLike,
-    isFunctionTypeNode,
     isIdentifier,
     isImportClause,
     isImportDeclaration,
@@ -71,6 +73,8 @@ import {
     isNamedTupleMember,
     isObjectLiteralExpression,
     isOptionalTypeNode,
+    isParameter,
+    isParenthesizedExpression,
     isParenthesizedTypeNode,
     isPropertyAccessExpression,
     isQualifiedName,
@@ -91,7 +95,6 @@ import {
     Node,
     NodeFactory,
     NodeFlags,
-    Program,
     PropertyAccessExpression,
     PropertyDeclaration,
     PropertySignature,
@@ -113,7 +116,7 @@ import {
     TypeReferenceNode,
     UnionTypeNode,
     visitEachChild,
-    visitNode,
+    visitNode
 } from 'typescript';
 import {
     ensureImportIsEmitted,
@@ -127,12 +130,14 @@ import {
     NodeConverter,
     PackExpression,
     serializeEntityNameAsExpression,
-} from './reflection-ast';
-import { EmitHost, EmitResolver, SourceFile } from './ts-types';
+} from './reflection-ast.js';
+import { SourceFile } from './ts-types.js';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import stripJsonComments from 'strip-json-comments';
 import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spec';
+import { Resolver } from './resolver.js';
+import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
 
 export function encodeOps(ops: ReflectionOp[]): string {
     return ops.map(v => String.fromCharCode(v + 33)).join('');
@@ -189,9 +194,6 @@ export function debugPackStruct(sourceFile: SourceFile, forType: Node, pack: { o
         const op = pack.ops[i];
         const opInfo = OPs[op];
         items.push(ReflectionOp[op]);
-        if (ReflectionOp[op] === undefined) {
-            throw new Error(`Operator ${op} does not exist at position ${i}`);
-        }
         if (opInfo && opInfo.params > 0) {
             for (let j = 0; j < opInfo.params; j++) {
                 const address = pack.ops[++i];
@@ -421,6 +423,31 @@ class CompilerProgram {
     }
 }
 
+function getAssignTypeExpression(call: Expression): Expression | undefined {
+    if (isParenthesizedExpression(call) && isCallExpression(call.expression)) {
+        call = call.expression;
+    }
+
+    if (isCallExpression(call) && isIdentifier(call.expression) && getIdentifierName(call.expression) === '__assignType' && call.arguments.length > 0) {
+        return call.arguments[0];
+    }
+
+    return;
+}
+
+function getReceiveTypeParameter(type: TypeNode): TypeReferenceNode | undefined {
+    if (isUnionTypeNode(type)) {
+        for (const t of type.types) {
+            const rfn = getReceiveTypeParameter(t);
+            if (rfn) return rfn;
+        }
+    } else if (isTypeReferenceNode(type) && isIdentifier(type.typeName)
+        && getIdentifierName(type.typeName) === 'ReceiveType' && !!type.typeArguments
+        && type.typeArguments.length === 1) return type;
+
+    return;
+}
+
 /**
  * Read the TypeScript AST and generate pack struct (instructions + pre-defined stack).
  *
@@ -428,12 +455,11 @@ class CompilerProgram {
  *
  * Deepkit/type can then extract and decode them on-demand.
  */
-export class ReflectionTransformer {
+export class ReflectionTransformer implements CustomTransformer {
     sourceFile!: SourceFile;
-    protected program?: Program;
-    protected host: EmitHost;
-    protected resolver: EmitResolver;
     protected f: NodeFactory;
+
+    protected embedAssignType: boolean = false;
 
     protected reflectionMode?: typeof reflectionModes[number];
 
@@ -441,7 +467,7 @@ export class ReflectionTransformer {
      * Types added to this map will get a type program directly under it.
      * This is for types used in the very same file.
      */
-    protected compileDeclarations = new Map<TypeAliasDeclaration | InterfaceDeclaration | EnumDeclaration, { name: EntityName, sourceFile: SourceFile }>();
+    protected compileDeclarations = new Map<TypeAliasDeclaration | InterfaceDeclaration | EnumDeclaration, { name: EntityName, sourceFile: SourceFile, compiled?: Statement[] }>();
 
     /**
      * Types added to this map will get a type program at the top root level of the program.
@@ -458,48 +484,28 @@ export class ReflectionTransformer {
 
     protected nodeConverter: NodeConverter;
     protected typeChecker?: TypeChecker;
+    protected resolver: Resolver;
+    protected host: CompilerHost;
+
+    /**
+     * When an deep call expression was found a script-wide variable is necessary
+     * as temporary storage.
+     */
+    protected tempResultIdentifier?: Identifier;
 
     constructor(
         protected context: TransformationContext,
     ) {
         this.f = context.factory;
-        this.host = (context as any).getEmitHost();
-        this.resolver = (context as any).getEmitResolver();
         this.nodeConverter = new NodeConverter(this.f);
+        this.host = createCompilerHost(context.getCompilerOptions());
+        this.resolver = new Resolver(context.getCompilerOptions(), this.host);
     }
 
-    forProgram(program?: Program): this {
-        this.program = program;
+    forHost(host: CompilerHost): this {
+        this.resolver.host = host;
         return this;
     }
-
-    protected getTypeChecker(file: SourceFile): TypeChecker {
-        if (this.program) return this.program.getTypeChecker();
-        if ((file as any)._typeChecker) return (file as any)._typeChecker;
-        const options = this.context.getCompilerOptions();
-        const host = createCompilerHost(options);
-        const program = createProgram([file.fileName], this.context.getCompilerOptions(), { ...this.host, ...host });
-        // const program = createProgram((this.host as any).getSourceFiles().map((v: SourceFile) => v.fileName), options, { ...this.host, ...host });
-        return (file as any)._typeChecker = program.getTypeChecker();
-    }
-
-    protected getTypeCheckerForHost(): TypeChecker {
-        if (this.program) return this.program.getTypeChecker();
-        if ((this.host as any)._typeChecker) return (this.host as any)._typeChecker;
-        const options = this.context.getCompilerOptions();
-        const host = createCompilerHost(options);
-        // const program = createProgram([this.sourceFile.fileName], this.context.getCompilerOptions(), { ...this.host, ...host });
-        const program = createProgram((this.host as any).getSourceFiles().map((v: SourceFile) => v.fileName), options, { ...this.host, ...host });
-        return (this.host as any)._typeChecker = program.getTypeChecker();
-    }
-
-    // protected getTypeChecker(): TypeChecker {
-    //     const sourceFile: SourceFile = this.sourceFile;
-    //     if ((sourceFile as any)._typeChecker) return (sourceFile as any)._typeChecker;
-    //     const host = createCompilerHost(this.context.getCompilerOptions());
-    //     const program = createProgram([sourceFile.fileName], this.context.getCompilerOptions(), { ...this.host, ...host });
-    //     return (sourceFile as any)._typeChecker = program.getTypeChecker();
-    // }
 
     withReflectionMode(mode: typeof reflectionModes[number]): this {
         this.reflectionMode = mode;
@@ -510,9 +516,33 @@ export class ReflectionTransformer {
         return node;
     }
 
+    getTempResultIdentifier(): Identifier {
+        if (this.tempResultIdentifier) return this.tempResultIdentifier;
+
+        const locals = isNodeWithLocals(this.sourceFile) ? this.sourceFile.locals : undefined;
+
+        if (locals) {
+            let found = 'Ωr';
+            for (let i = 0; ; i++) {
+                found = 'Ωr' + (i ? i : '');
+                if (!locals.has(escapeLeadingUnderscores(found))) break;
+            }
+            this.tempResultIdentifier = this.f.createIdentifier(found);
+        } else {
+            this.tempResultIdentifier = this.f.createIdentifier('Ωr');
+        }
+        return this.tempResultIdentifier;
+    }
+
     transformSourceFile(sourceFile: SourceFile): SourceFile {
         if ((sourceFile as any).deepkitTransformed) return sourceFile;
         (sourceFile as any).deepkitTransformed = true;
+        this.embedAssignType = false;
+
+        if (!(sourceFile as any).locals) {
+            //@ts-ignore
+            ts.bindSourceFile(sourceFile, this.context.getCompilerOptions());
+        }
 
         this.addImports = [];
         this.sourceFile = sourceFile;
@@ -541,14 +571,14 @@ export class ReflectionTransformer {
                 }
             }
 
-            if (isMethodDeclaration(node) && node.parent && isObjectLiteralExpression(node.parent)) {
+            if (isMethodDeclaration(node) && node.parent && node.body && isObjectLiteralExpression(node.parent)) {
                 //replace MethodDeclaration with MethodExpression
                 // {add(v: number) {}} => {add: function (v: number) {}}
                 //so that __type can be added
                 const method = this.decorateFunctionExpression(
                     this.f.createFunctionExpression(
                         node.modifiers, node.asteriskToken, isIdentifier(node.name) ? node.name : undefined,
-                        node.typeParameters, node.parameters, node.type, node.body!
+                        node.typeParameters, node.parameters, node.type, node.body
                     )
                 );
                 node = this.f.createPropertyAssignment(node.name, method);
@@ -556,15 +586,46 @@ export class ReflectionTransformer {
 
             if (isClassDeclaration(node)) {
                 return this.decorateClass(node);
+            } else if (isParameter(node) && node.parent && node.parent.typeParameters && node.type) {
+                // ReceiveType
+                const receiveType = getReceiveTypeParameter(node.type);
+                if (receiveType && receiveType.typeArguments) {
+                    const first = receiveType.typeArguments[0];
+                    if (first && isTypeReferenceNode(first) && isIdentifier(first.typeName)) {
+                        const name = getIdentifierName(first.typeName);
+                        //find type parameter position
+                        const index = node.parent.typeParameters.findIndex(v => getIdentifierName(v.name) === name);
+
+                        let container: Expression = this.f.createIdentifier('globalThis');
+                        if ((isFunctionDeclaration(node.parent) || isFunctionExpression(node.parent)) && node.parent.name) {
+                            container = node.parent.name;
+                        } else if (isMethodDeclaration(node.parent) && isIdentifier(node.parent.name)) {
+                            container = this.f.createPropertyAccessExpression(this.f.createIdentifier('this'), node.parent.name);
+                        }
+
+                        return this.f.updateParameterDeclaration(node, node.decorators, node.modifiers, node.dotDotDotToken, node.name,
+                            node.questionToken, receiveType, this.f.createElementAccessChain(
+                                this.f.createPropertyAccessExpression(
+                                    container,
+                                    this.f.createIdentifier('Ω'),
+                                ),
+                                this.f.createToken(SyntaxKind.QuestionDotToken),
+                                this.f.createNumericLiteral(index)
+                            )
+                        );
+                    }
+                }
             } else if (isClassExpression(node)) {
                 return this.decorateClass(node);
             } else if (isFunctionExpression(node)) {
-                return this.decorateFunctionExpression(node);
+                return this.decorateFunctionExpression(this.injectResetΩ(node));
             } else if (isFunctionDeclaration(node)) {
-                return this.decorateFunctionDeclaration(node);
+                return this.decorateFunctionDeclaration(this.injectResetΩ(node));
+            } else if (isMethodDeclaration(node)) {
+                return this.injectResetΩ(node);
             } else if (isArrowFunction(node)) {
                 return this.decorateArrow(node);
-            } else if (isCallExpression(node) && node.typeArguments) {
+            } else if (isCallExpression(node) && node.typeArguments && node.typeArguments.length > 0) {
                 const autoTypeFunctions = ['valuesOf', 'propertiesOf', 'typeOf'];
                 if (isIdentifier(node.expression) && autoTypeFunctions.includes(getIdentifierName(node.expression))) {
                     const args: Expression[] = [...node.arguments];
@@ -581,94 +642,146 @@ export class ReflectionTransformer {
                     return this.f.updateCallExpression(node, node.expression, node.typeArguments, this.f.createNodeArray(args));
                 }
 
-                let type: Declaration | undefined = undefined;
+                //put the type argument in FN.Ω
+
+                const expressionToCheck = getAssignTypeExpression(node.expression) || node.expression;
+                if (isArrowFunction(expressionToCheck)) {
+                    //inline arrow functions are excluded from type passing
+                    return node;
+                }
+
+                const typeExpressions: Expression[] = [];
+                for (const a of node.typeArguments) {
+                    const type = this.getTypeOfType(a);
+                    typeExpressions.push(type || this.f.createIdentifier('undefined'));
+                }
+
+                let container: Expression = this.f.createIdentifier('globalThis');
                 if (isIdentifier(node.expression)) {
-                    const found = this.resolveDeclaration(node.expression);
-                    if (found) type = found.declaration;
+                    container = node.expression;
                 } else if (isPropertyAccessExpression(node.expression)) {
-                    try {
-                        const found = this.getTypeCheckerForHost().getTypeAtLocation(node.expression);
-                        if (found && found.symbol && found.symbol.declarations) type = found.symbol.declarations[0];
-                    } catch {
-                        // mysteriously it can fail with "TypeError: Cannot read properties of undefined (reading 'flags')"
-                        // at getTypeFromFlowType (../type-compiler/node_modules/typescript/lib/typescript.js:68607:29)
+                    container = node.expression;
+                }
+
+                const assignQ = this.f.createBinaryExpression(
+                    this.f.createPropertyAccessExpression(container, 'Ω'),
+                    this.f.createToken(SyntaxKind.EqualsToken),
+                    this.f.createArrayLiteralExpression(typeExpressions),
+                );
+
+                if (isPropertyAccessExpression(node.expression)) {
+                    //e.g. http.deep.response();
+                    if (isCallExpression(node.expression.expression)) {
+                        //e.g. http.deep().response();
+                        //change to (Ωr = http.deep(), Ωr.response.Ω = [], Ωr).response()
+                        const r = this.getTempResultIdentifier();
+                        const assignQ = this.f.createBinaryExpression(
+                            this.f.createPropertyAccessExpression(
+                                this.f.createPropertyAccessExpression(r, node.expression.name),
+                                'Ω'
+                            ),
+                            this.f.createToken(SyntaxKind.EqualsToken),
+                            this.f.createArrayLiteralExpression(typeExpressions),
+                        );
+
+                        return this.f.updateCallExpression(node,
+                            this.f.createPropertyAccessExpression(
+                                this.f.createParenthesizedExpression(this.f.createBinaryExpression(
+                                    this.f.createBinaryExpression(
+                                        this.f.createBinaryExpression(
+                                            r,
+                                            this.f.createToken(ts.SyntaxKind.EqualsToken),
+                                            node.expression.expression
+                                        ),
+                                        this.f.createToken(ts.SyntaxKind.CommaToken),
+                                        assignQ
+                                    ),
+                                    this.f.createToken(ts.SyntaxKind.CommaToken),
+                                    r
+                                )),
+                                node.expression.name
+                            ),
+                            node.typeArguments,
+                            node.arguments
+                        )
+
+                    } else if (isParenthesizedExpression(node.expression.expression)) {
+                        //e.g. (http.deep()).response();
+                        //only work necessary when `http.deep()` is using type args and was converted to:
+                        //  (Ω = [], http.deep()).response()
+
+                        //it's a call like (obj.method.Ω = ['a'], obj.method()).method()
+                        //which needs to be converted so that Ω is correctly read by the last call
+                        //(r = (obj.method.Ω = [['a']], obj.method()), obj.method.Ω = [['b']], r).method());
+
+                        const r = this.getTempResultIdentifier();
+                        const assignQ = this.f.createBinaryExpression(
+                            this.f.createPropertyAccessExpression(
+                                this.f.createPropertyAccessExpression(r, node.expression.name),
+                                'Ω'
+                            ),
+                            this.f.createToken(SyntaxKind.EqualsToken),
+                            this.f.createArrayLiteralExpression(typeExpressions),
+                        );
+
+                        const updatedNode = this.f.updateCallExpression(
+                            node,
+                            this.f.updatePropertyAccessExpression(
+                                node.expression,
+                                this.f.updateParenthesizedExpression(
+                                    node.expression.expression,
+                                    this.f.createBinaryExpression(
+                                        this.f.createBinaryExpression(
+                                            this.f.createBinaryExpression(
+                                                r,
+                                                this.f.createToken(SyntaxKind.EqualsToken),
+                                                node.expression.expression.expression,
+                                            ),
+                                            this.f.createToken(SyntaxKind.CommaToken),
+                                            assignQ
+                                        ),
+                                        this.f.createToken(SyntaxKind.CommaToken),
+                                        r,
+                                    )
+                                ),
+                                node.expression.name
+                            ),
+                            node.typeArguments,
+                            node.arguments
+                        );
+
+                        return this.f.createParenthesizedExpression(updatedNode);
+                    } else {
+                        //e.g. http.deep.response();
+                        //nothing to do
                     }
                 }
 
-                if (type && (isFunctionDeclaration(type) || isMethodDeclaration(type) || isMethodSignature(type) || isFunctionTypeNode(type)) && type.typeParameters) {
-                    const args: Expression[] = [...node.arguments];
-                    let replaced = false;
-
-                    for (let i = 0; i < type.parameters.length; i++) {
-                        const parameter = type.parameters[i];
-                        const arg = args[i];
-
-                        //we replace from T to this arg only if either not set or set to undefined
-                        if (arg && (!isIdentifier(arg) || arg.escapedText !== 'undefined')) continue;
-                        if (!parameter.type) continue;
-
-                        let hasReceiveType: TypeReferenceNode | undefined = undefined;
-                        if (isTypeReferenceNode(parameter.type) && isIdentifier(parameter.type.typeName) && getIdentifierName(parameter.type.typeName) === 'ReceiveType' && parameter.type.typeArguments) {
-                            //check if `fn<T>(p: ReceiveType<T>)`
-                            hasReceiveType = parameter.type;
-                        } else if (isUnionTypeNode(parameter.type)) {
-                            //check if `fn<T>(p: Other | ReceiveType<T>)`
-                            for (const member of parameter.type.types) {
-                                if (isTypeReferenceNode(member) && isIdentifier(member.typeName) && getIdentifierName(member.typeName) === 'ReceiveType' && member.typeArguments) {
-                                    hasReceiveType = member;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (hasReceiveType && hasReceiveType.typeArguments) {
-                            const first = hasReceiveType.typeArguments[0];
-                            if (first && isTypeReferenceNode(first) && isIdentifier(first.typeName)) {
-                                const name = getIdentifierName(first.typeName);
-                                //find type parameter position
-                                const index = type.typeParameters.findIndex(v => getIdentifierName(v.name) === name);
-                                if (index !== -1) {
-                                    if (!node.typeArguments[index]) continue;
-                                    const type = this.getTypeOfType(node.typeArguments[index]);
-                                    if (!type) continue;
-                                    args[i] = type;
-                                    replaced = true;
-                                }
-                            }
-                        }
-                    }
-
-                    if (replaced) {
-                        //make sure args has no hole
-                        for (let i = 0; i < args.length; i++) {
-                            if (!args[i]) args[i] = this.f.createIdentifier('undefined');
-                        }
-                        return this.f.updateCallExpression(node, node.expression, node.typeArguments, this.f.createNodeArray(args));
-                    }
-                }
+                //(fn.Ω = [], call())
+                return this.f.createParenthesizedExpression(this.f.createBinaryExpression(
+                    assignQ,
+                    this.f.createToken(SyntaxKind.CommaToken),
+                    node,
+                ));
             }
 
             return node;
         };
         this.sourceFile = visitNode(this.sourceFile, visitor);
 
-        //externalize type aliases
-        const compileDeclarations = (node: Node): any => {
-            node = visitEachChild(node, compileDeclarations, this.context);
-
-            if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node) || isEnumDeclaration(node)) && this.compileDeclarations.has(node)) {
-                const d = this.compileDeclarations.get(node)!;
-                this.compileDeclarations.delete(node);
-                this.compiledDeclarations.add(node);
-                return [...this.createProgramVarFromNode(node, d.name, d.sourceFile), node];
+        while (true) {
+            let allCompiled = true;
+            for (const d of this.compileDeclarations.values()) {
+                if (d.compiled) continue;
+                allCompiled = false;
+                break;
             }
 
-            return node;
-        };
+            if (this.embedDeclarations.size === 0 && allCompiled) break;
 
-        while (this.compileDeclarations.size || this.embedDeclarations.size) {
-            if (this.compileDeclarations.size) {
-                this.sourceFile = visitNode(this.sourceFile, compileDeclarations);
+            for (const [node, d] of [...this.compileDeclarations.entries()]) {
+                if (d.compiled) continue;
+                d.compiled = this.createProgramVarFromNode(node, d.name, this.sourceFile);
             }
 
             if (this.embedDeclarations.size) {
@@ -685,9 +798,29 @@ export class ReflectionTransformer {
             }
         }
 
+        //externalize type aliases
+        const compileDeclarations = (node: Node): any => {
+            node = visitEachChild(node, compileDeclarations, this.context);
+
+            if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node) || isEnumDeclaration(node))) {
+                const d = this.compileDeclarations.get(node);
+                if (!d) {
+                    return node;
+                }
+                this.compileDeclarations.delete(node);
+                this.compiledDeclarations.add(node);
+                if (d.compiled) {
+                    return [...d.compiled, node];
+                }
+            }
+
+            return node;
+        };
+        this.sourceFile = visitNode(this.sourceFile, compileDeclarations);
+
+        const embedTopExpression: Statement[] = [];
         if (this.addImports.length) {
             const compilerOptions = this.context.getCompilerOptions();
-            const imports: Statement[] = [];
             const handledIdentifier: string[] = [];
             for (const imp of this.addImports) {
                 if (handledIdentifier.includes(getIdentifierName(imp.identifier))) continue;
@@ -699,7 +832,7 @@ export class ReflectionTransformer {
                         undefined, undefined,
                         this.f.createCallExpression(this.f.createIdentifier('require'), undefined, [imp.from])
                     )], NodeFlags.Const));
-                    imports.push(variable);
+                    embedTopExpression.push(variable);
                 } else {
                     //import {identifier} from './bar'
                     // import { identifier as identifier } is used to avoid automatic elision of imports (in angular builds for example)
@@ -709,11 +842,76 @@ export class ReflectionTransformer {
                     const importStatement = this.f.createImportDeclaration(undefined, undefined,
                         this.f.createImportClause(false, undefined, namedImports), imp.from
                     );
-                    imports.push(importStatement);
+                    embedTopExpression.push(importStatement);
                 }
             }
+        }
 
-            this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...imports, ...this.sourceFile.statements]);
+        if (this.embedAssignType) {
+            const assignType = this.f.createFunctionDeclaration(
+                undefined,
+                undefined,
+                undefined,
+                this.f.createIdentifier('__assignType'),
+                undefined,
+                [
+                    this.f.createParameterDeclaration(
+                        undefined,
+                        undefined,
+                        undefined,
+                        this.f.createIdentifier('fn'),
+                        undefined,
+                        undefined, //this.f.createKeywordTypeNode(SyntaxKind.AnyKeyword),
+                        undefined
+                    ),
+                    this.f.createParameterDeclaration(
+                        undefined,
+                        undefined,
+                        undefined,
+                        this.f.createIdentifier('args'),
+                        undefined,
+                        undefined, //this.f.createKeywordTypeNode(SyntaxKind.AnyKeyword),
+                        undefined
+                    )
+                ],
+                undefined, //this.f.createKeywordTypeNode(SyntaxKind.AnyKeyword),
+                this.f.createBlock(
+                    [
+                        this.f.createExpressionStatement(this.f.createBinaryExpression(
+                            this.f.createPropertyAccessExpression(
+                                this.f.createIdentifier('fn'),
+                                this.f.createIdentifier('__type')
+                            ),
+                            this.f.createToken(SyntaxKind.EqualsToken),
+                            this.f.createIdentifier('args')
+                        )),
+                        this.f.createReturnStatement(this.f.createIdentifier('fn'))
+                    ],
+                    true
+                )
+            );
+            embedTopExpression.push(assignType);
+        }
+
+        if (this.tempResultIdentifier) {
+            embedTopExpression.push(
+                this.f.createVariableStatement(
+                    undefined,
+                    this.f.createVariableDeclarationList(
+                        [this.f.createVariableDeclaration(
+                            this.tempResultIdentifier,
+                            undefined,
+                            undefined,
+                            undefined
+                        )],
+                        ts.NodeFlags.None
+                    )
+                )
+            );
+        }
+
+        if (embedTopExpression.length) {
+            this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...embedTopExpression, ...this.sourceFile.statements]);
         }
 
         // console.log('transform sourceFile', this.sourceFile.fileName);
@@ -721,7 +919,45 @@ export class ReflectionTransformer {
         return this.sourceFile;
     }
 
-    protected createProgramVarFromNode(node: Node, name: EntityName, sourceFile: SourceFile) {
+    protected injectResetΩ<T extends FunctionDeclaration | FunctionExpression | MethodDeclaration>(node: T): T {
+        let hasReceiveType = false;
+        if (!node.typeParameters) return node;
+        for (const param of node.parameters) {
+            if (param.type && getReceiveTypeParameter(param.type)) hasReceiveType = true;
+        }
+        if (!hasReceiveType) return node;
+
+        let container: Expression = this.f.createIdentifier('globalThis');
+        if ((isFunctionDeclaration(node) || isFunctionExpression(node)) && node.name) {
+            container = node.name;
+        } else if (isMethodDeclaration(node) && isIdentifier(node.name)) {
+            container = this.f.createPropertyAccessExpression(this.f.createIdentifier('this'), node.name);
+        }
+
+        const reset: Statement = this.f.createExpressionStatement(this.f.createBinaryExpression(
+            this.f.createPropertyAccessExpression(
+                container,
+                this.f.createIdentifier('Ω')
+            ),
+            this.f.createToken(ts.SyntaxKind.EqualsToken),
+            this.f.createIdentifier('undefined')
+        ));
+        const body = node.body ? this.f.updateBlock(node.body, [reset, ...node.body.statements]) : undefined;
+
+        if (isFunctionDeclaration(node)) {
+            return this.f.updateFunctionDeclaration(node, node.decorators, node.modifiers, node.asteriskToken, node.name,
+                node.typeParameters, node.parameters, node.type, body) as T;
+        } else if (isFunctionExpression(node)) {
+            return this.f.updateFunctionExpression(node, node.modifiers, node.asteriskToken, node.name,
+                node.typeParameters, node.parameters, node.type, body || node.body) as T;
+        } else if (isMethodDeclaration(node)) {
+            return this.f.updateMethodDeclaration(node, node.decorators, node.modifiers, node.asteriskToken, node.name,
+                node.questionToken, node.typeParameters, node.parameters, node.type, body) as T;
+        }
+        return node;
+    }
+
+    protected createProgramVarFromNode(node: Node, name: EntityName, sourceFile: SourceFile): Statement[] {
         const typeProgram = new CompilerProgram(node, sourceFile);
 
         if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && node.typeParameters) {
@@ -764,7 +1000,6 @@ export class ReflectionTransformer {
             ]));
             return [variable, exportNode];
         }
-
 
         return [variable];
     }
@@ -1087,7 +1322,7 @@ export class ReflectionTransformer {
                 const falseProgram = program.popCoRoutine();
 
                 program.pushOp(ReflectionOp.jumpCondition, trueProgram, falseProgram);
-                program.moveFrame();
+                program.moveFrame(); //pops frame
 
                 if (distributiveOverIdentifier) {
                     const coRoutineIndex = program.popCoRoutine();
@@ -1157,7 +1392,7 @@ export class ReflectionTransformer {
                     if (hasModifier(parameter, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
                     if (hasModifier(parameter, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
                     if (hasModifier(narrowed, SyntaxKind.ReadonlyKeyword)) program.pushOp(ReflectionOp.readonly);
-                    if (parameter.initializer) {
+                    if (parameter.initializer && parameter.type && !getReceiveTypeParameter(parameter.type)) {
                         program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, parameter.initializer)));
                     }
                 }
@@ -1347,6 +1582,25 @@ export class ReflectionTransformer {
         'Boolean': ReflectionOp.boolean,
     };
 
+    protected globalSourceFiles?: SourceFile[];
+
+    protected getGlobalLibs(): SourceFile[] {
+        if (this.globalSourceFiles) return this.globalSourceFiles;
+
+        this.globalSourceFiles = [];
+
+        //todo also read compiler options "types" + typeRoot
+
+        const libs = knownLibFilesForCompilerOptions(this.context.getCompilerOptions(), ts);
+
+        for (const lib of libs) {
+            const sourceFile = this.resolver.resolveSourceFile(this.sourceFile.fileName, 'typescript/lib/' + lib.replace('.d.ts', ''));
+            if (!sourceFile) continue;
+            this.globalSourceFiles.push(sourceFile);
+        }
+        return this.globalSourceFiles;
+    }
+
     /**
      * This is a custom resolver based on populated `locals` from the binder. It uses a custom resolution algorithm since
      * we have no access to the binder/TypeChecker directly and instantiating a TypeChecker per file/transformer is incredible slow.
@@ -1371,8 +1625,8 @@ export class ReflectionTransformer {
         }
 
         if (!declaration) {
-            //look in globals, read through all files, see checker.ts initializeTypeChecker
-            for (const file of this.host.getSourceFiles()) {
+            // look in globals, read through all files, see checker.ts initializeTypeChecker
+            for (const file of this.getGlobalLibs()) {
                 const globals = getGlobalsOfSourceFile(file);
                 if (!globals) continue;
                 const symbol = globals.get(typeName.escapedText);
@@ -1382,7 +1636,6 @@ export class ReflectionTransformer {
                     break;
                 }
             }
-            // console.log('look in global');
         }
 
         let importDeclaration: ImportDeclaration | undefined = undefined;
@@ -1400,7 +1653,7 @@ export class ReflectionTransformer {
 
         if (importDeclaration) {
             if (importDeclaration.importClause && importDeclaration.importClause.isTypeOnly) typeOnly = true;
-            declaration = this.resolveImportSpecifier(typeName.escapedText, importDeclaration);
+            declaration = this.resolveImportSpecifier(typeName.escapedText, importDeclaration, this.sourceFile);
         }
 
         if (declaration && declaration.kind === SyntaxKind.TypeParameter && declaration.parent.kind === SyntaxKind.TypeAliasDeclaration) {
@@ -1523,7 +1776,7 @@ export class ReflectionTransformer {
                     }
                 }
 
-                //non existing references are ignored.
+                //non-existing references are ignored.
                 program.pushOp(ReflectionOp.never);
                 return;
             }
@@ -1575,7 +1828,7 @@ export class ReflectionTransformer {
                 }
 
                 //to break recursion, we track which declaration has already been compiled
-                if (!this.compiledDeclarations.has(declaration)) {
+                if (!this.compiledDeclarations.has(declaration) && !this.compileDeclarations.has(declaration)) {
                     const declarationSourceFile = findSourceFile(declaration) || this.sourceFile;
                     const isGlobal = resolved.importDeclaration === undefined && declarationSourceFile.fileName !== this.sourceFile.fileName;
                     const isFromImport = resolved.importDeclaration !== undefined;
@@ -1594,19 +1847,29 @@ export class ReflectionTransformer {
                                 return;
                             }
 
-                            //check if the referenced declaration has reflection disabled
+                            // //check if the referenced declaration has reflection disabled
                             const declarationReflection = this.findReflectionConfig(declaration, program);
                             if (declarationReflection.mode === 'never') {
                                 program.pushOp(ReflectionOp.any);
                                 return;
                             }
 
-                            const found = this.resolver.getExternalModuleFileFromDeclaration(resolved.importDeclaration);
+                            const found = this.resolver.resolve(this.sourceFile, resolved.importDeclaration);
                             if (!found) {
                                 debug('module not found');
                                 program.pushOp(ReflectionOp.any);
                                 return;
                             }
+
+                            // check if this is a viable option:
+                            // //check if the referenced file has reflection info emitted. if not, any is emitted for that reference
+                            // const typeVar = this.getDeclarationVariableName(typeName);
+                            // //check if typeVar is exported in referenced file
+                            // const builtType = isNodeWithLocals(found) && found.locals && found.locals.has(typeVar.escapedText);
+                            // if (!builtType) {
+                            //     program.pushOp(ReflectionOp.any);
+                            //     return;
+                            // }
 
                             //check if the referenced file has reflection info emitted. if not, any is emitted for that reference
                             const reflection = this.findReflectionFromPath(found.fileName);
@@ -1615,9 +1878,11 @@ export class ReflectionTransformer {
                                 return;
                             }
 
+                            // this.addImports.push({ identifier: typeVar, from: resolved.importDeclaration.moduleSpecifier });
                             this.addImports.push({ identifier: this.getDeclarationVariableName(typeName), from: resolved.importDeclaration.moduleSpecifier });
                         }
                     } else {
+                        //it's a reference type inside the same file. Make sure its type is reflected
                         const reflection = this.findReflectionConfig(declaration, program);
                         if (reflection.mode === 'never') {
                             program.pushOp(ReflectionOp.any);
@@ -1860,17 +2125,11 @@ export class ReflectionTransformer {
         return;
     }
 
-    protected resolveImportSpecifier(declarationName: __String, importOrExport: ExportDeclaration | ImportDeclaration): Declaration | undefined {
+    protected resolveImportSpecifier(declarationName: __String, importOrExport: ExportDeclaration | ImportDeclaration, sourceFile: SourceFile): Declaration | undefined {
         if (!importOrExport.moduleSpecifier) return;
         if (!isStringLiteral(importOrExport.moduleSpecifier)) return;
 
-        let source: SourceFile | ModuleDeclaration | undefined = this.resolver.getExternalModuleFileFromDeclaration(importOrExport);
-        if (!source) {
-            const found = this.getTypeCheckerForHost().getSymbolAtLocation(importOrExport.moduleSpecifier);
-            if (found && found.valueDeclaration && isModuleDeclaration(found.valueDeclaration)) {
-                source = found.valueDeclaration;
-            }
-        }
+        let source: SourceFile | ModuleDeclaration | undefined = this.resolver.resolve(sourceFile, importOrExport);
 
         if (!source) {
             debug('module not found', (importOrExport as any).text, 'Is transpileOnly enabled? It needs to be disabled.');
@@ -1885,7 +2144,7 @@ export class ReflectionTransformer {
         if (declaration && !isImportSpecifier(declaration)) {
             //if `export {PrimaryKey} from 'xy'`, then follow xy
             if (isExportDeclaration(declaration)) {
-                return this.followExport(declarationName, declaration);
+                return this.followExport(declarationName, declaration, source);
             }
             return declaration;
         }
@@ -1894,7 +2153,7 @@ export class ReflectionTransformer {
         if (isSourceFile(source)) {
             for (const statement of source.statements) {
                 if (!isExportDeclaration(statement)) continue;
-                const found = this.followExport(declarationName, statement);
+                const found = this.followExport(declarationName, statement, source);
                 if (found) return found;
             }
         }
@@ -1902,14 +2161,14 @@ export class ReflectionTransformer {
         return;
     }
 
-    protected followExport(declarationName: __String, statement: ExportDeclaration): Declaration | undefined {
+    protected followExport(declarationName: __String, statement: ExportDeclaration, sourceFile: SourceFile): Declaration | undefined {
         if (statement.exportClause) {
             //export {y} from 'x'
             if (isNamedExports(statement.exportClause)) {
                 for (const element of statement.exportClause.elements) {
                     //see if declarationName is exported
                     if (element.name.escapedText === declarationName) {
-                        const found = this.resolveImportSpecifier(element.propertyName ? element.propertyName.escapedText : declarationName, statement);
+                        const found = this.resolveImportSpecifier(element.propertyName ? element.propertyName.escapedText : declarationName, statement, sourceFile);
                         if (found) return found;
                     }
                 }
@@ -1917,7 +2176,7 @@ export class ReflectionTransformer {
         } else {
             //export * from 'x'
             //see if `x` exports declarationName (or one of its exports * from 'y')
-            const found = this.resolveImportSpecifier(declarationName, statement);
+            const found = this.resolveImportSpecifier(declarationName, statement, sourceFile);
             if (found) {
                 return found;
             }
@@ -1989,13 +2248,7 @@ export class ReflectionTransformer {
         const encodedType = this.getTypeOfType(expression);
         if (!encodedType) return expression;
 
-        const __type = this.f.createObjectLiteralExpression([
-            this.f.createPropertyAssignment('__type', encodedType)
-        ]);
-
-        return this.f.createCallExpression(this.f.createPropertyAccessExpression(this.f.createIdentifier('Object'), 'assign'), undefined, [
-            expression, __type
-        ]);
+        return this.wrapWithAssignType(expression, encodedType);
     }
 
     /**
@@ -2023,13 +2276,27 @@ export class ReflectionTransformer {
         const encodedType = this.getTypeOfType(expression);
         if (!encodedType) return expression;
 
-        const __type = this.f.createObjectLiteralExpression([
-            this.f.createPropertyAssignment('__type', encodedType)
-        ]);
+        return this.wrapWithAssignType(expression, encodedType);
+    }
 
-        return this.f.createCallExpression(this.f.createPropertyAccessExpression(this.f.createIdentifier('Object'), 'assign'), undefined, [
-            expression, __type
-        ]);
+    /**
+     * Object.assign(fn, {__type: []}) is much slower than a custom implementation like
+     *
+     * assignType(fn, [])
+     *
+     * where we embed assignType() at the beginning of the type.
+     */
+    protected wrapWithAssignType(fn: Expression, type: Expression) {
+        this.embedAssignType = true;
+
+        return this.f.createCallExpression(
+            this.f.createIdentifier('__assignType'),
+            undefined,
+            [
+                fn,
+                type
+            ]
+        );
     }
 
     protected parseReflectionMode(mode?: typeof reflectionModes[number] | '' | boolean | string[], configPathDir?: string): typeof reflectionModes[number] {
@@ -2048,6 +2315,7 @@ export class ReflectionTransformer {
     }
 
     protected resolvedTsConfig: { [path: string]: { data: Record<string, any>, exists: boolean } } = {};
+    protected resolvedPackageJson: { [path: string]: { data: Record<string, any>, exists: boolean } } = {};
 
     protected findReflectionConfig(node: Node, program?: CompilerProgram): { mode: typeof reflectionModes[number] } {
         if (program && program.sourceFile.fileName !== this.sourceFile.fileName) {
@@ -2089,31 +2357,63 @@ export class ReflectionTransformer {
         let reflection: typeof reflectionModes[number] | undefined;
 
         while (currentDir) {
-            const tsconfigPath = join(currentDir, 'tsconfig.json');
-            const packageJson = join(currentDir, 'package.json');
+            const packageJsonPath = join(currentDir, 'package.json');
+            const tsConfigPath = join(currentDir, 'tsconfig.json');
+
+            let packageJson: Record<string, any> = {};
             let tsConfig: Record<string, any> = {};
-            const cache = this.resolvedTsConfig[tsconfigPath];
-            if (cache) {
-                tsConfig = this.resolvedTsConfig[tsconfigPath].data;
+
+            const packageJsonCache = this.resolvedPackageJson[packageJsonPath];
+            let packageJsonExists = false;
+
+            if (packageJsonCache) {
+                packageJson = packageJsonCache.data;
+                packageJsonExists = packageJsonCache.exists;
             } else {
-                const exists = existsSync(tsconfigPath);
-                this.resolvedTsConfig[tsconfigPath] = { exists, data: {} };
-                if (exists) {
+                packageJsonExists = existsSync(packageJsonPath);
+                this.resolvedPackageJson[packageJsonPath] = { exists: packageJsonExists, data: {} };
+                if (packageJsonExists) {
                     try {
-                        let content = readFileSync(tsconfigPath, 'utf8');
+                        let content = readFileSync(packageJsonPath, 'utf8');
                         content = stripJsonComments(content);
-                        tsConfig = JSON.parse(content);
-                        this.resolvedTsConfig[tsconfigPath].data = tsConfig;
+                        packageJson = JSON.parse(content);
+                        this.resolvedPackageJson[packageJsonPath].data = packageJson;
                     } catch (error: any) {
-                        console.warn(`Could not parse ${tsconfigPath}: ${error}`);
+                        console.warn(`Could not parse ${packageJsonPath}: ${error}`);
                     }
                 }
             }
+
+            const tsConfigCache = this.resolvedTsConfig[tsConfigPath];
+            let tsConfigExists = false;
+
+            if (tsConfigCache) {
+                tsConfig = tsConfigCache.data;
+                tsConfigExists = tsConfigCache.exists;
+            } else {
+                tsConfigExists = existsSync(tsConfigPath);
+                this.resolvedTsConfig[tsConfigPath] = { exists: tsConfigExists, data: {} };
+                if (tsConfigExists) {
+                    try {
+                        let content = readFileSync(tsConfigPath, 'utf8');
+                        content = stripJsonComments(content);
+                        tsConfig = JSON.parse(content);
+                        this.resolvedTsConfig[tsConfigPath].data = tsConfig;
+                    } catch (error: any) {
+                        console.warn(`Could not parse ${tsConfigPath}: ${error}`);
+                    }
+                }
+            }
+
+            if (reflection === undefined && packageJson.reflection !== undefined) {
+                return { mode: this.parseReflectionMode(packageJson.reflection, currentDir) };
+            }
+
             if (reflection === undefined && tsConfig.reflection !== undefined) {
                 return { mode: this.parseReflectionMode(tsConfig.reflection, currentDir) };
             }
 
-            if (existsSync(packageJson)) {
+            if (packageJsonExists) {
                 //we end the search at package.json so that package in node_modules without reflection option
                 //do not inherit the tsconfig from the project.
                 break;

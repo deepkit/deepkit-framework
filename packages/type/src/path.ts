@@ -1,7 +1,7 @@
-import { getTypeJitContainer, ReflectionKind, Type } from './reflection/type';
+import { getTypeJitContainer, ReflectionKind, Type } from './reflection/type.js';
 import { CompilerContext, toFastProperties } from '@deepkit/core';
-import { JitStack } from './serializer';
-import { ReceiveType, resolveReceiveType } from './reflection/reflection';
+import { ReceiveType, resolveReceiveType } from './reflection/reflection.js';
+import { JitStack } from './serializer.js';
 
 export type Resolver = (path: string) => Type | undefined;
 

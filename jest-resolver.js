@@ -1,5 +1,5 @@
 const resolve = require('enhanced-resolve');
-const resolve2 = require('resolve');
+// const resolve2 = require('resolve');
 
 /**
  * This custom jest resolver makes sure symlinks are not followed, so preserveSymlinks=true.

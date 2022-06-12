@@ -49,7 +49,7 @@ export type Placeholder<T> = () => T;
 export type Resolve<T extends { _: Placeholder<any> }> = ReturnType<T['_']>;
 export type Replace<T, R> = T & { _: Placeholder<R> };
 
-export function buildChangesFromInstance<T>(item: T): Changes<T> {
+export function buildChangesFromInstance<T extends object>(item: T): Changes<T> {
     const state = getInstanceStateFromItem(item);
     const lastSnapshot = state.getSnapshot();
     const currentSnapshot = state.classState.snapshot(item);

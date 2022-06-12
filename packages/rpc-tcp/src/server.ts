@@ -8,11 +8,11 @@ import { createServer, Server, Socket } from 'net';
 /**
  * Uses the `turbo-net` module to create a server.
  */
-export class TcpRpcServer {
+export class RpcTcpServer {
     protected turbo?: any;
     protected host: ParsedHost;
 
-    public bufferSize: number = 25 * 1024 //25kb per connection;
+    public bufferSize: number = 25 * 1024; //25kb per connection;
 
     constructor(
         protected kernel: RpcKernel,
@@ -88,7 +88,7 @@ export class TcpRpcServer {
 /**
  * Uses the node `net` module to create a server. Supports unix sockets.
  */
-export class NetTcpRpcServer {
+export class RpcNetTcpServer {
     protected server?: Server;
     protected host: ParsedHost;
 
@@ -153,5 +153,58 @@ export class NetTcpRpcServer {
 
     close() {
         this.server?.close();
+    }
+}
+
+import ws from 'ws';
+import type { ServerOptions as WebSocketServerOptions } from 'ws';
+import { IncomingMessage } from 'http';
+
+export class RpcWebSocketServer {
+    protected server?: ws.Server;
+    protected host: ParsedHost;
+
+    constructor(
+        protected kernel: RpcKernel,
+        host: string
+    ) {
+        this.host = parseHost(host);
+        if (this.host.isUnixSocket && existsSync(this.host.unixSocket)) {
+            unlinkSync(this.host.unixSocket);
+        }
+    }
+
+    close() {
+        this.server?.close();
+    }
+
+    start(options: WebSocketServerOptions): void {
+        const defaultOptions = { host: this.host.host, port: this.host.port };
+        this.server = new ws.Server({ ...defaultOptions, ...options });
+
+        this.server.on('connection', (ws, req: IncomingMessage) => {
+            const connection = this.kernel?.createConnection({
+                write(b) {
+                    ws.send(b);
+                },
+                close() {
+                    ws.close();
+                },
+                bufferedAmount(): number {
+                    return ws.bufferedAmount;
+                },
+                clientAddress(): string {
+                    return req.socket.remoteAddress || '';
+                }
+            });
+
+            ws.on('message', async (message: Uint8Array) => {
+                connection.feed(message);
+            });
+
+            ws.on('close', async () => {
+                connection.close();
+            });
+        });
     }
 }

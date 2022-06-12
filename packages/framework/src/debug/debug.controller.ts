@@ -23,7 +23,7 @@ import {
     Workflow
 } from '@deepkit/framework-debug-api';
 import { rpc, rpcClass } from '@deepkit/rpc';
-import { parseRouteControllerAction, Router } from '@deepkit/http';
+import { parseRouteControllerAction, HttpRouter } from '@deepkit/http';
 import { changeClass, ClassType, getClassName, isClass } from '@deepkit/core';
 import { EventDispatcher, isEventListenerContainerEntryService } from '@deepkit/event';
 import { DatabaseAdapter, DatabaseRegistry } from '@deepkit/orm';
@@ -46,7 +46,7 @@ export class DebugController implements DebugControllerInterface {
     constructor(
         protected serviceContainer: ServiceContainer,
         protected eventDispatcher: EventDispatcher,
-        protected router: Router,
+        protected router: HttpRouter,
         protected config: Pick<FrameworkConfig, 'varPath' | 'debugStorePath'>,
         protected rpcControllers: RpcControllers,
         protected databaseRegistry: DatabaseRegistry,
@@ -154,7 +154,7 @@ export class DebugController implements DebugControllerInterface {
                 parameters: [],
                 groups: route.groups,
                 category: route.category,
-                controller: getClassName(route.action.controller) + '.' + route.action.methodName,
+                controller: route.action.type === 'controller' ? getClassName(route.action.controller) + '.' + route.action.methodName : route.action.fn.name,
                 description: route.description,
             };
             const parsedRoute = parseRouteControllerAction(route);

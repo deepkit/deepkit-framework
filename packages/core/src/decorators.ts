@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { getClassName } from './core';
-import { toFastProperties } from './perf';
+import { getClassName } from './core.js';
+import { toFastProperties } from './perf.js';
 
 /**
  * Logs every call to this method on stdout.

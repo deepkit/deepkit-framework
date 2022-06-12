@@ -19,6 +19,7 @@ import { ExitError } from '@oclif/errors';
 import { buildOclifCommand } from './command';
 import { EnvConfiguration } from './configuration';
 import { ReflectionClass, ReflectionKind } from '@deepkit/type';
+import { EventDispatcher, EventListener, EventListenerCallback, EventOfEventToken, EventToken } from '@deepkit/event';
 
 export function setPartialConfig(target: { [name: string]: any }, partial: { [name: string]: any }, incomingPath: string = '') {
     for (const i in partial) {
@@ -148,7 +149,7 @@ class EnvConfigLoader {
     }
 }
 
-export class RootAppModule<T> extends AppModule<T> {
+export class RootAppModule<T extends RootModuleDefinition> extends AppModule<T> {
 }
 
 /**
@@ -176,10 +177,13 @@ export class App<T extends RootModuleDefinition> {
         this.serviceContainer = serviceContainer || new ServiceContainer(this.appModule);
     }
 
-    static fromModule<T>(module: AppModule<T>): App<T> {
+    static fromModule<T extends RootModuleDefinition>(module: AppModule<T>): App<T> {
         return new App({} as T, undefined, module);
     }
 
+    /**
+     * Allows to change the module after the configuration has been loaded, right before the application bootstraps.
+     */
     setup(...args: Parameters<this['appModule']['setup']>): this {
         this.serviceContainer.appModule = (this.serviceContainer.appModule.setup as any)(...args as any[]);
         return this;
@@ -193,6 +197,16 @@ export class App<T extends RootModuleDefinition> {
     configure(config: Partial<ExtractClassType<T['config']>>): this {
         this.serviceContainer.appModule.configure(config);
         return this;
+    }
+
+    listen<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): this {
+        const listener: EventListener<any> = { callback, order, eventToken };
+        this.appModule.listeners.push(listener);
+        return this;
+    }
+
+    public async dispatch<T extends EventToken<any>>(eventToken: T, event: EventOfEventToken<T>, injector?: InjectorContext): Promise<void> {
+        return await this.get(EventDispatcher).dispatch(eventToken, event, injector);
     }
 
     /**

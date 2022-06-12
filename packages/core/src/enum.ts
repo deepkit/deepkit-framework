@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { eachKey } from './iterators';
+import { eachKey } from './iterators.js';
 
 const cacheEnumLabels = new Map<Object, string[]>();
 

@@ -109,13 +109,17 @@ export class RpcMessageSubject {
     }
 
     async firstThenClose<T = RpcMessage>(type: number, schema?: ReceiveType<T>): Promise<T> {
-        return asyncOperation<any>((resolve, reject) => {
+        return await asyncOperation<any>((resolve, reject) => {
             this.onReply((next) => {
                 this.onReplyCallback = this.catchOnReplyCallback;
                 this.release();
 
                 if (next.type === type) {
-                    return resolve(schema ? next.parseBody(schema) : next);
+                    try {
+                        return resolve(schema ? next.parseBody(schema) : next);
+                    } catch (error: any) {
+                        return reject(error);
+                    }
                 }
 
                 if (next.isError()) {

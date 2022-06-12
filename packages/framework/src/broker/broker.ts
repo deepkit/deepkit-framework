@@ -12,7 +12,7 @@ import { BrokerChannel, BrokerClient, BrokerKernel } from '@deepkit/broker';
 import { ClassType } from '@deepkit/core';
 import { IdInterface, RpcDirectClientAdapter } from '@deepkit/rpc';
 import { BrokerConfig } from './broker.config';
-import { NetTcpRpcClientAdapter, NetTcpRpcServer, TcpRpcClientAdapter, TcpRpcServer } from '@deepkit/rpc-tcp';
+import { RpcNetTcpClientAdapter, RpcNetTcpServer, RpcTcpClientAdapter, RpcTcpServer } from '@deepkit/rpc-tcp';
 import { MongoId, ReflectionClass, Type, typeOf, UUID } from '@deepkit/type';
 
 
@@ -90,13 +90,13 @@ export class BaseBroker extends BrokerClient {
 
 export class Broker extends BaseBroker {
     constructor(protected host: BrokerConfig['host']) {
-        super(new TcpRpcClientAdapter(host));
+        super(new RpcTcpClientAdapter(host));
     }
 }
 
 export class NetBroker extends BaseBroker {
     constructor(protected host: BrokerConfig['host']) {
-        super(new NetTcpRpcClientAdapter(host));
+        super(new RpcNetTcpClientAdapter(host));
     }
 }
 
@@ -106,7 +106,7 @@ export class DirectBroker extends BaseBroker {
     }
 }
 
-export class BrokerServer extends TcpRpcServer {
+export class BrokerServer extends RpcTcpServer {
     protected kernel: BrokerKernel = new BrokerKernel;
 
     constructor(protected listen: BrokerConfig['listen']) {
@@ -114,7 +114,7 @@ export class BrokerServer extends TcpRpcServer {
     }
 }
 
-export class NetBrokerServer extends NetTcpRpcServer {
+export class NetBrokerServer extends RpcNetTcpServer {
     protected kernel: BrokerKernel = new BrokerKernel;
 
     constructor(listen: BrokerConfig['listen']) {

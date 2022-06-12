@@ -8,11 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { IncomingMessage, ServerResponse } from 'http';
+import { IncomingMessage, OutgoingHttpHeader, OutgoingHttpHeaders, ServerResponse } from 'http';
 import { UploadedFile } from './router';
 import * as querystring from 'querystring';
 import { Writable } from 'stream';
 import { metaAnnotation, ReflectionKind, Type, ValidationErrorItem } from '@deepkit/type';
+import { isArray } from '@deepkit/core';
 
 export class HttpResponse extends ServerResponse {
     status(code: number) {
@@ -235,6 +236,33 @@ export class HttpRequest extends IncomingMessage {
 
 export class MemoryHttpResponse extends HttpResponse {
     public body: Buffer = Buffer.alloc(0);
+    public headers: {[name: string]: number | string | string[] | undefined} = Object.create(null);
+
+    setHeader(name: string, value: number | string | ReadonlyArray<string>) {
+        this.headers[name] = value as any;
+        super.setHeader(name, value);
+    }
+
+    removeHeader(name: string) {
+        delete this.headers[name];
+        super.removeHeader(name);
+    }
+
+    getHeader(name: string) {
+        return this.headers[name];
+    }
+
+    getHeaders(): OutgoingHttpHeaders {
+        return this.headers;
+    }
+
+    writeHead(statusCode: number, headersOrReasonPhrase?: string | OutgoingHttpHeaders | OutgoingHttpHeader[], headers?: OutgoingHttpHeaders | OutgoingHttpHeader[]): this {
+        headers = typeof headersOrReasonPhrase === 'string' ? headers : headersOrReasonPhrase;
+        if (headers && !isArray(headers)) this.headers = headers;
+
+        if (typeof headersOrReasonPhrase === 'string') return super.writeHead(statusCode, headersOrReasonPhrase, headers);
+        return super.writeHead(statusCode, headers);
+    }
 
     get json(): any {
         const json = this.bodyString;
@@ -287,6 +315,5 @@ export class MemoryHttpResponse extends HttpResponse {
             this.body = Buffer.concat([this.body, chunk]);
         }
         return super.end(chunk, encoding, callback);
-        // if (callback) callback();
     }
 }

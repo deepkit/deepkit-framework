@@ -18,7 +18,7 @@ import { ClassType, urlJoin } from '@deepkit/core';
 import { HttpRequest, HttpResponse } from './model';
 import send from 'send';
 import { eventDispatcher } from '@deepkit/event';
-import { RouteConfig, Router } from './router';
+import { RouteConfig, HttpRouter } from './router';
 
 export function serveStaticListener(module: AppModule<any>, path: string, localPath: string = path): ClassType {
     class HttpRequestStaticServingListener {
@@ -45,6 +45,7 @@ export function serveStaticListener(module: AppModule<any>, path: string, localP
                     if (stat && stat.isFile()) {
                         event.routeFound(
                             new RouteConfig('static', ['GET'], event.url, {
+                                type: 'controller',
                                 controller: HttpRequestStaticServingListener,
                                 module,
                                 methodName: 'serve'
@@ -128,21 +129,23 @@ export function registerStaticHttpController(module: AppModule<any>, options: St
     const path = normalizeDirectory(options.path);
 
     const route1 = new RouteConfig('static', ['GET'], path, {
+        type: 'controller',
         controller: StaticController,
         module,
         methodName: 'serveIndex'
     });
     route1.groups = groups;
-    module.setupGlobalProvider<Router>().addRoute(route1);
+    module.setupGlobalProvider<HttpRouter>().addRoute(route1);
 
     if (path !== '/') {
         const route2 = new RouteConfig('static', ['GET'], path.slice(0, -1), {
+            type: 'controller',
             controller: StaticController,
             module,
             methodName: 'serveIndex'
         });
         route2.groups = groups;
-        module.setupGlobalProvider<Router>().addRoute(route2);
+        module.setupGlobalProvider<HttpRouter>().addRoute(route2);
     }
 
     module.addProvider(StaticController);

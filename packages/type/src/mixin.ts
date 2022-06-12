@@ -1,7 +1,7 @@
 import { ExtractClassType } from '@deepkit/core';
 import { ClassType } from '@deepkit/core';
 import { AbstractClassType } from '@deepkit/core';
-import { ReflectionClass } from './reflection/reflection';
+import { ReflectionClass } from './reflection/reflection.js';
 
 type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (x: infer R) => any ? R : never;
 

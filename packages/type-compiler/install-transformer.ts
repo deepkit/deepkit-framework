@@ -34,7 +34,6 @@ function getCode(deepkitDistPath: string, varName: string, id: string): string {
                 if (!${varName}.afterDeclarations.includes(typeTransformer.declarationTransformer)) ${varName}.afterDeclarations.push(typeTransformer.declarationTransformer);
             }
         } catch (e) {
-            console.error('failed loading @deepkit/type transformer: ' + e);
         }
     `;
 }

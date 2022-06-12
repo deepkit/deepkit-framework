@@ -7,7 +7,7 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { ClassType } from "./core";
+import { ClassType } from "./core.js";
 
 const COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
 const DEFAULT_PARAMS = /=[^,]+/mg;

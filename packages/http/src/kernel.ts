@@ -1,5 +1,5 @@
 import { InjectorContext } from '@deepkit/injector';
-import { Router } from './router';
+import { HttpRouter } from './router';
 import { EventDispatcher } from '@deepkit/event';
 import { LoggerInterface } from '@deepkit/logger';
 import { HttpRequest, HttpResponse, MemoryHttpResponse, RequestBuilder } from './model';
@@ -9,7 +9,7 @@ import { unlink } from 'fs';
 
 export class HttpKernel {
     constructor(
-        protected router: Router,
+        protected router: HttpRouter,
         protected eventDispatcher: EventDispatcher,
         protected injectorContext: InjectorContext,
         protected logger: LoggerInterface,

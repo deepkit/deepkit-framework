@@ -16,6 +16,7 @@ import {
     getValidatorFunction,
     metaAnnotation,
     ReflectionClass,
+    ReflectionFunction,
     ReflectionKind,
     ReflectionParameter,
     SerializationOptions,
@@ -29,7 +30,7 @@ import {
 // @ts-ignore
 import formidable from 'formidable';
 import querystring from 'querystring';
-import { httpClass } from './decorator';
+import { HttpAction, httpClass, HttpController, HttpDecorator } from './decorator';
 import { BodyValidationError, getRegExp, HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters, ValidatedBody } from './model';
 import { InjectorContext, InjectorModule, TagRegistry } from '@deepkit/injector';
 import { Logger, LoggerInterface } from '@deepkit/logger';
@@ -39,6 +40,7 @@ import { HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware';
 
 //@ts-ignore
 import qs from 'qs';
+import { isArray } from '@deepkit/core';
 
 export type RouteParameterResolverForInjector = ((injector: InjectorContext) => any[] | Promise<any[]>);
 
@@ -83,15 +85,19 @@ export class UploadedFile {
     // hash!: string | 'sha1' | 'md5' | 'sha256' | null;
 }
 
-export interface RouteControllerAction {
+export interface RouteFunctionControllerAction {
+    type: 'function';
+    //if not set, the root module is used
+    module?: InjectorModule<any>;
+    fn: (...args: any[]) => any;
+}
+
+export interface RouteClassControllerAction {
+    type: 'controller';
     //if not set, the root module is used
     module?: InjectorModule<any>;
     controller: ClassType;
     methodName: string;
-}
-
-function getRouterControllerActionName(action: RouteControllerAction): string {
-    return `${getClassName(action.controller)}.${action.methodName}`;
 }
 
 export class RouteConfig {
@@ -115,7 +121,7 @@ export class RouteConfig {
 
     resolverForToken: Map<any, ClassType> = new Map();
 
-    middlewares: { config: HttpMiddlewareConfig, module: InjectorModule<any> }[] = [];
+    middlewares: { config: HttpMiddlewareConfig, module?: InjectorModule<any> }[] = [];
 
     resolverForParameterName: Map<string, ClassType> = new Map();
 
@@ -128,9 +134,15 @@ export class RouteConfig {
         public readonly name: string,
         public readonly httpMethods: string[],
         public readonly path: string,
-        public readonly action: RouteControllerAction,
+        public readonly action: RouteClassControllerAction | RouteFunctionControllerAction,
         public internal: boolean = false,
     ) {
+    }
+
+    getReflectionFunction(): ReflectionFunction {
+        return this.action.type === 'controller' ?
+            ReflectionClass.from(this.action.controller).getMethod(this.action.methodName)
+            : ReflectionFunction.from(this.action.fn);
     }
 
     getSchemaForResponse(statusCode: number): Type | undefined {
@@ -231,13 +243,13 @@ function parseRoutePathToRegex(routeConfig: RouteConfig): { regex: string, param
     const parameterNames: { [name: string]: number } = {};
     let path = routeConfig.getFullPath();
 
-    const method = ReflectionClass.from(routeConfig.action.controller).getMethod(routeConfig.action.methodName);
+    const fn = routeConfig.getReflectionFunction();
 
     let argumentIndex = 0;
     path = path.replace(/:(\w+)/g, (a, name) => {
         parameterNames[name] = argumentIndex;
         argumentIndex++;
-        const parameter = method.getParameterOrUndefined(name);
+        const parameter = fn.getParameterOrUndefined(name);
         if (parameter) {
             const regExp = getRegExp(parameter.type);
             if (regExp) return '(' + regExp + ')';
@@ -249,10 +261,9 @@ function parseRoutePathToRegex(routeConfig: RouteConfig): { regex: string, param
 }
 
 export function parseRouteControllerAction(routeConfig: RouteConfig): ParsedRoute {
-    const schema = ReflectionClass.from(routeConfig.action.controller);
     const parsedRoute = new ParsedRoute(routeConfig);
 
-    const methodArgumentProperties = schema.getMethodParameters(routeConfig.action.methodName);
+    const methodArgumentProperties = routeConfig.getReflectionFunction().getParameters();
     const parsedPath = parseRoutePathToRegex(routeConfig);
     parsedRoute.regex = parsedPath.regex;
     parsedRoute.pathParameterNames = parsedPath.parameterNames;
@@ -302,11 +313,11 @@ function filterMiddlewaresForRoute(middlewareRawConfigs: MiddlewareRegistryEntry
     const middlewareConfigs = middlewares.filter((v) => {
         if (!(v.config instanceof HttpMiddlewareConfig)) return false;
 
-        if (v.config.controllers.length && !v.config.controllers.includes(routeConfig.action.controller)) {
+        if (v.config.controllers.length && routeConfig.action.type === 'controller' && !v.config.controllers.includes(routeConfig.action.controller)) {
             return false;
         }
 
-        if (v.config.excludeControllers.length && v.config.excludeControllers.includes(routeConfig.action.controller)) {
+        if (v.config.excludeControllers.length && routeConfig.action.type === 'controller' && v.config.excludeControllers.includes(routeConfig.action.controller)) {
             return false;
         }
 
@@ -366,11 +377,231 @@ function filterMiddlewaresForRoute(middlewareRawConfigs: MiddlewareRegistryEntry
     return middlewareConfigs;
 }
 
-export class Router {
-    protected fn?: (request: HttpRequest) => ResolvedController | undefined;
-    protected resolveFn?: (name: string, parameters: { [name: string]: any }) => string;
+export interface HttpRouterFunctionOptions {
+    path: string;
+    name?: string;
+    methods?: string[];
+    description?: string;
+    category?: string;
+    groups?: string[];
 
+    /**
+     * An arbitrary data container the user can use to store app specific settings/values.
+     */
+    data?: Record<any, any>;
+
+    baseUrl?: string;
+    middlewares?: (() => HttpMiddlewareConfig)[];
+
+    serializer?: Serializer;
+    serializationOptions?: SerializationOptions;
+
+    resolverForToken?: Map<any, ClassType>;
+    resolverForParameterName?: Map<string, ClassType>;
+
+    responses?: { statusCode: number, description: string, type?: Type }[];
+}
+
+function convertOptions(methods: string[], pathOrOptions: string | HttpRouterFunctionOptions, defaultOptions: Partial<HttpRouterFunctionOptions>): HttpRouterFunctionOptions {
+    const options = 'string' === typeof pathOrOptions ? { path: pathOrOptions } : pathOrOptions;
+    if (options.methods) return options;
+    return { ...options, methods };
+}
+
+export abstract class HttpRouterRegistryFunctionRegistrar {
+    protected defaultOptions: Partial<HttpRouterFunctionOptions> = {};
+
+    abstract addRoute(routeConfig: RouteConfig): void;
+
+    /**
+     * Returns a new registrar object with default options that apply to each registered route through this registrar.
+     *
+     * ```typescript
+     * const registry: HttpRouterRegistry = ...;
+     *
+     * const secretRegistry = registry.forOptions({groups: ['secret']});
+     *
+     * secretRegistry.get('/admin/groups', () => {
+     * });
+     *
+     * secretRegistry.get('/admin/users', () => {
+     * });
+     * ```
+     */
+    forOptions(options: Partial<HttpRouterFunctionOptions>): HttpRouterRegistryFunctionRegistrar {
+        const that = this;
+        return new class extends HttpRouterRegistryFunctionRegistrar {
+            defaultOptions = options;
+
+            addRoute(routeConfig: RouteConfig) {
+                that.addRoute(routeConfig);
+            }
+        };
+    }
+
+    public any(pathOrOptions: string | HttpRouterFunctionOptions, callback: (...args: any[]) => any) {
+        this.register(convertOptions([], pathOrOptions, this.defaultOptions), callback);
+    }
+
+    public add(decorator: HttpDecorator, callback: (...args: any[]) => any) {
+        const data = decorator(Object, '_');
+        const action = isArray(data) ? data.find(v => v instanceof HttpAction) : undefined;
+        if (!action) throw new Error('No HttpAction available');
+
+        const fn = ReflectionFunction.from(callback);
+        const routeConfig = createRouteConfigFromHttpAction({
+            type: 'function',
+            fn: callback,
+        }, action);
+        routeConfig.returnType = fn.getReturnType();
+        this.addRoute(routeConfig);
+    }
+
+    public get(pathOrOptions: string | HttpRouterFunctionOptions, callback: (...args: any[]) => any) {
+        this.register(convertOptions(['GET'], pathOrOptions, this.defaultOptions), callback);
+    }
+
+    public post(pathOrOptions: string | HttpRouterFunctionOptions, callback: (...args: any[]) => any) {
+        this.register(convertOptions(['POST'], pathOrOptions, this.defaultOptions), callback);
+    }
+
+    public put(pathOrOptions: string | HttpRouterFunctionOptions, callback: (...args: any[]) => any) {
+        this.register(convertOptions(['PUT'], pathOrOptions, this.defaultOptions), callback);
+    }
+
+    public patch(pathOrOptions: string | HttpRouterFunctionOptions, callback: (...args: any[]) => any) {
+        this.register(convertOptions(['PATCH'], pathOrOptions, this.defaultOptions), callback);
+    }
+
+    public delete(pathOrOptions: string | HttpRouterFunctionOptions, callback: (...args: any[]) => any) {
+        this.register(convertOptions(['DELETE'], pathOrOptions, this.defaultOptions), callback);
+    }
+
+    public options(pathOrOptions: string | HttpRouterFunctionOptions, callback: (...args: any[]) => any) {
+        this.register(convertOptions(['OPTIONS'], pathOrOptions, this.defaultOptions), callback);
+    }
+
+    public trace(pathOrOptions: string | HttpRouterFunctionOptions, callback: (...args: any[]) => any) {
+        this.register(convertOptions(['TRACE'], pathOrOptions, this.defaultOptions), callback);
+    }
+
+    public head(pathOrOptions: string | HttpRouterFunctionOptions, callback: (...args: any[]) => any) {
+        this.register(convertOptions(['HEAD'], pathOrOptions, this.defaultOptions), callback);
+    }
+
+    private register(options: HttpRouterFunctionOptions, callback: (...args: any[]) => any, module?: InjectorModule<any>) {
+        const fn = ReflectionFunction.from(callback);
+
+        const routeConfig = new RouteConfig(options.name || '', options.methods || [], options.path, {
+            type: 'function',
+            fn: callback,
+        });
+        routeConfig.module = module;
+        if (options.responses) routeConfig.responses = options.responses;
+        if (options.description) routeConfig.description = options.description;
+        if (options.category) routeConfig.category = options.category;
+        if (options.groups) routeConfig.groups = options.groups;
+        if (options.data) routeConfig.data = new Map(Object.entries(options.data));
+        if (options.baseUrl) routeConfig.baseUrl = options.baseUrl;
+        if (options.middlewares) {
+            routeConfig.middlewares = options.middlewares.map(v => {
+                return { config: v(), module };
+            });
+        }
+
+        if (options.resolverForToken) {
+            for (const item of options.resolverForToken) routeConfig.resolverForToken.set(...item);
+        }
+
+        if (options.resolverForToken) {
+            for (const item of options.resolverForToken) routeConfig.resolverForToken.set(...item);
+        }
+
+        if (options.resolverForParameterName) {
+            for (const item of options.resolverForParameterName) routeConfig.resolverForParameterName.set(...item);
+        }
+
+        routeConfig.serializer = options.serializer;
+        routeConfig.serializationOptions = options.serializationOptions;
+
+        routeConfig.returnType = fn.getReturnType();
+        this.addRoute(routeConfig);
+    }
+}
+
+function createRouteConfigFromHttpAction(routeAction: RouteClassControllerAction | RouteFunctionControllerAction, action: HttpAction, module?: InjectorModule<any>, controller?: HttpController) {
+    const routeConfig = new RouteConfig(action.name, action.httpMethods, action.path, routeAction);
+    routeConfig.responses = action.responses;
+    routeConfig.description = action.description;
+    routeConfig.category = action.category;
+    routeConfig.groups = action.groups;
+    routeConfig.data = new Map(action.data);
+    if (controller) {
+        routeConfig.baseUrl = controller.baseUrl;
+
+        routeConfig.middlewares = controller.middlewares.map(v => {
+            return { config: v(), module };
+        });
+        routeConfig.resolverForToken = new Map(controller.resolverForToken);
+        routeConfig.resolverForParameterName = new Map(controller.resolverForParameterName);
+    }
+
+    routeConfig.middlewares.push(...action.middlewares.map(v => {
+        return { config: v(), module };
+    }));
+
+    for (const item of action.resolverForToken) routeConfig.resolverForToken.set(...item);
+
+    for (const item of action.resolverForParameterName) routeConfig.resolverForParameterName.set(...item);
+
+    routeConfig.serializer = action.serializer;
+    routeConfig.serializationOptions = action.serializationOptions;
+    return routeConfig;
+}
+
+export class HttpRouterRegistry extends HttpRouterRegistryFunctionRegistrar {
     protected routes: RouteConfig[] = [];
+    private buildId: number = 1;
+
+    public getBuildId(): number {
+        return this.buildId;
+    }
+
+    public getRoutes(): RouteConfig[] {
+        return this.routes;
+    }
+
+    public addRouteForController(controller: ClassType, module: InjectorModule<any>) {
+        const controllerData = httpClass._fetch(controller);
+        if (!controllerData) throw new Error(`Http controller class ${getClassName(controller)} has no @http.controller decorator.`);
+        const schema = ReflectionClass.from(controller);
+
+        for (const action of controllerData.getActions()) {
+            const routeAction: RouteClassControllerAction = {
+                type: 'controller',
+                controller,
+                module,
+                methodName: action.methodName
+            };
+            const routeConfig = createRouteConfigFromHttpAction(routeAction, action, module, controllerData);
+
+            routeConfig.module = module;
+
+            if (schema.hasMethod(action.methodName)) routeConfig.returnType = schema.getMethod(action.methodName).getReturnType();
+            this.addRoute(routeConfig);
+        }
+    }
+
+    public addRoute(routeConfig: RouteConfig) {
+        this.routes.push(routeConfig);
+        this.buildId++;
+    }
+}
+
+export class HttpRouter {
+    protected fn?: (request: HttpRequest) => ResolvedController | undefined;
+    protected buildId: number = 0;
+    protected resolveFn?: (name: string, parameters: { [name: string]: any }) => string;
 
     private parseBody(req: HttpRequest, files: { [name: string]: UploadedFile }) {
         const form = formidable({
@@ -398,6 +629,7 @@ export class Router {
         private logger: LoggerInterface,
         tagRegistry: TagRegistry,
         private middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry,
+        private registry: HttpRouterRegistry = new HttpRouterRegistry,
     ) {
         for (const controller of controllers.controllers) {
             this.addRouteForController(controller.controller, controller.module);
@@ -405,7 +637,7 @@ export class Router {
     }
 
     getRoutes(): RouteConfig[] {
-        return this.routes;
+        return this.registry.getRoutes();
     }
 
     static forControllers(
@@ -413,7 +645,7 @@ export class Router {
         tagRegistry: TagRegistry = new TagRegistry(),
         middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry(),
         module: InjectorModule<any> = new InjectorModule()
-    ): Router {
+    ): HttpRouter {
         return new this(new HttpControllers(controllers.map(v => {
             return isClass(v) ? { controller: v, module } : v;
         })), new Logger([], []), tagRegistry, middlewareRegistry);
@@ -640,60 +872,22 @@ export class Router {
     }
 
     public addRoute(routeConfig: RouteConfig) {
-        this.routes.push(routeConfig);
-        this.fn = undefined;
+        this.registry.addRoute(routeConfig);
     }
 
     public addRouteForController(controller: ClassType, module: InjectorModule<any>) {
-        const data = httpClass._fetch(controller);
-        if (!data) throw new Error(`Http controller class ${getClassName(controller)} has no @http.controller decorator.`);
-        const schema = ReflectionClass.from(controller);
-
-        for (const action of data.getActions()) {
-            const routeConfig = new RouteConfig(action.name, action.httpMethods, action.path, {
-                controller,
-                module,
-                methodName: action.methodName
-            });
-            routeConfig.module = module;
-            routeConfig.responses = action.responses;
-            routeConfig.description = action.description;
-            routeConfig.category = action.category;
-            routeConfig.groups = action.groups;
-            routeConfig.data = new Map(action.data);
-            routeConfig.baseUrl = data.baseUrl;
-
-            routeConfig.middlewares = data.middlewares.map(v => {
-                return { config: v(), module };
-            });
-            routeConfig.middlewares.push(...action.middlewares.map(v => {
-                return { config: v(), module };
-            }));
-
-            for (const item of action.resolverForToken) routeConfig.resolverForToken.set(...item);
-
-            routeConfig.resolverForToken = new Map(data.resolverForToken);
-            for (const item of action.resolverForToken) routeConfig.resolverForToken.set(...item);
-
-            routeConfig.resolverForParameterName = new Map(data.resolverForParameterName);
-            for (const item of action.resolverForParameterName) routeConfig.resolverForParameterName.set(...item);
-
-            routeConfig.serializationOptions = action.serializationOptions;
-            routeConfig.serializer = action.serializer;
-            routeConfig.serializer = action.serializer;
-            if (schema.hasMethod(action.methodName)) routeConfig.returnType = schema.getMethod(action.methodName).getReturnType();
-            this.addRoute(routeConfig);
-        }
+        this.registry.addRouteForController(controller, module);
     }
 
     protected build(): (request: HttpRequest) => ResolvedController | undefined {
+        this.buildId = this.registry.getBuildId();
         const compiler = new CompilerContext;
         compiler.context.set('ValidationError', ValidationError);
         compiler.context.set('qs', qs);
 
         const code: string[] = [];
 
-        for (const route of this.routes) {
+        for (const route of this.getRoutes()) {
             code.push(this.getRouteCode(compiler, route));
         }
 
@@ -713,7 +907,7 @@ export class Router {
         const compiler = new CompilerContext;
         const code: string[] = [];
 
-        for (const route of this.routes) {
+        for (const route of this.getRoutes()) {
             code.push(this.getRouteUrlResolveCode(compiler, route));
         }
 
@@ -734,7 +928,7 @@ export class Router {
     }
 
     public resolveRequest(request: HttpRequest): ResolvedController | undefined {
-        if (!this.fn) {
+        if (!this.fn || this.buildId !== this.registry.getBuildId()) {
             this.fn = this.build();
         }
 

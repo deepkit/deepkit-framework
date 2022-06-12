@@ -73,7 +73,7 @@ export abstract class SQLConnection {
 
     constructor(
         protected connectionPool: SQLConnectionPool,
-        protected logger: DatabaseLogger = new DatabaseLogger,
+        public logger: DatabaseLogger = new DatabaseLogger,
         public transaction?: DatabaseTransaction,
         public stopwatch?: Stopwatch
     ) {

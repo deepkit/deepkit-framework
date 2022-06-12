@@ -64,7 +64,7 @@ export class FrameworkModule extends createModule({
                 }
 
                 for (const [name, info] of rpcControllers.controllers.entries()) {
-                    kernel.registerController(name, info.controller, info.module);
+                    kernel.registerController(info.controller, name, info.module);
                 }
 
                 return kernel;

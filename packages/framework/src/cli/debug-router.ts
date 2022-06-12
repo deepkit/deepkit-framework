@@ -9,13 +9,13 @@
  */
 
 import { cli, Command } from '@deepkit/app';
-import { Router } from '@deepkit/http';
+import { HttpRouter } from '@deepkit/http';
 
 @cli.controller('debug:router', {
 })
 export class DebugRouterController implements Command {
     constructor(
-        protected router: Router,
+        protected router: HttpRouter,
     ) {
     }
 

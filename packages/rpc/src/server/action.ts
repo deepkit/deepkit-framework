@@ -163,7 +163,7 @@ export class RpcServerAction {
         }
 
         const methodReflection = ReflectionClass.from(classType.controller).getMethod(methodName);
-        const method = methodReflection.method;
+        const method = methodReflection.type;
         assertType(method, ReflectionKind.method);
 
         let mode: ActionMode = 'arbitrary';

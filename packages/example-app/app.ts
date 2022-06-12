@@ -1,10 +1,10 @@
 #!/usr/bin/env ts-node-script
-import { createCrudRoutes, FrameworkModule } from '@deepkit/framework';
+import { createCrudRoutes, FrameworkModule, onServerMainBootstrapDone } from '@deepkit/framework';
 import { Author, Book, SQLiteDatabase, User } from './src/database';
 import { MainController } from './src/controller/main.http';
 import { UsersCommand } from './src/controller/users.cli';
 import { Config } from './src/config';
-import { JSONTransport, Logger } from '@deepkit/logger';
+import { JSONTransport, Logger, LoggerInterface } from '@deepkit/logger';
 import { App } from '@deepkit/app';
 import { RpcController } from './src/controller/rpc.controller';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
@@ -16,10 +16,9 @@ new App({
     providers: [SQLiteDatabase, MainController],
     controllers: [MainController, UsersCommand, RpcController],
     listeners: [
-        //todo: make that possible again
-        // createListener(onServerMainBootstrapDone, (event, logger, environment) => {
-        //     logger.log(`Environment <yellow>${environment}</yellow>`);
-        // }, Logger, config.token('environment')),
+        onServerMainBootstrapDone.listen((event, logger: LoggerInterface, environment: Config['environment']) => {
+            logger.log(`Environment <yellow>${environment}</yellow>`);
+        })
     ],
     imports: [
         createCrudRoutes([User], { identifier: 'username', identifierChangeable: true }),
@@ -50,7 +49,7 @@ new App({
 
     if (config.environment === 'production') {
         //enable logging JSON messages instead of formatted strings
-        module.setupProvider<Logger>().setTransport([new JSONTransport]);
+        module.setupGlobalProvider<Logger>().setTransport([new JSONTransport]);
     }
 })
     .loadConfigFromEnv()

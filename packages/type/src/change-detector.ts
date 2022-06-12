@@ -9,11 +9,11 @@
  */
 
 import { CompilerContext, empty, toFastProperties } from '@deepkit/core';
-import { Changes, changeSetSymbol, ItemChanges } from './changes';
-import { getConverterForSnapshot } from './snapshot';
-import { ReflectionClass } from './reflection/reflection';
-import { ContainerAccessor, getIndexCheck, sortSignatures, TemplateRegistry, TemplateState } from './serializer';
-import { referenceAnnotation, ReflectionKind, Type, TypeIndexSignature } from './reflection/type';
+import { Changes, changeSetSymbol, ItemChanges } from './changes.js';
+import { getConverterForSnapshot } from './snapshot.js';
+import { ReflectionClass } from './reflection/reflection.js';
+import { ContainerAccessor, getIndexCheck, sortSignatures, TemplateRegistry, TemplateState } from './serializer.js';
+import { referenceAnnotation, ReflectionKind, Type, TypeIndexSignature } from './reflection/type.js';
 
 function genericEqualArray(a: any[], b: any[]): boolean {
     if (a.length !== b.length) return false;
@@ -271,7 +271,7 @@ function createJITChangeDetectorForSnapshot(schema: ReflectionClass<any>, stateI
 
 const changeDetectorSymbol = Symbol('changeDetector');
 
-export function getChangeDetector<T>(classSchema: ReflectionClass<T>): (last: any, current: any, item: T) => ItemChanges<T> | undefined {
+export function getChangeDetector<T extends object>(classSchema: ReflectionClass<T>): (last: any, current: any, item: T) => ItemChanges<T> | undefined {
     const jit = classSchema.getJitContainer();
     if (jit[changeDetectorSymbol]) return jit[changeDetectorSymbol];
 
@@ -281,7 +281,7 @@ export function getChangeDetector<T>(classSchema: ReflectionClass<T>): (last: an
     return jit[changeDetectorSymbol];
 }
 
-export function buildChanges<T>(classSchema: ReflectionClass<T>, lastSnapshot: any, item: T): Changes<T> {
+export function buildChanges<T extends object>(classSchema: ReflectionClass<T>, lastSnapshot: any, item: T): Changes<T> {
     const currentSnapshot = getConverterForSnapshot(classSchema)(item);
     const detector = getChangeDetector(classSchema);
     return detector(lastSnapshot, currentSnapshot, item) as Changes<T> || new Changes<T>();

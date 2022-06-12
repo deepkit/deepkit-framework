@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, getClassName, isClass } from '@deepkit/core';
+import { ClassType, getClassName, isClass, isFunction } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
 import { AppModule, ConfigurationInvalidError, MiddlewareConfig, ModuleDefinition } from './module';
 import { Injector, InjectorContext, InjectorModule, isProvided, ProviderWithScope, resolveToken, Token } from '@deepkit/injector';
@@ -194,14 +194,16 @@ export class ServiceContainer {
     protected processModule(
         module: AppModule<ModuleDefinition>
     ): void {
-        if (module.injector) throw new Error(`Module ${getClassName(module)}.${module.name} was already imported. Can not re-use module instances.`);
+        if (module.injector) {
+            throw new Error(`Module ${getClassName(module)} (id=${module.name}) was already imported. Can not re-use module instances.`);
+        }
 
         const providers = module.getProviders();
         const controllers = module.getControllers();
         const listeners = module.getListeners();
         const middlewares = module.getMiddlewares();
 
-        if (module.options.bootstrap && !module.isProvided(module.options.bootstrap)) {
+        if (module.options.bootstrap && !isFunction(module.options.bootstrap) && !module.isProvided(module.options.bootstrap)) {
             providers.push(module.options.bootstrap);
         }
 
@@ -224,7 +226,7 @@ export class ServiceContainer {
                 providers.unshift({ provide: listener });
                 this.eventDispatcher.registerListener(listener, module);
             } else {
-                this.eventDispatcher.add(listener.eventToken, { fn: listener.callback, order: listener.order, module: listener.module });
+                this.eventDispatcher.add(listener.eventToken, { fn: listener.callback, order: listener.order, module: listener.module || module });
             }
         }
 

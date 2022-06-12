@@ -31,8 +31,8 @@
 //     return discriminatorFound ? discriminatorFound.property.name : undefined;
 // }
 
-import { ReflectionClass } from './reflection/reflection';
-import { ReflectionKind } from './reflection/type';
+import { ReflectionClass } from './reflection/reflection.js';
+import { ReflectionKind } from './reflection/type.js';
 
 export function findCommonLiteral(reflectionClasses: ReflectionClass<any>[]): string | undefined {
     const candidates: { [name: string]: { found: number, values: any[], schemas: ReflectionClass<any>[] } } = {};

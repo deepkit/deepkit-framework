@@ -1,7 +1,7 @@
 import { HttpListener, HttpResultFormatter, httpWorkflow } from './http';
 import { HttpConfig } from './module.config';
 import { AppModule, createModule } from '@deepkit/app';
-import { Router } from './router';
+import { HttpRouter, HttpRouterRegistry } from './router';
 import { HttpKernel } from './kernel';
 import { HttpRouterFilterResolver } from './filter';
 import { HttpControllers } from './controllers';
@@ -14,9 +14,10 @@ import { httpClass } from './decorator';
 export class HttpModule extends createModule({
     config: HttpConfig,
     providers: [
-        Router,
+        HttpRouter,
         HttpKernel,
         HttpResultFormatter,
+        HttpRouterRegistry,
         HttpRouterFilterResolver,
         { provide: HttpResponse, scope: 'http' },
         { provide: HttpRequest, scope: 'http' },
@@ -29,7 +30,8 @@ export class HttpModule extends createModule({
         httpWorkflow
     ],
     exports: [
-        Router,
+        HttpRouter,
+        HttpRouterRegistry,
         HttpKernel,
         HttpResultFormatter,
         HttpRouterFilterResolver,

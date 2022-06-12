@@ -1,6 +1,6 @@
-import { NormalizedProvider, ProviderWithScope, TagProvider, Token } from './provider';
-import { arrayRemoveItem, ClassType, getClassName, isClass, isPrototypeOfBase } from '@deepkit/core';
-import { BuildContext, Injector, SetupProviderRegistry } from './injector';
+import { NormalizedProvider, ProviderWithScope, TagProvider, Token } from './provider.js';
+import { arrayRemoveItem, ClassType, getClassName, isClass, isPlainObject, isPrototypeOfBase } from '@deepkit/core';
+import { BuildContext, Injector, SetupProviderRegistry } from './injector.js';
 import { hasTypeInformation, isExtendable, isType, ReceiveType, reflect, ReflectionKind, resolveReceiveType } from '@deepkit/type';
 
 export type ConfigureProvider<T> = { [name in keyof T]: T[name] extends (...args: infer A) => any ? (...args: A) => ConfigureProvider<T> : T[name] };
@@ -74,6 +74,9 @@ function lookupPreparedProviders(preparedProviders: PreparedProvider[], token: T
 
 function registerPreparedProvider(preparedProviders: PreparedProvider[], modules: InjectorModule[], providers: NormalizedProvider[], replaceExistingScope: boolean = true) {
     const token = providers[0].provide;
+    if (token === undefined) {
+        throw new Error('token is undefined: ' + JSON.stringify(providers));
+    }
     const preparedProvider = lookupPreparedProviders(preparedProviders, token);
     if (preparedProvider) {
         preparedProvider.token = token;
@@ -167,7 +170,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
     }
 
     /**
-     * When the module exports providers the importer don't want to have then `disableExports` disable all exports.
+     * When the module exports providers the importer doesn't want, then `disableExports` disable all exports.
      */
     disableExports(): this {
         this.exportsDisabled = true;
@@ -398,6 +401,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
 
         //make sure that providers that declare the same provider token will be filtered out so that the last will be used.
         for (const provider of this.providers) {
+            if (!provider) throw new Error('invalid provider: ' + provider);
             if (provider instanceof TagProvider) {
                 buildContext.tagRegistry.register(provider, this);
 
@@ -407,7 +411,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
                 }
             } else if (isClass(provider)) {
                 registerPreparedProvider(this.preparedProviders, [this], [{ provide: provider }]);
-            } else {
+            } else if (isPlainObject(provider)) {
                 registerPreparedProvider(this.preparedProviders, [this], [provider]);
             }
         }

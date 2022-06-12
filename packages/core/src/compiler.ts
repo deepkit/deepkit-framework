@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 // @ts-ignore
-import { indent } from './indent';
+import { indent } from './indent.js';
 
 export class CompilerContext {
     public readonly context = new Map<string, any>();

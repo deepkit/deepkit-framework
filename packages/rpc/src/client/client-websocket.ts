@@ -39,7 +39,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
 
     public async connect(connection: TransportConnectionHooks) {
         const wsPackage = 'ws';
-        const webSocketConstructor = 'undefined' === typeof WebSocket && require ? require(wsPackage) : WebSocket;
+        const webSocketConstructor = 'undefined' === typeof WebSocket && 'undefined' !== typeof require ? require(wsPackage) : WebSocket;
 
         const socket = new webSocketConstructor(this.url);
         socket.binaryType = 'arraybuffer';

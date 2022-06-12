@@ -49,14 +49,14 @@ import {
     TypeProperty,
     TypePropertySignature,
     TypeTemplateLiteral
-} from './type';
+} from './type.js';
 import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, isArray, isClass, stringifyValueWithType } from '@deepkit/core';
-import { Packed, resolvePacked, resolveRuntimeType } from './processor';
-import { NoTypeReceived } from '../utils';
-import { findCommonLiteral } from '../inheritance';
-import type { ValidateFunction } from '../validator';
-import { isWithDeferredDecorators } from '../decorator';
-import { SerializedTypes, serializeType } from '../type-serialization';
+import { Packed, resolvePacked, resolveRuntimeType } from './processor.js';
+import { NoTypeReceived } from '../utils.js';
+import { findCommonLiteral } from '../inheritance.js';
+import type { ValidateFunction } from '../validator.js';
+import { isWithDeferredDecorators } from '../decorator.js';
+import { SerializedTypes, serializeType } from '../type-serialization.js';
 
 /**
  * Receives the runtime type of template argument.
@@ -245,7 +245,7 @@ export class ReflectionParameter {
 
     constructor(
         public readonly parameter: TypeParameter,
-        public readonly reflectionMethod: ReflectionMethod,
+        public readonly reflectionFunction: ReflectionMethod | ReflectionFunction,
     ) {
         this.type = this.parameter.type;
     }
@@ -289,8 +289,8 @@ export class ReflectionParameter {
     applyDecorator(t: TData) {
         if (t.type) {
             this.type = resolveReceiveType(t.type);
-            if (this.getVisibility() !== undefined) {
-                this.reflectionMethod.reflectionClass.getProperty(this.getName())!.setType(this.type);
+            if (this.getVisibility() !== undefined && this.reflectionFunction instanceof ReflectionMethod) {
+                this.reflectionFunction.reflectionClass.getProperty(this.getName())!.setType(this.type);
             }
         }
     }
@@ -312,40 +312,30 @@ export class ReflectionParameter {
     }
 }
 
-export class ReflectionMethod {
+export class ReflectionFunction {
     parameters: ReflectionParameter[] = [];
 
-    /**
-     * Whether this method acts as validator.
-     */
-    validator: boolean = false;
-
     constructor(
-        public method: TypeMethod | TypeMethodSignature,
-        public reflectionClass: ReflectionClass<any>,
+        public readonly type: TypeMethod | TypeMethodSignature | TypeFunction,
     ) {
-        this.setType(method);
-    }
-
-    setType(method: TypeMethod | TypeMethodSignature) {
-        this.method = method;
-        this.parameters = [];
-        for (const p of this.method.parameters) {
+        for (const p of this.type.parameters) {
             this.parameters.push(new ReflectionParameter(p, this));
         }
     }
 
-    applyDecorator(data: TData) {
-        this.validator = data.validator;
-        if (this.validator) {
-            this.reflectionClass.validationMethod = this.getName();
-        }
-    }
+    static from(fn: Function): ReflectionFunction {
+        //todo: cache it
 
-    clone(reflectionClass?: ReflectionClass<any>, method?: TypeMethod | TypeMethodSignature): ReflectionMethod {
-        const c = new ReflectionMethod(method || this.method, reflectionClass || this.reflectionClass);
-        //todo, clone parameter
-        return c;
+        if (!('__type' in fn)) {
+            //functions without any types have no __type attached
+            return new ReflectionFunction({ kind: ReflectionKind.function, function: fn, return: { kind: ReflectionKind.any }, parameters: [] });
+        }
+
+        const type = reflect(fn);
+        if (type.kind !== ReflectionKind.function) {
+            throw new Error(`Given object is not a function ${fn}`);
+        }
+        return new ReflectionFunction(type);
     }
 
     getParameterNames(): (string)[] {
@@ -380,15 +370,11 @@ export class ReflectionMethod {
     }
 
     getReturnType(): Type {
-        return this.method.return;
-    }
-
-    isOptional(): boolean {
-        return this.method.optional === true;
+        return this.type.return;
     }
 
     getName(): number | string | symbol {
-        return this.method.name;
+        return this.type.name || 'anonymous';
     }
 
     get name(): string {
@@ -396,54 +382,42 @@ export class ReflectionMethod {
     }
 }
 
-export class ReflectionFunction {
+export class ReflectionMethod extends ReflectionFunction {
+    /**
+     * Whether this method acts as validator.
+     */
+    validator: boolean = false;
+
     constructor(
-        public readonly type: TypeFunction,
+        public type: TypeMethod | TypeMethodSignature,
+        public reflectionClass: ReflectionClass<any>,
     ) {
+        super(type);
     }
 
-    static from(fn: Function): ReflectionFunction {
-        //todo: cache it
-
-        if (!('__type' in fn)) {
-            //functions without any types have no __type attached
-            return new ReflectionFunction({ kind: ReflectionKind.function, function: fn, return: { kind: ReflectionKind.any }, parameters: [] });
+    setType(method: TypeMethod | TypeMethodSignature) {
+        this.type = method;
+        this.parameters = [];
+        for (const p of this.type.parameters) {
+            this.parameters.push(new ReflectionParameter(p, this));
         }
+    }
 
-        const type = reflect(fn);
-        if (type.kind !== ReflectionKind.function) {
-            throw new Error(`Given object is not a function ${fn}`);
+    applyDecorator(data: TData) {
+        this.validator = data.validator;
+        if (this.validator) {
+            this.reflectionClass.validationMethod = this.getName();
         }
-        return new ReflectionFunction(type);
     }
 
-    getParameters(): TypeParameter[] {
-        return this.type.parameters;
+    clone(reflectionClass?: ReflectionClass<any>, method?: TypeMethod | TypeMethodSignature): ReflectionMethod {
+        const c = new ReflectionMethod(method || this.type, reflectionClass || this.reflectionClass);
+        //todo, clone parameter
+        return c;
     }
 
-    getParameterNames(): string[] {
-        return this.type.parameters.map(v => v.name);
-    }
-
-    getParameterType(name: string): Type | undefined {
-        const parameter = this.getParameter(name);
-        if (parameter) return parameter.type;
-        return;
-    }
-
-    getParameter(name: string): TypeParameter | undefined {
-        for (const parameter of this.type.parameters) {
-            if (parameter.name === name) return parameter;
-        }
-        return;
-    }
-
-    getReturnType(): Type {
-        return this.type.return;
-    }
-
-    getName(): number | string | symbol | undefined {
-        return this.type.name;
+    isOptional(): boolean {
+        return this.type.optional === true;
     }
 }
 
@@ -1190,7 +1164,7 @@ export class ReflectionClass<T> {
 
         if (classTypeIn instanceof ReflectionClass) return classTypeIn;
         if (isType(classTypeIn)) {
-            if (classTypeIn.kind === ReflectionKind.objectLiteral) {
+            if (classTypeIn.kind === ReflectionKind.objectLiteral || (classTypeIn.kind === ReflectionKind.class && classTypeIn.typeArguments)) {
                 const jit = getTypeJitContainer(classTypeIn);
                 if (jit.reflectionClass) return jit.reflectionClass;
                 return jit.reflectionClass = new ReflectionClass<T>(classTypeIn);

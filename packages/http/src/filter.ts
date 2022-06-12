@@ -1,6 +1,6 @@
 import { ClassType } from '@deepkit/core';
 import { AppModule } from '@deepkit/app';
-import { RouteConfig, Router } from './router';
+import { RouteConfig, HttpRouter } from './router';
 
 export interface HttpRouteFilterRoute {
     path?: string;
@@ -57,7 +57,7 @@ function match(routeConfig: RouteConfig, route: HttpRouteFilterRoute): boolean {
 }
 
 export class HttpRouterFilterResolver {
-    constructor(protected router: Router) {
+    constructor(protected router: HttpRouter) {
     }
 
     /**
@@ -68,9 +68,9 @@ export class HttpRouterFilterResolver {
 
         outer:
             for (const routeConfig of this.router.getRoutes()) {
-                if (filter.controllers.length && !filter.controllers.includes(routeConfig.action.controller)) continue;
+                if (filter.controllers.length && routeConfig.action.type === 'controller' && !filter.controllers.includes(routeConfig.action.controller)) continue;
 
-                if (filter.excludeControllers.length && filter.excludeControllers.includes(routeConfig.action.controller)) continue;
+                if (filter.excludeControllers.length && routeConfig.action.type === 'controller' && filter.excludeControllers.includes(routeConfig.action.controller)) continue;
 
                 if (filter.modules.length) {
                     if (!routeConfig.module) continue;

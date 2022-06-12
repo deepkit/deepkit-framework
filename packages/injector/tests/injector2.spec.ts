@@ -27,7 +27,7 @@ test('parent dependency', () => {
     }
 
     const module1 = new InjectorModule([Router]);
-    const module2 = new InjectorModule([Controller], module1);
+    const module2 = new InjectorModule([Controller], module1)
 
     const context = new InjectorContext(module1);
     const injector = context.getInjector(module2);
@@ -666,7 +666,6 @@ test('setup provider by interface 2', () => {
     expect(service.list).toEqual(['a', 'b']);
 });
 
-
 test('setup provider in sub module', () => {
     class Service {
         list: any[] = [];
@@ -860,6 +859,7 @@ test('provide() with provider', () => {
             return true;
         }
     }
+
     class Service {
         constructor(public redis: Redis) {
         }
@@ -1395,14 +1395,16 @@ test('inject via symbols', () => {
 });
 
 test('class inheritance', () => {
-    class A {}
+    class A {
+    }
 
     class B {
         constructor(public a: A) {
         }
     }
 
-    class C extends B {}
+    class C extends B {
+    }
 
     const app = new InjectorModule([A, C]);
     const injector = new InjectorContext(app);

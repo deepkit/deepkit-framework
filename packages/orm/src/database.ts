@@ -130,11 +130,14 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         this.entityRegistry.add(...schemas);
         if (Database.registry) Database.registry.push(this);
 
-        this.query = (classType: ClassType | ReflectionClass<any>) => {
-            const session = this.createSession();
+        const self = this;
+        //we cannot use arrow functions, since they can't have ReceiveType<T>
+        function query<T>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
+            const session = self.createSession();
             session.withIdentityMap = false;
-            return session.query(classType);
+            return session.query(type);
         };
+        this.query = query;
 
         this.raw = (...args: any[]) => {
             const session = this.createSession();
@@ -163,12 +166,14 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     }
 
     static createClass<T extends DatabaseAdapter>(name: string, adapter: T, schemas: (ClassType | ReflectionClass<any>)[] = []): ClassType<Database<T>> {
-        return class extends Database<T> {
-            constructor(oAdapter = adapter, oSchemas = schemas) {
-                super(oAdapter, oSchemas);
+        class C extends Database<T> {
+            bla!: string;
+            constructor() {
+                super(adapter, schemas);
                 this.name = name;
             }
-        };
+        }
+        return C;
     }
 
     /**

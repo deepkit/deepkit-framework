@@ -8,7 +8,7 @@ import * as turbo from 'turbo-net';
 /**
  * Uses `turbo-net` module to connect to the server.
  */
-export class TcpRpcClientAdapter implements ClientTransportAdapter {
+export class RpcTcpClientAdapter implements ClientTransportAdapter {
     protected host: ParsedHost;
     public bufferSize: number = 100 * 1024 //100kb per connection;
 
@@ -72,7 +72,7 @@ export class TcpRpcClientAdapter implements ClientTransportAdapter {
 /*
  * Uses the node `net` module to connect. Supports unix sockets.
  */
-export class NetTcpRpcClientAdapter implements ClientTransportAdapter {
+export class RpcNetTcpClientAdapter implements ClientTransportAdapter {
     protected host;
 
     constructor(

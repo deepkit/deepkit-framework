@@ -3,23 +3,28 @@ import { hasCircularReference, ReceiveType, reflect, ReflectionClass, resolveRec
 import {
     assertType,
     Embedded,
+    Excluded, excludedAnnotation,
     findMember,
+    Group, groupAnnotation,
     indexAccess,
     InlineRuntimeType,
     isSameType,
+    metaAnnotation,
     ReflectionKind,
+    ResetDecorator,
     stringifyResolvedType,
     stringifyType,
     Type,
     TypeClass,
     TypeObjectLiteral,
     TypeProperty,
-    UUID
+    UUID, validationAnnotation
 } from '../src/reflection/type';
 import { isExtendable } from '../src/reflection/extends';
 import { expectEqualType } from './utils';
 import { ClassType } from '@deepkit/core';
 import { Partial } from '../src/changes';
+import { MaxLength, MinLength } from '../src/validator';
 
 //note: this needs to run in a strict TS mode to infer correctly in the IDE
 type Extends<A, B> = [A] extends [B] ? true : false;
@@ -44,6 +49,72 @@ test('stringify date/set/map', () => {
     expect(stringifyType(typeOf<Map<string, number>>())).toBe('Map<string, number>');
     expect(stringifyType(typeOf<Set<string>>())).toBe('Set<string>');
 });
+
+test('type decorator', () => {
+    type MyAnnotation = { __meta?: ['myAnnotation'] };
+    type Username = string & MyAnnotation;
+    const type = typeOf<Username>();
+    const data = metaAnnotation.getForName(type, 'myAnnotation');
+    expect(data).toEqual([]);
+});
+
+test('copy index access', () => {
+    interface User {
+        password: string & MinLength<6> & MaxLength<30>;
+    }
+
+    interface UserCreationPayload {
+        password: User['password'] & Group<'a'>;
+    }
+
+    const type = typeOf<UserCreationPayload>();
+
+    assertType(type, ReflectionKind.objectLiteral);
+    const password = findMember('password', type);
+    assertType(password, ReflectionKind.propertySignature);
+    assertType(password.type, ReflectionKind.string);
+    const validations = validationAnnotation.getAnnotations(password.type);
+    expect(validations[0].name).toBe('minLength');
+    expect(validations[1].name).toBe('maxLength');
+    const groups = groupAnnotation.getAnnotations(password.type);
+    expect(groups[0]).toBe('a');
+});
+
+test('reset type decorator', () => {
+    interface User {
+        password: string & MinLength<6> & Excluded<'json'>;
+    }
+
+    interface UserCreationPayload {
+        password: User['password'] & Group<'a'> & ResetDecorator<'excluded'>;
+    }
+
+    {
+        const type = typeOf<UserCreationPayload>();
+        assertType(type, ReflectionKind.objectLiteral);
+        const password = findMember('password', type);
+        assertType(password, ReflectionKind.propertySignature);
+        assertType(password.type, ReflectionKind.string);
+        const validations = validationAnnotation.getAnnotations(password.type);
+        expect(validations[0].name).toBe('minLength');
+        const groups = groupAnnotation.getAnnotations(password.type);
+        expect(groups[0]).toBe('a');
+        expect(excludedAnnotation.isExcluded(password.type, 'json')).toBe(false);
+    }
+
+    {
+        const type = typeOf<User>();
+        assertType(type, ReflectionKind.objectLiteral);
+        const password = findMember('password', type);
+        assertType(password, ReflectionKind.propertySignature);
+        assertType(password.type, ReflectionKind.string);
+        const validations = validationAnnotation.getAnnotations(password.type);
+        expect(validations[0].name).toBe('minLength');
+        const groups = groupAnnotation.getAnnotations(password.type);
+        expect(groups).toEqual([]);
+        expect(excludedAnnotation.isExcluded(password.type, 'json')).toBe(true);
+    }
+})
 
 test('type alias preserved', () => {
     type MyString = string;
@@ -131,6 +202,16 @@ test('extendability union', () => {
     validExtend<null, null | undefined>();
     validExtend<undefined, null | undefined>();
     invalidExtend<string, null | undefined>();
+});
+
+test('promise', () => {
+    validExtend<Promise<void>, Promise<void>>();
+    validExtend<Promise<string>, Promise<string>>();
+    invalidExtend<Promise<string>, Promise<number>>();
+    invalidExtend<Promise<string>, never>();
+    validExtend<never, Promise<void>>();
+    validExtend<any, Promise<void>>();
+    validExtend<Promise<void>, any>();
 });
 
 test('interface with method', () => {

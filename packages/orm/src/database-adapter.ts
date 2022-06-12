@@ -18,7 +18,7 @@ export abstract class DatabaseAdapterQueryFactory {
     abstract createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): Query<T>;
 }
 
-export interface DatabasePersistenceChangeSet<T> {
+export interface DatabasePersistenceChangeSet<T extends object> {
     changes: ItemChanges<T>;
     item: T;
     primaryKey: PrimaryKeyFields<T>;

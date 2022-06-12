@@ -33,6 +33,8 @@ import { RpcActionClient, RpcControllerState } from '../client/action';
 import { RemoteController } from '../client/client';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { Logger, LoggerInterface } from '@deepkit/logger';
+import { rpcClass } from '../decorators';
+import { getClassName } from '@deepkit/core';
 
 export class RpcCompositeMessage {
     protected messages: RpcCreateMessageDef<any>[] = [];
@@ -470,16 +472,20 @@ export class RpcKernel {
     }
 
     /**
-     * This registers the controller and adds it as provider to the injector.
+     * This registers the controller and no custom InjectorContext was given adds it as provider to the injector.
      *
-     * If you created a kernel with custom injector, you probably want to set addAsProvider to false.
-     * Adding a provider is rather expensive, so you should prefer to create a kernel with pre-filled  injector.
+     * Note: Controllers can not be added to the injector when the injector was already built.
      */
-    public registerController(id: string | ControllerDefinition<any>, controller: ClassType, module?: InjectorModule) {
+    public registerController(controller: ClassType, id?: string | ControllerDefinition<any>, module?: InjectorModule) {
         if (this.autoInjector) {
             if (!this.injector.rootModule.isProvided(controller)) {
                 this.injector.rootModule.addProvider({ provide: controller, scope: 'rpc' });
             }
+        }
+        if (!id) {
+            const rpcConfig = rpcClass._fetch(controller);
+            if (!rpcConfig) throw new Error(`Controller ${getClassName(controller)} has no @rpc.controller() decorator and no controller id was provided.`);
+            id = rpcConfig.getPath();
         }
         this.controllers.set('string' === typeof id ? id : id.path, { controller, module: module || this.injector.rootModule });
     }

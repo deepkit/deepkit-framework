@@ -615,18 +615,18 @@ export class RpcClient extends RpcBaseClient {
      * Registers a new controller for the peer's RPC kernel.
      * Use `registerAsPeer` first.
      */
-    public registerPeerController<T>(nameOrDefinition: string | ControllerDefinition<T>, classType: ClassType<T>) {
+    public registerPeerController<T>(classType: ClassType<T>, nameOrDefinition: string | ControllerDefinition<T>) {
         if (!this.peerKernel) throw new Error('Not registered as peer. Call registerAsPeer() first');
-        this.peerKernel.registerController('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path, classType);
+        this.peerKernel.registerController(classType, nameOrDefinition);
     }
 
     /**
      * Registers a new controller for the server's RPC kernel.
      * This is when the server wants to communicate actively with the client (us).
      */
-    public registerController<T>(nameOrDefinition: string | ControllerDefinition<T>, classType: ClassType<T>) {
+    public registerController<T>(classType: ClassType<T>, nameOrDefinition: string | ControllerDefinition<T>) {
         if (!this.clientKernel) this.clientKernel = new RpcKernel();
-        this.clientKernel.registerController('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path, classType);
+        this.clientKernel.registerController(classType, nameOrDefinition);
     }
 
     public async registerAsPeer(id: string) {

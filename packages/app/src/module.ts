@@ -36,10 +36,10 @@ export interface ModuleDefinition {
     exports?: ExportType[];
 
     /**
-     * Module bootstrap class. This class is instantiated on bootstrap and can
-     * setup various injected services. A more flexible alternative is to use .setup() with compiler passes.
+     * Module bootstrap class|function.
+     * This class is instantiated or function executed on bootstrap and can set up various injected services.
      */
-    bootstrap?: ClassType;
+    bootstrap?: ClassType | Function;
 
     /**
      * Configuration definition.
@@ -257,7 +257,7 @@ export class AppModule<T extends RootModuleDefinition, C extends ExtractClassTyp
      * This is also after `processController` and `processProvider` have been called and the full
      * final module tree is known. Adding now new providers or modules doesn't have any effect.
      *
-     * Last chance to setup the injector context, via this.setupProvider().
+     * Last chance to set up the injector context, via this.setupProvider().
      */
     postProcess() {
 

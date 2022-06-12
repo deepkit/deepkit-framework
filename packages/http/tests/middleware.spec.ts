@@ -21,7 +21,7 @@ test('middleware empty', async () => {
     const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
     expect(response.statusCode).toEqual(200);
     expect(response.bodyString).toEqual('"name1"');
-    expect(response.getHeader('content-type')).toEqual('application/json; charset=utf-8');
+    expect(response.getHeader('Content-Type')).toEqual('application/json; charset=utf-8');
 });
 
 test('middleware async success', async () => {
@@ -265,7 +265,7 @@ test('middleware keep content type', async () => {
     const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
     expect(response.statusCode).toEqual(200);
     expect(response.bodyString).toEqual('"name1"');
-    expect(response.getHeader('content-type')).toEqual('text/plain');
+    expect(response.getHeader('Content-Type')).toEqual('text/plain');
 });
 
 test('middleware order natural', async () => {

@@ -8,30 +8,30 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/core';
-export * from './src/changes';
-export * from './src/decorator';
-export * from './src/decorator-builder';
-export * from './src/reference';
-export * from './src/serializer';
-export * from './src/serializer-facade';
-export * from './src/typeguard';
-export * from './src/types';
-export * from './src/utils';
-export * from './src/validator';
-export * from './src/validators';
-export * from './src/snapshot';
-export * from './src/change-detector';
-export * from './src/path';
-export * from './src/type-serialization';
-export * from './src/registry';
-export * from './src/default';
-export * from './src/mixin';
+export * from './src/core.js';
+export * from './src/changes.js';
+export * from './src/decorator.js';
+export * from './src/decorator-builder.js';
+export * from './src/reference.js';
+export * from './src/serializer.js';
+export * from './src/serializer-facade.js';
+export * from './src/typeguard.js';
+export * from './src/types.js';
+export * from './src/utils.js';
+export * from './src/validator.js';
+export * from './src/validators.js';
+export * from './src/snapshot.js';
+export * from './src/change-detector.js';
+export * from './src/path.js';
+export * from './src/type-serialization.js';
+export * from './src/registry.js';
+export * from './src/default.js';
+export * from './src/mixin.js';
 
-export * from './src/reflection/type';
-export * from './src/reflection/processor';
-export * from './src/reflection/type';
-export * from './src/reflection/extends';
-export * from './src/reflection/reflection';
+export * from './src/reflection/type.js';
+export * from './src/reflection/processor.js';
+export * from './src/reflection/type.js';
+export * from './src/reflection/extends.js';
+export * from './src/reflection/reflection.js';
 
 export { TypeNumberBrand } from '@deepkit/type-spec';

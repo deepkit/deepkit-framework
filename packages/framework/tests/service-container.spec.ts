@@ -101,7 +101,7 @@ test('controller in module and overwrite service', () => {
 test('database auto-detection', () => {
     class MyDatabase extends Database {
         constructor() {
-            super(new MemoryDatabaseAdapter())
+            super(new MemoryDatabaseAdapter());
         }
     }
 
@@ -112,5 +112,25 @@ test('database auto-detection', () => {
 
     const registry = app.get(DatabaseRegistry);
     expect(registry.getDatabases()).toHaveLength(1);
+});
 
+test('database injection', () => {
+    class Service {
+        constructor(public db: Database) {
+        }
+    }
+
+    const app = new App({
+        imports: [new FrameworkModule({ debug: true })],
+        providers: [Service, { provide: Database, useValue: new Database(new MemoryDatabaseAdapter()) }],
+    });
+
+    const db = app.get(Database);
+    expect(db).toBeInstanceOf(Database);
+
+    const service = app.get(Service);
+    expect(service.db).toBeInstanceOf(Database);
+
+    const registry = app.get(DatabaseRegistry);
+    expect(registry.getDatabases()).toHaveLength(1);
 });

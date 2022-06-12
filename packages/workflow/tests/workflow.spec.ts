@@ -57,7 +57,7 @@ test('workflow events', async () => {
     const w = workflow1.create('start', dispatcher);
 
     let called = false;
-    dispatcher.registerCallback(workflow1.onDoIt, async () => {
+    dispatcher.listen(workflow1.onDoIt, async () => {
         called = true;
     });
 
@@ -94,15 +94,15 @@ test('workflow events apply next', async () => {
     const w = workflow1.create('start', dispatcher);
 
     let endCalled = false;
-    dispatcher.registerCallback(workflow1.onDoIt, async (event) => {
+    dispatcher.listen(workflow1.onDoIt, async (event) => {
         event.next('success');
     });
 
-    dispatcher.registerCallback(workflow1.onSuccess, async (event) => {
+    dispatcher.listen(workflow1.onSuccess, async (event) => {
         event.next('end', new EndEvent());
     });
 
-    dispatcher.registerCallback(workflow1.onEnd, async (event) => {
+    dispatcher.listen(workflow1.onEnd, async (event) => {
         expect(event.test).toBe('hi');
         endCalled = true;
     });
@@ -117,7 +117,7 @@ test('workflow events apply next invalid', async () => {
     const dispatcher = new EventDispatcher(InjectorContext.forProviders([]));
     const w = workflow1.create('start', dispatcher);
 
-    dispatcher.registerCallback(workflow1.onDoIt, async (event) => {
+    dispatcher.listen(workflow1.onDoIt, async (event) => {
         event.next('end');
     });
 

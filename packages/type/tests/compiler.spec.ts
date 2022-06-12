@@ -1,17 +1,7 @@
 /** @reflection never */
 import { describe, expect, test } from '@jest/globals';
-import {
-    CompilerOptions,
-    createCompilerHost,
-    createProgram,
-    createSourceFile,
-    ModuleKind,
-    ScriptKind,
-    ScriptTarget,
-    SourceFile,
-    TransformationContext,
-    transpileModule
-} from 'typescript';
+import * as ts from 'typescript';
+import { getPreEmitDiagnostics, ModuleKind, ScriptTarget, TransformationContext, transpileModule } from 'typescript';
 import { DeclarationTransformer, ReflectionTransformer, transformer } from '@deepkit/type-compiler';
 import { reflect, reflect as reflect2, ReflectionClass, removeTypeName, typeOf as typeOf2 } from '../src/reflection/reflection';
 import {
@@ -33,26 +23,46 @@ import { ReflectionOp } from '@deepkit/type-spec';
 import { ClassType, isObject } from '@deepkit/core';
 import { pack, resolveRuntimeType, typeInfer } from '../src/reflection/processor';
 import { expectEqualType } from './utils';
+import { createSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
+import { dirname, join } from 'path';
+import { readFileSync } from 'fs';
 
 Error.stackTraceLimit = 200;
 
-const options: CompilerOptions = {
-    experimentalDecorators: true,
-    module: ModuleKind.ES2020,
-    declaration: true,
-    transpileOnly: true,
-    target: ScriptTarget.ES2020,
-    reflection: true,
-};
 
-/**
- * @reflection never
- */
-function transpile<T extends string | { [file: string]: string }>(source: T, optionsToUse: CompilerOptions = options): T extends string ? string : Record<string, string> {
-    if ('string' === typeof source) {
-        return transpileModule(source, {
+const defaultLibLocation = __dirname + '/node_modules/typescript/lib/';
+
+function readLibs(compilerOptions: ts.CompilerOptions, files: Map<string, string>) {
+    const getLibSource = (name: string) => {
+        const lib = dirname(require.resolve('typescript'));
+        return readFileSync(join(lib, name), 'utf8');
+    };
+    const libs = knownLibFilesForCompilerOptions(compilerOptions, ts);
+    for (const lib of libs) {
+        if (lib.startsWith('lib.webworker.d.ts')) continue; //dom and webworker can not go together
+
+        files.set(defaultLibLocation + lib, getLibSource(lib));
+    }
+}
+
+export function transpile<T extends string | Record<string, string>>(files: T, options: ts.CompilerOptions = {}): T extends string ? string : Record<string, string> {
+    const compilerOptions: ts.CompilerOptions = {
+        target: ScriptTarget.ES2020,
+        allowNonTsExtensions: true,
+        module: ModuleKind.ES2020,
+        declaration: true,
+        transpileOnly: true,
+        moduleResolution: ts.ModuleResolutionKind.NodeJs,
+        experimentalDecorators: true,
+        esModuleInterop: true,
+        skipLibCheck: true,
+        ...options
+    };
+
+    if ('string' === typeof files) {
+        return transpileModule(files, {
             fileName: __dirname + '/module.ts',
-            compilerOptions: optionsToUse,
+            compilerOptions,
             transformers: {
                 before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflectionMode('always')],
                 afterDeclarations: [(context: TransformationContext) => new DeclarationTransformer(context).withReflectionMode('always')],
@@ -60,37 +70,36 @@ function transpile<T extends string | { [file: string]: string }>(source: T, opt
         }).outputText as any;
     }
 
-    const files: { [path: string]: SourceFile } = {};
-    const appPath = __dirname + '/app.ts';
-    if ('string' === typeof source) {
-        files[appPath] = createSourceFile(appPath, source, ScriptTarget.ES2020, true, ScriptKind.TS);
-    } else {
-        for (const [file, src] of Object.entries(source)) {
-            const filePath = file === 'app.ts' ? appPath : __dirname + '/' + file + '.ts';
-            files[filePath] = createSourceFile(filePath, src, ScriptTarget.ES2020, true, ScriptKind.TS);
-        }
+    const fsMap = new Map<string, string>();
+    readLibs(compilerOptions, fsMap);
+    compilerOptions.lib = [...fsMap.keys()];
+
+    for (const [fileName, source] of Object.entries(files)) {
+        fsMap.set(__dirname + '/' + fileName + '.ts', source);
     }
+    const system = createSystem(fsMap);
 
-    const result: Record<string, string> = {};
-    const host = createCompilerHost(optionsToUse);
-    host.writeFile = (fileName, data, writeByteOrderMark, onError, sourceFiles) => {
-        result[fileName.slice(__dirname.length + 1)] = data;
-    };
+    const host = createVirtualCompilerHost(system, compilerOptions, ts);
+    host.compilerHost.getDefaultLibLocation = () => defaultLibLocation;
 
-    const ori = { ...host };
-    host.getSourceFile = (fileName: string, languageVersion: ScriptTarget) => {
-        return files[fileName] || ori.getSourceFile(fileName, languageVersion);
-    };
-    host.fileExists = (fileName: string) => {
-        return !!files[fileName] || ori.fileExists(fileName);
-    };
-
-    const program = createProgram(Object.keys(files), optionsToUse, host);
-    program.emit(undefined, undefined, undefined, undefined, {
-        before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflectionMode('always')],
-        afterDeclarations: [(context: TransformationContext) => new DeclarationTransformer(context).withReflectionMode('always')],
+    const rootNames = Object.keys(files).map(fileName => __dirname + '/' + fileName + '.ts');
+    const program = ts.createProgram({
+        rootNames: rootNames,
+        options: compilerOptions,
+        host: host.compilerHost,
     });
-    return result as any;
+    for (const d of getPreEmitDiagnostics(program)) {
+        console.log('diagnostics', d.file?.fileName, d.messageText, d.start, d.length);
+    }
+    const res: Record<string, string> = {};
+
+    program.emit(undefined, (fileName, data) => {
+        res[fileName.slice(__dirname.length + 1)] = data;
+    }, undefined, undefined, {
+        before: [(context: TransformationContext) => new ReflectionTransformer(context).forHost(host.compilerHost).withReflectionMode('always')],
+    });
+
+    return res as any;
 }
 
 /**
@@ -1670,6 +1679,23 @@ test('InstanceType', () => {
     expect(type).toMatchObject({ kind: ReflectionKind.unknown });
 });
 
+test('import types named import esm simple', () => {
+    const js = transpile({
+        'app': `
+            import {User} from './user';
+            typeOf<User>();
+        `,
+        'user': `export interface User {id: number}`
+    });
+    console.log('js', js);
+    expect(js['app.js']).toContain(`__ΩUser`);
+
+    expect(js['user.js']).toContain(`export { __ΩUser as __ΩUser };`);
+    expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
+
+    console.log(js);
+});
+
 test('import types named import esm', () => {
     const js = transpile({
         'app': `
@@ -1681,6 +1707,7 @@ test('import types named import esm', () => {
         `,
         'user': `export interface User {id: number}`
     });
+    console.log('js', js);
     expect(js['app.js']).toContain(`__ΩUser`);
     expect(js['app.js']).toContain(`const __ΩPartial = [`);
     expect(js['app.js']).toContain(`export { __Ωbla as __Ωbla };`);
@@ -1702,7 +1729,7 @@ test('import types named import cjs', () => {
             typeOf<a>();
         `,
         'user': `export interface User {id: number}`
-    }, { ...options, module: ModuleKind.CommonJS });
+    }, { module: ModuleKind.CommonJS });
     console.log(js);
     expect(js['app.js']).toContain(`__ΩUser`);
     expect(js['app.js']).toContain(`const __ΩPartial = [`);
@@ -1811,6 +1838,48 @@ test('enum literals', () => {
     // expect(type).toMatchObject({ kind: ReflectionKind.unknown });
 });
 
+test('circular mapped type', () => {
+    //todo: fix this
+    const code = `
+
+        type Placeholder<T> = () => T;
+        type Resolve<T extends { _: Placeholder<any> }> = ReturnType<T['_']>;
+        type Replace<T, R> = T & { _: Placeholder<R> };
+
+        type Methods<T> = { [K in keyof T]: K extends keyof Query<any> ? never : K };
+
+        class Query<T> {
+            //for higher kinded type for selected fields
+            _!: () => T;
+
+            constructor(
+                classSchema: ReflectionClass<T>,
+                protected session: DatabaseSession<any>,
+                protected resolver: GenericQueryResolver<T>
+            ) {
+            }
+
+            public myMethod(): Methods<Query<T>> {
+                return undefined as any;
+            }
+
+            protected async callOnFetchEvent(query: Query<any>): Promise<this> {
+                return undefined as any;
+            }
+
+            public async find(): Promise<Resolve<this>[]> {
+                return undefined as any;
+            }
+        }
+        return typeOf<Query<any>>();
+    `;
+
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+    console.log('type', type);
+});
+
 test('pass type argument', () => {
     //not supported yet
     const code = `
@@ -1826,10 +1895,10 @@ test('pass type argument', () => {
 
     `
         (globals.Targs = () => [__ΩUser], test)();
-    `
+    `;
 
     const t = () => a;
-    const a = ''
+    const a = '';
 
     function test(a = (test as any).targs) {
         console.log('test', a);

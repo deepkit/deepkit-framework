@@ -1,9 +1,9 @@
 import { getClassTypeFromInstance } from '@deepkit/core';
-import { ReceiveType, resolveReceiveType } from './reflection/reflection';
-import { getSerializeFunction, NamingStrategy, SerializationOptions, serializer, Serializer } from './serializer';
-import { JSONPartial, JSONSingle } from './utils';
-import { typeInfer } from './reflection/processor';
-import { assert } from './typeguard';
+import { ReceiveType, resolveReceiveType } from './reflection/reflection.js';
+import { getSerializeFunction, NamingStrategy, SerializationOptions, serializer, Serializer } from './serializer.js';
+import { JSONPartial, JSONSingle } from './utils.js';
+import { typeInfer } from './reflection/processor.js';
+import { assert } from './typeguard.js';
 
 /**
  * Casts/coerces a given data structure to the target data type and validates all attached validators.

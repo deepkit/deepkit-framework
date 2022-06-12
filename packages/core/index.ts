@@ -8,18 +8,18 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/core';
-export * from './src/decorators';
-export * from './src/enum';
-export * from './src/iterators';
-export * from './src/timer';
-export * from './src/process-locker';
-export * from './src/network';
-export * from './src/perf';
-export * from './src/compiler';
-export * from './src/string';
-export * from './src/emitter';
-export * from './src/reactive';
-export * from './src/reflection';
-export * from './src/url';
-export * from './src/array';
+export * from './src/core.js';
+export * from './src/decorators.js';
+export * from './src/enum.js';
+export * from './src/iterators.js';
+export * from './src/timer.js';
+export * from './src/process-locker.js';
+export * from './src/network.js';
+export * from './src/perf.js';
+export * from './src/compiler.js';
+export * from './src/string.js';
+export * from './src/emitter.js';
+export * from './src/reactive.js';
+export * from './src/reflection.js';
+export * from './src/url.js';
+export * from './src/array.js';
