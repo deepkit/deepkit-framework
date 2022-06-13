@@ -17,53 +17,14 @@ import { Broker, BrokerServer, DirectBroker } from './broker/broker';
 import { injectorReference } from '@deepkit/injector';
 import { App, AppModule, RootAppModule, RootModuleDefinition } from '@deepkit/app';
 import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker';
-import { HttpKernel, HttpResponse, RequestBuilder } from '@deepkit/http';
+import { HttpKernel, MemoryHttpResponse, RequestBuilder } from '@deepkit/http';
 import { RpcClient } from '@deepkit/rpc';
 import { FrameworkModule } from './module';
 
-export class TestHttpResponse extends HttpResponse {
-    public body: Buffer = Buffer.alloc(0);
-
-    write(
-        chunk: any,
-        encoding: any,
-        callback?: any
-    ): boolean {
-        if (typeof encoding === 'function') {
-            callback = encoding;
-            encoding = null;
-        }
-
-        if (chunk) {
-            if ('string' === typeof chunk) {
-                chunk = Buffer.from(chunk, encoding || 'utf8');
-            }
-            this.body = Buffer.concat([this.body, chunk]);
-        }
-
-        if (callback) callback();
-        return true;
-    }
-
-    end(chunk: any, encoding?: any, callback?: any): any {
-        if (typeof chunk === 'function') {
-            callback = chunk;
-            chunk = null;
-            encoding = null;
-        } else if (typeof encoding === 'function') {
-            callback = encoding;
-            encoding = null;
-        }
-
-        if (chunk) {
-            if ('string' === typeof chunk) {
-                chunk = Buffer.from(chunk, encoding || 'utf8');
-            }
-            this.body = Buffer.concat([this.body, chunk]);
-        }
-        if (callback) callback();
-        return this;
-    }
+/**
+ * @deprecated use {@link MemoryHttpResponse} instead
+ */
+export class TestHttpResponse extends MemoryHttpResponse {
 }
 
 export class TestingFacade<A extends App<any>> {
@@ -78,9 +39,9 @@ export class TestingFacade<A extends App<any>> {
         await this.app.get(ApplicationServer).close();
     }
 
-    public async request(requestBuilder: RequestBuilder): Promise<TestHttpResponse> {
+    public async request(requestBuilder: RequestBuilder): Promise<MemoryHttpResponse> {
         const request = requestBuilder.build();
-        const response = new TestHttpResponse(request);
+        const response = new MemoryHttpResponse(request);
         await this.app.get(HttpKernel).handleRequest(request, response);
         return response;
     }
