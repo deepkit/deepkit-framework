@@ -9,9 +9,8 @@ on:
       - develop
 
 jobs:
-
   unit-tests:
-    runs-on: self-hosted
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         node-version: [ 16.x ]
@@ -27,7 +26,7 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-all2-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm && npm ci
+        run: npm ci
       - name: Lerna bootstrap
         run: |
           npm run bootstrap:ci -- \
@@ -40,7 +39,7 @@ jobs:
             --ignore @deepkit/postgres \
             --ignore @deepkit/orm-browser-example \
             --ignore @deepkit/orm-browser;
-          ./node_modules/.bin/npm-local-development --no-watcher
+          npm run link
       - name: Build
         run: |
           npm run install-compiler
@@ -69,7 +68,7 @@ jobs:
             packages/topsort/tsconfig.json \
             packages/type/tsconfig.json \
             packages/type-spec/tsconfig.json
-          ./node_modules/.bin/npm-local-development --no-watcher
+          npm run link
       - name: Test
         run: |
           npm run test:coverage \
@@ -98,20 +97,20 @@ jobs:
   orm-postgres:
     needs:
       - unit-tests
-    runs-on: self-hosted
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         node-version: [ 14.x ]
         postgres-version: [ 10.10 ]
-#    services:
-#      postgres:
-#        image: postgres:${{ matrix.postgres-version }}
-#        env:
-#          POSTGRES_USER: postgres
-#          POSTGRES_DB: postgres
-#        ports:
-#          - "5432:5432"
-#        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres-version }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - "5432:5432"
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -145,20 +144,20 @@ jobs:
   orm-mysql:
     needs:
       - unit-tests
-    runs-on: self-hosted
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         node-version: [ 14.x ]
         mysql-version: [ 8.0 ]
-#    services:
-#      mysql:
-#        image: "mysql:${{ matrix.mysql-version }}"
-#        options: >-
-#          --health-cmd "mysqladmin ping --silent"
-#          -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
-#          -e MYSQL_DATABASE=default
-#        ports:
-#          - "3306:3306"
+    services:
+      mysql:
+        image: "mysql:${{ matrix.mysql-version }}"
+        options: >-
+          --health-cmd "mysqladmin ping --silent"
+          -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
+          -e MYSQL_DATABASE=default
+        ports:
+          - "3306:3306"
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -192,7 +191,7 @@ jobs:
   orm-sqlite:
     needs:
       - unit-tests
-    runs-on: self-hosted
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         node-version: [ 14.x ]
@@ -229,17 +228,17 @@ jobs:
   orm-mongo:
     needs:
       - unit-tests
-    runs-on: self-hosted
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         node-version: [ 14.x ]
         mongo-version: [ 4.0 ]
-#    services:
-#      mongo:
-#        image: "mongo:${{ matrix.mongo-version }}"
-#        options: --replSet rs0
-#        ports:
-#          - "27017:27017"
+    services:
+      mongo:
+        image: "mongo:${{ matrix.mongo-version }}"
+        options: --replSet rs0
+        ports:
+          - "27017:27017"
     steps:
 #      - name: Start MongoDB
 #        uses: supercharge/mongodb-github-action@1.6.0
@@ -277,7 +276,7 @@ jobs:
         run: ./node_modules/.bin/codecov -f coverage/*.json
 
 #  benchmark:
-#    runs-on: self-hosted
+#    runs-on: ubuntu-20.04
 #    needs:
 #      - unit-tests
 #      - orm-postgres
