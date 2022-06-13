@@ -260,10 +260,12 @@ test('union string number', () => {
     expect(cast<string | number>(2)).toEqual(2);
 
     expect(cast<string | integer>(2)).toEqual(2);
-    expect(cast<string | integer>('3')).toEqual('3');
+    expect(cast<string | integer>('3', { loosely: false })).toEqual('3');
+    expect(cast<string | integer>('3')).toEqual(3);
 
     expect(cast<string | integer>(2.2)).toEqual(2);
-    expect(cast<string | integer>('2.2')).toEqual('2.2');
+    expect(cast<string | integer>('2.2', { loosely: false })).toEqual('2.2');
+    expect(cast<string | integer>('2.2')).toEqual(2);
 
     expect(cast<string | integer>(false)).toEqual('false');
     expect(cast<string | integer>(true)).toEqual('true');
@@ -277,48 +279,62 @@ test('union boolean number', () => {
     expect(cast<boolean | number>(true)).toEqual(true);
 });
 
+test('disabled loosely throws for primitives', () => {
+    expect(cast<string>(23)).toEqual('23');
+    expect(cast<string>(23)).toEqual('23');
+    expect(() => cast<string>(23, { loosely: false })).toThrow('Validation error');
+
+    expect(cast<number>('23')).toEqual(23);
+    expect(cast<number>('23')).toEqual(23);
+    expect(() => cast<number>('23', { loosely: false })).toThrow('Validation error');
+
+    expect(cast<boolean>(1)).toEqual(true);
+    expect(cast<boolean>(1)).toEqual(true);
+    expect(() => cast<boolean>(1, { loosely: false })).toThrow('Validation error');
+});
+
 test('union loose string number', () => {
-    expect(cast<string | number>('a', { loosely: true })).toEqual('a');
-    expect(cast<string | number>(2, { loosely: true })).toEqual(2);
-    expect(cast<string | number>(-2, { loosely: true })).toEqual(-2);
+    expect(cast<string | number>('a')).toEqual('a');
+    expect(cast<string | number>(2)).toEqual(2);
+    expect(cast<string | number>(-2)).toEqual(-2);
 
-    expect(cast<string | integer>(2, { loosely: true })).toEqual(2);
-    expect(cast<string | integer>('3', { loosely: true })).toEqual(3);
+    expect(cast<string | integer>(2)).toEqual(2);
+    expect(cast<string | integer>('3')).toEqual(3);
 
-    expect(cast<string | integer>(2.2, { loosely: true })).toEqual(2);
-    expect(cast<string | integer>(-2.2, { loosely: true })).toEqual(-2);
-    expect(cast<string | integer>('2.2', { loosely: true })).toEqual(2);
+    expect(cast<string | integer>(2.2)).toEqual(2);
+    expect(cast<string | integer>(-2.2)).toEqual(-2);
+    expect(cast<string | integer>('2.2')).toEqual(2);
     expect(cast<string | integer>(false)).toEqual('false');
     expect(cast<string | integer>(true)).toEqual('true');
 });
 
 test('union loose string boolean', () => {
-    expect(cast<string | boolean>('a', { loosely: true })).toEqual('a');
-    expect(cast<string | boolean>(1, { loosely: true })).toEqual(true);
-    expect(cast<string | boolean>(0, { loosely: true })).toEqual(false);
-    expect(cast<string | boolean>(-1, { loosely: true })).toEqual('-1');
-    expect(cast<string | boolean>(2, { loosely: true })).toEqual('2');
-    expect(cast<string | boolean>('true', { loosely: true })).toEqual(true);
-    expect(cast<string | boolean>('true2', { loosely: true })).toEqual('true2');
+    expect(cast<string | boolean>('a')).toEqual('a');
+    expect(cast<string | boolean>(1)).toEqual(true);
+    expect(cast<string | boolean>(0)).toEqual(false);
+    expect(cast<string | boolean>(-1)).toEqual('-1');
+    expect(cast<string | boolean>(2)).toEqual('2');
+    expect(cast<string | boolean>('true')).toEqual(true);
+    expect(cast<string | boolean>('true2')).toEqual('true2');
 });
 
 test('union loose number boolean', () => {
-    expect(() => cast<number | boolean>('a', { loosely: true })).toThrow('Validation error for type');
-    expect(deserialize<number | boolean>('a', { loosely: true })).toEqual(undefined);
-    expect(cast<string | boolean>(1, { loosely: true })).toEqual(true);
-    expect(cast<number | boolean>(1, { loosely: true })).toEqual(1);
-    expect(cast<string | boolean>('1', { loosely: true })).toEqual(true);
-    expect(cast<number | boolean>('1', { loosely: true })).toEqual(1);
+    expect(() => cast<number | boolean>('a')).toThrow('Validation error for type');
+    expect(deserialize<number | boolean>('a')).toEqual(undefined);
+    expect(cast<string | boolean>(1)).toEqual(true);
+    expect(cast<number | boolean>(1)).toEqual(1);
+    expect(cast<string | boolean>('1')).toEqual(true);
     expect(cast<number | boolean>('1')).toEqual(1);
-    expect(cast<string | boolean>(0, { loosely: true })).toEqual(false);
-    expect(cast<number | boolean>(0, { loosely: true })).toEqual(0);
-    expect(cast<number | boolean>(-1, { loosely: true })).toEqual(-1);
-    expect(cast<number | boolean>(2, { loosely: true })).toEqual(2);
-    expect(cast<number | boolean>('2', { loosely: true })).toEqual(2);
-    expect(cast<number | boolean>('true', { loosely: true })).toEqual(true);
-    expect(() => cast<number | boolean>('true')).toThrow('Validation error for type');
-    expect(() => cast<number | boolean>('true2', { loosely: true })).toThrow('Validation error for type');
-    expect(deserialize<number | boolean>('true2', { loosely: true })).toEqual(undefined);
+    expect(cast<number | boolean>('1')).toEqual(1);
+    expect(cast<string | boolean>(0)).toEqual(false);
+    expect(cast<number | boolean>(0)).toEqual(0);
+    expect(cast<number | boolean>(-1)).toEqual(-1);
+    expect(cast<number | boolean>(2)).toEqual(2);
+    expect(cast<number | boolean>('2')).toEqual(2);
+    expect(cast<number | boolean>('true')).toEqual(true);
+    expect(() => cast<number | boolean>('true', {loosely: false})).toThrow('Validation error for type');
+    expect(() => cast<number | boolean>('true2', {loosely: false})).toThrow('Validation error for type');
+    expect(deserialize<number | boolean>('true2')).toEqual(undefined);
 });
 
 test('union string date', () => {
@@ -332,16 +348,17 @@ test('union string bigint', () => {
     expect(cast<string | bigint>('a')).toEqual('a');
     expect(cast<string | bigint>(2n)).toEqual(2n);
     expect(cast<string | bigint>(2)).toEqual(2n);
-    expect(cast<string | bigint>('2')).toEqual('2');
+    expect(cast<string | bigint>('2', {loosely: false})).toEqual('2');
+    expect(cast<string | bigint>('2')).toEqual(2n);
     expect(cast<string | bigint>('2a')).toEqual('2a');
 });
 
 test('union loose string bigint', () => {
-    expect(cast<string | bigint>('a', { loosely: true })).toEqual('a');
-    expect(cast<string | bigint>(2n, { loosely: true })).toEqual(2n);
-    expect(cast<string | bigint>(2, { loosely: true })).toEqual(2n);
-    expect(cast<string | bigint>('2', { loosely: true })).toEqual(2n);
-    expect(cast<string | bigint>('2a', { loosely: true })).toEqual('2a');
+    expect(cast<string | bigint>('a')).toEqual('a');
+    expect(cast<string | bigint>(2n)).toEqual(2n);
+    expect(cast<string | bigint>(2)).toEqual(2n);
+    expect(cast<string | bigint>('2')).toEqual(2n);
+    expect(cast<string | bigint>('2a')).toEqual('2a');
 });
 
 test('BinaryBigInt', () => {

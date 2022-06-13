@@ -102,8 +102,12 @@ export interface SerializationOptions {
      * Allows more loosely data for certain types. e.g.
      *
      * - '1', '0', 'true', 'false' will be converted to true|false for boolean type.
+     * - '1' will be converted to number for number type.
+     * - 1 will be converted to string for string type.
      *
      * This will activate all registered type guards with negative specifically.
+     *
+     * This is enabled by default.
      */
     loosely?: boolean;
 }
@@ -1573,7 +1577,7 @@ export function handleUnion(type: TypeUnion, state: TemplateState) {
             const fn = createTypeGuardFunction(t, state.fork(undefined, accessor).forRegistry(typeGuard));
             if (!fn) continue;
             const guard = state.setVariable('guard' + t.kind, fn);
-            const looseCheck = specificality <= 0 ? `state.loosely && ` : '';
+            const looseCheck = specificality <= 0 ? `state.loosely !== false && ` : '';
 
             lines.push(`else if (${looseCheck}${guard}(${args})) {
                 //type = ${t.kind}, specificality=${specificality}
@@ -1751,7 +1755,7 @@ export class Serializer {
         });
 
         this.deserializeRegistry.register(ReflectionKind.string, (type, state) => {
-            state.addSetter(`'string' !== typeof ${state.accessor} ? ${state.accessor}+'' : ${state.accessor}`);
+            state.addSetter(`'string' !== typeof ${state.accessor} && state.loosely !== false ? ${state.accessor}+'' : ${state.accessor}`);
         });
 
         this.deserializeRegistry.addDecorator(isUUIDType, (type, state) => {
@@ -1776,7 +1780,7 @@ export class Serializer {
 
         this.serializeRegistry.register(ReflectionKind.boolean, (type, state) => state.addSetter(state.accessor));
         this.deserializeRegistry.register(ReflectionKind.boolean, (type, state) => {
-            state.addSetter(`'boolean' !== typeof ${state.accessor} ? ${state.accessor} == 1 || ${state.accessor} == 'true' : ${state.accessor}`);
+            state.addSetter(`'boolean' !== typeof ${state.accessor} && state.loosely !== false ? ${state.accessor} == 1 || ${state.accessor} == 'true' : ${state.accessor}`);
         });
 
         this.serializeRegistry.register(ReflectionKind.promise, (type, state) => executeTemplates(state, type.type));
@@ -1844,7 +1848,7 @@ export class Serializer {
                 }
             } else {
                 state.setContext({ Number });
-                state.addSetter(`'number' !== typeof ${state.accessor} ? Number(${state.accessor}) : ${state.accessor}`);
+                state.addSetter(`'number' !== typeof ${state.accessor} && state.loosely !== false ? Number(${state.accessor}) : ${state.accessor}`);
                 if (type.brand === TypeNumberBrand.float32) {
                     state.addSetter(`${state.accessor} > 3.40282347e+38 ? 3.40282347e+38 : ${state.accessor} < -3.40282347e+38 ? -3.40282347e+38 : ${state.accessor}`);
                 }
