@@ -10,7 +10,7 @@ on:
 
 jobs:
   unit-tests:
-    runs-on: ubuntu-20.04
+    runs-on: buildjet-4vcpu-ubuntu-2004
     strategy:
       matrix:
         node-version: [ 16.x ]
@@ -97,7 +97,7 @@ jobs:
   orm-postgres:
     needs:
       - unit-tests
-    runs-on: ubuntu-20.04
+    runs-on: buildjet-4vcpu-ubuntu-2004
     strategy:
       matrix:
         node-version: [ 14.x ]
@@ -144,7 +144,7 @@ jobs:
   orm-mysql:
     needs:
       - unit-tests
-    runs-on: ubuntu-20.04
+    runs-on: buildjet-4vcpu-ubuntu-2004
     strategy:
       matrix:
         node-version: [ 14.x ]
@@ -191,7 +191,7 @@ jobs:
   orm-sqlite:
     needs:
       - unit-tests
-    runs-on: ubuntu-20.04
+    runs-on: buildjet-4vcpu-ubuntu-2004
     strategy:
       matrix:
         node-version: [ 14.x ]
@@ -228,7 +228,7 @@ jobs:
   orm-mongo:
     needs:
       - unit-tests
-    runs-on: ubuntu-20.04
+    runs-on: buildjet-4vcpu-ubuntu-2004
     strategy:
       matrix:
         node-version: [ 14.x ]
@@ -276,7 +276,7 @@ jobs:
         run: ./node_modules/.bin/codecov -f coverage/*.json
 
 #  benchmark:
-#    runs-on: ubuntu-20.04
+#    runs-on: buildjet-4vcpu-ubuntu-2004
 #    needs:
 #      - unit-tests
 #      - orm-postgres
