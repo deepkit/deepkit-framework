@@ -31,6 +31,43 @@ test('query select', async () => {
     }
 });
 
+test('query filter', async () => {
+    class s {
+        id!: number & PrimaryKey;
+        score!: number;
+    }
+
+    const database = new Database(new MemoryDatabaseAdapter());
+    await database.persist(deserialize<s>({ id: 1, score: 1 }));
+    await database.persist(deserialize<s>({ id: 2, score: 2 }));
+    await database.persist(deserialize<s>({ id: 3, score: 3 }));
+
+    {
+        const results = await database.query(s).filter({ score: { $gt: 1 } }).find();
+        expect(results).toHaveLength(2);
+        expect(results).toMatchObject([{ id: 2 }, { id: 3 }]);
+    }
+
+    {
+        const results = await database.query(s).filter({ score: { $gt: 1 } }).filter({ score: { $lt: 3 } }).find();
+        expect(results).toHaveLength(1);
+        expect(results).toMatchObject([{ id: 2 }]);
+    }
+
+    {
+        const results = await database.query(s).filter({ score: { $gt: 1 } }).filterField('score', { $lt: 3 }).find();
+        expect(results).toHaveLength(1);
+        expect(results).toMatchObject([{ id: 2 }]);
+    }
+
+    {
+        const results = await database.query(s).filter({ score: { $gt: 1 } }).clearFilter().find();
+        expect(results).toHaveLength(3);
+        expect(results).toMatchObject([{ id: 1 }, { id: 2 }, { id: 3 }]);
+    }
+    
+});
+
 test('query lift', async () => {
     class s {
         id!: number & PrimaryKey;
@@ -66,7 +103,7 @@ test('query lift', async () => {
 
     class BilligQuery<T extends { openBillings: number }> extends Query<T> {
         due() {
-            return this.addFilter('openBillings', { $gt: 0 });
+            return this.filterField('openBillings', { $gt: 0 });
         }
     }
 
