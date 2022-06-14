@@ -379,7 +379,7 @@ export class BaseQuery<T extends OrmEntity> {
     /**
      * Clear all filter conditions.
      */
-    filterNone(): this {
+    clearFilter(): this {
         const c = this.clone();
         c.model.filter = undefined;
         return c;

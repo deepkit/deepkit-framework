@@ -61,7 +61,7 @@ test('query filter', async () => {
     }
 
     {
-        const results = await database.query(s).filter({ score: { $gt: 1 } }).filterNone().find();
+        const results = await database.query(s).filter({ score: { $gt: 1 } }).clearFilter().find();
         expect(results).toHaveLength(3);
         expect(results).toMatchObject([{ id: 1 }, { id: 2 }, { id: 3 }]);
     }
