@@ -1,12 +1,8 @@
 name: CI
 
 on:
-  workflow_dispatch:
+  pull_request:
   push:
-    # don't change that since we run tests on our own server
-    branches:
-      - master
-      - develop
 
 jobs:
   unit-tests:
