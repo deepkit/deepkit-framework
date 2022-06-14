@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "test": "node --max_old_space_size=3048 node_modules/jest/bin/jest.js --forceExit --no-cache",
-    "test:coverage": "node --max_old_space_size=2048 node_modules/jest/bin/jest.js --coverage --forceExit --no-cache",
+    "test:coverage": "node --max_old_space_size=3048 node_modules/jest/bin/jest.js --coverage --forceExit --no-cache",
     "bootstrap": "lerna bootstrap --no-ci",
     "bootstrap:ci": "lerna bootstrap",
     "link": "npm-local-development --no-watcher",
