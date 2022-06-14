@@ -1,16 +1,12 @@
 name: CI
 
 on:
-  workflow_dispatch:
+  pull_request:
   push:
-    # don't change that since we run tests on our own server
-    branches:
-      - master
-      - develop
 
 jobs:
   unit-tests:
-    runs-on: buildjet-4vcpu-ubuntu-2004
+    runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
         node-version: [ 16.x ]
@@ -97,7 +93,7 @@ jobs:
   orm-postgres:
     needs:
       - unit-tests
-    runs-on: buildjet-4vcpu-ubuntu-2004
+    runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
         node-version: [ 14.x ]
@@ -144,7 +140,7 @@ jobs:
   orm-mysql:
     needs:
       - unit-tests
-    runs-on: buildjet-4vcpu-ubuntu-2004
+    runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
         node-version: [ 14.x ]
@@ -191,7 +187,7 @@ jobs:
   orm-sqlite:
     needs:
       - unit-tests
-    runs-on: buildjet-4vcpu-ubuntu-2004
+    runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
         node-version: [ 14.x ]
@@ -228,7 +224,7 @@ jobs:
   orm-mongo:
     needs:
       - unit-tests
-    runs-on: buildjet-4vcpu-ubuntu-2004
+    runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
         node-version: [ 14.x ]
@@ -276,7 +272,7 @@ jobs:
         run: ./node_modules/.bin/codecov -f coverage/*.json
 
 #  benchmark:
-#    runs-on: buildjet-4vcpu-ubuntu-2004
+#    runs-on: buildjet-2vcpu-ubuntu-2004
 #    needs:
 #      - unit-tests
 #      - orm-postgres
