@@ -1,21 +1,52 @@
-import { ClassType, getObjectKeysSize, isArray } from '@deepkit/core';
 import { AppModule } from '@deepkit/app';
-import { http, HttpBody, httpClass, HttpQueries, JSONResponse } from '@deepkit/http';
-import { Database, DatabaseRegistry, Query, UniqueConstraintFailure } from '@deepkit/orm';
-import { InlineRuntimeType, Maximum, Positive, ReflectionClass, ReflectionKind, TypeUnion, ValidationError } from '@deepkit/type';
+import { ClassType, getObjectKeysSize, isArray } from '@deepkit/core';
+import {
+    http,
+    HttpBody,
+    httpClass,
+    HttpQueries,
+    JSONResponse,
+} from '@deepkit/http';
+import {
+    Database,
+    DatabaseRegistry,
+    Query,
+    UniqueConstraintFailure,
+} from '@deepkit/orm';
+import {
+    InlineRuntimeType,
+    Maximum,
+    Positive,
+    ReflectionClass,
+    ReflectionKind,
+    TypeUnion,
+    ValidationError,
+} from '@deepkit/type';
 
 function applySelect(query: Query<any>, select: string[] | string): Query<any> {
-    const names: string[] = isArray(select) ? select.map(v => v.trim()) : select.replace(/\s+/g, '').split(',');
+    const names: string[] = isArray(select)
+        ? select.map((v) => v.trim())
+        : select.replace(/\s+/g, '').split(',');
     try {
         return query.select(...names);
     } catch (error: any) {
-        throw ValidationError.from([{ message: String(error.message), path: 'select', code: 'invalid_select' }]);
+        throw ValidationError.from([
+            {
+                message: String(error.message),
+                path: 'select',
+                code: 'invalid_select',
+            },
+        ]);
     }
 }
 
-function applyJoins(query: Query<any>, joins: { [name: string]: string }): Query<any> {
+function applyJoins(
+    query: Query<any>,
+    joins: { [name: string]: string }
+): Query<any> {
     for (const [field, projection] of Object.entries(joins)) {
-        if (!query.classSchema.hasProperty(field)) throw new Error(`Join '${field}' does not exist`);
+        if (!query.classSchema.hasProperty(field))
+            throw new Error(`Join '${field}' does not exist`);
         let join = query.useJoinWith(field);
         if (projection.length && projection !== '*') {
             join = join.select(...projection.split(','));
@@ -35,7 +66,15 @@ interface AutoCrudOptions {
      *  {limitOperations: ['create', 'read', 'readMany']}
      * ```
      */
-    limitOperations?: ('create' | 'read' | 'readMany' | 'update' | 'updateMany' | 'delete' | 'deleteMany')[];
+    limitOperations?: (
+        | 'create'
+        | 'read'
+        | 'readMany'
+        | 'update'
+        | 'updateMany'
+        | 'delete'
+        | 'deleteMany'
+    )[];
 
     /**
      * Defaults to the primary key.
@@ -82,16 +121,55 @@ interface AutoCrudOptions {
     defaultLimit?: number;
 }
 
-function createController(schema: ReflectionClass<any>, options: AutoCrudOptions = {}): ClassType {
-    if (!schema.name) throw new Error(`Class ${schema.getClassName()} needs an entity name via @entity.name()`);
+function createController(
+    schema: ReflectionClass<any>,
+    options: AutoCrudOptions = {}
+): ClassType {
+    if (!schema.name)
+        throw new Error(
+            `Class ${schema.getClassName()} needs an entity name via @entity.name()`
+        );
 
-    const joinNames: string[] = options.joins || schema.getProperties().filter(v => v.isReference() || v.isBackReference()).map(v => v.name);
-    const sortNames: string[] = options.sortFields || schema.getProperties().filter(v => !v.isReference() && !v.isBackReference()).map(v => v.name);
-    const selectNames: string[] = options.selectableFields || schema.getProperties().filter(v => !v.isReference() && !v.isBackReference()).map(v => v.name);
+    const joinNames: string[] =
+        options.joins ||
+        schema
+            .getProperties()
+            .filter((v) => v.isReference() || v.isBackReference())
+            .map((v) => v.name);
+    const sortNames: string[] =
+        options.sortFields ||
+        schema
+            .getProperties()
+            .filter((v) => !v.isReference() && !v.isBackReference())
+            .map((v) => v.name);
+    const selectNames: string[] =
+        options.selectableFields ||
+        schema
+            .getProperties()
+            .filter((v) => !v.isReference() && !v.isBackReference())
+            .map((v) => v.name);
 
-    const joinNamesType: TypeUnion = { kind: ReflectionKind.union, types: joinNames.map(v => ({ kind: ReflectionKind.literal, literal: v })) };
-    const sortNamesType: TypeUnion = { kind: ReflectionKind.union, types: sortNames.map(v => ({ kind: ReflectionKind.literal, literal: v })) };
-    const selectNamesType: TypeUnion = { kind: ReflectionKind.union, types: selectNames.map(v => ({ kind: ReflectionKind.literal, literal: v })) };
+    const joinNamesType: TypeUnion = {
+        kind: ReflectionKind.union,
+        types: joinNames.map((v) => ({
+            kind: ReflectionKind.literal,
+            literal: v,
+        })),
+    };
+    const sortNamesType: TypeUnion = {
+        kind: ReflectionKind.union,
+        types: sortNames.map((v) => ({
+            kind: ReflectionKind.literal,
+            literal: v,
+        })),
+    };
+    const selectNamesType: TypeUnion = {
+        kind: ReflectionKind.union,
+        types: selectNames.map((v) => ({
+            kind: ReflectionKind.literal,
+            literal: v,
+        })),
+    };
 
     type JoinNames = InlineRuntimeType<typeof joinNamesType>;
     type SortNames = InlineRuntimeType<typeof sortNamesType>;
@@ -101,20 +179,28 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
     const selectSchema = schema.clone();
     //make sure references are `PrimaryKey<T> | T`
     for (const property of selectSchema.getProperties().slice()) {
-        if ((property.isReference() || property.isBackReference()) && !property.isArray()) {
+        if (
+            (property.isReference() || property.isBackReference()) &&
+            !property.isArray()
+        ) {
             selectSchema.removeProperty(property.name);
             const foreign = property.getResolvedReflectionClass();
             selectSchema.addProperty({
                 ...property.property,
-                type: { kind: ReflectionKind.union, types: [foreign.getPrimary().type, property.type] }
+                type: {
+                    kind: ReflectionKind.union,
+                    types: [foreign.getPrimary().type, property.type],
+                },
             });
         }
     }
     type SchemaType = InlineRuntimeType<typeof selectSchema>;
 
-    const identifier = options.identifier ? schema.getProperty(options.identifier) : schema.getPrimary();
+    const identifier = options.identifier
+        ? schema.getProperty(options.identifier)
+        : schema.getPrimary();
     const identifierType = identifier.type;
-    type IdentifierType = InlineRuntimeType<typeof identifierType>
+    type IdentifierType = InlineRuntimeType<typeof identifierType>;
 
     const maxLimit = options.maxLimit || 1000;
 
@@ -145,31 +231,39 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
         message: string;
     }
 
-    const identifierChangeable = options && options.identifierChangeable ? true : false;
+    const identifierChangeable =
+        options && options.identifierChangeable ? true : false;
 
     @http.controller('/entity/' + schema.name).group('crud')
     class RestController {
-        constructor(protected registry: DatabaseRegistry) {
-        }
+        constructor(protected registry: DatabaseRegistry) {}
 
         protected getDatabase(): Database {
             return this.registry.getDatabaseForEntity(schema);
         }
 
-        @http.GET('')
+        @http
+            .GET('')
             .description(`A list of ${schema.name}.`)
             .response<SchemaType[]>(200, `List of ${schema.name}.`)
             .response<ValidationError>(400, `When parameter validation failed.`)
         async readMany(listQuery: HttpQueries<ListQuery>) {
-            listQuery.limit = Math.min(options.maxLimit || 1000, listQuery.limit || options.defaultLimit || 30);
+            listQuery.limit = Math.min(
+                options.maxLimit || 1000,
+                listQuery.limit || options.defaultLimit || 30
+            );
             let query = this.getDatabase().query(schema);
 
-            if (listQuery.joins) query = applyJoins(query, listQuery.joins as any);
+            if (listQuery.joins)
+                query = applyJoins(query, listQuery.joins as any);
             if (listQuery.select) query = applySelect(query, listQuery.select);
 
             if (listQuery.orderBy && getObjectKeysSize(listQuery.orderBy) > 0) {
                 for (const field of Object.keys(listQuery.orderBy)) {
-                    if (!schema.hasProperty(field)) throw new Error(`Can not order by '${field}' since it does not exist.`);
+                    if (!schema.hasProperty(field))
+                        throw new Error(
+                            `Can not order by '${field}' since it does not exist.`
+                        );
                 }
                 query.model.sort = listQuery.orderBy;
             }
@@ -181,7 +275,8 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
                 .find();
         }
 
-        @http.POST('')
+        @http
+            .POST('')
             .description(`Add a new ${schema.name}.`)
             .response<SchemaType>(201, 'When successfully created.')
             .response<ValidationError>(400, `When parameter validation failed`)
@@ -195,56 +290,71 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
                 await this.getDatabase().persist(item);
             } catch (e) {
                 if (e instanceof UniqueConstraintFailure) {
-                    return new JSONResponse({ message: `This ${schema.name} already exists` }).status(409);
+                    return new JSONResponse({
+                        message: `This ${schema.name} already exists`,
+                    }).status(409);
                 }
                 throw e;
             }
             return new JSONResponse(item).status(201);
         }
 
-        @http.DELETE(':' + identifier.name)
+        @http
+            .DELETE(':' + identifier.name)
             .description(`Delete a single ${schema.name}.`)
             .response<ValidationError>(400, `When parameter validation failed`)
             .response<{ deleted: number }>(200, `When deletion was successful`)
         async delete(id: IdentifierType) {
-            const result = await this.getDatabase().query(schema).filter({ [identifier.name]: id }).deleteOne();
+            const result = await this.getDatabase()
+                .query(schema)
+                .filter({ [identifier.name]: id })
+                .deleteOne();
             return { deleted: result.modified };
         }
 
-        @http.GET(':' + identifier.name)
+        @http
+            .GET(':' + identifier.name)
             .description(`Get a single ${schema.name}.`)
             .response<SchemaType>(200, `When ${schema.name} was found.`)
             .response<ValidationError>(400, `When parameter validation failed`)
             .response<ErrorMessage>(404, `When ${schema.name} was not found.`)
-        async read(
-            id: IdentifierType,
-            options: HttpQueries<GetQuery>
-        ) {
-            let query = this.getDatabase().query(schema).filter({ [identifier.name]: id });
+        async read(id: IdentifierType, options: HttpQueries<GetQuery>) {
+            let query = this.getDatabase()
+                .query(schema)
+                .filter({ [identifier.name]: id });
             if (options.select) query = applySelect(query, options.select);
             if (options.joins) query = applyJoins(query, options.joins as any);
 
             const item = await query.findOneOrUndefined();
             if (item) return item;
 
-            return new JSONResponse({ message: `${schema.name} not found` }).status(404);
+            return new JSONResponse({
+                message: `${schema.name} not found`,
+            }).status(404);
         }
 
-        @http.PUT(':' + identifier.name)
+        @http
+            .PUT(':' + identifier.name)
             .description(`Update a single ${schema.name}.`)
-            .response<SchemaType>(200, `When ${schema.name} was successfully updated.`)
+            .response<SchemaType>(
+                200,
+                `When ${schema.name} was successfully updated.`
+            )
             .response<ValidationError>(400, `When parameter validation failed`)
             .response<ErrorMessage>(404, `When ${schema.name} was not found.`)
-        async update(
-            id: IdentifierType,
-            body: Partial<SchemaType>,
-        ) {
-            let query = this.getDatabase().query(schema).filter({ [identifier.name]: id });
+        async update(id: IdentifierType, body: HttpBody<Partial<SchemaType>>) {
+            let query = this.getDatabase()
+                .query(schema)
+                .filter({ [identifier.name]: id });
 
             const item = await query.findOneOrUndefined();
-            if (!item) return new JSONResponse({ message: `${schema.name} not found` }).status(404);
+            if (!item)
+                return new JSONResponse({
+                    message: `${schema.name} not found`,
+                }).status(404);
 
-            if (!identifierChangeable && identifier.name in body) delete body[identifier.name];
+            if (!identifierChangeable && identifier.name in body)
+                delete body[identifier.name];
 
             Object.assign(item, body);
             await this.getDatabase().persist(item);
@@ -252,7 +362,9 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
         }
     }
 
-    Object.defineProperty(RestController, 'name', { value: 'RestController' + schema.getClassName() });
+    Object.defineProperty(RestController, 'name', {
+        value: 'RestController' + schema.getClassName(),
+    });
 
     if (options.limitOperations) {
         const data = httpClass._fetch(RestController);
@@ -268,16 +380,23 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
     return RestController;
 }
 
-export class CrudAppModule<T> extends AppModule<T> {
-}
+export class CrudAppModule<T> extends AppModule<T> {}
 
 /**
  * Create a module that provides CRUD routes for given entities.
  */
-export function createCrudRoutes(schemas: (ClassType | ReflectionClass<any>)[], options: AutoCrudOptions = {}) {
-    const controllers = schemas.map(v => ReflectionClass.from(v)).map(v => createController(v, options));
+export function createCrudRoutes(
+    schemas: (ClassType | ReflectionClass<any>)[],
+    options: AutoCrudOptions = {}
+) {
+    const controllers = schemas
+        .map((v) => ReflectionClass.from(v))
+        .map((v) => createController(v, options));
 
-    return new CrudAppModule({
-        controllers: controllers
-    }, 'autoCrud');
+    return new CrudAppModule(
+        {
+            controllers: controllers,
+        },
+        'autoCrud'
+    );
 }
