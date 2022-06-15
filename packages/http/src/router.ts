@@ -758,7 +758,7 @@ export class HttpRouter {
                         ${parameterResolverFoundVar} = true;
                         parameters.${parameter.parameter.name} = await ${instance}.resolve({
                             token: ${injectorTokenVar},
-                            routeConfig: ${routeConfigVar},
+                            route: ${routeConfigVar},
                             request: request,
                             name: ${JSON.stringify(parameter.parameter.name)},
                             value: parameters.${parameter.parameter.name},
