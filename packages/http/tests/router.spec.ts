@@ -1,14 +1,12 @@
 import { expect, test } from '@jest/globals';
-import { dotToUrlPath, RouteParameterResolverContext, HttpRouter, UploadedFile, RouteClassControllerAction } from '../src/router';
+import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterResolverContext, UploadedFile } from '../src/router';
 import { http, httpClass } from '../src/decorator';
 import { HttpBadRequestError, httpWorkflow, JSONResponse, Response } from '../src/http';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpBody, HttpBodyValidation, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model';
-import { getClassName, sleep } from '@deepkit/core';
+import { getClassName, isObject, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils';
-import { Group, MinLength } from '@deepkit/type';
-import { HttpModule } from '../src/module.js';
-import { HttpKernel } from '../src/kernel.js';
+import { Group, MinLength, PrimaryKey, Reference } from '@deepkit/type';
 
 test('router', async () => {
     class Controller {
@@ -782,6 +780,35 @@ test('use http.response for serialization', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/action1'))).json).toEqual([{ title: 'a' }, { title: '1' }]);
     expect((await httpKernel.request(HttpRequest.GET('/action2'))).json).toEqual([{ title: 'a' }, { title: '1' }]);
     expect((await httpKernel.request(HttpRequest.GET('/action3'))).json).toEqual([{ message: 'error' }, { message: '1' }]);
+});
+
+test('reference in query', async () => {
+    interface Group {
+        id: number & PrimaryKey;
+    }
+
+    interface User {
+        id: number;
+        group: Group & Reference;
+    }
+
+    class Controller {
+        @http.GET('/user')
+        action1(filter: HttpQuery<Partial<User>>) {
+            return {
+                isGroup: isObject(filter.group),
+                objectName: getClassName(filter.group!),
+                groupId: filter.group!.id,
+            }
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    expect((await httpKernel.request(HttpRequest.GET('/user?filter[group]=2'))).json).toEqual({
+        isGroup: true,
+        objectName: 'ObjectReference',
+        groupId: 2,
+    });
 });
 
 test('BodyValidation', async () => {
