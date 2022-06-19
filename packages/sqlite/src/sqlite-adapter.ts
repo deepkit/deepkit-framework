@@ -11,6 +11,7 @@
 import { AbstractClassType, asyncOperation, ClassType, empty } from '@deepkit/core';
 import {
     DatabaseAdapter,
+    DatabaseError,
     DatabaseLogger,
     DatabasePersistenceChangeSet,
     DatabaseSession,
@@ -515,6 +516,9 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
 
         const sqlBuilder = new SqlBuilder(this.platform, selectParams);
         const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
+        if (!set.length) {
+            throw new DatabaseError('SET is empty');
+        }
 
         const sql = `
               UPDATE

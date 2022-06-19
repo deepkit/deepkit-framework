@@ -42,7 +42,6 @@ import {
     stringifyType,
     Type,
     TypeClass,
-    TypeFunction,
     TypeIndexSignature,
     TypeObjectLiteral,
     TypeParameter,
@@ -725,9 +724,8 @@ export function createConverterJSForMember(
         }
     }
 
-    const optional = isOptional(property instanceof ReflectionProperty ? property.property : property);
+    const setExplicitUndefined = registry.serializer.setExplicitUndefined(type, state) && isOptional(property instanceof ReflectionProperty ? property.property : property);
     const nullable = isNullable(type);
-    // const hasDefault = property instanceof ReflectionProperty ? property.hasDefault() : false;
 
     // // since JSON does not support undefined, we emulate it via using null for serialization, and convert that back to undefined when deserialization happens.
     // // note: When the value is not defined (property.name in object === false), then this code will never run.
@@ -746,7 +744,7 @@ export function createConverterJSForMember(
     //note: this code is only reached when ${accessor} was actually defined checked by the 'in' operator.
     return `
         if (${state.accessor} === undefined) {
-            if (${optional}) {
+            if (${setExplicitUndefined}) {
                 ${undefinedSetterCode}
             }
         } else if (${state.accessor} === null) {
@@ -756,7 +754,7 @@ export function createConverterJSForMember(
             if (${nullable}) {
                 ${nullSetterCode}
             } else {
-                if (${optional}) {
+                if (${setExplicitUndefined}) {
                     ${undefinedSetterCode}
                 }
             }
@@ -1701,6 +1699,10 @@ export class Serializer {
         this.registerSerializers();
         this.registerTypeGuards();
         this.registerValidators();
+    }
+
+    public setExplicitUndefined(type: Type, state: TemplateState): boolean {
+        return true;
     }
 
     protected registerValidators() {

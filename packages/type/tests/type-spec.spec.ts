@@ -95,6 +95,7 @@ test('partial keeps explicitely undefined fields', () => {
 
     {
         const item = serializeToJson<Partial<Model>>({ title: undefined });
+        expect(item).toEqual({ title: null });
     }
 
     {
@@ -755,9 +756,9 @@ test('dynamic properties', () => {
         }
     }
 
-    const back1 = deserializeFromJson<A>({'~type': 'abc'});
+    const back1 = deserializeFromJson<A>({ '~type': 'abc' });
     expect(back1.getType()).toBe('abc');
 
-    const back2 = deserializeFromJson<A>({'type': 'abc'});
+    const back2 = deserializeFromJson<A>({ 'type': 'abc' });
     expect(back2.getType()).toBe('abc');
 });
