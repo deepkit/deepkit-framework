@@ -93,6 +93,12 @@ function deserializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state:
 export class SqlSerializer extends Serializer {
     name = 'sql';
 
+    override setExplicitUndefined(type: Type, state: TemplateState): boolean {
+        //make sure that `foo?: string` is not explicitly set to undefined when database returns `null`.
+        if (state.target === 'deserialize') return false;
+        return true;
+    }
+
     protected registerSerializers() {
         super.registerSerializers();
 
@@ -104,7 +110,7 @@ export class SqlSerializer extends Serializer {
         const uuidType = uuidAnnotation.registerType({ kind: ReflectionKind.string }, true);
 
         this.deserializeRegistry.register(ReflectionKind.string, (type, state) => {
-            //remove string enforcement, since UUID/MonogId are string but received as binary
+            //remove string enforcement, since UUID/MongoId are string but received as binary
             state.addSetter(state.accessor);
         });
 
