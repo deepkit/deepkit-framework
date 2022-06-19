@@ -84,7 +84,7 @@ export class SoftDeleteQuery<T extends SoftDeleteEntity> extends Query<T> {
     isSoftDeleted(): this {
         const m = this.clone();
         m.includeSoftDeleted = true;
-        return m.addFilter('deletedAt', {$ne: undefined});
+        return m.filterField('deletedAt', {$ne: undefined});
     }
 
     deletedBy(value: T['deletedBy']): this {
@@ -160,7 +160,7 @@ export class SoftDelete {
             if (event.classSchema !== schema) return; //do nothing
 
             //attach the filter to exclude deleted records
-            event.query = event.query.addFilter(deletedAtName, undefined);
+            event.query = event.query.filterField(deletedAtName, undefined);
         }
 
         const queryFetch = this.database.queryEvents.onFetch.subscribe(queryFilter);
