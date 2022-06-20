@@ -2,7 +2,9 @@ import { expect, test } from '@jest/globals';
 import { rpc } from '@deepkit/rpc';
 import { App, AppModule, createModule, ServiceContainer } from '@deepkit/app';
 import { FrameworkModule } from '../src/module';
-import { Database, DatabaseRegistry, MemoryDatabaseAdapter } from '@deepkit/orm';
+import { Database, DatabaseEvent, DatabaseRegistry, MemoryDatabaseAdapter, Query } from '@deepkit/orm';
+import { EventDispatcher } from '@deepkit/event';
+import { PrimaryKey } from '@deepkit/type';
 
 test('controller', () => {
     class MyService {
@@ -98,20 +100,44 @@ test('controller in module and overwrite service', () => {
     }
 });
 
-test('database auto-detection', () => {
+test('database integration', async () => {
     class MyDatabase extends Database {
         constructor() {
             super(new MemoryDatabaseAdapter());
         }
     }
 
+    const onFetch: DatabaseEvent[] = [];
+
     const app = new App({
         providers: [MyDatabase],
+        listeners: [
+            Query.onFetch.listen(event => {
+                onFetch.push(event);
+            })
+        ],
         imports: [new FrameworkModule()]
     });
 
+    const eventDispatcher = app.get(EventDispatcher);
+
     const registry = app.get(DatabaseRegistry);
-    expect(registry.getDatabases()).toHaveLength(1);
+    const dbs = registry.getDatabases();
+    expect(dbs).toHaveLength(1);
+    for (const db of dbs) {
+        expect(db).toBeInstanceOf(Database);
+        expect(db.eventDispatcher == eventDispatcher).toBe(true);
+    }
+
+    class User {
+        id: number & PrimaryKey = 0;
+    }
+
+    const db = dbs[0];
+    const all = await db.query(User).find();
+
+    expect(onFetch).toHaveLength(1);
+    expect(onFetch[0]).toBeInstanceOf(DatabaseEvent);
 });
 
 test('database injection', () => {
