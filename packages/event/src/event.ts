@@ -8,12 +8,15 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, CompilerContext, isClass, isFunction } from '@deepkit/core';
+import { ClassType, CompilerContext, CustomError, isClass, isFunction } from '@deepkit/core';
 import { injectedFunction } from '@deepkit/injector';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, PropertyDecoratorResult } from '@deepkit/type';
 
 export type EventListenerCallback<T> = (event: T, ...args: any[]) => void | Promise<void>;
+
+export class EventError extends CustomError {
+}
 
 export interface EventListener<T> {
     eventToken: EventToken<any>;
@@ -51,14 +54,14 @@ export class DataEventToken<T> extends EventToken<SimpleDataEvent<T>> {
 }
 
 export class BaseEvent {
-    stopped = false;
+    propagationStopped = false;
 
     stopPropagation() {
-        this.stopped = true;
+        this.propagationStopped = true;
     }
 
-    isStopped() {
-        return this.stopped;
+    isPropagationStopped() {
+        return this.propagationStopped;
     }
 }
 
@@ -111,7 +114,7 @@ class EventDispatcherApi {
 
 export const eventDispatcher: PropertyDecoratorResult<typeof EventDispatcherApi> = createPropertyDecoratorContext(EventDispatcherApi);
 
-export type EventListenerContainerEntryCallback = { order: number, fn: EventListenerCallback<any>, module?: InjectorModule, };
+export type EventListenerContainerEntryCallback = { order: number, fn: EventListenerCallback<any>, builtFn?: Function, module?: InjectorModule, };
 export type EventListenerContainerEntryService = { module: InjectorModule, order: number, classType: ClassType, methodName: string };
 export type EventListenerContainerEntry = EventListenerContainerEntryCallback | EventListenerContainerEntryService;
 
@@ -123,11 +126,41 @@ export function isEventListenerContainerEntryService(obj: any): obj is EventList
     return obj && isClass(obj.classType);
 }
 
+function compareListenerEntry(a: EventListenerContainerEntry, b: EventListenerContainerEntry): boolean {
+    if (isEventListenerContainerEntryCallback(a)) {
+        if (!isEventListenerContainerEntryCallback(b)) return false;
+        return a.fn == b.fn;
+    } else if (isEventListenerContainerEntryService(a)) {
+        if (!isEventListenerContainerEntryService(b)) return false;
+        return a.module == b.module && a.classType == b.classType && a.methodName == b.methodName;
+    }
+    return false;
+}
+
 interface EventDispatcherFn {
     (scopedContext: InjectorContext, event: BaseEvent): Promise<void>;
 }
 
-export class EventDispatcher {
+export type EventDispatcherUnsubscribe = () => void;
+
+export interface EventDispatcherInterface {
+    add(eventToken: EventToken<any>, listener: EventListenerContainerEntry): EventDispatcherUnsubscribe;
+
+    listen<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: EventListenerCallback<T['event']>, order?: number): EventDispatcherUnsubscribe;
+
+    hasListeners(eventToken: EventToken<any>): boolean;
+
+    dispatch<T extends EventToken<any>>(eventToken: T, event?: EventOfEventToken<T>, injector?: InjectorContext): Promise<void>;
+
+    fork(): EventDispatcherInterface;
+}
+
+function resolveEvent<T>(eventToken: EventToken<any>, event?: EventOfEventToken<T>) {
+    if (!event) return new BaseEvent();
+    return eventToken instanceof DataEventToken ? (event as any) instanceof DataEvent ? event : new DataEvent(event) : event;
+}
+
+export class EventDispatcher implements EventDispatcherInterface {
     protected listenerMap = new Map<EventToken<any>, EventListenerContainerEntry[]>();
     protected instances: any[] = [];
     protected registeredClassTypes = new Set<ClassType>();
@@ -149,12 +182,20 @@ export class EventDispatcher {
         }
     }
 
-    listen<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): void {
-        this.add(eventToken, { fn: callback, order: order });
+    listen<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): EventDispatcherUnsubscribe {
+        return this.add(eventToken, { fn: callback, order: order });
     }
 
-    public add(eventToken: EventToken<any>, listener: EventListenerContainerEntry) {
-        this.getListeners(eventToken).push(listener);
+    public add(eventToken: EventToken<any>, listener: EventListenerContainerEntry): EventDispatcherUnsubscribe {
+        if ((eventToken as any)[this.symbol]) throw new EventError(`EventDispatcher already built for token ${eventToken.id}. Use eventDispatcher.fork() for late event binding.`);
+        const listeners = this.getListeners(eventToken);
+        listeners.push(listener);
+
+        return () => {
+            if ((eventToken as any)[this.symbol]) throw new EventError(`EventDispatcher already built for token ${eventToken.id}. Use eventDispatcher.fork() for late event binding.`);
+            const index = listeners.findIndex(v => compareListenerEntry(v, listener));
+            if (index !== -1) listeners.splice(index, 1);
+        };
     }
 
     public getTokens(): EventToken<any>[] {
@@ -173,54 +214,6 @@ export class EventDispatcher {
         }
 
         return listeners;
-    }
-
-    protected build(): EventDispatcherFn {
-        const compiler = new CompilerContext();
-
-        const code: string[] = [];
-
-        for (const [eventToken, listeners] of this.listenerMap.entries()) {
-            listeners.sort((a, b) => {
-                if (a.order > b.order) return +1;
-                if (a.order < b.order) return -1;
-                return 0;
-            });
-
-            const lines: string[] = [];
-
-            for (const listener of listeners) {
-                if (isEventListenerContainerEntryCallback(listener)) {
-                    const injector = listener.module ? this.injector.getInjector(listener.module) : this.injector.getRootInjector();
-                    const fn = injectedFunction(listener.fn, injector, 1);
-                    const fnVar = compiler.reserveVariable('fn', fn);
-                    lines.push(`
-                        await ${fnVar}(scopedContext.scope, event);
-                        if (event.isStopped()) return;
-                    `);
-                } else if (isEventListenerContainerEntryService(listener)) {
-                    const classTypeVar = compiler.reserveVariable('classType', listener.classType);
-                    lines.push(`
-                        await scopedContext.get(${classTypeVar}).${listener.methodName}(event);
-                    `);
-                }
-            }
-
-            const eventTokenVar = compiler.reserveVariable('eventToken', eventToken);
-            code.push(`
-            //${eventToken.id}
-            case: ${eventTokenVar}: {
-                ${lines.join('\n')}
-                return;
-            }
-            `);
-        }
-
-        return compiler.buildAsync(`
-        switch (eventToken) {
-            ${code.join('\n')}
-        }
-        `, 'scopedContext', 'event') as EventDispatcherFn;
     }
 
     protected buildFor(eventToken: EventToken<any>): EventDispatcherFn | undefined {
@@ -244,11 +237,10 @@ export class EventDispatcher {
                     const fnVar = compiler.reserveVariable('fn', fn);
                     lines.push(`
                         await ${fnVar}(scopedContext.scope, event);
-                        if (event.isStopped()) return;
+                        if (event.isPropagationStopped()) return;
                     `);
                 } catch (error: any) {
-                    throw error;
-                    // throw new Error(`Could not build listener ${listener.fn.name || 'anonymous function'} of event token ${eventToken.id}: ${error.message}`);
+                    throw new Error(`Could not build listener ${listener.fn.name || 'anonymous function'} of event token ${eventToken.id}: ${error.message}`);
                 }
             } else if (isEventListenerContainerEntryService(listener)) {
                 const classTypeVar = compiler.reserveVariable('classType', listener.classType);
@@ -264,11 +256,94 @@ export class EventDispatcher {
     public async dispatch<T extends EventToken<any>>(eventToken: T, event?: EventOfEventToken<T>, injector?: InjectorContext): Promise<void> {
         let build = (eventToken as any)[this.symbol];
         if (!build) {
-            build = (eventToken as any)[this.symbol]= { fn: this.buildFor(eventToken) };
+            build = (eventToken as any)[this.symbol] = { fn: this.buildFor(eventToken) };
         }
 
         //no fn means for this token has no listeners
-        const e = eventToken instanceof DataEventToken && (event as any) instanceof DataEvent ? event : new DataEvent(event);
-        return build.fn ? build.fn(injector || this.injector, e) : undefined;
+        if (!build.fn) return;
+
+        return build.fn(injector || this.injector, resolveEvent(eventToken, event));
+    }
+
+    fork(): EventDispatcherInterface {
+        return new ForkedEventDispatcher(this, this.injector);
+    }
+}
+
+/**
+ * A forked EventDispatcher does not use JIT compilation and thus is slightly slower in executing listeners,
+ * but cheap in creating event dispatchers.
+ */
+export class ForkedEventDispatcher implements EventDispatcherInterface {
+    protected listenerMap = new Map<EventToken<any>, { entries: EventListenerContainerEntry[], sorted: boolean }>();
+
+    constructor(protected parent: EventDispatcherInterface, protected injector: InjectorContext) {
+    }
+
+    async dispatch<T extends EventToken<any>>(eventToken: T, eventIn?: EventOfEventToken<T>, injector?: InjectorContext): Promise<void> {
+        await this.parent.dispatch(eventToken, eventIn, injector);
+        const event = resolveEvent(eventToken, eventIn);
+
+        const listeners = this.listenerMap.get(eventToken);
+        if (!listeners) return;
+
+        if (!listeners.sorted) {
+            listeners.entries.sort((a, b) => {
+                if (a.order > b.order) return +1;
+                if (a.order < b.order) return -1;
+                return 0;
+            });
+            listeners.sorted = true;
+        }
+        const scopedContext = injector || this.injector;
+
+        for (const listener of listeners.entries) {
+            if (isEventListenerContainerEntryCallback(listener)) {
+                if (!listener.builtFn) {
+                    try {
+                        const injector = listener.module ? this.injector.getInjector(listener.module) : this.injector.getRootInjector();
+                        listener.builtFn = injectedFunction(listener.fn, injector, 1);
+                    } catch (error: any) {
+                        throw new Error(`Could not build listener ${listener.fn.name || 'anonymous function'} of event token ${eventToken.id}: ${error.message}`);
+                    }
+                }
+
+                await listener.builtFn(scopedContext.scope, event);
+            } else if (isEventListenerContainerEntryService(listener)) {
+                await scopedContext.get(listener.classType, listener.module)[listener.methodName](event);
+            }
+        }
+    }
+
+    public getListeners(eventToken: EventToken<any>): { entries: EventListenerContainerEntry[], sorted: boolean } {
+        let listeners = this.listenerMap.get(eventToken);
+        if (!listeners) {
+            listeners = { entries: [], sorted: true };
+            this.listenerMap.set(eventToken, listeners);
+        }
+        return listeners;
+    }
+
+    add(eventToken: EventToken<any>, listener: EventListenerContainerEntry): EventDispatcherUnsubscribe {
+        const listeners = this.getListeners(eventToken);
+        listeners.sorted = false;
+        listeners.entries.push(listener);
+        return () => {
+            const index = listeners.entries.findIndex(v => compareListenerEntry(v, listener));
+            if (index !== -1) listeners.entries.splice(index, 1);
+        };
+    }
+
+    listen<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): EventDispatcherUnsubscribe {
+        return this.add(eventToken, { fn: callback, order: order });
+    }
+
+    hasListeners(eventToken: EventToken<any>): boolean {
+        if (this.listenerMap.has(eventToken)) return true;
+        return this.parent.hasListeners(eventToken);
+    }
+
+    fork(): EventDispatcherInterface {
+        return new ForkedEventDispatcher(this, this.injector);
     }
 }
