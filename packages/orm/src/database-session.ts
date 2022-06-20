@@ -11,13 +11,13 @@
 import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
 import { DatabaseEntityRegistry } from './database-adapter';
 import { DatabaseValidationError, OrmEntity } from './type';
-import { ClassType, CustomError } from '@deepkit/core';
+import { AbstractClassType, ClassType, CustomError } from '@deepkit/core';
 import {
-    ReceiveType,
     getPrimaryKeyExtractor,
     isReferenceInstance,
     markAsHydrated,
     PrimaryKeyFields,
+    ReceiveType,
     ReflectionClass,
     typeSettings,
     UnpopulatedCheck,
@@ -28,10 +28,10 @@ import { getClassState, getInstanceState, getNormalizedPrimaryKey, IdentityMap }
 import { getClassSchemaInstancePairs } from './utils';
 import { HydratorFn } from './formatter';
 import { getReference } from './reference';
-import { QueryDatabaseEmitter, UnitOfWorkCommitEvent, UnitOfWorkDatabaseEmitter, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event';
+import { UnitOfWorkCommitEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event';
 import { DatabaseLogger } from './logger';
 import { Stopwatch } from '@deepkit/stopwatch';
-import { AbstractClassType } from '@deepkit/core';
+import { EventDispatcher, EventDispatcherInterface, EventToken } from '@deepkit/event';
 
 let SESSION_IDS = 0;
 
@@ -44,7 +44,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 
     constructor(
         protected session: DatabaseSession<any>,
-        protected emitter: UnitOfWorkDatabaseEmitter,
+        protected eventDispatcher: EventDispatcherInterface,
         public logger: DatabaseLogger,
         protected identityMap?: IdentityMap,
     ) {
@@ -131,18 +131,18 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 
     protected async doDelete(persistence: DatabasePersistence) {
         for (const [classSchema, items] of getClassSchemaInstancePairs(this.removeQueue.values())) {
-            if (this.emitter.onDeletePre.hasSubscriptions()) {
+            if (this.eventDispatcher.hasListeners(DatabaseSession.onDeletePre)) {
                 const event = new UnitOfWorkEvent(classSchema, this.session, items);
-                await this.emitter.onDeletePre.emit(event);
+                await this.eventDispatcher.dispatch(DatabaseSession.onDeletePre, event);
                 if (event.stopped) return;
             }
 
             await persistence.remove(classSchema, items);
             if (this.identityMap) this.identityMap.deleteMany(classSchema, items);
 
-            if (this.emitter.onDeletePost.hasSubscriptions()) {
+            if (this.eventDispatcher.hasListeners(DatabaseSession.onDeletePost)) {
                 const event = new UnitOfWorkEvent(classSchema, this.session, items);
-                await this.emitter.onDeletePost.emit(event);
+                await this.eventDispatcher.dispatch(DatabaseSession.onDeletePost, event);
             }
         }
     }
@@ -194,32 +194,32 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
 
                 if (inserts.length) {
                     let doInsert = true;
-                    if (this.emitter.onInsertPre.hasSubscriptions()) {
+                    if (this.eventDispatcher.hasListeners(DatabaseSession.onInsertPre)) {
                         const event = new UnitOfWorkEvent(group.type, this.session, inserts);
-                        await this.emitter.onInsertPre.emit(event);
+                        await this.eventDispatcher.dispatch(DatabaseSession.onInsertPre, event);
                         if (event.stopped) doInsert = false;
                     }
                     if (doInsert) {
                         await persistence.insert(group.type, inserts);
-                        if (this.emitter.onInsertPost.hasSubscriptions()) {
-                            await this.emitter.onInsertPost.emit(new UnitOfWorkEvent(group.type, this.session, inserts));
+                        if (this.eventDispatcher.hasListeners(DatabaseSession.onInsertPost)) {
+                            await this.eventDispatcher.dispatch(DatabaseSession.onInsertPost, new UnitOfWorkEvent(group.type, this.session, inserts));
                         }
                     }
                 }
 
                 if (changeSets.length) {
                     let doUpdate = true;
-                    if (this.emitter.onUpdatePre.hasSubscriptions()) {
+                    if (this.eventDispatcher.hasListeners(DatabaseSession.onUpdatePre)) {
                         const event = new UnitOfWorkUpdateEvent(group.type, this.session, changeSets);
-                        await this.emitter.onUpdatePre.emit(event);
+                        await this.eventDispatcher.dispatch(DatabaseSession.onUpdatePre, event);
                         if (event.stopped) doUpdate = false;
                     }
 
                     if (doUpdate) {
                         await persistence.update(group.type, changeSets);
 
-                        if (this.emitter.onUpdatePost.hasSubscriptions()) {
-                            await this.emitter.onUpdatePost.emit(new UnitOfWorkUpdateEvent(group.type, this.session, changeSets));
+                        if (this.eventDispatcher.hasListeners(DatabaseSession.onUpdatePost)) {
+                            await this.eventDispatcher.dispatch(DatabaseSession.onUpdatePost, new UnitOfWorkUpdateEvent(group.type, this.session, changeSets));
                         }
                     }
                 }
@@ -292,11 +292,21 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
 
     protected currentPersistence?: DatabasePersistence = undefined;
 
+    public static readonly onUpdatePre: EventToken<UnitOfWorkUpdateEvent<any>> = new EventToken('orm.session.update.pre');
+    public static readonly onUpdatePost: EventToken<UnitOfWorkUpdateEvent<any>> = new EventToken('orm.session.update.post');
+
+    public static readonly onInsertPre: EventToken<UnitOfWorkEvent<any>> = new EventToken('orm.session.insert.pre');
+    public static readonly onInsertPost: EventToken<UnitOfWorkEvent<any>> = new EventToken('orm.session.insert.post');
+
+    public static readonly onDeletePre: EventToken<UnitOfWorkEvent<any>> = new EventToken('orm.session.delete.pre');
+    public static readonly onDeletePost: EventToken<UnitOfWorkEvent<any>> = new EventToken('orm.session.delete.post');
+
+    public static readonly onCommitPre: EventToken<UnitOfWorkCommitEvent<any>> = new EventToken('orm.session.commit.pre');
+
     constructor(
         public readonly adapter: ADAPTER,
-        public readonly unitOfWorkEmitter: UnitOfWorkDatabaseEmitter = new UnitOfWorkDatabaseEmitter,
-        public readonly queryEmitter: QueryDatabaseEmitter = new QueryDatabaseEmitter(),
         public readonly entityRegistry: DatabaseEntityRegistry = new DatabaseEntityRegistry(),
+        public readonly eventDispatcher: EventDispatcherInterface = new EventDispatcher(),
         public logger: DatabaseLogger = new DatabaseLogger,
         public stopwatch?: Stopwatch,
     ) {
@@ -428,7 +438,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     }
 
     protected enterNewRound() {
-        this.rounds.push(new DatabaseSessionRound(this, this.unitOfWorkEmitter, this.logger, this.withIdentityMap ? this.identityMap : undefined));
+        this.rounds.push(new DatabaseSessionRound(this, this.eventDispatcher, this.logger, this.withIdentityMap ? this.identityMap : undefined));
     }
 
     /**
@@ -522,9 +532,9 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
             }
         }
 
-        if (this.unitOfWorkEmitter.onCommitPre.hasSubscriptions()) {
+        if (this.eventDispatcher.hasListeners(DatabaseSession.onCommitPre)) {
             const event = new UnitOfWorkCommitEvent(this);
-            await this.unitOfWorkEmitter.onCommitPre.emit(event);
+            await this.eventDispatcher.dispatch(DatabaseSession.onCommitPre, event);
             if (event.stopped) return;
         }
 

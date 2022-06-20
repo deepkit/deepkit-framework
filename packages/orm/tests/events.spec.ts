@@ -2,6 +2,7 @@ import { expect, test } from '@jest/globals';
 import { Database } from '../src/database';
 import { MemoryDatabaseAdapter } from '../src/memory-db';
 import { AutoIncrement, PrimaryKey, ReflectionClass, t } from '@deepkit/type';
+import { DatabaseSession } from '../src/database-session.js';
 
 test('onUpdate plugin', async () => {
     function onUpdate() {
@@ -10,7 +11,7 @@ test('onUpdate plugin', async () => {
 
     class TimestampPlugin {
         static register(database: Database) {
-            database.unitOfWorkEvents.onUpdatePre.subscribe(event => {
+            database.listen(DatabaseSession.onUpdatePre, event => {
                 for (const property of event.classSchema.getProperties()) {
                     if (!property.data['timestamp/onUpdate']) continue;
                     for (const item of event.changeSets) {

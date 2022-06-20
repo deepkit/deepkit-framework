@@ -8,7 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AsyncEventSubscription, ClassType } from '@deepkit/core';
+import { ClassType } from '@deepkit/core';
+import { EventDispatcherUnsubscribe } from '@deepkit/event';
 import { DatabaseSession } from '../database-session';
 import { Database } from '../database';
 import { DatabaseAdapter } from '../database-adapter';
@@ -28,7 +29,7 @@ export class SoftDeleteSession {
     protected restoreItems: SoftDeleteEntity[] = [];
 
     constructor(protected session: DatabaseSession<any>) {
-        session.unitOfWorkEmitter.onDeletePre.subscribe(event => {
+        session.eventDispatcher.listen(DatabaseSession.onDeletePre, event => {
             const deletedBy = this.deletedBy.get(event.classSchema);
             if (!deletedBy) return;
             for (const item of event.items) {
@@ -36,7 +37,7 @@ export class SoftDeleteSession {
             }
         });
 
-        session.unitOfWorkEmitter.onCommitPre.subscribe(event => {
+        session.eventDispatcher.listen(DatabaseSession.onCommitPre, event => {
             for (const item of this.restoreItems) {
                 item.deletedAt = undefined;
                 item.deletedBy = undefined;
@@ -116,8 +117,8 @@ export class SoftDeleteQuery<T extends SoftDeleteEntity> extends Query<T> {
 
 export class SoftDelete {
     protected listeners = new Map<ReflectionClass<any>, {
-        queryFetch: AsyncEventSubscription, queryPatch: AsyncEventSubscription,
-        queryDelete: AsyncEventSubscription, uowDelete: AsyncEventSubscription
+        queryFetch: EventDispatcherUnsubscribe, queryPatch: EventDispatcherUnsubscribe,
+        queryDelete: EventDispatcherUnsubscribe, uowDelete: EventDispatcherUnsubscribe
     }>();
 
     constructor(protected database: Database<DatabaseAdapter>) {
@@ -135,10 +136,10 @@ export class SoftDelete {
         const schema = ReflectionClass.from(classSchemaOrType);
         const listener = this.listeners.get(schema);
         if (listener) {
-            listener.queryFetch.unsubscribe();
-            listener.queryPatch.unsubscribe();
-            listener.queryDelete.unsubscribe();
-            listener.uowDelete.unsubscribe();
+            listener.queryFetch();
+            listener.queryPatch();
+            listener.queryDelete();
+            listener.uowDelete();
             this.listeners.delete(schema);
         }
     }
@@ -163,10 +164,10 @@ export class SoftDelete {
             event.query = event.query.filterField(deletedAtName, undefined);
         }
 
-        const queryFetch = this.database.queryEvents.onFetch.subscribe(queryFilter);
-        const queryPatch = this.database.queryEvents.onPatchPre.subscribe(queryFilter);
+        const queryFetch = this.database.listen(Query.onFetch, queryFilter);
+        const queryPatch = this.database.listen(Query.onPatchPre, queryFilter);
 
-        const queryDelete = this.database.queryEvents.onDeletePre.subscribe(async event => {
+        const queryDelete = this.database.listen(Query.onDeletePre, async event => {
             if (event.classSchema !== schema) return; //do nothing
 
             //we don't change SoftDeleteQuery instances as they operate on the raw records without filter
@@ -183,7 +184,7 @@ export class SoftDelete {
             await event.query.patchMany(patch);
         });
 
-        const uowDelete = this.database.unitOfWorkEvents.onDeletePre.subscribe(async event => {
+        const uowDelete = this.database.listen(DatabaseSession.onDeletePre, async event => {
             if (event.classSchema !== schema) return; //do nothing
 
             //stop actual query delete query
