@@ -8,7 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AsyncEmitterEvent, AsyncEventEmitter, ClassType } from '@deepkit/core';
+import { ClassType } from '@deepkit/core';
+import { BaseEvent } from '@deepkit/event';
 import type { Changes } from '@deepkit/type';
 import { PrimaryKeyType, ReflectionClass } from '@deepkit/type';
 import type { DatabasePersistenceChangeSet } from './database-adapter';
@@ -16,7 +17,19 @@ import type { DatabaseSession } from './database-session';
 import type { Query } from './query';
 import type { DeleteResult, PatchResult } from './type';
 
-export class UnitOfWorkCommitEvent<T> extends AsyncEmitterEvent {
+export class DatabaseEvent extends BaseEvent {
+    stopped = false;
+
+    stop() {
+        this.stopped = true;
+    }
+
+    isStopped() {
+        return this.stopped;
+    }
+}
+
+export class UnitOfWorkCommitEvent<T> extends DatabaseEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>
     ) {
@@ -24,7 +37,7 @@ export class UnitOfWorkCommitEvent<T> extends AsyncEmitterEvent {
     }
 }
 
-export class UnitOfWorkEvent<T> extends AsyncEmitterEvent {
+export class UnitOfWorkEvent<T> extends DatabaseEvent {
     constructor(
         public readonly classSchema: ReflectionClass<T>,
         public readonly databaseSession: DatabaseSession<any>,
@@ -47,7 +60,7 @@ export class UnitOfWorkEvent<T> extends AsyncEmitterEvent {
     }
 }
 
-export class UnitOfWorkUpdateEvent<T extends object> extends AsyncEmitterEvent {
+export class UnitOfWorkUpdateEvent<T extends object> extends DatabaseEvent {
     constructor(
         public readonly classSchema: ReflectionClass<T>,
         public readonly databaseSession: DatabaseSession<any>,
@@ -61,27 +74,7 @@ export class UnitOfWorkUpdateEvent<T extends object> extends AsyncEmitterEvent {
     }
 }
 
-export class UnitOfWorkDatabaseEmitter {
-    public readonly onUpdatePre: AsyncEventEmitter<UnitOfWorkUpdateEvent<any>> = new AsyncEventEmitter(this.parent?.onUpdatePre);
-    public readonly onUpdatePost: AsyncEventEmitter<UnitOfWorkUpdateEvent<any>> = new AsyncEventEmitter(this.parent?.onUpdatePost);
-
-    public readonly onInsertPre: AsyncEventEmitter<UnitOfWorkEvent<any>> = new AsyncEventEmitter(this.parent?.onInsertPre);
-    public readonly onInsertPost: AsyncEventEmitter<UnitOfWorkEvent<any>> = new AsyncEventEmitter(this.parent?.onInsertPost);
-
-    public readonly onDeletePre: AsyncEventEmitter<UnitOfWorkEvent<any>> = new AsyncEventEmitter(this.parent?.onDeletePre);
-    public readonly onDeletePost: AsyncEventEmitter<UnitOfWorkEvent<any>> = new AsyncEventEmitter(this.parent?.onDeletePost);
-
-    public readonly onCommitPre: AsyncEventEmitter<UnitOfWorkCommitEvent<any>> = new AsyncEventEmitter(this.parent?.onCommitPre);
-
-    constructor(protected parent?: UnitOfWorkDatabaseEmitter) {
-    }
-
-    fork() {
-        return new UnitOfWorkDatabaseEmitter(this);
-    }
-}
-
-export class QueryDatabaseEvent<T> extends AsyncEmitterEvent {
+export class QueryDatabaseEvent<T> extends DatabaseEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
@@ -95,7 +88,7 @@ export class QueryDatabaseEvent<T> extends AsyncEmitterEvent {
     }
 }
 
-export class QueryDatabaseDeleteEvent<T> extends AsyncEmitterEvent {
+export class QueryDatabaseDeleteEvent<T> extends DatabaseEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
@@ -110,7 +103,7 @@ export class QueryDatabaseDeleteEvent<T> extends AsyncEmitterEvent {
     }
 }
 
-export class QueryDatabasePatchEvent<T extends object> extends AsyncEmitterEvent {
+export class QueryDatabasePatchEvent<T extends object> extends DatabaseEvent {
     public returning: (keyof T & string)[] = [];
 
     constructor(
@@ -125,25 +118,5 @@ export class QueryDatabasePatchEvent<T extends object> extends AsyncEmitterEvent
 
     isSchemaOf<T extends object>(classType: ClassType<T>): this is QueryDatabasePatchEvent<T> {
         return this.classSchema.isSchemaOf(classType);
-    }
-}
-
-export class QueryDatabaseEmitter {
-    /**
-     * For all queries related to fetching data like: find, findOne, count, has.
-     */
-    public readonly onFetch: AsyncEventEmitter<QueryDatabaseEvent<any>> = new AsyncEventEmitter(this.parent?.onDeletePre);
-
-    public readonly onDeletePre: AsyncEventEmitter<QueryDatabaseDeleteEvent<any>> = new AsyncEventEmitter(this.parent?.onDeletePre);
-    public readonly onDeletePost: AsyncEventEmitter<QueryDatabaseDeleteEvent<any>> = new AsyncEventEmitter(this.parent?.onDeletePost);
-
-    public readonly onPatchPre: AsyncEventEmitter<QueryDatabasePatchEvent<any>> = new AsyncEventEmitter(this.parent?.onPatchPre);
-    public readonly onPatchPost: AsyncEventEmitter<QueryDatabasePatchEvent<any>> = new AsyncEventEmitter(this.parent?.onPatchPost);
-
-    constructor(protected parent?: QueryDatabaseEmitter) {
-    }
-
-    fork() {
-        return new QueryDatabaseEmitter(this);
     }
 }

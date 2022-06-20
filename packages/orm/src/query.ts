@@ -29,6 +29,7 @@ import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent }
 import { DeleteResult, OrmEntity, PatchResult } from './type';
 import { FieldName, FlattenIfArray, Replace, Resolve } from './utils';
 import { FrameCategory } from '@deepkit/stopwatch';
+import { EventToken } from '@deepkit/event';
 
 export type SORT_ORDER = 'asc' | 'desc' | any;
 export type Sort<T extends OrmEntity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
@@ -344,8 +345,8 @@ export class BaseQuery<T extends OrmEntity> {
     }
 
     /**
-     * Narrow the query result.  
-     * 
+     * Narrow the query result.
+     *
      * Note: previous filter conditions are preserved.
      */
     filter(filter?: this['model']['filter']): this {
@@ -366,10 +367,10 @@ export class BaseQuery<T extends OrmEntity> {
 
     /**
      * Narrow the query result by field-specific conditions.
-     * 
+     *
      * This can be helpful to work around the type issue that when `T` is another
      * generic type there must be a type assertion to use {@link filter}.
-     * 
+     *
      * Note: previous filter conditions are preserved.
      */
     filterField<K extends keyof T & string>(name: K, value: FilterQuery<T>[K]): this {
@@ -524,6 +525,15 @@ export type Methods<T> = { [K in keyof T]: K extends keyof Query<any> ? never : 
 export class Query<T extends OrmEntity> extends BaseQuery<T> {
     protected lifts: ClassType[] = [];
 
+
+    public static readonly onFetch: EventToken<QueryDatabaseEvent<any>> = new EventToken('orm.query.fetch');
+
+    public static readonly onDeletePre: EventToken<QueryDatabaseDeleteEvent<any>> = new EventToken('orm.query.delete.pre');
+    public static readonly onDeletePost: EventToken<QueryDatabaseDeleteEvent<any>> = new EventToken('orm.query.delete.post');
+
+    public static readonly onPatchPre: EventToken<QueryDatabasePatchEvent<any>> = new EventToken('orm.query.patch.pre');
+    public static readonly onPatchPost: EventToken<QueryDatabasePatchEvent<any>> = new EventToken('orm.query.patch.post');
+
     static is<T extends ClassType<Query<any>>>(v: Query<any>, type: T): v is InstanceType<T> {
         return v.lifts.includes(type) || v instanceof type;
     }
@@ -594,11 +604,11 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     }
 
     protected async callOnFetchEvent(query: Query<any>): Promise<this> {
-        const hasEvents = this.session.queryEmitter.onFetch.hasSubscriptions();
+        const hasEvents = this.session.eventDispatcher.hasListeners(Query.onFetch);
         if (!hasEvents) return query as this;
 
         const event = new QueryDatabaseEvent(this.session, this.classSchema, query);
-        await this.session.queryEmitter.onFetch.emit(event);
+        await this.session.eventDispatcher.dispatch(Query.onFetch, event);
         return event.query as any;
     }
 
@@ -681,7 +691,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     }
 
     protected async delete(query: Query<any>): Promise<DeleteResult<T>> {
-        const hasEvents = this.session.queryEmitter.onDeletePre.hasSubscriptions() || this.session.queryEmitter.onDeletePost.hasSubscriptions();
+        const hasEvents = this.session.eventDispatcher.hasListeners(Query.onDeletePre) || this.session.eventDispatcher.hasListeners(Query.onDeletePost);
 
         const deleteResult: DeleteResult<T> = {
             modified: 0,
@@ -701,9 +711,9 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
 
             const event = new QueryDatabaseDeleteEvent<T>(this.session, this.classSchema, query, deleteResult);
 
-            if (this.session.queryEmitter.onDeletePre.hasSubscriptions()) {
+            if (this.session.eventDispatcher.hasListeners(Query.onDeletePre)) {
                 const eventFrame = this.session.stopwatch ? this.session.stopwatch.start('Events') : undefined;
-                await this.session.queryEmitter.onDeletePre.emit(event);
+                await this.session.eventDispatcher.dispatch(Query.onDeletePre, event);
                 if (eventFrame) eventFrame.end();
                 if (event.stopped) return deleteResult;
             }
@@ -713,9 +723,9 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
             await event.query.resolver.delete(event.query.model, deleteResult);
             this.session.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
 
-            if (deleteResult.primaryKeys.length && this.session.queryEmitter.onDeletePost.hasSubscriptions()) {
+            if (deleteResult.primaryKeys.length && this.session.eventDispatcher.hasListeners(Query.onDeletePost)) {
                 const eventFrame = this.session.stopwatch ? this.session.stopwatch.start('Events Post') : undefined;
-                await this.session.queryEmitter.onDeletePost.emit(event);
+                await this.session.eventDispatcher.dispatch(Query.onDeletePost, event);
                 if (eventFrame) eventFrame.end();
                 if (event.stopped) return deleteResult;
             }
@@ -759,7 +769,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
 
             if (changes.empty) return patchResult;
 
-            const hasEvents = this.session.queryEmitter.onPatchPre.hasSubscriptions() || this.session.queryEmitter.onPatchPost.hasSubscriptions();
+            const hasEvents = this.session.eventDispatcher.hasListeners(Query.onPatchPre) || this.session.eventDispatcher.hasListeners(Query.onPatchPost);
             if (!hasEvents) {
                 query = this.onQueryResolve(query);
                 await this.resolver.patch(query.model, changes, patchResult);
@@ -767,9 +777,9 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
             }
 
             const event = new QueryDatabasePatchEvent<T>(this.session, this.classSchema, query, changes, patchResult);
-            if (this.session.queryEmitter.onPatchPre.hasSubscriptions()) {
+            if (this.session.eventDispatcher.hasListeners(Query.onPatchPre)) {
                 const eventFrame = this.session.stopwatch ? this.session.stopwatch.start('Events') : undefined;
-                await this.session.queryEmitter.onPatchPre.emit(event);
+                await this.session.eventDispatcher.dispatch(Query.onPatchPre, event);
                 if (eventFrame) eventFrame.end();
                 if (event.stopped) return patchResult;
             }
@@ -798,9 +808,9 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
                 }
             }
 
-            if (this.session.queryEmitter.onPatchPost.hasSubscriptions()) {
+            if (this.session.eventDispatcher.hasListeners(Query.onPatchPost)) {
                 const eventFrame = this.session.stopwatch ? this.session.stopwatch.start('Events Post') : undefined;
-                await this.session.queryEmitter.onPatchPost.emit(event);
+                await this.session.eventDispatcher.dispatch(Query.onPatchPost, event);
                 if (eventFrame) eventFrame.end();
                 if (event.stopped) return patchResult;
             }

@@ -23,7 +23,6 @@ import {
 } from '@deepkit/type';
 import { DatabaseAdapter, DatabaseEntityRegistry } from './database-adapter';
 import { DatabaseSession } from './database-session';
-import { QueryDatabaseEmitter, UnitOfWorkDatabaseEmitter } from './event';
 import { DatabaseLogger } from './logger';
 import { Query } from './query';
 import { getReference } from './reference';
@@ -31,6 +30,7 @@ import { OrmEntity } from './type';
 import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { getNormalizedPrimaryKey } from './identity-map';
+import { EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -66,6 +66,21 @@ export function isDatabaseOf<T extends DatabaseAdapter>(database: Database<any>,
     return database.adapter instanceof adapterClassType;
 }
 
+function setupVirtualForeignKey(database: Database, virtualForeignKeyConstraint: VirtualForeignKeyConstraint) {
+    database.listen(DatabaseSession.onDeletePost, async (event) => {
+        await virtualForeignKeyConstraint.onUoWDelete(event);
+    });
+    database.listen(DatabaseSession.onUpdatePost, async (event) => {
+        await virtualForeignKeyConstraint.onUoWUpdate(event);
+    });
+    database.listen(Query.onPatchPost, async (event) => {
+        await virtualForeignKeyConstraint.onQueryPatch(event);
+    });
+    database.listen(Query.onDeletePost, async (event) => {
+        await virtualForeignKeyConstraint.onQueryDelete(event);
+    });
+}
+
 /**
  * Database abstraction. Use createSession() to create a work session with transaction support.
  *
@@ -87,16 +102,6 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * The entity schema registry.
      */
     public readonly entityRegistry: DatabaseEntityRegistry = new DatabaseEntityRegistry();
-
-    /**
-     * Event API for DatabaseQuery events.
-     */
-    public readonly queryEvents = new QueryDatabaseEmitter();
-
-    /**
-     * Event API for the unit of work.
-     */
-    public readonly unitOfWorkEvents = new UnitOfWorkDatabaseEmitter();
 
     public stopwatch?: Stopwatch;
 
@@ -123,6 +128,9 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     public logger: DatabaseLogger = new DatabaseLogger();
 
+    /** @reflection never */
+    public readonly eventDispatcher: EventDispatcher = new EventDispatcher();
+
     constructor(
         public readonly adapter: ADAPTER,
         schemas: (Type | ClassType | ReflectionClass<any>)[] = []
@@ -131,6 +139,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         if (Database.registry) Database.registry.push(this);
 
         const self = this;
+
         //we cannot use arrow functions, since they can't have ReceiveType<T>
         function query<T>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
             const session = self.createSession();
@@ -149,31 +158,25 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         this.registerEntity(...schemas);
 
         if (!this.adapter.isNativeForeignKeyConstraintSupported()) {
-            this.unitOfWorkEvents.onDeletePost.subscribe(async (event) => {
-                await this.virtualForeignKeyConstraint.onUoWDelete(event);
-            });
-            this.unitOfWorkEvents.onUpdatePost.subscribe(async (event) => {
-                await this.virtualForeignKeyConstraint.onUoWUpdate(event);
-            });
-
-            this.queryEvents.onPatchPost.subscribe(async (event) => {
-                await this.virtualForeignKeyConstraint.onQueryPatch(event);
-            });
-            this.queryEvents.onDeletePost.subscribe(async (event) => {
-                await this.virtualForeignKeyConstraint.onQueryDelete(event);
-            });
+            setupVirtualForeignKey(this, this.virtualForeignKeyConstraint);
         }
     }
 
     static createClass<T extends DatabaseAdapter>(name: string, adapter: T, schemas: (ClassType | ReflectionClass<any>)[] = []): ClassType<Database<T>> {
         class C extends Database<T> {
             bla!: string;
+
             constructor() {
                 super(adapter, schemas);
                 this.name = name;
             }
         }
+
         return C;
+    }
+
+    listen<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): EventDispatcherUnsubscribe {
+        return this.eventDispatcher.listen(eventToken, callback, order);
     }
 
     /**
@@ -209,7 +212,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * ```
      */
     public createSession(): DatabaseSession<ADAPTER> {
-        return new DatabaseSession(this.adapter, this.unitOfWorkEvents, this.queryEvents, this.entityRegistry, this.logger, this.stopwatch);
+        return new DatabaseSession(this.adapter, this.entityRegistry, this.eventDispatcher.fork(), this.logger, this.stopwatch);
     }
 
     /**

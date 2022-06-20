@@ -6,6 +6,8 @@ import { atomicChange, getInstanceStateFromItem } from '@deepkit/orm';
 import { isArray } from '@deepkit/core';
 import { Group } from './bookstore/group';
 import { DatabaseFactory } from './test';
+import { DatabaseSession } from '@deepkit/orm';
+import { Query } from '@deepkit/orm';
 
 interface BookModeration {
     locked: boolean;
@@ -612,7 +614,7 @@ export const bookstoreTests = {
 
         {
             const session = database.createSession();
-            const sub1 = database.unitOfWorkEvents.onUpdatePre.subscribe((event) => {
+            database.listen(DatabaseSession.onUpdatePre, event => {
                 if (event.isSchemaOf(User)) {
                     for (const changeSet of event.changeSets) {
                         changeSet.changes.increase('version', 1);
@@ -620,12 +622,12 @@ export const bookstoreTests = {
                 }
             });
 
-            const sub2 = database.queryEvents.onPatchPre.subscribe((event) => {
+            database.listen(Query.onPatchPre, event => {
                 if (event.isSchemaOf(User)) {
                     event.patch.increase('version', 1);
                 }
             });
-            const sub3 = database.queryEvents.onPatchPost.subscribe((event) => {
+            database.listen(Query.onPatchPost, event => {
                 if (event.isSchemaOf(User)) {
                     expect(isArray(event.patchResult.returning['version'])).toBe(true);
                     expect(event.patchResult.returning['version']![0]).toBeGreaterThan(0);
@@ -665,10 +667,6 @@ export const bookstoreTests = {
                 expect(userDB.logins).toBe(10);
                 expect(userDB.version).toBe(4);
             }
-
-            sub1.unsubscribe();
-            sub2.unsubscribe();
-            sub3.unsubscribe();
         }
         database.disconnect();
     },
