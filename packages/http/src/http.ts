@@ -110,14 +110,14 @@ export class HttpNotImplementedError extends createHttpError(501, 'Not implement
 }
 
 export class HttpWorkflowEvent {
-    stopped = false;
+    propagationStopped = false;
 
     stopPropagation() {
-        this.stopped = true;
+        this.propagationStopped = true;
     }
 
-    isStopped() {
-        return this.stopped;
+    isPropagationStopped() {
+        return this.propagationStopped;
     }
 
     public nextState?: any;
