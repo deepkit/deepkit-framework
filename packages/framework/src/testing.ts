@@ -76,7 +76,7 @@ export function createTestingApp<O extends RootModuleDefinition>(options: O, ent
     module.addProvider(BrokerMemoryServer);
     module.addProvider(MemoryLoggerTransport);
     module.addProvider({
-        provide: Broker, deps: [BrokerServer], useFactory: (server: BrokerMemoryServer) => {
+        provide: Broker, useFactory: (server: BrokerMemoryServer) => {
             return new DirectBroker(server.kernel);
         }
     });

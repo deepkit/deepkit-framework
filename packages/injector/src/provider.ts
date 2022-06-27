@@ -70,18 +70,9 @@ export interface FactoryProvider<T> extends ProviderBase {
     provide: Token<T>;
 
     /**
-     * A function to invoke to create a value for this `token`. The function is invoked with
-     * resolved values of `token`s in the `deps` field.
+     * A function to invoke to create a value for this `token`.
      */
     useFactory: (...args: any[]) => T;
-
-    /**
-     * A list of `token`s which need to be resolved by the injector. The list of values is then
-     * used as arguments to the `useFactory` function.
-     *
-     * @deprecated not necessary anymore
-     */
-    deps?: any[];
 }
 
 /** @reflection never */

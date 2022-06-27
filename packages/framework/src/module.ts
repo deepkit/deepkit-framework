@@ -161,7 +161,6 @@ export class FrameworkModule extends createModule({
 
             this.addProvider({
                 provide: OrmBrowserController,
-                deps: [DatabaseRegistry],
                 useFactory: (registry: DatabaseRegistry) => new OrmBrowserController(registry.getDatabases())
             });
             this.addController(DebugController);
@@ -179,7 +178,6 @@ export class FrameworkModule extends createModule({
                 this.addProvider(FileStopwatchStore);
                 this.addProvider({
                     provide: Stopwatch,
-                    deps: [FileStopwatchStore],
                     useFactory(store: FileStopwatchStore) {
                         return new Stopwatch(store);
                     }
