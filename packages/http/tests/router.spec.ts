@@ -113,7 +113,7 @@ test('generic response', async () => {
     expect(xmlResponse.getHeader('content-type')).toBe('text/xml');
 });
 
-test('router HttpRequest', async () => {
+test('HttpRegExp deep path', async () => {
     class Controller {
         @http.GET(':path')
         anyReq(req: HttpRequest, path: HttpRegExp<string, '.*'>) {
@@ -124,6 +124,46 @@ test('router HttpRequest', async () => {
     const httpKernel = createHttpKernel([Controller]);
 
     expect((await httpKernel.request(HttpRequest.GET('/req/any/path'))).json).toEqual(['/req/any/path', 'req/any/path']);
+});
+
+test('HttpRegExp match', async () => {
+    const pattern = /one|two/;
+
+    class Controller {
+        @http.GET('string/:text')
+        text(text: HttpRegExp<string, '[a-zA-Z]*'>) {
+            return [text];
+        }
+
+        @http.GET('number/:number')
+        number(number: HttpRegExp<number, '[0-9]*'>) {
+            return [number];
+        }
+
+        @http.GET('type/:type')
+        type(type: HttpRegExp<string, typeof pattern>) {
+            return [type];
+        }
+
+        @http.GET('type2/:type')
+        type2(type: 'one' | 'two') {
+            return [type];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    expect((await httpKernel.request(HttpRequest.GET('/number/23'))).json).toEqual([23]);
+    expect((await httpKernel.request(HttpRequest.GET('/number/asd'))).statusCode).toBe(404);
+    expect((await httpKernel.request(HttpRequest.GET('/string/peter'))).json).toEqual(['peter']);
+
+    expect((await httpKernel.request(HttpRequest.GET('/type/one'))).json).toEqual(['one']);
+    expect((await httpKernel.request(HttpRequest.GET('/type/two'))).json).toEqual(['two']);
+    expect((await httpKernel.request(HttpRequest.GET('/type/nope'))).statusCode).toEqual(404);
+
+    expect((await httpKernel.request(HttpRequest.GET('/type2/one'))).json).toEqual(['one']);
+    expect((await httpKernel.request(HttpRequest.GET('/type2/two'))).json).toEqual(['two']);
+    expect((await httpKernel.request(HttpRequest.GET('/type2/nope'))).statusCode).toEqual(400);
 });
 
 test('router parameter resolver by class', async () => {
@@ -799,7 +839,7 @@ test('reference in query', async () => {
                 isGroup: isObject(filter.group),
                 objectName: getClassName(filter.group!),
                 groupId: filter.group!.id,
-            }
+            };
         }
     }
 
