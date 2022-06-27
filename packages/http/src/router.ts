@@ -252,7 +252,11 @@ function parseRoutePathToRegex(routeConfig: RouteConfig): { regex: string, param
         const parameter = fn.getParameterOrUndefined(name);
         if (parameter) {
             const regExp = getRegExp(parameter.type);
-            if (regExp) return '(' + regExp + ')';
+            if (regExp instanceof RegExp) {
+                return '(' + regExp.source + ')';
+            } else if (regExp) {
+                return '(' + regExp + ')';
+            }
         }
         return String.raw`([^/]+)`;
     });

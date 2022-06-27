@@ -78,13 +78,14 @@ export type HttpQueries<T, Options extends { name?: string } = {}> = T & { __met
  * }
  * ```
  */
-export type HttpRegExp<T, Pattern extends string> = T & { __meta?: ['httpRegExp', Pattern] };
+export type HttpRegExp<T, Pattern extends string | RegExp> = T & { __meta?: ['httpRegExp', Pattern] };
 
-export function getRegExp(type: Type): string | undefined {
+export function getRegExp(type: Type): string | RegExp | undefined {
     const options = metaAnnotation.getForName(type, 'httpRegExp');
     if (!options || !options[0]) return;
-    if (options[0].kind !== ReflectionKind.literal || 'string' !== typeof options[0].literal) return;
-    return options[0].literal;
+    if (options[0].kind === ReflectionKind.literal && 'string' === typeof options[0].literal) return options[0].literal;
+    if (options[0].kind === ReflectionKind.literal && options[0].literal instanceof RegExp) return options[0].literal;
+    return;
 }
 
 export class RequestBuilder {
