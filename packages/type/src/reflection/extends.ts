@@ -481,9 +481,21 @@ function inferFromTuple(left: TypeTuple, right: TypeTuple) {
                     addType(inferred, leftType);
                 }
             }
-            let inferredType: Type = inferred.types.length === 1 ? inferred.types[0] : inferred.types.length === 0 ? { kind: ReflectionKind.never } : inferred;
-            if (inferredType.kind === ReflectionKind.tupleMember) inferredType = inferredType.type;
-            if (inferredType.kind === ReflectionKind.rest) inferredType = { kind: ReflectionKind.array, type: inferredType.type };
+
+            //[foo: string, ...args: infer P] P keeps being tuple
+            //[foo: string, args: infer P] P no tuple
+            //[args: infer P] P no tuple
+            let inferredType: Type = inferred.types.length === 0 ? { kind: ReflectionKind.never } : inferred;
+
+            //simplify [...r: number[]] to number[]
+            if (inferred.types.length === 1 && inferred.types[0].type.kind === ReflectionKind.rest) {
+                inferredType = { kind: ReflectionKind.array, type: inferred.types[0].type.type };
+            }
+
+            //when `[1, 2] extends [infer K]` result is `1`, not a tuple
+            if (rightType.type.kind !== ReflectionKind.rest) {
+                inferredType = inferred.types[0].type;
+            }
 
             if (rightType.type.kind === ReflectionKind.infer) {
                 rightType.type.set(inferredType);

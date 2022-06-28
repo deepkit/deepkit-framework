@@ -7,9 +7,9 @@ import { ReflectionClass, typeOf } from '../src/reflection/reflection';
 
 test('primitives', () => {
     expect(validate<string>('Hello')).toEqual([]);
-    expect(validate<string>(123)).toEqual([{code: 'type', message: 'Not a string', path: ''}]);
+    expect(validate<string>(123)).toEqual([{ code: 'type', message: 'Not a string', path: '' }]);
 
-    expect(validate<number>('Hello')).toEqual([{code: 'type', message: 'Not a number', path: ''}]);
+    expect(validate<number>('Hello')).toEqual([{ code: 'type', message: 'Not a number', path: '' }]);
     expect(validate<number>(123)).toEqual([]);
 });
 
@@ -94,10 +94,10 @@ test('simple interface', () => {
         username: string;
     }
 
-    expect(validate<User>(undefined)).toEqual([{code: 'type', message: 'Not an object', path: ''}]);
-    expect(validate<User>({})).toEqual([{code: 'type', message: 'Not a number', path: 'id'}])
-    expect(validate<User>({id: 1})).toEqual([{code: 'type', message: 'Not a string', path: 'username'}])
-    expect(validate<User>({id: 1, username: 'Peter'})).toEqual([])
+    expect(validate<User>(undefined)).toEqual([{ code: 'type', message: 'Not an object', path: '' }]);
+    expect(validate<User>({})).toEqual([{ code: 'type', message: 'Not a number', path: 'id' }]);
+    expect(validate<User>({ id: 1 })).toEqual([{ code: 'type', message: 'Not a string', path: 'username' }]);
+    expect(validate<User>({ id: 1, username: 'Peter' })).toEqual([]);
 });
 
 test('class', () => {
@@ -150,12 +150,12 @@ test('class with union literal', () => {
     }
 
     expect(validate<ConnectionOptions>({ readConcernLevel: 'majority' })).toEqual([]);
-    expect(validate<ConnectionOptions>({ readConcernLevel: 'invalid' })).toEqual([{code: 'type', message: 'Invalid type', path: 'readConcernLevel'}]);
+    expect(validate<ConnectionOptions>({ readConcernLevel: 'invalid' })).toEqual([{ code: 'type', message: 'Invalid type', path: 'readConcernLevel' }]);
 });
 
 test('named tuple', () => {
     expect(validate<[name: string]>(['asd'])).toEqual([]);
-    expect(validate<[name: string]>([23])).toEqual([{code: 'type', message: 'Not a string', path: 'name'}]);
+    expect(validate<[name: string]>([23])).toEqual([{ code: 'type', message: 'Not a string', path: 'name' }]);
 });
 
 test('inherited validations', () => {
@@ -167,9 +167,41 @@ test('inherited validations', () => {
         image?: string;
     }
 
-    expect(validate<User>({ username: 'Pe' })).toEqual([{code: 'minLength', message: 'Min length is 3', path: 'username'}]);
+    expect(validate<User>({ username: 'Pe' })).toEqual([{ code: 'minLength', message: 'Min length is 3', path: 'username' }]);
     expect(validate<User>({ username: 'Peter' })).toEqual([]);
 
-    expect(validate<AddUserDto>({ username: 'Pe' })).toEqual([{code: 'minLength', message: 'Min length is 3', path: 'username'}]);
+    expect(validate<AddUserDto>({ username: 'Pe' })).toEqual([{ code: 'minLength', message: 'Min length is 3', path: 'username' }]);
     expect(validate<AddUserDto>({ username: 'Peter' })).toEqual([]);
+});
+
+test('mapped type', () => {
+    type Api = {
+        inc(x: number): number;
+        dup(x: string): string;
+    };
+    type Request = {
+        [Method in keyof Api]: {
+            method: Method;
+            arguments: Parameters<Api[Method]>;
+        };
+    }[keyof Api];
+
+    type Response = {
+        [Method in keyof Api]: {
+            method: Method;
+            result: ReturnType<Api[Method]>;
+        };
+    }[keyof Api];
+
+    expect(validate<Request>({ method: 'inc', arguments: [4] })).toEqual([]);
+
+    expect(validate<Request>({ method: 'dup', arguments: [''] })).toEqual([]);
+    expect(validate<Request>({ method: 'inc', arguments: [''] })).not.toEqual([]);
+    expect(validate<Request>({ method: 'unc', arguments: [''] })).not.toEqual([]);
+
+    expect(validate<Response>({ method: 'inc', result: 4 })).toEqual([]);
+    expect(validate<Response>({ method: 'dup', result: '' })).toEqual([]);
+
+    expect(validate<Response>({ method: 'inc', result: '' })).not.toEqual([]);
+    expect(validate<Request>({ method: 'enc', result: '' })).not.toEqual([]);
 });

@@ -128,10 +128,10 @@ export function typeOf<T>(args: any[] = [], p?: ReceiveType<T>): Type {
     throw new Error('No type given');
 }
 
-export function removeTypeName<T extends Type>(type: T): Omit<T, 'typeName' | 'typeArguments'> {
+export function removeTypeName<T extends Type>(type: T): T{
     const o = { ...type };
-    if ('typeName' in o) delete o.typeName;
-    if ('typeArguments' in o) delete o.typeArguments;
+    o.typeName = undefined;
+    o.typeArguments = undefined;
     return o;
 }
 
