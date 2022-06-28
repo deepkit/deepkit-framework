@@ -8,13 +8,15 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { test } from '@jest/globals';
+import { test, expect } from '@jest/globals';
 import { ReceiveType, removeTypeName, resolveReceiveType } from '../src/reflection/reflection';
 import { expectEqualType } from './utils';
+import { stringifyResolvedType } from '../src/reflection/type.js';
 
 function equalType<A, B>(a?: ReceiveType<A>, b?: ReceiveType<B>) {
     const aType = removeTypeName(resolveReceiveType(a));
     const bType = removeTypeName(resolveReceiveType(b));
+    expect(stringifyResolvedType(aType)).toBe(stringifyResolvedType(bType));
     expectEqualType(aType, bType as any);
 }
 
@@ -82,6 +84,21 @@ test('Parameters type', () => {
 
     type r = Parameters<fn>;
     equalType<r, [a: string, ...r: any[]]>();
+});
+
+test('Parameters single type', () => {
+    type fn = (a: string) => void;
+
+    type r = Parameters<fn>;
+    equalType<r, [a: string]>();
+});
+
+test('Parameters single type no rest', () => {
+    type FirstParam<T extends (...args: any) => any> = T extends (k: infer I) => void ? I : never
+    type fn = (a: string) => void;
+
+    type r = FirstParam<fn>;
+    equalType<r, string>();
 });
 
 test('sub Parameters type', () => {
