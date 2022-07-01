@@ -8,7 +8,7 @@
     "test": "node --max_old_space_size=3048 node_modules/jest/bin/jest.js --forceExit --no-cache",
     "test:coverage": "node --max_old_space_size=3048 node_modules/jest/bin/jest.js --coverage --forceExit --no-cache",
     "bootstrap": "lerna bootstrap --no-ci",
-    "bootstrap:ci": "lerna bootstrap",
+    "bootstrap:ci": "lerna bootstrap --ignore @deepkit/benchmark",
     "link": "npm-local-development --no-watcher",
     "build": "tsc --build tsconfig.json && tsc --build tsconfig.esm.json && lerna run build",
     "build:esm": "tsc --build tsconfig.esm.json",
@@ -19,7 +19,7 @@
     "clean": "find packages/*/dist/* ! -name 'package.json' -type f -exec rm -f {} +",
     "clean:modules": "rm -rf packages/*/node_modules; rm -rf node_modules",
     "clean:lock": "rm -rf packages/*/package-lock.json",
-    "docs": "rm -rf docs && typedoc",
+    "docs": "rm -rf docs && node --max-old-space-size=12096 node_modules/.bin/typedoc packages/*/index.ts",
     "publish": "lerna publish --no-private prerelease",
     "publish-force": "npm run build && lerna publish --no-private --force-publish",
     "publish-website": "heroku container:push web && heroku container:release web"
@@ -39,6 +39,7 @@
     "ts-jest": "^27.1.3",
     "ts-node": "^10.0.0",
     "ts-node-dev": "^1.1.1",
+    "typedoc": "^0.23.2",
     "typescript": "^4.6.2"
   },
   "engines": {
