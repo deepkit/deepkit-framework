@@ -4,6 +4,7 @@ import { is } from '../src/typeguard';
 import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Type, Unique } from '../src/reflection/type';
 import { t } from '../src/decorator';
 import { ReflectionClass, typeOf } from '../src/reflection/reflection';
+import { validatedDeserialize } from '../src/serializer-facade.js';
 
 test('primitives', () => {
     expect(validate<string>('Hello')).toEqual([]);
@@ -204,4 +205,26 @@ test('mapped type', () => {
 
     expect(validate<Response>({ method: 'inc', result: '' })).not.toEqual([]);
     expect(validate<Request>({ method: 'enc', result: '' })).not.toEqual([]);
+});
+
+test('inline object', () => {
+    //there was a bug where array checks do not correct set validation state to true if array is empty, so all subsequent properties
+    //are not checked correctly. this test case makes sure this works as expected.
+    interface Post {
+        tags: string[];
+        collection: {
+            items: string[]
+        };
+    }
+
+    const errors = validate<Post>({
+        tags: [],
+        collection: {} // This should make the validator throw an error
+    });
+
+    expect(errors).toEqual([{ path: 'collection.items', code: 'type', message: 'Not an array' }]);
+    expect(() => validatedDeserialize<Post>({
+        tags: [],
+        collection: {} // This should make the validator throw an error
+    })).toThrow('collection.items(type): Not an array');
 });
