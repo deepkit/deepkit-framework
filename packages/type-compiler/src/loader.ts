@@ -1,7 +1,7 @@
 // import {urlToRequest} from 'loader-utils';
 import * as ts from 'typescript';
 import { CompilerOptions, createCompilerHost, createSourceFile, ScriptTarget, SourceFile, TransformationContext } from 'typescript';
-import { ReflectionTransformer } from './compiler.js';
+import { transformer as buildTransformer } from './compiler.js';
 import ScriptKind = ts.ScriptKind;
 
 export class DeepkitLoader {
@@ -44,7 +44,7 @@ export class DeepkitLoader {
 
         ts.transform(sourceFile, [
             (context: TransformationContext) => {
-                const transformer = new ReflectionTransformer(context).forHost(this.host).withReflectionMode('always');
+                const transformer = buildTransformer(context).forHost(this.host).withReflectionMode('always');
                 return (node: SourceFile): SourceFile => {
                     const sourceFile = transformer.transformSourceFile(node);
 

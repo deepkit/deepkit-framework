@@ -485,7 +485,6 @@ export class ReflectionTransformer implements CustomTransformer {
     protected nodeConverter: NodeConverter;
     protected typeChecker?: TypeChecker;
     protected resolver: Resolver;
-    protected host: CompilerHost;
 
     /**
      * When an deep call expression was found a script-wide variable is necessary
@@ -495,10 +494,10 @@ export class ReflectionTransformer implements CustomTransformer {
 
     constructor(
         protected context: TransformationContext,
+        protected host: CompilerHost,
     ) {
         this.f = context.factory;
         this.nodeConverter = new NodeConverter(this.f);
-        this.host = createCompilerHost(context.getCompilerOptions());
         this.resolver = new Resolver(context.getCompilerOptions(), this.host);
     }
 
@@ -2484,15 +2483,25 @@ export class DeclarationTransformer extends ReflectionTransformer {
 
 let loaded = false;
 
-export const transformer: CustomTransformerFactory = function deepkitTransformer(context) {
+export function buildDeepkitTransformer(context: TransformationContext, host: CompilerHost) {
     if (!loaded) {
         debug('@deepkit/type transformer loaded\n');
         loaded = true;
     }
-    return new ReflectionTransformer(context);
+    return new ReflectionTransformer(context, host);
+}
+
+export function transformer(context: TransformationContext) {
+    const host = createCompilerHost(context.getCompilerOptions());
+    return buildDeepkitTransformer(context, host);
 };
 
-export const declarationTransformer: CustomTransformerFactory = function deepkitDeclarationTransformer(context) {
-    return new DeclarationTransformer(context);
+export function buildDeepkitDeclarationTransformer(context: TransformationContext, host: CompilerHost) {
+    return new DeclarationTransformer(context, host);
+};
+
+export function declarationTransformer(context: TransformationContext) {
+    const host = createCompilerHost(context.getCompilerOptions());
+    return buildDeepkitDeclarationTransformer(context, host);
 };
 

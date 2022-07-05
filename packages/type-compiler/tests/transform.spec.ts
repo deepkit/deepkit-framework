@@ -1,7 +1,7 @@
 import * as ts from 'typescript';
 import { createSourceFile, ScriptTarget } from 'typescript';
 import { expect, test } from '@jest/globals';
-import { ReflectionTransformer } from '../src/compiler';
+import { transformer as buildTransformer } from '../src/compiler';
 import { transform } from './utils';
 
 test('transform simple', () => {
@@ -11,7 +11,7 @@ test('transform simple', () => {
         function fn(logger: Logger) {}
     `, ScriptTarget.ESNext);
 
-    const res = ts.transform(sourceFile, [(context) => (node) => new ReflectionTransformer(context).withReflectionMode('always').transformSourceFile(node)]);
+    const res = ts.transform(sourceFile, [(context) => (node) => buildTransformer(context).withReflectionMode('always').transformSourceFile(node)]);
     const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
     const code = printer.printNode(ts.EmitHint.SourceFile, res.transformed[0], res.transformed[0]);
 

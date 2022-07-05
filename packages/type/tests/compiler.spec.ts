@@ -2,7 +2,7 @@
 import { describe, expect, test } from '@jest/globals';
 import * as ts from 'typescript';
 import { getPreEmitDiagnostics, ModuleKind, ScriptTarget, TransformationContext, transpileModule } from 'typescript';
-import { DeclarationTransformer, ReflectionTransformer, transformer } from '@deepkit/type-compiler';
+import { declarationTransformer, transformer } from '@deepkit/type-compiler';
 import { reflect, reflect as reflect2, ReflectionClass, removeTypeName, typeOf as typeOf2 } from '../src/reflection/reflection';
 import {
     assertType,
@@ -64,8 +64,8 @@ export function transpile<T extends string | Record<string, string>>(files: T, o
             fileName: __dirname + '/module.ts',
             compilerOptions,
             transformers: {
-                before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflectionMode('always')],
-                afterDeclarations: [(context: TransformationContext) => new DeclarationTransformer(context).withReflectionMode('always')],
+                before: [(context: TransformationContext) => transformer(context).withReflectionMode('always')],
+                afterDeclarations: [(context: TransformationContext) => declarationTransformer(context).withReflectionMode('always')],
             }
         }).outputText as any;
     }
@@ -96,7 +96,7 @@ export function transpile<T extends string | Record<string, string>>(files: T, o
     program.emit(undefined, (fileName, data) => {
         res[fileName.slice(__dirname.length + 1)] = data;
     }, undefined, undefined, {
-        before: [(context: TransformationContext) => new ReflectionTransformer(context).forHost(host.compilerHost).withReflectionMode('always')],
+        before: [(context: TransformationContext) => transformer(context).forHost(host.compilerHost).withReflectionMode('always')],
     });
 
     return res as any;
