@@ -335,14 +335,20 @@ function filterMiddlewaresForRoute(middlewareRawConfigs: MiddlewareRegistryEntry
         if (v.config.selfModule && v.module.id !== routeConfig.module?.id) return false;
 
         if (v.config.routeNames.length) {
+            let found: boolean = false;
             for (const name of v.config.routeNames) {
                 if (name.includes('*')) {
                     const regex = new RegExp('^' + name.replace(/\*/g, '.*') + '$');
-                    if (!regex.test(routeConfig.name)) return false;
-                } else if (name !== routeConfig.name) {
-                    return false;
+                    if (regex.test(routeConfig.name)) {
+                        found = true;
+                        break;
+                    }
+                } else if (name === routeConfig.name) {
+                    found = true;
+                    break;
                 }
             }
+            if (!found) return false;
         }
 
         if (v.config.excludeRouteNames.length) {
