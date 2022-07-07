@@ -7,6 +7,7 @@ import {
     Expression,
     ImportDeclaration,
     resolveModuleName,
+    ResolvedModule,
     ScriptTarget,
     SourceFile,
     StringLiteral,
@@ -32,6 +33,14 @@ export class Resolver {
         return this.resolveSourceFile(from.fileName, (moduleSpecifier as StringLiteral).text);
     }
 
+    resolveImpl(modulePath: string, fromPath: string): ResolvedModule | undefined {
+        if (this.host.resolveModuleNames !== undefined) {
+            return this.host.resolveModuleNames([modulePath], fromPath, /*reusedNames*/ undefined, /*redirectedReference*/ undefined, this.compilerOptions)[0];
+        }
+        const result = resolveModuleName(modulePath, fromPath, this.compilerOptions, this.host);
+        return result.resolvedModule;
+    }
+
     /**
      * Tries to resolve the d.ts file path for a given module path.
      * Scans relative paths. Looks into package.json "types" and "exports" (with new 4.7 support)
@@ -40,13 +49,13 @@ export class Resolver {
      * @param modulePath the x in 'from x'.
      */
     resolveSourceFile(fromPath: string, modulePath: string): SourceFile | undefined {
-        const result = resolveModuleName(modulePath, fromPath, this.compilerOptions, this.host);
-        if (!result.resolvedModule) return;
+        const result = this.resolveImpl(modulePath, fromPath);
+        if (!result) return;
 
-        const fileName = result.resolvedModule.resolvedFileName;
+        const fileName = result.resolvedFileName;
         if (this.sourceFiles[fileName]) return this.sourceFiles[fileName];
 
-        const source = this.host.readFile(result.resolvedModule.resolvedFileName);
+        const source = this.host.readFile(result.resolvedFileName);
         if (!source) return;
         const sourceFile = this.sourceFiles[fileName] = createSourceFile(fileName, source, this.compilerOptions.target || ScriptTarget.ES2018, true);
 
