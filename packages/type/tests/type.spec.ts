@@ -58,6 +58,41 @@ test('type decorator', () => {
     expect(data).toEqual([]);
 });
 
+test('intersection same type', () => {
+    expect(stringifyType(typeOf<string & string>())).toBe('string');
+    expect(stringifyType(typeOf<number & number>())).toBe('number');
+
+    type MyAnnotation = { __meta?: ['myAnnotation'] };
+    type Username = string & MyAnnotation;
+    expect(stringifyType(typeOf<string & Username>())).toBe('string');
+    expect(stringifyType(typeOf<Username & string>())).toBe('Username');
+});
+
+test('intersection same type keep annotation', () => {
+    type MyAnnotation = { __meta?: ['myAnnotation'] };
+    type Username = string & MyAnnotation;
+    {
+        const type = typeOf<string & Username>();
+        const data = metaAnnotation.getForName(type, 'myAnnotation');
+        expect(data).toEqual([]);
+    }
+    {
+        const type = typeOf<string & string & Username>();
+        const data = metaAnnotation.getForName(type, 'myAnnotation');
+        expect(data).toEqual([]);
+    }
+    {
+        const type = typeOf<Username & string>();
+        const data = metaAnnotation.getForName(type, 'myAnnotation');
+        expect(data).toEqual([]);
+    }
+    {
+        const type = typeOf<Username & string & string>();
+        const data = metaAnnotation.getForName(type, 'myAnnotation');
+        expect(data).toEqual([]);
+    }
+});
+
 test('copy index access', () => {
     interface User {
         password: string & MinLength<6> & MaxLength<30>;
@@ -114,7 +149,7 @@ test('reset type decorator', () => {
         expect(groups).toEqual([]);
         expect(excludedAnnotation.isExcluded(password.type, 'json')).toBe(true);
     }
-})
+});
 
 test('type alias preserved', () => {
     type MyString = string;
