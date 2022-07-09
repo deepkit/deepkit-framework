@@ -22,6 +22,13 @@ test('injector basics', () => {
     expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
 });
 
+test('type injection', () => {
+    class Service {}
+    const injector = Injector.from([Service, { provide: 'token', useExisting: Service }]);
+    expect(injector.get<Service>()).toBeInstanceOf(Service);
+    expect(injector.get<Service>('token')).toBeInstanceOf(Service);
+});
+
 test('missing dep', () => {
     class Connection {
     }
