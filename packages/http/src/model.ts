@@ -239,9 +239,10 @@ export class MemoryHttpResponse extends HttpResponse {
     public body: Buffer = Buffer.alloc(0);
     public headers: {[name: string]: number | string | string[] | undefined} = Object.create(null);
 
-    setHeader(name: string, value: number | string | ReadonlyArray<string>) {
+    setHeader(name: string, value: number | string | ReadonlyArray<string>): this {
         this.headers[name] = value as any;
         super.setHeader(name, value);
+        return this;
     }
 
     removeHeader(name: string) {
