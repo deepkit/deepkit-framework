@@ -3,7 +3,7 @@ import { Minimum, MinLength } from '@deepkit/type';
 import { injectorReference } from '@deepkit/injector';
 import { ServiceContainer } from '../src/service-container';
 import { ClassType } from '@deepkit/core';
-import { AppModule, createModule } from '../src/module';
+import { AppModule, createModule, FunctionalModuleFactory } from '../src/module';
 
 class MyModuleConfig {
     param1!: string & MinLength<5>;
@@ -30,7 +30,7 @@ class AppModuleConfig {
     myModule?: Partial<{
         param1: string;
         param2: number;
-    }>
+    }>;
 }
 
 type MyServiceConfig = Pick<AppModuleConfig, 'debug'>;
@@ -340,6 +340,7 @@ test('change config of a imported module dynamically', () => {
     class ApiConfig {
         debug: boolean = false;
     }
+
     class ApiModule extends createModule({
         config: ApiConfig
     }) {
@@ -378,7 +379,6 @@ test('change config of a imported module dynamically', () => {
 });
 
 test('scoped injector', () => {
-
     let created = 0;
 
     class Service {
@@ -409,5 +409,34 @@ test('scoped injector', () => {
         expect(scope.get(Service, module)).toBeInstanceOf(Service);
         expect(created).toBe(2);
     }
+});
 
+test('functional modules factory', () => {
+    const myModule = (title: string) => {
+        return (module: AppModule) => {
+            module.addProvider({ provide: 'title', useValue: title });
+            module.forRoot();
+        };
+    };
+
+    const module = new AppModule({
+        imports: [myModule('Peter')],
+    });
+    const serviceContainer = new ServiceContainer(module);
+
+    expect(serviceContainer.getInjectorContext().get('title')).toBe('Peter');
+});
+
+test('functional modules', () => {
+    const myModule = (module: AppModule) => {
+        module.addProvider({ provide: 'title', useValue: 'Peter' });
+        module.forRoot();
+    };
+
+    const module = new AppModule({
+        imports: [myModule],
+    });
+    const serviceContainer = new ServiceContainer(module);
+
+    expect(serviceContainer.getInjectorContext().get('title')).toBe('Peter');
 });
