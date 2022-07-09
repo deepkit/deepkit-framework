@@ -59,7 +59,7 @@ export class UploadedFile {
     size!: number;
 
     /**
-     * The path this file is being written to.
+     * The local path this file is being written to. Will be deleted when request is handled.
      */
     path!: string;
 
@@ -613,11 +613,10 @@ export class HttpRouter {
     protected buildId: number = 0;
     protected resolveFn?: (name: string, parameters: { [name: string]: any }) => string;
 
-    private parseBody(req: HttpRequest, files: { [name: string]: UploadedFile }) {
+    private parseBody(req: HttpRequest, foundFiles: { [name: string]: UploadedFile }) {
         const form = formidable({
             multiples: true,
             hash: 'sha1',
-            enabledPlugins: ['octetstream', 'querystring', 'json'],
         });
         return asyncOperation((resolve, reject) => {
             if (req.body) {
@@ -627,7 +626,17 @@ export class HttpRouter {
                 if (err) {
                     reject(err);
                 } else {
-                    const body = req.body = { ...fields, ...files };
+                    for (const [name, file] of Object.entries(files) as any) {
+                        if (file.size === 0) continue;
+                        foundFiles[name] = {
+                            size: file.size,
+                            path: file.filepath,
+                            name: file.originalFilename,
+                            type: file.mimetype,
+                            lastModifiedDate: file.lastModifiedDate,
+                        }
+                    }
+                    const body = req.body = { ...fields, ...foundFiles };
                     resolve(body);
                 }
             });
