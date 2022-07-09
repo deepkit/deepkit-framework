@@ -4,7 +4,6 @@
   "scripts": {
     "ng": "ng",
     "start": "NODE_OPTIONS=--preserve-symlinks ng serve",
-    "install": "deepkit-type-install",
     "build": "NODE_OPTIONS=--preserve-symlinks ng build --configuration production",
     "build:dev": "NODE_OPTIONS=--preserve-symlinks ng build",
     "watch": "NODE_OPTIONS=--preserve-symlinks ng build --watch",

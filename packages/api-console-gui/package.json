@@ -7,7 +7,6 @@
     "start": "NODE_OPTIONS=--preserve-symlinks ng serve",
     "build": "NODE_OPTIONS=--preserve-symlinks ng build --prod",
     "build:dev": "NODE_OPTIONS=--preserve-symlinks ng build",
-    "install": "deepkit-type-install",
     "watch": "NODE_OPTIONS=--preserve-symlinks ng build --watch --configuration development"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
