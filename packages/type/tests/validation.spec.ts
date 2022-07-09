@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { Email, MaxLength, MinLength, Positive, Validate, validate, ValidatorError } from '../src/validator';
-import { is } from '../src/typeguard';
+import { Email, MaxLength, MinLength, Positive, Validate, validate, validates, ValidatorError } from '../src/validator';
+import { assert, is } from '../src/typeguard';
 import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Type, Unique } from '../src/reflection/type';
 import { t } from '../src/decorator';
 import { ReflectionClass, typeOf } from '../src/reflection/reflection';
@@ -207,8 +207,18 @@ test('mapped type', () => {
     expect(validate<Request>({ method: 'enc', result: '' })).not.toEqual([]);
 });
 
+test('assert union', () => {
+    expect(validates<'a' | 'b'>('a')).toBe(true);
+    expect(validates<'a' | 'b'>('b')).toBe(true);
+    expect(validates<'a' | 'b'>('c')).toBe(false);
+
+    expect(() => assert<'a' | 'b'>('a')).not.toThrow();
+    expect(() => assert<'a' | 'b'>('b')).not.toThrow();
+    expect(() => assert<'a' | 'b'>('c')).toThrow('Validation error');
+});
+
 test('inline object', () => {
-    //there was a bug where array checks do not correct set validation state to true if array is empty, so all subsequent properties
+    //there was a bug where array checks do not correctly set validation state to true if array is empty, so all subsequent properties
     //are not checked correctly. this test case makes sure this works as expected.
     interface Post {
         tags: string[];
