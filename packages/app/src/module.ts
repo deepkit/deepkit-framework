@@ -121,16 +121,36 @@ export interface CreateModuleDefinition extends ModuleDefinition {
      *     imports = [new AnotherModule];
      * }
      * ```
+     *
+     * or
+     *
+     * ```typescript
+     * class MyModule extends createModule({}) {
+     *     process() {
+     *         this.addModuleImport(new AnotherModule);
+     *     }
+     * }
+     * ```
+     *
+     * or switch to functional modules
+     *
+     * ```typescript
+     * function myModule(module: AppModule) {
+     *     module.addModuleImport(new AnotherModule);
+     * }
+     * ```
      */
     imports?: undefined;
 }
 
+export type FunctionalModule = (module: AppModule<any>) => void;
+export type FunctionalModuleFactory = (...args: any[]) => (module: AppModule<any>) => void;
 
 export interface RootModuleDefinition extends ModuleDefinition {
     /**
      * Import another module.
      */
-    imports?: AppModule<any>[];
+    imports?: (AppModule<any> | FunctionalModule)[];
 }
 
 export class ConfigurationInvalidError extends CustomError {
@@ -192,7 +212,7 @@ export function createModule<T extends CreateModuleDefinition>(options: T, name:
 
 export type ListenerType = EventListener<any> | ClassType;
 
-export class AppModule<T extends RootModuleDefinition, C extends ExtractClassType<T['config']> = any> extends InjectorModule<C, AppModule<any>> {
+export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractClassType<T['config']> = any> extends InjectorModule<C, AppModule<any>> {
     public setupConfigs: ((module: AppModule<any>, config: any) => void)[] = [];
 
     public imports: AppModule<any>[] = [];
@@ -208,7 +228,7 @@ export class AppModule<T extends RootModuleDefinition, C extends ExtractClassTyp
         public id: number = moduleId++,
     ) {
         super();
-        if (this.options.imports) for (const m of this.options.imports) this.addImport(m);
+        if (this.options.imports) for (const m of this.options.imports) this.addModuleImport(m);
         if (this.options.providers) this.providers.push(...this.options.providers);
         if (this.options.exports) this.exports.push(...this.options.exports);
         if (this.options.controllers) this.controllers.push(...this.options.controllers);
@@ -227,6 +247,16 @@ export class AppModule<T extends RootModuleDefinition, C extends ExtractClassTyp
             // for (const property of this.options.config.schema.getProperties()) {
             //     (this.config as any)[property.name] = defaults[property.name];
             // }
+        }
+    }
+
+    protected addModuleImport(m: AppModule<any> | FunctionalModule) {
+        if (m instanceof AppModule) {
+            this.addImport(m);
+        } else {
+            const module = new AppModule({});
+            m(module);
+            this.addImport(module);
         }
     }
 
