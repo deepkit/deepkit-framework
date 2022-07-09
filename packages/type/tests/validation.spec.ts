@@ -19,6 +19,7 @@ test('email', () => {
     expect(is<Email>('nope')).toBe(false);
     expect(is<Email>('nope@')).toBe(false);
     expect(is<Email>('@')).toBe(false);
+    expect(is<string & Email>('@')).toBe(false);
 
     expect(validate<Email>('peter@example.com')).toEqual([]);
     expect(validate<Email>('nope')).toEqual([{ path: '', code: 'pattern', message: `Pattern ^\\S+@\\S+$ does not match` }]);
