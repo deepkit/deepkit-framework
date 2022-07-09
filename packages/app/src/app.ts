@@ -10,7 +10,7 @@
 
 import { ClassType, ExtractClassType, getCurrentFileName, isFunction, isObject, setPathValue } from '@deepkit/core';
 import { ConfigLoader, ServiceContainer } from './service-container';
-import { InjectorContext, ResolveToken } from '@deepkit/injector';
+import { InjectorContext, ResolveToken, Token } from '@deepkit/injector';
 import { AppModule, RootModuleDefinition } from './module';
 import { Command, Config, Options } from '@oclif/config';
 import { basename, dirname, relative } from 'path';
@@ -18,8 +18,8 @@ import { Main } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { buildOclifCommand } from './command';
 import { EnvConfiguration } from './configuration';
-import { ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { EventDispatcher, EventListener, EventListenerCallback, EventOfEventToken, EventToken } from '@deepkit/event';
+import { ReceiveType, ReflectionClass, ReflectionKind } from '@deepkit/type';
 
 export function setPartialConfig(target: { [name: string]: any }, partial: { [name: string]: any }, incomingPath: string = '') {
     for (const i in partial) {
@@ -265,7 +265,7 @@ export class App<T extends RootModuleDefinition> {
         if (exitCode > 0) process.exit(exitCode);
     }
 
-    get<T>(token: T, moduleOrClass?: AppModule<any> | ClassType<AppModule<any>>): ResolveToken<T> {
+    get<T>(token?: ReceiveType<T> | Token<T>, moduleOrClass?: AppModule<any> | ClassType<AppModule<any>>): ResolveToken<T> {
         return this.serviceContainer.getInjector(moduleOrClass || this.appModule).get(token) as ResolveToken<T>;
     }
 
