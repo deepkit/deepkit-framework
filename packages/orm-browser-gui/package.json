@@ -37,6 +37,7 @@
     "@deepkit/desktop-ui": "^1.0.1-alpha.65",
     "@deepkit/injector": "^1.0.1-alpha.71",
     "@deepkit/logger": "^1.0.1-alpha.65",
+    "@deepkit/event": "^1.0.1-alpha.71",
     "@deepkit/orm": "^1.0.1-alpha.71",
     "@deepkit/orm-browser-api": "^1.0.1-alpha.71",
     "@deepkit/rpc": "^1.0.1-alpha.71",
