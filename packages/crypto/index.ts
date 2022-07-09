@@ -8,13 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-function createBuffer(size: number): Uint8Array {
-    try {
-        return Buffer.alloc(size);
-    } catch {}
-
-    return new Uint8Array(size);
-}
+let createBuffer = typeof Buffer === 'undefined'
+    ? (size: number) => new Uint8Array(size)
+    : (size: number) => Buffer.alloc(size);
 
 function insecureRandomBytes(size: number): Uint8Array {
     const result = createBuffer(size);
