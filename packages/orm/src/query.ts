@@ -250,8 +250,7 @@ export class BaseQuery<T extends OrmEntity> {
     select<K extends (keyof Resolve<this>)[]>(...select: K): Replace<this, Pick<Resolve<this>, K[number]>> {
         const c = this.clone();
         for (const field of select) {
-            const fieldStr = String(field);
-            if (!this.classSchema.hasProperty(fieldStr)) throw new Error(`Field ${fieldStr} unknown`);
+            if (!this.classSchema.hasProperty(field)) throw new Error(`Field ${String(field)} unknown`);
         }
         c.model.select = new Set([...select as string[]]);
         return c as any;
@@ -413,8 +412,7 @@ export class BaseQuery<T extends OrmEntity> {
     join<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<T[K]>>(field: K, type: 'left' | 'inner' = 'left', populate: boolean = false): this {
         const propertySchema = this.classSchema.getProperty(field as string);
         if (!propertySchema.isReference() && !propertySchema.isBackReference()) {
-            const fieldStr = String(field);
-            throw new Error(`Field ${fieldStr} is not marked as reference. Use @t.reference()`);
+            throw new Error(`Field ${String(field)} is not marked as reference. Use @t.reference()`);
         }
         const c = this.clone();
 
@@ -460,8 +458,7 @@ export class BaseQuery<T extends OrmEntity> {
         for (const join of this.model.joins) {
             if (join.propertySchema.name === field) return join.query;
         }
-        const fieldStr = String(field);
-        throw new Error(`No join fo reference ${fieldStr} added.`);
+        throw new Error(`No join fo reference ${String(field)} added.`);
     }
 
     /**
