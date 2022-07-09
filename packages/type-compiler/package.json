@@ -21,7 +21,7 @@
   },
   "scripts": {
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json",
-    "install": "node ./dist/cjs/install-transformer.js || exit 0"
+    "install": "rm -rf node_modules/typescript && node ./dist/cjs/install-transformer.js || exit 0"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",

@@ -4,6 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "NODE_OPTIONS=--preserve-symlinks ng serve",
+    "install": "deepkit-type-install",
     "build": "NODE_OPTIONS=--preserve-symlinks ng build --configuration production",
     "build:dev": "NODE_OPTIONS=--preserve-symlinks ng build",
     "watch": "NODE_OPTIONS=--preserve-symlinks ng build --watch",
@@ -41,6 +42,7 @@
     "@deepkit/framework-debug-api": "^1.0.1-alpha.71",
     "@deepkit/injector": "^1.0.1-alpha.71",
     "@deepkit/logger": "^1.0.1-alpha.65",
+    "@deepkit/event": "^1.0.1-alpha.71",
     "@deepkit/orm": "^1.0.1-alpha.71",
     "@deepkit/orm-browser-api": "^1.0.1-alpha.71",
     "@deepkit/orm-browser-gui": "^1.0.1-alpha.71",
