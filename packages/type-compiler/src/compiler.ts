@@ -703,7 +703,7 @@ export class ReflectionTransformer implements CustomTransformer {
                             ),
                             node.typeArguments,
                             node.arguments
-                        )
+                        );
 
                     } else if (isParenthesizedExpression(node.expression.expression)) {
                         //e.g. (http.deep()).response();
@@ -2257,7 +2257,7 @@ export class ReflectionTransformer implements CustomTransformer {
     /**
      * const fn = function() {}
      *
-     * => const fn = Object.assign(function() {}, {__type: 34})
+     * => const fn = __assignType(function() {}, [34])
      */
     protected decorateFunctionExpression(expression: FunctionExpression) {
         const encodedType = this.getTypeOfType(expression);
@@ -2272,11 +2272,21 @@ export class ReflectionTransformer implements CustomTransformer {
      * => function name() {}; name.__type = 34;
      */
     protected decorateFunctionDeclaration(declaration: FunctionDeclaration) {
+
         const encodedType = this.getTypeOfType(declaration);
         if (!encodedType) return declaration;
 
-        const statements: Statement[] = [declaration];
+        if (!declaration.name) {
+            //its likely `export default function() {}`
+            if (!declaration.body) return;
 
+            return this.f.createExportAssignment(undefined, undefined, undefined, this.wrapWithAssignType(
+                this.f.createFunctionExpression(undefined, declaration.asteriskToken, declaration.name, declaration.typeParameters, declaration.parameters, declaration.type, declaration.body),
+                encodedType
+            ));
+        }
+
+        const statements: Statement[] = [declaration];
         statements.push(this.f.createExpressionStatement(
             this.f.createAssignment(this.f.createPropertyAccessExpression(this.nodeConverter.clone(declaration.name), '__type'), encodedType)
         ));
