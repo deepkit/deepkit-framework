@@ -105,7 +105,7 @@ test('copy index access', () => {
     const type = typeOf<UserCreationPayload>();
 
     assertType(type, ReflectionKind.objectLiteral);
-    const password = findMember('password', type);
+    const password = findMember('password', type.types);
     assertType(password, ReflectionKind.propertySignature);
     assertType(password.type, ReflectionKind.string);
     const validations = validationAnnotation.getAnnotations(password.type);
@@ -127,7 +127,7 @@ test('reset type decorator', () => {
     {
         const type = typeOf<UserCreationPayload>();
         assertType(type, ReflectionKind.objectLiteral);
-        const password = findMember('password', type);
+        const password = findMember('password', type.types);
         assertType(password, ReflectionKind.propertySignature);
         assertType(password.type, ReflectionKind.string);
         const validations = validationAnnotation.getAnnotations(password.type);
@@ -140,7 +140,7 @@ test('reset type decorator', () => {
     {
         const type = typeOf<User>();
         assertType(type, ReflectionKind.objectLiteral);
-        const password = findMember('password', type);
+        const password = findMember('password', type.types);
         assertType(password, ReflectionKind.propertySignature);
         assertType(password.type, ReflectionKind.string);
         const validations = validationAnnotation.getAnnotations(password.type);
@@ -866,7 +866,7 @@ test('extends complex type', () => {
         }
     }
 
-    const member = findMember('type', reflect(Validation) as TypeClass) as TypeProperty;
+    const member = findMember('type', (reflect(Validation) as TypeClass).types) as TypeProperty;
     expect(isSameType(type, member.type)).toBe(true);
     expect(isExtendable(type, member.type)).toBe(true);
 });
@@ -1140,44 +1140,44 @@ class Setting {
     value!: any;
 }
 
-const types = [
-    typeOf<string>(),
-    typeOf<number>(),
-    typeOf<bigint>(),
-    typeOf<symbol>(),
-    typeOf<undefined>(),
-    typeOf<null>(),
-    typeOf<any>(),
-    typeOf<never>(),
-    typeOf<Date>(),
-    typeOf<'a'>(),
-    typeOf<23>(),
-    typeOf<4n>(),
-    typeOf<true>(),
-    typeOf<string[]>(),
-    typeOf<number[]>(),
-    typeOf<[string]>(),
-    typeOf<[number]>(),
-    typeOf<User[]>(),
-    typeOf<[User]>(),
-    typeOf<User>(),
-    typeOf<Setting>(),
-    typeOf<{ a: string }>(),
-    typeOf<{ a: string, b: number }>(),
-    typeOf<{ b: number }>(),
-    typeOf<{ [index: string]: string }>(),
-    typeOf<{ [index: string]: number }>(),
-    typeOf<{ [index: string]: number | string }>(),
-    typeOf<{ [index: number]: number | string }>(),
-    typeOf<() => void>(),
-    typeOf<(a: string) => void>(),
-    typeOf<(b: number) => void>(),
-    typeOf<(b: string, a: number) => void>(),
-    typeOf<string | number>(),
-    typeOf<string | 'a'>(),
-];
-
 describe('types equality', () => {
+    const types = [
+        typeOf<string>(),
+        typeOf<number>(),
+        typeOf<bigint>(),
+        typeOf<symbol>(),
+        typeOf<undefined>(),
+        typeOf<null>(),
+        typeOf<any>(),
+        typeOf<never>(),
+        typeOf<Date>(),
+        typeOf<'a'>(),
+        typeOf<23>(),
+        typeOf<4n>(),
+        typeOf<true>(),
+        typeOf<string[]>(),
+        typeOf<number[]>(),
+        typeOf<[string]>(),
+        typeOf<[number]>(),
+        typeOf<User[]>(),
+        typeOf<[User]>(),
+        typeOf<User>(),
+        typeOf<Setting>(),
+        typeOf<{ a: string }>(),
+        typeOf<{ a: string, b: number }>(),
+        typeOf<{ b: number }>(),
+        typeOf<{ [index: string]: string }>(),
+        typeOf<{ [index: string]: number }>(),
+        typeOf<{ [index: string]: number | string }>(),
+        typeOf<{ [index: number]: number | string }>(),
+        typeOf<() => void>(),
+        typeOf<(a: string) => void>(),
+        typeOf<(b: number) => void>(),
+        typeOf<(b: string, a: number) => void>(),
+        typeOf<string | number>(),
+        typeOf<string | 'a'>(),
+    ];
+
     for (const a of types) {
         for (const b of types) {
             if (a === b) {

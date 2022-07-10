@@ -1084,6 +1084,24 @@ export class ReflectionTransformer implements CustomTransformer {
                         }
                     }
 
+                    if (narrowed.heritageClauses) {
+                        for (const heritage of narrowed.heritageClauses) {
+                            if (heritage.token === SyntaxKind.ExtendsKeyword) {
+                                for (const extendType of heritage.types) {
+                                    program.pushFrame();
+                                    if (extendType.typeArguments) {
+                                        for (const typeArgument of extendType.typeArguments) {
+                                            this.extractPackStructOfType(typeArgument, program);
+                                        }
+                                    }
+                                    const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, extendType.expression));
+                                    program.pushOp(ReflectionOp.classReference, index);
+                                    program.popFrameImplicit();
+                                }
+                            }
+                        }
+                    }
+
                     for (const member of narrowed.members) {
                         const name = getNameAsString(member.name);
                         if (name) {
@@ -1930,17 +1948,14 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 if (resolved.importDeclaration && isIdentifier(typeName)) ensureImportIsEmitted(resolved.importDeclaration, typeName);
                 program.pushFrame();
-
                 if (type.typeArguments) {
                     for (const typeArgument of type.typeArguments) {
                         this.extractPackStructOfType(typeArgument, program);
                     }
                 }
-
                 const body = isIdentifier(typeName) ? typeName : this.createAccessorForEntityName(typeName);
                 const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, body));
                 program.pushOp(ReflectionOp.classReference, index);
-
                 program.popFrameImplicit();
             } else if (isTypeParameterDeclaration(declaration)) {
                 this.resolveTypeParameter(declaration, type, program);

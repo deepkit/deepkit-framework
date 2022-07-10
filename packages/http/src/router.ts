@@ -207,7 +207,7 @@ class ParsedRouteParameter {
     getType(): Type {
         if (this.bodyValidation) {
             assertType(this.parameter.type, ReflectionKind.class);
-            const valueType = findMember('value', this.parameter.type);
+            const valueType = findMember('value', this.parameter.type.types);
             if (!valueType || valueType.kind !== ReflectionKind.property) throw new Error(`No property value found at ${stringifyType(this.parameter.type)}`);
             return valueType.type as Type;
         }

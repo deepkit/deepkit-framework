@@ -37,8 +37,8 @@ test('mixin base', () => {
 
     const type = reflect(User);
     assertType(type, ReflectionKind.class);
-    expect(type.types.length).toBe(3); //id, username, constructor
-    expect(resolveTypeMembers(type).length).toBe(7); //id, username, constructor, + 4
+    expect(type.types.length).toBe(7); //id, username, constructor , +2 SoftDeleted, +2 Timestampable
+    expect(resolveTypeMembers(type).length).toBe(7);
 
     {
         const user = ReflectionClass.from(User);

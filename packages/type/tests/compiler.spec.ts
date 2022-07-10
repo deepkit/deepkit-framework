@@ -1336,6 +1336,12 @@ test('class with constructor', () => {
                 ]
             },
             {
+                kind: ReflectionKind.property,
+                name: 'username',
+                visibility: ReflectionVisibility.public,
+                type: { kind: ReflectionKind.string }
+            },
+            {
                 kind: ReflectionKind.method,
                 name: 'say',
                 visibility: ReflectionVisibility.public,
@@ -1347,12 +1353,6 @@ test('class with constructor', () => {
                         type: { kind: ReflectionKind.string }
                     }
                 ]
-            },
-            {
-                kind: ReflectionKind.property,
-                name: 'username',
-                visibility: ReflectionVisibility.public,
-                type: { kind: ReflectionKind.string }
             },
         ]
     } as TypeClass as Record<any, any>);
