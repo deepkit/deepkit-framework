@@ -621,7 +621,7 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
             const args = type.arguments ? type.arguments.map(v => deserialize(v, state, result)) : undefined;
             const extendsArguments = type.extendsArguments ? type.extendsArguments.map(v => deserialize(v, state, result)) : undefined;
             const types = type.types.map(v => deserialize(v, state, result));
-            const constructor = findMember('constructor', { types });
+            const constructor = findMember('constructor', types);
             const initialize: { name: string, index: number }[] = [];
             if (constructor && constructor.kind === ReflectionKind.method) {
                 for (let i = 0; i < constructor.parameters.length; i++) {

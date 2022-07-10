@@ -63,7 +63,7 @@ export type ActionTypes = {
 };
 
 function getV(container: TypeObjectLiteral): Type {
-    const found = findMember('v', container);
+    const found = findMember('v', container.types);
     if (!found) throw new Error('v not found');
     assertType(found, ReflectionKind.propertySignature);
     return found.type;

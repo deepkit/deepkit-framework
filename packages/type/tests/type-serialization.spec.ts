@@ -317,13 +317,13 @@ test('Type excluded', () => {
         }
     }
 
-    const member = findMember('type', reflect(Validation) as TypeClass) as TypeProperty;
+    const member = findMember('type', (reflect(Validation) as TypeClass).types) as TypeProperty;
     expect(isSameType(type, member.type)).toBe(true);
 
     const json = serializeType(typeOf<Validation>());
     const back = deserializeType(json);
     assertType(back, ReflectionKind.class);
-    const typeMember = findMember('type', back);
+    const typeMember = findMember('type', back.types);
     assertType(typeMember, ReflectionKind.property);
     expect(typeMember.type.kind).toBe(ReflectionKind.any);
 });
@@ -407,7 +407,7 @@ test('class reference with entity options', () => {
     const json = serializeType(typeOf<Book>());
     const back = deserializeType(json, {disableReuse: true});
     assertType(back, ReflectionKind.class);
-    const author = findMember('author', back);
+    const author = findMember('author', back.types);
     assertType(author, ReflectionKind.property);
     const authorReflection = ReflectionClass.from(author.type);
     expect(authorReflection.getName()).toBe('author');

@@ -51,7 +51,7 @@ import {
 } from './type.js';
 import { MappedModifier, ReflectionOp } from '@deepkit/type-spec';
 import { isExtendable } from './extends.js';
-import { ClassType, getClassName, isArray, isClass, isFunction, stringifyValueWithType } from '@deepkit/core';
+import { ClassType, isArray, isClass, isFunction, stringifyValueWithType } from '@deepkit/core';
 import { isWithDeferredDecorators } from '../decorator.js';
 import { ReflectionClass, TData } from './reflection.js';
 
@@ -501,29 +501,78 @@ export class Processor {
                             break;
                         case ReflectionOp.class: {
                             const types = this.popFrame() as Type[];
-                            for (const member of types) {
-                                if (member.kind === ReflectionKind.method && member.name === 'constructor') {
-                                    for (const parameter of member.parameters) {
-                                        if (parameter.visibility !== undefined) {
-                                            const property = {
-                                                kind: ReflectionKind.property,
-                                                name: parameter.name,
-                                                visibility: parameter.visibility,
-                                                default: parameter.default,
-                                                type: parameter.type,
-                                            } as TypeProperty;
-                                            if (parameter.optional) property.optional = true;
-                                            if (parameter.readonly) property.readonly = true;
-                                            parameter.type.parent = property;
-                                            types.push(property);
-                                        }
+                            let t = { kind: ReflectionKind.class, classType: Object, types: [] } as TypeClass;
+
+                            function add(member: Type) {
+                                if (member.kind === ReflectionKind.propertySignature) {
+                                    member = {
+                                        ...member,
+                                        parent: t,
+                                        visibility: ReflectionVisibility.public,
+                                        kind: ReflectionKind.property
+                                    } as TypeProperty;
+                                } else if (member.kind === ReflectionKind.methodSignature) {
+                                    member = {
+                                        ...member,
+                                        parent: t,
+                                        visibility: ReflectionVisibility.public,
+                                        kind: ReflectionKind.method
+                                    } as TypeMethod;
+                                }
+
+                                switch (member.kind) {
+                                    case ReflectionKind.indexSignature: {
+                                        //todo, replace the old one?
+                                        t.types.push(member);
+                                        break;
                                     }
-                                    break;
+                                    case ReflectionKind.property:
+                                    case ReflectionKind.method: {
+                                        const existing = t.types.findIndex(v => (v.kind === ReflectionKind.property || v.kind === ReflectionKind.method) && v.name === (member as TypeProperty | TypeMethod).name);
+                                        if (existing !== -1) {
+                                            //remove entry, since we replace it
+                                            t.types.splice(existing, 1);
+                                        }
+                                        t.types.push(member);
+
+                                        if (member.kind === ReflectionKind.method && member.name === 'constructor') {
+                                            for (const parameter of member.parameters) {
+                                                if (parameter.visibility !== undefined) {
+                                                    const property = {
+                                                        kind: ReflectionKind.property,
+                                                        name: parameter.name,
+                                                        visibility: parameter.visibility,
+                                                        default: parameter.default,
+                                                        type: parameter.type,
+                                                    } as TypeProperty;
+                                                    if (parameter.optional) property.optional = true;
+                                                    if (parameter.readonly) property.readonly = true;
+                                                    parameter.type.parent = property;
+                                                    add(property);
+                                                }
+                                            }
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+
+                            for (const member of types) {
+                                switch (member.kind) {
+                                    case ReflectionKind.objectLiteral:
+                                    case ReflectionKind.class: {
+                                        for (const sub of member.types) add(sub);
+                                        break;
+                                    }
+                                    case ReflectionKind.indexSignature:
+                                    case ReflectionKind.property:
+                                    case ReflectionKind.method: {
+                                        add(member);
+                                    }
                                 }
                                 // if (member.kind === ReflectionKind.property) member.type = widenLiteral(member.type);
                             }
                             const args = program.frame.inputs.filter(isType);
-                            let t = { kind: ReflectionKind.class, classType: Object, types } as TypeClass;
 
                             //only for the very last op do we replace this.resultType. Otherwise, objectLiteral in between would overwrite it.
                             if (this.isEnded()) t = Object.assign(program.resultType, t);
@@ -1266,13 +1315,12 @@ export class Processor {
     }
 
     private handleIndexAccess() {
-        let right = this.pop() as Type;
+        const right = this.pop() as Type;
         const left = this.pop() as Type;
 
         if (!isType(left)) {
             this.push({ kind: ReflectionKind.never });
         } else {
-
             const t: Type = indexAccess(left, right);
             if (isWithAnnotations(t)) {
                 t.indexAccessOrigin = { container: left as TypeObjectLiteral, index: right as Type };
@@ -1686,9 +1734,9 @@ export function getEnumType(values: any[]): Type {
 }
 
 function resolveFunction<T extends Function>(fn: T, forObject: any): any {
-    try {
+    // try {
         return fn();
-    } catch (error) {
-        throw new Error(`Could not resolve function of object ${getClassName(forObject)} via ${fn.toString()}: ${error}`);
-    }
+    // } catch (error) {
+    //     throw new Error(`Could not resolve function of object ${getClassName(forObject)} via ${fn.toString()}: ${error}`);
+    // }
 }

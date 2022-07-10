@@ -34,6 +34,9 @@ export function mixin<T extends AbstractClassType[]>(...classTypes: T): ClassTyp
     if (!base) throw new Error('No classes given');
 
     const constructors: Function[] = [];
+    /**
+     * @reflection never
+     */
     const newClassType: any = class extends base {
         constructor(...args: any[]) {
             super();
@@ -63,5 +66,8 @@ export function mixin<T extends AbstractClassType[]>(...classTypes: T): ClassTyp
             }
         });
     }
+    //make sure the processor picks up the newly computed type object instead of computing it itself
+    newClassType.__type = [];
+    newClassType.__type.__type = schema.type;
     return newClassType as any;
 }

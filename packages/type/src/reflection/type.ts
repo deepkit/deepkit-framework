@@ -8,11 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AbstractClassType, ClassType, getClassName, getParentClass, indent, isArray } from '@deepkit/core';
+import { AbstractClassType, ClassType, getClassName, getParentClass, indent, isArray, isClass } from '@deepkit/core';
 import { TypeNumberBrand } from '@deepkit/type-spec';
 import { getProperty, ReceiveType, reflect, ReflectionClass, resolveReceiveType, toSignature } from './reflection.js';
 import { isExtendable } from './extends.js';
-import { isClass } from '@deepkit/core';
 
 export enum ReflectionVisibility {
     public,
@@ -502,11 +501,11 @@ export function isPropertyType(type: Type): type is TypePropertySignature | Type
 export function getConstructorProperties(type: TypeClass | TypeObjectLiteral): { parameters: (TypeProperty | Type)[], properties: TypeProperty[] } {
     const result: { parameters: (TypeProperty | Type)[], properties: TypeProperty[] } = { parameters: [], properties: [] };
     if (type.kind === ReflectionKind.objectLiteral) return result;
-    const constructor = findMember('constructor', type) as TypeMethod | undefined;
+    const constructor = findMember('constructor', resolveTypeMembers(type)) as TypeMethod | undefined;
     if (!constructor) return result;
 
     for (const parameter of constructor.parameters) {
-        const property = findMember(parameter.name, type);
+        const property = findMember(parameter.name, resolveTypeMembers(type));
         if (property && property.kind === ReflectionKind.property) {
             result.properties.push(property);
             result.parameters.push(property);
@@ -632,7 +631,7 @@ export function isSameType(a: Type, b: Type, stack: StackEntry[] = []): boolean 
                     });
                     if (!valid) return false;
                 } else if (aMember.kind === ReflectionKind.propertySignature || aMember.kind === ReflectionKind.methodSignature) {
-                    const bMember = findMember(aMember.name, b);
+                    const bMember = findMember(aMember.name, b.types);
                     if (!bMember) return false;
                     if (aMember === bMember) continue;
 
@@ -825,11 +824,11 @@ export function unboxUnion(union: TypeUnion): Type {
 }
 
 export function findMember(
-    index: string | number | symbol | TypeTemplateLiteral, type: { types: Type[] }
+    index: string | number | symbol | TypeTemplateLiteral, types: Type[]
 ): TypePropertySignature | TypeMethodSignature | TypeMethod | TypeProperty | TypeIndexSignature | undefined {
     const indexType = typeof index;
 
-    for (const member of type.types) {
+    for (const member of types) {
         if (member.kind === ReflectionKind.propertySignature && member.name === index) return member;
         if (member.kind === ReflectionKind.methodSignature && member.name === index) return member;
         if (member.kind === ReflectionKind.property && member.name === index) return member;
@@ -848,7 +847,7 @@ export function findMember(
 
 function resolveObjectIndexType(type: TypeObjectLiteral | TypeClass, index: Type): Type {
     if (index.kind === ReflectionKind.literal && ('string' === typeof index.literal || 'number' === typeof index.literal || 'symbol' === typeof index.literal)) {
-        const member = findMember(index.literal, type);
+        const member = findMember(index.literal, resolveTypeMembers(type));
         if (member) {
             if (member.kind === ReflectionKind.indexSignature) {
                 //todo: check if index type matches literal type
@@ -865,7 +864,7 @@ function resolveObjectIndexType(type: TypeObjectLiteral | TypeClass, index: Type
         }
     } else if (index.kind === ReflectionKind.string || index.kind === ReflectionKind.number || index.kind === ReflectionKind.symbol) {
         //check if index signature match
-        for (const member of type.types) {
+        for (const member of resolveTypeMembers(type)) {
             if (member.kind === ReflectionKind.indexSignature) {
                 if (isExtendable(index, member.index)) return member.type;
             }
@@ -1837,7 +1836,7 @@ export const typeDecorators: TypeDecorator[] = [
                 if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
 
                 const options = typeToObject(optionsType.type);
-                const member = findMember('via', optionsType.type);
+                const member = findMember('via', resolveTypeMembers(optionsType.type));
                 backReferenceAnnotation.register(annotations, {
                     mappedBy: options.mappedBy,
                     via: member && member.kind === ReflectionKind.propertySignature && (member.type.kind === ReflectionKind.objectLiteral || member.type.kind === ReflectionKind.class) ? member.type : undefined,
@@ -1949,56 +1948,10 @@ export const binaryTypes: ClassType[] = [
 
 
 /**
- * TypeClass has in its `types` only the properties/methods of the class itself and not its super classes,
- * while TypeObjectLiteral has all resolved properties in its types already.
- *
- * It's thus necessary to resolve super class properties as well. This function does this and caches the result.
+ * Returns the members of a class or object literal.
  */
 export function resolveTypeMembers(type: TypeClass | TypeObjectLiteral): (TypeProperty | TypePropertySignature | TypeMethodSignature | TypeMethod | TypeIndexSignature)[] {
-    if (type.kind === ReflectionKind.objectLiteral) return type.types;
-    const jit = getTypeJitContainer(type);
-    if (jit.collapsedInheritance) return jit.collapsedInheritance;
-
-    const types = type.types.slice();
-
-    let current = getParentClass(type.classType);
-    while (current) {
-        try {
-            const parentType = reflect(current);
-            if (parentType.kind === ReflectionKind.objectLiteral || parentType.kind === ReflectionKind.class) {
-                for (const property of parentType.types) {
-                    if (property.kind === ReflectionKind.indexSignature) {
-                        types.unshift(property);
-                    } else {
-                        if (!findMember(property.name, { types })) {
-                            if (property.kind === ReflectionKind.property || property.kind === ReflectionKind.method) {
-                                types.unshift(property);
-                            } else if (property.kind === ReflectionKind.propertySignature) {
-                                types.unshift({
-                                    ...property,
-                                    parent: type,
-                                    visibility: ReflectionVisibility.public,
-                                    kind: ReflectionKind.property
-                                } as TypeProperty);
-                            } else if (property.kind === ReflectionKind.methodSignature) {
-                                types.unshift({
-                                    ...property,
-                                    parent: type,
-                                    visibility: ReflectionVisibility.public,
-                                    kind: ReflectionKind.method
-                                } as TypeMethod);
-                            }
-                        }
-                    }
-                }
-            }
-        } catch {
-        }
-
-        current = getParentClass(current);
-    }
-
-    return jit.collapsedInheritance = types;
+    return type.types;
 }
 
 export function stringifyResolvedType(type: Type): string {
