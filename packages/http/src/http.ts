@@ -437,7 +437,6 @@ export class HttpResultFormatter {
 
     handleGenericResponse(result: Response, context: HttpResultFormatterContext): void {
         context.response.writeHead(result._statusCode || 200, result._headers);
-        console.log('generic response', result.content);
         context.response.end(result.content);
     }
 
@@ -769,9 +768,5 @@ export class HttpListener {
         if (event.response.headersSent) return;
 
         this.resultFormatter.handle(event.result, event);
-        await new Promise((resolve, reject) => {
-            event.response.once('finish', resolve);
-            event.response.once('error', reject);
-        });
     }
 }
