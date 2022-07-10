@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/rpc-tcp",
-  "version": "1.0.1-alpha.71",
+  "version": "1.0.1-alpha.72",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -25,12 +25,12 @@
     "@deepkit/rpc": "^1.0.1-alpha.13"
   },
   "dependencies": {
-    "turbo-net": "deepkit/turbo-net#1.6.0",
     "@types/ws": "^8.5.3",
+    "turbo-net": "deepkit/turbo-net#1.6.0",
     "ws": "^8.6.0"
   },
   "devDependencies": {
-    "@deepkit/rpc": "^1.0.1-alpha.71"
+    "@deepkit/rpc": "^1.0.1-alpha.72"
   },
   "jest": {
     "transform": {

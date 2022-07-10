@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/type",
-  "version": "1.0.1-alpha.71",
+  "version": "1.0.1-alpha.72",
   "description": "@deepkit/type, the fastest universal TypeScript serializer and validator with JIT engine for frontend, backend, http-transport, RPC, and database, with built-in validations, for Browser/NodeJS.",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -26,17 +26,17 @@
     "@deepkit/core": "^1.0.1-alpha.13"
   },
   "dependencies": {
-    "@deepkit/type-spec": "^1.0.1-alpha.71",
+    "@deepkit/type-spec": "^1.0.1-alpha.72",
     "@types/uuid": "^8.3.0",
     "buffer": "^5.2.1",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.65",
+    "@deepkit/core": "^1.0.1-alpha.72",
+    "@deepkit/type-compiler": "^1.0.1-alpha.72",
     "@types/lz-string": "^1.3.34",
-    "@deepkit/type-compiler": "^1.0.1-alpha.71",
-    "@typescript/vfs": "^1.3.5",
     "@types/node": "14.14.28",
+    "@typescript/vfs": "^1.3.5",
     "lz-string": "^1.4.4"
   },
   "jest": {
