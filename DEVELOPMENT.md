@@ -11,9 +11,12 @@ Make sure `libpq5` and `libpq-dev` are installed, and `python` refers Python2.
 git clone https://github.com/deepkit/deepkit-framework.git
 cd deepkit-framework
 npm install
+npm run bootstrap # this is expected to fail
+npx tsc --build packages/type-compiler/tsconfig.json
 npm run bootstrap
 npm run link
 npm run install-compiler
+npm run build
 ```
 
 ## Making changes
