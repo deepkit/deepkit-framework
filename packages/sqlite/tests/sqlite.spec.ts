@@ -4,7 +4,7 @@ import { databaseFactory } from './factory';
 import { User, UserCredentials } from '@deepkit/orm-integration';
 import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter';
 import { sleep } from '@deepkit/core';
-import { AutoIncrement, cast, Entity, entity, PrimaryKey, Reference, ReflectionClass, serialize, typeOf } from '@deepkit/type';
+import { AutoIncrement, cast, Entity, entity, PrimaryKey, Reference, ReflectionClass, serialize, typeOf, UUID, uuid } from '@deepkit/type';
 import { Database, DatabaseEntityRegistry } from '@deepkit/orm';
 
 test('reflection circular reference', () => {
@@ -284,3 +284,18 @@ test('optional', async () => {
     expect('value' in entity2).toBe(false);
     expect('value' in serialize<MyEntity>(entity1)).toBe(false);
 });
+
+test('uuid', async () => {
+    @entity.name("my-entity")
+    class MyEntity {
+        id: UUID & PrimaryKey = uuid();
+    }
+
+    const database = new Database(new SQLiteDatabaseAdapter(), [MyEntity]);
+    await database.migrate();
+    const ent = new MyEntity();
+    await database.persist(ent);
+    expect(await database.query(MyEntity).count()).toBe(1);
+    await database.remove(ent);
+    expect(await database.query(MyEntity).count()).toBe(0);
+})

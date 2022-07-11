@@ -175,6 +175,16 @@ export const bookstoreTests = {
     async uuid(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
 
+        {
+            expect(await database.query(Image).count()).toBe(0);
+            const image = new Image('/foo.jpg');
+            await database.persist(image);
+            expect(await database.query(Image).count()).toBe(1);
+            expect(await database.query(Image).filter({ id: image.id }).count()).toBe(1);
+            await database.remove(image);
+            expect(await database.query(Image).count()).toBe(0);
+        }
+
         const image = new Image('/foo.jpg');
         await database.persist(image);
 

@@ -790,14 +790,18 @@ export class SQLPersistence extends DatabasePersistence {
     }
 
     async remove<T extends OrmEntity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
+        const scopeSerializer = getSerializeFunction(classSchema.type, this.platform.serializer.serializeRegistry);
         const pks: any[] = [];
-        const pk = classSchema.getPrimary();
+        const pkName = classSchema.getPrimary().name;
+        const params: any[] = [];
+
         for (const item of items) {
-            pks.push(item[pk.name as keyof T]);
+            const converted = scopeSerializer(item);
+            pks.push(this.getPlaceholderSymbol());
+            params.push(converted[pkName]);
         }
 
-        const inValues = pks.map(v => this.platform.quoteValue(v)).join(', ');
-        const sql = `DELETE FROM ${this.platform.getTableIdentifier(classSchema)} WHERE ${this.platform.quoteIdentifier(pk.name)} IN (${inValues})`;
-        await (await this.getConnection()).run(sql);
+        const sql = `DELETE FROM ${this.platform.getTableIdentifier(classSchema)} WHERE ${this.platform.quoteIdentifier(pkName)} IN (${pks})`;
+        await (await this.getConnection()).run(sql, params);
     }
 }
