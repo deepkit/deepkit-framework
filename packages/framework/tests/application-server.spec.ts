@@ -1,9 +1,9 @@
 import { rpc } from '@deepkit/rpc';
-import { afterEach, describe, expect, jest, test } from '@jest/globals';
+import { afterEach, describe, expect, it, jest, test } from '@jest/globals';
 import { InjectorContext } from '@deepkit/injector';
 import { createTestingApp } from '../src/testing';
 import { ApplicationServer } from '../src/application-server';
-import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
+import { ConsoleTransport, Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { FrameworkModule } from '../src/module';
 import { RpcServer, RpcServerInterface, WebWorker } from '../src/worker';
 import { HttpRequest } from '@deepkit/http';
@@ -208,5 +208,15 @@ describe('application-server', () => {
             await applicationServer.close();
         });
     });
+});
 
+describe("createTestingApp", () => {
+    it("should setup the logger correctly", async () => {
+        const loggerRemoveTransportSpy = jest.spyOn(Logger.prototype, "removeTransport");
+        const loggerAddTransportSpy = jest.spyOn(Logger.prototype, "addTransport");
+        const facade = createTestingApp({});
+        await facade.startServer();
+        expect(loggerAddTransportSpy).toHaveBeenCalledWith(expect.any(MemoryLoggerTransport));
+        expect(loggerRemoveTransportSpy).toHaveBeenCalledWith(expect.any(ConsoleTransport));
+    });
 });
