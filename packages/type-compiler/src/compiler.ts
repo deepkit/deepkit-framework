@@ -2280,8 +2280,11 @@ export class ReflectionTransformer implements CustomTransformer {
             //its likely `export default function() {}`
             if (!declaration.body) return;
 
+            //since a new default export is created, we do not need ExportKey&DefaultKeyword on the function anymore,
+            //but it should preserve all others like Async.
+            const modifier = declaration.modifiers ? declaration.modifiers.filter(v => v.kind !== SyntaxKind.ExportKeyword && v.kind !== SyntaxKind.DefaultKeyword) : [];
             return this.f.createExportAssignment(undefined, undefined, undefined, this.wrapWithAssignType(
-                this.f.createFunctionExpression(undefined, declaration.asteriskToken, declaration.name, declaration.typeParameters, declaration.parameters, declaration.type, declaration.body),
+                this.f.createFunctionExpression(modifier, declaration.asteriskToken, declaration.name, declaration.typeParameters, declaration.parameters, declaration.type, declaration.body),
                 encodedType
             ));
         }
