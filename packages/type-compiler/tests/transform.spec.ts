@@ -122,3 +122,15 @@ test('export default function', () => {
 
     expect(res.app).toContain('export default __assignType(function (bar: string');
 });
+
+test('export default async function', () => {
+    const res = transform({
+        'app': `
+            export default async function(bar: string) {
+                return bar;
+            }
+        `
+    });
+
+    expect(res.app).toContain('export default __assignType(async function (bar: string');
+});
