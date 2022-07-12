@@ -39,7 +39,10 @@
     "@typescript/vfs": "^1.3.5",
     "lz-string": "^1.4.4"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
@@ -47,9 +50,6 @@
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ],
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
     "globals": {
       "ts-jest": {
         "tsconfig": "<rootDir>/tsconfig.test.json"

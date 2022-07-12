@@ -45,7 +45,10 @@
   "engines": {
     "node": ">= 14.0.0"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "resolver": "./jest-resolver.js",
     "testPathIgnorePatterns": [
       "packages/*/dist"

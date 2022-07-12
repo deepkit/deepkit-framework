@@ -43,7 +43,10 @@
     "@deepkit/workflow": "^1.0.1-alpha.72",
     "conditional-type-checks": "^1.0.5"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },

@@ -21,7 +21,10 @@
     "@deepkit/orm": "^1.0.1-alpha.0",
     "@deepkit/sql": "^1.0.1-alpha.0"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "runner": "../../jest-serial-runner.js",
     "testEnvironment": "node",
     "transform": {

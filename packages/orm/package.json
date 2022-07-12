@@ -46,13 +46,13 @@
     "@types/sqlstring": "^2.2.1",
     "conditional-type-checks": "^1.0.5"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
     },
     "testMatch": [
       "**/tests/**/*.spec.ts"

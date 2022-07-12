@@ -50,12 +50,12 @@
     "@types/node": "14.14.28",
     "@types/send": "^0.14.6"
   },
-  "jest": {
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
+   "jest": {
     "moduleNameMapper": {
       "(.+)\\.js": "$1"
+    },
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "resolver": "../../jest-resolver.js",
     "testMatch": [

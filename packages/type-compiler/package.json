@@ -37,7 +37,10 @@
     "strip-json-comments": "^3.1.1",
     "ts-clone-node": "^0.3.29"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
@@ -45,9 +48,6 @@
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ],
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
     "globals": {
       "ts-jest": {
         "tsconfig": "<rootDir>/tsconfig.test.json"

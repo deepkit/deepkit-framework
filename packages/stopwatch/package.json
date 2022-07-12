@@ -29,7 +29,10 @@
     "@deepkit/core": "^1.0.1-alpha.72",
     "@deepkit/type": "^1.0.1-alpha.72"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
