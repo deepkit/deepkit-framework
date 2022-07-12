@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { MemoryDatabaseAdapter } from '../src/memory-db';
-import { Database } from '../src/database';
+import { MemoryDatabaseAdapter } from '../src/memory-db.js';
+import { Database } from '../src/database.js';
 import { deserialize, entity, PrimaryKey, t, validate, ValidatorError } from '@deepkit/type';
 
 test('memory-db', async () => {

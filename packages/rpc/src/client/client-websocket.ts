@@ -9,7 +9,7 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client';
+import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client.js';
 
 /**
  * A RpcClient that connects via WebSocket transport.

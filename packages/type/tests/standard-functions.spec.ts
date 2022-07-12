@@ -9,8 +9,8 @@
  */
 
 import { test, expect } from '@jest/globals';
-import { ReceiveType, removeTypeName, resolveReceiveType } from '../src/reflection/reflection';
-import { expectEqualType } from './utils';
+import { ReceiveType, removeTypeName, resolveReceiveType } from '../src/reflection/reflection.js';
+import { expectEqualType } from './utils.js';
 import { stringifyResolvedType } from '../src/reflection/type.js';
 
 function equalType<A, B>(a?: ReceiveType<A>, b?: ReceiveType<B>) {

@@ -9,7 +9,7 @@
  */
 
 import { ChangeDetectorRef, Component, HostBinding, HostListener, Injector, Input, SkipSelf } from '@angular/core';
-import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form.js';
 
 @Component({
     selector: 'dui-radiobox',

@@ -1,8 +1,8 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild } from '@angular/core';
-import { ControllerClient } from '../../client';
+import { ControllerClient } from '../../client.js';
 import { Application, Container, Rectangle, Text } from 'pixi.js';
-import { formatTime, FrameItem, FrameParser } from './frame';
-import { FrameContainer } from './frame-container';
+import { formatTime, FrameItem, FrameParser } from './frame.js';
+import { FrameContainer } from './frame-container.js';
 import { FrameCategory } from '@deepkit/stopwatch';
 
 class TimelineState {

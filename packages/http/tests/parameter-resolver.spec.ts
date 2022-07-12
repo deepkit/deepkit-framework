@@ -1,12 +1,12 @@
 import { expect, jest, test } from '@jest/globals';
-import { http } from '../src/decorator';
-import { HttpRequest } from '../src/model';
+import { http } from '../src/decorator.js';
+import { HttpRequest } from '../src/model.js';
 import {
     RouteConfig,
     RouteParameterResolver,
     RouteParameterResolverContext,
-} from '../src/router';
-import { createHttpKernel } from './utils';
+} from '../src/router.js';
+import { createHttpKernel } from './utils.js';
 
 test('parameter resolver by name', async () => {
     class Resolver implements RouteParameterResolver {

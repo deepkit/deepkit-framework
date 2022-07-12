@@ -9,9 +9,9 @@
  */
 
 import { buildStringDecoder, decodeUTF8, decodeUTF8Short, Writer } from '@deepkit/bson';
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 import { performance } from 'perf_hooks';
-import { GetOptimizationStatus } from '../utils';
+import { GetOptimizationStatus } from '../utils.js';
 
 function parseUtf8(buffer: Uint8Array, size: number): string {
     const coded = new Uint16Array(size);

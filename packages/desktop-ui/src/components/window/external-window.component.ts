@@ -30,15 +30,15 @@ import {
     ViewContainerRef
 } from '@angular/core';
 import { ComponentPortal, DomPortalHost, PortalHost } from '@angular/cdk/portal';
-import { WindowComponent } from '../window/window.component';
-import { WindowRegistry } from '../window/window-state';
-import { RenderComponentDirective } from '../core/render-component.directive';
-import { ELECTRON_WINDOW, IN_DIALOG } from '../app/token';
+import { WindowComponent } from '../window/window.component.js';
+import { WindowRegistry } from '../window/window-state.js';
+import { RenderComponentDirective } from '../core/render-component.directive.js';
+import { ELECTRON_WINDOW, IN_DIALOG } from '../app/token.js';
 import { Subscription } from 'rxjs';
 import { DOCUMENT } from '@angular/common';
-import { DuiDialog } from '../dialog/dialog';
-import { Electron } from '../../core/utils';
-import { detectChangesNextFrame } from '../app';
+import { DuiDialog } from '../dialog/dialog.js';
+import { Electron } from '../../core/utils.js';
+import { detectChangesNextFrame } from '../app/index.js';
 
 function PopupCenter(url: string, title: string, w: number, h: number): Window {
     let top = window.screenTop + (window.outerHeight / 2) - w / 2;

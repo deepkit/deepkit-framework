@@ -9,27 +9,27 @@
  */
 
 import { ApplicationRef, Component, Directive, HostBinding, Inject, Injectable, Input, ModuleWithProviders, NgModule, Optional } from '@angular/core';
-import { MenuCheckboxDirective, MenuDirective, MenuItemDirective, MenuRadioDirective, MenuSeparatorDirective } from './menu.component';
-import { detectChangesNextFrame, OpenExternalDirective, ZonelessChangeDetector } from './utils';
-import { ViewDirective } from './dui-view.directive';
-import { CdCounterComponent } from './cd-counter.component';
-import { DuiResponsiveDirective } from './dui-responsive.directive';
+import { MenuCheckboxDirective, MenuDirective, MenuItemDirective, MenuRadioDirective, MenuSeparatorDirective } from './menu.component.js';
+import { detectChangesNextFrame, OpenExternalDirective, ZonelessChangeDetector } from './utils.js';
+import { ViewDirective } from './dui-view.directive.js';
+import { CdCounterComponent } from './cd-counter.component.js';
+import { DuiResponsiveDirective } from './dui-responsive.directive.js';
 import { CommonModule, DOCUMENT } from '@angular/common';
-import { Electron } from '../../core/utils';
+import { Electron } from '../../core/utils.js';
 import { ActivationEnd, Event as RouterEvent, NavigationEnd, Router } from '@angular/router';
-import { WindowRegistry } from '../window/window-state';
-import { ELECTRON_WINDOW, IN_DIALOG } from './token';
-import { AsyncRenderPipe, HumanFileSizePipe, ObjectURLPipe } from './pipes';
-import { ReactiveChangeDetectionModule } from './reactivate-change-detection';
+import { WindowRegistry } from '../window/window-state.js';
+import { ELECTRON_WINDOW, IN_DIALOG } from './token.js';
+import { AsyncRenderPipe, HumanFileSizePipe, ObjectURLPipe } from './pipes.js';
+import { ReactiveChangeDetectionModule } from './reactivate-change-detection.js';
 import { arrayRemoveItem } from '@deepkit/core';
 
-export * from './reactivate-change-detection';
-export * from './cd-counter.component';
-export * from './dui-view.directive';
-export * from './dui-responsive.directive';
-export * from './utils';
-export * from './menu.component';
-export * from './pipes';
+export * from './reactivate-change-detection.js';
+export * from './cd-counter.component.js';
+export * from './dui-view.directive.js';
+export * from './dui-responsive.directive.js';
+export * from './utils.js';
+export * from './menu.component.js';
+export * from './pipes.js';
 
 if ('undefined' !== typeof window && 'undefined' === typeof (window as any)['global']) {
     (window as any).global = window;

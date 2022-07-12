@@ -10,8 +10,8 @@
 
 import { ClassType } from '@deepkit/core';
 import { expect, test } from '@jest/globals';
-import { entity, t } from '../src/decorator';
-import { propertiesOf, reflect, ReflectionClass, ReflectionFunction, ReflectionMethod, typeOf, valuesOf } from '../src/reflection/reflection';
+import { entity, t } from '../src/decorator.js';
+import { propertiesOf, reflect, ReflectionClass, ReflectionFunction, ReflectionMethod, typeOf, valuesOf } from '../src/reflection/reflection.js';
 import {
     annotateClass,
     assertType,
@@ -50,14 +50,14 @@ import {
     TypeObjectLiteral,
     TypeTuple,
     Unique
-} from '../src/reflection/type';
+} from '../src/reflection/type.js';
 import { TypeNumberBrand } from '@deepkit/type-spec';
-import { MinLength, validate, ValidatorError } from '../src/validator';
-import { expectEqualType } from './utils';
-import { MyAlias } from './types';
-import { resolveRuntimeType } from '../src/reflection/processor';
-import { uuid } from '../src/utils';
-import { deserialize } from '../src/serializer-facade';
+import { MinLength, validate, ValidatorError } from '../src/validator.js';
+import { expectEqualType } from './utils.js';
+import { MyAlias } from './types.js';
+import { resolveRuntimeType } from '../src/reflection/processor.js';
+import { uuid } from '../src/utils.js';
+import { deserialize } from '../src/serializer-facade.js';
 
 test('class', () => {
     class Entity {

@@ -8,13 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Column, ColumnDiff, DatabaseDiff, DatabaseModel, ForeignKey, IndexModel, Table, TableDiff } from '../schema/table';
+import { Column, ColumnDiff, DatabaseDiff, DatabaseModel, ForeignKey, IndexModel, Table, TableDiff } from '../schema/table.js';
 import sqlstring from 'sqlstring';
 import { ClassType, isArray, isObject } from '@deepkit/core';
-import { sqlSerializer } from '../serializer/sql-serializer';
-import { parseType, SchemaParser } from '../reverse/schema-parser';
-import { SQLFilterBuilder } from '../sql-filter-builder';
-import { Sql } from '../sql-builder';
+import { sqlSerializer } from '../serializer/sql-serializer.js';
+import { parseType, SchemaParser } from '../reverse/schema-parser.js';
+import { SQLFilterBuilder } from '../sql-filter-builder.js';
+import { Sql } from '../sql-builder.js';
 import { binaryTypes, databaseAnnotation, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 

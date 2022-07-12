@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
 import { Minimum, MinLength } from '@deepkit/type';
 import { injectorReference } from '@deepkit/injector';
-import { ServiceContainer } from '../src/service-container';
-import { ClassType } from '@deepkit/core';
-import { AppModule, createModule, FunctionalModuleFactory } from '../src/module';
+import { ServiceContainer } from '../src/service-container.js';
+import { ClassType } from '@deepkit/core.js';
+import { AppModule, createModule, FunctionalModuleFactory } from '../src/module.js';
 
 class MyModuleConfig {
     param1!: string & MinLength<5>;

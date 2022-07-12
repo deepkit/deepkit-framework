@@ -10,7 +10,7 @@
 
 import { plainToClass, t } from '@deepkit/type';
 import { buildChanges, getClassState, getInstanceState, getJITConverterForSnapshot } from '@deepkit/orm';
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 
 export async function main() {
     const schema = t.schema({

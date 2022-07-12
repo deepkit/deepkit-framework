@@ -24,11 +24,11 @@ import {
     Type,
     ViewContainerRef
 } from '@angular/core';
-import { DialogComponent } from './dialog.component';
-import { isTargetChildOf } from '../../core/utils';
-import { DuiDialogProgress, ProgressDialogState } from './progress-dialog.component';
+import { DialogComponent } from './dialog.component.js';
+import { isTargetChildOf } from '../../core/utils.js';
+import { DuiDialogProgress, ProgressDialogState } from './progress-dialog.component.js';
 import { DOCUMENT } from '@angular/common';
-import { WindowRegistry } from '../window/window-state';
+import { WindowRegistry } from '../window/window-state.js';
 import { Overlay, OverlayConfig } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 

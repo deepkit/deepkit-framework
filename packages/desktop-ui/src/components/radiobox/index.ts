@@ -9,9 +9,9 @@
  */
 
 import { NgModule } from '@angular/core';
-import { RadioboxComponent } from './radiobox.component';
+import { RadioboxComponent } from './radiobox.component.js';
 
-export * from './radiobox.component';
+export * from './radiobox.component.js';
 
 @NgModule({
     declarations: [

@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { convertClassQueryToMongo, convertPlainQueryToMongo } from '../index';
+import { convertClassQueryToMongo, convertPlainQueryToMongo } from '../index.js';
 import { Embedded, PrimaryKey, Reference } from '@deepkit/type';
 
 class SimpleConfig {

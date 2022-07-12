@@ -1,6 +1,6 @@
 import { BrowserText } from '@deepkit/desktop-ui';
 import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
-import { defaultColors, frameColors, FrameItem } from './frame';
+import { defaultColors, frameColors, FrameItem } from './frame.js';
 
 export class TextCalc {
     static browserText?: BrowserText;

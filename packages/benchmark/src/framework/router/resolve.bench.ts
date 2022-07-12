@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { http, Router } from '@deepkit/http';
-import { BenchSuite } from '../../bench';
+import { BenchSuite } from '../../bench.js';
 
 export async function main() {
 

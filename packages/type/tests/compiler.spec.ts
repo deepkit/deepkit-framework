@@ -3,7 +3,7 @@ import { describe, expect, test } from '@jest/globals';
 import * as ts from 'typescript';
 import { getPreEmitDiagnostics, ModuleKind, ScriptTarget, TransformationContext, transpileModule } from 'typescript';
 import { DeclarationTransformer, ReflectionTransformer, transformer } from '@deepkit/type-compiler';
-import { reflect, reflect as reflect2, ReflectionClass, removeTypeName, typeOf as typeOf2 } from '../src/reflection/reflection';
+import { reflect, reflect as reflect2, ReflectionClass, removeTypeName, typeOf as typeOf2 } from '../src/reflection/reflection.js';
 import {
     assertType,
     defaultAnnotation,
@@ -18,11 +18,11 @@ import {
     TypeObjectLiteral,
     TypeProperty,
     TypeUnion
-} from '../src/reflection/type';
+} from '../src/reflection/type.js';
 import { ReflectionOp } from '@deepkit/type-spec';
 import { ClassType, isObject } from '@deepkit/core';
-import { pack, resolveRuntimeType, typeInfer } from '../src/reflection/processor';
-import { expectEqualType } from './utils';
+import { pack, resolveRuntimeType, typeInfer } from '../src/reflection/processor.js';
+import { expectEqualType } from './utils.js';
 import { createSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import { dirname, join } from 'path';
 import { readFileSync } from 'fs';
@@ -182,30 +182,30 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
     // [`class Entity { p: Record<number, number>; }`, `['p', ${packString([ReflectionOp.number, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral, ReflectionOp.property, 0, ReflectionOp.class])}]`],
     //
     // [{
-    //     app: `import {MyEnum} from './enum'; class Entity { p: MyEnum;}`,
+    //     app: `import {MyEnum} from './enum.js'; class Entity { p: MyEnum;}`,
     //     enum: `export enum MyEnum {}`
     // }, `[() => MyEnum, 'p', ${packString([ReflectionOp.enum, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
     //
     // [{
-    //     app: `import {Model} from './model'; class Entity { p: Model;}`,
+    //     app: `import {Model} from './model.js'; class Entity { p: Model;}`,
     //     model: `export class Model {}`
     // }, `[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.property, 1, ReflectionOp.class])}]`],
     // [{
-    //     app: `import {Pattern} from './model'; class Entity { p: Pattern;}`,
+    //     app: `import {Pattern} from './model.js'; class Entity { p: Pattern;}`,
     //     model: `export const REGEX = /abc/;\nexport type Pattern = {regex: typeof REGEX};`
-    // }, `import { REGEX } from './model'`],
+    // }, `import { REGEX } from './model.js'`],
     // [{
-    //     app: `import {Pattern} from './model'; class Entity { p: Pattern;}`,
+    //     app: `import {Pattern} from './model.js'; class Entity { p: Pattern;}`,
     //     model: `export const REGEX = /abc/;\ntype M<T> = {name: T, regex: typeof REGEX}; type Pattern = M<true>;`
-    // }, `import { REGEX } from './model'`],
+    // }, `import { REGEX } from './model.js'`],
     // [{
-    //     app: `import {Email} from './validator'; class Entity { p: Email;}`,
+    //     app: `import {Email} from './validator.js'; class Entity { p: Email;}`,
     //     validator: `
     //         export const REGEX = /abc/;
     //         export type ValidatorMeta<Name extends string, Args extends [...args: any[]] = []> = { __meta?: { id: 'validator', name: Name, args: Args } }
     //         export type Pattern<T extends RegExp> = ValidatorMeta<'pattern', [T]>
     //         export type Email = string & Pattern<typeof EMAIL_REGEX>;`
-    // }, `import { EMAIL_REGEX } from './validator';`],
+    // }, `import { EMAIL_REGEX } from './validator.js';`],
     //
     // [`export interface MyInterface {id: number}; class Controller { public p: MyInterface[] = [];}`,
     //     [
@@ -245,45 +245,45 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
     //
     // // Imported interfaces/types will be erased and inlined
     // [{
-    //     app: `import {Type} from './model'; class Entity { p: Type[];}`,
+    //     app: `import {Type} from './model.js'; class Entity { p: Type[];}`,
     //     model: `export type Type = {title: string}`
     // }, [
-    //     `!./model`, `!import {Type} from './model'`,
+    //     `!./model`, `!import {Type} from './model.js'`,
     //     `['title', 'p', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.class])}]`,
     // ]],
     //
     // [{
-    //     app: `import {Message, Model} from './model'; class Entity { p: Message[]; m: Model[];}`,
+    //     app: `import {Message, Model} from './model.js'; class Entity { p: Message[]; m: Model[];}`,
     //     model: `export type Message = number; export class Model {};`
-    // }, [`import { Model } from './model'`, `[__ΩMessage, 'p', () => Model, 'm', ${packString([
+    // }, [`import { Model } from './model.js'`, `[__ΩMessage, 'p', () => Model, 'm', ${packString([
     //     ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1,
     //     ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
     //
     // [{
-    //     app: `import {Type} from './model'; class Entity { p: Type[];}`,
+    //     app: `import {Type} from './model.js'; class Entity { p: Type[];}`,
     //     model: `export interface Type {title: string}`
-    // }, [`!./model`, `!import {Type} from './model'`]],
+    // }, [`!./model`, `!import {Type} from './model.js'`]],
     //
     // // multiple exports can be resolved
     // [{
-    //     app: `import {Type, Model} from './myPackage'; class Entity { p: Type[]; p2: Model[]};`,
-    //     myPackage: `export * from './myPackageModel';`,
+    //     app: `import {Type, Model} from './myPackage.js'; class Entity { p: Type[]; p2: Model[]};`,
+    //     myPackage: `export * from './myPackageModel.js';`,
     //     myPackageModel: `export interface Type {title: string}; export class Model {}`
-    // }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
+    // }, [`import { Model } from './myPackage.js'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
     //     ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
     //
     // [{
-    //     app: `import {Type, Model} from './myPackage'; class Entity { p: Type[]; p2: Model[]};`,
-    //     myPackage: `export {Model, Type} from './myPackageModel';`,
+    //     app: `import {Type, Model} from './myPackage.js'; class Entity { p: Type[]; p2: Model[]};`,
+    //     myPackage: `export {Model, Type} from './myPackageModel.js';`,
     //     myPackageModel: `export interface Type {title: string}; export class Model {}`
-    // }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
+    // }, [`import { Model } from './myPackage.js'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
     //     ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
     //
     // [{
-    //     app: `import {Type, Model} from './myPackage'; class Entity { p: Type[]; p2: Model[]};`,
-    //     myPackage: `export {MM as Model, TT as Type} from './myPackageModel';`,
+    //     app: `import {Type, Model} from './myPackage.js'; class Entity { p: Type[]; p2: Model[]};`,
+    //     myPackage: `export {MM as Model, TT as Type} from './myPackageModel.js';`,
     //     myPackageModel: `export interface TT {title: string}; export class MM {}`
-    // }, [`import { Model } from './myPackage'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
+    // }, [`import { Model } from './myPackage.js'`, `[__ΩType, 'p', () => Model, 'p2', ${packString([
     //     ReflectionOp.inline, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.classReference, 2, ReflectionOp.array, ReflectionOp.property, 3, ReflectionOp.class])}]`]],
     //
     // [`
@@ -300,9 +300,9 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
     //
     // // erasable types will be kept
     // [{
-    //     app: `import {Model} from './model'; class Entity { p: Model[];}`,
+    //     app: `import {Model} from './model.js'; class Entity { p: Model[];}`,
     //     model: `export class Model {}`
-    // }, [`[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.class])}]`, `import { Model } from './model';`]],
+    // }, [`[() => Model, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.array, ReflectionOp.property, 1, ReflectionOp.class])}]`, `import { Model } from './model.js';`]],
     //
     // //functions
     // [`const fn = (param: string): void {}`, `const fn = Object.assign((param) => { }, { __type: ['param', '', ${packString([ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.function, 1])}] })`],
@@ -1682,7 +1682,7 @@ test('InstanceType', () => {
 test('import types named import esm simple', () => {
     const js = transpile({
         'app': `
-            import {User} from './user';
+            import {User} from './user.js';
             typeOf<User>();
         `,
         'user': `export interface User {id: number}`
@@ -1699,7 +1699,7 @@ test('import types named import esm simple', () => {
 test('import types named import esm', () => {
     const js = transpile({
         'app': `
-            import {User} from './user';
+            import {User} from './user.js';
             export type bla = string;
             export const hi = 'yes';
             type a = Partial<User>;

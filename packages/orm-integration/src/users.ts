@@ -1,4 +1,4 @@
-import { DatabaseFactory } from './test';
+import { DatabaseFactory } from './test.js';
 import { AutoIncrement, BackReference, entity, PrimaryKey, Reference } from '@deepkit/type';
 import { expect } from '@jest/globals';
 import { getObjectKeysSize } from '@deepkit/core';

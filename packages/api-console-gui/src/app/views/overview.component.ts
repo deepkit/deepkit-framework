@@ -1,8 +1,8 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { ControllerClient } from '../client';
+import { ControllerClient } from '../client.js';
 import { ApiDocument, ApiRoute } from '@deepkit/api-console-api';
-import { filterAndSortRoutes } from './view-helper';
-import { headerStatusCodes, trackByIndex, typeToTSJSONInterface } from '../utils';
+import { filterAndSortRoutes } from './view-helper.js';
+import { headerStatusCodes, trackByIndex, typeToTSJSONInterface } from '../utils.js';
 import { Subscriptions } from '@deepkit/core-rxjs';
 import { typeSettings } from '@deepkit/type';
 

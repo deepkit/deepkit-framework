@@ -1,11 +1,11 @@
 import { expect, test } from '@jest/globals';
 import { atomicChange, deserialize, PrimaryKey, Reference, ReflectionClass, serializer } from '@deepkit/type';
-import { Formatter } from '../src/formatter';
-import { DatabaseQueryModel } from '../src/query';
-import { DatabaseSession } from '../src/database-session';
-import { MemoryDatabaseAdapter } from '../src/memory-db';
-import { getClassState, getInstanceStateFromItem } from '../src/identity-map';
-import { buildChangesFromInstance } from '../src/utils';
+import { Formatter } from '../src/formatter.js';
+import { DatabaseQueryModel } from '../src/query.js';
+import { DatabaseSession } from '../src/database-session.js';
+import { MemoryDatabaseAdapter } from '../src/memory-db.js';
+import { getClassState, getInstanceStateFromItem } from '../src/identity-map.js';
+import { buildChangesFromInstance } from '../src/utils.js';
 
 test('change-detection', () => {
     class Image {

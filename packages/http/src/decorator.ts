@@ -27,8 +27,8 @@ import {
     Type,
     UnionToIntersection
 } from '@deepkit/type';
-import { RouteParameterResolver } from './router';
-import { httpMiddleware, HttpMiddleware, HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware';
+import { RouteParameterResolver } from './router.js';
+import { httpMiddleware, HttpMiddleware, HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware.js';
 
 type HttpActionMiddleware = (() => HttpMiddlewareConfig) | ClassType<HttpMiddleware> | HttpMiddlewareFn;
 

@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { getSerializeFunction, ReflectionKind, serializer, Type } from '@deepkit/type';
-import { DataStructure } from '../../store';
+import { DataStructure } from '../../store.js';
 
 @Component({
     template: `

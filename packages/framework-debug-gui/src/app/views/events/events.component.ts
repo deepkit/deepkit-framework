@@ -9,7 +9,7 @@
  */
 
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
-import { ControllerClient } from '../../client';
+import { ControllerClient } from '../../client.js';
 import { Event } from '@deepkit/framework-debug-api';
 
 @Component({

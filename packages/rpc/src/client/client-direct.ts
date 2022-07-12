@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { RpcKernel } from '../server/kernel';
-import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client';
+import { RpcKernel } from '../server/kernel.js';
+import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client.js';
 import { InjectorContext } from '@deepkit/injector';
 
 export class DirectClient extends RpcClient {

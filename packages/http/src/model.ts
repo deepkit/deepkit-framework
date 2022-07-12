@@ -9,7 +9,7 @@
  */
 
 import { IncomingMessage, OutgoingHttpHeader, OutgoingHttpHeaders, ServerResponse } from 'http';
-import { UploadedFile } from './router';
+import { UploadedFile } from './router.js';
 import * as querystring from 'querystring';
 import { Writable } from 'stream';
 import { metaAnnotation, ReflectionKind, Type, ValidationErrorItem } from '@deepkit/type';

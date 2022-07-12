@@ -24,7 +24,7 @@ import {
     setPathValue,
     sleep,
     stringifyValueWithType
-} from '../src/core';
+} from '../src/core.js';
 
 class SimpleClass {
     constructor(public name: string) {

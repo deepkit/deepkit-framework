@@ -12,7 +12,7 @@ import {
     TypePropertySignature,
     ValidatorError
 } from '@deepkit/type';
-import { ControllerClient } from './client';
+import { ControllerClient } from './client.js';
 import { Progress } from '@deepkit/rpc';
 import { getInstanceStateFromItem } from '@deepkit/orm';
 

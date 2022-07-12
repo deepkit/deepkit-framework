@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { onServerMainBootstrap, onServerMainShutdown } from '../application-server';
+import { onServerMainBootstrap, onServerMainShutdown } from '../application-server.js';
 import { eventDispatcher } from '@deepkit/event';
 import { LoggerInterface } from '@deepkit/logger';
 import { DatabaseRegistry } from '@deepkit/orm';

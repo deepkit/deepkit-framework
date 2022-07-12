@@ -11,7 +11,7 @@
 import { asyncOperation, ClassType, toFastProperties } from '@deepkit/core';
 import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';
 import { skip } from 'rxjs/operators';
-import { Collection, CollectionQueryModelInterface, CollectionState } from '../collection';
+import { Collection, CollectionQueryModelInterface, CollectionState } from '../collection.js';
 import {
     ActionObservableTypes,
     IdInterface,
@@ -25,11 +25,11 @@ import {
     rpcResponseActionType,
     RpcTypes,
     WrappedV
-} from '../model';
-import { rpcDecodeError, RpcMessage } from '../protocol';
-import { ClientProgress } from '../writer';
-import type { WritableClient } from './client';
-import { EntityState, EntitySubjectStore } from './entity-state';
+} from '../model.js';
+import { rpcDecodeError, RpcMessage } from '../protocol.js';
+import { ClientProgress } from '../writer.js';
+import type { WritableClient } from './client.js';
+import { EntityState, EntitySubjectStore } from './entity-state.js';
 import { assertType, deserializeType, ReflectionKind, Type, TypeObjectLiteral, typeOf } from '@deepkit/type';
 
 interface ResponseActionObservableError extends rpcActionObservableSubscribeId, WrappedV {

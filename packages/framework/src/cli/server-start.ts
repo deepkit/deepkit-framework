@@ -8,10 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ApplicationServer } from '../application-server';
+import { ApplicationServer } from '../application-server.js';
 import { AppModule, cli, Command, flag, ServiceContainer } from '@deepkit/app';
 import { DefaultFormatter, Logger, LoggerInterface } from '@deepkit/logger';
-import { FrameworkModule } from '../module';
+import { FrameworkModule } from '../module.js';
 
 @cli.controller('server:start', {
     description: 'Starts the application server. If HTTP or RPC controllers or a publicDir are provided this will include an HTTP listener'

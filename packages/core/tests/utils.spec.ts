@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { urlJoin } from '../src/url';
+import { urlJoin } from '../src/url.js';
 
 test('urlJoin', async () => {
     expect(urlJoin('base', 'path')).toBe('base/path');

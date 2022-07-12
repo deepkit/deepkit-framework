@@ -17,7 +17,7 @@ import {
     Injector,
     SkipSelf
 } from '@angular/core';
-import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form.js';
 
 @Component({
     selector: 'dui-checkbox',

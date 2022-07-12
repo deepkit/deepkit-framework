@@ -20,8 +20,8 @@ import {
     TemplateRef,
     ViewChild
 } from '@angular/core';
-import { WindowState } from './window-state';
-import { Electron } from '../../core/utils';
+import { WindowState } from './window-state.js';
+import { Electron } from '../../core/utils.js';
 
 @Component({
     selector: 'dui-window-header',

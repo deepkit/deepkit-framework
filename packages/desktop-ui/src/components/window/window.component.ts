@@ -9,13 +9,13 @@
  */
 
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChild, Inject, Input, OnChanges, OnDestroy, Optional, SimpleChanges, SkipSelf, ViewContainerRef } from '@angular/core';
-import { WindowContentComponent } from './window-content.component';
-import { WindowRegistry, WindowState } from './window-state';
+import { WindowContentComponent } from './window-content.component.js';
+import { WindowRegistry, WindowState } from './window-state.js';
 import { DOCUMENT } from '@angular/common';
-import { WindowMenuState } from './window-menu';
-import { WindowHeaderComponent } from './window-header.component';
-import { ELECTRON_WINDOW, IN_DIALOG } from '../app/token';
-import { DuiApp } from '../app';
+import { WindowMenuState } from './window-menu.js';
+import { WindowHeaderComponent } from './window-header.component.js';
+import { ELECTRON_WINDOW, IN_DIALOG } from '../app/token.js';
+import { DuiApp } from '../app/index.js';
 
 /**
  * This is only for documentation purposes.

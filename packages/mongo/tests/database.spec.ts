@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { Database } from '@deepkit/orm';
-import { MongoDatabaseAdapter } from '../src/adapter';
+import { MongoDatabaseAdapter } from '../src/adapter.js';
 import { entity, MongoId, PrimaryKey } from '@deepkit/type';
 
 test('simple', async () => {

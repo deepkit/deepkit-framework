@@ -1,2 +1,2 @@
-export * from './src/stopwatch';
-export * from './src/types';
+export * from './src/stopwatch.js';
+export * from './src/types.js';

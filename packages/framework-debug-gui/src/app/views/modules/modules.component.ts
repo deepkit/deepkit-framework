@@ -1,7 +1,7 @@
 import { Component, OnDestroy } from '@angular/core';
 import { ModuleApi } from '@deepkit/framework-debug-api';
 import { LiveSubject } from '@deepkit/ui-library';
-import { ControllerClient } from '../../client';
+import { ControllerClient } from '../../client.js';
 import { Subscription } from 'rxjs';
 
 @Component({

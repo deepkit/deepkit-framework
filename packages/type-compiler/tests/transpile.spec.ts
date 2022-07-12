@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { transpile, transpileAndRun } from './utils';
+import { transpile, transpileAndRun } from './utils.js';
 
 test('function __type', () => {
     const res = transpile({ app: `function log(message: string) {}` });
@@ -10,7 +10,7 @@ test('function __type', () => {
 test('resolve import ts', () => {
     const res = transpile({
         'app': `
-            import { Logger } from './logger';
+            import { Logger } from './logger.js';
             function fn(logger: Logger) {}
         `,
         'logger': `export class Logger {}`
@@ -24,7 +24,7 @@ test('resolve import ts', () => {
 test('resolve import d.ts', () => {
     const res = transpile({
         'app': `
-            import { Logger } from './logger';
+            import { Logger } from './logger.js';
             function fn(logger: Logger) {}
         `,
         'logger.d.ts': `export declare class Logger {}`

@@ -9,7 +9,7 @@
  */
 
 import { ApplicationRef, ComponentFactoryResolver, Injectable, Injector, Type, ViewContainerRef } from '@angular/core';
-import { ExternalWindowComponent } from './external-window.component';
+import { ExternalWindowComponent } from './external-window.component.js';
 import { ComponentPortal, DomPortalHost } from '@angular/cdk/portal';
 
 @Injectable()

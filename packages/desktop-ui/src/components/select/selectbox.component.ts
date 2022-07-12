@@ -29,10 +29,10 @@ import {
     ViewChild
 } from '@angular/core';
 import { Subscription } from 'rxjs';
-import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form.js';
 import { Overlay } from '@angular/cdk/overlay';
-import { DropdownComponent } from '../button/dropdown.component';
-import { ButtonComponent } from '../button/button.component';
+import { DropdownComponent } from '../button/dropdown.component.js';
+import { ButtonComponent } from '../button/button.component.js';
 
 /**
  * Necessary directive to get a dynamic rendered option.

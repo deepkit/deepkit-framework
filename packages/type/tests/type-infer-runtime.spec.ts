@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { typeInfer } from '../src/reflection/processor';
-import { ReflectionClass, typeOf } from '../src/reflection/reflection';
+import { typeInfer } from '../src/reflection/processor.js';
+import { ReflectionClass, typeOf } from '../src/reflection/reflection.js';
 import {
     Entity, entityAnnotation,
     float,
@@ -15,8 +15,8 @@ import {
     TypePropertySignature,
     Unique,
     widenLiteral
-} from '../src/reflection/type';
-import { expectEqualType } from './utils';
+} from '../src/reflection/type.js';
+import { expectEqualType } from './utils.js';
 import { Maximum, MinLength, validate } from '../src/validator.js';
 
 const symbol = Symbol();

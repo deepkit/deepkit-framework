@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { GroupArraySort } from '../src/group-array-sort';
-import { CircularDependencyException, ElementNotFoundException } from '../src/base';
-import { bench } from './utils';
+import { GroupArraySort } from '../src/group-array-sort.js';
+import { CircularDependencyException, ElementNotFoundException } from '../src/base.js';
+import { bench } from './utils.js';
 import { fail } from 'assert';
 
 function getElementsGroup(count: number) {

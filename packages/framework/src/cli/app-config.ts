@@ -9,7 +9,7 @@
  */
 
 import { cli, Command } from '@deepkit/app';
-import { DebugController } from '../debug/debug.controller';
+import { DebugController } from '../debug/debug.controller.js';
 
 @cli.controller('app:config', {})
 export class AppConfigController implements Command {

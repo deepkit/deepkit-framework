@@ -9,10 +9,10 @@
  */
 
 import { Column, DefaultPlatform, IndexModel, isSet, SqlPlaceholderStrategy, Table } from '@deepkit/sql';
-import { postgresSerializer } from './postgres-serializer';
+import { postgresSerializer } from './postgres-serializer.js';
 import { isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, TypeNumberBrand } from '@deepkit/type';
-import { PostgresSchemaParser } from './postgres-schema-parser';
-import { PostgreSQLFilterBuilder } from './sql-filter-builder';
+import { PostgresSchemaParser } from './postgres-schema-parser.js';
+import { PostgreSQLFilterBuilder } from './sql-filter-builder.js';
 import { isArray, isObject } from '@deepkit/core';
 import sqlstring from 'sqlstring';
 

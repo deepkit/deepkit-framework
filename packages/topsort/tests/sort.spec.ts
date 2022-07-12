@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { ArraySort } from '../src/array-sort';
-import { bench } from './utils';
-import { CircularDependencyException, ElementNotFoundException } from '../src/base';
+import { ArraySort } from '../src/array-sort.js';
+import { bench } from './utils.js';
+import { CircularDependencyException, ElementNotFoundException } from '../src/base.js';
 import { fail } from 'assert';
 
 function getElementsFlat(count: number) {

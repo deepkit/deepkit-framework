@@ -1,11 +1,11 @@
 import { expect, test } from '@jest/globals';
-import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterResolverContext, UploadedFile } from '../src/router';
-import { http, httpClass } from '../src/decorator';
-import { HttpBadRequestError, httpWorkflow, JSONResponse, Response } from '../src/http';
+import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterResolverContext, UploadedFile } from '../src/router.js';
+import { http, httpClass } from '../src/decorator.js';
+import { HttpBadRequestError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
 import { eventDispatcher } from '@deepkit/event';
-import { HttpBody, HttpBodyValidation, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model';
+import { HttpBody, HttpBodyValidation, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model.js';
 import { getClassName, isObject, sleep } from '@deepkit/core';
-import { createHttpKernel } from './utils';
+import { createHttpKernel } from './utils.js';
 import { Group, MinLength, PrimaryKey, Reference } from '@deepkit/type';
 import { Readable } from 'stream';
 

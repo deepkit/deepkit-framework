@@ -1,11 +1,11 @@
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
 import { ApiRoute } from '@deepkit/api-console-api';
 import { isArray, isObject } from '@deepkit/core';
-import { extractDataStructure, extractDataStructureFromSchema, Request, RouteState, Store } from '../../store';
-import { ControllerClient } from '../../client';
+import { extractDataStructure, extractDataStructureFromSchema, Request, RouteState, Store } from '../../store.js';
+import { ControllerClient } from '../../client.js';
 import { Router } from '@angular/router';
 import { DuiDialog } from '@deepkit/desktop-ui/src/index';
-import { headerStatusCodes, methods, trackByIndex, typeToTSJSONInterface } from '../../utils';
+import { headerStatusCodes, methods, trackByIndex, typeToTSJSONInterface } from '../../utils.js';
 import { getTypeJitContainer } from '@deepkit/type';
 
 @Component({

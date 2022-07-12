@@ -11,12 +11,12 @@
 import { asyncOperation, ClassType, sleep } from '@deepkit/core';
 import { ReceiveType, resolveReceiveType } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { ControllerDefinition, rpcAuthenticate, rpcClientId, rpcPeerDeregister, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model';
-import { createRpcMessage, createRpcMessagePeer, ErroredRpcMessage, RpcMessage, RpcMessageReader, RpcMessageRouteType } from '../protocol';
-import { RpcKernel, RpcKernelConnection } from '../server/kernel';
-import { ClientProgress, RpcMessageWriter, RpcMessageWriterOptions, SingleProgress } from '../writer';
-import { RpcActionClient, RpcControllerState } from './action';
-import { RpcMessageSubject } from './message-subject';
+import { ControllerDefinition, rpcAuthenticate, rpcClientId, rpcPeerDeregister, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model.js';
+import { createRpcMessage, createRpcMessagePeer, ErroredRpcMessage, RpcMessage, RpcMessageReader, RpcMessageRouteType } from '../protocol.js';
+import { RpcKernel, RpcKernelConnection } from '../server/kernel.js';
+import { ClientProgress, RpcMessageWriter, RpcMessageWriterOptions, SingleProgress } from '../writer.js';
+import { RpcActionClient, RpcControllerState } from './action.js';
+import { RpcMessageSubject } from './message-subject.js';
 
 export class OfflineError extends Error {
     constructor(message: string = 'Offline') {

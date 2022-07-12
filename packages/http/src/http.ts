@@ -11,10 +11,10 @@
 import { asyncOperation, ClassType, CustomError, getClassName, getClassTypeFromInstance, isClassInstance } from '@deepkit/core';
 import { OutgoingHttpHeaders, ServerResponse } from 'http';
 import { eventDispatcher } from '@deepkit/event';
-import { HttpRequest, HttpResponse } from './model';
+import { HttpRequest, HttpResponse } from './model.js';
 import { InjectorContext } from '@deepkit/injector';
 import { LoggerInterface } from '@deepkit/logger';
-import { HttpRouter, RouteConfig, RouteParameterResolverForInjector } from './router';
+import { HttpRouter, RouteConfig, RouteParameterResolverForInjector } from './router.js';
 import { createWorkflow, WorkflowEvent } from '@deepkit/workflow';
 import type { ElementStruct, render } from '@deepkit/template';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';

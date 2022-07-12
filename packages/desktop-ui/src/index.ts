@@ -8,25 +8,25 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export { ValueAccessorBase, ngValueAccessor } from './core/form';
-export * from './browser-text';
-export * from './core/form';
-export * from './core/utils';
-export * from './components/app';
-export * from './components/checkbox';
-export * from './components/button';
-export * from './components/input';
-export * from './components/form';
-export * from './components/radiobox';
-export * from './components/select';
-export * from './components/window';
-export * from './components/icon';
-export * from './components/list';
-export * from './components/table';
-export * from './components/splitter';
-export * from './components/dialog';
-export * from './components/core';
-export * from './components/emoji';
-export * from './components/slider';
-export * from './components/indicator';
-export * from './components/tabs';
+export { ValueAccessorBase, ngValueAccessor } from './core/form.js';
+export * from './browser-text.js';
+export * from './core/form.js';
+export * from './core/utils.js';
+export * from './components/app/index.js';
+export * from './components/checkbox/index.js';
+export * from './components/button/index.js';
+export * from './components/input/index.js';
+export * from './components/form/index.js';
+export * from './components/radiobox/index.js';
+export * from './components/select/index.js';
+export * from './components/window/index.js';
+export * from './components/icon/index.js';
+export * from './components/list/index.js';
+export * from './components/table/index.js';
+export * from './components/splitter/index.js';
+export * from './components/dialog/index.js';
+export * from './components/core/index.js';
+export * from './components/emoji/index.js';
+export * from './components/slider/index.js';
+export * from './components/indicator/index.js';
+export * from './components/tabs/index.js';

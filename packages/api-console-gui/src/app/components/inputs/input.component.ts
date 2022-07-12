@@ -15,9 +15,9 @@ import {
 import { unsubscribe } from '@deepkit/desktop-ui';
 import { hasDefaultValue, isOptional, ReflectionKind, Type } from '@deepkit/type';
 import { Subscription } from 'rxjs';
-import { DataStructure } from '../../store';
-import { TypeDecoration, typeToTSJSONInterface } from '../../utils';
-import { inputRegistry } from './registry';
+import { DataStructure } from '../../store.js';
+import { TypeDecoration, typeToTSJSONInterface } from '../../utils.js';
+import { inputRegistry } from './registry.js';
 
 @Component({
     selector: 'api-console-input',

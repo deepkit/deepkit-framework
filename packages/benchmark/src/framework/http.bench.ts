@@ -10,7 +10,7 @@
 
 import 'reflect-metadata';
 import { FrameworkModule } from '@deepkit/framework';
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 import { Socket } from 'net';
 import { AppModule, ServiceContainer } from '@deepkit/app';
 import { http, HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';

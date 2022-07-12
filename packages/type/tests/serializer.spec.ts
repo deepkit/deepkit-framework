@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { expect, test } from '@jest/globals';
-import { reflect, ReflectionClass } from '../src/reflection/reflection';
+import { reflect, ReflectionClass } from '../src/reflection/reflection.js';
 import {
     AutoIncrement,
     BackReference,
@@ -23,12 +23,12 @@ import {
     Reference,
     ReflectionKind,
     SignedBinaryBigInt
-} from '../src/reflection/type';
-import { createSerializeFunction, getSerializeFunction, serializer } from '../src/serializer';
-import { cast, deserialize, serialize } from '../src/serializer-facade';
+} from '../src/reflection/type.js';
+import { createSerializeFunction, getSerializeFunction, serializer } from '../src/serializer.js';
+import { cast, deserialize, serialize } from '../src/serializer-facade.js';
 import { getClassName } from '@deepkit/core';
-import { entity, t } from '../src/decorator';
-import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator';
+import { entity, t } from '../src/decorator.js';
+import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator.js';
 
 test('deserializer', () => {
     class User {

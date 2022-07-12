@@ -8,16 +8,16 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/session';
-export * from './src/application-server';
-export * from './src/worker';
-export * from './src/database/database-listener';
-// export * from './src/database/live-database';
-export * from './src/orm-browser/controller';
-export * from './src/rpc';
-export * from './src/module.config';
-export * from './src/module';
-export * from './src/crud';
-export * from './src/testing';
-export * from './src/broker/broker';
-export * from './src/broker/broker.config';
+export * from './src/session.js';
+export * from './src/application-server.js';
+export * from './src/worker.js';
+export * from './src/database/database-listener.js';
+// export * from './src/database/live-database.js';
+export * from './src/orm-browser/controller.js';
+export * from './src/rpc.js';
+export * from './src/module.config.js';
+export * from './src/module.js';
+export * from './src/crud.js';
+export * from './src/testing.js';
+export * from './src/broker/broker.js';
+export * from './src/broker/broker.config.js';

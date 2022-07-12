@@ -12,7 +12,7 @@ import { cli, Command, flag } from '@deepkit/app';
 import { join } from 'path';
 import { readFileSync, unlinkSync } from 'fs';
 import { decodeFrameData, decodeFrames } from '@deepkit/framework-debug-api';
-import { FrameworkConfig } from '../module.config';
+import { FrameworkConfig } from '../module.config.js';
 import { LoggerInterface } from '@deepkit/logger';
 
 @cli.controller('debug:debug:frames', {})

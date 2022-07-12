@@ -1,15 +1,15 @@
-import { HttpListener, HttpResultFormatter, httpWorkflow } from './http';
-import { HttpConfig } from './module.config';
+import { HttpListener, HttpResultFormatter, httpWorkflow } from './http.js';
+import { HttpConfig } from './module.config.js';
 import { AppModule, createModule } from '@deepkit/app';
-import { HttpRouter, HttpRouterRegistry } from './router';
-import { HttpKernel } from './kernel';
-import { HttpRouterFilterResolver } from './filter';
-import { HttpControllers } from './controllers';
+import { HttpRouter, HttpRouterRegistry } from './router.js';
+import { HttpKernel } from './kernel.js';
+import { HttpRouterFilterResolver } from './filter.js';
+import { HttpControllers } from './controllers.js';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
-import { HttpRequest, HttpResponse } from './model';
+import { HttpRequest, HttpResponse } from './model.js';
 import '@deepkit/type';
 import { ClassType } from '@deepkit/core';
-import { httpClass } from './decorator';
+import { httpClass } from './decorator.js';
 
 export class HttpModule extends createModule({
     config: HttpConfig,

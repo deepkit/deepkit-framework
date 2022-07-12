@@ -11,11 +11,11 @@
 import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { DuiIconModule } from '../icon';
-import { DuiButtonModule } from '../button';
-import { SliderComponent } from './slider.component';
+import { DuiIconModule } from '../icon/index.js';
+import { DuiButtonModule } from '../button/index.js';
+import { SliderComponent } from './slider.component.js';
 
-export * from './slider.component';
+export * from './slider.component.js';
 
 @NgModule({
     declarations: [

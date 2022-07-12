@@ -1,16 +1,16 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { ControllerClient } from '../client';
+import { ControllerClient } from '../client.js';
 import { ApiAction, ApiEntryPoints, ApiRoute } from '@deepkit/api-console-api';
-import { methods, trackByIndex } from '../utils';
-import { Environment, RouteState, Store } from '../store';
+import { methods, trackByIndex } from '../utils.js';
+import { Environment, RouteState, Store } from '../store.js';
 import { copy } from '@deepkit/core';
 import { Subscription } from 'rxjs';
 import { DuiDialog } from '@deepkit/desktop-ui';
-import { EnvironmentDialogComponent } from '../components/environment-dialog.component';
-import { filterAndSortActions, filterAndSortRoutes } from './view-helper';
+import { EnvironmentDialogComponent } from '../components/environment-dialog.component.js';
+import { filterAndSortActions, filterAndSortRoutes } from './view-helper.js';
 import { ActivatedRoute, Router } from '@angular/router';
-import { HttpRouteDetailComponent } from './http/route-detail.component';
-import { HttpRequestsComponent } from './http/results.component';
+import { HttpRouteDetailComponent } from './http/route-detail.component.js';
+import { HttpRequestsComponent } from './http/results.component.js';
 import { ReflectionKind, stringifyType } from '@deepkit/type';
 
 @Component({

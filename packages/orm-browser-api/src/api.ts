@@ -10,7 +10,7 @@
 
 import { ControllerSymbol } from '@deepkit/rpc';
 import { ChangesInterface, deserializeType, entity, ReflectionClass } from '@deepkit/type';
-import { FakerTypes } from './faker';
+import { FakerTypes } from './faker.js';
 
 export type DatabaseCommit = {
     [dbName: string]: {

@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
 import { defaultValue, Type, TypeArray } from '@deepkit/type';
 import { isArray } from '@deepkit/core';
-import { trackByIndex } from '../../utils';
+import { trackByIndex } from '../../utils.js';
 
 @Component({
     template: `

@@ -27,8 +27,8 @@ import {
     ValidationErrorItem
 } from '@deepkit/type';
 import { isObservable, Observable, Subject, Subscription } from 'rxjs';
-import { Collection, CollectionEvent, CollectionQueryModel, CollectionQueryModelInterface, CollectionState } from '../collection';
-import { getActions } from '../decorators';
+import { Collection, CollectionEvent, CollectionQueryModel, CollectionQueryModelInterface, CollectionState } from '../collection.js';
+import { getActions } from '../decorators.js';
 import {
     ActionMode,
     ActionObservableTypes,
@@ -42,10 +42,10 @@ import {
     rpcResponseActionObservableSubscriptionError,
     rpcResponseActionType,
     RpcTypes,
-} from '../model';
-import { rpcEncodeError, RpcMessage } from '../protocol';
-import { RpcMessageBuilder } from './kernel';
-import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security';
+} from '../model.js';
+import { rpcEncodeError, RpcMessage } from '../protocol.js';
+import { RpcMessageBuilder } from './kernel.js';
+import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security.js';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 
 export type ActionTypes = {
