@@ -1,3 +1,5 @@
+const ResolveTypeScriptPlugin = require("resolve-typescript-plugin");
+
 module.exports = {
     resolve: {
         fallback: {
@@ -6,6 +8,9 @@ module.exports = {
             path: false,
             process: false,
             '@deepkit/logger': false
-        }
+        },
+        plugins: [new ResolveTypeScriptPlugin({
+            includeNodeModules: true
+        })]
     }
 }
