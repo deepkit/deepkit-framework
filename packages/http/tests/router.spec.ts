@@ -15,8 +15,12 @@ test('router', async () => {
         helloWorld() {
         }
 
-        @http.GET(':name')
+        @http.GET('/a/:name')
         hello(name: string) {
+        }
+
+        @http.GET('/b/:name')
+        helloButNoParam() {
         }
 
         @http.GET('/user/:id/static')
@@ -34,15 +38,16 @@ test('router', async () => {
 
     const router = HttpRouter.forControllers([Controller]);
 
-    expect((await router.resolve('GET', '/'))?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'helloWorld' });
-    expect((await router.resolve('GET', '/peter'))?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'hello' });
-    expect((await router.resolve('GET', '/peter'))?.parameters!(undefined as any)).toEqual(['peter']);
+    expect(router.resolve('GET', '/')?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'helloWorld' });
+    expect(router.resolve('GET', '/a/peter')?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'hello' });
+    expect(router.resolve('GET', '/a/peter')?.parameters!(undefined as any)).toEqual(['peter']);
+    expect(router.resolve('GET', '/b/peter')).toBeDefined();
 
-    const userStatic = await router.resolve('GET', '/user/1233/static');
+    const userStatic = router.resolve('GET', '/user/1233/static');
     expect(userStatic?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'userStatic' });
     expect(userStatic?.parameters!(undefined as any)).toEqual(['1233']);
 
-    const userStatic2 = await router.resolve('GET', '/user2/1233/static/123');
+    const userStatic2 = router.resolve('GET', '/user2/1233/static/123');
     expect(userStatic2?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'userStatic2' });
     expect(userStatic2?.parameters!(undefined as any)).toEqual(['1233', '123']);
 });

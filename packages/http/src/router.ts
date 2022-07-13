@@ -796,9 +796,6 @@ export class HttpRouter {
         }
 
         let matcher = `_path.startsWith(${JSON.stringify(prefix)}) && (_match = _path.match(${regexVar}))`;
-        if (!hasParameters) {
-            matcher = `_path === ${JSON.stringify(path)}`;
-        }
 
         let middlewares = 'undefined';
         if (middlewareConfigs.length) {
