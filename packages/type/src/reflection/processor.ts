@@ -857,6 +857,9 @@ export class Processor {
                         case ReflectionOp.abstract:
                             (program.stack[program.stackPointer] as TypeBaseMember).abstract = true;
                             break;
+                        case ReflectionOp.static:
+                            (program.stack[program.stackPointer] as TypeBaseMember).static = true;
+                            break;
                         case ReflectionOp.defaultValue:
                             (program.stack[program.stackPointer] as TypeProperty | TypeEnumMember | TypeParameter).default = program.stack[this.eatParameter() as number] as () => any;
                             break;

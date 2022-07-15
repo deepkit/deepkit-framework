@@ -9,6 +9,7 @@
  */
 
 import { CompilerContext, isArray, isIterable, isObject, toFastProperties } from '@deepkit/core';
+import { isPropertyMemberType } from '@deepkit/type';
 import {
     binaryBigIntAnnotation,
     BinaryBigIntType,
@@ -719,7 +720,7 @@ function handleObjectLiteral(
             signatures.push(member);
         }
 
-        if (member.kind !== ReflectionKind.property && member.kind !== ReflectionKind.propertySignature) continue;
+        if (!isPropertyMemberType(member)) continue;
         if (!isSerializable(member.type)) continue;
 
         const writeName = String(state.namingStrategy.getPropertyName(member, state.registry.serializer.name));

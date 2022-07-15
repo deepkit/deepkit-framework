@@ -247,3 +247,19 @@ test('readonly constructor properties', () => {
     expect(validate<Pilot>({name: 'Peter', age: 32})).toEqual([]);
     expect(validate<Pilot>({name: 'Peter', age: 'sdd'})).toEqual([{code: 'type', message: 'Not a number', path: 'age'}]);
 });
+
+test('class with statics', () => {
+    class PilotId {
+        public static readonly none: PilotId = new PilotId(0);
+
+        constructor(public readonly value: number) {
+        }
+
+        static from(value: number) {
+            return new PilotId(value);
+        }
+    }
+
+    expect(validate<PilotId>({value: 34})).toEqual([]);
+    expect(validate<PilotId>({value: '33'})).toEqual([{code: 'type', message: 'Not a number', path: 'value'}]);
+});
