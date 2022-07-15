@@ -286,8 +286,10 @@ test('interface with method', () => {
 
 test('readonly constructor properties', () => {
     class Pilot {
-        constructor(readonly name: string, readonly age: number) {}
+        constructor(readonly name: string, readonly age: number) {
+        }
     }
+
     const reflection = ReflectionClass.from(Pilot);
     expect(reflection.getProperty('name').type.kind).toBe(ReflectionKind.string);
     expect(reflection.getProperty('age').type.kind).toBe(ReflectionKind.number);
@@ -297,6 +299,23 @@ test('readonly constructor properties', () => {
   readonly name: string;
   readonly age: number;
 }`);
+});
+
+test('class with statics', () => {
+    class PilotId {
+        public static readonly none: PilotId = new PilotId(0);
+
+        constructor(public readonly value: number) {
+        }
+
+        static from(value: number) {
+            return new PilotId(value);
+        }
+    }
+
+    expect(stringifyResolvedType(typeOf<PilotId>())).toContain(`constructor(readonly value: number);
+  readonly value: number;
+  static from(value: number): any;`);
 });
 
 test('extendability constructor', () => {

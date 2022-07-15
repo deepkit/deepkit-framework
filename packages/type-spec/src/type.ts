@@ -205,4 +205,6 @@ export enum ReflectionOp {
     extends, //X extends Y in a conditional type, XY popped from the stack, pushes boolean on the stack
 
     widen, //widens the type on the stack, .e.g 'asd' => string, 34 => number, etc. this is necessary for infer runtime data, and widen if necessary (object member or non-contained literal)
+
+    static,
 }

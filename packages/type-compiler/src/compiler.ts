@@ -1291,6 +1291,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     if (hasModifier(narrowed, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
                     if (hasModifier(narrowed, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
                     if (hasModifier(narrowed, SyntaxKind.AbstractKeyword)) program.pushOp(ReflectionOp.abstract);
+                    if (hasModifier(narrowed, SyntaxKind.StaticKeyword)) program.pushOp(ReflectionOp.static);
 
                     if (narrowed.initializer) {
                         //important to use Function, since it will be called using a different `this`
@@ -1432,6 +1433,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     if (hasModifier(narrowed, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
                     if (hasModifier(narrowed, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
                     if (hasModifier(narrowed, SyntaxKind.AbstractKeyword)) program.pushOp(ReflectionOp.abstract);
+                    if (hasModifier(narrowed, SyntaxKind.StaticKeyword)) program.pushOp(ReflectionOp.static);
                 }
                 program.popFrameImplicit();
                 break;
