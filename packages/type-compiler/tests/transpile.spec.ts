@@ -253,3 +253,15 @@ test('chained optional methods', () => {
     console.log(res);
     expect(res).toEqual([[1, '.!'], undefined]);
 });
+
+test('readonly constructor properties', () => {
+    const res = transpileAndRun({
+        'app': `
+           class User {
+              constructor(readonly id: number) {}
+           }
+        `
+    });
+
+    console.log(res);
+});

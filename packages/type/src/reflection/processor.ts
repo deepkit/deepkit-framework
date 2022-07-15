@@ -537,7 +537,7 @@ export class Processor {
 
                                         if (member.kind === ReflectionKind.method && member.name === 'constructor') {
                                             for (const parameter of member.parameters) {
-                                                if (parameter.visibility !== undefined) {
+                                                if (parameter.visibility !== undefined || parameter.readonly) {
                                                     const property = {
                                                         kind: ReflectionKind.property,
                                                         name: parameter.name,

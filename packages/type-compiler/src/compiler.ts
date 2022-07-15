@@ -1409,7 +1409,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     if (hasModifier(parameter, SyntaxKind.PublicKeyword)) program.pushOp(ReflectionOp.public);
                     if (hasModifier(parameter, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
                     if (hasModifier(parameter, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
-                    if (hasModifier(narrowed, SyntaxKind.ReadonlyKeyword)) program.pushOp(ReflectionOp.readonly);
+                    if (hasModifier(parameter, SyntaxKind.ReadonlyKeyword)) program.pushOp(ReflectionOp.readonly);
                     if (parameter.initializer && parameter.type && !getReceiveTypeParameter(parameter.type)) {
                         program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, parameter.initializer)));
                     }

@@ -284,6 +284,21 @@ test('interface with method', () => {
     validExtend<Connection, { id: number, write(data: SubUint16Array): void }>();
 });
 
+test('readonly constructor properties', () => {
+    class Pilot {
+        constructor(readonly name: string, readonly age: number) {}
+    }
+    const reflection = ReflectionClass.from(Pilot);
+    expect(reflection.getProperty('name').type.kind).toBe(ReflectionKind.string);
+    expect(reflection.getProperty('age').type.kind).toBe(ReflectionKind.number);
+
+    expect(stringifyResolvedType(typeOf<Pilot>())).toBe(`Pilot {
+  constructor(readonly name: string, readonly age: number);
+  readonly name: string;
+  readonly age: number;
+}`);
+});
+
 test('extendability constructor', () => {
     type c = abstract new (...args: any) => any;
 
