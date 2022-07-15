@@ -239,3 +239,11 @@ test('inline object', () => {
         collection: {} // This should make the validator throw an error
     })).toThrow('collection.items(type): Not an array');
 });
+
+test('readonly constructor properties', () => {
+    class Pilot {
+        constructor(readonly name: string, readonly age: number) {}
+    }
+    expect(validate<Pilot>({name: 'Peter', age: 32})).toEqual([]);
+    expect(validate<Pilot>({name: 'Peter', age: 'sdd'})).toEqual([{code: 'type', message: 'Not a number', path: 'age'}]);
+});
