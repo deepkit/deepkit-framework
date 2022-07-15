@@ -188,7 +188,7 @@ export function prettyPrintObject(object: object): string {
  */
 export function isFunction(obj: any): obj is Function {
     if ('function' === typeof obj) {
-        return !obj.toString().startsWith('class ');
+        return !obj.toString().startsWith('class ') && !obj.toString().startsWith('class{');
     }
 
     return false;
