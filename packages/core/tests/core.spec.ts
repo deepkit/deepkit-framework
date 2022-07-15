@@ -123,6 +123,13 @@ test('helper isFunction', () => {
     })).toBe(true);
     expect(isFunction(async function () {
     })).toBe(true);
+    expect(isFunction(class Peter{})).toBe(false);
+    expect(isFunction(class {})).toBe(false);
+    expect(isFunction(class{})).toBe(false);
+
+    const fn = function() {}
+    fn.toString = () => 'class{}';
+    expect(isFunction(fn)).toBe(false);
 });
 
 test('helper isAsyncFunction', () => {
