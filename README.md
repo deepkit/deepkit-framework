@@ -1,5 +1,6 @@
 <div align="center">
-<img src="https://deepkit.io/assets/images/deepkit_text.svg" />
+    <img src="./media/deepkit_logo.svg#gh-dark-mode-only" width="192" />
+    <img src="./media/deepkit_logo_dark.svg#gh-light-mode-only" width="192" />
 </div>
 <br/>
 
