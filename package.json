@@ -22,7 +22,8 @@
     "docs": "rm -rf docs && node --max-old-space-size=12096 node_modules/.bin/typedoc packages/*/index.ts",
     "publish": "lerna publish --no-private prerelease",
     "publish-force": "npm run build && lerna publish --no-private --force-publish",
-    "publish-website": "heroku container:push web && heroku container:release web"
+    "publish-website": "heroku container:push web && heroku container:release web",
+    "lint:ext": "node lint-file-extension.cjs"
   },
   "peerDependencies": {},
   "devDependencies": {
@@ -45,7 +46,7 @@
   "engines": {
     "node": ">= 14.0.0"
   },
-   "jest": {
+  "jest": {
     "moduleNameMapper": {
       "(.+)\\.js": "$1"
     },
