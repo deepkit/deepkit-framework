@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { expect, test } from '@jest/globals';
-import { reflect, ReflectionClass } from '../src/reflection/reflection.js';
+import { reflect, ReflectionClass, typeOf } from '../src/reflection/reflection.js';
 import {
     AutoIncrement,
     BackReference,
@@ -22,9 +22,11 @@ import {
     PrimaryKey,
     Reference,
     ReflectionKind,
-    SignedBinaryBigInt
-} from '../src/reflection/type.js';
-import { createSerializeFunction, getSerializeFunction, serializer } from '../src/serializer.js';
+    SignedBinaryBigInt,
+    TypeProperty,
+    TypePropertySignature
+} from '../src/reflection/type';
+import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializer } from '../src/serializer.js';
 import { cast, deserialize, serialize } from '../src/serializer-facade.js';
 import { getClassName } from '@deepkit/core';
 import { entity, t } from '../src/decorator.js';
@@ -900,4 +902,75 @@ test('readonly constructor properties', () => {
     }
     expect(cast<Pilot>({name: 'Peter', age: 32})).toEqual({name: 'Peter', age: 32});
     expect(cast<Pilot>({name: 'Peter', age: '32'})).toEqual({name: 'Peter', age: 32});
+});
+
+test('naming strategy prefix', () => {
+    class MyNamingStrategy extends NamingStrategy {
+        constructor() {
+            super('my');
+        }
+
+        override getPropertyName(type: TypeProperty | TypePropertySignature, forSerializer: string ): string | undefined {
+            return '_' + super.getPropertyName(type, forSerializer);
+        }
+    }
+
+    interface Post {
+        id: number;
+        likesCount: number;
+    }
+
+    interface User {
+        readonly id: number;
+        readonly posts: readonly Post[]
+    }
+
+    {
+        const res = serialize<User>({id: 2, posts: [{id: 3, likesCount: 1}, {id: 4, likesCount: 2}]}, undefined, undefined, new MyNamingStrategy);
+        expect(res).toEqual({_id: 2, _posts: [{_id: 3, _likesCount: 1}, {_id: 4, _likesCount: 2}]});
+    }
+
+    {
+        const res = deserialize<User>({_id: 2, _posts: [{_id: 3, _likesCount: 1}, {_id: 4, _likesCount: 2}]}, undefined, undefined, new MyNamingStrategy);
+        expect(res).toEqual({id: 2, posts: [{id: 3, likesCount: 1}, {id: 4, likesCount: 2}]});
+    }
+});
+
+test('naming strategy camel case', () => {
+    const camelCaseToSnakeCase = (str: string) =>
+        str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+
+    class CamelCaseToSnakeCaseNamingStrategy extends NamingStrategy {
+        constructor() {
+            super('snake-case-to-camel-case');
+        }
+
+        override getPropertyName(
+            type: TypeProperty | TypePropertySignature,
+            forSerializer: string
+        ): string | undefined {
+            const propertyName = super.getPropertyName(type, forSerializer);
+            return propertyName ? camelCaseToSnakeCase(propertyName) : undefined;
+        }
+    }
+
+    interface Post {
+        id: number;
+        likesCount: number;
+    }
+
+    interface User {
+        id: number;
+        posts: Post[]
+    }
+
+    {
+        const res = serialize<User>({id: 2, posts: [{id: 3, likesCount: 1}, {id: 4, likesCount: 2}]}, undefined, undefined, new CamelCaseToSnakeCaseNamingStrategy);
+        expect(res).toEqual({id: 2, posts: [{id: 3, likes_count: 1}, {id: 4, likes_count: 2}]});
+    }
+
+    {
+        const res = deserialize<User>({id: 2, posts: [{id: 3, likes_count: 1}, {id: 4, likes_count: 2}]}, undefined, undefined, new CamelCaseToSnakeCaseNamingStrategy);
+        expect(res).toEqual({id: 2, posts: [{id: 3, likesCount: 1}, {id: 4, likesCount: 2}]});
+    }
 });
