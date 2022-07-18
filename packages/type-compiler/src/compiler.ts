@@ -2393,6 +2393,7 @@ export class ReflectionTransformer implements CustomTransformer {
         if (!serverEnv) {
             return { mode: 'default' };
         }
+        if (this.reflectionMode !== undefined) return { mode: this.reflectionMode };
 
         let currentDir = dirname(path);
         let reflection: typeof reflectionModes[number] | undefined;
