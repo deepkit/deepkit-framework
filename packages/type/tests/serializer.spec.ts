@@ -904,7 +904,7 @@ test('readonly constructor properties', () => {
     expect(cast<Pilot>({name: 'Peter', age: '32'})).toEqual({name: 'Peter', age: 32});
 });
 
-test('naming strategy', () => {
+test('naming strategy prefix', () => {
     class MyNamingStrategy extends NamingStrategy {
         constructor() {
             super('my');
@@ -917,6 +917,7 @@ test('naming strategy', () => {
 
     interface Post {
         id: number;
+        likesCount: number;
     }
 
     interface User {
@@ -925,12 +926,51 @@ test('naming strategy', () => {
     }
 
     {
-        const res = serialize<User>({id: 2, posts: [{id: 3}, {id: 4}]}, undefined, undefined, new MyNamingStrategy);
-        expect(res).toEqual({_id: 2, _posts: [{_id: 3}, {_id: 4}]});
+        const res = serialize<User>({id: 2, posts: [{id: 3, likesCount: 1}, {id: 4, likesCount: 2}]}, undefined, undefined, new MyNamingStrategy);
+        expect(res).toEqual({_id: 2, _posts: [{_id: 3, _likesCount: 1}, {_id: 4, _likesCount: 2}]});
     }
 
     {
-        const res = deserialize<User>({_id: 2, _posts: [{_id: 3}, {_id: 4}]}, undefined, undefined, new MyNamingStrategy);
-        expect(res).toEqual({id: 2, posts: [{id: 3}, {id: 4}]});
+        const res = deserialize<User>({_id: 2, _posts: [{_id: 3, _likesCount: 1}, {_id: 4, _likesCount: 2}]}, undefined, undefined, new MyNamingStrategy);
+        expect(res).toEqual({id: 2, posts: [{id: 3, likesCount: 1}, {id: 4, likesCount: 2}]});
+    }
+});
+
+test('naming strategy camel case', () => {
+    const camelCaseToSnakeCase = (str: string) =>
+        str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+
+    class CamelCaseToSnakeCaseNamingStrategy extends NamingStrategy {
+        constructor() {
+            super('snake-case-to-camel-case');
+        }
+
+        override getPropertyName(
+            type: TypeProperty | TypePropertySignature,
+            forSerializer: string
+        ): string | undefined {
+            const propertyName = super.getPropertyName(type, forSerializer);
+            return propertyName ? camelCaseToSnakeCase(propertyName) : undefined;
+        }
+    }
+
+    interface Post {
+        id: number;
+        likesCount: number;
+    }
+
+    interface User {
+        id: number;
+        posts: Post[]
+    }
+
+    {
+        const res = serialize<User>({id: 2, posts: [{id: 3, likesCount: 1}, {id: 4, likesCount: 2}]}, undefined, undefined, new CamelCaseToSnakeCaseNamingStrategy);
+        expect(res).toEqual({id: 2, posts: [{id: 3, likes_count: 1}, {id: 4, likes_count: 2}]});
+    }
+
+    {
+        const res = deserialize<User>({id: 2, posts: [{id: 3, likes_count: 1}, {id: 4, likes_count: 2}]}, undefined, undefined, new CamelCaseToSnakeCaseNamingStrategy);
+        expect(res).toEqual({id: 2, posts: [{id: 3, likesCount: 1}, {id: 4, likesCount: 2}]});
     }
 });
