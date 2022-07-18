@@ -762,3 +762,19 @@ test('dynamic properties', () => {
     const back2 = deserializeFromJson<A>({ 'type': 'abc' });
     expect(back2.getType()).toBe('abc');
 });
+
+test('class with statics', () => {
+    class PilotId {
+        public static readonly none: PilotId = new PilotId(0);
+
+        constructor(public readonly value: number) {
+        }
+
+        static from(value: number) {
+            return new PilotId(value);
+        }
+    }
+
+    expect(deserializeFromJson<PilotId>({value: 34})).toEqual({value: 34});
+    expect(serializeToJson<PilotId>({value: 33})).toEqual({value: 33});
+});

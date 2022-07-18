@@ -537,7 +537,7 @@ export class Processor {
 
                                         if (member.kind === ReflectionKind.method && member.name === 'constructor') {
                                             for (const parameter of member.parameters) {
-                                                if (parameter.visibility !== undefined) {
+                                                if (parameter.visibility !== undefined || parameter.readonly) {
                                                     const property = {
                                                         kind: ReflectionKind.property,
                                                         name: parameter.name,
@@ -856,6 +856,9 @@ export class Processor {
                             break;
                         case ReflectionOp.abstract:
                             (program.stack[program.stackPointer] as TypeBaseMember).abstract = true;
+                            break;
+                        case ReflectionOp.static:
+                            (program.stack[program.stackPointer] as TypeBaseMember).static = true;
                             break;
                         case ReflectionOp.defaultValue:
                             (program.stack[program.stackPointer] as TypeProperty | TypeEnumMember | TypeParameter).default = program.stack[this.eatParameter() as number] as () => any;

@@ -28,7 +28,7 @@ import { createSerializeFunction, getSerializeFunction, serializer } from '../sr
 import { cast, deserialize, serialize } from '../src/serializer-facade.js';
 import { getClassName } from '@deepkit/core';
 import { entity, t } from '../src/decorator.js';
-import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator.js';
+import { Alphanumeric, MaxLength, MinLength, validate, ValidationError } from '../src/validator.js';
 
 test('deserializer', () => {
     class User {
@@ -892,4 +892,12 @@ test('disabled constructor', () => {
     expect(called).toBe(false);
     expect(user).toBeInstanceOf(User);
     expect(user).toEqual({ id: 0, title: 'id:' + 0, type: 'nix' });
+});
+
+test('readonly constructor properties', () => {
+    class Pilot {
+        constructor(readonly name: string, readonly age: number) {}
+    }
+    expect(cast<Pilot>({name: 'Peter', age: 32})).toEqual({name: 'Peter', age: 32});
+    expect(cast<Pilot>({name: 'Peter', age: '32'})).toEqual({name: 'Peter', age: 32});
 });

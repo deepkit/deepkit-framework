@@ -1,3 +1,4 @@
+import { isPropertyMemberType } from '@deepkit/type';
 import {
     binaryBigIntAnnotation,
     BinaryBigIntType,
@@ -670,7 +671,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
             if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
             signatures.push(member);
         }
-        if (member.kind !== ReflectionKind.property && member.kind !== ReflectionKind.propertySignature) continue;
+        if (!isPropertyMemberType(member)) continue;
         if (!isSerializable(member.type)) continue;
         if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
 
@@ -879,7 +880,7 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
             if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
             signatures.push(member);
         }
-        if (member.kind !== ReflectionKind.property && member.kind !== ReflectionKind.propertySignature) continue;
+        if (!isPropertyMemberType(member)) continue;
         if (!isSerializable(member.type)) continue;
         if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
 

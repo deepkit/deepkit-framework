@@ -224,6 +224,7 @@ export interface TypeRegexp extends TypeOrigin, TypeAnnotations {
 export interface TypeBaseMember extends TypeAnnotations {
     visibility: ReflectionVisibility,
     abstract?: true;
+    static?: true;
     optional?: true,
     readonly?: true;
 }
@@ -248,11 +249,8 @@ export interface TypeParameter extends TypeAnnotations {
 export interface TypeMethod extends TypeBaseMember {
     kind: ReflectionKind.method,
     parent: TypeClass;
-    visibility: ReflectionVisibility,
     name: number | string | symbol;
     parameters: TypeParameter[];
-    optional?: true,
-    abstract?: true;
     return: Type;
 }
 
@@ -261,9 +259,6 @@ export interface TypeProperty extends TypeBaseMember {
     parent: TypeClass;
     visibility: ReflectionVisibility,
     name: number | string | symbol;
-    optional?: true,
-    readonly?: true;
-    abstract?: true;
     description?: string;
     type: Type;
 
@@ -491,6 +486,14 @@ export function isPrimitive<T extends Type>(type: T): boolean {
 
 export function isPropertyType(type: Type): type is TypePropertySignature | TypeProperty {
     return type.kind === ReflectionKind.property || type.kind === ReflectionKind.propertySignature;
+}
+
+/**
+ * Returns true if the type is TypePropertySignature | TypeProperty and not a static member.
+ */
+export function isPropertyMemberType(type: Type): type is TypePropertySignature | TypeProperty {
+    if (type.kind === ReflectionKind.property) return !type.static;
+    return type.kind === ReflectionKind.propertySignature;
 }
 
 /**
@@ -2349,7 +2352,7 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                 case ReflectionKind.property: {
                     const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
                     const optional = type.optional || (stateIn.defaultIsOptional && type.default !== undefined);
-                    result.push(`${type.readonly ? 'readonly ' : ''}${visibility}${memberNameToString(type.name)}${optional ? '?' : ''}: `);
+                    result.push(`${type.static ? 'static ' : ''}${type.readonly ? 'readonly ' : ''}${visibility}${memberNameToString(type.name)}${optional ? '?' : ''}: `);
                     stack.push({ type: type.type, defaultValue: entry.defaultValue, depth });
                     break;
                 }
@@ -2364,6 +2367,7 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                 case ReflectionKind.method: {
                     const visibility = type.visibility ? ReflectionVisibility[type.visibility] + ' ' : '';
                     const abstract = type.abstract ? 'abstract ' : '';
+                    const staticPrefix = type.static ? 'static ' : '';
                     if (type.name === 'constructor') {
                         stack.push({ before: ')' });
                     } else {
@@ -2373,7 +2377,7 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                     for (let i = type.parameters.length - 1; i >= 0; i--) {
                         stack.push({ type: type.parameters[i], before: i === 0 ? undefined : ', ', depth });
                     }
-                    stack.push({ before: `${abstract}${visibility}${memberNameToString(type.name)}${type.optional ? '?' : ''}(` });
+                    stack.push({ before: `${staticPrefix}${abstract}${visibility}${memberNameToString(type.name)}${type.optional ? '?' : ''}(` });
                     break;
                 }
             }
