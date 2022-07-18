@@ -10,6 +10,7 @@
 import { expect, test } from '@jest/globals';
 import { reflect, ReflectionClass, typeOf } from '../src/reflection/reflection';
 import {
+    assertType,
     AutoIncrement,
     BackReference,
     BinaryBigInt,
@@ -30,7 +31,7 @@ import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializ
 import { cast, deserialize, serialize } from '../src/serializer-facade';
 import { getClassName } from '@deepkit/core';
 import { entity, t } from '../src/decorator';
-import { Alphanumeric, MaxLength, MinLength, validate, ValidationError } from '../src/validator';
+import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator';
 
 test('deserializer', () => {
     class User {
@@ -973,4 +974,24 @@ test('naming strategy camel case', () => {
         const res = deserialize<User>({id: 2, posts: [{id: 3, likes_count: 1}, {id: 4, likes_count: 2}]}, undefined, undefined, new CamelCaseToSnakeCaseNamingStrategy);
         expect(res).toEqual({id: 2, posts: [{id: 3, likesCount: 1}, {id: 4, likesCount: 2}]});
     }
+});
+
+test('enum union', () => {
+    enum StatEnginePowerUnit {
+        Hp = 'hp',
+    }
+
+    enum StatWeightUnit {
+        Lbs = 'lbs',
+        Kg = 'kg',
+    }
+
+    type StatMeasurementUnit = StatEnginePowerUnit | StatWeightUnit;
+    const type = typeOf<StatMeasurementUnit>();
+    assertType(type, ReflectionKind.union);
+    expect(type.types.length).toBe(2);
+
+    expect(deserialize<StatMeasurementUnit>(StatWeightUnit.Kg)).toBe(StatWeightUnit.Kg);
+    expect(deserialize<StatMeasurementUnit>(StatWeightUnit.Lbs)).toBe(StatWeightUnit.Lbs);
+    expect(deserialize<StatMeasurementUnit>(StatEnginePowerUnit.Hp)).toBe(StatEnginePowerUnit.Hp);
 });

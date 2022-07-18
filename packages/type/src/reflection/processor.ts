@@ -407,7 +407,7 @@ export class Processor {
                 for (; program.program < program.end; program.program++) {
                     const op = program.ops[program.program];
 
-                    // process.stdout.write(`[${program.depth}:${program.frame.index}] step ${program.program} ${RuntimeReflectionOp[op]}\n`);
+                    // process.stdout.write(`[${program.depth}:${program.frame.index}] step ${program.program} ${ReflectionOp[op]}\n`);
                     switch (op) {
                         case ReflectionOp.string:
                             this.pushType({ kind: ReflectionKind.string });
