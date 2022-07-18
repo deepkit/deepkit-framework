@@ -265,3 +265,20 @@ test('readonly constructor properties', () => {
 
     console.log(res);
 });
+
+test('readonly array', () => {
+    const res = transpileAndRun({
+        'app': `
+            interface Post {
+                id: number;
+            }
+
+            interface User {
+                readonly id: number;
+                readonly posts: readonly Post[]
+            }
+        `
+    });
+
+    console.log(res);
+});
