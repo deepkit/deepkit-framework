@@ -674,7 +674,8 @@ export class HttpRouter {
         const routeConfigVar = compiler.reserveVariable('routeConfigVar', routeConfig);
         const parsedRoute = parseRouteControllerAction(routeConfig);
         const path = routeConfig.getFullPath();
-        const prefix = path.substr(0, path.indexOf(':'));
+        const pathParamStarter = path.indexOf(':')
+        const prefix = path.substr(0, pathParamStarter);
 
         const regexVar = compiler.reserveVariable('regex', new RegExp('^' + parsedRoute.regex + '$'));
         const setParameters: string[] = [];
@@ -683,7 +684,7 @@ export class HttpRouter {
         let bodyValidationErrorHandling = `if (bodyErrors.length) throw ValidationError.from(bodyErrors);`;
 
         let enableParseBody = false;
-        const hasParameters = parsedRoute.getParameters().length > 0;
+        const hasParameters = pathParamStarter !== -1 || parsedRoute.getParameters().length > 0;
         let requiresAsyncParameters = false;
         let setParametersFromPath = '';
 
@@ -796,6 +797,9 @@ export class HttpRouter {
         }
 
         let matcher = `_path.startsWith(${JSON.stringify(prefix)}) && (_match = _path.match(${regexVar}))`;
+        if (!hasParameters) {
+            matcher = `_path === ${JSON.stringify(path)}`;
+        }
 
         let middlewares = 'undefined';
         if (middlewareConfigs.length) {
