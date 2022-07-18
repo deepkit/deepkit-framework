@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { expect, test } from '@jest/globals';
-import { reflect, ReflectionClass } from '../src/reflection/reflection';
+import { reflect, ReflectionClass, typeOf } from '../src/reflection/reflection';
 import {
     AutoIncrement,
     BackReference,
@@ -22,9 +22,11 @@ import {
     PrimaryKey,
     Reference,
     ReflectionKind,
-    SignedBinaryBigInt
+    SignedBinaryBigInt,
+    TypeProperty,
+    TypePropertySignature
 } from '../src/reflection/type';
-import { createSerializeFunction, getSerializeFunction, serializer } from '../src/serializer';
+import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializer } from '../src/serializer';
 import { cast, deserialize, serialize } from '../src/serializer-facade';
 import { getClassName } from '@deepkit/core';
 import { entity, t } from '../src/decorator';
@@ -900,4 +902,35 @@ test('readonly constructor properties', () => {
     }
     expect(cast<Pilot>({name: 'Peter', age: 32})).toEqual({name: 'Peter', age: 32});
     expect(cast<Pilot>({name: 'Peter', age: '32'})).toEqual({name: 'Peter', age: 32});
+});
+
+test('naming strategy', () => {
+    class MyNamingStrategy extends NamingStrategy {
+        constructor() {
+            super('my');
+        }
+
+        override getPropertyName(type: TypeProperty | TypePropertySignature, forSerializer: string ): string | undefined {
+            return '_' + super.getPropertyName(type, forSerializer);
+        }
+    }
+
+    interface Post {
+        id: number;
+    }
+
+    interface User {
+        readonly id: number;
+        readonly posts: readonly Post[]
+    }
+
+    {
+        const res = serialize<User>({id: 2, posts: [{id: 3}, {id: 4}]}, undefined, undefined, new MyNamingStrategy);
+        expect(res).toEqual({_id: 2, _posts: [{_id: 3}, {_id: 4}]});
+    }
+
+    {
+        const res = deserialize<User>({_id: 2, _posts: [{_id: 3}, {_id: 4}]}, undefined, undefined, new MyNamingStrategy);
+        expect(res).toEqual({id: 2, posts: [{id: 3}, {id: 4}]});
+    }
 });
