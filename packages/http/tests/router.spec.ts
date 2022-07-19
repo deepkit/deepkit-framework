@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterResolverContext, UploadedFile } from '../src/router';
 import { http, httpClass } from '../src/decorator';
-import { HttpBadRequestError, httpWorkflow, JSONResponse, Response } from '../src/http';
+import { HtmlResponse, HttpBadRequestError, httpWorkflow, JSONResponse, Response } from '../src/http';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpBody, HttpBodyValidation, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model';
 import { getClassName, isObject, sleep } from '@deepkit/core';
@@ -59,6 +59,31 @@ test('any', async () => {
     expect(((await router.resolve('GET', '/any'))!.routeConfig.action as RouteClassControllerAction).methodName).toEqual('any');
     expect(((await router.resolve('POST', '/any'))!.routeConfig.action as RouteClassControllerAction).methodName).toEqual('any');
     expect(((await router.resolve('OPTIONS', '/any'))!.routeConfig.action as RouteClassControllerAction).methodName).toEqual('any');
+});
+
+test('explicitly annotated response objects', async () => {
+    class Controller {
+        @http.GET('/a')
+        a(): JSONResponse {
+            return new JSONResponse('a');
+        }
+
+        @http.GET('/b')
+        b(): HtmlResponse {
+            return new HtmlResponse('b');
+        }
+
+        @http.GET('/c')
+        c(): Response {
+            return new Response('c', 'text/plain');
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    expect((await httpKernel.request(HttpRequest.GET('/a'))).bodyString).toBe('"a"');
+    expect((await httpKernel.request(HttpRequest.GET('/b'))).bodyString).toBe('b');
+    expect((await httpKernel.request(HttpRequest.GET('/c'))).bodyString).toBe('c');
 });
 
 test('router parameters', async () => {
