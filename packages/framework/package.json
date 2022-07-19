@@ -62,6 +62,7 @@
     "get-parameter-names": "^0.3.0",
     "md5": "^2.2.1",
     "mime-types": "^2.1.27",
+    "nice-table": "^1.1.0",
     "pirates": "^4.0.1",
     "selfsigned": "1.10.8",
     "sift": "^7.0.1",
