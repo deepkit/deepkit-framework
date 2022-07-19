@@ -42,7 +42,7 @@
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular-devkit/custom-webpack:browser",
+          "builder": "@angular-builders/custom-webpack:browser",
           "options": {
             "customWebpackConfig": {
               "path": "./extra-webpack.config.js"
