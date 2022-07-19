@@ -32,6 +32,7 @@ import { cast, deserialize, serialize } from '../src/serializer-facade';
 import { getClassName } from '@deepkit/core';
 import { entity, t } from '../src/decorator';
 import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator';
+import { StatEnginePowerUnit, StatWeightUnit } from './types';
 
 test('deserializer', () => {
     class User {
@@ -335,8 +336,8 @@ test('union loose number boolean', () => {
     expect(cast<number | boolean>(2)).toEqual(2);
     expect(cast<number | boolean>('2')).toEqual(2);
     expect(cast<number | boolean>('true')).toEqual(true);
-    expect(() => cast<number | boolean>('true', {loosely: false})).toThrow('Validation error for type');
-    expect(() => cast<number | boolean>('true2', {loosely: false})).toThrow('Validation error for type');
+    expect(() => cast<number | boolean>('true', { loosely: false })).toThrow('Validation error for type');
+    expect(() => cast<number | boolean>('true2', { loosely: false })).toThrow('Validation error for type');
     expect(deserialize<number | boolean>('true2')).toEqual(undefined);
 });
 
@@ -351,7 +352,7 @@ test('union string bigint', () => {
     expect(cast<string | bigint>('a')).toEqual('a');
     expect(cast<string | bigint>(2n)).toEqual(2n);
     expect(cast<string | bigint>(2)).toEqual(2n);
-    expect(cast<string | bigint>('2', {loosely: false})).toEqual('2');
+    expect(cast<string | bigint>('2', { loosely: false })).toEqual('2');
     expect(cast<string | bigint>('2')).toEqual(2n);
     expect(cast<string | bigint>('2a')).toEqual('2a');
 });
@@ -899,10 +900,12 @@ test('disabled constructor', () => {
 
 test('readonly constructor properties', () => {
     class Pilot {
-        constructor(readonly name: string, readonly age: number) {}
+        constructor(readonly name: string, readonly age: number) {
+        }
     }
-    expect(cast<Pilot>({name: 'Peter', age: 32})).toEqual({name: 'Peter', age: 32});
-    expect(cast<Pilot>({name: 'Peter', age: '32'})).toEqual({name: 'Peter', age: 32});
+
+    expect(cast<Pilot>({ name: 'Peter', age: 32 })).toEqual({ name: 'Peter', age: 32 });
+    expect(cast<Pilot>({ name: 'Peter', age: '32' })).toEqual({ name: 'Peter', age: 32 });
 });
 
 test('naming strategy prefix', () => {
@@ -911,7 +914,7 @@ test('naming strategy prefix', () => {
             super('my');
         }
 
-        override getPropertyName(type: TypeProperty | TypePropertySignature, forSerializer: string ): string | undefined {
+        override getPropertyName(type: TypeProperty | TypePropertySignature, forSerializer: string): string | undefined {
             return '_' + super.getPropertyName(type, forSerializer);
         }
     }
@@ -923,17 +926,17 @@ test('naming strategy prefix', () => {
 
     interface User {
         readonly id: number;
-        readonly posts: readonly Post[]
+        readonly posts: readonly Post[];
     }
 
     {
-        const res = serialize<User>({id: 2, posts: [{id: 3, likesCount: 1}, {id: 4, likesCount: 2}]}, undefined, undefined, new MyNamingStrategy);
-        expect(res).toEqual({_id: 2, _posts: [{_id: 3, _likesCount: 1}, {_id: 4, _likesCount: 2}]});
+        const res = serialize<User>({ id: 2, posts: [{ id: 3, likesCount: 1 }, { id: 4, likesCount: 2 }] }, undefined, undefined, new MyNamingStrategy);
+        expect(res).toEqual({ _id: 2, _posts: [{ _id: 3, _likesCount: 1 }, { _id: 4, _likesCount: 2 }] });
     }
 
     {
-        const res = deserialize<User>({_id: 2, _posts: [{_id: 3, _likesCount: 1}, {_id: 4, _likesCount: 2}]}, undefined, undefined, new MyNamingStrategy);
-        expect(res).toEqual({id: 2, posts: [{id: 3, likesCount: 1}, {id: 4, likesCount: 2}]});
+        const res = deserialize<User>({ _id: 2, _posts: [{ _id: 3, _likesCount: 1 }, { _id: 4, _likesCount: 2 }] }, undefined, undefined, new MyNamingStrategy);
+        expect(res).toEqual({ id: 2, posts: [{ id: 3, likesCount: 1 }, { id: 4, likesCount: 2 }] });
     }
 });
 
@@ -962,17 +965,17 @@ test('naming strategy camel case', () => {
 
     interface User {
         id: number;
-        posts: Post[]
+        posts: Post[];
     }
 
     {
-        const res = serialize<User>({id: 2, posts: [{id: 3, likesCount: 1}, {id: 4, likesCount: 2}]}, undefined, undefined, new CamelCaseToSnakeCaseNamingStrategy);
-        expect(res).toEqual({id: 2, posts: [{id: 3, likes_count: 1}, {id: 4, likes_count: 2}]});
+        const res = serialize<User>({ id: 2, posts: [{ id: 3, likesCount: 1 }, { id: 4, likesCount: 2 }] }, undefined, undefined, new CamelCaseToSnakeCaseNamingStrategy);
+        expect(res).toEqual({ id: 2, posts: [{ id: 3, likes_count: 1 }, { id: 4, likes_count: 2 }] });
     }
 
     {
-        const res = deserialize<User>({id: 2, posts: [{id: 3, likes_count: 1}, {id: 4, likes_count: 2}]}, undefined, undefined, new CamelCaseToSnakeCaseNamingStrategy);
-        expect(res).toEqual({id: 2, posts: [{id: 3, likesCount: 1}, {id: 4, likesCount: 2}]});
+        const res = deserialize<User>({ id: 2, posts: [{ id: 3, likes_count: 1 }, { id: 4, likes_count: 2 }] }, undefined, undefined, new CamelCaseToSnakeCaseNamingStrategy);
+        expect(res).toEqual({ id: 2, posts: [{ id: 3, likesCount: 1 }, { id: 4, likesCount: 2 }] });
     }
 });
 
@@ -994,4 +997,29 @@ test('enum union', () => {
     expect(deserialize<StatMeasurementUnit>(StatWeightUnit.Kg)).toBe(StatWeightUnit.Kg);
     expect(deserialize<StatMeasurementUnit>(StatWeightUnit.Lbs)).toBe(StatWeightUnit.Lbs);
     expect(deserialize<StatMeasurementUnit>(StatEnginePowerUnit.Hp)).toBe(StatEnginePowerUnit.Hp);
+});
+
+test('union literals in union', () => {
+    type StatWeightUnit = 'lbs' | 'kg';
+    type StatEnginePowerUnit = 'hp';
+
+    type StatMeasurementUnit = StatEnginePowerUnit | StatWeightUnit;
+    const type = typeOf<StatMeasurementUnit>();
+    assertType(type, ReflectionKind.union);
+    expect(type.types.length).toBe(3);
+
+    expect(deserialize<StatMeasurementUnit>('kg')).toBe('kg');
+    expect(deserialize<StatMeasurementUnit>('lbs')).toBe('lbs');
+    expect(deserialize<StatMeasurementUnit>('hp')).toBe('hp');
+});
+
+test('union literals in union imported', () => {
+    type StatMeasurementUnit = StatEnginePowerUnit | StatWeightUnit;
+    const type = typeOf<StatMeasurementUnit>();
+    assertType(type, ReflectionKind.union);
+    expect(type.types.length).toBe(3);
+
+    expect(deserialize<StatMeasurementUnit>('kg')).toBe('kg');
+    expect(deserialize<StatMeasurementUnit>('lbs')).toBe('lbs');
+    expect(deserialize<StatMeasurementUnit>('hp')).toBe('hp');
 });
