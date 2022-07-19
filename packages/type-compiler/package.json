@@ -30,6 +30,7 @@
     "typescript": "~"
   },
   "dependencies": {
+    "@deepkit/core": "^1.0.1-alpha.72",
     "@deepkit/type-spec": "^1.0.1-alpha.72",
     "@types/lz-string": "^1.3.34",
     "@typescript/vfs": "^1.3.5",

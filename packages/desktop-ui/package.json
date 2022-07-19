@@ -40,6 +40,8 @@
     "electron": ">7.1.9"
   },
   "devDependencies": {
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.13",
     "@angular-devkit/build-angular": "^12.1.1",
     "@angular/animations": "~12.1.1",
     "@angular/cdk": "~12.1.1",

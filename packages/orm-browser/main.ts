@@ -1,21 +1,14 @@
 #!/usr/bin/env node
 
 import 'reflect-metadata';
+import { getDirname } from "@deepkit/core"
 import { FrameworkModule, OrmBrowserController } from '@deepkit/framework';
 import { App, AppModule, findParentPath } from '@deepkit/app';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { registerStaticHttpController } from '@deepkit/http';
 import { InjectorContext } from '@deepkit/injector';
-import { dirname } from 'path';
-import { fileURLToPath } from "url"
 
-// __dirname for ESM packages
-let __dirname = global.__dirname;
-if(!__dirname) {
-    // @ts-ignore
-    const __filename = fileURLToPath(import.meta.url)
-    __dirname = dirname(__filename)
-}
+const _dirname = getDirname();
 
 Database.registry = [];
 const databaseRegistry = new DatabaseRegistry(InjectorContext.forProviders([]));
@@ -34,8 +27,8 @@ const appModule = new AppModule({
         })
     ]
 }).setup((module, config) => {
-    const localPath = findParentPath('node_modules/@deepkit/orm-browser-gui/dist/orm-browser-gui', __dirname);
-    if (!localPath) throw new Error('node_modules/@deepkit/orm-browser-gui not installed in ' + __dirname);
+    const localPath = findParentPath('node_modules/@deepkit/orm-browser-gui/dist/orm-browser-gui', _dirname);
+    if (!localPath) throw new Error('node_modules/@deepkit/orm-browser-gui not installed in ' + _dirname);
     registerStaticHttpController(module, {path: '/', localPath, controllerName: 'OrmBrowserController'});
 });
 

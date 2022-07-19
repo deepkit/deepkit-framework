@@ -21,5 +21,6 @@ export * from './src/string.js';
 export * from './src/emitter.js';
 export * from './src/reactive.js';
 export * from './src/reflection.js';
+export * from './src/runtime.js';
 export * from './src/url.js';
 export * from './src/array.js';
