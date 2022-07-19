@@ -6,7 +6,7 @@
     "experimentalDecorators": true,
     "moduleResolution": "node",
     "target": "es2018",
-    "module": "CommonJS",
+    "module": "ESNext",
     "preserveSymlinks": true,
     "esModuleInterop": true,
     "lib": [
