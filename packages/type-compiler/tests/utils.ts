@@ -4,7 +4,15 @@ import { createSystem, createVirtualCompilerHost, knownLibFilesForCompilerOption
 import { ReflectionTransformer } from '../src/compiler.js';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
-import { first } from '@deepkit/core';
+import { fileURLToPath } from "url"
+
+// __dirname for ESM packages
+let __dirname = global.__dirname;
+if(!__dirname) {
+    // @ts-ignore
+    const __filename = fileURLToPath(import.meta.url)
+    __dirname = dirname(__filename)
+}
 
 const defaultLibLocation = __dirname + '/node_modules/typescript/lib/';
 

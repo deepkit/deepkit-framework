@@ -6,6 +6,16 @@ import { App, AppModule, findParentPath } from '@deepkit/app';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { registerStaticHttpController } from '@deepkit/http';
 import { InjectorContext } from '@deepkit/injector';
+import { dirname } from 'path';
+import { fileURLToPath } from "url"
+
+// __dirname for ESM packages
+let __dirname = global.__dirname;
+if(!__dirname) {
+    // @ts-ignore
+    const __filename = fileURLToPath(import.meta.url)
+    __dirname = dirname(__filename)
+}
 
 Database.registry = [];
 const databaseRegistry = new DatabaseRegistry(InjectorContext.forProviders([]));

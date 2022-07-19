@@ -7,8 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { BSONDeserializer, BSONSerializer, deserializeBSONWithoutOptimiser, getBSONDeserializer, getBSONSerializer } from '@deepkit/bson';
+import type { BSONDeserializer, BSONSerializer } from '@deepkit/bson';
+import { deserializeBSONWithoutOptimiser, getBSONDeserializer, getBSONSerializer } from '@deepkit/bson';
 import { arrayRemoveItem, asyncOperation, ClassType } from '@deepkit/core';
 import { AsyncSubscription } from '@deepkit/core-rxjs';
 import { createRpcMessage, RpcBaseClient, RpcDirectClientAdapter, RpcMessage, RpcMessageRouteType } from '@deepkit/rpc';

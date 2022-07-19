@@ -10,6 +10,17 @@
 
 import { registerStaticHttpController } from '@deepkit/http';
 import { AppModule, findParentPath } from '@deepkit/app';
+import { dirname } from 'path';
+import { fileURLToPath } from "url"
+
+let __dirname = global.__dirname;
+
+// __dirname for ESM packages
+if(!__dirname) {
+    // @ts-ignore
+    const __filename = fileURLToPath(import.meta.url)
+    __dirname = dirname(__filename)
+}
 
 export function registerDebugHttpController(module: AppModule<any>, path: string): void {
     const localPath = findParentPath('node_modules/@deepkit/framework-debug-gui/dist/framework-debug-gui', __dirname);

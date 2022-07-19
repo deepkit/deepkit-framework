@@ -1,6 +1,16 @@
 import {createReadStream, createWriteStream, lstatSync, readdirSync, readFileSync, writeFileSync} from 'fs';
 import {join} from 'path';
 import {ensureDirSync} from 'fs-extra';
+import { dirname } from 'path';
+import { fileURLToPath } from "url"
+
+// __dirname for ESM packages
+let __dirname = global.__dirname;
+if(!__dirname) {
+    // @ts-ignore
+    const __filename = fileURLToPath(import.meta.url)
+    __dirname = dirname(__filename)
+}
 
 const svg2ttf = require('svg2ttf');
 const ttf2woff = require('ttf2woff');
