@@ -282,3 +282,23 @@ test('readonly array', () => {
 
     console.log(res);
 });
+
+test('enum union', () => {
+    const res = transpileAndRun({
+        'app': `
+            enum StatEnginePowerUnit {
+                Hp,
+            }
+
+            enum StatWeightUnit {
+                Lbs,
+                Kg,
+            }
+
+            type StatMeasurementUnit = StatEnginePowerUnit | StatWeightUnit;
+            typeOf<StatMeasurementUnit>()
+        `
+    });
+
+    console.log(res);
+});

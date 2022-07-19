@@ -694,6 +694,17 @@ export function isSameType(a: Type, b: Type, stack: StackEntry[] = []): boolean 
             return isSameType(a.return, b.return, stack);
         }
 
+        if (a.kind === ReflectionKind.enum) {
+            if (b.kind !== ReflectionKind.enum) return false;
+            if (a.values.length !== b.values.length) return false;
+
+            for (let i = 0; i < a.values.length; i++) {
+                if (a.values[i] !== b.values[i]) return false;
+            }
+
+            return true;
+        }
+
         if (a.kind === ReflectionKind.union) {
             if (b.kind !== ReflectionKind.union) return false;
             if (a.types.length !== b.types.length) return false;
