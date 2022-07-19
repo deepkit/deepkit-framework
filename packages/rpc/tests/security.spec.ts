@@ -4,8 +4,7 @@ import { rpc } from '../src/decorators.js';
 import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
 import { RpcKernelSecurity, Session } from '../src/server/security.js';
 import { AuthenticationError } from '../src/model.js';
-import { MemoryLoggerTransport } from '../../logger/index.js';
-import { Logger } from '@deepkit/logger';
+import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
 
 test('authentication', async () => {
     class Controller {
