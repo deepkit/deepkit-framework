@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterResolverContext, UploadedFile } from '../src/router.js';
 import { http, httpClass } from '../src/decorator.js';
-import { HttpBadRequestError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
+import { HtmlResponse, HttpBadRequestError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpBody, HttpBodyValidation, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model.js';
 import { getClassName, isObject, sleep } from '@deepkit/core';
@@ -15,8 +15,12 @@ test('router', async () => {
         helloWorld() {
         }
 
-        @http.GET(':name')
+        @http.GET('/a/:name')
         hello(name: string) {
+        }
+
+        @http.GET('/b/:name')
+        helloButNoParam() {
         }
 
         @http.GET('/user/:id/static')
@@ -34,15 +38,16 @@ test('router', async () => {
 
     const router = HttpRouter.forControllers([Controller]);
 
-    expect((await router.resolve('GET', '/'))?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'helloWorld' });
-    expect((await router.resolve('GET', '/peter'))?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'hello' });
-    expect((await router.resolve('GET', '/peter'))?.parameters!(undefined as any)).toEqual(['peter']);
+    expect(router.resolve('GET', '/')?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'helloWorld' });
+    expect(router.resolve('GET', '/a/peter')?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'hello' });
+    expect(router.resolve('GET', '/a/peter')?.parameters!(undefined as any)).toEqual(['peter']);
+    expect(router.resolve('GET', '/b/peter')).toBeDefined();
 
-    const userStatic = await router.resolve('GET', '/user/1233/static');
+    const userStatic = router.resolve('GET', '/user/1233/static');
     expect(userStatic?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'userStatic' });
     expect(userStatic?.parameters!(undefined as any)).toEqual(['1233']);
 
-    const userStatic2 = await router.resolve('GET', '/user2/1233/static/123');
+    const userStatic2 = router.resolve('GET', '/user2/1233/static/123');
     expect(userStatic2?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'userStatic2' });
     expect(userStatic2?.parameters!(undefined as any)).toEqual(['1233', '123']);
 });
@@ -59,6 +64,31 @@ test('any', async () => {
     expect(((await router.resolve('GET', '/any'))!.routeConfig.action as RouteClassControllerAction).methodName).toEqual('any');
     expect(((await router.resolve('POST', '/any'))!.routeConfig.action as RouteClassControllerAction).methodName).toEqual('any');
     expect(((await router.resolve('OPTIONS', '/any'))!.routeConfig.action as RouteClassControllerAction).methodName).toEqual('any');
+});
+
+test('explicitly annotated response objects', async () => {
+    class Controller {
+        @http.GET('/a')
+        a(): JSONResponse {
+            return new JSONResponse('a');
+        }
+
+        @http.GET('/b')
+        b(): HtmlResponse {
+            return new HtmlResponse('b');
+        }
+
+        @http.GET('/c')
+        c(): Response {
+            return new Response('c', 'text/plain');
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    expect((await httpKernel.request(HttpRequest.GET('/a'))).bodyString).toBe('"a"');
+    expect((await httpKernel.request(HttpRequest.GET('/b'))).bodyString).toBe('b');
+    expect((await httpKernel.request(HttpRequest.GET('/c'))).bodyString).toBe('c');
 });
 
 test('router parameters', async () => {
