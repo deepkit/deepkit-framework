@@ -7,7 +7,7 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { asyncOperation, ClassType, CompilerContext, getClassName, isClass, isObject, urlJoin } from '@deepkit/core';
+import { asyncOperation, ClassType, CompilerContext, getClassName, isArray, isClass, isObject, urlJoin } from '@deepkit/core';
 import {
     assertType,
     entity,
@@ -29,7 +29,6 @@ import {
 } from '@deepkit/type';
 // @ts-ignore
 import formidable from 'formidable';
-import querystring from 'querystring';
 import { HttpAction, httpClass, HttpController, HttpDecorator } from './decorator.js';
 import { BodyValidationError, getRegExp, HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters, ValidatedBody } from './model.js';
 import { InjectorContext, InjectorModule, TagRegistry } from '@deepkit/injector';
@@ -40,7 +39,7 @@ import { HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware.js';
 
 //@ts-ignore
 import qs from 'qs';
-import { isArray } from '@deepkit/core';
+import { HtmlResponse, JSONResponse, Response } from './http.js';
 
 export type RouteParameterResolverForInjector = ((injector: InjectorContext) => any[] | Promise<any[]>);
 
@@ -418,6 +417,14 @@ function convertOptions(methods: string[], pathOrOptions: string | HttpRouterFun
     return { ...options, methods };
 }
 
+/**
+ * Annotated types like HTMLResponse/JSONResponse are not used for serialization.
+ */
+function filterValidReturnType(type: Type): Type | undefined {
+    if (type.kind === ReflectionKind.class && (type.classType === HtmlResponse || type.classType === JSONResponse || type.classType === Response)) return;
+    return type;
+}
+
 export abstract class HttpRouterRegistryFunctionRegistrar {
     protected defaultOptions: Partial<HttpRouterFunctionOptions> = {};
 
@@ -463,7 +470,7 @@ export abstract class HttpRouterRegistryFunctionRegistrar {
             type: 'function',
             fn: callback,
         }, action);
-        routeConfig.returnType = fn.getReturnType();
+        routeConfig.returnType = filterValidReturnType(fn.getReturnType());
         this.addRoute(routeConfig);
     }
 
@@ -534,7 +541,7 @@ export abstract class HttpRouterRegistryFunctionRegistrar {
         routeConfig.serializer = options.serializer;
         routeConfig.serializationOptions = options.serializationOptions;
 
-        routeConfig.returnType = fn.getReturnType();
+        routeConfig.returnType = filterValidReturnType(fn.getReturnType());
         this.addRoute(routeConfig);
     }
 }
@@ -597,7 +604,7 @@ export class HttpRouterRegistry extends HttpRouterRegistryFunctionRegistrar {
 
             routeConfig.module = module;
 
-            if (schema.hasMethod(action.methodName)) routeConfig.returnType = schema.getMethod(action.methodName).getReturnType();
+            if (schema.hasMethod(action.methodName)) routeConfig.returnType = filterValidReturnType(schema.getMethod(action.methodName).getReturnType());
             this.addRoute(routeConfig);
         }
     }
