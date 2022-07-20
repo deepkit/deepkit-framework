@@ -5,6 +5,7 @@ import { BenchmarkRun } from './model.js';
 import * as si from 'systeminformation';
 import { execSync } from 'child_process';
 import { serialize } from '@deepkit/type';
+import { getDirname } from '@deepkit/core';
 import fetch from 'node-fetch';
 
 const fg = require('fast-glob');
@@ -56,7 +57,7 @@ async function main() {
         }
     }
 
-    const resultsPath = join(__dirname, 'results');
+    const resultsPath = join(getDirname(), 'results');
     mkdirSync(resultsPath, { recursive: true });
     const jsonPath = resultsPath + '/' + (new Date().toJSON()) + '.json';
     console.log('Write benchmark result to', jsonPath);

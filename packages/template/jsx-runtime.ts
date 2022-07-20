@@ -15,9 +15,14 @@ export function jsxs(element: Element, attributes?: Attributes | string | null) 
     return { render: element, attributes };
 }
 
+const jsxFragment = '';
+
 jsx.createElement = createElement;
 jsx.html = html;
 jsx.escape = escape;
 jsx.escapeAttribute = escapeAttribute;
 jsx.safeString = safeString;
 jsx.safe = safe;
+jsx.Fragment = jsxFragment
+
+export { jsxFragment as Fragment }

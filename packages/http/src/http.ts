@@ -16,7 +16,7 @@ import { InjectorContext } from '@deepkit/injector';
 import { LoggerInterface } from '@deepkit/logger';
 import { HttpRouter, RouteConfig, RouteParameterResolverForInjector } from './router.js';
 import { createWorkflow, WorkflowEvent } from '@deepkit/workflow';
-import type { ElementStruct, render } from '@deepkit/template';
+import type { ElementStruct, render as Render } from '@deepkit/template';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { getSerializeFunction, hasTypeInformation, ReflectionKind, resolveReceiveType, SerializationError, serialize, serializer, ValidationError } from '@deepkit/type';
 import stream from 'stream';
@@ -25,12 +25,21 @@ export function isElementStruct(v: any): v is ElementStruct {
     return 'object' === typeof v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes') && !v.slice;
 }
 
-let templateRender: typeof render;
+let templateRender: typeof Render;
 
-function getTemplateRender(): typeof render {
+async function getTemplateRender(): Promise<typeof Render> {
     if (!templateRender) {
-        const template = require('@deepkit/template');
-        templateRender = template.render;
+        // @ts-ignore
+        if(global.require) {
+            // CommonJS version
+            const { render } = require('@deepkit/template');
+            templateRender = render;
+        } else {
+            // ESM version
+            const { render } = await import('@deepkit/template');
+            templateRender = render;
+        }
+
     }
 
     return templateRender;
@@ -654,7 +663,7 @@ export class HttpListener {
             }
 
             if (isElementStruct(result)) {
-                const html = await getTemplateRender()(event.injectorContext.getRootInjector(), result, this.stopwatch ? this.stopwatch : undefined);
+                const html = await (await getTemplateRender())(event.injectorContext.getRootInjector(), result, this.stopwatch ? this.stopwatch : undefined);
                 result = new HtmlResponse(html, 200).header('Content-Type', 'text/html; charset=utf-8');
             }
             if (result instanceof stream.Readable) {

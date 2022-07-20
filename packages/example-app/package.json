@@ -3,9 +3,14 @@
   "private": true,
   "version": "1.0.1-alpha.0",
   "description": "",
+  "type": "commonjs",
   "scripts": {
-    "start": "NODE_OPTIONS=--preserve-symlinks ts-node app server:start",
-    "start:prod": "NODE_OPTIONS=--preserve-symlinks APP_ENVIRONMENT=production ts-node app server:start",
+    "start": "npm run set:cjs && NODE_OPTIONS=--preserve-symlinks ts-node app server:start",
+    "start:prod": "npm run set:cjs && NODE_OPTIONS=--preserve-symlinks APP_ENVIRONMENT=production ts-node app server:start",
+    "start:esm": "npm run set:esm && TS_NODE_PROJECT=tsconfig.esm.json node --preserve-symlinks --experimental-specifier-resolution=node --loader ts-node/esm app.ts server:start ",
+    "start:esm:prod": "npm run set:esm && TS_NODE_PROJECT=tsconfig.esm.json APP_ENVIRONMENT=production node --preserve-symlinks --experimental-specifier-resolution=node --loader ts-node/esm app.ts server:start",
+    "set:esm": "node ./set-type.cjs module",
+    "set:cjs": "node ./set-type.cjs commonjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
