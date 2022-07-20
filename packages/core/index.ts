@@ -15,6 +15,7 @@ export * from './src/iterators.js';
 export * from './src/timer.js';
 export * from './src/process-locker.js';
 export * from './src/network.js';
+export * from './src/path.js';
 export * from './src/perf.js';
 export * from './src/compiler.js';
 export * from './src/string.js';
