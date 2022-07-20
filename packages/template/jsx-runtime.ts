@@ -15,7 +15,7 @@ export function jsxs(element: Element, attributes?: Attributes | string | null) 
     return { render: element, attributes };
 }
 
-const jsxFragment = 'jsx.Fragment'
+const jsxFragment = '';
 
 jsx.createElement = createElement;
 jsx.html = html;
