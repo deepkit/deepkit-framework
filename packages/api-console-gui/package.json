@@ -5,7 +5,7 @@
   "scripts": {
     "ng": "ng",
     "start": "NODE_OPTIONS=--preserve-symlinks ng serve",
-    "build": "NODE_OPTIONS=--preserve-symlinks ng build --prod",
+    "build": "NODE_OPTIONS=--preserve-symlinks ng build --configuration production",
     "build:dev": "NODE_OPTIONS=--preserve-symlinks ng build",
     "watch": "NODE_OPTIONS=--preserve-symlinks ng build --watch --configuration development"
   },
