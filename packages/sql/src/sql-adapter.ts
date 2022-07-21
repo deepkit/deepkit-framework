@@ -37,7 +37,6 @@ import { Changes, getPartialSerializeFunction, getSerializeFunction, ReceiveType
 import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform';
 import { SqlBuilder } from './sql-builder';
 import { SqlFormatter } from './sql-formatter';
-import { sqlSerializer } from './serializer/sql-serializer';
 import { DatabaseComparator, DatabaseModel } from './schema/table';
 import { Stopwatch } from '@deepkit/stopwatch';
 
