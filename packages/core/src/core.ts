@@ -700,7 +700,8 @@ export function isIterable(value: any): boolean {
  */
 export function getCurrentFileName(): string {
     const e = new Error;
-    const initiator = e.stack!.split('\n').slice(2, 3)[0];
+    const errorStart = e.stack.indexOf('Error\n');
+    const initiator = e.stack.slice(errorStart).split('\n').slice(2, 3)[0];
     let path = /(?<path>[^(\s]+):[0-9]+:[0-9]+/.exec(initiator)!.groups!.path;
     if (path.indexOf('file') >= 0) {
         path = new URL(path).pathname;
