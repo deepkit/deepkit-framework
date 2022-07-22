@@ -1,0 +1,39 @@
+name: Deno
+on:
+  pull_request:
+  push:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        node-version: [ 16.x]
+        deno-version: [ vx.x.x ]
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Setup Deno
+        uses: denolib/setup-deno@v2
+        with:
+          deno-version: ${{ matrix.deno-version }}
+      - name: Install NPM dependencies
+        run: npm install
+      - name: Bootstrap
+        run: npm run bootstrap
+      - name: Link
+        run: npm run link
+      - name: Install compiler
+        run: npm run install-compiler
+      - name: Build
+        run: npm run lerna -- build --scope="@deepkit/platform"
+      - name: Test
+        run: npm run lerna -- test:deno --scope="@deepkit/platform"
