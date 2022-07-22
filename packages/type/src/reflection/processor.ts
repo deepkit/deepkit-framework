@@ -1218,6 +1218,12 @@ export class Processor {
         const decorators: TypeObjectLiteral[] = [];
         const defaultDecorators: Type[] = [];
 
+        function appendAnnotations(a: Type) {
+            if (a.annotations === annotations) return;
+            if (a.annotations) Object.assign(annotations, a.annotations);
+            if (a.decorators) decorators.push(...a.decorators as TypeObjectLiteral[]);
+        }
+
         function collapse(a: Type, b: Type): Type {
             if (a.kind === ReflectionKind.any) return a;
             if (b.kind === ReflectionKind.any) return b;
@@ -1231,6 +1237,8 @@ export class Processor {
             }
 
             if ((a.kind === ReflectionKind.objectLiteral || a.kind === ReflectionKind.class) && (b.kind === ReflectionKind.objectLiteral || b.kind === ReflectionKind.class)) {
+                appendAnnotations(a);
+                appendAnnotations(b);
                 return merge([a, b]);
             }
 
@@ -1268,6 +1276,7 @@ export class Processor {
                 }
                 if (result.kind === ReflectionKind.unknown) {
                     result = type;
+                    appendAnnotations(type);
                 } else {
                     result = collapse(result, type);
                 }
