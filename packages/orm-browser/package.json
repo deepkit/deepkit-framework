@@ -14,7 +14,7 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
-    "@deepkit/platform": "1.0.1-alpha.74",
+    "@deepkit/platform": "^1.0.1-alpha.74",
     "@deepkit/app": "^1.0.1-alpha.74",
     "@deepkit/broker": "^1.0.1-alpha.74",
     "@deepkit/bson": "^1.0.1-alpha.74",
