@@ -1162,6 +1162,21 @@ test('any with partial', () => {
     console.log(type);
 });
 
+test('new type decorator on already decorated', () => {
+    type CustomA = { __meta?: ["CustomA"] };
+    type CustomB = { __meta?: ["CustomB"] };
+
+    type O = {} & CustomA;
+    type T = O & CustomB;
+    type Decorate<T> = T & CustomB;
+    type EmptyTo<T> = {} & T & CustomB;
+
+    expect(metaAnnotation.getAnnotations(typeOf<O>())).toEqual([{name: 'CustomA', options: []}])
+    expect(metaAnnotation.getAnnotations(typeOf<T>())).toEqual([{name: 'CustomA', options: []}, {name: 'CustomB', options: []}])
+    expect(metaAnnotation.getAnnotations(typeOf<Decorate<O>>())).toEqual([{name: 'CustomA', options: []}, {name: 'CustomB', options: []}])
+    expect(metaAnnotation.getAnnotations(typeOf<EmptyTo<O>>())).toEqual([{name: 'CustomA', options: []}, {name: 'CustomB', options: []}])
+});
+
 class User {
     a!: string;
 }
