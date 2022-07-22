@@ -24,7 +24,6 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
-    "@deepkit/platform": "^1.0.1-alpha.74",
     "@deepkit/app": "^1.0.1-alpha.13",
     "@deepkit/broker": "^1.0.1-alpha.13",
     "@deepkit/bson": "^1.0.1-alpha.13",
@@ -46,6 +45,7 @@
     "@deepkit/workflow": "^1.0.1-alpha.13"
   },
   "dependencies": {
+    "@deepkit/platform": "^1.0.1-alpha.74",
     "@deepkit/api-console-module": "^1.0.1-alpha.74",
     "@deepkit/framework-debug-api": "^1.0.1-alpha.74",
     "@deepkit/framework-debug-gui": "^1.0.1-alpha.74",
@@ -70,7 +70,6 @@
     "ws": "^7.4.2"
   },
   "devDependencies": {
-    "@deepkit/platform": "^1.0.1-alpha.74",
     "@deepkit/app": "^1.0.1-alpha.74",
     "@deepkit/broker": "^1.0.1-alpha.74",
     "@deepkit/bson": "^1.0.1-alpha.74",
