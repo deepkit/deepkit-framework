@@ -18,7 +18,7 @@ jobs:
       - name: Install NPM dependencies
         run: npm ci
       - name: Bootstrap
-        run: npm run bootstrap
+        run: npm run bootstrap:ci
       - name: Link
         run: npm run link
       - name: Install compiler
