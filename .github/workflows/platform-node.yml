@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - name: Install NPM dependencies
-        run: npm install
+        run: npm ci
       - name: Bootstrap
         run: npm run bootstrap
       - name: Link

@@ -16,7 +16,7 @@ jobs:
       - name: Install GJS
         run: sudo apt-get --yes install gjs
       - name: Install NPM dependencies
-        run: npm install
+        run: npm ci
       - name: Bootstrap
         run: npm run bootstrap
       - name: Link
