@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import 'reflect-metadata';
-import { getDirname } from "@deepkit/core"
+import { getDirname } from "@deepkit/platform"
 import { FrameworkModule, OrmBrowserController } from '@deepkit/framework';
 import { App, AppModule, findParentPath } from '@deepkit/app';
 import { Database, DatabaseRegistry } from '@deepkit/orm';

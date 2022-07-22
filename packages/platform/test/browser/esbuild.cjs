@@ -6,4 +6,4 @@ build({
     outdir: __dirname,
     bundle: true,
     format: 'iife',
-})
+});

@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import { getDirname } from "@deepkit/core"
+import { getDirname } from "@deepkit/platform"
 import { createSourceFile, getPreEmitDiagnostics, ScriptTarget, TransformationContext } from 'typescript';
 import { createSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import { ReflectionTransformer } from '../src/compiler.js';

@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 import { build } from "esbuild";
-import { getDirname } from "cross-dirname";
+import { getDirname } from "../../dist/esm/index.mjs";
 const crossDirname = getDirname();
 
 await build({
@@ -9,4 +9,4 @@ await build({
     bundle: true,
     target: ['chrome58', 'firefox57', 'safari11', 'edge16'],
     format: 'iife',
-})
+});
