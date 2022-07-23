@@ -91,6 +91,14 @@ export interface TypeAnnotations {
      */
     indexAccessOrigin?: { container: TypeClass | TypeObjectLiteral, index: Type };
 
+    /**
+     * type User = {id: number, user: string};
+     * type UserCreate = Pick<User, 'user'>;
+     * typeOf<UserCreate>().originTypes[0].typeName = 'Pick'
+     * typeOf<UserCreate>().originTypes[0].typeArguments = [User, 'user']
+     */
+    originTypes?: {typeName: string, typeArguments: Type[]}[];
+
     annotations?: Annotations; //parsed decorator types as annotations
     decorators?: Type[]; //original decorator type
 

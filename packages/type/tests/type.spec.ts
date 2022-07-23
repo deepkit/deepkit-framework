@@ -1010,7 +1010,7 @@ test('InlineRuntimeType', () => {
     type SchemaType = InlineRuntimeType<typeof schema>;
     const type = typeOf<SchemaType>();
     assertType(type, ReflectionKind.class);
-    expect(type.typeName).toBe('User');
+    expect(type.typeName).toBe('SchemaType');
 
     assertType(type.types[0], ReflectionKind.property);
     expect(type.types[0].name).toBe('id');
@@ -1163,18 +1163,60 @@ test('any with partial', () => {
 });
 
 test('new type decorator on already decorated', () => {
-    type CustomA = { __meta?: ["CustomA"] };
-    type CustomB = { __meta?: ["CustomB"] };
+    type CustomA = { __meta?: ['CustomA'] };
+    type CustomB = { __meta?: ['CustomB'] };
 
     type O = {} & CustomA;
     type T = O & CustomB;
     type Decorate<T> = T & CustomB;
     type EmptyTo<T> = {} & T & CustomB;
 
-    expect(metaAnnotation.getAnnotations(typeOf<O>())).toEqual([{name: 'CustomA', options: []}])
-    expect(metaAnnotation.getAnnotations(typeOf<T>())).toEqual([{name: 'CustomA', options: []}, {name: 'CustomB', options: []}])
-    expect(metaAnnotation.getAnnotations(typeOf<Decorate<O>>())).toEqual([{name: 'CustomA', options: []}, {name: 'CustomB', options: []}])
-    expect(metaAnnotation.getAnnotations(typeOf<EmptyTo<O>>())).toEqual([{name: 'CustomA', options: []}, {name: 'CustomB', options: []}])
+    expect(metaAnnotation.getAnnotations(typeOf<O>())).toEqual([{ name: 'CustomA', options: [] }]);
+    expect(metaAnnotation.getAnnotations(typeOf<T>())).toEqual([{ name: 'CustomA', options: [] }, { name: 'CustomB', options: [] }]);
+    expect(metaAnnotation.getAnnotations(typeOf<Decorate<O>>())).toEqual([{ name: 'CustomA', options: [] }, { name: 'CustomB', options: [] }]);
+    expect(metaAnnotation.getAnnotations(typeOf<EmptyTo<O>>())).toEqual([{ name: 'CustomA', options: [] }, { name: 'CustomB', options: [] }]);
+});
+
+test('keep last type name', () => {
+    interface User {
+        id: number;
+        name: string;
+        password: string;
+    }
+
+    {
+        type ReadUser = Omit<User, 'password'>;
+        const type = typeOf<ReadUser>();
+        expect(type.typeName).toBe('ReadUser');
+        expect(type.originTypes![0].typeName).toBe('Omit');
+    }
+
+    {
+        type UserWithName = Pick<User, 'name'>;
+        const type = typeOf<UserWithName>();
+        expect(type.typeName).toBe('UserWithName');
+        expect(type.typeArguments).toBe(undefined);
+        expect(type.originTypes![0].typeName).toBe('Pick');
+        expect(type.originTypes![0].typeArguments![0].typeName).toBe('User');
+    }
+
+    {
+        type UserWithName = Pick<User, 'name'>;
+        type Bla = UserWithName;
+        const type = typeOf<Bla>();
+        expect(type.typeName).toBe('Bla');
+        expect(type.typeArguments).toBe(undefined);
+        expect(type.originTypes![0].typeName).toBe('UserWithName');
+        expect(type.originTypes![0].typeArguments).toBe(undefined);
+        expect(type.originTypes![1].typeName).toBe('Pick');
+        expect(type.originTypes![1].typeArguments![0].typeName).toBe('User');
+
+        const type2 = typeOf<UserWithName>();
+        expect(type2.typeName).toBe('UserWithName');
+        expect(type2.typeArguments).toBe(undefined);
+        expect(type2.originTypes![0].typeName).toBe('Pick');
+        expect(type2.originTypes![0].typeArguments![0].typeName).toBe('User');
+    }
 });
 
 class User {
