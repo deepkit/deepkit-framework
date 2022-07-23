@@ -1,13 +1,11 @@
 import { expect } from '@jest/globals';
-import { assertType, AutoIncrement, cast, entity, PrimaryKey, Reference, ReflectionClass, ReflectionKind, UUID, uuid } from '@deepkit/type';
+import { assertType, AutoIncrement, BackReference, cast, entity, PrimaryKey, Reference, ReflectionClass, ReflectionKind, UUID, uuid } from '@deepkit/type';
 import { User, UserGroup } from './bookstore/user';
 import { UserCredentials } from './bookstore/user-credentials';
-import { atomicChange, getInstanceStateFromItem } from '@deepkit/orm';
+import { atomicChange, DatabaseSession, getInstanceStateFromItem, Query } from '@deepkit/orm';
 import { isArray } from '@deepkit/core';
 import { Group } from './bookstore/group';
 import { DatabaseFactory } from './test';
-import { DatabaseSession } from '@deepkit/orm';
-import { Query } from '@deepkit/orm';
 
 interface BookModeration {
     locked: boolean;
@@ -740,6 +738,47 @@ export const bookstoreTests = {
             expect(review.user.id).toBe(user.id);
             expect(review.book.id).toBe(book.id);
             expect(review.status).toBe(ReviewStatus.hidden);
+        }
+        database.disconnect();
+    },
+
+    async joinWithoutHydration(databaseFactory: DatabaseFactory) {
+        @entity.name('userJoin')
+        class User {
+            id: UUID & PrimaryKey = uuid();
+            books: Book[] & BackReference = [];
+
+            constructor(public name: string) {
+            }
+        }
+
+        @entity.name('bookJoin')
+        class Book {
+            id: UUID & PrimaryKey = uuid();
+
+            constructor(public owner: User & Reference) {
+            }
+        }
+
+        const database = await databaseFactory([User, Book]);
+
+        const user = new User('user1');
+        const book = new Book(user);
+        await database.persist(book);
+
+        const user2 = new User('user2');
+        {
+            const session = database.createSession();
+            const book2 = await session.query(Book).join('owner').findOne();
+            await session.commit();
+            book2.owner = user2;
+            await session.commit();
+        }
+
+        {
+            const session = database.createSession();
+            const book3 = await session.query(Book).joinWith('owner').findOne();
+            expect(book3.owner.name).toBe('user2');
         }
         database.disconnect();
     },
