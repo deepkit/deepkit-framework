@@ -27,7 +27,7 @@ test('test lock early release', async () => {
 
     const lock2 = await locker.acquireLock('test-early-lock1', 1);
     expect(+new Date - started).toBeLessThan(1000);
-    expect(+new Date - started).toBeGreaterThan(499);
+    expect(+new Date - started).toBeGreaterThan(498);
 });
 
 test('test lock timeout', async () => {
@@ -39,7 +39,7 @@ test('test lock timeout', async () => {
 
     const lock2 = await locker.acquireLock('test-early-lock2', 1);
     expect(+new Date - started).toBeLessThan(1000);
-    expect(+new Date - started).toBeGreaterThan(499);
+    expect(+new Date - started).toBeGreaterThan(498);
 });
 
 test('test lock timeout accum', async () => {
@@ -110,19 +110,19 @@ test('mutex 1', async () => {
     let i = 0;
 
     const promises: Promise<void>[] = [];
-    
+
     promises.push(mutex1.lock().then(() => {
         expect(i).toBe(0);
         i++;
         mutex1.unlock();
     }));
-    
+
     promises.push(mutex1.lock().then(() => {
         expect(i).toBe(1);
         i++;
         mutex1.unlock();
     }));
-    
+
     promises.push(mutex1.lock().then(() => {
         expect(i).toBe(2);
         i++;
