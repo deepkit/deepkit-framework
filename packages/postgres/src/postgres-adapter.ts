@@ -49,6 +49,7 @@ export class PostgresStatement extends SQLStatement {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
             if (frame) frame.data({sql: this.sql, sqlParams: params});
+            this.logger.logQuery(this.sql, params);
             //postgres driver does not maintain error.stack when they throw errors, so
             //we have to manually convert it using asyncOperation.
             const res = await asyncOperation<any>((resolve, reject) => {
@@ -68,6 +69,7 @@ export class PostgresStatement extends SQLStatement {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
             if (frame) frame.data({sql: this.sql, sqlParams: params});
+            this.logger.logQuery(this.sql, params);
             //postgres driver does not maintain error.stack when they throw errors, so
             //we have to manually convert it using asyncOperation.
             const res = await asyncOperation<any>((resolve, reject) => {
@@ -257,7 +259,7 @@ export class PostgresPersistence extends SQLPersistence {
             }
 
             if (!values[pkName]) values[pkName] = [];
-            values[pkName].push(this.platform.quoteValue(changeSet.primaryKey[pkName]));
+            values[pkName].push(pk[pkName]);
 
             const fieldAddedToValues: { [name: string]: 1 } = {};
             const id = changeSet.primaryKey[pkName];
@@ -277,9 +279,9 @@ export class PostgresPersistence extends SQLPersistence {
                     //special postgres check to avoid an error like:
                     /// column "deletedAt" is of type timestamp without time zone but expression is of type text
                     if (v === undefined || v === null) {
-                        values[i].push('null' + this.platform.typeCast(classSchema, i));
+                        values[i].push(null);
                     } else {
-                        values[i].push(this.platform.quoteValue(v));
+                        values[i].push(v);
                     }
                 }
             }
@@ -309,12 +311,14 @@ export class PostgresPersistence extends SQLPersistence {
                     requiredFields[i] = 1;
                     if (!fieldAddedToValues[i]) {
                         fieldAddedToValues[i] = 1;
-                        values[i].push(this.platform.quoteValue(typeSafeDefaultValue(classSchema.getProperty(i))));
+                        values[i].push(typeSafeDefaultValue(classSchema.getProperty(i)));
                     }
                 }
             }
         }
 
+        const placeholderStrategy = new this.platform.placeholderStrategy();
+        const params: any[] = [];
         const selects: string[] = [];
         const valuesValues: string[] = [];
         const valuesNames: string[] = [];
@@ -323,7 +327,10 @@ export class PostgresPersistence extends SQLPersistence {
         }
 
         for (let i = 0; i < values[pkName].length; i++) {
-            valuesValues.push('(' + valuesNames.map(name => values[name][i]).join(',') + ')');
+            valuesValues.push('(' + valuesNames.map(name => {
+                params.push(values[name][i]);
+                return placeholderStrategy.getPlaceholder() + this.platform.typeCast(classSchema, name);
+            }).join(',') + ')');
         }
 
         for (const i in requiredFields) {
@@ -364,7 +371,7 @@ export class PostgresPersistence extends SQLPersistence {
         `;
 
         const connection = await this.getConnection(); //will automatically be released in SQLPersistence
-        const result = await connection.execAndReturnAll(sql);
+        const result = await connection.execAndReturnAll(sql, params);
         for (const returning of result) {
             const r = assignReturning[returning[pkName]];
             if (!r) continue;
