@@ -32,7 +32,7 @@ jobs:
       - name: Link
         run: npm run link
       - name: Build
-        run: npm run build:platform"
+        run: npm run build:platform
       - name: Install compiler
         run: npm run install-compiler
       - name: Test

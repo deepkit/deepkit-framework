@@ -13,3 +13,4 @@ packages/benchmark/results
 packages/example-app/var/debug
 packages/example-app/migrations
 .vs
+packages/platform/test/browser/base.test.js
