@@ -17,8 +17,8 @@ jobs:
         run: sudo apt-get --yes install gjs
       - name: Install NPM dependencies
         run: npm ci
-      # - name: Bootstrap
-      #   run: npm run bootstrap:ci
+      - name: Bootstrap
+        run: npm run bootstrap:ci -- --scope @deepkit/platform
       # - name: Link
       #   run: npm run link
       # - name: Install compiler
@@ -26,4 +26,4 @@ jobs:
       - name: Build Platform
         run: npm run lerna -- build --scope="@deepkit/platform"
       - name: Test
-        run: npm run lerna -- test:browser --scope="@deepkit/platform"
+        run: npm run lerna -- test:gjs --scope="@deepkit/platform"
