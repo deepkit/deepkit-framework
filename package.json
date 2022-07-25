@@ -11,6 +11,7 @@
     "bootstrap": "lerna bootstrap --no-ci",
     "bootstrap:ci": "lerna bootstrap --ignore @deepkit/benchmark",
     "link": "npm-local-development --no-watcher",
+    "build:platform": "lerna run build --scope='@deepkit/platform'",
     "build": "tsc --build tsconfig.json && tsc --build tsconfig.esm.json && lerna run build",
     "build:esm": "tsc --build tsconfig.esm.json",
     "tsc": "tsc --build",
@@ -42,7 +43,7 @@
     "ts-node": "^10.9.1",
     "ts-node-dev": "^1.1.1",
     "typedoc": "^0.23.2",
-    "typescript": "^4.6.2"
+    "typescript": "^4.7.4"
   },
   "engines": {
     "node": ">= 14.0.0"

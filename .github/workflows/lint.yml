@@ -1,0 +1,20 @@
+name: Lint
+on:
+  pull_request:
+  push:
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+      - name: npm install
+        run: npm ci
+      - name: Check import file extensions
+        run: npm run lint
+          npm run lint:ext
