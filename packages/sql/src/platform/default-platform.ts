@@ -15,7 +15,7 @@ import { sqlSerializer } from '../serializer/sql-serializer.js';
 import { parseType, SchemaParser } from '../reverse/schema-parser.js';
 import { SQLFilterBuilder } from '../sql-filter-builder.js';
 import { Sql } from '../sql-builder.js';
-import { binaryTypes, databaseAnnotation, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
+import { binaryTypes, databaseAnnotation, getTypeJitContainer, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 
 export function isSet(v: any): boolean {
@@ -80,14 +80,17 @@ export abstract class DefaultPlatform {
 
     typeCast(schema: ReflectionClass<any>, name: string): string {
         let property = schema.getProperty(name);
-        if (property.getType().kind === ReflectionKind.string) return '';
+        if (property.isReference()) {
+            property = property.getResolvedReflectionClass().getPrimary();
+        }
 
-        if (property.isReference()) property = property.getResolvedReflectionClass().getPrimary();
+        const cache = getTypeJitContainer(property.type);
+        if (cache.dbTypeCast) return cache.dbTypeCast;
 
         const type = this.getTypeMapping(property.type);
-        if (!type) return '';
+        if (!type) return cache.dbTypeCast = '';
 
-        return '::' + type.sqlType;
+        return cache.dbTypeCast = '::' + type.sqlType;
     }
 
     applyLimitAndOffset(sql: Sql, limit?: number, offset?: number): void {

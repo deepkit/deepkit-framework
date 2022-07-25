@@ -15,7 +15,7 @@ export function jsxs(element: Element, attributes?: Attributes | string | null) 
     return { render: element, attributes };
 }
 
-const jsxFragment = '';
+const jsxFragment: string | undefined = undefined;
 
 jsx.createElement = createElement;
 jsx.html = html;
@@ -23,6 +23,6 @@ jsx.escape = escape;
 jsx.escapeAttribute = escapeAttribute;
 jsx.safeString = safeString;
 jsx.safe = safe;
-jsx.Fragment = jsxFragment
+jsx.Fragment = jsxFragment as string | undefined;
 
 export { jsxFragment as Fragment }

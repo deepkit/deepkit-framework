@@ -6,6 +6,7 @@ import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-
 import { sleep } from '@deepkit/core';
 import { AutoIncrement, cast, Entity, entity, PrimaryKey, Reference, ReflectionClass, serialize, typeOf, UUID, uuid } from '@deepkit/type';
 import { Database, DatabaseEntityRegistry } from '@deepkit/orm';
+import { BackReference } from '@deepkit/type';
 
 test('reflection circular reference', () => {
     const user = ReflectionClass.from(User);
@@ -286,7 +287,7 @@ test('optional', async () => {
 });
 
 test('uuid', async () => {
-    @entity.name("my-entity")
+    @entity.name('my-entity')
     class MyEntity {
         id: UUID & PrimaryKey = uuid();
     }
@@ -298,4 +299,4 @@ test('uuid', async () => {
     expect(await database.query(MyEntity).count()).toBe(1);
     await database.remove(ent);
     expect(await database.query(MyEntity).count()).toBe(0);
-})
+});

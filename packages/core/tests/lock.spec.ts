@@ -27,7 +27,7 @@ test('test lock early release', async () => {
 
     const lock2 = await locker.acquireLock('test-early-lock1', 1);
     expect(+new Date - started).toBeLessThan(1000);
-    expect(+new Date - started).toBeGreaterThan(499);
+    expect(+new Date - started).toBeGreaterThan(498);
 });
 
 test('test lock timeout', async () => {
@@ -39,7 +39,7 @@ test('test lock timeout', async () => {
 
     const lock2 = await locker.acquireLock('test-early-lock2', 1);
     expect(+new Date - started).toBeLessThan(1000);
-    expect(+new Date - started).toBeGreaterThan(499);
+    expect(+new Date - started).toBeGreaterThan(498);
 });
 
 test('test lock timeout accum', async () => {

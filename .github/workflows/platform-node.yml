@@ -1,0 +1,34 @@
+name: Node.js
+on:
+  pull_request:
+  push:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        node-version: [ 16.x ]
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install NPM dependencies
+        run: npm ci
+      - name: Bootstrap
+        run: npm run bootstrap:ci -- --scope="@deepkit/platform"
+    #   - name: Link
+    #     run: npm run link
+    #   - name: Install compiler
+    #     run: npm run install-compiler
+      - name: Build
+        run: npm run lerna -- build --scope="@deepkit/platform"
+      - name: Test
+        run: npm run lerna -- test:node --scope="@deepkit/platform"

@@ -187,6 +187,21 @@ function getInjectOptions(type: Type): Type | undefined {
     return;
 }
 
+function getPickArguments(type: Type): Type[] | undefined {
+    if (type.typeName === 'Pick' && type.typeArguments && type.typeArguments.length === 2) {
+        return type.typeArguments;
+    }
+    if (!type.originTypes) return;
+
+    for (const origin of type.originTypes) {
+        if (origin.typeName === 'Pick' && origin.typeArguments && origin.typeArguments.length === 2) {
+            return origin.typeArguments;
+        }
+    }
+
+    return;
+}
+
 /**
  * This is the actual dependency injection container.
  * Every module has its own injector.
@@ -562,12 +577,13 @@ export class Injector implements InjectorInterface {
         }
 
         if (options.type.kind === ReflectionKind.objectLiteral) {
-            if (options.type.typeName === 'Pick' && options.type.typeArguments && options.type.typeArguments.length === 2) {
-                if (options.type.typeArguments[0].kind === ReflectionKind.class) {
-                    const module = findModuleForConfig(options.type.typeArguments[0].classType, resolveDependenciesFrom);
+            const pickArguments = getPickArguments(options.type);
+            if (pickArguments) {
+                if (pickArguments[0].kind === ReflectionKind.class) {
+                    const module = findModuleForConfig(pickArguments[0].classType, resolveDependenciesFrom);
                     if (module) {
                         const fullConfig = compiler.reserveVariable('fullConfig', module.getConfig());
-                        let index = options.type.typeArguments[1];
+                        let index = pickArguments[1];
                         if (index.kind === ReflectionKind.literal) {
                             index = { kind: ReflectionKind.union, types: [index] };
                         }
@@ -707,12 +723,13 @@ export class Injector implements InjectorInterface {
 
         if (isWithAnnotations(type)) {
             if (type.kind === ReflectionKind.objectLiteral) {
-                if (type.typeName === 'Pick' && type.typeArguments && type.typeArguments.length === 2) {
-                    if (type.typeArguments[0].kind === ReflectionKind.class) {
-                        const module = findModuleForConfig(type.typeArguments[0].classType, resolveDependenciesFrom);
+                const pickArguments = getPickArguments(type);
+                if (pickArguments) {
+                    if (pickArguments[0].kind === ReflectionKind.class) {
+                        const module = findModuleForConfig(pickArguments[0].classType, resolveDependenciesFrom);
                         if (module) {
                             const fullConfig = module.getConfig();
-                            let index = type.typeArguments[1];
+                            let index = pickArguments[1];
                             if (index.kind === ReflectionKind.literal) {
                                 index = { kind: ReflectionKind.union, types: [index] };
                             }

@@ -5,10 +5,11 @@ import { BenchmarkRun } from './model.js';
 import * as si from 'systeminformation';
 import { execSync } from 'child_process';
 import { serialize } from '@deepkit/type';
-import { getDirname } from '@deepkit/core';
+import { getDirname } from '@deepkit/platform';
 import fetch from 'node-fetch';
 
 const fg = require('fast-glob');
+const _dirname = getDirname();
 
 const filters = process.argv.slice(2)
     .map(v => v.startsWith('src/') ? v.substr(4) : v)
@@ -57,7 +58,7 @@ async function main() {
         }
     }
 
-    const resultsPath = join(getDirname(), 'results');
+    const resultsPath = join(_dirname, 'results');
     mkdirSync(resultsPath, { recursive: true });
     const jsonPath = resultsPath + '/' + (new Date().toJSON()) + '.json';
     console.log('Write benchmark result to', jsonPath);

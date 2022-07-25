@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { getDirname } from "@deepkit/core"
+import { getDirname } from "@deepkit/platform"
 import { registerStaticHttpController } from '@deepkit/http';
 import { AppModule, findParentPath } from '@deepkit/app';
 
