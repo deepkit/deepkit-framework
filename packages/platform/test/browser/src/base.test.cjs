@@ -1,4 +1,4 @@
-const { getDirname, getFilename } = require('../../../dist/cjs/index.cjs');
+const { getDirname, getFilename } = require('../../../dist/cjs/index.js');
 const { expect } = require('chai');
 
 describe('Browser CJS', () => {

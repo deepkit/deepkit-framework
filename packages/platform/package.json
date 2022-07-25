@@ -3,12 +3,12 @@
   "version": "1.0.1-alpha.74",
   "description": "Deepkit cross platform library",
   "type": "commonjs",
-  "main": "./dist/cjs/index.cjs",
+  "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.mjs",
   "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
-      "require": "./dist/cjs/index.cjs",
+      "require": "./dist/cjs/index.js",
       "default": "./dist/esm/index.mjs"
     }
   },
@@ -30,7 +30,7 @@
   "scripts": {
     "clear": "rm -rf dist",
     "build": "npm run build:cjs && npm run build:esm && npm run build:types",
-    "build:cjs": "tsc && mv ./dist/cjs/index.js ./dist/cjs/index.cjs",
+    "build:cjs": "tsc",
     "build:esm": "tsc --project tsconfig.esm.json && mv ./dist/esm/index.js ./dist/esm/index.mjs",
     "build:types": "tsc --project tsconfig.types.json",
     "test": "npm run test:node && npm run test:deno && npm run test:gjs && npm run test:browser",
