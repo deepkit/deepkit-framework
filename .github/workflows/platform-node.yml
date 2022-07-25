@@ -26,7 +26,7 @@ jobs:
         run: npm run bootstrap:ci
       - name: Link
         run: npm run link
-      - name: Build
+      - name: Build Platform
         run: npm run build:platform
       - name: Install compiler
         run: npm run install-compiler
