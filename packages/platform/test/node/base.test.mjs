@@ -1,4 +1,4 @@
-import { getDirname, getFilename } from '../../dist/esm/index.mjs';
+import { getDirname, getFilename } from '../../dist/esm/index.js';
 import { fileURLToPath } from "url";
 import { dirname as pathDirname } from "path";
 import { expect } from 'chai';

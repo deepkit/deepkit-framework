@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 import { build } from "esbuild";
-import { getDirname } from "../../dist/esm/index.mjs";
+import { getDirname } from "../../dist/esm/index.js";
 const crossDirname = getDirname();
 
 await build({

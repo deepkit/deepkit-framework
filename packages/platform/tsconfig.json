@@ -2,15 +2,23 @@
 {
     "$schema": "https://json.schemastore.org/tsconfig",  
     "compilerOptions": {
-        "lib": ["ESNext", "DOM"],
-        "module": "NodeNext",
-        "target": "ESNext",
-        "outDir": "./dist/cjs",
-        "strict": true,
-        "esModuleInterop": true,
-        "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "moduleResolution": "node"
+        "strict": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "sourceMap": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "moduleResolution": "node",
+        "target": "es2018",
+        "module": "CommonJS",
+        "esModuleInterop": true,
+        "outDir": "./dist/cjs",
+        "declaration": true,
+        "composite": true
     },
-    "include": ["src"]
+    "include": [
+        "src",
+        "index.ts"
+    ]
   }

@@ -61,7 +61,7 @@ You can use NPM packages in GJS you can use a bundler like [esbuild](https://esb
 
 ```js
 // gjs -m path/to/the/script.js
-const { getDirname, getFilename } = from './node_modules/@deepkit/platform/dist/esm/index.mjs';
+const { getDirname, getFilename } = from './node_modules/@deepkit/platform/dist/esm/index.js';
 console.log(getDirname()); // outputs "/path/to/the"
 console.log(getFilename()); // outputs "/path/to/the/script.js"
 ```

@@ -1,5 +1,5 @@
 import GLib from 'gi://GLib';
-import { getDirname, getFilename } from '../../dist/esm/index.mjs';
+import { getDirname, getFilename } from '../../dist/esm/index.js';
 import { exit } from 'system';
 const byteArray = imports.byteArray;
 

@@ -5,6 +5,8 @@ coverage
 packages/node
 packages/network
 packages/*/dist/*
+!packages/*/dist/esm/
+packages/*/dist/esm/*
 !packages/*/dist/esm/package.json
 !packages/*/dist/.gitkeep
 packages/benchmark/src/orm/end-to-end/sqlite/prisma.sqlite

@@ -24,6 +24,6 @@ jobs:
       # - name: Install compiler
       #   run: npm run install-compiler
       - name: Build Platform
-        run: npm run build:platform
+        run: npm run lerna -- build --scope="@deepkit/platform"
       - name: Test
         run: npm run lerna -- test:gjs --scope="@deepkit/platform"

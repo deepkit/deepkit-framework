@@ -6,6 +6,9 @@
   },
   "references": [
     {
+      "path": "../platform/tsconfig.esm.json"
+    },
+    {
       "path": "../api-console-module/tsconfig.esm.json"
     },
     {

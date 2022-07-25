@@ -1,9 +1,9 @@
 {
   "extends": "./tsconfig",
   "compilerOptions": {
-    "module": "ESNext",
+    "module": "ESNext"
   },
   "ts-node": {
-    "experimentalResolver": false,
+    "experimentalResolver": false
   }
 }

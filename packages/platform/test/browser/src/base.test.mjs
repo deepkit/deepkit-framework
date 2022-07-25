@@ -1,4 +1,4 @@
-import { getDirname, getFilename } from '../../../dist/esm/index.mjs';
+import { getDirname, getFilename } from '../../../dist/esm/index.js';
 import { expect } from 'chai';
 
 describe('Browser ESM', () => {

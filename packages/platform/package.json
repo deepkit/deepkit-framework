@@ -4,12 +4,12 @@
   "description": "Deepkit cross platform library",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.mjs",
-  "types": "./dist/types/index.d.ts",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
   "exports": {
     ".": {
       "require": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.mjs"
+      "default": "./dist/esm/index.js"
     }
   },
   "sideEffects": false,
@@ -29,10 +29,9 @@
   ],
   "scripts": {
     "clear": "rm -rf dist",
-    "build": "npm run build:cjs && npm run build:esm && npm run build:types",
+    "build": "npm run build:cjs && npm run build:esm",
     "build:cjs": "tsc",
-    "build:esm": "tsc --project tsconfig.esm.json && mv ./dist/esm/index.js ./dist/esm/index.mjs",
-    "build:types": "tsc --project tsconfig.types.json",
+    "build:esm": "tsc --project tsconfig.esm.json",
     "test": "npm run test:node && npm run test:deno && npm run test:gjs && npm run test:browser",
     "test:node": "mocha test/node",
     "test:gjs": "node test/browser/esbuild.mjs && gjs -m ./test/gjs/base.test.mjs",
