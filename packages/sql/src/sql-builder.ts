@@ -168,7 +168,7 @@ export class SqlBuilder {
 
     public convertRows(schema: ReflectionClass<any>, model: SQLQueryModel<any>, rows: any[]): any[] {
         if (!this.rootConverter) throw new Error('No root converter set');
-        if (!this.joins.length) return rows.map(v => this.rootConverter!(v));
+        if (!this.joins.length) return rows.map(v => this.rootConverter!(v)?.item);
 
         const result: any[] = [];
 

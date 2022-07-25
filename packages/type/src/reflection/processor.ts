@@ -182,6 +182,21 @@ interface Program {
     object?: ClassType | Function | Packed | any;
 }
 
+function assignResult<T extends Type>(programResultType: Type, result: T): T {
+    if (programResultType.typeName) {
+        if (result.typeName) {
+            return Object.assign(programResultType, result, {
+                typeName: programResultType.typeName,
+                typeArguments: programResultType.typeArguments,
+                originTypes: [{typeName: result.typeName, typeArguments: result.typeArguments}, ...(result.originTypes || [])],
+            });
+        }
+        return Object.assign(programResultType, result, { typeName: programResultType.typeName, typeArguments: programResultType.typeArguments });
+    } else {
+        return Object.assign(programResultType, result);
+    }
+}
+
 function isConditionTruthy(condition: Type | number): boolean {
     if ('number' === typeof condition) return condition !== 0;
     return !!(condition.kind === ReflectionKind.literal && condition.literal);
@@ -575,7 +590,7 @@ export class Processor {
                             const args = program.frame.inputs.filter(isType);
 
                             //only for the very last op do we replace this.resultType. Otherwise, objectLiteral in between would overwrite it.
-                            if (this.isEnded()) t = Object.assign(program.resultType, t);
+                            if (this.isEnded()) t = assignResult(program.resultType, t);
 
                             for (const member of t.types) member.parent = t;
                             if (t.arguments) for (const member of t.arguments) member.parent = t;
@@ -760,7 +775,7 @@ export class Processor {
                         case ReflectionOp.union: {
                             const types = this.popFrame() as Type[];
                             let t: Type = unboxUnion({ kind: ReflectionKind.union, types: flattenUnionTypes(types) });
-                            if (this.isEnded()) t = Object.assign(program.resultType, t);
+                            if (this.isEnded()) t = assignResult(program.resultType, t);
                             if (t.kind === ReflectionKind.union) for (const member of t.types) member.parent = t;
                             this.pushType(t);
                             break;
@@ -778,7 +793,7 @@ export class Processor {
                                 return: types.length > 0 ? types[types.length - 1] as Type : { kind: ReflectionKind.any } as Type,
                                 parameters: types.length > 1 ? types.slice(0, -1) as TypeParameter[] : []
                             };
-                            if (this.isEnded()) t = Object.assign(program.resultType, t);
+                            if (this.isEnded()) t = assignResult(program.resultType, t);
                             t.return.parent = t;
                             for (const member of t.parameters) member.parent = t;
                             this.pushType(t);
@@ -833,7 +848,7 @@ export class Processor {
                             let t: TypeMethod | TypeMethodSignature = op === ReflectionOp.method
                                 ? { kind: ReflectionKind.method, parent: undefined as any, visibility: ReflectionVisibility.public, name, return: returnType, parameters }
                                 : { kind: ReflectionKind.methodSignature, parent: undefined as any, name, return: returnType, parameters };
-                            if (this.isEnded()) t = Object.assign(program.resultType, t);
+                            if (this.isEnded()) t = assignResult(program.resultType, t);
                             t.return.parent = t;
                             for (const member of t.parameters) member.parent = t;
                             this.pushType(t);
@@ -885,7 +900,7 @@ export class Processor {
                             pushObjectLiteralTypes(t, frameTypes);
 
                             //only for the very last op do we replace this.resultType. Otherwise, objectLiteral in between would overwrite it.
-                            if (this.isEnded()) t = Object.assign(program.resultType, t);
+                            if (this.isEnded()) t = assignResult(program.resultType, t);
                             for (const member of t.types) member.parent = t;
                             this.pushType(t);
                             break;
@@ -1069,8 +1084,8 @@ export class Processor {
                                 //when it's just a simple reference resolution like typeOf<Class>() then enable cache re-use (so always the same type is returned)
                                 const reuseCached = !!(this.isEnded() && program.previous && program.previous.end === 0);
                                 const result = this.reflect(p, [], { reuseCached });
-                                if (isWithAnnotations(result) && !result.typeName) {
-                                    result.typeName = isFunction(pOrFn) ? extractTypeNameFromFunction(pOrFn) : '';
+                                if (isWithAnnotations(result)) {
+                                    result.typeName = (isFunction(pOrFn) ? extractTypeNameFromFunction(pOrFn) : '') || result.typeName;
                                 }
                                 this.push(result, program);
 
@@ -1122,8 +1137,8 @@ export class Processor {
                             } else {
                                 const result = this.reflect(p, inputs);
 
-                                if (isWithAnnotations(result) && !result.typeName) {
-                                    result.typeName = isFunction(pOrFn) ? extractTypeNameFromFunction(pOrFn) : '';
+                                if (isWithAnnotations(result)) {
+                                    result.typeName = (isFunction(pOrFn) ? extractTypeNameFromFunction(pOrFn) : '') || result.typeName;
                                 }
 
                                 if (isWithAnnotations(result) && inputs.length) {
@@ -1163,11 +1178,11 @@ export class Processor {
                 program.active = false;
                 if (program.previous) this.program = program.previous;
                 if (program.resultType !== result) {
-                    Object.assign(program.resultType, result);
+                    assignResult(program.resultType, result as Type);
                     applyScheduledAnnotations(program.resultType);
                 }
                 if (program.resultTypes) for (const ref of program.resultTypes) {
-                    Object.assign(ref, result);
+                    assignResult(ref, result as Type);
                     applyScheduledAnnotations(ref);
                 }
                 if (until === program) {
@@ -1418,7 +1433,7 @@ export class Processor {
         if (next === undefined) {
             //end
             let t: TypeObjectLiteral = { kind: ReflectionKind.objectLiteral, types: this.popFrame() as any[] };
-            if (this.isEnded()) t = Object.assign(program.resultType, t);
+            if (this.isEnded()) t = assignResult(program.resultType, t);
 
             for (const member of t.types) member.parent = t;
             this.push(t);
@@ -1747,7 +1762,7 @@ export function getEnumType(values: any[]): Type {
 
 function resolveFunction<T extends Function>(fn: T, forObject: any): any {
     // try {
-        return fn();
+    return fn();
     // } catch (error) {
     //     throw new Error(`Could not resolve function of object ${getClassName(forObject)} via ${fn.toString()}: ${error}`);
     // }

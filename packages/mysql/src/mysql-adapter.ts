@@ -247,7 +247,7 @@ export class MySQLPersistence extends SQLPersistence {
             }
 
             if (!values[pkName]) values[pkName] = [];
-            values[pkName].push(this.platform.quoteValue(changeSet.primaryKey[pkName]));
+            values[pkName].push(pk[pkName]);
 
             const fieldAddedToValues: { [name: string]: 1 } = {};
             const id = changeSet.primaryKey[pkName];
@@ -262,7 +262,7 @@ export class MySQLPersistence extends SQLPersistence {
                     }
                     requiredFields[i] = 1;
                     fieldAddedToValues[i] = 1;
-                    values[i].push(this.platform.quoteValue(value[i]));
+                    values[i].push(value[i]);
                 }
             }
 
@@ -291,12 +291,14 @@ export class MySQLPersistence extends SQLPersistence {
                     requiredFields[i] = 1;
                     if (!fieldAddedToValues[i]) {
                         fieldAddedToValues[i] = 1;
-                        values[i].push(this.platform.quoteValue(null));
+                        values[i].push(null);
                     }
                 }
             }
         }
 
+        const placeholderStrategy = new this.platform.placeholderStrategy();
+        const params: any[] = [];
         const selects: string[] = [];
         const valuesValues: string[] = [];
         const valuesNames: string[] = [];
@@ -305,7 +307,10 @@ export class MySQLPersistence extends SQLPersistence {
         }
 
         for (let i = 0; i < values[pkName].length; i++) {
-            valuesValues.push('ROW(' + valuesNames.map(name => values[name][i]).join(',') + ')');
+            valuesValues.push('ROW(' + valuesNames.map(name => {
+                params.push(values[name][i]);
+                return placeholderStrategy.getPlaceholder();
+            }).join(',') + ')');
         }
 
         for (const i in requiredFields) {
@@ -354,7 +359,7 @@ export class MySQLPersistence extends SQLPersistence {
         `;
 
         const connection = await this.getConnection(); //will automatically be released in SQLPersistence
-        const result = await connection.execAndReturnAll(sql);
+        const result = await connection.execAndReturnAll(sql, params);
 
         if (!empty(setReturning)) {
             const returning = result[1][0];

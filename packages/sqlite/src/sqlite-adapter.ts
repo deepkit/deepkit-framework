@@ -282,17 +282,14 @@ export class SQLitePersistence extends SQLPersistence {
         const setReturning: { [name: string]: 1 } = {};
 
         for (const changeSet of changeSets) {
-            const where: string[] = [];
-
             const pk = partialSerialize(changeSet.primaryKey);
             for (const i in pk) {
                 if (!pk.hasOwnProperty(i)) continue;
-                where.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(pk[i])}`);
                 requiredFields[i] = 1;
             }
 
             if (!values[pkName]) values[pkName] = [];
-            values[pkName].push(this.platform.quoteValue(changeSet.primaryKey[pkName]));
+            values[pkName].push(pk[pkName]);
 
             const fieldAddedToValues: { [name: string]: 1 } = {};
             const id = changeSet.primaryKey[pkName];
@@ -309,7 +306,7 @@ export class SQLitePersistence extends SQLPersistence {
                     }
                     requiredFields[i] = 1;
                     fieldAddedToValues[i] = 1;
-                    values[i].push(this.platform.quoteValue(value[i]));
+                    values[i].push(value[i]);
                 }
             }
 
@@ -338,12 +335,14 @@ export class SQLitePersistence extends SQLPersistence {
                     requiredFields[i] = 1;
                     if (!fieldAddedToValues[i]) {
                         fieldAddedToValues[i] = 1;
-                        values[i].push(this.platform.quoteValue(null));
+                        values[i].push(null);
                     }
                 }
             }
         }
 
+        const placeholderStrategy = new this.platform.placeholderStrategy();
+        const params: any[] = [];
         const selects: string[] = [];
         const valuesValues: string[] = [];
         const valuesNames: string[] = [];
@@ -356,7 +355,10 @@ export class SQLitePersistence extends SQLPersistence {
         }
 
         for (let i = 0; i < values[pkName].length; i++) {
-            valuesValues.push('(' + valuesNames.map(name => values[name][i]).join(',') + ')');
+            valuesValues.push('(' + valuesNames.map(name => {
+                params.push(values[name][i]);
+                return placeholderStrategy.getPlaceholder();
+            }).join(',') + ')');
         }
 
         for (const i in requiredFields) {
@@ -373,22 +375,26 @@ export class SQLitePersistence extends SQLPersistence {
             }
         }
 
+        const connection = await this.getConnection(); //will automatically be released in SQLPersistence
+        await connection.exec(`DROP TABLE IF EXISTS _b`);
+
         const sql = `
-              DROP TABLE IF EXISTS _b;
               CREATE TEMPORARY TABLE _b AS
                 SELECT ${selects.join(', ')}
                 FROM (SELECT ${_rename.join(', ')} FROM (VALUES ${valuesValues.join(', ')})) as _
                 INNER JOIN ${tableName} as _origin ON (_origin.${pkField} = _.${pkField});
-              UPDATE
-                ${tableName}
-                SET ${setNames.join(', ')}
-              FROM
-                _b
-              WHERE ${tableName}.${pkField} = _b.${pkField};
         `;
 
-        const connection = await this.getConnection(); //will automatically be released in SQLPersistence
-        await connection.exec(sql);
+        await connection.run(sql, params);
+
+        await connection.exec(`
+            UPDATE
+            ${tableName}
+            SET ${setNames.join(', ')}
+            FROM
+            _b
+            WHERE ${tableName}.${pkField} = _b.${pkField};
+        `);
 
         if (!empty(setReturning)) {
             const returnings = await connection.execAndReturnAll('SELECT * FROM _b');
@@ -478,7 +484,7 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         if ($set) for (const i in $set) {
             if (!$set.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            select.push(`? as ${this.platform.quoteIdentifier(i)}`);
+            select.push(` ? as ${this.platform.quoteIdentifier(i)}`);
             selectParams.push($set[i]);
         }
 
