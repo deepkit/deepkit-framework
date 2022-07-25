@@ -29,7 +29,7 @@
   ],
   "scripts": {
     "clear": "rm -rf dist",
-    "build": "npm run clear; npm run build:cjs && npm run build:esm && npm run build:types",
+    "build": "npm run build:cjs && npm run build:esm && npm run build:types",
     "build:cjs": "tsc && mv ./dist/cjs/index.js ./dist/cjs/index.cjs",
     "build:esm": "tsc --project tsconfig.esm.json && mv ./dist/esm/index.js ./dist/esm/index.mjs",
     "build:types": "tsc --project tsconfig.types.json",
