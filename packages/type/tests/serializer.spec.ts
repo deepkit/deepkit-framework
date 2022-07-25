@@ -26,7 +26,7 @@ import {
     SignedBinaryBigInt,
     TypeProperty,
     TypePropertySignature
-} from '../src/reflection/type';
+} from '../src/reflection/type.js';
 import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializer } from '../src/serializer.js';
 import { cast, deserialize, serialize } from '../src/serializer-facade.js';
 import { getClassName } from '@deepkit/core';

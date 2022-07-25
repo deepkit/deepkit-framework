@@ -60,7 +60,7 @@ const getFiles = async (dir, ext, excludes) => {
     return files;
 }
 
-search('./packages', /(import|from) ("|')\..*(?<!.js)("|')/g, '.ts', ['dist', 'node_modules', 'compiler.spec.ts']).then((files)=> {
+search('./packages', /(import|from) ("|')\..*(?<!.js)("|')/g, '.ts', ['dist', 'node_modules', 'compiler.spec.ts', 'mod.ts']).then((files)=> {
     if(files.length) {
         console.error(`Imports without file extension found!`);
         console.error('\t' + files.join('\n\t'));
