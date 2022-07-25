@@ -16,5 +16,5 @@ jobs:
       - name: npm install
         run: npm ci
       - name: Check import file extensions
-        run: npm run lint
-          npm run lint:ext
+        run: npm run lint:ext
+          
