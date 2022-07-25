@@ -1,12 +1,11 @@
 import * as ts from 'typescript';
-import { getDirname } from "@deepkit/platform"
 import { createSourceFile, getPreEmitDiagnostics, ScriptTarget, TransformationContext } from 'typescript';
 import { createSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import { ReflectionTransformer } from '../src/compiler.js';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 
-const _dirname = getDirname();
+const _dirname = __dirname;
 const defaultLibLocation = _dirname + '/node_modules/typescript/lib/';
 
 function fullPath(fileName: string): string {
