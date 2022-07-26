@@ -1,4 +1,4 @@
-import { expect, test } from '@jest/globals';
+import { expect, test, jest } from '@jest/globals';
 import { Email, MaxLength, MinLength, Positive, Validate, validate, validates, ValidatorError } from '../src/validator.js';
 import { assert, is } from '../src/typeguard.js';
 import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Type, Unique } from '../src/reflection/type.js';
@@ -67,6 +67,20 @@ test('custom validator with arguments', () => {
 
     type InvalidValidatorOption = string & Validate<typeof startsWith>;
     expect(() => is<InvalidValidatorOption>('aah')).toThrow(`Invalid option value given to validator function startsWith, expected letter: string`);
+});
+
+test('multiple custom validators with identical signatures', () => {
+    const validator1: (value: any) => void = jest.fn();
+    const validator2: (value: any) => void = jest.fn();
+
+    type MyType = {
+        a: string & Validate<typeof validator1>;
+        b: string & Validate<typeof validator2>;
+    }
+
+    expect(is<MyType>({ a: 'a', b: 'b' })).toEqual(true);
+    expect(validator1).toHaveBeenCalledTimes(1);
+    expect(validator2).toHaveBeenCalledTimes(1);
 });
 
 test('decorator validator', () => {
