@@ -2,7 +2,7 @@ import { expect, test } from '@jest/globals';
 import { Minimum, MinLength } from '@deepkit/type';
 import { injectorReference } from '@deepkit/injector';
 import { ServiceContainer } from '../src/service-container.js';
-import { ClassType } from '@deepkit/core.js';
+import { ClassType } from '@deepkit/core';
 import { AppModule, createModule, FunctionalModuleFactory } from '../src/module.js';
 
 class MyModuleConfig {

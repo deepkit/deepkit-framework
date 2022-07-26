@@ -1,5 +1,5 @@
 // import {urlToRequest} from 'loader-utils';
-import * as ts from 'typescript';
+import ts from 'typescript';
 import { CompilerOptions, createCompilerHost, createSourceFile, ScriptTarget, SourceFile, TransformationContext } from 'typescript';
 import { ReflectionTransformer } from './compiler.js';
 import ScriptKind = ts.ScriptKind;
