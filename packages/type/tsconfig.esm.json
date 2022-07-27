@@ -6,10 +6,13 @@
   },
   "references": [
     {
+      "path": "../type-spec/tsconfig.esm.json"
+    },
+    {
       "path": "../core/tsconfig.esm.json"
     },
     {
-      "path": "../type-spec/tsconfig.esm.json"
+      "path": "../type-compiler/tsconfig.esm.json"
     }
   ]
 }

@@ -39,7 +39,19 @@
       "path": "../type/tsconfig.json"
     },
     {
+      "path": "../app/tsconfig.json"
+    },
+    {
+      "path": "../event/tsconfig.json"
+    },
+    {
+      "path": "../http/tsconfig.json"
+    },
+    {
       "path": "../mongo/tsconfig.json"
+    },
+    {
+      "path": "../logger/tsconfig.json"
     },
     {
       "path": "../orm/tsconfig.json"

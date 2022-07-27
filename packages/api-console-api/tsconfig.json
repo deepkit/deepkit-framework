@@ -24,6 +24,21 @@
   ],
   "references": [
     {
+      "path": "../bson/tsconfig.json"
+    },
+    {
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../crypto/tsconfig.json"
+    },
+    {
+      "path": "../injector/tsconfig.json"
+    },
+    {
+      "path": "../logger/tsconfig.json"
+    },
+    {
       "path": "../rpc/tsconfig.json"
     },
     {
