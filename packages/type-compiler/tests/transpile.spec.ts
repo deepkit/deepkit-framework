@@ -284,7 +284,7 @@ test('readonly array', () => {
 });
 
 test('enum union', () => {
-    const res = transpileAndRun({
+    const res = transpile({
         'app': `
             enum StatEnginePowerUnit {
                 Hp,
@@ -297,6 +297,54 @@ test('enum union', () => {
 
             type StatMeasurementUnit = StatEnginePowerUnit | StatWeightUnit;
             typeOf<StatMeasurementUnit>()
+        `
+    });
+
+    console.log(res);
+});
+
+test('class generic reflection', () => {
+    const res = transpile({
+        'app': `
+            class A<T> {
+                constructor(type?: ReceiveType<T>) {
+                }
+            }
+
+            new A<string>();
+        `
+    });
+
+    console.log(res);
+});
+
+test('class generic expression reflection', () => {
+    const res = transpile({
+        'app': `
+            class A<T> {
+                constructor(type?: ReceiveType<T>) {
+                }
+            }
+
+            const a = {b: A};
+
+            new a.b<string>();
+        `
+    });
+
+    console.log(res);
+});
+
+test('class extends generic', () => {
+    const res = transpile({
+        'app': `
+            class A<T> {
+                constructor(type?: ReceiveType<T>) {
+                }
+            }
+
+            class B extends A<string> {}
+            new B();
         `
     });
 
