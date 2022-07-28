@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import ts from 'typescript';
+import * as ts from 'typescript';
 import {
     __String,
     ArrayTypeNode,

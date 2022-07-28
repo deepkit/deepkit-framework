@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import * as ts from 'typescript';
 import { createSourceFile, ScriptTarget } from 'typescript';
 import { expect, test } from '@jest/globals';
 import { ReflectionTransformer } from '../src/compiler.js';
