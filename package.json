@@ -63,6 +63,7 @@
       "packages/core-rxjs",
       "packages/ui-library",
       "packages/type",
+      "packages/type-compiler",
       "packages/app",
       "packages/event",
       "packages/workflow",

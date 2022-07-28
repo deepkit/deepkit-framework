@@ -71,6 +71,7 @@ import {
     isModuleDeclaration,
     isNamedExports,
     isNamedTupleMember,
+    isNewExpression,
     isObjectLiteralExpression,
     isOptionalTypeNode,
     isParameter,
@@ -587,21 +588,26 @@ export class ReflectionTransformer implements CustomTransformer {
 
             if (isClassDeclaration(node)) {
                 return this.decorateClass(node);
-            } else if (isParameter(node) && node.parent && node.parent.typeParameters && node.type) {
+            } else if (isParameter(node) && node.parent && node.type) {
                 // ReceiveType
+                const typeParameters = isConstructorDeclaration(node.parent) ? node.parent.parent.typeParameters : node.parent.typeParameters;
+                if (!typeParameters) return node;
+
                 const receiveType = getReceiveTypeParameter(node.type);
                 if (receiveType && receiveType.typeArguments) {
                     const first = receiveType.typeArguments[0];
                     if (first && isTypeReferenceNode(first) && isIdentifier(first.typeName)) {
                         const name = getIdentifierName(first.typeName);
                         //find type parameter position
-                        const index = node.parent.typeParameters.findIndex(v => getIdentifierName(v.name) === name);
+                        const index = typeParameters.findIndex(v => getIdentifierName(v.name) === name);
 
                         let container: Expression = this.f.createIdentifier('globalThis');
                         if ((isFunctionDeclaration(node.parent) || isFunctionExpression(node.parent)) && node.parent.name) {
                             container = node.parent.name;
                         } else if (isMethodDeclaration(node.parent) && isIdentifier(node.parent.name)) {
                             container = this.f.createPropertyAccessExpression(this.f.createIdentifier('this'), node.parent.name);
+                        } else if (isConstructorDeclaration(node.parent)) {
+                            container = this.f.createPropertyAccessExpression(this.f.createIdentifier('this'), 'constructor');
                         }
 
                         return this.f.updateParameterDeclaration(node, node.decorators, node.modifiers, node.dotDotDotToken, node.name,
@@ -622,29 +628,31 @@ export class ReflectionTransformer implements CustomTransformer {
                 return this.decorateFunctionExpression(this.injectResetΩ(node));
             } else if (isFunctionDeclaration(node)) {
                 return this.decorateFunctionDeclaration(this.injectResetΩ(node));
-            } else if (isMethodDeclaration(node)) {
+            } else if (isMethodDeclaration(node) || isConstructorDeclaration(node)) {
                 return this.injectResetΩ(node);
             } else if (isArrowFunction(node)) {
                 return this.decorateArrow(node);
-            } else if (isCallExpression(node) && node.typeArguments && node.typeArguments.length > 0) {
-                const autoTypeFunctions = ['valuesOf', 'propertiesOf', 'typeOf'];
-                if (isIdentifier(node.expression) && autoTypeFunctions.includes(getIdentifierName(node.expression))) {
-                    const args: Expression[] = [...node.arguments];
+            } else if ((isNewExpression(node) || isCallExpression(node)) && node.typeArguments && node.typeArguments.length > 0) {
 
-                    if (!args.length) {
-                        args.push(this.f.createArrayLiteralExpression());
+                if (isCallExpression(node)) {
+                    const autoTypeFunctions = ['valuesOf', 'propertiesOf', 'typeOf'];
+                    if (isIdentifier(node.expression) && autoTypeFunctions.includes(getIdentifierName(node.expression))) {
+                        const args: Expression[] = [...node.arguments];
+
+                        if (!args.length) {
+                            args.push(this.f.createArrayLiteralExpression());
+                        }
+
+                        // const resolvedType = this.resolveType(node.typeArguments[0]);
+                        const type = this.getTypeOfType(node.typeArguments[0]);
+                        if (!type) return node;
+                        args.push(type);
+
+                        return this.f.updateCallExpression(node, node.expression, node.typeArguments, this.f.createNodeArray(args));
                     }
-
-                    // const resolvedType = this.resolveType(node.typeArguments[0]);
-                    const type = this.getTypeOfType(node.typeArguments[0]);
-                    if (!type) return node;
-                    args.push(type);
-
-                    return this.f.updateCallExpression(node, node.expression, node.typeArguments, this.f.createNodeArray(args));
                 }
 
                 //put the type argument in FN.Ω
-
                 const expressionToCheck = getAssignTypeExpression(node.expression) || node.expression;
                 if (isArrowFunction(expressionToCheck)) {
                     //inline arrow functions are excluded from type passing
@@ -670,6 +678,8 @@ export class ReflectionTransformer implements CustomTransformer {
                     this.f.createArrayLiteralExpression(typeExpressions),
                 );
 
+                const update: any = isNewExpression(node) ? this.f.updateNewExpression : this.f.updateCallExpression;
+
                 if (isPropertyAccessExpression(node.expression)) {
                     //e.g. http.deep.response();
                     if (isCallExpression(node.expression.expression)) {
@@ -685,7 +695,7 @@ export class ReflectionTransformer implements CustomTransformer {
                             this.f.createArrayLiteralExpression(typeExpressions),
                         );
 
-                        return this.f.updateCallExpression(node,
+                        return update(node,
                             this.f.createPropertyAccessExpression(
                                 this.f.createParenthesizedExpression(this.f.createBinaryExpression(
                                     this.f.createBinaryExpression(
@@ -725,7 +735,7 @@ export class ReflectionTransformer implements CustomTransformer {
                             this.f.createArrayLiteralExpression(typeExpressions),
                         );
 
-                        const updatedNode = this.f.updateCallExpression(
+                        const updatedNode = update(
                             node,
                             this.f.updatePropertyAccessExpression(
                                 node.expression,
@@ -920,9 +930,8 @@ export class ReflectionTransformer implements CustomTransformer {
         return this.sourceFile;
     }
 
-    protected injectResetΩ<T extends FunctionDeclaration | FunctionExpression | MethodDeclaration>(node: T): T {
+    protected injectResetΩ<T extends FunctionDeclaration | FunctionExpression | MethodDeclaration | ConstructorDeclaration>(node: T): T {
         let hasReceiveType = false;
-        if (!node.typeParameters) return node;
         for (const param of node.parameters) {
             if (param.type && getReceiveTypeParameter(param.type)) hasReceiveType = true;
         }
@@ -933,6 +942,8 @@ export class ReflectionTransformer implements CustomTransformer {
             container = node.name;
         } else if (isMethodDeclaration(node) && isIdentifier(node.name)) {
             container = this.f.createPropertyAccessExpression(this.f.createIdentifier('this'), node.name);
+        } else if (isConstructorDeclaration(node)) {
+            container = this.f.createPropertyAccessExpression(this.f.createIdentifier('this'), 'constructor');
         }
 
         const reset: Statement = this.f.createExpressionStatement(this.f.createBinaryExpression(
@@ -954,6 +965,8 @@ export class ReflectionTransformer implements CustomTransformer {
         } else if (isMethodDeclaration(node)) {
             return this.f.updateMethodDeclaration(node, node.decorators, node.modifiers, node.asteriskToken, node.name,
                 node.questionToken, node.typeParameters, node.parameters, node.type, body) as T;
+        } else if (isConstructorDeclaration(node)) {
+            return this.f.updateConstructorDeclaration(node, node.decorators, node.modifiers, node.parameters, body) as T;
         }
         return node;
     }
@@ -1513,7 +1526,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 const narrowed = node as IndexSignatureDeclaration;
 
                 //node.parameters = first item is {[name: string]: number} => 'name: string'
-                if (narrowed.parameters[0].type) {
+                if (narrowed.parameters.length && narrowed.parameters[0].type) {
                     this.extractPackStructOfType(narrowed.parameters[0].type, program);
                 } else {
                     program.pushOp(ReflectionOp.any);
