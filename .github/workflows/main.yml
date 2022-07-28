@@ -5,6 +5,21 @@ on:
   push:
 
 jobs:
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+      - name: npm install
+        run: npm ci
+      - name: Check import file extensions
+        run: npm run lint:ext
+
   unit-tests:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
@@ -345,3 +360,112 @@ jobs:
 #        run: cd packages/benchmark && sh setup.sh
 #      - name: Benchmark run
 #        run: cd packages/benchmark && npm run benchmark
+
+  platform-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+      - name: Install NPM dependencies
+        run: npm ci
+      - name: Bootstrap
+        run: npm run bootstrap:ci -- --scope @deepkit/platform
+      # - name: Link
+      #   run: npm run link
+      # - name: Install compiler
+      #   run: npm run install-compiler
+      - name: Build Platform
+        run: npm run lerna -- build --scope="@deepkit/platform"
+      - name: Test
+        run: npm run lerna -- test:browser --scope="@deepkit/platform"
+
+  platform-deno:
+    strategy:
+      matrix:
+        node-version: [ 16.x]
+        deno-version: [ vx.x.x ]
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Setup Deno
+        uses: denolib/setup-deno@v2
+        with:
+          deno-version: ${{ matrix.deno-version }}
+      - name: Install NPM dependencies
+        run: npm ci
+      - name: Bootstrap
+        run: npm run bootstrap:ci -- --scope @deepkit/platform
+      # - name: Link
+      #   run: npm run link
+      # - name: Install compiler
+      #   run: npm run install-compiler
+      - name: Build Platform
+        run: npm run lerna -- build --scope="@deepkit/platform"
+      - name: Test
+        run: npm run lerna -- test:deno --scope="@deepkit/platform"
+
+  platform-gjs:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+      - name: Install GJS
+        run: sudo apt-get --yes install gjs
+      - name: Install NPM dependencies
+        run: npm ci
+      - name: Bootstrap
+        run: npm run bootstrap:ci -- --scope @deepkit/platform
+      # - name: Link
+      #   run: npm run link
+      # - name: Install compiler
+      #   run: npm run install-compiler
+      - name: Build Platform
+        run: npm run lerna -- build --scope="@deepkit/platform"
+      - name: Test
+        run: npm run lerna -- test:gjs --scope="@deepkit/platform"
+
+  platform-node:
+    strategy:
+      matrix:
+        node-version: [ 16.x ]
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install NPM dependencies
+        run: npm ci
+      - name: Bootstrap
+        run: npm run bootstrap:ci -- --scope @deepkit/platform
+      # - name: Link
+      #   run: npm run link
+      # - name: Install compiler
+      #   run: npm run install-compiler
+      - name: Build Platform
+        run: npm run lerna -- build --scope="@deepkit/platform"
+      - name: Test
+        run: npm run lerna -- test:node --scope="@deepkit/platform"
