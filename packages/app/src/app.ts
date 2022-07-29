@@ -8,7 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, ExtractClassType, getCurrentFileName, isFunction, isObject, setPathValue } from '@deepkit/core';
+import { ClassType, ExtractClassType, isFunction, isObject, setPathValue } from '@deepkit/core';
+import { getDirname } from '@deepkit/platform';
 import { ConfigLoader, ServiceContainer } from './service-container.js';
 import { InjectorContext, ResolveToken, Token } from '@deepkit/injector';
 import { AppModule, RootModuleDefinition } from './module.js';
@@ -332,7 +333,7 @@ export class App<T extends RootModuleDefinition> {
         }
 
         try {
-            const config = new MyConfig({ root: dirname(getCurrentFileName()) });
+            const config = new MyConfig({ root: getDirname() });
             const scopedInjectorContext = this.getInjectorContext().createChildScope('cli');
 
             for (const [name, info] of this.serviceContainer.cliControllerRegistry.controllers.entries()) {

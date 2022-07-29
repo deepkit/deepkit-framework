@@ -39,6 +39,7 @@
     "@deepkit/api-console-gui": "^1.0.1-alpha.74"
   },
   "devDependencies": {
+    "@deepkit/platform": "^1.0.1-alpha.74",
     "@deepkit/app": "^1.0.1-alpha.74",
     "@deepkit/broker": "^1.0.1-alpha.74",
     "@deepkit/bson": "^1.0.1-alpha.74",
