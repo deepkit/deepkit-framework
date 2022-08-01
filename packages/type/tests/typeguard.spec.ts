@@ -133,6 +133,10 @@ test('array any', () => {
     expect(is<any[]>(true)).toEqual(false);
     expect(is<any[]>({})).toEqual(false);
 
+    expect(is<any[]>({length:1})).toEqual(false);
+    expect(is<any[]>({length:0})).toEqual(false);
+    expect(is<any[]>({length:null})).toEqual(false);
+    expect(is<any[]>({length:undefined})).toEqual(false);
 });
 
 test('tuple', () => {
