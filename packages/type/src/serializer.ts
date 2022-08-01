@@ -1314,6 +1314,13 @@ export function typeGuardArray(elementType: Type, state: TemplateState) {
     const v = state.compilerContext.reserveName('v');
     const i = state.compilerContext.reserveName('i');
     const item = state.compilerContext.reserveName('item');
+
+    let innerTemplate = executeTemplates(state.fork(v, item).extendPath(new RuntimeCode(i)), elementType);
+    // break inner element validation if empty (like Array<any>)
+    if (innerTemplate.trim().length === 0){
+        innerTemplate = 'break;'
+    }
+
     //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
     state.addCodeForSetter(`
          let ${v} = false;
@@ -1321,7 +1328,7 @@ export function typeGuardArray(elementType: Type, state: TemplateState) {
          if (isIterable(${state.accessor})) {
             ${v} = ${state.accessor}.length != null;
             for (const ${item} of ${state.accessor}) {
-                ${executeTemplates(state.fork(v, item).extendPath(new RuntimeCode(i)), elementType)}
+                ${innerTemplate}
                 if (!${v}) break;
                 ${i}++;
             }
