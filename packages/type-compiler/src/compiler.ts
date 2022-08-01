@@ -576,14 +576,19 @@ export class ReflectionTransformer implements CustomTransformer {
             if (isMethodDeclaration(node) && node.parent && node.body && isObjectLiteralExpression(node.parent)) {
                 //replace MethodDeclaration with MethodExpression
                 // {add(v: number) {}} => {add: function (v: number) {}}
-                //so that __type can be added
-                const method = this.decorateFunctionExpression(
-                    this.f.createFunctionExpression(
-                        node.modifiers, node.asteriskToken, isIdentifier(node.name) ? node.name : undefined,
-                        node.typeParameters, node.parameters, node.type, node.body
-                    )
-                );
-                node = this.f.createPropertyAssignment(node.name, method);
+                //so that __type can be added.
+                //{default(){}} can not be converted without losing the function name, so we skip that for the moment.
+                let valid = true;
+                if (node.name.kind === SyntaxKind.Identifier && getIdentifierName(node.name) === 'default') valid = false;
+                if (valid) {
+                    const method = this.decorateFunctionExpression(
+                        this.f.createFunctionExpression(
+                            node.modifiers, node.asteriskToken, isIdentifier(node.name) ? node.name : undefined,
+                            node.typeParameters, node.parameters, node.type, node.body
+                        )
+                    );
+                    node = this.f.createPropertyAssignment(node.name, method);
+                }
             }
 
             if (isClassDeclaration(node)) {
