@@ -1319,7 +1319,7 @@ export function typeGuardArray(elementType: Type, state: TemplateState) {
          let ${v} = false;
          let ${i} = 0;
          if (isIterable(${state.accessor})) {
-            ${v} = ${state.accessor}.length === 0;
+            ${v} = ${state.accessor}.length != null;
             for (const ${item} of ${state.accessor}) {
                 ${executeTemplates(state.fork(v, item).extendPath(new RuntimeCode(i)), elementType)}
                 if (!${v}) break;

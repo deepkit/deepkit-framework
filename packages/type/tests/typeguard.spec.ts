@@ -113,11 +113,26 @@ test('enum string', () => {
 });
 
 test('array string', () => {
+    expect(is<string[]>([])).toEqual(true);
     expect(is<string[]>(['a'])).toEqual(true);
     expect(is<string[]>(['a', 'b'])).toEqual(true);
     expect(is<string[]>([1])).toEqual(false);
     expect(is<string[]>([1, 2])).toEqual(false);
     expect(is<string[]>(['a', 2])).toEqual(false);
+});
+
+test('array any', () => {
+    expect(is<any[]>(['a'])).toEqual(true);
+    expect(is<any[]>([])).toEqual(true);
+    expect(is<Array<any>>([])).toEqual(true);
+    expect(is<Array<any>>(['a'])).toEqual(true);
+
+    expect(is<any[]>(null)).toEqual(false);
+    expect(is<any[]>(undefined)).toEqual(false);
+    expect(is<any[]>(1)).toEqual(false);
+    expect(is<any[]>(true)).toEqual(false);
+    expect(is<any[]>({})).toEqual(false);
+
 });
 
 test('tuple', () => {
