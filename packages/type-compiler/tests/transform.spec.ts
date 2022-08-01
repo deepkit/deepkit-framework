@@ -134,3 +134,20 @@ test('export default async function', () => {
 
     expect(res.app).toContain('export default __assignType(async function (bar: string');
 });
+
+test('default function name', () => {
+    const res = transform({
+        'app': `
+            const a = {
+                default(val: any): any {
+                    console.log('default',val)
+                    return 'default'
+                }
+            };
+        `
+    });
+
+    //`function default(` is invalid syntax.
+    //as solution we skip that transformation.
+    expect(res.app).not.toContain('function default(');
+});
