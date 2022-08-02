@@ -19,6 +19,7 @@ import {
     ReflectionFunction,
     ReflectionKind,
     ReflectionParameter,
+    resolveReceiveType,
     SerializationOptions,
     serializer,
     Serializer,
@@ -751,10 +752,10 @@ export class HttpRouter {
 
                 setParameters.push(`${parameterResolverFoundVar} = false;`);
 
-                const resolver = routeConfig.resolverForParameterName.get(parameter.getName()) || routeConfig.resolverForToken.get(injectorToken);
+                const resolverType = routeConfig.resolverForParameterName.get(parameter.getName()) || routeConfig.resolverForToken.get(injectorToken);
 
                 //make sure all parameter values from the path are available
-                if (resolver && !setParametersFromPath) {
+                if (resolverType && !setParametersFromPath) {
                     for (const i in parsedRoute.pathParameterNames) {
                         setParametersFromPath += `parameters.${i} = _match[${1 + parsedRoute.pathParameterNames[i]}];`;
                     }
@@ -763,14 +764,21 @@ export class HttpRouter {
                 let injector = '_injector';
                 const moduleVar = routeConfig.module ? ', ' + compiler.reserveConst(routeConfig.module, 'module') : '';
 
-                if (resolver) {
-                    const resolverProvideTokenVar = compiler.reserveVariable('resolverProvideToken', resolver);
+                if (resolverType) {
                     requiresAsyncParameters = true;
+                    let instanceFetcher = '';
+                    if (routeConfig.module && routeConfig.module.injector) {
+                        const resolverResolverVar = compiler.reserveVariable('resolverProvideToken', routeConfig.module.injector.createResolver(resolveReceiveType(resolverType)));
+                        instanceFetcher = `${resolverResolverVar}(${injector}.scope)`;
+                    } else {
+                        const resolverProvideTokenVar = compiler.reserveVariable('resolverProvideToken', resolverType);
+                        instanceFetcher = `${injector}.get(${resolverProvideTokenVar}${moduleVar})`;
+                    }
                     const instance = compiler.reserveVariable('resolverInstance');
 
                     setParameters.push(`
-                    //resolver ${getClassName(resolver)} for ${parameter.getName()}
-                    ${instance} = ${injector}.get(${resolverProvideTokenVar}${moduleVar});
+                    //resolver ${getClassName(resolverType)} for ${parameter.getName()}
+                    ${instance} = ${instanceFetcher};
                     if (!${parameterResolverFoundVar}) {
                         ${parameterResolverFoundVar} = true;
                         parameters.${parameter.parameter.name} = await ${instance}.resolve({

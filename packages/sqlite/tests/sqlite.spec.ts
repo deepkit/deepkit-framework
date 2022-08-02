@@ -300,3 +300,39 @@ test('uuid', async () => {
     await database.remove(ent);
     expect(await database.query(MyEntity).count()).toBe(0);
 });
+
+test('m2m', async () => {
+    class Book {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        tags: Tag[] & BackReference<{ via: typeof BookToTag }> = [];
+
+        constructor(public title: string) {
+        }
+    }
+
+    class Tag {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        books: Book[] & BackReference<{ via: typeof BookToTag }> = [];
+
+        constructor(public name: string) {
+        }
+    }
+
+    class BookToTag {
+        id: number & PrimaryKey & AutoIncrement = 0;
+
+        constructor(public book: Book & Reference, public tag: Tag & Reference) {
+        }
+    }
+
+    const database = new Database(new SQLiteDatabaseAdapter(':memory:'), [Book, Tag, BookToTag]);
+    database.logger.enableLogging();
+    await database.migrate();
+    const book = new Book('title');
+    const tag = new Tag('name');
+    const pivot = new BookToTag(book, tag);
+    await database.persist(book, tag, pivot);
+    const tagQueried = await database.query(Tag).join('books').findOne();
+
+    console.debug(tag, tagQueried);
+});

@@ -29,7 +29,8 @@ import {
     isBackReferenceType,
     isMongoIdType,
     isNullable,
-    isOptional, isPropertyMemberType,
+    isOptional,
+    isPropertyMemberType,
     isReferenceType,
     isType,
     isUUIDType,
@@ -1913,6 +1914,11 @@ export class Serializer {
     }
 
     protected registerTypeGuards() {
+        this.typeGuards.register(1, ReflectionKind.any, (type, state) => {
+            //if any is part of an union, we use register(20) below. otherwise it would match before anything else.
+            if (type.parent && type.parent.kind === ReflectionKind.union) return;
+            state.addSetter('true');
+        });
         //if nothing else matches in a union, any matches anything
         this.typeGuards.register(20, ReflectionKind.any, (type, state) => state.addSetter('true'));
 

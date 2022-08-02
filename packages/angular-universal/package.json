@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/angular-universal",
-  "version": "1.0.1-alpha.74",
+  "version": "1.0.1-alpha.75",
   "description": "Angular server side rendering for Deepkit Framework",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -46,12 +46,12 @@
     "@angular/core": "^10.0.0 || ^11.0.0",
     "@angular/platform-server": "^10.0.0 || ^11.0.0",
     "@angular/router": "^10.0.0 || ^11.0.0",
-    "@deepkit/app": "^1.0.1-alpha.74",
-    "@deepkit/event": "^1.0.1-alpha.74",
-    "@deepkit/http": "^1.0.1-alpha.74",
-    "@deepkit/injector": "^1.0.1-alpha.74",
-    "@deepkit/logger": "^1.0.1-alpha.74",
-    "@deepkit/type": "^1.0.1-alpha.74",
+    "@deepkit/app": "^1.0.1-alpha.75",
+    "@deepkit/event": "^1.0.1-alpha.75",
+    "@deepkit/http": "^1.0.1-alpha.75",
+    "@deepkit/injector": "^1.0.1-alpha.75",
+    "@deepkit/logger": "^1.0.1-alpha.75",
+    "@deepkit/type": "^1.0.1-alpha.75",
     "@types/node": "^14.0.0"
   },
    "jest": {

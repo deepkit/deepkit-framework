@@ -113,6 +113,7 @@ test('enum string', () => {
 });
 
 test('array string', () => {
+    expect(is<string[]>([])).toEqual(true);
     expect(is<string[]>(['a'])).toEqual(true);
     expect(is<string[]>(['a', 'b'])).toEqual(true);
     expect(is<string[]>([1])).toEqual(false);
@@ -157,6 +158,50 @@ test('literal', () => {
     expect(is<false>(true)).toEqual(false);
     expect(is<true>(true)).toEqual(true);
     expect(is<true>(false)).toEqual(false);
+});
+
+test('any', () => {
+    expect(is<any>(['a'])).toEqual(true);
+    expect(is<any>([1])).toEqual(true);
+    expect(is<any>([true])).toEqual(true);
+    expect(is<any>([false])).toEqual(true);
+    expect(is<any>([undefined])).toEqual(true);
+    expect(is<any>([null])).toEqual(true);
+    expect(is<any>([{}])).toEqual(true);
+    expect(is<any>([])).toEqual(true);
+
+    expect(is<any>('a')).toEqual(true);
+    expect(is<any>(1)).toEqual(true);
+    expect(is<any>(true)).toEqual(true);
+    expect(is<any>(false)).toEqual(true);
+    expect(is<any>(undefined)).toEqual(true);
+    expect(is<any>(null)).toEqual(true);
+    expect(is<any>({})).toEqual(true);
+    expect(is<any>([])).toEqual(true);
+});
+
+test('array any', () => {
+    expect(is<any[]>(['a'])).toEqual(true);
+    expect(is<any[]>([1])).toEqual(true);
+    expect(is<any[]>([true])).toEqual(true);
+    expect(is<any[]>([false])).toEqual(true);
+    expect(is<any[]>([undefined])).toEqual(true);
+    expect(is<any[]>([null])).toEqual(true);
+    expect(is<any[]>([{}])).toEqual(true);
+    expect(is<any[]>([])).toEqual(true);
+    expect(is<Array<any>>([])).toEqual(true);
+    expect(is<Array<any>>(['a'])).toEqual(true);
+
+    expect(is<any[]>(null)).toEqual(false);
+    expect(is<any[]>(undefined)).toEqual(false);
+    expect(is<any[]>(1)).toEqual(false);
+    expect(is<any[]>(true)).toEqual(false);
+    expect(is<any[]>({})).toEqual(false);
+
+    expect(is<any[]>({length:1})).toEqual(false);
+    expect(is<any[]>({length:0})).toEqual(false);
+    expect(is<any[]>({length:null})).toEqual(false);
+    expect(is<any[]>({length:undefined})).toEqual(false);
 });
 
 test('union', () => {
