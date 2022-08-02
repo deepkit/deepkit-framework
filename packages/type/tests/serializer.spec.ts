@@ -33,6 +33,7 @@ import { getClassName } from '@deepkit/core';
 import { entity, t } from '../src/decorator';
 import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator';
 import { StatEnginePowerUnit, StatWeightUnit } from './types';
+import { parametersToTuple } from '../src/reflection/extends.js';
 
 test('deserializer', () => {
     class User {
@@ -1022,4 +1023,18 @@ test('union literals in union imported', () => {
     expect(deserialize<StatMeasurementUnit>('kg')).toBe('kg');
     expect(deserialize<StatMeasurementUnit>('lbs')).toBe('lbs');
     expect(deserialize<StatMeasurementUnit>('hp')).toBe('hp');
+});
+
+test('function rest parameters', () => {
+    type t = (start: number, ...rest: string[]) => void;
+    const fn = typeOf<t>();
+    assertType(fn, ReflectionKind.function);
+    {
+        const type = typeOf<Parameters<never>>([fn]); //same as Parameters<t>
+        expect(deserialize([2, '33', 44], undefined, undefined, undefined, type)).toEqual([2, '33', '44']);
+    }
+    {
+        const type = parametersToTuple(fn.parameters);
+        expect(deserialize([2, '33', 44], undefined, undefined, undefined, type)).toEqual([2, '33', '44']);
+    }
 });
