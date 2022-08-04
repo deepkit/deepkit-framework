@@ -46,6 +46,8 @@ export class HttpController {
     resolverForToken: Map<any, ClassType> = new Map();
     resolverForParameterName: Map<string, ClassType> = new Map();
 
+    private actionsProcessed = new Set<HttpAction>();
+
     getUrl(action: HttpAction): string {
         return urlJoin('/', this.baseUrl, action.path);
     }
@@ -55,9 +57,13 @@ export class HttpController {
     }
 
     getActions(): Set<HttpAction> {
-        for (const a of this.actions) {
-            for (const g of this.groups) {
-                if (!a.groups.includes(g)) a.groups.push(g);
+        for (const action of this.actions) {
+            if (!this.actionsProcessed.has(action)) {
+                action.groups = [
+                    ...this.groups,
+                    ...action.groups.filter((g) => !this.groups.includes(g)),
+                ];
+                this.actionsProcessed.add(action);
             }
         }
 
@@ -65,7 +71,9 @@ export class HttpController {
     }
 
     removeAction(methodName: string): void {
-        this.actions.delete(this.getAction(methodName));
+        const action = this.getAction(methodName);
+        this.actions.delete(action);
+        this.actionsProcessed.delete(action);
     }
 
     getAction(methodName: string): HttpAction {
