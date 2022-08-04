@@ -409,53 +409,6 @@ test('router body double', async () => {
     expect((await httpKernel.request(HttpRequest.POST('/').json({ username: 'Peter' }))).json).toEqual(['Peter', true, '/']);
 });
 
-test('router groups', async () => {
-    {
-        class Controller {
-            @http.GET('a').group('a')
-            a() {
-            }
-
-            @http.GET('b')
-            b() {
-            }
-
-            @http.GET('c').group('c')
-            c() {
-            }
-        }
-
-        const httpData = httpClass._fetch(Controller);
-        if (!httpData) throw new Error('httpClass undefined');
-        expect(httpData.getAction('a').groups).toEqual(['a']);
-        expect(httpData.getAction('b').groups).toEqual([]);
-        expect(httpData.getAction('c').groups).toEqual(['c']);
-    }
-
-    {
-        @http.group('all')
-        class Controller {
-            @http.GET('a').group('a')
-            a() {
-            }
-
-            @http.GET('b')
-            b() {
-            }
-
-            @http.GET('c').group('c')
-            c() {
-            }
-        }
-
-        const httpData = httpClass._fetch(Controller);
-        if (!httpData) throw new Error('httpClass undefined');
-        expect(httpData.getAction('a').groups).toEqual(['a', 'all']);
-        expect(httpData.getAction('b').groups).toEqual(['all']);
-        expect(httpData.getAction('c').groups).toEqual(['c', 'all']);
-    }
-});
-
 test('router query', async () => {
     class Controller {
         @http.GET('my-action')
