@@ -308,6 +308,7 @@ export interface RouteParameterResolverContext {
 
     query: HttpRequestQuery;
     parameters: HttpRequestResolvedParameters;
+    optional: boolean;
 }
 
 function filterMiddlewaresForRoute(middlewareRawConfigs: MiddlewareRegistryEntry[], routeConfig: RouteConfig, fullPath: string): { config: HttpMiddlewareConfig, module: InjectorModule<any> }[] {
@@ -788,7 +789,8 @@ export class HttpRouter {
                             name: ${JSON.stringify(parameter.parameter.name)},
                             value: parameters.${parameter.parameter.name},
                             query: _query,
-                            parameters: parameters
+                            parameters: parameters,
+                            optional: ${parameter.parameter.isOptional()}
                         });
                     }`);
                 }
