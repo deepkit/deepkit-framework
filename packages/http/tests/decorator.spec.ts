@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { http, httpClass } from '../src/decorator';
 
-test('group basic', async () => {
+test('groups', async () => {
     {
         class Controller {
             @http.GET('a').group('a')
@@ -36,19 +36,19 @@ test('group basic', async () => {
 
         const httpData = httpClass._fetch(Controller);
         if (!httpData) throw new Error('httpClass undefined');
-        expect(httpData.getAction('a').groups).toEqual(expect.arrayContaining(['a', 'all']));
-        expect(httpData.getAction('b').groups).toEqual(expect.arrayContaining(['all']));
-        expect(httpData.getAction('c').groups).toEqual(expect.arrayContaining(['c', 'all']));
+        expect(httpData.getAction('a').groups).toEqual(['all', 'a']);
+        expect(httpData.getAction('b').groups).toEqual(['all']);
+        expect(httpData.getAction('c').groups).toEqual(['all', 'c']);
     }
-});
 
-test('group order', async () => {
-    @http.controller().group('group1', 'group2', 'duplicate')
-    class Controller {
-        @http.GET().group('group3', 'group4', 'duplicate')
-        action() {}
+    {
+        @http.controller().group('group1', 'group2', 'duplicate')
+        class Controller {
+            @http.GET().group('group3', 'group4', 'duplicate')
+            action() {}
+        }
+        const httpData = httpClass._fetch(Controller);
+        if (!httpData) throw new Error('httpClass undefined');
+        expect(httpData.getAction('action').groups).toEqual(['group1', 'group2', 'duplicate', 'group3', 'group4']);
     }
-    expect(httpClass._fetch(Controller)?.getAction('action')).toMatchObject({
-        groups: ['group1', 'group2', 'duplicate', 'group3', 'group4'],
-    });
 });
