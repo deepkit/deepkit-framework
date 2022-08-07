@@ -19,16 +19,15 @@ import {
     autoIncrementAnnotation,
     BackReference,
     Data,
-    databaseAnnotation, DatabaseField,
+    databaseAnnotation,
     defaultAnnotation,
     Embedded,
     Entity,
     entityAnnotation,
     Excluded,
     Group,
-    groupAnnotation,
     Index,
-    integer, isPrimaryKeyType,
+    integer,
     MapName,
     metaAnnotation,
     MySQL,
@@ -52,12 +51,11 @@ import {
     Unique
 } from '../src/reflection/type';
 import { TypeNumberBrand } from '@deepkit/type-spec';
-import { MinLength, validate, ValidatorError } from '../src/validator';
+import { validate, ValidatorError } from '../src/validator';
 import { expectEqualType } from './utils';
 import { MyAlias } from './types';
 import { resolveRuntimeType } from '../src/reflection/processor';
 import { uuid } from '../src/utils';
-import { deserialize } from '../src/serializer-facade';
 
 test('class', () => {
     class Entity {
@@ -199,7 +197,7 @@ test('class expression extends another', () => {
         constructor() {
             super('asd');
         }
-    }
+    };
 
     const reflection = ReflectionClass.from(class2);
     const constructor = reflection.getMethodOrUndefined('constructor');
@@ -2020,4 +2018,152 @@ test('test', () => {
     validate<Article>({}).length; //1, means there are validation errors
 
     console.log(validate<Article>({}));
+});
+
+test('map tuple', () => {
+    type MapTuple<T extends any[]> = {
+        [Payload in keyof T]?: T[Payload];
+    };
+
+    type tuple = [string, number];
+    type mapped = MapTuple<tuple>;
+
+    const type = typeOf<mapped>();
+    assertType(type, ReflectionKind.tuple);
+
+    assertType(type.types[0], ReflectionKind.tupleMember);
+    expect(type.types[0].optional).toBe(true);
+    assertType(type.types[0].type, ReflectionKind.string);
+
+    assertType(type.types[1], ReflectionKind.tupleMember);
+    expect(type.types[1].optional).toBe(true);
+    assertType(type.types[1].type, ReflectionKind.number);
+});
+
+test('template literal with never', () => {
+    type t1 = `_${'a' & string}`;
+    type t2 = `_${never}`;
+    type t3 = `_${3 & string}`;
+    type t4 = 3 & string;
+    type t5 = string & 3;
+    type t6 = '3' & string;
+    expect(stringifyResolvedType(typeOf<t4>())).toBe(`never`);
+    expect(stringifyResolvedType(typeOf<t5>())).toBe(`never`);
+    expect(stringifyResolvedType(typeOf<t6>())).toBe(`'3'`);
+
+    expect(stringifyResolvedType(typeOf<t1>())).toBe(`'_a'`);
+    expect(stringifyResolvedType(typeOf<t2>())).toBe(`never`);
+    expect(stringifyResolvedType(typeOf<t3>())).toBe(`never`);
+});
+
+test('object literal with numeric index', () => {
+    type o = { a: string, b: number, 3: boolean };
+    const type = typeOf<o>();
+    assertType(type, ReflectionKind.objectLiteral);
+
+    expect(type.types.length).toBe(3);
+    assertType(type.types[0], ReflectionKind.propertySignature);
+    expect(type.types[0].name).toBe('a');
+    assertType(type.types[1], ReflectionKind.propertySignature);
+    expect(type.types[1].name).toBe('b');
+    assertType(type.types[2], ReflectionKind.propertySignature);
+    expect(type.types[2].name).toBe(3);
+});
+
+test('map as', () => {
+    type MapTuple<T> = {
+        [Payload in keyof T as `_${Payload & string}`]: T[Payload];
+    };
+
+    type o = { a: string, b: number, 3: boolean };
+    type mapped = MapTuple<o>;
+
+    const type = typeOf<mapped>();
+    assertType(type, ReflectionKind.objectLiteral);
+
+    expect(stringifyResolvedType(type)).toBe(`mapped {
+  _a: string;
+  _b: number;
+}`);
+
+    expect(type.types.length).toBe(2);
+    assertType(type.types[0], ReflectionKind.propertySignature);
+    expect(type.types[0].name).toBe('_a');
+    assertType(type.types[1], ReflectionKind.propertySignature);
+    expect(type.types[1].name).toBe('_b');
+});
+
+test('inheritance overrides property type', () => {
+    interface Payload {
+        key: string;
+        payload: unknown;
+    }
+
+    interface ThePayload extends Payload {
+        key: 'theKey';
+        payload: {
+            thePayload: string;
+        };
+    }
+
+    const type = typeOf<ThePayload>();
+    assertType(type, ReflectionKind.objectLiteral);
+    assertType(type.types[0], ReflectionKind.propertySignature);
+    expect(type.types[0].name).toBe('key');
+    assertType(type.types[0].type, ReflectionKind.literal);
+    expect(type.types[0].type.literal).toBe('theKey');
+
+    assertType(type.types[1], ReflectionKind.propertySignature);
+    expect(type.types[1].name).toBe('payload');
+    assertType(type.types[1].type, ReflectionKind.objectLiteral);
+});
+
+test('map as complex', () => {
+    interface Payload {
+        key: string;
+        payload: unknown;
+    }
+
+    interface ThePayload extends Payload {
+        key: 'theKey';
+        payload: {
+            thePayload: string;
+        };
+    }
+    interface ThePayload2 extends Payload {
+        key: 'theKey2';
+        payload: {
+            thePayload: number;
+        };
+    }
+
+    type PayloadMap<Payloads extends any[]> = {
+        [Payload in Payloads[number] as Payload['key']]?: Payload['payload'];
+    };
+
+    type PayloadTypes = [ThePayload, ThePayload2];
+
+    interface TheRequestBody<Payloads extends Payload[]> {
+        payloadData: PayloadMap<Payloads>;
+    }
+
+    const type = typeOf<TheRequestBody<PayloadTypes>>();
+    expect(stringifyResolvedType(type)).toBe(`TheRequestBody {payloadData: PayloadMap {
+    theKey?: {thePayload: string};
+    theKey2?: {thePayload: number};
+  }}`);
+
+    assertType(type, ReflectionKind.objectLiteral);
+
+    assertType(type.types[0], ReflectionKind.propertySignature);
+    expect(type.types[0].name).toBe('payloadData');
+    assertType(type.types[0].type, ReflectionKind.objectLiteral);
+
+    assertType(type.types[0].type.types[0], ReflectionKind.propertySignature);
+    expect(type.types[0].type.types[0].name).toBe('theKey');
+
+    assertType(type.types[0].type.types[0].type, ReflectionKind.objectLiteral);
+    assertType(type.types[0].type.types[0].type.types[0], ReflectionKind.propertySignature);
+    expect(type.types[0].type.types[0].type.types[0].name).toBe('thePayload');
+    assertType(type.types[0].type.types[0].type.types[0].type, ReflectionKind.string);
 });

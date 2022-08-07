@@ -1176,7 +1176,6 @@ export class ReflectionTransformer implements CustomTransformer {
                     program.pushOp(ReflectionOp.never);
                 }
 
-                program.pushCoRoutine();
                 let modifier = 0;
                 if (narrowed.questionToken) {
                     if (narrowed.questionToken.kind === SyntaxKind.QuestionToken) {
@@ -1194,14 +1193,26 @@ export class ReflectionTransformer implements CustomTransformer {
                         modifier |= MappedModifier.removeReadonly;
                     }
                 }
+                program.pushCoRoutine();
+                if (narrowed.nameType) program.pushFrame();
                 if (narrowed.type) {
                     this.extractPackStructOfType(narrowed.type, program);
                 } else {
                     program.pushOp(ReflectionOp.never);
                 }
+                if (narrowed.nameType) {
+                    this.extractPackStructOfType(narrowed.nameType, program);
+                    program.pushOp(ReflectionOp.tuple);
+                    program.popFrameImplicit();
+                }
                 const coRoutineIndex = program.popCoRoutine();
 
-                program.pushOp(ReflectionOp.mappedType, coRoutineIndex, modifier);
+                if (narrowed.nameType) {
+                    program.pushOp(ReflectionOp.mappedType2, coRoutineIndex, modifier);
+                } else {
+                    program.pushOp(ReflectionOp.mappedType, coRoutineIndex, modifier);
+                }
+
                 program.popFrameImplicit();
                 break;
             }

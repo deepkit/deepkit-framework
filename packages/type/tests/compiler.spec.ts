@@ -51,6 +51,8 @@ export function transpile<T extends string | Record<string, string>>(files: T, o
         allowNonTsExtensions: true,
         module: ModuleKind.ES2020,
         declaration: true,
+        lib: [],
+        noLib: true,
         transpileOnly: true,
         moduleResolution: ts.ModuleResolutionKind.NodeJs,
         experimentalDecorators: true,

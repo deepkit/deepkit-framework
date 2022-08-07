@@ -141,6 +141,8 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
             if ('string' === typeof left.literal && right.kind === ReflectionKind.templateLiteral) {
                 return extendTemplateLiteral(left, right);
             }
+            if (right.kind === ReflectionKind.union) return right.types.some(v => isExtendable(leftValue, v, extendStack));
+            return false;
         }
 
         if (left.kind === ReflectionKind.templateLiteral) {
