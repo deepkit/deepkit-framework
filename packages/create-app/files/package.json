@@ -1,0 +1,59 @@
+{
+  "name": "__name__",
+  "version": "0.0.01",
+  "description": "My new application",
+  "private": true,
+  "type": "commonjs",
+  "main": "./dist/app.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "app": "ts-node app.ts",
+    "install": "deepkit-type-install",
+    "app:watch": "ts-node-dev app.ts",
+    "update-deepkit": "npx update-by-scope @deepkit",
+    "client-rpc": "ts-node client-rpc.ts"
+  },
+  "dependencies": {
+    "@deepkit/api-console-gui": "^1.0.1-alpha.72",
+    "@deepkit/app": "^1.0.1-alpha.72",
+    "@deepkit/broker": "^1.0.1-alpha.72",
+    "@deepkit/bson": "^1.0.1-alpha.72",
+    "@deepkit/core": "^1.0.1-alpha.72",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.72",
+    "@deepkit/crypto": "^1.0.1-alpha.72",
+    "@deepkit/event": "^1.0.1-alpha.72",
+    "@deepkit/framework": "^1.0.1-alpha.72",
+    "@deepkit/http": "^1.0.1-alpha.72",
+    "@deepkit/injector": "^1.0.1-alpha.72",
+    "@deepkit/logger": "^1.0.1-alpha.72",
+    "@deepkit/orm": "^1.0.1-alpha.72",
+    "@deepkit/rpc": "^1.0.1-alpha.72",
+    "@deepkit/rpc-tcp": "^1.0.1-alpha.72",
+    "@deepkit/sql": "^1.0.1-alpha.72",
+    "@deepkit/sqlite": "^1.0.1-alpha.72",
+    "@deepkit/stopwatch": "^1.0.1-alpha.72",
+    "@deepkit/template": "^1.0.1-alpha.72",
+    "@deepkit/type": "^1.0.1-alpha.72",
+    "@deepkit/type-compiler": "^1.0.1-alpha.72",
+    "@deepkit/workflow": "^1.0.1-alpha.72"
+  },
+  "devDependencies": {
+    "faker": "^5.5.3",
+    "typescript": "^4.7.4",
+    "jest": "^28.1.3",
+    "ts-jest": "^28.0.7",
+    "@types/jest": "^28.1.6",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/*.spec.ts"
+    ]
+  }
+}

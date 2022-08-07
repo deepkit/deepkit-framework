@@ -37,8 +37,8 @@
     "madge": "^4.0.0",
     "npm-local-development": "^0.4.0",
     "ts-jest": "^27.1.3",
-    "ts-node": "^10.0.0",
-    "ts-node-dev": "^1.1.1",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
     "typedoc": "^0.23.2",
     "typescript": "^4.7.4"
   },
@@ -60,6 +60,7 @@
       "packages/type",
       "packages/type-compiler",
       "packages/app",
+      "packages/create-app",
       "packages/event",
       "packages/workflow",
       "packages/stopwatch",
