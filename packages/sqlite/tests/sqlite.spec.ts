@@ -333,6 +333,5 @@ test('m2m', async () => {
     const pivot = new BookToTag(book, tag);
     await database.persist(book, tag, pivot);
     const tagQueried = await database.query(Tag).join('books').findOne();
-
-    console.debug(tag, tagQueried);
+    expect(tagQueried).toMatchObject({ name: "name" });
 });
