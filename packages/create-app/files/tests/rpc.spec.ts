@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { createTestingApp } from '@deepkit/framework';
-import { Service } from '../src/app/service';
-import { HelloWorldControllerRpc } from '../src/controller/hello-world.rpc';
+import { Service } from '../src/app/service.js';
+import { HelloWorldControllerRpc } from '../src/controller/hello-world.rpc.js';
 
 test('rpc controller', async () => {
     const testing = createTestingApp({

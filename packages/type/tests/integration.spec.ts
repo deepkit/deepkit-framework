@@ -52,9 +52,10 @@ import {
 } from '../src/reflection/type.js';
 import { TypeNumberBrand } from '@deepkit/type-spec';
 import { validate, ValidatorError } from '../src/validator.js';
-import { expectEqualType, uuid } from './utils.js';
+import { expectEqualType } from './utils.js';
 import { MyAlias } from './types.js';
 import { resolveRuntimeType } from '../src/reflection/processor.js';
+import { uuid } from '../src/utils.js';
 
 test('class', () => {
     class Entity {

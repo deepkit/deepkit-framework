@@ -2,7 +2,7 @@
 import { RpcWebSocketClient } from '@deepkit/rpc';
 
 //`import type` is important, since we do not want to import server code in the runtime.
-import type { HelloWorldControllerRpc } from './src/controller/hello-world.rpc';
+import type { HelloWorldControllerRpc } from './src/controller/hello-world.rpc.js';
 
 async function main() {
     const client = new RpcWebSocketClient('http://localhost:8080');
