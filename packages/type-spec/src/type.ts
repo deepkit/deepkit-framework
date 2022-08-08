@@ -207,4 +207,5 @@ export enum ReflectionOp {
     widen, //widens the type on the stack, .e.g 'asd' => string, 34 => number, etc. this is necessary for infer runtime data, and widen if necessary (object member or non-contained literal)
 
     static,
+    mappedType2, //same as mappedType2 but the given functionPointer returns a tuple [type, name]
 }

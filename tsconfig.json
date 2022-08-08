@@ -23,6 +23,9 @@
       "path": "packages/app/tsconfig.json"
     },
     {
+      "path": "packages/create-app/tsconfig.json"
+    },
+    {
       "path": "packages/event/tsconfig.json"
     },
     {

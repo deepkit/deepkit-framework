@@ -70,12 +70,12 @@ export function extractJSDocAttribute(node: Node, attribute: string): string {
     return '';
 }
 
-export function getPropertyName(f: NodeFactory, node?: Identifier | StringLiteral | NumericLiteral | ComputedPropertyName | PrivateIdentifier): string | ArrowFunction {
+export function getPropertyName(f: NodeFactory, node?: Identifier | StringLiteral | NumericLiteral | ComputedPropertyName | PrivateIdentifier): string | symbol | number | ArrowFunction {
     if (!node) return '';
 
     if (isIdentifier(node)) return getIdentifierName(node);
     if (isStringLiteral(node)) return node.text;
-    if (isNumericLiteral(node)) return node.text;
+    if (isNumericLiteral(node)) return +node.text;
     if (isComputedPropertyName(node)) {
         return f.createArrowFunction(undefined, undefined, [], undefined, undefined, node.expression);
     }

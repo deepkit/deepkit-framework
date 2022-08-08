@@ -18,6 +18,7 @@ import {
     getAnnotations,
     getMember,
     indexAccess,
+    isMember,
     isPrimitive,
     isSameType,
     isType,
@@ -150,7 +151,7 @@ class Loop {
     private types: Type[] = [];
     private i: number = 0;
 
-    constructor(private fromType: Type) {
+    constructor(public fromType: Type) {
         if (fromType.kind === ReflectionKind.union) {
             this.types = fromType.types;
         } else {
@@ -188,7 +189,7 @@ function assignResult<T extends Type>(programResultType: Type, result: T): T {
             return Object.assign(programResultType, result, {
                 typeName: programResultType.typeName,
                 typeArguments: programResultType.typeArguments,
-                originTypes: [{typeName: result.typeName, typeArguments: result.typeArguments}, ...(result.originTypes || [])],
+                originTypes: [{ typeName: result.typeName, typeArguments: result.typeArguments }, ...(result.originTypes || [])],
             });
         }
         return Object.assign(programResultType, result, { typeName: programResultType.typeName, typeArguments: programResultType.typeArguments });
@@ -1008,6 +1009,10 @@ export class Processor {
                             program.frame.variables++;
                             break;
                         }
+                        case ReflectionOp.mappedType2: {
+                            this.handleMappedType(program, true);
+                            break;
+                        }
                         case ReflectionOp.mappedType: {
                             this.handleMappedType(program);
                             break;
@@ -1269,6 +1274,21 @@ export class Processor {
                 return b;
             }
 
+            //1 & number => 1
+            //number & 1 => 1
+            //'2' & string => '2'
+            //string & '2' => '2'
+            //2 & string => never
+            //string & 2 => never
+            //'b' & number => never
+            //number & 'b' => never
+            if (isPrimitive(a) && b.kind === ReflectionKind.literal) {
+                return isExtendable(b, a) ? b : { kind: ReflectionKind.never };
+            }
+            if (isPrimitive(b) && a.kind === ReflectionKind.literal) {
+                return isExtendable(a, b) ? a : { kind: ReflectionKind.never };
+            }
+
             if (a.kind === ReflectionKind.objectLiteral || a.kind === ReflectionKind.class || a.kind === ReflectionKind.never || a.kind === ReflectionKind.unknown) return b;
 
             if (b.annotations) {
@@ -1289,7 +1309,10 @@ export class Processor {
                         }
                     }
                 }
-                if (result.kind === ReflectionKind.unknown) {
+                if (result.kind === ReflectionKind.never) {
+                    result = { kind: ReflectionKind.never };
+                    break;
+                } else if (result.kind === ReflectionKind.unknown) {
                     result = type;
                     appendAnnotations(type);
                 } else {
@@ -1361,13 +1384,19 @@ export class Processor {
     private handleKeyOf() {
         const type = this.pop() as Type;
         if (type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.class) {
-            const union = { kind: ReflectionKind.union, types: [] } as TypeUnion;
+            const union = { kind: ReflectionKind.union, origin: type, types: [] } as TypeUnion;
             for (const member of type.types) {
                 if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
                     union.types.push({ kind: ReflectionKind.literal, literal: member.name, parent: union } as TypeLiteral);
                 } else if (member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method) {
                     union.types.push({ kind: ReflectionKind.literal, literal: member.name, parent: union } as TypeLiteral);
                 }
+            }
+            this.push(union);
+        } else if (type.kind === ReflectionKind.tuple) {
+            const union = { kind: ReflectionKind.union, origin: type, types: [] } as TypeUnion;
+            for (let i = 0; i < type.types.length; i++) {
+                union.types.push({ kind: ReflectionKind.literal, literal: i, parent: union } as TypeLiteral);
             }
             this.push(union);
         } else if (type.kind === ReflectionKind.any) {
@@ -1377,7 +1406,7 @@ export class Processor {
         }
     }
 
-    private handleMappedType(program: Program) {
+    private handleMappedType(program: Program, withName = false) {
         const functionPointer = this.eatParameter() as number;
         const modifier = this.eatParameter() as number;
 
@@ -1391,23 +1420,35 @@ export class Processor {
         }
 
         if (program.frame.mappedType) {
-            const type = this.pop() as Type;
+            let type = this.pop() as Type;
             let index: Type | string | boolean | symbol | number | bigint = program.stack[program.frame.startIndex + 1] as Type;
+            if (withName) {
+                if (type.kind === ReflectionKind.tuple) {
+                    index = type.types[1].type;
+                    type = type.types[0].type;
+                } else {
+                    throw new Error('Tuple expect');
+                }
+            }
+            const fromType = program.frame.mappedType.fromType;
+            const isTuple = fromType.origin && fromType.origin.kind === ReflectionKind.tuple;
 
-            if (index.kind === ReflectionKind.any || isSimpleIndex(index)) {
+            if (index.kind === ReflectionKind.never) {
+                //ignore
+            } else if (index.kind === ReflectionKind.any || isSimpleIndex(index)) {
                 this.push({ kind: ReflectionKind.indexSignature, type, index });
             } else {
                 if (index.kind === ReflectionKind.literal && !(index.literal instanceof RegExp)) {
                     index = index.literal;
                 }
 
-                const property: TypeProperty | TypePropertySignature = type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property
+                const property: TypeProperty | TypePropertySignature | TypeTupleMember = type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property || type.kind === ReflectionKind.tupleMember
                     ? type
-                    : { kind: ReflectionKind.propertySignature, name: index, type } as TypePropertySignature;
+                    : { kind: isTuple ? ReflectionKind.tupleMember : ReflectionKind.propertySignature, name: index, type } as TypePropertySignature;
 
+                if (property !== type) type.parent = property;
                 if (property.type.kind !== ReflectionKind.never) {
                     //never is filtered out
-
                     if (modifier !== 0) {
                         if (modifier & MappedModifier.optional) {
                             property.optional = true;
@@ -1415,11 +1456,13 @@ export class Processor {
                         if (modifier & MappedModifier.removeOptional && property.optional) {
                             property.optional = undefined;
                         }
-                        if (modifier & MappedModifier.readonly) {
-                            property.readonly = true;
-                        }
-                        if (modifier & MappedModifier.removeReadonly && property.readonly) {
-                            property.readonly = undefined;
+                        if (property.kind !== ReflectionKind.tupleMember) {
+                            if (modifier & MappedModifier.readonly) {
+                                property.readonly = true;
+                            }
+                            if (modifier & MappedModifier.removeReadonly && property.readonly) {
+                                property.readonly = undefined;
+                            }
                         }
                     }
                     this.push(property);
@@ -1429,15 +1472,27 @@ export class Processor {
             program.frame.mappedType = new Loop(this.pop() as Type);
         }
 
-        const next = program.frame.mappedType.next();
+        let next = program.frame.mappedType.next();
         if (next === undefined) {
             //end
-            let t: TypeObjectLiteral = { kind: ReflectionKind.objectLiteral, types: this.popFrame() as any[] };
-            if (this.isEnded()) t = assignResult(program.resultType, t);
+            const fromType = program.frame.mappedType.fromType;
+            const members = this.popFrame() as Type[];
+            let t: Type;
 
+            if (fromType.origin && fromType.origin.kind === ReflectionKind.tuple) {
+                t = { kind: ReflectionKind.tuple, types: members as any[] };
+            } else {
+                t = { kind: ReflectionKind.objectLiteral, types: members as any[] };
+            }
+
+            if (this.isEnded()) t = assignResult(program.resultType, t);
             for (const member of t.types) member.parent = t;
+
             this.push(t);
         } else {
+            if (isMember(next)) {
+                next = { kind: ReflectionKind.literal, literal: next.name };
+            }
             program.stack[program.frame.startIndex + 1] = next; //change the mapped type parameter
             this.call(functionPointer, -2);
         }
@@ -1726,9 +1781,10 @@ function pushObjectLiteralTypes(
                 const existing = type.types.findIndex(v => (v.kind === ReflectionKind.propertySignature || v.kind === ReflectionKind.methodSignature) && v.name === toAdd.name);
                 if (existing !== -1) {
                     //remove entry, since we replace it
-                    types.splice(existing, 1);
+                    type.types.splice(existing, 1, toAdd);
+                } else {
+                    type.types.push(toAdd);
                 }
-                type.types.push(toAdd);
             }
         }
 

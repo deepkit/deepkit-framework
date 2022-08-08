@@ -76,6 +76,8 @@ export type Annotations = any; //actual { [name: symbol]: any[] };, but not supp
  * @reflection never
  */
 export interface TypeAnnotations {
+    origin?: Type;
+
     /**
      * If the type was created by a type function, this contains the alias name.
      */
@@ -168,11 +170,7 @@ export interface TypeObject extends TypeAnnotations {
     parent?: Type;
 }
 
-export interface TypeOrigin {
-    origin?: Type;
-}
-
-export interface TypeString extends TypeOrigin, TypeAnnotations {
+export interface TypeString extends TypeAnnotations {
     kind: ReflectionKind.string,
     parent?: Type;
 }
@@ -181,23 +179,23 @@ export function isIntegerType(type: Type): type is TypeNumber {
     return type.kind === ReflectionKind.number && type.brand !== undefined && type.brand >= TypeNumberBrand.integer && type.brand <= TypeNumberBrand.uint32;
 }
 
-export interface TypeNumber extends TypeOrigin, TypeAnnotations {
+export interface TypeNumber extends TypeAnnotations {
     kind: ReflectionKind.number,
     brand?: TypeNumberBrand; //built in brand
     parent?: Type;
 }
 
-export interface TypeBoolean extends TypeOrigin, TypeAnnotations {
+export interface TypeBoolean extends TypeAnnotations {
     kind: ReflectionKind.boolean,
     parent?: Type;
 }
 
-export interface TypeBigInt extends TypeOrigin, TypeAnnotations {
+export interface TypeBigInt extends TypeAnnotations {
     kind: ReflectionKind.bigint,
     parent?: Type;
 }
 
-export interface TypeSymbol extends TypeOrigin, TypeAnnotations {
+export interface TypeSymbol extends TypeAnnotations {
     kind: ReflectionKind.symbol,
     parent?: Type;
 }
@@ -224,10 +222,21 @@ export interface TypeTemplateLiteral extends TypeAnnotations {
     parent?: Type;
 }
 
-export interface TypeRegexp extends TypeOrigin, TypeAnnotations {
+export interface TypeRegexp extends TypeAnnotations {
     kind: ReflectionKind.regexp;
     parent?: Type;
 }
+
+class User {
+    username!: string;
+
+    getUserName(): this['username'] {
+        return '';
+    }
+}
+
+type a = User & {username: boolean};
+type b = ReturnType<a['getUserName']>;
 
 export interface TypeBaseMember extends TypeAnnotations {
     visibility: ReflectionVisibility,
@@ -996,7 +1005,9 @@ export function indexAccess(container: Type, index: Type): Type {
         if ((index.kind === ReflectionKind.literal && 'number' === typeof index.literal) || index.kind === ReflectionKind.number) return container.type;
         if (index.kind === ReflectionKind.literal && index.literal === 'length') return { kind: ReflectionKind.number };
     } else if (container.kind === ReflectionKind.tuple) {
-        if (index.kind === ReflectionKind.literal && index.literal === 'length') return { kind: ReflectionKind.literal, literal: container.types.length };
+        if (index.kind === ReflectionKind.literal && index.literal === 'length') {
+            return { kind: ReflectionKind.literal, literal: container.types.length };
+        }
         if (index.kind === ReflectionKind.literal && 'number' === typeof index.literal && index.literal < 0) {
             index = { kind: ReflectionKind.number };
         }

@@ -26,6 +26,9 @@
       "path": "packages/app/tsconfig.esm.json"
     },
     {
+      "path": "packages/create-app/tsconfig.esm.json"
+    },
+    {
       "path": "packages/event/tsconfig.esm.json"
     },
     {
