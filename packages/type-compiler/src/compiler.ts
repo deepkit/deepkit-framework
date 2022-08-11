@@ -134,7 +134,7 @@ import {
 } from './reflection-ast.js';
 import { SourceFile } from './ts-types.js';
 import { existsSync, readFileSync } from 'fs';
-import { dirname, join, resolve } from 'path';
+import { dirname, join, resolve, isAbsolute } from 'path';
 import stripJsonComments from 'strip-json-comments';
 import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spec';
 import { Resolver } from './resolver.js';
@@ -2419,6 +2419,18 @@ export class ReflectionTransformer implements CustomTransformer {
         return this.findReflectionFromPath(sourceFile.fileName);
     }
 
+
+    protected readJson(path: string): Record<string, any> | undefined{
+        try{
+            let content = readFileSync(path, 'utf8');
+            content = stripJsonComments(content);
+            return JSON.parse(content);
+        }catch (error){
+            console.warn(`Could not parse ${path}: ${error}`);
+        }
+        return undefined;
+    }
+
     protected findReflectionFromPath(path: string): { mode: typeof reflectionModes[number] } {
         if (!serverEnv) {
             return { mode: 'default' };
@@ -2466,9 +2478,16 @@ export class ReflectionTransformer implements CustomTransformer {
                 this.resolvedTsConfig[tsConfigPath] = { exists: tsConfigExists, data: {} };
                 if (tsConfigExists) {
                     try {
-                        let content = readFileSync(tsConfigPath, 'utf8');
-                        content = stripJsonComments(content);
-                        tsConfig = JSON.parse(content);
+                        tsConfig = this.readJson(tsConfigPath) || {};
+                        // resolve extends recursively
+                        let dir = currentDir;
+                        while (tsConfig.extends){
+                            const file = isAbsolute(tsConfig.extends) ? tsConfig.extends : join(dir, tsConfig.extends);
+                            const ext = this.readJson(file) || {};
+                            delete tsConfig.extends;
+                            tsConfig = Object.assign(ext,tsConfig);
+                            dir = dirname(file);
+                        }
                         this.resolvedTsConfig[tsConfigPath].data = tsConfig;
                     } catch (error: any) {
                         console.warn(`Could not parse ${tsConfigPath}: ${error}`);
