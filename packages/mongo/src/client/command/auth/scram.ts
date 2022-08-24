@@ -27,7 +27,7 @@ interface SaslStartCommand {
     };
 }
 
-interface SaslStartResponse {
+interface SaslStartResponse extends BaseResponse {
     conversationId: number;
     payload: Uint8Array;
     done: boolean;
