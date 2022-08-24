@@ -22,6 +22,7 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
+    "@deepkit/platform": "^1.0.1-alpha.75",
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/event": "^1.0.1-alpha.13",
     "@deepkit/injector": "^1.0.1-alpha.13",
