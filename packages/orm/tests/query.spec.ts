@@ -4,6 +4,7 @@ import { assert, IsExact } from 'conditional-type-checks';
 import { Database } from '../src/database';
 import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db';
 import { Query } from '../src/query';
+import { FieldName } from "../src/utils";
 
 test('query select', async () => {
     class s {
@@ -91,7 +92,7 @@ test('query lift', async () => {
 
     class UserQuery<T extends { username: string }> extends MyBase<T> {
         findAllUserNames() {
-            return this.findField('username');
+            return this.findField('username' as FieldName<T>);
         }
 
         //query classes should be able to infer the actual used class

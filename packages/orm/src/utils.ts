@@ -16,7 +16,7 @@ import { getInstanceStateFromItem } from './identity-map';
 import { getClassTypeFromInstance } from '@deepkit/core';
 
 export type FlattenIfArray<T> = T extends Array<any> ? T[0] : T;
-export type FieldName<T> = keyof T & string;
+export type FieldName<T> = { [Key in keyof T & string]: T[Key] extends Function ? never : Key }[keyof T & string];
 
 export function getClassSchemaInstancePairs<T extends OrmEntity>(items: Iterable<T>): Map<ReflectionClass<any>, T[]> {
     const map = new Map<ReflectionClass<any>, T[]>();
