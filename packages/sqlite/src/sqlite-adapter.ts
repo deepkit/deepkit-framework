@@ -181,8 +181,12 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
     //we keep the first connection alive
     protected firstConnection?: SQLiteConnection;
 
-    constructor(protected dbPath: string) {
+    constructor(protected dbPath: string | ':memory:') {
         super();
+
+        if (dbPath === ':memory:') {
+            this.maxConnections = 1;
+        }
     }
 
     close() {
@@ -203,7 +207,7 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
         }
 
         const connection = this.firstConnection && this.firstConnection.released ? this.firstConnection :
-            this.activeConnections > this.maxConnections
+            this.activeConnections >= this.maxConnections
                 //we wait for the next query to be released and reuse it
                 ? await asyncOperation<SQLiteConnection>((resolve) => {
                     this.queue.push(resolve);
@@ -583,7 +587,7 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
     public readonly connectionPool: SQLiteConnectionPool;
     public readonly platform = new SQLitePlatform();
 
-    constructor(protected sqlitePath: string = ':memory:') {
+    constructor(protected sqlitePath: string | ':memory:' = ':memory:') {
         super();
 
         this.connectionPool = new SQLiteConnectionPool(this.sqlitePath);
