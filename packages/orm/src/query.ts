@@ -409,7 +409,7 @@ export class BaseQuery<T extends OrmEntity> {
      * Adds a left join in the filter. Does NOT populate the reference with values.
      * Accessing `field` in the entity (if not optional field) results in an error.
      */
-    join<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<T[K]>>(field: K, type: 'left' | 'inner' = 'left', populate: boolean = false): this {
+    join<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<Exclude<T[K], undefined>>>(field: K, type: 'left' | 'inner' = 'left', populate: boolean = false): this {
         const propertySchema = this.classSchema.getProperty(field as string);
         if (!propertySchema.isReference() && !propertySchema.isBackReference()) {
             throw new Error(`Field ${String(field)} is not marked as reference. Use @t.reference()`);
@@ -433,7 +433,7 @@ export class BaseQuery<T extends OrmEntity> {
      * Accessing `field` in the entity (if not optional field) results in an error.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useJoin<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useJoin<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<Exclude<T[K], undefined>>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         const c = this.join(field, 'left');
         return c.model.joins[c.model.joins.length - 1].query;
     }
@@ -449,16 +449,16 @@ export class BaseQuery<T extends OrmEntity> {
      * Adds a left join in the filter and populates the result set WITH reference field accordingly.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useJoinWith<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useJoinWith<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<Exclude<T[K], undefined>>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         const c = this.join(field, 'left', true);
         return c.model.joins[c.model.joins.length - 1].query;
     }
 
-    getJoin<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    getJoin<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<Exclude<T[K], undefined>>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         for (const join of this.model.joins) {
             if (join.propertySchema.name === field) return join.query;
         }
-        throw new Error(`No join fo reference ${String(field)} added.`);
+        throw new Error(`No join for reference ${String(field)} added.`);
     }
 
     /**
@@ -472,7 +472,7 @@ export class BaseQuery<T extends OrmEntity> {
      * Adds a inner join in the filter and populates the result set WITH reference field accordingly.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useInnerJoinWith<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useInnerJoinWith<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<Exclude<T[K], undefined>>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         const c = this.join(field, 'inner', true);
         return c.model.joins[c.model.joins.length - 1].query;
     }
@@ -490,7 +490,7 @@ export class BaseQuery<T extends OrmEntity> {
      * Accessing `field` in the entity (if not optional field) results in an error.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useInnerJoin<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useInnerJoin<K extends keyof ReferenceFields<T>, ENTITY = FlattenIfArray<Exclude<T[K], undefined>>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         const c = this.join(field, 'inner');
         return c.model.joins[c.model.joins.length - 1].query;
     }
