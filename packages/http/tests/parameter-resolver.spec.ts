@@ -6,6 +6,7 @@ import { RouteConfig, RouteParameterResolver, RouteParameterResolverContext, } f
 import { createHttpKernel } from './utils';
 import { HttpModule } from '../src/module.js';
 import { HttpKernel } from '../src/kernel.js';
+import { ReflectionClass } from '@deepkit/type';
 
 test('parameter resolver by name', async () => {
     class Resolver implements RouteParameterResolver {
@@ -27,6 +28,9 @@ test('parameter resolver by name', async () => {
     const httpKernel = createHttpKernel([Controller], [Resolver]);
     await httpKernel.request(HttpRequest.GET('/'));
 
+    const reflectionClass = ReflectionClass.from(Controller).getMethod('route');
+    const reflectionParameter = reflectionClass.getParameter('value');
+
     const expectedContext: RouteParameterResolverContext = {
         name: 'value',
         token: undefined,
@@ -35,6 +39,7 @@ test('parameter resolver by name', async () => {
         request: expect.anything() as any,
         query: {},
         parameters: { value: 'value' },
+        type: reflectionParameter
     };
     expect(Resolver.prototype.resolve).toHaveBeenCalledWith(expectedContext);
     expect(Controller.prototype.route).toHaveBeenCalledWith('value');
