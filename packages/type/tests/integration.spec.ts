@@ -807,6 +807,24 @@ test('type alias conditional type', () => {
     });
 });
 
+test('keep optional property', () => {
+    interface Base {
+        a: string;
+        b: boolean;
+        c?: number;
+    }
+    type Omitted = Omit<Base, 'b'>;
+    const type = typeOf<Omitted>();
+    assertType(type, ReflectionKind.objectLiteral);
+    assertType(type.types[0], ReflectionKind.propertySignature);
+    assertType(type.types[1], ReflectionKind.propertySignature);
+
+    expect(type.types[0].name).toBe('a');
+    expect(type.types[0].optional).toBe(undefined);
+    expect(type.types[1].name).toBe('c');
+    expect(type.types[1].optional).toBe(true);
+})
+
 test('type alias infer', () => {
     type InferTypeOfT<T> = {
         [P in keyof T]: T[P] extends { t: infer OT } ? OT : never

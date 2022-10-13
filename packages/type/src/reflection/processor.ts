@@ -18,7 +18,7 @@ import {
     getAnnotations,
     getMember,
     indexAccess,
-    isMember,
+    isMember, isOptional,
     isPrimitive,
     isSameType,
     isType,
@@ -1387,9 +1387,9 @@ export class Processor {
             const union = { kind: ReflectionKind.union, origin: type, types: [] } as TypeUnion;
             for (const member of type.types) {
                 if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
-                    union.types.push({ kind: ReflectionKind.literal, literal: member.name, parent: union } as TypeLiteral);
+                    union.types.push({ kind: ReflectionKind.literal, literal: member.name, parent: union, origin: member } as TypeLiteral);
                 } else if (member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method) {
-                    union.types.push({ kind: ReflectionKind.literal, literal: member.name, parent: union } as TypeLiteral);
+                    union.types.push({ kind: ReflectionKind.literal, literal: member.name, parent: union, origin: member } as TypeLiteral);
                 }
             }
             this.push(union);
@@ -1438,13 +1438,15 @@ export class Processor {
             } else if (index.kind === ReflectionKind.any || isSimpleIndex(index)) {
                 this.push({ kind: ReflectionKind.indexSignature, type, index });
             } else {
+                let optional: true | undefined = undefined;
                 if (index.kind === ReflectionKind.literal && !(index.literal instanceof RegExp)) {
+                    optional = !!index.origin && isMember(index.origin) && index.origin.optional ? true : undefined;
                     index = index.literal;
                 }
 
                 const property: TypeProperty | TypePropertySignature | TypeTupleMember = type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property || type.kind === ReflectionKind.tupleMember
                     ? type
-                    : { kind: isTuple ? ReflectionKind.tupleMember : ReflectionKind.propertySignature, name: index, type } as TypePropertySignature;
+                    : { kind: isTuple ? ReflectionKind.tupleMember : ReflectionKind.propertySignature, name: index, type, optional } as TypePropertySignature;
 
                 if (property !== type) type.parent = property;
                 if (property.type.kind !== ReflectionKind.never) {
