@@ -8,22 +8,34 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "ES2020",
+    "target": "es2019",
     "module": "CommonJS",
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
-    "composite": true
+    "composite": true,
+    "types": [
+      "@cloudflare/workers-types"
+    ]
   },
+  "reflection": true,
   "include": [
     "src",
     "tests",
-    "install-transformer.ts",
     "index.ts"
   ],
   "references": [
     {
-      "path": "../type-spec/tsconfig.json"
+      "path": "../rpc/tsconfig.json"
+    },
+    {
+      "path": "../app/tsconfig.json"
+    },
+    {
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../injector/tsconfig.json"
     }
   ]
 }

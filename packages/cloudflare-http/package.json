@@ -1,0 +1,44 @@
+{
+  "name": "@deepkit/cloudflare-http",
+  "version": "1.0.1-alpha.71",
+  "description": "Deepkit HTTP server and router.",
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    }
+  },
+  "repository": "https://github.com/deepkit/deepkit-framework",
+  "author": "Marcus S. Abildskov <marcussa2000@gmail.com>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+  },
+  "peerDependencies": {
+    "@deepkit/http": "^1.0.1-alpha.13",
+    "@deepkit/app": "^1.0.1-alpha.13"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^3.11.0",
+    "@deepkit/http": "^1.0.1-alpha.13",
+    "@deepkit/app": "^1.0.1-alpha.71"
+  },
+  "jest": {
+    "testEnvironment": "miniflare",
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "resolver": "../../jest-resolver.js",
+    "testMatch": [
+      "**/tests/**/*.spec.ts"
+    ]
+  },
+  "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
+}

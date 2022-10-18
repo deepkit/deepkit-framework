@@ -2,6 +2,12 @@
   "files": [],
   "references": [
     {
+      "path": "packages/cloudflare-http/tsconfig.json"
+    },
+    {
+      "path": "packages/cloudflare-rpc/tsconfig.json"
+    },
+    {
       "path": "packages/core/tsconfig.json"
     },
     {
