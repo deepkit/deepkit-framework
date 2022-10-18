@@ -26,6 +26,9 @@
   ],
   "references": [
     {
+      "path": "../platform/tsconfig.json"
+    },
+    {
       "path": "../app/tsconfig.json"
     },
     {
@@ -36,6 +39,9 @@
     },
     {
       "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../core-rxjs/tsconfig.json"
     },
     {
       "path": "../framework/tsconfig.json"
@@ -74,7 +80,16 @@
       "path": "../template/tsconfig.json"
     },
     {
+      "path": "../logger/tsconfig.json"
+    },
+    {
+      "path": "../stopwatch/tsconfig.json"
+    },
+    {
       "path": "../type/tsconfig.json"
+    },
+    {
+      "path": "../type-compiler/tsconfig.json"
     }
   ]
 }

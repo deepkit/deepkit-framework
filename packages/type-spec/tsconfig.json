@@ -21,6 +21,5 @@
     "tests",
     "index.ts"
   ],
-  "references": [
-  ]
+  "references": []
 }

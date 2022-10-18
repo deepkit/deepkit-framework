@@ -11,7 +11,7 @@
 import { BrokerChannel, BrokerClient, BrokerKernel } from '@deepkit/broker';
 import { ClassType } from '@deepkit/core';
 import { IdInterface, RpcDirectClientAdapter } from '@deepkit/rpc';
-import { BrokerConfig } from './broker.config';
+import { BrokerConfig } from './broker.config.js';
 import { RpcNetTcpClientAdapter, RpcNetTcpServer, RpcTcpClientAdapter, RpcTcpServer } from '@deepkit/rpc-tcp';
 import { MongoId, ReflectionClass, Type, typeOf, UUID } from '@deepkit/type';
 

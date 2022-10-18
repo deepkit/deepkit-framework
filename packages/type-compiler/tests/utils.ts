@@ -1,15 +1,15 @@
 import * as ts from 'typescript';
 import { createSourceFile, getPreEmitDiagnostics, ScriptTarget, TransformationContext } from 'typescript';
 import { createSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
-import { ReflectionTransformer } from '../src/compiler';
+import { ReflectionTransformer } from '../src/compiler.js';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
-import { first } from '@deepkit/core';
 
-const defaultLibLocation = __dirname + '/node_modules/typescript/lib/';
+const _dirname = __dirname;
+const defaultLibLocation = _dirname + '/node_modules/typescript/lib/';
 
 function fullPath(fileName: string): string {
-    return __dirname + '/' + fileName + (fileName.includes('.') ? '' : '.ts');
+    return _dirname + '/' + fileName + (fileName.includes('.') ? '' : '.ts');
 }
 
 function readLibs(compilerOptions: ts.CompilerOptions, files: Map<string, string>) {
@@ -109,7 +109,7 @@ export function transpile(files: Record<string, string>, options: ts.CompilerOpt
     const res: Record<string, string> = {};
 
     program.emit(undefined, (fileName, data) => {
-        res[fileName.slice(__dirname.length + 1).replace(/\.js$/, '')] = data;
+        res[fileName.slice(_dirname.length + 1).replace(/\.js$/, '')] = data;
     }, undefined, undefined, {
         before: [(context: TransformationContext) => new ReflectionTransformer(context).forHost(host.compilerHost).withReflectionMode('always')],
     });

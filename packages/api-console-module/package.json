@@ -39,6 +39,7 @@
     "@deepkit/api-console-gui": "^1.0.1-alpha.75"
   },
   "devDependencies": {
+    "@deepkit/platform": "^1.0.1-alpha.75",
     "@deepkit/app": "^1.0.1-alpha.75",
     "@deepkit/broker": "^1.0.1-alpha.75",
     "@deepkit/bson": "^1.0.1-alpha.75",
@@ -51,7 +52,10 @@
     "@deepkit/type": "^1.0.1-alpha.75",
     "rxjs": "~6.6.0"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },

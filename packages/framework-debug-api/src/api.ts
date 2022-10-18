@@ -9,7 +9,7 @@
  */
 
 import { ControllerSymbol } from '@deepkit/rpc';
-import { DebugRequest } from './model';
+import { DebugRequest } from './model.js';
 import { Subject } from 'rxjs';
 import { deserializeType, entity, Excluded, Type } from '@deepkit/type';
 

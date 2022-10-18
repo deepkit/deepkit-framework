@@ -42,7 +42,10 @@
     "@deepkit/stopwatch": "^1.0.1-alpha.75",
     "@deepkit/type": "^1.0.1-alpha.75"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "runner": "../../jest-serial-runner.js",
     "testEnvironment": "node",
     "transform": {

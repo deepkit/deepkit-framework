@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { ControllerSymbol, rpc, RpcKernelConnection, RpcKernelSecurity, Session, SessionState } from '@deepkit/rpc';
-import { createTestingApp } from '../src/testing';
+import { createTestingApp } from '../src/testing.js';
 import { AppModule } from '@deepkit/app';
 
 test('di', async () => {

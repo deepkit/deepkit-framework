@@ -10,19 +10,19 @@
 
 import { DatabaseAdapter, DatabaseSession, DeleteResult, Formatter, GenericQueryResolver, OrmEntity, PatchResult } from '@deepkit/orm';
 import { Changes, getPartialSerializeFunction, ReflectionClass, ReflectionKind, ReflectionVisibility, resolveForeignReflectionClass, serializer, typeOf } from '@deepkit/type';
-import { MongoClient } from './client/client';
-import { AggregateCommand } from './client/command/aggregate';
-import { CountCommand } from './client/command/count';
-import { DeleteCommand } from './client/command/delete';
-import { FindCommand } from './client/command/find';
-import { FindAndModifyCommand } from './client/command/findAndModify';
-import { UpdateCommand } from './client/command/update';
-import { convertClassQueryToMongo } from './mapping';
-import { DEEP_SORT, FilterQuery, MongoQueryModel } from './query.model';
-import { MongoConnection } from './client/connection';
-import { MongoDatabaseAdapter } from './adapter';
+import { MongoClient } from './client/client.js';
+import { AggregateCommand } from './client/command/aggregate.js';
+import { CountCommand } from './client/command/count.js';
+import { DeleteCommand } from './client/command/delete.js';
+import { FindCommand } from './client/command/find.js';
+import { FindAndModifyCommand } from './client/command/findAndModify.js';
+import { UpdateCommand } from './client/command/update.js';
+import { convertClassQueryToMongo } from './mapping.js';
+import { DEEP_SORT, FilterQuery, MongoQueryModel } from './query.model.js';
+import { MongoConnection } from './client/connection.js';
+import { MongoDatabaseAdapter } from './adapter.js';
 import { empty } from '@deepkit/core';
-import { mongoSerializer } from './mongo-serializer';
+import { mongoSerializer } from './mongo-serializer.js';
 
 export function getMongoFilter<T>(classSchema: ReflectionClass<T>, model: MongoQueryModel<T>): any {
     return convertClassQueryToMongo(classSchema, (model.filter || {}) as FilterQuery<T>, {}, {

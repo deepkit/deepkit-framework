@@ -19,10 +19,10 @@ import {
     Output,
     QueryList
 } from '@angular/core';
-import { WindowMenuState } from '../window/window-menu';
+import { WindowMenuState } from '../window/window-menu.js';
 import { arrayHasItem } from '@deepkit/core';
 import { Subscription } from 'rxjs';
-import { Electron } from '../../core/utils';
+import { Electron } from '../../core/utils.js';
 
 @Directive()
 export class MenuBase implements AfterViewInit {

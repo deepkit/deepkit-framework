@@ -5,7 +5,7 @@
   "scripts": {
     "ng": "ng",
     "start": "NODE_OPTIONS=--preserve-symlinks ng serve",
-    "build": "NODE_OPTIONS=--preserve-symlinks ng build --prod",
+    "build": "NODE_OPTIONS=--preserve-symlinks ng build --configuration production",
     "build:dev": "NODE_OPTIONS=--preserve-symlinks ng build",
     "watch": "NODE_OPTIONS=--preserve-symlinks ng build --watch --configuration development"
   },
@@ -19,6 +19,7 @@
     "dist"
   ],
   "devDependencies": {
+    "@angular-builders/custom-webpack": "^12.1.0",
     "@angular-devkit/build-angular": "~12.2.0",
     "@angular/animations": "~12.2.0",
     "@angular/cdk": "^12.2.0",
@@ -49,6 +50,7 @@
     "ngx-markdown": "^12.0.1",
     "object-inspect": "^1.11.0",
     "prismjs": "^1.24.1",
+    "resolve-typescript-plugin": "^1.2.0",
     "rxjs": "~6.6.0",
     "tslib": "^2.3.0",
     "typescript": "~4.3.5",

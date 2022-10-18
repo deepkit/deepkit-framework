@@ -9,36 +9,36 @@
  */
 
 import { ModuleWithProviders, NgModule } from '@angular/core';
-import { WindowContentComponent } from './window-content.component';
-import { WindowComponent, WindowFrameComponent } from './window.component';
-import { WindowFooterComponent } from './window-footer.component';
+import { WindowContentComponent } from './window-content.component.js';
+import { WindowComponent, WindowFrameComponent } from './window.component.js';
+import { WindowFooterComponent } from './window-footer.component.js';
 import {
     WindowHeaderComponent,
     WindowToolbarComponent,
     WindowToolbarContainerComponent
-} from './window-header.component';
+} from './window-header.component.js';
 import { CommonModule } from '@angular/common';
-import { WindowSidebarComponent } from './window-sidebar.component';
-import { DuiSplitterModule } from '../splitter';
-import { DuiIconModule } from '../icon';
-import { WindowRegistry } from './window-state';
+import { WindowSidebarComponent } from './window-sidebar.component.js';
+import { DuiSplitterModule } from '../splitter/index.js';
+import { DuiIconModule } from '../icon/index.js';
+import { WindowRegistry } from './window-state.js';
 
 import {
     ExternalDialogDirective,
     ExternalDialogWrapperComponent,
     ExternalWindowComponent
-} from './external-window.component';
-import { DuiExternalWindow } from './external-window';
-import { DuiCoreModule } from '../core';
+} from './external-window.component.js';
+import { DuiExternalWindow } from './external-window.js';
+import { DuiCoreModule } from '../core/index.js';
 
-export * from "./window.component";
-export * from "./external-window";
-export * from "./external-window.component";
-export * from "./window-content.component";
-export * from "./window-header.component";
-export * from "./window-footer.component";
-export * from "./window-menu";
-export * from "./window-sidebar.component";
+export * from "./window.component.js";
+export * from "./external-window.js";
+export * from "./external-window.component.js";
+export * from "./window-content.component.js";
+export * from "./window-header.component.js";
+export * from "./window-footer.component.js";
+export * from "./window-menu.js";
+export * from "./window-sidebar.component.js";
 
 @NgModule({
     declarations: [

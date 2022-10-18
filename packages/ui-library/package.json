@@ -32,7 +32,10 @@
     "@angular/common": "~12.2.0",
     "rxjs": "~6.6.0"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },

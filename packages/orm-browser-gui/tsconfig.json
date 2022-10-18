@@ -39,6 +39,9 @@
       "path": "../crypto/tsconfig.json"
     },
     {
+      "path": "../event/tsconfig.json"
+    },
+    {
       "path": "../injector/tsconfig.json"
     },
     {

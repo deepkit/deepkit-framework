@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command } from './command';
+import { BaseResponse, Command } from './command.js';
 import { toFastProperties } from '@deepkit/core';
 import { InlineRuntimeType, ReflectionClass, typeOf, UUID } from '@deepkit/type';
 

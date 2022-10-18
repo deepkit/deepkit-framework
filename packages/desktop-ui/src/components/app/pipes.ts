@@ -10,7 +10,7 @@
 
 import { ChangeDetectorRef, OnDestroy, Pipe, PipeTransform } from '@angular/core';
 import { Observable, Subscription } from 'rxjs';
-import { detectChangesNextFrame } from './utils';
+import { detectChangesNextFrame } from './utils.js';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { humanBytes } from '@deepkit/core';
 

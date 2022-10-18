@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { Database } from '../src/database';
-import { MemoryDatabaseAdapter } from '../src/memory-db';
+import { Database } from '../src/database.js';
+import { MemoryDatabaseAdapter } from '../src/memory-db.js';
 import { AutoIncrement, PrimaryKey, ReflectionClass, t } from '@deepkit/type';
 import { DatabaseSession } from '../src/database-session.js';
 

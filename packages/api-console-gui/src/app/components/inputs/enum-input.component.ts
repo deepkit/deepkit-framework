@@ -2,7 +2,7 @@ import { AfterViewInit, Component, EventEmitter, Input, OnChanges, OnDestroy, On
 import { SelectboxComponent, unsubscribe } from '@deepkit/desktop-ui';
 import { TypeEnum } from '@deepkit/type';
 import { Subscription } from 'rxjs';
-import { DataStructure } from '../../store';
+import { DataStructure } from '../../store.js';
 
 @Component({
     template: `

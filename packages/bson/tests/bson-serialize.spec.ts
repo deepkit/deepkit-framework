@@ -1,11 +1,11 @@
 import { expect, test } from '@jest/globals';
-import { getBSONSerializer, getBSONSizer, getValueSize, hexToByte, uuidStringToByte } from '../src/bson-serializer';
+import { getBSONSerializer, getBSONSizer, getValueSize, hexToByte, uuidStringToByte } from '../src/bson-serializer.js';
 import { BinaryBigInt, createReference, Excluded, MongoId, nodeBufferToArrayBuffer, PrimaryKey, Reference, SignedBinaryBigInt, typeOf, uuid, UUID } from '@deepkit/type';
 import bson from 'bson';
 import { randomBytes } from 'crypto';
-import { BSON_BINARY_SUBTYPE_DEFAULT, BSONType } from '../src/utils';
-import { deserializeBSONWithoutOptimiser } from '../src/bson-parser';
-import { deserializeBSON } from '../src/bson-deserializer';
+import { BSON_BINARY_SUBTYPE_DEFAULT, BSONType } from '../src/utils.js';
+import { deserializeBSONWithoutOptimiser } from '../src/bson-parser.js';
+import { deserializeBSON } from '../src/bson-deserializer.js';
 
 const { Binary, calculateObjectSize, deserialize, Long, ObjectId: OfficialObjectId, serialize } = bson;
 

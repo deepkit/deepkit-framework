@@ -6,7 +6,6 @@ const svg2ttf = require('svg2ttf');
 const ttf2woff = require('ttf2woff');
 const SVGIcons2SVGFontStream = require('svgicons2svgfont');
 
-
 function readFolder(dir: string, files: { [path: string]: string }) {
     const read = readdirSync(dir);
     for (const file of read) {

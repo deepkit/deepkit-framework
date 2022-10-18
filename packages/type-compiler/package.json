@@ -30,6 +30,7 @@
     "typescript": "~"
   },
   "dependencies": {
+    "@deepkit/core": "^1.0.1-alpha.74",
     "@deepkit/type-spec": "^1.0.1-alpha.74",
     "@types/lz-string": "^1.3.34",
     "@typescript/vfs": "^1.3.5",
@@ -37,7 +38,10 @@
     "strip-json-comments": "^3.1.1",
     "ts-clone-node": "^0.3.29"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
@@ -45,9 +49,6 @@
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ],
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
     "globals": {
       "ts-jest": {
         "tsconfig": "<rootDir>/tsconfig.test.json"

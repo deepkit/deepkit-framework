@@ -14,6 +14,7 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "dependencies": {
+   "@deepkit/platform": "^1.0.1-alpha.75",
     "@deepkit/app": "^1.0.1-alpha.75",
     "@deepkit/broker": "^1.0.1-alpha.75",
     "@deepkit/bson": "^1.0.1-alpha.75",
@@ -34,7 +35,10 @@
     "@types/faker": "5.1.6",
     "reflect-metadata": "^0.1.13"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"

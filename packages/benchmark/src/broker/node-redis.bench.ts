@@ -1,4 +1,4 @@
-import { BenchSuite } from "../bench";
+import { BenchSuite } from "../bench.js";
 
 const redis = require("redis");
 const client = redis.createClient();

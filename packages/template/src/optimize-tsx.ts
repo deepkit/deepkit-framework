@@ -30,8 +30,8 @@ import type {
 // @ts-ignore
 import abstractSyntaxTree from 'abstract-syntax-tree';
 import { inDebugMode } from '@deepkit/core';
-import { escape, escapeHtml } from './utils';
-import { voidElements } from './template';
+import { escape, escapeHtml } from './utils.js';
+import { voidElements } from './template.js';
 
 const { parse, generate, replace } = abstractSyntaxTree;
 

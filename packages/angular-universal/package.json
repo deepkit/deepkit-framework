@@ -54,7 +54,10 @@
     "@deepkit/type": "^1.0.1-alpha.75",
     "@types/node": "^14.0.0"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },

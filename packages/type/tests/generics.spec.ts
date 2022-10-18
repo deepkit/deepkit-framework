@@ -9,10 +9,10 @@
  */
 
 import { expect, test } from '@jest/globals';
-import { typeInfer } from '../src/reflection/processor';
-import { removeTypeName, typeOf } from '../src/reflection/reflection';
-import { assertType, ReflectionKind, ReflectionVisibility, Type, Widen } from '../src/reflection/type';
-import { expectEqualType } from './utils';
+import { typeInfer } from '../src/reflection/processor.js';
+import { removeTypeName, typeOf } from '../src/reflection/reflection.js';
+import { assertType, ReflectionKind, ReflectionVisibility, Type, Widen } from '../src/reflection/type.js';
+import { expectEqualType } from './utils.js';
 
 test('infer T from function primitive', () => {
     function fn<T extends string | number>(v: T) {

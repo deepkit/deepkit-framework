@@ -1,10 +1,10 @@
 import { ChangeDetectorRef, Component, Input, OnChanges } from '@angular/core';
 import { DatabaseInfo, EntityPropertySeed, FakerTypes, SeedDatabase } from '@deepkit/orm-browser-api';
-import { trackByIndex, trackBySchema } from '../utils';
-import { ControllerClient } from '../client';
-import { BrowserState } from '../browser-state';
+import { trackByIndex, trackBySchema } from '../utils.js';
+import { ControllerClient } from '../client.js';
+import { BrowserState } from '../browser-state.js';
 import { DuiDialog } from '@deepkit/desktop-ui';
-import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
+import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component.js';
 import { ReflectionClass } from '@deepkit/type';
 
 @Component({

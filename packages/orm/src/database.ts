@@ -21,15 +21,15 @@ import {
     resolveReceiveType,
     Type
 } from '@deepkit/type';
-import { DatabaseAdapter, DatabaseEntityRegistry } from './database-adapter';
-import { DatabaseSession } from './database-session';
-import { DatabaseLogger } from './logger';
-import { Query } from './query';
-import { getReference } from './reference';
-import { OrmEntity } from './type';
-import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint';
+import { DatabaseAdapter, DatabaseEntityRegistry } from './database-adapter.js';
+import { DatabaseSession } from './database-session.js';
+import { DatabaseLogger } from './logger.js';
+import { Query } from './query.js';
+import { getReference } from './reference.js';
+import { OrmEntity } from './type.js';
+import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint.js';
 import { Stopwatch } from '@deepkit/stopwatch';
-import { getNormalizedPrimaryKey } from './identity-map';
+import { getNormalizedPrimaryKey } from './identity-map.js';
 import { EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
 
 /**

@@ -27,10 +27,10 @@ import {
     UnpopulatedCheck,
     unpopulatedSymbol
 } from '@deepkit/type';
-import { DatabaseQueryModel } from './query';
+import { DatabaseQueryModel } from './query.js';
 import { capitalize, ClassType } from '@deepkit/core';
-import { ClassState, getClassState, getInstanceState, IdentityMap, PKHash } from './identity-map';
-import { getReference } from './reference';
+import { ClassState, getClassState, getInstanceState, IdentityMap, PKHash } from './identity-map.js';
+import { getReference } from './reference.js';
 
 export type HydratorFn = (item: any) => Promise<void>;
 

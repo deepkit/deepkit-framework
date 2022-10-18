@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Command } from './command';
+import { Command } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
 
 interface DropDatabase {

@@ -8,15 +8,15 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseSession, DatabaseTransaction } from './database-session';
-import { DatabaseQueryModel, GenericQueryResolver, Query } from './query';
+import { DatabaseSession, DatabaseTransaction } from './database-session.js';
+import { DatabaseQueryModel, GenericQueryResolver, Query } from './query.js';
 import { Changes, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath, serialize, Serializer } from '@deepkit/type';
 import { AbstractClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
-import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseEntityRegistry, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
-import { DeleteResult, OrmEntity, PatchResult } from './type';
-import { findQueryList } from './utils';
-import { convertQueryFilter } from './query-filter';
-import { Formatter } from './formatter';
+import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseEntityRegistry, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter.js';
+import { DeleteResult, OrmEntity, PatchResult } from './type.js';
+import { findQueryList } from './utils.js';
+import { convertQueryFilter } from './query-filter.js';
+import { Formatter } from './formatter.js';
 
 type SimpleStore<T> = { items: Map<any, T>, autoIncrement: number };
 

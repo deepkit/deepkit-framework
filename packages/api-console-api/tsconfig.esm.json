@@ -6,6 +6,21 @@
   },
   "references": [
     {
+      "path": "../bson/tsconfig.esm.json"
+    },
+    {
+      "path": "../core/tsconfig.esm.json"
+    },
+    {
+      "path": "../crypto/tsconfig.json"
+    },
+    {
+      "path": "../injector/tsconfig.esm.json"
+    },
+    {
+      "path": "../logger/tsconfig.esm.json"
+    },
+    {
       "path": "../rpc/tsconfig.esm.json"
     },
     {

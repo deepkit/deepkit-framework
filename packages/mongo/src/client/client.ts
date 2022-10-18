@@ -8,14 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ConnectionRequest, MongoConnection, MongoConnectionPool, MongoDatabaseTransaction } from './connection';
-import { isErrorRetryableRead, isErrorRetryableWrite, MongoError } from './error';
+import { ConnectionRequest, MongoConnection, MongoConnectionPool, MongoDatabaseTransaction } from './connection.js';
+import { isErrorRetryableRead, isErrorRetryableWrite, MongoError } from './error.js';
 import { sleep } from '@deepkit/core';
-import { Command } from './command/command';
-import { DropDatabaseCommand } from './command/dropDatabase';
-import { MongoClientConfig } from './config';
+import { Command } from './command/command.js';
+import { DropDatabaseCommand } from './command/dropDatabase.js';
+import { MongoClientConfig } from './config.js';
 import { ReflectionClass } from '@deepkit/type';
-import { mongoBinarySerializer } from '../mongo-serializer';
+import { mongoBinarySerializer } from '../mongo-serializer.js';
 import { BSONBinarySerializer } from '@deepkit/bson';
 
 export class MongoClient {

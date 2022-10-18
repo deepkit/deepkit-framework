@@ -1,6 +1,6 @@
 import { ClassType } from '@deepkit/core';
-import { SQLDatabaseAdapter } from './sql-adapter';
-import { DatabaseModel, TableComparator } from './schema/table';
+import { SQLDatabaseAdapter } from './sql-adapter.js';
+import { DatabaseModel, TableComparator } from './schema/table.js';
 import { Database, DatabaseEntityRegistry } from '@deepkit/orm';
 import { ReflectionClass, Type } from '@deepkit/type';
 

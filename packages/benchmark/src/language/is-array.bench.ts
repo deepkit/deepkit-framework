@@ -9,7 +9,7 @@
  */
 
 import { isArray } from '@deepkit/core';
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 
 export async function main() {
     const suite = new BenchSuite('isArray', 3);

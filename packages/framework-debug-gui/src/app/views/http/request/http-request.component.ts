@@ -10,7 +10,7 @@
 
 import { ChangeDetectorRef, Component } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { ControllerClient } from '../../../client';
+import { ControllerClient } from '../../../client.js';
 import { EntitySubject } from '@deepkit/rpc';
 import { DebugRequest, Workflow } from '@deepkit/framework-debug-api';
 

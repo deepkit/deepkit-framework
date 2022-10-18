@@ -6,6 +6,7 @@
   "private": true,
   "scripts": {
     "test": "node --max_old_space_size=3048 node_modules/jest/bin/jest.js --forceExit --no-cache",
+    "lerna": "lerna run",
     "test:coverage": "node --max_old_space_size=3048 node_modules/jest/bin/jest.js --coverage --forceExit --no-cache",
     "bootstrap": "lerna bootstrap --no-ci",
     "bootstrap:ci": "lerna bootstrap --ignore @deepkit/benchmark",
@@ -22,7 +23,8 @@
     "docs": "rm -rf docs && node --max-old-space-size=12096 node_modules/.bin/typedoc packages/*/index.ts",
     "publish": "lerna publish --no-private prerelease",
     "publish-force": "npm run build && lerna publish --no-private --force-publish",
-    "publish-website": "heroku container:push web && heroku container:release web"
+    "publish-website": "heroku container:push web && heroku container:release web",
+    "lint:ext": "node lint-file-extension.cjs"
   },
   "peerDependencies": {},
   "devDependencies": {
@@ -46,6 +48,9 @@
     "node": ">= 14.0.0"
   },
   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "resolver": "./jest-resolver.js",
     "testPathIgnorePatterns": [
       "packages/*/dist"

@@ -10,9 +10,9 @@
 
 import { ClassType, getClassName, isClass, isFunction } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
-import { AppModule, ConfigurationInvalidError, MiddlewareConfig, ModuleDefinition } from './module';
+import { AppModule, ConfigurationInvalidError, MiddlewareConfig, ModuleDefinition } from './module.js';
 import { Injector, InjectorContext, InjectorModule, isProvided, ProviderWithScope, resolveToken, Token } from '@deepkit/injector';
-import { cli } from './command';
+import { cli } from './command.js';
 import { WorkflowDefinition } from '@deepkit/workflow';
 import { deserialize, ReflectionClass, validate } from '@deepkit/type';
 

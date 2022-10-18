@@ -1,7 +1,7 @@
 import { RpcClientEventIncomingMessage, RpcClientEventOutgoingMessage, RpcTypes } from '@deepkit/rpc';
 import { Component, Input, OnChanges } from '@angular/core';
 import { trackByIndex } from '@deepkit/ui-library';
-import { inspect } from '../../utils';
+import { inspect } from '../../utils.js';
 
 @Component({
     selector: 'rpc-inspect-message',

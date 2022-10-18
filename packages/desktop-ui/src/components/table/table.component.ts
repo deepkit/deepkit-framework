@@ -37,9 +37,9 @@ import { arrayClear, arrayHasItem, arrayRemoveItem, eachPair, empty, first, inde
 import Hammer from 'hammerjs';
 import { isObservable, Observable } from 'rxjs';
 import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
-import { DropdownComponent } from '../button';
-import { detectChangesNextFrame } from '../app/utils';
-import { findParentWithClass } from '../../core/utils';
+import { DropdownComponent } from '../button/index.js';
+import { detectChangesNextFrame } from '../app/utils.js';
+import { findParentWithClass } from '../../core/utils.js';
 
 /**
  * Directive to allow dynamic content in a cell.

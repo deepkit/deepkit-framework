@@ -1,9 +1,9 @@
 import { deserialize, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { assert, IsExact } from 'conditional-type-checks';
-import { Database } from '../src/database';
-import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db';
-import { Query } from '../src/query';
+import { Database } from '../src/database.js';
+import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db.js';
+import { Query } from '../src/query.js';
 
 test('query select', async () => {
     class s {
@@ -65,7 +65,7 @@ test('query filter', async () => {
         expect(results).toHaveLength(3);
         expect(results).toMatchObject([{ id: 1 }, { id: 2 }, { id: 3 }]);
     }
-    
+
 });
 
 test('query lift', async () => {

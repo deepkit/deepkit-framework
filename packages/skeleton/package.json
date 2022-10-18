@@ -30,7 +30,10 @@
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },

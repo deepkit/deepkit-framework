@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Column, DatabaseModel } from '../schema/table';
-import { SQLConnection } from '../sql-adapter';
-import { DefaultPlatform } from '../platform/default-platform';
+import { Column, DatabaseModel } from '../schema/table.js';
+import { SQLConnection } from '../sql-adapter.js';
+import { DefaultPlatform } from '../platform/default-platform.js';
 
 const type3Regex = /^([^(]+)\(\s*(\d+)\s*,\s*(\d+)\s*\)$/;
 const type2Regex = /^([^(]+)\(\s*(\d+)\s*\)$/;

@@ -35,7 +35,10 @@
     "@deepkit/rpc": "^1.0.1-alpha.75",
     "@deepkit/type": "^1.0.1-alpha.75"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },

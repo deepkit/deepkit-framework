@@ -9,19 +9,19 @@
  */
 
 import { DatabasePersistence, DatabasePersistenceChangeSet, DatabaseSession, getClassState, getInstanceState, OrmEntity } from '@deepkit/orm';
-import { convertClassQueryToMongo } from './mapping';
-import { FilterQuery } from './query.model';
-import { MongoClient } from './client/client';
-import { InsertCommand } from './client/command/insert';
-import { UpdateCommand } from './client/command/update';
-import { DeleteCommand } from './client/command/delete';
-import { FindAndModifyCommand } from './client/command/findAndModify';
+import { convertClassQueryToMongo } from './mapping.js';
+import { FilterQuery } from './query.model.js';
+import { MongoClient } from './client/client.js';
+import { InsertCommand } from './client/command/insert.js';
+import { UpdateCommand } from './client/command/update.js';
+import { DeleteCommand } from './client/command/delete.js';
+import { FindAndModifyCommand } from './client/command/findAndModify.js';
 import { empty } from '@deepkit/core';
-import { FindCommand } from './client/command/find';
-import { MongoConnection } from './client/connection';
+import { FindCommand } from './client/command/find.js';
+import { MongoConnection } from './client/connection.js';
 import { getPartialSerializeFunction, ReflectionClass } from '@deepkit/type';
 import { ObjectId } from '@deepkit/bson';
-import { mongoSerializer } from './mongo-serializer';
+import { mongoSerializer } from './mongo-serializer.js';
 
 export class MongoPersistence extends DatabasePersistence {
     protected connection?: MongoConnection;

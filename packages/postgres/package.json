@@ -44,7 +44,10 @@
     "@deepkit/type": "^1.0.1-alpha.75",
     "@types/sqlstring": "^2.2.1"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "runner": "../../jest-serial-runner.js",
     "testEnvironment": "node",
     "transform": {

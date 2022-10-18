@@ -31,6 +31,9 @@
   ],
   "references": [
     {
+      "path": "../platform/tsconfig.json"
+    },
+    {
       "path": "../api-console-module/tsconfig.json"
     },
     {

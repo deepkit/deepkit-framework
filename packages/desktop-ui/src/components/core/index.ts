@@ -9,9 +9,9 @@
  */
 
 import { NgModule } from '@angular/core';
-import { RenderComponentDirective } from './render-component.directive';
+import { RenderComponentDirective } from './render-component.directive.js';
 
-export * from './render-component.directive'
+export * from './render-component.directive.js'
 
 @NgModule({
     declarations: [

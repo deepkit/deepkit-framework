@@ -9,10 +9,10 @@
  */
 
 import { Changes, ReflectionClass } from '@deepkit/type';
-import { OrmEntity } from './type';
+import { OrmEntity } from './type.js';
 import sift from 'sift';
-import { FilterQuery } from './query';
-import { getInstanceStateFromItem } from './identity-map';
+import { FilterQuery } from './query.js';
+import { getInstanceStateFromItem } from './identity-map.js';
 import { getClassTypeFromInstance } from '@deepkit/core';
 
 export type FlattenIfArray<T> = T extends Array<any> ? T[0] : T;

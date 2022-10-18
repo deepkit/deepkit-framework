@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { MongoAuth } from './auth';
-import { BaseResponse, Command } from '../command';
-import { MongoClientConfig } from '../../config';
+import { MongoAuth } from './auth.js';
+import { BaseResponse, Command } from '../command.js';
+import { MongoClientConfig } from '../../config.js';
 
 interface AuthenticateCommand {
     authenticate: 1;

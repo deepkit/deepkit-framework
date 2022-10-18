@@ -27,10 +27,10 @@ import {
     Output,
     SkipSelf
 } from '@angular/core';
-import { WindowComponent } from '../window/window.component';
-import { WindowState } from '../window/window-state';
-import { FormComponent } from '../form/form.component';
-import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { WindowComponent } from '../window/window.component.js';
+import { WindowState } from '../window/window-state.js';
+import { FormComponent } from '../form/form.component.js';
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form.js';
 
 @Component({
     selector: 'dui-button',

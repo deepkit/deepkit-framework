@@ -10,8 +10,8 @@
 
 import { asyncOperation, CustomError } from '@deepkit/core';
 import { ReceiveType } from '@deepkit/type';
-import { RpcTypes } from '../model';
-import type { RpcMessage } from '../protocol';
+import { RpcTypes } from '../model.js';
+import type { RpcMessage } from '../protocol.js';
 
 export class UnexpectedMessageType extends CustomError {
 }

@@ -8,11 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command } from './command';
+import { BaseResponse, Command } from './command.js';
 import { toFastProperties } from '@deepkit/core';
-import { DEEP_SORT } from '../../query.model';
+import { DEEP_SORT } from '../../query.model.js';
 import { InlineRuntimeType, ReflectionClass, ReflectionKind, typeOf, TypeUnion, UUID } from '@deepkit/type';
-import { MongoError } from '../error';
+import { MongoError } from '../error.js';
 
 interface FindSchema {
     find: string;

@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import type { QueryDatabaseDeleteEvent, QueryDatabasePatchEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event';
-import type { Database } from './database';
+import type { QueryDatabaseDeleteEvent, QueryDatabasePatchEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event.js';
+import type { Database } from './database.js';
 import { ReflectionClass, ReflectionProperty } from '@deepkit/type';
 
 type IncomingReference = { classSchema: ReflectionClass<any>, property: ReflectionProperty };

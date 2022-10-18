@@ -22,7 +22,7 @@ import {
     SQLStatement
 } from '@deepkit/sql';
 import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, OrmEntity, PatchResult, UniqueConstraintFailure } from '@deepkit/orm';
-import { PostgresPlatform } from './postgres-platform';
+import { PostgresPlatform } from './postgres-platform.js';
 import type { Pool, PoolClient, PoolConfig } from 'pg';
 import pg from 'pg';
 import { AbstractClassType, asyncOperation, ClassType, empty } from '@deepkit/core';

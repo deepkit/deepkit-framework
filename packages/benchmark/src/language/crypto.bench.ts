@@ -9,7 +9,7 @@
  */
 
 import { randomBytes } from 'crypto';
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 
 export function main() {
     const bench = new BenchSuite('crypto');

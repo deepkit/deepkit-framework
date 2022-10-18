@@ -9,7 +9,7 @@
  */
 
 import { CompilerContext } from '@deepkit/core';
-import { BSONError } from './model';
+import { BSONError } from './model.js';
 
 const decoder = new TextDecoder("utf-8");
 export function decodeUTF8(buffer: Uint8Array, off: number = 0, end: number) {

@@ -22,6 +22,7 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
+    "@deepkit/platform": "^1.0.1-alpha.75",
     "@deepkit/app": "^1.0.1-alpha.13",
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/event": "^1.0.1-alpha.13",
@@ -38,6 +39,7 @@
     "send": "^0.18.0"
   },
   "devDependencies": {
+    "@deepkit/platform": "^1.0.1-alpha.75",
     "@deepkit/app": "^1.0.1-alpha.75",
     "@deepkit/core": "^1.0.1-alpha.75",
     "@deepkit/event": "^1.0.1-alpha.75",
@@ -50,12 +52,12 @@
     "@types/node": "14.14.28",
     "@types/send": "^0.14.6"
   },
-  "jest": {
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
+   "jest": {
     "moduleNameMapper": {
       "(.+)\\.js": "$1"
+    },
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "resolver": "../../jest-resolver.js",
     "testMatch": [

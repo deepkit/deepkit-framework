@@ -62,6 +62,7 @@
     "karma-jasmine-html-reporter": "~1.6.0",
     "panzoom": "^9.4.2",
     "protractor": "~7.0.0",
+    "resolve-typescript-plugin": "^1.2.0",
     "rxjs": "^6.6.7",
     "ts-node": "~8.3.0",
     "tslib": "^2.3.0",

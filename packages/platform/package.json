@@ -1,0 +1,62 @@
+{
+  "name": "@deepkit/platform",
+  "version": "1.0.1-alpha.75",
+  "description": "Deepkit cross platform library",
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    }
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": "https://github.com/deepkit/deepkit-framework",
+  "contributors": [
+    {
+      "name" : "Pascal Garber",
+      "email" : "pascal@artandcode.studio"
+    }
+  ],
+  "license": "MIT",
+  "files": [
+    "/dist"
+  ],
+  "scripts": {
+    "clear": "rm -rf dist",
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc",
+    "build:esm": "tsc --project tsconfig.esm.json",
+    "test": "npm run test:node && npm run test:deno && npm run test:gjs && npm run test:browser",
+    "test:node": "mocha test/node",
+    "test:gjs": "node test/browser/esbuild.mjs && gjs -m ./test/gjs/base.test.mjs",
+    "test:deno": "deno test ./test/deno/base.test.mjs",
+    "test:browser": "npm run test:browser:esm && npm run test:browser:cjs",
+    "test:browser:esm": "node test/browser/esbuild.mjs && mocha-headless-chrome --timeout 120000 --polling 1000 -f ./test/browser/index.html",
+    "test:browser:cjs": "node test/browser/esbuild.cjs && mocha-headless-chrome --timeout 120000 --polling 1000 -f ./test/browser/index.html"
+  },
+  "keywords": [
+    "deepkit",
+    "platform",
+    "dirname",
+    "filename",
+    "cross-platform",
+    "esm",
+    "cjs",
+    "node",
+    "deno",
+    "gjs"
+  ],
+  "devDependencies": {
+    "chai": "^4.3.6",
+    "esbuild": "^0.14.49",
+    "mocha": "^10.0.0",
+    "mocha-headless-chrome": "^4.0.0",
+    "typescript": "^4.7.4"
+  }
+}

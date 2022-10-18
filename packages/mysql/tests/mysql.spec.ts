@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { createPool } from 'mariadb';
-import { MySQLConnectionPool, MySQLDatabaseAdapter } from '../src/mysql-adapter';
+import { MySQLConnectionPool, MySQLDatabaseAdapter } from '../src/mysql-adapter.js';
 import { Database } from '@deepkit/orm';
 import { AutoIncrement, cast, entity, PrimaryKey } from '@deepkit/type';
 

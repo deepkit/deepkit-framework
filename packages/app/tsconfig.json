@@ -25,6 +25,9 @@
       "path": "../core/tsconfig.json"
     },
     {
+      "path": "../platform/tsconfig.json"
+    },
+    {
       "path": "../event/tsconfig.json"
     },
     {

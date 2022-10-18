@@ -39,8 +39,8 @@ import {
     TypeUnion,
     uuidAnnotation
 } from '@deepkit/type';
-import { seekElementSize } from './continuation';
-import { BSONType, digitByteSize, isSerializable } from './utils';
+import { seekElementSize } from './continuation.js';
+import { BSONType, digitByteSize, isSerializable } from './utils.js';
 
 function getNameComparator(name: string): string {
     //todo: support utf8 names

@@ -23,7 +23,7 @@ import {
     SQLStatement
 } from '@deepkit/sql';
 import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, OrmEntity, PatchResult, UniqueConstraintFailure } from '@deepkit/orm';
-import { MySQLPlatform } from './mysql-platform';
+import { MySQLPlatform } from './mysql-platform.js';
 import { Changes, getPartialSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath, resolveReceiveType } from '@deepkit/type';
 import { AbstractClassType, asyncOperation, ClassType, empty, isArray } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';

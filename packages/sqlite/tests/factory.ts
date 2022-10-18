@@ -1,6 +1,6 @@
 import { Database } from '@deepkit/orm';
 import { DatabaseFactory } from '@deepkit/orm-integration';
-import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter';
+import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter.js';
 import { mkdtempSync } from 'fs';
 import { join } from 'path';
 

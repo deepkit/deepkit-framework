@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { expect, test } from '@jest/globals';
-import { reflect, ReflectionClass, typeOf } from '../src/reflection/reflection';
+import { reflect, ReflectionClass, typeOf } from '../src/reflection/reflection.js';
 import {
     assertType,
     AutoIncrement,
@@ -26,13 +26,13 @@ import {
     SignedBinaryBigInt,
     TypeProperty,
     TypePropertySignature
-} from '../src/reflection/type';
-import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializer } from '../src/serializer';
-import { cast, deserialize, serialize } from '../src/serializer-facade';
+} from '../src/reflection/type.js';
+import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializer } from '../src/serializer.js';
+import { cast, deserialize, serialize } from '../src/serializer-facade.js';
 import { getClassName } from '@deepkit/core';
-import { entity, t } from '../src/decorator';
-import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator';
-import { StatEnginePowerUnit, StatWeightUnit } from './types';
+import { entity, t } from '../src/decorator.js';
+import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator.js';
+import { StatEnginePowerUnit, StatWeightUnit } from './types.js';
 import { parametersToTuple } from '../src/reflection/extends.js';
 
 test('deserializer', () => {

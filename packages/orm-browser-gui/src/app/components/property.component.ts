@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component, EventEmitter, Input, Output } from '@angular/core';
 import { defaultValue, isAutoIncrementType, Type } from '@deepkit/type';
-import { isRequired } from '../utils';
+import { isRequired } from '../utils.js';
 
 @Component({
     selector: 'orm-browser-property',

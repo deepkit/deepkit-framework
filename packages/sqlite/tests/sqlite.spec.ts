@@ -1,8 +1,8 @@
 import { expect, test } from '@jest/globals';
-import { SQLitePlatform } from '../src/sqlite-platform';
-import { databaseFactory } from './factory';
+import { SQLitePlatform } from '../src/sqlite-platform.js';
+import { databaseFactory } from './factory.js';
 import { User, UserCredentials } from '@deepkit/orm-integration';
-import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter';
+import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter.js';
 import { sleep } from '@deepkit/core';
 import { AutoIncrement, cast, Entity, entity, PrimaryKey, Reference, ReflectionClass, serialize, typeOf, UUID, uuid } from '@deepkit/type';
 import { Database, DatabaseEntityRegistry } from '@deepkit/orm';

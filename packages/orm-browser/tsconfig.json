@@ -22,6 +22,9 @@
   ],
   "references": [
     {
+      "path": "../platform/tsconfig.json"
+    },
+    {
       "path": "../app/tsconfig.json"
     },
     {

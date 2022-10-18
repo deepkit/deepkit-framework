@@ -31,12 +31,12 @@
     "@deepkit/injector": "^1.0.1-alpha.75",
     "@deepkit/type": "^1.0.1-alpha.75"
   },
-  "jest": {
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
+   "jest": {
     "moduleNameMapper": {
       "(.+)\\.js": "$1"
+    },
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "testMatch": [
       "**/tests/**/*.spec.ts"

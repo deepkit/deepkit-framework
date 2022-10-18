@@ -25,7 +25,10 @@
   "devDependencies": {
     "@types/fs-extra": "^9.0.1"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },

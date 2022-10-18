@@ -850,7 +850,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     )], NodeFlags.Const));
                     embedTopExpression.push(variable);
                 } else {
-                    //import {identifier} from './bar'
+                    //import {identifier} from './bar.js'
                     // import { identifier as identifier } is used to avoid automatic elision of imports (in angular builds for example)
                     // that's probably a bit unstable.
                     const specifier = this.f.createImportSpecifier(false, imp.identifier, imp.identifier);

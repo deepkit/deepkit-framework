@@ -1,6 +1,6 @@
 import { SoftDelete, SoftDeleteQuery, SoftDeleteSession } from '@deepkit/orm';
 import { AutoIncrement, cast, entity, PrimaryKey } from '@deepkit/type';
-import { DatabaseFactory } from './test';
+import { DatabaseFactory } from './test.js';
 import { expect } from '@jest/globals';
 
 export const softDeleteTests = {

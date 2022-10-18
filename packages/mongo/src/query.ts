@@ -9,7 +9,7 @@
  */
 
 import { OrmEntity, Query } from '@deepkit/orm';
-import { MongoQueryModel } from './query.model';
+import { MongoQueryModel } from './query.model.js';
 
 export class MongoDatabaseQuery<T extends OrmEntity,
     MODEL extends MongoQueryModel<T> = MongoQueryModel<T>> extends Query<T> {

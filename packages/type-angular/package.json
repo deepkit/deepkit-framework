@@ -23,7 +23,10 @@
     "@deepkit/type": "^1.0.1-alpha.75",
     "rxjs": "~6.6.0"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },

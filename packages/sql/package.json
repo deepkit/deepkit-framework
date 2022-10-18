@@ -31,6 +31,7 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
+    "@deepkit/platform": "^1.0.1-alpha.75",
     "@deepkit/app": "^1.0.1-alpha.13",
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/injector": "^1.0.1-alpha.13",
@@ -55,7 +56,10 @@
     "@deepkit/stopwatch": "^1.0.1-alpha.75",
     "@deepkit/type": "^1.0.1-alpha.75"
   },
-  "jest": {
+   "jest": {
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "runner": "../../jest-serial-runner.js",
     "testEnvironment": "node",
     "transform": {

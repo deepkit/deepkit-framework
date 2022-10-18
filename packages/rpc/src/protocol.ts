@@ -10,8 +10,8 @@
 
 import { deserializeBSONWithoutOptimiser, getBSONDeserializer, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
 import { ClassType } from '@deepkit/core';
-import { rpcChunk, rpcError, RpcTypes } from './model';
-import type { SingleProgress } from './writer';
+import { rpcChunk, rpcError, RpcTypes } from './model.js';
+import type { SingleProgress } from './writer.js';
 import { deserialize, ReceiveType, ReflectionClass, serialize, Type, typeSettings } from '@deepkit/type';
 
 export const enum RpcMessageRouteType {

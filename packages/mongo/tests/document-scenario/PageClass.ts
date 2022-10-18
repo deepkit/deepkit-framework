@@ -1,5 +1,5 @@
-import {PageCollection} from "./PageCollection";
-import {DocumentClass} from "./DocumentClass";
+import {PageCollection} from "./PageCollection.js";
+import {DocumentClass} from "./DocumentClass.js";
 import {Entity, t, ParentReference, uuid} from '@deepkit/type';
 
 @Entity('PageClass')

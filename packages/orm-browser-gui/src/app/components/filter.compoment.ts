@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
-import { trackByIndex } from '../utils';
+import { trackByIndex } from '../utils.js';
 import { arrayRemoveItem } from '@deepkit/core';
-import { FilterItem } from '../browser-state';
+import { FilterItem } from '../browser-state.js';
 import { isBackReferenceType, ReflectionClass, ReflectionKind, Type, TypeProperty, TypePropertySignature } from '@deepkit/type';
 
 @Component({

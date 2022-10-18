@@ -87,10 +87,10 @@ import {
     deserializeTuple,
     deserializeUndefined,
     deserializeUnion
-} from './bson-deserializer-templates';
-import { seekElementSize } from './continuation';
-import { BSONError } from './model';
-import { BSON_BINARY_SUBTYPE_DEFAULT, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, isSerializable, TWO_PWR_32_DBL_N } from './utils';
+} from './bson-deserializer-templates.js';
+import { seekElementSize } from './continuation.js';
+import { BSONError } from './model.js';
+import { BSON_BINARY_SUBTYPE_DEFAULT, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, isSerializable, TWO_PWR_32_DBL_N } from './utils.js';
 
 export function createBuffer(size: number): Uint8Array {
     return 'undefined' !== typeof Buffer && 'function' === typeof Buffer.allocUnsafe ? Buffer.allocUnsafe(size) : new Uint8Array(size);

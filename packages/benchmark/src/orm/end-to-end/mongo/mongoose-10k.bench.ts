@@ -9,7 +9,7 @@
  */
 
 import 'reflect-metadata';
-import { BenchSuite } from '../../../bench';
+import { BenchSuite } from '../../../bench.js';
 import mongoose from 'mongoose';
 
 const { Schema } = mongoose;

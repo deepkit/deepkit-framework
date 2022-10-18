@@ -9,7 +9,7 @@
  */
 
 import 'reflect-metadata';
-import { BenchSuite } from '../../../bench';
+import { BenchSuite } from '../../../bench.js';
 import { spawnSync } from 'child_process';
 
 export async function main() {
@@ -20,7 +20,7 @@ export async function main() {
     spawnSync(`./node_modules/.bin/prisma generate --schema src/orm/end-to-end/mongo/model.prisma`, { stdio: 'inherit', shell: true });
     // spawnSync(`./node_modules/.bin/prisma db push --schema=src/orm/end-to-end/mongo/model.prisma --force-reset`, {stdio: 'inherit', shell: true});
 
-    const {PrismaClient} = await import('@prisma/client');
+    const {PrismaClient} = await import('@prisma/client.js');
     const prisma = new PrismaClient();
 
     const bench = new BenchSuite('prisma');

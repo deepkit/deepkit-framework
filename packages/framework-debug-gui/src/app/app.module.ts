@@ -10,8 +10,8 @@
 
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
-import { AppRoutingModule } from './app-routing.module';
-import { AppComponent } from './app.component';
+import { AppRoutingModule } from './app-routing.module.js';
+import { AppComponent } from './app.component.js';
 import {
     DuiAppModule,
     DuiButtonModule,
@@ -25,22 +25,22 @@ import {
     DuiTableModule,
     DuiWindowModule,
 } from '@deepkit/desktop-ui';
-import { ConfigurationComponent } from './views/configuration/configuration.component';
-import { HttpComponent } from './views/http/http.component';
-import { ControllerClient } from './client';
+import { ConfigurationComponent } from './views/configuration/configuration.component.js';
+import { HttpComponent } from './views/http/http.component.js';
+import { ControllerClient } from './client.js';
 import { FormsModule } from '@angular/forms';
-import { RpcComponent } from './views/rpc/rpc.component';
-import { WorkflowCardComponent, WorkflowComponent } from './components/workflow.component';
-import { EventsComponent } from './views/events/events.component';
+import { RpcComponent } from './views/rpc/rpc.component.js';
+import { WorkflowCardComponent, WorkflowComponent } from './components/workflow.component.js';
+import { EventsComponent } from './views/events/events.component.js';
 import { DeepkitClient } from '@deepkit/rpc';
 import { OverlayModule } from '@angular/cdk/overlay';
-import { HttpRequestComponent } from './views/http/request/http-request.component';
+import { HttpRequestComponent } from './views/http/request/http-request.component.js';
 import { OrmBrowserModule } from '@deepkit/orm-browser-gui';
 import { ApiConsoleModule } from '@deepkit/api-console-gui';
-import { ProfileComponent } from './views/profile/profile.component';
-import { ProfileTimelineComponent } from './views/profile/timeline.component';
-import { ModulesComponent } from './views/modules/modules.component';
-import { ModuleDetailComponent, ModuleDetailServiceComponent } from './views/modules/module-detail.component';
+import { ProfileComponent } from './views/profile/profile.component.js';
+import { ProfileTimelineComponent } from './views/profile/timeline.component.js';
+import { ModulesComponent } from './views/modules/modules.component.js';
+import { ModuleDetailComponent, ModuleDetailServiceComponent } from './views/modules/module-detail.component.js';
 import { DeepkitUIModule } from '@deepkit/ui-library';
 
 @NgModule({

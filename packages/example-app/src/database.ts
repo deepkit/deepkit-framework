@@ -1,7 +1,7 @@
 import { AutoIncrement, Email, entity, MaxLength, MinLength, PrimaryKey, Reference, Unique } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
-import { Config } from './config';
+import { Config } from './config.js';
 
 @entity.name('user')
 export class User {

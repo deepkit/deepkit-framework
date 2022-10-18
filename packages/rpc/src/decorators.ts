@@ -10,7 +10,7 @@
 
 import { ClassType } from '@deepkit/core';
 import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, mergeDecorator, PropertyDecoratorResult } from '@deepkit/type';
-import { ControllerDefinition } from './model';
+import { ControllerDefinition } from './model.js';
 
 class RpcController {
     name?: string;

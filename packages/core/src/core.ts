@@ -694,19 +694,3 @@ export function createDynamicClass(name: string, base?: ClassType): ClassType {
 export function isIterable(value: any): boolean {
     return isArray(value) || value instanceof Set || value instanceof Map;
 }
-
-/**
- * Returns __filename, works in both cjs and esm.
- */
-export function getCurrentFileName(): string {
-    const e = new Error;
-    const initiator = e.stack!.split('\n').slice(2, 3)[0];
-    let path = /(?<path>[^(\s]+):[0-9]+:[0-9]+/.exec(initiator)!.groups!.path;
-    if (path.indexOf('file') >= 0) {
-        path = new URL(path).pathname;
-    }
-    if (path[0] === '/' && process.platform === 'win32') {
-        path = path.slice(1);
-    }
-    return path;
-}

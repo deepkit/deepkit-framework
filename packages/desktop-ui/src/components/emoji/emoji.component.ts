@@ -9,7 +9,7 @@
  */
 
 import { Component, Input } from '@angular/core';
-import { Emoji, emojis } from './emojis';
+import { Emoji, emojis } from './emojis.js';
 
 @Component({
     selector: 'dui-emoji',
