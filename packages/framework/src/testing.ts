@@ -10,7 +10,7 @@
 
 import { BrokerKernel } from '@deepkit/broker';
 import { ClassType } from '@deepkit/core';
-import { ConsoleTransport, Logger, MemoryLoggerTransport } from '@deepkit/logger';
+import { ConsoleTransport, Logger, LogMessage, MemoryLoggerTransport } from '@deepkit/logger';
 import { Database, DatabaseRegistry, MemoryDatabaseAdapter } from '@deepkit/orm';
 import { ApplicationServer } from './application-server';
 import { Broker, BrokerServer, DirectBroker } from './broker/broker';
@@ -48,6 +48,10 @@ export class TestingFacade<A extends App<any>> {
 
     public createRpcClient(): RpcClient {
         return this.app.get(ApplicationServer).createClient();
+    }
+
+    public getLogMessages(): LogMessage[] {
+        return this.app.get(MemoryLoggerTransport).messages;
     }
 }
 
