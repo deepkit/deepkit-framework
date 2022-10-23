@@ -45,7 +45,8 @@ test('Omit', () => {
 });
 
 test('NonNullable', () => {
-    equalType<NonNullable<'a' | null | string | undefined>, 'a' | string>();
+    type t = NonNullable<'a' | null | string | undefined>;
+    equalType<t, 'a' | string>();
 });
 
 test('Record', () => {

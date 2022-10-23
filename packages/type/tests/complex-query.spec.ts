@@ -91,7 +91,7 @@ export class BaseQuery<T extends OrmEntity> {
     //for higher kinded type for selected fields
     _!: () => T;
 
-    protected createModel<T>() {
+    protected createModel<T extends OrmEntity>() {
         return new DatabaseQueryModel<T, T, T>();
     }
 

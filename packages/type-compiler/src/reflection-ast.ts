@@ -24,7 +24,7 @@ import {
     isStringLiteral,
     isStringLiteralLike,
     JSDoc,
-    ModifiersArray,
+    ModifierLike,
     Node,
     NodeArray,
     NodeFactory,
@@ -98,7 +98,7 @@ export function getNameAsString(node?: Identifier | StringLiteral | NumericLiter
     return joinQualifiedName(node);
 }
 
-export function hasModifier(node: { modifiers?: ModifiersArray }, modifier: SyntaxKind): boolean {
+export function hasModifier(node: { modifiers?: NodeArray<ModifierLike> }, modifier: SyntaxKind): boolean {
     if (!node.modifiers) return false;
     return node.modifiers.some(v => v.kind === modifier);
 }

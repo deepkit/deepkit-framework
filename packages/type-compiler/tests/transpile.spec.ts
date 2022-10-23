@@ -1,5 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { transpile, transpileAndRun } from './utils';
+import * as ts from 'typescript';
 
 test('function __type', () => {
     const res = transpile({ app: `function log(message: string) {}` });
@@ -350,3 +351,37 @@ test('class extends generic', () => {
 
     console.log(res);
 });
+
+test('es2021', () => {
+    const res = transpile({
+        'app': `
+        interface User {
+            id: number;
+            name: string;
+            password: string;
+        }
+        type ReadUser = Omit<User, 'password'>;
+        const type = typeOf<ReadUser>();
+        `
+    }, {target: ts.ScriptTarget.ES2021});
+    console.log(res);
+    expect(res.app).toContain(`const __ΩPick = [`);
+    expect(res.app).toContain(`const type = typeOf([], [() => __ΩReadUser, 'n!'])`);
+});
+
+//currently knownLibFilesForCompilerOptions from @typescript/vfs doesn't return correct lib files for ES2022
+// test('es2022', () => {
+//     const res = transpile({
+//         'app': `
+//         interface User {
+//             id: number;
+//             name: string;
+//             password: string;
+//         }
+//         type ReadUser = Omit<User, 'password'>;
+//         `
+//     }, {target: ts.ScriptTarget.ES2022});
+//     console.log(res);
+//     expect(res.app).toContain(`const __ΩPick = [`);
+//     expect(res.app).toContain(`const type = typeOf([], [() => __ΩReadUser, 'n!'])`)
+// });

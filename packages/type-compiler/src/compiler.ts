@@ -93,6 +93,7 @@ import {
     ModifierFlags,
     ModuleDeclaration,
     ModuleKind,
+    Modifier,
     Node,
     NodeFactory,
     NodeFlags,
@@ -541,6 +542,7 @@ export class ReflectionTransformer implements CustomTransformer {
         (sourceFile as any).deepkitTransformed = true;
         this.embedAssignType = false;
 
+
         if (!(sourceFile as any).locals) {
             //@ts-ignore
             ts.bindSourceFile(sourceFile, this.context.getCompilerOptions());
@@ -583,7 +585,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 if (valid) {
                     const method = this.decorateFunctionExpression(
                         this.f.createFunctionExpression(
-                            node.modifiers, node.asteriskToken, isIdentifier(node.name) ? node.name : undefined,
+                            node.modifiers as ReadonlyArray<Modifier>, node.asteriskToken, isIdentifier(node.name) ? node.name : undefined,
                             node.typeParameters, node.parameters, node.type, node.body
                         )
                     );
@@ -615,7 +617,7 @@ export class ReflectionTransformer implements CustomTransformer {
                             container = this.f.createPropertyAccessExpression(this.f.createIdentifier('this'), 'constructor');
                         }
 
-                        return this.f.updateParameterDeclaration(node, node.decorators, node.modifiers, node.dotDotDotToken, node.name,
+                        return this.f.updateParameterDeclaration(node, node.modifiers as ReadonlyArray<Modifier>, node.dotDotDotToken, node.name,
                             node.questionToken, receiveType, this.f.createElementAccessChain(
                                 this.f.createPropertyAccessExpression(
                                     container,
@@ -867,12 +869,10 @@ export class ReflectionTransformer implements CustomTransformer {
             const assignType = this.f.createFunctionDeclaration(
                 undefined,
                 undefined,
-                undefined,
                 this.f.createIdentifier('__assignType'),
                 undefined,
                 [
                     this.f.createParameterDeclaration(
-                        undefined,
                         undefined,
                         undefined,
                         this.f.createIdentifier('fn'),
@@ -881,7 +881,6 @@ export class ReflectionTransformer implements CustomTransformer {
                         undefined
                     ),
                     this.f.createParameterDeclaration(
-                        undefined,
                         undefined,
                         undefined,
                         this.f.createIdentifier('args'),
@@ -962,16 +961,16 @@ export class ReflectionTransformer implements CustomTransformer {
         const body = node.body ? this.f.updateBlock(node.body, [reset, ...node.body.statements]) : undefined;
 
         if (isFunctionDeclaration(node)) {
-            return this.f.updateFunctionDeclaration(node, node.decorators, node.modifiers, node.asteriskToken, node.name,
+            return this.f.updateFunctionDeclaration(node, node.modifiers, node.asteriskToken, node.name,
                 node.typeParameters, node.parameters, node.type, body) as T;
         } else if (isFunctionExpression(node)) {
             return this.f.updateFunctionExpression(node, node.modifiers, node.asteriskToken, node.name,
                 node.typeParameters, node.parameters, node.type, body || node.body) as T;
         } else if (isMethodDeclaration(node)) {
-            return this.f.updateMethodDeclaration(node, node.decorators, node.modifiers, node.asteriskToken, node.name,
+            return this.f.updateMethodDeclaration(node, node.modifiers as ReadonlyArray<Modifier>, node.asteriskToken, node.name,
                 node.questionToken, node.typeParameters, node.parameters, node.type, body) as T;
         } else if (isConstructorDeclaration(node)) {
-            return this.f.updateConstructorDeclaration(node, node.decorators, node.modifiers, node.parameters, body) as T;
+            return this.f.updateConstructorDeclaration(node, node.modifiers, node.parameters, body) as T;
         }
         return node;
     }
@@ -2285,13 +2284,13 @@ export class ReflectionTransformer implements CustomTransformer {
         const __type = this.f.createPropertyDeclaration(undefined, this.f.createModifiersFromModifierFlags(ModifierFlags.Static), '__type', undefined, undefined, type);
         if (isClassDeclaration(node)) {
             // return node;
-            return this.f.updateClassDeclaration(node, node.decorators, node.modifiers,
+            return this.f.updateClassDeclaration(node, node.modifiers,
                 node.name, node.typeParameters, node.heritageClauses,
                 this.f.createNodeArray<ClassElement>([...node.members, __type])
             );
         }
 
-        return this.f.updateClassExpression(node, node.decorators, node.modifiers,
+        return this.f.updateClassExpression(node, node.modifiers,
             node.name, node.typeParameters, node.heritageClauses,
             this.f.createNodeArray<ClassElement>([...node.members, __type])
         );
@@ -2537,7 +2536,7 @@ export class DeclarationTransformer extends ReflectionTransformer {
                 handledIdentifier.push(imp.identifier);
 
                 //export declare type __ΩXY = any[];
-                exports.push(this.f.createTypeAliasDeclaration(undefined, [
+                exports.push(this.f.createTypeAliasDeclaration([
                         this.f.createModifier(SyntaxKind.ExportKeyword),
                         this.f.createModifier(SyntaxKind.DeclareKeyword)
                     ], this.f.createIdentifier(imp.identifier),

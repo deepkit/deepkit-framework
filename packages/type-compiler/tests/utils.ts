@@ -1,12 +1,11 @@
 import * as ts from 'typescript';
 import { createSourceFile, getPreEmitDiagnostics, ScriptTarget, TransformationContext } from 'typescript';
-import { createSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
+import { createFSBackedSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import { ReflectionTransformer } from '../src/compiler';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
-import { first } from '@deepkit/core';
 
-const defaultLibLocation = __dirname + '/node_modules/typescript/lib/';
+const defaultLibLocation = dirname(require.resolve('typescript')) + '/'; //node_modules/typescript/lib/
 
 function fullPath(fileName: string): string {
     return __dirname + '/' + fileName + (fileName.includes('.') ? '' : '.ts');
@@ -14,19 +13,21 @@ function fullPath(fileName: string): string {
 
 function readLibs(compilerOptions: ts.CompilerOptions, files: Map<string, string>) {
     const getLibSource = (name: string) => {
-        const lib = dirname(require.resolve('typescript'));
-        return readFileSync(join(lib, name), 'utf8');
+        return readFileSync(join(defaultLibLocation, name), 'utf8');
     };
     const libs = knownLibFilesForCompilerOptions(compilerOptions, ts);
-    for (const lib of libs) {
+    for (let lib of libs) {
         if (lib.startsWith('lib.webworker.d.ts')) continue; //dom and webworker can not go together
-
         files.set(defaultLibLocation + lib, getLibSource(lib));
     }
 }
 
+const defaultCompilerOptions = {
+}
+
 export function transform(files: Record<string, string>, options: ts.CompilerOptions = {}): Record<string, string> {
     const compilerOptions: ts.CompilerOptions = {
+        ...defaultCompilerOptions,
         target: ts.ScriptTarget.ES2016,
         allowNonTsExtensions: true,
         module: ts.ModuleKind.CommonJS,
@@ -37,9 +38,7 @@ export function transform(files: Record<string, string>, options: ts.CompilerOpt
     };
 
     const fsMap = new Map<string, string>();
-    readLibs(compilerOptions, fsMap);
-
-    const system = createSystem(fsMap);
+    const system = createFSBackedSystem(fsMap, __dirname, ts, defaultLibLocation);
 
     const host = createVirtualCompilerHost(system, compilerOptions, ts);
 
@@ -75,6 +74,7 @@ export function transpileAndRun(files: Record<string, string>, options: ts.Compi
 
 export function transpile(files: Record<string, string>, options: ts.CompilerOptions = {}): Record<string, string> {
     const compilerOptions: ts.CompilerOptions = {
+        ...defaultCompilerOptions,
         target: ts.ScriptTarget.ES2015,
         allowNonTsExtensions: true,
         module: ts.ModuleKind.CommonJS,
@@ -86,13 +86,10 @@ export function transpile(files: Record<string, string>, options: ts.CompilerOpt
     };
 
     const fsMap = new Map<string, string>();
-    readLibs(compilerOptions, fsMap);
-    compilerOptions.lib = [...fsMap.keys()];
-
     for (const [fileName, source] of Object.entries(files)) {
         fsMap.set(fullPath(fileName), source);
     }
-    const system = createSystem(fsMap);
+    const system = createFSBackedSystem(fsMap, __dirname, ts, defaultLibLocation);
 
     const host = createVirtualCompilerHost(system, compilerOptions, ts);
     host.compilerHost.getDefaultLibLocation = () => defaultLibLocation;
