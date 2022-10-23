@@ -8,6 +8,7 @@ import { JSONTransport, Logger, LoggerInterface } from '@deepkit/logger';
 import { App } from '@deepkit/app';
 import { RpcController } from './src/controller/rpc.controller';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
+import { OpenAPIModule } from 'deepkit-openapi';
 
 const bookStoreCrud = createCrudRoutes([Author, Book]);
 
@@ -24,6 +25,7 @@ new App({
         createCrudRoutes([User], { identifier: 'username', identifierChangeable: true }),
         bookStoreCrud,
 
+        new OpenAPIModule({ prefix: "/openapi/" }),
         new ApiConsoleModule({ path: '/api' }).filter(filter => filter.excludeModules(bookStoreCrud)),
         new ApiConsoleModule({
             path: '/api/bookstore',
