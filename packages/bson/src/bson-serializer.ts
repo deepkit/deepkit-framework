@@ -428,32 +428,36 @@ export class Writer {
 
     write(value: any, nameWriter?: () => void): void {
         if (value instanceof ValueWithBSONSerializer) {
-            if (isUUIDType(value.type)) {
-                if (nameWriter) {
-                    this.writeByte(BSONType.BINARY);
-                    nameWriter();
+            if (value.value !== undefined && value.value !== null) {
+                if (isUUIDType(value.type)) {
+                    if (nameWriter) {
+                        this.writeByte(BSONType.BINARY);
+                        nameWriter();
+                    }
+                    this.writeUUID(value.value);
+                    return;
+                } else if (isMongoIdType(value.type)) {
+                    if (nameWriter) {
+                        this.writeByte(BSONType.OID);
+                        nameWriter();
+                    }
+                    this.writeObjectId(value.value);
+                    return;
+                } else if (isBinaryBigIntType(value.type)) {
+                    if (nameWriter) {
+                        this.writeByte(BSONType.BINARY);
+                        nameWriter();
+                    }
+                    const binary = binaryBigIntAnnotation.getFirst(value.type)!;
+                    if (binary === BinaryBigIntType.signed) {
+                        this.writeSignedBigIntBinary(value.value);
+                    } else {
+                        this.writeBigIntBinary(value.value);
+                    }
+                    return;
                 }
-                this.writeUUID(value.value);
-            } else if (isMongoIdType(value.type)) {
-                if (nameWriter) {
-                    this.writeByte(BSONType.OID);
-                    nameWriter();
-                }
-                this.writeObjectId(value.value);
-            } else if (isBinaryBigIntType(value.type)) {
-                if (nameWriter) {
-                    this.writeByte(BSONType.BINARY);
-                    nameWriter();
-                }
-                const binary = binaryBigIntAnnotation.getFirst(value.type)!;
-                if (binary === BinaryBigIntType.signed) {
-                    this.writeSignedBigIntBinary(value.value);
-                } else {
-                    this.writeBigIntBinary(value.value);
-                }
-            } else {
-                this.write(value.value, nameWriter);
             }
+            this.write(value.value, nameWriter);
         } else if ('boolean' === typeof value) {
             if (nameWriter) {
                 this.writeByte(BSONType.BOOLEAN);
