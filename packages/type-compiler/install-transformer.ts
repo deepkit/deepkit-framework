@@ -23,7 +23,7 @@ function getCode(deepkitDistPath: string, varName: string, id: string): string {
             try {
                 typeTransformer = require('@deepkit/type-compiler');
             } catch (error) {
-                typeTransformer = require('${deepkitDistPath}');
+                typeTransformer = require(${JSON.stringify(deepkitDistPath)});
             }
             if (typeTransformer) {
                 if (!customTransformers) ${varName} = {};
