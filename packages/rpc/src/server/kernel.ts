@@ -318,7 +318,15 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
         protected logger: LoggerInterface = new Logger(),
     ) {
         super(writer, connections);
-        this.onClose.then(() => this.actionHandler.onClose());
+        this.onClose.then(async () => {
+            try {
+                await this.peerExchange.deregister(this.id);
+                await this.actionHandler.onClose();
+            } catch (e) {
+                logger.scoped('RPC').error('Could no deregister/action close: ' + e);
+            }
+        });
+        //register the current client so it can receive messages
         this.peerExchange.register(this.id, this.writer);
     }
 
@@ -409,7 +417,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
 
         try {
             if (await this.peerExchange.isRegistered(body.id)) {
-                return response.error(new Error(`Peer ${body.id} already registereed`));
+                return response.error(new Error(`Peer ${body.id} already registered`));
             }
 
             if (!await this.security.isAllowedToRegisterAsPeer(this.sessionState.getSession(), body.id)) {
