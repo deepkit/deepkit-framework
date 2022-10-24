@@ -18,7 +18,7 @@ import {
     getAnnotations,
     getMember,
     indexAccess,
-    isMember, isOptional,
+    isMember,
     isPrimitive,
     isSameType,
     isType,
@@ -1386,9 +1386,9 @@ export class Processor {
         if (type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.class) {
             const union = { kind: ReflectionKind.union, origin: type, types: [] } as TypeUnion;
             for (const member of type.types) {
-                if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
+                if ((member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) && member.name !== 'new') {
                     union.types.push({ kind: ReflectionKind.literal, literal: member.name, parent: union, origin: member } as TypeLiteral);
-                } else if (member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method) {
+                } else if ((member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method) && member.name !== 'constructor') {
                     union.types.push({ kind: ReflectionKind.literal, literal: member.name, parent: union, origin: member } as TypeLiteral);
                 }
             }

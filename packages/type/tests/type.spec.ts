@@ -3,22 +3,26 @@ import { hasCircularReference, ReceiveType, reflect, ReflectionClass, resolveRec
 import {
     assertType,
     Embedded,
-    Excluded, excludedAnnotation,
+    Excluded,
+    excludedAnnotation,
     findMember,
-    Group, groupAnnotation,
+    Group,
+    groupAnnotation,
     indexAccess,
     InlineRuntimeType,
     isSameType,
     metaAnnotation,
     ReflectionKind,
     ResetDecorator,
+    resolveTypeMembers,
     stringifyResolvedType,
     stringifyType,
     Type,
     TypeClass,
     TypeObjectLiteral,
     TypeProperty,
-    UUID, validationAnnotation
+    UUID,
+    validationAnnotation
 } from '../src/reflection/type';
 import { isExtendable } from '../src/reflection/extends';
 import { expectEqualType } from './utils';
@@ -1217,6 +1221,37 @@ test('keep last type name', () => {
         expect(type2.originTypes![0].typeName).toBe('Pick');
         expect(type2.originTypes![0].typeArguments![0].typeName).toBe('User');
     }
+});
+
+test('ignore constructor in mapped type', () => {
+    class MyModel {
+        foo(): string {return '';}
+        constructor(public id: number) {
+        }
+    }
+    type SORT_ORDER = 'asc' | 'desc' | any;
+    type Sort<T, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
+
+    type t = Sort<MyModel>;
+
+    const type = typeOf<t>();
+    assertType(type, ReflectionKind.objectLiteral);
+    const members = resolveTypeMembers(type);
+    expect(members.map(v => v.kind === ReflectionKind.propertySignature ? v.name : 'unknown')).toEqual(['foo', 'id']);
+});
+
+test('ignore constructor in keyof', () => {
+    class MyModel {
+        foo(): string {return '';}
+        constructor(public id: number) {
+        }
+    }
+
+    type t = keyof MyModel;
+
+    const type = typeOf<t>();
+    assertType(type, ReflectionKind.union);
+    expect(type.types.map(v => v.kind === ReflectionKind.literal ? v.literal : 'unknown')).toEqual(['foo', 'id']);
 });
 
 class User {

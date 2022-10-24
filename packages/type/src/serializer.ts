@@ -1426,7 +1426,7 @@ function typeGuardTuple(type: TypeTuple, state: TemplateState) {
     state.setContext({ isArray: isArray });
     state.addCodeForSetter(`
         if (isArray(${state.accessor})) {
-            let ${v} = true; isArray(${state.accessor});
+            let ${v} = true;
             let ${i} = 0;
             ${lines.join('\n')}
             ${state.setter} = ${v};

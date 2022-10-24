@@ -857,7 +857,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     // that's probably a bit unstable.
                     const specifier = this.f.createImportSpecifier(false, imp.identifier, imp.identifier);
                     const namedImports = this.f.createNamedImports([specifier]);
-                    const importStatement = this.f.createImportDeclaration(undefined, undefined,
+                    const importStatement = this.f.createImportDeclaration(undefined,
                         this.f.createImportClause(false, undefined, namedImports), imp.from
                     );
                     embedTopExpression.push(importStatement);
@@ -1013,7 +1013,7 @@ export class ReflectionTransformer implements CustomTransformer {
             //propertyName in ExportSpecifier is set to avoid a TS compile error:
             // TypeError: Cannot read properties of undefined (reading 'escapedText')
             //   at Object.idText (/Users/marc/bude/deepkit-framework/packages/benchmark/node_modules/typescript/lib/typescript.js:11875:67)
-            const exportNode = this.f.createExportDeclaration(undefined, undefined, false, this.f.createNamedExports([
+            const exportNode = this.f.createExportDeclaration(undefined, false, this.f.createNamedExports([
                 this.f.createExportSpecifier(false, this.getDeclarationVariableName(name), this.getDeclarationVariableName(name))
             ]));
             return [variable, exportNode];
@@ -2281,7 +2281,7 @@ export class ReflectionTransformer implements CustomTransformer {
             return node;
         }
         const type = this.getTypeOfType(node);
-        const __type = this.f.createPropertyDeclaration(undefined, this.f.createModifiersFromModifierFlags(ModifierFlags.Static), '__type', undefined, undefined, type);
+        const __type = this.f.createPropertyDeclaration(this.f.createModifiersFromModifierFlags(ModifierFlags.Static), '__type', undefined, undefined, type);
         if (isClassDeclaration(node)) {
             // return node;
             return this.f.updateClassDeclaration(node, node.modifiers,
@@ -2325,7 +2325,7 @@ export class ReflectionTransformer implements CustomTransformer {
             //since a new default export is created, we do not need ExportKey&DefaultKeyword on the function anymore,
             //but it should preserve all others like Async.
             const modifier = declaration.modifiers ? declaration.modifiers.filter(v => v.kind !== SyntaxKind.ExportKeyword && v.kind !== SyntaxKind.DefaultKeyword) : [];
-            return this.f.createExportAssignment(undefined, undefined, undefined, this.wrapWithAssignType(
+            return this.f.createExportAssignment(undefined, undefined, this.wrapWithAssignType(
                 this.f.createFunctionExpression(modifier, declaration.asteriskToken, declaration.name, declaration.typeParameters, declaration.parameters, declaration.type, declaration.body),
                 encodedType
             ));
