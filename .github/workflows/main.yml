@@ -229,12 +229,19 @@ jobs:
       matrix:
         node-version: [ 14.x ]
         mongo-version: [ 4.0 ]
-#    services:
-#      mongo:
-#        image: "mongo:${{ matrix.mongo-version }}"
-#        command: --replSet rs0
-#        ports:
-#          - "27017:27017"
+    services:
+      # this is used for the simple-auth test
+      mongo:
+        image: mongo:5.0.10
+        restart: always
+        ports:
+          - 27018:27017
+        environment:
+          MONGO_INITDB_ROOT_USERNAME: root
+          MONGO_INITDB_ROOT_PASSWORD: root
+          MONGO_INITDB_DATABASE: root-db
+        volumes:
+          - ./packages/mongo/tests/docker/simple-auth/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     steps:
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.7.0
