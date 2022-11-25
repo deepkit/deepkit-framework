@@ -24,7 +24,7 @@ import { MongoDatabaseAdapter } from './adapter';
 import { empty } from '@deepkit/core';
 import { mongoSerializer } from './mongo-serializer';
 
-export function getMongoFilter<T>(classSchema: ReflectionClass<T>, model: MongoQueryModel<T>): any {
+export function getMongoFilter<T extends OrmEntity>(classSchema: ReflectionClass<T>, model: MongoQueryModel<T>): any {
     return convertClassQueryToMongo(classSchema, (model.filter || {}) as FilterQuery<T>, {}, {
         $parameter: (name, value) => {
             if (undefined === model.parameters[value]) {
@@ -324,7 +324,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
 
     protected buildAggregationPipeline(model: MongoQueryModel<T>) {
         const joinRefs: string[] = [];
-        const handleJoins = <T>(pipeline: any[], query: MongoQueryModel<T>, schema: ReflectionClass<any>) => {
+        const handleJoins = <T extends OrmEntity>(pipeline: any[], query: MongoQueryModel<T>, schema: ReflectionClass<any>) => {
             for (const join of query.joins) {
                 //refs are deserialized as `any` and then further deserialized using the default serializer
                 join.as = '__ref_' + join.propertySchema.name;
@@ -550,7 +550,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
         );
     }
 
-    protected getSortFromModel<T>(modelSort?: DEEP_SORT<T>) {
+    protected getSortFromModel<T extends OrmEntity>(modelSort?: DEEP_SORT<T>) {
         const sort: { [name: string]: -1 | 1 | { $meta: 'textScore' } } = {};
         if (modelSort) {
             for (const [i, v] of Object.entries(modelSort)) {

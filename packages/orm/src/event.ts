@@ -16,6 +16,7 @@ import type { DatabasePersistenceChangeSet } from './database-adapter';
 import type { DatabaseSession } from './database-session';
 import type { Query } from './query';
 import type { DeleteResult, PatchResult } from './type';
+import { OrmEntity } from './type';
 
 export class DatabaseEvent extends BaseEvent {
     stopped = false;
@@ -74,7 +75,7 @@ export class UnitOfWorkUpdateEvent<T extends object> extends DatabaseEvent {
     }
 }
 
-export class QueryDatabaseEvent<T> extends DatabaseEvent {
+export class QueryDatabaseEvent<T extends OrmEntity> extends DatabaseEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
@@ -83,12 +84,12 @@ export class QueryDatabaseEvent<T> extends DatabaseEvent {
         super();
     }
 
-    isSchemaOf<T>(classType: ClassType<T>): this is QueryDatabaseDeleteEvent<T> {
+    isSchemaOf<T extends OrmEntity>(classType: ClassType<T>): this is QueryDatabaseDeleteEvent<T> {
         return this.classSchema.isSchemaOf(classType);
     }
 }
 
-export class QueryDatabaseDeleteEvent<T> extends DatabaseEvent {
+export class QueryDatabaseDeleteEvent<T extends OrmEntity> extends DatabaseEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
@@ -98,7 +99,7 @@ export class QueryDatabaseDeleteEvent<T> extends DatabaseEvent {
         super();
     }
 
-    isSchemaOf<T>(classType: ClassType<T>): this is QueryDatabaseDeleteEvent<T> {
+    isSchemaOf<T extends OrmEntity>(classType: ClassType<T>): this is QueryDatabaseDeleteEvent<T> {
         return this.classSchema.isSchemaOf(classType);
     }
 }

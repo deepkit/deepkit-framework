@@ -142,11 +142,11 @@ class InstanceState<T extends OrmEntity> {
 
 const instanceStateSymbol = Symbol('state');
 
-export function getInstanceStateFromItem<T>(item: T): InstanceState<T> {
+export function getInstanceStateFromItem<T extends OrmEntity>(item: T): InstanceState<T> {
     return getInstanceState(getClassState(ReflectionClass.from(getClassTypeFromInstance(item))), item);
 }
 
-export function getInstanceState<T>(classState: ClassState<T>, item: T): InstanceState<T> {
+export function getInstanceState<T extends OrmEntity>(classState: ClassState<T>, item: T): InstanceState<T> {
     //this approach is up to 60-90x faster than a WeakMap
     if (!(item as any)['constructor'].prototype.hasOwnProperty(instanceStateSymbol)) {
         Object.defineProperty((item as any)['constructor'].prototype, instanceStateSymbol, {
@@ -211,7 +211,7 @@ export class IdentityMap {
         this.registry.clear();
     }
 
-    isKnown<T>(item: T): boolean {
+    isKnown<T extends OrmEntity>(item: T): boolean {
         const classSchema = ReflectionClass.from(getClassTypeFromInstance(item));
         const store = this.getStore(classSchema);
         const state = getClassState(classSchema);

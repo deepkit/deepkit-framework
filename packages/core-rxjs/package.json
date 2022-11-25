@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.75",
-    "rxjs": "~6.6.0"
+    "rxjs": "~7.5.0"
   },
   "jest": {
     "transform": {

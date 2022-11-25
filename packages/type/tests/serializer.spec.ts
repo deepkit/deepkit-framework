@@ -29,7 +29,7 @@ import {
 } from '../src/reflection/type';
 import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializer } from '../src/serializer';
 import { cast, deserialize, serialize } from '../src/serializer-facade';
-import { getClassName } from '@deepkit/core';
+import { getClassName, getClassTypeFromInstance } from '@deepkit/core';
 import { entity, t } from '../src/decorator';
 import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator';
 import { StatEnginePowerUnit, StatWeightUnit } from './types';
@@ -347,6 +347,7 @@ test('union string date', () => {
     expect(cast<string | Date>('2021-11-24T16:21:13.425Z')).toBeInstanceOf(Date);
     expect(cast<string | Date>(1637781902866)).toBeInstanceOf(Date);
     expect(cast<string | Date>('1637781902866')).toBe('1637781902866');
+    expect(cast<(string | Date)[]>(['2021-11-24T16:21:13.425Z'])[0]).toBeInstanceOf(Date);
 });
 
 test('union string bigint', () => {

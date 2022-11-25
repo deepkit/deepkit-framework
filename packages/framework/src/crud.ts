@@ -268,7 +268,7 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
     return RestController;
 }
 
-export class CrudAppModule<T> extends AppModule<T> {
+export class CrudAppModule<T extends {}> extends AppModule<T> {
 }
 
 /**

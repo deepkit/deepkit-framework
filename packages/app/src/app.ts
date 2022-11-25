@@ -9,15 +9,15 @@
  */
 
 import { ClassType, ExtractClassType, getCurrentFileName, isFunction, isObject, setPathValue } from '@deepkit/core';
-import { ConfigLoader, ServiceContainer } from './service-container';
+import { ConfigLoader, ServiceContainer } from './service-container.js';
 import { InjectorContext, ResolveToken, Token } from '@deepkit/injector';
-import { AppModule, RootModuleDefinition } from './module';
+import { AppModule, RootModuleDefinition } from './module.js';
 import { Command, Config, Options } from '@oclif/config';
 import { basename, dirname, relative } from 'path';
 import { Main } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
-import { buildOclifCommand } from './command';
-import { EnvConfiguration } from './configuration';
+import { buildOclifCommand } from './oclif.js';
+import { EnvConfiguration } from './configuration.js';
 import { EventDispatcher, EventListener, EventListenerCallback, EventOfEventToken, EventToken } from '@deepkit/event';
 import { ReceiveType, ReflectionClass, ReflectionKind } from '@deepkit/type';
 

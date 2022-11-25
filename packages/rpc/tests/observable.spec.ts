@@ -76,7 +76,7 @@ test('observable basics', async () => {
         expect(o).toBeInstanceOf(Observable);
         const model = await o.toPromise();
         expect(model).toBeInstanceOf(MyModel);
-        expect(model.name).toBe('Peter');
+        expect(model?.name).toBe('Peter');
     }
 
     {

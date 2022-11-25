@@ -141,7 +141,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         const self = this;
 
         //we cannot use arrow functions, since they can't have ReceiveType<T>
-        function query<T>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
+        function query<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
             const session = self.createSession();
             session.withIdentityMap = false;
             return session.query(type);

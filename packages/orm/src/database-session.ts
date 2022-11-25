@@ -312,10 +312,8 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
     ) {
         const queryFactory = this.adapter.queryFactory(this);
 
-        const self = this;
-
         //we cannot use arrow functions, since they can't have ReceiveType<T>
-        function query<T>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
+        function query<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
             return queryFactory.createQuery(type);
         };
         this.query = query as any;

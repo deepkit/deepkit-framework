@@ -10,15 +10,17 @@
 
 import {
     ArrowFunction,
+    BigIntLiteral,
     BinaryExpression,
     ComputedPropertyName,
     EntityName,
     Expression,
-    Identifier, ImportDeclaration,
-    ImportSpecifier,
+    Identifier,
+    ImportDeclaration,
     isArrowFunction,
     isComputedPropertyName,
-    isIdentifier, isNamedImports,
+    isIdentifier,
+    isNamedImports,
     isNumericLiteral,
     isPrivateIdentifier,
     isStringLiteral,
@@ -33,13 +35,14 @@ import {
     PrivateIdentifier,
     PropertyAccessExpression,
     QualifiedName,
+    setOriginalNode,
     StringLiteral,
     StringLiteralLike,
     SymbolTable,
     SyntaxKind,
     unescapeLeadingUnderscores
 } from 'typescript';
-import { cloneNode as tsNodeClone, CloneNodeHook } from 'ts-clone-node';
+import { cloneNode as tsNodeClone, CloneNodeHook } from '@marcj/ts-clone-node';
 import { SourceFile } from './ts-types';
 
 export type PackExpression = Expression | string | number | boolean | bigint;
@@ -105,7 +108,7 @@ export function hasModifier(node: { modifiers?: NodeArray<ModifierLike> }, modif
 
 const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNodeHook<T> | undefined => {
     if (isIdentifier(node)) {
-        //ts-clone-node wants to read `node.text` which does not exist. we hook into into an provide the correct value.
+        //ts-clone-node wants to read `node.text` which does not exist. we hook into it and provide the correct value.
         return {
             text: () => {
                 return getIdentifierName(node);
@@ -119,44 +122,47 @@ export class NodeConverter {
     constructor(protected f: NodeFactory) {
     }
 
-    clone<T extends Node>(node?: T): T {
+    toExpression<T extends PackExpression | PackExpression[]>(node?: T): Expression {
+        if (node === undefined) return this.f.createIdentifier('undefined');
+
+        if (Array.isArray(node)) {
+            return this.f.createArrayLiteralExpression(this.f.createNodeArray(node.map(v => this.toExpression(v))) as NodeArray<Expression>);
+        }
+
+        if ('string' === typeof node) return this.f.createStringLiteral(node, true);
+        if ('number' === typeof node) return this.f.createNumericLiteral(node);
+        if ('bigint' === typeof node) return this.f.createBigIntLiteral(String(node));
+        if ('boolean' === typeof node) return node ? this.f.createTrue() : this.f.createFalse();
+
+        if (node.pos === -1 && node.end === -1 && node.parent === undefined) {
+            if (isArrowFunction(node)) {
+                if (node.body.pos === -1 && node.body.end === -1 && node.body.parent === undefined) return node;
+                return this.f.createArrowFunction(node.modifiers, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, this.toExpression(node.body as Expression));
+            }
+            return node;
+        }
+        switch (node.kind) {
+            case SyntaxKind.Identifier:
+                return finish(node, this.f.createIdentifier(getIdentifierName(node as Identifier)));
+            case SyntaxKind.StringLiteral:
+                return finish(node, this.f.createStringLiteral((node as StringLiteral).text));
+            case SyntaxKind.NumericLiteral:
+                return finish(node, this.f.createNumericLiteral((node as NumericLiteral).text));
+            case SyntaxKind.BigIntLiteral:
+                return finish(node, this.f.createBigIntLiteral((node as BigIntLiteral).text));
+            case SyntaxKind.TrueKeyword:
+                return finish(node, this.f.createTrue());
+            case SyntaxKind.FalseKeyword:
+                return finish(node, this.f.createFalse());
+        }
+
+        //todo: ts-node-clone broke with ts 4.8,
+        // => TypeError: Cannot read properties of undefined (reading 'emitNode')
+        // which is probably due a broken node clone. We need to figure out which node it is
+        // and see what the issue is. since ts-node-clone is not really maintained anymore,
+        // we need to fork it
         try {
             return tsNodeClone(node, {
-                preserveComments: false,
-                factory: this.f,
-                setOriginalNodes: false,
-                preserveSymbols: false,
-                setParents: false,
-                hook: cloneHook
-            }) as any;
-        } catch (error) {
-            console.log('node', node);
-            throw error;
-        }
-    }
-
-    toExpression<T extends PackExpression | PackExpression[]>(value?: T): Expression {
-        if (value === undefined) return this.f.createIdentifier('undefined');
-
-        if (Array.isArray(value)) {
-            return this.f.createArrayLiteralExpression(this.f.createNodeArray(value.map(v => this.toExpression(v))) as NodeArray<Expression>);
-        }
-
-        if ('string' === typeof value) return this.f.createStringLiteral(value, true);
-        if ('number' === typeof value) return this.f.createNumericLiteral(value);
-        if ('bigint' === typeof value) return this.f.createBigIntLiteral(String(value));
-        if ('boolean' === typeof value) return value ? this.f.createTrue() : this.f.createFalse();
-
-        if (value.pos === -1 && value.end === -1 && value.parent === undefined) {
-            if (isArrowFunction(value)) {
-                if (value.body.pos === -1 && value.body.end === -1 && value.body.parent === undefined) return value;
-                return this.f.createArrowFunction(value.modifiers, value.typeParameters, value.parameters, value.type, value.equalsGreaterThanToken, this.toExpression(value.body as Expression));
-            }
-            return value;
-        }
-
-        try {
-            return tsNodeClone(value, {
                 preserveComments: false,
                 factory: this.f,
                 setOriginalNodes: true,
@@ -165,9 +171,10 @@ export class NodeConverter {
                 hook: cloneHook
             }) as Expression;
         } catch (error) {
-            console.log('value', value);
+            console.error('could not clone node', node);
             throw error;
         }
+
     }
 }
 
@@ -218,17 +225,11 @@ export function ensureImportIsEmitted(importDeclaration: ImportDeclaration, spec
 export function serializeEntityNameAsExpression(f: NodeFactory, node: EntityName): SerializedEntityNameAsExpression {
     switch (node.kind) {
         case SyntaxKind.Identifier:
-            return tsNodeClone(node, {
-                factory: f,
-                preserveComments: false,
-                setOriginalNodes: true,
-                preserveSymbols: true,
-                setParents: true,
-                hook: cloneHook
-            });
+            return finish(node, f.createIdentifier(getIdentifierName(node)));
         case SyntaxKind.QualifiedName:
-            return serializeQualifiedNameAsExpression(f, node);
+            return finish(node, serializeQualifiedNameAsExpression(f, node));
     }
+    return node;
 }
 
 type SerializedEntityNameAsExpression = Identifier | BinaryExpression | PropertyAccessExpression;
@@ -243,3 +244,23 @@ type SerializedEntityNameAsExpression = Identifier | BinaryExpression | Property
 function serializeQualifiedNameAsExpression(f: NodeFactory, node: QualifiedName): SerializedEntityNameAsExpression {
     return f.createPropertyAccessExpression(serializeEntityNameAsExpression(f, node.left), node.right);
 }
+
+export type MetaNode = Node & {
+    jsDoc?: JSDoc[];
+    _original?: MetaNode;
+    original?: MetaNode;
+    _symbol?: Symbol;
+    symbol?: Symbol;
+    _parent?: MetaNode;
+    localSymbol?: Symbol;
+};
+
+function finish<T extends MetaNode>(oldNode: MetaNode, newNode: T): T {
+    setOriginalNode(newNode, oldNode);
+    newNode._original = newNode.original;
+
+    newNode._symbol = oldNode._symbol ?? oldNode.symbol;
+    newNode.symbol = newNode._symbol;
+    return newNode;
+}
+

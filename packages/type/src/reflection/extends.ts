@@ -15,6 +15,7 @@ import {
     indexAccess,
     isMember,
     isOptional,
+    isPrimitive,
     isType,
     isTypeIncluded,
     ReflectionKind,
@@ -118,6 +119,14 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
         if (left.kind === ReflectionKind.bigint && right.kind === ReflectionKind.bigint) return true;
         if (left.kind === ReflectionKind.symbol && right.kind === ReflectionKind.symbol) return true;
         if (left.kind === ReflectionKind.regexp && right.kind === ReflectionKind.regexp) return true;
+
+        if (right.kind === ReflectionKind.objectLiteral) {
+            if (left.kind === ReflectionKind.null || left.kind === ReflectionKind.undefined) return false;
+            if (right.types.length === 0) {
+                //string extends {}, number extends {} are all valid
+                return left.kind === ReflectionKind.templateLiteral || isPrimitive(left);
+            }
+        }
 
         if (left.kind === ReflectionKind.enum) {
             if (right.kind === ReflectionKind.enum) {

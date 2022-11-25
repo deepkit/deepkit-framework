@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BehaviorSubject, isObservable, Observable, Subject, Subscriber, Subscription, TeardownLogic } from 'rxjs';
+import { BehaviorSubject, isObservable, Observable, Observer, Subject, Subscriber, Subscription, TeardownLogic } from 'rxjs';
 import { arrayRemoveItem, createStack, isFunction, mergePromiseStack, mergeStack } from '@deepkit/core';
 import { first, skip } from 'rxjs/operators';
 
@@ -25,6 +25,22 @@ export class AsyncSubscription {
 
         await this.cb();
     }
+}
+
+export function watchClosed(observer: Observer<any>): { closed: boolean } {
+    const obj = { closed: false };
+    const oriError = observer.error;
+    const oriComplete = observer.complete;
+    observer.error = (err) => {
+        obj.closed = true;
+        oriError.call(observer, err);
+    };
+    observer.complete = () => {
+        obj.closed = true;
+        oriComplete.call(observer);
+    };
+
+    return obj;
 }
 
 export function isSubject(v: any): v is Subject<any> {
@@ -64,7 +80,7 @@ export class Subscriptions {
     }
 
     public unsubscribe() {
-        //it's important to work on a array copy, since unsubscribe() modifies directly this.list
+        //it's important to work on an array copy, since unsubscribe() modifies directly this.list
         for (const sub of this.list.slice(0)) {
             sub.unsubscribe();
         }
@@ -79,19 +95,18 @@ export class Subscriptions {
 
 export function subscriptionToPromise<T>(subscription: Subscription): Promise<void> {
     return new Promise((resolve) => {
-        const sub = subscription.add(() => {
+        subscription.add(() => {
             resolve();
-            sub.unsubscribe();
         });
     });
 }
 
 export function nextValue<T>(o: Observable<T>): Promise<T> {
     if (isFunction((o as any).getValue)) { //BehaviorSubject
-        return o.pipe(skip(1)).pipe(first()).toPromise();
+        return o.pipe(skip(1)).pipe(first()).toPromise() as Promise<T>;
     }
 
-    return o.pipe(first()).toPromise();
+    return o.pipe(first()).toPromise() as Promise<T>;
 }
 
 export function observableToPromise<T>(o: Observable<T>, next?: (data: T) => void): Promise<T> {

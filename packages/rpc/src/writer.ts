@@ -35,7 +35,8 @@ export class SingleProgress extends Subject<SingleProgress> {
      * Acts like a BehaviorSubject.
      */
     _subscribe(subscriber: Subscriber<SingleProgress>): Subscription {
-        const subscription = super._subscribe(subscriber);
+        //Subject does not expose protected _subscribe anymore, so we have to use prototype directly
+        const subscription = (Subject as any).prototype._subscribe.apply(this, [subscriber]);
         if (subscription && !(<SubscriptionLike>subscription).closed) {
             subscriber.next(this);
         }

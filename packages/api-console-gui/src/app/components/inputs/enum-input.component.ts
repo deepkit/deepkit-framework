@@ -1,5 +1,6 @@
 import { AfterViewInit, Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
 import { SelectboxComponent, unsubscribe } from '@deepkit/desktop-ui';
+import * as bla from '@deepkit/desktop-ui';
 import { TypeEnum } from '@deepkit/type';
 import { Subscription } from 'rxjs';
 import { DataStructure } from '../../store';

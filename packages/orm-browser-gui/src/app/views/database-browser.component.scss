@@ -42,7 +42,7 @@ dui-table {
 .executing-progress {
     position: absolute;
     right: 5px;
-    top: calc(50% - 7 / 2);
+    top: calc(50% - 7px / 2);
     opacity: 0;
     transition: opacity 0.5s ease-in;
 

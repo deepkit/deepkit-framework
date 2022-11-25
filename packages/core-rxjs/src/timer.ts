@@ -10,19 +10,22 @@
 
 import { Timer } from '@deepkit/core';
 import { Observer } from 'rxjs';
+import { watchClosed } from './utils.js';
 
 /**
- * Allows to create Timer which get deactivated automatically
+ * Allows to create Timer which is deactivated automatically
  * when the observer is stopped.
  */
 export class ObserverTimer extends Timer {
+    protected state = watchClosed(this.observer);
+
     constructor(protected observer: Observer<any>) {
         super();
     }
 
     setTimeout(cb: () => void, timeout: number): any {
         super.setTimeout(() => {
-            if (!this.observer.closed) {
+            if (!this.state.closed) {
                 cb();
             }
         }, timeout);

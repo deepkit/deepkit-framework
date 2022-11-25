@@ -666,7 +666,7 @@ export class SQLPersistence extends DatabasePersistence {
         if (!this.connection) {
             this.connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
         }
-        return this.connection;
+        return this.connection as any;
     }
 
     release() {

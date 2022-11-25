@@ -44,6 +44,19 @@ test('Omit', () => {
     equalType<Omit<{ a: string, b: number, c: boolean }, 'a'>, { b: number, c: boolean }>();
 });
 
+test('intersection object', () => {
+    type a1 = string & {}
+    type a2 = null & {}
+    type a3 = undefined & {}
+    type a4 = (string | undefined) & {}
+    type a5 = (number | 'abc' | undefined) & {}
+    equalType<a1, string>();
+    equalType<a2, never>();
+    equalType<a3, never>();
+    equalType<a4, string>();
+    equalType<a5, number | 'abc'>();
+});
+
 test('NonNullable', () => {
     type t = NonNullable<'a' | null | string | undefined>;
     equalType<t, 'a' | string>();

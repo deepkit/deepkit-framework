@@ -19,7 +19,7 @@
     background-repeat: no-repeat;
     width: 32px;
     height: 32px;
-    transform: scale((1/32*26));
+    transform: scale(calc(1/32*26));
 }
 
 .emoji {

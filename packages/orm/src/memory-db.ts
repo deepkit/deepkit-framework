@@ -68,7 +68,7 @@ function sort(items: any[], field: string, sortFn: typeof sortAsc | typeof sortA
     });
 }
 
-export class MemoryQuery<T> extends Query<T> {
+export class MemoryQuery<T extends OrmEntity> extends Query<T> {
     protected isMemory = true;
 
     isMemoryDb() {
@@ -76,7 +76,7 @@ export class MemoryQuery<T> extends Query<T> {
     }
 }
 
-const find = <T>(adapter: MemoryDatabaseAdapter, classSchema: ReflectionClass<any>, model: DatabaseQueryModel<T>): T[] => {
+const find = <T extends OrmEntity>(adapter: MemoryDatabaseAdapter, classSchema: ReflectionClass<any>, model: DatabaseQueryModel<T>): T[] => {
     const rawItems = [...adapter.getStore(classSchema).items.values()];
     const serializer = getSerializeFunction(classSchema.type, memorySerializer.deserializeRegistry);
     const items = rawItems.map(v => serializer(v));

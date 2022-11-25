@@ -529,7 +529,7 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
     }
 }
 
-export class MySQLDatabaseQuery<T> extends SQLDatabaseQuery<T> {
+export class MySQLDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQuery<T> {
 }
 
 export class MySQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {

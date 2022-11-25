@@ -4,9 +4,10 @@
   "version": "1.0.1-alpha.0",
   "description": "",
   "scripts": {
-    "app": "NODE_OPTIONS=--preserve-symlinks ts-node app",
-    "start": "NODE_OPTIONS=--preserve-symlinks ts-node app server:start",
-    "start:prod": "NODE_OPTIONS=--preserve-symlinks APP_ENVIRONMENT=production ts-node app server:start",
+    "app": "node -r ts-node/register --preserve-symlinks --watch app.ts",
+    "start": "node -r ts-node/register --preserve-symlinks --watch app.ts server:start",
+    "watch": "node -r ts-node/register --preserve-symlinks --watch app.ts server:start",
+    "start:prod": "APP_ENVIRONMENT=production node -r ts-node/register --preserve-symlinks --watch app.ts server:start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
@@ -33,7 +34,8 @@
     "@deepkit/workflow": "^1.0.1-alpha.0",
     "compression": "^1.7.4",
     "deepkit-openapi": "^0.0.6",
-    "rxjs": "~6.6.0",
+    "rxjs": "~7.5.0",
+    "send": "^0.18.0",
     "segfault-handler": "^1.3.0"
   },
   "keywords": [],

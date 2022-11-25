@@ -11,7 +11,7 @@
 import { SQLQueryModel } from './sql-adapter';
 import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform';
 import { getPrimaryKeyHashGenerator, ReflectionClass, ReflectionProperty } from '@deepkit/type';
-import { DatabaseJoinModel, DatabaseQueryModel } from '@deepkit/orm';
+import { DatabaseJoinModel, DatabaseQueryModel, OrmEntity } from '@deepkit/orm';
 import { getSqlFilter } from './filter';
 
 type ConvertDataToDict = (row: any) => { hash: string, item: { [name: string]: any } } | undefined;
@@ -248,7 +248,7 @@ export class SqlBuilder {
         return new Function('pkHasher', code)(pkHasher) as ConvertDataToDict;
     }
 
-    protected appendJoinSQL<T>(sql: Sql, model: SQLQueryModel<T>, parentName: string, prefix: string = ''): void {
+    protected appendJoinSQL<T extends OrmEntity>(sql: Sql, model: SQLQueryModel<T>, parentName: string, prefix: string = ''): void {
         if (!model.joins.length) return;
 
         for (const join of model.joins) {
@@ -313,7 +313,7 @@ export class SqlBuilder {
         }
     }
 
-    public build<T>(schema: ReflectionClass<any>, model: SQLQueryModel<T>, head: string): Sql {
+    public build<T extends OrmEntity>(schema: ReflectionClass<any>, model: SQLQueryModel<T>, head: string): Sql {
         const tableName = this.platform.getTableIdentifier(schema);
 
         const sql = new Sql(`${head} FROM`, this.params);
@@ -358,7 +358,7 @@ export class SqlBuilder {
         return sql;
     }
 
-    public update<T>(schema: ReflectionClass<any>, model: SQLQueryModel<T>, set: string[]): Sql {
+    public update<T extends OrmEntity>(schema: ReflectionClass<any>, model: SQLQueryModel<T>, set: string[]): Sql {
         const tableName = this.platform.getTableIdentifier(schema);
         const primaryKey = schema.getPrimary();
         const select = this.select(schema, model, { select: [`${tableName}.${primaryKey.name}`] });

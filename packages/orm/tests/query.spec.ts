@@ -4,6 +4,7 @@ import { assert, IsExact } from 'conditional-type-checks';
 import { Database } from '../src/database';
 import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db';
 import { Query } from '../src/query';
+import { OrmEntity } from '../src/type.js';
 
 test('query select', async () => {
     class s {
@@ -65,7 +66,7 @@ test('query filter', async () => {
         expect(results).toHaveLength(3);
         expect(results).toMatchObject([{ id: 1 }, { id: 2 }, { id: 3 }]);
     }
-    
+
 });
 
 test('query lift', async () => {
@@ -81,7 +82,7 @@ test('query lift', async () => {
     await database.persist(deserialize<s>({ id: 0, username: 'foo' }));
     await database.persist(deserialize<s>({ id: 1, username: 'bar', openBillings: 5 }));
 
-    class MyBase<T> extends Query<T> {
+    class MyBase<T extends OrmEntity> extends Query<T> {
         protected world = 'world';
 
         hello() {
@@ -107,7 +108,7 @@ test('query lift', async () => {
         }
     }
 
-    class OverwriteHello<T> extends Query<T> {
+    class OverwriteHello<T extends OrmEntity> extends Query<T> {
         hello() {
             return 'nope';
         }

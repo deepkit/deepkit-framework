@@ -31,6 +31,7 @@ import { DatabaseQueryModel } from './query';
 import { capitalize, ClassType } from '@deepkit/core';
 import { ClassState, getClassState, getInstanceState, IdentityMap, PKHash } from './identity-map';
 import { getReference } from './reference';
+import { OrmEntity } from './type.js';
 
 export type HydratorFn = (item: any) => Promise<void>;
 
@@ -76,7 +77,7 @@ export class Formatter {
         return this.instancePools.get(classType)!;
     }
 
-    public hydrate<T>(model: DatabaseQueryModel<T, any, any>, dbRecord: DBRecord): any {
+    public hydrate<T extends OrmEntity>(model: DatabaseQueryModel<T, any, any>, dbRecord: DBRecord): any {
         return this.hydrateModel(model, this.rootClassSchema, dbRecord);
     }
 

@@ -289,7 +289,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
 
         try {
             const jsonItem = await this.controllerClient.browser.create(this.database.name, this.entity.getName());
-            const item = deserialize(jsonItem, undefined, undefined, undefined, this.entity.type);
+            const item: any = deserialize(jsonItem, undefined, undefined, undefined, this.entity.type);
             const state = getInstanceStateFromItem(item);
             state.markAsPersisted();
             state.markAsFromDatabase();

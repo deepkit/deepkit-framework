@@ -1335,6 +1335,8 @@ test('type decorator with union', () => {
 
 test('simple brands', () => {
     type Username = string & { __brand: 'username' };
+    const type = typeOf<Username>();
+    assertType(type, ReflectionKind.string);
 
     class User {
         username: Username = '' as Username;
@@ -1634,7 +1636,7 @@ test('set constructor parameter manually', () => {
         expect(reflection.getMethods().length).toBe(1);
         expect(reflection.getProperties().length).toBe(1);
         expect(reflection.getMethod('constructor')!.getParameters().length).toBe(1);
-        //if this fails, ClassType can probably not be resolved
+        //if this fails, ClassType can probably not be resolved, which means @deepkit/core wasn't built correctly
         expect(reflection.getMethod('constructor')!.getParameter('response')!.getType().kind).toBe(ReflectionKind.class);
         expect(reflection.getMethods()[0].getName()).toBe('constructor');
         const responseType = reflection.getProperty('response')!.getType();

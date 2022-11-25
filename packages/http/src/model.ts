@@ -114,8 +114,7 @@ export class RequestBuilder {
 
         const writable = new Writable({
             write(chunk, encoding, callback) {
-                -
-                    callback();
+                callback();
             },
             writev(chunks, callback) {
                 callback();
@@ -128,15 +127,13 @@ export class RequestBuilder {
 
             headers = headers;
 
-            done = false;
-
             _read(size: number) {
-                if (!this.done) {
+                if (this.complete) {
+                    this.push(null);
+                } else {
+                    //in Node 18 this seems to be necessary to not trigger the abort event
+                    this.complete = true;
                     this.push(bodyContent);
-                    process.nextTick(() => {
-                        this.emit('end');
-                    });
-                    this.done = true;
                 }
             }
         })(writable as any);

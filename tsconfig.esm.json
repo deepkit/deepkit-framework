@@ -81,6 +81,9 @@
     },
     {
       "path": "packages/angular-universal/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/orm-browser-api/tsconfig.esm.json"
     }
   ]
 }

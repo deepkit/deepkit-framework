@@ -16,9 +16,9 @@
     "@deepkit/type": "^1.0.1-alpha.13",
     "@deepkit/desktop-ui": "^1.0.1-alpha.48",
     "@deepkit/rpc": "^1.0.1-alpha.57",
-    "@angular/core": "~12.2.0",
-    "@angular/common": "~12.2.0",
-    "rxjs": "~6.6.0"
+    "@angular/core": "~15.0.0",
+    "@angular/common": "~15.0.0",
+    "rxjs": "~7.5.0"
   },
   "dependencies": {
     "prismjs": "^1.24.1"
@@ -28,9 +28,9 @@
     "@deepkit/type": "^1.0.1-alpha.52",
     "@deepkit/desktop-ui": "^1.0.1-alpha.48",
     "@deepkit/rpc": "^1.0.1-alpha.57",
-    "@angular/core": "~12.2.0",
-    "@angular/common": "~12.2.0",
-    "rxjs": "~6.6.0"
+    "@angular/core": "~15.0.0",
+    "@angular/common": "~15.0.0",
+    "rxjs": "~7.5.0"
   },
   "jest": {
     "transform": {

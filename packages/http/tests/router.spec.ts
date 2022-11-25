@@ -7,7 +7,6 @@ import { HttpBody, HttpBodyValidation, HttpQueries, HttpQuery, HttpRegExp, HttpR
 import { getClassName, isObject, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils';
 import { Group, MinLength, PrimaryKey, Reference } from '@deepkit/type';
-import { Readable } from 'stream';
 
 test('router', async () => {
     class Controller {

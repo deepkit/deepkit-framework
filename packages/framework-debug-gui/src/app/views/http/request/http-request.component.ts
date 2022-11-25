@@ -70,15 +70,15 @@ import { DebugRequest, Workflow } from '@deepkit/framework-debug-api';
         </ng-container>
     `,
     styles: [`
-        app-workflow >>> .node.invalid {
+        :host::ng-deep .node.invalid {
             color: var(--text-light);
         }
 
-        app-workflow >>> .node.valid {
+        :host::ng-deep .node.valid {
             border: 0;
         }
 
-        app-workflow >>> .node.valid::after {
+        :host::ng-deep .node.valid::after {
             content: '';
             position: absolute;
             left: 0;

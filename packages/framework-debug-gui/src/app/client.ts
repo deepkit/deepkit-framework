@@ -39,7 +39,7 @@ export class ControllerClient {
     }
 
     public getWorkflow(name: string): Promise<Workflow> {
-        if (this.workflows[name]) return this.workflows[name];
+        if (this.workflows[name] != undefined) return this.workflows[name];
         return this.workflows[name] = this.debug.getWorkflow(name);
     }
 

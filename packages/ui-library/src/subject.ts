@@ -22,7 +22,7 @@ export class LiveSubject<T> extends Subject<T> {
 
     get valueArrival(): Promise<T> {
         if (this.value) return Promise.resolve(this.value);
-        return this.pipe(first()).toPromise();
+        return this.pipe(first()).toPromise() as any;
     }
 
     /**
@@ -33,8 +33,9 @@ export class LiveSubject<T> extends Subject<T> {
         this.loader(this);
     }
 
-    _subscribe(subscriber: Subscriber<T>): Subscription {
-        const subscription = super._subscribe(subscriber);
+    protected _subscribe(subscriber: Subscriber<T>): Subscription {
+        //Subject does not expose protected _subscribe anymore, so we have to use prototype directly
+        const subscription = (Subject as any).prototype._subscribe.apply(this, [subscriber]);
         if (this.hasValue() && subscription && !(<SubscriptionLike>subscription).closed) {
             subscriber.next(this.value);
         }

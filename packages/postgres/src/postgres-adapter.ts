@@ -554,7 +554,7 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
     }
 }
 
-export class PostgresSQLDatabaseQuery<T> extends SQLDatabaseQuery<T> {
+export class PostgresSQLDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQuery<T> {
 }
 
 export class PostgresSQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {

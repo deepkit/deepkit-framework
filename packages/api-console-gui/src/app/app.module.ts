@@ -5,6 +5,7 @@ import { RouterModule } from '@angular/router';
 import { ApiConsoleModule } from './api-console.module';
 import { DuiAppModule, DuiButtonModule, DuiIconModule, DuiWindowModule } from '@deepkit/desktop-ui';
 import { DeepkitUIModule } from '@deepkit/ui-library';
+import { CommonModule } from '@angular/common';
 
 @NgModule({
     declarations: [
@@ -12,6 +13,7 @@ import { DeepkitUIModule } from '@deepkit/ui-library';
     ],
     imports: [
         BrowserModule,
+        CommonModule,
         RouterModule.forRoot([], { useHash: true }),
         ApiConsoleModule,
 

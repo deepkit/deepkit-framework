@@ -564,7 +564,7 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
     }
 }
 
-export class SQLiteDatabaseQuery<T> extends SQLDatabaseQuery<T> {
+export class SQLiteDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQuery<T> {
 }
 
 export class SQLiteDatabaseQueryFactory extends SQLDatabaseQueryFactory {

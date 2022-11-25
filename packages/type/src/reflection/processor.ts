@@ -1244,16 +1244,29 @@ export class Processor {
             if (a.decorators) decorators.push(...a.decorators as TypeObjectLiteral[]);
         }
 
+        function handleUnion(a: Type, unionType: TypeUnion): Type {
+            return unboxUnion({ kind: ReflectionKind.union, types: unionType.types.filter(v => isExtendable(v, a)) });
+        }
+
+        function handleAndObject(a: Type, objectType: TypeObjectLiteral): Type {
+            if (objectType.types.length === 0) {
+                return isExtendable(a, objectType) ? a : { kind: ReflectionKind.never };
+            }
+            defaultDecorators.push(objectType);
+            annotations[defaultAnnotation.symbol] = defaultDecorators;
+            return a;
+        }
+
         function collapse(a: Type, b: Type): Type {
             if (a.kind === ReflectionKind.any) return a;
             if (b.kind === ReflectionKind.any) return b;
 
             if (a.kind === ReflectionKind.union) {
-                return unboxUnion({ kind: ReflectionKind.union, types: a.types.filter(v => isExtendable(v, b)) });
+                return handleUnion(b, a);
             }
 
             if (b.kind === ReflectionKind.union) {
-                return unboxUnion({ kind: ReflectionKind.union, types: b.types.filter(v => isExtendable(v, a)) });
+                return handleUnion(a, b);
             }
 
             if ((a.kind === ReflectionKind.objectLiteral || a.kind === ReflectionKind.class) && (b.kind === ReflectionKind.objectLiteral || b.kind === ReflectionKind.class)) {
@@ -1263,15 +1276,11 @@ export class Processor {
             }
 
             if (isPrimitive(a) && b.kind === ReflectionKind.objectLiteral) {
-                defaultDecorators.push(b);
-                annotations[defaultAnnotation.symbol] = defaultDecorators;
-                return a;
+                return handleAndObject(a, b);
             }
 
             if (isPrimitive(b) && a.kind === ReflectionKind.objectLiteral) {
-                defaultDecorators.push(a);
-                annotations[defaultAnnotation.symbol] = defaultDecorators;
-                return b;
+                return handleAndObject(b, a);
             }
 
             //1 & number => 1
