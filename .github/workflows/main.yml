@@ -233,7 +233,6 @@ jobs:
       # this is used for the simple-auth test
       mongo:
         image: mongo:5.0.10
-        restart: always
         ports:
           - 27018:27017
         environment:
