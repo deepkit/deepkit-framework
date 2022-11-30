@@ -235,7 +235,7 @@ jobs:
         image: mongo:5.0.10
         ports:
           - 27018:27017
-        environment:
+        env:
           MONGO_INITDB_ROOT_USERNAME: root
           MONGO_INITDB_ROOT_PASSWORD: root
           MONGO_INITDB_DATABASE: root-db
