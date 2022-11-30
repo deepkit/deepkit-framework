@@ -9,8 +9,7 @@
     "watch": "NODE_OPTIONS=--preserve-symlinks ng build --watch",
     "test": "NODE_OPTIONS=--preserve-symlinks ng test",
     "lint": "NODE_OPTIONS=--preserve-symlinks ng lint",
-    "e2e": "NODE_OPTIONS=--preserve-symlinks ng e2e",
-    "postinstall": "deepkit-type-install"
+    "e2e": "NODE_OPTIONS=--preserve-symlinks ng e2e"
   },
   "publishConfig": {
     "access": "public"
