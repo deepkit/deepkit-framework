@@ -190,7 +190,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
 export class ItemNotFound extends Error {
 }
 
-type FindEntity<T> = FlattenIfArray<T> extends infer V ? V extends OrmEntity ? V : OrmEntity : OrmEntity;
+type FindEntity<T> = FlattenIfArray<NonNullable<T>> extends infer V ? V extends OrmEntity ? V : OrmEntity : OrmEntity;
 
 export interface QueryClassType<T> {
     create(query: BaseQuery<any>): QueryClassType<T>;

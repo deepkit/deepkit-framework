@@ -1,3 +1,4 @@
+import { BackReference } from '@deepkit/type';
 import { deserialize, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { assert, IsExact } from 'conditional-type-checks';
@@ -225,3 +226,27 @@ test('query lift', async () => {
 
 //     // await database.persist(deserialize<s>({ id: 0, username: 'Peter' }));
 // });
+
+
+test('optional join', () => {
+    class User {
+        constructor(public id: number & PrimaryKey, public name: string) {}
+
+        userAuth?: UserAuth & BackReference;
+    }
+
+    class UserAuth {
+        constructor(
+            public id: number & PrimaryKey,
+        ) {}
+        type!: string;
+    }
+
+    const database = new Database(new MemoryDatabaseAdapter());
+
+    database
+        .query(User)
+        .useInnerJoinWith('userAuth')
+        .filter({ type: 'bar' })
+        .end();
+})
