@@ -12,4 +12,4 @@ services:
             MONGO_INITDB_ROOT_PASSWORD: root
             MONGO_INITDB_DATABASE: root-db
         volumes:
-            - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+            - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js

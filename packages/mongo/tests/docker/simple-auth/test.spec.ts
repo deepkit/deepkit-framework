@@ -19,7 +19,7 @@ test('simple-auth', async () => {
         name!: string;
     }
 
-    const database = new Database(new MongoDatabaseAdapter(`mongodb://user:password@localhost:27018/db`), [BaseEntity, User]);
+    const database = new Database(new MongoDatabaseAdapter(`mongodb://user:password@127.0.0.1:27018/db`), [BaseEntity, User]);
 
     await database.migrate();
     await database.query(User).deleteMany();
