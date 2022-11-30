@@ -240,7 +240,7 @@ jobs:
           MONGO_INITDB_ROOT_PASSWORD: root
           MONGO_INITDB_DATABASE: root-db
         volumes:
-          - ./packages/mongo/tests/docker/simple-auth/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+          - /packages/mongo/tests/docker/simple-auth/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
     steps:
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.7.0
