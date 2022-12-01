@@ -186,7 +186,7 @@ test('sqlite relation', async () => {
 
 
 test('transaction', async () => {
-    const sqlite = new SQLiteDatabaseAdapter(':memory:');
+    const sqlite = new SQLiteDatabaseAdapter('app.sqlite');
 
     {
         const t1 = new SQLiteDatabaseTransaction();
@@ -216,7 +216,7 @@ test('transaction', async () => {
 });
 
 test('connection pool', async () => {
-    const sqlite = new SQLiteDatabaseAdapter(':memory:');
+    const sqlite = new SQLiteDatabaseAdapter('app.sqlite');
 
     {
         const c1 = await sqlite.connectionPool.getConnection();
