@@ -176,7 +176,7 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
     protected createFormatter(withIdentityMap: boolean = false) {
         return new SqlFormatter(
             this.classSchema,
-            sqlSerializer,
+            this.platform.serializer,
             this.session.getHydrator(),
             withIdentityMap ? this.session.identityMap : undefined
         );

@@ -333,5 +333,26 @@ test('m2m', async () => {
     const pivot = new BookToTag(book, tag);
     await database.persist(book, tag, pivot);
     const tagQueried = await database.query(Tag).join('books').findOne();
-    expect(tagQueried).toMatchObject({ name: "name" });
+    expect(tagQueried).toMatchObject({ name: 'name' });
+});
+
+test('bool and json', async () => {
+    class Model {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        flag: boolean = false;
+        doc: { flag: boolean } = { flag: false };
+    }
+
+    const database = new Database(new SQLiteDatabaseAdapter(':memory:'), [Model]);
+    await database.migrate();
+
+    {
+        const m = new Model;
+        m.flag = true;
+        m.doc.flag = true;
+        await database.persist(m);
+    }
+
+    const m = await database.query(Model).findOne();
+    expect(m).toMatchObject({ flag: true, doc: { flag: true } });
 });

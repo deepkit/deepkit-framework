@@ -33,7 +33,6 @@ test('connection release persistence/query', async () => {
 
     const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW });
     const database = new Database(adapter, [user]);
-    database.registerEntity(user);
     await adapter.createTables(database.entityRegistry);
     const session = database.createSession();
 
@@ -59,4 +58,26 @@ test('connection release persistence/query', async () => {
     expect(adapter.connectionPool.getActiveConnections()).toBe(0);
 
     database.disconnect();
+});
+
+test('bool and json', async () => {
+    class Model {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        flag: boolean = false;
+        doc: { flag: boolean } = { flag: false };
+    }
+
+    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW });
+    const database = new Database(adapter, [Model]);
+    await adapter.createTables(database.entityRegistry);
+
+    {
+        const m = new Model;
+        m.flag = true;
+        m.doc.flag = true;
+        await database.persist(m);
+    }
+
+    const m = await database.query(Model).findOne();
+    expect(m).toMatchObject({ flag: true, doc: { flag: true } });
 });

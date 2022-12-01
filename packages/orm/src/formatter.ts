@@ -46,7 +46,7 @@ type DBRecord = { [name: string]: any };
  * Every query resolving gets its own formatter.
  */
 export class Formatter {
-    //its important to have for each formatter own proxyClasses since we attached to Proxy's prototype the database session
+    //it's important to have for each formatter own proxyClasses since we attached to Proxy's prototype the database session
     protected referenceClasses: Map<ReflectionClass<any>, ClassType> = new Map();
 
     protected instancePools: Map<ClassType, Map<PKHash, any>> = new Map();

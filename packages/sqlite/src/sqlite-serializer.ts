@@ -20,12 +20,8 @@ class SQLiteSerializer extends SqlSerializer {
             state.addSetter(`${state.accessor}.toJSON();`);
         });
 
-        this.serializeRegistry.register(ReflectionKind.boolean, (type, state) => {
+        this.serializeRegistry.append(ReflectionKind.boolean, (type, state) => {
             state.addSetter(`${state.accessor} ? 1 : 0`);
-        });
-
-        this.deserializeRegistry.register(ReflectionKind.boolean, (type, state) => {
-            state.addSetter(`${state.accessor} === 1`);
         });
     }
 }
