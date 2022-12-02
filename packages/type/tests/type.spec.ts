@@ -1254,6 +1254,46 @@ test('ignore constructor in keyof', () => {
     expect(type.types.map(v => v.kind === ReflectionKind.literal ? v.literal : 'unknown')).toEqual(['foo', 'id']);
 });
 
+test('function returns self reference', () => {
+    type Option<T> = OptionType<T>;
+
+    class OptionType<T> {
+        constructor(val: T, some: boolean) {
+        }
+    }
+
+    function Option<T>(val: T): Option<T> {
+        return new OptionType(val, true);
+    }
+
+    const type = reflect(Option);
+    assertType(type, ReflectionKind.function);
+    expect(type.function).toBe(Option);
+    assertType(type.return, ReflectionKind.function);
+    expect(type.return.function).toBe(Option);
+});
+
+test('arrow function returns self reference', () => {
+    type Option<T> = OptionType<T>;
+
+    class OptionType<T> {
+        constructor(val: T, some: boolean) {
+        }
+    }
+
+    const Option = <T>(val: T): Option<T> => {
+        return new OptionType(val, true);
+    }
+
+    const type = reflect(Option);
+    assertType(type, ReflectionKind.function);
+    expect(type.function).toBe(Option);
+
+    //we need to find out why TS does resolve Option<T> in arrow function to the class and not the variable
+    assertType(type.return, ReflectionKind.class);
+    expect(type.return.classType).toBe(OptionType);
+});
+
 class User {
     a!: string;
 }

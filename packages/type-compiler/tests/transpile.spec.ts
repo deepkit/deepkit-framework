@@ -369,6 +369,30 @@ test('es2021', () => {
     expect(res.app).toContain(`const type = typeOf([], [() => __ΩReadUser, 'n!'])`);
 });
 
+test('Return function ref', () => {
+    //see GitHub issue #354
+    const res = transpile({
+        'app': `
+        function Option<T>(val: T): Option<T> {
+        };
+        `
+    });
+    console.log(res);
+    expect(res.app).toContain(`() => Option,`);
+});
+
+test('Return arrow function ref', () => {
+    //see GitHub issue #354
+    const res = transpile({
+        'app': `
+        const Option = <T>(val: T): Option<T> => {
+        };
+        `
+    });
+    console.log(res);
+    expect(res.app).toContain(`() => Option,`);
+});
+
 //currently knownLibFilesForCompilerOptions from @typescript/vfs doesn't return correct lib files for ES2022
 // test('es2022', () => {
 //     const res = transpile({

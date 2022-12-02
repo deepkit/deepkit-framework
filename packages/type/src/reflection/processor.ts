@@ -629,20 +629,25 @@ export class Processor {
                             this.pushType(t);
                             break;
                         }
+                        case ReflectionOp.functionReference:
                         case ReflectionOp.classReference: {
                             const ref = this.eatParameter() as number;
-                            const classType = resolveFunction(program.stack[ref] as Function, program.object);
+                            const classOrFunction = resolveFunction(program.stack[ref] as Function, program.object);
                             const inputs = this.popFrame() as Type[];
-                            if (!classType) throw new Error('No class reference given in ' + String(program.stack[ref]));
+                            if (!classOrFunction) throw new Error('No class/function reference given in ' + String(program.stack[ref]));
 
-                            if (!classType.__type) {
-                                this.pushType({ kind: ReflectionKind.class, classType, typeArguments: inputs, types: [] });
+                            if (!classOrFunction.__type) {
+                                if (op === ReflectionOp.classReference) {
+                                    this.pushType({ kind: ReflectionKind.class, classType: classOrFunction, typeArguments: inputs, types: [] });
+                                } else if (op === ReflectionOp.functionReference) {
+                                    this.pushType({ kind: ReflectionKind.function, function: classOrFunction, parameters: [], return: { kind: ReflectionKind.unknown } });
+                                }
                             } else {
 
                                 //when it's just a simple reference resolution like typeOf<Class>() then enable cache re-use (so always the same type is returned)
                                 const reuseCached = !!(this.isEnded() && program.previous && program.previous.end === 0);
 
-                                const result = this.reflect(classType, inputs, { reuseCached });
+                                const result = this.reflect(classOrFunction, inputs, { reuseCached });
                                 this.push(result, program);
 
                                 if (isWithAnnotations(result) && inputs.length) {

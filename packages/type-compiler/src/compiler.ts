@@ -118,7 +118,7 @@ import {
     TypeReferenceNode,
     UnionTypeNode,
     visitEachChild,
-    visitNode
+    visitNode, isVariableDeclaration, isTypeNode
 } from 'typescript';
 import {
     ensureImportIsEmitted,
@@ -1693,11 +1693,11 @@ export class ReflectionTransformer implements CustomTransformer {
      * This is a custom resolver based on populated `locals` from the binder. It uses a custom resolution algorithm since
      * we have no access to the binder/TypeChecker directly and instantiating a TypeChecker per file/transformer is incredible slow.
      */
-    protected resolveDeclaration(typeName: EntityName): { declaration: Declaration, importDeclaration?: ImportDeclaration, typeOnly?: boolean } | void {
+    protected resolveDeclaration(typeName: EntityName): { declaration: Node, importDeclaration?: ImportDeclaration, typeOnly?: boolean } | void {
         let current: Node = typeName.parent;
         if (typeName.kind === SyntaxKind.QualifiedName) return; //namespace access not supported yet, e.g. type a = Namespace.X;
 
-        let declaration: Declaration | undefined = undefined;
+        let declaration: Node | undefined = undefined;
 
         while (current) {
             if (isNodeWithLocals(current) && current.locals) {
@@ -1878,7 +1878,15 @@ export class ReflectionTransformer implements CustomTransformer {
                 return;
             }
 
-            const declaration = resolved.declaration;
+            let declaration: Node = resolved.declaration;
+            if (isVariableDeclaration(declaration)) {
+                if (declaration.type) {
+                    declaration = declaration.type;
+                } else if (declaration.initializer) {
+                    declaration = declaration.initializer;
+                }
+            }
+
             if (isModuleDeclaration(declaration) && resolved.importDeclaration) {
                 if (isIdentifier(typeName)) ensureImportIsEmitted(resolved.importDeclaration, typeName);
 
@@ -2023,7 +2031,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 //     //<Type>{[Property in keyof Type]: boolean;};
                 //     this.extractPackStructOfType(declaration, program);
                 //     return;
-            } else if (isClassDeclaration(declaration)) {
+            } else if (isClassDeclaration(declaration) || isFunctionDeclaration(declaration) || isFunctionExpression(declaration) || isArrowFunction(declaration)) {
                 //if explicit `import {type T}`, we do not emit an import and instead push any
                 if (resolved.typeOnly) {
                     program.pushOp(ReflectionOp.any);
@@ -2039,7 +2047,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
                 const body = isIdentifier(typeName) ? typeName : this.createAccessorForEntityName(typeName);
                 const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, body));
-                program.pushOp(ReflectionOp.classReference, index);
+                program.pushOp(isClassDeclaration(declaration) ? ReflectionOp.classReference : ReflectionOp.functionReference, index);
                 program.popFrameImplicit();
             } else if (isTypeParameterDeclaration(declaration)) {
                 this.resolveTypeParameter(declaration, type, program);
