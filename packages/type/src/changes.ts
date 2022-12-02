@@ -26,6 +26,8 @@ export class Changes<T extends object> {
     $inc?: Partial<Pick<T, NumberFields<T>>>;
     empty = true;
 
+    fieldNames: string[] = [];
+
     constructor(
         changes?: ChangesInterface<T>
     ) {
@@ -60,6 +62,9 @@ export class Changes<T extends object> {
 
     replaceSet($set: Partial<T> | T) {
         this.$set = empty($set) ? undefined : $set;
+        for (const i in $set as any) {
+            if (!this.fieldNames.includes(i)) this.fieldNames.push(i);
+        }
         this.detectEmpty();
     }
 
@@ -68,6 +73,7 @@ export class Changes<T extends object> {
 
         if (!this.$set) this.$set = {};
         for (const i in $set as any) {
+            if (!this.fieldNames.includes(i)) this.fieldNames.push(i);
             (this.$set as any)[i] = ($set as any)[i];
         }
         this.detectEmpty();
@@ -76,18 +82,21 @@ export class Changes<T extends object> {
     increase(property: NumberFields<T>, increase: number = 1) {
         if (!this.$inc) this.$inc = {};
         (this.$inc as any)[property] = increase;
+        if ('string' === typeof property && !this.fieldNames.includes(property)) this.fieldNames.push(property);
         this.empty = false;
     }
 
     set(property: keyof T & string, value: any) {
         if (!this.$set) this.$set = {};
         (this.$set as any)[property] = value;
+        if ('string' === typeof property && !this.fieldNames.includes(property)) this.fieldNames.push(property);
         this.empty = false;
     }
 
     unset(property: keyof T & string, unset = true) {
         if (!this.$unset) this.$unset = {};
         (this.$unset as any)[property] = unset;
+        if ('string' === typeof property && !this.fieldNames.includes(property)) this.fieldNames.push(property);
         this.empty = false;
     }
 
@@ -132,8 +141,7 @@ export class AtomicChangeInstance<T extends object> {
 
     increase(property: NumberFields<T>, increase: number = 1) {
         this.object[property] += increase;
-        (this.changeSet.$inc as any)[property] = increase as any;
-        this.changeSet.empty = false;
+        this.changeSet.increase(property, increase);
     }
 }
 

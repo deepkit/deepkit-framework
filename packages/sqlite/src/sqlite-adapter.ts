@@ -23,6 +23,7 @@ import {
 } from '@deepkit/orm';
 import {
     DefaultPlatform,
+    prepareBatchUpdate,
     SqlBuilder,
     SQLConnection,
     SQLConnectionPool,
@@ -270,110 +271,63 @@ export class SQLitePersistence extends SQLPersistence {
     }
 
     async batchUpdate<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
-        const partialSerialize = getPartialSerializeFunction(classSchema.type, this.platform.serializer.serializeRegistry);
-        const tableName = this.platform.getTableIdentifier(classSchema);
-        const pkName = classSchema.getPrimary().name;
-        const pkField = this.platform.quoteIdentifier(pkName);
-
-        const values: { [name: string]: any[] } = {};
-        const setNames: string[] = [];
-        const aggregateSelects: { [name: string]: { id: any, sql: string }[] } = {};
-        const requiredFields: { [name: string]: 1 } = {};
-
-        const assignReturning: { [name: string]: { item: any, names: string[] } } = {};
-        const setReturning: { [name: string]: 1 } = {};
-
-        for (const changeSet of changeSets) {
-            const pk = partialSerialize(changeSet.primaryKey);
-            for (const i in pk) {
-                if (!pk.hasOwnProperty(i)) continue;
-                requiredFields[i] = 1;
-            }
-
-            if (!values[pkName]) values[pkName] = [];
-            values[pkName].push(pk[pkName]);
-
-            const fieldAddedToValues: { [name: string]: 1 } = {};
-            const id = changeSet.primaryKey[pkName];
-
-            //todo: handle changes.$unset
-
-            if (changeSet.changes.$set) {
-                const value = partialSerialize(changeSet.changes.$set);
-                for (const i in value) {
-                    if (!value.hasOwnProperty(i)) continue;
-                    if (!values[i]) {
-                        values[i] = [];
-                        setNames.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
-                    }
-                    requiredFields[i] = 1;
-                    fieldAddedToValues[i] = 1;
-                    values[i].push(value[i]);
-                }
-            }
-
-            if (changeSet.changes.$inc) {
-                for (const i in changeSet.changes.$inc) {
-                    if (!changeSet.changes.$inc.hasOwnProperty(i)) continue;
-                    const value = changeSet.changes.$inc[i];
-                    if (!aggregateSelects[i]) aggregateSelects[i] = [];
-
-                    if (!values[i]) {
-                        values[i] = [];
-                        setNames.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
-                    }
-
-                    if (!assignReturning[id]) {
-                        assignReturning[id] = { item: changeSet.item, names: [] };
-                    }
-
-                    assignReturning[id].names.push(i);
-                    setReturning[i] = 1;
-
-                    aggregateSelects[i].push({
-                        id: changeSet.primaryKey[pkName],
-                        sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}`
-                    });
-                    requiredFields[i] = 1;
-                    if (!fieldAddedToValues[i]) {
-                        fieldAddedToValues[i] = 1;
-                        values[i].push(null);
-                    }
-                }
-            }
-        }
+        const prepared = prepareBatchUpdate(this.platform, classSchema, changeSets);
+        if (!prepared) return;
 
         const placeholderStrategy = new this.platform.placeholderStrategy();
         const params: any[] = [];
         const selects: string[] = [];
         const valuesValues: string[] = [];
+        const valuesSetValues: string[] = [];
         const valuesNames: string[] = [];
+        const valuesSetNames: string[] = [];
         const _rename: string[] = [];
+        const _renameSet: string[] = [];
 
         let j = 1;
-        for (const i in values) {
-            valuesNames.push(i);
-            _rename.push(`column${j++} as ${i}`);
+        const index = j++;
+        _renameSet.push(`column${index} as ${prepared.originPkField}`);
+        _rename.push(`column${index} as ${prepared.originPkField}`);
+        for (const fieldName of prepared.changedFields) {
+            const index = j++;
+            valuesNames.push(fieldName);
+            _rename.push(`column${index} as ${fieldName}`);
+            _renameSet.push(`column${index} as _changed_${fieldName}`);
+            valuesSetNames.push('_changed_' + fieldName);
         }
 
-        for (let i = 0; i < values[pkName].length; i++) {
-            valuesValues.push('(' + valuesNames.map(name => {
-                params.push(values[name][i]);
+        for (let i = 0; i < changeSets.length; i++) {
+            params.push(prepared.primaryKeys[i]);
+            let pkValue = placeholderStrategy.getPlaceholder();
+            valuesValues.push('(' + pkValue + ',' +valuesNames.map(name => {
+                params.push(prepared.values[name][i]);
                 return placeholderStrategy.getPlaceholder();
             }).join(',') + ')');
         }
 
-        for (const i in requiredFields) {
-            if (aggregateSelects[i]) {
+        for (let i = 0; i < changeSets.length; i++) {
+            params.push(prepared.primaryKeys[i]);
+            let valuesSetValueSql = placeholderStrategy.getPlaceholder();
+            for (const fieldName of prepared.changedFields) {
+                valuesSetValueSql += ', ' + prepared.valuesSet[fieldName][i];
+            }
+            valuesSetValues.push('(' + valuesSetValueSql + ')');
+        }
+
+        for (const i of prepared.changedFields) {
+            const col = this.platform.quoteIdentifier(i);
+            const colChanged = this.platform.quoteIdentifier('_changed_' + i);
+            if (prepared.aggregateSelects[i]) {
                 const select: string[] = [];
                 select.push('CASE');
-                for (const item of aggregateSelects[i]) {
-                    select.push(`WHEN _.${pkField} = ${item.id} THEN ${item.sql}`);
+                for (const item of prepared.aggregateSelects[i]) {
+                    select.push(`WHEN _.${prepared.originPkField} = ${item.id} THEN ${item.sql}`);
                 }
-                select.push(`ELSE _.${this.platform.quoteIdentifier(i)} END as ${this.platform.quoteIdentifier(i)}`);
+
+                select.push(`ELSE IIF(_set.${colChanged} = 0, _origin.${col}, _.${col}) END as ${col}`);
                 selects.push(select.join(' '));
             } else {
-                selects.push('_.' + i);
+                selects.push(`IIF(_set.${colChanged} = 0, _origin.${col}, _.${col}) as ${col}`);
             }
         }
 
@@ -382,26 +336,29 @@ export class SQLitePersistence extends SQLPersistence {
 
         const sql = `
               CREATE TEMPORARY TABLE _b AS
-                SELECT ${selects.join(', ')}
+                SELECT _.${prepared.originPkField}, ${selects.join(', ')}
                 FROM (SELECT ${_rename.join(', ')} FROM (VALUES ${valuesValues.join(', ')})) as _
-                INNER JOIN ${tableName} as _origin ON (_origin.${pkField} = _.${pkField});
+                INNER JOIN (SELECT ${_renameSet.join(', ')} FROM (VALUES ${valuesSetValues.join(', ')})) as _set ON (_.${prepared.originPkField} = _set.${prepared.originPkField})
+                INNER JOIN ${prepared.tableName} as _origin ON (_origin.${prepared.pkField} = _.${prepared.originPkField});
         `;
 
         await connection.run(sql, params);
 
-        await connection.exec(`
+        const updateSql = `
             UPDATE
-            ${tableName}
-            SET ${setNames.join(', ')}
+            ${prepared.tableName}
+            SET ${prepared.setNames.join(', ')}
             FROM
             _b
-            WHERE ${tableName}.${pkField} = _b.${pkField};
-        `);
+            WHERE ${prepared.tableName}.${prepared.pkField} = _b.${prepared.originPkField};
+        `;
+        await connection.exec(updateSql);
 
-        if (!empty(setReturning)) {
+        if (!empty(prepared.setReturning)) {
             const returnings = await connection.execAndReturnAll('SELECT * FROM _b');
             for (const returning of returnings) {
-                const r = assignReturning[returning[pkName]];
+                const r = prepared.assignReturning[returning[prepared.originPkName]];
+                if (!r) continue;
 
                 for (const name of r.names) {
                     r.item[name] = returning[name];

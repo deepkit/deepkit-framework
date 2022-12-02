@@ -11,6 +11,7 @@
 import { createPool, Pool, PoolConfig, PoolConnection, UpsertResult } from 'mariadb';
 import {
     DefaultPlatform,
+    prepareBatchUpdate,
     SqlBuilder,
     SQLConnection,
     SQLConnectionPool,
@@ -223,118 +224,64 @@ export class MySQLPersistence extends SQLPersistence {
     }
 
     async batchUpdate<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
-        const partialSerialize = getPartialSerializeFunction(classSchema.type, this.platform.serializer.serializeRegistry);
-        const tableName = this.platform.getTableIdentifier(classSchema);
-        const pkName = classSchema.getPrimary().name;
-        const pkField = this.platform.quoteIdentifier(pkName);
-
-        const values: { [name: string]: any[] } = {};
-        const setNames: string[] = [];
-        const aggregateSelects: { [name: string]: { id: any, sql: string }[] } = {};
-        const requiredFields: { [name: string]: 1 } = {};
-
-        const assignReturning: { [name: string]: { item: any, names: string[] } } = {};
-        const setReturning: { [name: string]: 1 } = {};
-
-        for (const changeSet of changeSets) {
-            const where: string[] = [];
-
-            const pk = partialSerialize(changeSet.primaryKey);
-            for (const i in pk) {
-                if (!pk.hasOwnProperty(i)) continue;
-                where.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(pk[i])}`);
-                requiredFields[i] = 1;
-            }
-
-            if (!values[pkName]) values[pkName] = [];
-            values[pkName].push(pk[pkName]);
-
-            const fieldAddedToValues: { [name: string]: 1 } = {};
-            const id = changeSet.primaryKey[pkName];
-
-            if (changeSet.changes.$set) {
-                const value = partialSerialize(changeSet.changes.$set);
-                for (const i in value) {
-                    if (!value.hasOwnProperty(i)) continue;
-                    if (!values[i]) {
-                        values[i] = [];
-                        setNames.push(`${tableName}.${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
-                    }
-                    requiredFields[i] = 1;
-                    fieldAddedToValues[i] = 1;
-                    values[i].push(value[i]);
-                }
-            }
-
-            if (changeSet.changes.$inc) {
-                for (const i in changeSet.changes.$inc) {
-                    if (!changeSet.changes.$inc.hasOwnProperty(i)) continue;
-                    const value = changeSet.changes.$inc[i];
-                    if (!aggregateSelects[i]) aggregateSelects[i] = [];
-
-                    if (!values[i]) {
-                        values[i] = [];
-                        setNames.push(`${tableName}.${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
-                    }
-
-                    if (!assignReturning[id]) {
-                        assignReturning[id] = { item: changeSet.item, names: [] };
-                    }
-
-                    assignReturning[id].names.push(i);
-                    setReturning[i] = 1;
-
-                    aggregateSelects[i].push({
-                        id: changeSet.primaryKey[pkName],
-                        sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}`
-                    });
-                    requiredFields[i] = 1;
-                    if (!fieldAddedToValues[i]) {
-                        fieldAddedToValues[i] = 1;
-                        values[i].push(null);
-                    }
-                }
-            }
-        }
+        const prepared = prepareBatchUpdate(this.platform, classSchema, changeSets, {setNamesWithTableName: true});
+        if (!prepared) return;
 
         const placeholderStrategy = new this.platform.placeholderStrategy();
         const params: any[] = [];
         const selects: string[] = [];
         const valuesValues: string[] = [];
+        const valuesSetValues: string[] = [];
         const valuesNames: string[] = [];
-        for (const i in values) {
-            valuesNames.push(i);
+        const valuesSetNames: string[] = [];
+        for (const fieldName of prepared.changedFields) {
+            valuesNames.push(fieldName);
+            valuesSetNames.push('_changed_' + fieldName);
         }
 
-        for (let i = 0; i < values[pkName].length; i++) {
-            valuesValues.push('ROW(' + valuesNames.map(name => {
-                params.push(values[name][i]);
+        for (let i = 0; i < changeSets.length; i++) {
+            params.push(prepared.primaryKeys[i]);
+            let pkValue = placeholderStrategy.getPlaceholder();
+            valuesValues.push('ROW(' + pkValue + ',' + prepared.changedFields.map(name => {
+                params.push(prepared.values[name][i]);
                 return placeholderStrategy.getPlaceholder();
             }).join(',') + ')');
         }
 
-        for (const i in requiredFields) {
-            if (aggregateSelects[i]) {
+        for (let i = 0; i < changeSets.length; i++) {
+            params.push(prepared.primaryKeys[i]);
+            let valuesSetValueSql = placeholderStrategy.getPlaceholder();
+            for (const fieldName of prepared.changedFields) {
+                valuesSetValueSql += ', ' + prepared.valuesSet[fieldName][i];
+            }
+            valuesSetValues.push('ROW(' + valuesSetValueSql + ')');
+        }
+
+        for (const i of prepared.changedFields) {
+            const col = this.platform.quoteIdentifier(i);
+            const colChanged = this.platform.quoteIdentifier('_changed_' + i);
+            if (prepared.aggregateSelects[i]) {
                 const select: string[] = [];
                 select.push('CASE');
-                for (const item of aggregateSelects[i]) {
-                    select.push(`WHEN _.${pkField} = ${item.id} THEN ${item.sql}`);
+                for (const item of prepared.aggregateSelects[i]) {
+                    select.push(`WHEN _.${prepared.originPkField} = ${item.id} THEN ${item.sql}`);
                 }
-                select.push(`ELSE _.${this.platform.quoteIdentifier(i)} END as ${this.platform.quoteIdentifier(i)}`);
+
+                select.push(`ELSE IF(_set.${colChanged} = 0, _origin.${col}, _.${col}) END as ${col}`);
                 selects.push(select.join(' '));
             } else {
-                selects.push('_.' + i);
+                selects.push(`IF(_set.${colChanged} = 0, _origin.${col}, _.${col}) as ${col}`);
             }
         }
 
         let setVars = '';
         let endSelect = '';
-        if (!empty(setReturning)) {
+        if (!empty(prepared.setReturning)) {
             const vars: string[] = [];
             const endSelectVars: string[] = [];
-            vars.push(`@_pk := JSON_ARRAYAGG(${pkField})`);
+            vars.push(`@_pk := JSON_ARRAYAGG(${prepared.originPkField})`);
             endSelectVars.push('@_pk');
-            for (const i in setReturning) {
+            for (const i in prepared.setReturning) {
                 endSelectVars.push(`@_f_${i}`);
                 vars.push(`@_f_${i} := JSON_ARRAYAGG(${this.platform.quoteIdentifier(i)})`);
             }
@@ -345,33 +292,34 @@ export class MySQLPersistence extends SQLPersistence {
         }
 
         const sql = `
-              WITH _tmp(${valuesNames.join(', ')}) AS (
-                SELECT ${selects.join(', ')} FROM
-                    (VALUES ${valuesValues.join(', ')}) as _(${valuesNames.join(', ')})
-                    INNER JOIN ${tableName} as _origin ON (_origin.${pkField} = _.${pkField})
+              WITH _tmp(${prepared.originPkField}, ${valuesNames.join(', ')}) AS (
+                SELECT _.${prepared.originPkField}, ${selects.join(', ')} FROM
+                    (VALUES ${valuesValues.join(', ')}) as _(${prepared.originPkField}, ${valuesNames.join(', ')})
+                    INNER JOIN (VALUES ${valuesSetValues.join(', ')}) as _set(${prepared.pkField}, ${valuesSetNames.join(', ')}) ON (_.${prepared.originPkField} = _set.${prepared.pkField})
+                    INNER JOIN ${prepared.tableName} as _origin ON (_origin.${prepared.pkField} = _.${prepared.originPkField})
               )
               UPDATE
-                ${tableName}, _tmp as _b ${setVars}
+                ${prepared.tableName}, _tmp as _b ${setVars}
 
-              SET ${setNames.join(', ')}
-              WHERE ${tableName}.${pkField} = _b.${pkField};
+              SET ${prepared.setNames.join(', ')}
+              WHERE ${prepared.tableName}.${prepared.pkField} = _b.${prepared.originPkField};
               ${endSelect}
         `;
 
         const connection = await this.getConnection(); //will automatically be released in SQLPersistence
         const result = await connection.execAndReturnAll(sql, params);
 
-        if (!empty(setReturning)) {
+        if (!empty(prepared.setReturning)) {
             const returning = result[1][0];
             const ids = JSON.parse(returning['@_pk']) as (number | string)[];
             const parsedReturning: { [name: string]: any[] } = {};
-            for (const i in setReturning) {
+            for (const i in prepared.setReturning) {
                 parsedReturning[i] = JSON.parse(returning['@_f_' + i]) as any[];
             }
 
             for (let i = 0; i < ids.length; i++) {
                 const id = ids[i];
-                const r = assignReturning[id];
+                const r = prepared.assignReturning[id];
                 if (!r) continue;
 
                 for (const name of r.names) {

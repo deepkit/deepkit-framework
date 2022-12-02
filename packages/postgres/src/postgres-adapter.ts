@@ -9,7 +9,7 @@
  */
 
 import {
-    DefaultPlatform,
+    DefaultPlatform, prepareBatchUpdate,
     SqlBuilder,
     SQLConnection,
     SQLConnectionPool,
@@ -27,8 +27,7 @@ import type { Pool, PoolClient, PoolConfig } from 'pg';
 import pg from 'pg';
 import { AbstractClassType, asyncOperation, ClassType, empty } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
-import { Changes, getPartialSerializeFunction, getSerializeFunction, ReflectionClass, ReflectionKind, ReflectionProperty, resolvePath, resolveReceiveType } from '@deepkit/type';
-import { ReceiveType } from '@deepkit/type';
+import { Changes, getPartialSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, ReflectionKind, ReflectionProperty, resolvePath } from '@deepkit/type';
 
 function handleError(error: Error | string): void {
     const message = 'string' === typeof error ? error : error.message;
@@ -48,7 +47,7 @@ export class PostgresStatement extends SQLStatement {
     async get(params: any[] = []) {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
-            if (frame) frame.data({sql: this.sql, sqlParams: params});
+            if (frame) frame.data({ sql: this.sql, sqlParams: params });
             this.logger.logQuery(this.sql, params);
             //postgres driver does not maintain error.stack when they throw errors, so
             //we have to manually convert it using asyncOperation.
@@ -68,7 +67,7 @@ export class PostgresStatement extends SQLStatement {
     async all(params: any[] = []) {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
-            if (frame) frame.data({sql: this.sql, sqlParams: params});
+            if (frame) frame.data({ sql: this.sql, sqlParams: params });
             this.logger.logQuery(this.sql, params);
             //postgres driver does not maintain error.stack when they throw errors, so
             //we have to manually convert it using asyncOperation.
@@ -110,7 +109,7 @@ export class PostgresConnection extends SQLConnection {
     async run(sql: string, params: any[] = []) {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
-            if (frame) frame.data({sql, sqlParams: params});
+            if (frame) frame.data({ sql, sqlParams: params });
             //postgres driver does not maintain error.stack when they throw errors, so
             //we have to manually convert it using asyncOperation.
             const res = await asyncOperation<any>((resolve, reject) => {
@@ -235,145 +234,85 @@ export class PostgresPersistence extends SQLPersistence {
     }
 
     async batchUpdate<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
-        const partialSerialize = getPartialSerializeFunction(classSchema.type, this.platform.serializer.serializeRegistry);
-        const tableName = this.platform.getTableIdentifier(classSchema);
-        const pkName = classSchema.getPrimary().name;
-        const pkField = this.platform.quoteIdentifier(pkName);
-
-        const values: { [name: string]: any[] } = {};
-        const setNames: string[] = [];
-        const aggregateSelects: { [name: string]: { id: any, sql: string }[] } = {};
-        const requiredFields: { [name: string]: 1 } = {};
-
-        const assignReturning: { [name: string]: { item: any, names: string[] } } = {};
-        const setReturning: { [name: string]: 1 } = {};
-
-        for (const changeSet of changeSets) {
-            const where: string[] = [];
-
-            const pk = partialSerialize(changeSet.primaryKey);
-            for (const i in pk) {
-                if (!pk.hasOwnProperty(i)) continue;
-                where.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(pk[i])}`);
-                requiredFields[i] = 1;
-            }
-
-            if (!values[pkName]) values[pkName] = [];
-            values[pkName].push(pk[pkName]);
-
-            const fieldAddedToValues: { [name: string]: 1 } = {};
-            const id = changeSet.primaryKey[pkName];
-
-            if (changeSet.changes.$set) {
-                const value = partialSerialize(changeSet.changes.$set);
-                for (const i in value) {
-                    if (!value.hasOwnProperty(i)) continue;
-                    if (!values[i]) {
-                        values[i] = [];
-                        setNames.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
-                    }
-                    requiredFields[i] = 1;
-                    fieldAddedToValues[i] = 1;
-                    let v = value[i];
-
-                    //special postgres check to avoid an error like:
-                    /// column "deletedAt" is of type timestamp without time zone but expression is of type text
-                    if (v === undefined || v === null) {
-                        values[i].push(null);
-                    } else {
-                        values[i].push(v);
-                    }
-                }
-            }
-
-            if (changeSet.changes.$inc) {
-                for (const i in changeSet.changes.$inc) {
-                    if (!changeSet.changes.$inc.hasOwnProperty(i)) continue;
-                    const value = changeSet.changes.$inc[i];
-                    if (!aggregateSelects[i]) aggregateSelects[i] = [];
-
-                    if (!values[i]) {
-                        values[i] = [];
-                        setNames.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
-                    }
-
-                    if (!assignReturning[id]) {
-                        assignReturning[id] = { item: changeSet.item, names: [] };
-                    }
-
-                    assignReturning[id].names.push(i);
-                    setReturning[i] = 1;
-
-                    aggregateSelects[i].push({
-                        id: changeSet.primaryKey[pkName],
-                        sql: `_origin.${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(value)}`
-                    });
-                    requiredFields[i] = 1;
-                    if (!fieldAddedToValues[i]) {
-                        fieldAddedToValues[i] = 1;
-                        values[i].push(typeSafeDefaultValue(classSchema.getProperty(i)));
-                    }
-                }
-            }
-        }
+        const prepared = prepareBatchUpdate(this.platform, classSchema, changeSets);
+        if (!prepared) return;
 
         const placeholderStrategy = new this.platform.placeholderStrategy();
         const params: any[] = [];
         const selects: string[] = [];
         const valuesValues: string[] = [];
+        const valuesSetValues: string[] = [];
         const valuesNames: string[] = [];
-        for (const i in values) {
-            valuesNames.push(i);
+        const valuesSetNames: string[] = [];
+        for (const fieldName of prepared.changedFields) {
+            valuesNames.push(fieldName);
+            valuesSetNames.push('_changed_' + fieldName);
         }
 
-        for (let i = 0; i < values[pkName].length; i++) {
-            valuesValues.push('(' + valuesNames.map(name => {
-                params.push(values[name][i]);
+        for (let i = 0; i < changeSets.length; i++) {
+            params.push(prepared.primaryKeys[i]);
+            let pkValue = placeholderStrategy.getPlaceholder() + this.platform.typeCast(classSchema, prepared.pkName);
+            valuesValues.push('(' + pkValue + ',' + valuesNames.map(name => {
+                params.push(prepared.values[name][i]);
                 return placeholderStrategy.getPlaceholder() + this.platform.typeCast(classSchema, name);
             }).join(',') + ')');
         }
 
-        for (const i in requiredFields) {
-            if (aggregateSelects[i]) {
+        for (let i = 0; i < changeSets.length; i++) {
+            params.push(prepared.primaryKeys[i]);
+            let valuesSetValueSql = placeholderStrategy.getPlaceholder() + this.platform.typeCast(classSchema, prepared.pkName);
+            for (const fieldName of prepared.changedFields) {
+                valuesSetValueSql += ', ' + prepared.valuesSet[fieldName][i];
+            }
+            valuesSetValues.push('(' + valuesSetValueSql + ')');
+        }
+
+        for (const i of prepared.changedFields) {
+            const col = this.platform.quoteIdentifier(i);
+            const colChanged = '_changed_' + i;
+            if (prepared.aggregateSelects[i]) {
                 const select: string[] = [];
                 select.push('CASE');
-                for (const item of aggregateSelects[i]) {
-                    select.push(`WHEN _.${pkField} = ${item.id} THEN ${item.sql}`);
+                for (const item of prepared.aggregateSelects[i]) {
+                    select.push(`WHEN _.${prepared.originPkField} = ${item.id} THEN ${item.sql}`);
                 }
-                select.push(`ELSE _.${this.platform.quoteIdentifier(i)} END as ${this.platform.quoteIdentifier(i)}`);
+
+                select.push(`ELSE (CASE WHEN ${colChanged} = 0 THEN _origin.${col} ELSE _.${col} END) END as ${col}`);
                 selects.push(select.join(' '));
             } else {
-                selects.push('_.' + this.platform.quoteIdentifier(i));
+                //if(check, true, false) => COALESCE(NULLIF(check, true), false)
+                selects.push(`(CASE WHEN ${colChanged} = 0 THEN _origin.${col} ELSE _.${col} END) as ${col}`);
             }
         }
 
         const returningSelect: string[] = [];
-        returningSelect.push(tableName + '.' + pkField);
-        if (!empty(setReturning)) {
-            for (const i in setReturning) {
-                returningSelect.push(tableName + '.' + this.platform.quoteIdentifier(i));
+        returningSelect.push(prepared.tableName + '.' + prepared.pkField);
+        if (!empty(prepared.setReturning)) {
+            for (const i in prepared.setReturning) {
+                returningSelect.push(prepared.tableName + '.' + this.platform.quoteIdentifier(i));
             }
         }
 
         const escapedValuesNames = valuesNames.map(v => this.platform.quoteIdentifier(v));
 
         const sql = `
-              WITH _b(${escapedValuesNames.join(', ')}) AS (
-                SELECT ${selects.join(', ')} FROM
-                    (VALUES ${valuesValues.join(', ')}) as _(${escapedValuesNames.join(', ')})
-                    INNER JOIN ${tableName} as _origin ON (_origin.${pkField} = _.${pkField})
+              WITH _b(${prepared.originPkField}, ${escapedValuesNames.join(', ')}) AS (
+                SELECT _.${prepared.originPkField}, ${selects.join(', ')} FROM
+                    (VALUES ${valuesValues.join(', ')}) as _(${prepared.originPkField}, ${escapedValuesNames.join(', ')})
+                    INNER JOIN (VALUES ${valuesSetValues.join(', ')}) as _set(${prepared.pkField}, ${valuesSetNames.join(', ')}) ON (_.${prepared.originPkField} = _set.${prepared.pkField})
+                    INNER JOIN ${prepared.tableName} as _origin ON (_origin.${prepared.pkField} = _.${prepared.originPkField})
               )
-              UPDATE ${tableName}
-              SET ${setNames.join(', ')}
+              UPDATE ${prepared.tableName}
+              SET ${prepared.setNames.join(', ')}
               FROM _b
-              WHERE ${tableName}.${pkField} = _b.${pkField}
+              WHERE ${prepared.tableName}.${prepared.pkField} = _b.${prepared.originPkField}
               RETURNING ${returningSelect.join(', ')};
         `;
 
         const connection = await this.getConnection(); //will automatically be released in SQLPersistence
         const result = await connection.execAndReturnAll(sql, params);
         for (const returning of result) {
-            const r = assignReturning[returning[pkName]];
+            const r = prepared.assignReturning[returning[prepared.pkName]];
             if (!r) continue;
 
             for (const name of r.names) {

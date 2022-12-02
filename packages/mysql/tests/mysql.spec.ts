@@ -61,6 +61,7 @@ test('connection release persistence/query', async () => {
 });
 
 test('bool and json', async () => {
+    @entity.name('model1')
     class Model {
         id: number & PrimaryKey & AutoIncrement = 0;
         flag: boolean = false;
@@ -80,4 +81,86 @@ test('bool and json', async () => {
 
     const m = await database.query(Model).findOne();
     expect(m).toMatchObject({ flag: true, doc: { flag: true } });
+});
+
+test('change different fields of multiple entities', async () => {
+    @entity.name('model2')
+    class Model {
+        firstName: string = '';
+        lastName: string = '';
+        constructor(public id: number & PrimaryKey) {
+        }
+    }
+
+    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW });
+    const database = new Database(adapter, [Model]);
+    await adapter.createTables(database.entityRegistry);
+
+    {
+        const m1 = new Model(1);
+        m1.firstName = 'Peter';
+        await database.persist(m1);
+        const m2 = new Model(2);
+        m2.lastName = 'Smith';
+        await database.persist(m2);
+    }
+
+    {
+        const m1 = await database.query(Model).filter({id: 1}).findOne();
+        const m2 = await database.query(Model).filter({id: 2}).findOne();
+
+        m1.firstName = 'Peter2';
+        m2.lastName = 'Smith2';
+        await database.persist(m1, m2);
+    }
+
+    {
+        const m1 = await database.query(Model).filter({id: 1}).findOne();
+        const m2 = await database.query(Model).filter({id: 2}).findOne();
+
+        expect(m1).toMatchObject({id: 1, firstName: 'Peter2', lastName: ''});
+        expect(m2).toMatchObject({id: 2, firstName: '', lastName: 'Smith2'});
+    }
+});
+
+test('change pk', async () => {
+    @entity.name('model3')
+    class Model {
+        firstName: string = '';
+        constructor(public id: number & PrimaryKey) {
+        }
+    }
+
+    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW });
+    const database = new Database(adapter, [Model]);
+    await adapter.createTables(database.entityRegistry);
+
+    {
+        const m1 = new Model(1);
+        m1.firstName = 'Peter';
+        await database.persist(m1);
+    }
+
+    {
+        const m1 = await database.query(Model).filter({id: 1}).findOne();
+        m1.id = 2;
+        await database.persist(m1);
+    }
+
+    {
+        const m1 = await database.query(Model).filter({id: 2}).findOne();
+        expect(m1).toMatchObject({id: 2, firstName: 'Peter'});
+    }
+
+    {
+        const m1 = await database.query(Model).filter({id: 2}).findOne();
+        m1.id = 3;
+        m1.firstName = 'Peter2';
+        await database.persist(m1);
+    }
+
+    {
+        const m1 = await database.query(Model).filter({id: 3}).findOne();
+        expect(m1).toMatchObject({id: 3, firstName: 'Peter2'});
+    }
 });

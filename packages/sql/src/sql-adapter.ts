@@ -805,3 +805,98 @@ export class SQLPersistence extends DatabasePersistence {
         await (await this.getConnection()).run(sql, params);
     }
 }
+
+export function prepareBatchUpdate(
+    platform: DefaultPlatform,
+    classSchema: ReflectionClass<any>,
+    changeSets: DatabasePersistenceChangeSet<any>[],
+    options: { setNamesWithTableName?: true } = {}
+) {
+    const partialSerialize = getPartialSerializeFunction(classSchema.type, platform.serializer.serializeRegistry);
+    const tableName = platform.getTableIdentifier(classSchema);
+    const pkName = classSchema.getPrimary().name;
+    const pkField = platform.quoteIdentifier(pkName);
+    const originPkName = '_origin_' + pkName;
+    const originPkField = platform.quoteIdentifier(originPkName);
+
+    const primaryKeys: any[] = [];
+    const values: { [name: string]: any[] } = {};
+    const valuesSet: { [name: string]: any[] } = {};
+    const setNames: string[] = [];
+    const aggregateSelects: { [name: string]: { id: any, sql: string }[] } = {};
+
+    const assignReturning: { [name: string]: { item: any, names: string[] } } = {};
+    const setReturning: { [name: string]: 1 } = {};
+    const changedFields: string[] = [];
+
+    for (const changeSet of changeSets) {
+        for (const fieldName of changeSet.changes.fieldNames) {
+            if (!changedFields.includes(fieldName)) {
+                changedFields.push(fieldName);
+                if (!values[fieldName]) {
+                    values[fieldName] = [];
+                    valuesSet[fieldName] = [];
+                    setNames.push((options.setNamesWithTableName ? tableName + '.' : '') + `${platform.quoteIdentifier(fieldName)} = _b.${platform.quoteIdentifier(fieldName)}`);
+                }
+            }
+        }
+    }
+
+    if (!changedFields) {
+        return;
+    }
+
+    for (const changeSet of changeSets) {
+        const pk = partialSerialize(changeSet.primaryKey);
+        primaryKeys.push(pk[pkName]);
+
+        const id = changeSet.primaryKey[pkName];
+
+        if (changeSet.changes.$set) {
+            const value = partialSerialize(changeSet.changes.$set);
+            for (const fieldName of changedFields) {
+                values[fieldName].push(value[fieldName] ?? null);
+                valuesSet[fieldName].push(fieldName in value ? 1 : 0);
+            }
+        }
+
+        if (changeSet.changes.$inc) {
+            for (const fieldName in changeSet.changes.$inc) {
+                if (!changeSet.changes.$inc.hasOwnProperty(fieldName)) continue;
+                const value = changeSet.changes.$inc[fieldName];
+                if (!aggregateSelects[fieldName]) aggregateSelects[fieldName] = [];
+
+                if (!assignReturning[id]) {
+                    assignReturning[id] = { item: changeSet.item, names: [] };
+                }
+
+                assignReturning[id].names.push(fieldName);
+                setReturning[fieldName] = 1;
+                values[fieldName].push(value[fieldName] ?? null);
+                valuesSet[fieldName].push(1);
+
+                aggregateSelects[fieldName].push({
+                    id: changeSet.primaryKey[pkName],
+                    sql: `_origin.${platform.quoteIdentifier(fieldName)} + ${platform.quoteValue(value)}`
+                });
+            }
+        }
+    }
+
+    return {
+        changedFields,
+        primaryKeys,
+        values,
+        valuesSet,
+        pkField,
+        pkName,
+        aggregateSelects,
+        originPkField,
+        originPkName,
+        setReturning,
+        assignReturning,
+        setNames,
+        tableName,
+    };
+
+}
