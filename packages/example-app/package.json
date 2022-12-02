@@ -5,6 +5,7 @@
   "description": "",
   "scripts": {
     "app": "node -r ts-node/register --preserve-symlinks --watch app.ts",
+    "build": "tsc",
     "start": "node -r ts-node/register --preserve-symlinks --watch app.ts server:start",
     "watch": "node -r ts-node/register --preserve-symlinks --watch app.ts server:start",
     "start:prod": "APP_ENVIRONMENT=production node -r ts-node/register --preserve-symlinks --watch app.ts server:start",

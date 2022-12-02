@@ -140,6 +140,7 @@ import stripJsonComments from 'strip-json-comments';
 import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spec';
 import { Resolver } from './resolver.js';
 import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
+import { contains } from 'micromatch';
 
 export function encodeOps(ops: ReflectionOp[]): string {
     return ops.map(v => String.fromCharCode(v + 33)).join('');
@@ -160,6 +161,23 @@ const serverEnv = 'undefined' !== typeof process;
  */
 export const packSize: number = 2 ** packSizeByte; //64
 const reflectionModes = ['always', 'default', 'never'] as const;
+
+interface ReflectionOptions {
+    /**
+     * Allows to exclude type definitions/TS files from being included in the type compilation step.
+     * When a global .d.ts is matched, their types won't be embedded (useful to exclude DOM for example)
+     */
+    exclude?: string[];
+}
+
+interface ReflectionConfig {
+    mode: typeof reflectionModes[number];
+    options: ReflectionOptions;
+    /**
+     * Paths in exclude are relative to this baseDir
+     */
+    baseDir?: string;
+}
 
 const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.literal]: { params: 1 },
@@ -461,10 +479,18 @@ function getReceiveTypeParameter(type: TypeNode): TypeReferenceNode | undefined 
 export class ReflectionTransformer implements CustomTransformer {
     sourceFile!: SourceFile;
     protected f: NodeFactory;
+    protected currentReflectionConfig: ReflectionConfig = { mode: 'never', options: {} };
+
+    public defaultExcluded: string[] = [
+        'lib.dom.d.ts',
+        'lib.dom.iterable.d.ts',
+        'lib.es2017.typedarrays.d.ts',
+    ];
 
     protected embedAssignType: boolean = false;
 
     protected reflectionMode?: typeof reflectionModes[number];
+    protected reflectionOptions?: ReflectionOptions;
 
     /**
      * Types added to this map will get a type program directly under it.
@@ -510,8 +536,9 @@ export class ReflectionTransformer implements CustomTransformer {
         return this;
     }
 
-    withReflectionMode(mode: typeof reflectionModes[number]): this {
+    withReflectionMode(mode: typeof reflectionModes[number], options?: ReflectionOptions): this {
         this.reflectionMode = mode;
+        this.reflectionOptions = options;
         return this;
     }
 
@@ -552,6 +579,7 @@ export class ReflectionTransformer implements CustomTransformer {
         this.sourceFile = sourceFile;
 
         const reflection = this.findReflectionConfig(sourceFile);
+        this.currentReflectionConfig = reflection;
         if (reflection.mode === 'never') {
             return sourceFile;
         }
@@ -1759,6 +1787,15 @@ export class ReflectionTransformer implements CustomTransformer {
         return this.f.createIdentifier('__Ω' + joinQualifiedName(typeName));
     }
 
+    protected isExcluded(filePath: string): boolean {
+        if (!this.currentReflectionConfig.options.exclude) return false;
+
+        return contains(filePath, this.currentReflectionConfig.options.exclude, {
+            basename: true,
+            cwd: this.currentReflectionConfig.baseDir
+        });
+    }
+
     protected extractPackStructOfTypeReference(type: TypeReferenceNode | ExpressionWithTypeArguments, program: CompilerProgram): void {
         const typeName: EntityName | undefined = isTypeReferenceNode(type) ? type.typeName : (isIdentifier(type.expression) ? type.expression : undefined);
         if (!typeName) {
@@ -1892,6 +1929,11 @@ export class ReflectionTransformer implements CustomTransformer {
                     const declarationSourceFile = findSourceFile(declaration) || this.sourceFile;
                     const isGlobal = resolved.importDeclaration === undefined && declarationSourceFile.fileName !== this.sourceFile.fileName;
                     const isFromImport = resolved.importDeclaration !== undefined;
+
+                    if (this.isExcluded(declarationSourceFile.fileName)) {
+                        program.pushOp(ReflectionOp.any);
+                        return;
+                    }
 
                     if (isGlobal) {
                         //we don't embed non-global imported declarations anymore, only globals
@@ -2387,11 +2429,16 @@ export class ReflectionTransformer implements CustomTransformer {
     protected resolvedTsConfig: { [path: string]: { data: Record<string, any>, exists: boolean } } = {};
     protected resolvedPackageJson: { [path: string]: { data: Record<string, any>, exists: boolean } } = {};
 
-    protected findReflectionConfig(node: Node, program?: CompilerProgram): { mode: typeof reflectionModes[number] } {
+    protected applyReflectionOptionsDefaults(options: ReflectionOptions) {
+        if (!options.exclude) options.exclude = this.defaultExcluded;
+        return options;
+    }
+
+    protected findReflectionConfig(node: Node, program?: CompilerProgram): ReflectionConfig {
         if (program && program.sourceFile.fileName !== this.sourceFile.fileName) {
             //when the node is from another module it was already decided that it will be reflected, so
             //make sure it returns correct mode. for globals this would read otherwise to `mode: never`.
-            return { mode: 'always' };
+            return { mode: 'always', options: this.applyReflectionOptionsDefaults({}) };
         }
 
         let current: Node | undefined = node;
@@ -2401,17 +2448,17 @@ export class ReflectionTransformer implements CustomTransformer {
             const tags = getJSDocTags(current);
             for (const tag of tags) {
                 if (!reflection && getIdentifierName(tag.tagName) === 'reflection' && 'string' === typeof tag.comment) {
-                    return { mode: this.parseReflectionMode(tag.comment as any || true) };
+                    return { mode: this.parseReflectionMode(tag.comment as any || true), options: this.applyReflectionOptionsDefaults({}) };
                 }
             }
             current = current.parent;
         } while (current);
 
         //nothing found, look in tsconfig.json
-        if (this.reflectionMode !== undefined) return { mode: this.reflectionMode };
+        if (this.reflectionMode !== undefined) return { mode: this.reflectionMode, options: this.applyReflectionOptionsDefaults(this.reflectionOptions || {}) };
 
         if (!serverEnv) {
-            return { mode: 'default' };
+            return { mode: 'default', options: this.applyReflectionOptionsDefaults({}) };
         }
 
         const sourceFile = findSourceFile(node) || this.sourceFile;
@@ -2429,9 +2476,9 @@ export class ReflectionTransformer implements CustomTransformer {
         return undefined;
     }
 
-    protected findReflectionFromPath(path: string): { mode: typeof reflectionModes[number] } {
+    protected findReflectionFromPath(path: string): ReflectionConfig {
         if (!serverEnv) {
-            return { mode: 'default' };
+            return { mode: 'default', options: this.applyReflectionOptionsDefaults({}) };
         }
 
         let currentDir = dirname(path);
@@ -2494,11 +2541,11 @@ export class ReflectionTransformer implements CustomTransformer {
             }
 
             if (reflection === undefined && packageJson.reflection !== undefined) {
-                return { mode: this.parseReflectionMode(packageJson.reflection, currentDir) };
+                return { mode: this.parseReflectionMode(packageJson.reflection, currentDir), baseDir: currentDir, options: this.applyReflectionOptionsDefaults(packageJson.reflectionOptions || {}) };
             }
 
             if (reflection === undefined && tsConfig.reflection !== undefined) {
-                return { mode: this.parseReflectionMode(tsConfig.reflection, currentDir) };
+                return { mode: this.parseReflectionMode(tsConfig.reflection, currentDir), baseDir: currentDir, options: this.applyReflectionOptionsDefaults(tsConfig.reflectionOptions || {}) };
             }
 
             if (packageJsonExists) {
@@ -2512,7 +2559,7 @@ export class ReflectionTransformer implements CustomTransformer {
             currentDir = next;
         }
 
-        return { mode: reflection || 'never' };
+        return { mode: reflection || 'never', options: this.applyReflectionOptionsDefaults({}) };
     }
 }
 
