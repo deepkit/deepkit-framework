@@ -50,7 +50,7 @@ import {
     TypePropertySignature,
     TypeTemplateLiteral
 } from './type.js';
-import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, isArray, isClass, stringifyValueWithType } from '@deepkit/core';
+import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, isArray, isClass, isPrototypeOfBase, stringifyValueWithType } from '@deepkit/core';
 import { Packed, resolvePacked, resolveRuntimeType } from './processor.js';
 import { NoTypeReceived } from '../utils.js';
 import { findCommonLiteral } from '../inheritance.js';
@@ -128,7 +128,7 @@ export function typeOf<T>(args: any[] = [], p?: ReceiveType<T>): Type {
     throw new Error('No type given');
 }
 
-export function removeTypeName<T extends Type>(type: T): T{
+export function removeTypeName<T extends Type>(type: T): T {
     const o = { ...type };
     o.typeName = undefined;
     o.typeArguments = undefined;
@@ -960,16 +960,8 @@ export class ReflectionClass<T> {
     }
 
     public isSchemaOf(classType: ClassType): boolean {
-        if (this.getClassType() === classType) return true;
-        let currentProto = Object.getPrototypeOf(this.getClassType().prototype);
-        while (currentProto && currentProto !== Object.prototype) {
-            if (currentProto === classType) return true;
-            currentProto = Object.getPrototypeOf(currentProto);
-        }
-
-        return false;
+        return isPrototypeOfBase(this.getClassType(), classType);
     }
-
 
     hasPrimary(): boolean {
         return this.primaries.length > 0;
@@ -989,7 +981,6 @@ export class ReflectionClass<T> {
     removeProperty(name: string | number | symbol) {
         const property = this.properties.find(v => v.getName() === name);
         if (!property) throw new Error(`Property ${String(name)} not known in ${this.getClassName()}`);
-        ;
 
         const stringName = memberNameToString(name);
         arrayRemoveItem(this.propertyNames, stringName);

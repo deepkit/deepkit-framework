@@ -1915,7 +1915,7 @@ export class Serializer {
 
     protected registerTypeGuards() {
         this.typeGuards.register(1, ReflectionKind.any, (type, state) => {
-            //if any is part of an union, we use register(20) below. otherwise it would match before anything else.
+            //if any is part of a union, we use register(20) below. otherwise it would match before anything else.
             if (type.parent && type.parent.kind === ReflectionKind.union) return;
             state.addSetter('true');
         });

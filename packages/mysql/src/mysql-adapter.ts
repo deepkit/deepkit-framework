@@ -23,9 +23,19 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from '@deepkit/sql';
-import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, OrmEntity, PatchResult, UniqueConstraintFailure } from '@deepkit/orm';
+import {
+    DatabaseLogger,
+    DatabasePersistenceChangeSet,
+    DatabaseSession,
+    DatabaseTransaction,
+    DeleteResult,
+    OrmEntity,
+    PatchResult,
+    primaryKeyObjectConverter,
+    UniqueConstraintFailure
+} from '@deepkit/orm';
 import { MySQLPlatform } from './mysql-platform';
-import { Changes, getPartialSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath, resolveReceiveType } from '@deepkit/type';
+import { Changes, getPartialSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
 import { AbstractClassType, asyncOperation, ClassType, empty, isArray } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
@@ -224,7 +234,7 @@ export class MySQLPersistence extends SQLPersistence {
     }
 
     async batchUpdate<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
-        const prepared = prepareBatchUpdate(this.platform, classSchema, changeSets, {setNamesWithTableName: true});
+        const prepared = prepareBatchUpdate(this.platform, classSchema, changeSets, { setNamesWithTableName: true });
         if (!prepared) return;
 
         const placeholderStrategy = new this.platform.placeholderStrategy();
@@ -352,7 +362,7 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
         const primaryKey = this.classSchema.getPrimary();
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
-        const primaryKeyConverted = getSerializeFunction(primaryKey.property, this.platform.serializer.deserializeRegistry);
+        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
 
         const sqlBuilder = new SqlBuilder(this.platform);
         const tableName = this.platform.getTableIdentifier(this.classSchema);
@@ -383,7 +393,7 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
         const selectParams: any[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const primaryKey = this.classSchema.getPrimary();
-        const primaryKeyConverted = getSerializeFunction(primaryKey.property, this.platform.serializer.deserializeRegistry);
+        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};

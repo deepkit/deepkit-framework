@@ -1336,6 +1336,7 @@ export class AnnotationDefinition<T = true> {
     }
 
     reset(annotations: Annotations) {
+        //not `delete` so that Object.assign works
         annotations[this.symbol] = undefined;
     }
 
@@ -1832,6 +1833,8 @@ export const typeDecorators: TypeDecorator[] = [
                 const name = typeToObject(meta.type.types[1].type);
                 if ('string' !== typeof name) return false;
                 const map: { [name: string]: AnnotationDefinition<any> } = {
+                    primaryKey: primaryKeyAnnotation,
+                    autoIncrement: autoIncrementAnnotation,
                     excluded: excludedAnnotation,
                     database: databaseAnnotation,
                     index: indexAnnotation,

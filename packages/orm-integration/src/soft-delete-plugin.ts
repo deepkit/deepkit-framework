@@ -1,9 +1,9 @@
-import { SoftDelete, SoftDeleteQuery, SoftDeleteSession } from '@deepkit/orm';
+import { SoftDeletePlugin, SoftDeleteQuery, SoftDeleteSession } from '@deepkit/orm';
 import { AutoIncrement, cast, entity, PrimaryKey } from '@deepkit/type';
 import { DatabaseFactory } from './test';
 import { expect } from '@jest/globals';
 
-export const softDeleteTests = {
+export const softDeletePluginTests = {
     async query(databaseFactory: DatabaseFactory) {
         @entity.name('softDeleteUser')
         class s {
@@ -14,8 +14,7 @@ export const softDeleteTests = {
         }
 
         const database = await databaseFactory([s]);
-        const softDelete = new SoftDelete(database);
-        softDelete.enable(s);
+        database.registerPlugin(new SoftDeletePlugin);
 
         await database.persist(cast<s>({ id: 1, username: 'Peter' }));
         await database.persist(cast<s>({ id: 2, username: 'Joe' }));
@@ -75,8 +74,7 @@ export const softDeleteTests = {
         }
 
         const database = await databaseFactory([User]);
-        const softDelete = new SoftDelete(database);
-        softDelete.enable(User);
+        database.registerPlugin(new SoftDeletePlugin);
 
         const session = database.createSession();
         const peter = new User('peter');

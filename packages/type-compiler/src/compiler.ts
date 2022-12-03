@@ -1140,7 +1140,7 @@ export class ReflectionTransformer implements CustomTransformer {
                                             this.extractPackStructOfType(typeArgument, program);
                                         }
                                     }
-                                    const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, extendType.expression));
+                                    const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, this.nodeConverter.toExpression(extendType.expression)));
                                     program.pushOp(ReflectionOp.classReference, index);
                                     program.popFrameImplicit();
                                 }

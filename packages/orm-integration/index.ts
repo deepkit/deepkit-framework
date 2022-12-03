@@ -4,13 +4,14 @@ import { variousTests } from './src/various';
 import { companyTests } from './src/company';
 import { usersTests } from './src/users';
 import { activeRecordTests } from './src/active-record';
-import { softDeleteTests } from './src/soft-delete';
+import { softDeletePluginTests } from './src/soft-delete-plugin';
 import { aggregateTest } from './src/aggregate';
 import { DatabaseFactory } from './src/test';
+import { logPluginTests } from './src/log-plugin.js';
 
 export * from './src/bookstore';
 export * from './src/active-record';
-export * from './src/soft-delete';
+export * from './src/soft-delete-plugin';
 export * from './src/aggregate';
 export * from './src/users';
 
@@ -55,9 +56,15 @@ export function runIntegrationTests(databaseFactory: DatabaseFactory) {
         });
     }
 
-    for (const i in softDeleteTests) {
+    for (const i in softDeletePluginTests) {
         test('softDelete:' + i, async () => {
-            await softDeleteTests[i](databaseFactory);
+            await softDeletePluginTests[i](databaseFactory);
+        });
+    }
+
+    for (const i in logPluginTests) {
+        test('log:' + i, async () => {
+            await logPluginTests[i](databaseFactory);
         });
     }
 

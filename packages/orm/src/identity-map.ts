@@ -16,6 +16,7 @@ import {
     getPrimaryKeyHashGenerator,
     getSimplePrimaryKeyHashGenerator,
     JSONPartial,
+    PrimaryKeyFields,
     ReflectionClass
 } from '@deepkit/type';
 import { OrmEntity } from './type';
@@ -193,7 +194,7 @@ export class IdentityMap {
         }
     }
 
-    deleteManyBySimplePK<T>(classSchema: ReflectionClass<T>, pks: any[]) {
+    deleteManyBySimplePK<T>(classSchema: ReflectionClass<T>, pks: PrimaryKeyFields<any>[]) {
         const store = this.getStore(classSchema);
         const state = getClassState(classSchema);
 

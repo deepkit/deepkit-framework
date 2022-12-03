@@ -32,6 +32,7 @@ import { UnitOfWorkCommitEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from '.
 import { DatabaseLogger } from './logger';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { EventDispatcher, EventDispatcherInterface, EventToken } from '@deepkit/event';
+import { DatabasePluginRegistry } from './plugin/plugin.js';
 
 let SESSION_IDS = 0;
 
@@ -307,6 +308,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
         public readonly adapter: ADAPTER,
         public readonly entityRegistry: DatabaseEntityRegistry = new DatabaseEntityRegistry(),
         public readonly eventDispatcher: EventDispatcherInterface = new EventDispatcher(),
+        public pluginRegistry: DatabasePluginRegistry = new DatabasePluginRegistry,
         public logger: DatabaseLogger = new DatabaseLogger,
         public stopwatch?: Stopwatch,
     ) {
@@ -315,7 +317,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
         //we cannot use arrow functions, since they can't have ReceiveType<T>
         function query<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
             return queryFactory.createQuery(type);
-        };
+        }
         this.query = query as any;
 
         const factory = this.adapter.rawFactory(this);

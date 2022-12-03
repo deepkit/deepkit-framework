@@ -9,7 +9,17 @@
  */
 
 import { DatabaseAdapter, DatabaseSession, DeleteResult, Formatter, GenericQueryResolver, OrmEntity, PatchResult } from '@deepkit/orm';
-import { Changes, getPartialSerializeFunction, ReflectionClass, ReflectionKind, ReflectionVisibility, resolveForeignReflectionClass, serializer, typeOf } from '@deepkit/type';
+import {
+    Changes,
+    getPartialSerializeFunction,
+    PrimaryKeyFields,
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionVisibility,
+    resolveForeignReflectionClass,
+    serializer,
+    typeOf
+} from '@deepkit/type';
 import { MongoClient } from './client/client';
 import { AggregateCommand } from './client/command/aggregate';
 import { CountCommand } from './client/command/count';
@@ -63,7 +73,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
         return pk;
     }
 
-    protected async fetchIds(queryModel: MongoQueryModel<T>, limit: number = 0, connection: MongoConnection): Promise<any[]> {
+    protected async fetchIds(queryModel: MongoQueryModel<T>, limit: number = 0, connection: MongoConnection): Promise<PrimaryKeyFields<any>[]> {
         const primaryKeyName = this.classSchema.getPrimary().name;
         const projection = { [primaryKeyName]: 1 as const };
 
@@ -73,12 +83,10 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
             pipeline.push({ $project: projection });
             const command = new AggregateCommand(this.classSchema, pipeline);
             command.partial = true;
-            const items = await connection.execute(command);
-            return items.map(v => v[primaryKeyName]);
+            return await connection.execute(command);
         } else {
             const mongoFilter = getMongoFilter(this.classSchema, queryModel);
-            const items = await connection.execute(new FindCommand(this.classSchema, mongoFilter, projection, undefined, limit || queryModel.limit, queryModel.skip));
-            return items.map(v => v[primaryKeyName]);
+            return await connection.execute(new FindCommand(this.classSchema, mongoFilter, projection, undefined, limit || queryModel.limit, queryModel.skip));
         }
     }
 
@@ -93,7 +101,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
             deleteResult.primaryKeys = primaryKeys;
             const primaryKeyName = this.classSchema.getPrimary().name;
 
-            const query = convertClassQueryToMongo(this.classSchema, { [primaryKeyName]: { $in: primaryKeys } } as FilterQuery<T>);
+            const query = convertClassQueryToMongo(this.classSchema, { [primaryKeyName]: { $in: primaryKeys.map(v => v[primaryKeyName]) } } as FilterQuery<T>);
             await connection.execute(new DeleteCommand(this.classSchema, query, queryModel.limit));
         } finally {
             connection.release();
@@ -139,7 +147,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
 
                 if (res.value) {
                     const converted = partialDeserialize(res.value) as any;
-                    patchResult.primaryKeys = [converted[primaryKeyName]];
+                    patchResult.primaryKeys = [converted];
                     for (const name of returning) {
                         patchResult.returning[name] = [converted[name]];
                     }
@@ -153,8 +161,6 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                 multi: !model.limit
             }]));
 
-            if (!returning.size) return;
-
             const projection: { [name: string]: 1 | 0 } = {};
             projection[primaryKeyName] = 1;
             for (const name of returning) {
@@ -165,7 +171,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
             const items = await connection.execute(new FindCommand(this.classSchema, filter, projection, {}, model.limit, model.skip));
             for (const item of items) {
                 const converted = partialDeserialize(item);
-                patchResult.primaryKeys.push(converted[primaryKeyName]);
+                patchResult.primaryKeys.push(converted);
                 for (const name of returning) {
                     patchResult.returning[name].push(converted[name]);
                 }

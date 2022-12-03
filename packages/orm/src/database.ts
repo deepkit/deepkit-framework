@@ -31,6 +31,7 @@ import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { getNormalizedPrimaryKey } from './identity-map';
 import { EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
+import { DatabasePlugin, DatabasePluginRegistry } from './plugin/plugin';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -130,6 +131,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     /** @reflection never */
     public readonly eventDispatcher: EventDispatcher = new EventDispatcher();
+    public readonly pluginRegistry: DatabasePluginRegistry = new DatabasePluginRegistry();
 
     constructor(
         public readonly adapter: ADAPTER,
@@ -145,7 +147,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
             const session = self.createSession();
             session.withIdentityMap = false;
             return session.query(type);
-        };
+        }
         this.query = query;
 
         this.raw = (...args: any[]) => {
@@ -159,6 +161,13 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
         if (!this.adapter.isNativeForeignKeyConstraintSupported()) {
             setupVirtualForeignKey(this, this.virtualForeignKeyConstraint);
+        }
+    }
+
+    registerPlugin(...plugins: DatabasePlugin[]): void {
+        for (const plugin of plugins) {
+            this.pluginRegistry.add(plugin);
+            plugin.onRegister(this);
         }
     }
 
@@ -212,7 +221,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * ```
      */
     public createSession(): DatabaseSession<ADAPTER> {
-        return new DatabaseSession(this.adapter, this.entityRegistry, this.eventDispatcher.fork(), this.logger, this.stopwatch);
+        return new DatabaseSession(this.adapter, this.entityRegistry, this.eventDispatcher.fork(), this.pluginRegistry, this.logger, this.stopwatch);
     }
 
     /**

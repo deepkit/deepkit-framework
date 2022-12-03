@@ -12,7 +12,7 @@ import { CompilerContext, isObject, toFastProperties } from '@deepkit/core';
 import { typeSettings, UnpopulatedCheck } from './core.js';
 import { ReflectionClass, ReflectionProperty } from './reflection/reflection.js';
 import { ContainerAccessor, executeTemplates, noopTemplate, serializer, Serializer, TemplateRegistry, TemplateState } from './serializer.js';
-import { ReflectionKind } from './reflection/type.js';
+import { PrimaryKeyFields, ReflectionKind } from './reflection/type.js';
 
 function createJITConverterForSnapshot(
     schema: ReflectionClass<any>,
@@ -184,7 +184,8 @@ function simplePrimaryKeyHash(value: any): string {
 }
 
 export function getSimplePrimaryKeyHashGenerator(reflectionClass: ReflectionClass<any>) {
-    return simplePrimaryKeyHash;
+    const primary = reflectionClass.getPrimary();
+    return (data: PrimaryKeyFields<any>) => simplePrimaryKeyHash(data[primary.name]);
 }
 
 function createPrimaryKeyHashGenerator(

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Changes, ReflectionClass } from '@deepkit/type';
+import { Changes, getSerializeFunction, PrimaryKeyFields, ReflectionClass, TemplateRegistry } from '@deepkit/type';
 import { OrmEntity } from './type';
 import sift from 'sift';
 import { FilterQuery } from './query';
@@ -54,4 +54,16 @@ export function buildChangesFromInstance<T extends object>(item: T): Changes<T> 
     const lastSnapshot = state.getSnapshot();
     const currentSnapshot = state.classState.snapshot(item);
     return state.classState.changeDetector(lastSnapshot, currentSnapshot, item) || new Changes;
+}
+
+/**
+ * Converts a scala value to a primary key fields object.
+ */
+export function primaryKeyObjectConverter(classSchema: ReflectionClass<any>, templateRegistry: TemplateRegistry): (data: any) => PrimaryKeyFields<any> {
+    const primary = classSchema.getPrimary();
+    const primaryKeyConverted = getSerializeFunction(primary.property, templateRegistry);
+
+    return (data) => {
+        return { [primary.name]: primaryKeyConverted(data) };
+    };
 }

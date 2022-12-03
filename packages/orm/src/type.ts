@@ -8,14 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { PrimaryKeyType, ReflectionClass, ValidationErrorItem } from '@deepkit/type';
+import { PrimaryKeyFields, PrimaryKeyType, ReflectionClass, ValidationErrorItem } from '@deepkit/type';
 import { CustomError } from '@deepkit/core';
 
 export interface OrmEntity {
 }
 
 export type PatchResult<T> = { modified: number, returning: { [name in keyof T & string]?: T[name][] }, primaryKeys: PrimaryKeyType<T>[] };
-export type DeleteResult<T> = { modified: number, primaryKeys: PrimaryKeyType<T>[] };
+export type DeleteResult<T> = { modified: number, primaryKeys: PrimaryKeyFields<T>[] };
 
 export class DatabaseError extends CustomError {
 }

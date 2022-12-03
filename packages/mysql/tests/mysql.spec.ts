@@ -81,6 +81,7 @@ test('bool and json', async () => {
 
     const m = await database.query(Model).findOne();
     expect(m).toMatchObject({ flag: true, doc: { flag: true } });
+    database.disconnect();
 });
 
 test('change different fields of multiple entities', async () => {
@@ -121,6 +122,7 @@ test('change different fields of multiple entities', async () => {
         expect(m1).toMatchObject({id: 1, firstName: 'Peter2', lastName: ''});
         expect(m2).toMatchObject({id: 2, firstName: '', lastName: 'Smith2'});
     }
+    database.disconnect();
 });
 
 test('change pk', async () => {
@@ -163,4 +165,5 @@ test('change pk', async () => {
         const m1 = await database.query(Model).filter({id: 3}).findOne();
         expect(m1).toMatchObject({id: 3, firstName: 'Peter2'});
     }
+    database.disconnect();
 });

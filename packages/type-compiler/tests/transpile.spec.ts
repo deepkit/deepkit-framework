@@ -393,6 +393,22 @@ test('Return arrow function ref', () => {
     expect(res.app).toContain(`() => Option,`);
 });
 
+test('extends with reference to this', () => {
+    const res = transpile({
+        'app': `
+        class Factory {
+            create() {
+                class LogEntityForSchema extends this.options.entity {
+                }
+            }
+        }
+        `
+    });
+    console.log(res);
+    //currently broken as it returns LogEntityForSchema.options.entity, probably a bug in TS
+    // expect(res.app).toContain(`() => this.options.entity,`);
+});
+
 //currently knownLibFilesForCompilerOptions from @typescript/vfs doesn't return correct lib files for ES2022
 // test('es2022', () => {
 //     const res = transpile({

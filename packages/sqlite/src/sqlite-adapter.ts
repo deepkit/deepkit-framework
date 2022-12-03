@@ -19,6 +19,7 @@ import {
     DeleteResult,
     OrmEntity,
     PatchResult,
+    primaryKeyObjectConverter,
     UniqueConstraintFailure
 } from '@deepkit/orm';
 import {
@@ -402,7 +403,7 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         const sqlBuilder = new SqlBuilder(this.platform);
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
-        const primaryKeyConverted = getSerializeFunction(primaryKey.property, this.platform.serializer.deserializeRegistry);
+        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
         const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
@@ -432,7 +433,7 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         const selectParams: any[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const primaryKey = this.classSchema.getPrimary();
-        const primaryKeyConverted = getSerializeFunction(primaryKey.property, this.platform.serializer.deserializeRegistry);
+        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};

@@ -22,6 +22,8 @@ export * from './src/type';
 export * from './src/logger';
 export * from './src/event';
 export * from './src/reference';
-export * from './src/plugin/soft-delete';
+export * from './src/plugin/plugin.js';
+export * from './src/plugin/soft-delete-plugin.js';
+export * from './src/plugin/log-plugin.js';
 
 export { atomicChange } from '@deepkit/type';

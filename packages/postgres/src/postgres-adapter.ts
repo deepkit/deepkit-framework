@@ -21,7 +21,17 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from '@deepkit/sql';
-import { DatabaseLogger, DatabasePersistenceChangeSet, DatabaseSession, DatabaseTransaction, DeleteResult, OrmEntity, PatchResult, UniqueConstraintFailure } from '@deepkit/orm';
+import {
+    DatabaseLogger,
+    DatabasePersistenceChangeSet,
+    DatabaseSession,
+    DatabaseTransaction,
+    DeleteResult,
+    OrmEntity,
+    PatchResult,
+    primaryKeyObjectConverter,
+    UniqueConstraintFailure
+} from '@deepkit/orm';
 import { PostgresPlatform } from './postgres-platform';
 import type { Pool, PoolClient, PoolConfig } from 'pg';
 import pg from 'pg';
@@ -367,7 +377,7 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
         const primaryKey = this.classSchema.getPrimary();
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
-        const primaryKeyConverted = getSerializeFunction(primaryKey.property, this.platform.serializer.deserializeRegistry);
+        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
 
         const sqlBuilder = new SqlBuilder(this.platform);
         const tableName = this.platform.getTableIdentifier(this.classSchema);
@@ -398,7 +408,7 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
         const selectParams: any[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const primaryKey = this.classSchema.getPrimary();
-        const primaryKeyConverted = getSerializeFunction(primaryKey.property, this.platform.serializer.deserializeRegistry);
+        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};

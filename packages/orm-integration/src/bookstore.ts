@@ -197,7 +197,7 @@ export const bookstoreTests = {
         {
             const patched = await database.query(Image).returning('path', 'privateToken', 'image').patchMany({ $inc: { downloads: 1 } });
             expect(patched.modified).toBe(1);
-            expect(patched.primaryKeys).toEqual([image.id]);
+            expect(patched.primaryKeys).toMatchObject([{ id: image.id }]);
             expect(patched.returning.downloads).toEqual([1]);
             expect(patched.returning.path).toEqual(['/foo.jpg']);
             expect(patched.returning.privateToken).toEqual([image.privateToken]);
@@ -207,7 +207,7 @@ export const bookstoreTests = {
         {
             const patched = await database.query(Image).returning('path', 'privateToken', 'image').patchOne({ $inc: { downloads: 1 } });
             expect(patched.modified).toBe(1);
-            expect(patched.primaryKeys).toEqual([image.id]);
+            expect(patched.primaryKeys).toMatchObject([{ id: image.id }]);
             expect(patched.returning.downloads).toEqual([2]);
             expect(patched.returning.path).toEqual(['/foo.jpg']);
             expect(patched.returning.privateToken).toEqual([image.privateToken]);
@@ -218,7 +218,7 @@ export const bookstoreTests = {
 
         {
             const deleted = await database.query(Image).deleteMany();
-            expect(deleted.primaryKeys).toEqual([image.id]);
+            expect(deleted.primaryKeys).toMatchObject([{ id: image.id }]);
             expect(deleted.modified).toBe(1);
         }
         database.disconnect();
@@ -511,7 +511,7 @@ export const bookstoreTests = {
 
         const res = await database.query(UserCredentials).filter({ user: user1 }).patchOne({ user: user2 });
         expect(res.modified).toEqual(1);
-        expect(res.primaryKeys).toMatchObject([{ id: user2.id }]); //we want the new primaryKey, not the old one
+        expect(res.primaryKeys).toMatchObject([{ user: { id: user2.id } }]); //we want the new primaryKey, not the old one
 
         {
             const creds = await database.query(UserCredentials).filter({ user: user2 }).findOne();
@@ -521,7 +521,7 @@ export const bookstoreTests = {
         {
             const res = await database.query(User).filter({ id: user1.id }).patchOne({ id: 125 });
             expect(res.modified).toEqual(1);
-            expect(res.primaryKeys).toEqual([125]); //we want the new primaryKey, not the old one
+            expect(res.primaryKeys).toEqual([{id: 125}]); //we want the new primaryKey, not the old one
         }
         database.disconnect();
     },
@@ -804,7 +804,7 @@ export const bookstoreTests = {
 
             const changes = await database.query(User).filter(user).patchOne({ logins: 10 });
             expect(changes.modified).toBe(1);
-            expect(changes.primaryKeys[0]).toBe(user.id);
+            expect(changes.primaryKeys[0]).toMatchObject({id: user.id});
         }
 
         {
@@ -816,7 +816,7 @@ export const bookstoreTests = {
 
             const changes = await database.query(User).filter(user).patchOne({ $inc: { logins: 10 } });
             expect(changes.modified).toBe(1);
-            expect(changes.primaryKeys[0]).toBe(user.id);
+            expect(changes.primaryKeys[0]).toMatchObject({id: user.id});
             expect(changes.returning['logins']![0]).toBe(11);
 
             await database.persist(user);

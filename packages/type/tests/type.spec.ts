@@ -12,6 +12,8 @@ import {
     InlineRuntimeType,
     isSameType,
     metaAnnotation,
+    PrimaryKey,
+    primaryKeyAnnotation,
     ReflectionKind,
     ResetDecorator,
     resolveTypeMembers,
@@ -117,6 +119,23 @@ test('copy index access', () => {
     expect(validations[1].name).toBe('maxLength');
     const groups = groupAnnotation.getAnnotations(password.type);
     expect(groups[0]).toBe('a');
+});
+
+test('reset primary decorator', () => {
+    interface User {
+        id: number & PrimaryKey;
+    }
+
+    interface UserCreationPayload {
+        id: User['id'] & ResetDecorator<'primaryKey'>;
+    }
+
+    const type = typeOf<UserCreationPayload>();
+    assertType(type, ReflectionKind.objectLiteral);
+    const id = findMember('id', type.types);
+    assertType(id, ReflectionKind.propertySignature);
+    assertType(id.type, ReflectionKind.number);
+    expect(primaryKeyAnnotation.isPrimaryKey(id.type)).toBe(false);
 });
 
 test('reset type decorator', () => {
@@ -1225,10 +1244,14 @@ test('keep last type name', () => {
 
 test('ignore constructor in mapped type', () => {
     class MyModel {
-        foo(): string {return '';}
+        foo(): string {
+            return '';
+        }
+
         constructor(public id: number) {
         }
     }
+
     type SORT_ORDER = 'asc' | 'desc' | any;
     type Sort<T, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
 
@@ -1242,7 +1265,10 @@ test('ignore constructor in mapped type', () => {
 
 test('ignore constructor in keyof', () => {
     class MyModel {
-        foo(): string {return '';}
+        foo(): string {
+            return '';
+        }
+
         constructor(public id: number) {
         }
     }
@@ -1283,7 +1309,7 @@ test('arrow function returns self reference', () => {
 
     const Option = <T>(val: T): Option<T> => {
         return new OptionType(val, true);
-    }
+    };
 
     const type = reflect(Option);
     assertType(type, ReflectionKind.function);

@@ -16,6 +16,7 @@ import { DatabaseAdapter } from '../database-adapter';
 import { Query } from '../query';
 import { OrmEntity } from '../type';
 import { ReflectionClass } from '@deepkit/type';
+import { DatabasePlugin } from './plugin.js';
 
 interface SoftDeleteEntity extends OrmEntity {
     deletedAt?: Date;
@@ -85,7 +86,7 @@ export class SoftDeleteQuery<T extends SoftDeleteEntity> extends Query<T> {
     isSoftDeleted(): this {
         const m = this.clone();
         m.includeSoftDeleted = true;
-        return m.filterField('deletedAt', {$ne: undefined});
+        return m.filterField('deletedAt', { $ne: undefined });
     }
 
     deletedBy(value: T['deletedBy']): this {
@@ -115,13 +116,17 @@ export class SoftDeleteQuery<T extends SoftDeleteEntity> extends Query<T> {
     }
 }
 
-export class SoftDelete {
+export class SoftDeletePlugin implements DatabasePlugin {
     protected listeners = new Map<ReflectionClass<any>, {
         queryFetch: EventDispatcherUnsubscribe, queryPatch: EventDispatcherUnsubscribe,
         queryDelete: EventDispatcherUnsubscribe, uowDelete: EventDispatcherUnsubscribe
     }>();
 
-    constructor(protected database: Database<DatabaseAdapter>) {
+    protected database?: Database<DatabaseAdapter>;
+
+    onRegister(database: Database<any>): void {
+        this.database = database;
+        for (const type of database.entityRegistry.entities) this.enableForSchema(type);
     }
 
     enable<T extends SoftDeleteEntity>(...classSchemaOrTypes: (ReflectionClass<T> | ClassType<T>)[]) {
@@ -144,6 +149,11 @@ export class SoftDelete {
         }
     }
 
+    protected getDatabase(): Database<any> {
+        if (!this.database) throw new Error('Plugin not registered yet');
+        return this.database;
+    }
+
     protected enableForSchema<T extends SoftDeleteEntity>(classSchemaOrType: ReflectionClass<T> | ClassType<T>) {
         const schema = ReflectionClass.from(classSchemaOrType);
         const hasDeletedBy = schema.hasProperty('deletedBy');
@@ -164,10 +174,10 @@ export class SoftDelete {
             event.query = event.query.filterField(deletedAtName, undefined);
         }
 
-        const queryFetch = this.database.listen(Query.onFetch, queryFilter);
-        const queryPatch = this.database.listen(Query.onPatchPre, queryFilter);
+        const queryFetch = this.getDatabase().listen(Query.onFetch, queryFilter);
+        const queryPatch = this.getDatabase().listen(Query.onPatchPre, queryFilter);
 
-        const queryDelete = this.database.listen(Query.onDeletePre, async event => {
+        const queryDelete = this.getDatabase().listen(Query.onDeletePre, async event => {
             if (event.classSchema !== schema) return; //do nothing
 
             //we don't change SoftDeleteQuery instances as they operate on the raw records without filter
@@ -184,7 +194,7 @@ export class SoftDelete {
             await event.query.patchMany(patch);
         });
 
-        const uowDelete = this.database.listen(DatabaseSession.onDeletePre, async event => {
+        const uowDelete = this.getDatabase().listen(DatabaseSession.onDeletePre, async event => {
             if (event.classSchema !== schema) return; //do nothing
 
             //stop actual query delete query

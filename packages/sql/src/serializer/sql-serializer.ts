@@ -61,7 +61,7 @@ function deserializeSqlArray(type: TypeArray, state: TemplateState) {
 
     if (!isParentIsProperty(type)) return;
 
-    state.addSetter(`'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor}`);
+    state.addCode(`${state.accessor} = 'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor};`);
 }
 
 /**
@@ -145,7 +145,7 @@ export class SqlSerializer extends Serializer {
         this.deserializeRegistry.register(ReflectionKind.objectLiteral, deserializeSqlObjectLiteral);
 
         this.serializeRegistry.append(ReflectionKind.array, serializeSqlArray);
-        this.deserializeRegistry.append(ReflectionKind.array, deserializeSqlArray);
+        this.deserializeRegistry.prepend(ReflectionKind.array, deserializeSqlArray);
 
         //for databases, types decorated with Reference will always only export the primary key.
         const referenceType = referenceAnnotation.registerType({ kind: ReflectionKind.class, classType: Object, types: [] }, {});

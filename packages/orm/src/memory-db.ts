@@ -159,9 +159,8 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
                     this.session.logger.logger.log('delete', model.filter);
                 }
                 const items = find(adapter, schema, model);
-                const primaryKey = schema.getPrimary().name as keyof T;
                 for (const item of items) {
-                    deleteResult.primaryKeys.push(item[primaryKey] as any);
+                    deleteResult.primaryKeys.push(item);
                 }
                 remove(adapter, schema, items);
             }
@@ -222,7 +221,7 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
                         }
                     }
 
-                    patchResult.primaryKeys.push(item[primaryKey] as any);
+                    patchResult.primaryKeys.push(item);
                     store.items.set(item[primaryKey] as any, serializer(item));
                 }
             }

@@ -634,7 +634,10 @@ export class Processor {
                             const ref = this.eatParameter() as number;
                             const classOrFunction = resolveFunction(program.stack[ref] as Function, program.object);
                             const inputs = this.popFrame() as Type[];
-                            if (!classOrFunction) throw new Error('No class/function reference given in ' + String(program.stack[ref]));
+                            if (!classOrFunction) {
+                                this.pushType({ kind: ReflectionKind.unknown });
+                                break;
+                            }
 
                             if (!classOrFunction.__type) {
                                 if (op === ReflectionOp.classReference) {
@@ -1833,9 +1836,10 @@ export function getEnumType(values: any[]): Type {
 }
 
 function resolveFunction<T extends Function>(fn: T, forObject: any): any {
-    // try {
-    return fn();
-    // } catch (error) {
-    //     throw new Error(`Could not resolve function of object ${getClassName(forObject)} via ${fn.toString()}: ${error}`);
-    // }
+    try {
+        return fn();
+    } catch (error) {
+        return undefined;
+        // throw new Error(`Could not resolve function of object ${getClassName(forObject)} via ${fn.toString()}: ${error}`);
+    }
 }

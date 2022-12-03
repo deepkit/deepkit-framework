@@ -2,15 +2,16 @@ import { Database } from '@deepkit/orm';
 import { DatabaseFactory } from '@deepkit/orm-integration';
 import { MongoDatabaseAdapter } from '../src/adapter';
 
-export const databaseFactory: DatabaseFactory = async (entities): Promise<Database> => {
+export const databaseFactory: DatabaseFactory = async (entities, plugins): Promise<Database> => {
     const adapter = new MongoDatabaseAdapter('mongodb://localhost/orm-integration');
 
     const database = new Database(adapter);
     if (entities) {
         database.registerEntity(...entities);
+        if (plugins) database.registerPlugin(...plugins);
 
         //drop&recreate collection is incredible slow in mongodb, so we work around that
-        for (const entity of entities) {
+        for (const entity of database.entityRegistry.entities) {
             await database.query(entity).deleteMany();
         }
         await adapter.resetAutoIncrementSequences();
