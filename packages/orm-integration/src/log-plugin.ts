@@ -26,9 +26,9 @@ export const logPluginTests = {
             const logEntries = await database.query(userLogEntity).find();
             expect(logEntries).toHaveLength(3);
             expect(logEntries).toMatchObject([
-                { id: 1, type: LogType.Added, reference: { id: 1 } },
-                { id: 2, type: LogType.Added, reference: { id: 2 } },
-                { id: 3, type: LogType.Added, reference: { id: 3 } },
+                { id: 1, type: LogType.Added, reference: 1 },
+                { id: 2, type: LogType.Added, reference: 2 },
+                { id: 3, type: LogType.Added, reference: 3 },
             ]);
         }
 
