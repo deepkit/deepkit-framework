@@ -57,6 +57,7 @@ export type QuerySelector<T> = {
     $lte?: T;
     $ne?: T;
     $nin?: T[];
+    $like?: T;
     // Logical
     $not?: T extends string ? (QuerySelector<T> | RegExp) : QuerySelector<T>;
     $regex?: T extends string ? (RegExp | string) : never;

@@ -333,7 +333,9 @@ export const variousTests = {
         @entity.name('book')
         class Book {
             id: number & PrimaryKey & AutoIncrement = 0;
-            constructor(public bookShelf?: BookShelf & Reference) {}
+
+            constructor(public bookShelf?: BookShelf & Reference) {
+            }
         }
 
         const database = await databaseFactory([Book, BookShelf]);
@@ -343,5 +345,47 @@ export const variousTests = {
 
         const shelf = await database.query(BookShelf).joinWith('books').findOne();
         expect(shelf.books.length).toBe(3);
+    },
+    async likeOperator(databaseFactory: DatabaseFactory) {
+        class Model {
+            id: number & PrimaryKey & AutoIncrement = 0;
+
+            constructor(public username: string) {
+            }
+        }
+
+        const database = await databaseFactory([Model]);
+
+        await database.persist(new Model('Peter2'), new Model('Peter3'), new Model('Marie'));
+
+        {
+            const items = await database.query(Model).filter({ username: { $like: 'Peter%' } }).find();
+            expect(items).toHaveLength(2);
+            expect(items).toMatchObject([{ username: 'Peter2' }, { username: 'Peter3' }]);
+        }
+
+        {
+            const items = await database.query(Model).filter({ username: { $like: 'Pet%' } }).find();
+            expect(items).toHaveLength(2);
+            expect(items).toMatchObject([{ username: 'Peter2' }, { username: 'Peter3' }]);
+        }
+
+        {
+            const items = await database.query(Model).filter({ username: { $like: 'Peter_' } }).find();
+            expect(items).toHaveLength(2);
+            expect(items).toMatchObject([{ username: 'Peter2' }, { username: 'Peter3' }]);
+        }
+
+        {
+            const items = await database.query(Model).filter({ username: { $like: '%r%' } }).find();
+            expect(items).toHaveLength(3);
+            expect(items).toMatchObject([{ username: 'Peter2' }, { username: 'Peter3' }, { username: 'Marie' }]);
+        }
+
+        {
+            await database.query(Model).filter({ username: { $like: 'Mar%' } }).patchOne({ username: 'Marie2' });
+            const items = await database.query(Model).find();
+            expect(items).toMatchObject([{ username: 'Peter2' }, { username: 'Peter3' }, { username: 'Marie2' }]);
+        }
     }
 };

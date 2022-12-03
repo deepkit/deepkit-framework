@@ -69,7 +69,7 @@ export class SQLFilterBuilder {
         return type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.array;
     }
 
-    protected condition(fieldName: string | undefined, value: any, comparison: 'eq' | 'gt' | 'gte' | 'in' | 'lt' | 'lte' | 'ne' | 'nin' | string): string {
+    protected condition(fieldName: string | undefined, value: any, comparison: 'eq' | 'gt' | 'gte' | 'in' | 'lt' | 'lte' | 'ne' | 'nin' | 'like' | string): string {
         if (fieldName === undefined) {
             throw new Error('No comparison operators at root level allowed');
         }
@@ -89,6 +89,7 @@ export class SQLFilterBuilder {
         else if (comparison === 'ne') cmpSign = '!=';
         else if (comparison === 'in') cmpSign = 'IN';
         else if (comparison === 'nin') cmpSign = 'NOT IN';
+        else if (comparison === 'like') cmpSign = 'LIKE';
         else if (comparison === 'regex') cmpSign = this.regexpComparator();
         else throw new Error(`Comparator ${comparison} not supported.`);
 
@@ -158,7 +159,7 @@ export class SQLFilterBuilder {
             if (i === '$not') return `NOT ` + this.conditionsArray(filter[i], 'AND');
 
             if (i === '$exists') sql.push(this.quoteValue(this.schema.hasProperty(i)));
-            else if (i[0] === '$') sql.push(this.condition(fieldName, filter[i], i.substr(1)));
+            else if (i[0] === '$') sql.push(this.condition(fieldName, filter[i], i.substring(1)));
             else sql.push(this.condition(i, filter[i], 'eq'));
         }
 

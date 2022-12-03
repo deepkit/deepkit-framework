@@ -41,6 +41,10 @@ export function getMongoFilter<T extends OrmEntity>(classSchema: ReflectionClass
                 throw new Error(`Parameter ${value} not defined in ${classSchema.getClassName()} query.`);
             }
             return model.parameters[value];
+        },
+        $like: (name, value) => {
+            const regexp = ('^' + value + '$').replace(/%/g, '.*').replace(/_/g, '.');
+            return new RegExp(regexp, 'i');
         }
     });
 }
