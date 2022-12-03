@@ -1,4 +1,3 @@
-#!/usr/bin/env -S node -r ts-node/register/transpile-only
 import { App } from '@deepkit/app';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { CreateController } from './src/controller/create';

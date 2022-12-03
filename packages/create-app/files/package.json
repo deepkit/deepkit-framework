@@ -10,7 +10,7 @@
     "test": "jest",
     "app": "ts-node app.ts",
     "install": "deepkit-type-install",
-    "app:watch": "ts-node-dev app.ts",
+    "app:watch": "node --watch -r ts-node/register app.ts",
     "update-deepkit": "npx update-by-scope @deepkit",
     "client-rpc": "ts-node client-rpc.ts"
   },

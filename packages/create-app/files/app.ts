@@ -1,4 +1,3 @@
-#!/usr/bin/env -S node -r ts-node/register/transpile-only
 import { App } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
 import { Logger, JSONTransport } from '@deepkit/logger';

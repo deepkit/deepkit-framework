@@ -1,4 +1,3 @@
-#!/usr/bin/env -S node -r ts-node/register/transpile-only
 import { RpcWebSocketClient } from '@deepkit/rpc';
 
 //`import type` is important, since we do not want to import server code in the runtime.
