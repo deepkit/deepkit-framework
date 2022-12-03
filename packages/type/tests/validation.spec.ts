@@ -111,7 +111,19 @@ test('simple interface', () => {
     }
 
     expect(validate<User>(undefined)).toEqual([{ code: 'type', message: 'Not an object', path: '' }]);
-    expect(validate<User>({})).toEqual([{ code: 'type', message: 'Not a number', path: 'id' }]);
+    expect(validate<User>({})).toEqual([{ code: 'type', message: 'Not a number', path: 'id' }, { code: 'type', message: 'Not a string', path: 'username' }]);
+    expect(validate<User>({ id: 1 })).toEqual([{ code: 'type', message: 'Not a string', path: 'username' }]);
+    expect(validate<User>({ id: 1, username: 'Peter' })).toEqual([]);
+});
+
+test('simple class', () => {
+    class User {
+        id!: number;
+        username!: string;
+    }
+
+    expect(validate<User>(undefined)).toEqual([{ code: 'type', message: 'Not an object', path: '' }]);
+    expect(validate<User>({})).toEqual([{ code: 'type', message: 'Not a number', path: 'id' }, { code: 'type', message: 'Not a string', path: 'username' }]);
     expect(validate<User>({ id: 1 })).toEqual([{ code: 'type', message: 'Not a string', path: 'username' }]);
     expect(validate<User>({ id: 1, username: 'Peter' })).toEqual([]);
 });

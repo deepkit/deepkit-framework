@@ -1177,7 +1177,6 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     const extract = extractStateToFunctionAndCallIt(state, type);
     state = extract.state;
 
-    const v = state.compilerContext.reserveName('v');
     const lines: string[] = [];
     const signatures: TypeIndexSignature[] = [];
     const existing: string[] = [];
@@ -1199,30 +1198,32 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 ? getNameExpression(member.name, state)
                 : getNameExpression(state.isDeserialization ? state.namingStrategy.getPropertyName(member, state.registry.serializer.name) : memberNameToString(member.name), state);
 
+            const checkValid = state.compilerContext.reserveName('check');
             const propertyAccessor = new ContainerAccessor(state.accessor, readName);
-            const propertyState = state.fork(v, propertyAccessor).extendPath(String(member.name));
+            const propertyState = state.fork(checkValid, propertyAccessor).extendPath(String(member.name));
 
             const isEmbedded = member.kind === ReflectionKind.property || member.kind === ReflectionKind.propertySignature
                 ? hasEmbedded(member.type) : undefined;
 
             if (isEmbedded && (member.kind === ReflectionKind.property || member.kind === ReflectionKind.propertySignature)) {
-
                 const template = executeTemplates(propertyState, member.type);
                 if (!template) throw new Error(`No template found for ${member.type.kind}`);
 
                 lines.push(template);
             } else {
-                const optionalCheck = member.optional ? `&& ${propertyAccessor} !== undefined` : '';
+                const optionalCheck = member.optional ? `${propertyAccessor} !== undefined && ` : '';
                 existing.push(readName);
 
                 state.setContext({ unpopulatedSymbol });
                 lines.push(`
-                if (${v} ${optionalCheck} && ${propertyAccessor} !== unpopulatedSymbol) {
+                if (${optionalCheck} ${propertyAccessor} !== unpopulatedSymbol) {
+                    let ${checkValid} = false;
                     ${executeTemplates(propertyState,
-                    member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
-                        ? { kind: ReflectionKind.function, name: memberNameToString(member.name), return: member.return, parameters: member.parameters }
-                        : member.type
-                )}
+                        member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
+                            ? { kind: ReflectionKind.function, name: memberNameToString(member.name), return: member.return, parameters: member.parameters }
+                            : member.type
+                    )}
+                    if (!${checkValid}) ${state.setter} = false;
                 }`);
             }
         }
@@ -1236,22 +1237,25 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         sortSignatures(signatures);
 
         for (const signature of signatures) {
+            const checkValid = state.compilerContext.reserveName('check');
             signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)}) {
-                ${executeTemplates(state.fork(v, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), signature.type)}
+                let ${checkValid} = false;
+                ${executeTemplates(state.fork(checkValid, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), signature.type)}
+                if (!${checkValid}) ${state.setter} = false;
             }`);
         }
 
         //the index signature type could be: string, number, symbol.
         //or a literal when it was constructed by a mapped type.
         lines.push(`
-        if (${v}) for (const ${i} in ${state.accessor}) {
+        for (const ${i} in ${state.accessor}) {
             if (!${state.accessor}.hasOwnProperty(${i})) continue;
             if (${existingCheck}) continue;
-            if (!${v}) {
+            if (!${state.setter}) {
                 break;
             } ${signatureLines.join(' ')}
             else {
-                ${v} = false;
+                ${state.setter} = false;
                 break;
             }
         }
@@ -1274,10 +1278,9 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     }
 
     state.addCodeForSetter(`
-        let ${v} = true;
+        ${state.setter} = true;
         if (${state.accessor} && 'object' === typeof ${state.accessor}) {
             ${lines.join('\n')}
-            ${state.setter} = ${v};
             ${customValidatorCall}
         } else {
             if (${state.validation}) ${state.assignValidationError('type', 'Not an object')}
