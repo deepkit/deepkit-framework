@@ -272,8 +272,7 @@ test('optional', async () => {
         value?: string;
     }
 
-    const database = new Database(new SQLiteDatabaseAdapter(), [MyEntity]);
-    await database.migrate();
+    const database = await databaseFactory([MyEntity]);
 
     const entity1 = new MyEntity();
     expect('value' in entity1).toBe(false);
@@ -292,8 +291,8 @@ test('uuid', async () => {
         id: UUID & PrimaryKey = uuid();
     }
 
-    const database = new Database(new SQLiteDatabaseAdapter(), [MyEntity]);
-    await database.migrate();
+    const database = await databaseFactory([MyEntity]);
+
     const ent = new MyEntity();
     await database.persist(ent);
     expect(await database.query(MyEntity).count()).toBe(1);
@@ -325,9 +324,8 @@ test('m2m', async () => {
         }
     }
 
-    const database = new Database(new SQLiteDatabaseAdapter(':memory:'), [Book, Tag, BookToTag]);
-    database.logger.enableLogging();
-    await database.migrate();
+    const database = await databaseFactory([Book, Tag, BookToTag]);
+
     const book = new Book('title');
     const tag = new Tag('name');
     const pivot = new BookToTag(book, tag);
@@ -343,8 +341,7 @@ test('bool and json', async () => {
         doc: { flag: boolean } = { flag: false };
     }
 
-    const database = new Database(new SQLiteDatabaseAdapter(':memory:'), [Model]);
-    await database.migrate();
+    const database = await databaseFactory([Model]);
 
     {
         const m = new Model;
@@ -362,13 +359,12 @@ test('change different fields of multiple entities', async () => {
     class Model {
         firstName: string = '';
         lastName: string = '';
+
         constructor(public id: number & PrimaryKey) {
         }
     }
 
-
-    const database = new Database(new SQLiteDatabaseAdapter(':memory:'), [Model]);
-    await database.migrate();
+    const database = await databaseFactory([Model]);
 
     {
         const m1 = new Model(1);
@@ -380,8 +376,8 @@ test('change different fields of multiple entities', async () => {
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 1}).findOne();
-        const m2 = await database.query(Model).filter({id: 2}).findOne();
+        const m1 = await database.query(Model).filter({ id: 1 }).findOne();
+        const m2 = await database.query(Model).filter({ id: 2 }).findOne();
 
         m1.firstName = 'Peter2';
         m2.lastName = 'Smith2';
@@ -389,11 +385,11 @@ test('change different fields of multiple entities', async () => {
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 1}).findOne();
-        const m2 = await database.query(Model).filter({id: 2}).findOne();
+        const m1 = await database.query(Model).filter({ id: 1 }).findOne();
+        const m2 = await database.query(Model).filter({ id: 2 }).findOne();
 
-        expect(m1).toMatchObject({id: 1, firstName: 'Peter2', lastName: ''});
-        expect(m2).toMatchObject({id: 2, firstName: '', lastName: 'Smith2'});
+        expect(m1).toMatchObject({ id: 1, firstName: 'Peter2', lastName: '' });
+        expect(m2).toMatchObject({ id: 2, firstName: '', lastName: 'Smith2' });
     }
 });
 
@@ -401,12 +397,12 @@ test('change pk', async () => {
     @entity.name('model3')
     class Model {
         firstName: string = '';
+
         constructor(public id: number & PrimaryKey) {
         }
     }
 
-    const database = new Database(new SQLiteDatabaseAdapter(':memory:'), [Model]);
-    await database.migrate();
+    const database = await databaseFactory([Model]);
 
     {
         const m1 = new Model(1);
@@ -415,25 +411,53 @@ test('change pk', async () => {
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 1}).findOne();
+        const m1 = await database.query(Model).filter({ id: 1 }).findOne();
         m1.id = 2;
         await database.persist(m1);
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 2}).findOne();
-        expect(m1).toMatchObject({id: 2, firstName: 'Peter'});
+        const m1 = await database.query(Model).filter({ id: 2 }).findOne();
+        expect(m1).toMatchObject({ id: 2, firstName: 'Peter' });
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 2}).findOne();
+        const m1 = await database.query(Model).filter({ id: 2 }).findOne();
         m1.id = 3;
         m1.firstName = 'Peter2';
         await database.persist(m1);
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 3}).findOne();
-        expect(m1).toMatchObject({id: 3, firstName: 'Peter2'});
+        const m1 = await database.query(Model).filter({ id: 3 }).findOne();
+        expect(m1).toMatchObject({ id: 3, firstName: 'Peter2' });
     }
+});
+
+test('for update/share', async () => {
+    @entity.name('model4')
+    class Model {
+        firstName: string = '';
+
+        constructor(public id: number & PrimaryKey) {
+        }
+    }
+
+    const database = await databaseFactory([Model]);
+    await database.persist(new Model(1), new Model(2));
+
+    {
+        const query = database.query(Model).forUpdate();
+        const sql = database.adapter.createSelectSql(query);
+        expect(sql.sql).not.toContain(' FOR UPDATE');
+    }
+
+    {
+        const query = database.query(Model).forShare();
+        const sql = database.adapter.createSelectSql(query);
+        expect(sql.sql).not.toContain(' FOR SHARE');
+    }
+
+    const items = await database.query(Model).forUpdate().find();
+    expect(items).toHaveLength(2);
 });

@@ -35,9 +35,8 @@ import {
 import { AbstractClassType, ClassType, isArray, isClass } from '@deepkit/core';
 import { Changes, getPartialSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass } from '@deepkit/type';
 import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform';
-import { SqlBuilder } from './sql-builder';
+import { Sql, SqlBuilder } from './sql-builder';
 import { SqlFormatter } from './sql-formatter';
-import { sqlSerializer } from './serializer/sql-serializer';
 import { DatabaseComparator, DatabaseModel } from './schema/table';
 import { Stopwatch } from '@deepkit/stopwatch';
 
@@ -555,6 +554,11 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
 
     isNativeForeignKeyConstraintSupported() {
         return true;
+    }
+
+    createSelectSql(query: Query<any>): Sql {
+        const sqlBuilder = new SqlBuilder(this.platform);
+        return sqlBuilder.select(query.classSchema, query.model as any);
     }
 
     /**

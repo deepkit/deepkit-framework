@@ -60,6 +60,10 @@ export class MySQLPlatform extends DefaultPlatform {
         this.addBinaryType('longblob');
     }
 
+    supportsSelectFor(): boolean {
+        return true;
+    }
+
     protected setColumnType(column: Column, typeProperty: ReflectionProperty) {
         super.setColumnType(column, typeProperty);
 

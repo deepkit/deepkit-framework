@@ -1,8 +1,8 @@
 import { expect, test } from '@jest/globals';
 import { createPool } from 'mariadb';
-import { MySQLConnectionPool, MySQLDatabaseAdapter } from '../src/mysql-adapter';
-import { Database } from '@deepkit/orm';
+import { MySQLConnectionPool } from '../src/mysql-adapter';
 import { AutoIncrement, cast, entity, PrimaryKey } from '@deepkit/type';
+import { databaseFactory } from './factory';
 
 test('connection MySQLConnectionPool', async () => {
     const pool = createPool({
@@ -31,9 +31,8 @@ test('connection release persistence/query', async () => {
         username: string = '';
     }
 
-    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW });
-    const database = new Database(adapter, [user]);
-    await adapter.createTables(database.entityRegistry);
+    const database = await databaseFactory([user]);
+    const adapter = database.adapter;
     const session = database.createSession();
 
     session.add(cast<user>({ username: '123' }));
@@ -68,9 +67,7 @@ test('bool and json', async () => {
         doc: { flag: boolean } = { flag: false };
     }
 
-    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW });
-    const database = new Database(adapter, [Model]);
-    await adapter.createTables(database.entityRegistry);
+    const database = await databaseFactory([Model]);
 
     {
         const m = new Model;
@@ -89,13 +86,12 @@ test('change different fields of multiple entities', async () => {
     class Model {
         firstName: string = '';
         lastName: string = '';
+
         constructor(public id: number & PrimaryKey) {
         }
     }
 
-    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW });
-    const database = new Database(adapter, [Model]);
-    await adapter.createTables(database.entityRegistry);
+    const database = await databaseFactory([Model]);
 
     {
         const m1 = new Model(1);
@@ -107,8 +103,8 @@ test('change different fields of multiple entities', async () => {
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 1}).findOne();
-        const m2 = await database.query(Model).filter({id: 2}).findOne();
+        const m1 = await database.query(Model).filter({ id: 1 }).findOne();
+        const m2 = await database.query(Model).filter({ id: 2 }).findOne();
 
         m1.firstName = 'Peter2';
         m2.lastName = 'Smith2';
@@ -116,11 +112,11 @@ test('change different fields of multiple entities', async () => {
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 1}).findOne();
-        const m2 = await database.query(Model).filter({id: 2}).findOne();
+        const m1 = await database.query(Model).filter({ id: 1 }).findOne();
+        const m2 = await database.query(Model).filter({ id: 2 }).findOne();
 
-        expect(m1).toMatchObject({id: 1, firstName: 'Peter2', lastName: ''});
-        expect(m2).toMatchObject({id: 2, firstName: '', lastName: 'Smith2'});
+        expect(m1).toMatchObject({ id: 1, firstName: 'Peter2', lastName: '' });
+        expect(m2).toMatchObject({ id: 2, firstName: '', lastName: 'Smith2' });
     }
     database.disconnect();
 });
@@ -129,13 +125,12 @@ test('change pk', async () => {
     @entity.name('model3')
     class Model {
         firstName: string = '';
+
         constructor(public id: number & PrimaryKey) {
         }
     }
 
-    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW });
-    const database = new Database(adapter, [Model]);
-    await adapter.createTables(database.entityRegistry);
+    const database = await databaseFactory([Model]);
 
     {
         const m1 = new Model(1);
@@ -144,26 +139,54 @@ test('change pk', async () => {
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 1}).findOne();
+        const m1 = await database.query(Model).filter({ id: 1 }).findOne();
         m1.id = 2;
         await database.persist(m1);
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 2}).findOne();
-        expect(m1).toMatchObject({id: 2, firstName: 'Peter'});
+        const m1 = await database.query(Model).filter({ id: 2 }).findOne();
+        expect(m1).toMatchObject({ id: 2, firstName: 'Peter' });
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 2}).findOne();
+        const m1 = await database.query(Model).filter({ id: 2 }).findOne();
         m1.id = 3;
         m1.firstName = 'Peter2';
         await database.persist(m1);
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 3}).findOne();
-        expect(m1).toMatchObject({id: 3, firstName: 'Peter2'});
+        const m1 = await database.query(Model).filter({ id: 3 }).findOne();
+        expect(m1).toMatchObject({ id: 3, firstName: 'Peter2' });
     }
     database.disconnect();
+});
+
+test('for update/share', async () => {
+    @entity.name('model4')
+    class Model {
+        firstName: string = '';
+
+        constructor(public id: number & PrimaryKey) {
+        }
+    }
+
+    const database = await databaseFactory([Model]);
+    await database.persist(new Model(1), new Model(2));
+
+    {
+        const query = database.query(Model).forUpdate();
+        const sql = database.adapter.createSelectSql(query);
+        expect(sql.sql).toContain(' FOR UPDATE');
+    }
+
+    {
+        const query = database.query(Model).forShare();
+        const sql = database.adapter.createSelectSql(query);
+        expect(sql.sql).toContain(' FOR SHARE');
+    }
+
+    const items = await database.query(Model).forUpdate().find();
+    expect(items).toHaveLength(2);
 });

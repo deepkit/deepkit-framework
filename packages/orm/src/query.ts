@@ -89,6 +89,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
     public filter?: FILTER;
     public having?: FILTER;
     public groupBy: Set<string> = new Set<string>();
+    public for?: 'update' | 'share';
     public aggregate = new Map<string, { property: ReflectionProperty, func: string }>();
     public select: Set<string> = new Set<string>();
     public joins: DatabaseJoinModel<any, any>[] = [];
@@ -129,6 +130,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
         m.withIdentityMap = this.withIdentityMap;
         m.select = new Set(this.select);
         m.groupBy = new Set(this.groupBy);
+        m.for = this.for;
         m.aggregate = new Map(this.aggregate);
         m.parameters = { ...this.parameters };
 
@@ -211,6 +213,26 @@ export class BaseQuery<T extends OrmEntity> {
         model?: DatabaseQueryModel<T>
     ) {
         this.model = model || this.createModel<T>();
+    }
+
+    /**
+     * For MySQL/Postgres SELECT FOR SHARE.
+     * Has no effect in SQLite/MongoDB.
+     */
+    forShare(): this {
+        const c = this.clone();
+        c.model.for = 'share';
+        return c as any;
+    }
+
+    /**
+     * For MySQL/Postgres SELECT FOR UPDATE.
+     * Has no effect in SQLite/MongoDB.
+     */
+    forUpdate(): this {
+        const c = this.clone();
+        c.model.for = 'update';
+        return c as any;
     }
 
     groupBy<K extends FieldName<T>[]>(...field: K): this {
@@ -526,7 +548,6 @@ export type Methods<T> = { [K in keyof T]: K extends keyof Query<any> ? never : 
  */
 export class Query<T extends OrmEntity> extends BaseQuery<T> {
     protected lifts: ClassType[] = [];
-
 
     public static readonly onFetch: EventToken<QueryDatabaseEvent<any>> = new EventToken('orm.query.fetch');
 

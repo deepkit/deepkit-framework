@@ -1,5 +1,5 @@
 import { expect } from '@jest/globals';
-import { AutoIncrement, cast, entity, isReferenceInstance, PrimaryKey, Reference, Unique } from '@deepkit/type';
+import { AutoIncrement, BackReference, cast, entity, isReferenceInstance, PrimaryKey, Reference, Unique } from '@deepkit/type';
 import { identifier, sql, SQLDatabaseAdapter } from '@deepkit/sql';
 import { DatabaseFactory } from './test';
 import { isDatabaseOf, UniqueConstraintFailure } from '@deepkit/orm';
@@ -322,5 +322,26 @@ export const variousTests = {
         const database = await databaseFactory([EmptyEntity]);
 
         await expect(database.persist(new EmptyEntity())).resolves.not.toThrow();
+    },
+    async findOneWithRelation(databaseFactory: DatabaseFactory) {
+        @entity.name('bookshelf')
+        class BookShelf {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            books: Book[] & BackReference = [];
+        }
+
+        @entity.name('book')
+        class Book {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            constructor(public bookShelf?: BookShelf & Reference) {}
+        }
+
+        const database = await databaseFactory([Book, BookShelf]);
+
+        const bookShelf = new BookShelf();
+        await database.persist(bookShelf, new Book(bookShelf), new Book(bookShelf), new Book(bookShelf));
+
+        const shelf = await database.query(BookShelf).joinWith('books').findOne();
+        expect(shelf.books.length).toBe(3);
     }
 };

@@ -134,6 +134,13 @@ export abstract class DefaultPlatform {
     }
 
     /**
+     * If the platform supports the `SELECT FOR UPDATE` or `SELECT FOR SHARE`.
+     */
+    supportsSelectFor(): boolean {
+        return false;
+    }
+
+    /**
      * If the platform supports the `PRIMARY KEY` section in `CREATE TABLE(column, column, PRIMARY KEY())`;
      */
     supportsInlinePrimaryKey(): boolean {

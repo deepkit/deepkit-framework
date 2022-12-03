@@ -2,7 +2,7 @@ import { Database } from '@deepkit/orm';
 import { DatabaseFactory } from '@deepkit/orm-integration';
 import { PostgresDatabaseAdapter } from '../src/postgres-adapter';
 
-export const databaseFactory: DatabaseFactory = async (entities, plugins): Promise<Database> => {
+export const databaseFactory: DatabaseFactory<PostgresDatabaseAdapter> = async (entities, plugins): Promise<Database<PostgresDatabaseAdapter>> => {
     const adapter = new PostgresDatabaseAdapter({host: 'localhost', database: 'postgres', user: 'postgres'});
 
     const database = new Database(adapter);

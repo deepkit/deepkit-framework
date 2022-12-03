@@ -382,6 +382,21 @@ export class SqlBuilder {
             }
         }
 
-        return this.build(schema, model, 'SELECT ' + (manualSelect || this.sqlSelect).join(', '));
+        const sql = this.build(schema, model, 'SELECT ' + (manualSelect || this.sqlSelect).join(', '));
+
+        if (this.platform.supportsSelectFor()) {
+            switch (model.for) {
+                case 'update': {
+                    sql.append(' FOR UPDATE');
+                    break;
+                }
+                case 'share': {
+                    sql.append(' FOR SHARE');
+                    break;
+                }
+            }
+        }
+
+        return sql;
     }
 }

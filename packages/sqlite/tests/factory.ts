@@ -4,7 +4,7 @@ import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter';
 import { mkdtempSync } from 'fs';
 import { join } from 'path';
 
-export const databaseFactory: DatabaseFactory = async (entities, plugins): Promise<Database> => {
+export const databaseFactory: DatabaseFactory<SQLiteDatabaseAdapter> = async (entities, plugins): Promise<Database<SQLiteDatabaseAdapter>> => {
     const adapter = new SQLiteDatabaseAdapter(join(mkdtempSync('/tmp/', 'utf8'), 'db.sqlite'));
 
     const database = new Database(adapter);

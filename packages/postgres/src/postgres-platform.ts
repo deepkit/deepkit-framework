@@ -151,6 +151,10 @@ export class PostgresPlatform extends DefaultPlatform {
         return false;
     }
 
+    supportsSelectFor(): boolean {
+        return true;
+    }
+
     getAutoIncrement() {
         return '';
     }

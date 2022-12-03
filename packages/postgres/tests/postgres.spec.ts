@@ -1,9 +1,7 @@
-import { Database } from '@deepkit/orm';
-import { AutoIncrement } from '@deepkit/type';
-import { entity, PrimaryKey } from '@deepkit/type';
+import { AutoIncrement, entity, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import pg from 'pg';
-import { PostgresDatabaseAdapter } from '../src/postgres-adapter';
+import { databaseFactory } from './factory';
 
 test('count', async () => {
     const pool = new pg.Pool({
@@ -40,9 +38,7 @@ test('bool and json', async () => {
         doc: { flag: boolean } = { flag: false };
     }
 
-    const adapter = new PostgresDatabaseAdapter({ host: '127.0.0.1', database: 'postgres', user: 'postgres' });
-    const database = new Database(adapter, [Model]);
-    await adapter.createTables(database.entityRegistry);
+    const database = await databaseFactory([Model]);
 
     {
         const m = new Model;
@@ -60,13 +56,12 @@ test('change different fields of multiple entities', async () => {
     class Model {
         firstName: string = '';
         lastName: string = '';
+
         constructor(public id: number & PrimaryKey) {
         }
     }
 
-    const adapter = new PostgresDatabaseAdapter({ host: '127.0.0.1', database: 'postgres', user: 'postgres' });
-    const database = new Database(adapter, [Model]);
-    await adapter.createTables(database.entityRegistry);
+    const database = await databaseFactory([Model]);
 
     {
         const m1 = new Model(1);
@@ -78,8 +73,8 @@ test('change different fields of multiple entities', async () => {
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 1}).findOne();
-        const m2 = await database.query(Model).filter({id: 2}).findOne();
+        const m1 = await database.query(Model).filter({ id: 1 }).findOne();
+        const m2 = await database.query(Model).filter({ id: 2 }).findOne();
 
         m1.firstName = 'Peter2';
         m2.lastName = 'Smith2';
@@ -87,11 +82,11 @@ test('change different fields of multiple entities', async () => {
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 1}).findOne();
-        const m2 = await database.query(Model).filter({id: 2}).findOne();
+        const m1 = await database.query(Model).filter({ id: 1 }).findOne();
+        const m2 = await database.query(Model).filter({ id: 2 }).findOne();
 
-        expect(m1).toMatchObject({id: 1, firstName: 'Peter2', lastName: ''});
-        expect(m2).toMatchObject({id: 2, firstName: '', lastName: 'Smith2'});
+        expect(m1).toMatchObject({ id: 1, firstName: 'Peter2', lastName: '' });
+        expect(m2).toMatchObject({ id: 2, firstName: '', lastName: 'Smith2' });
     }
 });
 
@@ -99,13 +94,12 @@ test('change pk', async () => {
     @entity.name('model3')
     class Model {
         firstName: string = '';
+
         constructor(public id: number & PrimaryKey) {
         }
     }
 
-    const adapter = new PostgresDatabaseAdapter({ host: '127.0.0.1', database: 'postgres', user: 'postgres' });
-    const database = new Database(adapter, [Model]);
-    await adapter.createTables(database.entityRegistry);
+    const database = await databaseFactory([Model]);
 
     {
         const m1 = new Model(1);
@@ -114,25 +108,53 @@ test('change pk', async () => {
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 1}).findOne();
+        const m1 = await database.query(Model).filter({ id: 1 }).findOne();
         m1.id = 2;
         await database.persist(m1);
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 2}).findOne();
-        expect(m1).toMatchObject({id: 2, firstName: 'Peter'});
+        const m1 = await database.query(Model).filter({ id: 2 }).findOne();
+        expect(m1).toMatchObject({ id: 2, firstName: 'Peter' });
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 2}).findOne();
+        const m1 = await database.query(Model).filter({ id: 2 }).findOne();
         m1.id = 3;
         m1.firstName = 'Peter2';
         await database.persist(m1);
     }
 
     {
-        const m1 = await database.query(Model).filter({id: 3}).findOne();
-        expect(m1).toMatchObject({id: 3, firstName: 'Peter2'});
+        const m1 = await database.query(Model).filter({ id: 3 }).findOne();
+        expect(m1).toMatchObject({ id: 3, firstName: 'Peter2' });
     }
+});
+
+test('for update/share', async () => {
+    @entity.name('model4')
+    class Model {
+        firstName: string = '';
+
+        constructor(public id: number & PrimaryKey) {
+        }
+    }
+
+    const database = await databaseFactory([Model]);
+    await database.persist(new Model(1), new Model(2));
+
+    {
+        const query = database.query(Model).forUpdate();
+        const sql = database.adapter.createSelectSql(query);
+        expect(sql.sql).toContain(' FOR UPDATE');
+    }
+
+    {
+        const query = database.query(Model).forShare();
+        const sql = database.adapter.createSelectSql(query);
+        expect(sql.sql).toContain(' FOR SHARE');
+    }
+
+    const items = await database.query(Model).forUpdate().find();
+    expect(items).toHaveLength(2);
 });
