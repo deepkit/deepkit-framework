@@ -118,7 +118,7 @@ import {
     TypeReferenceNode,
     UnionTypeNode,
     visitEachChild,
-    visitNode, isVariableDeclaration, isTypeNode
+    visitNode, isVariableDeclaration, isTypeNode, ScriptTarget
 } from 'typescript';
 import {
     ensureImportIsEmitted,
@@ -1679,7 +1679,13 @@ export class ReflectionTransformer implements CustomTransformer {
 
         //todo also read compiler options "types" + typeRoot
 
-        const libs = knownLibFilesForCompilerOptions(this.context.getCompilerOptions(), ts);
+        //currently knownLibFilesForCompilerOptions from @typescript/vfs doesn't return correct lib files for ES2022,
+        //so we switch here to es2021 if bigger than es2021.
+        const options = {...this.context.getCompilerOptions()};
+        if (options.target && (options.target > ScriptTarget.ES2021 && options.target < ScriptTarget.ESNext)) {
+            options.target = ScriptTarget.ES2021;
+        }
+        const libs = knownLibFilesForCompilerOptions(options, ts);
 
         for (const lib of libs) {
             const sourceFile = this.resolver.resolveSourceFile(this.sourceFile.fileName, 'typescript/lib/' + lib.replace('.d.ts', ''));

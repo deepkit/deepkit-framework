@@ -369,6 +369,24 @@ test('es2021', () => {
     expect(res.app).toContain(`const type = typeOf([], [() => __ΩReadUser, 'n!'])`);
 });
 
+test('es2022', () => {
+    const res = transpile({
+        'app': `
+        interface User {
+            id: number;
+            name: string;
+            password: string;
+        }
+        type ReadUser = Omit<User, 'password'>;
+        const type = typeOf<ReadUser>();
+        `
+    }, {target: ts.ScriptTarget.ES2022});
+    console.log(res);
+    expect(res.app).toContain(`const __ΩPick = [`);
+    expect(res.app).toContain(`const type = typeOf([], [() => __ΩReadUser, 'n!'])`)
+});
+
+
 test('Return function ref', () => {
     //see GitHub issue #354
     const res = transpile({
@@ -408,20 +426,3 @@ test('extends with reference to this', () => {
     //currently broken as it returns LogEntityForSchema.options.entity, probably a bug in TS
     // expect(res.app).toContain(`() => this.options.entity,`);
 });
-
-//currently knownLibFilesForCompilerOptions from @typescript/vfs doesn't return correct lib files for ES2022
-// test('es2022', () => {
-//     const res = transpile({
-//         'app': `
-//         interface User {
-//             id: number;
-//             name: string;
-//             password: string;
-//         }
-//         type ReadUser = Omit<User, 'password'>;
-//         `
-//     }, {target: ts.ScriptTarget.ES2022});
-//     console.log(res);
-//     expect(res.app).toContain(`const __ΩPick = [`);
-//     expect(res.app).toContain(`const type = typeOf([], [() => __ΩReadUser, 'n!'])`)
-// });
