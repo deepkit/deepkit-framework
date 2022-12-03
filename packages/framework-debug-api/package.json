@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/framework-debug-api",
-  "version": "1.0.1-alpha.76",
+  "version": "1.0.1-alpha.77",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -35,15 +35,15 @@
     "rxjs": "~7.5.0"
   },
   "devDependencies": {
-    "@deepkit/bson": "^1.0.1-alpha.76",
-    "@deepkit/core": "^1.0.1-alpha.76",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.76",
-    "@deepkit/crypto": "^1.0.1-alpha.72",
-    "@deepkit/injector": "^1.0.1-alpha.76",
-    "@deepkit/logger": "^1.0.1-alpha.76",
-    "@deepkit/rpc": "^1.0.1-alpha.76",
-    "@deepkit/stopwatch": "^1.0.1-alpha.76",
-    "@deepkit/type": "^1.0.1-alpha.76",
+    "@deepkit/bson": "^1.0.1-alpha.77",
+    "@deepkit/core": "^1.0.1-alpha.77",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.77",
+    "@deepkit/crypto": "^1.0.1-alpha.77",
+    "@deepkit/injector": "^1.0.1-alpha.77",
+    "@deepkit/logger": "^1.0.1-alpha.77",
+    "@deepkit/rpc": "^1.0.1-alpha.77",
+    "@deepkit/stopwatch": "^1.0.1-alpha.77",
+    "@deepkit/type": "^1.0.1-alpha.77",
     "rxjs": "~7.5.0"
   },
   "jest": {
