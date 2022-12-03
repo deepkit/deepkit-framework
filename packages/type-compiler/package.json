@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/type-compiler",
-  "version": "1.0.1-alpha.75",
+  "version": "1.0.1-alpha.76",
   "description": "Deepkit/type compiler/Typescript transformer",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -35,12 +35,12 @@
     "@types/micromatch": "^4.0.2"
   },
   "dependencies": {
-    "@deepkit/type-spec": "^1.0.1-alpha.74",
+    "@deepkit/type-spec": "^1.0.1-alpha.76",
+    "@marcj/ts-clone-node": "^2.0.0",
     "@typescript/vfs": "^1.4.0",
     "lz-string": "^1.4.4",
     "micromatch": "^4.0.5",
-    "strip-json-comments": "^3.1.1",
-    "@marcj/ts-clone-node": "^2.0.0"
+    "strip-json-comments": "^3.1.1"
   },
   "jest": {
     "testEnvironment": "node",
