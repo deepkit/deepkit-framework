@@ -1209,7 +1209,7 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 const template = executeTemplates(propertyState, member.type);
                 if (!template) throw new Error(`No template found for ${member.type.kind}`);
 
-                lines.push(template);
+                lines.push(`let ${checkValid} = false;` + template);
             } else {
                 const optionalCheck = member.optional ? `${propertyAccessor} !== undefined && ` : '';
                 existing.push(readName);
