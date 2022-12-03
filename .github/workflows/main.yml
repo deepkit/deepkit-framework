@@ -123,7 +123,7 @@ jobs:
       - name: Lerna bootstrap
         run: |
           npm run bootstrap -- \
-            --scope @deepkit/app --scope @deepkit/postgres --scope @deepkit/orm --scope @deepkit/sql \
+            --scope @deepkit/app --scope @deepkit/postgres --scope @deepkit/orm --scope @deepkit/event --scope @deepkit/sql \
             --scope @deepkit/orm-integration --scope @deepkit/topsort \
             --scope @deepkit/type --scope @deepkit/type-compiler --scope @deepkit/type-spec --scope @deepkit/core --scope @deepkit/logger;
           ./node_modules/.bin/npm-local-development --no-watcher
@@ -170,7 +170,7 @@ jobs:
       - name: Lerna bootstrap
         run: |
           npm run bootstrap -- \
-            --scope @deepkit/app --scope @deepkit/mysql --scope @deepkit/orm --scope @deepkit/sql \
+            --scope @deepkit/app --scope @deepkit/mysql --scope @deepkit/orm --scope @deepkit/event --scope @deepkit/sql \
             --scope @deepkit/orm-integration --scope @deepkit/topsort \
             --scope @deepkit/type --scope @deepkit/type-compiler --scope @deepkit/type-spec --scope @deepkit/core --scope @deepkit/logger;
           ./node_modules/.bin/npm-local-development --no-watcher
@@ -207,7 +207,7 @@ jobs:
       - name: Lerna bootstrap
         run: |
           npm run bootstrap -- \
-            --scope @deepkit/app --scope @deepkit/sqlite --scope @deepkit/orm --scope @deepkit/sql \
+            --scope @deepkit/app --scope @deepkit/sqlite --scope @deepkit/orm --scope @deepkit/event --scope @deepkit/sql \
             --scope @deepkit/orm-integration --scope @deepkit/topsort \
             --scope @deepkit/type --scope @deepkit/type-compiler --scope @deepkit/type-spec --scope @deepkit/core --scope @deepkit/logger;
           ./node_modules/.bin/npm-local-development --no-watcher
@@ -263,7 +263,7 @@ jobs:
         run: |
           npm run bootstrap -- \
             --scope @deepkit/app --scope @deepkit/mongo --scope @deepkit/bson \
-            --scope @deepkit/orm --scope @deepkit/sql \
+            --scope @deepkit/orm --scope @deepkit/event --scope @deepkit/sql \
             --scope @deepkit/orm-integration --scope @deepkit/topsort \
             --scope @deepkit/type --scope @deepkit/type-compiler --scope @deepkit/type-spec --scope @deepkit/core --scope @deepkit/logger;
           ./node_modules/.bin/npm-local-development --no-watcher
