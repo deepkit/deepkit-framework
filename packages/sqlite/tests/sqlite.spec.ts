@@ -2,10 +2,10 @@ import { expect, test } from '@jest/globals';
 import { SQLitePlatform } from '../src/sqlite-platform';
 import { databaseFactory } from './factory';
 import { User, UserCredentials } from '@deepkit/orm-integration';
-import { SQLiteConnection, SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter';
+import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter';
 import { sleep } from '@deepkit/core';
 import { AutoIncrement, cast, Entity, entity, PrimaryKey, Reference, ReflectionClass, serialize, typeOf, UUID, uuid } from '@deepkit/type';
-import { Database, DatabaseEntityRegistry } from '@deepkit/orm';
+import { DatabaseEntityRegistry } from '@deepkit/orm';
 import { BackReference } from '@deepkit/type';
 
 test('reflection circular reference', () => {
@@ -281,7 +281,8 @@ test(':memory: connection pool', async () => {
         const c2 = await createConnectionOrNull();
         const c3 = await createConnectionOrNull();
 
-        expect(sqlite.connectionPool.getActiveConnections()).toBeLessThanOrEqual(sqlite.connectionPool.maxConnections);
+        expect(sqlite.connectionPool.getActiveConnections())
+            .toBeLessThanOrEqual(sqlite.connectionPool.getMaxConnections());
 
         expect(c1).toBeDefined();
         expect(c2).toBeNull();
