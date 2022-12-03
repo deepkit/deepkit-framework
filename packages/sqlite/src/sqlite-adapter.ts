@@ -207,7 +207,7 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
         }
 
         const connection = this.firstConnection && this.firstConnection.released ? this.firstConnection :
-            this.activeConnections > this.maxConnections
+            this.activeConnections >= this.maxConnections
                 //we wait for the next query to be released and reuse it
                 ? await asyncOperation<SQLiteConnection>((resolve) => {
                     this.queue.push(resolve);

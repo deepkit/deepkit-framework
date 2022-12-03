@@ -2,7 +2,7 @@ import { expect, test } from '@jest/globals';
 import { SQLitePlatform } from '../src/sqlite-platform';
 import { databaseFactory } from './factory';
 import { User, UserCredentials } from '@deepkit/orm-integration';
-import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter';
+import { SQLiteConnection, SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter';
 import { sleep } from '@deepkit/core';
 import { AutoIncrement, cast, Entity, entity, PrimaryKey, Reference, ReflectionClass, serialize, typeOf, UUID, uuid } from '@deepkit/type';
 import { Database, DatabaseEntityRegistry } from '@deepkit/orm';
@@ -229,6 +229,8 @@ test('connection pool', async () => {
 
         const c3 = await sqlite.connectionPool.getConnection();
         expect(c3 === c1).toBe(true);
+
+        c3.release();
     }
 
     {
@@ -262,6 +264,32 @@ test('connection pool', async () => {
         c2.release();
         await sleep(0.01);
         expect(c12).toBe(c2);
+    }
+});
+
+test(':memory: connection pool', async () => {
+    const sqlite = new SQLiteDatabaseAdapter(':memory:');
+
+    // create a connection, or return null if it takes longer than 100 ms
+    const createConnectionOrNull = () => Promise.race([
+        sqlite.connectionPool.getConnection(),
+        sleep(0.1).then(() => null),
+    ])
+
+    {
+        const c1 = await sqlite.connectionPool.getConnection();
+        const c2 = await createConnectionOrNull();
+        const c3 = await createConnectionOrNull();
+
+        expect(sqlite.connectionPool.getActiveConnections()).toBeLessThanOrEqual(sqlite.connectionPool.maxConnections);
+
+        expect(c1).toBeDefined();
+        expect(c2).toBeNull();
+        expect(c3).toBeNull();
+
+        c1.release();
+        c2?.release();
+        c3?.release();
     }
 });
 
