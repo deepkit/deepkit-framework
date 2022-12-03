@@ -12,9 +12,8 @@ import { BrokerChannel, BrokerClient, BrokerKernel } from '@deepkit/broker';
 import { ClassType } from '@deepkit/core';
 import { IdInterface, RpcDirectClientAdapter } from '@deepkit/rpc';
 import { BrokerConfig } from './broker.config';
-import { RpcNetTcpClientAdapter, RpcNetTcpServer, RpcTcpClientAdapter, RpcTcpServer } from '@deepkit/rpc-tcp';
+import { RpcTcpClientAdapter, RpcTcpServer } from '@deepkit/rpc-tcp';
 import { MongoId, ReflectionClass, Type, typeOf, UUID } from '@deepkit/type';
-
 
 export enum EntityChannelMessageType {
     remove,
@@ -94,12 +93,6 @@ export class Broker extends BaseBroker {
     }
 }
 
-export class NetBroker extends BaseBroker {
-    constructor(protected host: BrokerConfig['host']) {
-        super(new RpcNetTcpClientAdapter(host));
-    }
-}
-
 export class DirectBroker extends BaseBroker {
     constructor(rpcKernel: BrokerKernel) {
         super(new RpcDirectClientAdapter(rpcKernel));
@@ -110,14 +103,6 @@ export class BrokerServer extends RpcTcpServer {
     protected kernel: BrokerKernel = new BrokerKernel;
 
     constructor(protected listen: BrokerConfig['listen']) {
-        super(new BrokerKernel, listen);
-    }
-}
-
-export class NetBrokerServer extends RpcNetTcpServer {
-    protected kernel: BrokerKernel = new BrokerKernel;
-
-    constructor(listen: BrokerConfig['listen']) {
         super(new BrokerKernel, listen);
     }
 }

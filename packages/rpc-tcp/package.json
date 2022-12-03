@@ -26,7 +26,6 @@
   },
   "dependencies": {
     "@types/ws": "^8.5.3",
-    "turbo-net": "deepkit/turbo-net#1.6.0",
     "ws": "^8.6.0"
   },
   "devDependencies": {

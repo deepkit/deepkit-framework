@@ -19,8 +19,6 @@ import { HandshakeCommand } from './command/handshake';
 import { MongoClientConfig } from './config';
 import { MongoError } from './error';
 
-// @ts-ignore
-import * as turbo from 'turbo-net';
 import { DatabaseTransaction } from '@deepkit/orm';
 import { CommitTransactionCommand } from './command/commitTransaction';
 import { AbortTransactionCommand } from './command/abortTransaction';

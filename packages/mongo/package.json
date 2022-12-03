@@ -30,8 +30,7 @@
     "@deepkit/type": "^1.0.1-alpha.13"
   },
   "dependencies": {
-    "saslprep": "^1.0.3",
-    "turbo-net": "deepkit/turbo-net#1.5.0"
+    "saslprep": "^1.0.3"
   },
   "devDependencies": {
     "@deepkit/bson": "^1.0.1-alpha.75",
