@@ -229,6 +229,8 @@ test('connection pool', async () => {
 
         const c3 = await sqlite.connectionPool.getConnection();
         expect(c3 === c1).toBe(true);
+
+        c3.release();
     }
 
     {
