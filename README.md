@@ -20,11 +20,13 @@ Standalone TypeScript libraries and a framework that brings everything together.
 
 Check out the [Deepkit Documentation](https://docs.deepkit.io) to get started.
 
-There is also an [e-Book version](https://docs.deepkit.io/deepkit-book-english.html). 
+There is also an [eBook version](https://docs.deepkit.io/deepkit-book-english.html). 
 
 Both is available in [German](https://docs.deepkit.io/german/), [English](https://docs.deepkit.io/english/), and [Chinese](https://docs.deepkit.io/chinese/).
 
 ## Getting started
+
+To create a Deepkit app with Deepkit Framework from scratch, you can use NPM init: 
 
 ```shell
 npm init @deepkit/app my-deepkit-app
