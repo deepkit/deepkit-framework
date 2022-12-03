@@ -140,8 +140,14 @@ export class HttpRouterFilterResolver {
                     }
                 }
 
-                for (const route of filter.routes) {
-                    if (!match(routeConfig, route)) continue outer;
+                if (filter.routes.length) {
+                    let found: boolean = false;
+                    for (const route of filter.routes) {
+                        if (match(routeConfig, route)) {
+                            found = true;
+                        }
+                    }
+                    if (!found) continue;
                 }
 
                 for (const route of filter.excludeRoutes) {

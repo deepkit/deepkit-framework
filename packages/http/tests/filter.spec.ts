@@ -178,4 +178,7 @@ test('filter by modules', async () => {
         expect(resolver.resolve(new HttpRouteFilter().forModuleClasses(ModuleB).model).length).toBe(1);
         expect(resolver.resolve(new HttpRouteFilter().forModuleClasses(ModuleA, ModuleB).model).length).toBe(4);
     }
+    {
+        expect(resolver.resolve(new HttpRouteFilter().forRoutes({path: '/b'}, {path: '/c'}).model).length).toBe(2);
+    }
 });
