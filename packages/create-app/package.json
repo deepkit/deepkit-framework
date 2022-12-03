@@ -13,6 +13,9 @@
   "scripts": {
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
+  "bin": {
+    "deepkit-app": "dist/cjs/main.js"
+  },
   "dependencies": {
     "@deepkit/app": "^1.0.1-alpha.13",
     "@deepkit/core": "^1.0.1-alpha.13",
