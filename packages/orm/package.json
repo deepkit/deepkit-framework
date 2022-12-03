@@ -9,6 +9,7 @@
   "types": "./dist/cjs/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/cjs/index.d.ts",
       "require": "./dist/cjs/index.js",
       "browser": "./dist/esm/browser.js",
       "default": "./dist/esm/index.js"

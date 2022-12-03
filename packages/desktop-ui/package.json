@@ -18,7 +18,7 @@
   "scripts": {
     "emoji": "ts-node emoji-map.ts",
     "font": "node bin/create-font.js",
-    "build": "typedoc --plugin none --json /tmp/just-to-check-whether-it-runs.json src",
+    "build": "#typedoc --plugin none --json /tmp/just-to-check-whether-it-runs.json src",
     "prepublishOnly": "webpack && node bin/create-font.js && npm run docs",
     "docs": "typedoc --plugin none --json src/assets/docs.json src"
   },

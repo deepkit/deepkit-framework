@@ -8,10 +8,12 @@
   "types": "./dist/cjs/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/cjs/index.d.ts",
       "require": "./dist/cjs/index.js",
       "default": "./dist/esm/index.js"
     },
     "./jsx-runtime": {
+      "types": "./dist/cjs/jsx-runtime.d.ts",
       "require": "./dist/cjs/jsx-runtime.js",
       "default": "./dist/esm/jsx-runtime.js"
     }

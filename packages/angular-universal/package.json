@@ -8,10 +8,12 @@
   "types": "./dist/cjs/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/cjs/index.d.ts",
       "require": "./dist/cjs/index.js",
       "default": "./dist/esm/index.js"
     },
     "./tokens": {
+      "types": "./dist/cjs/tokens/index.d.ts",
       "require": "./dist/cjs/tokens/index.js",
       "default": "./dist/esm/tokens/index.js"
     }
