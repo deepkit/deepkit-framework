@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/create-app",
-  "version": "1.0.1-alpha.75",
+  "version": "1.0.1-alpha.78",
   "description": "asdasd",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -24,13 +24,11 @@
   "scripts": {
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
-  "peerDependencies": {
-  },
   "dependencies": {
     "@deepkit/app": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/logger": "^1.0.1-alpha.13",
     "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/logger": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13",
     "fs-extra": "^9.1.0"
   },
   "devDependencies": {
