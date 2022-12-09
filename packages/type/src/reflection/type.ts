@@ -1983,6 +1983,26 @@ export const binaryTypes: ClassType[] = [
     ArrayBuffer,
 ];
 
+/**
+ * Returns true if the given type is Date, ArrayBuffer, Uint8Array, etc.
+ */
+export function isGlobalTypeClass(type: Type): type is TypeClass {
+    if (type.kind !== ReflectionKind.class) return false;
+    if ('undefined' !== typeof window) {
+        return (window as any)[getClassName(type.classType)] === type.classType;
+    }
+    if ('undefined' !== typeof global) {
+        return (global as any)[getClassName(type.classType)] === type.classType;
+    }
+    return false;
+}
+
+/**
+ * Returns true if the given type is TypeClass and references a custom (non-global) class.
+ */
+export function isCustomTypeClass(type: Type) {
+    return !isGlobalTypeClass(type);
+}
 
 /**
  * Returns the members of a class or object literal.

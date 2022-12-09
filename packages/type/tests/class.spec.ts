@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { stringifyResolvedType, stringifyType } from '../src/reflection/type.js';
-import { typeOf } from '../src/reflection/reflection.js';
+import { isCustomTypeClass, isGlobalTypeClass, stringifyResolvedType, stringifyType } from '../src/reflection/type.js';
+import { ReflectionClass, typeOf } from '../src/reflection/reflection.js';
 
 test('index access inheritance', () => {
     interface SuperInterface {
@@ -61,4 +61,21 @@ test('extends override constructor no reflection', () => {
         }
     }
     expect(stringifyResolvedType(typeOf<MyDatabase>())).toBe(`MyDatabase {constructor()}`);
+});
+
+test('isGlobalTypeClass', () => {
+    class MyDate {
+
+    }
+    class User {
+        myDate?: MyDate;
+        created: Date = new Date;
+    }
+
+    const reflection = ReflectionClass.from(User);
+    expect(isGlobalTypeClass(reflection.getProperty('myDate').type)).toBe(false);
+    expect(isCustomTypeClass(reflection.getProperty('myDate').type)).toBe(true);
+
+    expect(isGlobalTypeClass(reflection.getProperty('created').type)).toBe(true);
+    expect(isCustomTypeClass(reflection.getProperty('created').type)).toBe(false);
 });
