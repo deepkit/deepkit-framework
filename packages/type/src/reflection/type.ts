@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AbstractClassType, ClassType, getClassName, getParentClass, indent, isArray, isClass } from '@deepkit/core';
+import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, getParentClass, indent, isArray, isClass } from '@deepkit/core';
 import { TypeNumberBrand } from '@deepkit/type-spec';
 import { getProperty, ReceiveType, reflect, ReflectionClass, resolveReceiveType, toSignature } from './reflection.js';
 import { isExtendable } from './extends.js';
@@ -99,7 +99,7 @@ export interface TypeAnnotations {
      * typeOf<UserCreate>().originTypes[0].typeName = 'Pick'
      * typeOf<UserCreate>().originTypes[0].typeArguments = [User, 'user']
      */
-    originTypes?: {typeName: string, typeArguments: Type[]}[];
+    originTypes?: { typeName: string, typeArguments: Type[] }[];
 
     annotations?: Annotations; //parsed decorator types as annotations
     decorators?: Type[]; //original decorator type
@@ -235,7 +235,7 @@ class User {
     }
 }
 
-type a = User & {username: boolean};
+type a = User & { username: boolean };
 type b = ReturnType<a['getUserName']>;
 
 export interface TypeBaseMember extends TypeAnnotations {
@@ -1104,9 +1104,13 @@ export function merge(types: (TypeObjectLiteral | TypeClass)[]): TypeObjectLiter
                 type.types.push(member);
             } else if (!isMember(member)) {
                 continue;
-            } else if (!hasMember(type, member.name)) {
+            } else {
                 const t = toSignature(member);
                 t.parent = type;
+                const existing = getMember(type, member.name);
+                if (existing) {
+                    arrayRemoveItem(type.types, existing as Type);
+                }
                 type.types.push(t);
             }
         }

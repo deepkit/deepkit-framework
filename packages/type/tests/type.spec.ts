@@ -99,6 +99,20 @@ test('intersection same type keep annotation', () => {
     }
 });
 
+test('intersection simply overrides properties', () => {
+    interface User {
+        username: string;
+        password: string;
+    }
+
+    type t = User & { password: void };
+    const type = typeOf<t>();
+    assertType(type, ReflectionKind.objectLiteral);
+    const password = findMember('password', type.types);
+    assertType(password, ReflectionKind.propertySignature);
+    assertType(password.type, ReflectionKind.void);
+});
+
 test('copy index access', () => {
     interface User {
         password: string & MinLength<6> & MaxLength<30>;
