@@ -56,10 +56,14 @@ export class SQLiteSchemaParser extends SchemaParser {
         for (const row of rows) {
             if (lastId !== row.id) {
                 lastId = row.id;
-                const foreignTable = database.getTableForFull(row.table, this.platform.getSchemaDelimiter());
-                fk = table.addForeignKey('', foreignTable);
-                if (row.on_update) fk.onUpdate = row.on_update;
-                if (row.on_delete) fk.onDelete = row.on_delete;
+                try {
+                    const foreignTable = database.getTableForFull(row.table, this.platform.getSchemaDelimiter());
+                    fk = table.addForeignKey('', foreignTable);
+                    if (row.on_update) fk.onUpdate = row.on_update;
+                    if (row.on_delete) fk.onDelete = row.on_delete;
+                } catch (error) {
+                    continue;
+                }
             }
 
             if (fk) fk.addReference(row.from, row.to);
