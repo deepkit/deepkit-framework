@@ -274,7 +274,7 @@ test(':memory: connection pool', async () => {
     const createConnectionOrNull = () => Promise.race([
         sqlite.connectionPool.getConnection(),
         sleep(0.1).then(() => null),
-    ])
+    ]);
 
     {
         const c1 = await sqlite.connectionPool.getConnection();
@@ -488,4 +488,123 @@ test('for update/share', async () => {
 
     const items = await database.query(Model).forUpdate().find();
     expect(items).toHaveLength(2);
+});
+
+test('multiple joins', async () => {
+    class Flat {
+        public id: number & PrimaryKey & AutoIncrement = 0;
+
+        constructor(public property: Property & Reference, public name: string) {
+        }
+    }
+
+    class Tenant {
+        public id: number & PrimaryKey & AutoIncrement = 0;
+
+        constructor(public property: Property & Reference, public name: string) {
+        }
+    }
+
+    class Property {
+        public id: number & PrimaryKey & AutoIncrement = 0;
+        flats: Flat[] & BackReference = [];
+        tenants: Tenant[] & BackReference = [];
+
+        constructor(public name: string) {
+        }
+    }
+
+    const database = await databaseFactory([Property, Tenant, Flat]);
+    database.logger.enableLogging();
+
+    const property1 = new Property('immo1');
+    property1.flats.push(new Flat(property1, 'flat1'));
+    property1.flats.push(new Flat(property1, 'flat2'));
+    property1.tenants.push(new Tenant(property1, 'tenant1'));
+    property1.tenants.push(new Tenant(property1, 'tenant2'));
+
+    await database.persist(property1, ...property1.flats, ...property1.tenants);
+
+    {
+        const list = await database.query(Property).joinWith('flats').find();
+        expect(list).toHaveLength(1);
+        expect(list[0].flats).toMatchObject([{ name: 'flat1' }, { name: 'flat2' }]);
+    }
+
+    {
+        const list = await database.query(Property).joinWith('tenants').find();
+        expect(list).toHaveLength(1);
+        expect(list[0].tenants).toMatchObject([{ name: 'tenant1' }, { name: 'tenant2' }]);
+    }
+
+    {
+        const list = await database.query(Property).joinWith('flats').joinWith('tenants').find();
+        expect(list).toHaveLength(1);
+        expect(list[0].flats).toMatchObject([{ name: 'flat1' }, { name: 'flat2' }]);
+        expect(list[0].tenants).toMatchObject([{ name: 'tenant1' }, { name: 'tenant2' }]);
+    }
+
+    {
+        const list = await database.query(Property).joinWith('flats').useJoinWith('tenants').sort({name: 'desc'}).end().find();
+        expect(list).toHaveLength(1);
+        expect(list[0].flats).toMatchObject([{ name: 'flat1' }, { name: 'flat2' }]);
+        expect(list[0].tenants).toMatchObject([{ name: 'tenant2' }, { name: 'tenant1' }]);
+    }
+
+    const property2 = new Property('immo2');
+    property2.flats.push(new Flat(property2, 'flat3'));
+    property2.flats.push(new Flat(property2, 'flat4'));
+    property2.tenants.push(new Tenant(property2, 'tenant3'));
+    property2.tenants.push(new Tenant(property2, 'tenant4'));
+
+    await database.persist(property2, ...property2.flats, ...property2.tenants);
+
+    {
+        const list = await database.query(Property).joinWith('flats').find();
+        expect(list).toHaveLength(2);
+        expect(list[0].flats).toMatchObject([{ name: 'flat1' }, { name: 'flat2' }]);
+        expect(list[1].flats).toMatchObject([{ name: 'flat3' }, { name: 'flat4' }]);
+    }
+
+    {
+        const list = await database.query(Property).joinWith('tenants').find();
+        expect(list).toHaveLength(2);
+        expect(list[0].tenants).toMatchObject([{ name: 'tenant1' }, { name: 'tenant2' }]);
+        expect(list[1].tenants).toMatchObject([{ name: 'tenant3' }, { name: 'tenant4' }]);
+    }
+
+    {
+        const list = await database.query(Property).joinWith('flats').joinWith('tenants').find();
+        expect(list).toHaveLength(2);
+        expect(list[0].flats).toMatchObject([{ name: 'flat1' }, { name: 'flat2' }]);
+        expect(list[0].tenants).toMatchObject([{ name: 'tenant1' }, { name: 'tenant2' }]);
+        expect(list[1].flats).toMatchObject([{ name: 'flat3' }, { name: 'flat4' }]);
+        expect(list[1].tenants).toMatchObject([{ name: 'tenant3' }, { name: 'tenant4' }]);
+    }
+
+    {
+        const list = await database.query(Property).joinWith('flats').useJoinWith('tenants').sort({name: 'desc'}).end().find();
+        expect(list).toHaveLength(2);
+
+        expect(list[0].name).toBe('immo2');
+        expect(list[0].flats).toMatchObject([{ name: 'flat3' }, { name: 'flat4' }]);
+        expect(list[0].tenants).toMatchObject([{ name: 'tenant4' }, { name: 'tenant3' }]);
+
+        expect(list[1].name).toBe('immo1');
+        expect(list[1].flats).toMatchObject([{ name: 'flat1' }, { name: 'flat2' }]);
+        expect(list[1].tenants).toMatchObject([{ name: 'tenant2' }, { name: 'tenant1' }]);
+    }
+
+    {
+        const list = await database.query(Property).joinWith('flats').useJoinWith('tenants').sort({name: 'desc'}).end().sort({id: 'asc'}).find();
+        expect(list).toHaveLength(2);
+
+        expect(list[0].name).toBe('immo1');
+        expect(list[0].flats).toMatchObject([{ name: 'flat1' }, { name: 'flat2' }]);
+        expect(list[0].tenants).toMatchObject([{ name: 'tenant2' }, { name: 'tenant1' }]);
+
+        expect(list[1].name).toBe('immo2');
+        expect(list[1].flats).toMatchObject([{ name: 'flat3' }, { name: 'flat4' }]);
+        expect(list[1].tenants).toMatchObject([{ name: 'tenant4' }, { name: 'tenant3' }]);
+    }
 });

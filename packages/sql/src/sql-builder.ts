@@ -14,7 +14,8 @@ import { getPrimaryKeyHashGenerator, ReflectionClass, ReflectionProperty } from 
 import { DatabaseJoinModel, DatabaseQueryModel, OrmEntity } from '@deepkit/orm';
 import { getSqlFilter } from './filter';
 
-type ConvertDataToDict = (row: any) => { hash: string, item: { [name: string]: any } } | undefined;
+type ConvertedData = { hash: string, item: { [name: string]: any }, joined: { [name: string]: any }[] };
+type ConvertDataToDict = (row: any) => ConvertedData | undefined;
 
 export class Sql {
     constructor(
@@ -171,19 +172,24 @@ export class SqlBuilder {
         if (!this.joins.length) return rows.map(v => this.rootConverter!(v)?.item);
 
         const result: any[] = [];
-
-        const itemsStack: ({ hash: string, item: any } | undefined)[] = [];
-        itemsStack.push(undefined); //root
+        const entities: {
+            map: { [hash: string]: ConvertedData },
+            current?: ConvertedData
+        }[] = [
+            { map: {}, current: undefined }
+        ];
         for (const join of this.joins) {
-            itemsStack.push(undefined);
+            entities.push({ map: {}, current: undefined });
         }
 
         for (const row of rows) {
-            const converted = this.rootConverter(row);
-            if (!converted) continue;
-            if (!itemsStack[0] || itemsStack[0].hash !== converted.hash) {
-                if (itemsStack[0]) result.push(itemsStack[0].item);
-                itemsStack[0] = converted;
+            const convertedRoot = this.rootConverter(row);
+            if (!convertedRoot) continue;
+            if (!entities[0].map[convertedRoot.hash]) {
+                entities[0].current = entities[0].map[convertedRoot.hash] = convertedRoot;
+                result.push(convertedRoot.item);
+            } else {
+                entities[0].current = entities[0].map[convertedRoot.hash];
             }
 
             for (let joinId = 0; joinId < this.joins.length; joinId++) {
@@ -192,28 +198,28 @@ export class SqlBuilder {
 
                 const converted = join.converter(row);
                 if (!converted) continue;
-                const forItem = itemsStack[join.forJoinIndex + 1]!.item;
+                const entity = entities[joinId + 1];
 
-                if (!itemsStack[joinId + 1] || itemsStack[joinId + 1]!.hash !== converted.hash) {
-                    itemsStack[joinId + 1] = converted;
+                if (!entity.map[convertedRoot.hash]) {
+                    entity.current = entity.map[convertedRoot.hash] = converted;
+                } else {
+                    entity.current = entity.map[convertedRoot.hash];
                 }
 
-                if (join.join.propertySchema.isArray()) {
-                    if (!forItem[join.join.as]) forItem[join.join.as] = [];
-                    if (converted) {
-                        //todo: set lastHash stack, so second level joins work as well
-                        // we need to refactor lashHash to a stack first.
-                        // const pkHasher = getPrimaryKeyHashGenerator(join.join.query.classSchema, this.platform.serializer);
-                        // const pkHash = pkHasher(item);
-                        forItem[join.join.as].push(converted.item);
+                const forEntity = entities[join.forJoinIndex + 1];
+                if (!forEntity.current) continue;
+                const joined = forEntity.current.joined[joinId];
+
+                if (!joined[converted.hash]) {
+                    joined[converted.hash] = converted.item;
+                    if (join.join.propertySchema.isArray()) {
+                        (forEntity.current.item[join.join.as] ||= []).push(converted.item);
+                    } else {
+                        forEntity.current.item[join.join.as] = converted.item;
                     }
-                } else {
-                    forItem[join.join.as] = converted.item;
                 }
             }
         }
-
-        if (itemsStack[0]) result.push(itemsStack[0].item);
 
         return result;
     }
@@ -233,6 +239,7 @@ export class SqlBuilder {
             lines.push(`'${field.name}': row[${startIndex++}]`);
         }
         const pkHasher = getPrimaryKeyHashGenerator(schema, this.platform.serializer);
+        const joinedArray = `[${this.joins.map(v => `{}`).join(', ')}]`;
 
         const code = `
             return function(row) {
@@ -240,7 +247,8 @@ export class SqlBuilder {
 
                 return {
                     hash: pkHasher({${JSON.stringify(schema.getPrimary().name)}: row[${primaryKeyIndex}]}),
-                    item: {${lines.join(',\n')}}
+                    item: {${lines.join(',\n')}},
+                    joined: ${joinedArray}
                 };
             }
         `;
@@ -323,14 +331,15 @@ export class SqlBuilder {
             //wrap FROM table => FROM (SELECT * FROM table LIMIT x OFFSET x)
 
             sql.append(`(SELECT * FROM ${tableName}`);
+            this.appendWhereSQL(sql, schema, model);
             this.platform.applyLimitAndOffset(sql, model.limit, model.skip);
             sql.append(`) as ${tableName}`);
+            this.appendJoinSQL(sql, model, tableName);
         } else {
             sql.append(tableName);
+            this.appendJoinSQL(sql, model, tableName);
+            this.appendWhereSQL(sql, schema, model);
         }
-
-        this.appendJoinSQL(sql, model, tableName);
-        this.appendWhereSQL(sql, schema, model);
 
         if (model.groupBy.size) {
             const groupBy: string[] = [];
@@ -348,8 +357,14 @@ export class SqlBuilder {
             for (const [name, sort] of Object.entries(model.sort)) {
                 order.push(`${tableName}.${this.platform.quoteIdentifier(name)} ${sort}`);
             }
-            if (order.length) sql.append(' ORDER BY ' + (order.join(', ')));
         }
+        for (const join of model.joins) {
+            if (!join.query.model.sort) continue;
+            for (const [name, sort] of Object.entries(join.query.model.sort)) {
+                order.push(`${join.as}.${this.platform.quoteIdentifier(name)} ${sort}`);
+            }
+        }
+        if (order.length) sql.append(' ORDER BY ' + (order.join(', ')));
 
         if (withRange && !model.hasJoins()) {
             this.platform.applyLimitAndOffset(sql, model.limit, model.skip);

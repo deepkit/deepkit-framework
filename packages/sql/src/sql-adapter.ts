@@ -237,32 +237,33 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
         const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
         if (connectionFrame) connectionFrame.end();
 
+        let rows: any[] = [];
         try {
-            const rows = await connection.execAndReturnAll(sql.sql, sql.params);
-
-            const formatterFrame = this.session.stopwatch ? this.session.stopwatch.start('Formatter') : undefined;
-            const results: T[] = [];
-            if (model.isAggregate() || model.sqlSelect) {
-                //when aggregate the field types could be completely different, so don't normalize
-                for (const row of rows) results.push(row); //mysql returns not a real array, so we have to iterate
-                if (formatterFrame) formatterFrame.end();
-                return results;
-            }
-            const formatter = this.createFormatter(model.withIdentityMap);
-            if (model.hasJoins()) {
-                const converted = sqlBuilder.convertRows(this.classSchema, model, rows);
-                for (const row of converted) results.push(formatter.hydrate(model, row));
-            } else {
-                for (const row of rows) results.push(formatter.hydrate(model, row));
-            }
-            if (formatterFrame) formatterFrame.end();
-
-            return results;
+            rows = await connection.execAndReturnAll(sql.sql, sql.params);
         } catch (error: any) {
             throw new DatabaseError(`Could not query ${this.classSchema.getClassName()} due to SQL error ${error}.\nSQL: ${sql.sql}\nParams: ${JSON.stringify(sql.params)}. Error: ${error}`);
         } finally {
             connection.release();
         }
+
+        const formatterFrame = this.session.stopwatch ? this.session.stopwatch.start('Formatter') : undefined;
+        const results: T[] = [];
+        if (model.isAggregate() || model.sqlSelect) {
+            //when aggregate the field types could be completely different, so don't normalize
+            for (const row of rows) results.push(row); //mysql returns not a real array, so we have to iterate
+            if (formatterFrame) formatterFrame.end();
+            return results;
+        }
+        const formatter = this.createFormatter(model.withIdentityMap);
+        if (model.hasJoins()) {
+            const converted = sqlBuilder.convertRows(this.classSchema, model, rows);
+            for (const row of converted) results.push(formatter.hydrate(model, row));
+        } else {
+            for (const row of rows) results.push(formatter.hydrate(model, row));
+        }
+        if (formatterFrame) formatterFrame.end();
+
+        return results;
     }
 
     async findOneOrUndefined(model: SQLQueryModel<T>): Promise<T | undefined> {
