@@ -140,7 +140,7 @@ test('database integration', async () => {
     expect(onFetch[0]).toBeInstanceOf(DatabaseEvent);
 });
 
-test('database injection', () => {
+test('database injection useValue', () => {
     class Service {
         constructor(public db: Database) {
         }
@@ -156,6 +156,33 @@ test('database injection', () => {
 
     const service = app.get(Service);
     expect(service.db).toBeInstanceOf(Database);
+
+    const registry = app.get(DatabaseRegistry);
+    expect(registry.getDatabases()).toHaveLength(1);
+});
+
+test('database injection useClass with defaults', () => {
+    class Service {
+        constructor(public db: Database) {
+        }
+    }
+
+    class MyDatabase extends Database {
+        constructor(db: string = '') {
+            super(new MemoryDatabaseAdapter())
+        }
+    }
+
+    const app = new App({
+        imports: [new FrameworkModule({ debug: true })],
+        providers: [Service, { provide: Database, useClass: MyDatabase }],
+    });
+
+    const db = app.get(Database);
+    expect(db).toBeInstanceOf(MyDatabase);
+
+    const service = app.get(Service);
+    expect(service.db).toBeInstanceOf(MyDatabase);
 
     const registry = app.get(DatabaseRegistry);
     expect(registry.getDatabases()).toHaveLength(1);
