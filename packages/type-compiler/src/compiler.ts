@@ -11,6 +11,7 @@
 import * as ts from 'typescript';
 import {
     __String,
+    addSyntheticLeadingComment,
     ArrayTypeNode,
     ArrowFunction,
     Bundle,
@@ -86,14 +87,15 @@ import {
     isTypeQueryNode,
     isTypeReferenceNode,
     isUnionTypeNode,
+    isVariableDeclaration,
     LiteralTypeNode,
     MappedTypeNode,
     MethodDeclaration,
     MethodSignature,
+    Modifier,
     ModifierFlags,
     ModuleDeclaration,
     ModuleKind,
-    Modifier,
     Node,
     NodeFactory,
     NodeFlags,
@@ -102,6 +104,7 @@ import {
     PropertySignature,
     QualifiedName,
     RestTypeNode,
+    ScriptTarget,
     SignatureDeclaration,
     Statement,
     SyntaxKind,
@@ -118,7 +121,7 @@ import {
     TypeReferenceNode,
     UnionTypeNode,
     visitEachChild,
-    visitNode, isVariableDeclaration, isTypeNode, ScriptTarget
+    visitNode
 } from 'typescript';
 import {
     ensureImportIsEmitted,
@@ -135,7 +138,7 @@ import {
 } from './reflection-ast.js';
 import { SourceFile } from './ts-types.js';
 import { existsSync, readFileSync } from 'fs';
-import { dirname, join, resolve, isAbsolute } from 'path';
+import { dirname, isAbsolute, join, resolve } from 'path';
 import stripJsonComments from 'strip-json-comments';
 import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spec';
 import { Resolver } from './resolver.js';
@@ -878,7 +881,13 @@ export class ReflectionTransformer implements CustomTransformer {
                         undefined, undefined,
                         this.f.createCallExpression(this.f.createIdentifier('require'), undefined, [imp.from])
                     )], NodeFlags.Const));
-                    embedTopExpression.push(variable);
+                    const typeDeclWithComment = addSyntheticLeadingComment(
+                        variable,
+                        SyntaxKind.MultiLineCommentTrivia,
+                        '@ts-ignore',
+                        true,
+                    )
+                    embedTopExpression.push(typeDeclWithComment);
                 } else {
                     //import {identifier} from './bar'
                     // import { identifier as identifier } is used to avoid automatic elision of imports (in angular builds for example)
@@ -888,7 +897,13 @@ export class ReflectionTransformer implements CustomTransformer {
                     const importStatement = this.f.createImportDeclaration(undefined,
                         this.f.createImportClause(false, undefined, namedImports), imp.from
                     );
-                    embedTopExpression.push(importStatement);
+                    const typeDeclWithComment = addSyntheticLeadingComment(
+                        importStatement,
+                        SyntaxKind.MultiLineCommentTrivia,
+                        '@ts-ignore',
+                        true,
+                    )
+                    embedTopExpression.push(typeDeclWithComment);
                 }
             }
         }
