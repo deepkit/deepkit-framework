@@ -1233,6 +1233,7 @@ export class BSONBinarySerializer extends Serializer {
 
     protected registerSizer() {
         this.sizerRegistry.register(ReflectionKind.any, sizerAny);
+        this.sizerRegistry.register(ReflectionKind.object, sizerAny);
         this.sizerRegistry.register(ReflectionKind.unknown, sizerAny);
         this.sizerRegistry.register(ReflectionKind.never, () => undefined);
         this.sizerRegistry.register(ReflectionKind.class, (type, state) => sizerObjectLiteral(type, state, this.options));
@@ -1266,6 +1267,7 @@ export class BSONBinarySerializer extends Serializer {
 
     protected registerBsonSerializers() {
         this.bsonSerializeRegistry.register(ReflectionKind.any, serializeAny);
+        this.bsonSerializeRegistry.register(ReflectionKind.object, serializeAny);
         this.bsonSerializeRegistry.register(ReflectionKind.unknown, serializeAny);
         this.bsonSerializeRegistry.register(ReflectionKind.never, () => undefined);
         this.bsonSerializeRegistry.register(ReflectionKind.class, (type, state) => serializeObjectLiteral(type, state, this.options));
@@ -1317,6 +1319,7 @@ export class BSONBinarySerializer extends Serializer {
             }
         });
         this.bsonTypeGuards.register(1, ReflectionKind.number, bsonTypeGuardForBsonTypes(numberTypes));
+        this.bsonTypeGuards.register(1, ReflectionKind.object, bsonTypeGuardForBsonTypes([BSONType.OBJECT]));
         this.bsonTypeGuards.register(1, ReflectionKind.boolean, bsonTypeGuardForBsonTypes([BSONType.BOOLEAN]));
         this.bsonTypeGuards.register(1, ReflectionKind.undefined, bsonTypeGuardForBsonTypes([BSONType.UNDEFINED]));
         this.bsonTypeGuards.register(1, ReflectionKind.void, bsonTypeGuardForBsonTypes([BSONType.UNDEFINED]));
@@ -1369,6 +1372,7 @@ export class BSONBinarySerializer extends Serializer {
 
     protected registerBsonDeserializers() {
         this.bsonDeserializeRegistry.register(ReflectionKind.any, deserializeAny);
+        this.bsonDeserializeRegistry.register(ReflectionKind.object, deserializeAny);
         this.bsonDeserializeRegistry.register(ReflectionKind.unknown, deserializeAny);
         this.bsonDeserializeRegistry.register(ReflectionKind.never, () => undefined);
         this.bsonDeserializeRegistry.register(ReflectionKind.class, deserializeObjectLiteral);

@@ -987,6 +987,33 @@ test('reference', () => {
     // expect(back).toEqual(object);
 });
 
+test('deep reference', () => {
+    class Entity {
+        public id: number & PrimaryKey = 0;
+
+        constructor(public title: string) {
+        }
+    }
+
+    const object = { v: { item: createReference(Entity, { id: 5 }) } };
+
+    const schema = typeOf<{
+        v: { item: Entity & Reference }
+    }>();
+
+    const bson = getBSONSerializer(undefined, schema)(object);
+
+    const officialDeserialize = deserialize(Buffer.from(bson));
+    expect(officialDeserialize.v.item).toEqual(5);
+
+    expect(bson).toEqual(serialize({ v: { item: 5 } }));
+
+    // const back = getBSONDecoder(schema)(bson);
+    // expect(back.v).toBeInstanceOf(DecoratedValue);
+    // expect(back.v.items).toEqual(['Peter3']);
+    // expect(back).toEqual(object);
+});
+
 test('bson length', () => {
     const nonce = randomBytes(24);
 
