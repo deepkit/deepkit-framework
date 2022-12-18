@@ -21,7 +21,7 @@ export function getValidatorFunction<T>(serializerToUse: Serializer = serializer
     if (jit.__is) {
         return jit.__is;
     }
-    const fn = createTypeGuardFunction(type, undefined, serializerToUse) || (() => undefined);
+    const fn = createTypeGuardFunction(type, undefined, serializerToUse, true) || (() => undefined);
     jit.__is = fn;
     return fn as Guard<T>;
 }

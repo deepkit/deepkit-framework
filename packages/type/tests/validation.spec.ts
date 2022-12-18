@@ -111,6 +111,7 @@ test('simple interface', () => {
     }
 
     expect(validate<User>(undefined)).toEqual([{ code: 'type', message: 'Not an object', path: '' }]);
+    expect(is<User>({})).toEqual(false);
     expect(validate<User>({})).toEqual([{ code: 'type', message: 'Not a number', path: 'id' }, { code: 'type', message: 'Not a string', path: 'username' }]);
     expect(validate<User>({ id: 1 })).toEqual([{ code: 'type', message: 'Not a string', path: 'username' }]);
     expect(validate<User>({ id: 1, username: 'Peter' })).toEqual([]);
@@ -178,7 +179,7 @@ test('class with union literal', () => {
     }
 
     expect(validate<ConnectionOptions>({ readConcernLevel: 'majority' })).toEqual([]);
-    expect(validate<ConnectionOptions>({ readConcernLevel: 'invalid' })).toEqual([{ code: 'type', message: 'Invalid type', path: 'readConcernLevel' }]);
+    expect(validate<ConnectionOptions>({ readConcernLevel: 'invalid' })).toEqual([{ code: 'type', message: 'No valid union member found', path: 'readConcernLevel' }]);
 });
 
 test('named tuple', () => {

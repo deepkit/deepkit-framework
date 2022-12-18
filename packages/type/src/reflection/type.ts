@@ -1503,7 +1503,21 @@ export type Embedded<T, Options extends { prefix?: string } = {}> = T & Embedded
 export type MapName<Alias extends string, ForSerializer extends string = ''> = { __meta?: ['mapName', Alias, ForSerializer] };
 
 export const referenceAnnotation = new AnnotationDefinition<ReferenceOptions>('reference');
-export const entityAnnotation = new AnnotationDefinition<EntityOptions>('entity');
+export const entityAnnotation = new class extends AnnotationDefinition<EntityOptions> {
+    set<K extends keyof EntityOptions>(type: Type, name: K, value: EntityOptions[K]) {
+        const data = this.getFirst(type) || {};
+        data[name] = value;
+        this.replaceType(type, [data]);
+    }
+
+    get(type: Type): EntityOptions {
+        let data = this.getFirst(type);
+        if (data) return data;
+        data = {};
+        this.replaceType(type, [data]);
+        return data;
+    }
+}('entity');
 export const mapNameAnnotation = new AnnotationDefinition<{ name: string, serializer?: string }>('entity');
 
 export const autoIncrementAnnotation = new AnnotationDefinition('autoIncrement');
@@ -1722,7 +1736,19 @@ export const excludedAnnotation = new class extends AnnotationDefinition<string>
         return excluded.includes('*') || excluded.includes(name);
     }
 }('excluded');
-export const dataAnnotation = new AnnotationDefinition<{ [name: string]: any }>('data');
+export const dataAnnotation = new class extends AnnotationDefinition<{ [name: string]: any }> {
+    set<T extends Type>(type: T, key: string, value: any): T {
+        const data = this.getFirst(type) || {};
+        data[key] = value;
+        this.replaceType(type, [data]);
+        return type;
+    }
+
+    get(type: Type, key: string): any {
+        const data = this.getFirst(type) || {};
+        return data[key];
+    }
+}('data');
 export const metaAnnotation = new class extends AnnotationDefinition<{ name: string, options: Type[] }> {
     getForName(type: Type, metaName: string): Type[] | undefined {
         for (const v of this.getAnnotations(type)) {

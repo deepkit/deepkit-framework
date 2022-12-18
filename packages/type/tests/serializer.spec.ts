@@ -34,6 +34,7 @@ import { entity, t } from '../src/decorator';
 import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator';
 import { StatEnginePowerUnit, StatWeightUnit } from './types';
 import { parametersToTuple } from '../src/reflection/extends.js';
+import { is } from '../src/typeguard';
 
 test('deserializer', () => {
     class User {
@@ -1037,5 +1038,44 @@ test('function rest parameters', () => {
     {
         const type = parametersToTuple(fn.parameters);
         expect(deserialize([2, '33', 44], undefined, undefined, undefined, type)).toEqual([2, '33', '44']);
+    }
+});
+
+test('discriminated union with string date in type guard', () => {
+    expect(is<number | string>(12)).toBe(true);
+    expect(is<number | string>('abc')).toBe(true);
+    expect(is<number | string>(false)).toBe(false);
+    expect(is<number | (string | bigint)[]>([false])).toBe(false);
+
+    {
+        type ModelB = { kind: 'b', date: Date };
+        const b1 = cast<ModelB>({ kind: 'b', date: '2020-08-05T00:00:00.000Z' });
+        expect(b1).toEqual({ kind: 'b', date: new Date('2020-08-05T00:00:00.000Z') });
+    }
+
+    {
+        type ModelA = { id: number, title: string };
+        type ModelB = { id: number, date: Date };
+        type Union = ModelA | ModelB;
+
+        const b2 = cast<Union>({ id: 1, date: '2020-08-05T00:00:00.000Z' });
+        expect(b2).toEqual({ id: 1, date: new Date('2020-08-05T00:00:00.000Z') });
+    }
+
+    {
+        type ModelA = { kind: 'a', title: string };
+        type ModelB = { kind: 'b', date: Date };
+        type Union = ModelA | ModelB;
+
+        const b2 = cast<Union>({ kind: 'b', date: '2020-08-05T00:00:00.000Z' });
+        expect(b2).toEqual({ kind: 'b', date: new Date('2020-08-05T00:00:00.000Z') });
+    }
+
+    {
+        type ModelA = { kind: 'a', title: string };
+        type ModelB = { kind: 'b', date: number | Date };
+        type Union = ModelA | ModelB;
+        const b2 = cast<Union>({ kind: 'b', date: '2020-08-05T00:00:00.000Z' });
+        expect(b2).toEqual({ kind: 'b', date: new Date('2020-08-05T00:00:00.000Z') });
     }
 });
