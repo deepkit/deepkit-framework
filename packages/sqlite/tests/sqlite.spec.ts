@@ -490,6 +490,28 @@ test('for update/share', async () => {
     expect(items).toHaveLength(2);
 });
 
+test('deep documents', async () => {
+    interface Definition {
+        fields: string[];
+    }
+
+    class Project {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        definitions: Definition[] = [];
+    }
+
+    const database = await databaseFactory([Project]);
+
+    const project = new Project();
+    project.definitions.push({ fields: ['a', 'b'] });
+    await database.persist(project);
+
+    const connection = await database.adapter.connectionPool.getConnection();
+    const result = await connection.execAndReturnSingle('SELECT * FROM project');
+    connection.release();
+    expect(result.definitions).toBe(JSON.stringify(project.definitions));
+});
+
 test('multiple joins', async () => {
     class Flat {
         public id: number & PrimaryKey & AutoIncrement = 0;
@@ -515,7 +537,7 @@ test('multiple joins', async () => {
     }
 
     const database = await databaseFactory([Property, Tenant, Flat]);
-    database.logger.enableLogging();
+    // database.logger.enableLogging();
 
     const property1 = new Property('immo1');
     property1.flats.push(new Flat(property1, 'flat1'));
@@ -545,7 +567,7 @@ test('multiple joins', async () => {
     }
 
     {
-        const list = await database.query(Property).joinWith('flats').useJoinWith('tenants').sort({name: 'desc'}).end().find();
+        const list = await database.query(Property).joinWith('flats').useJoinWith('tenants').sort({ name: 'desc' }).end().find();
         expect(list).toHaveLength(1);
         expect(list[0].flats).toMatchObject([{ name: 'flat1' }, { name: 'flat2' }]);
         expect(list[0].tenants).toMatchObject([{ name: 'tenant2' }, { name: 'tenant1' }]);
@@ -583,7 +605,7 @@ test('multiple joins', async () => {
     }
 
     {
-        const list = await database.query(Property).joinWith('flats').useJoinWith('tenants').sort({name: 'desc'}).end().find();
+        const list = await database.query(Property).joinWith('flats').useJoinWith('tenants').sort({ name: 'desc' }).end().find();
         expect(list).toHaveLength(2);
 
         expect(list[0].name).toBe('immo2');
@@ -596,7 +618,7 @@ test('multiple joins', async () => {
     }
 
     {
-        const list = await database.query(Property).joinWith('flats').useJoinWith('tenants').sort({name: 'desc'}).end().sort({id: 'asc'}).find();
+        const list = await database.query(Property).joinWith('flats').useJoinWith('tenants').sort({ name: 'desc' }).end().sort({ id: 'asc' }).find();
         expect(list).toHaveLength(2);
 
         expect(list[0].name).toBe('immo1');

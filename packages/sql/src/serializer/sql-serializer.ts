@@ -34,11 +34,21 @@ for (let i = 0; i < 256; i++) {
     hexTable[i] = (i <= 15 ? '0' : '') + i.toString(16);
 }
 
-function isParentIsProperty(type: Type): boolean {
+/**
+ * Only direct properties of an entity will be serialized in some special way.
+ * Deeper types get the normal JSON serialization.
+ */
+export function isDirectPropertyOfEntity(type: Type): boolean {
     if (!type.parent) return false;
     if (type.parent.kind === ReflectionKind.union) type = type.parent;
     if (!type.parent) return false;
-    return type.parent.kind === ReflectionKind.propertySignature || type.parent.kind === ReflectionKind.property;
+    if (type.parent.kind === ReflectionKind.propertySignature || type.parent.kind === ReflectionKind.property) {
+        if (type.parent.parent) {
+            return !type.parent.parent.parent;
+        }
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -47,7 +57,7 @@ function isParentIsProperty(type: Type): boolean {
 function serializeSqlArray(type: TypeArray, state: TemplateState) {
     if (undefined !== referenceAnnotation.getFirst(type)) return;
 
-    if (!isParentIsProperty(type)) return;
+    if (!isDirectPropertyOfEntity(type)) return;
 
     state.setContext({ stringify: JSON.stringify });
     state.addSetter(`stringify(${state.accessor})`);
@@ -59,7 +69,7 @@ function serializeSqlArray(type: TypeArray, state: TemplateState) {
 function deserializeSqlArray(type: TypeArray, state: TemplateState) {
     if (undefined !== referenceAnnotation.getFirst(type)) return;
 
-    if (!isParentIsProperty(type)) return;
+    if (!isDirectPropertyOfEntity(type)) return;
 
     state.addCode(`${state.accessor} = 'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor};`);
 }
@@ -70,7 +80,7 @@ function deserializeSqlArray(type: TypeArray, state: TemplateState) {
 function serializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state: TemplateState) {
     if (undefined !== referenceAnnotation.getFirst(type)) return;
 
-    if (!isParentIsProperty(type)) return;
+    if (!isDirectPropertyOfEntity(type)) return;
 
     //TypeClass|TypeObjectLiteral properties are serialized as JSON
     state.setContext({ stringify: JSON.stringify });
@@ -81,7 +91,7 @@ function serializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state: T
  * For sql databases, objects will be serialised as JSON string. So deserialize it correctly
  */
 function deserializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state: TemplateState) {
-    if (!isReferenceType(type) && isParentIsProperty(type)) {
+    if (!isReferenceType(type) && isDirectPropertyOfEntity(type)) {
         //TypeClass|TypeObjectLiteral properties are serialized as JSON
         state.setContext({ jsonParse: JSON.parse });
         state.addSetter(`${state.accessor} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor}`);
