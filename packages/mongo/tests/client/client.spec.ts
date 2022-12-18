@@ -5,6 +5,7 @@ import { IsMasterCommand } from '../../src/client/command/ismaster';
 import { sleep } from '@deepkit/core';
 import { ConnectionOptions } from '../../src/client/options';
 import { cast, validatedDeserialize } from '@deepkit/type';
+import { createConnection } from 'net';
 
 test('ConnectionOptions', async () => {
     {
@@ -30,8 +31,23 @@ test('connect valid', async () => {
     expect(client.config.hosts[0].hostname).toEqual('localhost');
 });
 
+test('test localhost', async () => {
+    const socket = createConnection({
+        host: '127.0.0.1',
+        port: 27017
+    });
+
+    await new Promise(async (resolve, reject) => {
+        socket.on('error', (error) => {
+            reject(error);
+        });
+        await sleep(0.1);
+        resolve(undefined);
+    });
+});
+
 test('connect handshake', async () => {
-    const client = new MongoClient('mongodb://localhost/');
+    const client = new MongoClient('mongodb://127.0.0.1/');
     await client.connect();
 
     const type = client.config.hosts[0].getType();
@@ -42,7 +58,7 @@ test('connect handshake', async () => {
 });
 
 test('connect isMaster command', async () => {
-    const client = new MongoClient('mongodb://localhost/');
+    const client = new MongoClient('mongodb://127.0.0.1/');
 
     const response = await client.execute(new IsMasterCommand);
 
@@ -114,9 +130,8 @@ test('connect isMaster command', async () => {
 // });
 
 
-
 test('connection pool', async () => {
-    const client = new MongoClient('mongodb://localhost?maxPoolSize=10');
+    const client = new MongoClient('mongodb://127.0.0.1?maxPoolSize=10');
 
     {
         const c1 = await client.connectionPool.getConnection();

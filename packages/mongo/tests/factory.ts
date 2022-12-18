@@ -3,7 +3,7 @@ import { DatabaseFactory } from '@deepkit/orm-integration';
 import { MongoDatabaseAdapter } from '../src/adapter';
 
 export const databaseFactory: DatabaseFactory = async (entities, plugins): Promise<Database> => {
-    const adapter = new MongoDatabaseAdapter('mongodb://localhost/orm-integration');
+    const adapter = new MongoDatabaseAdapter('mongodb://127.0.0.1/orm-integration');
 
     const database = new Database(adapter);
     if (entities) {

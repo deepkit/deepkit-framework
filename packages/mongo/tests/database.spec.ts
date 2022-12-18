@@ -12,7 +12,7 @@ test('simple', async () => {
         }
     }
 
-    const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/test'));
+    const database = new Database(new MongoDatabaseAdapter('mongodb://127.0.0.1/test'));
     await database.query(Test).deleteMany();
 
     {
@@ -38,7 +38,7 @@ test('unit of work', async () => {
         }
     }
 
-    const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/test'));
+    const database = new Database(new MongoDatabaseAdapter('mongodb://127.0.0.1/test'));
     await database.query(Test).deleteMany();
 
     const session = database.createSession();
@@ -69,7 +69,7 @@ test('repository', async () => {
         }
     }
 
-    const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/test'));
+    const database = new Database(new MongoDatabaseAdapter('mongodb://127.0.0.1/test'));
     await database.query(Test).deleteMany();
     const item = new Test('asda');
     await database.persist(item);
@@ -100,7 +100,7 @@ test('session', async () => {
         }
     }
 
-    const database = new Database(new MongoDatabaseAdapter('mongodb://localhost/test'));
+    const database = new Database(new MongoDatabaseAdapter('mongodb://127.0.0.1/test'));
     await database.query(Test).deleteMany();
 
     await database.session(async (session) => {

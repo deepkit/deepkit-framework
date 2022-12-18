@@ -92,6 +92,7 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
     }
 
     async migrate(entityRegistry: DatabaseEntityRegistry) {
+        await this.client.connect(); //manually connect to catch connection errors
         let withOrmSequences = true;
         for (const schema of entityRegistry.entities) {
             await this.migrateClassSchema(schema);
@@ -109,7 +110,7 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
         try {
             await this.client.execute(new CreateCollectionCommand(schema));
         } catch (error) {
-            //its fine to fail
+            //it's fine to fail
         }
 
         for (const index of schema.indexes) {

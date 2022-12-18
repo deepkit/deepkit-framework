@@ -46,6 +46,8 @@ export class MongoConnectionPool {
 
     protected nextConnectionClose: Promise<boolean> = Promise.resolve(true);
 
+    protected lastError?: Error;
+
     constructor(protected config: MongoClientConfig,
                 protected serializer: BSONBinarySerializer) {
     }
@@ -58,12 +60,15 @@ export class MongoConnectionPool {
             }
         }
 
-        if (promises.length) {
+        if (!promises.length) return;
+        try {
             if (throws) {
                 await Promise.all(promises);
             } else {
                 await Promise.allSettled(promises);
             }
+        } catch (error: any) {
+            throw new MongoError('Failed to connect: ' + error.message);
         }
     }
 
@@ -79,7 +84,10 @@ export class MongoConnectionPool {
         }
     }
 
+    protected ensureHostsConnectedPromise?: Promise<void>;
+
     public async ensureHostsConnected(throws: boolean = false) {
+        if (this.ensureHostsConnectedPromise) return this.ensureHostsConnectedPromise;
         //make sure each host has at least one connection
         //getHosts automatically updates hosts (mongodb-srv) and returns new one,
         //so we don't need any interval to automatically update it.
@@ -89,7 +97,12 @@ export class MongoConnectionPool {
             this.newConnection(host);
         }
 
-        await this.waitForAllConnectionsToConnect(throws);
+        return this.ensureHostsConnectedPromise = asyncOperation(async (resolve) => {
+            await this.waitForAllConnectionsToConnect(throws);
+            resolve(undefined);
+        }).then(() => {
+            this.ensureHostsConnectedPromise = undefined;
+        });
     }
 
     protected findHostForRequest(hosts: Host[], request: ConnectionRequest): Host {
@@ -99,7 +112,7 @@ export class MongoConnectionPool {
             if (!request.writable && host.isReadable()) return host;
         }
 
-        throw new MongoError(`Could not find host for connection request. (writable=${request.writable}, hosts=${hosts.length})`);
+        throw new MongoError(`Could not find host for connection request. (writable=${request.writable}, hosts=${hosts.length}). Last Error: ${this.lastError}`);
     }
 
     protected createAdditionalConnectionForRequest(request: ConnectionRequest): MongoConnection {
@@ -132,7 +145,6 @@ export class MongoConnectionPool {
         }
 
         connection.reserved = false;
-        // console.log('release', connection.id, JSON.stringify(this.config.options.maxIdleTimeMS));
         connection.cleanupTimeout = setTimeout(() => {
             if (this.connections.length <= this.config.options.minPoolSize) {
                 return;
@@ -253,6 +265,7 @@ export class MongoConnection {
     public transaction?: MongoDatabaseTransaction;
 
     responseParser: ResponseParser;
+    error?: Error;
 
     protected boundSendMessage = this.sendMessage.bind(this);
 
@@ -264,7 +277,7 @@ export class MongoConnection {
         protected onClose: (connection: MongoConnection) => void,
         protected onRelease: (connection: MongoConnection) => void,
     ) {
-        const responseParser = this.responseParser = new ResponseParser(this.onResponse.bind(this));
+        this.responseParser = new ResponseParser(this.onResponse.bind(this));
 
         if (this.config.options.ssl === true) {
             const options: { [name: string]: any } = {
@@ -321,8 +334,10 @@ export class MongoConnection {
         });
 
         //important to catch it, so it doesn't bubble up
-        this.connect().catch(() => {
+        this.connect().catch((error) => {
+            this.error = error;
             this.socket.end();
+            onClose(this);
         });
     }
 
@@ -444,7 +459,7 @@ export class MongoConnection {
             this.socket.on('error', (error) => {
                 this.connectingPromise = undefined;
                 this.status = MongoConnectionStatus.disconnected;
-                reject(error);
+                reject(new MongoError('Connection error: ' + error.message));
             });
 
             if (this.socket.destroyed) {
@@ -461,7 +476,7 @@ export class MongoConnection {
             } else {
                 this.status = MongoConnectionStatus.disconnected;
                 this.connectingPromise = undefined;
-                reject(new MongoError('Could not complete handshake 🤷‍️'));
+                reject(new MongoError('Connection error: Could not complete handshake 🤷‍️'));
             }
         });
 
