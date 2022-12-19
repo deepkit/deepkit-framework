@@ -2112,9 +2112,7 @@ export class Serializer {
         this.typeGuards.getRegistry(1).registerClass(Map, typeGuardClassMap);
         this.typeGuards.getRegistry(1).registerClass(Date, (type, state) => state.addSetter(`${state.accessor} instanceof Date`));
         this.typeGuards.getRegistry(0.5).registerClass(Date, (type, state) => {
-            const date = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z$/;
-            state.setContext({ date });
-            state.addSetter(`'string' === typeof ${state.accessor} && date.exec(${state.accessor}) !== null`);
+            state.addSetter(`'string' === typeof ${state.accessor} && new Date(${state.accessor}).toString() !== 'Invalid Date'`);
         });
 
         //if no type is found (>1), date supports also numbers

@@ -1079,3 +1079,8 @@ test('discriminated union with string date in type guard', () => {
         expect(b2).toEqual({ kind: 'b', date: new Date('2020-08-05T00:00:00.000Z') });
     }
 });
+
+test('date format', () => {
+    const date = cast<number | Date>('2020-07-02T12:00:00Z');
+    expect(date).toEqual(new Date('2020-07-02T12:00:00Z'));
+});
