@@ -10,9 +10,25 @@
 
 // copied from @deepkit/type-angular, as long as it doesnt compile
 
-import { AbstractControl, AbstractControlOptions, AsyncValidatorFn, FormArray, FormControl, FormGroup, ValidationErrors, ValidatorFn } from '@angular/forms';
+import {
+    AbstractControl,
+    AbstractControlOptions,
+    AsyncValidatorFn,
+    FormArray,
+    FormControl,
+    FormGroup,
+    ValidationErrors,
+    ValidatorFn
+} from '@angular/forms';
 import { ClassType, isFunction } from '@deepkit/core';
-import { ReflectionClass, ReflectionKind, Type, ValidationErrorItem } from '@deepkit/type';
+import {
+    getValidatorFunction,
+    ReflectionClass,
+    ReflectionKind,
+    Type,
+    ValidationErrorItem,
+    ValidatorError
+} from '@deepkit/type';
 import { Subscription } from 'rxjs';
 
 export function requiredIfValidator(predicate: () => boolean, validator: ValidatorFn): any {
@@ -46,6 +62,7 @@ function getPropPath(propPath?: PropPath, append?: string | number): string {
 
 function createControl<T>(
     propPath: PropPath,
+    propName: string,
     prop: Type,
     parent?: FormGroup | FormArray,
     conditionalValidators: TypedFormGroupConditionalValidators<any, any> = {},
@@ -74,44 +91,44 @@ function createControl<T>(
         }
 
         const errors: ValidationErrorItem[] = [];
-        const val = conditionalValidators[prop.name];
+        const val = conditionalValidators[propName];
         if (isConditionalValidatorFn(val)) {
-            const res = val(rootFormGroup.value, control.parent!.value);
-            if (res) {
-                const validators: ValidatorType[] = Array.isArray(res) ? res : [res];
-                for (const val of validators) {
-                    handleCustomValidator(prop, new class implements PropertyValidator {
-                        validate<T>(value: any): PropertyValidatorError | void {
-                            return val(value);
-                        }
-                    }, control.value, getPropPath(propPath), errors);
-                    if (errors.length) {
-                        return errorsToAngularErrors(errors);
-                    }
-                }
-            }
+            // const res = val(rootFormGroup.value, control.parent!.value);
+            // if (res) {
+            //     const validators: ValidatorType[] = Array.isArray(res) ? res : [res];
+            //     for (const val of validators) {
+            //         handleCustomValidator(prop, new class implements PropertyValidator {
+            //             validate<T>(value: any): PropertyValidatorError | void {
+            //                 return val(value);
+            //             }
+            //         }, control.value, getPropPath(propPath), errors);
+            //         if (errors.length) {
+            //             return errorsToAngularErrors(errors);
+            //         }
+            //     }
+            // }
         }
-
-        jitValidateProperty(prop)(control.value, getPropPath(propPath), errors);
+        const fn = getValidatorFunction(undefined, prop);
+        (fn as any)(control.value, { errors }, getPropPath(propPath));
         return errorsToAngularErrors(errors);
     };
 
     let control: AbstractControl;
 
     if (prop.kind === ReflectionKind.array) {
-        conditionalValidators['0'] = conditionalValidators[prop.name];
-        control = new TypedFormArray(propPath, prop.getSubType(), limitControls, conditionalValidators);
+        conditionalValidators['0'] = conditionalValidators[propName];
+        control = new TypedFormArray(propPath, propName, prop.type, limitControls, conditionalValidators);
     } else {
-        if (prop.type === 'class') {
-            const t = prop.name ? conditionalValidators[prop.name] : conditionalValidators;
+        if (prop.kind === ReflectionKind.class) {
+            const t = propName ? conditionalValidators[propName] : conditionalValidators;
             const conditionalValidatorsForProp = isConditionalValidatorFn(t) ? {} : t;
-            control = TypedFormGroup.fromEntityClass(prop.getResolvedClassType(), limitControls, undefined, conditionalValidatorsForProp, propPath);
+            control = TypedFormGroup.fromEntityClass(prop.classType, limitControls, undefined, conditionalValidatorsForProp, propPath);
         } else {
             control = new FormControl(undefined, validator);
         }
     }
 
-    if (parent && conditionalValidators[prop.name]) {
+    if (parent && conditionalValidators[propName]) {
         parent.root.valueChanges.subscribe((v) => {
             // todo: rework to apply validity status sync. find our why here is a race condition.
             setTimeout(() => {
@@ -128,7 +145,7 @@ function createControl<T>(
 }
 
 type FlattenIfArray<T> = T extends Array<any> ? T[0] : T;
-type ValidatorType = ((value: any) => PropertyValidatorError | void);
+type ValidatorType = ((value: any) => ValidatorError | void);
 
 type ConditionalValidatorFn<RT, PT> = (rootValue: RT, parentValue: PT) => ValidatorType | ValidatorType[] | void | undefined;
 
@@ -160,6 +177,7 @@ export class TypedFormArray<T> extends FormArray {
 
     constructor(
         private propPath: PropPath,
+        private propName: string,
         private prop: Type,
         private limitControls: LimitControls<T> = {},
         private conditionalValidators: TypedFormGroupConditionalValidators<any, any> = {}
@@ -185,9 +203,9 @@ export class TypedFormArray<T> extends FormArray {
     }
 
     protected createControl(value?: T): AbstractControl {
-        const prop = this.prop.clone();
+        const prop = { ...this.prop };
         let control: AbstractControl;
-        control = createControl(() => getPropPath(this.propPath, this.controls.indexOf(control)), prop, this, this.conditionalValidators, this.limitControls);
+        control = createControl(() => getPropPath(this.propPath, this.controls.indexOf(control)), this.propName, prop, this, this.conditionalValidators, this.limitControls);
         (control.value as any) = value;
         return control;
     }
@@ -275,6 +293,11 @@ export class TypedFormGroup<T extends object> extends FormGroup {
 
     public value: T | undefined;
 
+    getValue(): T {
+        if (!this.value) throw new Error('No value set yet. use init() or syncEntity() first.')
+        return this.value;
+    }
+
     get typedControls(): Controls<T> {
         return this.controls as any;
     }
@@ -282,12 +305,16 @@ export class TypedFormGroup<T extends object> extends FormGroup {
     constructor(controls: { [p: string]: AbstractControl }, validatorOrOpts?: ValidatorFn | ValidatorFn[] | AbstractControlOptions | null, asyncValidator?: AsyncValidatorFn | AsyncValidatorFn[] | null) {
         super(controls, validatorOrOpts, asyncValidator);
 
+        let inSetting = false;
         Object.defineProperty(this, 'value', {
             get(): any {
                 return this.typedValue;
             },
             set(v: T[]): void {
-                if (this.classType && v instanceof this.classType) {
+                if (inSetting) return;
+                inSetting = true;
+                if (this.classType) {
+                    if (this.typedValue === v) return;
                     if (!this.typedValue || this.typedValue !== v) {
                         // is needed since angular wont set `this.value` to `value`, but it simply iterates.
                         // we need however the actual reference.
@@ -321,6 +348,7 @@ export class TypedFormGroup<T extends object> extends FormGroup {
                         this.updateValueAndValidity();
                     }
                 }
+                inSetting = false;
             }
         });
 
@@ -340,13 +368,12 @@ export class TypedFormGroup<T extends object> extends FormGroup {
         const validNames = Object.keys(limitControls);
 
         for (const prop of entitySchema.getProperties()) {
-
             if (validNames.length && !validNames.includes(prop.name)) {
                 continue;
             }
 
             const limitControlsForProp = limitControls[prop.name as keyof T & string] === 1 ? {} : limitControls[prop.name as keyof T & string];
-            t.registerControl(prop.name, createControl(() => getPropPath(path, prop.name), prop.type, t, conditionalValidators, limitControlsForProp));
+            t.registerControl(prop.name, createControl(() => getPropPath(path, prop.name), prop.getNameAsString(), prop.property, t, conditionalValidators, limitControlsForProp));
         }
         return t;
     }
@@ -360,12 +387,21 @@ export class TypedFormGroup<T extends object> extends FormGroup {
         }
     }
 
+    init(value?: T): this {
+        this.reset(value);
+        return this;
+    }
+
     reset(value?: any, options?: { onlySelf?: boolean; emitEvent?: boolean }): void {
         if (value && this.classType && value instanceof this.classType) {
             this.syncEntity(value);
         }
 
-        super.reset(value, options);
+        // super.reset(value, options);
+        this.markAsPending();
+        for (const control of Object.values(this.controls)) {
+            control.markAsPending();
+        }
     }
 
     setValue(value: { [p: string]: any }, options?: { onlySelf?: boolean; emitEvent?: boolean }): void {
