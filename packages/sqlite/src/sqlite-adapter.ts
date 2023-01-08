@@ -176,7 +176,7 @@ export class SQLiteConnection extends SQLConnection {
 }
 
 export class SQLiteConnectionPool extends SQLConnectionPool {
-    public maxConnections: number = 10;
+    protected maxConnections: number = 10;
 
     protected queue: ((connection: SQLiteConnection) => void)[] = [];
 
@@ -186,7 +186,23 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
     constructor(protected dbPath: string | ':memory:') {
         super();
         //memory databases can not have more than one connection
-        if (dbPath === ':memory:') this.maxConnections = 1;
+        if (dbPath === ':memory:') this.setMaxConnections(1);
+    }
+
+    getMaxConnections(): number {
+        return this.maxConnections;
+    }
+
+    setMaxConnections(maxConnections: number) {
+        if (maxConnections < 1) {
+            throw new Error('Max connections must be at least 1');
+        }
+
+        if (this.dbPath === ':memory:' && maxConnections !== 1) {
+            throw new Error('Memory databases can not have more than one connection');
+        }
+
+        this.maxConnections = maxConnections;
     }
 
     close() {
