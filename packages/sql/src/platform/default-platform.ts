@@ -475,9 +475,11 @@ export abstract class DefaultPlatform {
         //merge field changes into one command. This is more compatible especially with PK constraints.
         const alterTableLines: string[] = [];
 
+        const prefix = `ALTER TABLE ${this.getIdentifier(diff.to)}`;
+
         function add(value: string) {
-            if (value.trim().startsWith('ALTER TABLE')) {
-                alterTableLines.push(value.trim().substr('ALTER TABLE '.length));
+            if (value.trim().startsWith(prefix)) {
+                alterTableLines.push(value.trim().substr(prefix.length));
             } else {
                 ddl.push(value);
             }
@@ -493,7 +495,7 @@ export abstract class DefaultPlatform {
         if (diff.hasModifiedPk()) add(this.getAddPrimaryKeyDDL(diff.to));
 
         if (alterTableLines.length) {
-            ddl.push(`ALTER TABLE ${alterTableLines.join(', ')}`);
+            ddl.push(`${prefix} ${alterTableLines.map(v => v.trim()).join(', ')}`);
         }
 
         // create indices, foreign keys

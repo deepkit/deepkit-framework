@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { AutoIncrement, entity, Index, PrimaryKey, Reference, ReflectionClass, ReflectionKind, Unique } from '@deepkit/type';
-import { DatabaseModel, IndexModel } from '../src/schema/table';
+import { DatabaseModel, IndexModel, TableComparator } from '../src/schema/table';
 import { DefaultPlatform } from '../src/platform/default-platform';
 import { SchemaParser } from '../src/reverse/schema-parser';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
@@ -71,4 +71,31 @@ test('migration basic', async () => {
     expect(tablePost.foreignKeys[0].foreign).toBe(tableUser);
     expect(tablePost.foreignKeys[0].localColumns[0].name).toBe('user');
     expect(tablePost.foreignKeys[0].foreignColumns[0].name).toBe('id');
+});
+
+test('add and remove column', async () => {
+    const platform = new MyPlatform();
+
+    @entity.name('leagues')
+    class Leagues1 {
+        id!: number & PrimaryKey;
+        dayOfWeek!: number;
+    }
+
+    class Organisation {
+        id!: number & PrimaryKey;
+    }
+
+    @entity.name('leagues')
+    class Leagues2 {
+        id!: number & PrimaryKey;
+        organisation?: Organisation & Reference;
+    }
+
+    const db1 = platform.createTables(DatabaseEntityRegistry.from([Leagues1]));
+    const db2 = platform.createTables(DatabaseEntityRegistry.from([Leagues2, Organisation]));
+    const diff = TableComparator.computeDiff(db1[0], db2[0]);
+
+    const sql = platform.getModifyTableDDL(diff!);
+    expect(sql).toContain('ALTER TABLE "leagues" ADD "organisation" integer NULL, DROP COLUMN "dayOfWeek"');
 });
