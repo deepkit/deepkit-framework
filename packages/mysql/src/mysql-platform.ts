@@ -11,7 +11,7 @@
 import { Pool } from 'mariadb';
 import { mySqlSerializer } from './mysql-serializer';
 import { isUUIDType, ReflectionKind, ReflectionProperty, Serializer, TypeNumberBrand } from '@deepkit/type';
-import { Column, DefaultPlatform, isSet } from '@deepkit/sql';
+import { Column, DefaultPlatform, IndexModel, isSet } from '@deepkit/sql';
 import { MysqlSchemaParser } from './mysql-schema-parser';
 
 export class MySQLPlatform extends DefaultPlatform {
@@ -75,6 +75,10 @@ export class MySQLPlatform extends DefaultPlatform {
                 column.defaultExpression = undefined;
             }
         }
+    }
+
+    getDropIndexDDL(index: IndexModel): string {
+        return `DROP INDEX ${this.getIdentifier(index)} ON ${this.getIdentifier(index.table)}`;
     }
 
     getColumnDDL(column: Column) {
