@@ -27,7 +27,7 @@ test('parent dependency', () => {
     }
 
     const module1 = new InjectorModule([Router]);
-    const module2 = new InjectorModule([Controller], module1)
+    const module2 = new InjectorModule([Controller], module1);
 
     const context = new InjectorContext(module1);
     const injector = context.getInjector(module2);
@@ -1413,4 +1413,24 @@ test('class inheritance', () => {
     expect(c).toBeInstanceOf(C);
     expect(c).toBeInstanceOf(B);
     expect(c.a).toBeInstanceOf(A);
+});
+
+test('config from a module is available in child modules', () => {
+    class Config {
+        db: string = 'localhost';
+    }
+
+    const rootModule = new InjectorModule().setConfigDefinition(Config);
+
+    class Service {
+        constructor(public config: Config) {
+        }
+    }
+
+    const childModule = new InjectorModule([Service]).setParent(rootModule);
+
+    const injector = new InjectorContext(rootModule);
+
+    const service = injector.get(Service, childModule);
+    expect(service.config.db).toBe('localhost');
 });

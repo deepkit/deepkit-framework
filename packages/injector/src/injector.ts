@@ -268,6 +268,8 @@ export class Injector implements InjectorInterface {
         resolverCompiler.context.set('CircularDetectorResets', CircularDetectorResets);
         resolverCompiler.context.set('throwCircularDependency', throwCircularDependency);
         resolverCompiler.context.set('tokenNotfoundError', serviceNotfoundError);
+        resolverCompiler.context.set('constructorParameterNotFound', constructorParameterNotFound);
+        resolverCompiler.context.set('propertyParameterNotFound', propertyParameterNotFound);
         resolverCompiler.context.set('injector', this);
 
         const lines: string[] = [];

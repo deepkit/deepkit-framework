@@ -113,6 +113,12 @@ export function findModuleForConfig(config: ClassType, modules: InjectorModule[]
 
         for (const m of iterateOver) {
             if (m.configDefinition === config) return m;
+
+            let parent = m.parent;
+            while (parent) {
+                if (parent.configDefinition === config) return parent;
+                parent = parent.parent;
+            }
             next.push(...m.imports);
         }
     }
@@ -495,7 +501,11 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
                                 //we add our module as additional source for potential dependencies
                                 registerPreparedProvider(parentProviders, preparedProvider.modules, preparedProvider.providers, false);
                             } else {
-                                parentProviders.push({ token: preparedProvider.token, modules: [this, ...preparedProvider.modules], providers: preparedProvider.providers.slice() });
+                                parentProviders.push({
+                                    token: preparedProvider.token,
+                                    modules: [this, ...preparedProvider.modules],
+                                    providers: preparedProvider.providers.slice()
+                                });
                             }
                         }
                     }
