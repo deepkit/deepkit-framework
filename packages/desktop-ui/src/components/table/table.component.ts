@@ -423,6 +423,8 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
 
     @Output() public sortedChange: EventEmitter<T[]> = new EventEmitter();
 
+    @Output() public cellSelect: EventEmitter<{item: T, cell: string} | undefined> = new EventEmitter();
+
     /**
      * When a row gets double clicked.
      */
@@ -1027,6 +1029,22 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
     public select(item: T, $event?: MouseEvent) {
         if (this.selectable === false) {
             return;
+        }
+
+        let cellSelectFired = false;
+        if ($event && $event.target) {
+            const cell = findParentWithClass($event.target as HTMLElement, 'table-cell');
+            if (cell) {
+                const column = cell.getAttribute('row-column') || '';
+                if (column) {
+                    this.cellSelect.emit({item, cell: column});
+                    cellSelectFired = true;
+                }
+            }
+        }
+
+        if (!cellSelectFired) {
+            this.cellSelect.emit();
         }
 
         if (this.multiSelect === false) {
