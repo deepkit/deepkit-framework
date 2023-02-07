@@ -272,6 +272,7 @@ export class BaseQuery<T extends OrmEntity> {
         c.model.aggregate.set((as as any), { property: this.classSchema.getProperty(field), func });
         return c as any;
     }
+
     select<K extends (keyof Resolve<this>)[]>(...select: K): Replace<this, Pick<Resolve<this>, K[number]>> {
         const c = this.clone();
         for (const field of select) {
@@ -413,14 +414,42 @@ export class BaseQuery<T extends OrmEntity> {
 
     sort(sort?: this['model']['sort']): this {
         const c = this.clone();
-        c.model.sort = sort;
+        c.model.sort = {};
+        for (const [key, value] of Object.entries(sort || {})) {
+            this.applyOrderBy(c.model, key as FieldName<T>, value as 'asc' | 'desc');
+        }
         return c;
+    }
+
+    protected applyOrderBy<K extends FieldName<T>>(model: this['model'], field: K, direction: 'asc' | 'desc' = 'asc'): void {
+        if (!model.sort) model.sort = {};
+        if (field.includes('.')) {
+            const [relation, fieldName] = field.split(/\.(.*)/s);
+            const property = this.classSchema.getProperty(relation);
+            if (property.isReference() || property.isBackReference()) {
+                let found = false;
+                for (const join of model.joins) {
+                    if (join.propertySchema === property) {
+                        //join found
+                        join.query = join.query.orderBy(fieldName, direction);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    throw new Error(`Cannot order by ${field} because the relation '${relation}' is not joined. Use join('${relation}'), useJoin('${relation}'), or joinWith('${relation}') etc first.`);
+                }
+            } else {
+                model.sort[field] = direction;
+            }
+        } else {
+            model.sort[field] = direction;
+        }
     }
 
     orderBy<K extends FieldName<T>>(field: K, direction: 'asc' | 'desc' = 'asc'): this {
         const c = this.clone();
-        if (!c.model.sort) c.model.sort = {};
-        c.model.sort[field] = direction;
+        this.applyOrderBy(c.model, field, direction);
         return c;
     }
 

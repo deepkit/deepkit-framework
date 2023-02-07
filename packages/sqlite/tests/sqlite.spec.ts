@@ -2,11 +2,10 @@ import { expect, test } from '@jest/globals';
 import { SQLitePlatform } from '../src/sqlite-platform';
 import { databaseFactory } from './factory';
 import { User, UserCredentials } from '@deepkit/orm-integration';
-import { SQLiteConnection, SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter';
+import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter';
 import { sleep } from '@deepkit/core';
-import { AutoIncrement, cast, Entity, entity, PrimaryKey, Reference, ReflectionClass, serialize, typeOf, UUID, uuid } from '@deepkit/type';
-import { Database, DatabaseEntityRegistry } from '@deepkit/orm';
-import { BackReference } from '@deepkit/type';
+import { AutoIncrement, BackReference, cast, Entity, entity, isReferenceInstance, PrimaryKey, Reference, ReflectionClass, serialize, typeOf, UUID, uuid } from '@deepkit/type';
+import { DatabaseEntityRegistry } from '@deepkit/orm';
 
 test('reflection circular reference', () => {
     const user = ReflectionClass.from(User);
@@ -510,6 +509,7 @@ test('deep documents', async () => {
     const result = await connection.execAndReturnSingle('SELECT * FROM project');
     connection.release();
     expect(result.definitions).toBe(JSON.stringify(project.definitions));
+    database.disconnect();
 });
 
 test('multiple joins', async () => {
@@ -628,5 +628,92 @@ test('multiple joins', async () => {
         expect(list[1].name).toBe('immo2');
         expect(list[1].flats).toMatchObject([{ name: 'flat3' }, { name: 'flat4' }]);
         expect(list[1].tenants).toMatchObject([{ name: 'tenant4' }, { name: 'tenant3' }]);
+    }
+});
+
+test('unloaded relation not deep checked', async () => {
+    class BaseModel {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        created: Date = new Date;
+        modified: Date = new Date;
+
+    }
+
+    class Category extends BaseModel {
+        constructor(public name: string, public title: string = '') {
+            super();
+            this.title = title || name;
+        }
+    }
+
+    class Product extends BaseModel {
+        constructor(public category: Category & Reference, public title: string) {
+            super();
+        }
+    }
+
+    const database = await databaseFactory([Product, Category]);
+    {
+        const category = new Category('cat1');
+        const product = new Product(category, 'prod1');
+        await database.persist(product);
+    }
+
+    {
+        const product = await database.query(Product).findOne();
+        console.log('product', product);
+        expect(isReferenceInstance(product.category)).toBe(true);
+        await database.persist(product);
+    }
+});
+
+test('deep join population', async () => {
+    @entity.name('product')
+    class Product {
+        id: number & PrimaryKey & AutoIncrement = 0;
+
+        constructor(
+            public title: string,
+            public price: number
+        ) {
+        }
+    }
+
+    @entity.name('basketEntry')
+    class BasketItem {
+        id: UUID & PrimaryKey = uuid();
+
+        constructor(
+            public basket: Basket & Reference,
+            public product: Product & Reference,
+            public amount: number = 1,
+        ) {
+        }
+    }
+
+    @entity.name('basket')
+    class Basket {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        items: BasketItem[] & BackReference = [];
+    }
+
+    const database = await databaseFactory([Product, BasketItem, Basket]);
+
+    {
+        const basket = new Basket();
+        const product = new Product('prod1', 10);
+        basket.items.push(new BasketItem(basket, product));
+        basket.items.push(new BasketItem(basket, product));
+        await database.persist(basket, product, ...basket.items);
+    }
+
+    {
+        const basket = await database.query(Basket).useJoinWith('items').joinWith('product').end().findOne();
+        console.log('basket', basket);
+        expect(basket).toBeInstanceOf(Basket);
+        expect(basket.items[0]).toBeInstanceOf(BasketItem);
+        expect(basket.items[1]).toBeInstanceOf(BasketItem);
+        expect(basket.items[0].product).toBeInstanceOf(Product);
+        expect(basket.items[1].product).toBeInstanceOf(Product);
     }
 });

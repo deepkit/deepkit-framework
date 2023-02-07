@@ -52,8 +52,6 @@ export const referenceSymbol = Symbol('reference');
 export const referenceItemSymbol = Symbol('reference/item');
 
 export function createReference<T>(type: ClassType<T> | Type | ReflectionClass<any>, pk: { [name: string]: any }): T {
-    const args: any[] = [];
-
     const reflection = ReflectionClass.from(type);
 
     const reflectionClass = createReferenceClass(reflection);
@@ -62,13 +60,7 @@ export function createReference<T>(type: ClassType<T> | Type | ReflectionClass<a
     typeSettings.unpopulatedCheck = UnpopulatedCheck.None;
 
     try {
-        for (const prop of reflection.getMethodParameters('constructor')) {
-            args.push(pk[prop.getName()]);
-        }
-
-        const ref: any = new reflectionClass(...args);
-        Object.assign(ref, pk);
-        return ref as any;
+        return Object.assign(Object.create(reflectionClass.prototype), pk);
     } finally {
         typeSettings.unpopulatedCheck = old;
     }
@@ -80,7 +72,8 @@ export function createReferenceClass<T>(
     if (reflection.data.referenceClass) return reflection.data.referenceClass;
 
     const Reference = reflection.type.kind === ReflectionKind.class ? class extends reflection.type.classType {
-    } : class {};
+    } : class {
+    };
 
     Object.defineProperty(Reference.prototype, referenceSymbol, { value: { hydrator: undefined }, enumerable: false });
     Object.defineProperty(Reference.prototype, referenceItemSymbol, { value: null, writable: true, enumerable: false });
@@ -95,11 +88,8 @@ export function createReferenceClass<T>(
     for (const property of reflection.getProperties()) {
         if (property.isPrimaryKey()) continue;
 
-        //if it has a default, we do not overwrite it with an error
-        if (property.hasDefault()) continue;
-
-        //if it is optional, it's fine to read undefined
-        if (property.isOptional()) continue;
+        // we can not exclude default or optional properties, since we tell serializer/validator/change-detector with
+        // returning `unpopulatedSymbol` that this property is not loaded. Returning the wrong default/undefined leads to wrong results.
 
         const name = String(property.getName());
 

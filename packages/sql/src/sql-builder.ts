@@ -200,16 +200,17 @@ export class SqlBuilder {
                 if (!converted) continue;
                 const entity = entities[joinId + 1];
 
-                if (!entity.map[convertedRoot.hash]) {
-                    entity.current = entity.map[convertedRoot.hash] = converted;
+                if (!entity.map[converted.hash]) {
+                    entity.current = entity.map[converted.hash] = converted;
                 } else {
-                    entity.current = entity.map[convertedRoot.hash];
+                    entity.current = entity.map[converted.hash];
                 }
 
                 const forEntity = entities[join.forJoinIndex + 1];
                 if (!forEntity.current) continue;
                 const joined = forEntity.current.joined[joinId];
 
+                //check if the item has already been added to the forEntity
                 if (!joined[converted.hash]) {
                     joined[converted.hash] = converted.item;
                     if (join.join.propertySchema.isArray()) {
@@ -321,17 +322,39 @@ export class SqlBuilder {
         }
     }
 
+    protected applyOrder(order: string[], model: SQLQueryModel<any>, tableName: string = '') {
+        if (model.sort) {
+            for (const [name, sort] of Object.entries(model.sort)) {
+                order.push(`${tableName}.${this.platform.quoteIdentifier(name)} ${sort}`);
+            }
+        }
+    }
+
+    /**
+     * If a join is included that is an array, we have to move LIMIT/ORDER BY into a sub-select,
+     * so that these one-to-many/many-to-many joins are correctly loaded even if there is LIMIT 1.
+     */
+    protected hasToManyJoins(): boolean {
+        for (const join of this.joins) {
+            if (join.join.populate && join.join.propertySchema.isArray()) return true;
+        }
+        return false;
+    }
+
     public build<T extends OrmEntity>(schema: ReflectionClass<any>, model: SQLQueryModel<T>, head: string): Sql {
         const tableName = this.platform.getTableIdentifier(schema);
 
         const sql = new Sql(`${head} FROM`, this.params);
 
         const withRange = model.limit !== undefined || model.skip !== undefined;
-        if (withRange && model.hasJoins()) {
+        const needsSubSelect = withRange && this.hasToManyJoins();
+        if (needsSubSelect) {
             //wrap FROM table => FROM (SELECT * FROM table LIMIT x OFFSET x)
-
             sql.append(`(SELECT * FROM ${tableName}`);
             this.appendWhereSQL(sql, schema, model);
+            const order: string[] = [];
+            this.applyOrder(order, model, tableName);
+            if (order.length) sql.append(' ORDER BY ' + (order.join(', ')));
             this.platform.applyLimitAndOffset(sql, model.limit, model.skip);
             sql.append(`) as ${tableName}`);
             this.appendJoinSQL(sql, model, tableName);
@@ -353,20 +376,20 @@ export class SqlBuilder {
         this.appendHavingSQL(sql, schema, model, tableName);
 
         const order: string[] = [];
-        if (model.sort) {
-            for (const [name, sort] of Object.entries(model.sort)) {
-                order.push(`${tableName}.${this.platform.quoteIdentifier(name)} ${sort}`);
-            }
+        if (!needsSubSelect) {
+            //ORDER BY are handled as normal
+            this.applyOrder(order, model, tableName);
         }
-        for (const join of model.joins) {
-            if (!join.query.model.sort) continue;
-            for (const [name, sort] of Object.entries(join.query.model.sort)) {
-                order.push(`${join.as}.${this.platform.quoteIdentifier(name)} ${sort}`);
+
+        for (const join of this.joins) {
+            if (!join.join.query.model.sort) continue;
+            for (const [name, sort] of Object.entries(join.join.query.model.sort)) {
+                order.push(`${join.join.as}.${this.platform.quoteIdentifier(name)} ${sort}`);
             }
         }
         if (order.length) sql.append(' ORDER BY ' + (order.join(', ')));
 
-        if (withRange && !model.hasJoins()) {
+        if (withRange && !this.hasToManyJoins()) {
             this.platform.applyLimitAndOffset(sql, model.limit, model.skip);
         }
 
@@ -378,7 +401,9 @@ export class SqlBuilder {
         const primaryKey = schema.getPrimary();
         const select = this.select(schema, model, { select: [`${tableName}.${primaryKey.name}`] });
 
-        return new Sql(`UPDATE ${tableName} SET ${set.join(', ')} WHERE ${this.platform.quoteIdentifier(primaryKey.name)} IN (SELECT * FROM (${select.sql}) as __)`, select.params);
+        return new Sql(`UPDATE ${tableName}
+                        SET ${set.join(', ')}
+                        WHERE ${this.platform.quoteIdentifier(primaryKey.name)} IN (SELECT * FROM (${select.sql}) as __)`, select.params);
     }
 
     public select(

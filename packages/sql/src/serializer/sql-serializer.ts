@@ -94,7 +94,7 @@ function deserializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state:
     if (!isReferenceType(type) && isDirectPropertyOfEntity(type)) {
         //TypeClass|TypeObjectLiteral properties are serialized as JSON
         state.setContext({ jsonParse: JSON.parse });
-        state.addSetter(`${state.accessor} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor}`);
+        state.addCode(`${state.accessor} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor}`);
     }
 
     serializeObjectLiteral(type, state);

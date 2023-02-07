@@ -132,6 +132,7 @@ export class SQLFilterBuilder {
 
         if (fieldName.includes('.')) {
             const [column, path] = this.splitDeepFieldPath(fieldName);
+            //todo: check if column is relation
             return `${this.getDeepColumnAccessor(this.tableName, column, path)} ${cmpSign} ${rvalue}`;
         }
 
