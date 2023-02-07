@@ -13,13 +13,69 @@ import { UploadedFile } from './router';
 import * as querystring from 'querystring';
 import { Writable } from 'stream';
 import { metaAnnotation, ReflectionKind, Type, ValidationErrorItem } from '@deepkit/type';
-import { isArray } from '@deepkit/core';
+import { asyncOperation, isArray } from '@deepkit/core';
 
 export class HttpResponse extends ServerResponse {
     status(code: number) {
         this.writeHead(code);
         this.end();
     }
+}
+
+/**
+ * Reads the body of the request and returns it as a Buffer.
+ * The result will be cached in the request object as `request.body`.
+ *
+ * Deepkit's router will automatically use `request.body` if available.
+ */
+export function readBody(request: IncomingMessage): Promise<Buffer> {
+    return asyncOperation((resolve, reject) => {
+        const chunks: Buffer[] = [];
+        request.on('data', (chunk: Buffer) => {
+            chunks.push(chunk);
+        });
+        request.on('end', () => {
+            const body = Buffer.concat(chunks);
+            //the router uses this now instead of trying to read the body again
+            (request as HttpRequest).body = body;
+            resolve(body);
+        });
+        request.on('error', (error: Error) => {
+            reject(error);
+        });
+    });
+}
+
+export function createRequestWithCachedBody(request: Partial<IncomingMessage>, body: Buffer): HttpRequest {
+    const headers = request.headers;
+    const method = request.method;
+    const url = request.url;
+
+    const writable = new Writable({
+        write(chunk, encoding, callback) {
+            callback();
+        },
+        writev(chunks, callback) {
+            callback();
+        }
+    });
+    return new (class extends HttpRequest {
+        url = url;
+        method = method;
+        position = 0;
+
+        headers = headers as any;
+
+        _read(size: number) {
+            if (this.complete) {
+                this.push(null);
+            } else {
+                //in Node 18 this seems to be necessary to not trigger the abort event
+                this.complete = true;
+                this.push(body);
+            }
+        }
+    })(writable as any);
 }
 
 export type HttpRequestQuery = { [name: string]: string };
@@ -107,37 +163,11 @@ export class RequestBuilder {
     }
 
     build(): HttpRequest {
-        const headers = this._headers;
-        const method = this.method;
-        const url = this.getUrl();
-        const bodyContent = this.contentBuffer;
-
-        const writable = new Writable({
-            write(chunk, encoding, callback) {
-                callback();
-            },
-            writev(chunks, callback) {
-                callback();
-            }
-        });
-        const request = new (class extends HttpRequest {
-            url = url;
-            method = method;
-            position = 0;
-
-            headers = headers;
-
-            _read(size: number) {
-                if (this.complete) {
-                    this.push(null);
-                } else {
-                    //in Node 18 this seems to be necessary to not trigger the abort event
-                    this.complete = true;
-                    this.push(bodyContent);
-                }
-            }
-        })(writable as any);
-        return request;
+        return createRequestWithCachedBody({
+            method: this.method,
+            url: this.getUrl(),
+            headers: this._headers,
+        }, this.contentBuffer);
     }
 
     headers(headers: { [name: string]: string }): this {
@@ -182,10 +212,18 @@ export class HttpRequest extends IncomingMessage {
     public uploadedFiles: { [name: string]: UploadedFile } = {};
 
     /**
-     * Cache of parsed fields. If middleware prior to Deepkit populates this,
-     * Deepkit will re-use it.
+     * The router sets the body when it was read.
      */
-    public body?: { [name: string]: any };
+    public body?: Buffer;
+
+    async readBody(): Promise<Buffer> {
+        if (this.body) return this.body;
+        return await readBody(this);
+    }
+
+    async readBodyText(): Promise<string> {
+        return (await this.readBody()).toString('utf8');
+    }
 
     static GET(path: string): RequestBuilder {
         return new RequestBuilder(path);
@@ -234,7 +272,7 @@ export class HttpRequest extends IncomingMessage {
 
 export class MemoryHttpResponse extends HttpResponse {
     public body: Buffer = Buffer.alloc(0);
-    public headers: {[name: string]: number | string | string[] | undefined} = Object.create(null);
+    public headers: { [name: string]: number | string | string[] | undefined } = Object.create(null);
 
     setHeader(name: string, value: number | string | ReadonlyArray<string>): this {
         this.headers[name] = value as any;

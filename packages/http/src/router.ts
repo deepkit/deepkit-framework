@@ -31,7 +31,7 @@ import {
 // @ts-ignore
 import formidable from 'formidable';
 import { HttpAction, httpClass, HttpController, HttpDecorator } from './decorator';
-import { BodyValidationError, getRegExp, HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters, ValidatedBody } from './model';
+import { BodyValidationError, createRequestWithCachedBody, getRegExp, HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters, ValidatedBody } from './model';
 import { InjectorContext, InjectorModule, TagRegistry } from '@deepkit/injector';
 import { Logger, LoggerInterface } from '@deepkit/logger';
 import { HttpControllers } from './controllers';
@@ -628,10 +628,7 @@ export class HttpRouter {
             hash: 'sha1',
         });
         return asyncOperation((resolve, reject) => {
-            if (req.body) {
-                return resolve(req.body);
-            }
-            form.parse(req, (err: any, fields: any, files: any) => {
+            function parseData(err: any, fields: any, files: any) {
                 if (err) {
                     reject(err);
                 } else {
@@ -643,12 +640,32 @@ export class HttpRouter {
                             name: file.originalFilename,
                             type: file.mimetype,
                             lastModifiedDate: file.lastModifiedDate,
-                        }
+                        };
                     }
-                    const body = req.body = { ...fields, ...foundFiles };
+                    const body = { ...fields, ...foundFiles };
                     resolve(body);
                 }
+            }
+
+            if (req.body) {
+                form.parse(createRequestWithCachedBody(req, req.body), parseData);
+                return;
+            }
+
+            const chunks: Buffer[] = [];
+
+            function read(chunk: Buffer) {
+                chunks.push(chunk);
+            }
+
+            req.on('data', read);
+            req.once('end', () => {
+                req.body = Buffer.concat(chunks);
+                req.off('data', read);
             });
+            req.once('error', () => req.off('data', read));
+
+            form.parse(req, parseData);
         });
     }
 
@@ -683,7 +700,7 @@ export class HttpRouter {
         const routeConfigVar = compiler.reserveVariable('routeConfigVar', routeConfig);
         const parsedRoute = parseRouteControllerAction(routeConfig);
         const path = routeConfig.getFullPath();
-        const pathParamStarter = path.indexOf(':')
+        const pathParamStarter = path.indexOf(':');
         const prefix = path.substr(0, pathParamStarter);
 
         const regexVar = compiler.reserveVariable('regex', new RegExp('^' + parsedRoute.regex + '$'));

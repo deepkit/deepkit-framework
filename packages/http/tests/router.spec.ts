@@ -368,6 +368,52 @@ test('router body is safe for simultaneous requests', async () => {
     );
 });
 
+test('router body can be read multiple times', async () => {
+    class Body {
+        username!: string;
+    }
+
+    class Controller {
+        @http.POST()
+        async anyReq(body: HttpBody<Body>, req: HttpRequest) {
+            return [body.username, await req.readBodyText(), req.url];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    expect((await httpKernel.request(HttpRequest.POST('/').json({ username: 'Peter' }))).json).toEqual(['Peter', '{"username":"Peter"}', '/']);
+});
+
+test('router body before it gets parsed', async () => {
+    class Body {
+        username!: string;
+    }
+
+    class Service {
+        body?: string;
+    }
+
+    class Controller {
+        constructor(private service: Service) {
+        }
+
+        @http.POST()
+        async anyReq(body: HttpBody<Body>, req: HttpRequest) {
+            expect(await req.readBodyText()).toBe(await req.readBodyText());
+            return [body.username, await req.readBodyText(), this.service.body, req.url];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [Service], [
+        httpWorkflow.onRequest.listen(async (event, service: Service) => {
+            service.body = await event.request.readBodyText();
+        })
+    ]);
+
+    expect((await httpKernel.request(HttpRequest.POST('/').json({ username: 'Peter' }))).json).toEqual(['Peter', '{"username":"Peter"}', '{"username":"Peter"}', '/']);
+});
+
 test('router body interface', async () => {
     interface Body {
         username: string;
