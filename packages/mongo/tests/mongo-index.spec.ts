@@ -19,6 +19,14 @@ class Model {
     }
 }
 
+@entity.name('model-with-composite-index').index(['a', 'b'], {unique: true})
+class ModelCompositeIndex {
+    _id: MongoId & PrimaryKey = '';
+    a: string = '';
+    b: string = '';
+    constructor(public name: string) {
+    }
+}
 
 test('Index in ClassSchema', async () => {
 
@@ -36,8 +44,17 @@ test('Index in ClassSchema', async () => {
 });
 
 
+test('Composite index in ClassSchema', async () => {
+
+    const schema = ReflectionClass.from(ModelCompositeIndex);
+    // console.log(schema.indexes)
+
+    // get index with [0] is a bit lazy and might fail?
+    expect(schema.indexes[0]).toMatchObject({ names: [ 'a', 'b' ], options: { unique: true } });
+});
+
 test('migrate()', async () => {
-    const db = new Database(new MongoDatabaseAdapter(`mongodb://127.0.0.1/testing`), [Model]);
+    const db = new Database(new MongoDatabaseAdapter(`mongodb://127.0.0.1/testing`), [Model, ModelCompositeIndex]);
     await db.query(Model).deleteMany();
 
     await db.migrate();
@@ -54,6 +71,11 @@ test('migrate()', async () => {
     await db.persist(item);
     const dbItem = await db.query(Model).filter({name: 'foo'}).findOne();
     expect(dbItem).not.toBe(item);
+
+    const itemB = new ModelCompositeIndex('foo');
+    itemB.a = 'AA';
+    itemB.b = 'BB';
+    await db.persist(item);
 
     db.disconnect();
 });
