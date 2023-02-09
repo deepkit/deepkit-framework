@@ -34,8 +34,7 @@ export interface LogMessage {
 }
 
 export class ConsoleTransport implements LoggerTransport {
-    constructor(protected withColors: boolean = true) {
-    }
+    constructor(protected withColors: boolean = true) {}
 
     write(message: LogMessage): void {
         if (message.level === LoggerLevel.error) {
@@ -52,13 +51,15 @@ export class ConsoleTransport implements LoggerTransport {
 
 export class JSONTransport implements LoggerTransport {
     write(message: LogMessage) {
-        process.stdout.write(JSON.stringify({
-            message: message.rawMessage,
-            level: message.level,
-            date: message.date,
-            scope: message.scope,
-            data: message.data,
-        }) + '\n');
+        process.stdout.write(
+            JSON.stringify({
+                message: message.rawMessage,
+                level: message.level,
+                date: message.date,
+                scope: message.scope,
+                data: message.data,
+            }) + '\n'
+        );
     }
 
     supportsColor() {
@@ -91,16 +92,22 @@ export class ColorFormatter implements LoggerFormatter {
     ];
 
     format(message: LogMessage): void {
-        if (message.level === LoggerLevel.error || message.level === LoggerLevel.alert) {
+        if (
+            message.level === LoggerLevel.error ||
+            message.level === LoggerLevel.alert
+        ) {
             message.message = `<red>${message.message}</red>`;
         }
 
         if (message.message.includes('<')) {
-            message.message = message.message.replace(/<(\/)?([a-zA-Z]+)>/g, function (a, end, color) {
-                if (!(style as any)[color]) return a;
-                if (end === '/') return (style as any)[color].close;
-                return (style as any)[color].open;
-            });
+            message.message = message.message.replace(
+                /<(\/)?([a-zA-Z]+)>/g,
+                function (a, end, color) {
+                    if (!(style as any)[color]) return a;
+                    if (end === '/') return (style as any)[color].close;
+                    return (style as any)[color].open;
+                }
+            );
         }
     }
 }
@@ -108,15 +115,22 @@ export class ColorFormatter implements LoggerFormatter {
 export class RemoveColorFormatter implements LoggerFormatter {
     format(message: LogMessage): void {
         if (message.message.includes('<')) {
-            message.message = message.message.replace(/<(\/)?([a-zA-Z]+)>/g, function (a, end, color) {
-                return '';
-            });
+            message.message = message.message.replace(
+                /<(\/)?([a-zA-Z]+)>/g,
+                function (a, end, color) {
+                    return '';
+                }
+            );
         }
     }
 }
 
 export class DefaultFormatter implements LoggerFormatter {
-    formatters: LoggerFormatter[] = [new ScopeFormatter(), new LogLevelFormatter(), new TimestampFormatter()];
+    formatters: LoggerFormatter[] = [
+        new ScopeFormatter(),
+        new LogLevelFormatter(),
+        new TimestampFormatter(),
+    ];
 
     format(message: LogMessage): void {
         for (const formatter of this.formatters) {
@@ -127,13 +141,17 @@ export class DefaultFormatter implements LoggerFormatter {
 
 export class TimestampFormatter implements LoggerFormatter {
     format(message: LogMessage): void {
-        message.message = `<yellow>${new Date().toISOString()}</yellow> ${message.message}`;
+        message.message = `<yellow>${new Date().toISOString()}</yellow> ${
+            message.message
+        }`;
     }
 }
 
 export class LogLevelFormatter implements LoggerFormatter {
     format(message: LogMessage): void {
-        message.message = `[${String(LoggerLevel[message.level]).toUpperCase()}] ${message.message}`;
+        message.message = `[${String(
+            LoggerLevel[message.level]
+        ).toUpperCase()}] ${message.message}`;
     }
 }
 
@@ -187,8 +205,8 @@ export interface LoggerInterface {
 }
 
 export class Logger implements LoggerInterface {
-    protected colorFormatter = new ColorFormatter;
-    protected removeColorFormatter = new RemoveColorFormatter;
+    protected colorFormatter = new ColorFormatter();
+    protected removeColorFormatter = new RemoveColorFormatter();
 
     /**
      * Setting a log level means only logs below or equal to this level will be handled.
@@ -203,9 +221,8 @@ export class Logger implements LoggerInterface {
     constructor(
         protected transporter: LoggerTransport[] = [],
         protected formatter: LoggerFormatter[] = [],
-        protected scope: string = '',
-    ) {
-    }
+        protected scope: string = ''
+    ) {}
 
     data(data: LogData): this {
         this.logData = data;
@@ -213,7 +230,10 @@ export class Logger implements LoggerInterface {
     }
 
     scoped(name: string): Logger {
-        return this.scopes[name] ||= new (this.constructor as any)(this.transporter, this.formatter, name);
+        const scopedLogger = (this.scopes[name] ||= new (this
+            .constructor as any)(this.transporter, this.formatter, name));
+        scopedLogger.level = this.level;
+        return scopedLogger;
     }
 
     addTransport(transport: LoggerTransport) {
@@ -266,7 +286,14 @@ export class Logger implements LoggerInterface {
         }
 
         const rawMessage: string = (format as any)(...messages);
-        const message: LogMessage = { message: rawMessage, rawMessage, level, date: new Date, scope: this.scope, data };
+        const message: LogMessage = {
+            message: rawMessage,
+            rawMessage,
+            level,
+            date: new Date(),
+            scope: this.scope,
+            data,
+        };
         this.format(message);
 
         for (const transport of this.transporter) {
