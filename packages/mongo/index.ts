@@ -15,3 +15,6 @@ export * from './src/query.model';
 export * from './src/query.resolver';
 export * from './src/query';
 export * from './src/client/client';
+
+// for special use cases like $rename
+export { FindAndModifyCommand }  from './src/client/command/findAndModify';
