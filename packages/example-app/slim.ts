@@ -26,7 +26,7 @@ const app = new App({
 const httpKernel = app.get(HttpKernel);
 
 new Server(
-    { IncomingMessage: HttpRequest, ServerResponse: HttpResponse, },
+    { IncomingMessage: HttpRequest, ServerResponse: HttpResponse as any, },
     ((req, res) => {
         httpKernel.handleRequest(req as HttpRequest, res as HttpResponse);
     })
