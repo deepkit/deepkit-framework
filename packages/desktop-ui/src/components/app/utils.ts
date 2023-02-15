@@ -24,8 +24,8 @@ import { Electron } from '../../core/utils';
     selector: '[openExternal], a[href]',
 })
 export class OpenExternalDirective implements OnChanges {
-    @Input('openExternal') private openExternal: string = '';
-    @Input('href') private href: string = '';
+    @Input('openExternal') openExternal: string = '';
+    @Input('href') href: string = '';
 
     constructor(private element: ElementRef) {
         // this.element.nativeElement.href = '#';
@@ -33,6 +33,9 @@ export class OpenExternalDirective implements OnChanges {
 
     ngOnChanges(): void {
         // this.element.nativeElement.href = this.getLink();
+        if (this.element.nativeElement instanceof HTMLAnchorElement) {
+            this.element.nativeElement.setAttribute('href', this.getLink());
+        }
     }
 
     getLink() {

@@ -9,6 +9,7 @@
  */
 
 import { Component, TemplateRef, ViewChild } from '@angular/core';
+import { WindowContentComponent } from './window-content.component';
 
 @Component({
     selector: 'dui-window-sidebar',
@@ -21,4 +22,8 @@ import { Component, TemplateRef, ViewChild } from '@angular/core';
 })
 export class WindowSidebarComponent {
     @ViewChild('templateRef', { static: true }) public template!: TemplateRef<any>;
+
+    constructor(private content: WindowContentComponent) {
+        content.registerSidebar(this);
+    }
 }
