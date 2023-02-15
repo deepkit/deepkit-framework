@@ -185,17 +185,18 @@ export function createSerializeFunction(type: Type, registry: TemplateRegistry, 
         state.target = 'deserialize';
     }
 
-    compiler.context.set('_global', typeSettings);
     //set unpopulatedCheck to ReturnSymbol to jump over those properties
+    compiler.context.set('typeSettings', typeSettings);
+    compiler.context.set('UnpopulatedCheck', UnpopulatedCheck);
     compiler.context.set('UnpopulatedCheckReturnSymbol', UnpopulatedCheck.ReturnSymbol);
 
     const code = `
         var result;
         state = state ? state : {};
-        var oldUnpopulatedCheck = _global.unpopulatedCheck;
-        _global.unpopulatedCheck = UnpopulatedCheckReturnSymbol;
+        var oldUnpopulatedCheck = typeSettings.unpopulatedCheck;
+        typeSettings.unpopulatedCheck = UnpopulatedCheckReturnSymbol;
         ${executeTemplates(state, type)}
-        _global.unpopulatedCheck = oldUnpopulatedCheck;
+        typeSettings.unpopulatedCheck = oldUnpopulatedCheck;
         return result;
     `;
 
@@ -229,7 +230,7 @@ export function createTypeGuardFunction(type: Type, state?: TemplateState, seria
     for (const hook of state.registry.postHooks) hook(type, state);
     for (const hook of state.registry.getDecorator(type)) hook(type, state);
 
-    compiler.context.set('_global', typeSettings);
+    compiler.context.set('typeSettings', typeSettings);
     //set unpopulatedCheck to ReturnSymbol to jump over those properties
     compiler.context.set('UnpopulatedCheckReturnSymbol', UnpopulatedCheck.ReturnSymbol);
 
@@ -237,10 +238,10 @@ export function createTypeGuardFunction(type: Type, state?: TemplateState, seria
         var result;
         if (_path === undefined) _path = '';
         state = state ? state : {};
-        var oldUnpopulatedCheck = _global.unpopulatedCheck;
-        _global.unpopulatedCheck = UnpopulatedCheckReturnSymbol;
+        var oldUnpopulatedCheck = typeSettings.unpopulatedCheck;
+        typeSettings.unpopulatedCheck = UnpopulatedCheckReturnSymbol;
         ${state.template}
-        _global.unpopulatedCheck = oldUnpopulatedCheck;
+        typeSettings.unpopulatedCheck = oldUnpopulatedCheck;
         return result === true;
     `;
     return compiler.build(code, 'data', 'state', '_path', 'property');
@@ -1138,6 +1139,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     }
 
     let createObject = '{}';
+    const postLines: string[] = [];
     if (state.isDeserialization && type.kind === ReflectionKind.class) {
         const classType = state.compilerContext.reserveConst(type.classType);
         const clazz = ReflectionClass.from(type.classType);
@@ -1150,6 +1152,8 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             }
         } else {
             createObject = `new ${classType}(${constructorArguments.join(', ')})`;
+            preLines.push(`const oldCheck = typeSettings.unpopulatedCheck; typeSettings.unpopulatedCheck = UnpopulatedCheck.None;`);
+            postLines.push(`typeSettings.unpopulatedCheck = oldCheck;`);
         }
     }
 
@@ -1157,6 +1161,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         if ('object' !== typeof ${state.accessor}) ${state.throwCode(type)}
         ${preLines.join('\n')}
         let ${v} = ${createObject};
+        ${postLines.join('\n')}
         ${lines.join('\n')}
         ${state.setter} = ${v};
     `);
@@ -1263,10 +1268,10 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 if (${optionalCheck} ${propertyAccessor} !== unpopulatedSymbol) {
                     let ${checkValid} = false;
                     ${executeTemplates(propertyState,
-                        member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
+                    member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
                         ? { kind: ReflectionKind.function, name: memberNameToString(member.name), return: member.return, parameters: member.parameters }
                         : member.type
-                    )}
+                )}
                     if (!${checkValid}) ${state.setter} = false;
                 }`);
             }

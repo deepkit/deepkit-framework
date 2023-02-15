@@ -748,7 +748,9 @@ function handleObjectLiteral(
         }
 
         let converter = `
-            if (${accessor} === undefined || ${accessor} === unpopulatedSymbol) {
+            if (${accessor} === unpopulatedSymbol) {
+                //don't do anything since not loaded
+            } else if (${accessor} === undefined) {
                 ${setUndefined}
             } else {
                 ${template}

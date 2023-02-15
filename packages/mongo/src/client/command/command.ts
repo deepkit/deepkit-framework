@@ -13,7 +13,7 @@ import { handleErrorResponse, MongoError } from '../error';
 import { MongoClientConfig } from '../config';
 import { Host } from '../host';
 import type { MongoDatabaseTransaction } from '../connection';
-import { ReceiveType, ReflectionClass, resolveReceiveType, SerializationError, stringifyType, Type, typeOf, ValidationError } from '@deepkit/type';
+import { ReceiveType, ReflectionClass, resolveReceiveType, SerializationError, stringifyType, Type, typeOf, typeSettings, UnpopulatedCheck, ValidationError } from '@deepkit/type';
 import { BSONDeserializer, deserializeBSONWithoutOptimiser, getBSONDeserializer } from '@deepkit/bson';
 import { mongoBinarySerializer } from '../../mongo-serializer';
 import { inspect } from 'util';
@@ -73,7 +73,9 @@ export abstract class Command {
         if (!this.current) throw new Error('Got handleResponse without active command');
         const deserializer: BSONDeserializer<BaseResponse> = this.current.responseType ? getBSONDeserializer(mongoBinarySerializer, this.current.responseType) : deserializeBSONWithoutOptimiser;
 
+        const oldCheck = typeSettings.unpopulatedCheck;
         try {
+            typeSettings.unpopulatedCheck = UnpopulatedCheck.None;
             const message = deserializer(response);
             const error = handleErrorResponse(message);
             if (error) {
@@ -90,7 +92,7 @@ export abstract class Command {
             if (error instanceof ValidationError || error instanceof SerializationError) {
                 if (this.current.responseType) {
                     const raw = deserializeBSONWithoutOptimiser(response);
-                    console.log('mongo raw response', inspect(raw, {depth: null}));
+                    console.log('mongo raw response', inspect(raw, { depth: null }));
                     if (raw.errmsg && raw.ok === 0) {
                         const error = handleErrorResponse(raw);
                         if (error) {
@@ -104,6 +106,8 @@ export abstract class Command {
                 }
             }
             this.current.reject(error);
+        } finally {
+            typeSettings.unpopulatedCheck = oldCheck;
         }
     }
 }

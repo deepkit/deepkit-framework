@@ -82,15 +82,15 @@ function createJITConverterForSnapshot(
         var _result = {};
         state = state || {};
         ${circularCheckBeginning}
-        var oldUnpopulatedCheck = _global.unpopulatedCheck;
-        _global.unpopulatedCheck = UnpopulatedCheckNone;
+        var oldUnpopulatedCheck = typeSettings.unpopulatedCheck;
+        typeSettings.unpopulatedCheck = UnpopulatedCheckNone;
         ${setProperties.join('\n')}
-        _global.unpopulatedCheck = oldUnpopulatedCheck;
+        typeSettings.unpopulatedCheck = oldUnpopulatedCheck;
         ${circularCheckEnd}
         return _result;
         `;
 
-    compiler.context.set('_global', typeSettings);
+    compiler.context.set('typeSettings', typeSettings);
     compiler.context.set('UnpopulatedCheckNone', UnpopulatedCheck.None);
 
     return compiler.build(functionCode, '_value', 'state');
