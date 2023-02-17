@@ -290,3 +290,11 @@ test('class with statics', () => {
     expect(validate<PilotId>({value: 34})).toEqual([]);
     expect(validate<PilotId>({value: '33'})).toEqual([{code: 'type', message: 'Not a number', path: 'value'}]);
 });
+
+test('date', () => {
+    class Account {
+        public name!: string;
+        public createdAt!: Date;
+    }
+    expect(validate<Account>({name: "jack", createdAt: 'asd'})).toEqual([{code: 'type', message: 'No a Date', path: 'createdAt'}]);
+});

@@ -1987,7 +1987,7 @@ export class Serializer {
 
                 // when an object with primary key is given e.g. {id: 1} we treat it as
                 // reference and assign an instance of Reference to the property.
-                const l: string[] = [`getObjectKeysSize(${state.accessor}) === ${reflection.getPrimaries().length}`];
+                const l: string[] = [`${reflection.getPrimaries().length} > 0 && getObjectKeysSize(${state.accessor}) === ${reflection.getPrimaries().length}`];
                 for (const pk of reflection.getPrimaries()) {
                     l.push(`${JSON.stringify(pk.name)} in ${state.accessor}`);
                 }
@@ -2139,7 +2139,7 @@ export class Serializer {
 
         this.typeGuards.getRegistry(1).registerClass(Set, typeGuardClassSet);
         this.typeGuards.getRegistry(1).registerClass(Map, typeGuardClassMap);
-        this.typeGuards.getRegistry(1).registerClass(Date, (type, state) => state.addSetter(`${state.accessor} instanceof Date`));
+        this.typeGuards.getRegistry(1).registerClass(Date, (type, state) => state.addSetterAndReportErrorIfInvalid('type', 'No a Date', `${state.accessor} instanceof Date`));
         this.typeGuards.getRegistry(0.5).registerClass(Date, (type, state) => {
             state.addSetter(`'string' === typeof ${state.accessor} && new Date(${state.accessor}).toString() !== 'Invalid Date'`);
         });
