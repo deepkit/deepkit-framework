@@ -8,7 +8,20 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, CompilerContext, CustomError, isArray, isFunction, isInteger, isIterable, isNumeric, isObject, stringifyValueWithType, toFastProperties } from '@deepkit/core';
+import {
+    ClassType,
+    CompilerContext,
+    CustomError,
+    getObjectKeysSize,
+    isArray,
+    isFunction,
+    isInteger,
+    isIterable,
+    isNumeric,
+    isObject,
+    stringifyValueWithType,
+    toFastProperties
+} from '@deepkit/core';
 import {
     AnnotationDefinition,
     assertType,
@@ -1968,13 +1981,24 @@ export class Serializer {
             (type, state) => {
                 if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) return;
                 state.annotationHandled(referenceAnnotation);
-                state.setContext({ isObject, createReference, isReferenceHydrated, isReferenceInstance });
+                state.setContext({ isObject, createReference, isReferenceHydrated, isReferenceInstance, getObjectKeysSize });
                 const reflection = ReflectionClass.from(type);
                 const referenceClassTypeVar = state.setVariable('referenceClassType', type.kind === ReflectionKind.class ? type.classType : Object);
+
+                // when an object with primary key is given e.g. {id: 1} we treat it as
+                // reference and assign an instance of Reference to the property.
+                const l: string[] = [`getObjectKeysSize(${state.accessor}) === ${reflection.getPrimaries().length}`];
+                for (const pk of reflection.getPrimaries()) {
+                    l.push(`${JSON.stringify(pk.name)} in ${state.accessor}`);
+                }
+                const checkIsPrimaryKeyOnly = l.join(' && ');
+
                 // in deserialization a reference is created when only the primary key is provided (no object given)
                 state.replaceTemplate(`
                     if (isReferenceInstance(${state.accessor})) {
                         ${state.setter} = ${state.accessor};
+                    } else if (isObject(${state.accessor}) && ${checkIsPrimaryKeyOnly}) {
+                        ${state.setter} = createReference(${referenceClassTypeVar}, ${state.accessor});
                     } else if (isObject(${state.accessor})) {
                         ${state.template}
                     } else {

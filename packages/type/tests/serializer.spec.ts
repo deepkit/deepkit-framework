@@ -35,6 +35,7 @@ import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/vali
 import { StatEnginePowerUnit, StatWeightUnit } from './types';
 import { parametersToTuple } from '../src/reflection/extends.js';
 import { is } from '../src/typeguard';
+import { isReferenceInstance } from '../src/reference.js';
 
 test('deserializer', () => {
     class User {
@@ -576,6 +577,14 @@ test('class with reference', () => {
         const res = cast<Team>({ lead: { id: 1, username: 'Peter' } });
         expect(res).toEqual({ lead: { id: 1, username: 'Peter' } });
         expect(res.lead).toBeInstanceOf(User);
+        expect(isReferenceInstance(res.lead)).toBe(false);
+    }
+
+    {
+        const res = cast<Team>({ lead: { id: 1 } });
+        expect(res).toEqual({ lead: { id: 1 } });
+        expect(res.lead).toBeInstanceOf(User);
+        expect(isReferenceInstance(res.lead)).toBe(true);
     }
 
     {

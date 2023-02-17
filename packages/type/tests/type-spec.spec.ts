@@ -778,3 +778,8 @@ test('class with statics', () => {
     expect(deserializeFromJson<PilotId>({value: 34})).toEqual({value: 34});
     expect(serializeToJson<PilotId>({value: 33})).toEqual({value: 33});
 });
+
+test('primary key only for reference becomes reference', () => {
+    expect(deserializeFromJson<Team>({id: 1, name: 'a', lead: 34}).lead).toBeInstanceOf(User);
+    expect(deserializeFromJson<Team>({id: 1, name: 'a', lead: {id: 34}}).lead).toBeInstanceOf(User);
+});
