@@ -6,7 +6,7 @@ import { eventDispatcher } from '@deepkit/event';
 import { HttpBody, HttpBodyValidation, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model';
 import { getClassName, isObject, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils';
-import { Group, MinLength, PrimaryKey, Reference } from '@deepkit/type';
+import { Excluded, Group, MinLength, PrimaryKey, Reference, typeSettings, UnpopulatedCheck } from '@deepkit/type';
 
 test('router', async () => {
     class Controller {
@@ -925,6 +925,66 @@ test('BodyValidation', async () => {
 
     expect((await httpKernel.request(HttpRequest.POST('/action3').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
     expect((await httpKernel.request(HttpRequest.POST('/action3').json({ username: 'Pe' }))).bodyString).toEqual(`{"message":"Invalid: Min length is 3"}`);
+});
+
+test('unpopulated entity without type information', async () => {
+    interface Group {
+        id: number & PrimaryKey;
+    }
+
+    class User {
+        invisible: boolean & Excluded = false;
+        constructor(public id: number, public group: Group & Reference) {
+        }
+    }
+
+
+    function disableReference(o: User) {
+        //we simulate an unpopulated reference
+        Object.defineProperty(o, 'group', {
+            get() {
+                if (typeSettings.unpopulatedCheck === UnpopulatedCheck.Throw) {
+                    throw new Error(`Reference group was not populated. Use joinWith(), useJoinWith(), etc to populate the reference.`);
+                }
+            }
+        });
+    }
+
+    class Controller {
+        @http.GET('/1')
+        action1() {
+            const o = new User(2, undefined as any);
+            disableReference(o);
+            return [o];
+        }
+
+        @http.GET('/2')
+        async action2(): Promise<User[]> {
+            const o = new User(2, undefined as any);
+            disableReference(o);
+            return [o];
+        }
+
+        @http.GET('/3').response<User[]>(200)
+        async action3() {
+            const o = new User(2, undefined as any);
+            disableReference(o);
+            return [o];
+        }
+
+        @http.GET('/4')
+        async action4() {
+            const o = new User(2, undefined as any);
+            disableReference(o);
+            return [o, {another: 3}];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    expect((await httpKernel.request(HttpRequest.GET('/1'))).json).toEqual([{ id: 2 }]);
+    expect((await httpKernel.request(HttpRequest.GET('/2'))).json).toEqual([{ id: 2 }]);
+    expect((await httpKernel.request(HttpRequest.GET('/3'))).json).toEqual([{ id: 2 }]);
+    expect((await httpKernel.request(HttpRequest.GET('/4'))).json).toEqual([{ id: 2, invisible: false }, {another: 3}]);
 });
 
 //disabled for the moment since critical functionality has been removed
