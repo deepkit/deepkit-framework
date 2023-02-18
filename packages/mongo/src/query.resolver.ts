@@ -482,8 +482,12 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
         if (model.isAggregate()) {
             const group: any = { _id: {} };
             const project: any = {};
+            const unset: string[] = [];
             for (const g of model.groupBy.values()) {
                 group._id[g] = '$' + g;
+                //mongo pushes the result of the groupBy into _id event if the value has absolutely nothing to do with the _id type
+                //we have in the schema. Thus, we need to make sure it is not part of the result set.
+                if (g !== '_id') unset.push('_id');
                 project[g] = '$_id.' + g;
             }
 
@@ -507,6 +511,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
 
             pipeline.push({ $group: group });
             pipeline.push({ $project: project });
+            if (unset.length) pipeline.push({ $unset: unset });
         }
 
         if (model.sort) pipeline.push({ $sort: this.getSortFromModel(model.sort) });
