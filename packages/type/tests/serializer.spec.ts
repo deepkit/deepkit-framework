@@ -27,9 +27,9 @@ import {
     TypeProperty,
     TypePropertySignature
 } from '../src/reflection/type';
-import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializer } from '../src/serializer';
-import { cast, deserialize, serialize } from '../src/serializer-facade';
-import { getClassName, getClassTypeFromInstance } from '@deepkit/core';
+import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializer, underscoreNamingStrategy } from '../src/serializer';
+import { cast, deserialize, patch, serialize } from '../src/serializer-facade';
+import { getClassName } from '@deepkit/core';
 import { entity, t } from '../src/decorator';
 import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator';
 import { StatEnginePowerUnit, StatWeightUnit } from './types';
@@ -1092,4 +1092,34 @@ test('discriminated union with string date in type guard', () => {
 test('date format', () => {
     const date = cast<number | Date>('2020-07-02T12:00:00Z');
     expect(date).toEqual(new Date('2020-07-02T12:00:00Z'));
+});
+
+
+test('patch', () => {
+    class Address {
+        street!: string & MinLength<3>;
+        streetNo!: string;
+        additional: { [name: string]: string } = {};
+    }
+
+    class Order {
+        id!: number;
+        shippingAddress!: Address;
+    }
+
+    {
+        const data = patch<Order>({ id: 5, 'shippingAddress.street': 123 }, undefined, undefined, underscoreNamingStrategy);
+        expect(data).toEqual({ id: 5, 'shipping_address.street': '123' });
+    }
+
+    //no validation for the moment until object reference->primary key validation is implemented for the ORM
+    // {
+    //     expect(() => patch<Order>({ 'shippingAddress.street': 12 }, undefined, undefined, underscoreNamingStrategy)).toThrow('Min length is 3');
+    // }
+
+    {
+        //index signature are not touched by naming strategy
+        const data = patch<Order>({ id: 5, 'shippingAddress.additional.randomName': 12 }, undefined, undefined, underscoreNamingStrategy);
+        expect(data).toEqual({ id: 5, 'shipping_address.additional.randomName': '12' });
+    }
 });

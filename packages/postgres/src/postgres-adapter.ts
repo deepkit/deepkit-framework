@@ -9,7 +9,10 @@
  */
 
 import {
-    DefaultPlatform, prepareBatchUpdate,
+    asAliasName,
+    DefaultPlatform,
+    prepareBatchUpdate,
+    splitDotPath,
     SqlBuilder,
     SQLConnection,
     SQLConnectionPool,
@@ -37,7 +40,7 @@ import type { Pool, PoolClient, PoolConfig } from 'pg';
 import pg from 'pg';
 import { AbstractClassType, asyncOperation, ClassType, empty } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
-import { Changes, getPartialSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, ReflectionKind, ReflectionProperty, resolvePath } from '@deepkit/type';
+import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, ReflectionKind, ReflectionProperty, resolvePath } from '@deepkit/type';
 
 function handleError(error: Error | string): void {
     const message = 'string' === typeof error ? error : error.message;
@@ -413,8 +416,8 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
 
-        const partialSerialize = getPartialSerializeFunction(this.classSchema.type, this.platform.serializer.serializeRegistry);
-        const $set = changes.$set ? partialSerialize(changes.$set) : undefined;
+        const patchSerialize = getPatchSerializeFunction(this.classSchema.type, this.platform.serializer.serializeRegistry);
+        const $set = changes.$set ? patchSerialize(changes.$set, undefined) : undefined;
         const set: string[] = [];
 
         if ($set) for (const i in $set) {
@@ -424,7 +427,7 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
             } else {
                 fieldsSet[i] = 1;
 
-                select.push(`$${selectParams.length + 1}${this.platform.typeCast(this.classSchema, i)} as ${this.platform.quoteIdentifier(i)}`);
+                select.push(`$${selectParams.length + 1}${this.platform.typeCast(this.classSchema, i)} as ${this.platform.quoteIdentifier(asAliasName(i))}`);
                 selectParams.push($set[i]);
             }
         }
@@ -444,11 +447,17 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
             if (!changes.$inc.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
             aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.serializeRegistry) };
-            select.push(`(${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(i)}`);
+            select.push(`((${this.platform.getColumnAccessor('', i)})${this.platform.typeCast(this.classSchema, i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(asAliasName(i))}`);
         }
 
         for (const i in fieldsSet) {
-            set.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
+            if (i.includes('.')) {
+                let [firstPart, secondPart] = splitDotPath(i);
+                const path = '{' + secondPart.replace(/\./g, ',').replace(/[\]\[]/g, '') + '}';
+                set.push(`${this.platform.quoteIdentifier(firstPart)} = jsonb_set(${this.platform.quoteIdentifier(firstPart)}, '${path}', to_jsonb(_b.${this.platform.quoteIdentifier(asAliasName(i))}))`);
+            } else {
+                set.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
+            }
         }
         let bPrimaryKey = primaryKey.name;
         //we need a different name because primaryKeys could be updated as well
@@ -464,7 +473,7 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
 
         if (!empty(aggregateFields)) {
             for (const i in aggregateFields) {
-                returningSelect.push(tableName + '.' + this.platform.quoteIdentifier(i));
+                returningSelect.push(this.platform.getColumnAccessor(tableName, i));
             }
         }
 
@@ -475,11 +484,10 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
             WITH _b AS (${selectSQL.sql})
             UPDATE
                 ${tableName}
-            SET
-                ${set.join(', ')}
+            SET ${set.join(', ')}
             FROM _b
             WHERE ${tableName}.${this.platform.quoteIdentifier(primaryKey.name)} = _b.${this.platform.quoteIdentifier(bPrimaryKey)}
-            RETURNING ${returningSelect.join(', ')}
+                RETURNING ${returningSelect.join(', ')}
         `;
 
         const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);

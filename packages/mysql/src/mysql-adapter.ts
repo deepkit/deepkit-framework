@@ -10,8 +10,10 @@
 
 import { createPool, Pool, PoolConfig, PoolConnection, UpsertResult } from 'mariadb';
 import {
+    asAliasName,
     DefaultPlatform,
     prepareBatchUpdate,
+    splitDotPath,
     SqlBuilder,
     SQLConnection,
     SQLConnectionPool,
@@ -35,7 +37,7 @@ import {
     UniqueConstraintFailure
 } from '@deepkit/orm';
 import { MySQLPlatform } from './mysql-platform';
-import { Changes, getPartialSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
+import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
 import { AbstractClassType, asyncOperation, ClassType, empty, isArray } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
@@ -291,7 +293,8 @@ export class MySQLPersistence extends SQLPersistence {
             const endSelectVars: string[] = [];
             vars.push(`@_pk := JSON_ARRAYAGG(${prepared.originPkField})`);
             endSelectVars.push('@_pk');
-            for (const i in prepared.setReturning) {
+            for (let i in prepared.setReturning) {
+                i = asAliasName(i);
                 endSelectVars.push(`@_f_${i}`);
                 vars.push(`@_f_${i} := JSON_ARRAYAGG(${this.platform.quoteIdentifier(i)})`);
             }
@@ -398,37 +401,43 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
 
-        const partialSerialize = getPartialSerializeFunction(this.classSchema.type, this.platform.serializer.serializeRegistry);
-        const $set = changes.$set ? partialSerialize(changes.$set) : undefined;
+        const patchSerialize = getPatchSerializeFunction(this.classSchema.type, this.platform.serializer.serializeRegistry);
+        const $set = changes.$set ? patchSerialize(changes.$set, undefined, {normalizeArrayIndex: true}) : undefined;
 
         if ($set) for (const i in $set) {
             if (!$set.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            select.push(`? as ${this.platform.quoteIdentifier(i)}`);
+            select.push(`? as ${this.platform.quoteIdentifier(asAliasName(i))}`);
             selectParams.push($set[i]);
         }
 
         if (changes.$unset) for (const i in changes.$unset) {
             if (!changes.$unset.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            select.push(`NULL as ${this.platform.quoteIdentifier(i)}`);
+            select.push(`NULL as ${this.platform.quoteIdentifier(asAliasName(i))}`);
         }
 
         for (const i of model.returning) {
             aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.deserializeRegistry) };
-            select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
+            select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(asAliasName(i))}`);
         }
 
         if (changes.$inc) for (const i in changes.$inc) {
             if (!changes.$inc.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
             aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.serializeRegistry) };
-            select.push(`(${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(i)}`);
+            select.push(`(${this.platform.getColumnAccessor('', i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(asAliasName(i))}`);
         }
 
         const set: string[] = [];
         for (const i in fieldsSet) {
-            set.push(`_target.${this.platform.quoteIdentifier(i)} = b.${this.platform.quoteIdentifier(i)}`);
+            if (i.includes('.')) {
+                let [firstPart, secondPart] = splitDotPath(i);
+                if (!secondPart.startsWith('[')) secondPart = '.' + secondPart;
+                set.push(`_target.${this.platform.quoteIdentifier(firstPart)} = json_set(${this.platform.quoteIdentifier(firstPart)}, '$${secondPart}', b.${this.platform.quoteIdentifier(asAliasName(i))})`);
+            } else {
+                set.push(`_target.${this.platform.quoteIdentifier(i)} = b.${this.platform.quoteIdentifier(asAliasName(i))}`);
+            }
         }
 
         const extractSelect: string[] = [];
@@ -445,7 +454,8 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
         extractSelect.push(`@_pk := JSON_ARRAYAGG(${this.platform.quoteIdentifier(primaryKey.name)})`);
         selectVars.push(`@_pk`);
         if (!empty(aggregateFields)) {
-            for (const i in aggregateFields) {
+            for (let i in aggregateFields) {
+                i = asAliasName(i);
                 extractSelect.push(`@_f_${i} := JSON_ARRAYAGG(${this.platform.quoteIdentifier(i)})`);
                 selectVars.push(`@_f_${i}`);
             }
@@ -478,7 +488,7 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
             patchResult.primaryKeys = (JSON.parse(returning['@_pk']) as any[]).map(primaryKeyConverted as any);
 
             for (const i in aggregateFields) {
-                patchResult.returning[i] = (JSON.parse(returning['@_f_' + i]) as any[]).map(aggregateFields[i].converted);
+                patchResult.returning[i] = (JSON.parse(returning['@_f_' + asAliasName(i)]) as any[]).map(aggregateFields[i].converted);
             }
 
         } finally {

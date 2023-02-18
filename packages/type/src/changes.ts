@@ -14,14 +14,18 @@ export type NumberFields<T> = { [K in keyof T]: T[K] extends number | bigint ? K
 export type Expression<T> = { [P in keyof T & string]?: string; }
 export type Partial<T> = { [P in keyof T & string]?: T[P] }
 
+export type DeepPartial<T> = {
+    [P in keyof T]?: T[P]
+} & { [deepPath: string]: any };
+
 export interface ChangesInterface<T> {
-    $set?: Partial<T> | T;
+    $set?: DeepPartial<T> | T;
     $unset?: { [path: string]: number };
     $inc?: Partial<Pick<T, NumberFields<T>>>;
 }
 
 export class Changes<T extends object> {
-    $set?: Partial<T> | T;
+    $set?: DeepPartial<T> | T;
     $unset?: { [path: string]: number };
     $inc?: Partial<Pick<T, NumberFields<T>>>;
     empty = true;
@@ -60,7 +64,7 @@ export class Changes<T extends object> {
         this.empty = this.$set === undefined && this.$unset === undefined && this.$inc === undefined;
     }
 
-    replaceSet($set: Partial<T> | T) {
+    replaceSet($set: DeepPartial<T> | T) {
         this.$set = empty($set) ? undefined : $set;
         for (const i in $set as any) {
             if (!this.fieldNames.includes(i)) this.fieldNames.push(i);

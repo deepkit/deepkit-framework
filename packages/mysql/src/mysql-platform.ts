@@ -64,6 +64,13 @@ export class MySQLPlatform extends DefaultPlatform {
         return true;
     }
 
+    /**
+     * MySQL can compare SQL values with JSON values directly.
+     */
+    deepColumnAccessorRequiresJsonString(): boolean {
+        return false;
+    }
+
     protected setColumnType(column: Column, typeProperty: ReflectionProperty) {
         super.setColumnType(column, typeProperty);
 

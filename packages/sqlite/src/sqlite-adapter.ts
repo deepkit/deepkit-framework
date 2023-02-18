@@ -23,8 +23,10 @@ import {
     UniqueConstraintFailure
 } from '@deepkit/orm';
 import {
+    asAliasName,
     DefaultPlatform,
     prepareBatchUpdate,
+    splitDotPath,
     SqlBuilder,
     SQLConnection,
     SQLConnectionPool,
@@ -36,7 +38,7 @@ import {
     SQLQueryResolver,
     SQLStatement
 } from '@deepkit/sql';
-import { Changes, getPartialSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
+import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
 import sqlite3 from 'better-sqlite3';
 import { SQLitePlatform } from './sqlite-platform';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
@@ -438,13 +440,13 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
 
-        const partialSerialize = getPartialSerializeFunction(this.classSchema.type, this.platform.serializer.serializeRegistry);
-        const $set = changes.$set ? partialSerialize(changes.$set) : undefined;
+        const patchSerialize = getPatchSerializeFunction(this.classSchema.type, this.platform.serializer.serializeRegistry);
+        const $set = changes.$set ? patchSerialize(changes.$set, undefined, { normalizeArrayIndex: true }) : undefined;
 
         if ($set) for (const i in $set) {
             if (!$set.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            select.push(` ? as ${this.platform.quoteIdentifier(i)}`);
+            select.push(` ? as ${this.platform.quoteIdentifier(asAliasName(i))}`);
             selectParams.push($set[i]);
         }
 
@@ -463,12 +465,19 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
             if (!changes.$inc.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
             aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.serializeRegistry) };
-            select.push(`(${this.platform.quoteIdentifier(i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(i)}`);
+
+            select.push(`(${this.platform.getColumnAccessor('', i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(asAliasName(i))}`);
         }
 
         const set: string[] = [];
         for (const i in fieldsSet) {
-            set.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
+            if (i.includes('.')) {
+                let [firstPart, secondPart] = splitDotPath(i);
+                if (!secondPart.startsWith('[')) secondPart = '.' + secondPart;
+                set.push(`${this.platform.quoteIdentifier(firstPart)} = json_set(${this.platform.quoteIdentifier(firstPart)}, '$${secondPart}', _b.${this.platform.quoteIdentifier(asAliasName(i))})`);
+            } else {
+                set.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
+            }
         }
 
         let bPrimaryKey = primaryKey.name;
@@ -487,13 +496,12 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         }
 
         const sql = `
-              UPDATE
+            UPDATE
                 ${tableName}
-              SET
-                ${set.join(', ')}
-              FROM
+            SET ${set.join(', ')}
+            FROM
                 _b
-              WHERE ${tableName}.${this.platform.quoteIdentifier(primaryKey.name)} = _b.${this.platform.quoteIdentifier(bPrimaryKey)};
+            WHERE ${tableName}.${this.platform.quoteIdentifier(primaryKey.name)} = _b.${this.platform.quoteIdentifier(bPrimaryKey)};
         `;
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 

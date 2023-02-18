@@ -12,6 +12,7 @@ import { DatabaseAdapter, DatabaseSession, DeleteResult, Formatter, GenericQuery
 import {
     Changes,
     getPartialSerializeFunction,
+    getPatchSerializeFunction,
     PrimaryKeyFields,
     ReflectionClass,
     ReflectionKind,
@@ -119,7 +120,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
 
         const filter = getMongoFilter(this.classSchema, model) || {};
 
-        const partialSerialize = getPartialSerializeFunction(this.classSchema.type, mongoSerializer.serializeRegistry);
+        const patchSerialize = getPatchSerializeFunction(this.classSchema.type, mongoSerializer.serializeRegistry);
         const partialDeserialize = getPartialSerializeFunction(this.classSchema.type, serializer.deserializeRegistry);
 
         const u: any = {};
@@ -128,7 +129,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
         if (changes.$inc) u.$inc = changes.$inc;
 
         if (u.$set) {
-            u.$set = partialSerialize(u.$set);
+            u.$set = patchSerialize(u.$set);
         }
 
         const primaryKeyName = this.classSchema.getPrimary().name;

@@ -1,9 +1,11 @@
 import { getClassTypeFromInstance } from '@deepkit/core';
 import { ReceiveType, resolveReceiveType } from './reflection/reflection.js';
-import { getSerializeFunction, NamingStrategy, SerializationOptions, serializer, Serializer } from './serializer.js';
+import { getPartialSerializeFunction, getSerializeFunction, NamingStrategy, SerializationOptions, serializer, Serializer, TemplateRegistry } from './serializer.js';
 import { JSONPartial, JSONSingle } from './utils.js';
 import { typeInfer } from './reflection/processor.js';
 import { assert } from './typeguard.js';
+import { DeepPartial } from './changes.js';
+import { findMember, getTypeJitContainer, ReflectionKind, Type, TypeClass, TypeObjectLiteral } from './reflection/type.js';
 
 /**
  * Casts/coerces a given data structure to the target data type and validates all attached validators.
@@ -56,6 +58,95 @@ export function deserialize<T>(data: JSONPartial<T> | unknown, options?: Seriali
 export function deserializeFunction<T>(options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): (data: JSONPartial<T> | unknown) => T {
     return getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy);
 }
+
+/**
+ * Patch serialization for deep dot paths, e.g. `{'user.shippingAddress.street': 'abc'}`
+ * If a naming strategy is used, it could be converted to `{'user.shipping_address.street': 'abc'}`.
+ */
+export function patch<T>(data: DeepPartial<T>, options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): (data: JSONPartial<T> | unknown) => T {
+    type = resolveReceiveType(type);
+    if (type.kind !== ReflectionKind.objectLiteral && type.kind !== ReflectionKind.class) throw new Error('patch() only works on object literals and classes');
+    return getPatchSerializeFunction(type, serializerToUse.deserializeRegistry, namingStrategy)(data, options);
+}
+
+/**
+ * Create a serializer/deserializer function including validator for the given type for a patch structure.
+ * This is handy for deep patch structures like e.g '{user.address.street: "new street"}'.
+ */
+export function getPatchSerializeFunction(type: TypeClass | TypeObjectLiteral, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy()):
+    (data: any, state?: SerializationOptions, patch?: { normalizeArrayIndex: boolean }) => any {
+
+    const jitContainer = getTypeJitContainer(type);
+    const id = registry.id + '_' + namingStrategy.id + '_' + 'patch';
+    if (jitContainer[id]) return jitContainer[id];
+
+    const partialSerializer = getPartialSerializeFunction(type, registry, namingStrategy);
+    // const partialValidator = getValidatorFunction(registry.serializer, getPartialType(type));
+
+    return jitContainer[id] = function (data: any, state?: SerializationOptions, patch?: { normalizeArrayIndex: boolean }) {
+        const normalizeArrayIndex = patch?.normalizeArrayIndex ?? false;
+
+        const result = partialSerializer(data, state);
+        // disabled for the moment: we don't want to validate the patch structure yet since for database stuff it converts the structure to invalid TS representations
+        // e.g. reference objects -> primary keys
+        // const errors: ValidationErrorItem[] = [];
+        // partialValidator(result, { errors });
+        // if (errors.length) throw ValidationError.from(errors);
+
+        outer:
+            for (const i in data) {
+                if (i.includes('.')) {
+                    // serialize each `i` manually.
+                    //e.g. user.shippingAddress.streetNo
+                    // path could be renamed to user.shipping_address.street_no via naming strategy
+                    const path = i.split('.');
+                    let currentType: Type = type;
+                    let newPath = '';
+                    for (const part of path) {
+                        if (currentType.kind === ReflectionKind.objectLiteral || currentType.kind === ReflectionKind.class) {
+                            const next = findMember(part, currentType.types);
+                            if (!next) continue outer;
+                            if (next.kind === ReflectionKind.method || next.kind === ReflectionKind.methodSignature) continue outer;
+                            if (next.kind === ReflectionKind.propertySignature || next.kind === ReflectionKind.property) {
+                                newPath += (newPath ? '.' : '') + namingStrategy.getPropertyName(next, registry.serializer.name);
+                            } else {
+                                newPath += (newPath ? '.' : '') + part;
+                            }
+                            currentType = next.type;
+                        } else if (currentType.kind === ReflectionKind.indexSignature) {
+                            newPath += (newPath ? '.' : '') + part;
+                            currentType = currentType.type;
+                        } else if (currentType.kind === ReflectionKind.array) {
+                            const idx = Number(part);
+                            if (isNaN(idx) || idx < 0) continue outer;
+                            if (normalizeArrayIndex) {
+                                newPath += '[' + idx + ']';
+                            } else {
+                                newPath += (newPath ? '.' : '') + part;
+                            }
+                            currentType = currentType.type;
+                        } else if (currentType.kind === ReflectionKind.tuple) {
+                            const idx = Number(part);
+                            if (isNaN(idx) || idx < 0 || idx >= currentType.types.length) continue outer;
+                            if (normalizeArrayIndex) {
+                                newPath += '[' + idx + ']';
+                            } else {
+                                newPath += (newPath ? '.' : '') + part;
+                            }
+                            currentType = currentType.types[idx].type;
+                        }
+                    }
+                    if (newPath) {
+                        result[newPath] = getSerializeFunction(currentType, registry, namingStrategy)(data[i], state);
+                        // assert(result[newPath], undefined, currentType);
+                    }
+                }
+            }
+
+        return result;
+    };
+}
+
 
 /**
  * Serialize given data structure to JSON data objects (not a JSON string).

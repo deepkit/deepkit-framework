@@ -15,8 +15,21 @@ import { sqlSerializer } from '../serializer/sql-serializer';
 import { parseType, SchemaParser } from '../reverse/schema-parser';
 import { SQLFilterBuilder } from '../sql-filter-builder';
 import { Sql } from '../sql-builder';
-import { binaryTypes, databaseAnnotation, getTypeJitContainer, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
+import {
+    binaryTypes,
+    databaseAnnotation,
+    getTypeJitContainer,
+    isReferenceType,
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionProperty,
+    resolvePath,
+    Serializer,
+    Type,
+    resolveProperty
+} from '@deepkit/type';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
+import { splitDotPath } from '../sql-adapter';
 
 export function isSet(v: any): boolean {
     return v !== '' && v !== undefined && v !== null;
@@ -78,19 +91,19 @@ export abstract class DefaultPlatform {
     public namingStrategy: NamingStrategy = new DefaultNamingStrategy();
     public placeholderStrategy: ClassType<SqlPlaceholderStrategy> = SqlPlaceholderStrategy;
 
-    typeCast(schema: ReflectionClass<any>, name: string): string {
-        let property = schema.getProperty(name);
-        if (property.isReference()) {
-            property = property.getResolvedReflectionClass().getPrimary();
+    typeCast(schema: ReflectionClass<any>, path: string): string {
+        let type = resolveProperty(resolvePath(path, schema.type));
+        if (isReferenceType(type)) {
+            type = ReflectionClass.from(type).getPrimary().type;
         }
 
-        const cache = getTypeJitContainer(property.type);
+        const cache = getTypeJitContainer(type);
         if (cache.dbTypeCast) return cache.dbTypeCast;
 
-        const type = this.getTypeMapping(property.type);
-        if (!type) return cache.dbTypeCast = '';
+        const dbType = this.getTypeMapping(type);
+        if (!dbType) return cache.dbTypeCast = '';
 
-        return cache.dbTypeCast = '::' + type.sqlType;
+        return cache.dbTypeCast = '::' + dbType.sqlType;
     }
 
     applyLimitAndOffset(sql: Sql, limit?: number, offset?: number): void {
@@ -99,7 +112,7 @@ export abstract class DefaultPlatform {
     }
 
     createSqlFilterBuilder(reflectionClass: ReflectionClass<any>, tableName: string): SQLFilterBuilder {
-        return new SQLFilterBuilder(reflectionClass, tableName, this.serializer, new this.placeholderStrategy, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
+        return new SQLFilterBuilder(reflectionClass, tableName, this.serializer, new this.placeholderStrategy, this);
     }
 
     getMigrationTableName() {
@@ -208,6 +221,29 @@ export abstract class DefaultPlatform {
                 column.defaultExpression = this.defaultNowExpression;
             }
         }
+    }
+
+    /**
+     * Whether an accessor to e.g. "shippingAddress"->'$.street' = ?
+     * requires real json at ? or SQL value is enough.
+     * If this returns true, the value for ? is passed through JSON.stringify().
+     */
+    deepColumnAccessorRequiresJsonString(): boolean {
+        return true;
+    }
+
+    getDeepColumnAccessor(table: string, column: string, path: string) {
+        if (!path.startsWith('[')) path = '.' + path;
+        return `${table ? table + '.' : ''}${this.quoteIdentifier(column)}->${this.quoteValue('$' + path)}`;
+    }
+
+    getColumnAccessor(table: string, path: string) {
+        if (path.includes('.')) {
+            const [first, second] = splitDotPath(path);
+            return this.getDeepColumnAccessor(table, first, second);
+        }
+
+        return `${table ? table + '.' : ''}${this.quoteIdentifier(path)}`;
     }
 
     getModifyDatabaseDDL(databaseDiff: DatabaseDiff): string[] {

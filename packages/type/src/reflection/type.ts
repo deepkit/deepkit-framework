@@ -1569,15 +1569,22 @@ export function isBinaryBigIntType(type: Type): boolean {
 }
 
 export function isReferenceType(type: Type): boolean {
-    return referenceAnnotation.getFirst(type) !== undefined;
+    return referenceAnnotation.getFirst(resolveProperty(type)) !== undefined;
 }
 
 export function getReferenceType(type: Type): ReferenceOptions | undefined {
-    return referenceAnnotation.getFirst(type);
+    return referenceAnnotation.getFirst(resolveProperty(type));
 }
 
 export function isBackReferenceType(type: Type): boolean {
-    return backReferenceAnnotation.getFirst(type) !== undefined;
+    return backReferenceAnnotation.getFirst(resolveProperty(type)) !== undefined;
+}
+
+export function resolveProperty(type: Type): Type {
+    if (type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property) {
+        type = type.type;
+    }
+    return type;
 }
 
 export function getBackReferenceType(type: Type): BackReferenceOptionsResolved {

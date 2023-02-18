@@ -387,5 +387,72 @@ export const variousTests = {
             const items = await database.query(Model).find();
             expect(items).toMatchObject([{ username: 'Peter2' }, { username: 'Peter3' }, { username: 'Marie2' }]);
         }
+    },
+    async deepObjectPatch(databaseFactory: DatabaseFactory) {
+        class FullName {
+            forename: string = '';
+            surname: string = '';
+            changes: number = 0;
+        }
+
+        class Person {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            name: FullName = new FullName();
+        }
+
+        const db = await databaseFactory([Person]);
+
+        const person1 = new Person();
+        person1.name.forename = 'Max';
+        person1.name.surname = 'Mustermann';
+
+        const person2 = new Person();
+        person2.name.forename = 'Max';
+        person2.name.surname = 'Meier';
+
+        await db.persist(person1, person2);
+
+        await db.query(Person)
+            .filter({ 'name.surname': 'Meier' })
+            .patchOne({ 'name.forename': 'Klaus' });
+
+        await db.query(Person)
+            .filter({ 'name.surname': 'Meier' })
+            .patchOne({ $inc: {'name.changes': 1} });
+
+        const person = await db.query(Person).filter({ 'name.surname': 'Meier' }).findOne();
+        expect(person.name.forename).toEqual('Klaus');
+        expect(person.name.changes).toEqual(1);
+    },
+    async deepArrayPatch(databaseFactory: DatabaseFactory) {
+        class Address {
+            name: string = '';
+            street: string = '';
+            zip: string = '';
+        }
+
+        class Person {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            tags: string[] = [];
+            addresses: Address[] = [];
+        }
+
+        const db = await databaseFactory([Person]);
+
+        const person1 = new Person();
+        person1.tags = ['a', 'b'];
+        person1.addresses = [{ name: 'home', street: 'street1', zip: '1234' }];
+
+        const person2 = new Person();
+        person2.tags = ['c', 'd'];
+
+        await db.persist(person1, person2);
+
+        await db.query(Person)
+            .filter(person1)
+            .patchOne({ 'addresses.0.zip': '5678' });
+
+        const person = await db.query(Person).filter(person1).findOne();
+        expect(person.addresses).toEqual([{ name: 'home', street: 'street1', zip: '5678' }]);
     }
 };

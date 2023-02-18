@@ -62,7 +62,11 @@ export class SQLitePlatform extends DefaultPlatform {
     }
 
     createSqlFilterBuilder(schema: ReflectionClass<any>, tableName: string): SQLiteFilterBuilder {
-        return new SQLiteFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
+        return new SQLiteFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this);
+    }
+
+    getDeepColumnAccessor(table: string, column: string, path: string) {
+        return `${table ? table + '.' : ''}${this.quoteIdentifier(column)}->${this.quoteValue(path)}`;
     }
 
     getModifyTableDDL(diff: TableDiff): string[] {

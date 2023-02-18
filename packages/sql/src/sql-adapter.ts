@@ -43,6 +43,21 @@ import { Stopwatch } from '@deepkit/stopwatch';
 export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
 export type DEEP_SORT<T extends OrmEntity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };
 
+/**
+ * user.address[0].street => [user, address[0].street]
+ * address[0].street => [address, [0].street]
+ */
+export function splitDotPath(path: string): [string, string] {
+    const first1 = path.indexOf('[');
+    const first2 = path.indexOf('.');
+    const first = first1 === -1 ? first2 : first2 === -1 ? first1 : Math.min(first1, first2);
+    return [path.substr(0, first), path.substr(first + (first === first2 ? 1 : 0))];
+}
+
+export function asAliasName(path: string): string {
+    return path.replace(/[\[\]\.]/g, '__');
+}
+
 export class SQLQueryModel<T extends OrmEntity> extends DatabaseQueryModel<T, FilterQuery<T>, DEEP_SORT<T>> {
     where?: SqlQuery;
     sqlSelect?: SqlQuery;
@@ -737,7 +752,9 @@ export class SQLPersistence extends DatabasePersistence {
                 set.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(value[i])}`);
             }
 
-            updates.push(`UPDATE ${this.platform.getTableIdentifier(classSchema)} SET ${set.join(', ')} WHERE ${where.join(' AND ')}`);
+            updates.push(`UPDATE ${this.platform.getTableIdentifier(classSchema)}
+                          SET ${set.join(', ')}
+                          WHERE ${where.join(' AND ')}`);
         }
 
         const sql = updates.join(';\n');
@@ -791,7 +808,8 @@ export class SQLPersistence extends DatabasePersistence {
     }
 
     protected getInsertSQL(classSchema: ReflectionClass<any>, fields: string[], values: string[]): string {
-        return `INSERT INTO ${this.platform.getTableIdentifier(classSchema)} (${fields.join(', ')}) VALUES (${values.join('), (')})`;
+        return `INSERT INTO ${this.platform.getTableIdentifier(classSchema)} (${fields.join(', ')})
+                VALUES (${values.join('), (')})`;
     }
 
     async remove<T extends OrmEntity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
@@ -806,7 +824,9 @@ export class SQLPersistence extends DatabasePersistence {
             params.push(converted[pkName]);
         }
 
-        const sql = `DELETE FROM ${this.platform.getTableIdentifier(classSchema)} WHERE ${this.platform.quoteIdentifier(pkName)} IN (${pks})`;
+        const sql = `DELETE
+                     FROM ${this.platform.getTableIdentifier(classSchema)}
+                     WHERE ${this.platform.quoteIdentifier(pkName)} IN (${pks})`;
         await (await this.getConnection()).run(sql, params);
     }
 }

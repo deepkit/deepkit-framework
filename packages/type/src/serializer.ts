@@ -90,6 +90,18 @@ export class NamingStrategy {
     }
 }
 
+export const underscoreNamingStrategy = new class extends NamingStrategy {
+    constructor() {
+        super('underscore');
+    }
+
+    getPropertyName(type: TypeProperty | TypePropertySignature, forSerializer: string): string | undefined {
+        const name = super.getPropertyName(type, forSerializer);
+        if (!name) return name;
+        return name.replace(/([A-Z])/g, '_$1').toLowerCase();
+    }
+};
+
 /**
  * Options that can be passed to the serialization/deserialization functions
  * and change the behavior in runtime (not embedded in JIT).
@@ -157,23 +169,25 @@ function isGroupAllowed(options: SerializationOptions, groupNames: string[]): bo
 
 export type SerializeFunction = (data: any, state?: SerializationOptions) => any;
 
+export function getPartialType(type: TypeClass | TypeObjectLiteral) {
+    const jitContainer = getTypeJitContainer(type);
+    if (jitContainer.partialType) return jitContainer.partialType;
+    type = copyAndSetParent(type);
+    const reflection = ReflectionClass.from(type);
+    type.types = reflection.type.types.map(v => ({ ...v })) as any;
+    for (const member of type.types) {
+        if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
+            member.optional = true;
+        }
+    }
+    return jitContainer.partialType = getTypeObjectLiteralFromTypeClass(type);
+}
+
 /**
  * Creates a (cached) Partial<T> of the given type and returns a (cached) serializer function for the given registry (serialize or deserialize).
  */
 export function getPartialSerializeFunction(type: TypeClass | TypeObjectLiteral, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy()) {
-    const jitContainer = getTypeJitContainer(type);
-    if (!jitContainer.partialType) {
-        type = copyAndSetParent(type);
-        const reflection = ReflectionClass.from(type);
-        type.types = reflection.type.types.map(v => ({ ...v })) as any;
-        for (const member of type.types) {
-            if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
-                member.optional = true;
-            }
-        }
-        jitContainer.partialType = getTypeObjectLiteralFromTypeClass(type);
-    }
-    return getSerializeFunction(jitContainer.partialType, registry, namingStrategy);
+    return getSerializeFunction(getPartialType(type), registry, namingStrategy);
 }
 
 /**

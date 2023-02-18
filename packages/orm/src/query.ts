@@ -13,6 +13,7 @@ import {
     assertType,
     Changes,
     ChangesInterface,
+    DeepPartial,
     getSimplePrimaryKeyHashGenerator,
     PrimaryKeyFields,
     PrimaryKeyType,
@@ -72,7 +73,7 @@ export type RootQuerySelector<T> = {
     $or?: Array<FilterQuery<T>>;
     // we could not find a proper TypeScript generic to support nested queries e.g. 'user.friends.name'
     // this will mark all unrecognized properties as any (including nested queries)
-    [key: string]: any;
+    [deepPath: string]: any;
 };
 
 type RegExpForString<T> = T extends string ? (RegExp | T) : T;
@@ -789,29 +790,28 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
         }
     }
 
-    public async patchMany(patch: ChangesInterface<T> | Partial<T>): Promise<PatchResult<T>> {
+    public async patchMany(patch: ChangesInterface<T> | DeepPartial<T>): Promise<PatchResult<T>> {
         return await this.patch(this, patch);
     }
 
-    public async patchOne(patch: ChangesInterface<T> | Partial<T>): Promise<PatchResult<T>> {
+    public async patchOne(patch: ChangesInterface<T> | DeepPartial<T>): Promise<PatchResult<T>> {
         return await this.patch(this.limit(1), patch);
     }
 
-    protected async patch(query: Query<any>, patch: Partial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
+    protected async patch(query: Query<any>, patch: DeepPartial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
         const frame = this.session.stopwatch ? this.session.stopwatch.start('Patch:' + this.classSchema.getClassName(), FrameCategory.database) : undefined;
         if (frame) frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
 
         try {
-            const changes: Changes<T> = new Changes<T>({
-                $set: (patch as Changes<T>).$set || {},
-                $inc: (patch as Changes<T>).$inc,
-                $unset: (patch as Changes<T>).$unset,
+            const changes: Changes<T> = patch instanceof Changes ? patch as Changes<T> : new Changes<T>({
+                $set: patch.$set || {},
+                $inc: patch.$inc || {},
+                $unset: patch.$unset || {},
             });
 
-            for (const property of this.classSchema.getProperties()) {
-                if (property.name in patch) {
-                    changes.set(property.name as any, (patch as any)[property.name]);
-                }
+            for (const i in patch) {
+                if (i.startsWith('$')) continue;
+                changes.set(i as any, (patch as any)[i]);
             }
 
             const patchResult: PatchResult<T> = {

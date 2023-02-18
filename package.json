@@ -60,7 +60,6 @@
       "packages/type",
       "packages/type-compiler",
       "packages/app",
-      "packages/create-app",
       "packages/event",
       "packages/workflow",
       "packages/stopwatch",
