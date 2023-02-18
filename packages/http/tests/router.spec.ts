@@ -51,6 +51,37 @@ test('router', async () => {
     expect(userStatic2?.parameters!(undefined as any)).toEqual(['1233', '123']);
 });
 
+test('explicitly annotated response objects', async () => {
+    class Controller {
+        @http.GET('/a')
+        a(): JSONResponse {
+            return new JSONResponse('a');
+        }
+
+        @http.GET('/b')
+        b(): HtmlResponse {
+            return new HtmlResponse('b');
+        }
+
+        @http.GET('/c')
+        c(): Response {
+            return new Response('c', 'text/plain');
+        }
+
+        @http.GET('/d')
+        async d(): Promise<Response> {
+            return new Response('d', 'text/plain');
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    expect((await httpKernel.request(HttpRequest.GET('/a'))).bodyString).toBe('"a"');
+    expect((await httpKernel.request(HttpRequest.GET('/b'))).bodyString).toBe('b');
+    expect((await httpKernel.request(HttpRequest.GET('/c'))).bodyString).toBe('c');
+    expect((await httpKernel.request(HttpRequest.GET('/d'))).bodyString).toBe('d');
+});
+
 test('any', async () => {
     class Controller {
         @http.ANY('/any')

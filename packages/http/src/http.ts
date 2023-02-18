@@ -784,7 +784,7 @@ export class HttpListener {
         if (event.response.headersSent) return;
         if (event.result === undefined || event.result === null) return;
 
-        if (event.result instanceof HtmlResponse || event.result instanceof ServerResponse || event.result instanceof Redirect || event.result instanceof stream.Readable) {
+        if (event.result instanceof HtmlResponse || event.result instanceof Response || event.result instanceof ServerResponse || event.result instanceof Redirect || event.result instanceof stream.Readable) {
             // don't do anything
         } else if (event.result instanceof JSONResponse) {
             const schema = (event.result._statusCode && event.route.getSchemaForResponse(event.result._statusCode)) || event.route.returnType;
