@@ -97,7 +97,7 @@ jobs:
     strategy:
       matrix:
         node-version: [ 14.x ]
-        postgres-version: [ 10.10 ]
+        postgres-version: [ 14 ]
     services:
       postgres:
         image: postgres:${{ matrix.postgres-version }}
