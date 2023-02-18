@@ -92,6 +92,9 @@
       "path": "packages/orm-browser/tsconfig.json"
     },
     {
+      "path": "packages/orm-browser-module/tsconfig.json"
+    },
+    {
       "path": "packages/orm-browser-api/tsconfig.json"
     },
     {

@@ -26,6 +26,10 @@ export class ControllerClient {
         return (location.port === '4200' ? location.hostname + ':8080' : location.host);
     }
 
+    setController(name: string) {
+        this.browser = this.client.controller<BrowserControllerInterface>(name);
+    }
+
     getDatabases(): Promise<DatabaseInfo[]> {
         if (this.loadDatabases) return this.loadDatabases;
         this.loadDatabases = asyncOperation(async (resolve) => {

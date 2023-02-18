@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-
-import 'reflect-metadata';
 import { FrameworkModule, OrmBrowserController } from '@deepkit/framework';
 import { App, AppModule, findParentPath } from '@deepkit/app';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
