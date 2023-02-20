@@ -2153,7 +2153,7 @@ export class Serializer {
 
         this.typeGuards.getRegistry(1).registerClass(Set, typeGuardClassSet);
         this.typeGuards.getRegistry(1).registerClass(Map, typeGuardClassMap);
-        this.typeGuards.getRegistry(1).registerClass(Date, (type, state) => state.addSetterAndReportErrorIfInvalid('type', 'No a Date', `${state.accessor} instanceof Date`));
+        this.typeGuards.getRegistry(1).registerClass(Date, (type, state) => state.addSetterAndReportErrorIfInvalid('type', 'Not a Date', `${state.accessor} instanceof Date`));
         this.typeGuards.getRegistry(0.5).registerClass(Date, (type, state) => {
             state.addSetter(`'string' === typeof ${state.accessor} && new Date(${state.accessor}).toString() !== 'Invalid Date'`);
         });

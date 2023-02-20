@@ -296,5 +296,5 @@ test('date', () => {
         public name!: string;
         public createdAt!: Date;
     }
-    expect(validate<Account>({name: "jack", createdAt: 'asd'})).toEqual([{code: 'type', message: 'No a Date', path: 'createdAt'}]);
+    expect(validate<Account>({name: "jack", createdAt: 'asd'})).toEqual([{code: 'type', message: 'Not a Date', path: 'createdAt'}]);
 });
