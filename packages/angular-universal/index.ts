@@ -8,6 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/listener';
-export * from './src/module';
+export * from './src/listener.js';
+export * from './src/module.js';
 export { HttpResponse, HttpRequest } from '@deepkit/http';

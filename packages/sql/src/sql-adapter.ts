@@ -34,10 +34,10 @@ import {
 } from '@deepkit/orm';
 import { AbstractClassType, ClassType, isArray, isClass } from '@deepkit/core';
 import { Changes, getPartialSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass } from '@deepkit/type';
-import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform';
-import { Sql, SqlBuilder } from './sql-builder';
-import { SqlFormatter } from './sql-formatter';
-import { DatabaseComparator, DatabaseModel } from './schema/table';
+import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform.js';
+import { Sql, SqlBuilder } from './sql-builder.js';
+import { SqlFormatter } from './sql-formatter.js';
+import { DatabaseComparator, DatabaseModel } from './schema/table.js';
 import { Stopwatch } from '@deepkit/stopwatch';
 
 export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };

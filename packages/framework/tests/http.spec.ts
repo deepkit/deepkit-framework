@@ -1,5 +1,5 @@
 import { App } from '@deepkit/app';
-import { FrameworkModule } from '../src/module';
+import { FrameworkModule } from '../src/module.js';
 import { expect, test } from '@jest/globals';
 import { HttpKernel, HttpRequest, HttpRouterRegistry } from '@deepkit/http';
 import { Logger } from '@deepkit/logger';

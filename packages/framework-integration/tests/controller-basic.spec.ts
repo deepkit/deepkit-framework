@@ -1,6 +1,6 @@
 import { afterAll, expect, jest, test } from '@jest/globals';
 import { ClientProgress, JSONError, rpc } from '@deepkit/rpc';
-import { appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait } from './util';
+import { appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait } from './util.js';
 import { Observable } from 'rxjs';
 import { bufferCount, first, skip } from 'rxjs/operators';
 import { ObserverTimer } from '@deepkit/core-rxjs';

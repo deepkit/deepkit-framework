@@ -9,13 +9,13 @@
  */
 
 import { ChangeDetectorRef, Injectable, TemplateRef, ViewContainerRef } from '@angular/core';
-import { ButtonGroupComponent } from '../button/button.component';
-import { WindowHeaderComponent, WindowToolbarContainerComponent } from './window-header.component';
+import { ButtonGroupComponent } from '../button/button.component.js';
+import { WindowHeaderComponent, WindowToolbarContainerComponent } from './window-header.component.js';
 import { arrayRemoveItem } from '@deepkit/core';
-import { WindowComponent } from './window.component';
-import { WindowMenuState } from './window-menu';
+import { WindowComponent } from './window.component.js';
+import { WindowMenuState } from './window-menu.js';
 import { BehaviorSubject } from 'rxjs';
-import { detectChangesNextFrame } from '../app/utils';
+import { detectChangesNextFrame } from '../app/utils.js';
 
 @Injectable()
 export class WindowRegistry {

@@ -1,8 +1,8 @@
 import { HtmlResponse, http, HttpBodyValidation, HttpQuery, HttpResponse, Redirect, UploadedFile } from '@deepkit/http';
 import { LoggerInterface } from '@deepkit/logger';
 import { readFile } from 'fs/promises';
-import { SQLiteDatabase, User } from '../database';
-import { UserList } from '../views/user-list';
+import { SQLiteDatabase, User } from '../database.js';
+import { UserList } from '../views/user-list.js';
 
 class AddUserDto extends User {
     imageUpload?: UploadedFile;

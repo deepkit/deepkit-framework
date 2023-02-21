@@ -1,9 +1,9 @@
 import { InjectorContext } from '@deepkit/injector';
-import { HttpRouter } from './router';
+import { HttpRouter } from './router.js';
 import { EventDispatcher } from '@deepkit/event';
 import { LoggerInterface } from '@deepkit/logger';
-import { HttpRequest, HttpResponse, MemoryHttpResponse, RequestBuilder } from './model';
-import { HttpRequestEvent, httpWorkflow } from './http';
+import { HttpRequest, HttpResponse, MemoryHttpResponse, RequestBuilder } from './model.js';
+import { HttpRequestEvent, httpWorkflow } from './http.js';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { unlink } from 'fs';
 

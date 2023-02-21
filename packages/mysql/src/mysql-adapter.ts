@@ -36,7 +36,7 @@ import {
     primaryKeyObjectConverter,
     UniqueConstraintFailure
 } from '@deepkit/orm';
-import { MySQLPlatform } from './mysql-platform';
+import { MySQLPlatform } from './mysql-platform.js';
 import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
 import { AbstractClassType, asyncOperation, ClassType, empty, isArray } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';

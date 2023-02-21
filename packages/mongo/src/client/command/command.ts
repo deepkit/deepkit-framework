@@ -9,13 +9,13 @@
  */
 
 import { asyncOperation, getClassName } from '@deepkit/core';
-import { handleErrorResponse, MongoError } from '../error';
-import { MongoClientConfig } from '../config';
-import { Host } from '../host';
-import type { MongoDatabaseTransaction } from '../connection';
+import { handleErrorResponse, MongoError } from '../error.js';
+import { MongoClientConfig } from '../config.js';
+import { Host } from '../host.js';
+import type { MongoDatabaseTransaction } from '../connection.js';
 import { ReceiveType, ReflectionClass, resolveReceiveType, SerializationError, stringifyType, Type, typeOf, typeSettings, UnpopulatedCheck, ValidationError } from '@deepkit/type';
 import { BSONDeserializer, deserializeBSONWithoutOptimiser, getBSONDeserializer } from '@deepkit/bson';
-import { mongoBinarySerializer } from '../../mongo-serializer';
+import { mongoBinarySerializer } from '../../mongo-serializer.js';
 import { inspect } from 'util';
 
 export interface CommandMessageResponseCallbackResult<T> {

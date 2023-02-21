@@ -1,5 +1,5 @@
-import { Website } from './website';
-import { SQLiteDatabase, User } from '../database';
+import { Website } from './website.js';
+import { SQLiteDatabase, User } from '../database.js';
 
 async function Title(props: {title: string}) {
     return <h1>{ props.title }</h1>;

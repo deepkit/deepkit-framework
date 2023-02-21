@@ -18,7 +18,7 @@ import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions
 
 import { HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
 import { InjectorContext } from '@deepkit/injector';
-import { RpcControllers, RpcInjectorContext } from './rpc';
+import { RpcControllers, RpcInjectorContext } from './rpc.js';
 import { SecureContextOptions, TlsOptions } from 'tls';
 
 // @ts-ignore

@@ -1,11 +1,11 @@
 import { expect } from '@jest/globals';
 import { assertType, AutoIncrement, BackReference, cast, entity, PrimaryKey, Reference, ReflectionClass, ReflectionKind, UUID, uuid } from '@deepkit/type';
-import { User, UserGroup } from './bookstore/user';
-import { UserCredentials } from './bookstore/user-credentials';
+import { User, UserGroup } from './bookstore/user.js';
+import { UserCredentials } from './bookstore/user-credentials.js';
 import { atomicChange, DatabaseSession, getInstanceStateFromItem, Query } from '@deepkit/orm';
 import { isArray } from '@deepkit/core';
-import { Group } from './bookstore/group';
-import { DatabaseFactory } from './test';
+import { Group } from './bookstore/group.js';
+import { DatabaseFactory } from './test.js';
 
 interface BookModeration {
     locked: boolean;

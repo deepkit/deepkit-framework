@@ -10,7 +10,7 @@
 
 import { rpc, RpcClient, RpcKernel } from '@deepkit/rpc';
 import { TcpRpcClientAdapter, TcpRpcServer } from '@deepkit/rpc-tcp';
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 
 export async function main() {
     interface ControllerInterface {

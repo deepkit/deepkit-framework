@@ -1,4 +1,4 @@
-import { html } from '../src/template';
+import { html } from '../src/template.js';
 
 export function simpleOnlyAttributes() {
     return <div id="123"></div>;

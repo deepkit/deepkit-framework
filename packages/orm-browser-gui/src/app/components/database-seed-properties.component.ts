@@ -1,8 +1,8 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { EntityPropertySeed, FakerTypes } from '@deepkit/orm-browser-api';
-import { autoTypes } from './seed';
+import { autoTypes } from './seed.js';
 import { ReflectionClass } from '@deepkit/type';
-import { showTypeString } from '../utils';
+import { showTypeString } from '../utils.js';
 
 @Component({
     selector: 'orm-browser-seed-properties',

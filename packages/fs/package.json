@@ -33,6 +33,9 @@
       ".ts",
       ".tsx"
     ],
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

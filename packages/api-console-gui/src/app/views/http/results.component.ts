@@ -1,9 +1,9 @@
 import { ChangeDetectorRef, Component, EventEmitter, Output } from '@angular/core';
-import { ControllerClient } from '../../client';
-import { Request, Store } from '../../store';
+import { ControllerClient } from '../../client.js';
+import { Request, Store } from '../../store.js';
 import { DuiDialog } from '@deepkit/desktop-ui';
 import { Router } from '@angular/router';
-import { trackByIndex } from '../../utils';
+import { trackByIndex } from '../../utils.js';
 import { ApiRoute } from '@deepkit/api-console-api';
 
 @Component({

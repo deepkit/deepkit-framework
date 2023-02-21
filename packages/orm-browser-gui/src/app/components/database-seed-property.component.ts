@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
+import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component.js';
 import { EntityPropertySeed, FakerTypes } from '@deepkit/orm-browser-api';
 import { DuiDialog } from '@deepkit/desktop-ui';
 import { empty } from '@deepkit/core';

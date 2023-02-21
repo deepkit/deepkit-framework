@@ -9,12 +9,12 @@
  */
 
 import { NgModule } from '@angular/core';
-import { InputComponent } from './input.component';
+import { InputComponent } from './input.component.js';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, DatePipe } from '@angular/common';
-import { DuiIconModule } from '../icon';
+import { DuiIconModule } from '../icon.js';
 
-export * from './input.component';
+export * from './input.component.js';
 
 @NgModule({
     declarations: [

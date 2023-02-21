@@ -1,5 +1,5 @@
-import { getTypeJitContainer, ParentLessType, ReflectionKind, Type } from '../src/reflection/type';
-import { Processor, RuntimeStackEntry } from '../src/reflection/processor';
+import { getTypeJitContainer, ParentLessType, ReflectionKind, Type } from '../src/reflection/type.js';
+import { Processor, RuntimeStackEntry } from '../src/reflection/processor.js';
 import { expect } from '@jest/globals';
 import { ReflectionOp } from '@deepkit/type-spec';
 import { isArray, isObject } from '@deepkit/core';

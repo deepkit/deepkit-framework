@@ -9,8 +9,8 @@
  */
 
 import { Maximum, Negative, guard } from '@deepkit/type';
-import { good } from './validation';
-import { BenchSuite } from '../../bench';
+import { good } from './validation.js';
+import { BenchSuite } from '../../bench.js';
 
 interface Model {
     number: number;

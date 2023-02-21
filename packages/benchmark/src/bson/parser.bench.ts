@@ -10,7 +10,7 @@
 
 import * as bson from 'bson';
 import * as bsonExt from 'bson-ext';
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 import { MongoId, t } from '@deepkit/type';
 import { getBSONDeserializer, Parser } from '@deepkit/bson';
 

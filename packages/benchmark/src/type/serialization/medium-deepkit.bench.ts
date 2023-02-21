@@ -9,7 +9,7 @@
  */
 
 import { deserializeFunction, Excluded, serializeFunction } from '@deepkit/type';
-import { BenchSuite } from '../../bench';
+import { BenchSuite } from '../../bench.js';
 
 export class SubModel {
     age?: number;

@@ -9,7 +9,7 @@
  */
 
 import { asyncOperation } from '@deepkit/core';
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 
 
 export async function main() {

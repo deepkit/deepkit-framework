@@ -11,8 +11,8 @@
 import * as t from 'io-ts';
 import * as G from 'io-ts/lib/Guard';
 import { isRight } from 'fp-ts/Either';
-import { good } from './validation';
-import { BenchSuite } from '../../bench';
+import { good } from './validation.js';
+import { BenchSuite } from '../../bench.js';
 
 const decoderIoTS = t.type({
     number: t.number,

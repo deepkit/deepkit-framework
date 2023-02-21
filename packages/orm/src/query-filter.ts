@@ -10,7 +10,7 @@
 
 import { ReflectionClass, ReflectionKind, ReflectionProperty } from '@deepkit/type';
 import { ClassType, isArray, isPlainObject } from '@deepkit/core';
-import { FilterQuery } from './query';
+import { FilterQuery } from './query.js';
 
 export type Converter = (convertClass: ReflectionClass<any>, path: string, value: any) => any;
 export type QueryFieldNames = { [name: string]: boolean };

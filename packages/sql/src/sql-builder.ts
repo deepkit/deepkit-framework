@@ -8,11 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { SQLQueryModel } from './sql-adapter';
-import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform';
+import { SQLQueryModel } from './sql-adapter.js';
+import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform.js';
 import { getPrimaryKeyHashGenerator, ReflectionClass, ReflectionProperty } from '@deepkit/type';
 import { DatabaseJoinModel, DatabaseQueryModel, OrmEntity } from '@deepkit/orm';
-import { getSqlFilter } from './filter';
+import { getSqlFilter } from './filter.js';
 
 type ConvertedData = { hash: string, item: { [name: string]: any }, joined: { [name: string]: any }[] };
 type ConvertDataToDict = (row: any) => ConvertedData | undefined;

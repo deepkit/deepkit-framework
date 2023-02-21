@@ -24,11 +24,11 @@ import {
     resolveForeignReflectionClass
 } from '@deepkit/type';
 import { Subject } from 'rxjs';
-import { DatabaseAdapter } from './database-adapter';
-import { DatabaseSession } from './database-session';
-import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event';
-import { DeleteResult, OrmEntity, PatchResult } from './type';
-import { FieldName, FlattenIfArray, Replace, Resolve } from './utils';
+import { DatabaseAdapter } from './database-adapter.js';
+import { DatabaseSession } from './database-session.js';
+import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event.js';
+import { DeleteResult, OrmEntity, PatchResult } from './type.js';
+import { FieldName, FlattenIfArray, Replace, Resolve } from './utils.js';
 import { FrameCategory } from '@deepkit/stopwatch';
 import { EventToken } from '@deepkit/event';
 

@@ -10,9 +10,9 @@
 
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IndicatorComponent } from './indicator.component';
+import { IndicatorComponent } from './indicator.component.js';
 
-export * from './indicator.component';
+export * from './indicator.component.js';
 
 @NgModule({
     declarations: [

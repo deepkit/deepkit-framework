@@ -16,14 +16,14 @@ import {
     TableCustomHeaderContextMenuDirective,
     TableCustomRowContextMenuDirective,
     TableHeaderDirective
-} from './table.component';
+} from './table.component.js';
 import { CommonModule } from '@angular/common';
-import { DuiIconModule } from '../icon';
-import { DuiSplitterModule } from '../splitter';
+import { DuiIconModule } from '../icon.js';
+import { DuiSplitterModule } from '../splitter.js';
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import { DuiButtonModule } from '../button';
+import { DuiButtonModule } from '../button.js';
 
-export * from "./table.component";
+export * from "./table.component.js";
 
 @NgModule({
     exports: [

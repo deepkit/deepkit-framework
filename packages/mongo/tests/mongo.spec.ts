@@ -15,8 +15,8 @@ import {
     uuid,
 } from '@deepkit/type';
 import { getInstanceStateFromItem } from '@deepkit/orm';
-import { SimpleModel, SuperSimple } from './entities';
-import { createDatabase } from './utils';
+import { SimpleModel, SuperSimple } from './entities.js';
+import { createDatabase } from './utils.js';
 
 Error.stackTraceLimit = 100;
 

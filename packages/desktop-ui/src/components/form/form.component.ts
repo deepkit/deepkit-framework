@@ -10,7 +10,7 @@
 
 import { ChangeDetectorRef, Component, ContentChild, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, SkipSelf } from '@angular/core';
 import { FormGroup, NgControl } from '@angular/forms';
-import { detectChangesNextFrame } from '../app';
+import { detectChangesNextFrame } from '../app.js';
 
 @Component({
     selector: 'dui-form-row',

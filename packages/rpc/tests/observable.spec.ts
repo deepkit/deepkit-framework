@@ -3,9 +3,9 @@ import { entity } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
 import { first, take } from 'rxjs/operators';
-import { DirectClient } from '../src/client/client-direct';
-import { rpc } from '../src/decorators';
-import { RpcKernel } from '../src/server/kernel';
+import { DirectClient } from '../src/client/client-direct.js';
+import { rpc } from '../src/decorators.js';
+import { RpcKernel } from '../src/server/kernel.js';
 
 test('observable basics', async () => {
     @entity.name('model')

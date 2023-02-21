@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-// import { ClassSchema, PropertySchema } from './model';
+// import { ClassSchema, PropertySchema } from './model.js';
 //
 //
 // export function findCommonDiscriminant(classSchemas: ClassSchema[]): string | undefined {

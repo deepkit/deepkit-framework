@@ -2,7 +2,7 @@ import { Component, Input, OnChanges } from '@angular/core';
 import { ModuleApi, ModuleService } from '@deepkit/framework-debug-api';
 import { stringifyType } from '@deepkit/type';
 import { trackByIndex } from '@deepkit/ui-library';
-import { ModuleImportedService } from '../../../../../framework-debug-api/src/api';
+import { ModuleImportedService } from '../../../../../framework-debug-api/src/api.js';
 
 @Component({
     selector: 'module-detail-service',

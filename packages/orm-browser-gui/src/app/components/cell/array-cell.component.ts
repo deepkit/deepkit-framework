@@ -1,7 +1,7 @@
 import { Component, ComponentFactoryResolver, ComponentRef, Input, OnChanges, OnInit, ViewContainerRef } from '@angular/core';
 import { isArray } from '@deepkit/core';
 import { TypeArray } from '@deepkit/type';
-import { inputRegistry } from '../../registry';
+import { inputRegistry } from '../../registry.js';
 
 @Component({
     template: ``,

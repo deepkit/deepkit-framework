@@ -54,6 +54,9 @@
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ],
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "globals": {
       "ts-jest": {
         "tsconfig": "<rootDir>/tsconfig.test.json"

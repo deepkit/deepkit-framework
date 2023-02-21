@@ -1,5 +1,5 @@
-import {PageCollection} from './PageCollection';
-import {PageClass} from './PageClass';
+import {PageCollection} from './PageCollection.js';
+import {PageClass} from './PageClass.js';
 import {t, ParentReference} from '@deepkit/type';
 import {Forward} from '@deepkit/core';
 

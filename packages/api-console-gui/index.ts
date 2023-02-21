@@ -1,1 +1,1 @@
-export * from './src/app/api-console.module';
+export * from './src/app/api-console.module.js';

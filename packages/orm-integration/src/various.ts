@@ -1,7 +1,7 @@
 import { expect } from '@jest/globals';
 import { AutoIncrement, BackReference, cast, entity, isReferenceInstance, PrimaryKey, Reference, Unique } from '@deepkit/type';
 import { identifier, sql, SQLDatabaseAdapter } from '@deepkit/sql';
-import { DatabaseFactory } from './test';
+import { DatabaseFactory } from './test.js';
 import { isDatabaseOf, UniqueConstraintFailure } from '@deepkit/orm';
 import { randomBytes } from 'crypto';
 

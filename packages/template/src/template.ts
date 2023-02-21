@@ -11,7 +11,7 @@ import { ClassType, getClassName, isArray, isClass } from '@deepkit/core';
 import './optimize-tsx';
 import { injectedFunction, Injector, Resolver } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
-import { escapeAttribute, escapeHtml, safeString } from './utils';
+import { escapeAttribute, escapeHtml, safeString } from './utils.js';
 import { reflect, ReflectionClass, ReflectionKind, Type } from '@deepkit/type';
 
 export type Attributes<T = any> = {

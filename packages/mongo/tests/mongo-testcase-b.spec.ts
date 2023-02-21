@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { User } from './testcase-b/user';
-import { createDatabase } from './utils';
+import { User } from './testcase-b/user.js';
+import { createDatabase } from './utils.js';
 
 async function setupTestCase(name: string) {
     const db = await createDatabase(name);

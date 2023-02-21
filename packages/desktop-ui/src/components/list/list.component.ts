@@ -26,7 +26,7 @@ import {
     SkipSelf
 } from '@angular/core';
 import { NavigationEnd, Router, UrlTree } from '@angular/router';
-import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form.js';
 import { Subscription } from 'rxjs';
 import { arrayRemoveItem } from '@deepkit/core';
 

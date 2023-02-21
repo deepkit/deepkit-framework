@@ -40,7 +40,7 @@ import {
 } from '@deepkit/sql';
 import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
 import sqlite3 from 'better-sqlite3';
-import { SQLitePlatform } from './sqlite-platform';
+import { SQLitePlatform } from './sqlite-platform.js';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
 export class SQLiteStatement extends SQLStatement {

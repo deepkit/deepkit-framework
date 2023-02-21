@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { AutoIncrement, entity, PrimaryKey } from '@deepkit/type';
-import { databaseFactory } from './factory';
+import { databaseFactory } from './factory.js';
 
 test('transaction', async () => {
     @entity.collection('users')

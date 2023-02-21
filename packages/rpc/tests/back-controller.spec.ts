@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { RpcKernel, RpcKernelConnection } from '../src/server/kernel';
-import { DirectClient } from '../src/client/client-direct';
-import { rpc } from '../src/decorators';
+import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
+import { DirectClient } from '../src/client/client-direct.js';
+import { rpc } from '../src/decorators.js';
 
 test('back controller', async () => {
     class Controller {

@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, Input, OnChanges, OnInit } from '@angular/core';
 import { isReferenceType, ReflectionClass, TypeClass, TypeObjectLiteral } from '@deepkit/type';
-import { objToString } from './utils';
-import { BrowserState } from '../../browser-state';
+import { objToString } from './utils.js';
+import { BrowserState } from '../../browser-state.js';
 
 @Component({
     template: `{{label}}`

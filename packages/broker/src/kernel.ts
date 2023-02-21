@@ -24,7 +24,7 @@ import {
     brokerSet,
     brokerSubscribe,
     BrokerType
-} from './model';
+} from './model.js';
 
 export class BrokerConnection extends RpcKernelBaseConnection {
     protected subscribedChannels: string[] = [];

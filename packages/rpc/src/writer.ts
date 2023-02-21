@@ -9,9 +9,9 @@
  */
 
 import { BehaviorSubject, Subject, Subscriber, Subscription, SubscriptionLike } from 'rxjs';
-import { rpcChunk, RpcTypes } from './model';
-import { createRpcMessage, readRpcMessage, RpcMessageReader } from './protocol';
-import type { RpcConnectionWriter } from './server/kernel';
+import { rpcChunk, RpcTypes } from './model.js';
+import { createRpcMessage, readRpcMessage, RpcMessageReader } from './protocol.js';
+import type { RpcConnectionWriter } from './server/kernel.js';
 
 export class SingleProgress extends Subject<SingleProgress> {
     public done = false;

@@ -1,8 +1,8 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { AppComponent } from './app.component';
+import { AppComponent } from './app.component.js';
 import { RouterModule } from '@angular/router';
-import { ApiConsoleModule } from './api-console.module';
+import { ApiConsoleModule } from './api-console.module.js';
 import { DuiAppModule, DuiButtonModule, DuiIconModule, DuiWindowModule } from '@deepkit/desktop-ui';
 import { DeepkitUIModule } from '@deepkit/ui-library';
 import { CommonModule } from '@angular/common';

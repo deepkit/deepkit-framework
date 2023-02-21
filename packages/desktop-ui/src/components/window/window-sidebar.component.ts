@@ -9,7 +9,7 @@
  */
 
 import { Component, TemplateRef, ViewChild } from '@angular/core';
-import { WindowContentComponent } from './window-content.component';
+import { WindowContentComponent } from './window-content.component.js';
 
 @Component({
     selector: 'dui-window-sidebar',

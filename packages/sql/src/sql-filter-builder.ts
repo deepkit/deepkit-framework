@@ -10,7 +10,7 @@
 
 import { isArray, isPlainObject } from '@deepkit/core';
 import { isBackReferenceType, isReferenceType, ReflectionClass, ReflectionKind, resolvePath, Serializer, Type } from '@deepkit/type';
-import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform';
+import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform.js';
 
 type Filter = { [name: string]: any };
 

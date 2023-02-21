@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { BackReference, entity, PrimaryKey, Reference, ReflectionClass, serializer } from '@deepkit/type';
-import { createDatabase } from './utils';
+import { createDatabase } from './utils.js';
 import { DatabaseQueryModel, Formatter, getInstanceStateFromItem } from '@deepkit/orm';
 import { deserializeBSON, serializeBSON } from '@deepkit/bson';
 

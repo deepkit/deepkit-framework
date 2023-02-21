@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
 import { isType, ReflectionKind, stringifyType, Type, TypeUnion } from '@deepkit/type';
-import { DataStructure } from '../../store';
-import { trackByIndex } from '../../utils';
+import { DataStructure } from '../../store.js';
+import { trackByIndex } from '../../utils.js';
 
 interface Entry {
     type?: Type;

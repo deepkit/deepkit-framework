@@ -1,5 +1,5 @@
 import { jest, expect, test, beforeAll } from '@jest/globals';
-import { Mutex, ProcessLock, ProcessLocker } from '../src/process-locker';
+import { Mutex, ProcessLock, ProcessLocker } from '../src/process-locker.js';
 
 jest.setTimeout(20000);
 

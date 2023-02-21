@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component, Input, OnChanges, OnInit } from '@angular
 import { fromBuffer } from 'file-type/browser';
 import * as FileSaver from 'file-saver';
 import { Type } from '@deepkit/type';
-import { TypeDecoration } from './utils';
+import { TypeDecoration } from './utils.js';
 
 @Component({
     selector: 'orm-browser-binary-cell',

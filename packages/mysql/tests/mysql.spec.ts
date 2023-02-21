@@ -1,8 +1,8 @@
 import { expect, test } from '@jest/globals';
 import { createPool } from 'mariadb';
-import { MySQLConnectionPool } from '../src/mysql-adapter';
+import { MySQLConnectionPool } from '../src/mysql-adapter.js';
 import { AutoIncrement, cast, entity, PrimaryKey } from '@deepkit/type';
-import { databaseFactory } from './factory';
+import { databaseFactory } from './factory.js';
 
 test('connection MySQLConnectionPool', async () => {
     const pool = createPool({

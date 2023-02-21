@@ -13,8 +13,8 @@ import {
     serialize,
     Type
 } from '@deepkit/type';
-import { BrowserState } from '../../browser-state';
-import { getParentProperty } from '../../utils';
+import { BrowserState } from '../../browser-state.js';
+import { getParentProperty } from '../../utils.js';
 
 @Component({
     template: `

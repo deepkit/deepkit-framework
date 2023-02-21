@@ -12,7 +12,7 @@ import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, Input, OnChang
 import { DatabaseInfo } from '@deepkit/orm-browser-api';
 import { graphlib, layout } from 'dagre';
 import { default as createPanZoom, PanZoom } from 'panzoom';
-import { BrowserText } from './browser-text';
+import { BrowserText } from './browser-text.js';
 import {
     isAutoIncrementType,
     isBackReferenceType,

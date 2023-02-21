@@ -9,7 +9,7 @@
  */
 
 import { IncomingMessage, OutgoingHttpHeader, OutgoingHttpHeaders, ServerResponse } from 'http';
-import { UploadedFile } from './router';
+import { UploadedFile } from './router.js';
 import * as querystring from 'querystring';
 import { Writable } from 'stream';
 import { metaAnnotation, ReflectionKind, Type, ValidationErrorItem } from '@deepkit/type';
@@ -183,6 +183,32 @@ export class RequestBuilder {
     json(body: object): this {
         this.contentBuffer = Buffer.from(JSON.stringify(body), 'utf8');
         this._headers['content-type'] = 'application/json; charset=utf-8';
+        this._headers['content-length'] = String(this.contentBuffer.byteLength);
+        return this;
+    }
+
+    multiPart(items: { name: string, file?: Uint8Array, fileName?: string, json?: any }[]): this {
+        const boundary = '--------------------------' + Math.random().toString(36).substr(2, 10);
+        this._headers['content-type'] = 'multipart/form-data; boundary=' + boundary;
+        const parts = items.map(item => {
+            if (item.file) {
+                const header = Buffer.from(`--${boundary}\r
+Content-Disposition: form-data; name="${item.name}"; filename="${item.fileName || 'file'}"\r
+Content-Type: application/octet-stream\r
+\r\n`, 'utf8');
+                return Buffer.concat([header, item.file, Buffer.from('\r\n', 'utf8')]);
+            } else if (item.json) {
+                const header = Buffer.from(`--${boundary}\r
+Content-Disposition: form-data; name="${item.name}"\r
+Content-Type: application/json\r
+\r\n`, 'utf8');
+                return Buffer.concat([header, Buffer.from(JSON.stringify(item.json) + '\r\n', 'utf8')]);
+            } else {
+                throw new Error('Invalid multiPart item');
+            }
+        });
+        parts.push(Buffer.from(`--${boundary}--`, 'utf8'));
+        this.contentBuffer = Buffer.concat(parts);
         this._headers['content-length'] = String(this.contentBuffer.byteLength);
         return this;
     }

@@ -8,10 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/mapping';
-export * from './src/adapter';
-export * from './src/persistence';
-export * from './src/query.model';
-export * from './src/query.resolver';
-export * from './src/query';
-export * from './src/client/client';
+export * from './src/mapping.js';
+export * from './src/adapter.js';
+export * from './src/persistence.js';
+export * from './src/query.model.js';
+export * from './src/query.resolver.js';
+export * from './src/query.js';
+export * from './src/client/client.js';

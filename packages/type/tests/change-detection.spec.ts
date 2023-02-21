@@ -1,10 +1,10 @@
 import { expect, test } from '@jest/globals';
-import { deserialize } from '../src/serializer-facade';
-import { createSnapshot } from '../src/snapshot';
-import { ReflectionClass, resolveClassType, typeOf } from '../src/reflection/reflection';
-import { buildChanges } from '../src/change-detector';
-import { atomicChange } from '../src/changes';
-import { ReflectionKind } from '../src/reflection/type';
+import { deserialize } from '../src/serializer-facade.js';
+import { createSnapshot } from '../src/snapshot.js';
+import { ReflectionClass, resolveClassType, typeOf } from '../src/reflection/reflection.js';
+import { buildChanges } from '../src/change-detector.js';
+import { atomicChange } from '../src/changes.js';
+import { ReflectionKind } from '../src/reflection/type.js';
 
 test('change-detection string', () => {
     interface s {

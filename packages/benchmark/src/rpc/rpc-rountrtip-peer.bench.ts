@@ -10,7 +10,7 @@
 
 import { ClassType } from '@deepkit/core';
 import { DirectClient, rpc, RpcKernel } from '@deepkit/rpc';
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 
 class SimpleInjector {
     get(classType: ClassType) {

@@ -14,13 +14,13 @@ import {
     OptionDirective,
     OptionSeparatorDirective,
     SelectboxComponent
-} from './selectbox.component';
+} from './selectbox.component.js';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { DuiIconModule } from '../icon';
-import { DuiButtonModule } from '../button';
+import { DuiIconModule } from '../icon.js';
+import { DuiButtonModule } from '../button.js';
 
-export * from "./selectbox.component";
+export * from "./selectbox.component.js";
 
 @NgModule({
     declarations: [

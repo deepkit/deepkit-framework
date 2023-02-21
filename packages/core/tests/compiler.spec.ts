@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { CompilerContext } from '../src/compiler';
+import { CompilerContext } from '../src/compiler.js';
 
 test('compiler', () => {
     const compiler = new CompilerContext();

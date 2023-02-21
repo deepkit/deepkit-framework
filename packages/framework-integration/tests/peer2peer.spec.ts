@@ -1,6 +1,6 @@
 // import { afterAll, expect, test } from '@jest/globals';
 // import { Entity, f } from '@deepkit/type';
-// import { appModuleForControllers, closeAllCreatedServers, createServerClientPair } from './util';
+// import { appModuleForControllers, closeAllCreatedServers, createServerClientPair } from './util.js';
 // import { createModule, DeepkitRpcSecurity } from '@deepkit/framework';
 // import { Observable } from 'rxjs';
 // import { sleep } from '@deepkit/core';

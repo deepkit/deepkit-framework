@@ -1,7 +1,7 @@
 import { AutoIncrement, entity, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import pg from 'pg';
-import { databaseFactory } from './factory';
+import { databaseFactory } from './factory.js';
 
 test('count', async () => {
     const pool = new pg.Pool({

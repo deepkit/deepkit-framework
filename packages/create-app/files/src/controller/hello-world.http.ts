@@ -1,6 +1,6 @@
 import { MaxLength } from '@deepkit/type';
 import { http } from '@deepkit/http';
-import { Service } from '../app/service';
+import { Service } from '../app/service.js';
 
 export class HelloWorldControllerHttp {
     constructor(private service: Service) {

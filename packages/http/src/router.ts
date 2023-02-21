@@ -30,13 +30,13 @@ import {
 } from '@deepkit/type';
 // @ts-ignore
 import formidable from 'formidable';
-import { HttpAction, httpClass, HttpController, HttpDecorator } from './decorator';
-import { BodyValidationError, createRequestWithCachedBody, getRegExp, HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters, ValidatedBody } from './model';
+import { HttpAction, httpClass, HttpController, HttpDecorator } from './decorator.js';
+import { BodyValidationError, createRequestWithCachedBody, getRegExp, HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters, ValidatedBody } from './model.js';
 import { InjectorContext, InjectorModule, TagRegistry } from '@deepkit/injector';
 import { Logger, LoggerInterface } from '@deepkit/logger';
-import { HttpControllers } from './controllers';
+import { HttpControllers } from './controllers.js';
 import { MiddlewareRegistry, MiddlewareRegistryEntry } from '@deepkit/app';
-import { HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware';
+import { HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware.js';
 
 //@ts-ignore
 import qs from 'qs';

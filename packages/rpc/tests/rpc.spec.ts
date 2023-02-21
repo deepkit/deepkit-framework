@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { Progress, RpcMessageWriter, RpcMessageWriterOptions } from '../src/writer';
-import { DirectClient } from '../src/client/client-direct';
-import { rpc } from '../src/decorators';
+import { Progress, RpcMessageWriter, RpcMessageWriterOptions } from '../src/writer.js';
+import { DirectClient } from '../src/client/client-direct.js';
+import { rpc } from '../src/decorators.js';
 import {
     createRpcCompositeMessage,
     createRpcCompositeMessageSourceDest,
@@ -14,9 +14,9 @@ import {
     RpcMessage,
     RpcMessageReader,
     RpcMessageRouteType
-} from '../src/protocol';
-import { RpcKernel } from '../src/server/kernel';
-import { RpcTypes } from '../src/model';
+} from '../src/protocol.js';
+import { RpcKernel } from '../src/server/kernel.js';
+import { RpcTypes } from '../src/model.js';
 import { Writer } from '@deepkit/bson';
 import { typeOf } from '@deepkit/type';
 

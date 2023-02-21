@@ -13,10 +13,10 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { cli, Command, flag } from '@deepkit/app';
 import { LoggerInterface } from '@deepkit/logger';
-import { SQLDatabaseAdapter } from '../sql-adapter';
-import { DatabaseComparator, DatabaseModel } from '../schema/table';
-import { MigrationProvider } from '../migration/migration-provider';
-import { BaseCommand } from './base-command';
+import { SQLDatabaseAdapter } from '../sql-adapter.js';
+import { DatabaseComparator, DatabaseModel } from '../schema/table.js';
+import { MigrationProvider } from '../migration/migration-provider.js';
+import { BaseCommand } from './base-command.js';
 
 function serializeSQLLine(sql: string): string {
     return '`' + sql.replace(/`/g, '\\`') + '`';

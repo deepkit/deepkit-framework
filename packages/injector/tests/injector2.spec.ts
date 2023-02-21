@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
-import { Injector, InjectorContext, injectorReference } from '../src/injector';
-import { provide, Tag } from '../src/provider';
-import { InjectorModule } from '../src/module';
+import { Injector, InjectorContext, injectorReference } from '../src/injector.js';
+import { provide, Tag } from '../src/provider.js';
+import { InjectorModule } from '../src/module.js';
 import { typeOf } from '@deepkit/type';
-import { Inject } from '../src/types';
+import { Inject } from '../src/types.js';
 
 test('basic', () => {
     class Service {

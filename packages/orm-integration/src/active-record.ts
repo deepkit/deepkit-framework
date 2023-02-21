@@ -1,10 +1,10 @@
 import { expect } from '@jest/globals';
-import { User, UserGroup } from './bookstore/user';
-import { Book } from './active-record/book';
-import { Tag } from './active-record/tag';
-import { BookTag } from './active-record/book-tag';
-import { Group } from './bookstore/group';
-import { DatabaseFactory } from './test';
+import { User, UserGroup } from './bookstore/user.js';
+import { Book } from './active-record/book.js';
+import { Tag } from './active-record/tag.js';
+import { BookTag } from './active-record/book-tag.js';
+import { Group } from './bookstore/group.js';
+import { DatabaseFactory } from './test.js';
 
 export const activeRecordTests = {
     async basics(databaseFactory: DatabaseFactory) {

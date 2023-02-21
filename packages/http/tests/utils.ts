@@ -1,9 +1,9 @@
 import { ClassType, isArray, isClass, isFunction } from '@deepkit/core';
 import { ProviderWithScope } from '@deepkit/injector';
-import { HttpKernel } from '../src/kernel';
+import { HttpKernel } from '../src/kernel.js';
 import { App, AppModule, MiddlewareFactory } from '@deepkit/app';
 import { EventListener } from '@deepkit/event';
-import { HttpModule } from '../src/module';
+import { HttpModule } from '../src/module.js';
 import { HttpRouterRegistry } from '../src/router.js';
 
 export function createHttpKernel(

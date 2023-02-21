@@ -10,8 +10,8 @@
 
 import { asyncOperation, CustomError } from '@deepkit/core';
 import { ReceiveType } from '@deepkit/type';
-import { RpcTypes } from '../model';
-import type { RpcMessage } from '../protocol';
+import { RpcTypes } from '../model.js';
+import type { RpcMessage } from '../protocol.js';
 
 export class UnexpectedMessageType extends CustomError {
 }
@@ -27,7 +27,6 @@ export class RpcMessageSubject {
 
     constructor(
         private continuation: <T>(type: number, body?: T, schema?: ReceiveType<T>) => void,
-
         /**
          * Releases this subject. It is necessary that eventually every created subject is released,
          * otherwise dramatic performance decrease and memory leak will happen.

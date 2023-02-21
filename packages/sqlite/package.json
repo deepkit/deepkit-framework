@@ -49,6 +49,9 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "testTimeout": 50000,
     "testMatch": [
       "**/tests/**/*.spec.ts"

@@ -10,7 +10,7 @@
 
 import 'reflect-metadata';
 import { classToPlain, Exclude as ctExclude, plainToClass, Transform, Type } from 'class-transformer';
-import { BenchSuite } from '../../bench';
+import { BenchSuite } from '../../bench.js';
 
 export class SubModel {
     label: string;

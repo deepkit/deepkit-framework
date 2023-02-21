@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
-import { BrowserState } from '../browser-state';
-import { ControllerClient } from '../client';
-import { trackByDatabase, trackBySchema } from '../utils';
+import { BrowserState } from '../browser-state.js';
+import { ControllerClient } from '../client.js';
+import { trackByDatabase, trackBySchema } from '../utils.js';
 import { detectChangesNextFrame } from '@deepkit/desktop-ui';
 
 @Component({

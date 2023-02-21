@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { transpile, transpileAndRun } from './utils';
+import { transpile, transpileAndRun } from './utils.js';
 import * as ts from 'typescript';
 
 test('function __type', () => {

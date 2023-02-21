@@ -10,7 +10,7 @@
 
 import { DatabaseModel, ForeignKey, Table, parseType, SchemaParser, Column } from '@deepkit/sql';
 import { arrayRemoveItem } from '@deepkit/core';
-import { isJsonLike } from './sqlite-platform';
+import { isJsonLike } from './sqlite-platform.js';
 
 export class SQLiteSchemaParser extends SchemaParser {
     async parse(database: DatabaseModel, limitTableNames?: string[]) {

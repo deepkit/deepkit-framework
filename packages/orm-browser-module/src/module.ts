@@ -1,7 +1,7 @@
 import { createModule, findParentPath } from '@deepkit/app';
 import { OrmBrowserController } from '@deepkit/framework';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
-import { Config } from './config';
+import { Config } from './config.js';
 import { rpc } from '@deepkit/rpc';
 import { ClassType, getCurrentFileName } from '@deepkit/core';
 import { InjectorContext } from '@deepkit/injector';

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 
 export function main() {
     const bench = new BenchSuite('prototype');

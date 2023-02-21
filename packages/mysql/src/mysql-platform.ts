@@ -9,10 +9,10 @@
  */
 
 import { Pool } from 'mariadb';
-import { mySqlSerializer } from './mysql-serializer';
+import { mySqlSerializer } from './mysql-serializer.js';
 import { isUUIDType, ReflectionKind, ReflectionProperty, Serializer, TypeNumberBrand } from '@deepkit/type';
 import { Column, DefaultPlatform, IndexModel, isSet } from '@deepkit/sql';
-import { MysqlSchemaParser } from './mysql-schema-parser';
+import { MysqlSchemaParser } from './mysql-schema-parser.js';
 
 export class MySQLPlatform extends DefaultPlatform {
     protected override defaultSqlType = 'longtext';

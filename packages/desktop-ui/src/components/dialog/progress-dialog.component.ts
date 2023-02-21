@@ -10,7 +10,7 @@
 
 import { BehaviorSubject } from 'rxjs';
 import { Component, Input, OnInit } from '@angular/core';
-import { DialogComponent } from './dialog.component';
+import { DialogComponent } from './dialog.component.js';
 
 class State {
     title: string = '';

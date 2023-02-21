@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { RpcKernel } from '../server/kernel';
-import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client';
+import { RpcKernel } from '../server/kernel.js';
+import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client.js';
 import { InjectorContext } from '@deepkit/injector';
 
 export class DirectClient extends RpcClient {
@@ -25,7 +25,9 @@ export class RpcDirectClientAdapter implements ClientTransportAdapter {
     public async connect(connection: TransportConnectionHooks) {
         const kernelConnection = this.rpcKernel.createConnection({
             write: (buffer) => connection.onData(buffer),
-            close: () => {connection.onClose(); },
+            close: () => {
+                connection.onClose();
+            },
         }, this.injector);
 
         connection.onConnected({
@@ -63,10 +65,12 @@ export class RpcAsyncDirectClientAdapter implements ClientTransportAdapter {
         const kernelConnection = this.rpcKernel.createConnection({
             write: (buffer) => {
                 setTimeout(() => {
-                    connection.onData(buffer)
+                    connection.onData(buffer);
                 });
             },
-            close: () => {connection.onClose(); },
+            close: () => {
+                connection.onClose();
+            },
         }, this.injector);
 
         connection.onConnected({

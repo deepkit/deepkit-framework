@@ -1,10 +1,9 @@
-import { BackReference } from '@deepkit/type';
-import { deserialize, PrimaryKey } from '@deepkit/type';
+import { BackReference, deserialize, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { assert, IsExact } from 'conditional-type-checks';
-import { Database } from '../src/database';
-import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db';
-import { Query } from '../src/query';
+import { Database } from '../src/database.js';
+import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db.js';
+import { Query } from '../src/query.js';
 import { OrmEntity } from '../src/type.js';
 
 test('query select', async () => {
@@ -230,7 +229,8 @@ test('query lift', async () => {
 
 test('optional join', () => {
     class User {
-        constructor(public id: number & PrimaryKey, public name: string) {}
+        constructor(public id: number & PrimaryKey, public name: string) {
+        }
 
         userAuth?: UserAuth & BackReference;
     }
@@ -238,7 +238,9 @@ test('optional join', () => {
     class UserAuth {
         constructor(
             public id: number & PrimaryKey,
-        ) {}
+        ) {
+        }
+
         type!: string;
     }
 
@@ -249,4 +251,4 @@ test('optional join', () => {
         .useInnerJoinWith('userAuth')
         .filter({ type: 'bar' })
         .end();
-})
+});
