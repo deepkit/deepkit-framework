@@ -218,6 +218,33 @@ export class BaseQuery<T extends OrmEntity> {
     }
 
     /**
+     * Returns a new query with the same model transformed by the modifier.
+     *
+     * This allows to use more dynamic query composition functions.
+     *
+     * @example
+     * ```typescript
+     * function joinFrontendData(query: Query<Product>) {
+     *     return query
+     *         .useJoinWith('images').select('sort').end()
+     *         .useJoinWith('brand').select('id', 'name', 'website').end()
+     * }
+     *
+     * const products = await database.query(Product).use(joinFrontendData).find();
+     * ```
+     */
+    use<Q, R, A extends any[]>(modifier: (query: Q, ...args: A) => R, ...args: A): R {
+        return modifier(this as any, ...args);
+    }
+
+    /**
+     * Same as `use`, but the method indicates it is terminating the query.
+     */
+    fetch<Q, R>(modifier: (query: Q) => R): R {
+        return modifier(this as any);
+    }
+
+    /**
      * For MySQL/Postgres SELECT FOR SHARE.
      * Has no effect in SQLite/MongoDB.
      */

@@ -70,17 +70,17 @@ test('query filter', async () => {
 });
 
 test('query lift', async () => {
-    class s {
+    class User {
         id!: number & PrimaryKey;
         username!: string;
         openBillings: number = 0;
     }
 
     const database = new Database(new MemoryDatabaseAdapter());
-    const q = database.query(s);
+    const q = database.query(User);
 
-    await database.persist(deserialize<s>({ id: 0, username: 'foo' }));
-    await database.persist(deserialize<s>({ id: 1, username: 'bar', openBillings: 5 }));
+    await database.persist(deserialize<User>({ id: 0, username: 'foo' }));
+    await database.persist(deserialize<User>({ id: 1, username: 'bar', openBillings: 5 }));
 
     class MyBase<T extends OrmEntity> extends Query<T> {
         protected world = 'world';
@@ -106,6 +106,18 @@ test('query lift', async () => {
         due() {
             return this.filterField('openBillings', { $gt: 0 });
         }
+    }
+
+    function filterBillingDue(q: Query<User>) {
+        return q.filterField('openBillings', { $gt: 0 });
+    }
+
+    function filterMinBilling(q: Query<User>, min: number) {
+        return q.filterField('openBillings', { $gt: min });
+    }
+
+    function allUserNames(q: Query<User>) {
+        return q.findField('username');
     }
 
     class OverwriteHello<T extends OrmEntity> extends Query<T> {
@@ -195,6 +207,24 @@ test('query lift', async () => {
 
     {
         const items = await q.lift(UserQuery).lift(BilligQuery).due().findAllUserNames();
+        expect(items).toEqual(['bar']);
+        assert<IsExact<string[], typeof items>>(true);
+    }
+
+    {
+        const items = await q.use(filterBillingDue).find();
+        expect(items).toEqual(items);
+        assert<IsExact<User[], typeof items>>(true);
+    }
+
+    {
+        const items = await q.use(filterBillingDue).use(allUserNames);
+        expect(items).toEqual(['bar']);
+        assert<IsExact<string[], typeof items>>(true);
+    }
+
+    {
+        const items = await q.use(filterMinBilling, 1).fetch(allUserNames);
         expect(items).toEqual(['bar']);
         assert<IsExact<string[], typeof items>>(true);
     }
