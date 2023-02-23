@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/rpc-tcp",
-  "version": "1.0.1-alpha.89",
+  "version": "1.0.1-alpha.90",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -30,7 +30,7 @@
     "ws": "^8.6.0"
   },
   "devDependencies": {
-    "@deepkit/rpc": "^1.0.1-alpha.89"
+    "@deepkit/rpc": "^1.0.1-alpha.90"
   },
   "jest": {
     "transform": {
