@@ -98,7 +98,7 @@ const find = <T extends OrmEntity>(adapter: MemoryDatabaseAdapter, classSchema: 
     let filtered = model.filter ? findQueryList<T>(items, model.filter) : items;
 
     if (model.hasJoins()) {
-        throw new Error('MemoryDatabaseAdapter does not support joins. Please use another lightweight adapter like SQLite.');
+        console.log('MemoryDatabaseAdapter does not support joins. Please use another lightweight adapter like SQLite.');
     }
 
     if (model.sort) {

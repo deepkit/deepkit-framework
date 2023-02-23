@@ -222,9 +222,11 @@ export class BaseQuery<T extends OrmEntity> {
      *
      * This allows to use more dynamic query composition functions.
      *
+     * To support joins queries `AnyQuery` is necessary as query type.
+     *
      * @example
      * ```typescript
-     * function joinFrontendData(query: Query<Product>) {
+     * function joinFrontendData(query: AnyQuery<Product>) {
      *     return query
      *         .useJoinWith('images').select('sort').end()
      *         .useJoinWith('brand').select('id', 'name', 'website').end()
@@ -232,13 +234,15 @@ export class BaseQuery<T extends OrmEntity> {
      *
      * const products = await database.query(Product).use(joinFrontendData).find();
      * ```
+     * @reflection never
      */
-    use<Q, R, A extends any[]>(modifier: (query: Q, ...args: A) => R, ...args: A): R {
-        return modifier(this as any, ...args);
+    use<Q, R, A extends any[]>(modifier: (query: Q, ...args: A) => R, ...args: A): this extends JoinDatabaseQuery<any, any> ? this : Exclude<R, JoinDatabaseQuery<any, any>> {
+        return modifier(this as any, ...args) as any;
     }
 
     /**
      * Same as `use`, but the method indicates it is terminating the query.
+     * @reflection never
      */
     fetch<Q, R>(modifier: (query: Q) => R): R {
         return modifier(this as any);
@@ -275,7 +279,7 @@ export class BaseQuery<T extends OrmEntity> {
     }
 
     withGroupConcat<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [C in [AS] as `${AS}`]: T[K][] }> {
-        return this.aggregateField(field, 'group_concat', as);
+        return this.aggregateField(field, 'group_concat', as) as any;
     }
 
     withCount<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
@@ -494,7 +498,7 @@ export class BaseQuery<T extends OrmEntity> {
     join<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K, type: 'left' | 'inner' = 'left', populate: boolean = false): this {
         const propertySchema = this.classSchema.getProperty(field as string);
         if (!propertySchema.isReference() && !propertySchema.isBackReference()) {
-            throw new Error(`Field ${String(field)} is not marked as reference. Use @t.reference()`);
+            throw new Error(`Field ${String(field)} is not marked as reference. Use Reference type`);
         }
         const c = this.clone();
 
@@ -963,3 +967,5 @@ export class JoinDatabaseQuery<T extends OrmEntity, PARENT extends BaseQuery<any
         return this.parentQuery;
     }
 }
+
+export type AnyQuery<T extends OrmEntity> = JoinDatabaseQuery<T, any> | Query<T>;
