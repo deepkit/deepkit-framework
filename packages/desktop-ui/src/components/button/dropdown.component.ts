@@ -31,11 +31,11 @@ import {
 import { TemplatePortal } from '@angular/cdk/portal';
 import { Overlay, OverlayConfig, OverlayRef, PositionStrategy } from '@angular/cdk/overlay';
 import { Subscription } from 'rxjs';
-import { WindowRegistry } from '../window/window-state.js';
-import { focusWatcher } from '../../core/utils.js';
+import { WindowRegistry } from '../window/window-state';
+import { focusWatcher } from '../../core/utils';
 import { isArray } from '@deepkit/core';
-import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule, unsubscribe } from '../app.js';
-import { ButtonComponent } from './button.component.js';
+import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule, unsubscribe } from '../app';
+import { ButtonComponent } from './button.component';
 
 
 @Component({

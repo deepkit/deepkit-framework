@@ -26,9 +26,9 @@ import {
     ViewChild,
     ViewContainerRef
 } from '@angular/core';
-import * as emojis from './emojis.js';
-import { EmojiCategory } from './emojis.js';
-import { DropdownComponent } from '../button.js';
+import * as emojis from './emojis';
+import { EmojiCategory } from './emojis';
+import { DropdownComponent } from '../button';
 
 @Component({
     selector: 'dui-emoji-dropdown',

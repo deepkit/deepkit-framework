@@ -9,9 +9,9 @@
  */
 
 import { NgModule } from '@angular/core';
-import { ButtonComponent, ButtonGroupComponent, ButtonGroupsComponent, FileChooserDirective, FileDropDirective, FilePickerDirective } from './button.component.js';
+import { ButtonComponent, ButtonGroupComponent, ButtonGroupsComponent, FileChooserDirective, FileDropDirective, FilePickerDirective } from './button.component';
 import { CommonModule } from '@angular/common';
-import { DuiIconModule } from '../icon.js';
+import { DuiIconModule } from '../icon';
 import {
     ContextDropdownDirective,
     DropdownComponent,
@@ -20,13 +20,13 @@ import {
     DropdownSplitterComponent,
     OpenDropdownDirective,
     OpenDropdownHoverDirective,
-} from './dropdown.component.js';
+} from './dropdown.component';
 import { FormsModule } from '@angular/forms';
-import { TabButtonComponent } from './tab-button.component.js';
+import { TabButtonComponent } from './tab-button.component';
 
-export * from "./dropdown.component.js";
-export * from './button.component.js'
-export * from './tab-button.component.js'
+export * from "./dropdown.component";
+export * from './button.component'
+export * from './tab-button.component'
 
 @NgModule({
     declarations: [

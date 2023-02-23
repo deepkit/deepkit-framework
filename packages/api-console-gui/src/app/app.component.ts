@@ -1,6 +1,6 @@
 import { Component, ElementRef } from '@angular/core';
 import { DuiApp } from '@deepkit/desktop-ui';
-import { ControllerClient } from './client.js';
+import { ControllerClient } from './client';
 
 @Component({
     selector: 'app-root',

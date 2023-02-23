@@ -9,10 +9,10 @@
  */
 
 import { NgModule } from '@angular/core';
-import { CheckboxComponent } from './checkbox.component.js';
-import { DuiIconModule } from '../icon.js';
+import { CheckboxComponent } from './checkbox.component';
+import { DuiIconModule } from '../icon';
 
-export * from './checkbox.component.js'
+export * from './checkbox.component'
 
 @NgModule({
     declarations: [

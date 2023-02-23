@@ -6,7 +6,7 @@ import 'prismjs/components/prism-sql';
 import 'prismjs/components/prism-bash';
 import 'prismjs/components/prism-json';
 import { isPlatformBrowser } from '@angular/common';
-import { removeIndent } from '../utils.js';
+import { removeIndent } from '../utils';
 
 @Directive({
     selector: '[codeHighlight]'

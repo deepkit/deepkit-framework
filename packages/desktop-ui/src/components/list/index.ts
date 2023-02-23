@@ -9,9 +9,9 @@
  */
 
 import { NgModule } from '@angular/core';
-import { ListComponent, ListItemComponent, ListTitleComponent } from './list.component.js';
+import { ListComponent, ListItemComponent, ListTitleComponent } from './list.component';
 
-export * from './list.component.js';
+export * from './list.component';
 
 @NgModule({
     imports: [],

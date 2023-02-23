@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
 import { getKeyType, getValueType, Type, TypeClass, TypeObjectLiteral } from '@deepkit/type';
-import { trackByIndex } from '../../utils.js';
-import { DataStructure } from '../../store.js';
+import { trackByIndex } from '../../utils';
+import { DataStructure } from '../../store';
 import { arrayMoveItem } from '@deepkit/core';
 
 @Component({

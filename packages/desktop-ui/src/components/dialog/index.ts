@@ -9,7 +9,7 @@
  */
 
 import { NgModule } from '@angular/core';
-import { DuiWindowModule } from '../window.js';
+import { DuiWindowModule } from '../window';
 import {
     CloseDialogDirective,
     DialogActionsComponent,
@@ -17,19 +17,19 @@ import {
     DialogDirective,
     DialogErrorComponent,
     DialogWrapperComponent, OpenDialogDirective,
-} from './dialog.component.js';
+} from './dialog.component';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { CommonModule } from '@angular/common';
-import { DuiDialog, DuiDialogAlert, DuiDialogConfirm, DuiDialogConfirmDirective, DuiDialogPrompt } from './dialog.js';
-import { DuiButtonModule } from '../button.js';
-import { DuiCoreModule } from '../core.js';
-import { DuiInputModule } from '../input.js';
+import { DuiDialog, DuiDialogAlert, DuiDialogConfirm, DuiDialogConfirmDirective, DuiDialogPrompt } from './dialog';
+import { DuiButtonModule } from '../button';
+import { DuiCoreModule } from '../core';
+import { DuiInputModule } from '../input';
 import { FormsModule } from '@angular/forms';
-import { DuiDialogProgress } from './progress-dialog.component.js';
+import { DuiDialogProgress } from './progress-dialog.component';
 
-export * from "./dialog.component.js";
-export * from "./dialog.js";
-export * from "./progress-dialog.component.js";
+export * from "./dialog.component";
+export * from "./dialog";
+export * from "./progress-dialog.component";
 
 @NgModule({
     declarations: [

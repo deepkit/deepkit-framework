@@ -1,7 +1,7 @@
 import { Component, ComponentFactoryResolver, ComponentRef, Input, OnChanges, OnDestroy, ViewContainerRef } from '@angular/core';
 import { Type } from '@deepkit/type';
-import { cellRegistry } from '../../registry.js';
-import { TypeDecoration } from './utils.js';
+import { cellRegistry } from '../../registry';
+import { TypeDecoration } from './utils';
 
 @Component({
     selector: 'orm-browser-property-view',

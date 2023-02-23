@@ -9,8 +9,8 @@
  */
 
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostBinding, Injector, Input, Output, SkipSelf, ViewChild } from '@angular/core';
-import { ngValueAccessor, ValueAccessorBase } from '../../core/form.js';
-import { detectChangesNextFrame } from '../app.js';
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { detectChangesNextFrame } from '../app';
 import { DatePipe } from '@angular/common';
 
 const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];

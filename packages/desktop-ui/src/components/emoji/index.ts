@@ -11,14 +11,14 @@
 import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { EmojiDropdownComponent, EmojiDropdownDirective } from './emoji-dropdown.component.js';
-import { DuiInputModule } from '../input.js';
-import { DuiButtonModule } from '../button.js';
-import { EmojiComponent } from './emoji.component.js';
+import { EmojiDropdownComponent, EmojiDropdownDirective } from './emoji-dropdown.component';
+import { DuiInputModule } from '../input';
+import { DuiButtonModule } from '../button';
+import { EmojiComponent } from './emoji.component';
 
-export { EmojiComponent } from "./emoji.component.js";
+export { EmojiComponent } from "./emoji.component";
 
-export { EmojiDropdownComponent, EmojiDropdownDirective } from "./emoji-dropdown.component.js";
+export { EmojiDropdownComponent, EmojiDropdownDirective } from "./emoji-dropdown.component";
 
 @NgModule({
     declarations: [

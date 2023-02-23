@@ -17,7 +17,7 @@ import {
     Input,
     OnChanges
 } from '@angular/core';
-import { Electron } from '../../core/utils.js';
+import { Electron } from '../../core/utils';
 
 
 @Directive({

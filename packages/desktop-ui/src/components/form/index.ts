@@ -9,11 +9,11 @@
  */
 
 import { NgModule } from '@angular/core';
-import { FormComponent, FormRowComponent } from './form.component.js';
+import { FormComponent, FormRowComponent } from './form.component';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
-export * from "./form.component.js";
+export * from "./form.component";
 
 @NgModule({
     declarations: [

@@ -3,7 +3,7 @@ import { SelectboxComponent, unsubscribe } from '@deepkit/desktop-ui';
 import * as bla from '@deepkit/desktop-ui';
 import { TypeEnum } from '@deepkit/type';
 import { Subscription } from 'rxjs';
-import { DataStructure } from '../../store.js';
+import { DataStructure } from '../../store';
 
 @Component({
     template: `

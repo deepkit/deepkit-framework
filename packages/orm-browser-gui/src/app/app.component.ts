@@ -10,8 +10,8 @@
 
 import { ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit } from '@angular/core';
 import { DuiApp } from '@deepkit/desktop-ui';
-import { BrowserState } from './browser-state.js';
-import { ControllerClient } from './client.js';
+import { BrowserState } from './browser-state';
+import { ControllerClient } from './client';
 
 @Component({
     selector: 'app-root',

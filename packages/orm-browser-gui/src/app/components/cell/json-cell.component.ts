@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, Input, OnChanges, OnInit } from '@angular/core';
 import { isArray, isObject } from '@deepkit/core';
-import { objToString } from './utils.js';
-import { BrowserState } from '../../browser-state.js';
+import { objToString } from './utils';
+import { BrowserState } from '../../browser-state';
 
 @Component({
     selector: 'orm-browser-json-cell',

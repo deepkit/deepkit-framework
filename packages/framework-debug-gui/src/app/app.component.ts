@@ -12,7 +12,7 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { DuiApp, observe } from '@deepkit/desktop-ui';
 import { Database, DebugRequest } from '@deepkit/framework-debug-api';
 import { Collection } from '@deepkit/rpc';
-import { ControllerClient } from './client.js';
+import { ControllerClient } from './client';
 import { Router } from '@angular/router';
 
 @Component({

@@ -32,13 +32,13 @@ import {
 } from '@angular/core';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
-import { WindowRegistry } from '../window/window-state.js';
-import { WindowComponent } from '../window/window.component.js';
-import { RenderComponentDirective } from '../core/render-component.directive.js';
-import { IN_DIALOG } from '../app/token.js';
-import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule, unsubscribe } from '../app.js';
+import { WindowRegistry } from '../window/window-state';
+import { WindowComponent } from '../window/window.component';
+import { RenderComponentDirective } from '../core/render-component.directive';
+import { IN_DIALOG } from '../app/token';
+import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule, unsubscribe } from '../app';
 import { Subscription } from 'rxjs';
-import { ButtonComponent } from '../button.js';
+import { ButtonComponent } from '../button';
 
 @Component({
     template: `

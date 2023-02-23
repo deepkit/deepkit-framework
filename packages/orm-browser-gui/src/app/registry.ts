@@ -1,19 +1,19 @@
 import { ClassType, getClassName } from '@deepkit/core';
 import { isMongoIdType, isSetType, isUUIDType, ReflectionKind, TypeRegistry } from '@deepkit/type';
-import { ClassCellComponent } from './components/cell/class-cell.component.js';
-import { DateCellComponent } from './components/cell/date-cell.component.js';
-import { EnumCellComponent } from './components/cell/enum-cell.component.js';
-import { StringCellComponent } from './components/cell/string-cell.component.js';
-import { ClassInputComponent } from './components/edit/class-input.component.js';
-import { DateInputComponent } from './components/edit/date-input.component.js';
-import { EnumInputComponent } from './components/edit/enum-input.component.js';
-import { StringInputComponent } from './components/edit/string-input.component.js';
-import { ArrayInputComponent } from './components/edit/array-input.component.js';
-import { ArrayCellComponent } from './components/cell/array-cell.component.js';
-import { JsonInputComponent } from './components/edit/json-input.component.js';
-import { JsonCellComponent } from './components/cell/json-cell.component.js';
-import { BinaryInputComponent } from './components/edit/binary-input.component.js';
-import { BinaryCellComponent } from './components/cell/binary-cell.component.js';
+import { ClassCellComponent } from './components/cell/class-cell.component';
+import { DateCellComponent } from './components/cell/date-cell.component';
+import { EnumCellComponent } from './components/cell/enum-cell.component';
+import { StringCellComponent } from './components/cell/string-cell.component';
+import { ClassInputComponent } from './components/edit/class-input.component';
+import { DateInputComponent } from './components/edit/date-input.component';
+import { EnumInputComponent } from './components/edit/enum-input.component';
+import { StringInputComponent } from './components/edit/string-input.component';
+import { ArrayInputComponent } from './components/edit/array-input.component';
+import { ArrayCellComponent } from './components/cell/array-cell.component';
+import { JsonInputComponent } from './components/edit/json-input.component';
+import { JsonCellComponent } from './components/cell/json-cell.component';
+import { BinaryInputComponent } from './components/edit/binary-input.component';
+import { BinaryCellComponent } from './components/cell/binary-cell.component';
 
 export const inputRegistry = new TypeRegistry<ClassType>();
 

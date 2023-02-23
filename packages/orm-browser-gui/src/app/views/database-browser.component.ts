@@ -12,12 +12,12 @@ import {
     validate
 } from '@deepkit/type';
 import { Subscription } from 'rxjs';
-import { BrowserEntityState, BrowserQuery, BrowserState, ValidationErrors, } from '../browser-state.js';
+import { BrowserEntityState, BrowserQuery, BrowserState, ValidationErrors, } from '../browser-state';
 import { DatabaseInfo } from '@deepkit/orm-browser-api';
 import { getInstanceStateFromItem } from '@deepkit/orm';
-import { ControllerClient } from '../client.js';
+import { ControllerClient } from '../client';
 import { arrayRemoveItem, isArray } from '@deepkit/core';
-import { showTypeString, trackByIndex } from '../utils.js';
+import { showTypeString, trackByIndex } from '../utils';
 import { ClientProgress } from '@deepkit/rpc';
 import { ActivatedRoute } from '@angular/router';
 

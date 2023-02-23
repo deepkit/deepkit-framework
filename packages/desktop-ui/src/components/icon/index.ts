@@ -10,9 +10,9 @@
 
 import { NgModule } from '@angular/core';
 
-import { IconComponent } from './icon.component.js';
+import { IconComponent } from './icon.component';
 
-export * from './icon.component.js';
+export * from './icon.component';
 
 @NgModule({
     imports: [],

@@ -1,11 +1,11 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { ControllerClient } from '../../client.js';
+import { ControllerClient } from '../../client';
 import { decodeFrameData, decodeFrames } from '@deepkit/framework-debug-api';
 import { Application, Container, Graphics, InteractionEvent, Rectangle, Text, TextStyle } from 'pixi.js';
 import { FrameCategory, FrameEnd, FrameStart } from '@deepkit/stopwatch';
 import * as Hammer from 'hammerjs';
-import { formatTime, FrameItem, FrameParser } from './frame.js';
-import { FrameContainer } from './frame-container.js';
+import { formatTime, FrameItem, FrameParser } from './frame';
+import { FrameContainer } from './frame-container';
 import { Subject } from 'rxjs';
 import { ClientProgress } from '@deepkit/rpc';
 

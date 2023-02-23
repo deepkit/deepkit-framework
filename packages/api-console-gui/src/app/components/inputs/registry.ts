@@ -1,14 +1,14 @@
 import { isMapType, isMongoIdType, isSetType, isUUIDType, ReflectionKind, TypeRegistry } from '@deepkit/type';
 import { ClassType, getClassName } from '@deepkit/core';
-import { StringInputComponent } from './string-input.component.js';
-import { ArrayInputComponent } from './array-input.component.js';
-import { EnumInputComponent } from './enum-input.component.js';
-import { DateInputComponent } from './date-input.component.js';
-import { JsonInputComponent } from './json-input.component.js';
-import { BinaryInputComponent } from './binary-input.component.js';
-import { ClassInputComponent } from './class-input.component.js';
-import { MapInputComponent } from './map-input.component.js';
-import { UnionInputComponent } from './union-input.component.js';
+import { StringInputComponent } from './string-input.component';
+import { ArrayInputComponent } from './array-input.component';
+import { EnumInputComponent } from './enum-input.component';
+import { DateInputComponent } from './date-input.component';
+import { JsonInputComponent } from './json-input.component';
+import { BinaryInputComponent } from './binary-input.component';
+import { ClassInputComponent } from './class-input.component';
+import { MapInputComponent } from './map-input.component';
+import { UnionInputComponent } from './union-input.component';
 
 export const inputRegistry = new TypeRegistry<ClassType>();
 

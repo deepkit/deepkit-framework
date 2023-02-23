@@ -2,9 +2,9 @@ import { ChangeDetectorRef, Component, Input, OnDestroy, Optional } from '@angul
 import { DuiDialog, unsubscribe } from '@deepkit/desktop-ui';
 import { DatabaseInfo } from '@deepkit/orm-browser-api';
 import { empty } from '@deepkit/core';
-import { BrowserState } from '../browser-state.js';
-import { ControllerClient } from '../client.js';
-import { trackByIndex, trackByProperty } from '../utils.js';
+import { BrowserState } from '../browser-state';
+import { ControllerClient } from '../client';
+import { trackByIndex, trackByProperty } from '../utils';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 

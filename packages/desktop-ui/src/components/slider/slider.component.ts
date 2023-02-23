@@ -18,7 +18,7 @@ import {
     SkipSelf,
     ViewChild
 } from '@angular/core';
-import { ngValueAccessor, ValueAccessorBase } from '../../core/form.js';
+import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import Hammer from 'hammerjs';
 
 @Component({

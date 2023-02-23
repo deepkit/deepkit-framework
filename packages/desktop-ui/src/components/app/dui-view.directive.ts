@@ -9,7 +9,7 @@
  */
 
 import { Directive, EmbeddedViewRef, Injectable, Input, OnDestroy, TemplateRef, ViewContainerRef } from '@angular/core';
-import { detectChangesNextFrame, scheduleWindowResizeEvent } from './utils.js';
+import { detectChangesNextFrame, scheduleWindowResizeEvent } from './utils';
 
 let i = 0;
 

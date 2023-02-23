@@ -1,5 +1,5 @@
 import { Component, Input } from '@angular/core';
-import { Environment, Store } from '../store.js';
+import { Environment, Store } from '../store';
 import { arrayRemoveItem, copy } from '@deepkit/core';
 import { DialogComponent } from '@deepkit/desktop-ui';
 

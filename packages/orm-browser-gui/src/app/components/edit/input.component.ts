@@ -2,8 +2,8 @@ import { Component, ComponentFactoryResolver, ComponentRef, EventEmitter, Input,
 import { TableComponent, unsubscribe } from '@deepkit/desktop-ui';
 import { Type } from '@deepkit/type';
 import { Subscription } from 'rxjs';
-import { inputRegistry } from '../../registry.js';
-import { isProperty } from '../../utils.js';
+import { inputRegistry } from '../../registry';
+import { isProperty } from '../../utils';
 
 @Component({
     selector: 'orm-browser-property-editing',

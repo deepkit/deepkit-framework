@@ -1,8 +1,8 @@
 import { Component, Input } from '@angular/core';
 import { Changes, isAutoIncrementType, TypeProperty, TypePropertySignature } from '@deepkit/type';
-import { BrowserEntityState, BrowserState, ValidationErrors } from '../browser-state.js';
+import { BrowserEntityState, BrowserState, ValidationErrors } from '../browser-state';
 import { getInstanceStateFromItem } from '@deepkit/orm';
-import { isRequired } from '../utils.js';
+import { isRequired } from '../utils';
 
 @Component({
     selector: 'orm-browser-cell',

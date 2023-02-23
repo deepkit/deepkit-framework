@@ -1,12 +1,12 @@
 import { ChangeDetectorRef, Component, Input, OnChanges } from '@angular/core';
 import { trackByIndex } from '@deepkit/ui-library';
 import { ApiAction } from '@deepkit/api-console-api';
-import { extractDataStructureFromParameters, RpcActionState, RpcClientConfiguration, RpcExecution, RpcExecutionSubscription, Store } from '../../store.js';
+import { extractDataStructureFromParameters, RpcActionState, RpcClientConfiguration, RpcExecution, RpcExecutionSubscription, Store } from '../../store';
 import { DuiDialog } from '@deepkit/desktop-ui';
 import { DisconnectableObservable, RpcWebSocketClient } from '@deepkit/rpc';
-import { ControllerClient } from '../../client.js';
+import { ControllerClient } from '../../client';
 import { Observable, Subject } from 'rxjs';
-import { inspect, typeToTSJSONInterface } from '../../utils.js';
+import { inspect, typeToTSJSONInterface } from '../../utils';
 import { isSubject } from '@deepkit/core-rxjs';
 
 @Component({

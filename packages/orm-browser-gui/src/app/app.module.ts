@@ -1,8 +1,8 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 
-import { AppComponent } from './app.component.js';
-import { OrmBrowserModule } from './orm-browser.module.js';
+import { AppComponent } from './app.component';
+import { OrmBrowserModule } from './orm-browser.module';
 import { RouterModule } from '@angular/router';
 import { DuiAppModule, DuiButtonModule, DuiIconModule, DuiListModule, DuiWindowModule } from '@deepkit/desktop-ui';
 

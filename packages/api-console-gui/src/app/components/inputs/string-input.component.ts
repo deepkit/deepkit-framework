@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { ReflectionKind, Type } from '@deepkit/type';
-import { DataStructure } from '../../store.js';
-import { TypeDecoration } from '../../utils.js';
+import { DataStructure } from '../../store';
+import { TypeDecoration } from '../../utils';
 
 @Component({
     template: `

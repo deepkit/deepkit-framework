@@ -10,9 +10,9 @@
 
 import { NgModule } from '@angular/core';
 
-import { SplitterComponent } from './splitter.component.js';
+import { SplitterComponent } from './splitter.component';
 
-export * from './splitter.component.js';
+export * from './splitter.component';
 
 @NgModule({
     imports: [],

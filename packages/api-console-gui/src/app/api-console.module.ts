@@ -18,30 +18,30 @@ import {
     DuiWindowModule
 } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
-import { ConsoleComponent } from './views/console.component.js';
+import { ConsoleComponent } from './views/console.component';
 import { DeepkitClient } from '@deepkit/rpc';
-import { ControllerClient } from './client.js';
-import { Store } from './store.js';
-import { StringInputComponent } from './components/inputs/string-input.component.js';
-import { InputComponent } from './components/inputs/input.component.js';
-import { ArrayInputComponent } from './components/inputs/array-input.component.js';
-import { BinaryInputComponent } from './components/inputs/binary-input.component.js';
-import { DateInputComponent } from './components/inputs/date-input.component.js';
-import { EnumInputComponent } from './components/inputs/enum-input.component.js';
-import { JsonInputComponent } from './components/inputs/json-input.component.js';
-import { ClassInputComponent } from './components/inputs/class-input.component.js';
-import { HeadersComponent } from './components/headers.component.js';
-import { MapInputComponent } from './components/inputs/map-input.component.js';
-import { UnionInputComponent } from './components/inputs/union-input.component.js';
-import { EnvironmentDialogComponent } from './components/environment-dialog.component.js';
+import { ControllerClient } from './client';
+import { Store } from './store';
+import { StringInputComponent } from './components/inputs/string-input.component';
+import { InputComponent } from './components/inputs/input.component';
+import { ArrayInputComponent } from './components/inputs/array-input.component';
+import { BinaryInputComponent } from './components/inputs/binary-input.component';
+import { DateInputComponent } from './components/inputs/date-input.component';
+import { EnumInputComponent } from './components/inputs/enum-input.component';
+import { JsonInputComponent } from './components/inputs/json-input.component';
+import { ClassInputComponent } from './components/inputs/class-input.component';
+import { HeadersComponent } from './components/headers.component';
+import { MapInputComponent } from './components/inputs/map-input.component';
+import { UnionInputComponent } from './components/inputs/union-input.component';
+import { EnvironmentDialogComponent } from './components/environment-dialog.component';
 import { RouterModule } from '@angular/router';
-import { OverviewComponent } from './views/overview.component.js';
+import { OverviewComponent } from './views/overview.component';
 import { MarkdownModule } from 'ngx-markdown';
 import { DeepkitUIModule } from '@deepkit/ui-library';
-import { HttpRouteDetailComponent } from './views/http/route-detail.component.js';
-import { HttpRequestsComponent } from './views/http/results.component.js';
-import { RpcDetailComponent } from './views/rpc/rpc-detail.component.js';
-import { RpcInspectMessageComponent } from './views/rpc/rpc-inspect-message.component.js';
+import { HttpRouteDetailComponent } from './views/http/route-detail.component';
+import { HttpRequestsComponent } from './views/http/results.component';
+import { RpcDetailComponent } from './views/rpc/rpc-detail.component';
+import { RpcInspectMessageComponent } from './views/rpc/rpc-inspect-message.component';
 
 @NgModule({
     declarations: [
