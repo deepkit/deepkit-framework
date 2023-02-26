@@ -50,9 +50,6 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
     "testEnvironment": "node",
     "testMatch": [
       "**/*.spec.ts"

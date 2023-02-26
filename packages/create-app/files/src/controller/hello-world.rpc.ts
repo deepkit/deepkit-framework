@@ -1,6 +1,6 @@
 import { MaxLength } from '@deepkit/type';
 import { rpc } from '@deepkit/rpc';
-import { Service } from '../app/service.js';
+import { Service } from '../app/service';
 
 @rpc.controller('/main')
 export class HelloWorldControllerRpc {
