@@ -234,7 +234,7 @@ export type SerializedType =
 
 export type SerializedTypes = SerializedType[];
 
-const envGlobal = typeof globalThis !== "undefined"
+const envGlobal: any = typeof globalThis !== "undefined"
     ? globalThis
     : typeof global !== "undefined"
     ? global
@@ -353,7 +353,7 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
             }
 
             const classType = getClassName(type.classType);
-            const globalObject: boolean = envGlobal && (envGlobal as any)[classType] === type.classType;
+            const globalObject: boolean = envGlobal && envGlobal[classType] === type.classType;
 
             Object.assign(result, {
                 kind: ReflectionKind.class,
@@ -637,7 +637,7 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
                 }
             }
 
-            const classType = type.globalObject ? (envGlobal as any)[type.classType] : newClass
+            const classType = type.globalObject ? envGlobal[type.classType] : newClass
                 ? (type.superClass ? class extends (deserialize(type.superClass, state) as TypeClass).classType {
                     constructor(...args: any[]) {
                         super(...args);
