@@ -2,11 +2,11 @@ import { App } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
 import { Logger, JSONTransport } from '@deepkit/logger';
 
-import { HelloWorldControllerCli } from './src/controller/hello-world.cli.js';
-import { HelloWorldControllerHttp } from './src/controller/hello-world.http.js';
-import { HelloWorldControllerRpc } from './src/controller/hello-world.rpc.js';
-import { Service } from './src/app/service.js';
-import { AppConfig } from './src/app/config.js';
+import { HelloWorldControllerCli } from './src/controller/hello-world.cli';
+import { HelloWorldControllerHttp } from './src/controller/hello-world.http';
+import { HelloWorldControllerRpc } from './src/controller/hello-world.rpc';
+import { Service } from './src/app/service';
+import { AppConfig } from './src/app/config';
 
 new App({
     config: AppConfig,
