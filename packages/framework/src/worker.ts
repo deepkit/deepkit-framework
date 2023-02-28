@@ -216,9 +216,9 @@ export class WebWorker {
                 }
 
                 if (!options.key && this.options.sslKey) options.key = readFileSync(this.options.sslKey, 'utf8');
-                if (!options.ca && this.options.sslCa) options.key = readFileSync(this.options.sslCa, 'utf8');
+                if (!options.ca && this.options.sslCa) options.ca = readFileSync(this.options.sslCa, 'utf8');
                 if (!options.cert && this.options.sslCertificate) options.cert = readFileSync(this.options.sslCertificate, 'utf8');
-                if (!options.crl && this.options.sslCrl) options.cert = readFileSync(this.options.sslCrl, 'utf8');
+                if (!options.crl && this.options.sslCrl) options.crl = readFileSync(this.options.sslCrl, 'utf8');
 
                 this.servers = new https.Server(
                     Object.assign({ IncomingMessage: HttpRequest, ServerResponse: HttpResponse, }, options),
@@ -245,6 +245,11 @@ export class WebWorker {
     private startRpc() {
         if (this.server) {
             this.rpcListener = this.rpcServer.start({ server: this.server }, (writer: RpcConnectionWriter, request?: HttpRequest) => {
+                return createRpcConnection(this.injectorContext, this.rpcKernel, writer, request);
+            });
+        }
+        if (this.servers) {
+            this.rpcListener = this.rpcServer.start({ server: this.servers }, (writer: RpcConnectionWriter, request?: HttpRequest) => {
                 return createRpcConnection(this.injectorContext, this.rpcKernel, writer, request);
             });
         }
