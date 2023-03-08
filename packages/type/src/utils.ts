@@ -9,7 +9,7 @@
  */
 
 import { stringify, v4 } from 'uuid';
-import { createId } from '@paralleldrive/cuid2';
+import { init } from '@paralleldrive/cuid2';
 
 export class NoTypeReceived extends Error {
     constructor() {
@@ -42,8 +42,27 @@ export function stringifyUuid(buffer: Uint8Array, offset: number = 0): string {
 /**
  * Returns a new CUID as string.
  */
-export function cuid(): string {
-    return createId();
+export function cuid(
+    options?: {
+        counter?: () => number
+        length?: number
+        fingerprint?: string
+    }
+): string {
+    return init(options)();
+}
+
+/**
+ * Initializes a new CUID generator.
+ */
+export function initCuid(
+    options?: {
+        counter?: () => number
+        length?: number
+        fingerprint?: string
+    }
+): () => string {
+    return init(options);
 }
 
 export type Binary = ArrayBuffer | Uint8Array | Int8Array | Uint8ClampedArray | Uint16Array | Int16Array | Uint32Array | Int32Array | Float32Array | Float64Array;

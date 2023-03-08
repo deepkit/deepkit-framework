@@ -1873,7 +1873,7 @@ export class Serializer {
 
         this.deserializeRegistry.addDecorator(isCUIDType, (type, state) => {
             const v = state.accessor;
-            const check = `${v}.length >= 2 && /^[0-9a-z]+$/.test(${v})`; // createId from `@paralleldrive/cuid2` is available but I'm not sure if I can use it here
+            const check = `${v}.length >= 2 && /^[0-9a-z]+$/.test(${v})`; // isCuid from `@paralleldrive/cuid2` is available but I'm not sure if I can use it here
             state.addCode(`
                 if (!(${check})) ${state.throwCode(type, JSON.stringify('Not a CUID'))}
             `);
@@ -2063,7 +2063,7 @@ export class Serializer {
         });
         this.typeGuards.getRegistry(1).addDecorator(isCUIDType, (type, state) => {
             const v = state.originalAccessor;
-            const check = `${v}.length >= 2 && /^[0-9a-z]+$/.test(${v})`; // createId from `@paralleldrive/cuid2` is available but I'm not sure if I can use it here
+            const check = `${v}.length >= 2 && /^[0-9a-z]+$/.test(${v})`; // isCuid from `@paralleldrive/cuid2` is available but I'm not sure if I can use it here
             state.addSetterAndReportErrorIfInvalid('type', 'Not a CUID', check);
         });
         this.typeGuards.getRegistry(1).addDecorator(isMongoIdType, (type, state) => {
