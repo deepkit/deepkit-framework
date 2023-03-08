@@ -40,6 +40,7 @@ import {
     hasDefaultValue,
     hasEmbedded,
     isBackReferenceType,
+    isCUIDType,
     isMongoIdType,
     isNullable,
     isOptional,
@@ -1870,6 +1871,14 @@ export class Serializer {
             `);
         });
 
+        this.deserializeRegistry.addDecorator(isCUIDType, (type, state) => {
+            const v = state.accessor;
+            const check = `${v}.length >= 2 && /^[0-9a-z]+$/.test(${v})`; // createId from `@paralleldrive/cuid2` is available but I'm not sure if I can use it here
+            state.addCode(`
+                if (!(${check})) ${state.throwCode(type, JSON.stringify('Not a CUID'))}
+            `);
+        });
+
         this.deserializeRegistry.addDecorator(isMongoIdType, (type, state) => {
             const check = `${state.accessor}.length === 24 || ${state.accessor}.length === 0`;
             state.addCode(`
@@ -2051,6 +2060,11 @@ export class Serializer {
             const v = state.originalAccessor;
             const check = `${state.setter} && ${v}.length === 36 && ${v}[23] === '-' && ${v}[18] === '-' && ${v}[13] === '-' && ${v}[8] === '-'`;
             state.addSetterAndReportErrorIfInvalid('type', 'Not a UUID', check);
+        });
+        this.typeGuards.getRegistry(1).addDecorator(isCUIDType, (type, state) => {
+            const v = state.originalAccessor;
+            const check = `${v}.length >= 2 && /^[0-9a-z]+$/.test(${v})`; // createId from `@paralleldrive/cuid2` is available but I'm not sure if I can use it here
+            state.addSetterAndReportErrorIfInvalid('type', 'Not a CUID', check);
         });
         this.typeGuards.getRegistry(1).addDecorator(isMongoIdType, (type, state) => {
             state.addSetterAndReportErrorIfInvalid('type', 'Not a MongoId (ObjectId)', `${state.setter} && (${state.originalAccessor}.length === 24 || ${state.originalAccessor}.length === 0)`);

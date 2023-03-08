@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@deepkit/type-spec": "^1.0.1-alpha.89",
+    "@paralleldrive/cuid2": "^2.2.0",
     "@types/uuid": "^8.3.0",
     "buffer": "^5.2.1",
     "uuid": "^8.3.2"

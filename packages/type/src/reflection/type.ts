@@ -1453,6 +1453,18 @@ export type AutoIncrement = { __meta?: ['autoIncrement'] };
 export type UUID = string & { __meta?: ['UUIDv4'] };
 
 /**
+ * CUID 2, as string, serialized as string in JSON, and binary in database.
+ * Use `cuid()` as handy initializer.
+ *
+ * ```typescript
+ * class Entity {
+ *     id: CUID = cuid();
+ * }
+ * ```
+ */
+export type CUID = string & { __meta?: ['CUID2'] };
+
+/**
  * MongoDB's ObjectID type. serialized as string in JSON, ObjectID in database.
  */
 export type MongoId = string & { __meta?: ['mongoId'] };
@@ -1544,12 +1556,18 @@ export interface BackReferenceOptionsResolved {
 export const backReferenceAnnotation = new AnnotationDefinition<BackReferenceOptionsResolved>('backReference');
 export const validationAnnotation = new AnnotationDefinition<{ name: string, args: Type[] }>('validation');
 export const UUIDAnnotation = new AnnotationDefinition('UUID');
+export const CUIDAnnotation = new AnnotationDefinition('CUID');
 export const mongoIdAnnotation = new AnnotationDefinition('mongoID');
 export const uuidAnnotation = new AnnotationDefinition('uuid');
+export const cuidAnnotation = new AnnotationDefinition('cuid');
 export const defaultAnnotation = new AnnotationDefinition('default');
 
 export function isUUIDType(type: Type): boolean {
     return uuidAnnotation.getFirst(type) !== undefined;
+}
+
+export function isCUIDType(type: Type): boolean {
+    return cuidAnnotation.getFirst(type) !== undefined;
 }
 
 export function isPrimaryKeyType(type: Type): boolean {
@@ -1830,6 +1848,9 @@ export const typeDecorators: TypeDecorator[] = [
                 return true;
             case 'UUIDv4':
                 uuidAnnotation.register(annotations, true);
+                return true;
+            case 'CUID2':
+                cuidAnnotation.register(annotations, true);
                 return true;
             case 'embedded': {
                 const optionsType = meta.type.types[1];
