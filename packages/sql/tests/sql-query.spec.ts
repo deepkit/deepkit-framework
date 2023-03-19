@@ -105,6 +105,9 @@ test('QueryToSql', () => {
     expect(queryToSql.convert({ id: { $lte: 44 } })).toBe(`user.id <= ?`);
     expect(queryToSql.convert({ id: { $in: [44, 55] } })).toBe(`user.id IN (?, ?)`);
 
+    expect(queryToSql.convert({ id: { $eq: null } })).toBe(`user.id IS NULL`);
+    expect(queryToSql.convert({ id: { $ne: null } })).toBe(`user.id IS NOT NULL`);
+
     expect(() => queryToSql.convert({ invalidField: { $nin: [44, 55] } })).toThrowError('No type found for path invalidField');
 
     expect(queryToSql.convert({ id: { $nin: [44, 55] } })).toBe(`user.id NOT IN (?, ?)`);

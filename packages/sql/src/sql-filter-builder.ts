@@ -30,6 +30,10 @@ export class SQLFilterBuilder {
         return 'IS NULL';
     }
 
+    isNotNull() {
+        return 'IS NOT NULL';
+    }
+
     regexpComparator() {
         return 'REGEXP';
     }
@@ -97,7 +101,7 @@ export class SQLFilterBuilder {
             rvalue = `${this.quoteIdWithTable(value.substr(1))}`;
         } else {
             if (value === undefined || value === null) {
-                cmpSign = this.isNull();
+                cmpSign = cmpSign === '!=' ? this.isNotNull() : this.isNull();
                 rvalue = '';
             } else {
                 const property = resolvePath(fieldName, this.schema.type);
