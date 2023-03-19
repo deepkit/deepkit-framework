@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { ReceiveType, ReflectionClass, resolveReceiveType, typeOf } from '../src/reflection/reflection.js';
-import { AutoIncrement, BackReference, findMember, isReferenceType, MapName, MongoId, PrimaryKey, Reference, UUID } from '../src/reflection/type.js';
+import { AutoIncrement, BackReference, CUID, findMember, isReferenceType, MapName, MongoId, PrimaryKey, Reference, UUID } from '../src/reflection/type.js';
 import { cast, cloneClass, serialize } from '../src/serializer-facade.js';
 import { createReference } from '../src/reference.js';
 import { unpopulatedSymbol } from '../src/core.js';
@@ -470,6 +470,9 @@ test('optional basics', () => {
     expect(roundTrip<UUID | undefined>(undefined)).toBe(undefined);
     expect(roundTrip<UUID | undefined>(null)).toBe(undefined);
 
+    expect(roundTrip<CUID | undefined>(undefined)).toBe(undefined);
+    expect(roundTrip<CUID | undefined>(null)).toBe(undefined);
+
     expect(roundTrip<MongoId | undefined>(undefined)).toBe(undefined);
     expect(roundTrip<MongoId | undefined>(null)).toBe(undefined);
 
@@ -532,6 +535,9 @@ test('nullable basics', () => {
 
     expect(roundTrip<UUID | null>(undefined)).toBe(null);
     expect(roundTrip<UUID | null>(null)).toBe(null);
+
+    expect(roundTrip<CUID | null>(undefined)).toBe(null);
+    expect(roundTrip<CUID | null>(null)).toBe(null);
 
     expect(roundTrip<MongoId | null>(undefined)).toBe(null);
     expect(roundTrip<MongoId | null>(null)).toBe(null);

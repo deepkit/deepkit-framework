@@ -2,6 +2,7 @@ import { describe, expect, test } from '@jest/globals';
 import { hasCircularReference, ReceiveType, reflect, ReflectionClass, resolveReceiveType, typeOf, visit } from '../src/reflection/reflection.js';
 import {
     assertType,
+    CUID,
     Embedded,
     Excluded,
     excludedAnnotation,
@@ -193,6 +194,8 @@ test('type alias preserved', () => {
     expect(stringifyType(typeOf<MyString>())).toBe('MyString');
 
     expect(stringifyType(typeOf<UUID>())).toBe('UUID');
+
+    expect(stringifyType(typeOf<CUID>())).toBe('CUID');
 });
 
 test('stringify', () => {

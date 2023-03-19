@@ -55,7 +55,7 @@ import { validate, ValidatorError } from '../src/validator.js';
 import { expectEqualType } from './utils.js';
 import { MyAlias } from './types.js';
 import { resolveRuntimeType } from '../src/reflection/processor.js';
-import { uuid } from '../src/utils.js';
+import { cuid, uuid } from '../src/utils.js';
 
 test('class', () => {
     class Entity {
@@ -1968,6 +1968,7 @@ test('Array<T>', () => {
 test('default function expression', () => {
     class post {
         uuid: string = uuid();
+        cuid: string = cuid();
         id: integer & AutoIncrement & PrimaryKey = 0;
         created: Date = new Date;
         type: string = 'asd';
@@ -1975,6 +1976,7 @@ test('default function expression', () => {
 
     const reflection = ReflectionClass.from(post);
     expect(reflection.getProperty('uuid').hasDefaultFunctionExpression()).toBe(true);
+    expect(reflection.getProperty('cuid').hasDefaultFunctionExpression()).toBe(true);
     expect(reflection.getProperty('id').hasDefaultFunctionExpression()).toBe(false);
     expect(reflection.getProperty('created').hasDefaultFunctionExpression()).toBe(false);
     expect(reflection.getProperty('type').hasDefaultFunctionExpression()).toBe(false);
