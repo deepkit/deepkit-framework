@@ -345,13 +345,10 @@ export class SQLitePersistence extends SQLPersistence {
         await connection.exec(`DROP TABLE IF EXISTS _b`);
 
         const sql = `
-            CREATE
-            TEMPORARY TABLE _b AS
-            SELECT _.${prepared.originPkField}, ${selects.join(', ')}
-            FROM (SELECT ${_rename.join(', ')} FROM (VALUES ${valuesValues.join(', ')})) as _
-                INNER JOIN (SELECT ${_renameSet.join(', ')} FROM (VALUES ${valuesSetValues.join(', ')})) as _
-            set
-            ON (_.${prepared.originPkField} = _ set.${prepared.originPkField})
+              CREATE TEMPORARY TABLE _b AS
+                SELECT _.${prepared.originPkField}, ${selects.join(', ')}
+                FROM (SELECT ${_rename.join(', ')} FROM (VALUES ${valuesValues.join(', ')})) as _
+                INNER JOIN (SELECT ${_renameSet.join(', ')} FROM (VALUES ${valuesSetValues.join(', ')})) as _set ON (_.${prepared.originPkField} = _set.${prepared.originPkField})
                 INNER JOIN ${prepared.tableName} as _origin ON (_origin.${prepared.pkField} = _.${prepared.originPkField});
         `;
 
@@ -359,10 +356,10 @@ export class SQLitePersistence extends SQLPersistence {
 
         const updateSql = `
             UPDATE
-                ${prepared.tableName}
+            ${prepared.tableName}
             SET ${prepared.setNames.join(', ')}
             FROM
-                _b
+            _b
             WHERE ${prepared.tableName}.${prepared.pkField} = _b.${prepared.originPkField};
         `;
         await connection.exec(updateSql);
@@ -424,13 +421,9 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
 
         try {
             await connection.exec(`DROP TABLE IF EXISTS _tmp_d`);
-            await connection.run(`CREATE
-            TEMPORARY TABLE _tmp_d as
-            ${select.sql};`, select.params);
+            await connection.run(`CREATE TEMPORARY TABLE _tmp_d as ${select.sql};`, select.params);
 
-            const sql = `DELETE
-                         FROM ${tableName}
-                         WHERE ${tableName}.${pkField} IN (SELECT * FROM _tmp_d)`;
+            const sql = `DELETE FROM ${tableName} WHERE ${tableName}.${pkField} IN (SELECT * FROM _tmp_d)`;
             await connection.run(sql);
             const rows = await connection.execAndReturnAll('SELECT * FROM _tmp_d');
 
@@ -523,9 +516,7 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         try {
             await connection.exec(`DROP TABLE IF EXISTS _b;`);
 
-            const createBSQL = `CREATE
-            TEMPORARY TABLE _b AS
-            ${selectSQL.sql};`;
+            const createBSQL = `CREATE TEMPORARY TABLE _b AS ${selectSQL.sql};`;
             await connection.run(createBSQL, selectSQL.params);
 
             await connection.run(sql);
