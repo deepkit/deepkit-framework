@@ -30,16 +30,21 @@ export class SQLFilterBuilder {
         return 'IS NULL';
     }
 
-    regexpComparator() {
-        return 'REGEXP';
+    regexpComparator(lvalue: string, value: RegExp): string {
+        return `${lvalue} REGEXP ${this.bindParam(value.source)}`;
     }
 
     convert(filter: Filter): string {
         return this.conditions(filter, 'AND').trim();
     }
 
+    protected bindParam(value: any): string {
+        this.params.push(value);
+        return this.placeholderStrategy.getPlaceholder();
+    }
+
     /**
-     * Normalizes values necessary for the conection driver to bind parameters for prepared statements.
+     * Normalizes values necessary for the connection driver to bind parameters for prepared statements.
      * E.g. SQLite does not support boolean, so we convert boolean to number.
      */
     protected bindValue(value: any): any {
@@ -88,7 +93,7 @@ export class SQLFilterBuilder {
         else if (comparison === 'in') cmpSign = 'IN';
         else if (comparison === 'nin') cmpSign = 'NOT IN';
         else if (comparison === 'like') cmpSign = 'LIKE';
-        else if (comparison === 'regex') cmpSign = this.regexpComparator();
+        else if (comparison === 'regex') return this.regexpComparator(this.quoteIdWithTable(fieldName), value);
         else throw new Error(`Comparator ${comparison} not supported.`);
 
         const referenceValue = 'string' === typeof value && value[0] === '$';
@@ -147,6 +152,7 @@ export class SQLFilterBuilder {
 
             if (i === '$exists') sql.push(this.platform.quoteValue(this.schema.hasProperty(i)));
             else if (i[0] === '$') sql.push(this.condition(fieldName, filter[i], i.substring(1)));
+            else if (filter[i] instanceof RegExp) sql.push(this.condition(i, filter[i], 'regex'));
             else sql.push(this.condition(i, filter[i], 'eq'));
         }
 

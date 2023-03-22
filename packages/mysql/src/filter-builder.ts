@@ -10,9 +10,10 @@
 
 import { SQLFilterBuilder } from '@deepkit/sql';
 
-export class PostgreSQLFilterBuilder extends SQLFilterBuilder {
+export class MySQLSQLFilterBuilder extends SQLFilterBuilder {
     regexpComparator(lvalue: string, value: RegExp) {
-        if (value.flags.includes('i')) return `${lvalue} ~* ${this.bindParam(value.source)}`;
-        return `${lvalue} ~ ${this.bindParam(value.source)}`;
+        //mysql is per default case-sensitive, so we need to add the BINARY keyword
+        if (value.flags.includes('i')) return `${lvalue} REGEXP ${this.bindParam(value.source)}`;
+        return `BINARY ${lvalue} REGEXP ${this.bindParam(value.source)}`;
     }
 }

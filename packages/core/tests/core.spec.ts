@@ -4,6 +4,7 @@ import {
     changeClass,
     collectForMicrotask,
     createDynamicClass,
+    escapeRegExp,
     getClassName,
     getClassTypeFromInstance,
     getObjectKeysSize,
@@ -541,4 +542,16 @@ test('getParentClass', () => {
     expect(getParentClass(User)).toBe(undefined);
     expect(getParentClass(Admin)).toBe(User);
     expect(getParentClass(SuperAdmin)).toBe(Admin);
+});
+
+test('escapeRegExp', () => {
+    expect(escapeRegExp('a')).toBe('a');
+    expect(escapeRegExp('a.')).toBe('a\\.');
+    expect(escapeRegExp('a.\\')).toBe('a\\.\\\\');
+    expect(escapeRegExp('a.\\b')).toBe('a\\.\\\\b');
+    expect(escapeRegExp('a.\\b\\')).toBe('a\\.\\\\b\\\\');
+    expect(escapeRegExp('a.\\b\\c')).toBe('a\\.\\\\b\\\\c');
+
+    expect(new RegExp('^' + escapeRegExp('a[.](c')).exec('a[.](c')![0]).toEqual('a[.](c');
+    expect(new RegExp('^' + escapeRegExp('a[.](c')).exec('da[.](c')).toEqual(null);
 });

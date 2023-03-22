@@ -710,3 +710,10 @@ export function getCurrentFileName(): string {
     }
     return path;
 }
+
+/**
+ * Escape special characters in a regex string, so it can be used as a literal string.
+ */
+export function escapeRegExp(string: string): string {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+}

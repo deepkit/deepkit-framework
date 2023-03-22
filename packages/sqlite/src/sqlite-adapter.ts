@@ -126,6 +126,13 @@ export class SQLiteConnection extends SQLConnection {
         super(connectionPool, logger, transaction, stopwatch);
         this.db = new SQLiteConnection.DatabaseConstructor(this.dbPath);
         this.db.exec('PRAGMA foreign_keys=ON');
+        this.db.function('regexp', { deterministic: true }, (regex, text) => {
+            const splitter = regex.indexOf('::');
+            if (splitter !== -1) {
+                return new RegExp(regex.substring(splitter + 2), regex.substring(0, splitter)).test(text) ? 1 : 0;
+            }
+            return new RegExp(regex).test(text) ? 1 : 0;
+        });
     }
 
     async prepare(sql: string) {
@@ -302,7 +309,7 @@ export class SQLitePersistence extends SQLPersistence {
         for (let i = 0; i < changeSets.length; i++) {
             params.push(prepared.primaryKeys[i]);
             let pkValue = placeholderStrategy.getPlaceholder();
-            valuesValues.push('(' + pkValue + ',' +valuesNames.map(name => {
+            valuesValues.push('(' + pkValue + ',' + valuesNames.map(name => {
                 params.push(prepared.values[name][i]);
                 return placeholderStrategy.getPlaceholder();
             }).join(',') + ')');
@@ -338,10 +345,13 @@ export class SQLitePersistence extends SQLPersistence {
         await connection.exec(`DROP TABLE IF EXISTS _b`);
 
         const sql = `
-              CREATE TEMPORARY TABLE _b AS
-                SELECT _.${prepared.originPkField}, ${selects.join(', ')}
-                FROM (SELECT ${_rename.join(', ')} FROM (VALUES ${valuesValues.join(', ')})) as _
-                INNER JOIN (SELECT ${_renameSet.join(', ')} FROM (VALUES ${valuesSetValues.join(', ')})) as _set ON (_.${prepared.originPkField} = _set.${prepared.originPkField})
+            CREATE
+            TEMPORARY TABLE _b AS
+            SELECT _.${prepared.originPkField}, ${selects.join(', ')}
+            FROM (SELECT ${_rename.join(', ')} FROM (VALUES ${valuesValues.join(', ')})) as _
+                INNER JOIN (SELECT ${_renameSet.join(', ')} FROM (VALUES ${valuesSetValues.join(', ')})) as _
+            set
+            ON (_.${prepared.originPkField} = _ set.${prepared.originPkField})
                 INNER JOIN ${prepared.tableName} as _origin ON (_origin.${prepared.pkField} = _.${prepared.originPkField});
         `;
 
@@ -349,10 +359,10 @@ export class SQLitePersistence extends SQLPersistence {
 
         const updateSql = `
             UPDATE
-            ${prepared.tableName}
+                ${prepared.tableName}
             SET ${prepared.setNames.join(', ')}
             FROM
-            _b
+                _b
             WHERE ${prepared.tableName}.${prepared.pkField} = _b.${prepared.originPkField};
         `;
         await connection.exec(updateSql);
@@ -414,9 +424,13 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
 
         try {
             await connection.exec(`DROP TABLE IF EXISTS _tmp_d`);
-            await connection.run(`CREATE TEMPORARY TABLE _tmp_d as ${select.sql};`, select.params);
+            await connection.run(`CREATE
+            TEMPORARY TABLE _tmp_d as
+            ${select.sql};`, select.params);
 
-            const sql = `DELETE FROM ${tableName} WHERE ${tableName}.${pkField} IN (SELECT * FROM _tmp_d)`;
+            const sql = `DELETE
+                         FROM ${tableName}
+                         WHERE ${tableName}.${pkField} IN (SELECT * FROM _tmp_d)`;
             await connection.run(sql);
             const rows = await connection.execAndReturnAll('SELECT * FROM _tmp_d');
 
@@ -509,7 +523,9 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         try {
             await connection.exec(`DROP TABLE IF EXISTS _b;`);
 
-            const createBSQL = `CREATE TEMPORARY TABLE _b AS ${selectSQL.sql};`;
+            const createBSQL = `CREATE
+            TEMPORARY TABLE _b AS
+            ${selectSQL.sql};`;
             await connection.run(createBSQL, selectSQL.params);
 
             await connection.run(sql);

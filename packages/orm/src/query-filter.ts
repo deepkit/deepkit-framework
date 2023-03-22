@@ -140,7 +140,11 @@ export function convertQueryFilter<T, K extends keyof T, Q extends FilterQuery<T
         }
 
         if (property) {
-            fieldValue = convertProperty(schema, property, filter[key], key, converter, fieldNamesMap, customMapping);
+            if ((filter[key] as any) instanceof RegExp) {
+                fieldValue = filter[key];
+            } else {
+                fieldValue = convertProperty(schema, property, filter[key], key, converter, fieldNamesMap, customMapping);
+            }
         }
 
         if (fieldValue !== undefined) {

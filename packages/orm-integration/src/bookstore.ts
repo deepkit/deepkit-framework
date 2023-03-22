@@ -266,6 +266,28 @@ export const bookstoreTests = {
         database.disconnect();
     },
 
+    async regexp(databaseFactory: DatabaseFactory) {
+        const database = await databaseFactory(entities);
+        const peter = new User('Peter');
+        const book1 = new Book(peter, 'Super book');
+        const book2 = new Book(peter, 'super!');
+        const book3 = new Book(peter, 'What if');
+        await database.persist(book1, book2, book3);
+
+        {
+            const books = await database.query(Book).filter({ title: /^Super/}).find();
+            expect(books.length).toBe(1);
+            expect(books[0].title).toBe('Super book');
+        }
+
+        {
+            const books = await database.query(Book).filter({ title: /^Super/i}).find();
+            expect(books.length).toBe(2);
+            expect(books[0].title).toBe('Super book');
+            expect(books[1].title).toBe('super!');
+        }
+    },
+
     async reference(databaseFactory: DatabaseFactory) {
         const database = await databaseFactory(entities);
 
