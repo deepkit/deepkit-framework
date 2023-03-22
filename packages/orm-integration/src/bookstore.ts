@@ -286,6 +286,7 @@ export const bookstoreTests = {
             expect(books[0].title).toBe('Super book');
             expect(books[1].title).toBe('super!');
         }
+        database.disconnect();
     },
 
     async reference(databaseFactory: DatabaseFactory) {
