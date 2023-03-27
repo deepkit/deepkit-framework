@@ -34,6 +34,14 @@ export class SQLFilterBuilder {
         return `${lvalue} REGEXP ${this.bindParam(value.source)}`;
     }
 
+    isNotNull() {
+        return 'IS NOT NULL';
+    }
+
+    regexpComparator() {
+        return 'REGEXP';
+    }
+
     convert(filter: Filter): string {
         return this.conditions(filter, 'AND').trim();
     }
@@ -102,7 +110,7 @@ export class SQLFilterBuilder {
             rvalue = `${this.quoteIdWithTable(value.substr(1))}`;
         } else {
             if (value === undefined || value === null) {
-                cmpSign = this.isNull();
+                cmpSign = cmpSign === '!=' ? this.isNotNull() : this.isNull();
                 rvalue = '';
             } else {
                 const property = resolvePath(fieldName, this.schema.type);
