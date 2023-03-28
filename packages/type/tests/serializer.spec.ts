@@ -20,10 +20,12 @@ import {
     int8,
     integer,
     MapName,
+    metaAnnotation,
     PrimaryKey,
     Reference,
     ReflectionKind,
     SignedBinaryBigInt,
+    Type,
     TypeProperty,
     TypePropertySignature
 } from '../src/reflection/type.js';
@@ -1122,4 +1124,35 @@ test('patch', () => {
         const data = patch<Order>({ id: 5, 'shippingAddress.additional.randomName': 12 }, undefined, undefined, underscoreNamingStrategy);
         expect(data).toEqual({ id: 5, 'shipping_address.additional.randomName': '12' });
     }
+});
+
+test('extend with custom type', () => {
+    type StringifyTransport = { __meta?: ['stringifyTransport'] };
+
+    function isStringifyTransportType(type: Type): boolean {
+        return !!metaAnnotation.getForName(type, 'stringifyTransport');
+    }
+
+    serializer.serializeRegistry.addPostHook((type, state) => {
+        if (!isStringifyTransportType(type)) return;
+        state.addSetter(`JSON.stringify(${state.accessor})`);
+    });
+    serializer.deserializeRegistry.addPreHook((type, state) => {
+        if (!isStringifyTransportType(type)) return;
+        state.addSetter(`JSON.parse(${state.accessor})`);
+    });
+
+    class MyType {
+        test!: string;
+    }
+
+    class Entity {
+        obj: MyType & StringifyTransport = { test: 'abc' };
+    }
+
+    const e = new Entity();
+    const s = serialize<Entity>(e, undefined, serializer);
+    expect(s.obj).toBe('{"test":"abc"}');
+    const d = deserialize<Entity>(s, undefined, serializer);
+    expect(d.obj).toEqual({ test: 'abc' });
 });
