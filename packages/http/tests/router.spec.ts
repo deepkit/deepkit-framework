@@ -6,7 +6,7 @@ import { eventDispatcher } from '@deepkit/event';
 import { HttpBody, HttpBodyValidation, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model.js';
 import { getClassName, isObject, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils.js';
-import { Excluded, Group, MinLength, PrimaryKey, Reference, typeSettings, UnpopulatedCheck } from '@deepkit/type';
+import { Excluded, Group, metaAnnotation, MinLength, PrimaryKey, Reference, serializer, Type, typeSettings, UnpopulatedCheck } from '@deepkit/type';
 
 test('router', async () => {
     class Controller {
@@ -965,6 +965,7 @@ test('unpopulated entity without type information', async () => {
 
     class User {
         invisible: boolean & Excluded = false;
+
         constructor(public id: number, public group: Group & Reference) {
         }
     }
@@ -1007,7 +1008,7 @@ test('unpopulated entity without type information', async () => {
         async action4() {
             const o = new User(2, undefined as any);
             disableReference(o);
-            return [o, {another: 3}];
+            return [o, { another: 3 }];
         }
     }
 
@@ -1015,7 +1016,83 @@ test('unpopulated entity without type information', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/1'))).json).toEqual([{ id: 2 }]);
     expect((await httpKernel.request(HttpRequest.GET('/2'))).json).toEqual([{ id: 2 }]);
     expect((await httpKernel.request(HttpRequest.GET('/3'))).json).toEqual([{ id: 2 }]);
-    expect((await httpKernel.request(HttpRequest.GET('/4'))).json).toEqual([{ id: 2, invisible: false }, {another: 3}]);
+    expect((await httpKernel.request(HttpRequest.GET('/4'))).json).toEqual([{ id: 2, invisible: false }, { another: 3 }]);
+});
+
+test('extend with custom type', async () => {
+    type StringifyTransport = { __meta?: ['stringifyTransport'] };
+
+    function isStringifyTransportType(type: Type): boolean {
+        return !!metaAnnotation.getForName(type, 'stringifyTransport');
+    }
+
+    serializer.serializeRegistry.addPostHook((type, state) => {
+        if (!isStringifyTransportType(type)) return;
+        state.addSetter(`JSON.stringify(${state.accessor})`);
+    });
+    serializer.deserializeRegistry.addPreHook((type, state) => {
+        if (!isStringifyTransportType(type)) return;
+        state.addSetter(`JSON.parse(${state.accessor})`);
+    });
+
+    class MyType {
+        test!: string;
+    }
+
+    class Entity {
+        obj: MyType & StringifyTransport = { test: 'abc' };
+    }
+
+
+    class Controller {
+        @http.GET('/1')
+        action1(entity: HttpQueries<Entity>) {
+            return entity.obj;
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    expect((await httpKernel.request(HttpRequest.GET('/1?obj={"test": "def"}'))).json).toEqual({ test: 'def' });
+});
+
+
+test('session', async () => {
+    class User {
+        constructor(public username: string) {
+        }
+    }
+
+    class HttpSession {
+        protected user?: User;
+
+        getUser(): User {
+            if (!this.user) throw new Error('Not authorized');
+            return this.user;
+        }
+
+        setUser(user: User) {
+            this.user = user;
+        }
+    }
+
+    class Controller {
+        @http.GET('/1')
+        handle(session: HttpSession) {
+            return session.getUser().username;
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [{
+        provide: HttpSession, scope: 'http'
+    }], [httpWorkflow.onRequest.listen(async (event) => {
+        const auth = event.request.headers['auth'];
+        if (auth) {
+            const session = event.injectorContext.get(HttpSession);
+            //load user from somewhere
+            session.setUser(new User('abc'));
+        }
+    })]);
+    expect((await httpKernel.request(HttpRequest.GET('/1').header('auth', '123'))).json).toEqual('abc');
 });
 
 //disabled for the moment since critical functionality has been removed
