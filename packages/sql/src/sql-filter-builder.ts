@@ -38,10 +38,6 @@ export class SQLFilterBuilder {
         return 'IS NOT NULL';
     }
 
-    regexpComparator() {
-        return 'REGEXP';
-    }
-
     convert(filter: Filter): string {
         return this.conditions(filter, 'AND').trim();
     }
