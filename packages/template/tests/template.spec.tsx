@@ -313,6 +313,33 @@ test('literals are escaped', async () => {
     expect(await simpleRender(optimiseFn(test1)())).toBe('<div>&lt;h1&gt;</div>');
 });
 
+test('class components props', async () => {
+    class Title {
+        constructor(protected props: { title: string }) {}
+        async render() {
+            return <h1>{this.props.title}</h1>;
+        }
+    }
+
+    function test1() {
+        return <Title title="Test" />;
+    }
+
+    expect(await simpleRender(test1())).toBe('<h1>Test</h1>');
+});
+
+test('functional components props', async () => {
+    async function Title(props: { title: string }) {
+        return <h1>{props.title}</h1>;
+    }
+
+    function test1() {
+        return <Title title="Test" />;
+    }
+
+    expect(await simpleRender(test1())).toBe('<h1>Test</h1>');
+});
+
 test('Vars are escaped', async () => {
     function test1(val: string) {
         return <div>{val}</div>;

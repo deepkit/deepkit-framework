@@ -110,7 +110,7 @@ async function renderChildren(injector: Injector, contents: ElementStructChildre
 }
 
 interface TemplateCacheCall {
-    templateCall?(attributes: any, children: any): any;
+    templateCall?(attributes: any, ...args: any[]): any;
 }
 
 export async function render(injector: Injector, struct: ElementStruct | string | (ElementStruct | string)[], stopwatch?: Stopwatch): Promise<any> {
@@ -205,7 +205,7 @@ export async function render(injector: Injector, struct: ElementStruct | string 
         }
 
         try {
-            const res = await element.templateCall!(struct.attributes as any || {}, html(children));
+            const res = await element.templateCall!(undefined, struct.attributes as any || {}, html(children));
             if (isElementStruct(res)) {
                 return await render(injector, res, stopwatch);
             } else {
