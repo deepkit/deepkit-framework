@@ -19,6 +19,7 @@ import {
     ClassElement,
     ClassExpression,
     CompilerHost,
+    CompilerOptions,
     ConditionalTypeNode,
     ConstructorDeclaration,
     ConstructorTypeNode,
@@ -144,6 +145,7 @@ import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spe
 import { Resolver } from './resolver.js';
 import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import { contains } from 'micromatch';
+import { parseTsconfig } from 'get-tsconfig';
 
 export function encodeOps(ops: ReflectionOp[]): string {
     return ops.map(v => String.fromCharCode(v + 33)).join('');
@@ -519,6 +521,8 @@ export class ReflectionTransformer implements CustomTransformer {
     protected resolver: Resolver;
     protected host: CompilerHost;
 
+    protected compilerOptions: CompilerOptions;
+
     /**
      * When an deep call expression was found a script-wide variable is necessary
      * as temporary storage.
@@ -530,8 +534,18 @@ export class ReflectionTransformer implements CustomTransformer {
     ) {
         this.f = context.factory;
         this.nodeConverter = new NodeConverter(this.f);
-        this.host = createCompilerHost(context.getCompilerOptions());
-        this.resolver = new Resolver(context.getCompilerOptions(), this.host);
+        this.compilerOptions = context.getCompilerOptions();
+        //some builder do not provide the full compiler options (e.g. webpack in nx),
+        //so we need to load the file manually and apply what we need.
+        if ('string' === typeof this.compilerOptions.configFilePath && !this.compilerOptions.paths) {
+            const resolved = parseTsconfig(this.compilerOptions.configFilePath);
+            if (resolved.compilerOptions) {
+                this.compilerOptions.paths = resolved.compilerOptions.paths;
+            }
+        }
+
+        this.host = createCompilerHost(this.compilerOptions);
+        this.resolver = new Resolver(this.compilerOptions, this.host);
     }
 
     forHost(host: CompilerHost): this {
@@ -575,7 +589,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
         if (!(sourceFile as any).locals) {
             //@ts-ignore
-            ts.bindSourceFile(sourceFile, this.context.getCompilerOptions());
+            ts.bindSourceFile(sourceFile, this.compilerOptions);
         }
 
         this.addImports = [];
@@ -869,7 +883,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
         const embedTopExpression: Statement[] = [];
         if (this.addImports.length) {
-            const compilerOptions = this.context.getCompilerOptions();
+            const compilerOptions = this.compilerOptions;
             const handledIdentifier: string[] = [];
             for (const imp of this.addImports) {
                 if (handledIdentifier.includes(getIdentifierName(imp.identifier))) continue;
@@ -886,7 +900,7 @@ export class ReflectionTransformer implements CustomTransformer {
                         SyntaxKind.MultiLineCommentTrivia,
                         '@ts-ignore',
                         true,
-                    )
+                    );
                     embedTopExpression.push(typeDeclWithComment);
                 } else {
                     //import {identifier} from './bar.js'
@@ -902,7 +916,7 @@ export class ReflectionTransformer implements CustomTransformer {
                         SyntaxKind.MultiLineCommentTrivia,
                         '@ts-ignore',
                         true,
-                    )
+                    );
                     embedTopExpression.push(typeDeclWithComment);
                 }
             }
@@ -1696,7 +1710,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
         //currently knownLibFilesForCompilerOptions from @typescript/vfs doesn't return correct lib files for ES2022,
         //so we switch here to es2021 if bigger than es2021.
-        const options = {...this.context.getCompilerOptions()};
+        const options = { ...this.compilerOptions };
         if (options.target && (options.target > ScriptTarget.ES2021 && options.target < ScriptTarget.ESNext)) {
             options.target = ScriptTarget.ES2021;
         }
@@ -2570,11 +2584,19 @@ export class ReflectionTransformer implements CustomTransformer {
             }
 
             if (reflection === undefined && packageJson.reflection !== undefined) {
-                return { mode: this.parseReflectionMode(packageJson.reflection, currentDir), baseDir: currentDir, options: this.applyReflectionOptionsDefaults(packageJson.reflectionOptions || {}) };
+                return {
+                    mode: this.parseReflectionMode(packageJson.reflection, currentDir),
+                    baseDir: currentDir,
+                    options: this.applyReflectionOptionsDefaults(packageJson.reflectionOptions || {})
+                };
             }
 
             if (reflection === undefined && tsConfig.reflection !== undefined) {
-                return { mode: this.parseReflectionMode(tsConfig.reflection, currentDir), baseDir: currentDir, options: this.applyReflectionOptionsDefaults(tsConfig.reflectionOptions || {}) };
+                return {
+                    mode: this.parseReflectionMode(tsConfig.reflection, currentDir),
+                    baseDir: currentDir,
+                    options: this.applyReflectionOptionsDefaults(tsConfig.reflectionOptions || {})
+                };
             }
 
             if (packageJsonExists) {

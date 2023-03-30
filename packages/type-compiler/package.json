@@ -39,6 +39,7 @@
     "@marcj/ts-clone-node": "^2.0.0",
     "@typescript/vfs": "^1.4.0",
     "lz-string": "^1.4.4",
+    "get-tsconfig": "^4.5.0",
     "micromatch": "^4.0.5",
     "strip-json-comments": "^3.1.1"
   },
