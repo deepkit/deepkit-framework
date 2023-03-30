@@ -2274,7 +2274,7 @@ export class ReflectionTransformer implements CustomTransformer {
         let source: SourceFile | ModuleDeclaration | undefined = this.resolver.resolve(sourceFile, importOrExport);
 
         if (!source) {
-            debug('module not found', (importOrExport as any).text, 'Is transpileOnly enabled? It needs to be disabled.');
+            debug('module not found', (importOrExport.moduleSpecifier as any).text, 'Is transpileOnly enabled? It needs to be disabled.');
             return;
         }
 
