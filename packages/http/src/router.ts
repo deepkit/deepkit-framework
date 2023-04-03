@@ -31,7 +31,16 @@ import {
 // @ts-ignore
 import formidable from 'formidable';
 import { HttpAction, httpClass, HttpController, HttpDecorator } from './decorator.js';
-import { BodyValidationError, createRequestWithCachedBody, getRegExp, HttpRequest, HttpRequestQuery, HttpRequestResolvedParameters, ValidatedBody } from './model.js';
+import {
+    BodyValidationError,
+    createRequestWithCachedBody,
+    getRegExp,
+    HttpRequest,
+    HttpRequestPositionedParameters,
+    HttpRequestQuery,
+    HttpRequestResolvedParameters,
+    ValidatedBody
+} from './model.js';
 import { InjectorContext, InjectorModule, TagRegistry } from '@deepkit/injector';
 import { Logger, LoggerInterface } from '@deepkit/logger';
 import { HttpControllers } from './controllers.js';
@@ -42,7 +51,7 @@ import { HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware.js';
 import qs from 'qs';
 import { HtmlResponse, JSONResponse, Response } from './http.js';
 
-export type RouteParameterResolverForInjector = ((injector: InjectorContext) => any[] | Promise<any[]>);
+export type RouteParameterResolverForInjector = ((injector: InjectorContext) => HttpRequestPositionedParameters | Promise<HttpRequestPositionedParameters>);
 
 interface ResolvedController {
     parameters: RouteParameterResolverForInjector;
@@ -870,7 +879,7 @@ export class HttpRouter {
                 ${parameterValidator.join('\n')}
                 ${bodyValidationErrorHandling}
                 if (validationErrors.length) throw new ValidationError(validationErrors);
-                return [${parameterNames.join(',')}];
+                return {arguments: [${parameterNames.join(',')}], parameters: parameters};
             }`;
         }
 

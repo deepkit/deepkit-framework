@@ -1095,6 +1095,26 @@ test('session', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/1').header('auth', '123'))).json).toEqual('abc');
 });
 
+test('route listener parameters', async () => {
+    class HttpSession {
+    }
+
+    class Controller {
+        @http.GET('/:groupId/:userId')
+        handle(userId: number, groupId: number, session: HttpSession) {
+            return [userId, groupId, session instanceof HttpSession];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [{
+        provide: HttpSession, scope: 'http'
+    }], [httpWorkflow.onController.listen(async (event, session: HttpSession) => {
+        expect(event.parameters.arguments).toEqual([2, 1, session]);
+        expect(event.parameters.parameters).toEqual({ userId: 2, groupId: 1, session: session });
+    })]);
+    expect((await httpKernel.request(HttpRequest.GET('/1/2'))).json).toEqual([2, 1, true]);
+});
+
 //disabled for the moment since critical functionality has been removed
 // test('stream', async () => {
 //     class Controller {

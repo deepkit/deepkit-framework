@@ -80,6 +80,7 @@ export function createRequestWithCachedBody(request: Partial<IncomingMessage>, b
 
 export type HttpRequestQuery = { [name: string]: string };
 export type HttpRequestResolvedParameters = { [name: string]: any };
+export type HttpRequestPositionedParameters = {arguments: any[], parameters: HttpRequestResolvedParameters};
 
 export class BodyValidationError {
     constructor(

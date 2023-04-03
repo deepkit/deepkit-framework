@@ -11,7 +11,7 @@
 import { asyncOperation, ClassType, CustomError, getClassName, getClassTypeFromInstance, isArray, isClassInstance } from '@deepkit/core';
 import { OutgoingHttpHeaders, ServerResponse } from 'http';
 import { eventDispatcher } from '@deepkit/event';
-import { HttpRequest, HttpResponse } from './model.js';
+import { HttpRequest, HttpRequestPositionedParameters, HttpResponse } from './model.js';
 import { InjectorContext } from '@deepkit/injector';
 import { LoggerInterface } from '@deepkit/logger';
 import { HttpRouter, RouteConfig, RouteParameterResolverForInjector } from './router.js';
@@ -250,7 +250,7 @@ export class HttpAccessDeniedEvent extends HttpWorkflowEvent {
 }
 
 export class HttpResolveParametersEvent extends HttpWorkflowEventWithRoute {
-    public parameters: any[] = [];
+    public parameters: HttpRequestPositionedParameters = { arguments: [], parameters: {} };
 
     constructor(
         public injectorContext: InjectorContext,
@@ -272,7 +272,7 @@ export class HttpControllerEvent extends HttpWorkflowEventWithRoute {
         public injectorContext: InjectorContext,
         public request: HttpRequest,
         public response: HttpResponse,
-        public parameters: any[] = [],
+        public parameters: HttpRequestPositionedParameters = { arguments: [], parameters: {} },
         public route: RouteConfig,
     ) {
         super(injectorContext, request, response, route);
@@ -693,9 +693,9 @@ export class HttpListener {
             if (event.route.action.type === 'controller') {
                 const controllerInstance = event.injectorContext.get(event.route.action.controller, event.route.action.module);
                 const method = controllerInstance[event.route.action.methodName];
-                result = await method.apply(controllerInstance, event.parameters);
+                result = await method.apply(controllerInstance, event.parameters.arguments);
             } else {
-                result = await event.route.action.fn(...event.parameters);
+                result = await event.route.action.fn(...event.parameters.arguments);
             }
 
             if (isElementStruct(result)) {
