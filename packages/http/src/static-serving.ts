@@ -50,7 +50,7 @@ export function serveStaticListener(module: AppModule<any>, path: string, localP
                                 module,
                                 methodName: 'serve'
                             }),
-                            () => [relativePath, event.request, event.response]
+                            () => ({arguments: [relativePath, event.request, event.response], parameters: {}})
                         );
                     }
                     resolve(undefined);
