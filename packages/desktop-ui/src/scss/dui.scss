@@ -217,6 +217,10 @@
     }
 }
 
+.dui-reset-transform {
+    transform: none;
+}
+
 body.dui-theme-dark {
     .panel {
         background-color: #1e1e1e;

@@ -10,6 +10,7 @@
 
 import { Observable, Subscription } from 'rxjs';
 import { ChangeDetectorRef, EventEmitter } from '@angular/core';
+import { ActivatedRoute, Router, UrlTree } from '@angular/router';
 
 const electron = (window as any).electron || ((window as any).require ? (window as any).require('electron') : undefined);
 
@@ -107,6 +108,14 @@ export function isTargetChildOf(target: HTMLElement | EventTarget | null, parent
     return false;
 }
 
+export function isMacOs() {
+    return navigator.platform.indexOf('Mac') > -1;
+}
+
+export function isWindows() {
+    return navigator.platform.indexOf('Win') > -1;
+}
+
 /**
  * Checks if `target` is children of `parent` or if `target` is `parent`.
  */
@@ -189,4 +198,55 @@ export function focusWatcher(target: HTMLElement, allowedFocuses: HTMLElement[] 
 
         return { unsubscribe: unsubscribe };
     });
+}
+
+export function isRouteActive(route: { routerLink?: string | UrlTree | any[]; routerLinkExact?: boolean; router?: Router, activatedRoute?: ActivatedRoute }): boolean {
+    if (!route.router) return false;
+
+    if ('string' === typeof route.routerLink) {
+        return route.router.isActive(route.routerLink, route.routerLinkExact === true);
+    } else if (Array.isArray(route.routerLink)) {
+        return route.router.isActive(route.router.createUrlTree(route.routerLink, { relativeTo: route.activatedRoute }), route.routerLinkExact === true);
+    } else {
+        return route.router.isActive(route.routerLink!, route.routerLinkExact === true);
+    }
+}
+
+export function redirectScrollableParentsToWindowResize(node: Element, passive = true) {
+    const parents = getScrollableParents(node);
+
+    function redirect() {
+        window.dispatchEvent(new Event('resize'));
+    }
+
+    for (const parent of parents) {
+        parent.addEventListener('scroll', redirect, { passive });
+    }
+
+    return () => {
+        for (const parent of parents) {
+            parent.removeEventListener('scroll', redirect);
+        }
+    };
+}
+
+export function getScrollableParents(node: Element): Element[] {
+    const scrollableParents: Element[] = [];
+    let parent = node.parentNode;
+
+    while (parent) {
+        if (!(parent instanceof Element)) {
+            parent = parent.parentNode;
+            continue;
+        }
+        const computedStyle = window.getComputedStyle(parent);
+        const overflow = computedStyle.getPropertyValue('overflow');
+        if (overflow === 'overlay' || overflow === 'scroll' || overflow === 'auto') {
+            scrollableParents.push(parent);
+        }
+
+        parent = parent.parentNode;
+    }
+
+    return scrollableParents;
 }

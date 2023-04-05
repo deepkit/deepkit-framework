@@ -25,10 +25,11 @@ import {
     SimpleChanges,
     SkipSelf
 } from '@angular/core';
-import { NavigationEnd, Router, UrlTree } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, UrlTree } from '@angular/router';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import { Subscription } from 'rxjs';
 import { arrayRemoveItem } from '@deepkit/core';
+import { isRouteActive } from '../../core/utils';
 
 @Component({
     selector: 'dui-list-title',
@@ -172,6 +173,7 @@ export class ListItemComponent implements OnChanges, OnDestroy {
         public element: ElementRef,
         @SkipSelf() public cd: ChangeDetectorRef,
         @Optional() public router?: Router,
+        @Optional() activatedRoute?: ActivatedRoute
     ) {
         this.element.nativeElement.removeAttribute('tabindex');
         list.register(this);
@@ -221,13 +223,7 @@ export class ListItemComponent implements OnChanges, OnDestroy {
         }
 
         if (this.routerLink && this.router) {
-            if ('string' === typeof this.routerLink) {
-                return this.router.isActive(this.routerLink, this.routerLinkExact === true);
-            } else if (Array.isArray(this.routerLink)) {
-                return this.router.isActive(this.router.createUrlTree(this.routerLink), this.routerLinkExact === true);
-            } else {
-                return this.router.isActive(this.routerLink!, this.routerLinkExact === true);
-            }
+            return isRouteActive(this);
         }
 
         return false;

@@ -32,13 +32,18 @@ export class AsyncRenderPipe implements OnDestroy, PipeTransform {
         if (this.subscription) this.subscription.unsubscribe();
     }
 
-    transform<T>(value?: Observable<T>): T | undefined {
+    transform<T>(value?: Observable<T> | Promise<T>): T | undefined {
         if (this.lastValue !== value) {
             if (this.subscription) this.subscription.unsubscribe();
             this.lastReturnedValue = undefined;
             this.lastValue = value;
 
-            if (value) {
+            if (value instanceof Promise) {
+                value.then((v) => {
+                    this.lastReturnedValue = v;
+                    detectChangesNextFrame(this.cd);
+                });
+            } else if (value) {
                 this.subscription = value.subscribe((next) => {
                     this.lastReturnedValue = next;
                     detectChangesNextFrame(this.cd);
@@ -61,10 +66,10 @@ export class ObjectURLPipe implements PipeTransform, OnDestroy {
         if (this.lastUrl) URL.revokeObjectURL(this.lastUrl);
     }
 
-    transform(buffer?: ArrayBuffer | ArrayBufferView): SafeUrl | undefined {
+    transform(buffer?: ArrayBuffer | ArrayBufferView, mimeType?: string): SafeUrl | undefined {
         if (buffer) {
             if (this.lastUrl) URL.revokeObjectURL(this.lastUrl);
-            this.lastUrl = URL.createObjectURL(new Blob([buffer]));
+            this.lastUrl = URL.createObjectURL(new Blob([buffer], {type: mimeType}));
             return this.sanitizer.bypassSecurityTrustResourceUrl(this.lastUrl);
         }
     }

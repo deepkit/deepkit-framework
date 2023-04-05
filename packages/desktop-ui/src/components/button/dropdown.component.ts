@@ -103,10 +103,15 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 
     @Output() hidden = new EventEmitter();
 
-    @ViewChild('dropdownTemplate', { static: false, read: TemplateRef }) dropdownTemplate!: TemplateRef<any>;
+    @ViewChild('dropdownTemplate', {
+        static: false,
+        read: TemplateRef
+    }) dropdownTemplate!: TemplateRef<any>;
     @ViewChild('dropdown', { static: false, read: ElementRef }) dropdown!: ElementRef<HTMLElement>;
 
     container?: TemplateRef<any> | undefined;
+
+    relativeToInitiator?: HTMLElement;
 
     protected lastOverlayStackItem?: OverlayStackItem;
 
@@ -139,7 +144,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 
     @HostListener('window:keyup', ['$event'])
     public key(event: KeyboardEvent) {
-        if (this.isOpen && event.key.toLowerCase() === 'escape' && this.lastOverlayStackItem && this.lastOverlayStackItem.isLast()) {
+        if (!this.keepOpen && this.isOpen && event.key.toLowerCase() === 'escape' && this.lastOverlayStackItem && this.lastOverlayStackItem.isLast()) {
             this.close();
         }
     }
@@ -156,7 +161,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         this.container = container;
     }
 
-    public open(target?: HTMLElement | ElementRef | MouseEvent | 'center') {
+    public open(target?: HTMLElement | ElementRef | MouseEvent | 'center', initiator?: HTMLElement | ElementRef | { x: number, y: number, width: number, height: number }) {
         if (this.lastFocusWatcher) {
             this.lastFocusWatcher.unsubscribe();
         }
@@ -281,6 +286,19 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
             this.overlayRef!.updatePosition();
             this.shown.emit();
             this.showChange.emit(true);
+            // console.log('this.overlayRef', initiator, this.overlayRef.overlayElement);
+            this.setInitiator(initiator);
+            if (this.relativeToInitiator) {
+                const overlayElement = this.overlayRef.overlayElement;
+                const rect = this.getInitiatorRelativeRect();
+                overlayElement.style.transformOrigin = '0 0';
+                overlayElement.style.transform = `translate(${rect.x}px, ${rect.y}px) scale(${rect.width}, ${rect.height})`;
+
+                setTimeout(() => {
+                    overlayElement.style.transition = `transform 0.1s ease-in`;
+                    overlayElement.style.transform = `translate(0, 0) scale(1, 1)`;
+                }, 1);
+            }
 
             setTimeout(() => {
                 if (this.overlayRef) this.overlayRef.updatePosition();
@@ -321,6 +339,27 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         }
     }
 
+    public setInitiator(initiator?: HTMLElement | ElementRef | { x: number, y: number, width: number, height: number }) {
+        if (!this.overlayRef) return;
+
+        initiator = initiator instanceof ElementRef ? initiator.nativeElement : initiator;
+        initiator = initiator instanceof HTMLElement ? initiator : undefined;
+        this.relativeToInitiator = initiator;
+    }
+
+    protected getInitiatorRelativeRect() {
+        const initiator = this.relativeToInitiator?.getBoundingClientRect();
+        if (!this.overlayRef || !initiator) return { x: 0, y: 0, width: 1, height: 1 };
+        const overlayElement = this.overlayRef.overlayElement;
+        const overlayRect = overlayElement.getBoundingClientRect();
+        return {
+            x: initiator.x - overlayRect.x,
+            y: initiator.y - overlayRect.y,
+            width: initiator.width / overlayRect.width,
+            height: initiator.height / overlayRect.height
+        };
+    }
+
     public focus() {
         if (!this.dropdown) return;
         this.dropdown.nativeElement.focus();
@@ -328,19 +367,38 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 
     public close() {
         if (!this.isOpen) return;
-
         if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
-
         this.isOpen = false;
 
-        if (this.overlayRef) {
-            this.overlayRef.dispose();
-            this.overlayRef = undefined;
-        }
 
-        this.cd.detectChanges();
-        this.hidden.emit();
-        this.showChange.emit(false);
+        if (this.relativeToInitiator && this.overlayRef) {
+            const overlayElement = this.overlayRef.overlayElement;
+            const rect = this.getInitiatorRelativeRect();
+            overlayElement.style.transition = `transform 0.1s ease-out`;
+            overlayElement.style.transform = `translate(${rect.x}px, ${rect.y}px) scale(${rect.width}, ${rect.height})`;
+            this.relativeToInitiator = undefined;
+
+            const transitionEnd = () => {
+                if (this.overlayRef) {
+                    this.overlayRef.dispose();
+                    this.overlayRef = undefined;
+                }
+                this.cd.detectChanges();
+                this.hidden.emit();
+                this.showChange.emit(false);
+                overlayElement.removeEventListener('transitionend', transitionEnd);
+            }
+
+            overlayElement.addEventListener('transitionend', transitionEnd);
+        } else {
+            if (this.overlayRef) {
+                this.overlayRef.dispose();
+                this.overlayRef = undefined;
+            }
+            this.cd.detectChanges();
+            this.hidden.emit();
+            this.showChange.emit(false);
+        }
     }
 }
 
