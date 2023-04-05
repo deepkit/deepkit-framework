@@ -467,10 +467,6 @@ export class Injector implements InjectorInterface {
         const circularDependencyCheckStart = factory.dependencies ? `if (${creatingVar}) throwCircularDependency();${creatingVar} = true;` : '';
         const circularDependencyCheckEnd = factory.dependencies ? `${creatingVar} = false;` : '';
 
-        if (tokenLabel(token) === 'DebugBroker') {
-            debugger;
-        }
-
         return `
             //${tokenLabel(token)}, from ${resolveDependenciesFrom.map(getClassName).join(', ')}
             case token === ${tokenVar}${scopeCheck}: {
@@ -901,7 +897,6 @@ export function injectedFunction<T extends (...args: any) => any>(fn: T, injecto
     skipTypeParameters = skipTypeParameters === undefined ? skipParameters : skipTypeParameters;
     if (type.kind === ReflectionKind.function || type.kind === ReflectionKind.method) {
         const args: Resolver<any>[] = [];
-        debugger;
         for (let i = skipTypeParameters; i < type.parameters.length; i++) {
             args.push(injector.createResolver(type.parameters[i], undefined, type.parameters[i].name));
         }
