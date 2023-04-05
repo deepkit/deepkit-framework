@@ -141,7 +141,7 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
             const listenerCode: string[] = [];
             for (const listener of listeners) {
                 if (isEventListenerContainerEntryCallback(listener)) {
-                    try {
+                    // try {
                         const injector = listener.module ? eventDispatcher.injector.getInjector(listener.module) : eventDispatcher.injector.getRootInjector();
                         const fn = injectedFunction(listener.fn, injector, 1);
                         const fnVar = compiler.reserveVariable('fn', fn);
@@ -150,9 +150,9 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
                             await ${fnVar}(scopedContext.scope, event);
                         }
                     `);
-                    } catch (error: any) {
-                        throw new Error(`Could not build workflow listener ${listener.fn.name || 'anonymous function'} of event token ${eventToken.id}: ${error.message}`);
-                    }
+                    // } catch (error: any) {
+                    //     throw new Error(`Could not build workflow listener ${listener.fn.name || 'anonymous function'} of event token ${eventToken.id}: ${error.message}`);
+                    // }
                 } else if (isEventListenerContainerEntryService(listener)) {
                     const classTypeVar = compiler.reserveVariable('classType', listener.classType);
                     const moduleVar = listener.module ? ', ' + compiler.reserveVariable('module', listener.module) : '';

@@ -177,14 +177,10 @@ export interface InjectorInterface {
  * Returns the injector token type if the given type was decorated with `Inject<T>`.
  */
 function getInjectOptions(type: Type): Type | undefined {
-    const annotations = metaAnnotation.getAnnotations(type);
-    for (const annotation of annotations) {
-        if (annotation.name === 'inject') {
-            const t = annotation.options[0] as Type;
-            return t.kind !== ReflectionKind.never ? t : type;
-        }
-    }
-    return;
+    const annotations = metaAnnotation.getForName(type, 'inject');
+    if (!annotations) return;
+    const t = annotations[0];
+    return t && t.kind !== ReflectionKind.never ? t : type;
 }
 
 function getPickArguments(type: Type): Type[] | undefined {
@@ -693,11 +689,13 @@ export class Injector implements InjectorInterface {
         return `${compiler.reserveConst(resolveFromModule)}.injector.resolver(${tokenVar}, scope) ${orThrow}`;
     }
 
-    createResolver(type: Type, scope?: Scope): Resolver<any> {
+    createResolver(type: Type, scope?: Scope, label?: string): Resolver<any> {
         const resolveDependenciesFrom = [this.module];
         const optional = isOptional(type);
         if (type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property) type = type.type;
         if (type.kind === ReflectionKind.parameter) type = type.type;
+
+        type = getInjectOptions(type) || type;
 
         // if (type.kind === ReflectionKind.union) {
         //     type = type.types.some(v => v.kind !== ReflectionKind.undefined);
@@ -774,6 +772,7 @@ export class Injector implements InjectorInterface {
         }
 
         let findToken: Token = type;
+
         if (isType(findToken)) {
             if (findToken.kind === ReflectionKind.class) {
                 findToken = findToken.classType;
@@ -801,7 +800,7 @@ export class Injector implements InjectorInterface {
             if (optional) return () => undefined;
             const t = stringifyType(type, { showFullDefinition: false });
             throw new ServiceNotFoundError(
-                `Undefined service "${t}". Type has no matching provider in ${fromScope ? 'scope ' + fromScope : 'no scope'}.`
+                `Undefined service "${label ? label + ': ' : ''}${t}". Type has no matching provider in ${fromScope ? 'scope ' + fromScope : 'no scope'}.`
             );
         }
 
@@ -902,7 +901,7 @@ export function injectedFunction<T extends (...args: any) => any>(fn: T, injecto
     if (type.kind === ReflectionKind.function) {
         const args: Resolver<any>[] = [];
         for (let i = skipParameters; i < type.parameters.length; i++) {
-            args.push(injector.createResolver(type.parameters[i]));
+            args.push(injector.createResolver(type.parameters[i], undefined, type.parameters[i].name));
         }
 
         if (skipParameters === 0) {

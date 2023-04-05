@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
 import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterResolverContext, UploadedFile } from '../src/router.js';
 import { http, httpClass } from '../src/decorator.js';
-import { HtmlResponse, HttpBadRequestError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
+import { HtmlResponse, HttpBadRequestError, HttpUnauthorizedError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
 import { eventDispatcher } from '@deepkit/event';
-import { HttpBody, HttpBodyValidation, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model.js';
+import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model.js';
 import { getClassName, isObject, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils.js';
 import { Excluded, Group, metaAnnotation, MinLength, PrimaryKey, Reference, serializer, Type, typeSettings, UnpopulatedCheck } from '@deepkit/type';
@@ -39,16 +39,16 @@ test('router', async () => {
 
     expect(router.resolve('GET', '/')?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'helloWorld' });
     expect(router.resolve('GET', '/a/peter')?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'hello' });
-    expect(router.resolve('GET', '/a/peter')?.parameters!(undefined as any)).toEqual(['peter']);
+    expect(router.resolve('GET', '/a/peter')?.parameters!(undefined as any)).toEqual({ arguments: ['peter'], parameters: { name: 'peter' } });
     expect(router.resolve('GET', '/b/peter')).toBeDefined();
 
     const userStatic = router.resolve('GET', '/user/1233/static');
     expect(userStatic?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'userStatic' });
-    expect(userStatic?.parameters!(undefined as any)).toEqual(['1233']);
+    expect(userStatic?.parameters!(undefined as any)).toEqual({ arguments: ['1233'], parameters: { id: '1233' } });
 
     const userStatic2 = router.resolve('GET', '/user2/1233/static/123');
     expect(userStatic2?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'userStatic2' });
-    expect(userStatic2?.parameters!(undefined as any)).toEqual(['1233', '123']);
+    expect(userStatic2?.parameters!(undefined as any)).toEqual({ arguments: ['1233', '123'], parameters: { id: '1233', id2: '123' } });
 });
 
 test('explicitly annotated response objects', async () => {
@@ -1113,6 +1113,126 @@ test('route listener parameters', async () => {
         expect(event.parameters.parameters).toEqual({ userId: 2, groupId: 1, session: session });
     })]);
     expect((await httpKernel.request(HttpRequest.GET('/1/2'))).json).toEqual([2, 1, true]);
+});
+
+test('parameter in controller class url', async () => {
+    @http.controller('/:groupId')
+    class Controller {
+        @http.GET('/:userId')
+        handle(userId: number, groupId: number) {
+            return [userId, groupId];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [], [httpWorkflow.onController.listen(async (event) => {
+        expect(event.parameters.arguments).toEqual([2, 1]);
+        expect(event.parameters.parameters).toEqual({ userId: 2, groupId: 1 });
+    })]);
+    expect((await httpKernel.request(HttpRequest.GET('/1/2'))).json).toEqual([2, 1]);
+});
+
+test('parameter from header', async () => {
+    class Controller {
+        @http.GET('/:userId')
+        handle(userId: number, groupId: HttpHeader<number>) {
+            return [userId, groupId];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [], [httpWorkflow.onController.listen(async (event) => {
+        expect(event.parameters.arguments).toEqual([2, 1]);
+        expect(event.parameters.parameters).toEqual({ userId: 2, groupId: 1 });
+    })]);
+    expect((await httpKernel.request(HttpRequest.GET('/2').header('groupId', 1))).json).toEqual([2, 1]);
+});
+
+test('parameter in for listener', async () => {
+    class HttpSession {
+        groupId2?: number;
+
+        getGroupId(): number {
+            if (!this.groupId2) throw new Error('Not authorized');
+            return this.groupId2;
+        }
+    }
+
+    @http.controller('/:groupId')
+    class Controller {
+        @http.GET('/:userId')
+        handle(userId: number, session: HttpSession) {
+            return [userId, session.groupId2];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [{ provide: HttpSession, scope: 'http' }], [
+        httpWorkflow.onController.listen(async (event, session: HttpSession, groupId: HttpPath<number>, authorization?: HttpHeader<string>) => {
+            //just as example: when groupId is bigger than 100 we require an authorization header
+            if (groupId > 100) {
+                if (authorization !== 'secretToken') throw new HttpUnauthorizedError('Not authorized');
+            }
+
+            session.groupId2 = groupId;
+        })
+    ]);
+    expect((await httpKernel.request(HttpRequest.GET('/1/2'))).json).toEqual([2, 1]);
+    expect((await httpKernel.request(HttpRequest.GET('/101/2').header('authorization', 'secretToken'))).json).toEqual([2, 101]);
+    expect((await httpKernel.request(HttpRequest.GET('/101/2').header('authorization', 'invalid'))).json).toEqual({ 'message': 'Not authorized' });
+});
+
+test('query parameter in for listener', async () => {
+    class HttpSession {
+        userId?: number;
+
+        getUserId(): number {
+            if (!this.userId) throw new Error('Not authorized');
+            return this.userId;
+        }
+    }
+
+    class Controller {
+        @http.GET('/:pageId')
+        handle(pageId: number, session: HttpSession) {
+            return [pageId, session.getUserId()];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [{ provide: HttpSession, scope: 'http' }], [
+        httpWorkflow.onController.listen(async (event, session: HttpSession, auth: HttpQuery<string>) => {
+            console.log('auth', auth);
+            const users: { [key: string]: number } = {
+                'secretToken1': 1,
+                'secretToken2': 2,
+            };
+            if (!users[auth]) throw new HttpUnauthorizedError('Invalid auth token');
+            session.userId = users[auth];
+        })
+    ]);
+    expect((await httpKernel.request(HttpRequest.GET('/2?auth=secretToken1'))).json).toEqual([2, 1]);
+    expect((await httpKernel.request(HttpRequest.GET('/3?auth=secretToken2'))).json).toEqual([3, 2]);
+    expect((await httpKernel.request(HttpRequest.GET('/3?auth=invalidToken'))).json).toEqual({ 'message': 'Invalid auth token' });
+});
+
+test('queries parameter in for listener', async () => {
+    class HttpSession {
+        constructor(public auth: string = '', public userId: number = 0) {
+        }
+    }
+
+    class Controller {
+        @http.GET('/')
+        handle(userId: HttpQuery<number>, session: HttpSession) {
+            return [userId, session.userId, session.auth];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [{ provide: HttpSession, scope: 'http' }], [
+        httpWorkflow.onController.listen(async (event, session: HttpSession, auth: HttpQueries<{ auth: string, userId: number }>) => {
+            session.auth = auth.auth;
+            session.userId = auth.userId;
+        })
+    ]);
+    expect((await httpKernel.request(HttpRequest.GET('/?auth=secretToken1&userId=1'))).json).toEqual([1, 1, 'secretToken1']);
+    expect((await httpKernel.request(HttpRequest.GET('/?userId=1'))).json.message).toEqual('Validation error:\nauth.auth(type): Not a string');
 });
 
 //disabled for the moment since critical functionality has been removed

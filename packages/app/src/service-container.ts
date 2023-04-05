@@ -9,12 +9,12 @@
  */
 
 import { ClassType, getClassName, isClass, isFunction } from '@deepkit/core';
-import { EventDispatcher } from '@deepkit/event';
-import { AppModule, ConfigurationInvalidError, MiddlewareConfig, ModuleDefinition } from './module.js';
+import { EventDispatcher, EventListenerRegistered, isEventListenerContainerEntryCallback } from '@deepkit/event';
+import { AddedListener, AppModule, ConfigurationInvalidError, MiddlewareConfig, ModuleDefinition } from './module.js';
 import { Injector, InjectorContext, InjectorModule, isProvided, ProviderWithScope, resolveToken, Token } from '@deepkit/injector';
 import { cli } from './command.js';
 import { WorkflowDefinition } from '@deepkit/workflow';
-import { deserialize, ReflectionClass, validate } from '@deepkit/type';
+import { deserialize, ReflectionClass, ReflectionFunction, validate } from '@deepkit/type';
 
 export class CliControllerRegistry {
     public readonly controllers = new Map<string, { controller: ClassType, module: InjectorModule }>();
@@ -221,15 +221,6 @@ export class ServiceContainer {
             this.middlewareRegistry.configs.push({ config, module });
         }
 
-        for (const listener of listeners) {
-            if (isClass(listener)) {
-                providers.unshift({ provide: listener });
-                this.eventDispatcher.registerListener(listener, module);
-            } else {
-                this.eventDispatcher.add(listener.eventToken, { fn: listener.callback, order: listener.order, module: listener.module || module });
-            }
-        }
-
         for (const controller of controllers) {
             this.processController(module, controller);
         }
@@ -238,9 +229,35 @@ export class ServiceContainer {
             this.processProvider(module, resolveToken(provider), provider);
         }
 
+        for (const listener of listeners) {
+            if (isClass(listener)) {
+                providers.unshift({ provide: listener });
+                for (const listenerEntry of this.eventDispatcher.registerListener(listener, module)) {
+                    this.processListener(module, listenerEntry);
+                }
+            } else {
+                const listenerObject = { fn: listener.callback, order: listener.order, module: listener.module || module };
+                this.eventDispatcher.add(listener.eventToken, listenerObject);
+                this.processListener(module, { eventToken: listener.eventToken, listener: listenerObject });
+            }
+        }
+
         for (const imp of module.getImports()) {
             if (!imp) continue;
             this.processModule(imp);
+        }
+    }
+
+    protected processListener(module: AppModule<any>, listener: EventListenerRegistered) {
+        const addedListener: AddedListener = {
+            eventToken: listener.eventToken,
+            reflection: isEventListenerContainerEntryCallback(listener.listener)
+                ? ReflectionFunction.from(listener.listener.fn) : ReflectionClass.from(listener.listener.classType).getMethod(listener.listener.methodName),
+            module: listener.listener.module,
+            order: listener.listener.order,
+        };
+        for (const m of this.modules) {
+            m.processListener(module, addedListener);
         }
     }
 

@@ -80,7 +80,7 @@ export function createRequestWithCachedBody(request: Partial<IncomingMessage>, b
 
 export type HttpRequestQuery = { [name: string]: string };
 export type HttpRequestResolvedParameters = { [name: string]: any };
-export type HttpRequestPositionedParameters = {arguments: any[], parameters: HttpRequestResolvedParameters};
+export type HttpRequestPositionedParameters = { arguments: any[], parameters: HttpRequestResolvedParameters };
 
 export class BodyValidationError {
     constructor(
@@ -118,6 +118,8 @@ export class ValidatedBody<T> {
 
 export type HttpBody<T> = T & { __meta?: ['httpBody'] };
 export type HttpBodyValidation<T> = ValidatedBody<T> & { __meta?: ['httpBodyValidation'] };
+export type HttpPath<T, Options extends { name?: string } = {}> = T & { __meta?: ['httpPath', Options] };
+export type HttpHeader<T, Options extends { name?: string } = {}> = T & { __meta?: ['httpHeader', Options] };
 export type HttpQuery<T, Options extends { name?: string } = {}> = T & { __meta?: ['httpQuery', Options] };
 export type HttpQueries<T, Options extends { name?: string } = {}> = T & { __meta?: ['httpQueries', Options] };
 

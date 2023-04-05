@@ -621,6 +621,7 @@ export class HttpListener {
                     }
                 }
 
+                event.injectorContext.set(RouteConfig, resolved.routeConfig);
                 event.routeFound(resolved.routeConfig, resolved.parameters);
             }
         } catch (error) {
