@@ -11,7 +11,7 @@
 import { ClassType, CompilerContext, CustomError, isClass, isFunction } from '@deepkit/core';
 import { injectedFunction } from '@deepkit/injector';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
-import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, PropertyDecoratorResult } from '@deepkit/type';
+import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, PropertyDecoratorResult, ReflectionClass } from '@deepkit/type';
 
 export type EventListenerCallback<T> = (event: T, ...args: any[]) => void | Promise<void>;
 
@@ -252,10 +252,23 @@ export class EventDispatcher implements EventDispatcherInterface {
                     throw new Error(`Could not build listener ${listener.fn.name || 'anonymous function'} of event token ${eventToken.id}: ${error.message}`);
                 }
             } else if (isEventListenerContainerEntryService(listener)) {
+                const injector = listener.module ? this.injector.getInjector(listener.module) : this.injector.getRootInjector();
                 const classTypeVar = compiler.reserveVariable('classType', listener.classType);
                 const moduleVar = compiler.reserveVariable('module', listener.module);
+
+                const method = ReflectionClass.from(listener.classType).getMethod(listener.methodName);
+                let call = `scopedContext.get(${classTypeVar}, ${moduleVar}).${listener.methodName}(event)`;
+
+                if (method.getParameters().length > 1) {
+                    const fn = injectedFunction((event, classInstance, ...args: any[]) => {
+                        return classInstance[listener.methodName](event, ...args);
+                    }, injector, 2, method.type, 1);
+                    call = `${compiler.reserveVariable('fn', fn)}(scopedContext.scope, event, scopedContext.get(${classTypeVar}, ${moduleVar}))`;
+                }
+
                 lines.push(`
-                    await scopedContext.get(${classTypeVar}, ${moduleVar}).${listener.methodName}(event);
+                    await ${call};
+                    if (event.isPropagationStopped()) return;
                 `);
             }
         }

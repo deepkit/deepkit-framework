@@ -12,6 +12,7 @@ import { capitalize, ClassType, CompilerContext, CustomError, ExtractClassType, 
 import { BaseEvent, EventDispatcher, EventToken, isEventListenerContainerEntryCallback, isEventListenerContainerEntryService } from '@deepkit/event';
 import { injectedFunction, InjectorContext } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+import { ReflectionClass } from '@deepkit/type';
 
 interface WorkflowTransition<T> {
     from: keyof T & string,
@@ -141,30 +142,37 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
             const listenerCode: string[] = [];
             for (const listener of listeners) {
                 if (isEventListenerContainerEntryCallback(listener)) {
-                    // try {
-                        const injector = listener.module ? eventDispatcher.injector.getInjector(listener.module) : eventDispatcher.injector.getRootInjector();
-                        const fn = injectedFunction(listener.fn, injector, 1);
-                        const fnVar = compiler.reserveVariable('fn', fn);
-                        listenerCode.push(`
+                    const injector = listener.module ? eventDispatcher.injector.getInjector(listener.module) : eventDispatcher.injector.getRootInjector();
+                    const fn = injectedFunction(listener.fn, injector, 1);
+                    const fnVar = compiler.reserveVariable('fn', fn);
+                    listenerCode.push(`
                         if (!event.isPropagationStopped()) {
                             await ${fnVar}(scopedContext.scope, event);
                         }
                     `);
-                    // } catch (error: any) {
-                    //     throw new Error(`Could not build workflow listener ${listener.fn.name || 'anonymous function'} of event token ${eventToken.id}: ${error.message}`);
-                    // }
                 } else if (isEventListenerContainerEntryService(listener)) {
+                    const injector = listener.module ? eventDispatcher.injector.getInjector(listener.module) : eventDispatcher.injector.getRootInjector();
                     const classTypeVar = compiler.reserveVariable('classType', listener.classType);
                     const moduleVar = listener.module ? ', ' + compiler.reserveVariable('module', listener.module) : '';
+
+                    const method = ReflectionClass.from(listener.classType).getMethod(listener.methodName);
                     const resolvedVar = compiler.reserveVariable('resolved');
+                    let call = `${resolvedVar}.${listener.methodName}(event)`;
+
+                    if (method.getParameters().length > 1) {
+                        const fn = injectedFunction((event, classInstance, ...args: any[]) => {
+                            return classInstance[listener.methodName](event, ...args);
+                        }, injector, 2, method.type, 1);
+                        call = `${compiler.reserveVariable('fn', fn)}(scopedContext.scope, event, ${resolvedVar})`;
+                    }
 
                     listenerCode.push(`
-                    //${getClassName(listener.classType)}.${listener.methodName}
-                    if (!event.isPropagationStopped()) {
-                        if (!${resolvedVar}) ${resolvedVar} = scopedContext.get(${classTypeVar}${moduleVar});
-                        await ${resolvedVar}.${listener.methodName}(event);
-                    }
-                `);
+                        //${getClassName(listener.classType)}.${listener.methodName}
+                        if (!event.isPropagationStopped()) {
+                            if (!${resolvedVar}) ${resolvedVar} = scopedContext.get(${classTypeVar}${moduleVar});
+                            await ${call};
+                        }
+                    `);
                 }
             }
 

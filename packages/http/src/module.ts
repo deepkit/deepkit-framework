@@ -89,10 +89,10 @@ export class HttpModule extends createModule({
             let i = index;
 
             this.addProvider({
-                provide: uniqueType, useFactory: (request: HttpRequest, config: RouteConfig, injector: InjectorContext) => {
+                provide: uniqueType, useFactory: (request: HttpRequest, injector: InjectorContext, config?: RouteConfig) => {
                     if (!build) {
                         const params = listener.reflection.getParameters().slice(1);
-                        build = buildRequestParser(params, config.getFullPath());
+                        build = buildRequestParser(params, config?.getFullPath());
                     }
 
                     const parser = build(request);

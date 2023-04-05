@@ -1235,6 +1235,52 @@ test('queries parameter in for listener', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/?userId=1'))).json.message).toEqual('Validation error:\nauth.auth(type): Not a string');
 });
 
+test('http parameter in class listener', async () => {
+    @http.controller('/:groupId')
+    class Controller {
+        @http.GET('/:userId')
+        handle(userId: number, request: HttpRequest) {
+            return [userId, request.store.groupId];
+        }
+    }
+
+    class Listener {
+        @eventDispatcher.listen(httpWorkflow.onController)
+        handle(event: typeof httpWorkflow.onController.event, request: HttpRequest, groupId: HttpPath<number>) {
+            request.store.groupId = groupId;
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [], [Listener]);
+    expect((await httpKernel.request(HttpRequest.GET('/1/2'))).json).toEqual([2, 1]);
+});
+
+test('queries parameter in class listener', async () => {
+    class HttpSession {
+        constructor(public auth: string = '', public userId: number = 0) {
+        }
+    }
+
+    class Controller {
+        @http.GET('/')
+        handle(userId: HttpQuery<number>, session: HttpSession) {
+            return [userId, session.userId, session.auth];
+        }
+    }
+
+    class Listener {
+        @eventDispatcher.listen(httpWorkflow.onController)
+        handle(event: typeof httpWorkflow.onController.event, session: HttpSession, auth: HttpQueries<{ auth: string, userId: number }>) {
+            session.auth = auth.auth;
+            session.userId = auth.userId;
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [{ provide: HttpSession, scope: 'http' }], [Listener]);
+    expect((await httpKernel.request(HttpRequest.GET('/?auth=secretToken1&userId=1'))).json).toEqual([1, 1, 'secretToken1']);
+    expect((await httpKernel.request(HttpRequest.GET('/?userId=1'))).json.message).toEqual('Validation error:\nauth.auth(type): Not a string');
+});
+
 //disabled for the moment since critical functionality has been removed
 // test('stream', async () => {
 //     class Controller {
