@@ -30,7 +30,7 @@ import {
     RawFactory,
     Replace,
     Resolve,
-    SORT_ORDER
+    SORT_ORDER, UniqueConstraintFailure
 } from '@deepkit/orm';
 import { AbstractClassType, ClassType, isArray, isClass } from '@deepkit/core';
 import { Changes, getPartialSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass } from '@deepkit/type';
@@ -795,8 +795,11 @@ export class SQLPersistence extends DatabasePersistence {
         const sql = this.getInsertSQL(classSchema, names, insert);
         try {
             await (await this.getConnection()).run(sql, params);
-        } catch (error) {
-            throw error;
+        } catch (error: any) {
+            if (error instanceof DatabaseError) {
+                throw error
+            }
+            throw new DatabaseError(`Could not insert ${classSchema.getClassName()} into database: ${String(error)}, sql: ${sql}, params: ${params}`);
         }
     }
 

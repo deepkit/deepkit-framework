@@ -51,6 +51,24 @@ export function isDirectPropertyOfEntity(type: Type): boolean {
     return false;
 }
 
+function serializeSqlAny(type: Type, state: TemplateState) {
+    if (!isDirectPropertyOfEntity(type)) {
+        state.addSetter(`${state.accessor}`);
+        return;
+    }
+
+    state.setContext({ stringify: JSON.stringify });
+    state.addSetter(`stringify(${state.accessor})`);
+}
+
+function deserializeSqlAny(type: Type, state: TemplateState) {
+    if (!isDirectPropertyOfEntity(type)) {
+        state.addSetter(`${state.accessor}`);
+        return;
+    }
+    state.addCode(`${state.accessor} = JSON.parse(${state.accessor});`);
+}
+
 /**
  * For sql databases, objects will be serialised as JSON string.
  */
@@ -119,6 +137,9 @@ export class SqlSerializer extends Serializer {
 
         const uuidType = uuidAnnotation.registerType({ kind: ReflectionKind.string }, true);
 
+        this.serializeRegistry.register(ReflectionKind.any, serializeSqlAny);
+        this.deserializeRegistry.register(ReflectionKind.any, deserializeSqlAny);
+
         this.deserializeRegistry.register(ReflectionKind.string, (type, state) => {
             //remove string enforcement, since UUID/MongoId are string but received as binary
             state.addSetter(state.accessor);
@@ -126,6 +147,7 @@ export class SqlSerializer extends Serializer {
 
         this.deserializeRegistry.removeDecorator(uuidType);
         this.deserializeRegistry.addDecorator(isUUIDType, (type, state) => {
+            if (!isDirectPropertyOfEntity(type)) return;
             state.setContext({ uuid4Stringify });
             state.addCodeForSetter(`
                 try {
@@ -138,6 +160,7 @@ export class SqlSerializer extends Serializer {
 
         this.serializeRegistry.removeDecorator(uuidType);
         this.serializeRegistry.addDecorator(isUUIDType, (type, state) => {
+            if (!isDirectPropertyOfEntity(type)) return;
             state.setContext({ uuid4Binary });
             state.addCodeForSetter(`
                 try {

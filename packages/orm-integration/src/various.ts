@@ -1,5 +1,5 @@
 import { expect } from '@jest/globals';
-import { AutoIncrement, BackReference, cast, entity, isReferenceInstance, PrimaryKey, Reference, Unique } from '@deepkit/type';
+import { AutoIncrement, BackReference, cast, entity, isReferenceInstance, PrimaryKey, Reference, Unique, uuid, UUID } from '@deepkit/type';
 import { identifier, sql, SQLDatabaseAdapter } from '@deepkit/sql';
 import { DatabaseFactory } from './test.js';
 import { isDatabaseOf, UniqueConstraintFailure } from '@deepkit/orm';
@@ -454,5 +454,34 @@ export const variousTests = {
 
         const person = await db.query(Person).filter(person1).findOne();
         expect(person.addresses).toEqual([{ name: 'home', street: 'street1', zip: '5678' }]);
+    },
+
+    async anyType(databaseFactory: DatabaseFactory) {
+        class Page {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            constructor(public content: any) {};
+        }
+        const db = await databaseFactory([Page]);
+
+        await db.persist(new Page([{insert: 'abc\n'}]));
+
+        db.disconnect();
+    },
+
+    async arrayElement(databaseFactory: DatabaseFactory) {
+        //this tests that the array element type is correctly serialized
+        class Page {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            constructor(public content: {id: UUID, insert: string, attributes?: { [name: string]: any }}[]) {};
+        }
+        const db = await databaseFactory([Page]);
+        const myId = uuid();
+
+        await db.persist(new Page([{id: myId, insert: 'abc\n', attributes: {header: 1}}]));
+
+        const page = await db.query(Page).findOne();
+        expect(page.content[0]).toEqual({id: myId, insert: 'abc\n', attributes: {header: 1}});
+
+        db.disconnect();
     }
 };
