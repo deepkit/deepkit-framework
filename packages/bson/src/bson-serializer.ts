@@ -8,6 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+import { hasProperty } from '@deepkit/core';
 import { CompilerContext, isArray, isIterable, isObject, toFastProperties } from '@deepkit/core';
 import { isPropertyMemberType } from '@deepkit/type';
 import {
@@ -222,7 +223,7 @@ export function getValueSize(value: any): number {
     } else if (isObject(value)) {
         let size = 4; //object size
         for (let i in value) {
-            if (!value.hasOwnProperty(i)) continue;
+            if (!hasProperty(value, i)) continue;
             size += 1; //element type
             size += stringByteLength(i) + 1; //element name + null
             size += getValueSize(value[i]);
@@ -558,7 +559,7 @@ export class Writer {
             this.offset += 4; //size
 
             for (let i in value) {
-                if (!value.hasOwnProperty(i)) continue;
+                if (!hasProperty(value, i)) continue;
                 this.write(value[i], () => {
                     this.writeString(i);
                     this.writeByte(0);
@@ -791,11 +792,12 @@ function handleObjectLiteral(
             }`);
         }
 
+        state.setContext({hasProperty});
         //the index signature type could be: string, number, symbol.
         //or a literal when it was constructed by a mapped type.
         lines.push(`
         for (const ${i} in ${state.accessor}) {
-            if (!${state.accessor}.hasOwnProperty(${i})) continue;
+            if (!hasProperty(${state.accessor}, ${i})) continue;
             if (${existingCheck}) continue;
             if (false) {} ${signatureLines.join(' ')}
         }

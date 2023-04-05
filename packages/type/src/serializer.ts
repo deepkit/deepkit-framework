@@ -20,7 +20,8 @@ import {
     isNumeric,
     isObject,
     stringifyValueWithType,
-    toFastProperties
+    toFastProperties,
+    hasProperty
 } from '@deepkit/core';
 import {
     AnnotationDefinition,
@@ -509,7 +510,10 @@ export class TemplateState {
 
     setContext(values: { [name: string]: any }) {
         for (const i in values) {
-            if (!values.hasOwnProperty(i)) continue;
+            if (!hasProperty(values, i)) {
+                console.log('hasProperty is false: ', i, values[i], hasProperty(values, i));
+                continue;
+            }
             this.compilerContext.context.set(i, values[i]);
         }
     }
@@ -1154,11 +1158,12 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             }`);
         }
 
+        state.setContext({hasProperty});
         //the index signature type could be: string, number, symbol.
         //or a literal when it was constructed by a mapped type.
         lines.push(`
         for (const ${i} in ${state.accessor}) {
-            if (!${state.accessor}.hasOwnProperty(${i})) continue;
+            if (!hasProperty(${state.accessor}, ${i})) continue;
             if (${existingCheck}) continue;
             if (false) {} ${signatureLines.join(' ')}
         }
@@ -1321,11 +1326,12 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             }`);
         }
 
+        state.setContext({hasProperty});
         //the index signature type could be: string, number, symbol.
         //or a literal when it was constructed by a mapped type.
         lines.push(`
         for (const ${i} in ${state.accessor}) {
-            if (!${state.accessor}.hasOwnProperty(${i})) continue;
+            if (!hasProperty(${state.accessor}, ${i})) continue;
             if (${existingCheck}) continue;
             if (!${state.setter}) {
                 break;

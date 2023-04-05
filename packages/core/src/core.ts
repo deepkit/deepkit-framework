@@ -717,3 +717,7 @@ export function getCurrentFileName(): string {
 export function escapeRegExp(string: string): string {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
+
+export function hasProperty(object: any, property: any): boolean {
+    return Object.prototype.hasOwnProperty.call(object, property);
+}
