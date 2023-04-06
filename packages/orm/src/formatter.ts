@@ -81,7 +81,18 @@ export class Formatter {
         return this.hydrateModel(model, this.rootClassSchema, dbRecord);
     }
 
-    protected makeInvalidReference(item: any, classSchema: ReflectionClass<any>, propertySchema: ReflectionProperty) {
+    protected makeInvalidReference(
+        item: any,
+        classSchema: ReflectionClass<any>,
+        propertySchema: ReflectionProperty,
+        reason: 'join' | 'lazy' = 'join'
+    ) {
+        const label = propertySchema.isReference() ? 'Reference' : propertySchema.isBackReference() ? 'BackReference' : 'Property';
+        const reasons: {[p in typeof reason]: string} = {
+            join: 'Use joinWith(), useJoinWith(), etc to populate the reference.',
+            lazy: `Remove lazyLoad('${propertySchema.name}') or call 'await hydrateEntity(item)'`
+        }
+        const description = reason ===
         Object.defineProperty(item, propertySchema.name, {
             enumerable: true,
             configurable: false,
@@ -91,7 +102,7 @@ export class Formatter {
                 }
 
                 if (typeSettings.unpopulatedCheck === UnpopulatedCheck.Throw) {
-                    throw new Error(`Reference ${classSchema.getClassName()}.${propertySchema.name} was not populated. Use joinWith(), useJoinWith(), etc to populate the reference.`);
+                    throw new Error(`${label} ${classSchema.getClassName()}.${propertySchema.name} was not populated. ${reasons[reason]}`);
                 }
 
                 if (typeSettings.unpopulatedCheck === UnpopulatedCheck.ReturnSymbol) {
@@ -325,6 +336,19 @@ export class Formatter {
 
         if (!partial) {
             if (model.withChangeDetection) getInstanceState(classState, converted).markAsFromDatabase();
+        }
+
+        if (!partial && model.lazyLoad.size) {
+            for (const lazy of model.lazyLoad.values()) {
+                const property = classSchema.getProperty(lazy);
+
+                //relations should be handled in getReferences()
+                if (property.isReference() || property.isBackReference()) continue;
+
+                this.makeInvalidReference(converted, classSchema, property, 'lazy');
+            }
+
+            getInstanceState(getClassState(classSchema), converted).hydrator = this.hydrator;
         }
 
         if (classSchema.getReferences().length > 0) {

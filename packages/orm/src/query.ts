@@ -94,6 +94,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
     public for?: 'update' | 'share';
     public aggregate = new Map<string, { property: ReflectionProperty, func: string }>();
     public select: Set<string> = new Set<string>();
+    public lazyLoad: Set<string> = new Set<string>();
     public joins: DatabaseJoinModel<any, any>[] = [];
     public skip?: number;
     public itemsPerPage: number = 50;
@@ -102,6 +103,10 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
     public sort?: SORT;
     public readonly change = new Subject<void>();
     public returning: (keyof T & string)[] = [];
+
+    isLazyLoaded(field: string): boolean {
+        return this.lazyLoad.has(field);
+    }
 
     changed(): void {
         this.change.next();
@@ -132,6 +137,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
         m.withIdentityMap = this.withIdentityMap;
         m.select = new Set(this.select);
         m.groupBy = new Set(this.groupBy);
+        m.lazyLoad = new Set(this.lazyLoad);
         m.for = this.for;
         m.aggregate = new Map(this.aggregate);
         m.parameters = { ...this.parameters };
@@ -305,6 +311,28 @@ export class BaseQuery<T extends OrmEntity> {
         return c as any;
     }
 
+    /**
+     * Excludes given fields from the query.
+     *
+     * This is mainly useful for performance reasons, to prevent loading unnecessary data.
+     *
+     * Use `hydrateEntity(item)` to completely load the entity.
+     */
+    lazyLoad<K extends (keyof Resolve<this>)[]>(...select: K): this {
+        const c = this.clone();
+        for (const s of select) c.model.lazyLoad.add(s as string);
+        return c;
+    }
+
+    /**
+     * Limits the query to the given fields.
+     *
+     * This is useful for security reasons, to prevent leaking sensitive data,
+     * and also for performance reasons, to prevent loading unnecessary data.
+     *
+     * Note: This changes the return type of the query (findOne(), find(), etc) to exclude the fields that are not selected.
+     * This makes the query return simple objects instead of entities. To maintained nominal types use `lazyLoad()` instead.
+     */
     select<K extends (keyof Resolve<this>)[]>(...select: K): Replace<this, Pick<Resolve<this>, K[number]>> {
         const c = this.clone();
         for (const field of select) {

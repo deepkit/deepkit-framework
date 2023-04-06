@@ -75,6 +75,8 @@ class InstanceState<T extends OrmEntity> {
      */
     snapshot?: JSONPartial<T>;
 
+    hydrator?: (item: T) => Promise<T>
+
     /**
      * Whether the item was originally from the database (and thus PK are known there).
      */

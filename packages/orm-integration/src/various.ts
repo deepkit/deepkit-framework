@@ -2,7 +2,7 @@ import { expect } from '@jest/globals';
 import { AutoIncrement, BackReference, cast, entity, isReferenceInstance, PrimaryKey, Reference, Unique, uuid, UUID } from '@deepkit/type';
 import { identifier, sql, SQLDatabaseAdapter } from '@deepkit/sql';
 import { DatabaseFactory } from './test.js';
-import { isDatabaseOf, UniqueConstraintFailure } from '@deepkit/orm';
+import { hydrateEntity, isDatabaseOf, UniqueConstraintFailure } from '@deepkit/orm';
 import { randomBytes } from 'crypto';
 
 Error.stackTraceLimit = 20;
@@ -481,6 +481,32 @@ export const variousTests = {
 
         const page = await db.query(Page).findOne();
         expect(page.content[0]).toEqual({id: myId, insert: 'abc\n', attributes: {header: 1}});
+
+        db.disconnect();
+    },
+
+    async lazyLoad(databaseFactory: DatabaseFactory) {
+        class Page {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            title: string = '';
+            content: Uint8Array = new Uint8Array();
+        }
+
+        const db = await databaseFactory([Page]);
+
+        {
+            const page = new Page();
+            page.title = 'test';
+            page.content = new Uint8Array([1, 2, 3]);
+            await db.persist(page);
+        }
+
+        const page = await db.query(Page).lazyLoad('content').findOne();
+        expect(page.title).toBe('test');
+        expect(() => page.content).toThrowError('Property Page.content was not populated. Remove lazyLoad(\'content\') or call \'await hydrateEntity(item)\'');
+
+        await hydrateEntity(page);
+        expect(page.content).toEqual(new Uint8Array([1, 2, 3]));
 
         db.disconnect();
     }
