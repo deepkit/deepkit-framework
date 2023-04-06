@@ -33,18 +33,14 @@ export class TabButtonComponent extends ValueAccessorBase<any> {
 
     @Input() value?: any;
 
-    @Input() model?: any;
-    @Output() modelChange = new EventEmitter<any>();
-
     @HostListener('click')
     onClick() {
         if (this.value === undefined) return;
-        this.model = this.value;
-        this.modelChange.emit(this.value);
+        this.innerValue = this.value;
     }
 
     isActive(): boolean {
-        if (this.value !== undefined) return this.value === this.innerValue || this.value === this.model;
+        if (this.value !== undefined) return this.value === this.innerValue;
         return this.active !== false
     }
 }
