@@ -485,7 +485,9 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
             const packet = result[0];
             patchResult.modified = packet.affectedRows;
             const returning = result[1][0];
-            patchResult.primaryKeys = (JSON.parse(returning['@_pk']) as any[]).map(primaryKeyConverted as any);
+            if (patchResult.modified > 0) {
+                patchResult.primaryKeys = (JSON.parse(returning['@_pk']) as any[]).map(primaryKeyConverted as any);
+            }
 
             for (const i in aggregateFields) {
                 patchResult.returning[i] = (JSON.parse(returning['@_f_' + asAliasName(i)]) as any[]).map(aggregateFields[i].converted);
