@@ -43,7 +43,7 @@ export class EnvConfiguration {
      */
     public loadEnvFile(path: string): boolean {
         const resolvedPath = resolveEnvFilePath(path);
-        if (!resolvedPath) return false
+        if (!resolvedPath) return false;
 
         const RE_INI_KEY_VAL = /^\s*([\w.-]+)\s*=\s*(.*)?\s*$/;
 

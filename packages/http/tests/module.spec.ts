@@ -1,9 +1,9 @@
 import { App } from '@deepkit/app';
 import { expect, test } from '@jest/globals';
-import { HttpModule } from '../src/module';
-import { HttpKernel } from '../src/kernel';
-import { HttpRequest } from '../src/model';
-import { http } from '../src/decorator';
+import { HttpModule } from '../src/module.js';
+import { HttpKernel } from '../src/kernel.js';
+import { HttpRequest } from '../src/model.js';
+import { http } from '../src/decorator.js';
 import { httpWorkflow } from '../src/http.js';
 
 test('module basic functionality', async () => {

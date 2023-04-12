@@ -11,7 +11,7 @@
 import { ClassType, CompilerContext, CustomError, isClass, isFunction } from '@deepkit/core';
 import { injectedFunction } from '@deepkit/injector';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
-import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, PropertyDecoratorResult } from '@deepkit/type';
+import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, PropertyDecoratorResult, ReflectionClass } from '@deepkit/type';
 
 export type EventListenerCallback<T> = (event: T, ...args: any[]) => void | Promise<void>;
 
@@ -160,6 +160,11 @@ function resolveEvent<T>(eventToken: EventToken<any>, event?: EventOfEventToken<
     return eventToken instanceof DataEventToken ? (event as any) instanceof DataEvent ? event : new DataEvent(event) : event;
 }
 
+export interface EventListenerRegistered {
+    listener: EventListenerContainerEntry;
+    eventToken: EventToken<any>;
+}
+
 export class EventDispatcher implements EventDispatcherInterface {
     protected listenerMap = new Map<EventToken<any>, EventListenerContainerEntry[]>();
     protected instances: any[] = [];
@@ -172,14 +177,18 @@ export class EventDispatcher implements EventDispatcherInterface {
     ) {
     }
 
-    public registerListener(listener: ClassType, module: InjectorModule) {
-        if (this.registeredClassTypes.has(listener)) return;
-        this.registeredClassTypes.add(listener);
-        const config = eventClass._fetch(listener);
-        if (!config) return;
+    public registerListener(classType: ClassType, module: InjectorModule): EventListenerRegistered[] {
+        if (this.registeredClassTypes.has(classType)) return [];
+        this.registeredClassTypes.add(classType);
+        const config = eventClass._fetch(classType);
+        if (!config) return [];
+        const result: EventListenerRegistered[] = [];
         for (const entry of config.listeners) {
-            this.add(entry.eventToken, { module, classType: listener, methodName: entry.methodName, order: entry.order });
+            const listener = { module, classType: classType, methodName: entry.methodName, order: entry.order };
+            this.add(entry.eventToken, listener);
+            result.push({eventToken: entry.eventToken, listener});
         }
+        return result;
     }
 
     listen<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): EventDispatcherUnsubscribe {
@@ -243,10 +252,23 @@ export class EventDispatcher implements EventDispatcherInterface {
                     throw new Error(`Could not build listener ${listener.fn.name || 'anonymous function'} of event token ${eventToken.id}: ${error.message}`);
                 }
             } else if (isEventListenerContainerEntryService(listener)) {
+                const injector = listener.module ? this.injector.getInjector(listener.module) : this.injector.getRootInjector();
                 const classTypeVar = compiler.reserveVariable('classType', listener.classType);
                 const moduleVar = compiler.reserveVariable('module', listener.module);
+
+                const method = ReflectionClass.from(listener.classType).getMethod(listener.methodName);
+                let call = `scopedContext.get(${classTypeVar}, ${moduleVar}).${listener.methodName}(event)`;
+
+                if (method.getParameters().length > 1) {
+                    const fn = injectedFunction((event, classInstance, ...args: any[]) => {
+                        return classInstance[listener.methodName](event, ...args);
+                    }, injector, 2, method.type, 1);
+                    call = `${compiler.reserveVariable('fn', fn)}(scopedContext.scope, event, scopedContext.get(${classTypeVar}, ${moduleVar}))`;
+                }
+
                 lines.push(`
-                    await scopedContext.get(${classTypeVar}, ${moduleVar}).${listener.methodName}(event);
+                    await ${call};
+                    if (event.isPropagationStopped()) return;
                 `);
             }
         }

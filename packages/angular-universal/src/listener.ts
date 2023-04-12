@@ -11,11 +11,11 @@
 import { HtmlResponse, httpWorkflow, RouteConfig } from '@deepkit/http';
 import { eventDispatcher } from '@deepkit/event';
 import { Logger } from '@deepkit/logger';
-import { Config } from './config';
+import { Config } from './config.js';
 import { join } from 'path';
 import { readFileSync } from 'fs';
 import type { Router } from '@angular/router';
-import { AngularUniversalModule } from './module';
+import { AngularUniversalModule } from './module.js';
 
 export class AngularUniversalListener {
     protected serverModule: any;
@@ -118,7 +118,7 @@ export class AngularUniversalListener {
 
         event.routeFound(
             new RouteConfig('angular', ['GET'], event.url, { type: 'controller', controller: AngularUniversalListener, module: this.module, methodName: 'render' }),
-            () => [event.url]
+            () => ({arguments: [event.url], parameters: {}})
         );
     }
 }

@@ -9,8 +9,8 @@
  */
 
 import { arrayRemoveItem, ClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
-import { EntityPatch, EntitySubject, IdType, IdVersionInterface, rpcEntityPatch, rpcEntityRemove, RpcTypes } from '../model';
-import { RpcMessage } from '../protocol';
+import { EntityPatch, EntitySubject, IdType, IdVersionInterface, rpcEntityPatch, rpcEntityRemove, RpcTypes } from '../model.js';
+import { RpcMessage } from '../protocol.js';
 import { getPartialSerializeFunction, ReflectionClass, serializer, TypeObjectLiteral } from '@deepkit/type';
 
 export class EntitySubjectStore<T extends IdVersionInterface> {

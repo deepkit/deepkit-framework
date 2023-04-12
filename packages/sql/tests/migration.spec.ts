@@ -1,8 +1,8 @@
 import { expect, test } from '@jest/globals';
 import { AutoIncrement, entity, Index, PrimaryKey, Reference, ReflectionClass, ReflectionKind, Unique } from '@deepkit/type';
-import { DatabaseModel, IndexModel, TableComparator } from '../src/schema/table';
-import { DefaultPlatform } from '../src/platform/default-platform';
-import { SchemaParser } from '../src/reverse/schema-parser';
+import { DatabaseModel, IndexModel, TableComparator } from '../src/schema/table.js';
+import { DefaultPlatform } from '../src/platform/default-platform.js';
+import { SchemaParser } from '../src/reverse/schema-parser.js';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 
 @entity.name('user')

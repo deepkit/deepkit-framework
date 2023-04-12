@@ -29,13 +29,13 @@ import { EventDispatcher, isEventListenerContainerEntryService } from '@deepkit/
 import { DatabaseAdapter, DatabaseRegistry } from '@deepkit/orm';
 import { readFileSync, statSync, truncateSync } from 'fs';
 import { join } from 'path';
-import { FrameworkConfig } from '../module.config';
-import { FileStopwatchStore } from './stopwatch/store';
+import { FrameworkConfig } from '../module.config.js';
+import { FileStopwatchStore } from './stopwatch/store.js';
 import { Subject } from 'rxjs';
 import { unlink } from 'fs/promises';
 import { getScope, resolveToken, Token } from '@deepkit/injector';
 import { AppModule, ServiceContainer } from '@deepkit/app';
-import { RpcControllers } from '../rpc';
+import { RpcControllers } from '../rpc.js';
 import { ReflectionClass, serializeType, stringifyType } from '@deepkit/type';
 
 @rpc.controller(DebugControllerInterface)

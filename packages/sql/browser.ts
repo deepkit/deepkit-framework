@@ -8,12 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/sql-builder';
-export * from './src/sql-adapter';
-export * from './src/sql-filter-builder';
+export * from './src/sql-builder.js';
+export * from './src/sql-adapter.js';
+export * from './src/sql-filter-builder.js';
 
-export * from './src/schema/table';
-export * from './src/reverse/schema-parser';
-export * from './src/platform/default-platform';
-export * from './src/serializer/sql-serializer';
+export * from './src/schema/table.js';
+export * from './src/reverse/schema-parser.js';
+export * from './src/platform/default-platform.js';
+export * from './src/serializer/sql-serializer.js';
 

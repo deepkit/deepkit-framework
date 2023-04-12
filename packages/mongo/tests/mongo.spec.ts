@@ -15,8 +15,8 @@ import {
     uuid,
 } from '@deepkit/type';
 import { getInstanceStateFromItem } from '@deepkit/orm';
-import { SimpleModel, SuperSimple } from './entities';
-import { createDatabase } from './utils';
+import { SimpleModel, SuperSimple } from './entities.js';
+import { createDatabase } from './utils.js';
 
 Error.stackTraceLimit = 100;
 
@@ -524,4 +524,44 @@ test('test identityMap', async () => {
     const dbItem = await session.query(SimpleModel).filter({ name: 'myName1' }).findOne();
     expect(dbItem === item).toBe(true);
     expect(dbItem).toBe(item);
+});
+
+test('aggregation without accumulators', async () => {
+    class File {
+        public _id: MongoId & PrimaryKey = '';
+        created: Date = new Date;
+
+        downloads: number = 0;
+
+        category: string = 'none';
+
+        constructor(public path: string) {
+        }
+    }
+
+    const db = await createDatabase('aggregation');
+
+    await db.persist(cast<File>({ path: 'file1', category: 'images' }),
+        cast<File>({ path: 'file2', category: 'images' }),
+        cast<File>({ path: 'file3', category: 'pdfs' }));
+
+    await db.query(File).filter({ path: 'file1' }).patchOne({ $inc: { downloads: 15 } });
+    await db.query(File).filter({ path: 'file2' }).patchOne({ $inc: { downloads: 5 } });
+
+    const res = await db.query(File)
+        .groupBy('category')
+        .orderBy('category', 'asc')
+        .find();
+    expect(res).toEqual([{ category: 'images' }, { category: 'pdfs' }]);
+
+    const res2 = await db.query(File)
+        .withSum('downloads', 'downloadsSum')
+        .groupBy('category')
+        .orderBy('category', 'asc')
+        .find();
+
+    expect(res2).toEqual([
+        { downloadsSum: 20, category: 'images' },
+        { downloadsSum: 0, category: 'pdfs' },
+    ]);
 });

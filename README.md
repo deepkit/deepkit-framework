@@ -10,7 +10,6 @@
 <br/>
 <br/>
 
-[![Language grade: JavaScript](https://img.shields.io/lgtm/grade/javascript/g/deepkit/deepkit-framework.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/deepkit/deepkit-framework/context:javascript)
 ![CI](https://github.com/deepkit/deepkit-framework/workflows/CI/badge.svg)
 
 Deepkit Framework is a new high-performance and real-time TypeScript framework for enterprise TypeScript applications.
@@ -22,7 +21,7 @@ Check out the [Deepkit Documentation](https://docs.deepkit.io) to get started.
 
 There is also an [eBook version](https://docs.deepkit.io/deepkit-book-english.html). 
 
-Both is available in [German](https://docs.deepkit.io/german/), [English](https://docs.deepkit.io/english/), and [Chinese](https://docs.deepkit.io/chinese/).
+Both are available in [German](https://docs.deepkit.io/german/), [English](https://docs.deepkit.io/english/), and [Chinese](https://docs.deepkit.io/chinese/).
 
 ## Getting started
 

@@ -1,17 +1,16 @@
 import { expect, test } from '@jest/globals';
 import { entity, ReflectionClass, ReflectionKind, serializer } from '@deepkit/type';
-import { SQLFilterBuilder } from '../src/sql-filter-builder';
+import { SQLFilterBuilder } from '../src/sql-filter-builder.js';
 import { escape } from 'sqlstring';
-import { sql, SQLQueryModel } from '../src/sql-adapter';
-import { DefaultPlatform, SqlPlaceholderStrategy } from '../src/platform/default-platform';
-import { SchemaParser } from '../src/reverse/schema-parser';
-import { DatabaseModel } from '../src/schema/table';
-import { SqlBuilder } from '../src/sql-builder';
+import { splitDotPath, sql, SQLQueryModel } from '../src/sql-adapter.js';
+import { DefaultPlatform, SqlPlaceholderStrategy } from '../src/platform/default-platform.js';
+import { SchemaParser } from '../src/reverse/schema-parser.js';
+import { DatabaseModel } from '../src/schema/table.js';
+import { SqlBuilder } from '../src/sql-builder.js';
 
 function quoteId(value: string): string {
     return value;
 }
-
 
 class MySchemaParser extends SchemaParser {
     parse(database: DatabaseModel, limitTableNames?: string[]): void {
@@ -20,15 +19,22 @@ class MySchemaParser extends SchemaParser {
 
 class MyPlatform extends DefaultPlatform {
     schemaParserType = MySchemaParser;
+
     constructor() {
         super();
         this.addType(ReflectionKind.number, 'integer');
     }
 }
 
+test('splitDotPath', () => {
+    expect(splitDotPath('addresses.zip')).toEqual(['addresses', 'zip']);
+    expect(splitDotPath('addresses[0].zip')).toEqual(['addresses', '[0].zip']);
+});
+
 test('sql query', () => {
     @entity.name('user')
-    class User {}
+    class User {
+    }
 
     const id = 0;
     const query = sql`SELECT * FROM ${User} WHERE id > ${id}`;
@@ -72,7 +78,15 @@ test('QueryToSql', () => {
         created!: Date;
     }
 
-    const queryToSql = new SQLFilterBuilder(ReflectionClass.from(User), quoteId('user'), serializer, new SqlPlaceholderStrategy(), escape, quoteId);
+    const queryToSql = new SQLFilterBuilder(ReflectionClass.from(User), quoteId('user'), serializer, new SqlPlaceholderStrategy(), new class extends DefaultPlatform {
+        schemaParserType = MySchemaParser;
+        quoteIdentifier(id: string): string {
+            return quoteId(id);
+        }
+        quoteValue(value: any): string {
+            return escape(value);
+        }
+    });
 
     expect(queryToSql.convert({ id: 123 })).toBe(`user.id = ?`);
     expect(queryToSql.convert({ id: '$id' })).toBe(`user.id = user.id`);
@@ -90,6 +104,9 @@ test('QueryToSql', () => {
     expect(queryToSql.convert({ id: { $lt: 44 } })).toBe(`user.id < ?`);
     expect(queryToSql.convert({ id: { $lte: 44 } })).toBe(`user.id <= ?`);
     expect(queryToSql.convert({ id: { $in: [44, 55] } })).toBe(`user.id IN (?, ?)`);
+
+    expect(queryToSql.convert({ id: { $eq: null } })).toBe(`user.id IS NULL`);
+    expect(queryToSql.convert({ id: { $ne: null } })).toBe(`user.id IS NOT NULL`);
 
     expect(() => queryToSql.convert({ invalidField: { $nin: [44, 55] } })).toThrowError('No type found for path invalidField');
 

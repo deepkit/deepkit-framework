@@ -9,10 +9,10 @@
  */
 
 import { createHash, createHmac, pbkdf2Sync, randomBytes, timingSafeEqual } from 'crypto';
-import { MongoAuth } from './auth';
-import { MongoClientConfig } from '../../config';
-import { BaseResponse, Command } from '../command';
-import { MongoError } from '../../error';
+import { MongoAuth } from './auth.js';
+import { MongoClientConfig } from '../../config.js';
+import { BaseResponse, Command } from '../command.js';
+import { MongoError } from '../../error.js';
 // @ts-ignore
 import saslprep from 'saslprep';
 

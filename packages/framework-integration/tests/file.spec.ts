@@ -1,6 +1,6 @@
 // import { expect, test, beforeAll } from '@jest/globals';
 // import { EntityStorage, FS } from '@deepkit/fs';
-// import { appModuleForControllers, closeAllCreatedServers, createServerClientPair } from './util';
+// import { appModuleForControllers, closeAllCreatedServers, createServerClientPair } from './util.js';
 // import { sleep } from '@deepkit/core';
 // import { Buffer } from 'buffer';
 // import { arrayBufferTo } from '@deepkit/type';

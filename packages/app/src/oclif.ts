@@ -6,9 +6,9 @@ import { args, flags } from '@oclif/parser';
 import { IBooleanFlag, IOptionFlag } from '@oclif/parser/lib/flags';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
-import { cli, Command } from './command';
+import { cli, Command } from './command.js';
 
-function getProperty(classType: ClassType, ref: {property: string; parameterIndex?: number;}): ReflectionProperty | ReflectionParameter {
+function getProperty(classType: ClassType, ref: { property: string; parameterIndex?: number; }): ReflectionProperty | ReflectionParameter {
     return ref.parameterIndex !== undefined
         ? ReflectionClass.from(classType).getMethodParameters(ref.property)[ref.parameterIndex]
         : ReflectionClass.from(classType).getProperty(ref.property);

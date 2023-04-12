@@ -8,7 +8,21 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, CompilerContext, CustomError, isArray, isFunction, isInteger, isIterable, isNumeric, isObject, stringifyValueWithType, toFastProperties } from '@deepkit/core';
+import {
+    ClassType,
+    CompilerContext,
+    CustomError,
+    getObjectKeysSize,
+    isArray,
+    isFunction,
+    isInteger,
+    isIterable,
+    isNumeric,
+    isObject,
+    stringifyValueWithType,
+    toFastProperties,
+    hasProperty
+} from '@deepkit/core';
 import {
     AnnotationDefinition,
     assertType,
@@ -43,6 +57,7 @@ import {
     Type,
     TypeClass,
     TypeIndexSignature,
+    TypeLiteral,
     TypeObjectLiteral,
     TypeParameter,
     TypeProperty,
@@ -76,6 +91,18 @@ export class NamingStrategy {
         return memberNameToString(type.name);
     }
 }
+
+export const underscoreNamingStrategy = new class extends NamingStrategy {
+    constructor() {
+        super('underscore');
+    }
+
+    getPropertyName(type: TypeProperty | TypePropertySignature, forSerializer: string): string | undefined {
+        const name = super.getPropertyName(type, forSerializer);
+        if (!name) return name;
+        return name.replace(/([A-Z])/g, '_$1').toLowerCase();
+    }
+};
 
 /**
  * Options that can be passed to the serialization/deserialization functions
@@ -144,23 +171,25 @@ function isGroupAllowed(options: SerializationOptions, groupNames: string[]): bo
 
 export type SerializeFunction = (data: any, state?: SerializationOptions) => any;
 
+export function getPartialType(type: TypeClass | TypeObjectLiteral) {
+    const jitContainer = getTypeJitContainer(type);
+    if (jitContainer.partialType) return jitContainer.partialType;
+    type = copyAndSetParent(type);
+    const reflection = ReflectionClass.from(type);
+    type.types = reflection.type.types.map(v => ({ ...v })) as any;
+    for (const member of type.types) {
+        if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
+            member.optional = true;
+        }
+    }
+    return jitContainer.partialType = getTypeObjectLiteralFromTypeClass(type);
+}
+
 /**
  * Creates a (cached) Partial<T> of the given type and returns a (cached) serializer function for the given registry (serialize or deserialize).
  */
 export function getPartialSerializeFunction(type: TypeClass | TypeObjectLiteral, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy()) {
-    const jitContainer = getTypeJitContainer(type);
-    if (!jitContainer.partialType) {
-        type = copyAndSetParent(type);
-        const reflection = ReflectionClass.from(type);
-        type.types = reflection.type.types.map(v => ({ ...v })) as any;
-        for (const member of type.types) {
-            if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
-                member.optional = true;
-            }
-        }
-        jitContainer.partialType = getTypeObjectLiteralFromTypeClass(type);
-    }
-    return getSerializeFunction(jitContainer.partialType, registry, namingStrategy);
+    return getSerializeFunction(getPartialType(type), registry, namingStrategy);
 }
 
 /**
@@ -185,17 +214,18 @@ export function createSerializeFunction(type: Type, registry: TemplateRegistry, 
         state.target = 'deserialize';
     }
 
-    compiler.context.set('_global', typeSettings);
     //set unpopulatedCheck to ReturnSymbol to jump over those properties
+    compiler.context.set('typeSettings', typeSettings);
+    compiler.context.set('UnpopulatedCheck', UnpopulatedCheck);
     compiler.context.set('UnpopulatedCheckReturnSymbol', UnpopulatedCheck.ReturnSymbol);
 
     const code = `
         var result;
         state = state ? state : {};
-        var oldUnpopulatedCheck = _global.unpopulatedCheck;
-        _global.unpopulatedCheck = UnpopulatedCheckReturnSymbol;
+        var oldUnpopulatedCheck = typeSettings.unpopulatedCheck;
+        typeSettings.unpopulatedCheck = UnpopulatedCheckReturnSymbol;
         ${executeTemplates(state, type)}
-        _global.unpopulatedCheck = oldUnpopulatedCheck;
+        typeSettings.unpopulatedCheck = oldUnpopulatedCheck;
         return result;
     `;
 
@@ -229,7 +259,7 @@ export function createTypeGuardFunction(type: Type, state?: TemplateState, seria
     for (const hook of state.registry.postHooks) hook(type, state);
     for (const hook of state.registry.getDecorator(type)) hook(type, state);
 
-    compiler.context.set('_global', typeSettings);
+    compiler.context.set('typeSettings', typeSettings);
     //set unpopulatedCheck to ReturnSymbol to jump over those properties
     compiler.context.set('UnpopulatedCheckReturnSymbol', UnpopulatedCheck.ReturnSymbol);
 
@@ -237,10 +267,10 @@ export function createTypeGuardFunction(type: Type, state?: TemplateState, seria
         var result;
         if (_path === undefined) _path = '';
         state = state ? state : {};
-        var oldUnpopulatedCheck = _global.unpopulatedCheck;
-        _global.unpopulatedCheck = UnpopulatedCheckReturnSymbol;
+        var oldUnpopulatedCheck = typeSettings.unpopulatedCheck;
+        typeSettings.unpopulatedCheck = UnpopulatedCheckReturnSymbol;
         ${state.template}
-        _global.unpopulatedCheck = oldUnpopulatedCheck;
+        typeSettings.unpopulatedCheck = oldUnpopulatedCheck;
         return result === true;
     `;
     return compiler.build(code, 'data', 'state', '_path', 'property');
@@ -364,7 +394,7 @@ export class TemplateState {
         return !!this.validation;
     }
 
-    withValidation(validation: typeof this['validation']): this {
+    withValidation(validation: this['validation']): this {
         this.validation = validation;
         return this;
     }
@@ -481,7 +511,10 @@ export class TemplateState {
 
     setContext(values: { [name: string]: any }) {
         for (const i in values) {
-            if (!values.hasOwnProperty(i)) continue;
+            if (!hasProperty(values, i)) {
+                console.log('hasProperty is false: ', i, values[i], hasProperty(values, i));
+                continue;
+            }
             this.compilerContext.context.set(i, values[i]);
         }
     }
@@ -931,10 +964,10 @@ export function sortSignatures(signatures: TypeIndexSignature[]) {
 
 export function getStaticDefaultCodeForProperty(member: TypeProperty | TypePropertySignature, setter: string | ContainerAccessor, state: TemplateState) {
     let staticDefault = ``;
-    if (!hasDefaultValue(member)) {
+    if (!hasDefaultValue(member) && !isOptional(member)) {
         if (member.type.kind === ReflectionKind.literal) {
             staticDefault = `${setter} = ${state.compilerContext.reserveConst(member.type.literal)};`;
-        } else if (!isOptional(member) && isNullable(member.type)) {
+        } else if (isNullable(member.type)) {
             staticDefault = `${setter} = null;`;
         }
     }
@@ -1063,7 +1096,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 const readName = getNameExpression(state.namingStrategy.getPropertyName(property.property, state.registry.serializer.name), state);
 
                 const propertyState = state.fork(argumentName, new ContainerAccessor(state.accessor, readName)).extendPath(String(property.getName()));
-                const staticDefault = property.type.kind === ReflectionKind.literal ? `${argumentName} = ${state.compilerContext.reserveConst(property.type.literal)};` : '';
+                const staticDefault = property.type.kind === ReflectionKind.literal && !property.isOptional() ? `${argumentName} = ${state.compilerContext.reserveConst(property.type.literal)};` : '';
 
                 const embedded = property.getEmbedded();
                 if (embedded) {
@@ -1126,11 +1159,12 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             }`);
         }
 
+        state.setContext({hasProperty});
         //the index signature type could be: string, number, symbol.
         //or a literal when it was constructed by a mapped type.
         lines.push(`
         for (const ${i} in ${state.accessor}) {
-            if (!${state.accessor}.hasOwnProperty(${i})) continue;
+            if (!hasProperty(${state.accessor}, ${i})) continue;
             if (${existingCheck}) continue;
             if (false) {} ${signatureLines.join(' ')}
         }
@@ -1138,6 +1172,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     }
 
     let createObject = '{}';
+    const postLines: string[] = [];
     if (state.isDeserialization && type.kind === ReflectionKind.class) {
         const classType = state.compilerContext.reserveConst(type.classType);
         const clazz = ReflectionClass.from(type.classType);
@@ -1150,6 +1185,8 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             }
         } else {
             createObject = `new ${classType}(${constructorArguments.join(', ')})`;
+            preLines.push(`const oldCheck = typeSettings.unpopulatedCheck; typeSettings.unpopulatedCheck = UnpopulatedCheck.None;`);
+            postLines.push(`typeSettings.unpopulatedCheck = oldCheck;`);
         }
     }
 
@@ -1157,6 +1194,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         if ('object' !== typeof ${state.accessor}) ${state.throwCode(type)}
         ${preLines.join('\n')}
         let ${v} = ${createObject};
+        ${postLines.join('\n')}
         ${lines.join('\n')}
         ${state.setter} = ${v};
     `);
@@ -1263,10 +1301,10 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 if (${optionalCheck} ${propertyAccessor} !== unpopulatedSymbol) {
                     let ${checkValid} = false;
                     ${executeTemplates(propertyState,
-                        member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
+                    member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
                         ? { kind: ReflectionKind.function, name: memberNameToString(member.name), return: member.return, parameters: member.parameters }
                         : member.type
-                    )}
+                )}
                     if (!${checkValid}) ${state.setter} = false;
                 }`);
             }
@@ -1289,11 +1327,12 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             }`);
         }
 
+        state.setContext({hasProperty});
         //the index signature type could be: string, number, symbol.
         //or a literal when it was constructed by a mapped type.
         lines.push(`
         for (const ${i} in ${state.accessor}) {
-            if (!${state.accessor}.hasOwnProperty(${i})) continue;
+            if (!hasProperty(${state.accessor}, ${i})) continue;
             if (${existingCheck}) continue;
             if (!${state.setter}) {
                 break;
@@ -1963,13 +2002,24 @@ export class Serializer {
             (type, state) => {
                 if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) return;
                 state.annotationHandled(referenceAnnotation);
-                state.setContext({ isObject, createReference, isReferenceHydrated, isReferenceInstance });
+                state.setContext({ isObject, createReference, isReferenceHydrated, isReferenceInstance, getObjectKeysSize });
                 const reflection = ReflectionClass.from(type);
                 const referenceClassTypeVar = state.setVariable('referenceClassType', type.kind === ReflectionKind.class ? type.classType : Object);
+
+                // when an object with primary key is given e.g. {id: 1} we treat it as
+                // reference and assign an instance of Reference to the property.
+                const l: string[] = [`${reflection.getPrimaries().length} > 0 && getObjectKeysSize(${state.accessor}) === ${reflection.getPrimaries().length}`];
+                for (const pk of reflection.getPrimaries()) {
+                    l.push(`${JSON.stringify(pk.name)} in ${state.accessor}`);
+                }
+                const checkIsPrimaryKeyOnly = l.join(' && ');
+
                 // in deserialization a reference is created when only the primary key is provided (no object given)
                 state.replaceTemplate(`
                     if (isReferenceInstance(${state.accessor})) {
                         ${state.setter} = ${state.accessor};
+                    } else if (isObject(${state.accessor}) && ${checkIsPrimaryKeyOnly}) {
+                        ${state.setter} = createReference(${referenceClassTypeVar}, ${state.accessor});
                     } else if (isObject(${state.accessor})) {
                         ${state.template}
                     } else {
@@ -2099,8 +2149,14 @@ export class Serializer {
         this.typeGuards.register(1, ReflectionKind.array, (type, state) => typeGuardArray(type.type, state));
         this.typeGuards.register(1, ReflectionKind.tuple, typeGuardTuple);
         this.typeGuards.register(1, ReflectionKind.literal, (type, state) => {
-            const v = state.setVariable('v', type.literal);
-            state.addSetterAndReportErrorIfInvalid('type', 'Invalid literal', `${v} === ${state.accessor}`);
+            state.addSetterAndReportErrorIfInvalid('type', 'Invalid literal', `${state.setVariable('v', type.literal)} === ${state.accessor}`);
+        });
+
+        this.typeGuards.register(-0.5, ReflectionKind.literal, (type, state) => {
+            //loosely only works for number/bigint/boolean, not for symbols/regexp/string
+            if (type.literal === null || type.literal === undefined || typeof type.literal === 'number' || typeof type.literal === 'bigint' || typeof type.literal === 'boolean') {
+                state.addSetter(`'string' === typeof ${state.accessor} && ${state.setVariable('v', String(type.literal))} === ${state.accessor}`);
+            }
         });
 
         this.typeGuards.register(1, ReflectionKind.regexp, ((type, state) => state.addSetterAndReportErrorIfInvalid('type', 'Not a RegExp', `${state.accessor} instanceof RegExp`)));
@@ -2110,7 +2166,7 @@ export class Serializer {
 
         this.typeGuards.getRegistry(1).registerClass(Set, typeGuardClassSet);
         this.typeGuards.getRegistry(1).registerClass(Map, typeGuardClassMap);
-        this.typeGuards.getRegistry(1).registerClass(Date, (type, state) => state.addSetter(`${state.accessor} instanceof Date`));
+        this.typeGuards.getRegistry(1).registerClass(Date, (type, state) => state.addSetterAndReportErrorIfInvalid('type', 'Not a Date', `${state.accessor} instanceof Date`));
         this.typeGuards.getRegistry(0.5).registerClass(Date, (type, state) => {
             state.addSetter(`'string' === typeof ${state.accessor} && new Date(${state.accessor}).toString() !== 'Invalid Date'`);
         });

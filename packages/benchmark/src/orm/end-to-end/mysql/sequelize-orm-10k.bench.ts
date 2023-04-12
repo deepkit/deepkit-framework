@@ -9,7 +9,7 @@
  */
 
 import 'reflect-metadata';
-import { BenchSuite } from '../../../bench';
+import { BenchSuite } from '../../../bench.js';
 import { DataTypes, Model, Sequelize } from 'sequelize';
 
 const sequelize = new Sequelize('mysql://root@localhost/default', {

@@ -9,7 +9,7 @@
  */
 
 import { cli, Command } from '@deepkit/app';
-import { DebugController } from '../debug/debug.controller';
+import { DebugController } from '../debug/debug.controller.js';
 import { ConfigOption } from "@deepkit/framework-debug-api";
 import { ReflectionClass } from "@deepkit/type";
 import { createTable } from 'nice-table';

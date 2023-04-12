@@ -9,19 +9,19 @@
  */
 
 import { arrayRemoveItem, asyncOperation } from '@deepkit/core';
-import { Host } from './host';
+import { Host } from './host.js';
 import { createConnection, Socket } from 'net';
 import { connect as createTLSConnection, TLSSocket } from 'tls';
-import { Command } from './command/command';
+import { Command } from './command/command.js';
 import { stringifyType, Type, uuid } from '@deepkit/type';
 import { BSONBinarySerializer, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
-import { HandshakeCommand } from './command/handshake';
-import { MongoClientConfig } from './config';
-import { MongoError } from './error';
+import { HandshakeCommand } from './command/handshake.js';
+import { MongoClientConfig } from './config.js';
+import { MongoError } from './error.js';
 
 import { DatabaseTransaction } from '@deepkit/orm';
-import { CommitTransactionCommand } from './command/commitTransaction';
-import { AbortTransactionCommand } from './command/abortTransaction';
+import { CommitTransactionCommand } from './command/commitTransaction.js';
+import { AbortTransactionCommand } from './command/abortTransaction.js';
 
 export enum MongoConnectionStatus {
     pending = 'pending',

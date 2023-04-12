@@ -9,10 +9,11 @@
  */
 
 import { Pool } from 'mariadb';
-import { mySqlSerializer } from './mysql-serializer';
-import { isUUIDType, ReflectionKind, ReflectionProperty, Serializer, TypeNumberBrand } from '@deepkit/type';
+import { mySqlSerializer } from './mysql-serializer.js';
+import { isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, TypeNumberBrand } from '@deepkit/type';
 import { Column, DefaultPlatform, IndexModel, isSet } from '@deepkit/sql';
-import { MysqlSchemaParser } from './mysql-schema-parser';
+import { MysqlSchemaParser } from './mysql-schema-parser.js';
+import { MySQLSQLFilterBuilder } from './filter-builder.js';
 
 export class MySQLPlatform extends DefaultPlatform {
     protected override defaultSqlType = 'longtext';
@@ -60,8 +61,19 @@ export class MySQLPlatform extends DefaultPlatform {
         this.addBinaryType('longblob');
     }
 
+    override createSqlFilterBuilder(schema: ReflectionClass<any>, tableName: string): MySQLSQLFilterBuilder {
+        return new MySQLSQLFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this);
+    }
+
     supportsSelectFor(): boolean {
         return true;
+    }
+
+    /**
+     * MySQL can compare SQL values with JSON values directly.
+     */
+    deepColumnAccessorRequiresJsonString(): boolean {
+        return false;
     }
 
     protected setColumnType(column: Column, typeProperty: ReflectionProperty) {

@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import * as vm from 'vm';
-import { BenchmarkRun } from './model';
+import { BenchmarkRun } from './model.js';
 import * as si from 'systeminformation';
 import { execSync } from 'child_process';
 import { serialize } from '@deepkit/type';

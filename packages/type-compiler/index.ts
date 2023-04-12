@@ -8,5 +8,5 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/compiler';
-export * from './src/loader';
+export * from './src/compiler.js';
+export * from './src/loader.js';

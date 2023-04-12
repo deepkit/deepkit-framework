@@ -9,7 +9,7 @@
  */
 
 import * as t from 'io-ts';
-import { BenchSuite } from '../../bench';
+import { BenchSuite } from '../../bench.js';
 
 const decoderIoTS = t.type({
     ready: t.boolean,

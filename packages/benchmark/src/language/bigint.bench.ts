@@ -1,4 +1,4 @@
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 import { createHash } from 'crypto';
 
 function bufToBigint(buf: Buffer): bigint {

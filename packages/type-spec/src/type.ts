@@ -210,4 +210,6 @@ export enum ReflectionOp {
     mappedType2, //same as mappedType2 but the given functionPointer returns a tuple [type, name]
 
     functionReference, //Same as classReference but for functions
+
+    callSignature, //Same as function but for call signatures (in object literals)
 }

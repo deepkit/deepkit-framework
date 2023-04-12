@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BenchSuite } from '../../bench';
+import { BenchSuite } from '../../bench.js';
 import { IsArray, IsBoolean, IsInt, IsNegative, IsString, Max, validate, ValidateNested, } from 'class-validator';
-import { good } from './validation';
+import { good } from './validation.js';
 
 export class Nested {
     @IsString()

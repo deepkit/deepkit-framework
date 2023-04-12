@@ -9,7 +9,7 @@
  */
 
 import { AsyncSubscription } from '@deepkit/core-rxjs';
-import { Broker } from './broker';
+import { Broker } from './broker.js';
 
 export class AppLock {
     constructor(protected subscription: AsyncSubscription) {

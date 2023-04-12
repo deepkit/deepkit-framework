@@ -10,7 +10,7 @@
 
 import { getClassSchema, jsonSerializer, t } from '@deepkit/type';
 import { getJITConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator } from '@deepkit/orm';
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 
 class Image {
     @t title: string = '';

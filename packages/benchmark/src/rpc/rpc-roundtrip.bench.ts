@@ -9,7 +9,7 @@
  */
 
 import { createRpcMessage, DirectClient, readRpcMessage, rpc, rpcAction, RpcKernel } from '@deepkit/rpc';
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 
 export async function main() {
     const bench1 = new BenchSuite('protocol');

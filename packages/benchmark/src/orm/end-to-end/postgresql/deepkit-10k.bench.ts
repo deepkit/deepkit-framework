@@ -11,8 +11,8 @@
 import { PrimaryKey, entity } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { PostgresDatabaseAdapter } from '@deepkit/postgres';
-import { BenchSuite } from '../../../bench';
-import { Model } from '../mongo/deepkit-10k.bench';
+import { BenchSuite } from '../../../bench.js';
+import { Model } from '../mongo/deepkit-10k.bench.js';
 
 @entity.name('deepkit')
 export class DeepkitModel {

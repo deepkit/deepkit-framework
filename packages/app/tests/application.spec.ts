@@ -1,13 +1,12 @@
 import { beforeEach, expect, test } from '@jest/globals';
-import { App } from '../src/app';
+import { App } from '../src/app.js';
 import { Inject, ProviderWithScope, Token } from '@deepkit/injector';
-import { AppModule, createModule } from '../src/module';
-import { BaseEvent, EventDispatcher, eventDispatcher, EventToken, DataEventToken } from '@deepkit/event';
-import { cli, Command } from '../src/command';
-import { ClassType } from '../../core';
+import { AppModule, createModule } from '../src/module.js';
+import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
+import { cli, Command } from '../src/command.js';
 import { isClass } from '@deepkit/core';
-import { ServiceContainer } from '../src/service-container';
-import { DataEvent } from '@deepkit/event';
+import { ServiceContainer } from '../src/service-container.js';
+import { ClassType } from '@deepkit/core';
 
 Error.stackTraceLimit = 100;
 
@@ -289,6 +288,7 @@ test('listen() with dependencies', async () => {
     class MyConfig {
         environment: string = 'dev';
     }
+
     const gotEvents: number[] = [];
     const myModule = new AppModule({
         config: MyConfig,

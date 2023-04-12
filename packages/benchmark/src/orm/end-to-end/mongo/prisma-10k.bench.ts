@@ -9,7 +9,7 @@
  */
 
 import 'reflect-metadata';
-import { BenchSuite } from '../../../bench';
+import { BenchSuite } from '../../../bench.js';
 import { spawnSync } from 'child_process';
 
 export async function main() {

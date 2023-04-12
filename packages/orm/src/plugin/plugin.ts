@@ -1,4 +1,4 @@
-import { Database } from '../database';
+import { Database } from '../database.js';
 import { ClassType, getClassName } from '@deepkit/core';
 
 export interface DatabasePlugin {

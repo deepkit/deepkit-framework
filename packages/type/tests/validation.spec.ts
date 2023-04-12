@@ -1,9 +1,9 @@
 import { expect, test, jest } from '@jest/globals';
-import { Email, MaxLength, MinLength, Positive, Validate, validate, validates, ValidatorError } from '../src/validator';
-import { assert, is } from '../src/typeguard';
-import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Type, Unique } from '../src/reflection/type';
-import { t } from '../src/decorator';
-import { ReflectionClass, typeOf } from '../src/reflection/reflection';
+import { Email, MaxLength, MinLength, Positive, Validate, validate, validates, ValidatorError } from '../src/validator.js';
+import { assert, is } from '../src/typeguard.js';
+import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Type, Unique } from '../src/reflection/type.js';
+import { t } from '../src/decorator.js';
+import { ReflectionClass, typeOf } from '../src/reflection/reflection.js';
 import { validatedDeserialize } from '../src/serializer-facade.js';
 
 test('primitives', () => {
@@ -289,4 +289,12 @@ test('class with statics', () => {
 
     expect(validate<PilotId>({value: 34})).toEqual([]);
     expect(validate<PilotId>({value: '33'})).toEqual([{code: 'type', message: 'Not a number', path: 'value'}]);
+});
+
+test('date', () => {
+    class Account {
+        public name!: string;
+        public createdAt!: Date;
+    }
+    expect(validate<Account>({name: "jack", createdAt: 'asd'})).toEqual([{code: 'type', message: 'Not a Date', path: 'createdAt'}]);
 });

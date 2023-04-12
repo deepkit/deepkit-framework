@@ -8,5 +8,5 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/utils';
-export * from './src/timer';
+export * from './src/utils.js';
+export * from './src/timer.js';

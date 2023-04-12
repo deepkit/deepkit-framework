@@ -16,7 +16,7 @@
 import { ClassType, getClassName, isArray } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
 import { ReplaySubject, Subject, TeardownLogic } from 'rxjs';
-import { EntitySubject, IdInterface } from './model';
+import { EntitySubject, IdInterface } from './model.js';
 
 export type FilterParameters = { [name: string]: any | undefined };
 

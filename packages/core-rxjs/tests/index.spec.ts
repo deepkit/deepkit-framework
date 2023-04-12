@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
-import { isBehaviorSubject, isSubject, nextValue, Subscriptions } from '../src/utils';
+import { isBehaviorSubject, isSubject, nextValue, Subscriptions } from '../src/utils.js';
 
 test('nextValue subject', async () => {
     const subject = new Subject();

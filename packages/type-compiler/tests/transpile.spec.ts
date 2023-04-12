@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { transpile, transpileAndRun } from './utils';
+import { transpile, transpileAndRun } from './utils.js';
 import * as ts from 'typescript';
 
 test('function __type', () => {
@@ -425,4 +425,15 @@ test('extends with reference to this', () => {
     console.log(res);
     //currently broken as it returns LogEntityForSchema.options.entity, probably a bug in TS
     // expect(res.app).toContain(`() => this.options.entity,`);
+});
+
+test('keyof this expression', () => {
+    const res = transpile({
+        'app': `
+        class Factory {
+            someFunctionC(input: keyof this) { }
+        }
+        `
+    });
+    console.log(res);
 });

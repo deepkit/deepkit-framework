@@ -8,17 +8,29 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { asyncOperation, ClassType, CustomError, getClassName, getClassTypeFromInstance, isClassInstance } from '@deepkit/core';
+import { asyncOperation, ClassType, CustomError, getClassName, getClassTypeFromInstance, isArray, isClassInstance } from '@deepkit/core';
 import { OutgoingHttpHeaders, ServerResponse } from 'http';
 import { eventDispatcher } from '@deepkit/event';
-import { HttpRequest, HttpResponse } from './model';
+import { HttpRequest, HttpRequestPositionedParameters, HttpResponse } from './model.js';
 import { InjectorContext } from '@deepkit/injector';
 import { LoggerInterface } from '@deepkit/logger';
-import { HttpRouter, RouteConfig, RouteParameterResolverForInjector } from './router';
+import { HttpRouter, RouteConfig, RouteParameterResolverForInjector } from './router.js';
 import { createWorkflow, WorkflowEvent } from '@deepkit/workflow';
 import type { ElementStruct, render } from '@deepkit/template';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
-import { getSerializeFunction, hasTypeInformation, ReflectionKind, resolveReceiveType, SerializationError, serialize, serializer, ValidationError } from '@deepkit/type';
+import {
+    getSerializeFunction,
+    hasTypeInformation,
+    ReflectionKind,
+    resolveReceiveType,
+    SerializationError,
+    serialize,
+    serializer,
+    Type,
+    typeSettings,
+    UnpopulatedCheck,
+    ValidationError
+} from '@deepkit/type';
 import stream from 'stream';
 
 export function isElementStruct(v: any): v is ElementStruct {
@@ -184,8 +196,8 @@ export class HttpWorkflowEventWithRoute extends HttpWorkflowEvent {
         this.next('response', new HttpResponseEvent(this.injectorContext, this.request, this.response, response, this.route));
     }
 
-    accessDenied() {
-        this.next('accessDenied', new HttpAccessDeniedEvent(this.injectorContext, this.request, this.response, this.route));
+    accessDenied(error?: Error) {
+        this.next('accessDenied', new HttpAccessDeniedEvent(this.injectorContext, this.request, this.response, this.route, error));
     }
 }
 
@@ -232,13 +244,14 @@ export class HttpAccessDeniedEvent extends HttpWorkflowEvent {
         public request: HttpRequest,
         public response: HttpResponse,
         public route: RouteConfig,
+        public error?: Error,
     ) {
         super(injectorContext, request, response);
     }
 }
 
 export class HttpResolveParametersEvent extends HttpWorkflowEventWithRoute {
-    public parameters: any[] = [];
+    public parameters: HttpRequestPositionedParameters = { arguments: [], parameters: {} };
 
     constructor(
         public injectorContext: InjectorContext,
@@ -260,7 +273,7 @@ export class HttpControllerEvent extends HttpWorkflowEventWithRoute {
         public injectorContext: InjectorContext,
         public request: HttpRequest,
         public response: HttpResponse,
-        public parameters: any[] = [],
+        public parameters: HttpRequestPositionedParameters = { arguments: [], parameters: {} },
         public route: RouteConfig,
     ) {
         super(injectorContext, request, response, route);
@@ -381,7 +394,20 @@ export class JSONResponse extends BaseResponse {
     }
 }
 
-export type SupportedHttpResult = undefined | null | number | string | Response | JSONResponse | HtmlResponse | HttpResponse | ServerResponse | stream.Readable | Redirect | Uint8Array | Error;
+export type SupportedHttpResult =
+    undefined
+    | null
+    | number
+    | string
+    | Response
+    | JSONResponse
+    | HtmlResponse
+    | HttpResponse
+    | ServerResponse
+    | stream.Readable
+    | Redirect
+    | Uint8Array
+    | Error;
 
 export interface HttpResultFormatterContext {
     request: HttpRequest;
@@ -424,9 +450,14 @@ export class HttpResultFormatter {
     }
 
     handleUnknown(result: any, context: HttpResultFormatterContext): void {
-        this.setContentTypeIfNotSetAlready(context.response, this.jsonContentType);
-
-        context.response.end(JSON.stringify(result));
+        const oldCheck = typeSettings.unpopulatedCheck;
+        try {
+            typeSettings.unpopulatedCheck = UnpopulatedCheck.None;
+            this.setContentTypeIfNotSetAlready(context.response, this.jsonContentType);
+            context.response.end(JSON.stringify(result));
+        } finally {
+            typeSettings.unpopulatedCheck = oldCheck;
+        }
     }
 
     handleHtmlResponse(result: HtmlResponse, context: HttpResultFormatterContext): void {
@@ -447,11 +478,13 @@ export class HttpResultFormatter {
     }
 
     handleTypeEntity<T>(classType: ClassType<T>, instance: T, context: HttpResultFormatterContext, route?: RouteConfig): void {
+        this.handleType(resolveReceiveType(classType), instance, context, route);
+    }
+
+    handleType<T>(type: Type, instance: T, context: HttpResultFormatterContext, route?: RouteConfig): void {
         this.setContentTypeIfNotSetAlready(context.response, this.jsonContentType);
-
         const serializerToUse = route && route?.serializer ? route.serializer : serializer;
-
-        context.response.end(JSON.stringify(serialize(instance, route ? route.serializationOptions : undefined, serializerToUse, undefined, resolveReceiveType(classType))));
+        context.response.end(JSON.stringify(serialize(instance, route ? route.serializationOptions : undefined, serializerToUse, undefined, type)));
     }
 
     handleStream(stream: stream.Readable, context: HttpResultFormatterContext): void {
@@ -489,6 +522,19 @@ export class HttpResultFormatter {
                 const classType = getClassTypeFromInstance(result);
                 if (hasTypeInformation(classType)) {
                     this.handleTypeEntity(classType, result, context);
+                    return;
+                }
+            } else if (isArray(result) && result.length > 0 && isClassInstance(result[0])) {
+                const firstClassType = getClassTypeFromInstance(result[0]);
+                let allSameType = true;
+                for (const item of result) {
+                    if (!isClassInstance(item) || getClassTypeFromInstance(item) !== firstClassType) {
+                        allSameType = false;
+                        break;
+                    }
+                }
+                if (allSameType && hasTypeInformation(firstClassType)) {
+                    this.handleType({ kind: ReflectionKind.array, type: resolveReceiveType(firstClassType) }, result, context);
                     return;
                 }
             }
@@ -576,6 +622,7 @@ export class HttpListener {
                     }
                 }
 
+                event.injectorContext.set(RouteConfig, resolved.routeConfig);
                 event.routeFound(resolved.routeConfig, resolved.parameters);
             }
         } catch (error) {
@@ -648,9 +695,9 @@ export class HttpListener {
             if (event.route.action.type === 'controller') {
                 const controllerInstance = event.injectorContext.get(event.route.action.controller, event.route.action.module);
                 const method = controllerInstance[event.route.action.methodName];
-                result = await method.apply(controllerInstance, event.parameters);
+                result = await method.apply(controllerInstance, event.parameters.arguments);
             } else {
-                result = await event.route.action.fn(...event.parameters);
+                result = await event.route.action.fn(...event.parameters.arguments);
             }
 
             if (isElementStruct(result)) {
@@ -660,9 +707,9 @@ export class HttpListener {
             if (result instanceof stream.Readable) {
                 const stream = result as stream.Readable;
                 await new Promise((resolve, reject) => {
-                    stream.once('readable', resolve)
-                    stream.once('error', reject)
-                })
+                    stream.once('readable', resolve);
+                    stream.once('error', reject);
+                });
             }
             const responseEvent = new HttpResponseEvent(event.injectorContext, event.request, event.response, result, event.route);
             responseEvent.controllerActionTime = Date.now() - start;
@@ -670,7 +717,7 @@ export class HttpListener {
         } catch (error: any) {
             if (frame) frame.end();
             if (error instanceof HttpAccessDeniedError) {
-                event.next('accessDenied', new HttpAccessDeniedEvent(event.injectorContext, event.request, event.response, event.route));
+                event.next('accessDenied', new HttpAccessDeniedEvent(event.injectorContext, event.request, event.response, event.route, error));
             } else {
                 const errorEvent = new HttpControllerErrorEvent(event.injectorContext, event.request, event.response, event.route, error);
                 errorEvent.controllerActionTime = Date.now() - start;
@@ -739,7 +786,7 @@ export class HttpListener {
         if (event.response.headersSent) return;
         if (event.result === undefined || event.result === null) return;
 
-        if (event.result instanceof HtmlResponse || event.result instanceof ServerResponse || event.result instanceof Redirect || event.result instanceof stream.Readable) {
+        if (event.result instanceof HtmlResponse || event.result instanceof Response || event.result instanceof ServerResponse || event.result instanceof Redirect || event.result instanceof stream.Readable) {
             // don't do anything
         } else if (event.result instanceof JSONResponse) {
             const schema = (event.result._statusCode && event.route.getSchemaForResponse(event.result._statusCode)) || event.route.returnType;

@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { schemaMigrationRoundTrip } from '@deepkit/sql';
 import { AutoIncrement, Entity, integer, MySQL, PrimaryKey, Reference, SQLite, typeOf, Unique } from '@deepkit/type';
-import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter';
+import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter.js';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 
 test('custom type', async () => {

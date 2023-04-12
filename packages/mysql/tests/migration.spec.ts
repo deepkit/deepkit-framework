@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { AutoIncrement, Entity, float32, int16, int32, int8, integer, MySQL, PrimaryKey, Reference, typeOf, uint16, uint32, uint8, Unique, UUID } from '@deepkit/type';
 import { schemaMigrationRoundTrip } from '@deepkit/sql';
-import { MySQLDatabaseAdapter } from '../src/mysql-adapter';
+import { MySQLDatabaseAdapter } from '../src/mysql-adapter.js';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 
 test('mysql custom type', async () => {
@@ -11,7 +11,7 @@ test('mysql custom type', async () => {
         content: string = '';
     }
 
-    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW });
+    const adapter = new MySQLDatabaseAdapter({ host: '127.0.0.1', user: 'root', database: 'default', password: process.env.MYSQL_PW });
     const [postTable] = adapter.platform.createTables(DatabaseEntityRegistry.from([post]));
 
     expect(postTable.getColumn('id').isNotNull).toBe(true);
@@ -28,7 +28,7 @@ test('uuid required', async () => {
         id: UUID & PrimaryKey = '';
     }
 
-    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW });
+    const adapter = new MySQLDatabaseAdapter({ host: '127.0.0.1', user: 'root', database: 'default', password: process.env.MYSQL_PW });
     const [postTable] = adapter.platform.createTables(DatabaseEntityRegistry.from([post]));
 
     expect(postTable.getColumn('id').isNotNull).toBe(true);
@@ -48,7 +48,7 @@ test('default expression', async () => {
         opt?: boolean;
     }
 
-    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW });
+    const adapter = new MySQLDatabaseAdapter({ host: '127.0.0.1', user: 'root', database: 'default', password: process.env.MYSQL_PW });
     const [postTable] = adapter.platform.createTables(DatabaseEntityRegistry.from([post]));
 
     expect(postTable.getColumn('str').defaultValue).toBe('abc');
@@ -75,7 +75,7 @@ test('mysql numbers', async () => {
         default: number = 0;
     }
 
-    const adapter = new MySQLDatabaseAdapter({ host: 'localhost', user: 'root', database: 'default', password: process.env.MYSQL_PW });
+    const adapter = new MySQLDatabaseAdapter({ host: '127.0.0.1', user: 'root', database: 'default', password: process.env.MYSQL_PW });
     const [postTable] = adapter.platform.createTables(DatabaseEntityRegistry.from([post]));
 
     const DDL = await schemaMigrationRoundTrip([post], adapter);
@@ -115,7 +115,7 @@ interface Post extends Entity<{ name: 'post' }> {
 
 test('mysql', async () => {
     await schemaMigrationRoundTrip([typeOf<User>(), typeOf<Post>()], new MySQLDatabaseAdapter({
-        host: 'localhost',
+        host: '127.0.0.1',
         user: 'root',
         database: 'default',
         password: process.env.MYSQL_PW

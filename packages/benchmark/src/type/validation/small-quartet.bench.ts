@@ -8,10 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { good } from './validation';
+import { good } from './validation.js';
 //we use `e` and not `v` because deepkit/type supports out of the box error explanations, which quartet does only with `e`.
 import { e } from 'quartet';
-import { BenchSuite } from '../../bench';
+import { BenchSuite } from '../../bench.js';
 
 const QuartetModelChecker = e<any>({
     number: e.number,

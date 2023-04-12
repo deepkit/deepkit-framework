@@ -10,7 +10,7 @@
 
 import { ClassType } from '@deepkit/core';
 import { createReference, getPrimaryKeyHashGenerator, ReflectionClass } from '@deepkit/type';
-import { IdentityMap } from './identity-map';
+import { IdentityMap } from './identity-map.js';
 
 export function getReference<T>(
     reflectionClass: ReflectionClass<T>,

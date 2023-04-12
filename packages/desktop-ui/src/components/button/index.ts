@@ -9,7 +9,16 @@
  */
 
 import { NgModule } from '@angular/core';
-import { ButtonComponent, ButtonGroupComponent, ButtonGroupsComponent, FileChooserDirective, FileDropDirective, FilePickerDirective } from './button.component';
+import {
+    ButtonComponent,
+    ButtonGroupComponent,
+    ButtonGroupsComponent,
+    ButtonHotkeyComponent,
+    FileChooserDirective,
+    FileDropDirective,
+    FilePickerDirective,
+    HotkeyDirective
+} from './button.component';
 import { CommonModule } from '@angular/common';
 import { DuiIconModule } from '../icon';
 import {
@@ -44,6 +53,8 @@ export * from './tab-button.component'
         TabButtonComponent,
         FilePickerDirective,
         FileDropDirective,
+        HotkeyDirective,
+        ButtonHotkeyComponent,
     ],
     exports: [
         ButtonComponent,
@@ -60,6 +71,8 @@ export * from './tab-button.component'
         TabButtonComponent,
         FilePickerDirective,
         FileDropDirective,
+        HotkeyDirective,
+        ButtonHotkeyComponent,
     ],
     imports: [
         CommonModule,
