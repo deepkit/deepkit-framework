@@ -213,7 +213,9 @@ export class Logger implements LoggerInterface {
     }
 
     scoped(name: string): Logger {
-        return this.scopes[name] ||= new (this.constructor as any)(this.transporter, this.formatter, name);
+        const scopedLogger = (this.scopes[name] ||= new (this.constructor as any)(this.transporter, this.formatter, name));
+        scopedLogger.level = this.level;
+        return scopedLogger;
     }
 
     addTransport(transport: LoggerTransport) {

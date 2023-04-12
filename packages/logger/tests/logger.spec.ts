@@ -34,12 +34,14 @@ test('log message', () => {
 test('log scope', () => {
     const memory = new MemoryLoggerTransport();
     const logger = new Logger([memory], [new ScopeFormatter()]);
+    logger.level = LoggerLevel.error;
 
     const scoped = logger.scoped('database');
 
-    scoped.log('Peter');
+    scoped.error('Peter');
 
     expect(memory.messageStrings).toEqual(['(database) Peter']);
+    expect(scoped.level).toBe(LoggerLevel.error);
 });
 
 test('log data', () => {
