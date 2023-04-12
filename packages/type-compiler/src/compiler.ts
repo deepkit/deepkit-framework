@@ -15,6 +15,7 @@ import {
     ArrayTypeNode,
     ArrowFunction,
     Bundle,
+    CallSignatureDeclaration,
     ClassDeclaration,
     ClassElement,
     ClassExpression,
@@ -51,6 +52,7 @@ import {
     isArrayTypeNode,
     isArrowFunction,
     isCallExpression,
+    isCallSignatureDeclaration,
     isClassDeclaration,
     isClassExpression,
     isConstructorDeclaration,
@@ -1463,14 +1465,15 @@ export class ReflectionTransformer implements CustomTransformer {
             case SyntaxKind.ConstructSignature:
             case SyntaxKind.ConstructorType:
             case SyntaxKind.FunctionType:
+            case SyntaxKind.CallSignature:
             case SyntaxKind.FunctionDeclaration: {
                 //TypeScript does not narrow types down
-                const narrowed = node as MethodSignature | MethodDeclaration | ConstructorTypeNode | ConstructSignatureDeclaration | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
+                const narrowed = node as MethodSignature | MethodDeclaration | CallSignatureDeclaration | ConstructorTypeNode | ConstructSignatureDeclaration | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
 
                 const config = this.findReflectionConfig(narrowed, program);
                 if (config.mode === 'never') return;
 
-                const name = isConstructorTypeNode(narrowed) || isConstructSignatureDeclaration(node) ? 'new' : isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
+                const name = isCallSignatureDeclaration(node) ? '' : isConstructorTypeNode(narrowed) || isConstructSignatureDeclaration(node) ? 'new' : isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
                 if (!narrowed.type && narrowed.parameters.length === 0 && !name) return;
 
                 program.pushFrame();
@@ -1509,10 +1512,11 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
 
                 program.pushOp(
-                    isMethodSignature(narrowed) || isConstructSignatureDeclaration(narrowed)
-                        ? ReflectionOp.methodSignature
-                        : isMethodDeclaration(narrowed) || isConstructorDeclaration(narrowed)
-                            ? ReflectionOp.method : ReflectionOp.function, program.findOrAddStackEntry(name)
+                    isCallSignatureDeclaration(node) ? ReflectionOp.callSignature :
+                        isMethodSignature(narrowed) || isConstructSignatureDeclaration(narrowed)
+                            ? ReflectionOp.methodSignature
+                            : isMethodDeclaration(narrowed) || isConstructorDeclaration(narrowed)
+                                ? ReflectionOp.method : ReflectionOp.function, program.findOrAddStackEntry(name)
                 );
 
                 if (isMethodDeclaration(narrowed)) {
