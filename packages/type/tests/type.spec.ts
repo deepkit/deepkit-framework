@@ -1453,3 +1453,23 @@ test('issue-429: invalid function detection', () => {
     expect(stringifyResolvedType(typeOf<isFunction>())).toBe('false');
     expect(stringifyResolvedType(typeOf<keys>())).toBe(`'someFunction'`);
 });
+
+test('issue-430: referring to this', () => {
+    class SomeClass {
+        fieldA!: string;
+        fieldB!: number;
+        fieldC!: boolean;
+
+        someFunctionA() { }
+        someFunctionB(input: string) { }
+        someFunctionC(input: keyof this /* behaves the same with keyof anything */) { }
+    }
+
+    type ArrowFunction = (...args: any) => any;
+    type MethodKeys<T> = {[K in keyof T]: T[K] extends ArrowFunction ? K : never}[keyof T];
+    type keys = MethodKeys<SomeClass>;
+
+    //for the moment we treat `keyof this` as any, since `this` is not implemented at all.
+    //this makes it possible that the code above works at least.
+    expect(stringifyResolvedType(typeOf<keys>())).toBe(`'someFunctionA' | 'someFunctionB' | 'someFunctionC'`);
+});

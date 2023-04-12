@@ -1640,6 +1640,13 @@ export class ReflectionTransformer implements CustomTransformer {
                 //TypeScript does not narrow types down
                 const narrowed = node as TypeOperatorNode;
 
+                if (narrowed.type.kind === SyntaxKind.ThisType) {
+                    //for the moment we treat `keyof this` as any, since `this` is not implemented at all.
+                    //this makes it possible that the code above works at least.
+                    program.pushOp(ReflectionOp.any);
+                    break;
+                }
+
                 switch (narrowed.operator) {
                     case SyntaxKind.KeyOfKeyword: {
                         this.extractPackStructOfType(narrowed.type, program);
