@@ -57,6 +57,7 @@ import {
     Type,
     TypeClass,
     TypeIndexSignature,
+    TypeLiteral,
     TypeObjectLiteral,
     TypeParameter,
     TypeProperty,
@@ -963,10 +964,10 @@ export function sortSignatures(signatures: TypeIndexSignature[]) {
 
 export function getStaticDefaultCodeForProperty(member: TypeProperty | TypePropertySignature, setter: string | ContainerAccessor, state: TemplateState) {
     let staticDefault = ``;
-    if (!hasDefaultValue(member)) {
+    if (!hasDefaultValue(member) && !isOptional(member)) {
         if (member.type.kind === ReflectionKind.literal) {
             staticDefault = `${setter} = ${state.compilerContext.reserveConst(member.type.literal)};`;
-        } else if (!isOptional(member) && isNullable(member.type)) {
+        } else if (isNullable(member.type)) {
             staticDefault = `${setter} = null;`;
         }
     }
@@ -1095,7 +1096,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 const readName = getNameExpression(state.namingStrategy.getPropertyName(property.property, state.registry.serializer.name), state);
 
                 const propertyState = state.fork(argumentName, new ContainerAccessor(state.accessor, readName)).extendPath(String(property.getName()));
-                const staticDefault = property.type.kind === ReflectionKind.literal ? `${argumentName} = ${state.compilerContext.reserveConst(property.type.literal)};` : '';
+                const staticDefault = property.type.kind === ReflectionKind.literal && !property.isOptional() ? `${argumentName} = ${state.compilerContext.reserveConst(property.type.literal)};` : '';
 
                 const embedded = property.getEmbedded();
                 if (embedded) {
