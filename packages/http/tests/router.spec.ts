@@ -7,6 +7,7 @@ import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQu
 import { getClassName, isObject, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils.js';
 import { Excluded, Group, metaAnnotation, MinLength, PrimaryKey, Reference, serializer, Type, typeSettings, UnpopulatedCheck } from '@deepkit/type';
+import { Readable } from 'stream';
 
 test('router', async () => {
     class Controller {
@@ -1281,28 +1282,29 @@ test('queries parameter in class listener', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/?userId=1'))).json.message).toEqual('Validation error:\nauth.auth(type): Not a string');
 });
 
-//disabled for the moment since critical functionality has been removed
-// test('stream', async () => {
-//     class Controller {
-//         @http.GET()
-//         handle() {
-//             return Readable.from(['test']);
-//         }
-//     }
-//     const httpKernel = createHttpKernel([Controller]);
-//     const response = (await httpKernel.request(HttpRequest.GET('/')));
-//     expect(response.statusCode).toBe(200);
-//     expect(response.bodyString).toBe('test');
-// });
-// test('stream error', async () => {
-//     class Controller {
-//         @http.GET()
-//         handle() {
-//             return new Readable().emit('error', new Error());
-//         }
-//     }
-//     const httpKernel = createHttpKernel([Controller]);
-//     const response = (await httpKernel.request(HttpRequest.GET('/')));
-//     expect(response.statusCode).toBe(500);
-//     expect(response.bodyString).toBe('Internal error');
-// });
+test('stream', async () => {
+    class Controller {
+        @http.GET()
+        handle() {
+            return Readable.from(['test']);
+        }
+    }
+    const httpKernel = createHttpKernel([Controller]);
+    const response = (await httpKernel.request(HttpRequest.GET('/')));
+    expect(response.statusCode).toBe(200);
+    await sleep(0);
+    expect(response.bodyString).toBe('test');
+});
+
+test('stream error', async () => {
+    class Controller {
+        @http.GET()
+        handle() {
+            return new Readable().emit('error', new Error('this is my error'));
+        }
+    }
+    const httpKernel = createHttpKernel([Controller]);
+    const response = (await httpKernel.request(HttpRequest.GET('/')));
+    expect(response.statusCode).toBe(500);
+    expect(response.bodyString).toBe('Internal error');
+});
