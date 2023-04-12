@@ -182,6 +182,26 @@ test('optional default value', () => {
     }
 });
 
+test('optional literal', () => {
+    interface LoginInput {
+        mechanism?: 'cookie';
+    }
+
+    {
+        const input = cast<LoginInput>({});
+        expect(input).toEqual({
+            mechanism: undefined
+        });
+    }
+
+    {
+        const input = cast<LoginInput>({ mechanism: 'cookie' });
+        expect(input).toEqual({
+            mechanism: 'cookie'
+        });
+    }
+});
+
 test('cast primitives', () => {
     expect(cast<string>('123')).toBe('123');
     expect(cast<string>(123)).toBe('123');
