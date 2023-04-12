@@ -18,3 +18,4 @@ export * from './src/client/client.js';
 
 export { UpdateCommand } from './src/client/command/update.js';
 export { AggregateCommand }  from './src/client/command/aggregate.js';
+export { FindAndModifyCommand }  from './src/client/command/findAndModify.js';
