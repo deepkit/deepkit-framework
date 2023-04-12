@@ -14,10 +14,10 @@ import cluster from 'cluster';
 import { HttpRouter } from '@deepkit/http';
 import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
 import { InjectorContext } from '@deepkit/injector';
-import { FrameworkConfig } from './module.config';
+import { FrameworkConfig } from './module.config.js';
 import { LoggerInterface } from '@deepkit/logger';
-import { createRpcConnection, WebWorker, WebWorkerFactory } from './worker';
-import { RpcControllers } from './rpc';
+import { createRpcConnection, WebWorker, WebWorkerFactory } from './worker.js';
+import { RpcControllers } from './rpc.js';
 import '@deepkit/type';
 
 export class ServerBootstrapEvent extends BaseEvent {

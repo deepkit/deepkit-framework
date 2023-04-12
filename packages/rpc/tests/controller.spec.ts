@@ -1,9 +1,9 @@
 import { assertType, entity, Positive, ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { DirectClient } from '../src/client/client-direct';
-import { getActions, rpc } from '../src/decorators';
-import { RpcKernel, RpcKernelConnection } from '../src/server/kernel';
-import { Session, SessionState } from '../src/server/security';
+import { DirectClient } from '../src/client/client-direct.js';
+import { getActions, rpc } from '../src/decorators.js';
+import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
+import { Session, SessionState } from '../src/server/security.js';
 import { BehaviorSubject } from 'rxjs';
 import { getClassName } from '@deepkit/core';
 

@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import '../src/optimize-tsx';
-import { isOptimisedHtmlString, parseCode } from '../src/optimize-tsx';
+import { isOptimisedHtmlString, parseCode } from '../src/optimize-tsx.js';
 
 Error.stackTraceLimit = 200;
 

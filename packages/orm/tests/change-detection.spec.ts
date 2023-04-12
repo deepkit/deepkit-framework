@@ -1,11 +1,11 @@
 import { expect, test } from '@jest/globals';
 import { atomicChange, deserialize, PrimaryKey, Reference, ReflectionClass, serializer } from '@deepkit/type';
-import { Formatter } from '../src/formatter';
-import { DatabaseQueryModel } from '../src/query';
-import { DatabaseSession } from '../src/database-session';
-import { MemoryDatabaseAdapter } from '../src/memory-db';
-import { getClassState, getInstanceStateFromItem } from '../src/identity-map';
-import { buildChangesFromInstance } from '../src/utils';
+import { Formatter } from '../src/formatter.js';
+import { DatabaseQueryModel } from '../src/query.js';
+import { DatabaseSession } from '../src/database-session.js';
+import { MemoryDatabaseAdapter } from '../src/memory-db.js';
+import { getClassState, getInstanceStateFromItem } from '../src/identity-map.js';
+import { buildChangesFromInstance } from '../src/utils.js';
 
 test('change-detection', () => {
     class Image {
@@ -223,7 +223,7 @@ test('change-detection enum', () => {
 test('change-detection arrayBuffer', () => {
     class s {
         id!: number & PrimaryKey;
-        buffer!: ArrayBuffer
+        buffer!: ArrayBuffer;
     }
 
     {
@@ -242,7 +242,7 @@ test('change-detection arrayBuffer', () => {
 test('change-detection typedArray', () => {
     class s {
         id!: number & PrimaryKey;
-        buffer!: Uint16Array
+        buffer!: Uint16Array;
     }
 
     {
@@ -262,7 +262,7 @@ test('change-detection typedArray', () => {
 test('change-detection array in array', () => {
     class s {
         id!: number & PrimaryKey;
-        tags!: string[][]
+        tags!: string[][];
     }
 
     {
@@ -290,7 +290,7 @@ test('change-detection array in array', () => {
 test('change-detection array in object', () => {
     class s {
         id!: number & PrimaryKey;
-        tags!: Record<string, string[]>
+        tags!: Record<string, string[]>;
     }
 
     {
@@ -315,7 +315,7 @@ test('change-detection array in object', () => {
 test('change-detection object in object', () => {
     class s {
         id!: number & PrimaryKey;
-        tags!: Record<string, Record<string, boolean>>
+        tags!: Record<string, Record<string, boolean>>;
     }
 
     {
@@ -346,7 +346,7 @@ test('change-detection object in object', () => {
 test('change-detection class', () => {
     class s {
         id!: number & PrimaryKey;
-        config!: {a?: string, b?: string}
+        config!: { a?: string, b?: string };
     }
 
     {
@@ -371,7 +371,7 @@ test('change-detection class', () => {
 test('change-detection class in array', () => {
     class s {
         id!: number & PrimaryKey;
-        config!: {name: string, value: string}[]
+        config!: { name: string, value: string }[];
     }
 
     {

@@ -1,13 +1,13 @@
 // import 'jest';
-// import {FS, getMd5} from "../src/fs";
-// import {Exchange} from "../src/exchange";
+// import {FS, getMd5} from "../src/fs.js";
+// import {Exchange} from "../src/exchange.js";
 // import {pathExists, readFile, remove} from 'fs-extra';
-// import {ExchangeDatabase, ExchangeNotifyPolicy} from "../src/exchange-database";
+// import {ExchangeDatabase, ExchangeNotifyPolicy} from "../src/exchange-database.js";
 // import {ClassType} from '@deepkit/core';
 // import {Connection, Database} from '@deepkit/mongo';
 // import {FileType} from "@deepkit/framework-shared";
-// import {ProcessLocker} from "../src/process-locker";
-// import {ExchangeServer} from "../src/exchange-server";
+// import {ProcessLocker} from "../src/process-locker.js";
+// import {ExchangeServer} from "../src/exchange-server.js";
 //
 // jest.setTimeout(100_000);
 //

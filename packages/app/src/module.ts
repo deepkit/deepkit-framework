@@ -10,9 +10,9 @@
 
 import { InjectorModule, ProviderWithScope, Token } from '@deepkit/injector';
 import { AbstractClassType, ClassType, CustomError, ExtractClassType, isClass } from '@deepkit/core';
-import { EventListener } from '@deepkit/event';
+import { EventListener, EventToken } from '@deepkit/event';
 import { WorkflowDefinition } from '@deepkit/workflow';
-import { getPartialSerializeFunction, reflect, serializer, Type, TypeClass } from '@deepkit/type';
+import { getPartialSerializeFunction, reflect, ReflectionFunction, ReflectionMethod, serializer, Type, TypeClass } from '@deepkit/type';
 
 export type DefaultObject<T> = T extends undefined ? {} : T;
 
@@ -23,6 +23,25 @@ export interface MiddlewareConfig {
 export type MiddlewareFactory = () => MiddlewareConfig;
 
 export type ExportType = AbstractClassType | string | AppModule<any> | Type;
+
+/**
+ * @reflection never
+ */
+export interface AddedListener {
+    eventToken: EventToken;
+    reflection: ReflectionMethod | ReflectionFunction;
+    module?: InjectorModule;
+    classType?: ClassType;
+    methodName?: string;
+    order: number;
+}
+
+export function stringifyListener(listener: AddedListener): string {
+    if (listener.classType) {
+        return listener.classType.name + '.' + listener.methodName;
+    }
+    return listener.reflection.name || 'anonymous function';
+}
 
 export interface ModuleDefinition {
     /**
@@ -269,16 +288,23 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
     }
 
     /**
-     * A hook point to the service container. Allows to react on a registered provider in some module.
+     * A hook that allows to react on a registered provider in some module.
      */
     processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
 
     }
 
     /**
-     * A hook point to the service container. Allows to react on a registered controller in some module.
+     * A hook that allows to react on a registered controller in some module.
      */
     processController(module: AppModule<any>, controller: ClassType) {
+
+    }
+
+    /**
+     * A hook that allows to react on a registered event listeners in some module.
+     */
+    processListener(module: AppModule<any>, listener: AddedListener) {
 
     }
 

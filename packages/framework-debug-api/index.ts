@@ -8,6 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/model';
-export * from './src/api';
-export * from './src/stopwatch-encoding';
+export * from './src/model.js';
+export * from './src/api.js';
+export * from './src/stopwatch-encoding.js';

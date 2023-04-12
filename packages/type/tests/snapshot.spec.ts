@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { getConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator } from '../src/snapshot';
-import { PrimaryKey, Reference } from '../src/reflection/type';
-import { ReflectionClass } from '../src/reflection/reflection';
+import { getConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator } from '../src/snapshot.js';
+import { PrimaryKey, Reference } from '../src/reflection/type.js';
+import { ReflectionClass } from '../src/reflection/reflection.js';
 
 class Image {
     title: string = '';

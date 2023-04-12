@@ -9,9 +9,9 @@
  */
 
 import { UUID } from '@deepkit/type';
-import { BaseResponse, Command } from './command';
-import { MongoClientConfig } from '../config';
-import { Host } from '../host';
+import { BaseResponse, Command } from './command.js';
+import { MongoClientConfig } from '../config.js';
+import { Host } from '../host.js';
 
 interface Request {
     abortTransaction: number,

@@ -9,7 +9,7 @@
  */
 
 import { BaseEvent, eventDispatcher, EventDispatcher, EventToken, InjectorContext } from '@deepkit/framework';
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 
 export async function main() {
     const bench = new BenchSuite('event');

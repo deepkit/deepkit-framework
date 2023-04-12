@@ -11,11 +11,8 @@
 import { SQLFilterBuilder } from '@deepkit/sql';
 
 export class PostgreSQLFilterBuilder extends SQLFilterBuilder {
-    protected getDeepColumnAccessor(table: string, column: string, path: string) {
-        return `${table}.${this.quoteId(column)}->${this.quoteValue(path)}`;
-    }
-
-    regexpComparator() {
-        return '~';
+    regexpComparator(lvalue: string, value: RegExp) {
+        if (value.flags.includes('i')) return `${lvalue} ~* ${this.bindParam(value.source)}`;
+        return `${lvalue} ~ ${this.bindParam(value.source)}`;
     }
 }

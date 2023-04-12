@@ -1,6 +1,6 @@
 import { LoggerInterface } from '@deepkit/logger';
 import { eventDispatcher } from '@deepkit/event';
-import { httpWorkflow } from './http';
+import { httpWorkflow } from './http.js';
 
 export class HttpLogger {
     constructor(private logger: LoggerInterface) {

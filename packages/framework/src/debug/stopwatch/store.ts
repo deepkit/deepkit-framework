@@ -3,11 +3,11 @@ import { appendFile, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { decodeFrames, encodeFrameData, encodeFrames } from '@deepkit/framework-debug-api';
 import { asyncOperation, Mutex } from '@deepkit/core';
-import { FrameworkConfig } from '../../module.config';
-import { Zone } from '../../zone';
+import { FrameworkConfig } from '../../module.config.js';
+import { Zone } from '../../zone.js';
 import cluster from 'cluster';
 import { performance } from 'perf_hooks';
-import { DebugBroker } from '../broker';
+import { DebugBroker } from '../broker.js';
 
 export class FileStopwatchStore extends StopwatchStore {
     protected lastSync?: any;

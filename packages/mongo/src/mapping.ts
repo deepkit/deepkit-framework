@@ -11,9 +11,9 @@
 import { deserialize, ReflectionClass, resolvePath, serialize, serializer } from '@deepkit/type';
 import { ClassType } from '@deepkit/core';
 import './mongo-serializer';
-import { mongoSerializer } from './mongo-serializer';
+import { mongoSerializer } from './mongo-serializer.js';
 import { convertQueryFilter, QueryCustomFields, QueryFieldNames } from '@deepkit/orm';
-import { FilterQuery } from './query.model';
+import { FilterQuery } from './query.model.js';
 
 export function convertClassQueryToMongo<T, K extends keyof T, Q extends FilterQuery<T>>(
     classType: ReflectionClass<T> | ClassType,

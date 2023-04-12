@@ -15,10 +15,12 @@ import {
     ArrayTypeNode,
     ArrowFunction,
     Bundle,
+    CallSignatureDeclaration,
     ClassDeclaration,
     ClassElement,
     ClassExpression,
     CompilerHost,
+    CompilerOptions,
     ConditionalTypeNode,
     ConstructorDeclaration,
     ConstructorTypeNode,
@@ -50,6 +52,7 @@ import {
     isArrayTypeNode,
     isArrowFunction,
     isCallExpression,
+    isCallSignatureDeclaration,
     isClassDeclaration,
     isClassExpression,
     isConstructorDeclaration,
@@ -144,6 +147,7 @@ import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spe
 import { Resolver } from './resolver.js';
 import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import { contains } from 'micromatch';
+import { parseTsconfig } from 'get-tsconfig';
 
 export function encodeOps(ops: ReflectionOp[]): string {
     return ops.map(v => String.fromCharCode(v + 33)).join('');
@@ -519,6 +523,8 @@ export class ReflectionTransformer implements CustomTransformer {
     protected resolver: Resolver;
     protected host: CompilerHost;
 
+    protected compilerOptions: CompilerOptions;
+
     /**
      * When an deep call expression was found a script-wide variable is necessary
      * as temporary storage.
@@ -530,8 +536,18 @@ export class ReflectionTransformer implements CustomTransformer {
     ) {
         this.f = context.factory;
         this.nodeConverter = new NodeConverter(this.f);
-        this.host = createCompilerHost(context.getCompilerOptions());
-        this.resolver = new Resolver(context.getCompilerOptions(), this.host);
+        this.compilerOptions = context.getCompilerOptions();
+        //some builder do not provide the full compiler options (e.g. webpack in nx),
+        //so we need to load the file manually and apply what we need.
+        if ('string' === typeof this.compilerOptions.configFilePath && !this.compilerOptions.paths) {
+            const resolved = parseTsconfig(this.compilerOptions.configFilePath);
+            if (resolved.compilerOptions) {
+                this.compilerOptions.paths = resolved.compilerOptions.paths;
+            }
+        }
+
+        this.host = createCompilerHost(this.compilerOptions);
+        this.resolver = new Resolver(this.compilerOptions, this.host);
     }
 
     forHost(host: CompilerHost): this {
@@ -575,7 +591,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
         if (!(sourceFile as any).locals) {
             //@ts-ignore
-            ts.bindSourceFile(sourceFile, this.context.getCompilerOptions());
+            ts.bindSourceFile(sourceFile, this.compilerOptions);
         }
 
         this.addImports = [];
@@ -869,7 +885,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
         const embedTopExpression: Statement[] = [];
         if (this.addImports.length) {
-            const compilerOptions = this.context.getCompilerOptions();
+            const compilerOptions = this.compilerOptions;
             const handledIdentifier: string[] = [];
             for (const imp of this.addImports) {
                 if (handledIdentifier.includes(getIdentifierName(imp.identifier))) continue;
@@ -886,10 +902,10 @@ export class ReflectionTransformer implements CustomTransformer {
                         SyntaxKind.MultiLineCommentTrivia,
                         '@ts-ignore',
                         true,
-                    )
+                    );
                     embedTopExpression.push(typeDeclWithComment);
                 } else {
-                    //import {identifier} from './bar'
+                    //import {identifier} from './bar.js'
                     // import { identifier as identifier } is used to avoid automatic elision of imports (in angular builds for example)
                     // that's probably a bit unstable.
                     const specifier = this.f.createImportSpecifier(false, imp.identifier, imp.identifier);
@@ -902,7 +918,7 @@ export class ReflectionTransformer implements CustomTransformer {
                         SyntaxKind.MultiLineCommentTrivia,
                         '@ts-ignore',
                         true,
-                    )
+                    );
                     embedTopExpression.push(typeDeclWithComment);
                 }
             }
@@ -1449,14 +1465,15 @@ export class ReflectionTransformer implements CustomTransformer {
             case SyntaxKind.ConstructSignature:
             case SyntaxKind.ConstructorType:
             case SyntaxKind.FunctionType:
+            case SyntaxKind.CallSignature:
             case SyntaxKind.FunctionDeclaration: {
                 //TypeScript does not narrow types down
-                const narrowed = node as MethodSignature | MethodDeclaration | ConstructorTypeNode | ConstructSignatureDeclaration | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
+                const narrowed = node as MethodSignature | MethodDeclaration | CallSignatureDeclaration | ConstructorTypeNode | ConstructSignatureDeclaration | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
 
                 const config = this.findReflectionConfig(narrowed, program);
                 if (config.mode === 'never') return;
 
-                const name = isConstructorTypeNode(narrowed) || isConstructSignatureDeclaration(node) ? 'new' : isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
+                const name = isCallSignatureDeclaration(node) ? '' : isConstructorTypeNode(narrowed) || isConstructSignatureDeclaration(node) ? 'new' : isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
                 if (!narrowed.type && narrowed.parameters.length === 0 && !name) return;
 
                 program.pushFrame();
@@ -1495,10 +1512,11 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
 
                 program.pushOp(
-                    isMethodSignature(narrowed) || isConstructSignatureDeclaration(narrowed)
-                        ? ReflectionOp.methodSignature
-                        : isMethodDeclaration(narrowed) || isConstructorDeclaration(narrowed)
-                            ? ReflectionOp.method : ReflectionOp.function, program.findOrAddStackEntry(name)
+                    isCallSignatureDeclaration(node) ? ReflectionOp.callSignature :
+                        isMethodSignature(narrowed) || isConstructSignatureDeclaration(narrowed)
+                            ? ReflectionOp.methodSignature
+                            : isMethodDeclaration(narrowed) || isConstructorDeclaration(narrowed)
+                                ? ReflectionOp.method : ReflectionOp.function, program.findOrAddStackEntry(name)
                 );
 
                 if (isMethodDeclaration(narrowed)) {
@@ -1622,6 +1640,13 @@ export class ReflectionTransformer implements CustomTransformer {
                 //TypeScript does not narrow types down
                 const narrowed = node as TypeOperatorNode;
 
+                if (narrowed.type.kind === SyntaxKind.ThisType) {
+                    //for the moment we treat `keyof this` as any, since `this` is not implemented at all.
+                    //this makes it possible that the code above works at least.
+                    program.pushOp(ReflectionOp.any);
+                    break;
+                }
+
                 switch (narrowed.operator) {
                     case SyntaxKind.KeyOfKeyword: {
                         this.extractPackStructOfType(narrowed.type, program);
@@ -1696,7 +1721,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
         //currently knownLibFilesForCompilerOptions from @typescript/vfs doesn't return correct lib files for ES2022,
         //so we switch here to es2021 if bigger than es2021.
-        const options = {...this.context.getCompilerOptions()};
+        const options = { ...this.compilerOptions };
         if (options.target && (options.target > ScriptTarget.ES2021 && options.target < ScriptTarget.ESNext)) {
             options.target = ScriptTarget.ES2021;
         }
@@ -2260,7 +2285,7 @@ export class ReflectionTransformer implements CustomTransformer {
         let source: SourceFile | ModuleDeclaration | undefined = this.resolver.resolve(sourceFile, importOrExport);
 
         if (!source) {
-            debug('module not found', (importOrExport as any).text, 'Is transpileOnly enabled? It needs to be disabled.');
+            debug('module not found', (importOrExport.moduleSpecifier as any).text, 'Is transpileOnly enabled? It needs to be disabled.');
             return;
         }
 
@@ -2570,11 +2595,19 @@ export class ReflectionTransformer implements CustomTransformer {
             }
 
             if (reflection === undefined && packageJson.reflection !== undefined) {
-                return { mode: this.parseReflectionMode(packageJson.reflection, currentDir), baseDir: currentDir, options: this.applyReflectionOptionsDefaults(packageJson.reflectionOptions || {}) };
+                return {
+                    mode: this.parseReflectionMode(packageJson.reflection, currentDir),
+                    baseDir: currentDir,
+                    options: this.applyReflectionOptionsDefaults(packageJson.reflectionOptions || {})
+                };
             }
 
             if (reflection === undefined && tsConfig.reflection !== undefined) {
-                return { mode: this.parseReflectionMode(tsConfig.reflection, currentDir), baseDir: currentDir, options: this.applyReflectionOptionsDefaults(tsConfig.reflectionOptions || {}) };
+                return {
+                    mode: this.parseReflectionMode(tsConfig.reflection, currentDir),
+                    baseDir: currentDir,
+                    options: this.applyReflectionOptionsDefaults(tsConfig.reflectionOptions || {})
+                };
             }
 
             if (packageJsonExists) {

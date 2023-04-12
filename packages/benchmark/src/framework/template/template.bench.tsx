@@ -11,8 +11,8 @@
 import { Injector } from '@deepkit/injector';
 import { render } from '@deepkit/template';
 import { createElement, safeString } from '@deepkit/template/jsx-runtime';
-import { BenchSuite } from '../../bench';
-import { Website } from './website';
+import { BenchSuite } from '../../bench.js';
+import { Website } from './website.js';
 
 const template1 = () => <div>Test</div>;
 

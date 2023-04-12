@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AfterViewInit, ChangeDetectorRef, Component, ContentChild, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { WindowSidebarComponent } from './window-sidebar.component';
 import { Subject } from 'rxjs';
 import { WindowState } from './window-state';
@@ -57,7 +57,7 @@ export class WindowContentComponent implements OnChanges, AfterViewInit {
 
     @Output() sidebarWidthChange = new EventEmitter<number>();
 
-    @ContentChild(WindowSidebarComponent, { static: false }) toolbar?: WindowSidebarComponent;
+    toolbar?: WindowSidebarComponent;
 
     @ViewChild('sidebar', { static: false }) public sidebar?: ElementRef<HTMLElement>;
     @ViewChild('sidebarContainer', { static: false }) public sidebarContainer?: ElementRef<HTMLElement>;
@@ -82,6 +82,13 @@ export class WindowContentComponent implements OnChanges, AfterViewInit {
             triggerResize();
             this.cd.detectChanges();
         }
+    }
+
+    registerSidebar(sidebar: WindowSidebarComponent) {
+        this.toolbar = sidebar;
+        setTimeout(() => {
+            this.sidebarMoved();
+        }, 0);
     }
 
     sidebarMoved() {

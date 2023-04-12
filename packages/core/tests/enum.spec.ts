@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { getEnumLabels, getEnumValues } from '../src/enum';
+import { getEnumLabels, getEnumValues } from '../src/enum.js';
 
 test('getEnumLabels numbered index', () => {
     enum MyEnum {

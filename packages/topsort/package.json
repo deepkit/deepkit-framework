@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/topsort",
-  "version": "1.0.1-alpha.77",
+  "version": "1.0.1-alpha.89",
   "description": "High-Performance topological sort / dependency resolver with optional grouping algorithm for Typescript",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -27,6 +27,9 @@
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
     },
     "testMatch": [
       "**/tests/**/*.spec.ts"

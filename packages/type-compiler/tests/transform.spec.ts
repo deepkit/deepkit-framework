@@ -1,12 +1,12 @@
 import * as ts from 'typescript';
 import { createSourceFile, ScriptTarget } from 'typescript';
 import { expect, test } from '@jest/globals';
-import { ReflectionTransformer } from '../src/compiler';
-import { transform } from './utils';
+import { ReflectionTransformer } from '../src/compiler.js';
+import { transform } from './utils.js';
 
 test('transform simple', () => {
     const sourceFile = createSourceFile('app.ts', `
-        import { Logger } from './logger';
+        import { Logger } from './logger.js';
 
         function fn(logger: Logger) {}
     `, ScriptTarget.ESNext);
@@ -26,7 +26,7 @@ test('transform util', () => {
 test('resolve import ts', () => {
     const res = transform({
         'app': `
-            import { Logger } from './logger';
+            import { Logger } from './logger.js';
             function fn(logger: Logger) {}
         `,
         'logger': `export class Logger {}`
@@ -40,7 +40,7 @@ test('resolve import ts', () => {
 test('resolve import d.ts', () => {
     const res = transform({
         'app': `
-            import { Logger } from './logger';
+            import { Logger } from './logger.js';
             function fn(logger: Logger) {}
         `,
         'logger.d.ts': `export declare class Logger {}`

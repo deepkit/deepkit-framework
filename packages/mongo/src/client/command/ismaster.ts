@@ -10,9 +10,9 @@
 
 //see https://docs.mongodb.com/manual/reference/command/isMaster/
 //we add only fields we really need to increase parsing time.
-import { BaseResponse, Command } from './command';
-import { MongoClientConfig } from '../config';
-import { Host } from '../host';
+import { BaseResponse, Command } from './command.js';
+import { MongoClientConfig } from '../config.js';
+import { Host } from '../host.js';
 
 export interface IsMasterResponse extends BaseResponse {
     ismaster: boolean;

@@ -8,10 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { arrayRemoveItem, ClassType } from '@deepkit/core';
+import { arrayRemoveItem, ClassType, getClassName } from '@deepkit/core';
 import { ReceiveType, resolveReceiveType, stringifyUuid, typeOf, writeUuid } from '@deepkit/type';
-import { RpcMessageSubject } from '../client/message-subject';
-import { AuthenticationError, ControllerDefinition, rpcAuthenticate, rpcClientId, rpcError, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model';
+import { RpcMessageSubject } from '../client/message-subject.js';
+import { AuthenticationError, ControllerDefinition, rpcAuthenticate, rpcClientId, rpcError, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model.js';
 import {
     createBuffer,
     createRpcCompositeMessage,
@@ -25,16 +25,15 @@ import {
     RpcMessage,
     RpcMessageReader,
     RpcMessageRouteType
-} from '../protocol';
-import { RpcMessageWriter, RpcMessageWriterOptions } from '../writer';
-import { RpcServerAction } from './action';
-import { RpcKernelSecurity, SessionState } from './security';
-import { RpcActionClient, RpcControllerState } from '../client/action';
-import { RemoteController } from '../client/client';
+} from '../protocol.js';
+import { RpcMessageWriter, RpcMessageWriterOptions } from '../writer.js';
+import { RpcServerAction } from './action.js';
+import { RpcKernelSecurity, SessionState } from './security.js';
+import { RpcActionClient, RpcControllerState } from '../client/action.js';
+import { RemoteController } from '../client/client.js';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { Logger, LoggerInterface } from '@deepkit/logger';
-import { rpcClass } from '../decorators';
-import { getClassName } from '@deepkit/core';
+import { rpcClass } from '../decorators.js';
 
 export class RpcCompositeMessage {
     protected messages: RpcCreateMessageDef<any>[] = [];

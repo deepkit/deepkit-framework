@@ -10,7 +10,7 @@
 
 import { ClassType, getClassName, getClassTypeFromInstance } from '@deepkit/core';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
-import { Database } from './database';
+import { Database } from './database.js';
 import { isAbsolute, join } from 'path';
 import { ReflectionClass } from '@deepkit/type';
 

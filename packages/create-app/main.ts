@@ -2,7 +2,7 @@
 
 import { App } from '@deepkit/app';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
-import { CreateController } from './src/controller/create';
+import { CreateController } from './src/controller/create.js';
 
 new App({
     controllers: [CreateController],

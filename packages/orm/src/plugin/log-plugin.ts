@@ -9,10 +9,10 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { DatabaseSession } from '../database-session';
-import { Database } from '../database';
-import { Query } from '../query';
-import { AutoIncrement, entity, InlineRuntimeType, PrimaryKey, PrimaryKeyFields, Reference, ReflectionClass, ResetDecorator } from '@deepkit/type';
+import { DatabaseSession } from '../database-session.js';
+import { Database } from '../database.js';
+import { Query } from '../query.js';
+import { AutoIncrement, entity, InlineRuntimeType, PrimaryKey, PrimaryKeyFields, ReflectionClass, ResetDecorator } from '@deepkit/type';
 import { DatabasePlugin } from './plugin.js';
 import { OrmEntity } from '../type.js';
 

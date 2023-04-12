@@ -8,11 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { SQLQueryModel } from './sql-adapter';
-import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform';
+import { SQLQueryModel } from './sql-adapter.js';
+import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform.js';
 import { getPrimaryKeyHashGenerator, ReflectionClass, ReflectionProperty } from '@deepkit/type';
 import { DatabaseJoinModel, DatabaseQueryModel, OrmEntity } from '@deepkit/orm';
-import { getSqlFilter } from './filter';
+import { getSqlFilter } from './filter.js';
 
 type ConvertedData = { hash: string, item: { [name: string]: any }, joined: { [name: string]: any }[] };
 type ConvertDataToDict = (row: any) => ConvertedData | undefined;
@@ -100,7 +100,7 @@ export class SqlBuilder {
         const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getProperties();
 
         if (model.aggregate.size || model.groupBy.size || model.sqlSelect) {
-            //we select only whats aggregated
+            //we select only what is aggregated
             for (const name of model.groupBy.values()) {
                 this.sqlSelect.push(tableName + '.' + this.platform.quoteIdentifier(name));
             }
@@ -118,6 +118,7 @@ export class SqlBuilder {
         } else {
             for (const property of properties) {
                 if (property.isBackReference()) continue;
+                if (model.isLazyLoaded(property.name)) continue;
 
                 this.sqlSelect.push(tableName + '.' + this.platform.quoteIdentifier(property.name));
             }
@@ -133,6 +134,7 @@ export class SqlBuilder {
 
         for (const property of properties) {
             if (property.isBackReference()) continue;
+            if (model.isLazyLoaded(property.name)) continue;
 
             result.fields.push(property);
             const as = this.platform.quoteIdentifier(this.sqlSelect.length + '');

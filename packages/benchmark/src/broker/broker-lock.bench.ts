@@ -9,7 +9,7 @@
  */
 
 import { BrokerDirectClient, BrokerKernel } from '@deepkit/broker';
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 
 export async function main() {
     const kernel = new BrokerKernel();

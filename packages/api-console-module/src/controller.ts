@@ -2,7 +2,7 @@ import { ApiAction, ApiConsoleApi, ApiDocument, ApiEntryPoints, ApiRoute, ApiRou
 import { getActions, rpc, RpcKernel } from '@deepkit/rpc';
 import { HttpRouteFilter, HttpRouterFilterResolver, parseRouteControllerAction } from '@deepkit/http';
 import { ClassType, getClassName, isClass } from '@deepkit/core';
-import { Config } from './module.config';
+import { Config } from './module.config.js';
 import { readFile } from 'fs/promises';
 import { ReflectionClass, ReflectionKind, serializeType, Type, TypeClass, TypeObjectLiteral, TypePropertySignature } from '@deepkit/type';
 

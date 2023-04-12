@@ -1,5 +1,5 @@
 import { BackReference, entity, PrimaryKey, UUID, uuid } from '@deepkit/type';
-import { UserCredentials } from './credentials';
+import { UserCredentials } from './credentials.js';
 
 @entity.name('b-user')
 export class User {

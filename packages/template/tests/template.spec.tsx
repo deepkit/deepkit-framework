@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
 import '../src/optimize-tsx';
-import { html, render } from '../src/template';
+import { html, render } from '../src/template.js';
 import { Injector } from '@deepkit/injector';
-import { simple1, simple2, simple3, simple4, simpleHtmlInjected, simpleHtmlInjectedValid } from './simple';
-import { convertJsxCodeToCreateElement, optimizeJSX } from '../src/optimize-tsx';
+import { simple1, simple2, simple3, simple4, simpleHtmlInjected, simpleHtmlInjectedValid } from './simple.js';
+import { convertJsxCodeToCreateElement, optimizeJSX } from '../src/optimize-tsx.js';
 
 Error.stackTraceLimit = 200;
 
@@ -311,6 +311,33 @@ test('literals are escaped', async () => {
 
     expect(await simpleRender(test1())).toBe('<div>&lt;h1&gt;</div>');
     expect(await simpleRender(optimiseFn(test1)())).toBe('<div>&lt;h1&gt;</div>');
+});
+
+test('class components props', async () => {
+    class Title {
+        constructor(protected props: { title: string }) {}
+        async render() {
+            return <h1>{this.props.title}</h1>;
+        }
+    }
+
+    function test1() {
+        return <Title title="Test" />;
+    }
+
+    expect(await simpleRender(test1())).toBe('<h1>Test</h1>');
+});
+
+test('functional components props', async () => {
+    async function Title(props: { title: string }) {
+        return <h1>{props.title}</h1>;
+    }
+
+    function test1() {
+        return <Title title="Test" />;
+    }
+
+    expect(await simpleRender(test1())).toBe('<h1>Test</h1>');
 });
 
 test('Vars are escaped', async () => {

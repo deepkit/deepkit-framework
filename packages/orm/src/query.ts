@@ -13,6 +13,7 @@ import {
     assertType,
     Changes,
     ChangesInterface,
+    DeepPartial,
     getSimplePrimaryKeyHashGenerator,
     PrimaryKeyFields,
     PrimaryKeyType,
@@ -23,11 +24,11 @@ import {
     resolveForeignReflectionClass
 } from '@deepkit/type';
 import { Subject } from 'rxjs';
-import { DatabaseAdapter } from './database-adapter';
-import { DatabaseSession } from './database-session';
-import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event';
-import { DeleteResult, OrmEntity, PatchResult } from './type';
-import { FieldName, FlattenIfArray, Replace, Resolve } from './utils';
+import { DatabaseAdapter } from './database-adapter.js';
+import { DatabaseSession } from './database-session.js';
+import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event.js';
+import { DeleteResult, OrmEntity, PatchResult } from './type.js';
+import { FieldName, FlattenIfArray, Replace, Resolve } from './utils.js';
 import { FrameCategory } from '@deepkit/stopwatch';
 import { EventToken } from '@deepkit/event';
 
@@ -72,7 +73,7 @@ export type RootQuerySelector<T> = {
     $or?: Array<FilterQuery<T>>;
     // we could not find a proper TypeScript generic to support nested queries e.g. 'user.friends.name'
     // this will mark all unrecognized properties as any (including nested queries)
-    [key: string]: any;
+    [deepPath: string]: any;
 };
 
 type RegExpForString<T> = T extends string ? (RegExp | T) : T;
@@ -93,6 +94,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
     public for?: 'update' | 'share';
     public aggregate = new Map<string, { property: ReflectionProperty, func: string }>();
     public select: Set<string> = new Set<string>();
+    public lazyLoad: Set<string> = new Set<string>();
     public joins: DatabaseJoinModel<any, any>[] = [];
     public skip?: number;
     public itemsPerPage: number = 50;
@@ -101,6 +103,10 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
     public sort?: SORT;
     public readonly change = new Subject<void>();
     public returning: (keyof T & string)[] = [];
+
+    isLazyLoaded(field: string): boolean {
+        return this.lazyLoad.has(field);
+    }
 
     changed(): void {
         this.change.next();
@@ -131,6 +137,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
         m.withIdentityMap = this.withIdentityMap;
         m.select = new Set(this.select);
         m.groupBy = new Set(this.groupBy);
+        m.lazyLoad = new Set(this.lazyLoad);
         m.for = this.for;
         m.aggregate = new Map(this.aggregate);
         m.parameters = { ...this.parameters };
@@ -217,6 +224,37 @@ export class BaseQuery<T extends OrmEntity> {
     }
 
     /**
+     * Returns a new query with the same model transformed by the modifier.
+     *
+     * This allows to use more dynamic query composition functions.
+     *
+     * To support joins queries `AnyQuery` is necessary as query type.
+     *
+     * @example
+     * ```typescript
+     * function joinFrontendData(query: AnyQuery<Product>) {
+     *     return query
+     *         .useJoinWith('images').select('sort').end()
+     *         .useJoinWith('brand').select('id', 'name', 'website').end()
+     * }
+     *
+     * const products = await database.query(Product).use(joinFrontendData).find();
+     * ```
+     * @reflection never
+     */
+    use<Q, R, A extends any[]>(modifier: (query: Q, ...args: A) => R, ...args: A): this extends JoinDatabaseQuery<any, any> ? this : Exclude<R, JoinDatabaseQuery<any, any>> {
+        return modifier(this as any, ...args) as any;
+    }
+
+    /**
+     * Same as `use`, but the method indicates it is terminating the query.
+     * @reflection never
+     */
+    fetch<Q, R>(modifier: (query: Q) => R): R {
+        return modifier(this as any);
+    }
+
+    /**
      * For MySQL/Postgres SELECT FOR SHARE.
      * Has no effect in SQLite/MongoDB.
      */
@@ -247,7 +285,7 @@ export class BaseQuery<T extends OrmEntity> {
     }
 
     withGroupConcat<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [C in [AS] as `${AS}`]: T[K][] }> {
-        return this.aggregateField(field, 'group_concat', as);
+        return this.aggregateField(field, 'group_concat', as) as any;
     }
 
     withCount<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
@@ -273,6 +311,28 @@ export class BaseQuery<T extends OrmEntity> {
         return c as any;
     }
 
+    /**
+     * Excludes given fields from the query.
+     *
+     * This is mainly useful for performance reasons, to prevent loading unnecessary data.
+     *
+     * Use `hydrateEntity(item)` to completely load the entity.
+     */
+    lazyLoad<K extends (keyof Resolve<this>)[]>(...select: K): this {
+        const c = this.clone();
+        for (const s of select) c.model.lazyLoad.add(s as string);
+        return c;
+    }
+
+    /**
+     * Limits the query to the given fields.
+     *
+     * This is useful for security reasons, to prevent leaking sensitive data,
+     * and also for performance reasons, to prevent loading unnecessary data.
+     *
+     * Note: This changes the return type of the query (findOne(), find(), etc) to exclude the fields that are not selected.
+     * This makes the query return simple objects instead of entities. To maintained nominal types use `lazyLoad()` instead.
+     */
     select<K extends (keyof Resolve<this>)[]>(...select: K): Replace<this, Pick<Resolve<this>, K[number]>> {
         const c = this.clone();
         for (const field of select) {
@@ -466,7 +526,7 @@ export class BaseQuery<T extends OrmEntity> {
     join<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K, type: 'left' | 'inner' = 'left', populate: boolean = false): this {
         const propertySchema = this.classSchema.getProperty(field as string);
         if (!propertySchema.isReference() && !propertySchema.isBackReference()) {
-            throw new Error(`Field ${String(field)} is not marked as reference. Use @t.reference()`);
+            throw new Error(`Field ${String(field)} is not marked as reference. Use Reference type`);
         }
         const c = this.clone();
 
@@ -789,29 +849,28 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
         }
     }
 
-    public async patchMany(patch: ChangesInterface<T> | Partial<T>): Promise<PatchResult<T>> {
+    public async patchMany(patch: ChangesInterface<T> | DeepPartial<T>): Promise<PatchResult<T>> {
         return await this.patch(this, patch);
     }
 
-    public async patchOne(patch: ChangesInterface<T> | Partial<T>): Promise<PatchResult<T>> {
+    public async patchOne(patch: ChangesInterface<T> | DeepPartial<T>): Promise<PatchResult<T>> {
         return await this.patch(this.limit(1), patch);
     }
 
-    protected async patch(query: Query<any>, patch: Partial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
+    protected async patch(query: Query<any>, patch: DeepPartial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
         const frame = this.session.stopwatch ? this.session.stopwatch.start('Patch:' + this.classSchema.getClassName(), FrameCategory.database) : undefined;
         if (frame) frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
 
         try {
-            const changes: Changes<T> = new Changes<T>({
-                $set: (patch as Changes<T>).$set || {},
-                $inc: (patch as Changes<T>).$inc,
-                $unset: (patch as Changes<T>).$unset,
+            const changes: Changes<T> = patch instanceof Changes ? patch as Changes<T> : new Changes<T>({
+                $set: patch.$set || {},
+                $inc: patch.$inc || {},
+                $unset: patch.$unset || {},
             });
 
-            for (const property of this.classSchema.getProperties()) {
-                if (property.name in patch) {
-                    changes.set(property.name as any, (patch as any)[property.name]);
-                }
+            for (const i in patch) {
+                if (i.startsWith('$')) continue;
+                changes.set(i as any, (patch as any)[i]);
             }
 
             const patchResult: PatchResult<T> = {
@@ -936,3 +995,5 @@ export class JoinDatabaseQuery<T extends OrmEntity, PARENT extends BaseQuery<any
         return this.parentQuery;
     }
 }
+
+export type AnyQuery<T extends OrmEntity> = JoinDatabaseQuery<T, any> | Query<T>;

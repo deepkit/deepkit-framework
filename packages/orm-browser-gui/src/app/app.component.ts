@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit } from '@angular/core';
 import { DuiApp } from '@deepkit/desktop-ui';
 import { BrowserState } from './browser-state';
 import { ControllerClient } from './client';
@@ -76,7 +76,12 @@ export class AppComponent implements OnInit, OnDestroy {
         public client: ControllerClient,
         protected cd: ChangeDetectorRef,
         public state: BrowserState,
+        public host: ElementRef<HTMLElement>,
     ) {
+        const controller = host.nativeElement.getAttribute('controller');
+        if (controller && controller !== 'APP_CONTROLLER_NAME') {
+            this.client.setController(controller);
+        }
     }
 
     ngOnDestroy(): void {

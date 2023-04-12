@@ -1,6 +1,6 @@
 import { AutoIncrement, BackReference, entity, PrimaryKey, Reference } from '@deepkit/type';
-import { UserCredentials } from './user-credentials';
-import { Group } from './group';
+import { UserCredentials } from './user-credentials.js';
+import { Group } from './group.js';
 
 @entity.name('user')
 export class User {

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command } from './command';
+import { BaseResponse, Command } from './command.js';
 import { ReflectionClass, UUID } from '@deepkit/type';
 
 interface UpdateResponse extends BaseResponse {

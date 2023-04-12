@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { Logger, LoggerLevel, ScopeFormatter } from '../src/logger';
-import { MemoryLoggerTransport } from '../src/memory-logger';
+import { Logger, LoggerLevel, ScopeFormatter } from '../src/logger.js';
+import { MemoryLoggerTransport } from '../src/memory-logger.js';
 
 test('log level', () => {
     const logger = new Logger();

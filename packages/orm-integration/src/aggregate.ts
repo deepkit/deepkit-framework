@@ -1,4 +1,4 @@
-import { DatabaseFactory } from './test';
+import { DatabaseFactory } from './test.js';
 import { cast, PrimaryKey } from '@deepkit/type';
 import { expect } from '@jest/globals';
 

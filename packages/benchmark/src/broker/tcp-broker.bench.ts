@@ -1,7 +1,7 @@
 import { BrokerClient } from "@deepkit/broker";
 import { TcpRpcClientAdapter } from "@deepkit/rpc-tcp";
 import { t } from "@deepkit/type";
-import { BenchSuite } from "../bench";
+import { BenchSuite } from "../bench.js";
 
 class Model {
     @t ready?: boolean;

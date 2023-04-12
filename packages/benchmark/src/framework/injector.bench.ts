@@ -9,7 +9,7 @@
  */
 
 import { injectable, Injector, InjectorContext } from '@deepkit/injector';
-import { BenchSuite } from '../bench';
+import { BenchSuite } from '../bench.js';
 
 export async function main() {
     class Database { }

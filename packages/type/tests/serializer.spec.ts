@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { expect, test } from '@jest/globals';
-import { reflect, ReflectionClass, typeOf } from '../src/reflection/reflection';
+import { reflect, ReflectionClass, typeOf } from '../src/reflection/reflection.js';
 import {
     assertType,
     AutoIncrement,
@@ -20,21 +20,24 @@ import {
     int8,
     integer,
     MapName,
+    metaAnnotation,
     PrimaryKey,
     Reference,
     ReflectionKind,
     SignedBinaryBigInt,
+    Type,
     TypeProperty,
     TypePropertySignature
-} from '../src/reflection/type';
-import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializer } from '../src/serializer';
-import { cast, deserialize, serialize } from '../src/serializer-facade';
-import { getClassName, getClassTypeFromInstance } from '@deepkit/core';
-import { entity, t } from '../src/decorator';
-import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator';
-import { StatEnginePowerUnit, StatWeightUnit } from './types';
+} from '../src/reflection/type.js';
+import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializer, underscoreNamingStrategy } from '../src/serializer.js';
+import { cast, deserialize, patch, serialize } from '../src/serializer-facade.js';
+import { getClassName } from '@deepkit/core';
+import { entity, t } from '../src/decorator.js';
+import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator.js';
+import { StatEnginePowerUnit, StatWeightUnit } from './types.js';
 import { parametersToTuple } from '../src/reflection/extends.js';
-import { is } from '../src/typeguard';
+import { is } from '../src/typeguard.js';
+import { isReferenceInstance } from '../src/reference.js';
 
 test('deserializer', () => {
     class User {
@@ -175,6 +178,26 @@ test('optional default value', () => {
         const user = cast<User>({ logins: undefined });
         expect(user).toEqual({
             logins: undefined
+        });
+    }
+});
+
+test('optional literal', () => {
+    interface LoginInput {
+        mechanism?: 'cookie';
+    }
+
+    {
+        const input = cast<LoginInput>({});
+        expect(input).toEqual({
+            mechanism: undefined
+        });
+    }
+
+    {
+        const input = cast<LoginInput>({ mechanism: 'cookie' });
+        expect(input).toEqual({
+            mechanism: 'cookie'
         });
     }
 });
@@ -576,6 +599,14 @@ test('class with reference', () => {
         const res = cast<Team>({ lead: { id: 1, username: 'Peter' } });
         expect(res).toEqual({ lead: { id: 1, username: 'Peter' } });
         expect(res.lead).toBeInstanceOf(User);
+        expect(isReferenceInstance(res.lead)).toBe(false);
+    }
+
+    {
+        const res = cast<Team>({ lead: { id: 1 } });
+        expect(res).toEqual({ lead: { id: 1 } });
+        expect(res.lead).toBeInstanceOf(User);
+        expect(isReferenceInstance(res.lead)).toBe(true);
     }
 
     {
@@ -1083,4 +1114,82 @@ test('discriminated union with string date in type guard', () => {
 test('date format', () => {
     const date = cast<number | Date>('2020-07-02T12:00:00Z');
     expect(date).toEqual(new Date('2020-07-02T12:00:00Z'));
+});
+
+
+test('patch', () => {
+    class Address {
+        street!: string & MinLength<3>;
+        streetNo!: string;
+        additional: { [name: string]: string } = {};
+    }
+
+    class Order {
+        id!: number;
+        shippingAddress!: Address;
+    }
+
+    {
+        const data = patch<Order>({ id: 5, 'shippingAddress.street': 123 }, undefined, undefined, underscoreNamingStrategy);
+        expect(data).toEqual({ id: 5, 'shipping_address.street': '123' });
+    }
+
+    //no validation for the moment until object reference->primary key validation is implemented for the ORM
+    // {
+    //     expect(() => patch<Order>({ 'shippingAddress.street': 12 }, undefined, undefined, underscoreNamingStrategy)).toThrow('Min length is 3');
+    // }
+
+    {
+        //index signature are not touched by naming strategy
+        const data = patch<Order>({ id: 5, 'shippingAddress.additional.randomName': 12 }, undefined, undefined, underscoreNamingStrategy);
+        expect(data).toEqual({ id: 5, 'shipping_address.additional.randomName': '12' });
+    }
+});
+
+test('extend with custom type', () => {
+    type StringifyTransport = { __meta?: ['stringifyTransport'] };
+
+    function isStringifyTransportType(type: Type): boolean {
+        return !!metaAnnotation.getForName(type, 'stringifyTransport');
+    }
+
+    serializer.serializeRegistry.addPostHook((type, state) => {
+        if (!isStringifyTransportType(type)) return;
+        state.addSetter(`JSON.stringify(${state.accessor})`);
+    });
+    serializer.deserializeRegistry.addPreHook((type, state) => {
+        if (!isStringifyTransportType(type)) return;
+        state.addSetter(`JSON.parse(${state.accessor})`);
+    });
+
+    class MyType {
+        test!: string;
+    }
+
+    class Entity {
+        obj: MyType & StringifyTransport = { test: 'abc' };
+    }
+
+    const e = new Entity();
+    const s = serialize<Entity>(e, undefined, serializer);
+    expect(s.obj).toBe('{"test":"abc"}');
+    const d = deserialize<Entity>(s, undefined, serializer);
+    expect(d.obj).toEqual({ test: 'abc' });
+});
+
+test('issue-415: serialize literal types in union', () => {
+    enum MyEnum {
+        VALUE_0 = 0,
+        VALUE_180 = 180
+    }
+
+    class Data {
+        rotate: MyEnum.VALUE_180 | MyEnum.VALUE_0 = MyEnum.VALUE_0;
+    }
+
+    expect(deserialize<Data>({rotate: 0}, {loosely: true}).rotate).toBe(0);
+    expect(deserialize<Data>({rotate: "0"}, {loosely: true}).rotate).toBe(0);
+    expect(deserialize<Data>({rotate: 180}, {loosely: true}).rotate).toBe(180);
+    expect(deserialize<Data>({rotate: "180"}, {loosely: true}).rotate).toBe(180);
+    expect(deserialize<Data>({rotate: 123456}, {loosely: true}).rotate).toBe(0);
 });

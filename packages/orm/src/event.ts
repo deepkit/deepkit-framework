@@ -12,11 +12,11 @@ import { ClassType } from '@deepkit/core';
 import { BaseEvent } from '@deepkit/event';
 import type { Changes } from '@deepkit/type';
 import { PrimaryKeyType, ReflectionClass } from '@deepkit/type';
-import type { DatabasePersistenceChangeSet } from './database-adapter';
-import type { DatabaseSession } from './database-session';
-import type { Query } from './query';
-import type { DeleteResult, PatchResult } from './type';
-import { OrmEntity } from './type';
+import type { DatabasePersistenceChangeSet } from './database-adapter.js';
+import type { DatabaseSession } from './database-session.js';
+import type { Query } from './query.js';
+import type { DeleteResult, PatchResult } from './type.js';
+import { OrmEntity } from './type.js';
 
 export class DatabaseEvent extends BaseEvent {
     stopped = false;

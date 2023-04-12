@@ -11,7 +11,7 @@
 import { MongoId, PrimaryKey } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { MongoDatabaseAdapter } from '@deepkit/mongo';
-import { BenchSuite } from '../../../bench';
+import { BenchSuite } from '../../../bench.js';
 
 export class Model {
     public _id: MongoId & PrimaryKey = '';

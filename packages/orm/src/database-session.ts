@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter';
-import { DatabaseEntityRegistry } from './database-adapter';
-import { DatabaseValidationError, OrmEntity } from './type';
+import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter.js';
+import { DatabaseEntityRegistry } from './database-adapter.js';
+import { DatabaseValidationError, OrmEntity } from './type.js';
 import { AbstractClassType, ClassType, CustomError } from '@deepkit/core';
 import {
     getPrimaryKeyExtractor,
@@ -24,12 +24,12 @@ import {
     validate
 } from '@deepkit/type';
 import { GroupArraySort } from '@deepkit/topsort';
-import { getClassState, getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map';
-import { getClassSchemaInstancePairs } from './utils';
-import { HydratorFn } from './formatter';
-import { getReference } from './reference';
-import { UnitOfWorkCommitEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event';
-import { DatabaseLogger } from './logger';
+import { getClassState, getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map.js';
+import { getClassSchemaInstancePairs } from './utils.js';
+import { HydratorFn } from './formatter.js';
+import { getReference } from './reference.js';
+import { UnitOfWorkCommitEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event.js';
+import { DatabaseLogger } from './logger.js';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { EventDispatcher, EventDispatcherInterface, EventToken } from '@deepkit/event';
 import { DatabasePluginRegistry } from './plugin/plugin.js';
@@ -318,6 +318,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
         function query<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
             return queryFactory.createQuery(type);
         }
+
         this.query = query as any;
 
         const factory = this.adapter.rawFactory(this);

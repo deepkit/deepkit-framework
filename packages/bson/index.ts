@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export { ObjectId } from './src/model';
-export { deserializeBSONWithoutOptimiser, ParserV2 as Parser } from './src/bson-parser';
-export { getBSONDeserializer, deserializeBSON, BSONDeserializer } from './src/bson-deserializer';
+export { ObjectId } from './src/model.js';
+export { deserializeBSONWithoutOptimiser, ParserV2 as Parser } from './src/bson-parser.js';
+export { getBSONDeserializer, deserializeBSON, BSONDeserializer } from './src/bson-deserializer.js';
 export {
     stringByteLength, BSONSerializer, createBSONSizer, getBSONSizer, getBSONSerializer, bsonBinarySerializer, serializeBSON, serializeWithoutOptimiser, Writer, BSONBinarySerializer, ValueWithBSONSerializer
-} from './src/bson-serializer';
+} from './src/bson-serializer.js';

@@ -1,9 +1,9 @@
 import { describe, expect, test } from '@jest/globals';
 import '../src/optimize-tsx';
-import { html, render } from '../src/template';
+import { html, render } from '../src/template.js';
 import { Injector } from '@deepkit/injector';
-import { optimizeJSX } from '../src/optimize-tsx';
-import { escape, safe } from '../src/utils';
+import { optimizeJSX } from '../src/optimize-tsx.js';
+import { escape, safe } from '../src/utils.js';
 
 Error.stackTraceLimit = 200;
 
@@ -90,7 +90,7 @@ const tests: { t: Function, contains?: string, result: string }[] = [
             const page = '<h1>Hello World';
             return <title>{escape(page)}</title>;
         },
-        contains: `"<title>" + (0, utils_1.escape)(page).htmlString + "</title>"`,
+        contains: `"<title>" + (0, utils_js_1.escape)(page).htmlString + "</title>"`,
         result: '<title>&lt;h1&gt;Hello World</title>'
     },
     {
@@ -98,7 +98,7 @@ const tests: { t: Function, contains?: string, result: string }[] = [
             const page = '<h1>Hello World';
             return <html lang="en"><title>{escape(page)}</title></html>;
         },
-        contains: `"<html lang=\\"en\\"><title>" + (0, utils_1.escape)(page).htmlString + "</title></html>"`,
+        contains: `"<html lang=\\"en\\"><title>" + (0, utils_js_1.escape)(page).htmlString + "</title></html>"`,
         result: '<html lang="en"><title>&lt;h1&gt;Hello World</title></html>'
     },
     {

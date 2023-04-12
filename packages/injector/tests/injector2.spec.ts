@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
-import { Injector, InjectorContext, injectorReference } from '../src/injector';
-import { provide, Tag } from '../src/provider';
-import { InjectorModule } from '../src/module';
-import { typeOf } from '@deepkit/type';
-import { Inject } from '../src/types';
+import { InjectorContext, injectorReference } from '../src/injector.js';
+import { provide, Tag } from '../src/provider.js';
+import { InjectorModule } from '../src/module.js';
+import { InlineRuntimeType, ReflectionKind, Type, typeOf } from '@deepkit/type';
+import { Inject, InjectMeta } from '../src/types.js';
 
 test('basic', () => {
     class Service {
@@ -1433,4 +1433,34 @@ test('config from a module is available in child modules', () => {
 
     const service = injector.get(Service, childModule);
     expect(service.config.db).toBe('localhost');
+});
+
+test('type provider', () => {
+    const uniqueType: Type = { kind: ReflectionKind.literal, literal: 'uniqueType' };
+
+    class Service {
+        constructor(public value: any & InjectMeta<InlineRuntimeType<typeof uniqueType>>) {
+        }
+    }
+
+    const rootModule = new InjectorModule().addProvider(Service, { provide: uniqueType, useValue: '123' });
+    const injector = new InjectorContext(rootModule);
+    const service = injector.get(Service);
+    expect(service.value).toBe('123');
+});
+
+test('exported type provider', () => {
+    const uniqueType: Type = { kind: ReflectionKind.literal, literal: 'uniqueType' };
+
+    class Service {
+        constructor(public value: any & InjectMeta<InlineRuntimeType<typeof uniqueType>>) {
+        }
+    }
+
+    const childModule = new InjectorModule([]).addProvider({ provide: uniqueType, useValue: '123' }).addExport(uniqueType);
+    const rootModule = new InjectorModule().addProvider(Service).addImport(childModule);
+
+    const injector = new InjectorContext(rootModule);
+    const service = injector.get(Service);
+    expect(service.value).toBe('123');
 });

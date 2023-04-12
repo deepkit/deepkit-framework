@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/logger",
-  "version": "1.0.1-alpha.77",
+  "version": "1.0.1-alpha.92",
   "description": "Deepkit logger",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -32,12 +32,15 @@
     "format-util": "^1.0.5"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.77"
+    "@deepkit/core": "^1.0.1-alpha.92"
   },
   "jest": {
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
     },
     "testMatch": [
       "**/tests/**/*.spec.ts"

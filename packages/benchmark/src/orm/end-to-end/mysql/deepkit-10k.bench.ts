@@ -11,7 +11,7 @@
 import { PrimaryKey, entity } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { MySQLDatabaseAdapter } from '@deepkit/mysql';
-import { BenchSuite } from '../../../bench';
+import { BenchSuite } from '../../../bench.js';
 
 @entity.name('deepkit')
 export class DeepkitModel {

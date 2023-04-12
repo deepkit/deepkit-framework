@@ -9,10 +9,10 @@
  */
 
 import { Column, DefaultPlatform, IndexModel, isSet, SqlPlaceholderStrategy, Table } from '@deepkit/sql';
-import { postgresSerializer } from './postgres-serializer';
+import { postgresSerializer } from './postgres-serializer.js';
 import { isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, TypeNumberBrand } from '@deepkit/type';
-import { PostgresSchemaParser } from './postgres-schema-parser';
-import { PostgreSQLFilterBuilder } from './sql-filter-builder';
+import { PostgresSchemaParser } from './postgres-schema-parser.js';
+import { PostgreSQLFilterBuilder } from './sql-filter-builder.js';
 import { isArray, isObject } from '@deepkit/core';
 import sqlstring from 'sqlstring';
 
@@ -66,6 +66,7 @@ export class PostgresPlatform extends DefaultPlatform {
 
         this.addType(ReflectionKind.number, 'double precision');
         this.addType(ReflectionKind.boolean, 'boolean');
+        this.addType(ReflectionKind.string, 'text');
 
         this.addType(ReflectionKind.class, 'jsonb');
         this.addType(ReflectionKind.objectLiteral, 'jsonb');
@@ -103,7 +104,11 @@ export class PostgresPlatform extends DefaultPlatform {
     }
 
     override createSqlFilterBuilder(schema: ReflectionClass<any>, tableName: string): PostgreSQLFilterBuilder {
-        return new PostgreSQLFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
+        return new PostgreSQLFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this);
+    }
+
+    override getDeepColumnAccessor(table: string, column: string, path: string) {
+        return `${table ? table + '.' : ''}${this.quoteIdentifier(column)}->${this.quoteValue(path)}`;
     }
 
     override quoteValue(value: any): string {

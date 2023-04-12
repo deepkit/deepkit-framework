@@ -43,7 +43,7 @@ import {
     unescapeLeadingUnderscores
 } from 'typescript';
 import { cloneNode as tsNodeClone, CloneNodeHook } from '@marcj/ts-clone-node';
-import { SourceFile } from './ts-types';
+import { SourceFile } from './ts-types.js';
 
 export type PackExpression = Expression | string | number | boolean | bigint;
 

@@ -1,4 +1,4 @@
-import { BenchSuite } from '../../bench';
+import { BenchSuite } from '../../bench.js';
 import { pack, Processor, ReflectionOp, typeOf } from '@deepkit/type';
 
 export async function main() {

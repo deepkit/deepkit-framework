@@ -1,10 +1,9 @@
-import { BackReference } from '@deepkit/type';
-import { deserialize, PrimaryKey } from '@deepkit/type';
+import { BackReference, deserialize, PrimaryKey, Reference } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { assert, IsExact } from 'conditional-type-checks';
-import { Database } from '../src/database';
-import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db';
-import { Query } from '../src/query';
+import { Database } from '../src/database.js';
+import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db.js';
+import { AnyQuery, BaseQuery, Query } from '../src/query.js';
 import { OrmEntity } from '../src/type.js';
 
 test('query select', async () => {
@@ -71,17 +70,24 @@ test('query filter', async () => {
 });
 
 test('query lift', async () => {
-    class s {
+    class UserImage {
+        id!: number & PrimaryKey;
+        path!: string;
+        size!: number;
+    }
+
+    class User {
         id!: number & PrimaryKey;
         username!: string;
         openBillings: number = 0;
+        image?: UserImage & Reference;
     }
 
     const database = new Database(new MemoryDatabaseAdapter());
-    const q = database.query(s);
+    const q = database.query(User);
 
-    await database.persist(deserialize<s>({ id: 0, username: 'foo' }));
-    await database.persist(deserialize<s>({ id: 1, username: 'bar', openBillings: 5 }));
+    await database.persist(deserialize<User>({ id: 0, username: 'foo' }));
+    await database.persist(deserialize<User>({ id: 1, username: 'bar', openBillings: 5 }));
 
     class MyBase<T extends OrmEntity> extends Query<T> {
         protected world = 'world';
@@ -109,6 +115,22 @@ test('query lift', async () => {
         }
     }
 
+    function filterBillingDue(q: AnyQuery<User>) {
+        return q.filterField('openBillings', { $gt: 0 });
+    }
+
+    function filterMinBilling(q: AnyQuery<User>, min: number) {
+        return q.filterField('openBillings', { $gt: min });
+    }
+
+    function allUserNames(q: Query<User>) {
+        return q.findField('username');
+    }
+
+    function filterImageSize(q: AnyQuery<UserImage>) {
+        return q.filterField('size', { $gt: 0 });
+    }
+
     class OverwriteHello<T extends OrmEntity> extends Query<T> {
         hello() {
             return 'nope';
@@ -133,12 +155,12 @@ test('query lift', async () => {
 
     {
         const items = await q.lift(UserQuery).find();
-        assert<IsExact<{ username: string, openBillings: number, id: number & PrimaryKey }[], typeof items>>(true);
+        assert<IsExact<{ username: string, openBillings: number, id: number & PrimaryKey, image?: UserImage & Reference }[], typeof items>>(true);
     }
 
     {
         const items = await q.lift(UserQuery).find();
-        assert<IsExact<{ username: string, openBillings: number, id: number & PrimaryKey }[], typeof items>>(true);
+        assert<IsExact<{ username: string, openBillings: number, id: number & PrimaryKey, image?: UserImage & Reference }[], typeof items>>(true);
     }
 
     {
@@ -148,7 +170,7 @@ test('query lift', async () => {
 
     {
         const items = await UserQuery.from(q).find();
-        assert<IsExact<{ username: string, openBillings: number, id: number & PrimaryKey }[], typeof items>>(true);
+        assert<IsExact<{ username: string, openBillings: number, id: number & PrimaryKey, image?: UserImage & Reference }[], typeof items>>(true);
     }
 
     {
@@ -199,6 +221,30 @@ test('query lift', async () => {
         expect(items).toEqual(['bar']);
         assert<IsExact<string[], typeof items>>(true);
     }
+
+    {
+        const items = await q.use(filterBillingDue).find();
+        expect(items).toEqual(items);
+        assert<IsExact<User[], typeof items>>(true);
+    }
+
+    {
+        const items = await q.use(filterBillingDue).use(allUserNames);
+        expect(items).toEqual(['bar']);
+        assert<IsExact<string[], typeof items>>(true);
+    }
+
+    {
+        const items = await q.use(filterMinBilling, 1).fetch(allUserNames);
+        expect(items).toEqual(['bar']);
+        assert<IsExact<string[], typeof items>>(true);
+    }
+
+    {
+        const items = await q.useJoinWith('image').use(filterImageSize).end().fetch(allUserNames);
+        expect(items).toEqual(['foo', 'bar']);
+        assert<IsExact<string[], typeof items>>(true);
+    }
 });
 
 
@@ -230,7 +276,8 @@ test('query lift', async () => {
 
 test('optional join', () => {
     class User {
-        constructor(public id: number & PrimaryKey, public name: string) {}
+        constructor(public id: number & PrimaryKey, public name: string) {
+        }
 
         userAuth?: UserAuth & BackReference;
     }
@@ -238,7 +285,9 @@ test('optional join', () => {
     class UserAuth {
         constructor(
             public id: number & PrimaryKey,
-        ) {}
+        ) {
+        }
+
         type!: string;
     }
 
@@ -249,4 +298,4 @@ test('optional join', () => {
         .useInnerJoinWith('userAuth')
         .filter({ type: 'bar' })
         .end();
-})
+});

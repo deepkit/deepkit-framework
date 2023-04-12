@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { AppModule, createModule } from '../src/module';
-import { ServiceContainer } from '../src/service-container';
+import { AppModule, createModule } from '../src/module.js';
+import { ServiceContainer } from '../src/service-container.js';
 
 test('simple setup with import and overwrite', () => {
     class Connection {
@@ -14,7 +14,8 @@ test('simple setup with import and overwrite', () => {
     class DatabaseModule extends createModule({
         providers: [Connection, HiddenDatabaseService],
         exports: [Connection]
-    }, 'database') {}
+    }, 'database') {
+    }
 
     class MyService {
     }
@@ -182,7 +183,8 @@ test('module with config object', () => {
         exports: [
             ExchangeConfig,
         ]
-    }, 'exchange') {}
+    }, 'exchange') {
+    }
 
     const myBaseModule = new AppModule({
         imports: [new ExchangeModule]
@@ -240,7 +242,8 @@ test('exported module', () => {
         exports: [
             DatabaseConnection
         ]
-    }) {}
+    }) {
+    }
 
     class FSService {
     }
@@ -251,7 +254,7 @@ test('exported module', () => {
             DatabaseModule
         ]
     }) {
-        imports = [new DatabaseModule]
+        imports = [new DatabaseModule];
     }
 
     {
