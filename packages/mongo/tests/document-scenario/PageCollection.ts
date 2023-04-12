@@ -1,4 +1,4 @@
-import {PageClass} from "./PageClass";
+import {PageClass} from "./PageClass.js";
 import {t} from "@deepkit/type";
 
 export class PageCollection {

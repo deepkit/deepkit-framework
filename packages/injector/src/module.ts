@@ -67,6 +67,8 @@ function lookupPreparedProviders(preparedProviders: PreparedProvider[], token: T
             if (token.kind === ReflectionKind.function && token.function && token.function === preparedProvider.token) last = preparedProvider;
             if (isType(preparedProvider.token) && isExtendable(preparedProvider.token, token)) last = preparedProvider;
             if (isClass(preparedProvider.token) && hasTypeInformation(preparedProvider.token) && isExtendable(reflect(preparedProvider.token), token)) last = preparedProvider;
+        } else if ('string' === typeof token || 'number' === typeof token || 'bigint' === typeof token || 'symbol' === typeof token && isType(preparedProvider.token)) {
+            if (isExtendable(preparedProvider.token, {kind: ReflectionKind.literal, literal: token})) last = preparedProvider;
         }
     }
     return last;

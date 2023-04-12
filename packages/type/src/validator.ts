@@ -95,7 +95,7 @@ export class ValidationErrorItem {
 export class ValidationError extends CustomError {
     constructor(
         public readonly errors: ValidationErrorItem[],
-        public readonly type?: Type,
+        type?: Type,
     ) {
         super(`Validation error${type ? ` for type ${stringifyType(type)}` : ''}:\n${errors.map(v => v.toString()).join(',\n')}`);
     }

@@ -11,12 +11,13 @@
 import { SQLFilterBuilder } from '@deepkit/sql';
 
 export class SQLiteFilterBuilder extends SQLFilterBuilder {
-    protected getDeepColumnAccessor(table: string, column: string, path: string) {
-        return `json_extract(${table}.${this.quoteId(column)}, ${this.quoteValue('$.' + path)})`;
-    }
-
     protected bindValue(value: any): any {
         if (typeof value === 'boolean') return value ? 1 : 0;
         return super.bindValue(value);
+    }
+
+    regexpComparator(lvalue: string, value: RegExp): string {
+        let regex =  value.flags + '::' + value.source; //will be decoded in sqlite-adapter
+        return `${lvalue} REGEXP ${this.bindParam(regex)}`;
     }
 }

@@ -8,15 +8,15 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Command } from './command';
-import { IsMasterResponse } from './ismaster';
-import { MongoClientConfig } from '../config';
-import { Host, HostType } from '../host';
-import { Sha1ScramAuth, Sha256ScramAuth } from './auth/scram';
+import { Command } from './command.js';
+import { IsMasterResponse } from './ismaster.js';
+import { MongoClientConfig } from '../config.js';
+import { Host, HostType } from '../host.js';
+import { Sha1ScramAuth, Sha256ScramAuth } from './auth/scram.js';
 import { ClassType } from '@deepkit/core';
-import { MongoError } from '../error';
-import { MongoAuth } from './auth/auth';
-import { X509Auth } from './auth/x509';
+import { MongoError } from '../error.js';
+import { MongoAuth } from './auth/auth.js';
+import { X509Auth } from './auth/x509.js';
 
 interface IsMasterSchema {
     isMaster: number;

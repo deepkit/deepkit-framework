@@ -10,11 +10,11 @@
 
 import { ClassType } from '@deepkit/core';
 import { EventDispatcherUnsubscribe } from '@deepkit/event';
-import { DatabaseSession } from '../database-session';
-import { Database } from '../database';
-import { DatabaseAdapter } from '../database-adapter';
-import { Query } from '../query';
-import { OrmEntity } from '../type';
+import { DatabaseSession } from '../database-session.js';
+import { Database } from '../database.js';
+import { DatabaseAdapter } from '../database-adapter.js';
+import { Query } from '../query.js';
+import { OrmEntity } from '../type.js';
 import { ReflectionClass } from '@deepkit/type';
 import { DatabasePlugin } from './plugin.js';
 

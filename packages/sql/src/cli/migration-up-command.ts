@@ -11,9 +11,9 @@
 import { indent } from '@deepkit/core';
 import { cli, flag } from '@deepkit/app';
 import { LoggerInterface } from '@deepkit/logger';
-import { MigrationProvider } from '../migration/migration-provider';
-import { SQLDatabaseAdapter, SqlMigrationHandler } from '../sql-adapter';
-import { BaseCommand } from './base-command';
+import { MigrationProvider } from '../migration/migration-provider.js';
+import { SQLDatabaseAdapter, SqlMigrationHandler } from '../sql-adapter.js';
+import { BaseCommand } from './base-command.js';
 
 @cli.controller('migration:up', {
     description: 'Executes pending migration files. Use migration:pending to see which are pending.'

@@ -1,6 +1,6 @@
 import { arg, cli, Command, flag } from '@deepkit/app';
 import { LoggerInterface } from '@deepkit/logger';
-import { SQLiteDatabase, User } from '../database';
+import { SQLiteDatabase, User } from '../database.js';
 import { Positive } from '@deepkit/type';
 
 @cli.controller('users')

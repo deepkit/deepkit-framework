@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { createModule } from '../src/module';
-import { ServiceContainer } from '../src/service-container';
+import { createModule } from '../src/module.js';
+import { ServiceContainer } from '../src/service-container.js';
 import { assert, IsExact } from 'conditional-type-checks';
 
 test('strict types config', () => {
@@ -42,7 +42,7 @@ test('nested options are optional as well for constructor, but strict in process
         nested?: {
             enabled: boolean,
             type: string
-        }
+        };
     }
 
     class MyModule extends createModule({
@@ -67,7 +67,7 @@ test('partial nested options are optional as well for constructor, but strict in
         nested?: {
             enabled: boolean,
             type: string
-        }
+        };
     }
 
     class MyModule extends createModule({
@@ -95,7 +95,7 @@ test('no config reference leak', () => {
 
     class RootApp extends createModule({
         config: class {
-            value!: string
+            value!: string;
         }
     }) {
         override imports = [new ModuleA];
@@ -105,7 +105,7 @@ test('no config reference leak', () => {
         }
     }
 
-    expect(new ModuleA().getConfig()).toEqual({  });
+    expect(new ModuleA().getConfig()).toEqual({});
 
     const app = new RootApp({ value: '1' });
     app.process();
@@ -113,9 +113,9 @@ test('no config reference leak', () => {
 
     expect(app.getImports()[0].getConfig()).toMatchObject({ param1: '1' });
 
-    expect(new ModuleA().getConfig()).toEqual({ });
+    expect(new ModuleA().getConfig()).toEqual({});
 
-    expect(new RootApp().getImports()[0].getConfig()).toEqual({ });
+    expect(new RootApp().getImports()[0].getConfig()).toEqual({});
 
     expect(app.getImports()[0].getConfig()).toMatchObject({ param1: '1' });
 });
@@ -125,7 +125,7 @@ test('nested config', () => {
         param1!: string;
         nested!: {
             param2: string
-        }
+        };
     }
 
     class Service {

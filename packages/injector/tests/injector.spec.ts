@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
-import { CircularDependencyError, injectedFunction, Injector, InjectorContext } from '../src/injector';
-import { InjectorModule } from '../src/module';
+import { CircularDependencyError, injectedFunction, Injector, InjectorContext } from '../src/injector.js';
+import { InjectorModule } from '../src/module.js';
 import { ReflectionClass, ReflectionKind } from '@deepkit/type';
-import { Inject } from '../src/types';
-import { provide } from '../src/provider';
+import { Inject } from '../src/types.js';
+import { provide } from '../src/provider.js';
 
 export const a = 'asd';
 

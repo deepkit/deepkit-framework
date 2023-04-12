@@ -8,19 +8,19 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/database';
-export * from './src/database-adapter';
-export * from './src/database-session';
-export * from './src/identity-map';
-export * from './src/formatter';
-export * from './src/query';
-export * from './src/query-filter';
-export * from './src/utils';
-export * from './src/memory-db';
-export * from './src/type';
-export * from './src/logger';
-export * from './src/event';
-export * from './src/reference';
+export * from './src/database.js';
+export * from './src/database-adapter.js';
+export * from './src/database-session.js';
+export * from './src/identity-map.js';
+export * from './src/formatter.js';
+export * from './src/query.js';
+export * from './src/query-filter.js';
+export * from './src/utils.js';
+export * from './src/memory-db.js';
+export * from './src/type.js';
+export * from './src/logger.js';
+export * from './src/event.js';
+export * from './src/reference.js';
 export * from './src/plugin/plugin.js';
 export * from './src/plugin/soft-delete-plugin.js';
 export * from './src/plugin/log-plugin.js';

@@ -9,8 +9,8 @@
  */
 
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
-import { BenchSuite } from '../bench';
-import { GetOptimizationStatus } from '../utils';
+import { BenchSuite } from '../bench.js';
+import { GetOptimizationStatus } from '../utils.js';
 
 export async function main() {
     const bench = new BenchSuite('injector2', 1);

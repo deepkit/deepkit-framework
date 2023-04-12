@@ -9,7 +9,7 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client';
+import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client.js';
 
 /**
  * A RpcClient that connects via WebSocket transport.
@@ -29,7 +29,8 @@ export class RpcWebSocketClient extends RpcClient {
 /**
  * @deprecated use RpcWebSocketClient instead
  */
-export class DeepkitClient extends RpcWebSocketClient {}
+export class DeepkitClient extends RpcWebSocketClient {
+}
 
 declare var require: (module: string) => any;
 

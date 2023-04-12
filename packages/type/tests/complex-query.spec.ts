@@ -115,7 +115,7 @@ export class BaseQuery<T extends OrmEntity> {
     }
 
     withGroupConcat<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [C in [AS] as `${AS}`]: T[K][] }> {
-        return this.aggregateField(field, 'group_concat', as);
+        return this.aggregateField(field, 'group_concat', as) as any;
     }
 
     withCount<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {

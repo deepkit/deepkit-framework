@@ -9,7 +9,7 @@
  */
 
 import { autoserializeAs, autoserializeAsArray, Deserialize, Serialize } from 'cerialize';
-import { BenchSuite } from '../../bench';
+import { BenchSuite } from '../../bench.js';
 
 export class Model {
     @autoserializeAs(Number) id?: number;

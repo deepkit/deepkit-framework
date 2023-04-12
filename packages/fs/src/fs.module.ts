@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { FsConfig } from './fs.config';
+import { FsConfig } from './fs.config.js';
 import { Database, DatabaseAdapter } from '@deepkit/orm';
 import { AppModule } from '@deepkit/app';
 import { injectable } from '@deepkit/injector';

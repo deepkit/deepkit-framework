@@ -9,7 +9,7 @@
  */
 
 import { arrayRemoveItem } from '@deepkit/core';
-import { cyrb53 } from '../hash';
+import { cyrb53 } from '../hash.js';
 import { genericEqual, ReflectionClass, ReflectionProperty } from '@deepkit/type';
 
 export class DatabaseModel {

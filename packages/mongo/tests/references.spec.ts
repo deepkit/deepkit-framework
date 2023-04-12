@@ -1,13 +1,14 @@
 import { expect, test } from '@jest/globals';
-import { BackReference, entity, PrimaryKey, Reference, ReflectionClass } from '@deepkit/type';
-import { createDatabase } from './utils';
-import { getInstanceStateFromItem } from '@deepkit/orm';
+import { BackReference, entity, PrimaryKey, Reference, ReflectionClass, serializer } from '@deepkit/type';
+import { createDatabase } from './utils.js';
+import { DatabaseQueryModel, Formatter, getInstanceStateFromItem } from '@deepkit/orm';
+import { deserializeBSON, serializeBSON } from '@deepkit/bson';
 
 @entity.name('image')
 class Image {
     users: User[] & BackReference = [];
 
-    usersForPictures: User[] & BackReference<{via: typeof UserPicture}> = [];
+    usersForPictures: User[] & BackReference<{ via: typeof UserPicture }> = [];
 
     constructor(
         public id: number & PrimaryKey,
@@ -20,7 +21,7 @@ class Image {
 class User {
     profileImage?: Image & Reference;
 
-    pictures?: Image[] & BackReference<{via: typeof UserPicture}>;
+    pictures?: Image[] & BackReference<{ via: typeof UserPicture }>;
 
     constructor(
         public id: number & PrimaryKey,
@@ -121,4 +122,30 @@ test('test unlink reference', async () => {
             expect(user.profileImage!).toBe(undefined);
         }
     }
+});
+
+test('unhydrated backreference is serializeable', async () => {
+    class User {
+        id: number & PrimaryKey = 0;
+        settings?: UserSettings & BackReference;
+    }
+
+    class UserSettings {
+        id: number & PrimaryKey = 0;
+
+        constructor(public user: User & Reference) {
+        }
+    }
+
+    const formatter = new Formatter(ReflectionClass.from(User), serializer);
+    const model = new DatabaseQueryModel();
+    const o = formatter.hydrate(model, { id: 1 });
+
+    expect(o.id).toBe(1);
+    expect(() => o.settings).toThrow('Reference User.settings was not populated');
+    // console.log(o);
+
+    const bson = serializeBSON<User>(o);
+    const back = deserializeBSON<User>(bson);
+    expect(back).toEqual({ id: 1 });
 });

@@ -10,7 +10,7 @@
 
 import 'reflect-metadata';
 import { Column, createConnection, Entity as TypeOrmEntity, ObjectIdColumn } from 'typeorm';
-import { BenchSuite } from '../../../bench';
+import { BenchSuite } from '../../../bench.js';
 
 @TypeOrmEntity()
 export class TypeOrmModel {

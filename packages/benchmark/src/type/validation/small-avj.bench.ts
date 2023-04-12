@@ -8,9 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { good } from './validation';
+import { good } from './validation.js';
 import Ajv from 'ajv';
-import { BenchSuite } from '../../bench';
+import { BenchSuite } from '../../bench.js';
 
 //todo: note deeplyNested is missing, so not complete validation yet.
 

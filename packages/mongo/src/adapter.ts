@@ -10,15 +10,15 @@
 
 import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseEntityRegistry, DatabaseSession, OrmEntity } from '@deepkit/orm';
 import { AbstractClassType, ClassType } from '@deepkit/core';
-import { MongoDatabaseQuery } from './query';
-import { MongoPersistence } from './persistence';
-import { MongoClient } from './client/client';
-import { DeleteCommand } from './client/command/delete';
-import { MongoQueryResolver } from './query.resolver';
-import { MongoDatabaseTransaction } from './client/connection';
-import { CreateIndex, CreateIndexesCommand } from './client/command/createIndexes';
-import { DropIndexesCommand } from './client/command/dropIndexes';
-import { CreateCollectionCommand } from './client/command/createCollection';
+import { MongoDatabaseQuery } from './query.js';
+import { MongoPersistence } from './persistence.js';
+import { MongoClient } from './client/client.js';
+import { DeleteCommand } from './client/command/delete.js';
+import { MongoQueryResolver } from './query.resolver.js';
+import { MongoDatabaseTransaction } from './client/connection.js';
+import { CreateIndex, CreateIndexesCommand } from './client/command/createIndexes.js';
+import { DropIndexesCommand } from './client/command/dropIndexes.js';
+import { CreateCollectionCommand } from './client/command/createCollection.js';
 import { entity, ReceiveType, ReflectionClass } from '@deepkit/type';
 
 export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {

@@ -243,6 +243,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
                 this.close(undefined);
             });
         }
+
         const injector = Injector.create({
             parent: this.injector,
             providers: [

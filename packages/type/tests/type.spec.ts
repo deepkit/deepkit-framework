@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { hasCircularReference, ReceiveType, reflect, ReflectionClass, resolveReceiveType, typeOf, visit } from '../src/reflection/reflection';
+import { hasCircularReference, ReceiveType, reflect, ReflectionClass, resolveReceiveType, typeOf, visit } from '../src/reflection/reflection.js';
 import {
     assertType,
     Embedded,
@@ -25,12 +25,12 @@ import {
     TypeProperty,
     UUID,
     validationAnnotation
-} from '../src/reflection/type';
-import { isExtendable } from '../src/reflection/extends';
-import { expectEqualType } from './utils';
+} from '../src/reflection/type.js';
+import { isExtendable } from '../src/reflection/extends.js';
+import { expectEqualType } from './utils.js';
 import { ClassType } from '@deepkit/core';
-import { Partial } from '../src/changes';
-import { MaxLength, MinLength } from '../src/validator';
+import { Partial } from '../src/changes.js';
+import { MaxLength, MinLength } from '../src/validator.js';
 
 //note: this needs to run in a strict TS mode to infer correctly in the IDE
 type Extends<A, B> = [A] extends [B] ? true : false;
@@ -1397,4 +1397,79 @@ describe('types equality', () => {
             }
         }
     }
+});
+
+test('function extends empty object literal', () => {
+    interface ObjectLiteral {
+    }
+
+    type isFunction = Function extends ObjectLiteral ? true : false;
+    expect(stringifyResolvedType(typeOf<isFunction>())).toBe('true');
+});
+
+test('call signature', () => {
+    interface ObjectLiteralWithCall {
+        (b: string): number;
+    }
+
+    const type = typeOf<ObjectLiteralWithCall>();
+    assertType(type, ReflectionKind.objectLiteral);
+    assertType(type.types[0], ReflectionKind.callSignature);
+    assertType(type.types[0].parameters[0], ReflectionKind.parameter);
+    expect(type.types[0].parameters[0].name).toBe('b');
+    assertType(type.types[0].parameters[0].type, ReflectionKind.string);
+    assertType(type.types[0].return, ReflectionKind.number);
+
+    expect(stringifyResolvedType(typeOf<ObjectLiteralWithCall>())).toBe(`ObjectLiteralWithCall {(b: string) => number}`);
+});
+
+test('function extends non-empty object literal', () => {
+    interface ObjectLiteral {
+        a: string;
+    }
+
+    type isFunction = Function extends ObjectLiteral ? true : false;
+    expect(stringifyResolvedType(typeOf<isFunction>())).toBe('false');
+});
+
+test('issue-429: invalid function detection', () => {
+    interface IDTOInner {
+        subfieldA: string;
+        subfieldB: number;
+    }
+
+    interface IDTOOuter {
+        fieldA: string;
+        fieldB: IDTOInner;
+        fieldC: number;
+
+        someFunction(): void;
+    }
+
+    type ObjectKeysMatching<O extends {}, V> = { [K in keyof O]: O[K] extends V ? K : V extends O[K] ? K : never }[keyof O];
+    type keys = ObjectKeysMatching<IDTOOuter, Function>;
+
+    type isFunction = Function extends IDTOInner ? true : false;
+    expect(stringifyResolvedType(typeOf<isFunction>())).toBe('false');
+    expect(stringifyResolvedType(typeOf<keys>())).toBe(`'someFunction'`);
+});
+
+test('issue-430: referring to this', () => {
+    class SomeClass {
+        fieldA!: string;
+        fieldB!: number;
+        fieldC!: boolean;
+
+        someFunctionA() { }
+        someFunctionB(input: string) { }
+        someFunctionC(input: keyof this /* behaves the same with keyof anything */) { }
+    }
+
+    type ArrowFunction = (...args: any) => any;
+    type MethodKeys<T> = {[K in keyof T]: T[K] extends ArrowFunction ? K : never}[keyof T];
+    type keys = MethodKeys<SomeClass>;
+
+    //for the moment we treat `keyof this` as any, since `this` is not implemented at all.
+    //this makes it possible that the code above works at least.
+    expect(stringifyResolvedType(typeOf<keys>())).toBe(`'someFunctionA' | 'someFunctionB' | 'someFunctionC'`);
 });

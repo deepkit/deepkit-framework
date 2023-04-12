@@ -1,8 +1,8 @@
 import { ActiveRecord } from '@deepkit/orm';
 import { AutoIncrement, BackReference, entity, PrimaryKey, Reference } from '@deepkit/type';
-import { User } from '../bookstore/user';
-import { BookTag } from './book-tag';
-import { Tag } from './tag';
+import { User } from '../bookstore/user.js';
+import { BookTag } from './book-tag.js';
+import { Tag } from './tag.js';
 
 @entity.name('active-record-book')
 export class Book extends ActiveRecord {

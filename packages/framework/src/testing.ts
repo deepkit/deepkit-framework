@@ -12,14 +12,14 @@ import { BrokerKernel } from '@deepkit/broker';
 import { ClassType } from '@deepkit/core';
 import { ConsoleTransport, Logger, LogMessage, MemoryLoggerTransport } from '@deepkit/logger';
 import { Database, DatabaseRegistry, MemoryDatabaseAdapter } from '@deepkit/orm';
-import { ApplicationServer } from './application-server';
-import { Broker, BrokerServer, DirectBroker } from './broker/broker';
+import { ApplicationServer } from './application-server.js';
+import { Broker, BrokerServer, DirectBroker } from './broker/broker.js';
 import { injectorReference } from '@deepkit/injector';
 import { App, AppModule, RootAppModule, RootModuleDefinition } from '@deepkit/app';
-import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker';
+import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker.js';
 import { HttpKernel, MemoryHttpResponse, RequestBuilder } from '@deepkit/http';
 import { RpcClient } from '@deepkit/rpc';
-import { FrameworkModule } from './module';
+import { FrameworkModule } from './module.js';
 
 /**
  * @deprecated use {@link MemoryHttpResponse} instead

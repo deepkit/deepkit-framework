@@ -1,8 +1,8 @@
 import { expect } from '@jest/globals';
-import { AutoIncrement, BackReference, cast, entity, isReferenceInstance, PrimaryKey, Reference, Unique } from '@deepkit/type';
+import { AutoIncrement, BackReference, cast, entity, isReferenceInstance, PrimaryKey, Reference, Unique, uuid, UUID } from '@deepkit/type';
 import { identifier, sql, SQLDatabaseAdapter } from '@deepkit/sql';
-import { DatabaseFactory } from './test';
-import { isDatabaseOf, UniqueConstraintFailure } from '@deepkit/orm';
+import { DatabaseFactory } from './test.js';
+import { hydrateEntity, isDatabaseOf, UniqueConstraintFailure } from '@deepkit/orm';
 import { randomBytes } from 'crypto';
 
 Error.stackTraceLimit = 20;
@@ -386,6 +386,159 @@ export const variousTests = {
             await database.query(Model).filter({ username: { $like: 'Mar%' } }).patchOne({ username: 'Marie2' });
             const items = await database.query(Model).find();
             expect(items).toMatchObject([{ username: 'Peter2' }, { username: 'Peter3' }, { username: 'Marie2' }]);
+        }
+    },
+    async deepObjectPatch(databaseFactory: DatabaseFactory) {
+        class FullName {
+            forename: string = '';
+            surname: string = '';
+            changes: number = 0;
+        }
+
+        class Person {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            name: FullName = new FullName();
+        }
+
+        const db = await databaseFactory([Person]);
+
+        const person1 = new Person();
+        person1.name.forename = 'Max';
+        person1.name.surname = 'Mustermann';
+
+        const person2 = new Person();
+        person2.name.forename = 'Max';
+        person2.name.surname = 'Meier';
+
+        await db.persist(person1, person2);
+
+        await db.query(Person)
+            .filter({ 'name.surname': 'Meier' })
+            .patchOne({ 'name.forename': 'Klaus' });
+
+        await db.query(Person)
+            .filter({ 'name.surname': 'Meier' })
+            .patchOne({ $inc: {'name.changes': 1} });
+
+        const person = await db.query(Person).filter({ 'name.surname': 'Meier' }).findOne();
+        expect(person.name.forename).toEqual('Klaus');
+        expect(person.name.changes).toEqual(1);
+    },
+    async deepArrayPatch(databaseFactory: DatabaseFactory) {
+        class Address {
+            name: string = '';
+            street: string = '';
+            zip: string = '';
+        }
+
+        class Person {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            tags: string[] = [];
+            addresses: Address[] = [];
+        }
+
+        const db = await databaseFactory([Person]);
+
+        const person1 = new Person();
+        person1.tags = ['a', 'b'];
+        person1.addresses = [{ name: 'home', street: 'street1', zip: '1234' }];
+
+        const person2 = new Person();
+        person2.tags = ['c', 'd'];
+
+        await db.persist(person1, person2);
+
+        await db.query(Person)
+            .filter(person1)
+            .patchOne({ 'addresses.0.zip': '5678' });
+
+        const person = await db.query(Person).filter(person1).findOne();
+        expect(person.addresses).toEqual([{ name: 'home', street: 'street1', zip: '5678' }]);
+    },
+
+    async anyType(databaseFactory: DatabaseFactory) {
+        class Page {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            constructor(public content: any) {};
+        }
+        const db = await databaseFactory([Page]);
+
+        await db.persist(new Page([{insert: 'abc\n'}]));
+
+        db.disconnect();
+    },
+
+    async arrayElement(databaseFactory: DatabaseFactory) {
+        //this tests that the array element type is correctly serialized
+        class Page {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            constructor(public content: {id: UUID, insert: string, attributes?: { [name: string]: any }}[]) {};
+        }
+        const db = await databaseFactory([Page]);
+        const myId = uuid();
+
+        await db.persist(new Page([{id: myId, insert: 'abc\n', attributes: {header: 1}}]));
+
+        const page = await db.query(Page).findOne();
+        expect(page.content[0]).toEqual({id: myId, insert: 'abc\n', attributes: {header: 1}});
+
+        db.disconnect();
+    },
+
+    async lazyLoad(databaseFactory: DatabaseFactory) {
+        class Page {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            title: string = '';
+            content: Uint8Array = new Uint8Array();
+        }
+
+        const db = await databaseFactory([Page]);
+
+        {
+            const page = new Page();
+            page.title = 'test';
+            page.content = new Uint8Array([1, 2, 3]);
+            await db.persist(page);
+        }
+
+        const page = await db.query(Page).lazyLoad('content').findOne();
+        expect(page.title).toBe('test');
+        expect(() => page.content).toThrowError('Property Page.content was not populated. Remove lazyLoad(\'content\') or call \'await hydrateEntity(item)\'');
+
+        await hydrateEntity(page);
+        expect(page.content).toEqual(new Uint8Array([1, 2, 3]));
+
+        db.disconnect();
+    },
+
+    async emptyPatch(databaseFactory: DatabaseFactory) {
+        @entity.name('model5')
+        class Model {
+            firstName: string = '';
+
+            constructor(public id: number & PrimaryKey) {
+            }
+        }
+
+        const database = await databaseFactory([Model]);
+        await database.persist(new Model(1), new Model(2));
+
+        {
+            const result = await database
+                .query(Model)
+                .filter({ id: { $gt: 5 } })
+                .patchMany({ firstName: 'test' });
+            expect(result.modified).toEqual(0);
+            expect(result.primaryKeys.length).toEqual(0);
+        }
+
+        {
+            const result = await database
+                .query(Model)
+                .filter({ id: { $gt: 1 } })
+                .patchMany({ firstName: 'test' });
+            expect(result.modified).toEqual(1);
+            expect(result.primaryKeys).toEqual([{ id: 2 }]);
         }
     }
 };

@@ -8,4 +8,4 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/mysql-adapter';
+export * from './src/mysql-adapter.js';

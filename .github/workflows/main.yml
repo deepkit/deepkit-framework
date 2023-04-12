@@ -9,7 +9,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [ 16.x ]
+        node-version: [ 18.x ]
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -96,14 +96,15 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [ 14.x ]
-        postgres-version: [ 10.10 ]
+        node-version: [ 18.x ]
+        postgres-version: [ 14 ]
     services:
       postgres:
         image: postgres:${{ matrix.postgres-version }}
         env:
           POSTGRES_USER: postgres
-          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: ''
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - "5432:5432"
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
@@ -143,7 +144,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [ 14.x ]
+        node-version: [ 18.x ]
         mysql-version: [ 8.0 ]
     services:
       mysql:
@@ -190,7 +191,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [ 14.x ]
+        node-version: [ 18.x ]
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -227,7 +228,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [ 14.x ]
+        node-version: [ 18.x ]
         mongo-version: [ 4.0 ]
     services:
       # this is used for the simple-auth test
@@ -311,10 +312,10 @@ jobs:
 #          - "5432:5432"
 #        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 #    steps:
-#      - name: Use Node.js 14.x
+#      - name: Use Node.js 18.x
 #        uses: actions/setup-node@v1
 #        with:
-#          node-version: 14.x
+#          node-version: 18.x
 #      - name: npm install
 #        run: npm install
 #      - name: Lerna bootstrap

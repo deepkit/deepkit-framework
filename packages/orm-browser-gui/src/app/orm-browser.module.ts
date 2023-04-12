@@ -153,7 +153,7 @@ export class OrmBrowserModule {
             providers: [
                 {
                     provide: DeepkitClient,
-                    useFactory: () => new DeepkitClient('ws://' + ControllerClient.getServerHost())
+                    useFactory: () => new DeepkitClient(ControllerClient.getServerHost())
                 }
             ]
         };

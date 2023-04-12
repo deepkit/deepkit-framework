@@ -10,9 +10,9 @@
 
 import { Column, DefaultPlatform, ForeignKey, isSet, Sql, Table, TableDiff } from '@deepkit/sql';
 import { isDateType, isIntegerType, isMapType, isSetType, isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
-import { SQLiteSchemaParser } from './sqlite-schema-parser';
-import { sqliteSerializer } from './sqlite-serializer';
-import { SQLiteFilterBuilder } from './sql-filter-builder.sqlite';
+import { SQLiteSchemaParser } from './sqlite-schema-parser.js';
+import { sqliteSerializer } from './sqlite-serializer.js';
+import { SQLiteFilterBuilder } from './sql-filter-builder.sqlite.js';
 import { isArray, isObject } from '@deepkit/core';
 import sqlstring from 'sqlstring-sqlite';
 
@@ -62,7 +62,11 @@ export class SQLitePlatform extends DefaultPlatform {
     }
 
     createSqlFilterBuilder(schema: ReflectionClass<any>, tableName: string): SQLiteFilterBuilder {
-        return new SQLiteFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this.quoteValue.bind(this), this.quoteIdentifier.bind(this));
+        return new SQLiteFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this);
+    }
+
+    getDeepColumnAccessor(table: string, column: string, path: string) {
+        return `${table ? table + '.' : ''}${this.quoteIdentifier(column)}->${this.quoteValue(path)}`;
     }
 
     getModifyTableDDL(diff: TableDiff): string[] {

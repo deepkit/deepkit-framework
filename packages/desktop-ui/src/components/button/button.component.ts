@@ -31,6 +31,134 @@ import { WindowComponent } from '../window/window.component';
 import { WindowState } from '../window/window-state';
 import { FormComponent } from '../form/form.component';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { ActivatedRoute, Router, UrlTree } from '@angular/router';
+import { isMacOs, isRouteActive } from '../../core/utils';
+
+/**
+ * hotkey has format of "ctrl+shift+alt+key", e.g "ctrl+s" or "shift+o"
+ * and supports more than one, e.g. "ctrl+s,ctrl+o"
+ */
+export type HotKey = string;
+
+function hotKeySize(hotkey: HotKey) {
+    const hotkeys = hotkey.split(',');
+    let size = hotkeys.length - 1;
+    const isMac = isMacOs(); //mac uses one char per key, windows uses '⊞ WIN' for meta key, 'CTRL' for ctrl key, 'ALT' for alt key
+    for (const hotkey of hotkeys) {
+        const keys = hotkey.split('+');
+        for (const key of keys) {
+            if (key === 'ctrl') size += isMac ? 1 : 4;
+            if (key === 'meta') size += isMac ? 1 : 4;
+            if (key === 'shift') size += 1;
+            if (key === 'alt') size += isMac ? 1 : 3;
+            if (key !== 'ctrl' && key !== 'meta' && key !== 'alt' && key !== 'shift') size += key.length;
+        }
+    }
+
+    return size;
+}
+
+function isHotKeyActive(hotkey: HotKey, event: KeyboardEvent) {
+    const eventKey = event.key.toLowerCase();
+
+    const hotkeys = hotkey.split(',');
+    for (const hotkey of hotkeys) {
+        const keys = hotkey.split('+');
+        let match = true;
+        for (const key of keys) {
+            if (key === 'ctrl' && !event.ctrlKey) {
+                match = false;
+                break;
+            }
+            if (key === 'meta' && (!event.ctrlKey && !event.metaKey)) {
+                match = false;
+                break;
+            }
+            if (key === 'shift' && !event.shiftKey) {
+                match = false;
+                break;
+            }
+            if (key === 'alt' && !event.altKey) {
+                match = false;
+                break;
+            }
+            if (key !== 'ctrl' && key !== 'meta' && key !== 'alt' && key !== 'shift' && key !== eventKey) {
+                match = false;
+                break;
+            }
+        }
+        if (match) return true;
+    }
+
+    return false;
+}
+
+
+@Component({
+    selector: 'dui-button-hotkey',
+    styles: [`
+        :host {
+            display: inline-flex;
+            flex-direction: row;
+        }
+
+        span {
+            text-transform: uppercase;
+            color: var(--text-grey);
+            margin-left: 3px;
+            font-size: 11px;
+        }
+    `],
+    template: `
+        <span *ngIf="metaKey">{{isMac ? '⌘' : 'WIN'}}</span>
+        <span *ngIf="ctrlKey">{{isMac ? '⌃' : 'CTRL'}}</span>
+        <span *ngIf="altKey">{{isMac ? '⌥' : 'ALT'}}</span>
+        <span *ngIf="shiftKey">⇧</span>
+        <span *ngIf="key">{{key}}</span>
+    `
+})
+export class ButtonHotkeyComponent implements OnChanges, OnInit {
+    @Input() hotkey?: HotKey;
+
+    isMac = isMacOs();
+
+    metaKey = false;
+    ctrlKey = false;
+    shiftKey = false;
+    altKey = false;
+    key = '';
+
+    ngOnInit() {
+        this.parse();
+    }
+
+    ngOnChanges() {
+        this.parse();
+    }
+
+    parse() {
+        //reset all
+        this.metaKey = false;
+        this.ctrlKey = false;
+        this.shiftKey = false;
+        this.altKey = false;
+        this.key = '';
+
+        if (!this.hotkey) return;
+
+        const hotkeys = this.hotkey.split(',');
+        for (const hotkey of hotkeys) {
+            const keys = hotkey.split('+');
+            for (const key of keys) {
+                if (key === 'ctrl') this.ctrlKey = true;
+                if (key === 'meta') this.metaKey = true;
+                if (key === 'shift') this.shiftKey = true;
+                if (key === 'alt') this.altKey = true;
+                if (key !== 'ctrl' && key !== 'shift' && key !== 'alt' && key !== 'meta') this.key = key;
+            }
+        }
+    }
+}
 
 @Component({
     selector: 'dui-button',
@@ -38,13 +166,15 @@ import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
         <dui-icon *ngIf="icon && iconRight === false" [color]="iconColor" [name]="icon" [size]="iconSize"></dui-icon>
         <ng-content></ng-content>
         <dui-icon *ngIf="icon && iconRight !== false" [color]="iconColor" [name]="icon" [size]="iconSize"></dui-icon>
+        <div *ngIf="showHotkey" style="margin-left: 4px;" [style.width.px]="hotKeySize(showHotkey) * 6"></div>
+        <dui-button-hotkey *ngIf="showHotkey" style="position: absolute; right: 6px; top: 0;" [hotkey]="showHotkey"></dui-button-hotkey>
     `,
     host: {
         '[attr.tabindex]': '1',
         '[class.icon]': '!!icon',
         '[class.small]': 'small !== false',
         '[class.tight]': 'tight !== false',
-        '[class.active]': 'active !== false',
+        '[class.active]': 'isActive()',
         '[class.highlighted]': 'highlighted !== false',
         '[class.primary]': 'primary !== false',
         '[class.icon-left]': 'iconRight === false',
@@ -54,6 +184,7 @@ import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
     styleUrls: ['./button.component.scss'],
 })
 export class ButtonComponent implements OnInit, AfterViewInit {
+    hotKeySize = hotKeySize;
 
     /**
      * The icon for this button. Either a icon name same as for dui-icon, or an image path.
@@ -69,10 +200,14 @@ export class ButtonComponent implements OnInit, AfterViewInit {
 
     @Input() iconColor?: string;
 
+    @Input() showHotkey?: HotKey;
+
     /**
      * Whether the button is active (pressed)
      */
     @Input() active: boolean | '' = false;
+    @Input() routerLink?: string | UrlTree | any[];
+    @Input() routerLinkExact?: boolean;
 
     /**
      * Whether the button has no padding and smaller font size
@@ -115,6 +250,8 @@ export class ButtonComponent implements OnInit, AfterViewInit {
         public element: ElementRef,
         @SkipSelf() public cdParent: ChangeDetectorRef,
         @Optional() public formComponent: FormComponent,
+        @Optional() public router?: Router,
+        @Optional() public activatedRoute?: ActivatedRoute,
     ) {
         this.element.nativeElement.removeAttribute('tabindex');
     }
@@ -157,6 +294,11 @@ export class ButtonComponent implements OnInit, AfterViewInit {
         }
     }
 
+    isActive() {
+        if (this.routerLink && this.router) return isRouteActive(this);
+        return false !== this.active;
+    }
+
     ngAfterViewInit() {
         if (this.icon) {
             const content = this.element.nativeElement.innerText.trim();
@@ -175,6 +317,70 @@ export class ButtonComponent implements OnInit, AfterViewInit {
         if (this.submitForm) {
             this.submitForm.submitForm();
         }
+    }
+}
+
+@Directive({
+    selector: '[hotkey]'
+})
+export class HotkeyDirective {
+    @Input() hotkey!: HotKey;
+    protected oldButtonActive?: boolean | '';
+
+    protected active = false;
+
+    constructor(private elementRef: ElementRef, @Optional() private button?: ButtonComponent) {
+    }
+
+    @HostListener('document:keydown', ['$event'])
+    onKeyDown(event: KeyboardEvent) {
+        //if only alt is pressed (not other keys, we display the hotkey)
+        if (event.key.toLowerCase() === 'alt') {
+            if (this.button) {
+                this.button.showHotkey = this.hotkey;
+                return;
+            }
+        }
+
+        // console.log('keydown', event.key, this.hotkey, isHotKeyActive(this.hotkey, event));
+        if (!isHotKeyActive(this.hotkey, event)) return;
+        event.preventDefault();
+
+        if (this.active) return;
+        this.active = true;
+
+        if (this.button) {
+            this.oldButtonActive = this.button.active;
+            this.button.active = true;
+
+            setTimeout(() => {
+                if (this.button && this.oldButtonActive !== undefined) {
+                    this.button.active = this.oldButtonActive;
+                    this.oldButtonActive = undefined;
+                    this.button.cdParent.detectChanges();
+                    this.active = false;
+                }
+            }, 60);
+        }
+    }
+
+    @HostListener('document:keyup', ['$event'])
+    onKeyUp(event: KeyboardEvent) {
+        //if only alt is pressed (not other keys, we display the hotkey)
+        if (event.key.toLowerCase() === 'alt') {
+            if (this.button) {
+                this.button.showHotkey = undefined;
+                return;
+            }
+        }
+
+        // console.log('keyup', event.key, this.hotkey, isHotKeyActive(this.hotkey, event));
+        // if (!isHotKeyActive(this.hotkey, event)) return;
+        // event.preventDefault();
+        // this.elementRef.nativeElement.click();
+        // if (this.button && this.oldButtonActive !== undefined) {
+        //     this.button.active = this.oldButtonActive;
+        // }
     }
 }
 
@@ -424,7 +630,7 @@ export class FilePickerDirective extends ValueAccessorBase<any> implements OnDes
 @Directive({
     selector: '[duiFileDrop]',
     host: {
-        '[class.hover]': 'hover',
+        '[class.file-drop-hover]': 'i > 0',
     },
     providers: [ngValueAccessor(FileChooserDirective)]
 })
@@ -433,7 +639,8 @@ export class FileDropDirective extends ValueAccessorBase<any> implements OnDestr
 
     @Output() duiFileDropChange = new EventEmitter<FilePickerItem | FilePickerItem[]>();
 
-    hover = false;
+    // hover = false;
+    i: number = 0;
 
     constructor(
         protected injector: Injector,
@@ -448,7 +655,7 @@ export class FileDropDirective extends ValueAccessorBase<any> implements OnDestr
     onDragEnter(ev: any) {
         // Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
-        this.hover = true;
+        this.i++;
         this.cdParent.detectChanges();
     }
 
@@ -462,7 +669,7 @@ export class FileDropDirective extends ValueAccessorBase<any> implements OnDestr
     onDragLeave(ev: any) {
         // Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
-        this.hover = false;
+        this.i--;
         this.cdParent.detectChanges();
     }
 
@@ -508,7 +715,7 @@ export class FileDropDirective extends ValueAccessorBase<any> implements OnDestr
             }
         }
         this.duiFileDropChange.emit(this.innerValue);
-        this.hover = false;
+        this.i = 0;
         this.cdParent.detectChanges();
     }
 

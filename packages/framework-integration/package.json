@@ -47,6 +47,9 @@
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
     "resolver": "../../jest-resolver.js",
     "coverageDirectory": "<rootDir>/coverage/",
     "testMatch": [

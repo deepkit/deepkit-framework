@@ -9,9 +9,9 @@
  */
 
 import { toFastProperties } from '@deepkit/core';
-import { BaseResponse, Command } from './command';
+import { BaseResponse, Command } from './command.js';
 import { InlineRuntimeType, ReflectionClass, Type, typeOf, UUID } from '@deepkit/type';
-import { MongoError } from '../error';
+import { MongoError } from '../error.js';
 
 interface AggregateMessage {
     aggregate: string;

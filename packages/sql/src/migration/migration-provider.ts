@@ -12,7 +12,7 @@ import { ClassType } from '@deepkit/core';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
 import glob from 'fast-glob';
 import { basename, join } from 'path';
-import { Migration } from './migration';
+import { Migration } from './migration.js';
 
 export class MigrationProvider {
     protected databaseMap = new Map<string, Database<any>>();

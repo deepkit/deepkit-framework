@@ -19,6 +19,7 @@ import {
     isType,
     isTypeIncluded,
     ReflectionKind,
+    resolveTypeMembers,
     Type,
     TypeAny,
     TypeInfer,
@@ -124,7 +125,7 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
             if (left.kind === ReflectionKind.null || left.kind === ReflectionKind.undefined) return false;
             if (right.types.length === 0) {
                 //string extends {}, number extends {} are all valid
-                return left.kind === ReflectionKind.templateLiteral || isPrimitive(left);
+                return left.kind === ReflectionKind.templateLiteral || left.kind === ReflectionKind.function || isPrimitive(left);
             }
         }
 
@@ -174,9 +175,13 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
             (right.kind === ReflectionKind.function || right.kind === ReflectionKind.method || right.kind === ReflectionKind.methodSignature || right.kind === ReflectionKind.objectLiteral)
         ) {
             if (right.kind === ReflectionKind.objectLiteral) {
-                //todo: members maybe contain a call signature
+                for (const type of resolveTypeMembers(right)) {
+                    if (type.kind === ReflectionKind.callSignature) {
+                        if (isExtendable(left, type, extendStack)) return true;
+                    }
+                }
 
-                return true;
+                return false;
             }
 
             if (right.kind === ReflectionKind.function || right.kind === ReflectionKind.methodSignature || right.kind === ReflectionKind.method) {

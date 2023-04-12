@@ -8,12 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AppLocker } from './app-locker';
+import { AppLocker } from './app-locker.js';
 import { createModule } from '@deepkit/app';
 import { eventDispatcher } from '@deepkit/event';
-import { onServerMainBootstrap, onServerMainShutdown } from '../application-server';
-import { BrokerConfig } from './broker.config';
-import { Broker, BrokerServer } from './broker';
+import { onServerMainBootstrap, onServerMainShutdown } from '../application-server.js';
+import { BrokerConfig } from './broker.config.js';
+import { Broker, BrokerServer } from './broker.js';
 import { LoggerInterface } from '@deepkit/logger';
 
 export class BrokerListener {

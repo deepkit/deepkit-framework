@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/workflow",
-  "version": "1.0.1-alpha.85",
+  "version": "1.0.1-alpha.92",
   "description": "Deepkit workflow engine / finite state machine",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -30,15 +30,18 @@
     "@deepkit/type": "^1.0.1-alpha.13"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.77",
-    "@deepkit/event": "^1.0.1-alpha.85",
-    "@deepkit/injector": "^1.0.1-alpha.85",
-    "@deepkit/stopwatch": "^1.0.1-alpha.85",
-    "@deepkit/type": "^1.0.1-alpha.85"
+    "@deepkit/core": "^1.0.1-alpha.92",
+    "@deepkit/event": "^1.0.1-alpha.92",
+    "@deepkit/injector": "^1.0.1-alpha.92",
+    "@deepkit/stopwatch": "^1.0.1-alpha.92",
+    "@deepkit/type": "^1.0.1-alpha.92"
   },
   "jest": {
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
     },
     "testMatch": [
       "**/tests/**/*.spec.ts"

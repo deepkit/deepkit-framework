@@ -19,7 +19,7 @@ import {
     PrimaryKeyFields,
     ReflectionClass
 } from '@deepkit/type';
-import { OrmEntity } from './type';
+import { OrmEntity } from './type.js';
 import { getClassTypeFromInstance, isObject, toFastProperties } from '@deepkit/core';
 
 export function getNormalizedPrimaryKey(schema: ReflectionClass<any>, primaryKey: any) {
@@ -74,6 +74,8 @@ class InstanceState<T extends OrmEntity> {
      * References store only its primary keys.
      */
     snapshot?: JSONPartial<T>;
+
+    hydrator?: (item: T) => Promise<T>
 
     /**
      * Whether the item was originally from the database (and thus PK are known there).

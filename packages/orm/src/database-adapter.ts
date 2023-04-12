@@ -8,11 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { OrmEntity } from './type';
+import { OrmEntity } from './type.js';
 import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, getClassTypeFromInstance, isClass, stringifyValueWithType } from '@deepkit/core';
 import { is, isSameType, ItemChanges, PrimaryKeyFields, ReceiveType, ReflectionClass, ReflectionKind, stringifyType, Type } from '@deepkit/type';
-import { Query } from './query';
-import { DatabaseSession, DatabaseTransaction } from './database-session';
+import { Query } from './query.js';
+import { DatabaseSession, DatabaseTransaction } from './database-session.js';
 
 export abstract class DatabaseAdapterQueryFactory {
     abstract createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): Query<T>;

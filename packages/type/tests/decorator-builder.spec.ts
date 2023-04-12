@@ -6,7 +6,7 @@ import {
     createPropertyDecoratorContext, DecoratorAndFetchSignature, DualDecorator, ExtractApiDataType, ExtractClass, FluidDecorator,
     isDecoratorContext,
     mergeDecorator, PropertyDecoratorFn, PropertyDecoratorResult
-} from '../src/decorator-builder';
+} from '../src/decorator-builder.js';
 
 test('without host', () => {
     class Dec1Model {

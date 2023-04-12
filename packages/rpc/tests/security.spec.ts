@@ -1,11 +1,11 @@
 import { expect, test } from '@jest/globals';
-import { AsyncDirectClient, DirectClient } from '../src/client/client-direct';
-import { rpc } from '../src/decorators';
-import { RpcKernel, RpcKernelConnection } from '../src/server/kernel';
-import { RpcKernelSecurity, Session } from '../src/server/security';
-import { AuthenticationError } from '../src/model';
-import { MemoryLoggerTransport } from '../../logger';
+import { AsyncDirectClient, DirectClient } from '../src/client/client-direct.js';
+import { rpc } from '../src/decorators.js';
+import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
+import { RpcKernelSecurity, Session } from '../src/server/security.js';
+import { AuthenticationError } from '../src/model.js';
 import { Logger } from '@deepkit/logger';
+import { MemoryLoggerTransport } from '@deepkit/logger';
 
 test('authentication', async () => {
     class Controller {

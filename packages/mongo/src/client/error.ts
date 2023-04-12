@@ -9,7 +9,7 @@
  */
 
 import { CustomError } from '@deepkit/core';
-import { BaseResponse } from './command/command';
+import { BaseResponse } from './command/command.js';
 import { DatabaseError, UniqueConstraintFailure } from '@deepkit/orm';
 
 

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AbstractClassType, ClassType, getClassName } from '@deepkit/core';
+import { AbstractClassType, ClassType, getClassName, getClassTypeFromInstance } from '@deepkit/core';
 import {
     entityAnnotation,
     EntityOptions,
@@ -21,29 +21,37 @@ import {
     resolveReceiveType,
     Type
 } from '@deepkit/type';
-import { DatabaseAdapter, DatabaseEntityRegistry } from './database-adapter';
-import { DatabaseSession } from './database-session';
-import { DatabaseLogger } from './logger';
-import { Query } from './query';
-import { getReference } from './reference';
-import { OrmEntity } from './type';
-import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint';
+import { DatabaseAdapter, DatabaseEntityRegistry } from './database-adapter.js';
+import { DatabaseSession } from './database-session.js';
+import { DatabaseLogger } from './logger.js';
+import { Query } from './query.js';
+import { getReference } from './reference.js';
+import { OrmEntity } from './type.js';
+import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint.js';
 import { Stopwatch } from '@deepkit/stopwatch';
-import { getNormalizedPrimaryKey } from './identity-map';
+import { getClassState, getInstanceState, getNormalizedPrimaryKey } from './identity-map.js';
 import { EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
-import { DatabasePlugin, DatabasePluginRegistry } from './plugin/plugin';
+import { DatabasePlugin, DatabasePluginRegistry } from './plugin/plugin.js';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
+ * This is necessary if you want to load fields that were excluded from the query via lazyLoad().
  */
-export async function hydrateEntity<T>(item: T): Promise<void> {
+export async function hydrateEntity<T extends OrmEntity>(item: T): Promise<T> {
     const info = getReferenceInfo(item);
-    if (info && isReferenceHydrated(item)) return;
+    if (info && isReferenceHydrated(item)) return item;
 
     if (info && info.hydrator) {
         await info.hydrator(item);
-        return;
+        return item;
     }
+
+    const state = getInstanceState<T>(getClassState(ReflectionClass.from(getClassTypeFromInstance(item))), item);
+    if (state.hydrator) {
+        await state.hydrator(item);
+        return item;
+    }
+
     throw new Error(`Given object is not a reference from a database session and thus can not be hydrated.`);
 }
 
@@ -148,6 +156,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
             session.withIdentityMap = false;
             return session.query(type);
         }
+
         this.query = query;
 
         this.raw = (...args: any[]) => {

@@ -1,6 +1,6 @@
 import { test } from '@jest/globals';
-import { Database } from '../src/database';
-import { MemoryDatabaseAdapter } from '../src/memory-db';
+import { Database } from '../src/database.js';
+import { MemoryDatabaseAdapter } from '../src/memory-db.js';
 
 test('api', async () => {
     const database = new Database(new MemoryDatabaseAdapter());

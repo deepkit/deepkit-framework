@@ -29,7 +29,7 @@ import { isTargetChildOf } from '../../core/utils';
 import { DuiDialogProgress, ProgressDialogState } from './progress-dialog.component';
 import { DOCUMENT } from '@angular/common';
 import { WindowRegistry } from '../window/window-state';
-import { Overlay, OverlayConfig } from '@angular/cdk/overlay';
+import { Overlay } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 
 
@@ -39,7 +39,7 @@ import { ComponentPortal } from '@angular/cdk/portal';
         <div *ngIf="content">{{content}}</div>
 
         <dui-dialog-actions>
-            <dui-button [closeDialog]="false">Cancel</dui-button>
+            <dui-button hotkey="escape" [closeDialog]="false">Cancel</dui-button>
             <dui-button focus [closeDialog]="true">OK</dui-button>
         </dui-dialog-actions>
     `
@@ -59,7 +59,7 @@ export class DuiDialogConfirm {
         <div *ngIf="content" class="text-selection" style="white-space: pre-line;">{{content}}</div>
 
         <dui-dialog-actions>
-            <dui-button focus [closeDialog]="true">OK</dui-button>
+            <dui-button focus hotkey="escape"  [closeDialog]="true">OK</dui-button>
         </dui-dialog-actions>
     `
 })
@@ -81,7 +81,7 @@ export class DuiDialogAlert {
         </div>
 
         <dui-dialog-actions>
-            <dui-button [closeDialog]="false">Cancel</dui-button>
+            <dui-button hotkey="escape" [closeDialog]="false">Cancel</dui-button>
             <dui-button [closeDialog]="value">OK</dui-button>
         </dui-dialog-actions>
     `
@@ -129,7 +129,6 @@ export class DuiDialog {
             viewContainerRef = this.registry.getCurrentViewContainerRef();
         }
 
-        console.log('this.registry.activeWindow', this.registry.activeWindow, viewContainerRef);
         const factory = this.resolver.resolveComponentFactory(DialogComponent);
         return viewContainerRef.createComponent(factory);
     }
@@ -137,7 +136,7 @@ export class DuiDialog {
     public open<T>(
         component: Type<T>,
         inputs: { [name in keyof T]?: any } = {},
-        dialogInputs: { [name: string]: any } = {},
+        dialogInputs: Partial<DialogComponent> = {},
         viewContainerRef: ViewContainerRef | null = null,
     ): { dialog: DialogComponent, close: Promise<any>, component: T } {
         const comp = this.getComponentRef(viewContainerRef);

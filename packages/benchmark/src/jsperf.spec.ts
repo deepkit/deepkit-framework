@@ -10,7 +10,7 @@
 
 import { expect, test } from '@jest/globals';
 import { f, getClassSchema, jsonSerializer, Patcher } from '@deepkit/type';
-import { BenchSuite } from './bench';
+import { BenchSuite } from './bench.js';
 
 test.only('nope', () => { });
 
