@@ -196,8 +196,8 @@ export class HttpWorkflowEventWithRoute extends HttpWorkflowEvent {
         this.next('response', new HttpResponseEvent(this.injectorContext, this.request, this.response, response, this.route));
     }
 
-    accessDenied() {
-        this.next('accessDenied', new HttpAccessDeniedEvent(this.injectorContext, this.request, this.response, this.route));
+    accessDenied(error?: Error) {
+        this.next('accessDenied', new HttpAccessDeniedEvent(this.injectorContext, this.request, this.response, this.route, error));
     }
 }
 
@@ -244,6 +244,7 @@ export class HttpAccessDeniedEvent extends HttpWorkflowEvent {
         public request: HttpRequest,
         public response: HttpResponse,
         public route: RouteConfig,
+        public error?: Error,
     ) {
         super(injectorContext, request, response);
     }
@@ -716,7 +717,7 @@ export class HttpListener {
         } catch (error: any) {
             if (frame) frame.end();
             if (error instanceof HttpAccessDeniedError) {
-                event.next('accessDenied', new HttpAccessDeniedEvent(event.injectorContext, event.request, event.response, event.route));
+                event.next('accessDenied', new HttpAccessDeniedEvent(event.injectorContext, event.request, event.response, event.route, error));
             } else {
                 const errorEvent = new HttpControllerErrorEvent(event.injectorContext, event.request, event.response, event.route, error);
                 errorEvent.controllerActionTime = Date.now() - start;

@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterResolverContext, UploadedFile } from '../src/router.js';
 import { http, httpClass } from '../src/decorator.js';
-import { HtmlResponse, HttpBadRequestError, HttpUnauthorizedError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
+import { HtmlResponse, HttpAccessDeniedError, HttpBadRequestError, HttpUnauthorizedError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model.js';
 import { getClassName, isObject, sleep } from '@deepkit/core';
@@ -1330,4 +1330,21 @@ test('issue-415: serialize literal types in union', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/?rotate=0'))).json).toEqual(0);
     expect((await httpKernel.request(HttpRequest.GET('/?rotate=180'))).json).toEqual(180);
     expect((await httpKernel.request(HttpRequest.GET('/?rotate=555454'))).json).toEqual(0);
+});
+
+test('fetch thrown error instances in listeners', async () => {
+    class Controller {
+        @http.GET()
+        handle() {
+            throw new HttpAccessDeniedError('my custom "Access denied" message');
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [], [
+        httpWorkflow.onAccessDenied.listen(async (event) => {
+             expect(event.error?.message).toBe('my custom "Access denied" message');
+        }),
+    ]);
+
+    expect((await httpKernel.request(HttpRequest.GET('/'))).statusCode).toEqual(403);
 });
