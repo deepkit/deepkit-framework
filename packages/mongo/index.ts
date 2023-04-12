@@ -17,3 +17,4 @@ export * from './src/query.js';
 export * from './src/client/client.js';
 
 export { UpdateCommand } from './src/client/command/update.js';
+export { AggregateCommand }  from './src/client/command/aggregate.js';
