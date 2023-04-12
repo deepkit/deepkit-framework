@@ -16,7 +16,8 @@ export interface CreateIndex {
     key: { [name: string]: 1 },
     name: string,
     unique: boolean,
-    sparse: boolean
+    sparse: boolean,
+    expireAfterSeconds?: number
 }
 
 interface RequestSchema {
@@ -28,7 +29,7 @@ interface RequestSchema {
 export class CreateIndexesCommand<T extends ReflectionClass<any>> extends Command {
     constructor(
         public schema: T,
-        public indexes: { key: { [name: string]: 1 }, name: string, unique: boolean, sparse: boolean }[],
+        public indexes: CreateIndex[],
     ) {
         super();
     }

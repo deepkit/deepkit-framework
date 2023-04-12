@@ -1694,6 +1694,8 @@ export type IndexOptions = {
     //only in mongodb
     fulltext?: boolean,
     where?: string,
+
+    expireAfterSeconds?: number,
 };
 
 export type Unique<Options extends IndexOptions = {}> = { __meta?: ['index', never & Options & { unique: true }] };
