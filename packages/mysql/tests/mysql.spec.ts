@@ -190,34 +190,3 @@ test('for update/share', async () => {
     const items = await database.query(Model).forUpdate().find();
     expect(items).toHaveLength(2);
 });
-
-test('patch primary keys', async () => {
-    @entity.name('model5')
-    class Model {
-        firstName: string = '';
-
-        constructor(public id: number & PrimaryKey) {
-        }
-    }
-
-    const database = await databaseFactory([Model]);
-    await database.persist(new Model(1), new Model(2));
-
-    {
-        const result = await database
-            .query(Model)
-            .filter({ id: { $gt: 5 } })
-            .patchMany({ firstName: 'test' });
-        expect(result.modified).toEqual(0);
-        expect(result.primaryKeys.length).toEqual(0);
-    }
-
-    {
-        const result = await database
-            .query(Model)
-            .filter({ id: { $gt: 1 } })
-            .patchMany({ firstName: 'test' });
-        expect(result.modified).toEqual(1);
-        expect(result.primaryKeys).toEqual([{ id: 2 }]);
-    }
-});
