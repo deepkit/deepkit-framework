@@ -1308,3 +1308,26 @@ test('stream error', async () => {
     expect(response.statusCode).toBe(500);
     expect(response.bodyString).toBe('Internal error');
 });
+
+test('issue-415: serialize literal types in union', async () => {
+    enum MyEnum {
+        VALUE_0 = 0,
+        VALUE_180 = 180
+    }
+
+    class Data {
+        rotate: MyEnum.VALUE_180 | MyEnum.VALUE_0 = MyEnum.VALUE_0;
+    }
+
+    class Controller {
+        @http.GET()
+        handle(query: HttpQueries<Data>) {
+            return query.rotate;
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    expect((await httpKernel.request(HttpRequest.GET('/?rotate=0'))).json).toEqual(0);
+    expect((await httpKernel.request(HttpRequest.GET('/?rotate=180'))).json).toEqual(180);
+    expect((await httpKernel.request(HttpRequest.GET('/?rotate=555454'))).json).toEqual(0);
+});

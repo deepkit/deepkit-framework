@@ -2148,8 +2148,14 @@ export class Serializer {
         this.typeGuards.register(1, ReflectionKind.array, (type, state) => typeGuardArray(type.type, state));
         this.typeGuards.register(1, ReflectionKind.tuple, typeGuardTuple);
         this.typeGuards.register(1, ReflectionKind.literal, (type, state) => {
-            const v = state.setVariable('v', type.literal);
-            state.addSetterAndReportErrorIfInvalid('type', 'Invalid literal', `${v} === ${state.accessor}`);
+            state.addSetterAndReportErrorIfInvalid('type', 'Invalid literal', `${state.setVariable('v', type.literal)} === ${state.accessor}`);
+        });
+
+        this.typeGuards.register(-0.5, ReflectionKind.literal, (type, state) => {
+            //loosely only works for number/bigint/boolean, not for symbols/regexp/string
+            if (type.literal === null || type.literal === undefined || typeof type.literal === 'number' || typeof type.literal === 'bigint' || typeof type.literal === 'boolean') {
+                state.addSetter(`'string' === typeof ${state.accessor} && ${state.setVariable('v', String(type.literal))} === ${state.accessor}`);
+            }
         });
 
         this.typeGuards.register(1, ReflectionKind.regexp, ((type, state) => state.addSetterAndReportErrorIfInvalid('type', 'Not a RegExp', `${state.accessor} instanceof RegExp`)));

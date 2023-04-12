@@ -1156,3 +1156,20 @@ test('extend with custom type', () => {
     const d = deserialize<Entity>(s, undefined, serializer);
     expect(d.obj).toEqual({ test: 'abc' });
 });
+
+test('issue-415: serialize literal types in union', () => {
+    enum MyEnum {
+        VALUE_0 = 0,
+        VALUE_180 = 180
+    }
+
+    class Data {
+        rotate: MyEnum.VALUE_180 | MyEnum.VALUE_0 = MyEnum.VALUE_0;
+    }
+
+    expect(deserialize<Data>({rotate: 0}, {loosely: true}).rotate).toBe(0);
+    expect(deserialize<Data>({rotate: "0"}, {loosely: true}).rotate).toBe(0);
+    expect(deserialize<Data>({rotate: 180}, {loosely: true}).rotate).toBe(180);
+    expect(deserialize<Data>({rotate: "180"}, {loosely: true}).rotate).toBe(180);
+    expect(deserialize<Data>({rotate: 123456}, {loosely: true}).rotate).toBe(0);
+});
