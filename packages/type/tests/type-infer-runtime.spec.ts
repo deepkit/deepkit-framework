@@ -116,7 +116,7 @@ test('dynamic type definition for schema definition', () => {
         // console.log(util.inspect(schema, false, null, true));
     }
 
-    expect(validate({ username: '123' }, types['User'])).toEqual([{ path: 'username', code: 'minLength', message: 'Min length is 6' }]);
+    expect(validate({ username: '123' }, types['User'])).toEqual([{ path: 'username', code: 'minLength', message: 'Min length is 6', value: "123" }]);
 
     const userReflection = ReflectionClass.from(types['User']);
     expect(entityAnnotation.getFirst(types['User'])?.collection).toBe('users');
@@ -174,5 +174,5 @@ test('dynamic types validation', () => {
         for (const decoratorHandler of typeDecorators) decoratorHandler(type.annotations, decorator as TypeObjectLiteral);
     }
 
-    expect(validate('asd', type)).toEqual([{ path: '', code: 'minLength', message: 'Min length is 6' }]);
+    expect(validate('asd', type)).toEqual([{ path: '', code: 'minLength', message: 'Min length is 6', value: 'asd' }]);
 });

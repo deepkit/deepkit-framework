@@ -8,9 +8,9 @@ import { validatedDeserialize } from '../src/serializer-facade.js';
 
 test('primitives', () => {
     expect(validate<string>('Hello')).toEqual([]);
-    expect(validate<string>(123)).toEqual([{ code: 'type', message: 'Not a string', path: '' }]);
+    expect(validate<string>(123)).toEqual([{ code: 'type', message: 'Not a string', path: '', value: 123 }]);
 
-    expect(validate<number>('Hello')).toEqual([{ code: 'type', message: 'Not a number', path: '' }]);
+    expect(validate<number>('Hello')).toEqual([{ code: 'type', message: 'Not a number', path: '', value: 'Hello' }]);
     expect(validate<number>(123)).toEqual([]);
 });
 
@@ -22,9 +22,9 @@ test('email', () => {
     expect(is<string & Email>('@')).toBe(false);
 
     expect(validate<Email>('peter@example.com')).toEqual([]);
-    expect(validate<Email>('nope')).toEqual([{ path: '', code: 'pattern', message: `Pattern ^\\S+@\\S+$ does not match` }]);
-    expect(validate<Email>('nope@')).toEqual([{ path: '', code: 'pattern', message: `Pattern ^\\S+@\\S+$ does not match` }]);
-    expect(validate<Email>('@')).toEqual([{ path: '', code: 'pattern', message: `Pattern ^\\S+@\\S+$ does not match` }]);
+    expect(validate<Email>('nope')).toEqual([{ path: '', code: 'pattern', message: `Pattern ^\\S+@\\S+$ does not match`, value: 'nope' }]);
+    expect(validate<Email>('nope@')).toEqual([{ path: '', code: 'pattern', message: `Pattern ^\\S+@\\S+$ does not match`, value: 'nope@' }]);
+    expect(validate<Email>('@')).toEqual([{ path: '', code: 'pattern', message: `Pattern ^\\S+@\\S+$ does not match`, value: '@' }]);
 });
 
 test('minLength', () => {
@@ -34,7 +34,7 @@ test('minLength', () => {
     expect(is<Username>('ab')).toBe(false);
 
     expect(validate<Username>('abc')).toEqual([]);
-    expect(validate<Username>('ab')).toEqual([{ path: '', code: 'minLength', message: `Min length is 3` }]);
+    expect(validate<Username>('ab')).toEqual([{ path: '', code: 'minLength', message: `Min length is 3`, value: 'ab' }]);
 });
 
 test('custom validator pre defined', () => {
@@ -50,7 +50,7 @@ test('custom validator pre defined', () => {
 
     expect(is<MyType>('aah')).toBe(true);
     expect(is<MyType>('nope')).toBe(false);
-    expect(validate<MyType>('nope')).toEqual([{ path: '', code: 'startsWith', message: `Does not start with a` }]);
+    expect(validate<MyType>('nope')).toEqual([{ path: '', code: 'startsWith', message: `Does not start with a`, value: 'nope' }]);
 });
 
 test('custom validator with arguments', () => {
@@ -63,7 +63,7 @@ test('custom validator with arguments', () => {
 
     expect(is<MyType>('aah')).toBe(true);
     expect(is<MyType>('nope')).toBe(false);
-    expect(validate<MyType>('nope')).toEqual([{ path: '', code: 'startsWith', message: `Does not start with a` }]);
+    expect(validate<MyType>('nope')).toEqual([{ path: '', code: 'startsWith', message: `Does not start with a`, value: 'nope' }]);
 
     type InvalidValidatorOption = string & Validate<typeof startsWith>;
     expect(() => is<InvalidValidatorOption>('aah')).toThrow(`Invalid option value given to validator function startsWith, expected letter: string`);
@@ -101,7 +101,7 @@ test('decorator validator', () => {
     expect(userType === reflection.type).toBe(true);
 
     expect(validate<User>({ username: 'Peter' })).toEqual([]);
-    expect(validate<User>({ username: 'Pe' })).toEqual([{ path: 'username', code: 'length', message: `Min length of 3` }]);
+    expect(validate<User>({ username: 'Pe' })).toEqual([{ path: 'username', code: 'length', message: `Min length of 3`, value: 'Pe' }]);
 });
 
 test('simple interface', () => {
@@ -162,8 +162,8 @@ test('path', () => {
     }
 
     // expect(validate<Container1>({ configs: [{ name: 'a', value: 3 }] })).toEqual([]);
-    expect(validate<Container1>({ configs: {} })).toEqual([{ code: 'type', message: 'Not an array', path: 'configs' }]);
-    expect(validate<Container1>({ configs: [{ name: 'a', value: 123 }, { name: '12' }] })).toEqual([{ code: 'type', message: 'Not a number', path: 'configs.1.value' }]);
+    expect(validate<Container1>({ configs: {} })).toEqual([{ code: 'type', message: 'Not an array', path: 'configs', value: {} }]);
+    expect(validate<Container1>({ configs: [{ name: 'a', value: 123 }, { name: '12' }] })).toEqual([{ code: 'type', message: 'Not a number', path: 'configs.1.value', value: undefined }]);
 
     class Container2 {
         configs: { [name: string]: Config } = {};
@@ -179,12 +179,12 @@ test('class with union literal', () => {
     }
 
     expect(validate<ConnectionOptions>({ readConcernLevel: 'majority' })).toEqual([]);
-    expect(validate<ConnectionOptions>({ readConcernLevel: 'invalid' })).toEqual([{ code: 'type', message: 'No valid union member found', path: 'readConcernLevel' }]);
+    expect(validate<ConnectionOptions>({ readConcernLevel: 'invalid' })).toEqual([{ code: 'type', message: 'No valid union member found', path: 'readConcernLevel', value: 'invalid' }]);
 });
 
 test('named tuple', () => {
     expect(validate<[name: string]>(['asd'])).toEqual([]);
-    expect(validate<[name: string]>([23])).toEqual([{ code: 'type', message: 'Not a string', path: 'name' }]);
+    expect(validate<[name: string]>([23])).toEqual([{ code: 'type', message: 'Not a string', path: 'name', value: 23 }]);
 });
 
 test('inherited validations', () => {
@@ -196,10 +196,10 @@ test('inherited validations', () => {
         image?: string;
     }
 
-    expect(validate<User>({ username: 'Pe' })).toEqual([{ code: 'minLength', message: 'Min length is 3', path: 'username' }]);
+    expect(validate<User>({ username: 'Pe' })).toEqual([{ code: 'minLength', message: 'Min length is 3', path: 'username', value: 'Pe' }]);
     expect(validate<User>({ username: 'Peter' })).toEqual([]);
 
-    expect(validate<AddUserDto>({ username: 'Pe' })).toEqual([{ code: 'minLength', message: 'Min length is 3', path: 'username' }]);
+    expect(validate<AddUserDto>({ username: 'Pe' })).toEqual([{ code: 'minLength', message: 'Min length is 3', path: 'username', value: 'Pe' }]);
     expect(validate<AddUserDto>({ username: 'Peter' })).toEqual([]);
 });
 
@@ -272,7 +272,7 @@ test('readonly constructor properties', () => {
         constructor(readonly name: string, readonly age: number) {}
     }
     expect(validate<Pilot>({name: 'Peter', age: 32})).toEqual([]);
-    expect(validate<Pilot>({name: 'Peter', age: 'sdd'})).toEqual([{code: 'type', message: 'Not a number', path: 'age'}]);
+    expect(validate<Pilot>({name: 'Peter', age: 'sdd'})).toEqual([{code: 'type', message: 'Not a number', path: 'age', value: 'sdd'}]);
 });
 
 test('class with statics', () => {
@@ -288,7 +288,7 @@ test('class with statics', () => {
     }
 
     expect(validate<PilotId>({value: 34})).toEqual([]);
-    expect(validate<PilotId>({value: '33'})).toEqual([{code: 'type', message: 'Not a number', path: 'value'}]);
+    expect(validate<PilotId>({value: '33'})).toEqual([{code: 'type', message: 'Not a number', path: 'value', value: '33'}]);
 });
 
 test('date', () => {
@@ -296,5 +296,5 @@ test('date', () => {
         public name!: string;
         public createdAt!: Date;
     }
-    expect(validate<Account>({name: "jack", createdAt: 'asd'})).toEqual([{code: 'type', message: 'Not a Date', path: 'createdAt'}]);
+    expect(validate<Account>({name: "jack", createdAt: 'asd'})).toEqual([{code: 'type', message: 'Not a Date', path: 'createdAt', value: 'asd'}]);
 });

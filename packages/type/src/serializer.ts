@@ -473,7 +473,7 @@ export class TemplateState {
 
     assignValidationError(code: string, message: string) {
         this.setContext({ ValidationErrorItem: ValidationErrorItem });
-        return `if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(this.path)}, ${JSON.stringify(code)}, ${JSON.stringify(message)}));`;
+        return `if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(this.path)}, ${JSON.stringify(code)}, ${JSON.stringify(message)}, ${this.originalAccessor}));`;
     }
 
     throwCode(type: Type | string, error?: string, accessor: string | ContainerAccessor = this.originalAccessor) {
@@ -2224,7 +2224,7 @@ export class Serializer {
                             let error = ${validatorVar}(${state.originalAccessor}, ${state.compilerContext.reserveConst(type, 'type')}, ${optionVar ? optionVar : 'undefined'});
                             if (error) {
                                 ${state.setter} = false;
-                                if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(state.path)}, error.code, error.message));
+                                if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(state.path)}, error.code, error.message, ${state.originalAccessor}));
                             }
                         }
                     `);
@@ -2238,7 +2238,7 @@ export class Serializer {
                                 let error = ${validatorVar}(${state.originalAccessor}, ${state.compilerContext.reserveConst(type, 'type')});
                                 if (error) {
                                     ${state.setter} = false;
-                                    if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(state.path)}, error.code, error.message));
+                                    if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(state.path)}, error.code, error.message, ${state.originalAccessor}));
                                 }
                             }
                         `);

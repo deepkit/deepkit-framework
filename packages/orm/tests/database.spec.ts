@@ -24,7 +24,7 @@ test('memory-db', async () => {
 
     {
         const item = deserialize<s>({ id: 2, username: '1234' });
-        expect(validate<s>(item)).toEqual([{ code: 'length', message: 'Min length is 5', path: 'username' }]);
+        expect(validate<s>(item)).toEqual([{ code: 'length', message: 'Min length is 5', path: 'username', value: '1234' }]);
     }
 
     const database = new Database(new MemoryDatabaseAdapter());

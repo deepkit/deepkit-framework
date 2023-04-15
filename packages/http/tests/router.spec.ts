@@ -949,7 +949,7 @@ test('BodyValidation', async () => {
     const httpKernel = createHttpKernel([Controller]);
     expect((await httpKernel.request(HttpRequest.POST('/action1').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
     expect((await httpKernel.request(HttpRequest.POST('/action1').json({ username: 'Pe' }))).json).toEqual({
-        errors: [{ code: 'minLength', message: 'Min length is 3', path: 'username' }], message: 'Validation error:\nusername(minLength): Min length is 3'
+        errors: [{ code: 'minLength', message: 'Min length is 3', path: 'username', value: 'Pe' }], message: 'Validation error:\nusername(minLength): Min length is 3'
     });
 
     expect((await httpKernel.request(HttpRequest.POST('/action2').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });

@@ -82,11 +82,23 @@ export class ValidationErrorItem {
          * Free text of the error.
          */
         public readonly message: string,
+        /**
+         * Optional value that caused the error.
+         */
+        public readonly value?: any,
     ) {
         this.path = path && path[0] === '.' ? path.slice(1) : path;
     }
 
     toString(prefix: string = '') {
+        let messagedCausedBy = '';
+        if (this.value !== undefined) {
+            //serialise the value and trim to 100 chars max
+            let serialisedValue = JSON.stringify(this.value);
+            if (serialisedValue.length > 100) serialisedValue = serialisedValue.slice(0, 100) + '...';
+            messagedCausedBy = ` caused by value ${serialisedValue}`;
+        }
+
         return `${(prefix ? prefix + '.' : '') + this.path}(${this.code}): ${this.message}`;
     }
 }
@@ -100,8 +112,8 @@ export class ValidationError extends CustomError {
         super(`Validation error${type ? ` for type ${stringifyType(type)}` : ''}:\n${errors.map(v => v.toString()).join(',\n')}`);
     }
 
-    static from(errors: { path: string, message: string, code?: string }[]) {
-        return new ValidationError(errors.map(v => new ValidationErrorItem(v.path, v.code || '', v.message)));
+    static from(errors: { path: string, message: string, code?: string, value?: any }[]) {
+        return new ValidationError(errors.map(v => new ValidationErrorItem(v.path, v.code || '', v.message, v.value)));
     }
 }
 
