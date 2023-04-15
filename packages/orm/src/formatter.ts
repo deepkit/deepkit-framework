@@ -215,6 +215,8 @@ export class Formatter {
             //references the identity. We could improve that with a more complex resolution algorithm,
             //that involves changing already populated objects.
             if (found && !isReferenceInstance(found)) {
+                //it could be that the found item was created as joined object, which could mean it was not yet fully populated.
+                this.assignJoins(model, classSchema, dbRecord, found);
                 return found;
             }
         }

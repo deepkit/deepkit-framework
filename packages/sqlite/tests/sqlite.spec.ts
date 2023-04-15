@@ -717,3 +717,76 @@ test('deep join population', async () => {
         expect(basket.items[1].product).toBeInstanceOf(Product);
     }
 });
+
+test('joinWith', async () => {
+    class MyEntity {
+        ref?: MyEntity & Reference;
+        refs?: MyEntity[] & BackReference;
+
+        constructor(public id: number & PrimaryKey) {
+        }
+    }
+
+    const database = await databaseFactory([MyEntity]);
+    const entity1 = new MyEntity(1);
+    const entity2 = new MyEntity(2);
+    entity1.ref = entity2;
+    await database.persist(entity1, entity2);
+
+    const result = await database
+        .query(MyEntity)
+        .joinWith('ref')
+        .joinWith('refs')
+        .orderBy('id')
+        .find();
+
+    expect(result[0].id).toBe(1);
+    expect(result[0].ref).toBe(result[1]);
+    expect(result[0].refs).toEqual([]);
+
+
+    expect(result[1].id).toBe(2);
+    expect(result[1].ref).toBe(undefined);
+    expect(result[1].refs![0]).toBe(result[0]);
+    expect(result[1].refs![1]).toBe(undefined);
+
+    expect(serialize<MyEntity[]>(result)).toEqual([
+        {
+            id: 1,
+            ref: {
+                id: 2,
+                ref: null,
+                refs: [undefined] //circular ref is serialised as undefined
+            },
+            refs: []
+        },
+        {
+            id: 2,
+            ref: null,
+            refs: [{ id: 1, ref: undefined, refs: [] }] //circular ref is serialised as undefined
+        }
+    ]);
+});
+
+test('self-reference serialization', async () => {
+    class MyEntity {
+        ref?: MyEntity & Reference;
+
+        constructor(public id: number & PrimaryKey) {
+        }
+    }
+
+    const database = await databaseFactory([MyEntity]);
+
+    const entity = new MyEntity(1);
+    entity.ref = new MyEntity(2);
+    await database.persist(entity);
+
+    const entities = await database.query(MyEntity).orderBy('id').find();
+    console.log(entities);
+
+    expect(serialize<MyEntity[]>(entities)).toEqual([
+        { id: 1, ref: 2 },
+        { id: 2, ref: null },
+    ]);
+});
