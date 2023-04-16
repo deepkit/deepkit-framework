@@ -16,6 +16,9 @@
     "declaration": true,
     "composite": true
   },
+  "reflection": [
+    "tests/**/*.ts",
+  ],
   "include": [
     "benchmarks",
     "src",
