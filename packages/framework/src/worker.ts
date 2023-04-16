@@ -207,10 +207,8 @@ export class WebWorker {
         }
 
         this.activeRequests++;
-        this.logger.log('response new: ' + this.activeRequests);
         response.on('finish', () => {
             this.activeRequests--;
-            this.logger.log('response end: ' + this.activeRequests);
         });
 
         return this.httpKernel.handleRequest(request, response);
