@@ -79,7 +79,7 @@ export const onServerWorkerShutdown = new EventToken('server.worker.shutdown', S
 type ApplicationServerConfig = Pick<FrameworkConfig, 'server' | 'port' | 'host' | 'httpsPort' |
     'ssl' | 'sslKey' | 'sslCertificate' | 'sslCa' | 'sslCrl' |
     'varPath' | 'selfSigned' | 'keepAliveTimeout' | 'workers' | 'publicDir' |
-    'debug' | 'debugUrl'>;
+    'debug' | 'debugUrl' | 'gracefulShutdownTimeout'>;
 
 function needsHttpWorker(config: { publicDir?: string }, rpcControllers: RpcControllers, router: HttpRouter) {
     return Boolean(config.publicDir || rpcControllers.controllers.size || router.getRoutes().length);
@@ -158,16 +158,21 @@ export class ApplicationServer {
         this.needsHttpWorker = needsHttpWorker(config, rpcControllers, router);
     }
 
+    getHttpWorker(): WebWorker {
+        if (!this.httpWorker) throw new Error('HTTP worker not started');
+        return this.httpWorker;
+    }
+
     /**
      * Closes all server listener and triggers shutdown events. This is only used for integration tests.
      */
-    public async close() {
+    public async close(graceful = false) {
         if (!this.started) return;
 
         await this.stopWorkers();
         await this.eventDispatcher.dispatch(onServerShutdown, new ServerShutdownEvent());
         await this.eventDispatcher.dispatch(onServerMainShutdown, new ServerShutdownEvent());
-        if (this.httpWorker) await this.httpWorker.close();
+        if (this.httpWorker) await this.httpWorker.close(graceful);
     }
 
     protected stopWorkers(): Promise<void> {
@@ -193,14 +198,6 @@ export class ApplicationServer {
         if (this.started) throw new Error('ApplicationServer already started');
         this.started = true;
 
-        //listening to this signal is required to make ts-node-dev working with its reload feature.
-        if (listenOnSignals) {
-            process.on('SIGTERM', () => {
-                this.logger.warning('Received SIGTERM. Forced non-graceful shutdown.');
-                process.exit(0);
-            });
-        }
-
         if (cluster.isMaster) {
             if (this.config.workers) {
                 this.logger.log(`Start server, using ${this.config.workers} workers ...`);
@@ -211,6 +208,7 @@ export class ApplicationServer {
 
         await this.eventDispatcher.dispatch(onServerBootstrap, new ServerBootstrapEvent());
 
+        let killRequests = 0;
         if (this.config.workers > 1) {
             if (cluster.isMaster) {
                 await this.eventDispatcher.dispatch(onServerMainBootstrap, new ServerBootstrapEvent());
@@ -234,16 +232,24 @@ export class ApplicationServer {
                 });
 
                 if (listenOnSignals) {
-                    process.on('SIGINT', async () => {
+                    const stopServer = (signal: string) => async () => {
+                        killRequests++;
+                        if (killRequests === 3) {
+                            this.logger.warning(`Received ${signal}. Force stopping server ...`);
+                            process.exit(1);
+                            return;
+                        }
                         if (this.stopping) {
-                            this.logger.warning('Received SIGINT. Stopping already in process ...');
+                            this.logger.warning(`Received ${signal}. Stopping already in process. Try again to force stop.`);
                             return;
                         }
                         this.stopping = true;
-                        this.logger.warning('Received SIGINT. Stopping server ...');
+                        this.logger.warning(`Received ${signal}. Stopping server ...`);
                         await this.stopWorkers();
                         process.exit(0);
-                    });
+                    };
+                    process.on('SIGINT', stopServer('SIGINT'));
+                    process.on('SIGTERM', stopServer('SIGTERM'));
                 }
 
                 await this.eventDispatcher.dispatch(onServerBootstrapDone, new ServerBootstrapEvent());
@@ -253,12 +259,17 @@ export class ApplicationServer {
                     if (msg === 'stop') {
                         await this.eventDispatcher.dispatch(onServerShutdown, new ServerShutdownEvent());
                         await this.eventDispatcher.dispatch(onServerWorkerShutdown, new ServerShutdownEvent());
-                        if (this.httpWorker) this.httpWorker.close();
+                        if (this.httpWorker) await this.httpWorker.close(true);
                         process.exit(0);
                     }
                 });
 
                 process.on('SIGINT', async () => {
+                    //we don't do anything in sigint, as the master controls our process.
+                    //we need to register to it though so the process doesn't get killed.
+                });
+
+                process.on('SIGTERM', async () => {
                     //we don't do anything in sigint, as the master controls our process.
                     //we need to register to it though so the process doesn't get killed.
                 });
@@ -273,18 +284,26 @@ export class ApplicationServer {
             }
         } else {
             if (listenOnSignals) {
-                process.on('SIGINT', async () => {
+                const stopServer = (signal: string) => async () => {
+                    killRequests++;
+                    if (killRequests === 3) {
+                        this.logger.warning(`Received ${signal}. Force stopping server ...`);
+                        process.exit(1);
+                        return;
+                    }
                     if (this.stopping) {
-                        this.logger.warning('Received SIGINT. Stopping already in process ...');
+                        this.logger.warning(`Received ${signal}. Stopping already in process. Try again to force stop.`);
                         return;
                     }
                     this.stopping = true;
                     this.logger.warning('Received SIGINT. Stopping server ...');
                     await this.eventDispatcher.dispatch(onServerShutdown, new ServerShutdownEvent());
                     await this.eventDispatcher.dispatch(onServerMainShutdown, new ServerShutdownEvent());
-                    if (this.httpWorker) this.httpWorker.close();
+                    if (this.httpWorker) await this.httpWorker.close(true);
                     process.exit(0);
-                });
+                };
+                process.on('SIGINT', stopServer('SIGINT'));
+                process.on('SIGTERM', stopServer('SIGTERM'));
             }
             await this.eventDispatcher.dispatch(onServerBootstrap, new ServerBootstrapEvent());
             await this.eventDispatcher.dispatch(onServerMainBootstrap, new ServerBootstrapEvent());

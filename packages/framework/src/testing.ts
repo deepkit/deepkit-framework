@@ -31,18 +31,22 @@ export class TestingFacade<A extends App<any>> {
     constructor(public app: A) {
     }
 
+    getLogger(): MemoryLoggerTransport {
+        return this.app.get(MemoryLoggerTransport);
+    }
+
     public async startServer() {
         await this.app.get(ApplicationServer).start();
     }
 
-    public async stopServer() {
-        await this.app.get(ApplicationServer).close();
+    public async stopServer(graceful = false) {
+        await this.app.get(ApplicationServer).close(graceful);
     }
 
     public async request(requestBuilder: RequestBuilder): Promise<MemoryHttpResponse> {
         const request = requestBuilder.build();
         const response = new MemoryHttpResponse(request);
-        await this.app.get(HttpKernel).handleRequest(request, response);
+        await this.app.get(ApplicationServer).getHttpWorker().handleRequest(request, response);
         return response;
     }
 

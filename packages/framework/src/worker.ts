@@ -11,10 +11,9 @@
 import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, SessionState } from '@deepkit/rpc';
 import http, { Server } from 'http';
 import https from 'https';
+import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions } from 'ws';
 import ws from 'ws';
 import selfsigned from 'selfsigned';
-
-import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions } from 'ws';
 
 import { HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
 import { InjectorContext } from '@deepkit/injector';
@@ -25,15 +24,16 @@ import { SecureContextOptions, TlsOptions } from 'tls';
 import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { LoggerInterface } from '@deepkit/logger';
+import { sleep } from '@deepkit/core';
 
 export interface WebServerOptions {
     host: string;
 
     /**
-     * Defins the port of the http server.
+     * Defines the port of the http server.
      * If ssl is defined, this port is used for the https server. If you want to have http and https
      * at the same time, use `httpsPort` accordingly.
-    */
+     */
     port: number;
 
     varPath: string;
@@ -57,9 +57,14 @@ export interface WebServerOptions {
     server?: Server;
 
     /**
+     * When server is shutting down gracefully, this timeout is used to wait for all connections to be closed.
+     */
+    gracefulShutdownTimeout: number;
+
+    /**
      * Enables HTTPS.
      * Make sure to pass `sslKey` and `sslCertificate` as well (or use sslOptions).
-    */
+     */
     ssl: boolean;
 
     sslKey?: string;
@@ -178,6 +183,10 @@ export class WebWorker {
     protected server?: http.Server | https.Server;
     protected servers?: https.Server;
 
+    //during shutdown, we don't want to accept new connections
+    protected shuttingDown = false;
+    protected activeRequests = 0;
+
     constructor(
         public readonly id: number,
         public logger: LoggerInterface,
@@ -187,12 +196,30 @@ export class WebWorker {
         protected options: WebServerOptions,
         private rpcServer: RpcServer,
     ) {
+        this.handleRequest = this.handleRequest.bind(this);
+    }
+
+    handleRequest(request: HttpRequest, response: HttpResponse) {
+        if (this.shuttingDown) {
+            response.writeHead(503, 'Service Unavailable');
+            response.end();
+            return;
+        }
+
+        this.activeRequests++;
+        this.logger.log('response new: ' + this.activeRequests);
+        response.on('finish', () => {
+            this.activeRequests--;
+            this.logger.log('response end: ' + this.activeRequests);
+        });
+
+        return this.httpKernel.handleRequest(request, response);
     }
 
     start() {
         if (this.options.server) {
             this.server = this.options.server as Server;
-            this.server.on('request', this.httpKernel.handleRequest.bind(this.httpKernel));
+            this.server.on('request', this.handleRequest);
         } else {
             if (this.options.ssl) {
                 const options = this.options.sslOptions || {};
@@ -222,18 +249,17 @@ export class WebWorker {
 
                 this.servers = new https.Server(
                     Object.assign({ IncomingMessage: HttpRequest, ServerResponse: HttpResponse, }, options),
-                    this.httpKernel.handleRequest.bind(this.httpKernel) as any //as any necessary since http.Server is not typed correctly
+                    this.handleRequest as any
                 );
                 this.servers.listen(this.options.httpsPort || this.options.port, this.options.host);
                 if (this.options.keepAliveTimeout) this.servers.keepAliveTimeout = this.options.keepAliveTimeout;
-
             }
 
             const startHttpServer = !this.servers || (this.servers && this.options.httpsPort);
             if (startHttpServer) {
                 this.server = new http.Server(
                     { IncomingMessage: HttpRequest, ServerResponse: HttpResponse },
-                    this.httpKernel.handleRequest.bind(this.httpKernel) as any //as any necessary since http.Server is not typed correctly
+                    this.handleRequest as any
                 );
                 if (this.options.keepAliveTimeout) this.server.keepAliveTimeout = this.options.keepAliveTimeout;
                 this.server.listen(this.options.port, this.options.host);
@@ -245,20 +271,48 @@ export class WebWorker {
     private startRpc() {
         if (this.server) {
             this.rpcListener = this.rpcServer.start({ server: this.server }, (writer: RpcConnectionWriter, request?: HttpRequest) => {
+                if (this.shuttingDown) {
+                    writer.close();
+                    throw new Error('Server is shutting down');
+                }
                 return createRpcConnection(this.injectorContext, this.rpcKernel, writer, request);
             });
         }
         if (this.servers) {
             this.rpcListener = this.rpcServer.start({ server: this.servers }, (writer: RpcConnectionWriter, request?: HttpRequest) => {
+                if (this.shuttingDown) {
+                    writer.close();
+                    throw new Error('Server is shutting down');
+                }
                 return createRpcConnection(this.injectorContext, this.rpcKernel, writer, request);
             });
         }
     }
 
-    async close() {
-        if (this.rpcListener) await this.rpcListener.close();
-        if (this.server) this.server.close();
-        if (this.servers) this.servers.close();
+    async close(graceful = false) {
+        if (graceful) {
+            if (this.options.server && this.server) {
+                this.server.off('request', this.handleRequest);
+            }
+
+            this.shuttingDown = true;
+            //wait until all http requests are finished
+            if (this.activeRequests) {
+                this.logger.log(`Waiting ${this.options.gracefulShutdownTimeout}s for all ${this.activeRequests} http requests to finish ...`);
+                const started = Date.now();
+                while (this.activeRequests) {
+                    //if timeout is exceeded
+                    if (this.options.gracefulShutdownTimeout && (Date.now() - started) / 1000 > this.options.gracefulShutdownTimeout) {
+                        this.logger.log(`Timeout of ${this.options.gracefulShutdownTimeout}s exceeded. Closing ${this.activeRequests} open http requests.`);
+                        break;
+                    }
+                    await sleep(0.1);
+                }
+            }
+            if (this.rpcListener) await this.rpcListener.close();
+            if (this.server) this.server.close();
+            if (this.servers) this.servers.close();
+        }
     }
 }
 

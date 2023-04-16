@@ -6,9 +6,10 @@ import { ApplicationServer } from '../src/application-server.js';
 import { ConsoleTransport, Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { FrameworkModule } from '../src/module.js';
 import { RpcServer, RpcServerInterface, WebWorker } from '../src/worker.js';
-import { HttpRequest } from '@deepkit/http';
+import { http, HttpRequest } from '@deepkit/http';
 import { BrokerModule } from '../src/broker/broker.module.js';
 import { App } from '@deepkit/app';
+import { sleep } from '@deepkit/core';
 
 jest.mock('ws', () => {
     const on = jest.fn();
@@ -132,6 +133,49 @@ describe('application-server', () => {
             await testing.stopServer();
         });
 
+        test('graceful shutdown succeeds', async () => {
+            class MyController {
+                @http.GET()
+                async get() {
+                    await sleep(0.2);
+                    return 'wait-for-me';
+                }
+            }
+
+            const testing = createTestingApp({
+                controllers: [MyController],
+                imports: [new FrameworkModule({ publicDir: 'public', gracefulShutdownTimeout: 1 })]
+            });
+
+            await testing.startServer();
+            const request1 = testing.request(HttpRequest.GET('/'));
+            await testing.stopServer(true);
+            expect(testing.getLogger().messages.some(v => v.message.includes('Waiting 1s for all 1'))).toBe(true);
+            expect(testing.getLogger().messages.some(v => v.message.includes('Timeout of 1s exceeded'))).toBe(false);
+            expect((await request1).json).toBe('wait-for-me');
+        });
+
+        test('graceful shutdown fails', async () => {
+            class MyController {
+                @http.GET()
+                async get() {
+                    await sleep(1.2);
+                    return 'wait-for-me';
+                }
+            }
+
+            const testing = createTestingApp({
+                controllers: [MyController],
+                imports: [new FrameworkModule({ publicDir: 'public', gracefulShutdownTimeout: 1 })]
+            });
+
+            await testing.startServer();
+            const request1 = testing.request(HttpRequest.GET('/'));
+            await testing.stopServer(true);
+            expect(testing.getLogger().messages.some(v => v.message.includes('Waiting 1s for all 1'))).toBe(true);
+            expect(testing.getLogger().messages.some(v => v.message.includes('Timeout of 1s exceeded'))).toBe(true);
+        });
+
         test('not needed without controllers or publicDir', async () => {
             const testing = createTestingApp({
                 controllers: [],
@@ -210,10 +254,10 @@ describe('application-server', () => {
     });
 });
 
-describe("createTestingApp", () => {
-    it("should setup the logger correctly", async () => {
-        const loggerRemoveTransportSpy = jest.spyOn(Logger.prototype, "removeTransport");
-        const loggerAddTransportSpy = jest.spyOn(Logger.prototype, "addTransport");
+describe('createTestingApp', () => {
+    it('should setup the logger correctly', async () => {
+        const loggerRemoveTransportSpy = jest.spyOn(Logger.prototype, 'removeTransport');
+        const loggerAddTransportSpy = jest.spyOn(Logger.prototype, 'addTransport');
         const facade = createTestingApp({});
         await facade.startServer();
         expect(loggerAddTransportSpy).toHaveBeenCalledWith(expect.any(MemoryLoggerTransport));

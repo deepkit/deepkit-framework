@@ -33,6 +33,12 @@ export class FrameworkConfig {
     workers: number = 0;
 
     /**
+     * When server is shutting down gracefully, this timeout is used to wait for all connections to be closed.
+     * Default is 30 seconds.
+     */
+    gracefulShutdownTimeout: number = 30;
+
+    /**
      * @description Enables HTTPS server.
      */
     ssl: boolean = false;

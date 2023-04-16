@@ -380,6 +380,8 @@ export class MemoryHttpResponse extends HttpResponse {
             }
             this.body = Buffer.concat([this.body, chunk]);
         }
-        return super.end(chunk, encoding, callback);
+        super.end(chunk, encoding, callback);
+        this.emit('finish');
+        return this;
     }
 }
