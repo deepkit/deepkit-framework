@@ -526,6 +526,7 @@ export class ReflectionTransformer implements CustomTransformer {
     protected typeChecker?: TypeChecker;
     protected resolver: Resolver;
     protected host: CompilerHost;
+    protected overriddenHost = false;
 
     protected compilerOptions: CompilerOptions;
 
@@ -550,6 +551,7 @@ export class ReflectionTransformer implements CustomTransformer {
     forHost(host: CompilerHost): this {
         this.host = host;
         this.resolver.host = host;
+        this.overriddenHost = true;
         return this;
     }
 
@@ -606,9 +608,10 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
             }
         }
-
-        this.host = createCompilerHost(this.compilerOptions);
-        this.resolver = new Resolver(this.compilerOptions, this.host);
+        if (!this.overriddenHost) {
+            this.host = createCompilerHost(this.compilerOptions);
+            this.resolver = new Resolver(this.compilerOptions, this.host);
+        }
 
         this.addImports = [];
         this.sourceFile = sourceFile;
@@ -618,7 +621,6 @@ export class ReflectionTransformer implements CustomTransformer {
         let basePath = this.config.compilerOptions.configFilePath as string;
         if (basePath) {
             basePath = dirname(basePath);
-            debugger;
             if (!this.reflectionMode && currentConfig.reflection !== undefined) this.reflectionMode = this.parseReflectionMode(currentConfig.reflection, basePath);
             if (!this.compilerOptions && currentConfig.reflectionOptions !== undefined) this.reflectionOptions = this.parseReflectionOptionsDefaults(currentConfig.reflectionOptions);
             while ((this.reflectionMode === undefined || this.compilerOptions === undefined) && 'string' === typeof basePath && currentConfig.extends) {

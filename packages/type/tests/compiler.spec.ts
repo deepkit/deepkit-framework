@@ -61,6 +61,7 @@ export function transpile<T extends string | Record<string, string>>(files: T, o
         ...options
     };
 
+    process.env['DEBUG'] = 'deepkit';
     if ('string' === typeof files) {
         return transpileModule(files, {
             fileName: __dirname + '/module.ts',
