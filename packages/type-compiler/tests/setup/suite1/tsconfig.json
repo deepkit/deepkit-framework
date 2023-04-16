@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "moduleResolution": "node",
+    "target": "ES2020",
+    "module": "CommonJS",
+    "esModuleInterop": true
+  },
+  "reflection": true,
+  "files": [
+    "app.ts"
+  ]
+}

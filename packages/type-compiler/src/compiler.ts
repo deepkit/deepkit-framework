@@ -92,7 +92,7 @@ import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spe
 import { Resolver } from './resolver.js';
 import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import { contains } from 'micromatch';
-import { parseTsconfig } from 'get-tsconfig';
+import { isObject } from '@deepkit/core';
 
 const {
     visitEachChild,
@@ -530,10 +530,12 @@ export class ReflectionTransformer implements CustomTransformer {
     protected compilerOptions: CompilerOptions;
 
     /**
-     * When an deep call expression was found a script-wide variable is necessary
+     * When a deep call expression was found a script-wide variable is necessary
      * as temporary storage.
      */
     protected tempResultIdentifier?: Identifier;
+
+    protected config: { compilerOptions: ts.CompilerOptions, extends?: string, reflectionOptions?: ReflectionOptions, reflection?: string | string[] } = { compilerOptions: {} };
 
     constructor(
         protected context: TransformationContext,
@@ -541,20 +543,12 @@ export class ReflectionTransformer implements CustomTransformer {
         this.f = context.factory;
         this.nodeConverter = new NodeConverter(this.f);
         this.compilerOptions = context.getCompilerOptions();
-        //some builder do not provide the full compiler options (e.g. webpack in nx),
-        //so we need to load the file manually and apply what we need.
-        if ('string' === typeof this.compilerOptions.configFilePath && !this.compilerOptions.paths) {
-            const resolved = parseTsconfig(this.compilerOptions.configFilePath);
-            if (resolved.compilerOptions) {
-                this.compilerOptions.paths = resolved.compilerOptions.paths;
-            }
-        }
-
         this.host = createCompilerHost(this.compilerOptions);
         this.resolver = new Resolver(this.compilerOptions, this.host);
     }
 
     forHost(host: CompilerHost): this {
+        this.host = host;
         this.resolver.host = host;
         return this;
     }
@@ -592,19 +586,61 @@ export class ReflectionTransformer implements CustomTransformer {
         (sourceFile as any).deepkitTransformed = true;
         this.embedAssignType = false;
 
-
-        if (!(sourceFile as any).locals) {
-            //@ts-ignore
-            ts.bindSourceFile(sourceFile, this.compilerOptions);
+        //some builder do not provide the full compiler options (e.g. webpack in nx),
+        //so we need to load the file manually and apply what we need.
+        if ('string' === typeof this.compilerOptions.configFilePath) {
+            const configFile = ts.readConfigFile(this.compilerOptions.configFilePath, (path: string) => this.host.readFile(path));
+            if (configFile) {
+                this.config = Object.assign({ compilerOptions: {} }, configFile.config);
+                this.compilerOptions = Object.assign(this.config.compilerOptions, this.compilerOptions);
+            }
+        } else {
+            //find tsconfig via sourceFile.fileName
+            const configPath = ts.findConfigFile(dirname(sourceFile.fileName), (path) => this.host.fileExists(path));
+            if (configPath) {
+                const configFile = ts.readConfigFile(configPath, (path: string) => this.host.readFile(path));
+                if (configFile) {
+                    this.config = Object.assign({ compilerOptions: {} }, configFile.config);
+                    this.compilerOptions = Object.assign(this.config.compilerOptions, this.compilerOptions);
+                    this.compilerOptions.configFilePath = configPath;
+                }
+            }
         }
+
+        this.host = createCompilerHost(this.compilerOptions);
+        this.resolver = new Resolver(this.compilerOptions, this.host);
 
         this.addImports = [];
         this.sourceFile = sourceFile;
 
-        const reflection = this.findReflectionConfig(sourceFile);
-        this.currentReflectionConfig = reflection;
-        if (reflection.mode === 'never') {
+        //iterate through all configs (this.config.extends) until we have all reflection options found.
+        let currentConfig = this.config;
+        let basePath = this.config.compilerOptions.configFilePath as string;
+        if (basePath) {
+            basePath = dirname(basePath);
+            debugger;
+            if (!this.reflectionMode && currentConfig.reflection !== undefined) this.reflectionMode = this.parseReflectionMode(currentConfig.reflection, basePath);
+            if (!this.compilerOptions && currentConfig.reflectionOptions !== undefined) this.reflectionOptions = this.parseReflectionOptionsDefaults(currentConfig.reflectionOptions);
+            while ((this.reflectionMode === undefined || this.compilerOptions === undefined) && 'string' === typeof basePath && currentConfig.extends) {
+                const path = join(basePath, currentConfig.extends);
+                const nextConfig = ts.readConfigFile(path, (path: string) => this.host.readFile(path));
+                if (!nextConfig) break;
+                if (!this.reflectionMode && nextConfig.config.reflection !== undefined) this.reflectionMode = this.parseReflectionMode(nextConfig.config.reflection, basePath);
+                if (!this.reflectionOptions && nextConfig.config.reflectionOptions !== undefined) this.reflectionOptions = this.parseReflectionOptionsDefaults(nextConfig.config.reflectionOptions);
+                currentConfig = Object.assign({}, nextConfig.config);
+                basePath = dirname(path);
+            }
+        }
+
+        debug(`Transform file ${sourceFile.fileName} via config ${this.compilerOptions.configFilePath || 'none'}, reflection=${this.reflectionMode}.`);
+
+        if (this.reflectionMode === 'never') {
             return sourceFile;
+        }
+
+        if (!(sourceFile as any).locals) {
+            //@ts-ignore
+            ts.bindSourceFile(sourceFile, this.compilerOptions);
         }
 
         if (sourceFile.kind !== SyntaxKind.SourceFile) {
@@ -2469,25 +2505,25 @@ export class ReflectionTransformer implements CustomTransformer {
         );
     }
 
-    protected parseReflectionMode(mode?: typeof reflectionModes[number] | '' | boolean | string[], configPathDir?: string): typeof reflectionModes[number] {
+    protected parseReflectionMode(mode: typeof reflectionModes[number] | '' | boolean | string | string[] | undefined, configPathDir: string): typeof reflectionModes[number] {
         if (Array.isArray(mode)) {
             if (!configPathDir) return 'never';
-            if (this.sourceFile.fileName.startsWith(configPathDir)) {
-                const fileName = this.sourceFile.fileName.slice(configPathDir.length + 1);
-                for (const entry of mode) {
-                    if (entry === fileName) return 'default';
-                }
-            }
-            return 'never';
+            const matches = contains(this.sourceFile.fileName, mode, {
+                cwd: configPathDir
+            });
+
+            return matches ? 'default' : 'never';
         }
         if ('boolean' === typeof mode) return mode ? 'default' : 'never';
-        return mode || 'never';
+        if (mode === 'default' || mode === 'always') return mode;
+        return 'never';
     }
 
     protected resolvedTsConfig: { [path: string]: { data: Record<string, any>, exists: boolean } } = {};
     protected resolvedPackageJson: { [path: string]: { data: Record<string, any>, exists: boolean } } = {};
 
-    protected applyReflectionOptionsDefaults(options: ReflectionOptions) {
+    protected parseReflectionOptionsDefaults(options: ReflectionOptions) {
+        options = isObject(options) ? options : {};
         if (!options.exclude) options.exclude = this.defaultExcluded;
         return options;
     }
@@ -2496,7 +2532,7 @@ export class ReflectionTransformer implements CustomTransformer {
         if (program && program.sourceFile.fileName !== this.sourceFile.fileName) {
             //when the node is from another module it was already decided that it will be reflected, so
             //make sure it returns correct mode. for globals this would read otherwise to `mode: never`.
-            return { mode: 'always', options: this.applyReflectionOptionsDefaults({}) };
+            return { mode: 'always', options: this.parseReflectionOptionsDefaults({}) };
         }
 
         let current: Node | undefined = node;
@@ -2506,17 +2542,22 @@ export class ReflectionTransformer implements CustomTransformer {
             const tags = getJSDocTags(current);
             for (const tag of tags) {
                 if (!reflection && getIdentifierName(tag.tagName) === 'reflection' && 'string' === typeof tag.comment) {
-                    return { mode: this.parseReflectionMode(tag.comment as any || true), options: this.applyReflectionOptionsDefaults({}) };
+                    return { mode: this.parseReflectionMode(tag.comment as any || true, ''), options: this.parseReflectionOptionsDefaults({}) };
                 }
             }
             current = current.parent;
         } while (current);
 
         //nothing found, look in tsconfig.json
-        if (this.reflectionMode !== undefined) return { mode: this.reflectionMode, options: this.applyReflectionOptionsDefaults(this.reflectionOptions || {}) };
+        if (this.reflectionMode !== undefined) return { mode: this.reflectionMode, options: this.parseReflectionOptionsDefaults(this.reflectionOptions || {}) };
 
         if (!serverEnv) {
-            return { mode: 'default', options: this.applyReflectionOptionsDefaults({}) };
+            return { mode: 'default', options: this.parseReflectionOptionsDefaults({}) };
+        }
+
+        if (program && program.sourceFile.fileName === this.sourceFile.fileName) {
+            //if the node is from the same module as we currently process, we use the loaded reflection options set early in transformSourceFile().
+            return { mode: this.reflectionMode || 'never', options: this.parseReflectionOptionsDefaults(this.reflectionOptions || {}) };
         }
 
         const sourceFile = findSourceFile(node) || this.sourceFile;
@@ -2536,7 +2577,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
     protected findReflectionFromPath(path: string): ReflectionConfig {
         if (!serverEnv) {
-            return { mode: 'default', options: this.applyReflectionOptionsDefaults({}) };
+            return { mode: 'default', options: this.parseReflectionOptionsDefaults({}) };
         }
 
         let currentDir = dirname(path);
@@ -2602,7 +2643,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 return {
                     mode: this.parseReflectionMode(packageJson.reflection, currentDir),
                     baseDir: currentDir,
-                    options: this.applyReflectionOptionsDefaults(packageJson.reflectionOptions || {})
+                    options: this.parseReflectionOptionsDefaults(packageJson.reflectionOptions || {})
                 };
             }
 
@@ -2610,7 +2651,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 return {
                     mode: this.parseReflectionMode(tsConfig.reflection, currentDir),
                     baseDir: currentDir,
-                    options: this.applyReflectionOptionsDefaults(tsConfig.reflectionOptions || {})
+                    options: this.parseReflectionOptionsDefaults(tsConfig.reflectionOptions || {})
                 };
             }
 
@@ -2625,7 +2666,7 @@ export class ReflectionTransformer implements CustomTransformer {
             currentDir = next;
         }
 
-        return { mode: reflection || 'never', options: this.applyReflectionOptionsDefaults({}) };
+        return { mode: reflection || 'never', options: this.parseReflectionOptionsDefaults({}) };
     }
 }
 
