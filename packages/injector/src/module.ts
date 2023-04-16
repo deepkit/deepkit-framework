@@ -1,7 +1,7 @@
 import { NormalizedProvider, ProviderWithScope, TagProvider, Token } from './provider.js';
 import { arrayRemoveItem, ClassType, getClassName, isClass, isPlainObject, isPrototypeOfBase } from '@deepkit/core';
 import { BuildContext, Injector, SetupProviderRegistry } from './injector.js';
-import { hasTypeInformation, isExtendable, isType, ReceiveType, reflect, ReflectionKind, resolveReceiveType } from '@deepkit/type';
+import { hasTypeInformation, isExtendable, isType, ReceiveType, reflect, ReflectionKind, reflectOrUndefined, resolveReceiveType, TypeClass, TypeObjectLiteral, visit } from '@deepkit/type';
 
 export type ConfigureProvider<T> = { [name in keyof T]: T[name] extends (...args: infer A) => any ? (...args: A) => ConfigureProvider<T> : T[name] };
 
@@ -68,7 +68,7 @@ function lookupPreparedProviders(preparedProviders: PreparedProvider[], token: T
             if (isType(preparedProvider.token) && isExtendable(preparedProvider.token, token)) last = preparedProvider;
             if (isClass(preparedProvider.token) && hasTypeInformation(preparedProvider.token) && isExtendable(reflect(preparedProvider.token), token)) last = preparedProvider;
         } else if ('string' === typeof token || 'number' === typeof token || 'bigint' === typeof token || 'symbol' === typeof token && isType(preparedProvider.token)) {
-            if (isExtendable(preparedProvider.token, {kind: ReflectionKind.literal, literal: token})) last = preparedProvider;
+            if (isExtendable(preparedProvider.token, { kind: ReflectionKind.literal, literal: token })) last = preparedProvider;
         }
     }
     return last;
@@ -105,20 +105,48 @@ function registerPreparedProvider(preparedProviders: PreparedProvider[], modules
     }
 }
 
-export function findModuleForConfig(config: ClassType, modules: InjectorModule[]): InjectorModule | undefined {
-    //go first through first level tree, then second, the third, etc, until no left
+function isInChildOfConfig(findType: TypeClass | TypeObjectLiteral, inType?: ClassType): string | undefined {
+    if (!inType) return;
+    const inTypeType = reflect(inType);
+    if (inTypeType.kind !== ReflectionKind.class && inTypeType.kind !== ReflectionKind.objectLiteral) return;
+
+    let found: string | undefined = undefined;
+    visit(inTypeType, (type, path): false | void => {
+        if (type === findType) {
+            found = path;
+            return false;
+        } else if (type.kind === ReflectionKind.class && findType.kind === ReflectionKind.class && type.classType === findType.classType) {
+            found = path;
+            return false;
+        }
+    });
+
+    return found;
+}
+
+export function findModuleForConfig(config: ClassType, modules: InjectorModule[]): { module: InjectorModule, path: string } | undefined {
+    //go first through first level tree, then second, the third, etc., until no left
     const next: InjectorModule[] = modules.slice();
+
+    const configType = reflectOrUndefined(config);
+    if (!configType) return;
+
+    if (configType.kind !== ReflectionKind.class && configType.kind !== ReflectionKind.objectLiteral) return;
 
     while (next.length) {
         const iterateOver: InjectorModule[] = next.slice();
         next.length = 0;
 
         for (const m of iterateOver) {
-            if (m.configDefinition === config) return m;
+            if (m.configDefinition === config) return { module: m, path: '' };
+            const foundInChild = isInChildOfConfig(configType, m.configDefinition);
+            if (foundInChild) return { module: m, path: foundInChild };
 
             let parent = m.parent;
             while (parent) {
-                if (parent.configDefinition === config) return parent;
+                if (parent.configDefinition === config) return { module: parent, path: '' };
+                const foundInChild = isInChildOfConfig(configType, parent.configDefinition);
+                if (foundInChild) return { module: parent, path: foundInChild };
                 parent = parent.parent;
             }
             next.push(...m.imports);

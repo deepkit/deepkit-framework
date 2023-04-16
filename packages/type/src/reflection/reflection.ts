@@ -86,6 +86,14 @@ export function reflect(o: any, ...args: any[]): Type {
     return resolveRuntimeType(o, args) as Type;
 }
 
+export function reflectOrUndefined(o: any, ...args: any[]): Type | undefined {
+    try {
+        return resolveRuntimeType(o, args) as Type;
+    } catch (error: any) {
+        return undefined;
+    }
+}
+
 export function valuesOf<T>(args: any[] = [], p?: ReceiveType<T>): (string | number | symbol | Type)[] {
     const type = typeOf(args, p);
     if (type.kind === ReflectionKind.union) {
@@ -165,9 +173,19 @@ export function hasCircularReference(type: Type) {
 
 let visitStackId: number = 0;
 
-export function visit(type: Type, visitor: (type: Type) => false | void, onCircular?: () => void): void {
-    const stack: { type: Type, depth: number }[] = [];
-    stack.push({ type, depth: 0 });
+function extendPath(path: string, member: Type): string {
+    let name: string | number | symbol | undefined = '';
+    if ('name' in member) {
+        name = member.name;
+    }
+    if (name === '' || name === undefined) return path;
+    if (path) return path + '.' + String(name);
+    return String(name);
+}
+
+export function visit(type: Type, visitor: (type: Type, path: string) => false | void, onCircular?: () => void): void {
+    const stack: { type: Type, depth: number, path: string }[] = [];
+    stack.push({ type, depth: 0, path: '' });
     const stackId: number = visitStackId++;
 
     while (stack.length) {
@@ -181,7 +199,7 @@ export function visit(type: Type, visitor: (type: Type) => false | void, onCircu
             return;
         }
         jit.visitStack = { id: stackId, depth: entry.depth };
-        visitor(type);
+        if (visitor(type, entry.path) === false) return;
 
         switch (type.kind) {
             case ReflectionKind.objectLiteral:
@@ -190,7 +208,7 @@ export function visit(type: Type, visitor: (type: Type) => false | void, onCircu
             case ReflectionKind.class:
             case ReflectionKind.intersection:
             case ReflectionKind.templateLiteral:
-                for (const member of type.types) stack.push({ type: member, depth: entry.depth + 1 });
+                for (const member of type.types) stack.push({ type: member, depth: entry.depth + 1, path: extendPath(entry.path, member) });
                 break;
             case ReflectionKind.string:
             case ReflectionKind.number:
@@ -198,13 +216,13 @@ export function visit(type: Type, visitor: (type: Type) => false | void, onCircu
             case ReflectionKind.symbol:
             case ReflectionKind.regexp:
             case ReflectionKind.boolean:
-                if (type.origin) stack.push({ type: type.origin, depth: entry.depth + 1 });
+                if (type.origin) stack.push({ type: type.origin, depth: entry.depth + 1, path: entry.path });
                 break;
             case ReflectionKind.function:
             case ReflectionKind.method:
             case ReflectionKind.methodSignature:
-                stack.push({ type: type.return, depth: entry.depth + 1 });
-                for (const member of type.parameters) stack.push({ type: member, depth: entry.depth + 1 });
+                stack.push({ type: type.return, depth: entry.depth + 1, path: entry.path });
+                for (const member of type.parameters) stack.push({ type: member, depth: entry.depth + 1, path: extendPath(entry.path, member) });
                 break;
             case ReflectionKind.propertySignature:
             case ReflectionKind.property:
@@ -213,11 +231,11 @@ export function visit(type: Type, visitor: (type: Type) => false | void, onCircu
             case ReflectionKind.parameter:
             case ReflectionKind.tupleMember:
             case ReflectionKind.rest:
-                stack.push({ type: type.type, depth: entry.depth + 1 });
+                stack.push({ type: type.type, depth: entry.depth + 1, path: entry.path });
                 break;
             case ReflectionKind.indexSignature:
-                stack.push({ type: type.index, depth: entry.depth + 1 });
-                stack.push({ type: type.type, depth: entry.depth + 1 });
+                stack.push({ type: type.index, depth: entry.depth + 1, path: entry.path });
+                stack.push({ type: type.type, depth: entry.depth + 1, path: entry.path });
                 break;
         }
     }

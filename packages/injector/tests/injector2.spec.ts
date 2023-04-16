@@ -1464,3 +1464,24 @@ test('exported type provider', () => {
     const service = injector.get(Service);
     expect(service.value).toBe('123');
 });
+
+test('split configuration into multiple types', () => {
+    class DatabaseConfig {
+        host: string = 'localhost';
+    }
+
+    class Config {
+        db: DatabaseConfig = new DatabaseConfig();
+    }
+
+    class Service {
+        constructor(public dbConfig: DatabaseConfig) {
+        }
+    }
+
+    const rootModule = new InjectorModule([Service]).setConfigDefinition(Config);
+
+    const injector = new InjectorContext(rootModule);
+    const service = injector.get(Service);
+    expect(service.dbConfig.host).toBe('localhost');
+});

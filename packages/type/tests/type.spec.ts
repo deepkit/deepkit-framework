@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { hasCircularReference, ReceiveType, reflect, ReflectionClass, resolveReceiveType, typeOf, visit } from '../src/reflection/reflection.js';
+import { hasCircularReference, ReceiveType, reflect, ReflectionClass, reflectOrUndefined, resolveReceiveType, typeOf, visit } from '../src/reflection/reflection.js';
 import {
     assertType,
     Embedded,
@@ -1311,6 +1311,18 @@ test('function returns self reference', () => {
     expect(type.function).toBe(Option);
     assertType(type.return, ReflectionKind.function);
     expect(type.return.function).toBe(Option);
+});
+
+test('no runtime types', () => {
+    /**
+     * @reflection never
+     */
+    class MyModel {
+        property!: string;
+    }
+
+    expect(() => reflect(MyModel)).toThrow('No valid runtime type for MyModel given');
+    expect(reflectOrUndefined(MyModel)).toBe(undefined);
 });
 
 test('arrow function returns self reference', () => {

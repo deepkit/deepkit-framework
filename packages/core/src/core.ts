@@ -592,6 +592,7 @@ export function time(): number {
  * @public
  */
 export function getPathValue(bag: { [field: string]: any }, parameterPath: string, defaultValue?: any): any {
+    if (parameterPath === '' || parameterPath === undefined) return bag;
     if (isSet(bag[parameterPath])) {
         return bag[parameterPath];
     }
