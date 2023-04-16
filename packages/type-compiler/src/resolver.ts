@@ -1,18 +1,21 @@
-import * as ts from 'typescript';
-import {
+import type {
     CompilerHost,
     CompilerOptions,
-    createSourceFile,
     ExportDeclaration,
     Expression,
     ImportDeclaration,
-    resolveModuleName,
     ResolvedModule,
-    ScriptTarget,
     SourceFile,
     StringLiteral,
-    SyntaxKind
 } from 'typescript';
+import * as ts from 'typescript';
+
+const {
+    createSourceFile,
+    resolveModuleName,
+    SyntaxKind,
+    ScriptTarget,
+} = ts;
 
 /**
  * A utility to resolve a module path and its declaration.

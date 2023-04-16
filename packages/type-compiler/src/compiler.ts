@@ -8,10 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import * as ts from 'typescript';
-import {
+import type {
     __String,
-    addSyntheticLeadingComment,
     ArrayTypeNode,
     ArrowFunction,
     Bundle,
@@ -25,23 +23,17 @@ import {
     ConstructorDeclaration,
     ConstructorTypeNode,
     ConstructSignatureDeclaration,
-    createCompilerHost,
-    createPrinter,
     CustomTransformer,
     CustomTransformerFactory,
     Declaration,
-    EmitHint,
     EntityName,
     EnumDeclaration,
-    escapeLeadingUnderscores,
     ExportDeclaration,
     Expression,
     ExpressionWithTypeArguments,
     FunctionDeclaration,
     FunctionExpression,
     FunctionTypeNode,
-    getEffectiveConstraintOfTypeParameter,
-    getJSDocTags,
     Identifier,
     ImportDeclaration,
     IndexedAccessTypeNode,
@@ -49,6 +41,62 @@ import {
     InferTypeNode,
     InterfaceDeclaration,
     IntersectionTypeNode,
+    LiteralTypeNode,
+    MappedTypeNode,
+    MethodDeclaration,
+    MethodSignature,
+    Modifier,
+    ModuleDeclaration,
+    Node,
+    NodeFactory,
+    PropertyAccessExpression,
+    PropertyDeclaration,
+    PropertySignature,
+    QualifiedName,
+    RestTypeNode,
+    SignatureDeclaration,
+    Statement,
+    TemplateLiteralTypeNode,
+    TransformationContext,
+    TupleTypeNode,
+    TypeAliasDeclaration,
+    TypeChecker,
+    TypeLiteralNode,
+    TypeNode,
+    TypeOperatorNode,
+    TypeParameterDeclaration,
+    TypeQueryNode,
+    TypeReferenceNode,
+    UnionTypeNode,
+} from 'typescript';
+import * as ts from 'typescript';
+
+import {
+    ensureImportIsEmitted,
+    extractJSDocAttribute,
+    getGlobalsOfSourceFile,
+    getIdentifierName,
+    getNameAsString,
+    getPropertyName,
+    hasModifier,
+    isNodeWithLocals,
+    NodeConverter,
+    PackExpression,
+    serializeEntityNameAsExpression,
+} from './reflection-ast.js';
+import { SourceFile } from './ts-types.js';
+import { existsSync, readFileSync } from 'fs';
+import { dirname, isAbsolute, join, resolve } from 'path';
+import stripJsonComments from 'strip-json-comments';
+import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spec';
+import { Resolver } from './resolver.js';
+import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
+import { contains } from 'micromatch';
+import { parseTsconfig } from 'get-tsconfig';
+
+const {
+    visitEachChild,
+    visitNode,
     isArrayTypeNode,
     isArrowFunction,
     isCallExpression,
@@ -91,63 +139,19 @@ import {
     isTypeReferenceNode,
     isUnionTypeNode,
     isVariableDeclaration,
-    LiteralTypeNode,
-    MappedTypeNode,
-    MethodDeclaration,
-    MethodSignature,
-    Modifier,
-    ModifierFlags,
-    ModuleDeclaration,
-    ModuleKind,
-    Node,
-    NodeFactory,
+    getEffectiveConstraintOfTypeParameter,
+    getJSDocTags,
+    addSyntheticLeadingComment,
+    createCompilerHost,
+    createPrinter,
+    escapeLeadingUnderscores,
+    EmitHint,
     NodeFlags,
-    PropertyAccessExpression,
-    PropertyDeclaration,
-    PropertySignature,
-    QualifiedName,
-    RestTypeNode,
-    ScriptTarget,
-    SignatureDeclaration,
-    Statement,
     SyntaxKind,
-    TemplateLiteralTypeNode,
-    TransformationContext,
-    TupleTypeNode,
-    TypeAliasDeclaration,
-    TypeChecker,
-    TypeLiteralNode,
-    TypeNode,
-    TypeOperatorNode,
-    TypeParameterDeclaration,
-    TypeQueryNode,
-    TypeReferenceNode,
-    UnionTypeNode,
-    visitEachChild,
-    visitNode
-} from 'typescript';
-import {
-    ensureImportIsEmitted,
-    extractJSDocAttribute,
-    getGlobalsOfSourceFile,
-    getIdentifierName,
-    getNameAsString,
-    getPropertyName,
-    hasModifier,
-    isNodeWithLocals,
-    NodeConverter,
-    PackExpression,
-    serializeEntityNameAsExpression,
-} from './reflection-ast.js';
-import { SourceFile } from './ts-types.js';
-import { existsSync, readFileSync } from 'fs';
-import { dirname, isAbsolute, join, resolve } from 'path';
-import stripJsonComments from 'strip-json-comments';
-import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spec';
-import { Resolver } from './resolver.js';
-import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
-import { contains } from 'micromatch';
-import { parseTsconfig } from 'get-tsconfig';
+    ModuleKind,
+    ScriptTarget,
+    ModifierFlags,
+} = ts;
 
 export function encodeOps(ops: ReflectionOp[]): string {
     return ops.map(v => String.fromCharCode(v + 33)).join('');

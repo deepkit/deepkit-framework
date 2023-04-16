@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
+import type {
     ArrowFunction,
     BigIntLiteral,
     BinaryExpression,
@@ -17,6 +17,24 @@ import {
     Expression,
     Identifier,
     ImportDeclaration,
+    JSDoc,
+    ModifierLike,
+    Node,
+    NodeArray,
+    NodeFactory,
+    NumericLiteral,
+    PrivateIdentifier,
+    PropertyAccessExpression,
+    QualifiedName,
+    StringLiteral,
+    StringLiteralLike,
+    SymbolTable,
+} from 'typescript';
+import * as ts from 'typescript';
+import { cloneNode as tsNodeClone, CloneNodeHook } from '@marcj/ts-clone-node';
+import { SourceFile } from './ts-types.js';
+
+const {
     isArrowFunction,
     isComputedPropertyName,
     isIdentifier,
@@ -25,30 +43,15 @@ import {
     isPrivateIdentifier,
     isStringLiteral,
     isStringLiteralLike,
-    JSDoc,
-    ModifierLike,
-    Node,
-    NodeArray,
-    NodeFactory,
-    NodeFlags,
-    NumericLiteral,
-    PrivateIdentifier,
-    PropertyAccessExpression,
-    QualifiedName,
     setOriginalNode,
-    StringLiteral,
-    StringLiteralLike,
-    SymbolTable,
-    SyntaxKind,
-    unescapeLeadingUnderscores
-} from 'typescript';
-import { cloneNode as tsNodeClone, CloneNodeHook } from '@marcj/ts-clone-node';
-import { SourceFile } from './ts-types.js';
+    NodeFlags,
+    SyntaxKind
+} = ts;
 
 export type PackExpression = Expression | string | number | boolean | bigint;
 
 export function getIdentifierName(node: Identifier | PrivateIdentifier): string {
-    return unescapeLeadingUnderscores(node.escapedText);
+    return ts.unescapeLeadingUnderscores(node.escapedText);
 }
 
 export function joinQualifiedName(name: EntityName): string {
@@ -101,7 +104,7 @@ export function getNameAsString(node?: Identifier | StringLiteral | NumericLiter
     return joinQualifiedName(node);
 }
 
-export function hasModifier(node: { modifiers?: NodeArray<ModifierLike> }, modifier: SyntaxKind): boolean {
+export function hasModifier(node: { modifiers?: NodeArray<ModifierLike> }, modifier: ts.SyntaxKind): boolean {
     if (!node.modifiers) return false;
     return node.modifiers.some(v => v.kind === modifier);
 }

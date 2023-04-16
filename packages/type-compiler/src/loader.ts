@@ -1,8 +1,6 @@
-// import {urlToRequest} from 'loader-utils';
+import type { CompilerOptions, SourceFile, TransformationContext } from 'typescript';
 import * as ts from 'typescript';
-import { CompilerOptions, createCompilerHost, createSourceFile, ScriptTarget, SourceFile, TransformationContext } from 'typescript';
 import { ReflectionTransformer } from './compiler.js';
-import ScriptKind = ts.ScriptKind;
 
 export class DeepkitLoader {
     protected options: CompilerOptions = {
@@ -10,7 +8,7 @@ export class DeepkitLoader {
         declaration: false,
     };
 
-    protected host = createCompilerHost(this.options);
+    protected host = ts.createCompilerHost(this.options);
 
     protected program = ts.createProgram([], this.options, this.host);
 
@@ -31,7 +29,7 @@ export class DeepkitLoader {
         };
 
         const originalGetSourceFile = this.host.getSourceFile;
-        this.host.getSourceFile = (fileName: string, languageVersion: ScriptTarget, onError?: (message: string) => void, shouldCreateNewSourceFile?: boolean): SourceFile | undefined => {
+        this.host.getSourceFile = (fileName: string, languageVersion: ts.ScriptTarget, onError?: (message: string) => void, shouldCreateNewSourceFile?: boolean): SourceFile | undefined => {
             if (this.sourceFiles[fileName]) return this.sourceFiles[fileName];
             return originalGetSourceFile.call(this.host, fileName, languageVersion, onError, shouldCreateNewSourceFile);
         };
@@ -39,7 +37,7 @@ export class DeepkitLoader {
 
     transform(source: string, path: string): string {
         this.knownFiles[path] = source;
-        const sourceFile = createSourceFile(path, source, ScriptTarget.ESNext, true, path.endsWith('.tsx') ? ScriptKind.TSX : ScriptKind.TS);
+        const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.ESNext, true, path.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
         let newSource = source;
 
         ts.transform(sourceFile, [
