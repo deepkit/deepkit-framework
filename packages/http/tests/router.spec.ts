@@ -242,14 +242,14 @@ test('router parameter resolver by class', async () => {
     class UserResolver {
         resolve(context: RouteParameterResolverContext): any | Promise<any> {
             const value = context.value || context.parameters.username;
-            if (!value) throw new Error('No value specified');
+            if (!value) throw new HttpBadRequestError('No value specified');
             return new User(value);
         }
     }
 
     class GroupResolver {
         resolve(context: RouteParameterResolverContext): any | Promise<any> {
-            if (!context.value) throw new Error('No value specified');
+            if (!context.value) throw new HttpBadRequestError('No value specified');
             return new Group(context.value);
         }
     }
@@ -282,7 +282,7 @@ test('router parameter resolver by class', async () => {
 
     expect((await httpKernel.request(HttpRequest.GET('/user/peter'))).json).toEqual(['peter']);
     expect((await httpKernel.request(HttpRequest.GET('/user/peter/group/a'))).json).toEqual(['peter', 'a']);
-    expect((await httpKernel.request(HttpRequest.GET('/invalid'))).bodyString).toEqual('Internal error');
+    expect((await httpKernel.request(HttpRequest.GET('/invalid'))).bodyString).toEqual('{"message":"No value specified"}');
 });
 
 test('router parameter resolver by name', async () => {
@@ -1289,6 +1289,7 @@ test('stream', async () => {
             return Readable.from(['test']);
         }
     }
+
     const httpKernel = createHttpKernel([Controller]);
     const response = (await httpKernel.request(HttpRequest.GET('/')));
     expect(response.statusCode).toBe(200);
@@ -1303,6 +1304,7 @@ test('stream error', async () => {
             return new Readable().emit('error', new Error('this is my error'));
         }
     }
+
     const httpKernel = createHttpKernel([Controller]);
     const response = (await httpKernel.request(HttpRequest.GET('/')));
     expect(response.statusCode).toBe(500);
@@ -1342,7 +1344,7 @@ test('fetch thrown error instances in listeners', async () => {
 
     const httpKernel = createHttpKernel([Controller], [], [
         httpWorkflow.onAccessDenied.listen(async (event) => {
-             expect(event.error?.message).toBe('my custom "Access denied" message');
+            expect(event.error?.message).toBe('my custom "Access denied" message');
         }),
     ]);
 

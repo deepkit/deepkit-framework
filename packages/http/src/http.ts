@@ -747,6 +747,11 @@ export class HttpListener {
                 message: event.error.message,
                 errors: event.error.errors
             }, 400).disableAutoSerializing());
+        } else if (event.error instanceof HttpError) {
+            event.send(new JSONResponse({
+                message: event.error.message
+            }, event.error.httpCode).disableAutoSerializing());
+            return;
         } else {
             this.logger.error('Controller parameter resolving error:', event.error);
 
