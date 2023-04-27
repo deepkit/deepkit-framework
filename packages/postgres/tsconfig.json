@@ -17,7 +17,7 @@
     "composite": true
   },
   "reflection": [
-    "tests/**/*.ts",
+    "tests/**/*.ts"
   ],
   "include": [
     "src",
