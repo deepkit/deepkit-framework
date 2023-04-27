@@ -6,6 +6,7 @@ import { EntitySubjectStore } from '../src/client/entity-state.js';
 import { rpc } from '../src/decorators.js';
 import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
 import { InjectorContext } from '@deepkit/injector';
+import { RpcKernelSecurity } from '../src/server/security.js';
 
 test('EntitySubjectStore multi', () => {
     class MyModel {
@@ -102,6 +103,7 @@ test('controller', async () => {
 
     const kernel = new RpcKernel(InjectorContext.forProviders([
         { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
+        { provide: RpcKernelSecurity, scope: 'rpc' },
         { provide: Controller, scope: 'rpc' },
     ]));
     kernel.registerController(Controller, 'myController');

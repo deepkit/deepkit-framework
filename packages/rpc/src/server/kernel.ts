@@ -31,9 +31,10 @@ import { RpcServerAction } from './action.js';
 import { RpcKernelSecurity, SessionState } from './security.js';
 import { RpcActionClient, RpcControllerState } from '../client/action.js';
 import { RemoteController } from '../client/client.js';
-import { InjectorContext, InjectorModule } from '@deepkit/injector';
+import { InjectorContext, InjectorModule, NormalizedProvider } from '@deepkit/injector';
 import { Logger, LoggerInterface } from '@deepkit/logger';
 import { rpcClass } from '../decorators.js';
+import { Provider } from '@deepkit/injector';
 
 export class RpcCompositeMessage {
     protected messages: RpcCreateMessageDef<any>[] = [];
@@ -454,18 +455,20 @@ export class RpcKernel {
     public injector: InjectorContext;
 
     constructor(
-        injector?: InjectorContext,
-        protected security = new RpcKernelSecurity(),
+        injector?: InjectorContext | NormalizedProvider[],
         protected logger: LoggerInterface = new Logger(),
     ) {
-        if (injector) {
+        if (injector instanceof InjectorContext) {
             this.injector = injector;
         } else {
             this.injector = InjectorContext.forProviders([
-                SessionState,
+                { provide: SessionState, scope: 'rpc' },
+                { provide: RpcKernelSecurity, scope: 'rpc' },
 
                 //will be provided when scope is created
                 { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
+
+                ...(injector || [])
             ]);
             this.autoInjector = true;
         }
@@ -500,7 +503,7 @@ export class RpcKernel {
     createConnection(writer: RpcConnectionWriter, injector?: InjectorContext): RpcKernelBaseConnection {
         if (!injector) injector = this.injector.createChildScope('rpc');
 
-        const connection = new this.RpcKernelConnection(writer, this.connections, this.controllers, this.security, injector, this.peerExchange, this.logger);
+        const connection = new this.RpcKernelConnection(writer, this.connections, this.controllers, injector.get(RpcKernelSecurity), injector, this.peerExchange, this.logger);
         injector.set(RpcKernelConnection, connection);
         for (const on of this.onConnectionListeners) on(connection, injector, this.logger);
         return connection;

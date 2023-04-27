@@ -6,6 +6,7 @@ import { RpcKernelSecurity, Session } from '../src/server/security.js';
 import { AuthenticationError } from '../src/model.js';
 import { Logger } from '@deepkit/logger';
 import { MemoryLoggerTransport } from '@deepkit/logger';
+import { Inject } from '@deepkit/injector';
 
 test('authentication', async () => {
     class Controller {
@@ -16,6 +17,10 @@ test('authentication', async () => {
     }
 
     class MyKernelSecurity extends RpcKernelSecurity {
+        constructor(private scoped: Inject<string, 'scoped'>) {
+            super();
+            expect(scoped).toBe(true);
+        }
         async hasControllerAccess(session: Session) {
             return !session.isAnonymous();
         }
@@ -34,7 +39,7 @@ test('authentication', async () => {
         }
     }
 
-    const kernel = new RpcKernel(undefined, new MyKernelSecurity);
+    const kernel = new RpcKernel([{provide: RpcKernelSecurity, useClass: MyKernelSecurity, scope: 'rpc'}, {provide: 'scoped', useValue: true, scope: 'rpc'}]);
     kernel.registerController(Controller, 'test');
 
     {
@@ -82,7 +87,7 @@ test('authentication errors', async () => {
     }
 
     const memoryLogger = new MemoryLoggerTransport;
-    const kernel = new RpcKernel(undefined, new MyKernelSecurity, new Logger([memoryLogger]));
+    const kernel = new RpcKernel([{provide: RpcKernelSecurity, useClass: MyKernelSecurity, scope: 'rpc'}], new Logger([memoryLogger]));
     const client = new DirectClient(kernel);
 
     client.token.set('generic');
@@ -209,7 +214,7 @@ test('transformError', async () => {
         }
     }
 
-    const kernel = new RpcKernel(undefined, new MyKernelSecurity);
+    const kernel = new RpcKernel([{provide: RpcKernelSecurity, useClass: MyKernelSecurity, scope: 'rpc'}]);
     kernel.registerController(Controller, 'test');
 
     const client = new DirectClient(kernel);

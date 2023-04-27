@@ -50,15 +50,14 @@ export class FrameworkModule extends createModule({
         RpcServer,
         ConsoleTransport,
         Logger,
-        RpcKernelSecurity,
         MigrationProvider,
         DebugController,
         { provide: DatabaseRegistry, useFactory: (ic: InjectorContext) => new DatabaseRegistry(ic) },
         {
             provide: RpcKernel,
-            useFactory(rpcControllers: RpcControllers, injectorContext: InjectorContext, rpcKernelSecurity: RpcKernelSecurity, logger: LoggerInterface, stopwatch?: Stopwatch) {
+            useFactory(rpcControllers: RpcControllers, injectorContext: InjectorContext, logger: LoggerInterface, stopwatch?: Stopwatch) {
                 const classType = stopwatch ? RpcKernelWithStopwatch : RpcKernel;
-                const kernel: RpcKernel = new classType(injectorContext, rpcKernelSecurity, logger.scoped('rpc'));
+                const kernel: RpcKernel = new classType(injectorContext, logger.scoped('rpc'));
 
                 if (kernel instanceof RpcKernelWithStopwatch) {
                     kernel.stopwatch = stopwatch;
@@ -76,6 +75,7 @@ export class FrameworkModule extends createModule({
         { provide: SessionHandler, scope: 'http' },
 
         // { provide: LiveDatabase, scope: 'rpc' },
+        { provide: RpcKernelSecurity, scope: 'rpc' },
 
         //all of these will be set on scope creation
         { provide: HttpRequest, scope: 'rpc', useValue: undefined },
