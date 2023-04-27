@@ -2,7 +2,7 @@
 //Certain interfaces do not contain all properties/methods from all internal TS types, because we add only those we actually use.
 //This helps to identity which types are actually needed and maybe can be brought up to the TS team as candidates to make them public.
 
-import type { SourceFile as TSSourceFile, Symbol, SymbolTable } from 'typescript';
+import type { SourceFile as TSSourceFile, ScriptKind, Symbol, SymbolTable } from 'typescript';
 
 /**
  * Contains @internal properties that are not yet in the public API of TS.
@@ -14,6 +14,8 @@ export interface SourceFile extends TSSourceFile {
      * The redirect will have this set. The redirected-to source file will be in `redirectTargetsMap`.
      */
     redirectInfo?: any;
+
+    scriptKind?: ScriptKind;
 
     externalModuleIndicator?: Node;
     // The first node that causes this file to be a CommonJS module

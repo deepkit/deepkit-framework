@@ -1,21 +1,37 @@
 import * as ts from 'typescript';
-import { createSourceFile, ScriptTarget } from 'typescript';
+import { createSourceFile, ScriptKind, ScriptTarget } from 'typescript';
 import { expect, test } from '@jest/globals';
 import { ReflectionTransformer } from '../src/compiler.js';
 import { transform } from './utils.js';
 
-test('transform simple', () => {
+test('transform simple TS', () => {
     const sourceFile = createSourceFile('app.ts', `
         import { Logger } from './logger.js';
 
         function fn(logger: Logger) {}
-    `, ScriptTarget.ESNext);
+    `, ScriptTarget.ESNext, undefined, ScriptKind.TS);
 
     const res = ts.transform(sourceFile, [(context) => (node) => new ReflectionTransformer(context).withReflectionMode('always').transformSourceFile(node)]);
     const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
     const code = printer.printNode(ts.EmitHint.SourceFile, res.transformed[0], res.transformed[0]);
 
-    console.log(code);
+    expect(code).toContain('fn.__type');
+});
+
+test('transform simple JS', () => {
+    const sourceFile = createSourceFile('app.ts', `
+        import { Logger } from './logger.js';
+        const a = (v) => {
+            return v + 1;
+        }
+        function fn(logger) {}
+    `, ScriptTarget.ESNext, undefined, ScriptKind.JS);
+
+    const res = ts.transform(sourceFile, [(context) => (node) => new ReflectionTransformer(context).withReflectionMode('always').transformSourceFile(node)]);
+    const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+    const code = printer.printNode(ts.EmitHint.SourceFile, res.transformed[0], res.transformed[0]);
+
+    expect(code).not.toContain('fn.__type');
 });
 
 test('transform util', () => {

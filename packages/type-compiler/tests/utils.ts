@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import { createSourceFile, getPreEmitDiagnostics, ScriptTarget, TransformationContext } from 'typescript';
+import { createSourceFile, getPreEmitDiagnostics, ScriptTarget, ScriptKind, TransformationContext } from 'typescript';
 import { createFSBackedSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import { ReflectionTransformer } from '../src/compiler.js';
 import { readFileSync } from 'fs';
@@ -45,7 +45,7 @@ export function transform(files: Record<string, string>, options: ts.CompilerOpt
     const res: Record<string, string> = {};
 
     for (const [fileName, source] of Object.entries(files)) {
-        const sourceFile = createSourceFile(fullPath(fileName), source, compilerOptions.target || ScriptTarget.ES2018, true);
+        const sourceFile = createSourceFile(fullPath(fileName), source, compilerOptions.target || ScriptTarget.ES2018, true, ScriptKind.TS);
         host.updateFile(sourceFile);
     }
 

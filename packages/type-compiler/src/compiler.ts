@@ -68,6 +68,7 @@ import type {
     TypeQueryNode,
     TypeReferenceNode,
     UnionTypeNode,
+    ParseConfigHost,
 } from 'typescript';
 import * as ts from 'typescript';
 
@@ -151,6 +152,7 @@ const {
     ModuleKind,
     ScriptTarget,
     ModifierFlags,
+    ScriptKind,
 } = ts;
 
 export function encodeOps(ops: ReflectionOp[]): string {
@@ -535,6 +537,7 @@ export class ReflectionTransformer implements CustomTransformer {
      * as temporary storage.
      */
     protected tempResultIdentifier?: Identifier;
+    protected parseConfigHost?: ParseConfigHost;
 
     protected config: { compilerOptions: ts.CompilerOptions, extends?: string, reflectionOptions?: ReflectionOptions, reflection?: string | string[] } = { compilerOptions: {} };
 
@@ -583,7 +586,40 @@ export class ReflectionTransformer implements CustomTransformer {
         return this.tempResultIdentifier;
     }
 
+    readTsConfig(path: string) {
+        if (!this.parseConfigHost) {
+            this.parseConfigHost = {
+                useCaseSensitiveFileNames: true,
+                fileExists: (path: string) => this.host.fileExists(path),
+                readFile: (path: string) => this.host.readFile(path),
+                readDirectory: (path: string, extensions?: readonly string[], exclude?: readonly string[], include?: readonly string[], depth?: number) => {
+                    if (!this.host.readDirectory) return [];
+                    return this.host.readDirectory(path, extensions || [], exclude, include || [], depth)
+                },
+            };
+        }
+
+        const configFile = ts.readConfigFile(path, (path: string) => this.host.readFile(path));
+        if (configFile.error) {
+            debug(`Failed to read tsconfig ${path}: ${configFile.error.messageText}`);
+            return;
+        }
+
+        const parsed = ts.parseJsonConfigFileContent(configFile.config, this.parseConfigHost, dirname(path));
+        if (parsed.errors.length) {
+            debug(`Failed to parse tsconfig ${path}: ${parsed.errors.map(v => v.messageText).join(', ')}`);
+            return;
+        }
+
+        return Object.assign(configFile.config, { compilerOptions: parsed.options });
+    }
+
     transformSourceFile(sourceFile: SourceFile): SourceFile {
+        this.sourceFile = sourceFile;
+
+        //if it's not a TS/TSX file, we do not transform it
+        if (sourceFile.scriptKind !== ScriptKind.TS && sourceFile.scriptKind !== ScriptKind.TSX) return sourceFile;
+
         if ((sourceFile as any).deepkitTransformed) return sourceFile;
         (sourceFile as any).deepkitTransformed = true;
         this.embedAssignType = false;
@@ -591,18 +627,18 @@ export class ReflectionTransformer implements CustomTransformer {
         //some builder do not provide the full compiler options (e.g. webpack in nx),
         //so we need to load the file manually and apply what we need.
         if ('string' === typeof this.compilerOptions.configFilePath) {
-            const configFile = ts.readConfigFile(this.compilerOptions.configFilePath, (path: string) => this.host.readFile(path));
+            const configFile = this.readTsConfig(this.compilerOptions.configFilePath);
             if (configFile) {
-                this.config = Object.assign({ compilerOptions: {} }, configFile.config);
+                this.config = Object.assign({ compilerOptions: {} }, configFile);
                 this.compilerOptions = Object.assign(this.config.compilerOptions, this.compilerOptions);
             }
         } else {
             //find tsconfig via sourceFile.fileName
             const configPath = ts.findConfigFile(dirname(sourceFile.fileName), (path) => this.host.fileExists(path));
             if (configPath) {
-                const configFile = ts.readConfigFile(configPath, (path: string) => this.host.readFile(path));
+                const configFile = this.readTsConfig(configPath);
                 if (configFile) {
-                    this.config = Object.assign({ compilerOptions: {} }, configFile.config);
+                    this.config = Object.assign({ compilerOptions: {} }, configFile);
                     this.compilerOptions = Object.assign(this.config.compilerOptions, this.compilerOptions);
                     this.compilerOptions.configFilePath = configPath;
                 }
@@ -614,7 +650,6 @@ export class ReflectionTransformer implements CustomTransformer {
         }
 
         this.addImports = [];
-        this.sourceFile = sourceFile;
 
         //iterate through all configs (this.config.extends) until we have all reflection options found.
         let currentConfig = this.config;
