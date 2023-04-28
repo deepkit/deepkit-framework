@@ -80,18 +80,46 @@ test('non-forRoot sub module lives in own injector scope for rpc controllers', a
     expect(await controller.hasService()).toBe(true);
 });
 
-
-test('module provides RpcKernelSecurity', () => {
+test('module provides RpcKernelSecurity', async () => {
     class MyRpcKernelSecurity extends RpcKernelSecurity {
+        async authenticate(token: any): Promise<Session> {
+            if (token === 'secret') return new Session('yes', token);
+            throw new Error('Invalid token');
+        }
+    }
 
+    @rpc.controller('/main')
+    class Controller {
+        @rpc.action()
+        test(): boolean {
+            return true;
+        }
     }
 
     const module = new AppModule({
+        controllers: [Controller],
         providers: [{
-            provide: RpcKernelSecurity, useClass: MyRpcKernelSecurity
+            provide: RpcKernelSecurity, useClass: MyRpcKernelSecurity, scope: 'rpc'
         }]
     }, 'module').forRoot();
     const testing = createTestingApp({ imports: [module] });
+    await testing.startServer();
 
-    expect(testing.app.get(RpcKernelSecurity)).toBeInstanceOf(MyRpcKernelSecurity);
+    {
+        const client = testing.createRpcClient();
+        client.token.set('secret');
+        const controller = client.controller<Controller>('/main');
+        const result = await controller.test();
+        expect(result).toBe(true);
+        client.disconnect();
+    }
+
+    {
+        const client = testing.createRpcClient();
+        client.token.set('invalidSecret');
+        const controller = client.controller<Controller>('/main');
+        await expect(async () => await controller.test()).rejects.toThrow('Authentication failed');
+    }
+
+    await testing.stopServer();
 });
