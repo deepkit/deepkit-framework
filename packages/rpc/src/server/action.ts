@@ -182,6 +182,7 @@ export class RpcServerAction {
             unwrappedReturnType = unwrappedReturnType.type;
         }
 
+        const fullType = unwrappedReturnType;
         if (unwrappedReturnType.kind === ReflectionKind.union) {
             //if e.g. Subject | undefined, we take the non-undefined type
             const nonNullUndefined = unwrappedReturnType.types.filter(v => v.kind !== ReflectionKind.undefined && v.kind !== ReflectionKind.null);
@@ -190,7 +191,7 @@ export class RpcServerAction {
             }
         }
 
-        let type: Type = unwrappedReturnType;
+        let type: Type = fullType;
         let collectionSchema: Type | undefined;
         let collectionQueryModel: Type | undefined;
 
