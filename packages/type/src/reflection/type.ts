@@ -1663,8 +1663,44 @@ export function hasEmbedded(type: Type): boolean {
 }
 
 //`never` is here to allow using a decorator multiple times on the same type without letting the TS complaining about incompatible types.
+
+/**
+ * Assigns one or multiple groups to a type.
+ *
+ * @example
+ * ```typescript
+ * interface User {
+ *     username: string;
+ *     password: string & Group<'credentials'>;
+ * }
+ * ```
+ */
 export type Group<Name extends string> = { __meta?: ['group', never & Name] };
+
+/**
+ * Excludes the type from serialization of all kind.
+ *
+ * @example
+ * ```typescript
+ * interface User {
+ *    username: string;
+ *    password: string & Excluded;
+ *  }
+ *  ```
+ */
 export type Excluded<Name extends string = '*'> = { __meta?: ['excluded', never & Name] };
+
+/**
+ * Assigns arbitrary data to a type that can be read in runtime.
+ *
+ * @example
+ * ```typescript
+ * interface User {
+ *   username: string;
+ *   password: string & Data<'role', 'admin'>;
+ * }
+ * ```
+ */
 export type Data<Name extends string, Value> = { __meta?: ['data', never & Name, never & Value] };
 
 /**
