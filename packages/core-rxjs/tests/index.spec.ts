@@ -1,6 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
-import { isBehaviorSubject, isSubject, nextValue, Subscriptions } from '../src/utils.js';
+import { BehaviorSubject, Observable, ReplaySubject, Subject, Subscription } from 'rxjs';
+import { isBehaviorSubject, isSubject, nextValue, Subscriptions, throttleMessages } from '../src/utils.js';
+import { ProgressTracker } from '../src/progress.js';
 
 test('nextValue subject', async () => {
     const subject = new Subject();
@@ -94,4 +95,53 @@ test('Subscriptions auto remove', async () => {
     expect(subscriptions.list.length).toBe(0);
     expect(sub1.closed).toBe(true);
     expect(sub2.closed).toBe(true);
+});
+
+test('throttleMessages', async () => {
+    const behaviorSubject = new ReplaySubject<number>();
+    for (let i = 0; i < 100; i++) {
+        behaviorSubject.next(i);
+    }
+
+    setTimeout(() => {
+        behaviorSubject.complete();
+    }, 100);
+
+    let i = 0;
+    await throttleMessages(behaviorSubject, async (numbers) => {
+        i++;
+        if (i === 1) {
+            expect(numbers.length).toBe(10);
+        } else {
+            //once the first batch is handled, the observable is filled completely up
+            expect(numbers.length).toBe(90);
+        }
+    }, { batchSize: 10 });
+});
+
+test('progress', async () => {
+    const progressTracker = new ProgressTracker();
+    const test1 = progressTracker.track('test1', 5);
+    test1.done++;
+    test1.done++;
+
+    expect(progressTracker.progress).toBe(2 / 5);
+    expect(progressTracker.done).toBe(2);
+    expect(progressTracker.total).toBe(5);
+    expect(progressTracker.stopped).toBe(false);
+    expect(progressTracker.finished).toBe(false);
+    expect(progressTracker.ended).toBe(false);
+
+    test1.done++;
+    test1.done++;
+    test1.done++;
+    expect(progressTracker.progress).toBe(1);
+    expect(progressTracker.done).toBe(5);
+    expect(progressTracker.stopped).toBe(false);
+    expect(progressTracker.finished).toBe(true);
+    expect(progressTracker.ended).toBe(true);
+
+    test1.done++;
+    expect(progressTracker.progress).toBe(1);
+    expect(progressTracker.done).toBe(5);
 });

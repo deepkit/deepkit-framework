@@ -9,7 +9,7 @@
  */
 
 import { BehaviorSubject, isObservable, Observable, Observer, Subject, Subscriber, Subscription, TeardownLogic } from 'rxjs';
-import { arrayRemoveItem, createStack, isFunction, mergePromiseStack, mergeStack } from '@deepkit/core';
+import { arrayRemoveItem, asyncOperation, createStack, isFunction, mergePromiseStack, mergeStack } from '@deepkit/core';
 import { first, skip } from 'rxjs/operators';
 
 export class AsyncSubscription {
@@ -150,4 +150,66 @@ export async function tearDown(teardown: TeardownLogic) {
     } else if ('object' === typeof teardown && teardown.unsubscribe) {
         await teardown.unsubscribe();
     }
+}
+
+/**
+ * Handles incoming messages in batches. The handler is called when the observable completes or when a certain time passed since the last message.
+ *
+ * This makes sure the handler is awaited before the next batch is processed.
+ *
+ * `maxWait` in milliseconds, this makes sure every `maxWait` ms the handler is called with the current messages if there are any.
+ * `batchSize` this is the maximum amount of messages that are passed to the handler.
+ */
+export async function throttleMessages<T, R>(observable: Observable<T>, handler: (messages: T[]) => Promise<R>, options: Partial<{
+    maxWait: number,
+    batchSize: number
+}> = {}): Promise<R[]> {
+    return asyncOperation(async (resolve, reject) => {
+        const maxWait = options.maxWait || 100;
+        const batchSize = options.batchSize || 100;
+
+        const results: R[] = [];
+        let messages: T[] = [];
+        let lastFlush = Date.now();
+        let handlerDone = true;
+        let finished = false;
+
+        function flush(andFinish = false) {
+            finished = andFinish;
+            if (!handlerDone) return;
+            if (!messages.length) {
+                if (andFinish) resolve(results);
+                return;
+            }
+            lastFlush = Date.now();
+
+            handlerDone = false;
+            const messagesToSend = messages.slice(0);
+            messages = [];
+            handler(messagesToSend).then((result) => {
+                results.push(result);
+                handlerDone = true;
+                if (andFinish) {
+                    resolve(results);
+                } else if (finished) {
+                    flush(true);
+                }
+            }, (error) => {
+                sub.unsubscribe();
+                reject(error);
+            });
+        }
+
+        const sub = observable.subscribe((message) => {
+            messages.push(message);
+            const diffTime = Date.now() - lastFlush;
+            if (diffTime > maxWait || messages.length >= batchSize) {
+                flush();
+            }
+        }, (error) => {
+            reject(error);
+        }, () => {
+            flush(true);
+        });
+    });
 }

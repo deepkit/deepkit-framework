@@ -10,3 +10,4 @@
 
 export * from './src/utils.js';
 export * from './src/timer.js';
+export * from './src/progress.js';
