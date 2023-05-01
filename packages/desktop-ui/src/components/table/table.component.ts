@@ -192,18 +192,18 @@ export class TableColumnDirective {
     template: `
         <dui-dropdown #headerDropdown>
             <dui-dropdown-item
-                    *ngFor="let column of sortedColumnDefs; trackBy: trackByColumn"
-                    [selected]="!column.isHidden()"
-                    (mousedown)="column.toggleHidden(); storePreference(); sortColumnDefs(); headerDropdown.close()"
+                *ngFor="let column of sortedColumnDefs; trackBy: trackByColumn"
+                [selected]="!column.isHidden()"
+                (mousedown)="column.toggleHidden(); storePreference(); sortColumnDefs(); headerDropdown.close()"
             >
                 <div *ngIf="column.hideable">
                     <ng-container *ngIf="column.name !== undefined && !column.headerDirective">
                         {{column.header || column.name}}
                     </ng-container>
                     <ng-container
-                            *ngIf="column.name !== undefined && column.headerDirective"
-                            [ngTemplateOutlet]="column.headerDirective.template"
-                            [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
+                        *ngIf="column.name !== undefined && column.headerDirective"
+                        [ngTemplateOutlet]="column.headerDirective.template"
+                        [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
                 </div>
             </dui-dropdown-item>
             <dui-dropdown-separator></dui-dropdown-separator>
@@ -214,16 +214,17 @@ export class TableColumnDirective {
             <div class="header" *ngIf="showHeader" #header
                  [contextDropdown]="customHeaderDropdown ? customHeaderDropdown.dropdown : headerDropdown">
                 <div class="th"
-                     *ngFor="let column of visibleColumns(sortedColumnDefs); trackBy: trackByColumn"
+                     *ngFor="let column of visibleColumns(sortedColumnDefs); trackBy: trackByColumn; let columnIndex = index;"
                      [style.width]="column.getWidth()"
                      (mousedown)="sortBy(column.name || '', $event)"
+                     [class.freeze]="columnIndex < freezeColumns"
                      [attr.name]="column.name"
                      [style.top]="scrollTop + 'px'"
                      #th>
                     <ng-container
-                            *ngIf="column.headerDirective"
-                            [ngTemplateOutlet]="column.headerDirective.template"
-                            [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
+                        *ngIf="column.headerDirective"
+                        [ngTemplateOutlet]="column.headerDirective.template"
+                        [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
 
                     <ng-container *ngIf="column.name !== undefined && !column.headerDirective">
                         {{column.header || column.name}}
@@ -246,7 +247,7 @@ export class TableColumnDirective {
                                              [itemSize]="itemHeight"
                 >
                     <ng-container
-                            *cdkVirtualFor="let row of filterSorted(sorted); trackBy: trackByFn; let i = index; odd as isOdd">
+                        *cdkVirtualFor="let row of filterSorted(sorted); trackBy: trackByFn; let i = index; odd as isOdd">
                         <div class="table-row {{rowClass ? rowClass(row) : ''}}"
                              [contextDropdown]="customRowDropdown ? customRowDropdown.dropdown : undefined"
                              [class.selected]="selectedMap.has(row)"
@@ -257,9 +258,10 @@ export class TableColumnDirective {
                              (dblclick)="dbclick.emit(row)"
                         >
                             <div class="table-cell"
-                                 *ngFor="let column of visibleColumns(sortedColumnDefs); trackBy: trackByColumn"
+                                 *ngFor="let column of visibleColumns(sortedColumnDefs); trackBy: trackByColumn; let columnIndex = index"
                                  [class]="column.class + (cellClass ?  ' ' + cellClass(row, column.name) : '')"
                                  [attr.row-column]="column.name"
+                                 [class.freeze]="columnIndex < freezeColumns"
                                  [attr.row-i]="i"
                                  [style.width]="column.getWidth()"
                             >
@@ -282,6 +284,7 @@ export class TableColumnDirective {
         '[class.no-focus-outline]': 'noFocusOutline !== false',
         '[class.borderless]': 'borderless !== false',
         '[class.overlay-scrollbar]': 'true',
+        '[class.with-hover]': 'hover !== false',
         '[class.auto-height]': 'autoHeight !== false',
     },
 })
@@ -310,6 +313,11 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
     @Input() public autoHeight: boolean = false;
 
     /**
+     * Whether the table row should have a hover effect.
+     */
+    @Input() public hover: boolean | '' = false;
+
+    /**
      * Current calculated height, used only when autoHeight is given.
      */
     public height: number = 23;
@@ -318,6 +326,11 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
      * Whether the header should be shown.
      */
     @Input() public showHeader: boolean = true;
+
+    /**
+     * How many columns (from the left) are frozen (stay visible even if user scrolls horizontally).
+     */
+    @Input() public freezeColumns: number = 0;
 
     /**
      * Default field of T for sorting.
@@ -423,7 +436,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
 
     @Output() public sortedChange: EventEmitter<T[]> = new EventEmitter();
 
-    @Output() public cellSelect: EventEmitter<{item: T, cell: string} | undefined> = new EventEmitter();
+    @Output() public cellSelect: EventEmitter<{ item: T, cell: string } | undefined> = new EventEmitter();
 
     /**
      * When a row gets double clicked.
@@ -561,7 +574,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
         if ($event && $event.button === 2) return;
 
         //only when shift is pressed do we activate multi-column sort
-        if (!$event || ! $event.shiftKey) {
+        if (!$event || !$event.shiftKey) {
             for (const member in this.sort) if (member !== name) delete this.sort[member];
         }
 
@@ -687,9 +700,9 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
                 }
 
                 if (element) {
-                    element.style.left = '0px';
-                    element.style.zIndex = '1';
-                    element.style.opacity = '1';
+                    element.style.left = '';
+                    element.style.zIndex = '';
+                    element.style.opacity = '';
 
                     for (const t of rowCells) {
                         for (const cell of t.cells) {
@@ -1037,7 +1050,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
             if (cell) {
                 const column = cell.getAttribute('row-column') || '';
                 if (column) {
-                    this.cellSelect.emit({item, cell: column});
+                    this.cellSelect.emit({ item, cell: column });
                     cellSelectFired = true;
                 }
             }

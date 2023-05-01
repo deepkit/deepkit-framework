@@ -8,16 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    AfterViewInit,
-    ChangeDetectorRef,
-    Component,
-    ElementRef,
-    Injector,
-    Input,
-    SkipSelf,
-    ViewChild
-} from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, Injector, Input, SkipSelf, ViewChild } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import Hammer from 'hammerjs';
 
@@ -59,11 +50,20 @@ export class SliderComponent extends ValueAccessorBase<number> implements AfterV
     }
 
     ngAfterViewInit() {
+        //move to next render frame, so all newly created sliders are rendered at the same time and don't block he DOM
+        requestAnimationFrame(() => {
+            this.initEvents();
+        });
+    }
+
+    initEvents() {
         const mc = new Hammer(this.knob!.nativeElement);
         mc.add(new Hammer.Pan({ direction: Hammer.DIRECTION_HORIZONTAL, threshold: 1 }));
 
         const mcTab = new Hammer(this.element.nativeElement);
         mcTab.add(new Hammer.Tap({}));
+        mcTab.add(new Hammer.Pan({ direction: Hammer.DIRECTION_HORIZONTAL, threshold: 0 }));
+        mcTab.add(new Hammer.Press({ threshold: 1 }));
 
         let startXInPixels = 0;
         let knobSize = this.knob!.nativeElement.offsetWidth;
@@ -73,11 +73,14 @@ export class SliderComponent extends ValueAccessorBase<number> implements AfterV
         mc.on('panstart', (event: HammerInput) => {
             startXInPixels = this.getWidth() * width;
             knobSize = this.knob!.nativeElement.offsetWidth;
-            width = (this.element!.nativeElement.offsetWidth - knobSize)
+            width = (this.element!.nativeElement.offsetWidth - knobSize);
         });
 
-        mcTab.on('tapstart', (event: HammerInput) => {
-            console.log('tabstart', event);
+        mcTab.on('panstart', (event: HammerInput) => {
+            const rect = (this.element!.nativeElement as HTMLElement).getBoundingClientRect();
+            startXInPixels = event.center.x - (knobSize / 2) - rect.x;
+            knobSize = this.knob!.nativeElement.offsetWidth;
+            width = (this.element!.nativeElement.offsetWidth - knobSize);
         });
 
         const handleNewLeft = (newLeft: number) => {
@@ -91,14 +94,16 @@ export class SliderComponent extends ValueAccessorBase<number> implements AfterV
             this.innerValue = Math.max(this.min, newPotentialValue - shift);
         };
 
-        mcTab.on('tap', (event: HammerInput) => {
+        const setOnMousePos = (event: HammerInput) => {
             const rect = (this.element!.nativeElement as HTMLElement).getBoundingClientRect();
             const x = event.center.x - (knobSize / 2) - rect.x;
             const newLeft = Math.min(width, Math.max(0, x)) / width;
             handleNewLeft(newLeft);
-        });
+        };
+        mcTab.on('tap', setOnMousePos);
+        mcTab.on('press', setOnMousePos);
 
-        mc.on('pan', (event: HammerInput) => {
+        function pan(event: HammerInput) {
             if (lastRequest) {
                 cancelAnimationFrame(lastRequest);
             }
@@ -107,6 +112,9 @@ export class SliderComponent extends ValueAccessorBase<number> implements AfterV
                 const newLeft = Math.min(width, Math.max(0, (startXInPixels + event.deltaX))) / width;
                 handleNewLeft(newLeft);
             });
-        });
+        }
+
+        mc.on('pan', pan);
+        mcTab.on('pan', pan);
     }
 }

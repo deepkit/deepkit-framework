@@ -115,15 +115,31 @@ In macOS we have 4 types of buttons:
     overflow: visible;
 }
 
+.show-hotkey {
+    margin-left: 4px;
+}
+
 :host.tight {
     padding: 0 1px;
 }
 
 :host.small {
-    padding: 0 2px;
+    padding: 0 4px;
     font-size: 11px;
     height: 18px;
     line-height: 16px;
+
+    .show-hotkey {
+        font-size: 11px;
+        line-height: 16px;
+        height: 18px;
+    }
+}
+
+:host.small, :host.tight {
+    .show-hotkey {
+        margin-left: 14px;
+    }
 }
 
 :host-context(.dui-theme-light) {

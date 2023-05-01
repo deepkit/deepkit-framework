@@ -29,6 +29,7 @@
     "@types/hammerjs": "^2.0.36",
     "hammerjs": "^2.0.8",
     "path": "^0.12.7",
+    "on-change": "^4.0.2",
     "tslib": "^2.0.0"
   },
   "publishConfig": {
@@ -36,9 +37,15 @@
   },
   "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/event": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13",
     "@deepkit/core-rxjs": "^1.0.1-alpha.13"
   },
   "devDependencies": {
+    "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/event": "^1.0.1-alpha.13",
+    "@deepkit/type": "^1.0.1-alpha.13",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.13",
     "@angular-devkit/build-angular": "^15.0.0",
     "@angular/animations": "^15.0.0",
     "@angular/cdk": "^15.0.0",

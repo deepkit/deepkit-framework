@@ -6,22 +6,48 @@
     background-color: white;
     height: 100px;
 
+    --background-header: #f0f0f0;
+    --border-header: #cecece;
+
+    --background-row: #fefefe;
+    --text-row-selected: unset;
+    --background-row-odd: #f5f5f5;
+    --background-row-selected: #dcdcdc;
+
+    --border-right-row-freeze: rgba(197, 197, 197, 0.5);
+    --background-row-hover: #e0e0e0;
+
     &.auto-height {
         height: auto;
     }
+}
+
+:host-context(.dui-theme-dark) {
+    --background-header: #2d2d2d;
+    --border-header: #474747;
+
+    --background-row: #1e1e1e;
+    --background-row-odd: #232323;
+    --background-row-selected: #444444;
+    --border-right-row-freeze: rgba(86, 86, 86, 0.5);
+    --background-row-hover: #333333;
 }
 
 .cdk-virtual-scroll-viewport {
     height: 100%;
 }
 
+%header-background {
+    background: var(--background-header);
+    border-bottom: 1px solid var(--border-header);
+}
+
 .header {
     white-space: nowrap;
     height: 23px;
     overflow: hidden;
-    background-color: #f0f0f0;
-    border-bottom: 1px solid #cecece;
     padding-right: 13px;
+    @extend %header-background;
 
     > div {
         position: relative;
@@ -40,6 +66,12 @@
         white-space: nowrap;
         text-overflow: ellipsis;
 
+        &.freeze {
+            position: sticky;
+            z-index: 2;
+            @extend %header-background;
+        }
+
         dui-icon {
             float: right;
             margin-top: 2px;
@@ -48,7 +80,7 @@
 
         dui-splitter {
             top: 3px;
-            right: 0;
+            right: -2px;
             bottom: 3px;
         }
 
@@ -65,6 +97,7 @@
 
 .body {
     height: 100%;
+
     &.with-header {
         height: calc(100% - 23px);
     }
@@ -77,6 +110,7 @@
 .table-row {
     white-space: nowrap;
     border-bottom: 1px solid rgba(192, 192, 192, 0.05);
+    background-color: var(--background-row);
 
     > div {
         position: relative;
@@ -91,6 +125,11 @@
         text-overflow: ellipsis;
         left: 0;
 
+        &.freeze {
+            position: sticky;
+            z-index: 2;
+        }
+
         &.active-drop {
             opacity: 0.8;
             border-left: 1px solid var(--line-color-light);
@@ -102,12 +141,18 @@
         }
     }
 
-    &.odd {
-        background-color: #f5f5f5;
+    > div.freeze {
+        background-color: var(--background-row);
+        border-right: 1px solid var(--border-right-row-freeze);
     }
 
-    &.selected {
-        background-color: #dcdcdc;
+    &.odd, &.odd > div.freeze {
+        background-color: var(--background-row-odd);
+    }
+
+    &.selected, &.selected > div.freeze {
+        color: var(--text-row-selected);
+        background-color: var(--background-row-selected);
     }
 }
 
@@ -123,25 +168,12 @@
     background-color: #1e1e1e;
     border: 1px solid #565656;
 
-    .header {
-        background-color: #2d2d2d;
-        border-bottom: 1px solid #474747;
-    }
-
     .th {
         color: white;
 
         &:active {
             background-color: #474747;
         }
-    }
-
-    .table-row.odd {
-        background-color: rgba(245, 245, 245, 0.016);
-    }
-
-    &:not(:focus) .table-row.selected {
-        background-color: #444444;
     }
 
     &:focus:not(.no-focus-outline) {
@@ -154,8 +186,16 @@
 }
 
 :host:focus {
-    .table-row.selected {
-        background-color: var(--dui-selection);
-        color: white;
+    --background-row-selected: var(--dui-selection);
+    --text-row-selected: white;
+}
+
+:host.with-hover {
+    .table-row:not(.selected):hover {
+        background-color: var(--background-row-hover);
+
+        > div.freeze {
+            background-color: var(--background-row-hover);
+        }
     }
 }

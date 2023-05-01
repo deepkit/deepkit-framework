@@ -166,7 +166,7 @@ export class ButtonHotkeyComponent implements OnChanges, OnInit {
         <dui-icon *ngIf="icon && iconRight === false" [color]="iconColor" [name]="icon" [size]="iconSize"></dui-icon>
         <ng-content></ng-content>
         <dui-icon *ngIf="icon && iconRight !== false" [color]="iconColor" [name]="icon" [size]="iconSize"></dui-icon>
-        <div *ngIf="showHotkey" style="margin-left: 4px;" [style.width.px]="hotKeySize(showHotkey) * 6"></div>
+        <div *ngIf="showHotkey" class="show-hotkey" [style.width.px]="hotKeySize(showHotkey) * 6"></div>
         <dui-button-hotkey *ngIf="showHotkey" style="position: absolute; right: 6px; top: 0;" [hotkey]="showHotkey"></dui-button-hotkey>
     `,
     host: {
@@ -329,7 +329,11 @@ export class HotkeyDirective {
 
     protected active = false;
 
-    constructor(private elementRef: ElementRef, @Optional() private button?: ButtonComponent) {
+    constructor(
+        private elementRef: ElementRef,
+        private app: ApplicationRef,
+        @Optional() private button?: ButtonComponent,
+    ) {
     }
 
     @HostListener('document:keydown', ['$event'])
@@ -342,12 +346,14 @@ export class HotkeyDirective {
             }
         }
 
+        const active = isHotKeyActive(this.hotkey, event);
         // console.log('keydown', event.key, this.hotkey, isHotKeyActive(this.hotkey, event));
-        if (!isHotKeyActive(this.hotkey, event)) return;
+        if (!active) return;
         event.preventDefault();
 
         if (this.active) return;
         this.active = true;
+        this.elementRef.nativeElement.click();
 
         if (this.button) {
             this.oldButtonActive = this.button.active;
@@ -359,8 +365,9 @@ export class HotkeyDirective {
                     this.oldButtonActive = undefined;
                     this.button.cdParent.detectChanges();
                     this.active = false;
+                    this.app.tick();
                 }
-            }, 60);
+            }, 40);
         }
     }
 

@@ -95,6 +95,7 @@ export class WindowContentComponent implements OnChanges, AfterViewInit {
         if (this.windowState.buttonGroupAlignedToSidebar) {
             this.windowState.buttonGroupAlignedToSidebar.sidebarMoved();
         }
+        this.sidebarWidthChange.next(this.sidebarWidth);
         triggerResize();
         this.cd.detectChanges();
     }

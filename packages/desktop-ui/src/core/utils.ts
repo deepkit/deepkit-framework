@@ -250,3 +250,7 @@ export function getScrollableParents(node: Element): Element[] {
 
     return scrollableParents;
 }
+
+export function trackByIndex(index: number) {
+    return index;
+}

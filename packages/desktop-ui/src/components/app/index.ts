@@ -22,6 +22,7 @@ import { ELECTRON_WINDOW, IN_DIALOG } from './token';
 import { AsyncRenderPipe, HumanFileSizePipe, ObjectURLPipe } from './pipes';
 import { ReactiveChangeDetectionModule } from './reactivate-change-detection';
 import { arrayRemoveItem } from '@deepkit/core';
+import { EventDispatcher } from '@deepkit/event';
 
 export * from './reactivate-change-detection';
 export * from './cd-counter.component';
@@ -30,6 +31,7 @@ export * from './dui-responsive.directive';
 export * from './utils';
 export * from './menu.component';
 export * from './pipes';
+export * from './state';
 
 if ('undefined' !== typeof window && 'undefined' === typeof (window as any)['global']) {
     (window as any).global = window;
@@ -320,7 +322,9 @@ export class DuiApp {
         ObjectURLPipe,
         HumanFileSizePipe,
     ],
-    providers: [OverlayStack],
+    providers: [
+        OverlayStack,
+    ],
     imports: [
         CommonModule,
         ReactiveChangeDetectionModule,
@@ -348,6 +352,7 @@ export class DuiAppModule {
             ngModule: DuiAppModule,
             providers: [
                 DuiApp,
+                { provide: EventDispatcher, useValue: new EventDispatcher().fork() },
                 { provide: IN_DIALOG, useValue: false },
                 {
                     provide: ELECTRON_WINDOW,

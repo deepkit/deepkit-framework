@@ -30,3 +30,4 @@ export * from './components/emoji';
 export * from './components/slider';
 export * from './components/indicator';
 export * from './components/tabs';
+export * from './components/layout';
