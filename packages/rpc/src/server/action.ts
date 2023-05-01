@@ -182,6 +182,14 @@ export class RpcServerAction {
             unwrappedReturnType = unwrappedReturnType.type;
         }
 
+        if (unwrappedReturnType.kind === ReflectionKind.union) {
+            //if e.g. Subject | undefined, we take the non-undefined type
+            const nonNullUndefined = unwrappedReturnType.types.filter(v => v.kind !== ReflectionKind.undefined && v.kind !== ReflectionKind.null);
+            if (nonNullUndefined.length === 1) {
+                unwrappedReturnType = nonNullUndefined[0];
+            }
+        }
+
         let type: Type = unwrappedReturnType;
         let collectionSchema: Type | undefined;
         let collectionQueryModel: Type | undefined;
@@ -207,7 +215,7 @@ export class RpcServerAction {
                 type = unwrappedReturnType.typeArguments ? unwrappedReturnType.typeArguments[0] : { kind: ReflectionKind.any };
             } else if (isPrototypeOfBase(unwrappedReturnType.classType, ProgressTracker)) {
                 mode = 'observable';
-                type = typeOf<ProgressTrackerState[]>();
+                type = typeOf<ProgressTrackerState[] | undefined>();
                 nextSchema = {
                     kind: ReflectionKind.objectLiteral,
                     types: [{

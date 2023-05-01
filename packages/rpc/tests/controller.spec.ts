@@ -493,12 +493,12 @@ test('progress tracker', async () => {
         expect(res.total).toEqual(10);
 
         await controller.increase();
-        await sleep(0.01);
+        await sleep(0.1);
         expect(res.done).toEqual(1);
         expect(res.total).toEqual(10);
 
         await controller.done();
-        await sleep(0.01);
+        await sleep(0.1);
         expect(res.done).toEqual(10);
         expect(res.finished).toEqual(true);
         expect(res.total).toEqual(10);
@@ -549,5 +549,38 @@ test('progress tracker stop', async () => {
         expect(res.finished).toBe(false);
         expect(res.stopped).toBe(true);
         expect(res.ended).toBe(true);
+    }
+});
+
+test('progress tracker reuse', async () => {
+    class Controller {
+        trackers = [new ProgressTracker()];
+
+        constructor() {
+            const track = this.trackers[0].track('test', 10);
+            track.done = 5;
+        }
+
+        @rpc.action()
+        getProgress(id: number): ProgressTracker | undefined {
+            return this.trackers[id];
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    {
+        const res = await controller.getProgress(0);
+        expect(res).toBeInstanceOf(ProgressTracker);
+        expect(res!.total).toBe(10);
+        expect(res!.done).toBe(5);
+    }
+
+    {
+        const res = await controller.getProgress(1);
+        expect(res).toBe(undefined);
     }
 });
