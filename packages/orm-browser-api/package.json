@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/orm-browser-api",
-  "version": "1.0.1-alpha.92",
+  "version": "1.0.1-alpha.93",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -28,9 +28,9 @@
     "@deepkit/type": "^1.0.1-alpha.13"
   },
   "devDependencies": {
-    "@deepkit/rpc": "^1.0.1-alpha.92",
-    "@deepkit/stopwatch": "^1.0.1-alpha.92",
-    "@deepkit/type": "^1.0.1-alpha.92"
+    "@deepkit/rpc": "^1.0.1-alpha.93",
+    "@deepkit/stopwatch": "^1.0.1-alpha.93",
+    "@deepkit/type": "^1.0.1-alpha.93"
   },
   "jest": {
     "testEnvironment": "node",

@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/desktop-ui",
-  "version": "1.0.1-alpha.89",
+  "version": "1.0.1-alpha.93",
   "description": "Library for desktop UI widgets in Angular 10+",
   "keywords": [
     "Desktop",
@@ -28,8 +28,8 @@
   "dependencies": {
     "@types/hammerjs": "^2.0.36",
     "hammerjs": "^2.0.8",
-    "path": "^0.12.7",
     "on-change": "^4.0.2",
+    "path": "^0.12.7",
     "tslib": "^2.0.0"
   },
   "publishConfig": {
@@ -37,15 +37,11 @@
   },
   "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.13",
     "@deepkit/event": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.13"
+    "@deepkit/type": "^1.0.1-alpha.13"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/event": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.13",
     "@angular-devkit/build-angular": "^15.0.0",
     "@angular/animations": "^15.0.0",
     "@angular/cdk": "^15.0.0",
@@ -58,6 +54,10 @@
     "@angular/platform-browser": "^15.0.0",
     "@angular/platform-browser-dynamic": "^15.0.0",
     "@angular/router": "^15.0.0",
+    "@deepkit/core": "^1.0.1-alpha.93",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.93",
+    "@deepkit/event": "^1.0.1-alpha.93",
+    "@deepkit/type": "^1.0.1-alpha.93",
     "@types/fs-extra": "^8.0.1",
     "@types/node": "^18.11.10",
     "fs-extra": "^8.1.0",

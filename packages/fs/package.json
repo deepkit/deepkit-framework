@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/fs",
-  "version": "1.0.1-alpha.92",
+  "version": "1.0.1-alpha.93",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "repository": "https://github.com/deepkit/deepkit-framework",
@@ -15,10 +15,10 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "dependencies": {
-    "@deepkit/core": "^1.0.1-alpha.92",
-    "@deepkit/framework": "^1.0.1-alpha.92",
-    "@deepkit/orm": "^1.0.1-alpha.92",
-    "@deepkit/type": "^1.0.1-alpha.92",
+    "@deepkit/core": "^1.0.1-alpha.93",
+    "@deepkit/framework": "^1.0.1-alpha.93",
+    "@deepkit/orm": "^1.0.1-alpha.93",
+    "@deepkit/type": "^1.0.1-alpha.93",
     "fs-extra": "^9.0.1",
     "rxjs": "~7.5.0"
   },
