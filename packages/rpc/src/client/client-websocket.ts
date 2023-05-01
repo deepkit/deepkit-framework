@@ -32,6 +32,28 @@ export class RpcWebSocketClient extends RpcClient {
 export class DeepkitClient extends RpcWebSocketClient {
 }
 
+/**
+ * Returns the WebSocket URL for the given base URL and allows port mapping.
+ * Default port-mapping maps Angular server :4200 to :8080
+ */
+export function webSocketFromBaseUrl(baseUrl: string, portMapping: { [name: number]: number } = { 4200: 8080 }): string {
+    let url = baseUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+    for (const [from, to] of Object.entries(portMapping)) {
+        url = url.replace(':' + from, ':' + to);
+    }
+    return url;
+}
+
+/**
+ * Creates a provider for RpcWebSocketClient that is compatible with Angular and Deepkit.
+ */
+export function createRpcWebSocketClientProvider(baseUrl: string = typeof location !== 'undefined' ? location.origin : 'http://localhost', portMapping: { [name: number]: number } = { 4200: 8080 }) {
+    return {
+        provide: RpcWebSocketClient,
+        useFactory: () => new RpcWebSocketClient(webSocketFromBaseUrl(baseUrl, portMapping))
+    };
+}
+
 declare var require: (module: string) => any;
 
 export class RpcWebSocketClientAdapter implements ClientTransportAdapter {

@@ -288,6 +288,10 @@ export enum RpcTypes {
     Entity, //change feed as composite, containing all Entity*
     EntityPatch,
     EntityRemove,
+
+    //Handles changes in ProgressTracker from client side to server (e.g. stop signal)
+    //From server to client is handled normally via ObservableNext
+    ActionObservableProgressNext
 }
 
 export interface rpcClientId {
@@ -324,6 +328,7 @@ export enum ActionObservableTypes {
     observable,
     subject,
     behaviorSubject,
+    progressTracker,
 }
 
 export interface rpcSort {

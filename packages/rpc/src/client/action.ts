@@ -31,6 +31,7 @@ import { ClientProgress } from '../writer.js';
 import type { WritableClient } from './client.js';
 import { EntityState, EntitySubjectStore } from './entity-state.js';
 import { assertType, deserializeType, ReflectionKind, Type, TypeObjectLiteral, typeOf } from '@deepkit/type';
+import { ProgressTracker, ProgressTrackerState } from '@deepkit/core-rxjs';
 
 interface ResponseActionObservableError extends rpcActionObservableSubscribeId, WrappedV {
 }
@@ -240,11 +241,12 @@ export class RpcActionClient {
                                         firstObservableNext = undefined;
                                     }
                                     resolve(observableSubject);
-                                } else if (body.type === ActionObservableTypes.behaviorSubject) {
-                                    observableSubject = new BehaviorSubject<any>(firstObservableNext);
+                                } else if (body.type === ActionObservableTypes.behaviorSubject || body.type === ActionObservableTypes.progressTracker) {
+                                    const classType = body.type === ActionObservableTypes.progressTracker ? ProgressTracker : BehaviorSubject;
+                                    observableSubject = new classType(firstObservableNext);
                                     firstObservableNext = undefined;
 
-                                    //we have to monkey patch unsubscribe, because they is no other way to hook into that
+                                    //we have to monkey patch unsubscribe, because there is no other way to hook into that
                                     // note: subject.subscribe().add(T), T is not called when subject.unsubscribe() is called.
                                     observableSubject.unsubscribe = () => {
                                         Subject.prototype.unsubscribe.call(observableSubject);
@@ -255,6 +257,17 @@ export class RpcActionClient {
                                         Subject.prototype.complete.call(observableSubject);
                                         subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
                                     };
+
+                                    if (observableSubject instanceof ProgressTracker) {
+                                        //whenever the client changes something, it's synced back to the server.
+                                        //this is important to handle the stop signal.
+                                        const oldChanged = observableSubject.changed;
+                                        observableSubject.changed = function (this: ProgressTracker) {
+                                            subject.send(RpcTypes.ActionObservableProgressNext, this.value, typeOf<ProgressTrackerState[]>());
+                                            return oldChanged.apply(this);
+                                        };
+                                    }
+
                                     resolve(observableSubject);
                                 }
 
@@ -404,7 +417,11 @@ export class RpcActionClient {
         collection.loaded();
     }
 
-    public async loadActionTypes(controller: RpcControllerState, method: string, options: { timeout?: number, dontWaitForConnection?: true, typeReuseDisabled?: boolean } = {}): Promise<ControllerStateActionTypes> {
+    public async loadActionTypes(controller: RpcControllerState, method: string, options: {
+        timeout?: number,
+        dontWaitForConnection?: true,
+        typeReuseDisabled?: boolean
+    } = {}): Promise<ControllerStateActionTypes> {
         const state = controller.getState(method);
         if (state.types) return state.types;
 
