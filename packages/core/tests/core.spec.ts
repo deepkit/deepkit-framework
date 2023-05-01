@@ -22,9 +22,11 @@ import {
     isPromise,
     isPrototypeOfBase,
     isUndefined,
+    range,
+    rangeArray,
     setPathValue,
     sleep,
-    stringifyValueWithType
+    stringifyValueWithType, zip
 } from '../src/core.js';
 
 class SimpleClass {
@@ -124,11 +126,15 @@ test('helper isFunction', () => {
     })).toBe(true);
     expect(isFunction(async function () {
     })).toBe(true);
-    expect(isFunction(class Peter{})).toBe(false);
-    expect(isFunction(class {})).toBe(false);
-    expect(isFunction(class{})).toBe(false);
+    expect(isFunction(class Peter {
+    })).toBe(false);
+    expect(isFunction(class {
+    })).toBe(false);
+    expect(isFunction(class {
+    })).toBe(false);
 
-    const fn = function() {}
+    const fn = function () {
+    };
     fn.toString = () => 'class{}';
     expect(isFunction(fn)).toBe(false);
 });
@@ -531,11 +537,14 @@ test('isNumeric', () => {
 });
 
 test('getParentClass', () => {
-    class User {}
+    class User {
+    }
 
-    class Admin extends User {}
+    class Admin extends User {
+    }
 
-    class SuperAdmin extends Admin {}
+    class SuperAdmin extends Admin {
+    }
 
     expect(getParentClass({} as any)).toBe(undefined);
     expect(getParentClass(Object)).toBe(undefined);
@@ -554,4 +563,21 @@ test('escapeRegExp', () => {
 
     expect(new RegExp('^' + escapeRegExp('a[.](c')).exec('a[.](c')![0]).toEqual('a[.](c');
     expect(new RegExp('^' + escapeRegExp('a[.](c')).exec('da[.](c')).toEqual(null);
+});
+
+test('range', () => {
+    expect(rangeArray(2)).toEqual([0, 1]);
+    expect(rangeArray(0, 1)).toEqual([0]);
+    expect(rangeArray(0, 2)).toEqual([0, 1]);
+    expect(rangeArray(1, 2)).toEqual([1]);
+    expect(rangeArray(1, 2, 2)).toEqual([1]);
+    expect(rangeArray(1, 4, 2)).toEqual([1, 3]);
+    expect(rangeArray(2, 4)).toEqual([2, 3]);
+});
+
+test('zip', () => {
+    expect(zip([1, 2, 3], ['a', 'b', 'c'])).toEqual([[1, 'a'], [2, 'b'], [3, 'c']]);
+    expect(zip([1, 2, 3], ['a', 'b'])).toEqual([[1, 'a'], [2, 'b']]);
+    expect(zip([1, 2], ['a', 'b', 'c'])).toEqual([[1, 'a'], [2, 'b']]);
+    expect(zip([1, 2, 3], ['a', 'b', 'c'], [true, false, true])).toEqual([[1, 'a', true], [2, 'b', false], [3, 'c', true]]);
 });

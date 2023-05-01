@@ -722,3 +722,41 @@ export function escapeRegExp(string: string): string {
 export function hasProperty(object: any, property: any): boolean {
     return Object.prototype.hasOwnProperty.call(object, property);
 }
+
+/**
+ * Returns an iterator of numbers from start (inclusive) to stop (exclusive) by step.
+ */
+export function* range(startOrLength: number, stop: number = 0, step: number = 1): IterableIterator<number> {
+    let i = startOrLength;
+    let end = stop;
+    if (stop === 0) {
+        i = 0;
+        end = startOrLength;
+    }
+
+    for (; i < end; i += step) {
+        yield i;
+    }
+}
+
+/**
+ * Returns an array of numbers from start (inclusive) to stop (exclusive) by step.
+ *
+ * Works the same as python's range function.
+ */
+export function rangeArray(startOrLength: number, stop: number = 0, step: number = 1): number[] {
+    return [...range(startOrLength, stop, step)];
+}
+
+/**
+ * Returns a combined array of the given arrays.
+ *
+ * Works the same as python's zip function.
+ */
+export function zip<T extends (readonly unknown[])[]>(
+    ...args: T
+): { [K in keyof T]: T[K] extends (infer V)[] ? V : never }[] {
+    const minLength = Math.min(...args.map((arr) => arr.length));
+    //@ts-ignore
+    return Array.from({ length: minLength }).map((_, i) => args.map((arr) => arr[i]));
+}
