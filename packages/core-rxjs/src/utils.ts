@@ -11,6 +11,7 @@
 import { BehaviorSubject, isObservable, Observable, Observer, Subject, Subscriber, Subscription, TeardownLogic } from 'rxjs';
 import { arrayRemoveItem, asyncOperation, createStack, isFunction, mergePromiseStack, mergeStack } from '@deepkit/core';
 import { first, skip } from 'rxjs/operators';
+import { ProgressTracker } from './progress.js';
 
 export class AsyncSubscription {
     protected unsubscribed = false;
@@ -212,4 +213,28 @@ export async function throttleMessages<T, R>(observable: Observable<T>, handler:
             flush(true);
         });
     });
+}
+
+/**
+ * Clone a given subject (BehaviourSubject or ProgressTracker or Subject) and decouple it from the source,
+ * so that when the new object is completed or errored, the source is not affected.
+ *
+ * This is handy if you want to hand out a subject to a consumer, but you don't want the consumer to be able to complete or error the subject.
+ */
+export function decoupleSubject<T extends Observable<any> | undefined>(observable: T): T {
+    if (observable instanceof ProgressTracker) {
+        const next = new ProgressTracker(observable.value) as any;
+        observable.subscribe(next);
+        return next;
+    } else if (observable instanceof BehaviorSubject) {
+        const next = new BehaviorSubject(observable.value) as any;
+        observable.subscribe(next);
+        return next;
+    } else if (observable instanceof Subject) {
+        const next = new Subject() as any;
+        observable.subscribe(next);
+        return next;
+    }
+
+    return observable;
 }

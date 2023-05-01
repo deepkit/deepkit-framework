@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { BehaviorSubject, Observable, ReplaySubject, Subject, Subscription } from 'rxjs';
-import { isBehaviorSubject, isSubject, nextValue, Subscriptions, throttleMessages } from '../src/utils.js';
+import { decoupleSubject, isBehaviorSubject, isSubject, nextValue, Subscriptions, throttleMessages } from '../src/utils.js';
 import { ProgressTracker } from '../src/progress.js';
 
 test('nextValue subject', async () => {
@@ -144,4 +144,16 @@ test('progress', async () => {
     test1.done++;
     expect(progressTracker.progress).toBe(1);
     expect(progressTracker.done).toBe(5);
+});
+
+test('decouple observable', async () => {
+    const subject = new ProgressTracker();
+    const decoupled = decoupleSubject(subject);
+    expect(subject === decoupled).toBe(false);
+    expect(decoupled).toBeInstanceOf(BehaviorSubject);
+    expect(subject.isStopped).toBe(false);
+    expect(decoupled.isStopped).toBe(false);
+    decoupled.complete();
+    expect(subject.isStopped).toBe(false);
+    expect(decoupled.isStopped).toBe(true);
 });

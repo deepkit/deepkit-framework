@@ -105,7 +105,7 @@ export class ProgressTrackerGroup {
     }
 
     /**
-     * True if the progress is stopped (stopped === true).
+     * True if the progress is stopped (stopped === true), but might not be finished.
      */
     get stopped() {
         return this.state.stopped;
@@ -169,21 +169,9 @@ export class ProgressTracker extends BehaviorSubject<ProgressTrackerState[]> {
         super.next(states);
     }
 
-    get running(): boolean {
-        return this.groups.some(v => v.running);
-    }
-
-    get ended(): boolean {
-        return !this.running;
-    }
-
     stop() {
         this.groups.forEach(v => v.stop());
         this.changed();
-    }
-
-    get stopped() {
-        return this.groups.every(v => v.stopped);
     }
 
     track(message: string = '', total: number, current: number = 0): ProgressTrackerGroup {
@@ -202,8 +190,33 @@ export class ProgressTracker extends BehaviorSubject<ProgressTrackerState[]> {
         return this.groups.reduce((v, group) => v + group.progress, 0) / this.groups.length;
     }
 
+    /**
+     * True if the progress is finished (done === total).
+     * Same as progress === 1.
+     */
     get finished(): boolean {
-        return this.groups.every(v => v.done === v.total);
+        return this.groups.every(v => v.finished);
+    }
+
+    /**
+     * True if the progress is running (finished === false && stopped === false).
+     */
+    get running(): boolean {
+        return this.groups.some(v => v.running);
+    }
+
+    /**
+     * True if the progress is ended (finished === true || stopped === true).
+     */
+    get ended(): boolean {
+        return !this.running;
+    }
+
+    /**
+     * True if the progress is stopped (stopped === true), but might not be finished.
+     */
+    get stopped() {
+        return this.groups.every(v => v.stopped);
     }
 
     get done(): number {
@@ -214,8 +227,8 @@ export class ProgressTracker extends BehaviorSubject<ProgressTrackerState[]> {
         return this.groups.reduce((v, group) => v + group.total, 0);
     }
 
-    get current(): ProgressTrackerGroup {
-        return this.groups[0];
+    get current(): ProgressTrackerGroup | undefined {
+        return this.groups.find(v => v.running);
     }
 }
 
