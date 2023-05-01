@@ -226,7 +226,7 @@ export function reactiveComponent<T extends AfterViewInit>() {
  *
  * Optionally @observe({unsubscribe: true}) unsubscribes the whole value as well (calling unsubscribe() on current value) on NgOnDestroy or when net property value is set.
  */
-export function observe<T extends OnDestroy>(options: { unsubscribe?: true } = {}) {
+export function observe<T extends {}>(options: { unsubscribe?: true } = {}) {
     return function (target: T, propertyKey: string | symbol) {
 
         function unsub(value: any) {

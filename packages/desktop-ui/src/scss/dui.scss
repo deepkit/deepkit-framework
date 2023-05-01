@@ -120,6 +120,9 @@
         color: var(--text-light);
     }
 
+    .text-tabular {
+        font-variant-numeric: tabular-nums !important;
+    }
 
     input, textarea, select, button {
         font-size: 13px;

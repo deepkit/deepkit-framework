@@ -10,16 +10,19 @@
 
 import { NgModule } from '@angular/core';
 import { LabelComponent, LabelGridComponent } from './label.component';
+import { SectionHeaderComponent } from './section-header.component';
 
 @NgModule({
     imports: [],
     exports: [
         LabelComponent,
         LabelGridComponent,
+        SectionHeaderComponent,
     ],
     declarations: [
         LabelComponent,
         LabelGridComponent,
+        SectionHeaderComponent,
     ],
     providers: [],
 })

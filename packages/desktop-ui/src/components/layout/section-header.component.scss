@@ -1,0 +1,21 @@
+:host {
+    display: block;
+}
+
+.title {
+    white-space: nowrap;
+    font-size: 12px;
+    padding: 4px 2px;
+    color: var(--color-black1);
+}
+
+.line {
+    border-top: 1px solid var(--line-color-light);
+    height: 10px;
+}
+
+:host.center {
+    .header  {
+        text-align: center;
+    }
+}

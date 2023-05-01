@@ -10,16 +10,18 @@
 
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IndicatorComponent } from './indicator.component';
+import { IndicatorComponent, ProgressIndicatorComponent } from './indicator.component';
 
 export * from './indicator.component';
 
 @NgModule({
     declarations: [
         IndicatorComponent,
+        ProgressIndicatorComponent,
     ],
     exports: [
         IndicatorComponent,
+        ProgressIndicatorComponent,
     ],
     imports: [
         CommonModule,
