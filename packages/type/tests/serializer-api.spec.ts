@@ -1,8 +1,16 @@
 import { expect, test } from '@jest/globals';
-import { EmptySerializer, executeTemplates, Serializer, TemplateRegistry, TemplateState, TypeGuardRegistry } from '../src/serializer.js';
+import { EmptySerializer, executeTemplates, serializer, Serializer, TemplateRegistry, TemplateState, TypeGuardRegistry } from '../src/serializer.js';
 import { ReflectionKind } from '../src/reflection/type.js';
 import { CompilerContext } from '@deepkit/core';
-import { deserialize } from '../src/serializer-facade.js';
+import { cast, deserialize } from '../src/serializer-facade.js';
+
+test('remove guard for string', () => {
+    //if the original value (before convert to string) is null, it should stay null
+    serializer.deserializeRegistry.append(ReflectionKind.string, (type, state) => {
+        state.addSetter(`null === ${state.originalAccessor} ? null : ${state.accessor}`);
+    });
+    expect(() => cast<string>(null)).toThrow('Not a string');
+});
 
 test('TypeGuardRegistry', () => {
     const serializer = new Serializer();
