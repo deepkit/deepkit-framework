@@ -11,7 +11,13 @@
 import { ClassType, CompilerContext, CustomError, isClass, isFunction } from '@deepkit/core';
 import { injectedFunction } from '@deepkit/injector';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
-import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, PropertyDecoratorResult, ReflectionClass } from '@deepkit/type';
+import {
+    ClassDecoratorResult,
+    createClassDecoratorContext,
+    createPropertyDecoratorContext,
+    PropertyDecoratorResult,
+    ReflectionClass
+} from '@deepkit/type';
 
 export type EventListenerCallback<T> = (event: T, ...args: any[]) => void | Promise<void>;
 
@@ -31,6 +37,21 @@ interface SimpleDataEvent<T> extends BaseEvent {
     data: T;
 }
 
+/**
+ * Defines a new event token. This token can be used to listen to events.
+ * Per default this has no event data, so use DataEventToken for that.
+ *
+ * @example
+ * ```typescript
+ * const userAdded = new EventToken('user.added');
+ *
+ * eventDispatcher.listen(userAdded, (event) => {
+ *    console.log('user added', event);
+ * });
+ *
+ * eventDispatcher.dispatch(userAdded);
+ * ```
+ */
 export class EventToken<T extends BaseEvent = BaseEvent> {
     /**
      * This is only to get easy the event-type. In reality this property is undefined.
@@ -45,10 +66,22 @@ export class EventToken<T extends BaseEvent = BaseEvent> {
     }
 
     listen(callback: (event: T, ...args: any[]) => void, order: number = 0, module?: InjectorModule): EventListener<T> {
-        return { eventToken: this, callback, order: order, module };
+        return {eventToken: this, callback, order: order, module};
     }
 }
 
+/**
+ * @example
+ * ```typescript
+ * const userAdded = new EventToken<User>('user.added');
+ *
+ * eventDispatcher.listen(userAdded, (event) => {
+ *    console.log('user added', event.data); //event.data is from type User
+ * });
+ *
+ * eventDispatcher.dispatch(userAdded, new User);
+ * ```
+ */
 export class DataEventToken<T> extends EventToken<SimpleDataEvent<T>> {
 
 }
@@ -84,7 +117,7 @@ class EventClassApi {
     t = new EventClassStore;
 
     addListener(eventToken: EventToken<any>, methodName: string, order: number) {
-        this.t.listeners.push({ eventToken, methodName, order: order });
+        this.t.listeners.push({eventToken, methodName, order: order});
     }
 }
 
@@ -114,8 +147,18 @@ class EventDispatcherApi {
 
 export const eventDispatcher: PropertyDecoratorResult<typeof EventDispatcherApi> = createPropertyDecoratorContext(EventDispatcherApi);
 
-export type EventListenerContainerEntryCallback = { order: number, fn: EventListenerCallback<any>, builtFn?: Function, module?: InjectorModule, };
-export type EventListenerContainerEntryService = { module: InjectorModule, order: number, classType: ClassType, methodName: string };
+export type EventListenerContainerEntryCallback = {
+    order: number,
+    fn: EventListenerCallback<any>,
+    builtFn?: Function,
+    module?: InjectorModule,
+};
+export type EventListenerContainerEntryService = {
+    module: InjectorModule,
+    order: number,
+    classType: ClassType,
+    methodName: string
+};
 export type EventListenerContainerEntry = EventListenerContainerEntryCallback | EventListenerContainerEntryService;
 
 export function isEventListenerContainerEntryCallback(obj: any): obj is EventListenerContainerEntryCallback {
@@ -287,6 +330,10 @@ export class EventDispatcher implements EventDispatcherInterface {
         return build.fn(injector || this.injector, resolveEvent(eventToken, event));
     }
 
+    /**
+     * A forked EventDispatcher does not use JIT compilation and thus is slightly slower in executing listeners,
+     * but cheap in creating event dispatchers.
+     */
     fork(): EventDispatcherInterface {
         return new ForkedEventDispatcher(this, this.injector);
     }
