@@ -93,7 +93,14 @@ import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spe
 import { Resolver } from './resolver.js';
 import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import * as micromatch from 'micromatch';
-import { isObject } from '@deepkit/core';
+
+// don't use from @deepkit/core since we don't want to have a dependency to @deepkit/core
+export function isObject(obj: any): obj is { [key: string]: any } {
+    if (obj === null) {
+        return false;
+    }
+    return (typeof obj === 'object' && !Array.isArray(obj));
+}
 
 const {
     visitEachChild,

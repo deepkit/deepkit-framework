@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { arrayMoveItem } from '../src/array.js';
-import { arrayClear, arrayHasItem, arrayRemoveItem } from '@deepkit/core';
+import { arrayClear, arrayHasItem, arrayRemoveItem } from '../src/array.js';
 
 
 test('clear', () => {

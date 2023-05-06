@@ -95,8 +95,14 @@ export function provideServices<T extends Function>(fn: T, providers: ProviderWi
  */
 export function ServiceContainer(props: { providers?: ProviderWithScope[], module?: InjectorModule, state?: ClassType, children?: any }): any {
     const children = props.children;
-    const module = props.module || new InjectorModule(props.providers || []);
-    if (props.state) module.setConfigDefinition(props.state);
-    const container = new InjectorContext(module);
-    return { ...props.children, type: wrapComponent(children.type, container) };
+    const cacheContainer: any = props.providers || props.module;
+    if (!cacheContainer) throw new Error('No providers or module given');
+    if (!cacheContainer.__injected) {
+        const module = props.module || new InjectorModule(props.providers || []);
+        if (props.state) module.setConfigDefinition(props.state);
+        const container = new InjectorContext(module);
+        cacheContainer.__injected = wrapComponent(children.type, container);
+    }
+
+    return { ...props.children, type: cacheContainer.__injected };
 }
