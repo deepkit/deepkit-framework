@@ -36,7 +36,8 @@
     "rxjs": "~7.5.0"
   },
   "dependencies": {
-    "@deepkit/api-console-api": "^1.0.1-alpha.93"
+    "@deepkit/api-console-api": "^1.0.1-alpha.93",
+    "@deepkit/api-console-gui": "^1.0.1-alpha.93"
   },
   "devDependencies": {
     "@deepkit/app": "^1.0.1-alpha.93",
