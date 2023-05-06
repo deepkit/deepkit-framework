@@ -703,7 +703,7 @@ export class Injector implements InjectorInterface {
 
         if (type.kind === ReflectionKind.class) {
             const found = findModuleForConfig(type.classType, resolveDependenciesFrom);
-            if (found) return getPathValue(found.module.getConfig(), found.path);
+            if (found) return () => getPathValue(found.module.getConfig(), found.path);
         }
 
         if (type.kind === ReflectionKind.class && type.classType === TagRegistry) return () => this.buildContext.tagRegistry;
