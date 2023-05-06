@@ -105,6 +105,9 @@
     },
     {
       "path": "packages/broker/tsconfig.json"
+    },
+    {
+      "path": "packages/vite/tsconfig.json"
     }
   ]
 }

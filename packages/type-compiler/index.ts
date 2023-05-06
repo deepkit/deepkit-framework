@@ -8,5 +8,15 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+import { declarationTransformer, transformer } from './src/compiler.js';
+import type { Program } from 'typescript';
+
 export * from './src/compiler.js';
 export * from './src/loader.js';
+
+export default function myTransformerPlugin(program: Program, opts: {}) {
+    return {
+        before: transformer,
+        afterDeclarations: declarationTransformer,
+    };
+}

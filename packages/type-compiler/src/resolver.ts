@@ -8,7 +8,7 @@ import type {
     SourceFile,
     StringLiteral,
 } from 'typescript';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 const {
     createSourceFile,

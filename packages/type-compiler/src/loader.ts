@@ -1,5 +1,5 @@
 import type { CompilerOptions, SourceFile, TransformationContext } from 'typescript';
-import * as ts from 'typescript';
+import ts from 'typescript';
 import { ReflectionTransformer } from './compiler.js';
 
 export class DeepkitLoader {

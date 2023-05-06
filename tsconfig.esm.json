@@ -87,6 +87,9 @@
     },
     {
       "path": "packages/orm-browser-api/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/vite/tsconfig.esm.json"
     }
   ]
 }

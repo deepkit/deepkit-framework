@@ -70,7 +70,7 @@ import type {
     UnionTypeNode,
     ParseConfigHost,
 } from 'typescript';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {
     ensureImportIsEmitted,
@@ -92,7 +92,7 @@ import stripJsonComments from 'strip-json-comments';
 import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spec';
 import { Resolver } from './resolver.js';
 import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
-import { contains } from 'micromatch';
+import * as micromatch from 'micromatch';
 import { isObject } from '@deepkit/core';
 
 const {
@@ -681,6 +681,9 @@ export class ReflectionTransformer implements CustomTransformer {
         }
 
         if (sourceFile.kind !== SyntaxKind.SourceFile) {
+            if ('undefined' === typeof require) {
+                throw new Error(`Invalid TypeScript library imported. SyntaxKind different ${sourceFile.kind} !== ${SyntaxKind.SourceFile}.`);
+            }
             const path = require.resolve('typescript');
             throw new Error(`Invalid TypeScript library imported. SyntaxKind different ${sourceFile.kind} !== ${SyntaxKind.SourceFile}. typescript package path: ${path}`);
         }
@@ -1913,7 +1916,7 @@ export class ReflectionTransformer implements CustomTransformer {
     protected isExcluded(filePath: string): boolean {
         if (!this.currentReflectionConfig.options.exclude) return false;
 
-        return contains(filePath, this.currentReflectionConfig.options.exclude, {
+        return micromatch.contains(filePath, this.currentReflectionConfig.options.exclude, {
             basename: true,
             cwd: this.currentReflectionConfig.baseDir
         });
@@ -2545,7 +2548,7 @@ export class ReflectionTransformer implements CustomTransformer {
     protected parseReflectionMode(mode: typeof reflectionModes[number] | '' | boolean | string | string[] | undefined, configPathDir: string): typeof reflectionModes[number] {
         if (Array.isArray(mode)) {
             if (!configPathDir) return 'never';
-            const matches = contains(this.sourceFile.fileName, mode, {
+            const matches = micromatch.contains(this.sourceFile.fileName, mode, {
                 cwd: configPathDir
             });
 

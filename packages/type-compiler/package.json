@@ -28,13 +28,14 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "typescript": "^4.8.2"
+    "typescript": "^4.8.2 || ^5.0.0"
   },
   "devDependencies": {
     "@types/lz-string": "^1.3.34",
     "@types/micromatch": "^4.0.2"
   },
   "dependencies": {
+    "@deepkit/core": "^1.0.1-alpha.93",
     "@deepkit/type-spec": "^1.0.1-alpha.93",
     "@marcj/ts-clone-node": "^2.0.0",
     "@typescript/vfs": "^1.4.0",
