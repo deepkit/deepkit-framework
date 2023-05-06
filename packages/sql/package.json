@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/sql",
-  "version": "1.0.1-alpha.93",
+  "version": "1.0.1-alpha.94",
   "description": "deepkit/orm base SQL",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -49,13 +49,13 @@
     "sqlstring-sqlite": "^0.1.1"
   },
   "devDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.93",
-    "@deepkit/core": "^1.0.1-alpha.93",
-    "@deepkit/injector": "^1.0.1-alpha.93",
-    "@deepkit/logger": "^1.0.1-alpha.93",
-    "@deepkit/orm": "^1.0.1-alpha.93",
-    "@deepkit/stopwatch": "^1.0.1-alpha.93",
-    "@deepkit/type": "^1.0.1-alpha.93"
+    "@deepkit/app": "^1.0.1-alpha.94",
+    "@deepkit/core": "^1.0.1-alpha.94",
+    "@deepkit/injector": "^1.0.1-alpha.94",
+    "@deepkit/logger": "^1.0.1-alpha.94",
+    "@deepkit/orm": "^1.0.1-alpha.94",
+    "@deepkit/stopwatch": "^1.0.1-alpha.94",
+    "@deepkit/type": "^1.0.1-alpha.94"
   },
   "jest": {
     "runner": "../../jest-serial-runner.js",
