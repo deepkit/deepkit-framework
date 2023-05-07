@@ -49,6 +49,7 @@ import type {
     ModuleDeclaration,
     Node,
     NodeFactory,
+    ParseConfigHost,
     PropertyAccessExpression,
     PropertyDeclaration,
     PropertySignature,
@@ -68,7 +69,6 @@ import type {
     TypeQueryNode,
     TypeReferenceNode,
     UnionTypeNode,
-    ParseConfigHost,
 } from 'typescript';
 import ts from 'typescript';
 
@@ -170,6 +170,10 @@ function debug(...message: any[]): void {
     if ('undefined' !== typeof process && 'string' === typeof process.env.DEBUG && process.env.DEBUG.includes('deepkit')) {
         console.debug(...message);
     }
+}
+
+function filterUndefined(object: { [name: string]: any }): { [name: string]: any } {
+    return Object.fromEntries(Object.entries(object).filter(([, v]) => v !== undefined));
 }
 
 export const packSizeByte: number = 6;
@@ -553,7 +557,8 @@ export class ReflectionTransformer implements CustomTransformer {
     ) {
         this.f = context.factory;
         this.nodeConverter = new NodeConverter(this.f);
-        this.compilerOptions = context.getCompilerOptions();
+        //it is important to not have undefined values like {paths: undefined} because it would override the read tsconfig.json
+        this.compilerOptions = filterUndefined(context.getCompilerOptions());
         this.host = createCompilerHost(this.compilerOptions);
         this.resolver = new Resolver(this.compilerOptions, this.host);
     }
@@ -601,7 +606,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 readFile: (path: string) => this.host.readFile(path),
                 readDirectory: (path: string, extensions?: readonly string[], exclude?: readonly string[], include?: readonly string[], depth?: number) => {
                     if (!this.host.readDirectory) return [];
-                    return this.host.readDirectory(path, extensions || [], exclude, include || [], depth)
+                    return this.host.readDirectory(path, extensions || [], exclude, include || [], depth);
                 },
             };
         }
@@ -651,10 +656,13 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
             }
         }
+
         if (!this.overriddenHost) {
             this.host = createCompilerHost(this.compilerOptions);
-            this.resolver = new Resolver(this.compilerOptions, this.host);
         }
+
+        //we need to create a new resolver, because we might have correctly resolved compilerOptions
+        this.resolver = new Resolver(this.compilerOptions, this.host);
 
         this.addImports = [];
 
@@ -2090,7 +2098,7 @@ export class ReflectionTransformer implements CustomTransformer {
                                 return;
                             }
 
-                            // //check if the referenced declaration has reflection disabled
+                            // check if the referenced declaration has reflection disabled
                             const declarationReflection = this.findReflectionConfig(declaration, program);
                             if (declarationReflection.mode === 'never') {
                                 program.pushOp(ReflectionOp.any);
