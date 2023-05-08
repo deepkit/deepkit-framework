@@ -331,7 +331,7 @@ export class ApplicationServer {
             this.logger.log(`Server started.`);
         }
 
-        return this.onStop;
+        return listenOnSignals ? this.onStop : Promise.resolve();
     }
 
     public getWorker(): WebWorker {
