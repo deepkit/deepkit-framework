@@ -1099,7 +1099,7 @@ export function indexAccess(container: Type, index: Type): Type {
             return { kind: ReflectionKind.never };
         }
     } else if (container.kind === ReflectionKind.any) {
-        return container;
+        return { kind: ReflectionKind.any };
     }
     return { kind: ReflectionKind.never };
 }

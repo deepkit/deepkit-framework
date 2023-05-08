@@ -13,6 +13,7 @@ import {
     CompilerContext,
     CustomError,
     getObjectKeysSize,
+    hasProperty,
     isArray,
     isFunction,
     isInteger,
@@ -20,8 +21,7 @@ import {
     isNumeric,
     isObject,
     stringifyValueWithType,
-    toFastProperties,
-    hasProperty
+    toFastProperties
 } from '@deepkit/core';
 import {
     AnnotationDefinition,
@@ -57,7 +57,6 @@ import {
     Type,
     TypeClass,
     TypeIndexSignature,
-    TypeLiteral,
     TypeObjectLiteral,
     TypeParameter,
     TypeProperty,
@@ -1159,7 +1158,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             }`);
         }
 
-        state.setContext({hasProperty});
+        state.setContext({ hasProperty });
         //the index signature type could be: string, number, symbol.
         //or a literal when it was constructed by a mapped type.
         lines.push(`
@@ -1297,14 +1296,14 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 existing.push(readName);
 
                 state.setContext({ unpopulatedSymbol });
+                const forType: Type = member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
+                    ? { kind: ReflectionKind.function, name: memberNameToString(member.name), return: member.return, parameters: member.parameters }
+                    : member.type;
+                const checkTemplate = executeTemplates(propertyState, forType).trim();
                 lines.push(`
                 if (${optionalCheck} ${propertyAccessor} !== unpopulatedSymbol) {
                     let ${checkValid} = false;
-                    ${executeTemplates(propertyState,
-                    member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
-                        ? { kind: ReflectionKind.function, name: memberNameToString(member.name), return: member.return, parameters: member.parameters }
-                        : member.type
-                )}
+                    ${checkTemplate || `// no template found for member ${String(member.name)}.type.kind=${forType.kind}`}
                     if (!${checkValid}) ${state.setter} = false;
                 }`);
             }
@@ -1320,14 +1319,15 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
 
         for (const signature of signatures) {
             const checkValid = state.compilerContext.reserveName('check');
+            const checkTemplate = executeTemplates(state.fork(checkValid, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), signature.type).trim();
             signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)}) {
                 let ${checkValid} = false;
-                ${executeTemplates(state.fork(checkValid, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), signature.type)}
+                ${checkTemplate || `// no template found for signature.type.kind=${signature.type.kind}`}
                 if (!${checkValid}) ${state.setter} = false;
             }`);
         }
 
-        state.setContext({hasProperty});
+        state.setContext({ hasProperty });
         //the index signature type could be: string, number, symbol.
         //or a literal when it was constructed by a mapped type.
         lines.push(`
@@ -2034,7 +2034,9 @@ export class Serializer {
     protected registerTypeGuards() {
         this.typeGuards.register(1, ReflectionKind.any, (type, state) => {
             //if any is part of a union, we use register(20) below. otherwise it would match before anything else.
-            if (type.parent && type.parent.kind === ReflectionKind.union) return;
+            if (type.parent && type.parent.kind === ReflectionKind.union) {
+                return;
+            }
             state.addSetter('true');
         });
         //if nothing else matches in a union, any matches anything

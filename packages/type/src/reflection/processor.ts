@@ -791,7 +791,11 @@ export class Processor {
                             break;
                         }
                         case ReflectionOp.intersection: {
-                            this.handleIntersection();
+                            let t = this.handleIntersection();
+                            if (t) {
+                                if (this.isEnded()) t = assignResult(program.resultType, t);
+                                this.pushType(t);
+                            }
                             break;
                         }
                         case ReflectionOp.callSignature:
@@ -1358,7 +1362,7 @@ export class Processor {
             if (decorators.length) result.decorators = decorators;
             Object.assign(result.annotations, annotations);
         }
-        this.pushType(result);
+        return result;
     }
 
     private handleDistribute(program: Program) {
@@ -1464,7 +1468,10 @@ export class Processor {
             if (index.kind === ReflectionKind.never) {
                 //ignore
             } else if (index.kind === ReflectionKind.any || isSimpleIndex(index)) {
-                this.push({ kind: ReflectionKind.indexSignature, type, index });
+                const t: TypeIndexSignature = { kind: ReflectionKind.indexSignature, type, index, parent: undefined as any };
+                t.type.parent = t;
+                t.index.parent = t;
+                this.push(t);
             } else {
                 let optional: true | undefined = undefined;
                 if (index.kind === ReflectionKind.literal && !(index.literal instanceof RegExp)) {
