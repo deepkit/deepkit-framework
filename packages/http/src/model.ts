@@ -339,6 +339,10 @@ export class MemoryHttpResponse extends HttpResponse {
         }
     }
 
+    get text(): string {
+        return this.bodyString;
+    }
+
     get bodyString(): string {
         return this.body.toString('utf8');
     }

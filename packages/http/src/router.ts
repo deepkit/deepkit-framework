@@ -21,6 +21,7 @@ import { HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware.js';
 import qs from 'qs';
 import { HtmlResponse, JSONResponse, Response } from './http.js';
 import { getRequestParserCodeForParameters, ParameterForRequestParser, parseRoutePathToRegex } from './request-parser.js';
+import { HttpConfig, HttpParserOptions } from './module.config.js';
 
 export type RouteParameterResolverForInjector = ((injector: InjectorContext) => HttpRequestPositionedParameters | Promise<HttpRequestPositionedParameters>);
 
@@ -215,7 +216,10 @@ export interface RouteParameterResolverContext {
     type: ReflectionParameter;
 }
 
-function filterMiddlewaresForRoute(middlewareRawConfigs: MiddlewareRegistryEntry[], routeConfig: RouteConfig, fullPath: string): { config: HttpMiddlewareConfig, module: InjectorModule<any> }[] {
+function filterMiddlewaresForRoute(middlewareRawConfigs: MiddlewareRegistryEntry[], routeConfig: RouteConfig, fullPath: string): {
+    config: HttpMiddlewareConfig,
+    module: InjectorModule<any>
+}[] {
     const middlewares = middlewareRawConfigs.slice(0);
     middlewares.push(...routeConfig.middlewares as any[]);
 
@@ -526,11 +530,11 @@ export class HttpRouter {
     protected buildId: number = 0;
     protected resolveFn?: (name: string, parameters: { [name: string]: any }) => string;
 
-
     constructor(
         controllers: HttpControllers,
         private logger: LoggerInterface,
         tagRegistry: TagRegistry,
+        private config: HttpConfig,
         private middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry,
         private registry: HttpRouterRegistry = new HttpRouterRegistry,
     ) {
@@ -547,11 +551,12 @@ export class HttpRouter {
         controllers: (ClassType | { module: InjectorModule<any>, controller: ClassType })[],
         tagRegistry: TagRegistry = new TagRegistry(),
         middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry(),
-        module: InjectorModule<any> = new InjectorModule()
+        module: InjectorModule<any> = new InjectorModule(),
+        config: HttpConfig = new HttpConfig()
     ): HttpRouter {
         return new this(new HttpControllers(controllers.map(v => {
             return isClass(v) ? { controller: v, module } : v;
-        })), new Logger([], []), tagRegistry, middlewareRegistry);
+        })), new Logger([], []), tagRegistry, config, middlewareRegistry);
     }
 
     protected getRouteCode(compiler: CompilerContext, routeConfig: RouteConfig): string {
@@ -600,7 +605,7 @@ export class HttpRouter {
             `;
         }
 
-        const parametersLoader = getRequestParserCodeForParameters(compiler, parameters, {
+        const parametersLoader = getRequestParserCodeForParameters(compiler, this.config.parser, parameters, {
             module: routeConfig.module,
             resolverForToken: routeConfig.resolverForToken,
             resolverForParameterName: routeConfig.resolverForParameterName,

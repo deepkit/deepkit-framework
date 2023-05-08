@@ -1,5 +1,5 @@
 import { HttpListener, HttpResultFormatter, httpWorkflow } from './http.js';
-import { HttpConfig } from './module.config.js';
+import { HttpConfig, HttpParserOptions } from './module.config.js';
 import { AddedListener, AppModule, createModule, stringifyListener } from '@deepkit/app';
 import { HttpRouter, HttpRouterRegistry, RouteConfig } from './router.js';
 import { HttpKernel } from './kernel.js';
@@ -89,10 +89,10 @@ export class HttpModule extends createModule({
             let i = index;
 
             this.addProvider({
-                provide: uniqueType, useFactory: (request: HttpRequest, injector: InjectorContext, config?: RouteConfig) => {
+                provide: uniqueType, useFactory: (httpConfig: HttpConfig, request: HttpRequest, injector: InjectorContext, config?: RouteConfig) => {
                     if (!build) {
                         const params = listener.reflection.getParameters().slice(1);
-                        build = buildRequestParser(params, config?.getFullPath());
+                        build = buildRequestParser(httpConfig.parser, params, config?.getFullPath());
                     }
 
                     const parser = build(request);

@@ -148,6 +148,8 @@ export class FrameworkModule extends createModule({
             this.addListener(HttpLogger);
         }
 
+        this.getImportedModuleByClass(HttpModule).configure({ parser: this.config.httpParse });
+
         if (this.config.publicDir) {
             this.addListener(serveStaticListener(this, normalizeDirectory(this.config.publicDirPrefix), this.config.publicDir));
         }

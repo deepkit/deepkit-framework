@@ -5,14 +5,15 @@ import {
     findMember,
     getSerializeFunction,
     getValidatorFunction,
-    metaAnnotation, ReflectionFunction,
+    metaAnnotation,
     ReflectionKind,
     ReflectionParameter,
     resolveReceiveType,
     serializer,
     stringifyType,
     Type,
-    typeToObject, ValidationError
+    typeToObject,
+    ValidationError
 } from '@deepkit/type';
 import { BodyValidationError, createRequestWithCachedBody, getRegExp, HttpRequest, ValidatedBody } from './model.js';
 import { RouteConfig, UploadedFile } from './router.js';
@@ -22,13 +23,15 @@ import qs from 'qs';
 
 // @ts-ignore
 import formidable from 'formidable';
+import { HttpParserOptions } from './module.config.js';
 
 
-function parseBody(req: HttpRequest, foundFiles: { [name: string]: UploadedFile }) {
-    const form = formidable({
+function parseBody(
+    options: HttpParserOptions,
+    req: HttpRequest, foundFiles: { [name: string]: UploadedFile }) {
+    const form = formidable(Object.assign(options, {
         multiples: true,
-        hash: 'sha1',
-    });
+    }));
     return asyncOperation((resolve, reject) => {
         function parseData(err: any, fields: any, files: any) {
             if (err) {
@@ -149,7 +152,7 @@ export function parseRoutePathToRegex(path: string, params: ReflectionParameter[
     return { regex: path, parameterNames };
 }
 
-export function buildRequestParser(parameters: ReflectionParameter[], path?: string): (request: HttpRequest) => any[] {
+export function buildRequestParser(parseOptions: HttpParserOptions, parameters: ReflectionParameter[], path?: string): (request: HttpRequest) => any[] {
     const compiler = new CompilerContext();
     const params = parameters.map(v => new ParameterForRequestParser(v));
 
@@ -164,7 +167,7 @@ export function buildRequestParser(parameters: ReflectionParameter[], path?: str
         }
     }
 
-    const code = getRequestParserCodeForParameters(compiler, params, {});
+    const code = getRequestParserCodeForParameters(compiler, parseOptions, params, {});
     compiler.context.set('ValidationError', ValidationError);
     compiler.context.set('qs', qs);
 
@@ -188,13 +191,14 @@ export function buildRequestParser(parameters: ReflectionParameter[], path?: str
 
 export function getRequestParserCodeForParameters(
     compiler: CompilerContext,
+    parseOptions: HttpParserOptions,
     parameters: ParameterForRequestParser[],
     config: {
         module?: InjectorModule<any>,
         resolverForParameterName?: Map<string, ClassType>,
         resolverForToken?: Map<any, ClassType>,
         pathParameterNames?: { [name: string]: number },
-        routeConfig?: RouteConfig
+        routeConfig?: RouteConfig,
     }
 ) {
     let enableParseBody = false;
@@ -314,9 +318,10 @@ export function getRequestParserCodeForParameters(
 
     let parseBodyLoading = '';
     if (enableParseBody) {
+        const parseOptionsVar = compiler.reserveVariable('parseOptions', parseOptions);
         const parseBodyVar = compiler.reserveVariable('parseBody', parseBody);
         parseBodyLoading = `
-            const bodyFields = (await ${parseBodyVar}(request, uploadedFiles));`;
+            const bodyFields = (await ${parseBodyVar}(${parseOptionsVar}, request, uploadedFiles));`;
         requiresAsyncParameters = true;
     }
 
