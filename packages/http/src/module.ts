@@ -1,6 +1,6 @@
 import { HttpListener, HttpResultFormatter, httpWorkflow } from './http.js';
-import { HttpConfig, HttpParserOptions } from './module.config.js';
-import { AddedListener, AppModule, createModule, stringifyListener } from '@deepkit/app';
+import { HttpConfig } from './module.config.js';
+import { AddedListener, AppModule, ControllerConfig, createModule, stringifyListener } from '@deepkit/app';
 import { HttpRouter, HttpRouterRegistry, RouteConfig } from './router.js';
 import { HttpKernel } from './kernel.js';
 import { HttpRouterFilterResolver } from './filter.js';
@@ -8,7 +8,6 @@ import { HttpControllers } from './controllers.js';
 import { ConsoleTransport, Logger } from '@deepkit/logger';
 import { HttpRequest, HttpResponse } from './model.js';
 import '@deepkit/type';
-import { ClassType } from '@deepkit/core';
 import { httpClass } from './decorator.js';
 import { EventToken } from '@deepkit/event';
 import { metaAnnotation, ReflectionKind, ReflectionParameter, Type } from '@deepkit/type';
@@ -104,7 +103,10 @@ export class HttpModule extends createModule({
         }
     }
 
-    processController(module: AppModule<any>, controller: ClassType) {
+    processController(module: AppModule<any>, config: ControllerConfig) {
+        const controller = config.controller;
+        if (!controller) return;
+
         const httpConfig = httpClass._fetch(controller);
         if (!httpConfig) return;
 

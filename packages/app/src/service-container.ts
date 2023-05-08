@@ -16,8 +16,16 @@ import { cli } from './command.js';
 import { WorkflowDefinition } from '@deepkit/workflow';
 import { deserialize, ReflectionClass, ReflectionFunction, validate } from '@deepkit/type';
 
+export interface ControllerConfig {
+    controller?: ClassType,
+    name?: string;
+    for?: string; //e.g. cli
+    callback?: Function,
+    module: InjectorModule
+}
+
 export class CliControllerRegistry {
-    public readonly controllers = new Map<string, { controller: ClassType, module: InjectorModule }>();
+    public readonly controllers = new Map<string, ControllerConfig>();
 }
 
 export type MiddlewareRegistryEntry = { config: MiddlewareConfig, module: AppModule<any> };
@@ -200,6 +208,7 @@ export class ServiceContainer {
 
         const providers = module.getProviders();
         const controllers = module.getControllers();
+        const commands = module.getCommands();
         const listeners = module.getListeners();
         const middlewares = module.getMiddlewares();
 
@@ -222,7 +231,11 @@ export class ServiceContainer {
         }
 
         for (const controller of controllers) {
-            this.processController(module, controller);
+            this.processController(module, { module, controller });
+        }
+
+        for (const command of commands) {
+            this.processController(module, { module, for: 'cli', ...command });
         }
 
         for (const provider of providers) {
@@ -261,11 +274,22 @@ export class ServiceContainer {
         }
     }
 
-    protected processController(module: AppModule<any>, controller: ClassType) {
-        const cliConfig = cli._fetch(controller);
-        if (cliConfig) {
-            if (!module.isProvided(controller)) module.addProvider({ provide: controller, scope: 'cli' });
-            this.cliControllerRegistry.controllers.set(cliConfig.name, { controller, module });
+    protected processController(module: AppModule<any>, controller: ControllerConfig) {
+        let name = controller.name || '';
+        if (controller.controller) {
+            if (!name) {
+                const cliConfig = cli._fetch(controller.controller);
+                if (cliConfig) {
+                    name = cliConfig.name || '';
+                    //make sure CLI controllers are provided in cli scope
+                    if (!module.isProvided(controller.controller)) {
+                        module.addProvider({ provide: controller.controller, scope: 'cli' });
+                    }
+                    this.cliControllerRegistry.controllers.set(name, controller);
+                }
+            }
+        } else if (controller.for === 'cli') {
+            this.cliControllerRegistry.controllers.set(name, controller);
         }
 
         for (const m of this.modules) {

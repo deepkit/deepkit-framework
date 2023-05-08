@@ -1,12 +1,11 @@
 import { beforeEach, expect, test } from '@jest/globals';
-import { App } from '../src/app.js';
+import { App, AppErrorEvent, AppEvent, AppExecutedEvent, onAppError, onAppExecute, onAppExecuted, onAppShutdown } from '../src/app.js';
 import { Inject, ProviderWithScope, Token } from '@deepkit/injector';
 import { AppModule, createModule } from '../src/module.js';
 import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
-import { cli, Command } from '../src/command.js';
-import { isClass } from '@deepkit/core';
-import { ServiceContainer } from '../src/service-container.js';
-import { ClassType } from '@deepkit/core';
+import { cli, Command, Flag } from '../src/command.js';
+import { ClassType, isClass } from '@deepkit/core';
+import { ControllerConfig, ServiceContainer } from '../src/service-container.js';
 
 Error.stackTraceLimit = 100;
 
@@ -439,7 +438,9 @@ test('service container hooks', () => {
         providersFound: ProviderWithScope[] = [];
         controllersFound: ClassType[] = [];
 
-        processController(module: AppModule<any>, controller: ClassType) {
+        processController(module: AppModule<any>, config: ControllerConfig) {
+            const controller = config.controller;
+            if (!controller) return;
             expect(module).toBeInstanceOf(AppModule);
             expect(isClass(controller)).toBe(true);
             module.addProvider(controller);
@@ -448,6 +449,9 @@ test('service container hooks', () => {
 
         processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
             expect(module).toBeInstanceOf(AppModule);
+            if (isClass(provider)) {
+                debugger;
+            }
             this.providersFound.push(provider);
         }
     }
@@ -547,4 +551,103 @@ test('event dispatch', () => {
     app.dispatch(UserAddedEvent, { username: 'Peter' });
 
     expect(app.get(Logger).buffer).toEqual([['User added', 'Peter']]);
+});
+
+test('command callback', async () => {
+    class MyService {
+    }
+
+    const app = new App({
+        providers: [MyService],
+    }).command('test', (id: number, check: boolean & Flag = false, service: MyService) => {
+        expect(id).toBe(34);
+        expect(check).toBe(true);
+        expect(service).toBeInstanceOf(MyService);
+    });
+
+    const res = await app.execute(['test', '34', '--check']);
+});
+
+test('command callback array', async () => {
+    class MyService {
+    }
+
+    const app = new App({
+        providers: [MyService],
+    }).command('test', (id: number, check: number[] & Flag, service: MyService) => {
+        expect(id).toBe(34);
+        expect(check).toEqual([1, 2]);
+        expect(service).toBeInstanceOf(MyService);
+    });
+
+    const res = await app.execute(['test', '34', '--check', '1', '--check', '2']);
+});
+
+test('events', async () => {
+    class MyService {
+    }
+
+    let executeEvent: AppEvent | undefined = undefined;
+    let executedEvent: AppExecutedEvent | undefined = undefined;
+    let errorEvent: AppErrorEvent | undefined = undefined;
+    let shutdownEvent: AppEvent | undefined = undefined;
+
+    const app = new App({
+        providers: [MyService],
+    })
+        .command('test', (id: number, check: boolean & Flag = false) => {
+            if (id === 404) throw new Error('error');
+        })
+        .listen(onAppExecute, (event) => {
+            executeEvent = event.data;
+        })
+        .listen(onAppExecuted, (event) => {
+            executedEvent = event.data;
+        })
+        .listen(onAppError, (event) => {
+            errorEvent = event.data;
+        })
+        .listen(onAppShutdown, (event) => {
+            shutdownEvent = event.data;
+        })
+    ;
+
+    {
+        executeEvent = undefined;
+        executedEvent = undefined;
+        errorEvent = undefined;
+        shutdownEvent = undefined;
+
+        const res = await app.execute(['test', '34', '--check']);
+        expect(executeEvent!.command).toBe('test');
+        expect(executeEvent!.parameters).toEqual({ id: 34, check: true });
+
+        expect(executedEvent!.command).toBe('test');
+        expect(executedEvent!.parameters).toEqual({ id: 34, check: true });
+        expect(executedEvent!.exitCode).toEqual(0);
+
+        expect(errorEvent).toBe(undefined);
+
+        expect(shutdownEvent!.command).toBe('test');
+        expect(shutdownEvent!.parameters).toEqual({ id: 34, check: true });
+    }
+
+    {
+        executeEvent = undefined;
+        executedEvent = undefined;
+        errorEvent = undefined;
+        shutdownEvent = undefined;
+
+        const res = await app.execute(['test', '404', '--check']);
+        expect(executeEvent!.command).toBe('test');
+        expect(executeEvent!.parameters).toEqual({ id: 404, check: true });
+
+        expect(executedEvent).toBe(undefined);
+
+        expect(errorEvent!.command).toBe('test');
+        expect(errorEvent!.parameters).toEqual({ id: 404, check: true });
+
+        expect(shutdownEvent!.command).toBe('test');
+        expect(shutdownEvent!.parameters).toEqual({ id: 404, check: true });
+    }
 });

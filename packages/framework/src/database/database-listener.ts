@@ -8,11 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { onServerMainBootstrap, onServerMainShutdown } from '../application-server.js';
+import { onServerMainBootstrap } from '../application-server.js';
 import { eventDispatcher } from '@deepkit/event';
 import { LoggerInterface } from '@deepkit/logger';
 import { DatabaseRegistry } from '@deepkit/orm';
 import { getClassName } from '@deepkit/core';
+import { onAppShutdown } from '@deepkit/app';
 
 export class DatabaseListener {
     constructor(
@@ -33,7 +34,7 @@ export class DatabaseListener {
         }
     }
 
-    @eventDispatcher.listen(onServerMainShutdown)
+    @eventDispatcher.listen(onAppShutdown)
     onShutdown() {
         this.databases.onShutDown();
     }

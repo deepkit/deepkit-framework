@@ -13,6 +13,7 @@ import { AbstractClassType, ClassType, CustomError, ExtractClassType, isClass } 
 import { EventListener, EventToken } from '@deepkit/event';
 import { WorkflowDefinition } from '@deepkit/workflow';
 import { getPartialSerializeFunction, reflect, ReflectionFunction, ReflectionMethod, serializer, Type, TypeClass } from '@deepkit/type';
+import { ControllerConfig } from './service-container.js';
 
 export type DefaultObject<T> = T extends undefined ? {} : T;
 
@@ -236,6 +237,7 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
 
     public imports: AppModule<any>[] = [];
     public controllers: ClassType[] = [];
+    public commands: { name: string, callback: Function }[] = [];
     public workflows: WorkflowDefinition<any>[] = [];
     public listeners: ListenerType[] = [];
     public middlewares: MiddlewareFactory[] = [];
@@ -297,7 +299,7 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
     /**
      * A hook that allows to react on a registered controller in some module.
      */
-    processController(module: AppModule<any>, controller: ClassType) {
+    processController(module: AppModule<any>, config: ControllerConfig) {
 
     }
 
@@ -341,6 +343,16 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
 
     getControllers(): ClassType[] {
         return this.controllers;
+    }
+
+    getCommands(): { name: string, callback: Function }[] {
+        return this.commands;
+    }
+
+    addCommand(name: string, callback: (...args: []) => any): this {
+        this.assertInjectorNotBuilt();
+        this.commands.push({ name, callback });
+        return this;
     }
 
     addController(...controller: ClassType[]): this {

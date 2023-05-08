@@ -11,6 +11,11 @@
 import { ClassType } from '@deepkit/core';
 import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, FreeFluidDecorator, PropertyApiTypeInterface } from '@deepkit/type';
 
+/**
+ * Flag is a command line argument that is prefixed with `--` and can have a value.
+ */
+export type Flag<Options extends {char?: string, hidden?: boolean} = {}> = { __meta?: ['cli:flag', Options] };
+
 class ArgDefinitions {
     name: string = '';
     description: string = '';
@@ -34,7 +39,7 @@ class CommandDecorator {
 
 export const cli: ClassDecoratorResult<typeof CommandDecorator> = createClassDecoratorContext(CommandDecorator);
 
-class ArgDefinition {
+export class ArgDefinition {
     isFlag: boolean = false;
     description: string = '';
     hidden: boolean = false;

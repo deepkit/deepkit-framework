@@ -146,6 +146,9 @@ export class ApplicationServer {
     protected onlineWorkers = 0;
     protected needsHttpWorker: boolean;
 
+    public onStop: Promise<void>;
+    protected stopResolver!: () => void;
+
     constructor(
         protected logger: LoggerInterface,
         protected webWorkerFactory: WebWorkerFactory,
@@ -156,6 +159,7 @@ export class ApplicationServer {
         protected router: HttpRouter,
     ) {
         this.needsHttpWorker = needsHttpWorker(config, rpcControllers, router);
+        this.onStop = new Promise((resolve) => this.stopResolver = resolve);
     }
 
     getHttpWorker(): WebWorker {
@@ -246,7 +250,11 @@ export class ApplicationServer {
                         this.stopping = true;
                         this.logger.warning(`Received ${signal}. Stopping server ...`);
                         await this.stopWorkers();
-                        process.exit(0);
+                        this.stopResolver();
+                        setTimeout(() => {
+                            //give onAppShutdown a chance to react
+                            process.exit(0);
+                        }, 10);
                     };
                     process.on('SIGINT', stopServer('SIGINT'));
                     process.on('SIGTERM', stopServer('SIGTERM'));
@@ -300,7 +308,11 @@ export class ApplicationServer {
                     await this.eventDispatcher.dispatch(onServerShutdown, new ServerShutdownEvent());
                     await this.eventDispatcher.dispatch(onServerMainShutdown, new ServerShutdownEvent());
                     if (this.httpWorker) await this.httpWorker.close(true);
-                    process.exit(0);
+                    this.stopResolver();
+                    setTimeout(() => {
+                        //give onAppShutdown a chance to react
+                        process.exit(0);
+                    }, 10);
                 };
                 process.on('SIGINT', stopServer('SIGINT'));
                 process.on('SIGTERM', stopServer('SIGTERM'));
@@ -318,6 +330,8 @@ export class ApplicationServer {
         if (cluster.isMaster) {
             this.logger.log(`Server started.`);
         }
+
+        return this.onStop;
     }
 
     public getWorker(): WebWorker {

@@ -3,6 +3,7 @@ import { ClassType } from '@deepkit/core';
 import { App } from '../src/app.js';
 import { AppModule, createModule } from '../src/module.js';
 import { InjectorContext } from '@deepkit/injector';
+import { ControllerConfig } from '../src/service-container.js';
 
 test('controller instantiation', () => {
     class Registry {
@@ -46,7 +47,9 @@ test('controller instantiation', () => {
             this.addProvider({ provide: Registry, useValue: this.registry });
         }
 
-        processController(module: AppModule<any>, controller: ClassType) {
+        processController(module: AppModule<any>, config: ControllerConfig) {
+            const controller = config.controller;
+            if (!controller) return;
             //controllers need to be put into the module's providers by the controller consumer
             if (!module.isProvided(controller)) module.addProvider(controller);
             this.registry.register(module, controller);

@@ -18,7 +18,7 @@ import { Main } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { buildOclifCommand } from './oclif.js';
 import { EnvConfiguration } from './configuration.js';
-import { EventDispatcher, EventListener, EventListenerCallback, EventOfEventToken, EventToken } from '@deepkit/event';
+import { DataEventToken, EventDispatcher, EventListener, EventListenerCallback, EventOfEventToken, EventToken } from '@deepkit/event';
 import { ReceiveType, ReflectionClass, ReflectionKind } from '@deepkit/type';
 
 export function setPartialConfig(target: { [name: string]: any }, partial: { [name: string]: any }, incomingPath: string = '') {
@@ -152,6 +152,53 @@ class EnvConfigLoader {
 export class RootAppModule<T extends RootModuleDefinition> extends AppModule<T> {
 }
 
+export interface AppEvent {
+    /**
+     * The command that is about to be executed.
+     */
+    command: string;
+
+    parameters: { [name: string]: any };
+
+    /**
+     * Scoped 'cli' injector context.
+     */
+    injector: InjectorContext;
+}
+
+export interface AppExecutedEvent extends AppEvent {
+    exitCode: number;
+}
+
+
+export interface AppErrorEvent extends AppEvent {
+    error: Error;
+}
+
+/**
+ * When a CLI command is about to be executed, this event is emitted.
+ *
+ * This is different to @deepkit/framework's onBootstrap event, which is only executed
+ * when the server:start is execute. This event is executed for every CLI command (including server:start).
+ */
+export const onAppExecute = new DataEventToken<AppEvent>('app.execute');
+
+/**
+ * When a CLI command is successfully executed, this event is emitted.
+ */
+export const onAppExecuted = new DataEventToken<AppExecutedEvent>('app.executed');
+
+/**
+ * When a CLI command failed to execute, this event is emitted.
+ */
+export const onAppError = new DataEventToken<AppErrorEvent>('app.error');
+
+/**
+ * When the application is about to shut down, this event is emitted.
+ * This is always executed, even when an error occurred. So it's a good place to clean up.
+ */
+export const onAppShutdown = new DataEventToken<AppEvent>('app.shutdown');
+
 /**
  * This is the smallest available application abstraction in Deepkit.
  *
@@ -186,6 +233,11 @@ export class App<T extends RootModuleDefinition> {
      */
     setup(...args: Parameters<this['appModule']['setup']>): this {
         this.serviceContainer.appModule = (this.serviceContainer.appModule.setup as any)(...args as any[]);
+        return this;
+    }
+
+    command(name: string, callback: (...args: any[]) => any): this {
+        this.appModule.addCommand(name, callback);
         return this;
     }
 
@@ -276,6 +328,8 @@ export class App<T extends RootModuleDefinition> {
     public async execute(argv: string[], binPaths: string[] = []): Promise<number> {
         let result: any;
 
+        const eventDispatcher = this.get(EventDispatcher);
+
         class MyConfig extends Config {
             commandsMap: { [name: string]: Command.Plugin } = {};
 
@@ -336,7 +390,7 @@ export class App<T extends RootModuleDefinition> {
             const scopedInjectorContext = this.getInjectorContext().createChildScope('cli');
 
             for (const [name, info] of this.serviceContainer.cliControllerRegistry.controllers.entries()) {
-                config.commandsMap[name] = buildOclifCommand(name, scopedInjectorContext, info.controller, info.module);
+                config.commandsMap[name] = buildOclifCommand(name, eventDispatcher, scopedInjectorContext, info);
             }
 
             await Main.run(argv, config);

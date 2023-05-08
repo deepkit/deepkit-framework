@@ -37,7 +37,7 @@ import { AppConfigController } from './cli/app-config.js';
 import { Zone } from './zone.js';
 import { DebugBroker, DebugBrokerListener } from './debug/broker.js';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
-import { AppModule, createModule } from '@deepkit/app';
+import { AppModule, ControllerConfig, createModule } from '@deepkit/app';
 import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc.js';
 import { normalizeDirectory } from './utils.js';
 
@@ -216,7 +216,10 @@ export class FrameworkModule extends createModule({
         }
     }
 
-    processController(module: AppModule<any>, controller: ClassType) {
+    processController(module: AppModule<any>, config: ControllerConfig) {
+        const controller = config.controller;
+        if (!controller) return;
+
         const rpcConfig = rpcClass._fetch(controller);
         if (!rpcConfig) return;
 
