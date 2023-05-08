@@ -1133,8 +1133,8 @@ test('patch', () => {
     }
 
     {
-        // const data = patch<Order>({ id: 5, 'shippingAddress.street': 123 }, undefined, undefined, underscoreNamingStrategy);
-        // expect(data).toEqual({ id: 5, 'shipping_address.street': '123' });
+        const data = patch<Order>({ id: 5, 'shippingAddress.street': 123 }, undefined, undefined, underscoreNamingStrategy);
+        expect(data).toEqual({ id: 5, 'shipping_address.street': '123' });
     }
 
     //no validation for the moment until object reference->primary key validation is implemented for the ORM
@@ -1144,8 +1144,8 @@ test('patch', () => {
 
     {
         //index signature are not touched by naming strategy
-        // const data = patch<Order>({ id: 5, 'shippingAddress.additional.randomName': 12 }, undefined, undefined, underscoreNamingStrategy);
-        // expect(data).toEqual({ id: 5, 'shipping_address.additional.randomName': '12' });
+        const data = patch<Order>({ id: 5, 'shippingAddress.additional.randomName': 12 }, undefined, undefined, underscoreNamingStrategy);
+        expect(data).toEqual({ id: 5, 'shipping_address.additional.randomName': '12' });
     }
 });
 
