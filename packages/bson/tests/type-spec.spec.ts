@@ -1033,3 +1033,17 @@ test('class with statics', () => {
     expect(deserializeFromJson<PilotId>({value: 34})).toEqual({value: 34});
     expect(serializeToJson<PilotId>({value: 33})).toEqual({value: 33});
 });
+
+test('array with mongoid', () => {
+    interface Model {
+        references: Array<{ cls: string, id: MongoId }>;
+    }
+
+    expect(deserializeFromJson<Model>({ references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }] })).toEqual({
+        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }]
+    });
+
+    expect(serializeToJson<Model>({ references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }] })).toEqual({
+        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }]
+    });
+});

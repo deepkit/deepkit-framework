@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { ReceiveType, ReflectionClass, resolveReceiveType, typeOf } from '../src/reflection/reflection.js';
-import { AutoIncrement, BackReference, findMember, isReferenceType, MapName, MongoId, PrimaryKey, Reference, UUID } from '../src/reflection/type.js';
+import { ReceiveType, ReflectionClass, resolveReceiveType } from '../src/reflection/reflection.js';
+import { AutoIncrement, BackReference, isReferenceType, MapName, MongoId, PrimaryKey, Reference, UUID } from '../src/reflection/type.js';
 import { cast, cloneClass, serialize } from '../src/serializer-facade.js';
 import { createReference } from '../src/reference.js';
 import { unpopulatedSymbol } from '../src/core.js';
@@ -775,11 +775,25 @@ test('class with statics', () => {
         }
     }
 
-    expect(deserializeFromJson<PilotId>({value: 34})).toEqual({value: 34});
-    expect(serializeToJson<PilotId>({value: 33})).toEqual({value: 33});
+    expect(deserializeFromJson<PilotId>({ value: 34 })).toEqual({ value: 34 });
+    expect(serializeToJson<PilotId>({ value: 33 })).toEqual({ value: 33 });
 });
 
 test('primary key only for reference becomes reference', () => {
-    expect(deserializeFromJson<Team>({id: 1, name: 'a', lead: 34}).lead).toBeInstanceOf(User);
-    expect(deserializeFromJson<Team>({id: 1, name: 'a', lead: {id: 34}}).lead).toBeInstanceOf(User);
+    expect(deserializeFromJson<Team>({ id: 1, name: 'a', lead: 34 }).lead).toBeInstanceOf(User);
+    expect(deserializeFromJson<Team>({ id: 1, name: 'a', lead: { id: 34 } }).lead).toBeInstanceOf(User);
+});
+
+test('array with mongoid', () => {
+    interface Model {
+        references: Array<{ cls: string, id: MongoId }>;
+    }
+
+    expect(deserializeFromJson<Model>({ references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }] })).toEqual({
+        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }]
+    });
+
+    expect(serializeToJson<Model>({ references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }] })).toEqual({
+        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }]
+    });
 });
