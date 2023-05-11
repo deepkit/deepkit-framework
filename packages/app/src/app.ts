@@ -20,6 +20,7 @@ import { buildOclifCommand } from './oclif.js';
 import { EnvConfiguration } from './configuration.js';
 import { DataEventToken, EventDispatcher, EventListener, EventListenerCallback, EventOfEventToken, EventToken } from '@deepkit/event';
 import { ReceiveType, ReflectionClass, ReflectionKind } from '@deepkit/type';
+import { Logger } from '@deepkit/logger';
 
 export function setPartialConfig(target: { [name: string]: any }, partial: { [name: string]: any }, incomingPath: string = '') {
     for (const i in partial) {
@@ -329,6 +330,14 @@ export class App<T extends RootModuleDefinition> {
         let result: any;
 
         const eventDispatcher = this.get(EventDispatcher);
+        const logger = this.get(Logger);
+
+        if ('undefined' !== typeof process) {
+            process.on('unhandledRejection', error => {
+                // Will print "unhandledRejection err is not defined"
+                logger.error('unhandledRejection', error);
+            });
+        }
 
         class MyConfig extends Config {
             commandsMap: { [name: string]: Command.Plugin } = {};

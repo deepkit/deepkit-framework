@@ -460,7 +460,7 @@ test('service container hooks', () => {
         const m = new MyModule;
         const app = new ServiceContainer(new AppModule({ imports: [m] }));
         app.process();
-        expect(m.providersFound.length).toBe(5); //5 is the default, as the ServiceContainer adds default services
+        expect(m.providersFound.length).toBe(6); //6 is the default, as the ServiceContainer adds default services
         expect(m.controllersFound.length).toBe(0);
     }
 
@@ -471,7 +471,7 @@ test('service container hooks', () => {
         const m = new MyModule;
         const app = new ServiceContainer(new AppModule({ controllers: [Controller], imports: [m] }));
         app.process();
-        expect(m.providersFound.length).toBe(6);
+        expect(m.providersFound.length).toBe(7);
         expect(m.controllersFound.length).toBe(1);
     }
 
@@ -482,7 +482,7 @@ test('service container hooks', () => {
         const m = new MyModule;
         const app = new ServiceContainer(new AppModule({ providers: [Controller], imports: [m] }));
         app.process();
-        expect(m.providersFound.length).toBe(6);
+        expect(m.providersFound.length).toBe(7);
         expect(m.controllersFound.length).toBe(0);
     }
 
@@ -501,7 +501,7 @@ test('service container hooks', () => {
         const m = new MyModule;
         const app = new ServiceContainer(new AppModule({ imports: [baseModule, m] }));
         app.process();
-        expect(m.providersFound.length).toBe(7);
+        expect(m.providersFound.length).toBe(8);
         expect(m.controllersFound.length).toBe(1);
     }
 });

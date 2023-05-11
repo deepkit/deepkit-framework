@@ -110,7 +110,6 @@ export class FrameworkModule extends createModule({
         WebWorkerFactory,
         RpcServer,
         ConsoleTransport,
-        Logger,
         RpcKernelSecurity,
         RpcKernel,
         MigrationProvider,
@@ -153,8 +152,6 @@ export class FrameworkModule extends createModule({
         if (this.config.publicDir) {
             this.addListener(serveStaticListener(this, normalizeDirectory(this.config.publicDirPrefix), this.config.publicDir));
         }
-
-        this.setupProvider<Logger>().addTransport(injectorReference(ConsoleTransport));
 
         if (this.config.debug) {
             mkdirSync(join(this.config.varPath, this.config.debugStorePath), { recursive: true });

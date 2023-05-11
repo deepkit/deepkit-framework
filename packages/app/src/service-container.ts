@@ -15,6 +15,7 @@ import { Injector, InjectorContext, InjectorModule, isProvided, ProviderWithScop
 import { cli } from './command.js';
 import { WorkflowDefinition } from '@deepkit/workflow';
 import { deserialize, ReflectionClass, ReflectionFunction, validate } from '@deepkit/type';
+import { ConsoleTransport, Logger } from '@deepkit/logger';
 
 export interface ControllerConfig {
     controller?: ClassType,
@@ -94,6 +95,7 @@ export class ServiceContainer {
         this.appModule.addProvider({ provide: CliControllerRegistry, useValue: this.cliControllerRegistry });
         this.appModule.addProvider({ provide: MiddlewareRegistry, useValue: this.middlewareRegistry });
         this.appModule.addProvider({ provide: InjectorContext, useFactory: () => this.injectorContext! });
+        this.appModule.addProvider({ provide: Logger, useFactory: () => new Logger([new ConsoleTransport()]) });
 
         this.processModule(this.appModule);
 

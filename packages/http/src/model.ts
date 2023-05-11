@@ -384,8 +384,9 @@ export class MemoryHttpResponse extends HttpResponse {
             }
             this.body = Buffer.concat([this.body, chunk]);
         }
-        super.end(chunk, encoding, callback);
         this.emit('finish');
+        super.end(chunk, encoding, callback);
+        this.emit('close');
         return this;
     }
 }
