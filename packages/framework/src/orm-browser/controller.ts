@@ -29,7 +29,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
     }
 
     protected extractDatabaseInfo(db: Database): DatabaseInfo {
-        return new DatabaseInfo(db.name, (db.adapter as DatabaseAdapter).getName(), db.entityRegistry.entities.map(v => v.serializeType()));
+        return new DatabaseInfo(db.name, (db.adapter as DatabaseAdapter).getName(), db.entityRegistry.all().map(v => v.serializeType()));
     }
 
     protected getDb(dbName: string): Database {
@@ -42,7 +42,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
     protected getDbEntity(dbName: string, entityName: string): [Database, ReflectionClass<any>] {
         for (const db of this.databases) {
             if (db.name === dbName) {
-                for (const entity of db.entityRegistry.entities) {
+                for (const entity of db.entityRegistry.all()) {
                     if (entity.name === entityName) return [db, entity];
                 }
             }

@@ -13,10 +13,11 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { cli, Command, flag } from '@deepkit/app';
 import { LoggerInterface } from '@deepkit/logger';
-import { SQLDatabaseAdapter } from '../sql-adapter.js';
+import { MigrationStateEntity, SQLDatabaseAdapter } from '../sql-adapter.js';
 import { DatabaseComparator, DatabaseModel } from '../schema/table.js';
 import { MigrationProvider } from '../migration/migration-provider.js';
 import { BaseCommand } from './base-command.js';
+import { ReflectionClass } from '@deepkit/type';
 
 function serializeSQLLine(sql: string): string {
     return '`' + sql.replace(/`/g, '\\`') + '`';
@@ -30,7 +31,7 @@ export class MigrationCreateController extends BaseCommand implements Command {
         protected logger: LoggerInterface,
         protected provider: MigrationProvider,
     ) {
-        super()
+        super();
     }
 
     async execute(
@@ -59,36 +60,45 @@ export class MigrationCreateController extends BaseCommand implements Command {
             if (db.name === 'debug') continue;
             if (!(db.adapter instanceof SQLDatabaseAdapter)) continue;
 
-            const databaseModel = new DatabaseModel();
-            databaseModel.schemaName = db.adapter.getSchemaName();
-            db.adapter.platform.createTables(db.entityRegistry, databaseModel);
-
-            const connection = await db.adapter.connectionPool.getConnection();
-            const schemaParser = new db.adapter.platform.schemaParserType(connection, db.adapter.platform);
-
-            const parsedDatabaseModel = new DatabaseModel();
-            parsedDatabaseModel.schemaName = db.adapter.getSchemaName();
-            await schemaParser.parse(parsedDatabaseModel);
-
-            connection.release();
-            db.disconnect();
-
-            // console.log('databaseModel', databaseModel.tables[0]);
-            // console.log('parsedDatabaseModel', parsedDatabaseModel.tables[0]);
             let upSql: string[] = [];
             let downSql: string[] = [];
 
-            const databaseDiff = DatabaseComparator.computeDiff(parsedDatabaseModel, databaseModel);
-            if (!empty && !databaseDiff) {
-                this.logger.error(db.name, 'No database differences found.');
-                return;
-            }
+            if (!empty) {
+                const databaseModel = new DatabaseModel();
+                databaseModel.schemaName = db.adapter.getSchemaName();
+                db.adapter.platform.createTables(db.entityRegistry, databaseModel);
 
-            if (databaseDiff) {
-                upSql = db.adapter.platform.getModifyDatabaseDDL(databaseDiff);
-                if (!empty && !upSql.length) {
-                    this.logger.error(db.name, 'No generates sql found.');
+                const connection = await db.adapter.connectionPool.getConnection();
+                const schemaParser = new db.adapter.platform.schemaParserType(connection, db.adapter.platform);
+
+                const parsedDatabaseModel = new DatabaseModel();
+                parsedDatabaseModel.schemaName = db.adapter.getSchemaName();
+                await schemaParser.parse(parsedDatabaseModel);
+                parsedDatabaseModel.removeUnknownTables(databaseModel);
+                parsedDatabaseModel.removeTable(ReflectionClass.from(MigrationStateEntity).getCollectionName());
+
+                connection.release();
+                db.disconnect();
+
+                const databaseDiff = DatabaseComparator.computeDiff(parsedDatabaseModel, databaseModel);
+                if (!databaseDiff) {
+                    this.logger.error(db.name, `No database differences for ${db.name} found.`);
                     continue;
+                }
+
+                if (noDrop) {
+                    databaseDiff.removedTables = [];
+                }
+
+                if (databaseDiff) {
+                    upSql = db.adapter.platform.getModifyDatabaseDDL(databaseDiff);
+                    if (!empty && !upSql.length) {
+                        this.logger.error(db.name, `No generated sql for ${db.name} found.`);
+                        continue;
+                    }
+
+                    const reverseDatabaseDiff = DatabaseComparator.computeDiff(databaseModel, parsedDatabaseModel);
+                    downSql = reverseDatabaseDiff ? db.adapter.platform.getModifyDatabaseDDL(reverseDatabaseDiff) : [];
                 }
             }
 
@@ -105,11 +115,6 @@ export class MigrationCreateController extends BaseCommand implements Command {
                 }
             }
             const migrationFile = join(this.provider.getMigrationDir(), migrationName + '.ts');
-
-            if (databaseDiff) {
-                const reverseDatabaseDiff = DatabaseComparator.computeDiff(databaseModel, parsedDatabaseModel);
-                downSql = reverseDatabaseDiff ? db.adapter.platform.getModifyDatabaseDDL(reverseDatabaseDiff) : [];
-            }
 
             const code = `
 import {Migration} from '@deepkit/sql';
@@ -162,9 +167,11 @@ ${downSql.map(serializeSQLLine).map(indent(12)).join(',\n')}
 }
 `;
 
+            console.log(migrationFile);
             mkdirSync(dirname(migrationFile), { recursive: true });
             writeFileSync(migrationFile, code.trim());
             this.logger.log(`Migration file for database <green>${db.name}</green> written to <yellow>${migrationFile}</yellow>`);
         }
+        console.log('done');
     }
 }

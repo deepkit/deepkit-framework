@@ -57,8 +57,10 @@ export class MigrationProvider {
         const files = await glob('**/*.ts', { cwd: migrationDir });
         require('ts-node').register({
             compilerOptions: {
-                experimentalDecorators: true
-            }
+                experimentalDecorators: true,
+                module: 'undefined' !== typeof require ? 'CommonJS' : 'ESNext',
+            },
+            transpileOnly: true,
         });
 
         for (const file of files) {

@@ -318,7 +318,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     }
 
     getEntity(name: string): ReflectionClass<any> {
-        for (const entity of this.entityRegistry.entities) {
+        for (const entity of this.entityRegistry.all()) {
             if (entity.getName() === name) return entity;
         }
 

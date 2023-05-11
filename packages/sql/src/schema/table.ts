@@ -26,6 +26,20 @@ export class DatabaseModel {
         return table;
     }
 
+    removeUnknownTables(other: DatabaseModel) {
+        for (const table of this.tables.slice()) {
+            if (!other.hasTable(table.name, table.schemaName)) {
+                arrayRemoveItem(this.tables, table);
+            }
+        }
+    }
+
+    removeTable(name: string, schemaName?: string) {
+        if (!this.hasTable(name, schemaName)) return;
+        const table = this.getTable(name, schemaName);
+        arrayRemoveItem(this.tables, table);
+    }
+
     addTable(name: string) {
         const table = new Table(name);
         this.tables.push(table);
@@ -650,6 +664,13 @@ export class DatabaseDiff {
     constructor(
         public from: DatabaseModel, public to: DatabaseModel
     ) {
+    }
+
+    removeTable(name: string, schema?: string) {
+        this.removedTables = this.removedTables.filter(v => v.name !== name && v.schemaName !== schema);
+        this.modifiedTables = this.modifiedTables.filter(v => v.to.name !== name && v.to.schemaName !== schema);
+        this.renamedTables = this.renamedTables.filter(([from, to]) => to.name !== name && to.schemaName !== schema);
+        this.addedTables = this.addedTables.filter(v => v.name !== name && v.schemaName !== schema);
     }
 
     forTable(table: Table) {

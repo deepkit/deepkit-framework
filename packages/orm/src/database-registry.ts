@@ -118,7 +118,7 @@ export class DatabaseRegistry {
 
             const database = this.injectorContext.get(databaseType.classType);
 
-            for (const classSchema of database.entityRegistry.entities) {
+            for (const classSchema of database.entityRegistry.all()) {
                 classSchema.data['orm.database'] = database;
             }
 

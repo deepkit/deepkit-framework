@@ -11,7 +11,7 @@ export const databaseFactory: DatabaseFactory = async (entities, plugins): Promi
         if (plugins) database.registerPlugin(...plugins);
 
         //drop&recreate collection is incredible slow in mongodb, so we work around that
-        for (const entity of database.entityRegistry.entities) {
+        for (const entity of database.entityRegistry.all()) {
             await database.query(entity).deleteMany();
         }
         await adapter.resetAutoIncrementSequences();

@@ -3,7 +3,7 @@ import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { Config } from './config.js';
 
-@entity.name('user')
+@entity.name('user').collection('users')
 export class User {
     id: number & PrimaryKey & AutoIncrement = 0;
     created: Date = new Date;
@@ -15,7 +15,7 @@ export class User {
     }
 }
 
-@entity.name('author')
+@entity.name('author').collection('authors')
 export class Author {
     id: number & PrimaryKey & AutoIncrement = 0;
     created: Date = new Date;
@@ -39,7 +39,7 @@ enum BookStatus {
     revoked,
 }
 
-@entity.name('book')
+@entity.name('book').collection('books')
 export class Book {
     id: number & PrimaryKey & AutoIncrement = 0;
     created: Date = new Date;

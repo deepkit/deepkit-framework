@@ -79,12 +79,20 @@ export abstract class DatabaseAdapter {
  * We need to do type comparison to get always the correct (registered) ReflectionClass.
  */
 export class DatabaseEntityRegistry {
-    public readonly entities: ReflectionClass<any>[] = [];
+    protected entities: ReflectionClass<any>[] = [];
 
     static from(items: (Type | ReflectionClass<any> | ClassType)[]) {
         const e = new DatabaseEntityRegistry();
         e.add(...items);
         return e;
+    }
+
+    all(): ReflectionClass<any>[] {
+        return this.entities;
+    }
+
+    forMigration(): ReflectionClass<any>[] {
+        return this.entities.filter(v => !v.data['excludeMigration']);
     }
 
     add(...types: (Type | ReflectionClass<any> | ClassType)[]): void {

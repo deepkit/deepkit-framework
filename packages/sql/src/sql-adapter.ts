@@ -30,14 +30,14 @@ import {
     RawFactory,
     Replace,
     Resolve,
-    SORT_ORDER, UniqueConstraintFailure
+    SORT_ORDER
 } from '@deepkit/orm';
 import { AbstractClassType, ClassType, isArray, isClass } from '@deepkit/core';
-import { Changes, getPartialSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass } from '@deepkit/type';
+import { Changes, entity, getPartialSerializeFunction, getSerializeFunction, PrimaryKey, ReceiveType, ReflectionClass } from '@deepkit/type';
 import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform.js';
 import { Sql, SqlBuilder } from './sql-builder.js';
 import { SqlFormatter } from './sql-formatter.js';
-import { DatabaseComparator, DatabaseModel } from './schema/table.js';
+import { DatabaseComparator, DatabaseModel, Table } from './schema/table.js';
 import { Stopwatch } from '@deepkit/stopwatch';
 
 export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
@@ -444,37 +444,38 @@ export class SQLDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     }
 }
 
+@entity.name('migration_state')
+export class MigrationStateEntity {
+    created: Date = new Date;
+
+    constructor(public version: number & PrimaryKey) {
+    }
+}
+
 export class SqlMigrationHandler {
-    protected migrationEntity = class Entity {
-        created: Date = new Date;
-
-        constructor(public version: number) {
-        }
-    };
-
     constructor(protected database: Database<SQLDatabaseAdapter>) {
     }
 
     public async setLatestMigrationVersion(version: number): Promise<void> {
         const session = this.database.createSession();
-        session.add(new this.migrationEntity(version));
+        session.add(new MigrationStateEntity(version));
         await session.commit();
     }
 
     public async removeMigrationVersion(version: number): Promise<void> {
         const session = this.database.createSession();
-        await session.query(this.migrationEntity).filter({ version }).deleteOne();
+        await session.query(MigrationStateEntity).filter({ version }).deleteOne();
     }
 
     public async getLatestMigrationVersion(): Promise<number> {
         const session = this.database.createSession();
         try {
-            const version = await session.query(this.migrationEntity).sort({ version: 'desc' }).findOneOrUndefined();
+            const version = await session.query(MigrationStateEntity).sort({ version: 'desc' }).findOneOrUndefined();
             return version ? version.version : 0;
         } catch (error) {
             const connection = await this.database.adapter.connectionPool.getConnection();
             try {
-                const [table] = this.database.adapter.platform.createTables(DatabaseEntityRegistry.from([this.migrationEntity]));
+                const [table] = this.database.adapter.platform.createTables(DatabaseEntityRegistry.from([MigrationStateEntity]));
                 const createSql = this.database.adapter.platform.getAddTableDDL(table);
                 for (const sql of createSql) {
                     await connection.run(sql);
@@ -604,17 +605,18 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
         const connection = await this.connectionPool.getConnection();
 
         try {
-            for (const entity of entityRegistry.entities) {
-                const databaseModel = new DatabaseModel();
-                databaseModel.schemaName = this.getSchemaName();
-                this.platform.createTables(entityRegistry, databaseModel);
+            const databaseModel = new DatabaseModel();
+            databaseModel.schemaName = this.getSchemaName();
+            this.platform.createTables(entityRegistry, databaseModel);
+            const schemaParser = new this.platform.schemaParserType(connection, this.platform);
 
-                const schemaParser = new this.platform.schemaParserType(connection, this.platform);
+            const parsedDatabaseModel = new DatabaseModel();
+            parsedDatabaseModel.schemaName = this.getSchemaName();
+            await schemaParser.parse(parsedDatabaseModel);
+            parsedDatabaseModel.removeUnknownTables(databaseModel);
+            parsedDatabaseModel.removeTable(ReflectionClass.from(MigrationStateEntity).getCollectionName());
 
-                const parsedDatabaseModel = new DatabaseModel();
-                parsedDatabaseModel.schemaName = this.getSchemaName();
-                await schemaParser.parse(parsedDatabaseModel);
-
+            for (const entity of entityRegistry.forMigration()) {
                 const databaseDiff = DatabaseComparator.computeDiff(parsedDatabaseModel, databaseModel);
                 if (databaseDiff) {
                     const table = databaseModel.getTableForClass(entity);
@@ -631,38 +633,33 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
             connection.release();
         }
 
-
         return migrations;
     }
 
     public async migrate(entityRegistry: DatabaseEntityRegistry): Promise<void> {
+        const migrations = await this.getMigrations(entityRegistry);
         const connection = await this.connectionPool.getConnection();
 
         try {
             const databaseModel = new DatabaseModel();
             databaseModel.schemaName = this.getSchemaName();
             this.platform.createTables(entityRegistry, databaseModel);
-
             const schemaParser = new this.platform.schemaParserType(connection, this.platform);
 
             const parsedDatabaseModel = new DatabaseModel();
             parsedDatabaseModel.schemaName = this.getSchemaName();
             await schemaParser.parse(parsedDatabaseModel);
+            parsedDatabaseModel.removeUnknownTables(databaseModel);
+            parsedDatabaseModel.removeTable(ReflectionClass.from(MigrationStateEntity).getCollectionName());
 
-            const databaseDiff = DatabaseComparator.computeDiff(parsedDatabaseModel, databaseModel);
-            if (!databaseDiff) {
-                return;
-            }
-
-            const upSql = this.platform.getModifyDatabaseDDL(databaseDiff);
-            if (!upSql.length) return;
-
-            for (const sql of upSql) {
-                try {
-                    await connection.run(sql);
-                } catch (error) {
-                    console.error('Could not execute migration SQL', sql, error);
-                    throw error;
+            for (const [databaseName, migration] of Object.entries(migrations)) {
+                for (const sql of migration.sql) {
+                    try {
+                        await connection.run(sql);
+                    } catch (error) {
+                        console.error('Could not execute migration SQL', sql, error);
+                        throw error;
+                    }
                 }
             }
         } finally {
@@ -797,7 +794,7 @@ export class SQLPersistence extends DatabasePersistence {
             await (await this.getConnection()).run(sql, params);
         } catch (error: any) {
             if (error instanceof DatabaseError) {
-                throw error
+                throw error;
             }
             throw new DatabaseError(`Could not insert ${classSchema.getClassName()} into database: ${String(error)}, sql: ${sql}, params: ${params}`);
         }

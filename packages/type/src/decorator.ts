@@ -65,15 +65,6 @@ class TDecorator {
     data(name: string, value: any) {
         this.t.data[name] = value;
     }
-
-    data2(name: string, value: any) {
-    }
-
-    data3(name: string, value: any) {
-    }
-
-    data4(name: string, value: any) {
-    }
 }
 
 export const t = createPropertyDecoratorContext(TDecorator);
@@ -117,7 +108,12 @@ class EntityDecorator {
     data(name: string, value: any) {
         this.t.data[name] = value;
     }
-    data4(name: string, value: any) {
+
+    /**
+     * Exclude this entity from database migrations.
+     */
+    excludeMigration() {
+        this.t.data['excludeMigration'] = true;
     }
 }
 

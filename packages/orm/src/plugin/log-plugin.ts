@@ -147,7 +147,7 @@ export class LogPlugin implements DatabasePlugin {
 
     onRegister(database: Database<any>): void {
         if (this.entities.size === 0) {
-            for (const entity of database.entityRegistry.entities) {
+            for (const entity of database.entityRegistry.all()) {
                 if (entity.data[IsLogEntity]) continue;
                 this.entities.add(entity);
                 database.entityRegistry.add(this.getLogEntity(entity));

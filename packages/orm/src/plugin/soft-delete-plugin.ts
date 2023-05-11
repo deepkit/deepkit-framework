@@ -126,7 +126,7 @@ export class SoftDeletePlugin implements DatabasePlugin {
 
     onRegister(database: Database<any>): void {
         this.database = database;
-        for (const type of database.entityRegistry.entities) this.enableForSchema(type);
+        for (const type of database.entityRegistry.all()) this.enableForSchema(type);
     }
 
     enable<T extends SoftDeleteEntity>(...classSchemaOrTypes: (ReflectionClass<T> | ClassType<T>)[]) {

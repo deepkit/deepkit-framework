@@ -115,7 +115,7 @@ export class DebugController implements DebugControllerInterface {
 
         for (const db of this.databaseRegistry.getDatabases()) {
             const entities: DatabaseEntity[] = [];
-            for (const classSchema of db.entityRegistry.entities) {
+            for (const classSchema of db.entityRegistry.all()) {
                 entities.push({ name: classSchema.name, className: classSchema.getClassName() });
             }
             databases.push({ name: db.name, entities, adapter: (db.adapter as DatabaseAdapter).getName() });

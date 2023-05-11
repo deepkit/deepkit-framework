@@ -94,7 +94,7 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
     async migrate(entityRegistry: DatabaseEntityRegistry) {
         await this.client.connect(); //manually connect to catch connection errors
         let withOrmSequences = true;
-        for (const schema of entityRegistry.entities) {
+        for (const schema of entityRegistry.forMigration()) {
             await this.migrateClassSchema(schema);
             for (const property of schema.getProperties()) {
                 if (property.isAutoIncrement()) withOrmSequences = true;

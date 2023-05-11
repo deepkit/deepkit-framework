@@ -276,7 +276,7 @@ export abstract class DefaultPlatform {
 
         const refs = new Map<ReflectionClass<any>, ReflectionClass<any>>();
 
-        for (let schema of entityRegistry.entities) {
+        for (let schema of entityRegistry.forMigration()) {
             //a parent of a single-table inheritance might already be added
             if (mergedToSingleTable.has(schema)) continue;
 
