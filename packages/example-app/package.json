@@ -4,7 +4,7 @@
   "version": "1.0.1-alpha.0",
   "description": "",
   "scripts": {
-    "app": "node -r ts-node/register --preserve-symlinks --watch app.ts",
+    "app": "node -r ts-node/register --preserve-symlinks app.ts",
     "build": "tsc",
     "start": "node -r ts-node/register --preserve-symlinks --watch app.ts server:start",
     "watch": "node -r ts-node/register --preserve-symlinks --watch app.ts server:start",
