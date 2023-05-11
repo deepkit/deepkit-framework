@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/orm-browser-module",
-  "version": "1.0.1-alpha.98",
+  "version": "1.0.1-alpha.99",
   "description": "ORM Browser",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -46,7 +46,7 @@
     "@deepkit/bson": "^1.0.1-alpha.97",
     "@deepkit/core": "^1.0.1-alpha.97",
     "@deepkit/crypto": "^1.0.1-alpha.89",
-    "@deepkit/framework": "^1.0.1-alpha.98",
+    "@deepkit/framework": "^1.0.1-alpha.99",
     "@deepkit/http": "^1.0.1-alpha.98",
     "@deepkit/injector": "^1.0.1-alpha.97",
     "@deepkit/logger": "^1.0.1-alpha.97",
