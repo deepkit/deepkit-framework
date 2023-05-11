@@ -24,9 +24,9 @@ import {
     ReflectionKind,
     ReflectionProperty,
     resolvePath,
+    resolveProperty,
     Serializer,
-    Type,
-    resolveProperty
+    Type
 } from '@deepkit/type';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 import { splitDotPath } from '../sql-adapter.js';
@@ -499,6 +499,10 @@ export abstract class DefaultPlatform {
         return `ALTER TABLE ${this.getIdentifier(from)} RENAME TO ${this.getIdentifier(to)}`;
     }
 
+    supportsAggregatedAlterTable(): boolean {
+        return true;
+    }
+
     getModifyTableDDL(diff: TableDiff): string[] {
         const ddl: string[] = [];
 
@@ -513,13 +517,13 @@ export abstract class DefaultPlatform {
 
         const prefix = `ALTER TABLE ${this.getIdentifier(diff.to)}`;
 
-        function add(value: string) {
-            if (value.trim().startsWith(prefix)) {
+        const add = (value: string) => {
+            if (this.supportsAggregatedAlterTable() && value.trim().startsWith(prefix)) {
                 alterTableLines.push(value.trim().substr(prefix.length));
             } else {
                 ddl.push(value);
             }
-        }
+        };
 
         // alter entity structure
         if (diff.hasModifiedPk()) add(this.getDropPrimaryKeyDDL(diff.from));

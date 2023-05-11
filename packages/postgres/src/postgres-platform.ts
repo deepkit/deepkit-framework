@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Column, DefaultPlatform, IndexModel, isSet, SqlPlaceholderStrategy, Table } from '@deepkit/sql';
+import { Column, ColumnDiff, DefaultPlatform, IndexModel, isSet, SqlPlaceholderStrategy, Table } from '@deepkit/sql';
 import { postgresSerializer } from './postgres-serializer.js';
 import { isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, TypeNumberBrand } from '@deepkit/type';
 import { PostgresSchemaParser } from './postgres-schema-parser.js';
@@ -117,10 +117,8 @@ export class PostgresPlatform extends DefaultPlatform {
         return escapeLiteral(value);
     }
 
-    override getColumnDDL(column: Column) {
+    protected getColumnType(column: Column): string {
         const ddl: string[] = [];
-
-        ddl.push(this.getIdentifier(column));
         if (column.isAutoIncrement) {
             ddl.push(`SERIAL`);
         } else {
@@ -136,12 +134,50 @@ export class PostgresPlatform extends DefaultPlatform {
             } else {
                 ddl.push((column.type || 'INTEGER') + column.getSizeDefinition());
             }
+        }
+        return ddl.filter(isSet).join(' ');
+    }
 
+    override getColumnDDL(column: Column) {
+        const ddl: string[] = [];
+
+        ddl.push(this.getIdentifier(column));
+        ddl.push(this.getColumnType(column));
+
+        if (!column.isAutoIncrement) {
             ddl.push(column.isNotNull ? this.getNotNullString() : this.getNullString());
             ddl.push(this.getColumnDefaultValueDDL(column));
         }
 
         return ddl.filter(isSet).join(' ');
+    }
+
+    getModifyColumnDDL(diff: ColumnDiff): string {
+        // postgres doesn't support multiple column modifications in one ALTER TABLE statement
+        // see https://www.postgresql.org/docs/current/sql-altertable.html
+
+        const actions: string[] = [];
+
+        if (diff.from.type !== diff.to.type || diff.from.isAutoIncrement !== diff.to.isAutoIncrement) {
+            actions.push(`TYPE ${this.getColumnType(diff.to)}`);
+        }
+        if (diff.from.isNotNull !== diff.to.isNotNull) {
+            if (diff.to.isNotNull) {
+                actions.push(`SET NOT NULL`);
+            } else {
+                actions.push(`DROP NOT NULL`);
+            }
+        }
+        if (diff.from.isNotNull !== diff.to.isNotNull) {
+            if (diff.to.defaultExpression !== undefined || diff.to.defaultValue !== undefined) {
+                actions.push(`SET ${this.getColumnDefaultValueDDL(diff.to)}`);
+            } else {
+                actions.push(`DROP DEFAULT`);
+            }
+        }
+
+        const identifier = this.getIdentifier(diff.to);
+        return actions.map(v => `ALTER TABLE ${this.getIdentifier(diff.to.table)} ALTER ${identifier} ${v}`).join(';\n');
     }
 
     getUniqueDDL(unique: IndexModel): string {
@@ -153,6 +189,10 @@ export class PostgresPlatform extends DefaultPlatform {
     }
 
     supportsInlineForeignKey(): boolean {
+        return false;
+    }
+
+    supportsAggregatedAlterTable(): boolean {
         return false;
     }
 
