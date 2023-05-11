@@ -175,7 +175,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
                     return callback(res);
                 } else if (property.kind === ReflectionKind.class || property.kind === ReflectionKind.objectLiteral) {
                     const schema = ReflectionClass.from(property);
-                    const item = schema.createDefaultObject();
+                    const item: any = schema.createDefaultObject();
                     for (const prop of schema.getProperties()) {
                         if (!propSeed.properties[prop.name]) continue;
 
@@ -197,7 +197,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
             function create(entity: ReflectionClass<any>, properties: { [name: string]: EntityPropertySeed }) {
                 if (!added[entity.getName()]) added[entity.getName()] = [];
 
-                const item = entity.createDefaultObject();
+                const item: any = entity.createDefaultObject();
 
                 for (const [propName, propSeed] of Object.entries(properties)) {
                     const property = entity.getProperty(propName);

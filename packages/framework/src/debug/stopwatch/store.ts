@@ -38,7 +38,7 @@ export class FileStopwatchStore extends StopwatchStore {
     }
 
     add(frame: FrameStart | FrameEnd): number {
-        frame.worker = cluster.isWorker ? cluster.worker.id : 0;
+        frame.worker = cluster.isWorker ? cluster.worker!.id : 0;
         frame.timestamp = Math.floor(performance.timeOrigin * 1_000 + performance.now() * 1_000);
         super.add(frame);
         return frame.worker;

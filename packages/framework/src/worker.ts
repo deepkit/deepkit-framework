@@ -246,7 +246,7 @@ export class WebWorker {
                 if (!options.crl && this.options.sslCrl) options.crl = readFileSync(this.options.sslCrl, 'utf8');
 
                 this.servers = new https.Server(
-                    Object.assign({ IncomingMessage: HttpRequest, ServerResponse: HttpResponse, }, options),
+                    Object.assign({ IncomingMessage: HttpRequest, ServerResponse: HttpResponse as any, }, options),
                     this.handleRequest as any
                 );
                 this.servers.listen(this.options.httpsPort || this.options.port, this.options.host);
@@ -256,7 +256,7 @@ export class WebWorker {
             const startHttpServer = !this.servers || (this.servers && this.options.httpsPort);
             if (startHttpServer) {
                 this.server = new http.Server(
-                    { IncomingMessage: HttpRequest, ServerResponse: HttpResponse },
+                    { IncomingMessage: HttpRequest, ServerResponse: HttpResponse as any },
                     this.handleRequest as any
                 );
                 if (this.options.keepAliveTimeout) this.server.keepAliveTimeout = this.options.keepAliveTimeout;

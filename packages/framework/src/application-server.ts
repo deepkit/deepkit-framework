@@ -192,7 +192,7 @@ export class ApplicationServer {
                 }
             });
 
-            for (const worker of Object.values(cluster.workers)) {
+            for (const worker of Object.values(cluster.workers || {})) {
                 if (worker) worker.send('stop');
             }
         });
@@ -284,7 +284,7 @@ export class ApplicationServer {
 
                 await this.eventDispatcher.dispatch(onServerWorkerBootstrap, new ServerBootstrapEvent());
                 if (this.needsHttpWorker) {
-                    this.httpWorker = this.webWorkerFactory.create(cluster.worker.id, this.config);
+                    this.httpWorker = this.webWorkerFactory.create(cluster.worker!.id, this.config);
                     this.httpWorker.start();
                 }
                 await this.eventDispatcher.dispatch(onServerBootstrapDone, new ServerBootstrapEvent());
