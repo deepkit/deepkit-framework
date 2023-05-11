@@ -75,13 +75,13 @@ export class DatabaseRegistry {
     }
 
     public onShutDown() {
+        this.init();
         for (const database of this.databaseMap.values()) {
             database.disconnect();
         }
     }
 
     public addDatabase(database: ClassType, options: { migrateOnStartup?: boolean } = {}, module: InjectorModule<any>) {
-
         if (!this.databaseTypes.find(v => v.classType === database)) {
             this.databaseTypes.push({ classType: database, module });
         }
