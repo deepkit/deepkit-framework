@@ -8,8 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-const nextTick = typeof requestAnimationFrame !== 'undefined'
-    ? (cb: () => void) => requestAnimationFrame(() => cb) : (cb: () => void) => setTimeout(cb);
+
+export const nextTick = typeof requestAnimationFrame !== 'undefined'
+    ? (cb: () => void) => requestAnimationFrame(cb) : (cb: () => void) => setTimeout(cb);
+
+export const clearTick = typeof requestAnimationFrame !== 'undefined'
+    ? (id: any) => cancelAnimationFrame(id) : (id: any) => clearTick(id);
 
 /**
  * Wraps a function and calls it only `cps` times per frame.
