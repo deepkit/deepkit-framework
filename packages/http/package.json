@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/http",
-  "version": "1.0.1-alpha.97",
+  "version": "1.0.1-alpha.98",
   "description": "Deepkit HTTP server and router.",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -39,7 +39,7 @@
     "send": "^0.18.0"
   },
   "devDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.97",
+    "@deepkit/app": "^1.0.1-alpha.98",
     "@deepkit/core": "^1.0.1-alpha.97",
     "@deepkit/event": "^1.0.1-alpha.97",
     "@deepkit/injector": "^1.0.1-alpha.97",
