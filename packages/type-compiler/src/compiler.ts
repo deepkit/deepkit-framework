@@ -503,7 +503,7 @@ function getReceiveTypeParameter(type: TypeNode): TypeReferenceNode | undefined 
 export class ReflectionTransformer implements CustomTransformer {
     sourceFile!: SourceFile;
     protected f: NodeFactory;
-    protected currentReflectionConfig: ReflectionConfig = { mode: 'never', options: {} };
+    protected currentReflectionConfig: ReflectionConfig = { mode: 'never', options: {}, baseDir: '' };
 
     public defaultExcluded: string[] = [
         'lib.dom.d.ts',
@@ -672,13 +672,13 @@ export class ReflectionTransformer implements CustomTransformer {
         if (basePath) {
             basePath = dirname(basePath);
             if (!this.reflectionMode && currentConfig.reflection !== undefined) this.reflectionMode = this.parseReflectionMode(currentConfig.reflection, basePath);
-            if (!this.compilerOptions && currentConfig.reflectionOptions !== undefined) this.reflectionOptions = this.parseReflectionOptionsDefaults(currentConfig.reflectionOptions);
+            if (!this.compilerOptions && currentConfig.reflectionOptions !== undefined) this.reflectionOptions = this.parseReflectionOptionsDefaults(currentConfig.reflectionOptions, basePath);
             while ((this.reflectionMode === undefined || this.compilerOptions === undefined) && 'string' === typeof basePath && currentConfig.extends) {
                 const path = join(basePath, currentConfig.extends);
                 const nextConfig = ts.readConfigFile(path, (path: string) => this.host.readFile(path));
                 if (!nextConfig) break;
                 if (!this.reflectionMode && nextConfig.config.reflection !== undefined) this.reflectionMode = this.parseReflectionMode(nextConfig.config.reflection, basePath);
-                if (!this.reflectionOptions && nextConfig.config.reflectionOptions !== undefined) this.reflectionOptions = this.parseReflectionOptionsDefaults(nextConfig.config.reflectionOptions);
+                if (!this.reflectionOptions && nextConfig.config.reflectionOptions !== undefined) this.reflectionOptions = this.parseReflectionOptionsDefaults(nextConfig.config.reflectionOptions, basePath);
                 currentConfig = Object.assign({}, nextConfig.config);
                 basePath = dirname(path);
             }
@@ -689,6 +689,8 @@ export class ReflectionTransformer implements CustomTransformer {
         if (this.reflectionMode === 'never') {
             return sourceFile;
         }
+        this.currentReflectionConfig.mode = this.reflectionMode || 'never';
+        this.currentReflectionConfig.options = this.reflectionOptions || this.parseReflectionOptionsDefaults({});
 
         if (!(sourceFile as any).locals) {
             //@ts-ignore
@@ -1931,10 +1933,11 @@ export class ReflectionTransformer implements CustomTransformer {
     protected isExcluded(filePath: string): boolean {
         if (!this.currentReflectionConfig.options.exclude) return false;
 
-        return micromatch.contains(filePath, this.currentReflectionConfig.options.exclude, {
+        const excluded = micromatch.contains(filePath, this.currentReflectionConfig.options.exclude, {
             basename: true,
             cwd: this.currentReflectionConfig.baseDir
         });
+        return excluded;
     }
 
     protected extractPackStructOfTypeReference(type: TypeReferenceNode | ExpressionWithTypeArguments, program: CompilerProgram): void {
@@ -2577,8 +2580,15 @@ export class ReflectionTransformer implements CustomTransformer {
     protected resolvedTsConfig: { [path: string]: { data: Record<string, any>, exists: boolean } } = {};
     protected resolvedPackageJson: { [path: string]: { data: Record<string, any>, exists: boolean } } = {};
 
-    protected parseReflectionOptionsDefaults(options: ReflectionOptions) {
+    protected parseReflectionOptionsDefaults(options: ReflectionOptions, baseDir?: string) {
         options = isObject(options) ? options : {};
+        if (options.exclude && baseDir) {
+            //convert relative paths to absolute
+            for (let i = 0; i < options.exclude?.length; i++) {
+                if (isAbsolute(options.exclude[i])) continue;
+                options.exclude[i] = join(baseDir, options.exclude[i]);
+            }
+        }
         if (!options.exclude) options.exclude = this.defaultExcluded;
         return options;
     }
