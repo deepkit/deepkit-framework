@@ -771,10 +771,10 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
         }
     }
 
-    public async findOneOrUndefined(): Promise<T | undefined> {
+    public async findOneOrUndefined(): Promise<Resolve<this> | undefined> {
         if (!this.session.stopwatch) {
             const query = this.onQueryResolve(await this.callOnFetchEvent(this.limit(1)));
-            return await query.resolver.findOneOrUndefined(query.model);
+            return await query.resolver.findOneOrUndefined(query.model) as Resolve<this>;
         }
 
         const frame = this.session.stopwatch.start('FindOne:' + this.classSchema.getClassName(), FrameCategory.database);
@@ -783,7 +783,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
             const eventFrame = this.session.stopwatch.start('Events');
             const query = this.onQueryResolve(await this.callOnFetchEvent(this.limit(1)));
             eventFrame.end();
-            return await query.resolver.findOneOrUndefined(query.model);
+            return await query.resolver.findOneOrUndefined(query.model) as Resolve<this>;
         } finally {
             frame.end();
         }

@@ -70,6 +70,11 @@ export const usersTests = {
             expect(users[0].groups!.length).toBe(1);
             expect(users[1].groups!.length).toBe(1);
         }
+        {
+            const user = await database.query(User).filter({username: 'User1'}).select('username').findOne();
+            expect(user).not.toBeInstanceOf(User);
+            expect(user).toEqual({username: 'User1'});
+        }
 
         {
             const users = await database.query(User).select('username', 'groups').joinWith('groups').find();
