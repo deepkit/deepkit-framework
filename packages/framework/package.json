@@ -66,6 +66,7 @@
     "nice-table": "^1.1.0",
     "pirates": "^4.0.1",
     "selfsigned": "^2.1.1",
+    "compression": "^1.7.4",
     "sift": "^7.0.1",
     "ws": "^7.4.2"
   },

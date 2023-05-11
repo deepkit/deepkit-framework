@@ -29,15 +29,21 @@ export class FrameworkConfig {
     path: string = '/';
 
     /**
+     * The compression level to use when using the zlib module.
+     * 0 means no compression, and 9 is the maximum compression.
+     */
+    compression: number = 6;
+
+    /**
      * @description A value of 0 means the main process handles requests alone. A value of > 0 means the main process does not handle any requests and anything is redirected to workers.
      */
     workers: number = 0;
 
     /**
      * When server is shutting down gracefully, this timeout is used to wait for all connections to be closed.
-     * Default is 30 seconds.
+     * Default is 5 seconds.
      */
-    gracefulShutdownTimeout: number = 30;
+    gracefulShutdownTimeout: number = 5;
 
     /**
      * @description Enables HTTPS server.

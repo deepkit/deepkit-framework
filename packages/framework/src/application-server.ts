@@ -79,7 +79,7 @@ export const onServerWorkerShutdown = new EventToken('server.worker.shutdown', S
 type ApplicationServerConfig = Pick<FrameworkConfig, 'server' | 'port' | 'host' | 'httpsPort' |
     'ssl' | 'sslKey' | 'sslCertificate' | 'sslCa' | 'sslCrl' |
     'varPath' | 'selfSigned' | 'keepAliveTimeout' | 'workers' | 'publicDir' |
-    'debug' | 'debugUrl' | 'gracefulShutdownTimeout'>;
+    'debug' | 'debugUrl' | 'gracefulShutdownTimeout' | 'compression'>;
 
 function needsHttpWorker(config: { publicDir?: string }, rpcControllers: RpcControllers, router: HttpRouter) {
     return Boolean(config.publicDir || rpcControllers.controllers.size || router.getRoutes().length);

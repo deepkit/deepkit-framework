@@ -26,6 +26,10 @@ import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { LoggerInterface } from '@deepkit/logger';
 import { sleep } from '@deepkit/core';
 
+// @ts-ignore
+import compression from 'compression';
+import { constants } from 'zlib';
+
 export interface WebServerOptions {
     host: string;
 
@@ -37,6 +41,8 @@ export interface WebServerOptions {
     port: number;
 
     varPath: string;
+
+    compression: number;
 
     /**
      * If httpsPort and ssl is defined, then the https server is started additional to the http-server.
@@ -187,6 +193,14 @@ export class WebWorker {
     protected shuttingDown = false;
     protected activeRequests = 0;
 
+    protected compressionOptions = {
+        level: 0,
+        chunkSize: constants.Z_DEFAULT_CHUNK,
+        memLevel: constants.Z_DEFAULT_MEMLEVEL,
+        strategy: constants.Z_DEFAULT_STRATEGY,
+        windowBits: constants.Z_DEFAULT_WINDOWBITS,
+    };
+
     constructor(
         public readonly id: number,
         public logger: LoggerInterface,
@@ -197,6 +211,10 @@ export class WebWorker {
         private rpcServer: RpcServer,
     ) {
         this.handleRequest = this.handleRequest.bind(this);
+
+        if (this.options.compression) {
+            this.compressionOptions.level = this.options.compression;
+        }
     }
 
     handleRequest(request: HttpRequest, response: HttpResponse) {
@@ -206,8 +224,13 @@ export class WebWorker {
             return;
         }
 
+        if (this.compressionOptions.level > 0) {
+            // this modifies response object, so it must be called before any data is written
+            compression(this.compressionOptions)(request, response, () => undefined);
+        }
+
         this.activeRequests++;
-        response.on('finish', () => {
+        response.on('close', () => {
             this.activeRequests--;
         });
 
@@ -315,5 +338,6 @@ export class WebWorker {
 }
 
 export class WebMemoryWorker extends WebWorker {
-    start() { }
+    start() {
+    }
 }
