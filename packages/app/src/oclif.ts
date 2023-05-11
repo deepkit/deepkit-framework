@@ -182,6 +182,7 @@ export function buildOclifCommand(
                             injector,
                             error: error instanceof Error ? error : new Error(String(error))
                         });
+                        throw error;
                     } finally {
                         await eventDispatcher.dispatch(onAppShutdown, { command: name, parameters: parameterValues, injector });
                     }
