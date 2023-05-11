@@ -4,6 +4,7 @@
     height: 20px;
     line-height: 20px;
     text-align: left;
+    cursor: pointer;
 
     &:focus {
         outline: 0;
@@ -17,8 +18,8 @@
 }
 
 .box {
-    width: 14px;
-    height: 14px;
+    width: var(--dui-checkbox-size);
+    height: var(--dui-checkbox-size);
     line-height: 14px;
     margin-right: 4px;
     vertical-align: top;
@@ -32,9 +33,8 @@
 
     display: inline-flex;
     align-items: center;
-    //transition: all 0.08s ease-in;
+    justify-content: center;
 }
-
 
 dui-icon {
     opacity: 0;

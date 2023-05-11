@@ -59,13 +59,6 @@ export * from "./progress-dialog.component";
         DialogErrorComponent,
         OpenDialogDirective,
     ],
-    entryComponents: [
-        DialogComponent,
-        DuiDialogAlert,
-        DuiDialogConfirm,
-        DuiDialogPrompt,
-        DialogWrapperComponent,
-    ],
     providers: [
         DuiDialog,
     ],

@@ -1,24 +1,6 @@
 @import '@angular/cdk/overlay-prebuilt.css';
 
-.dui-body {
-    @import "./reset";
-
-    &body {
-        height: 100%;
-        overflow: hidden;
-        scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
-        background: var(--dui-window-content-bg-trans);
-    }
-
-    font: normal 13px -apple-system, system-ui, sans-serif;
-    text-align: left;
-    -webkit-font-smoothing: antialiased;
-    text-rendering: geometricPrecision;
-    -moz-osx-font-smoothing: grayscale;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--color-black);
-
+body {
     --dui-selection: #016dea;
     --dui-selection-hover: #016dea80;
     --dui-selection-light: #5182f8;
@@ -27,6 +9,8 @@
     --dui-button-text: #575757;
 
     --dui-input-text: #252525;
+
+    --dui-checkbox-size: 14px;
 
     --text-grey: #6c6970;
     --text-light: #737880;
@@ -49,6 +33,26 @@
 
     --dui-window-content-bg-trans: #f6f6f6;
     --dui-toolbar-bg-trans: #f6f6f6;
+}
+
+.dui-body {
+    @import "./reset";
+
+    &body {
+        height: 100%;
+        overflow: hidden;
+        scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
+        background: var(--dui-window-content-bg-trans);
+    }
+
+    font: normal 13px -apple-system, system-ui, sans-serif;
+    text-align: left;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--color-black);
 
 
     h1, h2, h3, h4, h5, h6 {
@@ -203,7 +207,7 @@
         }
     }
 
-    .panel {
+    .dui-panel {
         background-color: white;
         border: 1px solid #c5c5c5;
     }
@@ -225,10 +229,25 @@
 }
 
 body.dui-theme-dark {
-    .panel {
-        background-color: #1e1e1e;
-        border: 1px solid #565656;
-    }
+    --text-grey: #aaadb7;
+    --text-light: #7a7f88;
+
+    --color-black: #ffffff;
+    --color-green: #0bd40b;
+    --color-red: #ff5c5c;
+    --color-orange: orange;
+
+    --dui-selection-light: #3662e1;
+    --dui-selection-unfocused: #acaeb936;
+
+    --line-color-light: rgba(232, 232, 232, 0.16);
+    --line-color: rgba(232, 232, 232, 0.32);
+    --line-color-prominent: rgba(220, 225, 230, 0.8);
+    --line-sidebar-light: #111;
+    --line-sidebar: black;
+
+    --dui-window-content-bg: #323232;
+    --dui-window-header-bg: #2d2d2d;
 
     .dui-panel {
         background-color: #383636;
@@ -236,26 +255,6 @@ body.dui-theme-dark {
     }
 
     .dui-body {
-        --text-grey: #aaadb7;
-        --text-light: #7a7f88;
-
-        --color-black: #ffffff;
-        --color-green: #0bd40b;
-        --color-red: #ff5c5c;
-        --color-orange: orange;
-
-        --dui-selection-light: #3662e1;
-        --dui-selection-unfocused: #acaeb936;
-
-        --line-color-light: rgba(232, 232, 232, 0.16);
-        --line-color: rgba(232, 232, 232, 0.32);
-        --line-color-prominent: rgba(220, 225, 230, 0.8);
-        --line-sidebar-light: #111;
-        --line-sidebar: black;
-
-        --dui-window-content-bg: #323232;
-        --dui-window-header-bg: #2d2d2d;
-
         a, a:link {
             color: #78a1bf;
         }
@@ -269,16 +268,19 @@ body.dui-theme-dark {
         }
     }
 
-    &.platform-darwin .dui-body {
+    &.platform-darwin {
         --dui-window-content-bg-trans: #323232f2;
         --dui-background-vibrancy: blur(2px);
         --dui-toolbar-bg-trans: #323232e3;
     }
 
-    &:not(.platform-darwin)  .dui-body {
+    &:not(.platform-darwin) {
         --dui-window-content-bg-trans: #323232;
         --dui-toolbar-bg-trans: #323232;
-        background: var(--dui-window-content-bg-trans);
+
+        .dui-body {
+            background: var(--dui-window-content-bg-trans);
+        }
     }
 }
 
@@ -292,7 +294,6 @@ body.dui-theme-light {
     code {
         background: #33333321;
     }
-
 
     &.platform-darwin .dui-body {
         --dui-background-vibrancy: blur(10px);

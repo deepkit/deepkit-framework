@@ -11,8 +11,16 @@
 import { Observable, Subscription } from 'rxjs';
 import { ChangeDetectorRef, EventEmitter } from '@angular/core';
 import { ActivatedRoute, Router, UrlTree } from '@angular/router';
+import { nextTick } from '@deepkit/core';
 
-const electron = (window as any).electron || ((window as any).require ? (window as any).require('electron') : undefined);
+const electron = 'undefined' === typeof window ? undefined : (window as any).electron || ((window as any).require ? (window as any).require('electron') : undefined);
+
+export async function getHammer() {
+    if ('undefined' === typeof window) return;
+    //@ts-ignore
+    const { default: Hammer } = await import('hammerjs');
+    return Hammer;
+}
 
 export class Electron {
     public static getRemote(): any {
@@ -109,10 +117,12 @@ export function isTargetChildOf(target: HTMLElement | EventTarget | null, parent
 }
 
 export function isMacOs() {
+    if ('undefined' === typeof navigator) return false;
     return navigator.platform.indexOf('Mac') > -1;
 }
 
 export function isWindows() {
+    if ('undefined' === typeof navigator) return false;
     return navigator.platform.indexOf('Win') > -1;
 }
 
@@ -130,7 +140,8 @@ export function findParentWithClass(start: HTMLElement, className: string): HTML
 }
 
 export function triggerResize() {
-    requestAnimationFrame(() => {
+    if ('undefined' === typeof window) return;
+    nextTick(() => {
         window.dispatchEvent(new Event('resize'));
     });
 }

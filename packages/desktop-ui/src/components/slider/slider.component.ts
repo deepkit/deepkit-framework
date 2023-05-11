@@ -9,8 +9,9 @@
  */
 
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, Injector, Input, SkipSelf, ViewChild } from '@angular/core';
+import { nextTick } from '@deepkit/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
-import Hammer from 'hammerjs';
+import { getHammer } from '../../core/utils';
 
 @Component({
     selector: 'dui-slider',
@@ -51,12 +52,15 @@ export class SliderComponent extends ValueAccessorBase<number> implements AfterV
 
     ngAfterViewInit() {
         //move to next render frame, so all newly created sliders are rendered at the same time and don't block he DOM
-        requestAnimationFrame(() => {
+        nextTick(() => {
             this.initEvents();
         });
     }
 
-    initEvents() {
+    async initEvents() {
+        const Hammer = await getHammer();
+        if (!Hammer) return;
+
         const mc = new Hammer(this.knob!.nativeElement);
         mc.add(new Hammer.Pan({ direction: Hammer.DIRECTION_HORIZONTAL, threshold: 1 }));
 
@@ -108,7 +112,7 @@ export class SliderComponent extends ValueAccessorBase<number> implements AfterV
                 cancelAnimationFrame(lastRequest);
             }
 
-            lastRequest = requestAnimationFrame(() => {
+            lastRequest = nextTick(() => {
                 const newLeft = Math.min(width, Math.max(0, (startXInPixels + event.deltaX))) / width;
                 handleNewLeft(newLeft);
             });

@@ -11,6 +11,9 @@ import { Component, Input } from '@angular/core';
         :host {
             user-select: text;
             margin-bottom: 18px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: break-all;
         }
 
         label {
@@ -44,8 +47,9 @@ export class LabelComponent {
 })
 export class LabelGridComponent {
     @Input() labelWidth: string | number = '150px';
+    @Input() labelMaxWidth: string | number = '1fr';
 
     get templateColumns(){
-        return `repeat(auto-fit, minmax(${this.labelWidth}, 1fr))`;
+        return `repeat(auto-fit, minmax(${this.labelWidth}, ${this.labelMaxWidth}))`;
     }
 }

@@ -9,7 +9,7 @@
  */
 
 import { MenuDirective } from '../app/menu.component';
-import { arrayRemoveItem } from '@deepkit/core';
+import { arrayRemoveItem, nextTick } from '@deepkit/core';
 import { Subscription } from 'rxjs';
 import { Injectable } from '@angular/core';
 import { Electron } from '../../core/utils';
@@ -38,7 +38,7 @@ export class WindowMenuState {
     }
 
     build() {
-        requestAnimationFrame(() => {
+        nextTick(() => {
             this._build();
         })
     }

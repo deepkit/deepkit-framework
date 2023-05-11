@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ApplicationRef, Component, Directive, HostBinding, Inject, Injectable, Input, ModuleWithProviders, NgModule, Optional } from '@angular/core';
+import { ApplicationRef, Component, Directive, HostBinding, Inject, Injectable, Input, ModuleWithProviders, NgModule, Optional, Renderer2, RendererFactory2 } from '@angular/core';
 import { MenuCheckboxDirective, MenuDirective, MenuItemDirective, MenuRadioDirective, MenuSeparatorDirective } from './menu.component';
 import { detectChangesNextFrame, OpenExternalDirective, ZonelessChangeDetector } from './utils';
 import { ViewDirective } from './dui-view.directive';
@@ -119,16 +119,39 @@ export class OverlayStack {
 }
 
 @Injectable()
+export class Storage {
+    getItem(key: string): any {
+        return 'undefined' === typeof localStorage ? undefined : localStorage.getItem(key);
+    }
+
+    setItem(key: string, value: any): void {
+        if ('undefined' === typeof localStorage) return;
+        localStorage.setItem(key, value);
+    }
+
+    removeItem(key: string): void {
+        if ('undefined' === typeof localStorage) return;
+        localStorage.removeItem(key);
+    }
+}
+
+@Injectable()
 export class DuiApp {
     protected darkMode?: boolean = false;
     protected platform: 'web' | 'darwin' | 'linux' | 'win32' = 'darwin';
     public themeDetection: boolean = true;
 
+    render: Renderer2;
+
     constructor(
         protected app: ApplicationRef,
-        protected windowRegistry: WindowRegistry,
+        @Inject(DOCUMENT) protected document: Document,
+        rendererFactory: RendererFactory2,
+        protected storage: Storage,
+        @Optional() protected windowRegistry?: WindowRegistry,
         @Optional() protected router?: Router
     ) {
+        this.render = rendererFactory.createRenderer(null, null);
         ZonelessChangeDetector.app = app;
         if ('undefined' !== typeof window) {
             (window as any)['DuiApp'] = this;
@@ -137,7 +160,7 @@ export class DuiApp {
 
     start() {
         if (Electron.isAvailable()) {
-            document.body.classList.add('electron');
+            this.render.addClass(this.document.body, 'electron');
 
             const remote = Electron.getRemote();
 
@@ -147,26 +170,28 @@ export class DuiApp {
         }
 
         if (this.themeDetection) {
-            let overwrittenDarkMode = localStorage.getItem('duiApp/darkMode');
+            let overwrittenDarkMode = this.storage.getItem('duiApp/darkMode');
             if (overwrittenDarkMode) {
                 this.setDarkMode(JSON.parse(overwrittenDarkMode));
             } else {
                 this.setDarkMode();
             }
 
-            const mm = window.matchMedia('(prefers-color-scheme: dark)');
-            const setTheme = () => {
-                if (!this.themeDetection) return;
-                if (localStorage.getItem('duiApp/darkMode') === null) {
-                    this.setAutoDarkMode();
-                    this.app.tick();
+            if ('undefined' !== typeof window) {
+                const mm = window.matchMedia('(prefers-color-scheme: dark)');
+                const setTheme = () => {
+                    if (!this.themeDetection) return;
+                    if (this.storage.getItem('duiApp/darkMode') === null) {
+                        this.setAutoDarkMode();
+                        this.app.tick();
+                    }
+                };
+                if (mm.addEventListener) {
+                    mm.addEventListener('change', setTheme);
+                } else {
+                    //ios
+                    mm.addListener(setTheme);
                 }
-            };
-            if (mm.addEventListener) {
-                mm.addEventListener('change', setTheme);
-            } else {
-                //ios
-                mm.addListener(setTheme);
             }
         }
 
@@ -186,32 +211,32 @@ export class DuiApp {
                 if (event instanceof NavigationEnd || event instanceof ActivationEnd) {
                     detectChangesNextFrame();
                 }
-            });
+            }, () => undefined);
         }
     }
 
     setPlatform(platform: 'web' | 'darwin' | 'linux' | 'win32') {
         this.platform = platform;
         //deprecate these
-        document.body.classList.remove('platform-linux');
-        document.body.classList.remove('platform-darwin');
-        document.body.classList.remove('platform-win32');
-        document.body.classList.remove('platform-native');
-        document.body.classList.remove('platform-web');
+        this.render.removeClass(this.document.body, 'platform-linux');
+        this.render.removeClass(this.document.body, 'platform-darwin');
+        this.render.removeClass(this.document.body, 'platform-win32');
+        this.render.removeClass(this.document.body, 'platform-native');
+        this.render.removeClass(this.document.body, 'platform-web');
 
-        document.body.classList.remove('dui-platform-linux');
-        document.body.classList.remove('dui-platform-darwin');
-        document.body.classList.remove('dui-platform-win32');
-        document.body.classList.remove('dui-platform-native');
-        document.body.classList.remove('dui-platform-web');
+        this.render.removeClass(this.document.body, 'dui-platform-linux');
+        this.render.removeClass(this.document.body, 'dui-platform-darwin');
+        this.render.removeClass(this.document.body, 'dui-platform-win32');
+        this.render.removeClass(this.document.body, 'dui-platform-native');
+        this.render.removeClass(this.document.body, 'dui-platform-web');
 
         if (this.platform !== 'web') {
-            document.body.classList.add('platform-native'); //todo: deprecate
-            document.body.classList.add('dui-platform-native');
+            this.render.addClass(this.document.body, 'platform-native'); //todo: deprecate
+            this.render.addClass(this.document.body, 'dui-platform-native');
 
         }
-        document.body.classList.add('platform-' + platform);//todo: deprecate
-        document.body.classList.add('dui-platform-' + platform);
+        this.render.addClass(this.document.body, 'platform-' + platform);//todo: deprecate
+        this.render.addClass(this.document.body, 'dui-platform-' + platform);
     }
 
     getPlatform(): string {
@@ -244,7 +269,7 @@ export class DuiApp {
     }
 
     isDarkModeOverwritten(): boolean {
-        return localStorage.getItem('duiApp/darkMode') !== null;
+        return this.storage.getItem('duiApp/darkMode') !== null;
     }
 
     setGlobalDarkMode(darkMode: boolean): void {
@@ -261,32 +286,35 @@ export class DuiApp {
     }
 
     disableThemeDetection() {
-        document.body.classList.remove('dui-theme-dark');
-        document.body.classList.remove('dui-theme-light');
+        this.render.removeClass(this.document.body, 'dui-theme-dark');
+        this.render.removeClass(this.document.body, 'dui-theme-light');
         this.themeDetection = false;
     }
 
     setDarkMode(darkMode?: boolean) {
         if (darkMode === undefined) {
             this.darkMode = this.isPreferDarkColorSchema();
-            localStorage.removeItem('duiApp/darkMode');
+            this.storage.removeItem('duiApp/darkMode');
         } else {
-            localStorage.setItem('duiApp/darkMode', JSON.stringify(darkMode));
+            this.storage.setItem('duiApp/darkMode', JSON.stringify(darkMode));
             this.darkMode = darkMode;
         }
 
-        for (const win of this.windowRegistry.getAllElectronWindows()) {
-            win.setVibrancy(this.getVibrancy());
+        if (this.windowRegistry) {
+            for (const win of this.windowRegistry.getAllElectronWindows()) {
+                win.setVibrancy(this.getVibrancy());
+            }
         }
 
-        document.body.classList.remove('dui-theme-dark');
-        document.body.classList.remove('dui-theme-light');
-        document.body.classList.add(this.darkMode ? 'dui-theme-dark' : 'dui-theme-light');
+        this.render.removeClass(this.document.body, 'dui-theme-dark');
+        this.render.removeClass(this.document.body, 'dui-theme-light');
+        this.render.addClass(this.document.body, this.darkMode ? 'dui-theme-dark' : 'dui-theme-light');
 
-        window.dispatchEvent(new Event('theme-changed'));
+        if ('undefined' !== typeof window) window.dispatchEvent(new Event('theme-changed'));
     }
 
     protected isPreferDarkColorSchema() {
+        if ('undefined' === typeof window) return true;
         return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
 }
@@ -352,6 +380,7 @@ export class DuiAppModule {
             ngModule: DuiAppModule,
             providers: [
                 DuiApp,
+                Storage,
                 { provide: EventDispatcher, useValue: new EventDispatcher().fork() },
                 { provide: IN_DIALOG, useValue: false },
                 {

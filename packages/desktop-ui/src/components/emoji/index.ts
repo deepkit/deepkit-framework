@@ -31,9 +31,6 @@ export { EmojiDropdownComponent, EmojiDropdownDirective } from "./emoji-dropdown
         EmojiDropdownDirective,
         EmojiComponent,
     ],
-    entryComponents: [
-        EmojiDropdownComponent,
-    ],
     imports: [
         FormsModule,
         CommonModule,

@@ -67,9 +67,6 @@ export * from "./window-sidebar.component";
         ExternalDialogWrapperComponent,
         ExternalDialogDirective,
     ],
-    entryComponents: [
-        ExternalWindowComponent,
-    ],
     providers: [
         DuiExternalWindow,
     ],

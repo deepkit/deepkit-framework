@@ -118,11 +118,11 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     constructor(
         protected overlayService: Overlay,
         protected injector: Injector,
-        protected registry: WindowRegistry,
         protected overlayStack: OverlayStack,
         protected viewContainerRef: ViewContainerRef,
         protected cd: ChangeDetectorRef,
         @SkipSelf() protected cdParent: ChangeDetectorRef,
+        @Optional() protected registry?: WindowRegistry,
     ) {
     }
 

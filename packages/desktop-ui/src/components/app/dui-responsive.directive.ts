@@ -9,6 +9,7 @@
  */
 
 import { Directive, ElementRef, HostListener, Input, OnInit } from '@angular/core';
+import { nextTick } from '@deepkit/core';
 
 @Directive({
     selector: '[duiClassMin]',
@@ -33,7 +34,7 @@ export class DuiResponsiveDirective implements OnInit {
             cancelAnimationFrame(this.lastRequest);
         }
 
-        this.lastRequest = requestAnimationFrame(() => {
+        this.lastRequest = nextTick(() => {
             const element: HTMLElement = this.element.nativeElement;
             for (const [name, number] of Object.entries(this.duiClassMin)) {
                 const valid = element.offsetWidth > number;

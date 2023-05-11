@@ -177,7 +177,7 @@ export class ValueAccessorBase<T> implements ControlValueAccessor, OnDestroy {
      *
      * @hidden
      */
-    async writeValue(value?: T) {
+    writeValue(value?: T) {
         if (this._innerValue !== value) {
             this._innerValue = value;
         }

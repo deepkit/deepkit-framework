@@ -9,7 +9,8 @@
  */
 
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, NgZone, Output } from '@angular/core';
-import Hammer from 'hammerjs';
+import { clearTick, nextTick } from '@deepkit/core';
+import { getHammer } from '../../core/utils';
 
 @Component({
     selector: 'dui-splitter',
@@ -38,7 +39,19 @@ export class SplitterComponent implements AfterViewInit {
     ) {
     }
 
-    ngAfterViewInit(): void {
+    onMousedown(event: MouseEvent) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+
+    ngAfterViewInit() {
+        this.initHammer();
+    }
+
+    protected async initHammer() {
+        const Hammer = await getHammer();
+        if (!Hammer) return;
+
         this.zone.runOutsideAngular(() => {
             const mc = new Hammer(this.host.nativeElement);
             mc.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL, threshold: 0 }));
@@ -65,11 +78,9 @@ export class SplitterComponent implements AfterViewInit {
 
             let lastAnimationFrame: any;
             mc.on('pan', (event: HammerInput) => {
-                if (lastAnimationFrame) {
-                    cancelAnimationFrame(lastAnimationFrame);
-                }
+                if (lastAnimationFrame) clearTick(lastAnimationFrame);
 
-                lastAnimationFrame = requestAnimationFrame(() => {
+                lastAnimationFrame = nextTick(() => {
                     if (this.element) {
                         this.element.style.width = (start + event.deltaX) + 'px';
                     }
@@ -88,7 +99,7 @@ export class SplitterComponent implements AfterViewInit {
                         this.triggerWindowResize();
                     }
                 });
-            })
+            });
         });
     }
 

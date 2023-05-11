@@ -17,6 +17,7 @@ import {
     Input,
     OnChanges
 } from '@angular/core';
+import { nextTick } from '@deepkit/core';
 import { Electron } from '../../core/utils';
 
 
@@ -60,7 +61,7 @@ let lastScheduleResize: any;
 
 export function scheduleWindowResizeEvent() {
     if (lastScheduleResize) cancelAnimationFrame(lastScheduleResize);
-    lastScheduleResize = requestAnimationFrame(() => {
+    lastScheduleResize = nextTick(() => {
         window.dispatchEvent(new Event('resize'));
         lastScheduleResize = undefined;
     });
@@ -98,7 +99,7 @@ export function detectChangesNextFrame(cd?: ChangeDetectorRef, done?: () => any)
         return;
     }
 
-    lastFrameRequest = requestAnimationFrame(() => {
+    lastFrameRequest = nextTick(() => {
         lastFrameRequest = undefined;
         for (const i of lastFrameRequestStack) {
             i.detectChanges();

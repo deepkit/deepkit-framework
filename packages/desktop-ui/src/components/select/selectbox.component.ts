@@ -57,7 +57,8 @@ export class DynamicOptionDirective {
 
 @Component({
     selector: 'dui-option',
-    template: `<ng-content></ng-content>`
+    template: `
+        <ng-content></ng-content>`
 })
 export class OptionDirective {
     @Input() value: any;
@@ -75,10 +76,12 @@ export class OptionDirective {
     providers: [{ provide: OptionDirective, useExisting: OptionSeparatorDirective }],
 })
 export class OptionSeparatorDirective {
-    constructor() { }
+    constructor() {
+    }
 }
 
-class NotSelected { }
+class NotSelected {
+}
 
 @Component({
     selector: 'dui-select',
@@ -204,7 +207,7 @@ export class SelectboxComponent<T> extends ValueAccessorBase<T | NotSelected> im
         if (this.dropdown) this.dropdown.open();
     }
 
-    async writeValue(value?: T | NotSelected): Promise<void> {
+    writeValue(value?: T | NotSelected): void {
         super.writeValue(value);
     }
 

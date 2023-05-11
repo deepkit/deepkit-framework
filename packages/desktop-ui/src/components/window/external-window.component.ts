@@ -39,6 +39,7 @@ import { DOCUMENT } from '@angular/common';
 import { DuiDialog } from '../dialog/dialog';
 import { Electron } from '../../core/utils';
 import { detectChangesNextFrame } from '../app';
+import { nextTick } from '@deepkit/core';
 
 function PopupCenter(url: string, title: string, w: number, h: number): Window {
     let top = window.screenTop + (window.outerHeight / 2) - w / 2;
@@ -322,7 +323,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
         this.visible = false;
         this.visibleChange.emit(false);
         this.beforeUnload();
-        requestAnimationFrame(() => {
+        nextTick(() => {
             this.applicationRef.tick();
         });
     }

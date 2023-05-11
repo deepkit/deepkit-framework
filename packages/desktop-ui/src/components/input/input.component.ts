@@ -109,6 +109,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
 
     @HostBinding('class.focused')
     get isFocused() {
+        if ('undefined' === typeof document) return false;
         return this.input ? document.activeElement === this.input!.nativeElement : false;
     }
 
@@ -198,7 +199,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
         super.innerValue = value;
     }
 
-    async writeValue(value?: any) {
+    writeValue(value?: any) {
         if (this.type === 'file' && !value && this.input) {
             //we need to manually reset the field, since writing to it via ngModel is not supported.
             this.input!.nativeElement.value = '';

@@ -17,8 +17,8 @@
     --border-right-row-freeze: rgba(197, 197, 197, 0.5);
     --background-row-hover: #e0e0e0;
 
-    &.auto-height {
-        height: auto;
+    .frame {
+        height: 100%;
     }
 }
 
@@ -143,6 +143,9 @@
 
     > div.freeze {
         background-color: var(--background-row);
+    }
+
+    > div.freeze-last {
         border-right: 1px solid var(--border-right-row-freeze);
     }
 

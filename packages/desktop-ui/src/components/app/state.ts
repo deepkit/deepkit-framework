@@ -201,7 +201,6 @@ export function provideState(stateClass: ClassType, localStorageKey: string = 'a
                     updateQueries();
                 }
             });
-            let lastRequestAnimationFrame: number | undefined;
 
             return onChange(state, (path: any, value: any, previousValue: any) => {
                 // console.log('State changed', path, value, previousValue);
