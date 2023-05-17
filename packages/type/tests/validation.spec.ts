@@ -179,7 +179,7 @@ test('class with union literal', () => {
     }
 
     expect(validate<ConnectionOptions>({ readConcernLevel: 'majority' })).toEqual([]);
-    expect(validate<ConnectionOptions>({ readConcernLevel: 'invalid' })).toEqual([{ code: 'type', message: 'No valid union member found', path: 'readConcernLevel', value: 'invalid' }]);
+    expect(validate<ConnectionOptions>({ readConcernLevel: 'invalid' })).toEqual([{ code: 'type', message: 'No valid union member found. Valid: \'local\' | \'majority\' | \'linearizable\' | \'available\'', path: 'readConcernLevel', value: 'invalid' }]);
 });
 
 test('named tuple', () => {

@@ -7,9 +7,11 @@ import {
     ReflectionKind,
     ReflectionParameter,
     ReflectionProperty,
+    Type,
     typeToObject,
     validate,
-    ValidationError
+    ValidationError,
+    ValidationErrorItem
 } from '@deepkit/type';
 import { Command as OclifCommandBase } from '@oclif/command';
 import { Command as OclifCommand } from '@oclif/config';
@@ -38,6 +40,12 @@ function getProperty(reflectionClass: ReflectionClass<any>, ref: { property: str
     return ref.parameterIndex !== undefined
         ? reflectionClass.getMethodParameters(ref.property)[ref.parameterIndex]
         : reflectionClass.getProperty(ref.property);
+}
+
+function supportedAsArgument(type: Type): boolean {
+    if (type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.boolean || type.kind === ReflectionKind.literal) return true;
+    if (type.kind === ReflectionKind.union) return type.types.every(v => supportedAsArgument(v));
+    return false;
 }
 
 export function buildOclifCommand(
@@ -93,7 +101,7 @@ export function buildOclifCommand(
 
         if (forFlag) {
             add(property, hidden, flagOptions.char || (argDefinition ? argDefinition.char : ''));
-        } else if (property.type.kind === ReflectionKind.string || property.type.kind === ReflectionKind.number || property.type.kind === ReflectionKind.boolean) {
+        } else if (supportedAsArgument(property.type)) {
             oclifArgs.push(getOptions(property, hidden));
         } else {
             if (property.type.kind === ReflectionKind.array) {
@@ -147,11 +155,15 @@ export function buildOclifCommand(
                         } catch (e) {
                             if (e instanceof ValidationError) {
                                 for (const item of e.errors) {
-                                    console.error(`Validation error in ${propertySchema.name + (item.path ? '.' + item.path : '')}: ${item.message} [${item.code}]`);
+                                    console.error(`Validation error in argument ${propertySchema.name + (item.path ? '.' + item.path : '')}: ${item.message} [${item.code}]`);
                                 }
                                 return 8;
                             }
-                            console.error(e);
+                            if (e instanceof ValidationErrorItem) {
+                                console.error(`Validation error in argument ${propertySchema.name + (e.path ? '.' + e.path : '')}: ${e.message} [${e.code}]`);
+                                return 8;
+                            }
+                            console.error('Error validation arguments', e);
                             return 8;
                         }
                     }

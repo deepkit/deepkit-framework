@@ -53,6 +53,7 @@ import {
     referenceAnnotation,
     ReflectionKind,
     resolveTypeMembers,
+    stringifyResolvedType,
     stringifyType,
     Type,
     TypeClass,
@@ -1699,7 +1700,7 @@ export function handleUnion(type: TypeUnion, state: TemplateState) {
         if (false) {} ${lines.join(' ')}
         else {
             ${handleErrors}
-            ${state.assignValidationError('type', 'No valid union member found')}
+            ${state.assignValidationError('type', 'No valid union member found. Valid: ' + stringifyResolvedType(type))}
         }
         state.errors = oldErrors;
     `);
