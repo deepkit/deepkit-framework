@@ -185,7 +185,7 @@ export class PostgresPlatform extends DefaultPlatform {
     }
 
     getDropIndexDDL(index: IndexModel): string {
-        return `DROP CONSTRAINT ${this.getIdentifier(index)}`;
+        return `ALTER TABLE ${this.getIdentifier(index.table)} DROP CONSTRAINT ${this.getIdentifier(index)}`;
     }
 
     supportsInlineForeignKey(): boolean {
