@@ -302,7 +302,7 @@ export class Formatter {
                         item[join.propertySchema.name] = dbRecord[refName].map((item: any) => {
                             return this.hydrateModel(join.query.model, resolveForeignReflectionClass(join.propertySchema), item);
                         });
-                    } else {
+                    } else if (!item[join.propertySchema.name]) {
                         item[join.propertySchema.name] = [];
                     }
                 } else if (hasValue) {

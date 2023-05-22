@@ -526,6 +526,7 @@ export class PostgresDatabaseAdapter extends SQLDatabaseAdapter {
     protected pool = new pg.Pool(this.options);
     public connectionPool = new PostgresConnectionPool(this.pool);
     public platform = new PostgresPlatform();
+    closed = false;
 
     constructor(protected options: PoolConfig) {
         super();
@@ -556,6 +557,8 @@ export class PostgresDatabaseAdapter extends SQLDatabaseAdapter {
     }
 
     disconnect(force?: boolean): void {
+        if (this.closed) return;
+        this.closed = true;
         this.pool.end().catch(console.error);
     }
 }

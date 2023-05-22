@@ -418,7 +418,7 @@ export const variousTests = {
 
         await db.query(Person)
             .filter({ 'name.surname': 'Meier' })
-            .patchOne({ $inc: {'name.changes': 1} });
+            .patchOne({ $inc: { 'name.changes': 1 } });
 
         const person = await db.query(Person).filter({ 'name.surname': 'Meier' }).findOne();
         expect(person.name.forename).toEqual('Klaus');
@@ -459,11 +459,14 @@ export const variousTests = {
     async anyType(databaseFactory: DatabaseFactory) {
         class Page {
             id: number & PrimaryKey & AutoIncrement = 0;
-            constructor(public content: any) {};
+
+            constructor(public content: any) {
+            };
         }
+
         const db = await databaseFactory([Page]);
 
-        await db.persist(new Page([{insert: 'abc\n'}]));
+        await db.persist(new Page([{ insert: 'abc\n' }]));
 
         db.disconnect();
     },
@@ -472,15 +475,18 @@ export const variousTests = {
         //this tests that the array element type is correctly serialized
         class Page {
             id: number & PrimaryKey & AutoIncrement = 0;
-            constructor(public content: {id: UUID, insert: string, attributes?: { [name: string]: any }}[]) {};
+
+            constructor(public content: { id: UUID, insert: string, attributes?: { [name: string]: any } }[]) {
+            };
         }
+
         const db = await databaseFactory([Page]);
         const myId = uuid();
 
-        await db.persist(new Page([{id: myId, insert: 'abc\n', attributes: {header: 1}}]));
+        await db.persist(new Page([{ id: myId, insert: 'abc\n', attributes: { header: 1 } }]));
 
         const page = await db.query(Page).findOne();
-        expect(page.content[0]).toEqual({id: myId, insert: 'abc\n', attributes: {header: 1}});
+        expect(page.content[0]).toEqual({ id: myId, insert: 'abc\n', attributes: { header: 1 } });
 
         db.disconnect();
     },
@@ -539,6 +545,89 @@ export const variousTests = {
                 .patchMany({ firstName: 'test' });
             expect(result.modified).toEqual(1);
             expect(result.primaryKeys).toEqual([{ id: 2 }]);
+        }
+    },
+
+    async deepJoin(databaseFactory: DatabaseFactory) {
+        class BaseModel {
+            id: number & PrimaryKey & AutoIncrement = 0;
+        }
+
+        @entity.name('productCategory')
+        class ProductCategory extends BaseModel {
+            constructor(public name: string) {
+                super();
+            }
+        }
+
+        @entity.name('media')
+        class MediaFile extends BaseModel {
+            product?: Product & Reference;
+
+            constructor(public file: string) {
+                super();
+            }
+        }
+
+        @entity.name('brand')
+        class Brand extends BaseModel {
+            constructor(public name: string) {
+                super();
+            }
+        }
+
+        @entity.name('product')
+        class Product extends BaseModel {
+            brand?: Brand & Reference;
+
+            constructor(
+                public sku: string,
+            ) {
+                super();
+            }
+
+            images?: MediaFile[] & BackReference;
+        }
+
+        @entity.name('productInCategory')
+        class ProductInCategory extends BaseModel {
+            constructor(public product: Product & Reference, public category: ProductCategory & Reference) {
+                super();
+            }
+        }
+
+        const database = await databaseFactory([Product, ProductCategory, ProductInCategory, MediaFile, Brand]);
+
+        {
+            const category1 = new ProductCategory('test1');
+            const product1 = new Product('1');
+            // const product = new Product('2');
+            const image1 = new MediaFile('test1.jpg');
+            image1.product = product1;
+            const image2 = new MediaFile('test2.jpg');
+            image2.product = product1;
+            const brand = new Brand('abc');
+            product1.brand = brand;
+            const product2 = new Product('2');
+
+            const category2 = new ProductCategory('test2');
+
+            const productInCategory1 = new ProductInCategory(product1, category1);
+            const productInCategory2 = new ProductInCategory(product1, category2);
+
+            await database.persist(product1, product2, category1, productInCategory1, productInCategory2, image1, image2, brand);
+        }
+
+        {
+            const products = await database.query(Product).joinWith('images').joinWith('brand').find();
+            expect(products[0].images!.length).toBe(2);
+        }
+
+        {
+            const products = await database.query(ProductInCategory).useInnerJoinWith('product').joinWith('images').joinWith('brand').end().find();
+            expect(products[0].product === products[1].product).toBe(true);
+            expect(products[0].product.images!.length).toBe(2);
+            expect(products[1].product.images!.length).toBe(2);
         }
     }
 };

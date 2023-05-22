@@ -670,11 +670,18 @@ export abstract class DefaultPlatform {
     }
 
     getColumnDefaultValueDDL(column: Column) {
+        if (column.defaultExpression !== undefined || column.defaultValue !== undefined) {
+            return 'DEFAULT ' + this.getDefaultExpression(column);
+        }
+        return '';
+    }
+
+    getDefaultExpression(column: Column): string {
         if (column.defaultExpression !== undefined) {
-            return 'DEFAULT ' + column.defaultExpression;
+            return column.defaultExpression;
         }
         if (column.defaultValue !== undefined) {
-            return 'DEFAULT ' + this.quoteValue(column.defaultValue);
+            return this.quoteValue(column.defaultValue);
         }
         return '';
     }
