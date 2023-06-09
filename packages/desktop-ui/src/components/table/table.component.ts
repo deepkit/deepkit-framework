@@ -970,6 +970,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
         this.displayedColumns = [];
         this.columnMap = {};
 
+        this.sortColumnDefs();
         if (this.columnDefs) {
             for (const column of this.columnDefs.toArray()) {
                 this.displayedColumns.push(column.name!);
