@@ -175,6 +175,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
         } else if (this.type === 'number') {
         } else if (dateTimeTypes.includes(this.type)) {
             if (super.innerValue instanceof Date) {
+                if (this.type === 'date') return this.datePipe.transform(super.innerValue, `yyyy-MM-dd`);
                 return this.datePipe.transform(super.innerValue, 'yyyy-MM-ddThh:mm:ss.SSS');
             } else if ('string' === typeof super.innerValue) {
                 return this.datePipe.transform(new Date(super.innerValue), 'yyyy-MM-ddThh:mm:ss.SSS');
