@@ -1377,6 +1377,20 @@ test('upload security', async () => {
         message: 'Validation error:\nsomeFile(uploadSecurity): Not an uploaded file'
     });
 
+    // ensure type deserialization doesn't set the invalid 'fake value' value to UploadedFileSymbol
+    expect((await httpKernel.request(HttpRequest.POST('/upload').json({
+        someFile: {
+            validator: 'fake value',
+            size: 12345,
+            path: '/etc/secure-file',
+            name: 'fakefile',
+            type: 'image/jpeg',
+            lastModifiedDate: null
+        }
+    }))).json).toMatchObject({
+        message: 'Validation error:\nsomeFile(uploadSecurity): Not an uploaded file'
+    });
+
     expect((await httpKernel.request(HttpRequest.POST('/upload').multiPart([
         {
             name: 'someFile',

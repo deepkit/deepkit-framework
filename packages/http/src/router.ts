@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { ClassType, CompilerContext, getClassName, isArray, isClass, urlJoin } from '@deepkit/core';
-import { entity, ReflectionClass, ReflectionFunction, ReflectionKind, ReflectionParameter, SerializationOptions, Serializer, Type, ValidationError } from '@deepkit/type';
+import { entity, ReflectionClass, ReflectionFunction, ReflectionKind, ReflectionParameter, SerializationOptions, serializer, Serializer, Type, ValidationError } from '@deepkit/type';
 import { HttpAction, httpClass, HttpController, HttpDecorator } from './decorator.js';
 import { HttpRequest, HttpRequestPositionedParameters, HttpRequestQuery, HttpRequestResolvedParameters } from './model.js';
 import { InjectorContext, InjectorModule, TagRegistry } from '@deepkit/injector';
@@ -32,8 +32,15 @@ interface ResolvedController {
     middlewares?: (injector: InjectorContext) => { fn: HttpMiddlewareFn, timeout: number }[];
 }
 
+export const UploadedFileSymbol = Symbol('UploadedFile');
+
 @entity.name('@deepkit/UploadedFile')
 export class UploadedFile {
+    /**
+     * Validator to ensure the file was provided by the framework, and not the user spoofing it.
+     */
+    validator!: typeof UploadedFileSymbol | null;
+
     /**
      * The size of the uploaded file in bytes.
      */
@@ -65,6 +72,11 @@ export class UploadedFile {
     //  */
     // hash!: string | 'sha1' | 'md5' | 'sha256' | null;
 }
+
+serializer.typeGuards.getRegistry(1).registerClass(UploadedFile, (type, state) => {
+    state.setContext({ UploadedFileSymbol });
+    state.addSetterAndReportErrorIfInvalid('uploadSecurity', 'Not an uploaded file', `typeof ${state.accessor} === 'object' && ${state.accessor}.validator === UploadedFileSymbol`);
+});
 
 export interface RouteFunctionControllerAction {
     type: 'function';

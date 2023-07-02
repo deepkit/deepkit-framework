@@ -16,7 +16,7 @@ import {
     ValidationError
 } from '@deepkit/type';
 import { BodyValidationError, createRequestWithCachedBody, getRegExp, HttpRequest, ValidatedBody } from './model.js';
-import { RouteConfig, UploadedFile } from './router.js';
+import { RouteConfig, UploadedFile, UploadedFileSymbol } from './router.js';
 
 //@ts-ignore
 import qs from 'qs';
@@ -40,6 +40,7 @@ function parseBody(
                 for (const [name, file] of Object.entries(files) as any) {
                     if (file.size === 0) continue;
                     foundFiles[name] = {
+                        validator: UploadedFileSymbol,
                         size: file.size,
                         path: file.filepath,
                         name: file.originalFilename,
@@ -225,27 +226,6 @@ export function getRequestParserCodeForParameters(
                 bodyValidationErrorHandling = '';
             } else {
                 parameterNames.push(`parameters.${parameter.parameter.name}`);
-            }
-
-            const uploadedFileProps: string[] = [];
-            const bodyType = type.typeArguments?.[0];
-            if (bodyType?.kind === ReflectionKind.class) {
-                for (const t of bodyType.types) {
-                    if (t.kind === ReflectionKind.property &&
-                        t.type.kind === ReflectionKind.class &&
-                        t.type.classType === UploadedFile &&
-                        typeof t.name === 'string') {
-                        uploadedFileProps.push(t.name);
-                    }
-                }
-            }
-            for (const uploadedFileProp of uploadedFileProps) {
-                const paramVar = compiler.reserveVariable('uploadedFileProp', uploadedFileProp);
-                parameterValidator.push(`
-                    if (parameters.${parameter.parameter.name}[${paramVar}] !== undefined && uploadedFiles[${paramVar}] === undefined) {
-                        throw ValidationError.from([{ path: ${paramVar}, message: 'Not an uploaded file', code: 'uploadSecurity' }]);
-                    }
-                `);
             }
         } else if (parameter.query || parameter.queries || parameter.header) {
             const converted = getSerializeFunction(parameter.parameter.parameter, serializer.deserializeRegistry, undefined, parameter.getName());
