@@ -226,6 +226,27 @@ export function getRequestParserCodeForParameters(
             } else {
                 parameterNames.push(`parameters.${parameter.parameter.name}`);
             }
+
+            const uploadedFileProps: string[] = [];
+            const bodyType = type.typeArguments?.[0];
+            if (bodyType?.kind === ReflectionKind.class) {
+                for (const t of bodyType.types) {
+                    if (t.kind === ReflectionKind.property &&
+                        t.type.kind === ReflectionKind.class &&
+                        t.type.classType === UploadedFile &&
+                        typeof t.name === 'string') {
+                        uploadedFileProps.push(t.name);
+                    }
+                }
+            }
+            for (const uploadedFileProp of uploadedFileProps) {
+                const paramVar = compiler.reserveVariable('uploadedFileProp', uploadedFileProp);
+                parameterValidator.push(`
+                    if (parameters.${parameter.parameter.name}[${paramVar}] !== undefined && uploadedFiles[${paramVar}] === undefined) {
+                        throw ValidationError.from([{ path: ${paramVar}, message: 'Not an uploaded file', code: 'uploadSecurity' }]);
+                    }
+                `);
+            }
         } else if (parameter.query || parameter.queries || parameter.header) {
             const converted = getSerializeFunction(parameter.parameter.parameter, serializer.deserializeRegistry, undefined, parameter.getName());
             const validator = getValidatorFunction(undefined, parameter.parameter.parameter,);
