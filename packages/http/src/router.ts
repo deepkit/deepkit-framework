@@ -75,7 +75,7 @@ export class UploadedFile {
 
 serializer.typeGuards.getRegistry(1).registerClass(UploadedFile, (type, state) => {
     state.setContext({ UploadedFileSymbol });
-    state.addSetterAndReportErrorIfInvalid('uploadSecurity', 'Not an uploaded file', `typeof ${state.accessor} === 'object' && ${state.accessor}.validator === UploadedFileSymbol`);
+    state.addSetterAndReportErrorIfInvalid('uploadSecurity', 'Not an uploaded file', `typeof ${state.accessor} === 'object' && ${state.accessor} !== null && ${state.accessor}.validator === UploadedFileSymbol`);
 });
 
 export interface RouteFunctionControllerAction {
