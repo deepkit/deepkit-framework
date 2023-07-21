@@ -142,6 +142,7 @@ const {
     isSourceFile,
     isStringLiteral,
     isTypeAliasDeclaration,
+    isTypeLiteralNode,
     isTypeParameterDeclaration,
     isTypeQueryNode,
     isTypeReferenceNode,
@@ -1246,6 +1247,8 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 if (node) {
                     const members: ClassElement[] = [];
+                    const description = extractJSDocAttribute(narrowed, 'description');
+                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
 
                     if (narrowed.typeParameters) {
                         for (const typeParameter of narrowed.typeParameters) {
@@ -1288,6 +1291,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     }
 
                     program.pushOp(ReflectionOp.class);
+                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
 
                     if (narrowed.heritageClauses && narrowed.heritageClauses[0] && narrowed.heritageClauses[0].types[0]) {
                         const first = narrowed.heritageClauses[0].types[0];
@@ -1375,6 +1379,7 @@ export class ReflectionTransformer implements CustomTransformer {
             case SyntaxKind.InterfaceDeclaration: {
                 //TypeScript does not narrow types down
                 const narrowed = node as TypeLiteralNode | InterfaceDeclaration;
+                let descriptionNode: Node = narrowed;
                 program.pushFrame();
 
                 //first all extend expressions
@@ -1392,6 +1397,11 @@ export class ReflectionTransformer implements CustomTransformer {
                     this.extractPackStructOfType(member, program);
                 }
                 program.pushOp(ReflectionOp.objectLiteral);
+                if (isTypeLiteralNode(narrowed)) {
+                    descriptionNode = narrowed.parent;
+                }
+                const description = extractJSDocAttribute(descriptionNode, 'description');
+                if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
                 program.popFrameImplicit();
                 break;
             }
@@ -1622,6 +1632,8 @@ export class ReflectionTransformer implements CustomTransformer {
                     if (hasModifier(narrowed, SyntaxKind.AbstractKeyword)) program.pushOp(ReflectionOp.abstract);
                     if (hasModifier(narrowed, SyntaxKind.StaticKeyword)) program.pushOp(ReflectionOp.static);
                 }
+                const description = extractJSDocAttribute(narrowed, 'description');
+                if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
                 program.popFrameImplicit();
                 break;
             }
@@ -1691,6 +1703,8 @@ export class ReflectionTransformer implements CustomTransformer {
                     }
                 }
                 program.pushOp(ReflectionOp.enum);
+                const description = extractJSDocAttribute(narrowed, 'description');
+                if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
                 program.popFrameImplicit();
                 break;
             }
