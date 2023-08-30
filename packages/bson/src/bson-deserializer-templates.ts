@@ -757,7 +757,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
 
         for (const signature of signatures) {
             const check = isOptional(signature.type) ? `` : `elementType !== ${BSONType.UNDEFINED} &&`;
-            signatureLines.push(`else if (${check} ${getIndexCheck(state, i, signature.index)}) {
+            signatureLines.push(`else if (${check} ${getIndexCheck(state.compilerContext, i, signature.index)}) {
                 ${executeTemplates(state.fork(`${object}[${i}]`).extendPath(new RuntimeCode(i)).forPropertyName(new RuntimeCode(i)), signature.type)}
                 continue;
             }`);
@@ -931,7 +931,7 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
         sortSignatures(signatures);
 
         for (const signature of signatures) {
-            signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)}) {
+            signatureLines.push(`else if (${getIndexCheck(state.compilerContext, i, signature.index)}) {
                 ${executeTemplates(state.fork(valid).extendPath(new RuntimeCode(i)).forPropertyName(new RuntimeCode(i)), signature.type)}
 
                 if (!${valid}) break;

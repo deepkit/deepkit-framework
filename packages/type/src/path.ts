@@ -1,7 +1,7 @@
 import { getTypeJitContainer, ReflectionKind, Type } from './reflection/type.js';
 import { CompilerContext, toFastProperties } from '@deepkit/core';
 import { ReceiveType, resolveReceiveType } from './reflection/reflection.js';
-import { JitStack } from './serializer.js';
+import { getIndexCheck, JitStack } from './serializer.js';
 
 export type Resolver = (path: string) => Type | undefined;
 
@@ -31,7 +31,9 @@ function pathResolverCode(type: Type, compilerContext: CompilerContext, jitStack
 }
 
 export function resolvePath<T>(path: string, type?: ReceiveType<T>): Type {
-    const t = pathResolver(resolveReceiveType(type))(path);
+    const resolver = pathResolver(resolveReceiveType(type));
+    debugger;
+    const t = resolver(path);
     if (!t) throw new Error(`No type found for path ${path}`);
     return t;
 }
@@ -44,6 +46,7 @@ export function pathResolver<T>(type?: ReceiveType<T>, jitStack: JitStack = new 
     if (type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.class) {
         const compilerContext = new CompilerContext();
         const lines: string[] = [];
+        const defaultCase: string[] = [];
 
         for (const member of type.types) {
             if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
@@ -53,6 +56,14 @@ export function pathResolver<T>(type?: ReceiveType<T>, jitStack: JitStack = new 
                 if (path === '') return ${compilerContext.reserveVariable('type', member)};
                 ${pathResolverCode(member.type, compilerContext, jitStack)}
             }`);
+            } else if (member.kind === ReflectionKind.indexSignature) {
+                const checkValid = compilerContext.reserveName('check');
+                defaultCase.push(`else if (${getIndexCheck(compilerContext, 'pathName', member.index)}) {
+                    let ${checkValid} = false;
+                    if (!${checkValid}) {
+                        ${pathResolverCode(member.type, compilerContext, jitStack)}
+                    }
+                }`);
             }
         }
 
@@ -63,6 +74,9 @@ export function pathResolver<T>(type?: ReceiveType<T>, jitStack: JitStack = new 
 
         switch(pathName) {
             ${lines.join('\n')}
+            default: {
+                if (false) {} ${defaultCase.join('\n')}
+            }
         }
         `;
 

@@ -1,4 +1,4 @@
-import { AutoIncrement, entity, PrimaryKey } from '@deepkit/type';
+import { AutoIncrement, cast, entity, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import pg from 'pg';
 import { databaseFactory } from './factory.js';
@@ -157,4 +157,27 @@ test('for update/share', async () => {
 
     const items = await database.query(Model).forUpdate().find();
     expect(items).toHaveLength(2);
+});
+
+test('json field and query', async () => {
+    @entity.name('product').collection('products')
+    class Product {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        raw?: { [key: string]: any };
+    }
+
+    const database = await databaseFactory([Product]);
+
+    await database.persist(cast<Product>({ raw: { productId: 1, name: 'first' } }));
+    await database.persist(cast<Product>({ raw: { productId: 2, name: 'second' } }));
+
+    {
+        const res = await database.query(Product).filter({ 'raw.productId': 1 }).find();
+        expect(res).toMatchObject([{ id: 1, raw: { productId: 1, name: 'first' } }]);
+    }
+
+    {
+        const res = await database.query(Product).filter({ 'raw.productId': 2 }).find();
+        expect(res).toMatchObject([{ id: 2, raw: { productId: 2, name: 'second' } }]);
+    }
 });

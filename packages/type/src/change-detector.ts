@@ -222,7 +222,7 @@ function createJITChangeDetectorForSnapshot(schema: ReflectionClass<any>, stateI
         const itemAccessor = new ContainerAccessor('item', i);
 
         for (const signature of signatures) {
-            signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)}) {
+            signatureLines.push(`else if (${getIndexCheck(state.compilerContext, i, signature.index)}) {
             ${getComparator(signature.type, lastAccessor, currentAccessor, itemAccessor, i, '', state)}
         }`);
         }

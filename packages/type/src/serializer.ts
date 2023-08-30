@@ -510,13 +510,7 @@ export class TemplateState {
     }
 
     setContext(values: { [name: string]: any }) {
-        for (const i in values) {
-            if (!hasProperty(values, i)) {
-                console.log('hasProperty is false: ', i, values[i], hasProperty(values, i));
-                continue;
-            }
-            this.compilerContext.context.set(i, values[i]);
-        }
+        this.compilerContext.set(values);
     }
 
     addCode(code: string) {
@@ -924,20 +918,20 @@ export function deserializeEmbedded(type: TypeClass | TypeObjectLiteral, state: 
     `;
 }
 
-export function getIndexCheck(state: TemplateState, i: string, type: Type): string {
+export function getIndexCheck(context: CompilerContext, i: string, type: Type): string {
     if (type.kind === ReflectionKind.number) {
-        state.setContext({ isNumeric: isNumeric });
+        context.set({ isNumeric: isNumeric });
         return `isNumeric(${i})`;
     } else if (type.kind === ReflectionKind.string || type.kind === ReflectionKind.any) {
         return `'string' === typeof ${i}`;
     } else if (type.kind === ReflectionKind.symbol) {
         return `'symbol' === typeof ${i}`;
     } else if (type.kind === ReflectionKind.templateLiteral) {
-        state.setContext({ extendTemplateLiteral: extendTemplateLiteral });
-        const typeVar = state.setVariable('type', type);
+        context.set({ extendTemplateLiteral: extendTemplateLiteral });
+        const typeVar = context.reserveVariable('type', type);
         return `'string' === typeof ${i} && extendTemplateLiteral({kind: ${ReflectionKind.literal}, literal: ${i}}, ${typeVar})`;
     } else if (type.kind === ReflectionKind.union) {
-        return '(' + type.types.map(v => getIndexCheck(state, i, v)).join(' || ') + ')';
+        return '(' + type.types.map(v => getIndexCheck(context, i, v)).join(' || ') + ')';
     }
     return '';
 }
@@ -1154,7 +1148,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         sortSignatures(signatures);
 
         for (const signature of signatures) {
-            signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)} && ${groupFilter(signature.type)}) {
+            signatureLines.push(`else if (${getIndexCheck(state.compilerContext, i, signature.index)} && ${groupFilter(signature.type)}) {
                 ${createConverterJSForMember(signature, state.fork(new ContainerAccessor(v, i), new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)))}
             }`);
         }
@@ -1321,7 +1315,7 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         for (const signature of signatures) {
             const checkValid = state.compilerContext.reserveName('check');
             const checkTemplate = executeTemplates(state.fork(checkValid, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), signature.type).trim();
-            signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)}) {
+            signatureLines.push(`else if (${getIndexCheck(state.compilerContext, i, signature.index)}) {
                 let ${checkValid} = false;
                 ${checkTemplate || `// no template found for signature.type.kind=${signature.type.kind}`}
                 if (!${checkValid}) ${state.setter} = false;

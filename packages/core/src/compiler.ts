@@ -9,6 +9,7 @@
  */
 // @ts-ignore
 import { indent } from './indent.js';
+import { hasProperty } from './core.js';
 
 export class CompilerContext {
     public readonly context = new Map<string, any>();
@@ -43,6 +44,15 @@ export class CompilerContext {
         }
 
         throw new Error(`Too many context variables (max ${this.maxReservedVariable})`);
+    }
+
+    set(values: { [name: string]: any }) {
+        for (const i in values) {
+            if (!hasProperty(values, i)) {
+                continue;
+            }
+            this.context.set(i, values[i]);
+        }
     }
 
     /**

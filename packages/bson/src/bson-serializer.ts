@@ -783,7 +783,7 @@ function handleObjectLiteral(
                 ? executeTemplates(propertyState.fork().forPropertyName(new RuntimeCode(i)), { kind: ReflectionKind.undefined })
                 : isNullable(signature.type) ? executeTemplates(propertyState.fork().forPropertyName(new RuntimeCode(i)), { kind: ReflectionKind.null }) : '';
 
-            signatureLines.push(`else if (${getIndexCheck(state, i, signature.index)}) {
+            signatureLines.push(`else if (${getIndexCheck(state.compilerContext, i, signature.index)}) {
                 if (${accessor} === undefined) {
                      ${setUndefined}
                 } else {
