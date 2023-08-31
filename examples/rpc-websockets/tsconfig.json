@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "experimentalDecorators": true,
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "esModuleInterop": true,
+    "module": "CommonJS"
+  },
+  "reflection": true
+}
