@@ -784,7 +784,8 @@ export class Processor {
                         }
                         case ReflectionOp.union: {
                             const types = this.popFrame() as Type[];
-                            let t: Type = unboxUnion({ kind: ReflectionKind.union, types: flattenUnionTypes(types) });
+                            const flattened = flattenUnionTypes(types);
+                            let t: Type = unboxUnion({ kind: ReflectionKind.union, types: flattened });
                             if (this.isEnded()) t = assignResult(program.resultType, t);
                             if (t.kind === ReflectionKind.union) for (const member of t.types) member.parent = t;
                             this.pushType(t);
