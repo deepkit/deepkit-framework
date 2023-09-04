@@ -74,7 +74,7 @@ export class RpcTcpServer {
     }
 }
 
-import ws from 'ws';
+import * as ws from 'ws';
 import type { ServerOptions as WebSocketServerOptions } from 'ws';
 import { IncomingMessage } from 'http';
 
