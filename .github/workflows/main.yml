@@ -9,7 +9,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [ 18.x ]
+        node-version: [18.17.0]
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -97,7 +97,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [ 18.x ]
+        node-version: [18.17.0]
         postgres-version: [ 14 ]
     services:
       postgres:
@@ -145,7 +145,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [ 18.x ]
+        node-version: [18.17.0]
         mysql-version: [ 8.0 ]
     services:
       mysql:
@@ -192,7 +192,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [ 18.x ]
+        node-version: [18.17.0]
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -229,7 +229,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [ 18.x ]
+        node-version: [18.17.0]
         mongo-version: [ 4.0 ]
     services:
       # this is used for the simple-auth test
