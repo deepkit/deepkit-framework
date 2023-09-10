@@ -601,7 +601,7 @@ export function isSameType(a: Type, b: Type, stack: StackEntry[] = []): boolean 
 
     try {
         if (a.kind !== b.kind) return false;
-        if (a.typeName !== b.typeName) return false;
+        if (a.typeName && b.typeName && a.typeName !== b.typeName) return false;
         if (a.kind === ReflectionKind.infer || b.kind === ReflectionKind.infer) return false;
 
         if (a.kind === ReflectionKind.literal) return a.literal === (b as TypeLiteral).literal;
