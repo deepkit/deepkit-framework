@@ -31,9 +31,7 @@ function getCode(deepkitDistPath: string, varName: string, id: string): string {
                 if (!${varName}.afterDeclarations) ${varName}.afterDeclarations = [];
                 if (!${varName}.afterDeclarations.includes(typeTransformer.declarationTransformer)) ${varName}.afterDeclarations.push(typeTransformer.declarationTransformer);
             }
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) {}
     `;
 }
 

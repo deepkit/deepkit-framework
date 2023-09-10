@@ -1,18 +1,8 @@
 {
-  "name": "@deepkit/core-rxjs",
+  "name": "@deepkit/core-rxjs-rxjs",
   "version": "1.0.1-alpha.97",
-  "description": "Deepkit core rxjs library",
-  "type": "commonjs",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/cjs/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/cjs/index.d.ts",
-      "require": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.js"
-    }
-  },
+  "description": "Deepkit core-rxjs rxjs library",
+  "types": "./src/index.d.ts",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
@@ -20,27 +10,8 @@
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
-  "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
-  },
   "peerDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.0",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.0",
     "rxjs": "*"
-  },
-  "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.97",
-    "rxjs": "~7.5.0"
-  },
-  "jest": {
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts"
-    ]
-  },
-  "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
+  }
 }

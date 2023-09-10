@@ -1,0 +1,51 @@
+{
+  "name": "desktop-ui",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/desktop-ui/src",
+  "prefix": "lib",
+  "tags": [],
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:package",
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}"],
+      "options": {
+        "project": "packages/desktop-ui/ng-package.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "packages/desktop-ui/tsconfig.lib.prod.json"
+        },
+        "development": {
+          "tsConfig": "packages/desktop-ui/tsconfig.lib.json"
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/desktop-ui/jest.config.ts",
+        "passWithNoTests": true
+      },
+      "configurations": {
+        "ci": {
+          "ci": true,
+          "codeCoverage": true
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nx/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": [
+          "packages/desktop-ui/**/*.ts",
+          "packages/desktop-ui/**/*.html",
+          "packages/desktop-ui/package.json"
+        ]
+      }
+    }
+  }
+}

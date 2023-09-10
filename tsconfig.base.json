@@ -23,18 +23,16 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@deepkit/type-spec": [
-        "dist/packages/type-spec/src/index.esm.js",
-        "packages/type-spec/src/index.ts"
-      ],
-      "@deepkit/type": [
-        "dist/packages/type/src/index.esm.js",
-        "packages/type/src/index.ts"
-      ],
-      "@deepkit/core": [
-        "dist/packages/core/src/index.esm.js",
-        "packages/core/src/index.ts"
-      ]
+      "@deepkit/api-console-gui": ["packages/api-console-gui/src/index.ts"],
+      "@deepkit/core": ["packages/core/src/index.ts"],
+      "@deepkit/core-rxjs": ["packages/core-rxjs/src/index.ts"],
+      "@deepkit/desktop-ui": ["packages/desktop-ui/src/index.ts"],
+      "@deepkit/event": ["packages/event/src/index.ts"],
+      "@deepkit/injector": ["packages/injector/src/index.ts"],
+      "@deepkit/type": ["packages/type/src/index.ts"],
+      "@deepkit/type-compiler": ["packages/type-compiler/src/index.ts"],
+      "@deepkit/type-spec": ["packages/type-spec/src/index.ts"],
+      "@deepkit/ui-library": ["packages/ui-library/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

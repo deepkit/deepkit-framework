@@ -30,10 +30,10 @@ const nxResolvePackages = (packages) => {
 }
 
 module.exports = (config) => {
+    // we can't require @deepkit/* packages during development
     if (process.env.NODE_ENV === 'development') {
         const external = config.external;
         const packages = Object.keys(tsconfig.compilerOptions.paths);
-        // we can't require @deepkit/* packages during development
         config.external = (id) => {
             if (packages.includes(id)) return false;
             return external(id)

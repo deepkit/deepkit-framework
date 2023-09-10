@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { wrapComponent } from '../src/jsx.js';
-import { InjectorContext } from '../src/injector.js';
-import { InjectorModule } from '../src/module.js';
+import { wrapComponent } from '../src/lib/jsx.js';
+import { InjectorContext } from '../src/lib/injector.js';
+import { InjectorModule } from '../src/lib/module.js';
 
 test('jsx basic', () => {
     class User {

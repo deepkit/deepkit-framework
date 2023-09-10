@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { BaseEvent, DataEventToken, EventDispatcher, EventError, EventToken } from '../src/event.js';
+import { BaseEvent, DataEventToken, EventDispatcher, EventError, EventToken } from '../src/lib/event.js';
 
 test('functional api', async () => {
     const dispatcher = new EventDispatcher();

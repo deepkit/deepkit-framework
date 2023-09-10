@@ -1,16 +1,6 @@
 {
-  "name": "@deepkit/ui-library",
+  "name": "ui-library",
   "version": "1.0.1-alpha.56",
-  "description": "Collection of utilities for Deepkit's graphical user interfaces",
-  "type": "commonjs",
-  "main": "index.ts",
-  "module": "index.ts",
-  "private": true,
-  "repository": "https://github.com/deepkit/deepkit-framework",
-  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
-  "license": "MIT",
-  "scripts": {
-  },
   "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13",
@@ -21,23 +11,8 @@
     "rxjs": "~7.5.0"
   },
   "dependencies": {
+    "tslib": "^2.3.0",
     "prismjs": "^1.24.1"
   },
-  "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.52",
-    "@deepkit/type": "^1.0.1-alpha.52",
-    "@deepkit/desktop-ui": "^1.0.1-alpha.48",
-    "@deepkit/rpc": "^1.0.1-alpha.57",
-    "@angular/core": "~15.0.0",
-    "@angular/common": "~15.0.0",
-    "rxjs": "~7.5.0"
-  },
-  "jest": {
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts"
-    ]
-  }
+  "sideEffects": false
 }

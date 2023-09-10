@@ -1,50 +1,28 @@
 {
   "compilerOptions": {
-    "baseUrl": "./",
-    "outDir": "./dist",
-    "moduleResolution": "node",
-    "experimentalDecorators": true,
-    "downlevelIteration": true,
-    "sourceMap": true,
-    "declaration": true,
+    "target": "es2018",
+    "useDefineForClassFields": false,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitReturns": false,
     "strict": true,
-    "target": "es2015",
-    "noImplicitAny": true,
-    "esModuleInterop": true,
-    "typeRoots": [
-      "node_modules/@types"
-    ],
-    "lib": [
-      "es2018",
-      "dom"
-    ],
-    "paths": {
-      "angular-desktop-ui": [
-        "dist/"
-      ]
-    },
-    "composite": true
+    "noImplicitOverride": false,
+    "types": ["hammerjs"]
   },
-  "include": [
-    "./src",
-    "create-font.ts"
-  ],
-  "angularCompilerOptions": {
-    "fullTemplateTypeCheck": true,
-    "strictInjectionParameters": true
-  },
+  "files": [],
+  "include": [],
   "references": [
     {
-      "path": "../core/tsconfig.json"
+      "path": "./tsconfig.lib.json"
     },
     {
-      "path": "../core-rxjs/tsconfig.json"
-    },
-    {
-      "path": "../event/tsconfig.json"
-    },
-    {
-      "path": "../type/tsconfig.json"
+      "path": "./tsconfig.spec.json"
     }
-  ]
+  ],
+  "extends": "../../tsconfig.base.json",
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true
+  }
 }
