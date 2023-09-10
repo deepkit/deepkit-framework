@@ -1,4 +1,4 @@
-import { uuid } from '../../src/utils.js';
+import { uuid } from '../../src/lib/utils.js';
 
 type MongoId = string & {__mongoId?: true};
 type Primary = {__primary?: true};

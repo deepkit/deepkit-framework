@@ -2,37 +2,24 @@
   "name": "@deepkit/type-compiler",
   "version": "1.0.1-alpha.97",
   "description": "Deepkit/type compiler/Typescript transformer",
-  "type": "commonjs",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/cjs/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/cjs/index.d.ts",
-      "require": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.js"
-    }
-  },
+  "types": "./src/index.d.ts",
+  "main": "./index.cjs",
+  "module": "./index.js",
   "bin": {
-    "deepkit-type-install": "./dist/cjs/install-transformer.js"
+    "deepkit-type-install": "./install-transformer.cjs.js"
   },
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json",
-    "install": "rm -rf node_modules/typescript && node ./dist/cjs/install-transformer.js || exit 0"
+    "install": "rm -rf node_modules/typescript && node ./dist/install-transformer.js || exit 0"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
     "typescript": "^4.8.2 || ^5.0.0"
-  },
-  "devDependencies": {
-    "@types/lz-string": "^1.3.34",
-    "@types/micromatch": "^4.0.2"
   },
   "dependencies": {
     "@deepkit/type-spec": "^1.0.1-alpha.93",
@@ -43,21 +30,19 @@
     "micromatch": "^4.0.5",
     "strip-json-comments": "^3.1.1"
   },
-  "jest": {
-    "testEnvironment": "node",
-    "transform": {
-      "^.+\\.(ts|tsx)$": [
-        "ts-jest",
-        {
-          "tsconfig": "<rootDir>/tsconfig.test.json"
-        }
-      ]
+  "exports": {
+    "./package.json": {
+      "default": "./package.json"
     },
-    "testMatch": [
-      "**/tests/**/*.spec.ts"
-    ],
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
+    ".": {
+      "default": "./index.cjs",
+      "module": "./index.js",
+      "import": "./index.js"
+    },
+    "./install-transformer": {
+      "default": "./install-transformer.cjs",
+      "module": "./install-transformer.js",
+      "import": "./install-transformer.js"
     }
   }
 }

@@ -1,6 +1,6 @@
 import { test, expect } from '@jest/globals';
-import { typeOf } from '../src/reflection/reflection.js';
-import { assertType, ReflectionKind } from '../src/reflection/type.js';
+import { typeOf } from '../src/lib/reflection/reflection.js';
+import { assertType, ReflectionKind } from '../src/lib/reflection/type.js';
 
 test('union empty interfaces', () => {
     interface Dog {

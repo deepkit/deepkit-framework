@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { arrayMoveItem } from '../src/array.js';
-import { arrayClear, arrayHasItem, arrayRemoveItem } from '../src/array.js';
+import { arrayMoveItem } from '../src/lib/array.js';
+import { arrayClear, arrayHasItem, arrayRemoveItem } from '../src/lib/array.js';
 
 
 test('clear', () => {

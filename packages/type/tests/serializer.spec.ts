@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { expect, test } from '@jest/globals';
-import { reflect, ReflectionClass, ReflectionFunction, typeOf } from '../src/reflection/reflection.js';
+import { reflect, ReflectionClass, ReflectionFunction, typeOf } from '../src/lib/reflection/reflection.js';
 import {
     assertType,
     AutoIncrement,
@@ -29,17 +29,17 @@ import {
     Type,
     TypeProperty,
     TypePropertySignature
-} from '../src/reflection/type.js';
-import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializer, underscoreNamingStrategy } from '../src/serializer.js';
-import { cast, deserialize, patch, serialize } from '../src/serializer-facade.js';
+} from '../src/lib/reflection/type.js';
+import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializer, underscoreNamingStrategy } from '../src/lib/serializer.js';
+import { cast, deserialize, patch, serialize } from '../src/lib/serializer-facade.js';
 import { getClassName } from '@deepkit/core';
-import { entity, t } from '../src/decorator.js';
-import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator.js';
+import { entity, t } from '../src/lib/decorator.js';
+import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/lib/validator.js';
 import { StatEnginePowerUnit, StatWeightUnit } from './types.js';
-import { parametersToTuple } from '../src/reflection/extends.js';
-import { getValidatorFunction, is } from '../src/typeguard.js';
-import { isReferenceInstance } from '../src/reference.js';
-import { ChangesInterface, DeepPartial } from '../src/changes.js';
+import { parametersToTuple } from '../src/lib/reflection/extends.js';
+import { getValidatorFunction, is } from '../src/lib/typeguard.js';
+import { isReferenceInstance } from '../src/lib/reference.js';
+import { ChangesInterface, DeepPartial } from '../src/lib/changes.js';
 import { inspect } from 'util';
 
 test('deserializer', () => {

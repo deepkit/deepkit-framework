@@ -1,7 +1,7 @@
 import { test, expect } from '@jest/globals';
 import * as ts from 'typescript';
 import { TransformationContext } from 'typescript';
-import { ReflectionTransformer } from '../../src/compiler.js';
+import { ReflectionTransformer } from '../../src/lib/compiler.js';
 
 function build(currentDir = process.cwd(), useConfig = 'tsconfig.json'): { [path: string]: string } {
     process.env.DEBUG = 'deepkit';

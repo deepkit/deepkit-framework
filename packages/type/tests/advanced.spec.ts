@@ -9,9 +9,9 @@
  */
 
 import { expect, test } from '@jest/globals';
-import { typeOf } from '../src/reflection/reflection.js';
-import { assertType, ReflectionKind, stringifyResolvedType, Type } from '../src/reflection/type.js';
-import { serialize } from '../src/serializer-facade.js';
+import { typeOf } from '../src/lib/reflection/reflection.js';
+import { assertType, ReflectionKind, stringifyResolvedType, Type } from '../src/lib/reflection/type.js';
+import { serialize } from '../src/lib/serializer-facade.js';
 import { expectEqualType } from './utils.js';
 test('array stack', () => {
     type Pop<T extends unknown[]> = T extends [...infer U, unknown] ? U : never

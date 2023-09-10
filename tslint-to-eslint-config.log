@@ -1,0 +1,18 @@
+5 ESLint rules behave differently from their TSLint counterparts:
+  * arrow-body-style:
+    - ESLint will throw an error if the function body is multiline yet has a one-line return on it.
+  * @typescript-eslint/no-unused-expressions:
+    - The TSLint optional config "allow-new" is the default ESLint behavior and will no longer be ignored.
+  * brace-style:
+    - ESLint's brace-style will check all tokens.
+  * eqeqeq:
+    - Option "smart" allows for comparing two literal values, evaluating the value of typeof and null comparisons.
+  * no-underscore-dangle:
+    - Leading or trailing underscores (_) on identifiers will now be forbidden.
+
+4 rules are not known by tslint-to-eslint-config to have ESLint equivalents:
+  * tslint-to-eslint-config does not know the ESLint equivalent for TSLint's "use-host-property-decorator".
+  * tslint-to-eslint-config does not know the ESLint equivalent for TSLint's "use-input-property-decorator".
+  * tslint-to-eslint-config does not know the ESLint equivalent for TSLint's "use-life-cycle-interface".
+  * tslint-to-eslint-config does not know the ESLint equivalent for TSLint's "use-output-property-decorator".
+

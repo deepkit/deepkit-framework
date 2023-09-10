@@ -2,10 +2,9 @@
 
 set -e;
 
-tsc --build packages/type-compiler/tsconfig.json;
-node packages/type-compiler/dist/cjs/install-transformer.js;
+NODE_ENV=development nx build type-compiler
+node dist/packages/type-compiler/install-transformer.cjs.js
 
-
-node packages/type-compiler/dist/cjs/install-transformer.js packages/api-console-gui;
-node packages/type-compiler/dist/cjs/install-transformer.js packages/orm-browser-gui;
-node packages/type-compiler/dist/cjs/install-transformer.js packages/framework-debug-gui;
+#node dist/packages/type-compiler/install-transformer.js packages/api-console-gui;
+#node dist/packages/type-compiler/install-transformer.js packages/orm-browser-gui;
+#node dist/packages/type-compiler/install-transformer.js packages/framework-debug-gui;

@@ -10,8 +10,8 @@
 
 import { ClassType } from '@deepkit/core';
 import { expect, test } from '@jest/globals';
-import { entity, t } from '../src/decorator.js';
-import { propertiesOf, reflect, ReflectionClass, ReflectionFunction, ReflectionMethod, typeOf, valuesOf } from '../src/reflection/reflection.js';
+import { entity, t } from '../src/lib/decorator.js';
+import { propertiesOf, reflect, ReflectionClass, ReflectionFunction, ReflectionMethod, typeOf, valuesOf } from '../src/lib/reflection/reflection.js';
 import {
     annotateClass,
     assertType,
@@ -49,13 +49,13 @@ import {
     TypeObjectLiteral,
     TypeTuple,
     Unique
-} from '../src/reflection/type.js';
+} from '../src/lib/reflection/type.js';
 import { TypeNumberBrand } from '@deepkit/type-spec';
-import { validate, ValidatorError } from '../src/validator.js';
+import { validate, ValidatorError } from '../src/lib/validator.js';
 import { expectEqualType } from './utils.js';
 import { MyAlias } from './types.js';
-import { resolveRuntimeType } from '../src/reflection/processor.js';
-import { uuid } from '../src/utils.js';
+import { resolveRuntimeType } from '../src/lib/reflection/processor.js';
+import { uuid } from '../src/lib/utils.js';
 
 test('class', () => {
     class Entity {

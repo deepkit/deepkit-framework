@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { hasCircularReference, ReceiveType, reflect, ReflectionClass, reflectOrUndefined, resolveReceiveType, typeOf, visit } from '../src/reflection/reflection.js';
+import { hasCircularReference, ReceiveType, reflect, ReflectionClass, reflectOrUndefined, resolveReceiveType, typeOf, visit } from '../src/lib/reflection/reflection.js';
 import {
     assertType,
     Embedded,
@@ -25,12 +25,12 @@ import {
     TypeProperty,
     UUID,
     validationAnnotation
-} from '../src/reflection/type.js';
-import { isExtendable } from '../src/reflection/extends.js';
+} from '../src/lib/reflection/type.js';
+import { isExtendable } from '../src/lib/reflection/extends.js';
 import { expectEqualType } from './utils.js';
 import { ClassType } from '@deepkit/core';
-import { Partial } from '../src/changes.js';
-import { MaxLength, MinLength } from '../src/validator.js';
+import { Partial } from '../src/lib/changes.js';
+import { MaxLength, MinLength } from '../src/lib/validator.js';
 
 //note: this needs to run in a strict TS mode to infer correctly in the IDE
 type Extends<A, B> = [A] extends [B] ? true : false;

@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { parseHost } from '../src/network.js';
+import { parseHost } from '../src/lib/network.js';
 
 test('parseHost', () => {
     {

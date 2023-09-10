@@ -1,7 +1,7 @@
 import * as ts from 'typescript';
 import { createSourceFile, ScriptKind, ScriptTarget } from 'typescript';
 import { expect, test } from '@jest/globals';
-import { ReflectionTransformer } from '../src/compiler.js';
+import { ReflectionTransformer } from '../src/lib/compiler.js';
 import { transform } from './utils.js';
 
 test('transform simple TS', () => {

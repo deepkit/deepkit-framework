@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { stringifyResolvedType, stringifyShortResolvedType, stringifyType, Type } from '../src/reflection/type.js';
-import { reflect, typeOf } from '../src/reflection/reflection.js';
-import { deserializeType, serializeType } from '../src/type-serialization.js';
+import { stringifyResolvedType, stringifyShortResolvedType, stringifyType, Type } from '../src/lib/reflection/type.js';
+import { reflect, typeOf } from '../src/lib/reflection/reflection.js';
+import { deserializeType, serializeType } from '../src/lib/type-serialization.js';
 
 test('stringifyType basic', () => {
     expect(stringifyResolvedType(typeOf<string>())).toBe('string');

@@ -1,7 +1,7 @@
-import { ReflectionClass, ReflectionProperty, typeOf } from '../src/reflection/reflection.js';
+import { ReflectionClass, ReflectionProperty, typeOf } from '../src/lib/reflection/reflection.js';
 import { expect, test } from '@jest/globals';
-import { isExtendable } from '../src/reflection/extends.js';
-import { stringifyResolvedType } from '../src/reflection/type.js';
+import { isExtendable } from '../src/lib/reflection/extends.js';
+import { stringifyResolvedType } from '../src/lib/reflection/type.js';
 
 export interface OrmEntity {
 }

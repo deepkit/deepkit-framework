@@ -1,10 +1,10 @@
 import { expect, test, jest } from '@jest/globals';
-import { Email, MaxLength, MinLength, Positive, Validate, validate, validates, ValidatorError } from '../src/validator.js';
-import { assert, is } from '../src/typeguard.js';
-import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Type, Unique } from '../src/reflection/type.js';
-import { t } from '../src/decorator.js';
-import { ReflectionClass, typeOf } from '../src/reflection/reflection.js';
-import { validatedDeserialize } from '../src/serializer-facade.js';
+import { Email, MaxLength, MinLength, Positive, Validate, validate, validates, ValidatorError } from '../src/lib/validator.js';
+import { assert, is } from '../src/lib/typeguard.js';
+import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Type, Unique } from '../src/lib/reflection/type.js';
+import { t } from '../src/lib/decorator.js';
+import { ReflectionClass, typeOf } from '../src/lib/reflection/reflection.js';
+import { validatedDeserialize } from '../src/lib/serializer-facade.js';
 
 test('primitives', () => {
     expect(validate<string>('Hello')).toEqual([]);

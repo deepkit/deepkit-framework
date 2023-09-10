@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { each, eachKey, eachPair } from '../src/iterators.js';
+import { each, eachKey, eachPair } from '../src/lib/iterators.js';
 
 test('test array', () => {
     const array: string[] = ['a', 'b', 'c'];

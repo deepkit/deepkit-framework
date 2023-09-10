@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { expect, test } from '@jest/globals';
-import { float, float32, int8, integer, PrimaryKey, Reference } from '../src/reflection/type.js';
-import { is } from '../src/typeguard.js';
+import { float, float32, int8, integer, PrimaryKey, Reference } from '../src/lib/reflection/type.js';
+import { is } from '../src/lib/typeguard.js';
 
 test('primitive string', () => {
     expect(is<string>('a')).toEqual(true);

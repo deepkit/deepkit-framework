@@ -1,7 +1,7 @@
 import * as ts from 'typescript';
 import { createSourceFile, getPreEmitDiagnostics, ScriptTarget, ScriptKind, TransformationContext } from 'typescript';
 import { createFSBackedSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
-import { ReflectionTransformer } from '../src/compiler.js';
+import { ReflectionTransformer } from '../src/lib/compiler.js';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 

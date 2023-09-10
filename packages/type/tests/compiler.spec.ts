@@ -3,7 +3,7 @@ import { describe, expect, test } from '@jest/globals';
 import * as ts from 'typescript';
 import { getPreEmitDiagnostics, ModuleKind, ScriptTarget, TransformationContext, transpileModule } from 'typescript';
 import { DeclarationTransformer, ReflectionTransformer, transformer } from '@deepkit/type-compiler';
-import { reflect, reflect as reflect2, ReflectionClass, removeTypeName, typeOf as typeOf2 } from '../src/reflection/reflection.js';
+import { reflect, reflect as reflect2, ReflectionClass, removeTypeName, typeOf as typeOf2 } from '../src/lib/reflection/reflection.js';
 import {
     assertType,
     defaultAnnotation,
@@ -18,10 +18,10 @@ import {
     TypeObjectLiteral,
     TypeProperty,
     TypeUnion
-} from '../src/reflection/type.js';
+} from '../src/lib/reflection/type.js';
 import { ReflectionOp } from '@deepkit/type-spec';
 import { ClassType, isObject } from '@deepkit/core';
-import { pack, resolveRuntimeType, typeInfer } from '../src/reflection/processor.js';
+import { pack, resolveRuntimeType, typeInfer } from '../src/lib/reflection/processor.js';
 import { expectEqualType } from './utils.js';
 import { createSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import { dirname, join } from 'path';

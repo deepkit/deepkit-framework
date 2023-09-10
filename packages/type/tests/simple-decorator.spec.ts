@@ -9,8 +9,8 @@
  */
 
 import { expect, test } from '@jest/globals';
-import { typeOf } from '../src/reflection/reflection.js';
-import { PrimaryKey, primaryKeyAnnotation } from '../src/reflection/type.js';
+import { typeOf } from '../src/lib/reflection/reflection.js';
+import { PrimaryKey, primaryKeyAnnotation } from '../src/lib/reflection/type.js';
 
 test('primary key', () => {
     type t = number & PrimaryKey;

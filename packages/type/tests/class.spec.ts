@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { isCustomTypeClass, isGlobalTypeClass, stringifyResolvedType, stringifyType } from '../src/reflection/type.js';
-import { ReflectionClass, typeOf } from '../src/reflection/reflection.js';
+import { isCustomTypeClass, isGlobalTypeClass, stringifyResolvedType, stringifyType } from '../src/lib/reflection/type.js';
+import { ReflectionClass, typeOf } from '../src/lib/reflection/reflection.js';
 
 test('index access inheritance', () => {
     interface SuperInterface {

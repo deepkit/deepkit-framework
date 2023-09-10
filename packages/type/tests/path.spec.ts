@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { pathResolver } from '../src/path.js';
-import { ReflectionKind } from '../src/reflection/type.js';
+import { pathResolver } from '../src/lib/path.js';
+import { ReflectionKind } from '../src/lib/reflection/type.js';
 
 test('pathResolver object literal', () => {
     type t = { a: string, b: number };

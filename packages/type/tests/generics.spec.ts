@@ -9,9 +9,9 @@
  */
 
 import { expect, test } from '@jest/globals';
-import { typeInfer } from '../src/reflection/processor.js';
-import { removeTypeName, typeOf } from '../src/reflection/reflection.js';
-import { assertType, ReflectionKind, ReflectionVisibility, Type, Widen } from '../src/reflection/type.js';
+import { typeInfer } from '../src/lib/reflection/processor.js';
+import { removeTypeName, typeOf } from '../src/lib/reflection/reflection.js';
+import { assertType, ReflectionKind, ReflectionVisibility, Type, Widen } from '../src/lib/reflection/type.js';
 import { expectEqualType } from './utils.js';
 
 test('infer T from function primitive', () => {

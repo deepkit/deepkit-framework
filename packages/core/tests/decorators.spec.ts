@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { log, stack } from '../src/decorators.js';
-import { sleep } from '../src/core.js';
+import { log, stack } from '../src/lib/decorators.js';
+import { sleep } from '../src/lib/core.js';
 
 test('test decorators @sync', async () => {
     class Test {

@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { typeOf } from '../src/reflection/reflection.js';
-import { defaultValue } from '../src/default.js';
+import { typeOf } from '../src/lib/reflection/reflection.js';
+import { defaultValue } from '../src/lib/default.js';
 
 test('default basic', () => {
     expect(defaultValue(typeOf<undefined>())).toBe(undefined);

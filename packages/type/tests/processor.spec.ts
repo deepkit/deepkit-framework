@@ -1,6 +1,6 @@
 /** @reflection never */
 import { expect, test } from '@jest/globals';
-import { pack } from '../src/reflection/processor.js';
+import { pack } from '../src/lib/reflection/processor.js';
 import {
     assertType,
     copyAndSetParent,
@@ -11,11 +11,11 @@ import {
     TypeObjectLiteral,
     TypePropertySignature,
     TypeUnion
-} from '../src/reflection/type.js';
+} from '../src/lib/reflection/type.js';
 import { MappedModifier, ReflectionOp } from '@deepkit/type-spec';
-import { isExtendable } from '../src/reflection/extends.js';
+import { isExtendable } from '../src/lib/reflection/extends.js';
 import { assertValidParent, expectEqualType, expectType } from './utils.js';
-import { typeOf } from '../src/reflection/reflection.js';
+import { typeOf } from '../src/lib/reflection/reflection.js';
 
 Error.stackTraceLimit = 200;
 

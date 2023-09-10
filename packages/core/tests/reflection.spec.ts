@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { extractMethodBody, extractParameters, removeStrings } from '../src/reflection.js';
+import { extractMethodBody, extractParameters, removeStrings } from '../src/lib/reflection.js';
 
 
 test('removeStrings', () => {

@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { removeTypeName, typeOf } from '../src/reflection/reflection.js';
-import { ReflectionKind } from '../src/reflection/type.js';
+import { removeTypeName, typeOf } from '../src/lib/reflection/reflection.js';
+import { ReflectionKind } from '../src/lib/reflection/type.js';
 import { expectEqualType } from './utils.js';
 
 test('distributed conditional type', () => {
