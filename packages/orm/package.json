@@ -22,10 +22,5 @@
     "sift": "^7.0.1"
   },
   "browser": "./browser.esm.js",
-  "types": "./src/index.d.ts",
-  "exports": {
-    ".": {
-      "browser": "./browser.esm.js"
-    }
-  }
+  "types": "./src/index.d.ts"
 }
