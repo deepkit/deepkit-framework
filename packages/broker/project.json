@@ -3,6 +3,8 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/broker/src",
   "projectType": "library",
+  "tags": ["broker"],
+  "implicitDependencies": ["core-rxjs"],
   "targets": {
     "build": {
       "executor": "@nx/rollup:rollup",
@@ -46,6 +48,5 @@
         }
       }
     }
-  },
-  "tags": ["broker"]
+  }
 }
