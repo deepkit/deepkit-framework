@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { createModule } from '../src/module.js';
-import { ServiceContainer } from '../src/service-container.js';
+import { createModule } from '../src/lib/module.js';
+import { ServiceContainer } from '../src/lib/service-container.js';
 import { assert, IsExact } from 'conditional-type-checks';
 
 test('strict types config', () => {

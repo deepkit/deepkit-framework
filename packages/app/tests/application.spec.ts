@@ -1,11 +1,11 @@
 import { beforeEach, expect, test } from '@jest/globals';
-import { App, AppErrorEvent, AppEvent, AppExecutedEvent, onAppError, onAppExecute, onAppExecuted, onAppShutdown } from '../src/app.js';
+import { App, AppErrorEvent, AppEvent, AppExecutedEvent, onAppError, onAppExecute, onAppExecuted, onAppShutdown } from '../src/lib/app.js';
 import { Inject, ProviderWithScope, Token } from '@deepkit/injector';
-import { AppModule, createModule } from '../src/module.js';
+import { AppModule, createModule } from '../src/lib/module.js';
 import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
-import { cli, Command, Flag } from '../src/command.js';
+import { cli, Command, Flag } from '../src/lib/command.js';
 import { ClassType, isClass } from '@deepkit/core';
-import { ControllerConfig, ServiceContainer } from '../src/service-container.js';
+import { ControllerConfig, ServiceContainer } from '../src/lib/service-container.js';
 
 Error.stackTraceLimit = 100;
 

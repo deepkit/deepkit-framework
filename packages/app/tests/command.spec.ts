@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { App } from '../src/app.js';
-import { arg, cli, Command } from '../src/command.js';
-import { ServiceContainer } from '../src/service-container.js';
+import { App } from '../src/lib/app.js';
+import { arg, cli, Command } from '../src/lib/command.js';
+import { ServiceContainer } from '../src/lib/service-container.js';
 
 @cli.controller('my')
 class MyCli implements Command {

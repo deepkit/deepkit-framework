@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { AppModule, createModule } from '../src/module.js';
-import { ServiceContainer } from '../src/service-container.js';
+import { AppModule, createModule } from '../src/lib/module.js';
+import { ServiceContainer } from '../src/lib/service-container.js';
 
 test('simple setup with import and overwrite', () => {
     class Connection {

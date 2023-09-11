@@ -25,5 +25,5 @@
     "@deepkit/api-console-api": "^1.0.1-alpha.97",
     "@deepkit/api-console-gui": "^1.0.1-alpha.97"
   },
-  "types": "./dist/cjs/index.d.ts"
+  "types": "./src/index.d.ts"
 }

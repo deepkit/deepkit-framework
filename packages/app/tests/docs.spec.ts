@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
 import { ClassType } from '@deepkit/core';
-import { App } from '../src/app.js';
-import { AppModule, createModule } from '../src/module.js';
+import { App } from '../src/lib/app.js';
+import { AppModule, createModule } from '../src/lib/module.js';
 import { InjectorContext } from '@deepkit/injector';
-import { ControllerConfig } from '../src/service-container.js';
+import { ControllerConfig } from '../src/lib/service-container.js';
 
 test('controller instantiation', () => {
     class Registry {
