@@ -40,6 +40,7 @@
       "@deepkit/fs": ["packages/fs/src/index.ts"],
       "@deepkit/http": ["packages/http/src/index.ts"],
       "@deepkit/injector": ["packages/injector/src/index.ts"],
+      "@deepkit/logger": ["packages/logger/src/index.ts"],
       "@deepkit/type": ["packages/type/src/index.ts"],
       "@deepkit/type-compiler": ["packages/type-compiler/src/index.ts"],
       "@deepkit/type-spec": ["packages/type-spec/src/index.ts"],

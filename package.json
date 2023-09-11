@@ -73,7 +73,8 @@
     "typedoc": "^0.23.17",
     "typescript": "^4.8.4",
     "bson": "^4.4.0",
-    "bson-ext": "^4.0.0"
+    "bson-ext": "^4.0.0",
+    "@types/format-util": "^1.0.1"
   },
   "dependencies": {
     "@angular-devkit/build-angular": "^15.0.0",
@@ -140,7 +141,12 @@
     "widest-line": "^3.1.0",
     "wrap-ansi": "^6.2.0",
     "ws": "^7.4.2",
-    "zone.js": "~0.12.0"
+    "zone.js": "~0.12.0",
+    "formidable": "^2.0.1",
+    "qs": "^6.11.0",
+    "send": "^0.18.0",
+    "ansi-styles": "^4.3.0",
+    "format-util": "^1.0.5"
   },
   "engines": {
     "node": ">= 16.0.0"
