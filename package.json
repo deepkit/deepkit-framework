@@ -16,7 +16,7 @@
     "install-compiler": "sh scripts/install-compiler.sh",
     "docs": "rm -rf docs && node --max-old-space-size=12096 node_modules/.bin/typedoc packages/*/index.ts",
     "publish-website": "heroku container:push web && heroku container:release web",
-    "postinstall": "CI || npm run install-compiler"
+    "postinstall": "if [ \\\"$CI\\\" != \\\"true\\\" ]; then npm run install-compiler; fi"
   },
   "devDependencies": {
     "@angular-devkit/core": "^15.0.0",
