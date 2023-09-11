@@ -1,1 +1,1 @@
-export * from './lib/app/api-console.module';
+export * from './app/api-console.module';

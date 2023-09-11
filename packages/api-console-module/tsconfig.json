@@ -1,59 +1,14 @@
 {
-  "compilerOptions": {
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "sourceMap": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "moduleResolution": "node",
-    "target": "es2018",
-    "module": "CommonJS",
-    "esModuleInterop": true,
-    "outDir": "./dist/cjs",
-    "declaration": true,
-    "composite": true
-  },
-  "reflection": true,
-  "include": [
-    "src",
-    "index.ts",
-    "node_modules/@deepkit/api-console-gui/src/api.ts"
-  ],
+  "extends": "../../tsconfig.base.json",
+  "files": [],
+  "include": [],
   "references": [
     {
-      "path": "../api-console-api/tsconfig.json"
+      "path": "./tsconfig.lib.json"
     },
     {
-      "path": "../app/tsconfig.json"
-    },
-    {
-      "path": "../broker/tsconfig.json"
-    },
-    {
-      "path": "../bson/tsconfig.json"
-    },
-    {
-      "path": "../core/tsconfig.json"
-    },
-    {
-      "path": "../crypto/tsconfig.json"
-    },
-    {
-      "path": "../http/tsconfig.json"
-    },
-    {
-      "path": "../injector/tsconfig.json"
-    },
-    {
-      "path": "../logger/tsconfig.json"
-    },
-    {
-      "path": "../rpc/tsconfig.json"
-    },
-    {
-      "path": "../type/tsconfig.json"
+      "path": "./tsconfig.spec.json"
     }
-  ]
+  ],
+  "reflection": true
 }

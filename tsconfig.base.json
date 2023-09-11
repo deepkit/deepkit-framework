@@ -25,6 +25,7 @@
     "paths": {
       "@deepkit/api-console-api": ["packages/api-console-api/src/index.ts"],
       "@deepkit/api-console-gui": ["packages/api-console-gui/src/index.ts"],
+      "@deepkit/api-console-module": ["packages/api-console-module/src/index.ts"],
       "@deepkit/bson": ["packages/bson/src/index.ts"],
       "@deepkit/core": ["packages/core/src/index.ts"],
       "@deepkit/core-rxjs": ["packages/core-rxjs/src/index.ts"],
