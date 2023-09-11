@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { FrameworkModule, OrmBrowserController } from '@deepkit/framework';
 import { App, AppModule, findParentPath } from '@deepkit/app';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
