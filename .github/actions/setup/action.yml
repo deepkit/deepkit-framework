@@ -49,6 +49,8 @@ runs:
 
     - name: Derive appropriate SHAs for base and head for `nx affected` commands
       uses: nrwl/nx-set-shas@v3
+      with:
+          main-branch-name: master
 
     - name: Cache Nx
       uses: actions/cache@v2
