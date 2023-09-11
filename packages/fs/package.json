@@ -1,18 +1,11 @@
 {
   "name": "@deepkit/fs",
   "version": "1.0.1-alpha.99",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
-  },
-  "scripts": {
-    "test": "jest --coverage",
-    "tsc": "rm -rf dist && ../../node_modules/.bin/tsc",
-    "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "dependencies": {
     "@deepkit/core": "^1.0.1-alpha.97",
@@ -22,23 +15,5 @@
     "fs-extra": "^9.0.1",
     "rxjs": "~7.5.0"
   },
-  "devDependencies": {
-    "@types/fs-extra": "^9.0.1"
-  },
-  "jest": {
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "extensionsToTreatAsEsm": [
-      ".ts",
-      ".tsx"
-    ],
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts"
-    ]
-  },
-  "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
+  "types": "src/index.d.ts"
 }
