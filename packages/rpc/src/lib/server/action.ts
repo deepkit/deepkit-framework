@@ -9,7 +9,7 @@
  */
 
 import { ClassType, collectForMicrotask, getClassName, isPrototypeOfBase, toFastProperties } from '@deepkit/core';
-import { isBehaviorSubject, isSubject, ProgressTracker, ProgressTrackerState } from '@deepkit/core-rxjs';
+import { isBehaviorSubject, isSubject, ProgressTracker, ProgressTrackerState } from '../../core-rxjs';
 import {
     assertType,
     findMember,

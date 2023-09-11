@@ -1,6 +1,6 @@
 import { deserialize, Excluded, metaAnnotation, ReflectionClass, ReflectionKind, resolveTypeMembers, serialize, Serializer, Type, TypeClass } from '@deepkit/type';
 import { ClassType, getClassTypeFromInstance, getPathValue, setPathValue, throttleTime } from '@deepkit/core';
-import { EventToken } from '@deepkit/event';
+import { EventToken } from '../../../event';
 import { ApplicationRef, Injector } from '@angular/core';
 import { NavigationEnd, ResolveEnd, Router } from '@angular/router';
 import onChange from 'on-change';

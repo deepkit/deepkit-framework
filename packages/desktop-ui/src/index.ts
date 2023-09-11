@@ -30,4 +30,8 @@ export * from './lib/components/emoji';
 export * from './lib/components/slider';
 export * from './lib/components/indicator';
 export * from './lib/components/tabs';
+export * from './lib/components/tabs/tabs.component';
+export * from './lib/components/tabs/tab.component';
 export * from './lib/components/layout';
+export * from './lib/components/layout/section-header.component';
+export * from './lib/components/layout/label.component';

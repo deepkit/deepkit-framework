@@ -3,6 +3,8 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/rpc/src",
   "projectType": "library",
+  "implicitDependencies": ["core-rxjs"],
+  "tags": ["rpc"],
   "targets": {
     "build": {
       "executor": "@nx/rollup:rollup",
@@ -46,6 +48,5 @@
         }
       }
     }
-  },
-  "tags": ["rpc"]
+  }
 }
