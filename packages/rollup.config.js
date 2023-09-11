@@ -34,6 +34,14 @@ module.exports = (config) => {
         config.plugins.push(nxResolvePackages(packages));
     }
 
+    /*return {
+        ...config,
+        output: {
+            ...config.output,
+            sourcemap: true,
+        }
+    };*/
+
     return config;
 }
 
