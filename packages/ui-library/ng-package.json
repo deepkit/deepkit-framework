@@ -3,5 +3,6 @@
   "dest": "../../dist/packages/ui-library",
   "lib": {
     "entryFile": "src/index.ts"
-  }
+  },
+  "allowedNonPeerDependencies": ["prismjs"]
 }
