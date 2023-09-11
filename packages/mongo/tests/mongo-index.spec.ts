@@ -2,7 +2,7 @@ import {
     entity, MongoId, Index, PrimaryKey, Unique, ReflectionClass,
 } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { MongoDatabaseAdapter } from '../src/adapter';
+import { MongoDatabaseAdapter } from '../src/lib/adapter';
 import { Database } from '@deepkit/orm';
 
 @entity.name('model-with-indexes')

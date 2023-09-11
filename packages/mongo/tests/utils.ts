@@ -1,6 +1,6 @@
 import { afterEach } from '@jest/globals';
 import { Database } from '@deepkit/orm';
-import { MongoDatabaseAdapter } from '../src/adapter.js';
+import { MongoDatabaseAdapter } from '../src/lib/adapter.js';
 import { performance } from 'perf_hooks';
 
 /**

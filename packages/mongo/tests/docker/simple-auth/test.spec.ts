@@ -1,7 +1,7 @@
 import { Database } from '@deepkit/orm';
 import { entity, MongoId, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { MongoDatabaseAdapter } from '../../../src/adapter.js';
+import { MongoDatabaseAdapter } from '../../../src/lib/adapter.js';
 
 test('simple-auth', async () => {
     class BaseEntity {

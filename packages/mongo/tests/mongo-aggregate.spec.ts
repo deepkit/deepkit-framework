@@ -3,7 +3,7 @@ import {
     entity, MongoId, PrimaryKey, ReflectionClass,
 } from '@deepkit/type';
 import { createDatabase } from './utils';
-import { AggregateCommand } from '../src/client/command/aggregate';
+import { AggregateCommand } from '../src/lib/client/command/aggregate';
 
 Error.stackTraceLimit = 100;
 

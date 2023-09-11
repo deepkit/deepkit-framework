@@ -6,7 +6,7 @@ import {
     ReflectionClass,
 } from '@deepkit/type';
 import { createDatabase } from './utils';
-import { UpdateCommand } from '../src/client/command/update';
+import { UpdateCommand } from '../src/lib/client/command/update';
 
 Error.stackTraceLimit = 100;
 

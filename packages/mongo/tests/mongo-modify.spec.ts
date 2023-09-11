@@ -6,7 +6,7 @@ import {
     ReflectionClass,
 } from '@deepkit/type';
 import { createDatabase } from './utils';
-import { FindAndModifyCommand } from '../src/client/command/findAndModify';
+import { FindAndModifyCommand } from '../src/lib/client/command/findAndModify';
 
 Error.stackTraceLimit = 100;
 

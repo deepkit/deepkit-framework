@@ -1,45 +1,14 @@
 {
-  "compilerOptions": {
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "sourceMap": true,
-    "noImplicitAny": false,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "moduleResolution": "node",
-    "target": "es2020",
-    "module": "CommonJS",
-    "esModuleInterop": true,
-    "outDir": "./dist/cjs",
-    "declaration": true,
-    "composite": true
-  },
-  "reflection": true,
-  "include": [
-    "src",
-    "index.ts"
-  ],
+  "extends": "../../tsconfig.base.json",
+  "files": [],
+  "include": [],
   "references": [
     {
-      "path": "../bson/tsconfig.json"
+      "path": "./tsconfig.lib.json"
     },
     {
-      "path": "../core/tsconfig.json"
-    },
-    {
-      "path": "../crypto/tsconfig.json"
-    },
-    {
-      "path": "../orm/tsconfig.json"
-    },
-    {
-      "path": "../orm-integration/tsconfig.json"
-    },
-    {
-      "path": "../type/tsconfig.json"
+      "path": "./tsconfig.spec.json"
     }
-  ]
+  ],
+  "reflection": true
 }
