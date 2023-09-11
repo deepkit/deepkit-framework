@@ -8,6 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/sqlite-adapter.js';
-export * from './src/sqlite-platform.js';
-export * from './src/sqlite-serializer.js';
+export * from './lib/sqlite-adapter.js';
+export * from './lib/sqlite-platform.js';
+export * from './lib/sqlite-serializer.js';

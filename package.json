@@ -154,7 +154,7 @@
     "format-util": "^1.0.5",
     "saslprep": "^1.0.3",
     "mariadb": "^2.5.2",
-    "pg": "^8.5.1",
+    "pg": "^8.5.1"
     "pg-native": "^3.0.0",
     "fast-glob": "^3.2.5",
     "sqlstring-sqlite": "^0.1.1"

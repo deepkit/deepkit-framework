@@ -1,6 +1,6 @@
 import { Database } from '@deepkit/orm';
 import { DatabaseFactory } from '@deepkit/orm-integration';
-import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter.js';
+import { SQLiteDatabaseAdapter } from '../src/lib/sqlite-adapter.js';
 import { join } from 'path';
 
 export const databaseFactory: DatabaseFactory<SQLiteDatabaseAdapter> = async (entities, plugins): Promise<Database<SQLiteDatabaseAdapter>> => {
