@@ -37,7 +37,9 @@ export class ApiConsoleModule extends createModule({
 
         this.addController(NamedApiConsoleController);
 
-        const localPath = findParentPath('node_modules/@deepkit/api-console-gui/dist/api-console-gui', dirname(getCurrentFileName()));
+        const localPath =
+            findParentPath('node_modules/@deepkit/api-console-gui', dirname(getCurrentFileName())) ||
+            findParentPath('dist/packages/api-console-gui', dirname(getCurrentFileName()));
         if (!localPath) throw new Error('node_modules/@deepkit/api-console-gui not installed in ' + dirname(getCurrentFileName()));
 
         registerStaticHttpController(this, {

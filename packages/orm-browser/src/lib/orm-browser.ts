@@ -22,7 +22,9 @@ const appModule = new AppModule({
         })
     ]
 }).setup((module, config) => {
-    const localPath = findParentPath('node_modules/@deepkit/orm-browser-gui/dist/orm-browser-gui', __dirname);
+    const localPath =
+        findParentPath('node_modules/@deepkit/orm-browser-gui', __dirname) ||
+        findParentPath('dist/packages/orm-browser-gui', __dirname);
     if (!localPath) throw new Error('node_modules/@deepkit/orm-browser-gui not installed in ' + __dirname);
     registerStaticHttpController(module, {path: '/', localPath, controllerName: 'OrmBrowserController'});
 });

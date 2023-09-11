@@ -34,7 +34,9 @@ export class OrmBrowserModule extends createModule({
             }
         });
 
-        const localPath = findParentPath('node_modules/@deepkit/orm-browser-gui/dist/orm-browser-gui', dirname(getCurrentFileName()));
+        const localPath =
+            findParentPath('node_modules/@deepkit/orm-browser-gui', dirname(getCurrentFileName())) ||
+            findParentPath('dist/packages/orm-browser-gui', dirname(getCurrentFileName()));
         if (!localPath) throw new Error('node_modules/@deepkit/orm-browser-gui not installed in ' + dirname(getCurrentFileName()));
 
         registerStaticHttpController(this, {
