@@ -57,6 +57,7 @@
       "@deepkit/template": ["packages/template/src/index.ts"],
       "@deepkit/topsort": ["packages/topsort/src/index.ts"],
       "@deepkit/type": ["packages/type/src/index.ts"],
+      "@deepkit/type-angular": ["packages/type-angular/src/index.ts"],
       "@deepkit/type-compiler": ["packages/type-compiler/src/index.ts"],
       "@deepkit/type-spec": ["packages/type-spec/src/index.ts"],
       "@deepkit/ui-library": ["packages/ui-library/src/index.ts"]
