@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { EntitySubject, isEntitySubject } from '../src/model.js';
+import { EntitySubject, isEntitySubject } from '../src/lib/model.js';
 
 test('entitySubject', async () => {
     class User {

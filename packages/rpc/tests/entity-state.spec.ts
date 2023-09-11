@@ -1,12 +1,12 @@
 import { cast, entity, ReflectionClass } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { EntitySubject, rpcEntityPatch, RpcTypes } from '../src/model.js';
-import { DirectClient } from '../src/client/client-direct.js';
-import { EntitySubjectStore } from '../src/client/entity-state.js';
-import { rpc } from '../src/decorators.js';
-import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
+import { EntitySubject, rpcEntityPatch, RpcTypes } from '../src/lib/model.js';
+import { DirectClient } from '../src/lib/client/client-direct.js';
+import { EntitySubjectStore } from '../src/lib/client/entity-state.js';
+import { rpc } from '../src/lib/decorators.js';
+import { RpcKernel, RpcKernelConnection } from '../src/lib/server/kernel.js';
 import { InjectorContext } from '@deepkit/injector';
-import { RpcKernelSecurity } from '../src/server/security.js';
+import { RpcKernelSecurity } from '../src/lib/server/security.js';
 
 test('EntitySubjectStore multi', () => {
     class MyModel {

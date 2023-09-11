@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
 import { skip } from 'rxjs/operators';
-import { DirectClient } from '../src/client/client-direct.js';
-import { rpc } from '../src/decorators.js';
-import { RpcKernel } from '../src/server/kernel.js';
-import { ClientProgress } from '../src/writer.js';
+import { DirectClient } from '../src/lib/client/client-direct.js';
+import { rpc } from '../src/lib/decorators.js';
+import { RpcKernel } from '../src/lib/server/kernel.js';
+import { ClientProgress } from '../src/lib/writer.js';
 
 test('chunks', async () => {
     @rpc.controller('test')
