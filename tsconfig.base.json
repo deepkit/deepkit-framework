@@ -27,6 +27,7 @@
       "@deepkit/api-console-gui": ["packages/api-console-gui/src/index.ts"],
       "@deepkit/api-console-module": ["packages/api-console-module/src/index.ts"],
       "@deepkit/app": ["packages/app/src/index.ts"],
+      "@deepkit/broker": ["packages/app/broker/index.ts"],
       "@deepkit/bson": ["packages/bson/src/index.ts"],
       "@deepkit/core": ["packages/core/src/index.ts"],
       "@deepkit/core-rxjs": ["packages/core-rxjs/src/index.ts"],

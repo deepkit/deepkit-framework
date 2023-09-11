@@ -2,8 +2,8 @@ import { sleep } from '@deepkit/core';
 import { AsyncSubscription } from '@deepkit/core-rxjs';
 import { expect, test } from '@jest/globals';
 import { BehaviorSubject } from 'rxjs';
-import { BrokerDirectClient } from '../src/client.js';
-import { BrokerKernel } from '../src/kernel.js';
+import { BrokerDirectClient } from '../src/lib/client.js';
+import { BrokerKernel } from '../src/lib/kernel.js';
 
 Error.stackTraceLimit = 1000;
 
