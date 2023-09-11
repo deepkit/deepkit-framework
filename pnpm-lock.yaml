@@ -221,8 +221,8 @@ dependencies:
     specifier: ^6.2.0
     version: 6.2.0
   ws:
-    specifier: ^7.4.2
-    version: 7.4.2
+    specifier: ^8.6.0
+    version: 8.6.0
   zone.js:
     specifier: ~0.12.0
     version: 0.12.0
@@ -16577,7 +16577,7 @@ packages:
       spdy: 4.0.2
       webpack: 5.75.0(esbuild@0.19.2)
       webpack-dev-middleware: 5.3.3(webpack@5.75.0)
-      ws: 8.14.1
+      ws: 8.6.0
     transitivePeerDependencies:
       - bufferutil
       - debug
@@ -16909,25 +16909,25 @@ packages:
       signal-exit: 3.0.7
     dev: true
 
-  /ws@7.4.2:
-    resolution: {integrity: sha512-T4tewALS3+qsrpGI/8dqNMLIVdq/g/85U98HPMa6F0m6xTbvhXU6RCQLqPH3+SlomNV/LdY6RXEbBpMH6EOJnA==}
-    engines: {node: '>=8.3.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: ^5.0.2
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
-    dev: false
-
   /ws@8.14.1:
     resolution: {integrity: sha512-4OOseMUq8AzRBI/7SLMUwO+FEDnguetSk7KMb1sHwvF2w2Wv5Hoj0nlifx8vtGsftE/jWHojPy8sMMzYLJ2G/A==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
       utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+    dev: true
+
+  /ws@8.6.0:
+    resolution: {integrity: sha512-AzmM3aH3gk0aX7/rZLYvjdvZooofDu3fFOzGqcSnQ1tOcTWwhM/o+q++E8mAyVVIyUdajrkzWUGftaVSDLn1bw==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: ^5.0.2
     peerDependenciesMeta:
       bufferutil:
         optional: true
