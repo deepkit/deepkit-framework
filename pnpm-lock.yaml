@@ -1,9 +1,5 @@
 lockfileVersion: '6.0'
 
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
-
 dependencies:
   '@angular-devkit/build-angular':
     specifier: ^15.0.0
@@ -328,6 +324,9 @@ devDependencies:
   ng-packagr:
     specifier: ~15.2.2
     version: 15.2.2(@angular/compiler-cli@15.0.0)(tslib@2.6.2)(typescript@4.8.4)
+  node-gyp-build:
+    specifier: ^4.6.1
+    version: 4.6.1
   postcss:
     specifier: ^8.4.5
     version: 8.4.29
@@ -16433,3 +16432,7 @@ packages:
     resolution: {integrity: sha512-XtC+I5dXU14HrzidAKBNMqneIVUykLEAA1x+v4KVrd6AUPWlwYORF8KgsVqvgdHiKZ4BkxxjvYi/ksEixTPR0Q==}
     dependencies:
       tslib: 2.6.2
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
