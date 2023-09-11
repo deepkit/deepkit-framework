@@ -10,7 +10,7 @@
 
 import { BSONDeserializer, BSONSerializer, deserializeBSONWithoutOptimiser, getBSONDeserializer, getBSONSerializer } from '@deepkit/bson';
 import { arrayRemoveItem, asyncOperation, ClassType } from '@deepkit/core';
-import { AsyncSubscription } from '../core-rxjs';
+import { AsyncSubscription } from '@deepkit/core-rxjs';
 import { createRpcMessage, RpcBaseClient, RpcDirectClientAdapter, RpcMessage, RpcMessageRouteType } from '@deepkit/rpc';
 import { BrokerKernel } from './kernel.js';
 import {
