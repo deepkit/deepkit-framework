@@ -22,7 +22,7 @@ import { ELECTRON_WINDOW, IN_DIALOG } from './token';
 import { AsyncRenderPipe, HumanFileSizePipe, ObjectURLPipe } from './pipes';
 import { ReactiveChangeDetectionModule } from './reactivate-change-detection';
 import { arrayRemoveItem } from '@deepkit/core';
-import { EventDispatcher } from '../../../event';
+import { EventDispatcher } from '@deepkit/event';
 
 export * from './reactivate-change-detection';
 export * from './cd-counter.component';

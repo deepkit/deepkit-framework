@@ -9,7 +9,7 @@
  */
 
 import { ChangeDetectorRef, Component, Input, OnChanges, OnDestroy } from '@angular/core';
-import { ProgressTracker } from '../../../core-rxjs';
+import { ProgressTracker } from '@deepkit/core-rxjs';
 import { Subscription } from 'rxjs';
 
 @Component({

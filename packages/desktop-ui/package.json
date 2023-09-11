@@ -5,7 +5,7 @@
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/core-rxjs": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/rpc": "^1.0.1-alpha.57",
+    "@deepkit/event": "^1.0.1-alpha.57",
     "@angular/core": "~15.0.0",
     "@angular/common": "~15.0.0",
     "rxjs": "~7.5.0"

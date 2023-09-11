@@ -3,5 +3,6 @@
   "dest": "../../dist/packages/desktop-ui",
   "lib": {
     "entryFile": "src/index.ts"
-  }
+  },
+  "allowedNonPeerDependencies": ["prismjs"]
 }

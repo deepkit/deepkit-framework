@@ -10,7 +10,7 @@
 
 import { AfterViewInit, ApplicationRef, inject, NgModule, OnDestroy, Type, ɵComponentDef as ComponentDef, ɵNG_COMP_DEF as NG_COMP_DEF } from '@angular/core';
 import { getClassName, nextTick, throttleTime } from '@deepkit/core';
-import { EventDispatcher, EventDispatcherUnsubscribe, EventOfEventToken, EventToken } from '../../../event';
+import { EventDispatcher, EventDispatcherUnsubscribe, EventOfEventToken, EventToken } from '@deepkit/event';
 import { Subscription } from 'rxjs';
 
 export function observeAction() {
