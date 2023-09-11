@@ -1,5 +1,9 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 overrides:
   typescript: 4.8.4
   '@angular-devkit/core': 15.0.0
@@ -167,6 +171,9 @@ dependencies:
   nice-table:
     specifier: ^1.1.0
     version: 1.1.0
+  object-inspect:
+    specifier: ^1.9.0
+    version: 1.12.3
   on-change:
     specifier: ^4.0.2
     version: 4.0.2
@@ -17519,7 +17526,3 @@ packages:
     resolution: {integrity: sha512-XtC+I5dXU14HrzidAKBNMqneIVUykLEAA1x+v4KVrd6AUPWlwYORF8KgsVqvgdHiKZ4BkxxjvYi/ksEixTPR0Q==}
     dependencies:
       tslib: 2.6.2
-
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
