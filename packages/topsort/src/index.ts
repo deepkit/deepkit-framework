@@ -8,6 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/array-sort.js';
-export * from './src/group-array-sort.js';
-export * from './src/base.js';
+export * from './lib/array-sort.js';
+export * from './lib/group-array-sort.js';
+export * from './lib/base.js';

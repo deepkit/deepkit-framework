@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { GroupArraySort } from '../src/group-array-sort.js';
-import { CircularDependencyException, ElementNotFoundException } from '../src/base.js';
+import { GroupArraySort } from '../src/lib/group-array-sort.js';
+import { CircularDependencyException, ElementNotFoundException } from '../src/lib/base.js';
 import { bench } from './utils.js';
 import { fail } from 'assert';
 
