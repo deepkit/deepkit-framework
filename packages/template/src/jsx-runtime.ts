@@ -1,11 +1,11 @@
-/// <reference path="./src/elements.d.ts" />
+/// <reference path="./lib/elements.d.ts" />
 
-import { Attributes, createElement, Element, html } from './src/template.js';
-import { escape, escapeAttribute, safe, safeString } from './src/utils.js';
-import './src/optimize-tsx';
+import { Attributes, createElement, Element, html } from './lib/template.js';
+import { escape, escapeAttribute, safe, safeString } from './lib/utils.js';
+import './lib/optimize-tsx';
 
-export { createElement, html } from './src/template.js';
-export { escape, escapeAttribute, safeString, safe } from './src/utils.js';
+export { createElement, html } from './lib/template.js';
+export { escape, escapeAttribute, safeString, safe } from './lib/utils.js';
 
 export function jsx(element: Element, attributes?: Attributes | string | null) {
     return { render: element, attributes };

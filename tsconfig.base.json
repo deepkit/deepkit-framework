@@ -54,6 +54,7 @@
       "@deepkit/sql": ["packages/sql/src/index.ts"],
       "@deepkit/sqlite": ["packages/sqlite/src/index.ts"],
       "@deepkit/stopwatch": ["packages/stopwatch/src/index.ts"],
+      "@deepkit/template": ["packages/template/src/index.ts"],
       "@deepkit/type": ["packages/type/src/index.ts"],
       "@deepkit/type-compiler": ["packages/type-compiler/src/index.ts"],
       "@deepkit/type-spec": ["packages/type-spec/src/index.ts"],

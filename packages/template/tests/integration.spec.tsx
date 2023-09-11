@@ -1,9 +1,9 @@
 import { describe, expect, test } from '@jest/globals';
-import '../src/optimize-tsx';
-import { html, render } from '../src/template.js';
+import '../src/lib/optimize-tsx';
+import { html, render } from '../src/lib/template.js';
 import { Injector } from '@deepkit/injector';
-import { optimizeJSX } from '../src/optimize-tsx.js';
-import { escape, safe } from '../src/utils.js';
+import { optimizeJSX } from '../src/lib/optimize-tsx.js';
+import { escape, safe } from '../src/lib/utils.js';
 
 Error.stackTraceLimit = 200;
 

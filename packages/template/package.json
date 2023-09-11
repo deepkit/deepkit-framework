@@ -2,31 +2,13 @@
   "name": "@deepkit/template",
   "version": "1.0.1-alpha.97",
   "description": "Deepkit template engine based on TSX",
-  "type": "commonjs",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/cjs/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/cjs/index.d.ts",
-      "require": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.js"
-    },
-    "./jsx-runtime": {
-      "types": "./dist/cjs/jsx-runtime.d.ts",
-      "require": "./dist/cjs/jsx-runtime.js",
-      "default": "./dist/esm/jsx-runtime.js"
-    }
-  },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
   },
-  "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
-  },
+  "files": ["jsx-runtime.js"],
   "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/injector": "^1.0.1-alpha.13",
@@ -37,23 +19,11 @@
     "@types/estree": "^0.0.45",
     "abstract-syntax-tree": "^2.9.4"
   },
-  "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.97",
-    "@deepkit/injector": "^1.0.1-alpha.97",
-    "@deepkit/stopwatch": "^1.0.1-alpha.97",
-    "@deepkit/type": "^1.0.1-alpha.97"
+  "exports": {
+    "./jsx-runtime": {
+      "types": "./src/jsx-runtime.d.ts",
+      "require": "./jsx-runtime.cjs.js"
+    }
   },
-  "jest": {
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts",
-      "**/tests/**/*.spec.tsx"
-    ]
-  },
-  "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
+  "types": "./src/index.d.ts"
 }

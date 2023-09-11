@@ -79,7 +79,8 @@
     "@types/mongodb": "3.5.25",
     "@types/sqlstring": "^2.2.1",
     "@types/pg": "^7.14.7",
-    "@types/ws": "^8.5.3"
+    "@types/ws": "^8.5.3",
+    "@types/estree": "^0.0.45"
   },
   "dependencies": {
     "@angular-devkit/build-angular": "^15.0.0",
@@ -154,10 +155,11 @@
     "format-util": "^1.0.5",
     "saslprep": "^1.0.3",
     "mariadb": "^2.5.2",
-    "pg": "^8.5.1"
+    "pg": "^8.5.1",
     "pg-native": "^3.0.0",
     "fast-glob": "^3.2.5",
-    "sqlstring-sqlite": "^0.1.1"
+    "sqlstring-sqlite": "^0.1.1",
+    "abstract-syntax-tree": "^2.9.4"
   },
   "engines": {
     "node": ">= 16.0.0"
