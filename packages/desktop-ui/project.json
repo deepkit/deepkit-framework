@@ -15,10 +15,10 @@
       },
       "configurations": {
         "production": {
-          "tsConfig": "{projectRoot}/tsconfig.lib.prod.json"
+          "tsConfig": "{projectRoot}/tsconfig.build.prod.json"
         },
         "development": {
-          "tsConfig": "{projectRoot}/tsconfig.lib.json"
+          "tsConfig": "{projectRoot}/tsconfig.build.json"
         }
       },
       "defaultConfiguration": "production"
