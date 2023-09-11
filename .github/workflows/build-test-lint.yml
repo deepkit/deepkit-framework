@@ -33,6 +33,8 @@ jobs:
         id: setup
         uses: ./.github/actions/setup
 
+      - run: npm run install-compiler
+
       - name: Run affected builds
         run: pnpm nx affected:build
 
@@ -47,6 +49,8 @@ jobs:
       - name: Setup
         id: setup
         uses: ./.github/actions/setup
+
+      - run: npm run install-compiler
 
       - name: Run affected tests
         run: pnpm nx affected:test
