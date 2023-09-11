@@ -1,26 +1,12 @@
 {
   "name": "@deepkit/api-console-api",
   "version": "1.0.1-alpha.97",
-  "type": "commonjs",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/cjs/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/cjs/index.d.ts",
-      "require": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.js"
-    }
-  },
   "license": "MIT",
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
-  },
-  "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
     "@deepkit/bson": "^1.0.1-alpha.43",
@@ -31,27 +17,5 @@
     "@deepkit/rpc": "^1.0.1-alpha.43",
     "@deepkit/type": "^1.0.1-alpha.63"
   },
-  "devDependencies": {
-    "@deepkit/bson": "^1.0.1-alpha.97",
-    "@deepkit/core": "^1.0.1-alpha.97",
-    "@deepkit/crypto": "^1.0.1-alpha.89",
-    "@deepkit/injector": "^1.0.1-alpha.97",
-    "@deepkit/logger": "^1.0.1-alpha.97",
-    "@deepkit/rpc": "^1.0.1-alpha.97",
-    "@deepkit/type": "^1.0.1-alpha.97"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts",
-      "**/tests/**/*.spec.tsx"
-    ]
-  },
-  "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
+  "types": "./dist/cjs/index.d.ts"
 }
