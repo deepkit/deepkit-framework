@@ -1,10 +1,10 @@
 import { App } from '@deepkit/app';
 import { expect, test } from '@jest/globals';
-import { HttpModule } from '../src/module.js';
-import { HttpKernel } from '../src/kernel.js';
-import { HttpRequest } from '../src/model.js';
-import { http } from '../src/decorator.js';
-import { httpWorkflow } from '../src/http.js';
+import { HttpModule } from '../src/lib/module.js';
+import { HttpKernel } from '../src/lib/kernel.js';
+import { HttpRequest } from '../src/lib/model.js';
+import { http } from '../src/lib/decorator.js';
+import { httpWorkflow } from '../src/lib/http.js';
 
 test('module basic functionality', async () => {
     class Controller {

@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { HttpRequest } from '../src/model.js';
+import { HttpRequest } from '../src/lib/model.js';
 
 test('request model json', async () => {
     const request = HttpRequest.POST('/').json({ hello: 'world' }).build();

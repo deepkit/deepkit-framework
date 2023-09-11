@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { http, httpClass } from '../src/decorator.js';
+import { http, httpClass } from '../src/lib/decorator.js';
 
 test('groups', async () => {
     {

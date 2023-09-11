@@ -1,8 +1,8 @@
 import { expect, test } from '@jest/globals';
-import { http } from '../src/decorator.js';
+import { http } from '../src/lib/decorator.js';
 import { createHttpKernel } from './utils.js';
-import { HttpMiddleware, httpMiddleware } from '../src/middleware.js';
-import { HttpRequest, HttpResponse } from '../src/model.js';
+import { HttpMiddleware, httpMiddleware } from '../src/lib/middleware.js';
+import { HttpRequest, HttpResponse } from '../src/lib/model.js';
 import { AppModule } from '@deepkit/app';
 import { sleep } from '@deepkit/core';
 

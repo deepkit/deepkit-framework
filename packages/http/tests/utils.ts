@@ -1,10 +1,10 @@
 import { ClassType, isArray, isClass, isFunction } from '@deepkit/core';
 import { ProviderWithScope } from '@deepkit/injector';
-import { HttpKernel } from '../src/kernel.js';
+import { HttpKernel } from '../src/lib/kernel.js';
 import { App, AppModule, MiddlewareFactory } from '@deepkit/app';
 import { EventListener } from '@deepkit/event';
-import { HttpModule } from '../src/module.js';
-import { HttpRouterRegistry } from '../src/router.js';
+import { HttpModule } from '../src/lib/module.js';
+import { HttpRouterRegistry } from '../src/lib/router.js';
 
 export function createHttpKernel(
     controllers: (ClassType | { module: AppModule<any>, controller: ClassType })[] | ((registry: HttpRouterRegistry) => void) = [],

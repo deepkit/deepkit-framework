@@ -38,6 +38,7 @@
       "@deepkit/framework": ["packages/framework/src/index.ts"],
       "@deepkit/framework-debug-api": ["packages/framework-debug-api/src/index.ts"],
       "@deepkit/fs": ["packages/fs/src/index.ts"],
+      "@deepkit/http": ["packages/http/src/index.ts"],
       "@deepkit/injector": ["packages/injector/src/index.ts"],
       "@deepkit/type": ["packages/type/src/index.ts"],
       "@deepkit/type-compiler": ["packages/type-compiler/src/index.ts"],

@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { HttpRouter } from '../src/router.js';
-import { HttpRouteFilter, HttpRouterFilterResolver } from '../src/filter.js';
-import { http } from '../src/decorator.js';
+import { HttpRouter } from '../src/lib/router.js';
+import { HttpRouteFilter, HttpRouterFilterResolver } from '../src/lib/filter.js';
+import { http } from '../src/lib/decorator.js';
 import { createModule } from '@deepkit/app';
 
 test('filter by controller', async () => {

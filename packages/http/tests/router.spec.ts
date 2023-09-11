@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
-import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterResolverContext, UploadedFile } from '../src/router.js';
-import { http, httpClass } from '../src/decorator.js';
-import { HtmlResponse, HttpAccessDeniedError, HttpBadRequestError, HttpUnauthorizedError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
+import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterResolverContext, UploadedFile } from '../src/lib/router.js';
+import { http, httpClass } from '../src/lib/decorator.js';
+import { HtmlResponse, HttpAccessDeniedError, HttpBadRequestError, HttpUnauthorizedError, httpWorkflow, JSONResponse, Response } from '../src/lib/http.js';
 import { eventDispatcher } from '@deepkit/event';
-import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model.js';
+import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/lib/model.js';
 import { getClassName, isObject, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils.js';
 import { Excluded, Group, metaAnnotation, MinLength, PrimaryKey, Reference, serializer, Type, typeSettings, UnpopulatedCheck } from '@deepkit/type';

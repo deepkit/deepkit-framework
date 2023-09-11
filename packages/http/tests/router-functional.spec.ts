@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
 import { createHttpApp, createHttpKernel } from './utils.js';
-import { HttpRouter, HttpRouterRegistry } from '../src/router.js';
-import { HttpBody, HttpRequest } from '../src/model.js';
-import { http, HttpDecorator } from '../src/decorator.js';
-import { HttpKernel } from '../src/kernel.js';
+import { HttpRouter, HttpRouterRegistry } from '../src/lib/router.js';
+import { HttpBody, HttpRequest } from '../src/lib/model.js';
+import { http, HttpDecorator } from '../src/lib/decorator.js';
+import { HttpKernel } from '../src/lib/kernel.js';
 
 test('router basics', async () => {
     const httpKernel = createHttpKernel((registry: HttpRouterRegistry) => {
