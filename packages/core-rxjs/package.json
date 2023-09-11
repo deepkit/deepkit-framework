@@ -11,7 +11,7 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "@deepkit/core-rxjs": "^1.0.1-alpha.0",
+    "@deepkit/core": "^1.0.1-alpha.0",
     "rxjs": "*"
   }
 }
