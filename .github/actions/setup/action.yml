@@ -1,0 +1,60 @@
+name: Setup
+description: ''
+
+inputs:
+  node-version:
+    description: Node.js version
+    required: true
+    default: 18.7.1
+
+  pnpm-version:
+    description: pnpm version
+    required: true
+    default: 8.7.4
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: pnpm/action-setup@v2
+      name: Install pnpm
+      with:
+        version: ${{ inputs.pnpm-version }}
+
+    - uses: actions/setup-node@v3
+      name: Install Node.js
+      with:
+        node-version: ${{ inputs.node-version }}
+        registry-url: https://registry.npmjs.org
+        cache: pnpm
+
+    - name: Install dependencies
+      run: pnpm install
+      shell: bash
+      env:
+        CI: 'true'
+
+    - name: Set GITHUB_BRANCH and NX_BRANCH environment variable in pull request
+      if: github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        echo "GITHUB_BRANCH=${{ github.head_ref }}" >> $GITHUB_ENV
+        echo "NX_BRANCH=${{ github.head_ref }}" >> $GITHUB_ENV
+
+    - name: Set GITHUB_BRANCH and NX_BRANCH environment variable
+      if: github.event_name != 'pull_request'
+      shell: bash
+      run: |
+        echo "GITHUB_BRANCH=${{ github.ref_name }}" >> $GITHUB_ENV
+        echo "NX_BRANCH=${{ github.ref_name }}" >> $GITHUB_ENV
+
+    - name: Derive appropriate SHAs for base and head for `nx affected` commands
+      uses: nrwl/nx-set-shas@v3
+
+    - name: Cache Nx
+      uses: actions/cache@v2
+      with:
+        path: node_modules/.cache/nx
+        key: cache-nx-${{ env.NX_BASE }}-${{ env.NX_HEAD }}
+        restore-keys: |
+          cache-nx-${{ env.NX_BASE }}-
+          cache-nx-

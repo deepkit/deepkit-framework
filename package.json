@@ -16,13 +16,14 @@
     "install-compiler": "sh scripts/install-compiler.sh",
     "docs": "rm -rf docs && node --max-old-space-size=12096 node_modules/.bin/typedoc packages/*/index.ts",
     "publish-website": "heroku container:push web && heroku container:release web",
-    "postinstall": "npm run install-compiler"
+    "postinstall": "CI || npm run install-compiler"
   },
   "devDependencies": {
     "@angular-devkit/core": "^15.0.0",
     "@angular-devkit/schematics": "^15.0.0",
     "@angular-eslint/eslint-plugin": "^16.1.2",
     "@angular-eslint/eslint-plugin-template": "~15.0.0",
+    "@angular-devkit/build-angular": "15.0.0",
     "@angular-eslint/template-parser": "~15.0.0",
     "@angular/language-service": "^15.0.0",
     "@jest/globals": "^29.2.1",
@@ -82,7 +83,7 @@
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
     "typedoc": "^0.23.17",
-    "typescript": "^4.8.4"
+    "typescript": "4.8.4"
   },
   "dependencies": {
     "@angular-devkit/build-angular": "^15.0.0",
@@ -163,7 +164,16 @@
     "widest-line": "^3.1.0",
     "wrap-ansi": "^6.2.0",
     "ws": "^8.6.0",
-    "zone.js": "~0.12.0"
+    "zone.js": "~0.12.0",
+    "webpack": "5.88.2",
+    "ts-loader": "9.4.4"
+  },
+  "resolutions": {
+    "typescript": "4.8.4",
+    "@angular-devkit/core": "15.0.0",
+    "@angular-devkit/build-angular": "15.0.0",
+    "@angular/compiler-cli": "15.0.0",
+    "@angular/cli": "15.0.0"
   },
   "engines": {
     "node": ">= 16.0.0"
