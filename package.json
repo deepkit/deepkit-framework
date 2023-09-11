@@ -149,7 +149,8 @@
     "send": "^0.18.0",
     "ansi-styles": "^4.3.0",
     "format-util": "^1.0.5",
-    "saslprep": "^1.0.3"
+    "saslprep": "^1.0.3",
+    "mariadb": "^2.5.2"
   },
   "engines": {
     "node": ">= 16.0.0"
