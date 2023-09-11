@@ -1,38 +1,14 @@
 {
-  "compilerOptions": {
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "sourceMap": true,
-    "noImplicitAny": false,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "moduleResolution": "node",
-    "target": "es2018",
-    "module": "CommonJS",
-    "esModuleInterop": true,
-    "outDir": "./dist",
-    "declaration": true,
-    "composite": true
-  },
-  "reflection": true,
-  "include": [
-    "src",
-    "index.ts"
-  ],
+  "extends": "../../tsconfig.base.json",
+  "files": [],
+  "include": [],
   "references": [
     {
-      "path": "../core/tsconfig.json"
+      "path": "./tsconfig.lib.json"
     },
     {
-      "path": "../type/tsconfig.json"
-    },
-    {
-      "path": "../orm/tsconfig.json"
-    },
-    {
-      "path": "../sql/tsconfig.json"
+      "path": "./tsconfig.spec.json"
     }
-  ]
+  ],
+  "reflection": true
 }

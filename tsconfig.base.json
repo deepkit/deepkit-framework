@@ -47,6 +47,7 @@
       "@deepkit/orm-browser": ["packages/orm-browser/src/index.ts"],
       "@deepkit/orm-browser-api": ["packages/orm-browser-api/src/index.ts"],
       "@deepkit/orm-browser-module": ["packages/orm-browser-module/src/index.ts"],
+      "@deepkit/orm-integration": ["packages/orm-integration/src/index.ts"],
       "@deepkit/type": ["packages/type/src/index.ts"],
       "@deepkit/type-compiler": ["packages/type-compiler/src/index.ts"],
       "@deepkit/type-spec": ["packages/type-spec/src/index.ts"],

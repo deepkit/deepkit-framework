@@ -1,29 +1,29 @@
-import { bookstoreTests } from './src/bookstore.js';
+import { bookstoreTests } from './lib/bookstore.js';
 import { test } from '@jest/globals';
-import { variousTests } from './src/various.js';
-import { companyTests } from './src/company.js';
-import { usersTests } from './src/users.js';
-import { activeRecordTests } from './src/active-record.js';
-import { softDeletePluginTests } from './src/soft-delete-plugin.js';
-import { aggregateTest } from './src/aggregate.js';
-import { DatabaseFactory } from './src/test.js';
-import { logPluginTests } from './src/log-plugin.js';
+import { variousTests } from './lib/various.js';
+import { companyTests } from './lib/company.js';
+import { usersTests } from './lib/users.js';
+import { activeRecordTests } from './lib/active-record.js';
+import { softDeletePluginTests } from './lib/soft-delete-plugin.js';
+import { aggregateTest } from './lib/aggregate.js';
+import { DatabaseFactory } from './lib/test.js';
+import { logPluginTests } from './lib/log-plugin.js';
 
-export * from './src/bookstore.js';
-export * from './src/active-record.js';
-export * from './src/soft-delete-plugin.js';
-export * from './src/aggregate.js';
-export * from './src/users.js';
+export * from './lib/bookstore.js';
+export * from './lib/active-record.js';
+export * from './lib/soft-delete-plugin.js';
+export * from './lib/aggregate.js';
+export * from './lib/users.js';
 
-export * from './src/various.js';
-export * from './src/test.js';
-export * from './src/active-record/book-tag.js';
-export * from './src/active-record/book.js';
-export * from './src/active-record/tag.js';
-export * from './src/bookstore/group.js';
-export * from './src/bookstore/user.js';
-export * from './src/bookstore/user-credentials.js';
-export * from './src/company.js';
+export * from './lib/various.js';
+export * from './lib/test.js';
+export * from './lib/active-record/book-tag.js';
+export * from './lib/active-record/book.js';
+export * from './lib/active-record/tag.js';
+export * from './lib/bookstore/group.js';
+export * from './lib/bookstore/user.js';
+export * from './lib/bookstore/user-credentials.js';
+export * from './lib/company.js';
 
 export function runIntegrationTests(databaseFactory: DatabaseFactory) {
     for (const i in bookstoreTests) {
