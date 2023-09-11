@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.lib.json",
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "paths": {
+      "@deepkit/core": ["dist/packages/core/index.esm.js", "dist/packages/core/src/index.d.ts"],
+      "@deepkit/core-rxjs": ["dist/packages/core-rxjs/index.esm.js", "dist/packages/core-rxjs/src/index.d.ts"],
+      "@deepkit/type": ["dist/packages/type/index.esm.js", "dist/packages/type/src/index.d.ts"],
+      "@deepkit/event": ["dist/packages/event/index.esm.js", "dist/packages/event/src/index.d.ts"]
+    }
+  }
+}
