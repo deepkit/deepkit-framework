@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { createWorkflow, WorkflowEvent } from '../src/workflow.js';
+import { createWorkflow, WorkflowEvent } from '../src/lib/workflow.js';
 import { eventDispatcher, EventDispatcher, EventToken } from '@deepkit/event';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 

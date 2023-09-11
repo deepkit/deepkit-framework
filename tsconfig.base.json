@@ -61,7 +61,8 @@
       "@deepkit/type-compiler": ["packages/type-compiler/src/index.ts"],
       "@deepkit/type-spec": ["packages/type-spec/src/index.ts"],
       "@deepkit/ui-library": ["packages/ui-library/src/index.ts"],
-      "@deepkit/vite": ["packages/vite/src/index.ts"]
+      "@deepkit/vite": ["packages/vite/src/index.ts"],
+      "@deepkit/workflow": ["packages/workflow/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
