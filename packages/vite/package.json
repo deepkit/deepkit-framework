@@ -2,46 +2,18 @@
   "name": "@deepkit/vite",
   "version": "1.0.1-alpha.97",
   "description": "Deepkit Vite Plugin for type compiler support",
-  "type": "commonjs",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/cjs/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/cjs/index.d.ts",
-      "require": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.js"
-    }
-  },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
   },
-  "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json",
-    "install": "rm -rf node_modules/typescript || exit 0"
-  },
   "peerDependencies": {
     "@deepkit/type-compiler": "^1.0.1-alpha.93"
   },
   "dependencies": {
-    "@rollup/pluginutils": "^5.0.2"
-  },
-  "devDependencies": {
-    "@deepkit/type-compiler": "^1.0.1-alpha.97",
+    "@rollup/pluginutils": "^5.0.2",
     "vite": "^4.0.0"
   },
-  "jest": {
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts"
-    ]
-  }
+  "types": "./src/index.d.ts"
 }

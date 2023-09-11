@@ -159,7 +159,9 @@
     "pg-native": "^3.0.0",
     "fast-glob": "^3.2.5",
     "sqlstring-sqlite": "^0.1.1",
-    "abstract-syntax-tree": "^2.9.4"
+    "abstract-syntax-tree": "^2.9.4",
+    "@rollup/pluginutils": "^5.0.2",
+    "vite": "^4.0.0"
   },
   "engines": {
     "node": ">= 16.0.0"
