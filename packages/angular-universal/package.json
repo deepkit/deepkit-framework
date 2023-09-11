@@ -2,31 +2,9 @@
   "name": "@deepkit/angular-universal",
   "version": "1.0.1-alpha.98",
   "description": "Angular server side rendering for Deepkit Framework",
-  "type": "commonjs",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/cjs/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/cjs/index.d.ts",
-      "require": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.js"
-    },
-    "./tokens": {
-      "types": "./dist/cjs/tokens/index.d.ts",
-      "require": "./dist/cjs/tokens/index.js",
-      "default": "./dist/esm/tokens/index.js"
-    }
-  },
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
-  },
-  "scripts": {
-    "test": "jest --coverage",
-    "tsc": "tsc",
-    "tsc-watch": "rm -rf dist && tsc --watch",
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -42,30 +20,10 @@
   "dependencies": {
     "domino": "^2.0.0"
   },
-  "devDependencies": {
-    "@angular/animations": "^10.0.0 || ^11.0.0",
-    "@angular/common": "^10.0.0 || ^11.0.0",
-    "@angular/core": "^10.0.0 || ^11.0.0",
-    "@angular/platform-server": "^10.0.0 || ^11.0.0",
-    "@angular/router": "^10.0.0 || ^11.0.0",
-    "@deepkit/app": "^1.0.1-alpha.98",
-    "@deepkit/event": "^1.0.1-alpha.97",
-    "@deepkit/http": "^1.0.1-alpha.98",
-    "@deepkit/injector": "^1.0.1-alpha.97",
-    "@deepkit/logger": "^1.0.1-alpha.97",
-    "@deepkit/type": "^1.0.1-alpha.97",
-    "@types/node": "^14.0.0"
+  "exports": {
+    "./tokens": {
+      "types": "./src/tokens.d.ts"
+    }
   },
-  "jest": {
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts"
-    ]
-  },
-  "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
+  "types": "./src/index.d.ts"
 }

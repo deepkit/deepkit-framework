@@ -24,6 +24,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@deepkit/angular-universal": ["packages/angular-universal/src/index.ts"],
       "@deepkit/api-console-api": ["packages/api-console-api/src/index.ts"],
       "@deepkit/api-console-gui": ["packages/api-console-gui/src/index.ts"],
       "@deepkit/api-console-module": ["packages/api-console-module/src/index.ts"],
