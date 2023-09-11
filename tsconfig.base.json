@@ -55,6 +55,7 @@
       "@deepkit/rpc": ["packages/rpc/src/index.ts"],
       "@deepkit/rpc-tcp": ["packages/rpc-tcp/src/index.ts"],
       "@deepkit/sql": ["packages/sql/src/index.ts"],
+      "@deepkit/sql/commands": ["packages/sql/src/commands.ts"],
       "@deepkit/sqlite": ["packages/sqlite/src/index.ts"],
       "@deepkit/stopwatch": ["packages/stopwatch/src/index.ts"],
       "@deepkit/template": ["packages/template/src/index.ts"],

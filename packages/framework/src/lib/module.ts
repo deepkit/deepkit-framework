@@ -29,7 +29,8 @@ import { Stopwatch } from '@deepkit/stopwatch';
 import { OrmBrowserController } from './orm-browser/controller.js';
 import { DatabaseListener } from './database/database-listener.js';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
-import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
+// FIXME: Cannot find module '@deepkit/sql/commands' or its corresponding type declarations
+import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '../../../../dist/packages/sql/commands.esm';
 import { FileStopwatchStore } from './debug/stopwatch/store.js';
 import { DebugDebugFramesCommand } from './cli/debug-debug-frames.js';
 import { ConnectionWriter, rpcClass, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
