@@ -8,5 +8,5 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/api.js';
-export * from './src/faker.js';
+export * from './lib/api.js';
+export * from './lib/faker.js';

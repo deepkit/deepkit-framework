@@ -45,6 +45,7 @@
       "@deepkit/mysql": ["packages/mysql/src/index.ts"],
       "@deepkit/orm": ["packages/orm/src/index.ts"],
       "@deepkit/orm-browser": ["packages/orm-browser/src/index.ts"],
+      "@deepkit/orm-browser-api": ["packages/orm-browser-api/src/index.ts"],
       "@deepkit/type": ["packages/type/src/index.ts"],
       "@deepkit/type-compiler": ["packages/type-compiler/src/index.ts"],
       "@deepkit/type-spec": ["packages/type-spec/src/index.ts"],

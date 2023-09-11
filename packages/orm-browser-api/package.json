@@ -1,20 +1,6 @@
 {
   "name": "@deepkit/orm-browser-api",
   "version": "1.0.1-alpha.97",
-  "type": "commonjs",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/cjs/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/cjs/index.d.ts",
-      "require": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.js"
-    }
-  },
-  "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
-  },
   "license": "MIT",
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -27,22 +13,5 @@
     "@deepkit/stopwatch": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13"
   },
-  "devDependencies": {
-    "@deepkit/rpc": "^1.0.1-alpha.97",
-    "@deepkit/stopwatch": "^1.0.1-alpha.97",
-    "@deepkit/type": "^1.0.1-alpha.97"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts",
-      "**/tests/**/*.spec.tsx"
-    ]
-  }
+  "types": "./src/index.d.ts"
 }
