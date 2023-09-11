@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { rpc } from '@deepkit/rpc';
 import { App, AppModule, createModule, ServiceContainer } from '@deepkit/app';
-import { FrameworkModule } from '../src/module.js';
+import { FrameworkModule } from '../src/lib/module.js';
 import { Database, DatabaseEvent, DatabaseRegistry, MemoryDatabaseAdapter, Query } from '@deepkit/orm';
 import { EventDispatcher } from '@deepkit/event';
 import { PrimaryKey } from '@deepkit/type';

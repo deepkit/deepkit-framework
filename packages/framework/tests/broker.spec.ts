@@ -3,7 +3,7 @@ import { sleep } from '@deepkit/core';
 import { cast, entity, PrimaryKey, UUID, uuid } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { BehaviorSubject } from 'rxjs';
-import { DirectBroker, EntityChannelMessageType } from '../src/broker/broker.js';
+import { DirectBroker, EntityChannelMessageType } from '../src/lib/broker/broker.js';
 
 test('entity channel number', async () => {
     const kernel = new BrokerKernel();

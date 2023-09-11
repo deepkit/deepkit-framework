@@ -1,9 +1,9 @@
 import { App } from '@deepkit/app';
-import { FrameworkModule } from '../src/module.js';
+import { FrameworkModule } from '../src/lib/module.js';
 import { expect, test } from '@jest/globals';
 import { HttpBody, HttpKernel, HttpRequest, HttpRouterRegistry } from '@deepkit/http';
 import { Logger } from '@deepkit/logger';
-import { createTestingApp } from '../src/testing.js';
+import { createTestingApp } from '../src/lib/testing.js';
 
 test('functional http app', async () => {
     const test = createTestingApp({

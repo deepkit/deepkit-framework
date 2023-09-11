@@ -2,7 +2,7 @@
 import * as tsNode from 'ts-node/esm';
 import { optimizeJSX } from '@deepkit/template';
 import { inDebugMode } from '@deepkit/core';
-import { importedFiles } from './src/watch.js';
+import { importedFiles } from './lib/watch.js';
 
 export async function resolve(specifier: string, context: { parentURL: string }, defaultResolve: typeof resolve): Promise<{ url: string }> {
     const res = await tsNode.resolve(specifier, context, defaultResolve);

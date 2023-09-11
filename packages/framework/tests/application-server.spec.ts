@@ -1,13 +1,13 @@
 import { rpc } from '@deepkit/rpc';
 import { afterEach, describe, expect, it, jest, test } from '@jest/globals';
 import { InjectorContext } from '@deepkit/injector';
-import { createTestingApp } from '../src/testing.js';
-import { ApplicationServer } from '../src/application-server.js';
+import { createTestingApp } from '../src/lib/testing.js';
+import { ApplicationServer } from '../src/lib/application-server.js';
 import { ConsoleTransport, Logger, MemoryLoggerTransport } from '@deepkit/logger';
-import { FrameworkModule } from '../src/module.js';
-import { RpcServer, RpcServerInterface, WebWorker } from '../src/worker.js';
+import { FrameworkModule } from '../src/lib/module.js';
+import { RpcServer, RpcServerInterface, WebWorker } from '../src/lib/worker.js';
 import { http, HttpRequest } from '@deepkit/http';
-import { BrokerModule } from '../src/broker/broker.module.js';
+import { BrokerModule } from '../src/lib/broker/broker.module.js';
 import { App } from '@deepkit/app';
 import { sleep } from '@deepkit/core';
 

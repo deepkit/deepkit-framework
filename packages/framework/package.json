@@ -1,28 +1,12 @@
 {
   "name": "@deepkit/framework",
   "version": "1.0.1-alpha.99",
-  "type": "commonjs",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/cjs/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/cjs/index.d.ts",
-      "require": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.js"
-    }
-  },
   "license": "MIT",
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
-  },
-  "scripts": {
-    "test": "jest --coverage",
-    "tsc": "rm -rf dist && ../../node_modules/.bin/tsc",
-    "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "peerDependencies": {
     "@deepkit/app": "^1.0.1-alpha.13",
@@ -69,45 +53,5 @@
     "sift": "^7.0.1",
     "ws": "^7.4.2"
   },
-  "devDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.98",
-    "@deepkit/broker": "^1.0.1-alpha.97",
-    "@deepkit/bson": "^1.0.1-alpha.97",
-    "@deepkit/core": "^1.0.1-alpha.97",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.97",
-    "@deepkit/crypto": "^1.0.1-alpha.89",
-    "@deepkit/event": "^1.0.1-alpha.97",
-    "@deepkit/http": "^1.0.1-alpha.98",
-    "@deepkit/injector": "^1.0.1-alpha.97",
-    "@deepkit/logger": "^1.0.1-alpha.97",
-    "@deepkit/orm": "^1.0.1-alpha.98",
-    "@deepkit/rpc": "^1.0.1-alpha.97",
-    "@deepkit/rpc-tcp": "^1.0.1-alpha.97",
-    "@deepkit/sql": "^1.0.1-alpha.98",
-    "@deepkit/stopwatch": "^1.0.1-alpha.97",
-    "@deepkit/template": "^1.0.1-alpha.97",
-    "@deepkit/type": "^1.0.1-alpha.97",
-    "@deepkit/workflow": "^1.0.1-alpha.97",
-    "@types/clone": "^0.1.30",
-    "@types/faker": "^5.1.6",
-    "@types/fs-extra": "^9.0.1",
-    "@types/node": "^14.0.0",
-    "@types/ws": "^7.4.0",
-    "rxjs": "~7.5.0"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "resolver": "../../jest-resolver.js",
-    "testMatch": [
-      "**/tests/**/*.spec.ts",
-      "**/tests/**/*.spec.tsx"
-    ]
-  },
-  "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
+  "types": "./src/index.d.ts"
 }

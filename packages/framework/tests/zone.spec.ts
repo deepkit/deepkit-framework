@@ -1,6 +1,6 @@
 import { sleep } from '@deepkit/core';
 import { expect, test } from '@jest/globals';
-import { Zone } from '../src/zone.js';
+import { Zone } from '../src/lib/zone.js';
 
 
 test('zone', async () => {

@@ -1,100 +1,14 @@
 {
-  "compilerOptions": {
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "sourceMap": true,
-    "noImplicitAny": false,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "moduleResolution": "node",
-    "preserveSymlinks": true,
-    "target": "es2018",
-    "module": "CommonJS",
-    "esModuleInterop": true,
-    "outDir": "./dist/cjs",
-    "declaration": true,
-    "composite": true,
-    "jsx": "react-jsx",
-    "jsxImportSource": ".."
-  },
-  "reflection": true,
-  "include": [
-    "src",
-    "jsx",
-    "tests",
-    "benchmark",
-    "index.ts",
-    "jsx-runtime.ts",
-    "loader.ts"
-  ],
+  "extends": "../../tsconfig.base.json",
+  "files": [],
+  "include": [],
   "references": [
     {
-      "path": "../api-console-module/tsconfig.json"
+      "path": "./tsconfig.lib.json"
     },
     {
-      "path": "../framework-debug-api/tsconfig.json"
-    },
-    {
-      "path": "../orm-browser-api/tsconfig.json"
-    },
-    {
-      "path": "../app/tsconfig.json"
-    },
-    {
-      "path": "../broker/tsconfig.json"
-    },
-    {
-      "path": "../bson/tsconfig.json"
-    },
-    {
-      "path": "../core/tsconfig.json"
-    },
-    {
-      "path": "../core-rxjs/tsconfig.json"
-    },
-    {
-      "path": "../crypto/tsconfig.json"
-    },
-    {
-      "path": "../event/tsconfig.json"
-    },
-    {
-      "path": "../http/tsconfig.json"
-    },
-    {
-      "path": "../injector/tsconfig.json"
-    },
-    {
-      "path": "../logger/tsconfig.json"
-    },
-    {
-      "path": "../orm/tsconfig.json"
-    },
-    {
-      "path": "../rpc/tsconfig.json"
-    },
-    {
-      "path": "../rpc-tcp/tsconfig.json"
-    },
-    {
-      "path": "../sql/tsconfig.json"
-    },
-    {
-      "path": "../sqlite/tsconfig.json"
-    },
-    {
-      "path": "../stopwatch/tsconfig.json"
-    },
-    {
-      "path": "../template/tsconfig.json"
-    },
-    {
-      "path": "../type/tsconfig.json"
-    },
-    {
-      "path": "../workflow/tsconfig.json"
+      "path": "./tsconfig.spec.json"
     }
-  ]
+  ],
+  "reflection": true
 }
