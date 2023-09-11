@@ -1,8 +1,8 @@
 import { expect, test } from '@jest/globals';
-import { Database } from '../src/database.js';
-import { MemoryDatabaseAdapter } from '../src/memory-db.js';
+import { Database } from '../src/lib/database.js';
+import { MemoryDatabaseAdapter } from '../src/lib/memory-db.js';
 import { AutoIncrement, PrimaryKey, ReflectionClass, t } from '@deepkit/type';
-import { DatabaseSession } from '../src/database-session.js';
+import { DatabaseSession } from '../src/lib/database-session.js';
 
 test('onUpdate plugin', async () => {
     function onUpdate() {

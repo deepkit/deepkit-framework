@@ -1,8 +1,8 @@
 import { AutoIncrement, deserialize, entity, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { Database } from '../src/database.js';
-import { MemoryDatabaseAdapter } from '../src/memory-db.js';
-import { LogPlugin, LogQuery, LogSession, LogType } from '../src/plugin/log-plugin.js';
+import { Database } from '../src/lib/database.js';
+import { MemoryDatabaseAdapter } from '../src/lib/memory-db.js';
+import { LogPlugin, LogQuery, LogSession, LogType } from '../src/lib/plugin/log-plugin.js';
 
 test('log query', async () => {
     @entity.name('logUser1')

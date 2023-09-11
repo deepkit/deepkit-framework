@@ -2,25 +2,9 @@
   "name": "@deepkit/orm",
   "version": "1.0.1-alpha.98",
   "description": "Deepkit ORM, the fastest JIT-based ORM for Typescript",
-  "type": "commonjs",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "browser": "./dist/esm/browser.js",
-  "types": "./dist/cjs/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/cjs/index.d.ts",
-      "require": "./dist/cjs/index.js",
-      "browser": "./dist/esm/browser.js",
-      "default": "./dist/esm/index.js"
-    }
-  },
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
-  },
-  "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -37,27 +21,11 @@
     "@deepkit/topsort": "^1.0.1-alpha.89",
     "sift": "^7.0.1"
   },
-  "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.97",
-    "@deepkit/event": "^1.0.1-alpha.97",
-    "@deepkit/injector": "^1.0.1-alpha.97",
-    "@deepkit/logger": "^1.0.1-alpha.97",
-    "@deepkit/stopwatch": "^1.0.1-alpha.97",
-    "@deepkit/type": "^1.0.1-alpha.97",
-    "@types/sqlstring": "^2.2.1",
-    "conditional-type-checks": "^1.0.5"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts"
-    ]
-  },
-  "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
+  "browser": "./browser.esm.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "browser": "./browser.esm.js"
+    }
+  }
 }

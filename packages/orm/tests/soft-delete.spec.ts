@@ -1,10 +1,10 @@
 import { AutoIncrement, deserialize, entity, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { getInstanceStateFromItem } from '../src/identity-map.js';
-import { Database } from '../src/database.js';
-import { MemoryDatabaseAdapter } from '../src/memory-db.js';
-import { SoftDeletePlugin, SoftDeleteQuery, SoftDeleteSession } from '../src/plugin/soft-delete-plugin.js';
-import { Query } from '../src/query.js';
+import { getInstanceStateFromItem } from '../src/lib/identity-map.js';
+import { Database } from '../src/lib/database.js';
+import { MemoryDatabaseAdapter } from '../src/lib/memory-db.js';
+import { SoftDeletePlugin, SoftDeleteQuery, SoftDeleteSession } from '../src/lib/plugin/soft-delete-plugin.js';
+import { Query } from '../src/lib/query.js';
 
 test('soft-delete query', async () => {
     class User {

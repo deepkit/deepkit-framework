@@ -1,10 +1,10 @@
 import { BackReference, deserialize, PrimaryKey, Reference } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { assert, IsExact } from 'conditional-type-checks';
-import { Database } from '../src/database.js';
-import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db.js';
-import { AnyQuery, BaseQuery, Query } from '../src/query.js';
-import { OrmEntity } from '../src/type.js';
+import { Database } from '../src/lib/database.js';
+import { MemoryDatabaseAdapter, MemoryQuery } from '../src/lib/memory-db.js';
+import { AnyQuery, BaseQuery, Query } from '../src/lib/query.js';
+import { OrmEntity } from '../src/lib/type.js';
 
 test('query select', async () => {
     class s {

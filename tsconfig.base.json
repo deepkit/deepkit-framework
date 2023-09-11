@@ -43,6 +43,7 @@
       "@deepkit/logger": ["packages/logger/src/index.ts"],
       "@deepkit/mongo": ["packages/mongo/src/index.ts"],
       "@deepkit/mysql": ["packages/mysql/src/index.ts"],
+      "@deepkit/orm": ["packages/orm/src/index.ts"],
       "@deepkit/type": ["packages/type/src/index.ts"],
       "@deepkit/type-compiler": ["packages/type-compiler/src/index.ts"],
       "@deepkit/type-spec": ["packages/type-spec/src/index.ts"],
