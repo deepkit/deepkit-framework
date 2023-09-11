@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { App } from '@deepkit/app';
 import { appModule } from './lib/app.module.js';
 

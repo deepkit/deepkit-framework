@@ -2,16 +2,6 @@
   "name": "@deepkit/sql",
   "version": "1.0.1-alpha.98",
   "description": "deepkit/orm base SQL",
-  "exports": {
-    ".": {
-      "browser": "./esm/browser.esm.js"
-    },
-    "./commands": {
-      "types": "./dist/cjs/commands.d.ts",
-      "require": "./dist/cjs/commands.js",
-      "default": "./dist/esm/commands.js"
-    }
-  },
   "bin": {
     "deepkit-sql": "./main.cjs.js"
   },
@@ -37,5 +27,6 @@
     "sqlstring": "^2.3.2",
     "sqlstring-sqlite": "^0.1.1"
   },
-  "types": "./dist/cjs/index.d.ts"
+  "browser": "./browser.esm.js",
+  "types": "./src/index.d.ts"
 }
