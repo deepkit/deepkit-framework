@@ -1,5 +1,5 @@
-import { Stopwatch, StopwatchStore } from '../src/stopwatch.js';
-import { FrameCategory } from '../src/types.js';
+import { Stopwatch, StopwatchStore } from '../src/lib/stopwatch.js';
+import { FrameCategory } from '../src/lib/types.js';
 import { expect, test } from '@jest/globals';
 
 class Store extends StopwatchStore {
