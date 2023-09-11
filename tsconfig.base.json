@@ -24,6 +24,7 @@
     "baseUrl": ".",
     "paths": {
       "@deepkit/api-console-gui": ["packages/api-console-gui/src/index.ts"],
+      "@deepkit/bson": ["packages/bson/src/index.ts"],
       "@deepkit/core": ["packages/core/src/index.ts"],
       "@deepkit/core-rxjs": ["packages/core-rxjs/src/index.ts"],
       "@deepkit/desktop-ui": ["packages/desktop-ui/src/index.ts"],

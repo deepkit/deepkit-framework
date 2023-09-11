@@ -24,9 +24,9 @@ import {
     UUID
 } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { deserializeBSON } from '../src/bson-deserializer.js';
-import { deserializeBSONWithoutOptimiser } from '../src/bson-parser.js';
-import { serializeBSON, serializeWithoutOptimiser } from '../src/bson-serializer.js';
+import { deserializeBSON } from '../src/lib/bson-deserializer.js';
+import { deserializeBSONWithoutOptimiser } from '../src/lib/bson-parser.js';
+import { serializeBSON, serializeWithoutOptimiser } from '../src/lib/bson-serializer.js';
 
 (BigInt.prototype as any).toJSON = function () {
     return this.toString();

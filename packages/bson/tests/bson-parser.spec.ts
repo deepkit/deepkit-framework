@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import bson, { Binary } from 'bson';
-import { deserializeBSON, getBSONDeserializer } from '../src/bson-deserializer.js';
+import { deserializeBSON, getBSONDeserializer } from '../src/lib/bson-deserializer.js';
 import {
     BinaryBigInt,
     copyAndSetParent,
@@ -16,7 +16,7 @@ import {
     UUID
 } from '@deepkit/type';
 import { getClassName } from '@deepkit/core';
-import { serializeWithoutOptimiser } from '../src/bson-serializer.js';
+import { serializeWithoutOptimiser } from '../src/lib/bson-serializer.js';
 
 const { deserialize, serialize } = bson;
 
