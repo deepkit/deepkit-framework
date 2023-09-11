@@ -1,6 +1,5 @@
 const path = require('node:path');
 const { workspaceRoot } = require('@nx/devkit');
-const { readFile } = require('fs/promises');
 
 const tsconfig = require(path.join(workspaceRoot, 'tsconfig.base.json'));
 
@@ -16,15 +15,16 @@ const nxResolvePackages = (packages) => {
 
             const projectName = importee.split('/')[1];
 
-            const distProjectPath = path.join(workspaceRoot, 'dist/packages', projectName);
+            const projectPath = path.join(workspaceRoot, 'dist/packages', projectName);
 
-            const packageJson = JSON.parse(await readFile(path.join(distProjectPath, 'package.json'), 'utf8'));
-            const relativeIndexFilePath = packageJson.module || packageJson.main;
+            const result = {
+                id: projectPath,
+                external: true
+            }
 
-            const absoluteMainFilePath = path.join(distProjectPath, relativeIndexFilePath);
-            cache.set(importee, absoluteMainFilePath);
+            cache.set(importee, result);
 
-            return absoluteMainFilePath;
+            return result;
         },
     }
 }
