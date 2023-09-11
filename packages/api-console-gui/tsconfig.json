@@ -1,7 +1,8 @@
 {
     "compilerOptions": {
         "target": "es2022",
-        "useDefineForClassFields": false
+        "useDefineForClassFields": false,
+        "noImplicitReturns": false
     },
     "files": [],
     "include": [],
@@ -22,5 +23,8 @@
         "strictInjectionParameters": true,
         "strictInputAccessModifiers": true,
         "strictTemplates": true
-    }
+    },
+    "reflection": [
+        "src/app/store.ts"
+    ]
 }

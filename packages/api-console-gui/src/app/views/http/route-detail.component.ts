@@ -4,7 +4,7 @@ import { isArray, isObject } from '@deepkit/core';
 import { extractDataStructure, extractDataStructureFromSchema, Request, RouteState, Store } from '../../store';
 import { ControllerClient } from '../../client';
 import { Router } from '@angular/router';
-import { DuiDialog } from '@deepkit/desktop-ui/src/index';
+import { DuiDialog } from '@deepkit/desktop-ui';
 import { headerStatusCodes, methods, trackByIndex, typeToTSJSONInterface } from '../../utils';
 import { getTypeJitContainer } from '@deepkit/type';
 

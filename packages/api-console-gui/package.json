@@ -7,5 +7,21 @@
   "license": "MIT",
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "@deepkit/api-console-api": "^1.0.1-alpha.97",
+    "@deepkit/bson": "^1.0.1-alpha.97",
+    "@deepkit/core": "^1.0.1-alpha.97",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.97",
+    "@deepkit/crypto": "^1.0.1-alpha.89",
+    "@deepkit/desktop-ui": "^1.0.1-alpha.97",
+    "@deepkit/event": "^1.0.1-alpha.97",
+    "@deepkit/injector": "^1.0.1-alpha.97",
+    "@deepkit/logger": "^1.0.1-alpha.97",
+    "@deepkit/rpc": "^1.0.1-alpha.97",
+    "@deepkit/stopwatch": "^1.0.1-alpha.97",
+    "@deepkit/type": "^1.0.1-alpha.97",
+    "@deepkit/type-compiler": "^1.0.1-alpha.97",
+    "@deepkit/ui-library": "^1.0.1-alpha.56"
   }
 }

@@ -14,9 +14,6 @@
         "outputPath": "dist/{projectRoot}",
         "index": "{projectRoot}/src/index.html",
         "main": "{projectRoot}/src/main.ts",
-        "customWebpackConfig": {
-          "path": "{projectRoot}/webpack.config.ts"
-        },
         "polyfills": ["zone.js"],
         "preserveSymlinks": true,
         "tsConfig": "{projectRoot}/tsconfig.app.json",
@@ -38,7 +35,7 @@
             {
               "type": "initial",
               "maximumWarning": "500kb",
-              "maximumError": "1mb"
+              "maximumError": "1.5mb"
             },
             {
               "type": "anyComponentStyle",
