@@ -1,52 +1,14 @@
 {
-  "compilerOptions": {
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "sourceMap": true,
-    "noImplicitAny": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "moduleResolution": "node",
-    "target": "es2020",
-    "module": "CommonJS",
-    "esModuleInterop": true,
-    "outDir": "./dist/cjs",
-    "declaration": true,
-    "composite": true
-  },
-  "reflection": true,
-  "include": [
-    "benchmarks",
-    "src",
-    "tests",
-    "main.ts",
-    "browser.ts",
-    "commands.ts",
-    "index.ts"
-  ],
+  "extends": "../../tsconfig.base.json",
+  "files": [],
+  "include": [],
   "references": [
     {
-      "path": "../app/tsconfig.json"
+      "path": "./tsconfig.lib.json"
     },
     {
-      "path": "../core/tsconfig.json"
-    },
-    {
-      "path": "../injector/tsconfig.json"
-    },
-    {
-      "path": "../logger/tsconfig.json"
-    },
-    {
-      "path": "../orm/tsconfig.json"
-    },
-    {
-      "path": "../stopwatch/tsconfig.json"
-    },
-    {
-      "path": "../type/tsconfig.json"
+      "path": "./tsconfig.spec.json"
     }
-  ]
+  ],
+  "reflection": true
 }

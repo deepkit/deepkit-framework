@@ -1,12 +1,12 @@
 import { expect, test } from '@jest/globals';
 import { entity, ReflectionClass, ReflectionKind, serializer } from '@deepkit/type';
-import { SQLFilterBuilder } from '../src/sql-filter-builder.js';
+import { SQLFilterBuilder } from '../src/lib/sql-filter-builder.js';
 import { escape } from 'sqlstring';
-import { splitDotPath, sql, SQLQueryModel } from '../src/sql-adapter.js';
-import { DefaultPlatform, SqlPlaceholderStrategy } from '../src/platform/default-platform.js';
-import { SchemaParser } from '../src/reverse/schema-parser.js';
-import { DatabaseModel } from '../src/schema/table.js';
-import { SqlBuilder } from '../src/sql-builder.js';
+import { splitDotPath, sql, SQLQueryModel } from '../src/lib/sql-adapter.js';
+import { DefaultPlatform, SqlPlaceholderStrategy } from '../src/lib/platform/default-platform.js';
+import { SchemaParser } from '../src/lib/reverse/schema-parser.js';
+import { DatabaseModel } from '../src/lib/schema/table.js';
+import { SqlBuilder } from '../src/lib/sql-builder.js';
 
 function quoteId(value: string): string {
     return value;

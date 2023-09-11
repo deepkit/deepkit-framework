@@ -1,7 +1,7 @@
 import { AutoIncrement, entity, PrimaryKey, ReflectionKind } from '@deepkit/type';
-import { SchemaParser } from '../src/reverse/schema-parser.js';
-import { DatabaseModel } from '../src/schema/table.js';
-import { DefaultPlatform } from '../src/platform/default-platform.js';
+import { SchemaParser } from '../src/lib/reverse/schema-parser.js';
+import { DatabaseModel } from '../src/lib/schema/table.js';
+import { DefaultPlatform } from '../src/lib/platform/default-platform.js';
 import { expect, test } from '@jest/globals';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 

@@ -51,6 +51,7 @@
       "@deepkit/postgres": ["packages/postgres/src/index.ts"],
       "@deepkit/rpc": ["packages/rpc/src/index.ts"],
       "@deepkit/rpc-tcp": ["packages/rpc-tcp/src/index.ts"],
+      "@deepkit/sql": ["packages/sql/src/index.ts"],
       "@deepkit/type": ["packages/type/src/index.ts"],
       "@deepkit/type-compiler": ["packages/type-compiler/src/index.ts"],
       "@deepkit/type-spec": ["packages/type-spec/src/index.ts"],

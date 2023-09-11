@@ -97,6 +97,9 @@ dependencies:
   faker:
     specifier: 5.4.0
     version: 5.4.0
+  fast-glob:
+    specifier: ^3.2.5
+    version: 3.2.7
   format-util:
     specifier: ^1.0.5
     version: 1.0.5
@@ -193,9 +196,9 @@ dependencies:
   sift:
     specifier: ^7.0.1
     version: 7.0.1
-  sqlstring:
-    specifier: ^2.3.2
-    version: 2.3.2
+  sqlstring-sqlite:
+    specifier: ^0.1.1
+    version: 0.1.1
   string-width:
     specifier: ^4.2.0
     version: 4.2.0
@@ -9416,7 +9419,6 @@ packages:
       glob-parent: 5.1.2
       merge2: 1.4.1
       micromatch: 4.0.5
-    dev: true
 
   /fast-glob@3.3.1:
     resolution: {integrity: sha512-kNFPyjhh5cKjrUltxs+wFx+ZkbRaxxmZ+X0ZU31SOsxCEtP9VPgtq2teZw1DebupL5GmDaNQ6yKMMVcM41iqDg==}
@@ -15322,8 +15324,8 @@ packages:
   /sprintf-js@1.0.3:
     resolution: {integrity: sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==}
 
-  /sqlstring@2.3.2:
-    resolution: {integrity: sha512-vF4ZbYdKS8OnoJAWBmMxCQDkiEBkGQYU7UZPtL8flbDRSNkhaXvRJ279ZtI6M+zDaQovVU4tuRgzK5fVhvFAhg==}
+  /sqlstring-sqlite@0.1.1:
+    resolution: {integrity: sha512-9CAYUJ0lEUPYJrswqiqdINNSfq3jqWo/bFJ7tufdoNeSK0Fy+d1kFTxjqO9PIqza0Kri+ZtYMfPVf1aZaFOvrQ==}
     engines: {node: '>= 0.6'}
     dev: false
 
