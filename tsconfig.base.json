@@ -44,6 +44,7 @@
       "@deepkit/logger": ["packages/logger/src/index.ts"],
       "@deepkit/mongo": ["packages/mongo/src/index.ts"],
       "@deepkit/mysql": ["packages/mysql/src/index.ts"],
+      "@deepkit/nx-webpack-plugin": ["packages/nx-webpack-plugin/src/index.ts"],
       "@deepkit/orm": ["packages/orm/src/index.ts"],
       "@deepkit/orm-browser": ["packages/orm-browser/src/index.ts"],
       "@deepkit/orm-browser-api": ["packages/orm-browser-api/src/index.ts"],

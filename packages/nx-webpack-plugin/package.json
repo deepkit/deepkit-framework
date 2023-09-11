@@ -1,0 +1,20 @@
+{
+  "name": "@deepkit/nx-webpack-plugin",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marcus-sa/deepkit-community.git"
+  },
+  "dependencies": {
+    "tslib": "2.6.2",
+    "webpack": "5.88.2",
+    "ts-loader": "9.4.4"
+  },
+  "peerDependencies": {
+    "@deepkit/type-compiler": "*",
+    "@nx/webpack": "^16.7.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
