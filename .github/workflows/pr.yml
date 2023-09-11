@@ -1,0 +1,27 @@
+on:
+    pull_request:
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+env:
+    NX_VERBOSE_LOGGING: ${{ secrets.NX_VERBOSE_LOGGING }}
+    NX_SKIP_NX_CACHE: ${{ secrets.NX_SKIP_NX_CACHE }}
+    NX_TASKS_RUNNER: ${{ secrets.NX_TASKS_RUNNER }}
+    NX_PERF_LOGGING: ${{ secrets.NX_PERF_LOGGING }}
+    NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
+    NX_CLOUD_AUTH_TOKEN: ${{ secrets.NX_CLOUD_AUTH_TOKEN }}
+
+permissions:
+    actions: write
+    contents: read
+    pull-requests: write
+    id-token: write
+
+jobs:
+    build-test-lint:
+        uses: ./.github/workflows/build-test-lint.yml
+        secrets: inherit
+        with:
+            skip: lint

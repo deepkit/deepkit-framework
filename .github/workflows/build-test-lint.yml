@@ -1,0 +1,67 @@
+on:
+  workflow_call:
+    inputs:
+      skip:
+        default: ''
+        required: false
+        type: string
+
+env:
+  NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
+  NX_CLOUD_AUTH_TOKEN: ${{ secrets.NX_CLOUD_AUTH_TOKEN }}
+  NX_VERBOSE_LOGGING: ${{ secrets.NX_VERBOSE_LOGGING }}
+  NX_SKIP_NX_CACHE: ${{ secrets.NX_SKIP_NX_CACHE }}
+  NX_TASKS_RUNNER: ${{ secrets.NX_TASKS_RUNNER }}
+  NX_PERF_LOGGING: ${{ secrets.NX_PERF_LOGGING }}
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+  id-token: write
+
+jobs:
+  build:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    if: contains(inputs.skip, 'build') == false
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup
+        id: setup
+        uses: ./.github/actions/setup
+
+      - name: Run affected builds
+        run: pnpm nx affected:build
+
+  test:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    if: contains(inputs.skip, 'test') == false
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup
+        id: setup
+        uses: ./.github/actions/setup
+
+      - name: Run affected tests
+        run: pnpm nx affected:test
+
+  lint:
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    if: contains(inputs.skip, 'lint') == false
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup
+        id: setup
+        uses: ./.github/actions/setup
+
+      - name: Run affected linting
+        run: pnpm nx affected:lint
