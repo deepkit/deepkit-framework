@@ -2,8 +2,7 @@
   "name": "@deepkit/crypto",
   "version": "1.0.1-alpha.89",
   "description": "Deepkit crypto library",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "types": "./src/index.d.ts",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
@@ -13,17 +12,5 @@
   "license": "MIT",
   "browser": {
     "crypto": false
-  },
-  "jest": {
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts"
-    ]
-  },
-  "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
+  }
 }
