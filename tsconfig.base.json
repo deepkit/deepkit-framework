@@ -48,6 +48,7 @@
       "@deepkit/orm": ["packages/orm/src/index.ts"],
       "@deepkit/orm-browser": ["packages/orm-browser/src/index.ts"],
       "@deepkit/orm-browser-api": ["packages/orm-browser-api/src/index.ts"],
+      "@deepkit/orm-browser-gui": ["packages/orm-browser-gui/src/index.ts"],
       "@deepkit/orm-browser-module": ["packages/orm-browser-module/src/index.ts"],
       "@deepkit/orm-integration": ["packages/orm-integration/src/index.ts"],
       "@deepkit/postgres": ["packages/postgres/src/index.ts"],

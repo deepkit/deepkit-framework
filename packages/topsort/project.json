@@ -13,7 +13,9 @@
         "tsConfig": "{projectRoot}/tsconfig.lib.json",
         "rollupConfig": "packages/rollup.config.js",
         "project": "{projectRoot}/package.json",
-        "format": ["esm", "cjs"],
+        // FIXME: 'import' and 'export' may appear only with 'sourceType: module'
+        // "format": ["esm", "cjs"],
+        "format": ["cjs"],
         "generateExportsField": true,
         "external": "all",
         "compiler": "tsc"
