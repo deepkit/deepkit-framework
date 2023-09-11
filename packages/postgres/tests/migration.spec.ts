@@ -18,7 +18,7 @@ import {
     uint8,
     Unique
 } from '@deepkit/type';
-import { PostgresDatabaseAdapter } from '../src/postgres-adapter.js';
+import { PostgresDatabaseAdapter } from '../src/lib/postgres-adapter.js';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 
 test('custom type', async () => {
