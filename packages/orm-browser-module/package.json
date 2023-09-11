@@ -2,25 +2,11 @@
   "name": "@deepkit/orm-browser-module",
   "version": "1.0.1-alpha.99",
   "description": "ORM Browser",
-  "type": "commonjs",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/cjs/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/cjs/index.d.ts",
-      "require": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.js"
-    }
-  },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
-  },
-  "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
     "@deepkit/app": "^1.0.1-alpha.43",
@@ -40,30 +26,5 @@
   "dependencies": {
     "@deepkit/orm-browser-gui": "^1.0.1-alpha.98"
   },
-  "devDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.98",
-    "@deepkit/broker": "^1.0.1-alpha.97",
-    "@deepkit/bson": "^1.0.1-alpha.97",
-    "@deepkit/core": "^1.0.1-alpha.97",
-    "@deepkit/crypto": "^1.0.1-alpha.89",
-    "@deepkit/framework": "^1.0.1-alpha.99",
-    "@deepkit/http": "^1.0.1-alpha.98",
-    "@deepkit/injector": "^1.0.1-alpha.97",
-    "@deepkit/logger": "^1.0.1-alpha.97",
-    "@deepkit/orm": "^1.0.1-alpha.98",
-    "@deepkit/rpc": "^1.0.1-alpha.97",
-    "@deepkit/type": "^1.0.1-alpha.97",
-    "rxjs": "~7.5.0"
-  },
-  "jest": {
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts"
-    ]
-  }
+  "types": "./src/index.d.ts"
 }
