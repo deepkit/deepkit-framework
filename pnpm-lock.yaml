@@ -234,6 +234,9 @@ dependencies:
   sift:
     specifier: ^7.0.1
     version: 7.0.1
+  sqlstring:
+    specifier: ^2.3.2
+    version: 2.3.2
   sqlstring-sqlite:
     specifier: ^0.1.1
     version: 0.1.1
@@ -16258,6 +16261,11 @@ packages:
 
   /sqlstring-sqlite@0.1.1:
     resolution: {integrity: sha512-9CAYUJ0lEUPYJrswqiqdINNSfq3jqWo/bFJ7tufdoNeSK0Fy+d1kFTxjqO9PIqza0Kri+ZtYMfPVf1aZaFOvrQ==}
+    engines: {node: '>= 0.6'}
+    dev: false
+
+  /sqlstring@2.3.2:
+    resolution: {integrity: sha512-vF4ZbYdKS8OnoJAWBmMxCQDkiEBkGQYU7UZPtL8flbDRSNkhaXvRJ279ZtI6M+zDaQovVU4tuRgzK5fVhvFAhg==}
     engines: {node: '>= 0.6'}
     dev: false
 

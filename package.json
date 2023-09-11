@@ -175,7 +175,8 @@
     "file-saver": "^2.0.5",
     "file-type": "^16.5.0",
     "panzoom": "^9.4.2",
-    "pixi.js": "^5.3.8"
+    "pixi.js": "^5.3.8",
+    "sqlstring": "^2.3.2"
   },
   "resolutions": {
     "typescript": "4.8.4",
