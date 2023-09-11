@@ -2,39 +2,22 @@
   "name": "@deepkit/create-app",
   "version": "1.0.1-alpha.98",
   "description": "asdasd",
-  "type": "commonjs",
-  "main": "./dist/cjs/main.js",
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
   },
-  "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
-  },
   "bin": {
-    "deepkit-app": "dist/cjs/main.js"
+    "deepkit-app": "./main.cjs.js"
   },
   "dependencies": {
     "@deepkit/app": "^1.0.1-alpha.98",
     "@deepkit/core": "^1.0.1-alpha.97",
+    "@deepkit/sql": "^1.0.1-alpha.97",
+    "@deepkit/framework": "^1.0.1-alpha.97",
     "@deepkit/logger": "^1.0.1-alpha.97",
     "@deepkit/type": "^1.0.1-alpha.97",
     "fs-extra": "^9.1.0"
-  },
-  "devDependencies": {
-    "@types/fs-extra": "^9.0.13"
-  },
-  "jest": {
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts"
-    ]
   }
 }
