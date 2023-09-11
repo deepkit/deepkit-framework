@@ -11,7 +11,7 @@
 import { BehaviorSubject, isObservable, Observable, Observer, Subject, Subscriber, Subscription, TeardownLogic } from 'rxjs';
 import { arrayRemoveItem, asyncOperation, createStack, isFunction, mergePromiseStack, mergeStack } from '@deepkit/core';
 import { first, skip } from 'rxjs/operators';
-import { ProgressTracker } from './progress.js';
+import { ProgressTracker } from './progress';
 
 export class AsyncSubscription {
     protected unsubscribed = false;

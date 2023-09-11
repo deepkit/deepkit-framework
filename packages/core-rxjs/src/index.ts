@@ -8,6 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './lib/utils.js';
-export * from './lib/timer.js';
-export * from './lib/progress.js';
+export * from './lib/utils';
+export * from './lib/timer';
+export * from './lib/progress';

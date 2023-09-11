@@ -10,7 +10,7 @@
 
 import { Timer } from '@deepkit/core';
 import { Observer } from 'rxjs';
-import { watchClosed } from './utils.js';
+import { watchClosed } from './utils';
 
 /**
  * Allows to create Timer which is deactivated automatically
