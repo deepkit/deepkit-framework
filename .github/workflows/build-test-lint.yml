@@ -59,6 +59,24 @@ jobs:
       - name: Run affected tests
         run: pnpm nx affected:test --configuration=ci --exclude=postgres,sqlite,mysql,mongo
 
+  test-sqlite:
+      if: contains(needs.print-affected.outputs.projects, 'sqlite')
+      runs-on: buildjet-2vcpu-ubuntu-2004
+      needs:
+          - print-affected
+      steps:
+          -   uses: actions/checkout@v3
+              with:
+                  fetch-depth: 0
+
+          -   name: Setup
+              id: setup
+              uses: ./.github/actions/setup
+
+          -   run: pnpm run install-compiler
+
+          -   run: pnpm nx run sqlite:test:ci
+
   test-mongo:
       if: contains(needs.print-affected.outputs.projects, 'mongo')
       runs-on: buildjet-2vcpu-ubuntu-2004
