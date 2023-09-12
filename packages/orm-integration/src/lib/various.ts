@@ -1,4 +1,3 @@
-import { expect } from '@jest/globals';
 import { AutoIncrement, BackReference, cast, entity, isReferenceInstance, PrimaryKey, Reference, Unique, uuid, UUID } from '@deepkit/type';
 import { identifier, sql, SQLDatabaseAdapter } from '@deepkit/sql';
 import { DatabaseFactory } from './test.js';

@@ -1,5 +1,4 @@
 import { bookstoreTests } from './lib/bookstore.js';
-import { test } from '@jest/globals';
 import { variousTests } from './lib/various.js';
 import { companyTests } from './lib/company.js';
 import { usersTests } from './lib/users.js';

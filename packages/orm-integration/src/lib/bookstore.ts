@@ -1,4 +1,3 @@
-import { expect } from '@jest/globals';
 import { assertType, AutoIncrement, BackReference, cast, entity, PrimaryKey, Reference, ReflectionClass, ReflectionKind, UUID, uuid } from '@deepkit/type';
 import { User, UserGroup } from './bookstore/user.js';
 import { UserCredentials } from './bookstore/user-credentials.js';
