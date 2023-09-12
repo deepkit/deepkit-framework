@@ -59,6 +59,38 @@ jobs:
       - name: Run affected tests
         run: pnpm nx affected:test --configuration=ci --exclude=postgres,sqlite,mysql,mongo
 
+  test-mysql:
+      if: contains(needs.print-affected.outputs.projects, 'mysql')
+      runs-on: buildjet-2vcpu-ubuntu-2004
+      needs:
+          - print-affected
+      strategy:
+          matrix:
+            mysql-version:
+                - 5
+                - 8
+      services:
+      mysql:
+          image: mysql:${{ matrix.mysql-version }}
+          options: >-
+              --health-cmd "mysqladmin ping --silent"
+              -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
+              -e MYSQL_DATABASE=default
+          ports:
+              - "3306:3306"
+      steps:
+          - uses: actions/checkout@v3
+            with:
+                fetch-depth: 0
+
+          - name: Setup
+            id: setup
+            uses: ./.github/actions/setup
+
+          - run: pnpm run install-compiler
+
+          - run: pnpm nx run mysql:test:ci
+
   test-postgres:
       if: contains(needs.print-affected.outputs.projects, 'postgres')
       runs-on: buildjet-2vcpu-ubuntu-2004
