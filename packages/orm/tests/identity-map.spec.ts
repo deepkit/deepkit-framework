@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { BaseQuery, Formatter, getInstanceStateFromItem, getNormalizedPrimaryKey } from '../index.js';
+import { BaseQuery, Formatter, getInstanceStateFromItem, getNormalizedPrimaryKey } from '../src/index.js';
 import { getReference } from '../src/lib/reference.js';
 import { PrimaryKey, Reference, ReflectionClass, serializer } from '@deepkit/type';
 import { getClassTypeFromInstance } from '@deepkit/core';
