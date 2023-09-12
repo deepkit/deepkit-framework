@@ -7,6 +7,7 @@ export default {
     transform: {
         '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
     },
+    testPathIgnorePatterns: ['<rootDir>/src/files/'],
     moduleFileExtensions: ['ts', 'js', 'html'],
     coverageDirectory: '../../coverage/packages/create-app',
 } as Config;
