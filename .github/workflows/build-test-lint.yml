@@ -21,6 +21,10 @@ permissions:
   id-token: write
 
 jobs:
+  print-affected:
+    uses: ./.github/workflows/print-affected.yml
+    secrets: inherit
+
   build:
     runs-on: buildjet-2vcpu-ubuntu-2004
     if: contains(inputs.skip, 'build') == false
@@ -33,7 +37,7 @@ jobs:
         id: setup
         uses: ./.github/actions/setup
 
-      - run: npm run install-compiler
+      - run: pnpm run install-compiler
 
       - name: Run affected builds
         run: pnpm nx affected:build
@@ -50,10 +54,43 @@ jobs:
         id: setup
         uses: ./.github/actions/setup
 
-      - run: npm run install-compiler
+      - run: pnpm run install-compiler
 
       - name: Run affected tests
-        run: pnpm nx affected:test
+        run: pnpm nx affected:test --configuration=ci --exclude=postgres,sqlite,mysql,mongo
+
+  test-postgres:
+      if: contains(needs.print-affected.outputs.projects, 'postgres')
+      runs-on: buildjet-2vcpu-ubuntu-2004
+      needs:
+          - print-affected
+      strategy:
+          matrix:
+              postgres-version:
+                  - 14
+                  - 15
+      services:
+          postgres:
+              image: postgres:${{ matrix.postgres-version }}
+              env:
+                  POSTGRES_USER: postgres
+                  POSTGRES_PASSWORD: ''
+                  POSTGRES_HOST_AUTH_METHOD: trust
+              ports:
+                  - "5432:5432"
+              options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      steps:
+          - uses: actions/checkout@v3
+            with:
+                fetch-depth: 0
+
+          - name: Setup
+            id: setup
+            uses: ./.github/actions/setup
+
+          - run: pnpm run install-compiler
+
+          - run: pnpm nx run postgres:test:ci
 
   lint:
     runs-on: buildjet-2vcpu-ubuntu-2004
