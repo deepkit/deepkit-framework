@@ -1,0 +1,7 @@
+# Only use this for Angular packages that should have their own TypeScript installation
+packages: []
+#    - packages/api-console-gui
+#    - packages/desktop-ui
+#    - packages/framework-debug-gui
+#    - packages/orm-browser-gui
+#    - packages/ui-library
