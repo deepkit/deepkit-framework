@@ -6,7 +6,7 @@ import { RpcKernel, RpcKernelConnection } from '../src/lib/server/kernel.js';
 import { Session, SessionState } from '../src/lib/server/security.js';
 import { BehaviorSubject } from 'rxjs';
 import { getClassName, sleep } from '@deepkit/core';
-import { ProgressTracker } from '../src/core-rxjs';
+import { ProgressTracker } from '@deepkit/core-rxjs';
 
 test('decorator', async () => {
     @rpc.controller('name')
