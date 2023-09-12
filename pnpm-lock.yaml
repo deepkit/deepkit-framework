@@ -7,11 +7,6 @@ settings:
 overrides:
   typescript: 5.2.2
 
-patchedDependencies:
-  '@angular/compiler-cli@16.2.4':
-    hash: jxc4tbpf2733olnlzm3hzl7vbe
-    path: patches/@angular__compiler-cli@16.2.4.patch
-
 dependencies:
   '@angular/animations':
     specifier: 16.2.4
@@ -27,7 +22,7 @@ dependencies:
     version: 16.2.4(@angular/core@16.2.4)
   '@angular/compiler-cli':
     specifier: 16.2.4
-    version: 16.2.4(patch_hash=jxc4tbpf2733olnlzm3hzl7vbe)(@angular/compiler@16.2.4)(typescript@5.2.2)
+    version: 16.2.4(@angular/compiler@16.2.4)(typescript@5.2.2)
   '@angular/core':
     specifier: 16.2.4
     version: 16.2.4(rxjs@7.5.0)(zone.js@0.12.0)
@@ -41,8 +36,8 @@ dependencies:
     specifier: 16.2.4
     version: 16.2.4(@angular/common@16.2.4)(@angular/compiler@16.2.4)(@angular/core@16.2.4)(@angular/platform-browser@16.2.4)
   '@angular/router':
-    specifier: ^15.0.0
-    version: 15.0.0(@angular/common@16.2.4)(@angular/core@16.2.4)(@angular/platform-browser@16.2.4)(rxjs@7.5.0)
+    specifier: 16.2.4
+    version: 16.2.4(@angular/common@16.2.4)(@angular/core@16.2.4)(@angular/platform-browser@16.2.4)(rxjs@7.5.0)
   '@marcj/estdlib':
     specifier: ^0.1.19
     version: 0.1.19
@@ -547,7 +542,7 @@ packages:
       '@angular-devkit/architect': 0.1602.1(chokidar@3.5.3)
       '@angular-devkit/build-webpack': 0.1602.1(chokidar@3.5.3)(webpack-dev-server@4.15.1)(webpack@5.88.2)
       '@angular-devkit/core': 16.2.1(chokidar@3.5.3)
-      '@angular/compiler-cli': 16.2.4(patch_hash=jxc4tbpf2733olnlzm3hzl7vbe)(@angular/compiler@16.2.4)(typescript@5.2.2)
+      '@angular/compiler-cli': 16.2.4(@angular/compiler@16.2.4)(typescript@5.2.2)
       '@babel/core': 7.22.9
       '@babel/generator': 7.22.9
       '@babel/helper-annotate-as-pure': 7.22.5
@@ -834,7 +829,7 @@ packages:
       rxjs: 7.5.0
       tslib: 2.6.2
 
-  /@angular/compiler-cli@16.2.4(patch_hash=jxc4tbpf2733olnlzm3hzl7vbe)(@angular/compiler@16.2.4)(typescript@5.2.2):
+  /@angular/compiler-cli@16.2.4(@angular/compiler@16.2.4)(typescript@5.2.2):
     resolution: {integrity: sha512-pm4GpmZVEbibnXPb8hcFSdORmtHGX9GqPle0X/ydXAExLfSg7BIgfeEb/nDuStu6U+96gBA2fjX3jnhmhgFh/Q==}
     engines: {node: ^16.14.0 || >=18.10.0}
     hasBin: true
@@ -854,7 +849,6 @@ packages:
       yargs: 17.7.2
     transitivePeerDependencies:
       - supports-color
-    patched: true
 
   /@angular/compiler@16.2.4(@angular/core@16.2.4):
     resolution: {integrity: sha512-MzvMFqfyrUfhCC+wtvzgbUrlksSpOSMeVwxDL1cwBrwGvprOjb4BeyjFx9XAsNhdA7vdUmaw9REJ8dOSeHpHyg==}
@@ -931,13 +925,13 @@ packages:
       '@angular/core': 16.2.4(rxjs@7.5.0)(zone.js@0.12.0)
       tslib: 2.6.2
 
-  /@angular/router@15.0.0(@angular/common@16.2.4)(@angular/core@16.2.4)(@angular/platform-browser@16.2.4)(rxjs@7.5.0):
-    resolution: {integrity: sha512-dm70pydJKmYsb52BWGeemfRHYUcizszAgCZ/XRfooS9t82dn7rr4f/Mz6bTPadT6sGCO/asOKLYo7gxeEZTQaQ==}
-    engines: {node: ^14.20.0 || ^16.13.0 || >=18.10.0}
+  /@angular/router@16.2.4(@angular/common@16.2.4)(@angular/core@16.2.4)(@angular/platform-browser@16.2.4)(rxjs@7.5.0):
+    resolution: {integrity: sha512-xx/pVq/NFGxiJzqWdQxYJI/2l3vsk7tCgGca8HyvJSy2IQyAqQ1RkVyDjb4aWiJyCDFxObSDdA+uYAdJXuVrqw==}
+    engines: {node: ^16.14.0 || >=18.10.0}
     peerDependencies:
-      '@angular/common': 15.0.0
-      '@angular/core': 15.0.0
-      '@angular/platform-browser': 15.0.0
+      '@angular/common': 16.2.4
+      '@angular/core': 16.2.4
+      '@angular/platform-browser': 16.2.4
       rxjs: ^6.5.3 || ^7.4.0
     dependencies:
       '@angular/common': 16.2.4(@angular/core@16.2.4)(rxjs@7.5.0)
@@ -4302,7 +4296,7 @@ packages:
       typescript: '>=4.9.3 <5.2'
       webpack: ^5.54.0
     dependencies:
-      '@angular/compiler-cli': 16.2.4(patch_hash=jxc4tbpf2733olnlzm3hzl7vbe)(@angular/compiler@16.2.4)(typescript@5.2.2)
+      '@angular/compiler-cli': 16.2.4(@angular/compiler@16.2.4)(typescript@5.2.2)
       typescript: 5.2.2
       webpack: 5.88.2(esbuild@0.18.17)
     dev: true
@@ -12001,7 +11995,7 @@ packages:
       typescript: '>=4.4'
     dependencies:
       '@angular-devkit/build-angular': 16.2.1(@angular/compiler-cli@16.2.4)(@types/node@18.11.10)(debug@4.3.4)(jest-environment-jsdom@29.4.1)(jest@29.4.1)(ng-packagr@16.2.3)(stylus@0.59.0)(typescript@5.2.2)
-      '@angular/compiler-cli': 16.2.4(patch_hash=jxc4tbpf2733olnlzm3hzl7vbe)(@angular/compiler@16.2.4)(typescript@5.2.2)
+      '@angular/compiler-cli': 16.2.4(@angular/compiler@16.2.4)(typescript@5.2.2)
       '@angular/core': 16.2.4(rxjs@7.5.0)(zone.js@0.12.0)
       '@angular/platform-browser-dynamic': 16.2.4(@angular/common@16.2.4)(@angular/compiler@16.2.4)(@angular/core@16.2.4)(@angular/platform-browser@16.2.4)
       bs-logger: 0.2.6
@@ -13252,7 +13246,7 @@ packages:
       tailwindcss:
         optional: true
     dependencies:
-      '@angular/compiler-cli': 16.2.4(patch_hash=jxc4tbpf2733olnlzm3hzl7vbe)(@angular/compiler@16.2.4)(typescript@5.2.2)
+      '@angular/compiler-cli': 16.2.4(@angular/compiler@16.2.4)(typescript@5.2.2)
       '@rollup/plugin-json': 6.0.0(rollup@3.29.1)
       '@rollup/plugin-node-resolve': 15.2.1(rollup@3.29.1)
       ajv: 8.12.0

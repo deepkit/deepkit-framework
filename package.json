@@ -99,7 +99,7 @@
     "@angular/forms": "16.2.4",
     "@angular/platform-browser": "16.2.4",
     "@angular/platform-browser-dynamic": "16.2.4",
-    "@angular/router": "^15.0.0",
+    "@angular/router": "16.2.4",
     "@marcj/estdlib": "^0.1.19",
     "@marcj/ts-clone-node": "^2.0.0",
     "@oclif/command": "^1.8.20",
