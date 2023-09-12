@@ -127,8 +127,8 @@ jobs:
       strategy:
           matrix:
             mysql-version:
-                - 5
                 - 8
+                - 8.1
       services:
           mysql:
               image: mysql:${{ matrix.mysql-version }}
