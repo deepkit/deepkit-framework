@@ -3,7 +3,7 @@ import { HttpRequest } from '../src/lib/model.js';
 
 test('request model json', async () => {
     const request = HttpRequest.POST('/').json({ hello: 'world' }).build();
-    const buffers = [];
+    const buffers: any[] = [];
 
     for await (const chunk of request) {
         buffers.push(chunk);
@@ -15,7 +15,7 @@ test('request model json', async () => {
 
 test('request model body', async () => {
     const request = HttpRequest.POST('/').body("hello").build();
-    const buffers = [];
+    const buffers: any[] = [];
 
     for await (const chunk of request) {
         buffers.push(chunk);
