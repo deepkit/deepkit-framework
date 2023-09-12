@@ -59,6 +59,48 @@ jobs:
       - name: Run affected tests
         run: pnpm nx affected:test --configuration=ci --exclude=postgres,sqlite,mysql,mongo
 
+  test-mongo:
+      if: contains(needs.print-affected.outputs.projects, 'mongo')
+      runs-on: buildjet-2vcpu-ubuntu-2004
+      needs:
+          - print-affected
+      strategy:
+          matrix:
+              mongo-version:
+                  - 5
+                  - 6
+                  - 7
+      services:
+          # this is used for the simple-auth test
+          mongo:
+              image: mongo:${{ matrix.mongo-version }}
+              ports:
+                  - "27018:27017"
+              env:
+                  MONGO_INITDB_ROOT_USERNAME: root
+                  MONGO_INITDB_ROOT_PASSWORD: root
+                  MONGO_INITDB_DATABASE: root-db
+              volumes:
+                  - /packages/mongo/tests/docker/simple-auth/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
+      steps:
+          - name: Start MongoDB
+            uses: supercharge/mongodb-github-action@1.7.0
+            with:
+                mongodb-version: ${{ matrix.mongo-version }}
+                mongodb-replica-set: test-rs
+
+          - uses: actions/checkout@v3
+            with:
+                fetch-depth: 0
+
+          - name: Setup
+            id: setup
+            uses: ./.github/actions/setup
+
+          - run: pnpm run install-compiler
+
+          - run: pnpm nx run mongo:test:ci
+
   test-mysql:
       if: contains(needs.print-affected.outputs.projects, 'mysql')
       runs-on: buildjet-2vcpu-ubuntu-2004
