@@ -102,7 +102,7 @@ jobs:
                   - /packages/mongo/tests/docker/simple-auth/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
       steps:
           - name: Start MongoDB
-            uses: supercharge/mongodb-github-action@1.7.0
+            uses: supercharge/mongodb-github-action@v1.10.0
             with:
                 mongodb-version: ${{ matrix.mongo-version }}
                 mongodb-replica-set: test-rs
