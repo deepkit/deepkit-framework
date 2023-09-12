@@ -6,14 +6,14 @@
 ### Installation
 
 ```
-npm install @deepkit/core-rxjs-rxjs
+npm install @deepkit/core-rxjs
 ```
 
 
 ### Usage example
 
 ```typescript
-import {Subscriptions} from "@deepkit/core-rxjs-rxjs";
+import {Subscriptions} from "@deepkit/core-rxjs";
 
 class MyComponent implements OnDestroy, OnInit {
     private subs = new Subscriptions;

@@ -14,7 +14,7 @@
  * updated, added and removed. When such a change happens, an event is triggered* you can listen on.
  */
 import { ClassType, getClassName, isArray } from '@deepkit/core';
-import { tearDown } from '../core-rxjs';
+import { tearDown } from '@deepkit/core-rxjs';
 import { ReplaySubject, Subject, TeardownLogic } from 'rxjs';
 import { EntitySubject, IdInterface } from './model.js';
 

@@ -9,7 +9,7 @@
  */
 
 import { ClassType, isObject } from '@deepkit/core';
-import { tearDown } from '../core-rxjs';
+import { tearDown } from '@deepkit/core-rxjs';
 import { arrayBufferTo, entity } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, TeardownLogic } from 'rxjs';
 import { skip } from 'rxjs/operators';

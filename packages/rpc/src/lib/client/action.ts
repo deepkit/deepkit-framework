@@ -31,7 +31,7 @@ import { ClientProgress } from '../writer.js';
 import type { WritableClient } from './client.js';
 import { EntityState, EntitySubjectStore } from './entity-state.js';
 import { assertType, deserializeType, ReflectionKind, Type, TypeObjectLiteral, typeOf } from '@deepkit/type';
-import { ProgressTracker, ProgressTrackerState } from '../../core-rxjs';
+import { ProgressTracker, ProgressTrackerState } from '@deepkit/core-rxjs';
 
 interface ResponseActionObservableError extends rpcActionObservableSubscribeId, WrappedV {
 }
