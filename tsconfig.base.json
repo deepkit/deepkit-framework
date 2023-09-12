@@ -86,5 +86,12 @@
             "@deepkit/workflow": ["packages/workflow/src/index.ts"]
         }
     },
+    "angularCompilerOptions": {
+        "enableI18nLegacyMessageIdFormat": false,
+        "strictInjectionParameters": true,
+        "strictInputAccessModifiers": true,
+        "strictTemplates": true,
+        "disableTypeScriptVersionCheck": true
+    },
     "exclude": ["node_modules", "tmp"]
 }
