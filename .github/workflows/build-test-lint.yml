@@ -130,14 +130,14 @@ jobs:
                 - 5
                 - 8
       services:
-      mysql:
-          image: mysql:${{ matrix.mysql-version }}
-          options: >-
-              --health-cmd "mysqladmin ping --silent"
-              -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
-              -e MYSQL_DATABASE=default
-          ports:
-              - "3306:3306"
+          mysql:
+              image: mysql:${{ matrix.mysql-version }}
+              options: >-
+                  --health-cmd "mysqladmin ping --silent"
+                  -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
+                  -e MYSQL_DATABASE=default
+              ports:
+                  - "3306:3306"
       steps:
           - uses: actions/checkout@v3
             with:
