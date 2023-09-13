@@ -37,10 +37,10 @@ npm init @deepkit/app my-deepkit-app
 - [Serverless Adapter](https://github.com/H4ad/serverless-adapter): Run Deepkit on top of AWS Lambda, Azure, Digital Ocean and many other clouds.
 - [Deepkit REST](https://github.com/deepkit-rest/rest): DeepKit REST opens up a whole new declarative and extensive approach for developing REST APIs.
 - [Deepkit Stripe](https://github.com/deepkit-community/modules/tree/master/packages/stripe): Interacting with the Stripe API or consuming Stripe webhooks in your Deepkit applications is now easy as pie 🥧.
-- [Deepkit GraphQL](https://github.com/deepkit-modules/packages/tree/main/packages/graphql): Create GraphQL servers using Deepkit
-- [Deepkit Apollo Server](https://github.com/deepkit-modules/packages/tree/main/packages/apollo-graphql): Run your Deepkit GraphQL server using Apollo 
-- [Deepkit Remix](https://github.com/deepkit-modules/packages/tree/main/packages/remix): Create Remix apps using Deepkit as the server
-- [Deepkit Nx Webpack Plugin](https://github.com/deepkit-modules/packages/tree/main/packages/nx-webpack-plugin): Nx Webpack plugin for Deepkit
+- [Deepkit GraphQL](https://github.com/marcus-sa/deepkit-modules/tree/main/packages/graphql): Create GraphQL servers using Deepkit
+- [Deepkit Apollo Server](https://github.com/marcus-sa/deepkit-modules/tree/main/packages/apollo-graphql): Run your Deepkit GraphQL server using Apollo 
+- [Deepkit Remix](https://github.com/marcus-sa/deepkit-modules/tree/main/packages/remix): Create Remix apps using Deepkit as the server
+- [Deepkit Nx Webpack Plugin](https://github.com/marcus-sa/deepkit-modules/tree/main/packages/nx-webpack-plugin): Nx Webpack plugin for Deepkit
 
 ## Examples
 
@@ -48,8 +48,8 @@ npm init @deepkit/app my-deepkit-app
 - [Deepkit HTTP router with custom http server](https://github.com/deepkit/deepkit-framework/blob/master/packages/example-app/slim.ts).
 - [Deepkit Bookstore](https://github.com/marcj/deepkit-bookstore): Auto REST CRUD + Deepkit API Console.
 - [Deepkit Webpack](https://github.com/marcj/deepkit-webpack): Type Compiler with Webpack.
-- [Deepkit GraphQL](https://github.com/deepkit-modules/packages/tree/main/examples/example-graphql): Deepkit GraphQL server application with ORM integration
-- [Deepkit Remix](https://github.com/deepkit-modules/packages/tree/main/examples/example-remix): Remix application using Deepkit as the server
+- [Deepkit GraphQL](https://github.com/marcus-sa/deepkit-modules/tree/main/examples/example-graphql): Deepkit GraphQL server application with ORM integration
+- [Deepkit Remix](https://github.com/marcus-sa/deepkit-modules/tree/main/examples/example-remix): Remix application using Deepkit as the server
 
 ## Contributing
 
