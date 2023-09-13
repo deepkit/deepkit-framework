@@ -3,6 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/orm-browser-module/src",
   "projectType": "library",
+  "implicitDependencies": ["orm-browser-gui"],
   "targets": {
     "build": {
       "executor": "@nx/rollup:rollup",
@@ -34,6 +35,12 @@
     },
     "test": {
       "executor": "@nx/jest:jest",
+      "dependsOn": [
+        {
+          "projects": ["orm-browser-gui"],
+          "target": "build"
+        }
+      ],
       "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
       "options": {
         "jestConfig": "packages/orm-browser-module/jest.config.ts",
