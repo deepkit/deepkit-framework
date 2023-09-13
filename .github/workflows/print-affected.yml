@@ -43,5 +43,5 @@ jobs:
             - name: Determine affected projects
               id: print-affected
               run: |
-                  projects=$(pnpm nx print-affected -t=${{ inputs.target }} --configuration=${{ inputs.configuration }} --select=projects)
+                  projects=$(nx show projects --affected)
                   echo "projects=$projects" >> $GITHUB_OUTPUT
