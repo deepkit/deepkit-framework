@@ -3,6 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/framework/src",
   "projectType": "library",
+  "implicitDependencies": ["framework-debug-gui"],
   "targets": {
     "build": {
       "executor": "@nx/rollup:rollup",
@@ -41,6 +42,10 @@
       "dependsOn": [
         {
           "projects": ["sql"],
+          "target": "build"
+        },
+        {
+          "projects": ["framework-debug-gui"],
           "target": "build"
         }
       ],
