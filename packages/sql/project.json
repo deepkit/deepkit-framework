@@ -15,6 +15,7 @@
         "project": "{projectRoot}/package.json",
         "additionalEntryPoints": [
           "{projectRoot}/src/browser.ts",
+          // FIXME: Cannot find module '@deepkit/sql/commands' or its corresponding type declarations.
           "{projectRoot}/src/commands.ts",
           "{projectRoot}/src/main.ts"
         ],

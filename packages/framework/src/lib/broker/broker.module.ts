@@ -10,6 +10,7 @@
 
 import { AppLocker } from './app-locker.js';
 import { createModule } from '@deepkit/app';
+import { RpcTcpServer } from '@deepkit/rpc-tcp';
 import { eventDispatcher } from '@deepkit/event';
 import { onServerMainBootstrap, onServerMainShutdown } from '../application-server.js';
 import { BrokerConfig } from './broker.config.js';
@@ -20,7 +21,7 @@ export class BrokerListener {
     constructor(
         protected logger: LoggerInterface,
         protected broker: Broker,
-        protected brokerServer: BrokerServer,
+        protected brokerServer: BrokerServer & RpcTcpServer,
         protected listen: BrokerConfig['listen'],
         protected startOnBootstrap: BrokerConfig['startOnBootstrap'],
     ) {

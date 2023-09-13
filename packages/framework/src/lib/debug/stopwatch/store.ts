@@ -74,7 +74,7 @@ export class FileStopwatchStore extends StopwatchStore {
         this.lastSync = setTimeout(() => this.syncNow(), 250);
     }
 
-    protected async syncNow() {
+    protected async syncNow(this: FileStopwatchStore & StopwatchStore) {
         await this.syncMutex.lock();
         try {
             this.lastSync = undefined;
