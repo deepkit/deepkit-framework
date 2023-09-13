@@ -21,9 +21,11 @@ permissions:
   id-token: write
 
 jobs:
-  print-affected:
+  print-affected-test:
     uses: ./.github/workflows/print-affected.yml
     secrets: inherit
+    with:
+        target: test
 
   build:
     runs-on: buildjet-2vcpu-ubuntu-2004
@@ -63,7 +65,7 @@ jobs:
       if: contains(needs.print-affected.outputs.projects, 'sqlite')
       runs-on: buildjet-2vcpu-ubuntu-2004
       needs:
-          - print-affected
+          - print-affected-test
       steps:
           -   uses: actions/checkout@v3
               with:
@@ -81,7 +83,7 @@ jobs:
       if: contains(needs.print-affected.outputs.projects, 'mongo')
       runs-on: buildjet-2vcpu-ubuntu-2004
       needs:
-          - print-affected
+          - print-affected-test
       strategy:
           matrix:
               mongo-version:
@@ -123,7 +125,7 @@ jobs:
       if: contains(needs.print-affected.outputs.projects, 'mysql')
       runs-on: buildjet-2vcpu-ubuntu-2004
       needs:
-          - print-affected
+          - print-affected-test
       strategy:
           matrix:
             mysql-version:
@@ -155,7 +157,7 @@ jobs:
       if: contains(needs.print-affected.outputs.projects, 'postgres')
       runs-on: buildjet-2vcpu-ubuntu-2004
       needs:
-          - print-affected
+          - print-affected-test
       strategy:
           matrix:
               postgres-version:
