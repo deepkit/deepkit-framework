@@ -3,9 +3,9 @@ const { workspaceRoot } = require('@nx/devkit');
 
 const tsconfig = require(path.join(workspaceRoot, 'tsconfig.base.json'));
 
-const nxResolveLocalPackages = (packages) => {
+const nxResolveDistPackages = (packages) => {
     return {
-        name: 'nx-resolve-local-packages',
+        name: 'nx-resolve-dist-packages',
         resolveId: async (id) => {
             if (!packages.includes(id)) return null;
 
@@ -36,7 +36,7 @@ module.exports = (config) => {
         // peer-deps-external conflicts with nx-resolve-packages when @deepkit packages are specified in package.json peerDependencies
         config.plugins = config.plugins.filter(plugin => plugin.name !== 'peer-deps-external');
 
-        config.plugins.push(nxResolveLocalPackages(packages));
+        config.plugins.push(nxResolveDistPackages(packages));
     }
 
     /*return {
@@ -50,4 +50,4 @@ module.exports = (config) => {
     return config;
 }
 
-module.exports.nxResolveLocalPackages = nxResolveLocalPackages
+module.exports.nxResolveDistPackages = nxResolveDistPackages
