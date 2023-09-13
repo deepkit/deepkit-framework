@@ -5,10 +5,10 @@
     "paths": {
       // 'rootDir' is expected to contain all source files.
       "@deepkit/sql/commands": ["dist/packages/sql/commands.esm.js", "dist/packages/core-rxjs/src/commands.d.ts"],
-      "@deepkit/core-rxjs": ["dist/packages/core-rxjs/index.esm.js", "dist/packages/core-rxjs/src/index.d.ts"],
-      "@deepkit/stopwatch": ["dist/packages/stopwatch/index.esm.js", "dist/packages/stopwatch/src/index.d.ts"],
-      "@deepkit/rpc-tcp": ["dist/packages/rpc-tcp/index.esm.js", "dist/packages/rpc-tcp/src/index.d.ts"],
-      "@deepkit/rpc": ["dist/packages/rpc/index.esm.js", "dist/packages/rpc/src/index.d.ts"]
+      "@deepkit/core-rxjs": ["dist/packages/core-rxjs"],
+      "@deepkit/stopwatch": ["dist/packages/stopwatch"],
+      "@deepkit/rpc-tcp": ["dist/packages/rpc-tcp"],
+      "@deepkit/rpc": ["dist/packages/rpc"]
     }
   }
 }

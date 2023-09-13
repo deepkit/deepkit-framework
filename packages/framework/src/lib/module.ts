@@ -30,7 +30,7 @@ import { OrmBrowserController } from './orm-browser/controller.js';
 import { DatabaseListener } from './database/database-listener.js';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
 // FIXME: Cannot find module '@deepkit/sql/commands' or its corresponding type declarations
-import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '../../../../dist/packages/sql/commands.cjs';
+import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
 import { FileStopwatchStore } from './debug/stopwatch/store.js';
 import { DebugDebugFramesCommand } from './cli/debug-debug-frames.js';
 import { ConnectionWriter, rpcClass, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
