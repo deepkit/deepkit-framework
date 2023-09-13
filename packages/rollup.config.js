@@ -38,6 +38,8 @@ module.exports = (config) => {
         config.plugins = config.plugins.filter(plugin => plugin.name !== 'peer-deps-external');
 
         config.plugins.push(nxResolveDistPackages(packages));
+
+        config.makeAbsoluteExternalsRelative = false;
     }
 
     /*return {
