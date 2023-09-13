@@ -48,8 +48,8 @@ npm init @deepkit/app my-deepkit-app
 - [Deepkit HTTP router with custom http server](https://github.com/deepkit/deepkit-framework/blob/master/packages/example-app/slim.ts).
 - [Deepkit Bookstore](https://github.com/marcj/deepkit-bookstore): Auto REST CRUD + Deepkit API Console.
 - [Deepkit Webpack](https://github.com/marcj/deepkit-webpack): Type Compiler with Webpack.
-- [Deepkit GraphQL](https://github.com/marcus-sa/deepkit-modules/tree/main/examples/example-graphql): Deepkit GraphQL server application with ORM integration
-- [Deepkit Remix](https://github.com/marcus-sa/deepkit-modules/tree/main/examples/example-remix): Remix application using Deepkit as the server
+- [Deepkit GraphQL](https://github.com/marcus-sa/deepkit-modules/tree/main/apps/example-graphql): Deepkit GraphQL server application with ORM integration
+- [Deepkit Remix](https://github.com/marcus-sa/deepkit-modules/tree/main/apps/example-remix): Remix application using Deepkit as the server
 
 ## Contributing
 
