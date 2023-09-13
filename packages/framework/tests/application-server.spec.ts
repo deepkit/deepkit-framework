@@ -1,4 +1,4 @@
-import { rpc } from '@deepkit/rpc';
+import { rpc, RpcConnectionWriter } from '@deepkit/rpc';
 import { afterEach, describe, expect, it, jest, test } from '@jest/globals';
 import { InjectorContext } from '@deepkit/injector';
 import { createTestingApp } from '../src/lib/testing.js';
@@ -196,7 +196,7 @@ describe('application-server', () => {
             };
 
             const rpcServerMock: RpcServerInterface = {
-                start: jest.fn((
+                start: jest.fn<RpcServerInterface['start']>((
                     options,
                     createRpcConnection
                 ) => wsServerMock.on('connection', (ws: any, req: HttpRequest) => {
@@ -205,7 +205,7 @@ describe('application-server', () => {
                         close: jest.fn(),
                         bufferedAmount: jest.fn(),
                         clientAddress: jest.fn(),
-                    });
+                    } as RpcConnectionWriter);
                 })),
             };
 
