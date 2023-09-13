@@ -58,5 +58,5 @@ runs:
         path: node_modules/.cache/nx
         key: cache-nx-${{ env.NX_BASE }}-${{ env.NX_HEAD }}
         restore-keys: |
-          cache-nx-${{ env.NX_BASE }}-
-          cache-nx-
+          cache-nx-2-${{ env.NX_BASE }}-
+          cache-nx-2-
