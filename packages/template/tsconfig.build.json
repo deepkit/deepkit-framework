@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.lib.json",
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "paths": {
+      "@deepkit/core": ["dist/packages/core"],
+      "@deepkit/injector": ["dist/packages/injector"],
+      "@deepkit/type": ["dist/packages/type"],
+      "@deepkit/stopwatch": ["dist/packages/stopwatch"]
+    }
+  }
+}

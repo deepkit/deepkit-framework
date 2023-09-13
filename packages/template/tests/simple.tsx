@@ -1,3 +1,5 @@
+/** @jsxImportSource ../../../dist/packages/template */
+
 import { html } from '../src/lib/template.js';
 
 export function simpleOnlyAttributes() {

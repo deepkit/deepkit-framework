@@ -19,11 +19,5 @@
     "@types/estree": "^0.0.45",
     "abstract-syntax-tree": "^2.9.4"
   },
-  "exports": {
-    "./jsx-runtime": {
-      "types": "./src/jsx-runtime.d.ts",
-      "require": "./jsx-runtime.cjs.js"
-    }
-  },
   "types": "./src/index.d.ts"
 }

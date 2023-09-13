@@ -1,3 +1,4 @@
+/** @jsxImportSource ../../../dist/packages/template */
 import { expect, test } from '@jest/globals';
 import '../src/lib/optimize-tsx';
 import { html, render } from '../src/lib/template.js';
