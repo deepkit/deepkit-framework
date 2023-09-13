@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /**
  * This script installs the deepkit/type transformer (that extracts automatically types and adds the correct @t decorator) to the typescript node_modules.
  *

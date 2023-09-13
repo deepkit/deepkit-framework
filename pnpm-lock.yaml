@@ -1,9 +1,5 @@
 lockfileVersion: '6.0'
 
-settings:
-  autoInstallPeers: false
-  excludeLinksFromLockfile: false
-
 overrides:
   typescript: 5.2.2
 
@@ -468,6 +464,9 @@ importers:
       prettier:
         specifier: ^2.6.2
         version: 2.6.2
+      rollup-plugin-preserve-shebang:
+        specifier: ^1.0.1
+        version: 1.0.1
       ts-jest:
         specifier: ^29.1.0
         version: 29.1.0(esbuild@0.19.2)(jest@29.4.1)(typescript@5.2.2)
@@ -532,7 +531,7 @@ packages:
       ng-packagr: ^16.0.0
       protractor: ^7.0.0
       tailwindcss: ^2.0.0 || ^3.0.0
-      typescript: 5.2.2
+      typescript: '>=4.9.3 <5.2'
     peerDependenciesMeta:
       '@angular/localize':
         optional: true
@@ -726,7 +725,7 @@ packages:
     resolution: {integrity: sha512-2qsoUgPg9Qp4EVUJRwWcJ+8JMxBb0ma3pNBjFmY6LOd59igRYorJKfWep4Nln1EicYRDRsCLzeLHO976+b1yaQ==}
     peerDependencies:
       eslint: ^7.20.0 || ^8.0.0
-      typescript: 5.2.2
+      typescript: '*'
     dependencies:
       '@angular-eslint/bundled-angular-compiler': 16.1.2
       '@angular-eslint/utils': 16.1.2(eslint@8.46.0)(typescript@5.2.2)
@@ -744,7 +743,7 @@ packages:
     resolution: {integrity: sha512-lYVvoKUIOg/ez15yfN4zY2A++vnIeJe1xh2ADNTmmjSh2PFV24K9YOgrTbgrY3Ul9kzGDTBkvYqslq+IvMGdIw==}
     peerDependencies:
       eslint: ^7.20.0 || ^8.0.0
-      typescript: 5.2.2
+      typescript: '*'
     dependencies:
       '@angular-eslint/utils': 16.1.2(eslint@8.46.0)(typescript@5.2.2)
       '@typescript-eslint/utils': 5.62.0(eslint@8.46.0)(typescript@5.2.2)
@@ -758,7 +757,7 @@ packages:
     resolution: {integrity: sha512-vIkPOShVJLBEHYY3jISCVvJF3lXL//Y70J8T9lY2CBowgqp6AzzJ6cZU7JxrORN6b64rBUVvUtCGo8L36GvfuA==}
     peerDependencies:
       eslint: ^7.20.0 || ^8.0.0
-      typescript: 5.2.2
+      typescript: '*'
     dependencies:
       '@angular-eslint/bundled-angular-compiler': 16.1.2
       eslint: 8.46.0
@@ -770,7 +769,7 @@ packages:
     resolution: {integrity: sha512-2yfEK3BPSJsUhP4JCz0EB6ktu4E4+/zc9qdtZvPWNF/eww2J/oYVPjY47C/HVg4MXpjJTI8vbdkvcnxrICIkfw==}
     peerDependencies:
       eslint: ^7.20.0 || ^8.0.0
-      typescript: 5.2.2
+      typescript: '*'
     dependencies:
       '@angular-eslint/bundled-angular-compiler': 16.1.2
       '@typescript-eslint/utils': 5.62.0(eslint@8.46.0)(typescript@5.2.2)
@@ -850,7 +849,7 @@ packages:
     hasBin: true
     peerDependencies:
       '@angular/compiler': 16.2.4
-      typescript: 5.2.2
+      typescript: '>=4.9.3 <5.2'
     dependencies:
       '@angular/compiler': 16.2.4(@angular/core@16.2.4)
       '@babel/core': 7.22.5
@@ -4137,7 +4136,7 @@ packages:
     resolution: {integrity: sha512-GPafMHAdvXPOFzJ8mtnOa+S4NR+fWQEggKo1laAejeSzzp9k223xZjogkNQSVLrzn8sinHCkvJv9f7nVaX3gPQ==}
     engines: {node: '>=14.9.0'}
     peerDependencies:
-      typescript: 5.2.2
+      typescript: ^4.8
     dependencies:
       compatfactory: 1.0.1(typescript@5.2.2)
       typescript: 5.2.2
@@ -4148,7 +4147,7 @@ packages:
     engines: {node: ^16.14.0 || >=18.10.0, npm: ^6.11.0 || ^7.5.6 || >=8.0.0, yarn: '>= 1.13.0'}
     peerDependencies:
       '@angular/compiler-cli': ^16.0.0
-      typescript: 5.2.2
+      typescript: '>=4.9.3 <5.2'
       webpack: ^5.54.0
     dependencies:
       '@angular/compiler-cli': 16.2.4(@angular/compiler@16.2.4)(typescript@5.2.2)
@@ -5248,7 +5247,7 @@ packages:
   /@phenomnomnominal/tsquery@5.0.1(typescript@5.2.2):
     resolution: {integrity: sha512-3nVv+e2FQwsW8Aw6qTU6f+1rfcJ3hrcnvH/mu9i8YhxO+9sqbOfpL8m6PbET5+xKOlz/VSbp0RoYWYCtIsnmuA==}
     peerDependencies:
-      typescript: 5.2.2
+      typescript: ^3 || ^4 || ^5
     dependencies:
       esquery: 1.5.0
       typescript: 5.2.2
@@ -6177,7 +6176,7 @@ packages:
     peerDependencies:
       eslint: ^7.0.0 || ^8.0.0
       tslint: ^5.0.0 || ^6.0.0
-      typescript: 5.2.2
+      typescript: '*'
     dependencies:
       '@typescript-eslint/utils': 6.6.0(eslint@8.46.0)(typescript@5.2.2)
       eslint: 8.46.0
@@ -6606,7 +6605,7 @@ packages:
     engines: {node: '>=10.1.0'}
     deprecated: this package has been renamed to ts-evaluator. Please install ts-evaluator instead
     peerDependencies:
-      typescript: 5.2.2
+      typescript: '>=3.2.x || >= 4.x'
     dependencies:
       chalk: 4.1.2
       jsdom: 16.7.0
@@ -7907,7 +7906,7 @@ packages:
     resolution: {integrity: sha512-hR9u0HSZTKDNNchPtMHg6myeNx0XO+av7UZIJPsi4rPALJBHi/W5Mbwi19hC/xm6y3JkYpxVYjTqnSGsU5X/iw==}
     engines: {node: '>=14.9.0'}
     peerDependencies:
-      typescript: 5.2.2
+      typescript: '>=3.x || >= 4.x'
     dependencies:
       helpertypes: 0.0.18
       typescript: 5.2.2
@@ -8079,7 +8078,7 @@ packages:
     resolution: {integrity: sha512-A5Xry3xfS96wy2qbiLkQLAg4JUrR2wvfybxj6yqLmrUfMAvhS3MZxIP2oQn0grgYIvJqzpeTEWu4vK0t+12NNw==}
     engines: {node: '>=14'}
     peerDependencies:
-      typescript: 5.2.2
+      typescript: '>=4.9.5'
     peerDependenciesMeta:
       typescript:
         optional: true
@@ -10421,7 +10420,7 @@ packages:
     resolution: {integrity: sha512-fR3WRkOb4bQdWB/y7ssDUlVdrclvwtyCUIHCfivAoYxq9dF7XfrDKbMdZIfwJ7hxIAqkYSGeU7lLJE6xrxIBdg==}
     engines: {node: '>=12.13.0', yarn: '>=1.0.0'}
     peerDependencies:
-      typescript: 5.2.2
+      typescript: '>3.6.0'
       vue-template-compiler: '*'
       webpack: ^5.11.0
     peerDependenciesMeta:
@@ -10860,7 +10859,7 @@ packages:
   /guess-parser@0.4.22(typescript@5.2.2):
     resolution: {integrity: sha512-KcUWZ5ACGaBM69SbqwVIuWGoSAgD+9iJnchR9j/IarVI1jHVeXv+bUXBIMeqVMSKt3zrn0Dgf9UpcOEpPBLbSg==}
     peerDependencies:
-      typescript: 5.2.2
+      typescript: '>=3.7.5'
     dependencies:
       '@wessberg/ts-evaluator': 0.0.27(typescript@5.2.2)
       typescript: 5.2.2
@@ -11971,7 +11970,7 @@ packages:
       '@angular/core': '>=13.0.0 <16.0.0'
       '@angular/platform-browser-dynamic': '>=13.0.0 <16.0.0'
       jest: ^29.0.0
-      typescript: 5.2.2
+      typescript: '>=4.4'
     dependencies:
       '@angular-devkit/build-angular': 16.2.1(@angular/compiler-cli@16.2.4)(@types/node@18.11.10)(debug@4.3.4)(jest-environment-jsdom@29.4.1)(jest@29.4.1)(ng-packagr@16.2.3)(typescript@5.2.2)
       '@angular/compiler-cli': 16.2.4(@angular/compiler@16.2.4)(typescript@5.2.2)
@@ -13207,7 +13206,7 @@ packages:
       '@angular/compiler-cli': ^16.0.0 || ^16.2.0-next.0
       tailwindcss: ^2.0.0 || ^3.0.0
       tslib: ^2.3.0
-      typescript: 5.2.2
+      typescript: '>=4.9.3 <5.2'
     peerDependenciesMeta:
       tailwindcss:
         optional: true
@@ -15928,11 +15927,17 @@ packages:
       - ts-node
     dev: true
 
+  /rollup-plugin-preserve-shebang@1.0.1:
+    resolution: {integrity: sha512-gk7ExGBqvUinhgrvldKHkAKXXwRkWMXMZymNkrtn50uBgHITlhRjhnKmbNGwAIc4Bzgl3yLv7/8Fhi/XeHhFKg==}
+    dependencies:
+      magic-string: 0.25.9
+    dev: true
+
   /rollup-plugin-typescript2@0.34.1(rollup@2.79.1)(typescript@5.2.2):
     resolution: {integrity: sha512-P4cHLtGikESmqi1CA+tdMDUv8WbQV48mzPYt77TSTOPJpERyZ9TXdDgjSDix8Fkqce6soYz3+fa4lrC93IEkcw==}
     peerDependencies:
       rollup: '>=1.26.3'
-      typescript: 5.2.2
+      typescript: '>=2.4.0'
     dependencies:
       '@rollup/pluginutils': 4.2.1
       find-cache-dir: 3.3.2
@@ -17184,7 +17189,7 @@ packages:
     resolution: {integrity: sha512-wNMeqtMz5NtwpT/UZGY5alT+VoKdSsOOP/kqHFcUW1P/VRhH2wJ48+DN2WwUliNbQ976ETwDL0Ifd2VVvgonvg==}
     engines: {node: '>=16.13.0'}
     peerDependencies:
-      typescript: 5.2.2
+      typescript: '>=4.2.0'
     dependencies:
       typescript: 5.2.2
     dev: true
@@ -17206,7 +17211,7 @@ packages:
       babel-jest: ^29.0.0
       esbuild: '*'
       jest: ^29.0.0
-      typescript: 5.2.2
+      typescript: '>=4.3 <6'
     peerDependenciesMeta:
       '@babel/core':
         optional: true
@@ -17234,7 +17239,7 @@ packages:
     resolution: {integrity: sha512-MLukxDHBl8OJ5Dk3y69IsKVFRA/6MwzEqBgh+OXMPB/OD01KQuWPFd1WAQP8a5PeSCAxfnkhiuWqfmFJzJQt9w==}
     engines: {node: '>=12.0.0'}
     peerDependencies:
-      typescript: 5.2.2
+      typescript: '*'
       webpack: ^5.0.0
     dependencies:
       chalk: 4.1.2
@@ -17250,7 +17255,7 @@ packages:
     hasBin: true
     peerDependencies:
       node-notifier: '*'
-      typescript: 5.2.2
+      typescript: '*'
     peerDependenciesMeta:
       node-notifier:
         optional: true
@@ -17279,7 +17284,7 @@ packages:
       '@swc/core': '>=1.2.50'
       '@swc/wasm': '>=1.2.50'
       '@types/node': '*'
-      typescript: 5.2.2
+      typescript: '>=2.7'
     peerDependenciesMeta:
       '@swc/core':
         optional: true
@@ -17353,7 +17358,7 @@ packages:
     resolution: {integrity: sha512-mHKK3iUXL+3UF6xL5k0PEhKRUBKPBCv/+RkEOpjRWxxx27KKRBmmA60A9pgOUvMi8GKhRMPEmjBRPzs2W7O1OA==}
     engines: {node: '>= 6'}
     peerDependencies:
-      typescript: 5.2.2
+      typescript: '>=2.8.0 || >= 3.2.0-dev || >= 3.3.0-dev || >= 3.4.0-dev || >= 3.5.0-dev || >= 3.6.0-dev || >= 3.6.0-beta || >= 3.7.0-dev || >= 3.7.0-beta'
     dependencies:
       tslib: 1.14.1
       typescript: 5.2.2
@@ -17456,7 +17461,7 @@ packages:
     engines: {node: '>= 14.14'}
     hasBin: true
     peerDependencies:
-      typescript: 5.2.2
+      typescript: 4.6.x || 4.7.x || 4.8.x
     dependencies:
       lunr: 2.3.9
       marked: 4.3.0
@@ -18326,3 +18331,7 @@ packages:
       which: 3.0.1
       yaml: 2.3.2
     dev: true
+
+settings:
+  autoInstallPeers: false
+  excludeLinksFromLockfile: false

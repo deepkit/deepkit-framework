@@ -1,5 +1,6 @@
 const path = require('node:path');
 const { workspaceRoot } = require('@nx/devkit');
+const preserveShebang = require('rollup-plugin-preserve-shebang');
 
 const tsconfig = require(path.join(workspaceRoot, 'tsconfig.base.json'));
 
@@ -47,7 +48,9 @@ module.exports = (config) => {
         }
     };*/
 
-    return config;
+    config.plugins.push(preserveShebang());
+
+    return config
 }
 
 module.exports.nxResolveDistPackages = nxResolveDistPackages
