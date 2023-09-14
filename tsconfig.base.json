@@ -48,7 +48,6 @@
             "@deepkit/framework-debug-api": [
                 "packages/framework-debug-api/src/index.ts"
             ],
-            "@deepkit/fs": ["packages/fs/src/index.ts"],
             "@deepkit/http": ["packages/http/src/index.ts"],
             "@deepkit/injector": ["packages/injector/src/index.ts"],
             "@deepkit/logger": ["packages/logger/src/index.ts"],
