@@ -1,0 +1,21 @@
+{
+  "@deepkit/core": "../../dist/packages/core",
+  "@deepkit/core-rxjs": "../../dist/packages/core-rxjs",
+  "@deepkit/bson": "../../dist/packages/bson",
+  "@deepkit/type": "../../dist/packages/type",
+  "@deepkit/type-compiler": "../../dist/packages/type-compiler",
+  "@deepkit/sql": "../../dist/packages/sql",
+  "@deepkit/injector": "../../dist/packages/injector",
+  "@deepkit/rpc": "../../dist/packages/rpc",
+  "@deepkit/rpc-tcp": "../../dist/packages/rpc-tcp",
+  "@deepkit/crypto": "../../dist/packages/crypto",
+  "@deepkit/workflow": "../../dist/packages/workflow",
+  "@deepkit/http": "../../dist/packages/http",
+  "@deepkit/event": "../../dist/packages/event",
+  "@deepkit/logger": "../../dist/packages/logger",
+  "@deepkit/framework": "../../dist/packages/framework",
+  "@deepkit/app": "../../dist/packages/app",
+  "@deepkit/postgres": "../../dist/packages/postgres",
+  "@deepkit/stopwatch": "../../dist/packages/stopwatch",
+  "@deepkit/orm": "../../dist/packages/orm"
+}

@@ -1,5 +1,9 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: false
+  excludeLinksFromLockfile: false
+
 overrides:
   typescript: 5.2.2
 
@@ -489,6 +493,73 @@ importers:
         specifier: ^7.2.3
         version: 7.2.3
 
+  examples/node-modules-linking:
+    dependencies:
+      '@deepkit/app':
+        specifier: 1.0.1-alpha.98
+        version: 1.0.1-alpha.98(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(@deepkit/workflow@1.0.1-alpha.97)
+      '@deepkit/bson':
+        specifier: 1.0.1-alpha.97
+        version: 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/core':
+        specifier: 1.0.1-alpha.97
+        version: 1.0.1-alpha.97
+      '@deepkit/core-rxjs':
+        specifier: 1.0.1-alpha.97
+        version: 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(rxjs@7.5.0)
+      '@deepkit/crypto':
+        specifier: 1.0.1-alpha.89
+        version: 1.0.1-alpha.89
+      '@deepkit/event':
+        specifier: 1.0.1-alpha.97
+        version: 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/framework':
+        specifier: 1.0.1-alpha.99
+        version: 1.0.1-alpha.99(@deepkit/app@1.0.1-alpha.98)(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core-rxjs@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/event@1.0.1-alpha.97)(@deepkit/http@1.0.1-alpha.98)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/orm@1.0.1-alpha.98)(@deepkit/rpc-tcp@1.0.1-alpha.97)(@deepkit/rpc@1.0.1-alpha.97)(@deepkit/sql@1.0.1-alpha.98)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(@deepkit/workflow@1.0.1-alpha.97)(@oclif/config@1.18.6)(rxjs@7.5.0)
+      '@deepkit/http':
+        specifier: 1.0.1-alpha.98
+        version: 1.0.1-alpha.98(@deepkit/app@1.0.1-alpha.98)(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(@deepkit/workflow@1.0.1-alpha.97)
+      '@deepkit/injector':
+        specifier: 1.0.1-alpha.97
+        version: 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/logger':
+        specifier: 1.0.1-alpha.97
+        version: 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@deepkit/orm':
+        specifier: 1.0.1-alpha.98
+        version: 1.0.1-alpha.98(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/postgres':
+        specifier: 1.0.1-alpha.98
+        version: 1.0.1-alpha.98(@deepkit/core@1.0.1-alpha.97)(@deepkit/orm@1.0.1-alpha.98)(@deepkit/sql@1.0.1-alpha.98)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/rpc':
+        specifier: 1.0.1-alpha.97
+        version: 1.0.1-alpha.97(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core-rxjs@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(rxjs@7.5.0)
+      '@deepkit/rpc-tcp':
+        specifier: 1.0.1-alpha.97
+        version: 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/rpc@1.0.1-alpha.97)
+      '@deepkit/sql':
+        specifier: 1.0.1-alpha.98
+        version: 1.0.1-alpha.98(@deepkit/app@1.0.1-alpha.98)(@deepkit/core@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/orm@1.0.1-alpha.98)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/stopwatch':
+        specifier: 1.0.1-alpha.97
+        version: 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/type':
+        specifier: 1.0.1-alpha.97
+        version: 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@deepkit/type-compiler':
+        specifier: 1.0.1-alpha.97
+        version: 1.0.1-alpha.97(typescript@5.2.2)
+      '@deepkit/workflow':
+        specifier: 1.0.1-alpha.97
+        version: 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+    devDependencies:
+      '@deepkit-modules/nx-webpack-plugin':
+        specifier: 0.1.0
+        version: 0.1.0(@deepkit/type-compiler@1.0.1-alpha.97)(@nx/webpack@16.8.1)
+      npm-local-development:
+        specifier: 0.4.0
+        version: 0.4.0
+
 packages:
 
   /@aashutoshrathi/word-wrap@1.2.6:
@@ -531,7 +602,7 @@ packages:
       ng-packagr: ^16.0.0
       protractor: ^7.0.0
       tailwindcss: ^2.0.0 || ^3.0.0
-      typescript: '>=4.9.3 <5.2'
+      typescript: 5.2.2
     peerDependenciesMeta:
       '@angular/localize':
         optional: true
@@ -725,7 +796,7 @@ packages:
     resolution: {integrity: sha512-2qsoUgPg9Qp4EVUJRwWcJ+8JMxBb0ma3pNBjFmY6LOd59igRYorJKfWep4Nln1EicYRDRsCLzeLHO976+b1yaQ==}
     peerDependencies:
       eslint: ^7.20.0 || ^8.0.0
-      typescript: '*'
+      typescript: 5.2.2
     dependencies:
       '@angular-eslint/bundled-angular-compiler': 16.1.2
       '@angular-eslint/utils': 16.1.2(eslint@8.46.0)(typescript@5.2.2)
@@ -743,7 +814,7 @@ packages:
     resolution: {integrity: sha512-lYVvoKUIOg/ez15yfN4zY2A++vnIeJe1xh2ADNTmmjSh2PFV24K9YOgrTbgrY3Ul9kzGDTBkvYqslq+IvMGdIw==}
     peerDependencies:
       eslint: ^7.20.0 || ^8.0.0
-      typescript: '*'
+      typescript: 5.2.2
     dependencies:
       '@angular-eslint/utils': 16.1.2(eslint@8.46.0)(typescript@5.2.2)
       '@typescript-eslint/utils': 5.62.0(eslint@8.46.0)(typescript@5.2.2)
@@ -757,7 +828,7 @@ packages:
     resolution: {integrity: sha512-vIkPOShVJLBEHYY3jISCVvJF3lXL//Y70J8T9lY2CBowgqp6AzzJ6cZU7JxrORN6b64rBUVvUtCGo8L36GvfuA==}
     peerDependencies:
       eslint: ^7.20.0 || ^8.0.0
-      typescript: '*'
+      typescript: 5.2.2
     dependencies:
       '@angular-eslint/bundled-angular-compiler': 16.1.2
       eslint: 8.46.0
@@ -769,7 +840,7 @@ packages:
     resolution: {integrity: sha512-2yfEK3BPSJsUhP4JCz0EB6ktu4E4+/zc9qdtZvPWNF/eww2J/oYVPjY47C/HVg4MXpjJTI8vbdkvcnxrICIkfw==}
     peerDependencies:
       eslint: ^7.20.0 || ^8.0.0
-      typescript: '*'
+      typescript: 5.2.2
     dependencies:
       '@angular-eslint/bundled-angular-compiler': 16.1.2
       '@typescript-eslint/utils': 5.62.0(eslint@8.46.0)(typescript@5.2.2)
@@ -849,7 +920,7 @@ packages:
     hasBin: true
     peerDependencies:
       '@angular/compiler': 16.2.4
-      typescript: '>=4.9.3 <5.2'
+      typescript: 5.2.2
     dependencies:
       '@angular/compiler': 16.2.4(@angular/core@16.2.4)
       '@babel/core': 7.22.5
@@ -3198,7 +3269,6 @@ packages:
     engines: {node: '>=6.9.0'}
     dependencies:
       regenerator-runtime: 0.14.0
-    dev: true
 
   /@babel/runtime@7.22.6:
     resolution: {integrity: sha512-wDb5pWm4WDdF6LFUde3Jl8WzPA+3ZbxYqkC6xAXuD3irdEHN1k0NfTRrJD8ZD378SJ61miMLCqIOXYhd8x+AJQ==}
@@ -3377,6 +3447,470 @@ packages:
     dependencies:
       postcss-selector-parser: 6.0.13
     dev: true
+
+  /@deepkit-modules/nx-webpack-plugin@0.1.0(@deepkit/type-compiler@1.0.1-alpha.97)(@nx/webpack@16.8.1):
+    resolution: {integrity: sha512-p2hT73eZUo5bwCnW5+ji2XUSwmzJNd6jbc4s1nFRsse13Bj3VZfzoBJVxRPHFq5soLWYCBIsWDvV6vXcygIosA==}
+    peerDependencies:
+      '@deepkit/type-compiler': ^16.8.0
+      '@nx/webpack': ^16.7.4
+    dependencies:
+      '@deepkit/type-compiler': 1.0.1-alpha.97(typescript@5.2.2)
+      '@nx/webpack': 16.8.1(@types/node@18.11.10)(debug@4.3.4)(esbuild@0.19.2)(nx@16.8.1)(typescript@5.2.2)
+      tslib: 2.6.2
+    dev: true
+
+  /@deepkit/api-console-api@1.0.1-alpha.97(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/rpc@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97):
+    resolution: {integrity: sha512-pXkqs7k/Aso4uAhdl3K/1/nkkVgVk7wQoD8u8kDQwQdVM2qgDpk+FQR97n6wXj+hK5nPgkZjNfZNIHMDv2W7Jw==}
+    peerDependencies:
+      '@deepkit/bson': ^1.0.1-alpha.43
+      '@deepkit/core': ^1.0.1-alpha.43
+      '@deepkit/crypto': ^1.0.1-alpha.35
+      '@deepkit/injector': ^1.0.1-alpha.43
+      '@deepkit/logger': ^1.0.1-alpha.43
+      '@deepkit/rpc': ^1.0.1-alpha.43
+      '@deepkit/type': ^1.0.1-alpha.63
+    dependencies:
+      '@deepkit/bson': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/crypto': 1.0.1-alpha.89
+      '@deepkit/injector': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/logger': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@deepkit/rpc': 1.0.1-alpha.97(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core-rxjs@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(rxjs@7.5.0)
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+    dev: false
+
+  /@deepkit/api-console-gui@1.0.1-alpha.97:
+    resolution: {integrity: sha512-ab2ZpXTRkFafjsfbVSeQhVPupuVNbNEd4MxbeVXO4YYtZERh/CZOoHBkZlz8lVfj3Vj8wOCquizA7mERC3Z/2Q==}
+    dev: false
+
+  /@deepkit/api-console-module@1.0.1-alpha.98(@deepkit/app@1.0.1-alpha.98)(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/http@1.0.1-alpha.98)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/rpc@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(rxjs@7.5.0):
+    resolution: {integrity: sha512-A8WiegzSGp7sahMOAYoTuhbJsp5Dbu7NE4uGdaK+WZjifmg/s3ykiOS9xFXHhzyEALizOF8PhyVuEQKz89jHiw==}
+    peerDependencies:
+      '@deepkit/app': ^1.0.1-alpha.43
+      '@deepkit/broker': ^1.0.1-alpha.43
+      '@deepkit/bson': ^1.0.1-alpha.43
+      '@deepkit/core': ^1.0.1-alpha.43
+      '@deepkit/crypto': ^1.0.1-alpha.35
+      '@deepkit/http': ^1.0.1-alpha.43
+      '@deepkit/injector': ^1.0.1-alpha.43
+      '@deepkit/logger': ^1.0.1-alpha.43
+      '@deepkit/rpc': ^1.0.1-alpha.43
+      '@deepkit/type': ^1.0.1-alpha.43
+      rxjs: ~7.5.0
+    dependencies:
+      '@deepkit/api-console-api': 1.0.1-alpha.97(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/rpc@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/api-console-gui': 1.0.1-alpha.97
+      '@deepkit/app': 1.0.1-alpha.98(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(@deepkit/workflow@1.0.1-alpha.97)
+      '@deepkit/bson': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/crypto': 1.0.1-alpha.89
+      '@deepkit/http': 1.0.1-alpha.98(@deepkit/app@1.0.1-alpha.98)(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(@deepkit/workflow@1.0.1-alpha.97)
+      '@deepkit/injector': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/logger': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@deepkit/rpc': 1.0.1-alpha.97(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core-rxjs@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(rxjs@7.5.0)
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      rxjs: 7.5.0
+    dev: false
+
+  /@deepkit/app@1.0.1-alpha.98(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(@deepkit/workflow@1.0.1-alpha.97):
+    resolution: {integrity: sha512-lUUCozqhtTUji+a+fPZCP2aBiAEH1t2yJ5Fk8IEh1Th0PgopdOLONt5iibCKW37BYpCxMJg5vdT1/DFUPCj5dQ==}
+    peerDependencies:
+      '@deepkit/core': ^1.0.1-alpha.13
+      '@deepkit/event': ^1.0.1-alpha.13
+      '@deepkit/injector': ^1.0.1-alpha.13
+      '@deepkit/logger': ^1.0.1-alpha.13
+      '@deepkit/stopwatch': ^1.0.1-alpha.13
+      '@deepkit/type': ^1.0.1-alpha.13
+      '@deepkit/workflow': ^1.0.1-alpha.13
+    dependencies:
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/event': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/injector': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/logger': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@deepkit/stopwatch': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@deepkit/workflow': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@oclif/command': 1.8.20(@oclif/config@1.18.6)
+      '@oclif/config': 1.18.6
+      '@oclif/errors': 1.3.6
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
+  /@deepkit/bson@1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97):
+    resolution: {integrity: sha512-0KAP+TKFGJPvllRKPvVnG9dLg43YzJDuhnZbsCFMmLoeN3pqM5yvFZakNKZY2c+5NRLmSLUjgUOXCssETfT4SA==}
+    peerDependencies:
+      '@deepkit/core': ^1.0.1-alpha.13
+      '@deepkit/type': ^1.0.1-alpha.13
+    dependencies:
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/crypto': 1.0.1-alpha.89
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+    dev: false
+
+  /@deepkit/core-rxjs@1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(rxjs@7.5.0):
+    resolution: {integrity: sha512-zj92C7TuS+0jxOZ2Torq4lN+tRWh1FdKNVY2Nmh4XziZug5/XxCeHEa4rKulXgOGZpyhVNY5VVxx6skMH15Qqw==}
+    peerDependencies:
+      '@deepkit/core': ^1.0.1-alpha.0
+      rxjs: '*'
+    dependencies:
+      '@deepkit/core': 1.0.1-alpha.97
+      rxjs: 7.5.0
+    dev: false
+
+  /@deepkit/core@1.0.1-alpha.97:
+    resolution: {integrity: sha512-SrG9m43w+fJhiFH4wxyc6QNruFxJaqiGpT+QAncqR0dDvd+5QUCLwD2mGiKkNJoFh2lo+p3rtYhnZ0exny8emw==}
+    dependencies:
+      dot-prop: 5.1.1
+      to-fast-properties: 3.0.1
+    dev: false
+
+  /@deepkit/crypto@1.0.1-alpha.89:
+    resolution: {integrity: sha512-YlLMRNnnu3LvOgvtE1+4D3TRhGANC2I/SRx1bdKvXrVtMgdhD8vZo0R3zk3RgMJS8fEfikqzSLrPJQ3yBmWHxw==}
+    dev: false
+
+  /@deepkit/event@1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97):
+    resolution: {integrity: sha512-4Q1MSjh4VkbAnaiKf/3iw5MuTxOPfkqlrHRH8nIjIxcZsmPwq8B91MApvFUst7fwKg6ASP7H0Ab37EQHZqLZXg==}
+    peerDependencies:
+      '@deepkit/core': ^1.0.1-alpha.13
+      '@deepkit/injector': ^1.0.1-alpha.13
+      '@deepkit/type': ^1.0.1-alpha.13
+    dependencies:
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/injector': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+    dev: false
+
+  /@deepkit/framework-debug-api@1.0.1-alpha.97(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core-rxjs@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/rpc@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(rxjs@7.5.0):
+    resolution: {integrity: sha512-Xpis0jS/7bpXXewB8sL4o6DrS6GjWBxXISzu/HpmwaqSF07sIFXNkEszDoav4Z+v5RiBNiac7E1pi2dhsqBXeA==}
+    peerDependencies:
+      '@deepkit/bson': ^1.0.1-alpha.13
+      '@deepkit/core': ^1.0.1-alpha.13
+      '@deepkit/core-rxjs': ^1.0.1-alpha.13
+      '@deepkit/crypto': ^1.0.1-alpha.13
+      '@deepkit/injector': ^1.0.1-alpha.13
+      '@deepkit/logger': ^1.0.1-alpha.13
+      '@deepkit/rpc': ^1.0.1-alpha.13
+      '@deepkit/stopwatch': ^1.0.1-alpha.13
+      '@deepkit/type': ^1.0.1-alpha.13
+      rxjs: ~7.5.0
+    dependencies:
+      '@deepkit/bson': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/core-rxjs': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(rxjs@7.5.0)
+      '@deepkit/crypto': 1.0.1-alpha.89
+      '@deepkit/injector': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/logger': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@deepkit/rpc': 1.0.1-alpha.97(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core-rxjs@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(rxjs@7.5.0)
+      '@deepkit/stopwatch': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      rxjs: 7.5.0
+    dev: false
+
+  /@deepkit/framework-debug-gui@1.0.1-alpha.98:
+    resolution: {integrity: sha512-m5BJFbLtMo1xxkRZ117dm6RCSN8zFRVxC6MWxgCSUapODrc5Ra9a7XUzxolDQYkjmNwFVXvMEyF3zTpfNDCS3Q==}
+    dev: false
+
+  /@deepkit/framework@1.0.1-alpha.99(@deepkit/app@1.0.1-alpha.98)(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core-rxjs@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/event@1.0.1-alpha.97)(@deepkit/http@1.0.1-alpha.98)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/orm@1.0.1-alpha.98)(@deepkit/rpc-tcp@1.0.1-alpha.97)(@deepkit/rpc@1.0.1-alpha.97)(@deepkit/sql@1.0.1-alpha.98)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(@deepkit/workflow@1.0.1-alpha.97)(@oclif/config@1.18.6)(rxjs@7.5.0):
+    resolution: {integrity: sha512-Fw3JIzIgub7tEGSpb+iVcFMTlopQbKZf/cl8yn9PaBFqbY2oaxaqOqd7udxNaJMRGu3NKrDcbkLVwto3HS19oQ==}
+    peerDependencies:
+      '@deepkit/app': ^1.0.1-alpha.13
+      '@deepkit/broker': ^1.0.1-alpha.13
+      '@deepkit/bson': ^1.0.1-alpha.13
+      '@deepkit/core': ^1.0.1-alpha.13
+      '@deepkit/core-rxjs': ^1.0.1-alpha.13
+      '@deepkit/crypto': ^1.0.1-alpha.13
+      '@deepkit/event': ^1.0.1-alpha.13
+      '@deepkit/http': ^1.0.1-alpha.13
+      '@deepkit/injector': ^1.0.1-alpha.13
+      '@deepkit/logger': ^1.0.1-alpha.13
+      '@deepkit/orm': ^1.0.1-alpha.13
+      '@deepkit/rpc': ^1.0.1-alpha.13
+      '@deepkit/rpc-tcp': ^1.0.1-alpha.13
+      '@deepkit/sql': ^1.0.1-alpha.13
+      '@deepkit/stopwatch': ^1.0.1-alpha.13
+      '@deepkit/template': ^1.0.1-alpha.13
+      '@deepkit/type': ^1.0.1-alpha.13
+      '@deepkit/workflow': ^1.0.1-alpha.13
+    dependencies:
+      '@deepkit/api-console-module': 1.0.1-alpha.98(@deepkit/app@1.0.1-alpha.98)(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/http@1.0.1-alpha.98)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/rpc@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(rxjs@7.5.0)
+      '@deepkit/app': 1.0.1-alpha.98(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(@deepkit/workflow@1.0.1-alpha.97)
+      '@deepkit/bson': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/core-rxjs': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(rxjs@7.5.0)
+      '@deepkit/crypto': 1.0.1-alpha.89
+      '@deepkit/event': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/framework-debug-api': 1.0.1-alpha.97(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core-rxjs@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/rpc@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(rxjs@7.5.0)
+      '@deepkit/framework-debug-gui': 1.0.1-alpha.98
+      '@deepkit/http': 1.0.1-alpha.98(@deepkit/app@1.0.1-alpha.98)(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(@deepkit/workflow@1.0.1-alpha.97)
+      '@deepkit/injector': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/logger': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@deepkit/orm': 1.0.1-alpha.98(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/orm-browser-api': 1.0.1-alpha.97(@deepkit/rpc@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/orm-browser-gui': 1.0.1-alpha.98
+      '@deepkit/rpc': 1.0.1-alpha.97(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core-rxjs@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(rxjs@7.5.0)
+      '@deepkit/rpc-tcp': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/rpc@1.0.1-alpha.97)
+      '@deepkit/sql': 1.0.1-alpha.98(@deepkit/app@1.0.1-alpha.98)(@deepkit/core@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/orm@1.0.1-alpha.98)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/stopwatch': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@deepkit/workflow': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@oclif/command': 1.8.20(@oclif/config@1.18.6)
+      '@oclif/parser': 3.8.10
+      '@oclif/plugin-help': 3.2.0
+      '@types/ws': 7.4.0
+      buffer: 5.7.1
+      compression: 1.7.4
+      date-fns: 2.30.0
+      enhanced-resolve: 5.15.0
+      faker: 5.4.0
+      fs-extra: 9.1.0
+      get-parameter-names: 0.3.0
+      md5: 2.2.1
+      mime-types: 2.1.35
+      nice-table: 1.1.0
+      pirates: 4.0.6
+      selfsigned: 2.1.1
+      sift: 7.0.1
+      ws: 7.5.9
+    transitivePeerDependencies:
+      - '@oclif/config'
+      - bufferutil
+      - rxjs
+      - supports-color
+      - utf-8-validate
+    dev: false
+
+  /@deepkit/http@1.0.1-alpha.98(@deepkit/app@1.0.1-alpha.98)(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(@deepkit/workflow@1.0.1-alpha.97):
+    resolution: {integrity: sha512-le/iljMSTrtUIVYf4kZHE/bi3bn+ejSvNl7ZXdTRzf5HqmsW4nOxvXVn+dDaTP0TR1nhUhtVfrsMRh1MxPX3xA==}
+    peerDependencies:
+      '@deepkit/app': ^1.0.1-alpha.13
+      '@deepkit/core': ^1.0.1-alpha.13
+      '@deepkit/event': ^1.0.1-alpha.13
+      '@deepkit/injector': ^1.0.1-alpha.13
+      '@deepkit/logger': ^1.0.1-alpha.13
+      '@deepkit/stopwatch': ^1.0.1-alpha.13
+      '@deepkit/template': ^1.0.1-alpha.13
+      '@deepkit/type': ^1.0.1-alpha.13
+      '@deepkit/workflow': ^1.0.1-alpha.13
+    dependencies:
+      '@deepkit/app': 1.0.1-alpha.98(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(@deepkit/workflow@1.0.1-alpha.97)
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/event': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/injector': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/logger': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@deepkit/stopwatch': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@deepkit/workflow': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      formidable: 2.0.1
+      qs: 6.11.2
+      send: 0.18.0
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
+  /@deepkit/injector@1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97):
+    resolution: {integrity: sha512-b9UT0QPZXTEsM7EcWhCrPrUxl2Ln8CeWS7114qUSjhLU5ySqIrLtT2te7uFgxvMnDCUH217A4bYPaag4VElysA==}
+    peerDependencies:
+      '@deepkit/core': ^1.0.1-alpha.13
+      '@deepkit/type': ^1.0.1-alpha.13
+    dependencies:
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+    dev: false
+
+  /@deepkit/logger@1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97):
+    resolution: {integrity: sha512-FwWZhosWn8fsiokXa3DI8ZErigIHcHbh6HIrSN70bAf/DR8Ylo8aB+ufG3c7s92U33mwKSul//mTlNbMsIvzXg==}
+    peerDependencies:
+      '@deepkit/core': ^1.0.1-alpha.13
+    dependencies:
+      '@deepkit/core': 1.0.1-alpha.97
+      '@types/format-util': 1.0.1
+      ansi-styles: 4.3.0
+      format-util: 1.0.5
+    dev: false
+
+  /@deepkit/orm-browser-api@1.0.1-alpha.97(@deepkit/rpc@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97):
+    resolution: {integrity: sha512-woAoZyt6Kg8OecHeauVZlNIV/NudA0OqHwKNqs51H+gaGYzPUu/dkm2da76eBfYeuro0lO6lVEs3Ik5IaHG7cg==}
+    peerDependencies:
+      '@deepkit/rpc': ^1.0.1-alpha.13
+      '@deepkit/stopwatch': ^1.0.1-alpha.13
+      '@deepkit/type': ^1.0.1-alpha.13
+    dependencies:
+      '@deepkit/rpc': 1.0.1-alpha.97(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core-rxjs@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(rxjs@7.5.0)
+      '@deepkit/stopwatch': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+    dev: false
+
+  /@deepkit/orm-browser-gui@1.0.1-alpha.98:
+    resolution: {integrity: sha512-649b9Qp3MqSRRYLomqD4uwdJfTfmQBj6agY3hci6UrbSrknpz/wqUUjSHMliQTlCp33LX0D/c1rMNujrW2vOmw==}
+    dev: false
+
+  /@deepkit/orm@1.0.1-alpha.98(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97):
+    resolution: {integrity: sha512-qofWJiZn4bheJ2pBK59KTCMEqctZX1i5mcDfgH8jXSmtKK+kI9j+p1G8M0n5y65pMNCW9zN4ZjxtMEszWLb1aQ==}
+    peerDependencies:
+      '@deepkit/core': ^1.0.1-alpha.13
+      '@deepkit/event': ^1.0.1-alpha.13
+      '@deepkit/injector': ^1.0.1-alpha.13
+      '@deepkit/logger': ^1.0.1-alpha.13
+      '@deepkit/stopwatch': ^1.0.1-alpha.13
+      '@deepkit/type': ^1.0.1-alpha.13
+    dependencies:
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/event': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/injector': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/logger': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@deepkit/stopwatch': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/topsort': 1.0.1-alpha.89
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      sift: 7.0.1
+    dev: false
+
+  /@deepkit/postgres@1.0.1-alpha.98(@deepkit/core@1.0.1-alpha.97)(@deepkit/orm@1.0.1-alpha.98)(@deepkit/sql@1.0.1-alpha.98)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97):
+    resolution: {integrity: sha512-pEbpTdRWwxqnG/PZMrnS8mzwvrkIg82ThUPK4m5eAK943kcc9glKIF1sq167bTi7ys892ULAWRVXYyIDdtQWyw==}
+    peerDependencies:
+      '@deepkit/core': ^1.0.1-alpha.13
+      '@deepkit/orm': ^1.0.1-alpha.13
+      '@deepkit/sql': ^1.0.1-alpha.13
+      '@deepkit/stopwatch': ^1.0.1-alpha.13
+      '@deepkit/type': ^1.0.1-alpha.13
+    dependencies:
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/orm': 1.0.1-alpha.98(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/sql': 1.0.1-alpha.98(@deepkit/app@1.0.1-alpha.98)(@deepkit/core@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/orm@1.0.1-alpha.98)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/stopwatch': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@types/pg': 7.14.7
+      pg: 8.5.1(pg-native@3.0.1)
+      pg-native: 3.0.1
+      sqlstring: 2.3.2
+    dev: false
+
+  /@deepkit/rpc-tcp@1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/rpc@1.0.1-alpha.97):
+    resolution: {integrity: sha512-zEsmYEC+6JF764hIkovPav8GMDk949B6qvRVahU9gxuiCCVlVnACow/eGIGVj8KY5QBMBgivMv0FjDeE3/wPJw==}
+    peerDependencies:
+      '@deepkit/core': ^1.0.1-alpha.13
+      '@deepkit/rpc': ^1.0.1-alpha.13
+    dependencies:
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/rpc': 1.0.1-alpha.97(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core-rxjs@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(rxjs@7.5.0)
+      '@types/ws': 8.5.5
+      ws: 8.14.1
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+    dev: false
+
+  /@deepkit/rpc@1.0.1-alpha.97(@deepkit/bson@1.0.1-alpha.97)(@deepkit/core-rxjs@1.0.1-alpha.97)(@deepkit/core@1.0.1-alpha.97)(@deepkit/crypto@1.0.1-alpha.89)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(rxjs@7.5.0):
+    resolution: {integrity: sha512-ffC9uC1gteNKvj7CBO9Q1x3xF9HIoDfFBVtNbF4t3nvOLTY5Tdb+7p4K5g5XGTtkHcVcaoqkqO/eyAsUyyse9w==}
+    peerDependencies:
+      '@deepkit/bson': ^1.0.1-alpha.13
+      '@deepkit/core': ^1.0.1-alpha.13
+      '@deepkit/core-rxjs': ^1.0.1-alpha.13
+      '@deepkit/crypto': ^1.0.1-alpha.13
+      '@deepkit/injector': ^1.0.1-alpha.13
+      '@deepkit/logger': ^1.0.1-alpha.13
+      '@deepkit/type': ^1.0.1-alpha.13
+      rxjs: '*'
+    dependencies:
+      '@deepkit/bson': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/core-rxjs': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(rxjs@7.5.0)
+      '@deepkit/crypto': 1.0.1-alpha.89
+      '@deepkit/injector': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/logger': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      dot-prop: 5.1.1
+      rxjs: 7.5.0
+    dev: false
+
+  /@deepkit/sql@1.0.1-alpha.98(@deepkit/app@1.0.1-alpha.98)(@deepkit/core@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/orm@1.0.1-alpha.98)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97):
+    resolution: {integrity: sha512-JouuqHkyIaX2Xu34JLETo91N4LgxS0Et769aADr9Bb4dkgLR5Rl87JcfqCo8LzMn9W4L2uadXX2mzFpbsctrJg==}
+    hasBin: true
+    peerDependencies:
+      '@deepkit/app': ^1.0.1-alpha.13
+      '@deepkit/core': ^1.0.1-alpha.13
+      '@deepkit/injector': ^1.0.1-alpha.13
+      '@deepkit/logger': ^1.0.1-alpha.13
+      '@deepkit/orm': ^1.0.1-alpha.13
+      '@deepkit/stopwatch': ^1.0.1-alpha.13
+      '@deepkit/type': ^1.0.1-alpha.13
+    dependencies:
+      '@deepkit/app': 1.0.1-alpha.98(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)(@deepkit/workflow@1.0.1-alpha.97)
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/injector': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/logger': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@deepkit/orm': 1.0.1-alpha.98(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/logger@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/stopwatch': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+      '@types/sqlstring': 2.2.1
+      date-fns: 2.30.0
+      fast-glob: 3.3.1
+      sqlstring: 2.3.2
+      sqlstring-sqlite: 0.1.1
+    dev: false
+
+  /@deepkit/stopwatch@1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97):
+    resolution: {integrity: sha512-/qZvIWExjZ7FOUPL4ZzeLUR9fPlEUXK5l+4JTHL1u7DmUi07Bda+tG+LrYGgUAuj/m9Y1sNrFLBBtsQA2QoquA==}
+    peerDependencies:
+      '@deepkit/core': ^1.0.1-alpha.13
+      '@deepkit/type': ^1.0.1-alpha.13
+    dependencies:
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+    dev: false
+
+  /@deepkit/topsort@1.0.1-alpha.89:
+    resolution: {integrity: sha512-0Iu+atoeri+Uecn3AidW7T5wKF69uAc/br2rUT5J6DyKf4/yroqyAWGSQgjbuLh1vYLVi2hWA+j5zxVpf16rFw==}
+    dev: false
+
+  /@deepkit/type-compiler@1.0.1-alpha.97(typescript@5.2.2):
+    resolution: {integrity: sha512-KeK21jdqM3keF504kmf7RcJkWV/xJMAjiK79MkNN43TyRjViOkmv50p6CW+vdHx6H772sQ765gX+gpH8i/yIZQ==}
+    hasBin: true
+    requiresBuild: true
+    peerDependencies:
+      typescript: 5.2.2
+    dependencies:
+      '@deepkit/type-spec': 1.0.1-alpha.93
+      '@marcj/ts-clone-node': 2.0.0(typescript@5.2.2)
+      '@typescript/vfs': 1.5.0
+      get-tsconfig: 4.5.0
+      lz-string: 1.4.4
+      micromatch: 4.0.5
+      strip-json-comments: 3.1.1
+      typescript: 5.2.2
+    transitivePeerDependencies:
+      - supports-color
+
+  /@deepkit/type-spec@1.0.1-alpha.93:
+    resolution: {integrity: sha512-ZJHq0tOCYW0pDZ4Ab3RLQiFvDCTD2Dur+af4I0kmtT23slz+WWMNehJF08lO4DUDyOO0f0DlLLCqO39GhY3J4Q==}
+
+  /@deepkit/type@1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97):
+    resolution: {integrity: sha512-fnMrhMVYANyZ8zrKEj7KnJMTl2WhXKza9dh9s0Mtgcowd73YSJyEdvFkBKcabmHbvlbHFkAHv8KAvYifvWbGvw==}
+    peerDependencies:
+      '@deepkit/core': ^1.0.1-alpha.13
+    dependencies:
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/type-spec': 1.0.1-alpha.93
+      '@types/uuid': 8.3.4
+      buffer: 5.7.1
+      uuid: 8.3.2
+    dev: false
+
+  /@deepkit/workflow@1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/event@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/stopwatch@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97):
+    resolution: {integrity: sha512-x4iRD7Maecj5dfZtuNpxHEdE8l3zC9gSZlfcwjLIZswLPZhajtOx2tZBarIbdmwHWZH/mNsNvIgDPRjc8Ep1rA==}
+    peerDependencies:
+      '@deepkit/core': ^1.0.1-alpha.13
+      '@deepkit/event': ^1.0.1-alpha.13
+      '@deepkit/injector': ^1.0.1-alpha.13
+      '@deepkit/stopwatch': ^1.0.1-alpha.13
+      '@deepkit/type': ^1.0.1-alpha.13
+    dependencies:
+      '@deepkit/core': 1.0.1-alpha.97
+      '@deepkit/event': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/injector@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/injector': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/stopwatch': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)(@deepkit/type@1.0.1-alpha.97)
+      '@deepkit/type': 1.0.1-alpha.97(@deepkit/core@1.0.1-alpha.97)
+    dev: false
 
   /@discoveryjs/json-ext@0.5.7:
     resolution: {integrity: sha512-dBVuXR082gk3jsFp7Rd/JI4kytwGHecnCoTtXFb7DB6CNHp4rg5k1bhg0nWdLGLnOV71lmDzGQaLMy8iPLY0pw==}
@@ -4136,18 +4670,17 @@ packages:
     resolution: {integrity: sha512-GPafMHAdvXPOFzJ8mtnOa+S4NR+fWQEggKo1laAejeSzzp9k223xZjogkNQSVLrzn8sinHCkvJv9f7nVaX3gPQ==}
     engines: {node: '>=14.9.0'}
     peerDependencies:
-      typescript: ^4.8
+      typescript: 5.2.2
     dependencies:
       compatfactory: 1.0.1(typescript@5.2.2)
       typescript: 5.2.2
-    dev: false
 
   /@ngtools/webpack@16.2.1(@angular/compiler-cli@16.2.4)(typescript@5.2.2)(webpack@5.88.2):
     resolution: {integrity: sha512-fT7uwrw3Yfi7mqVHD+kTw0zDq6jZ1CaRp6pQ5b3n+qFL+a3c34Lr/kFVVWZNktfooxO9lYWRsJdTRtid25he9w==}
     engines: {node: ^16.14.0 || >=18.10.0, npm: ^6.11.0 || ^7.5.6 || >=8.0.0, yarn: '>= 1.13.0'}
     peerDependencies:
       '@angular/compiler-cli': ^16.0.0
-      typescript: '>=4.9.3 <5.2'
+      typescript: 5.2.2
       webpack: ^5.54.0
     dependencies:
       '@angular/compiler-cli': 16.2.4(@angular/compiler@16.2.4)(typescript@5.2.2)
@@ -5247,7 +5780,7 @@ packages:
   /@phenomnomnominal/tsquery@5.0.1(typescript@5.2.2):
     resolution: {integrity: sha512-3nVv+e2FQwsW8Aw6qTU6f+1rfcJ3hrcnvH/mu9i8YhxO+9sqbOfpL8m6PbET5+xKOlz/VSbp0RoYWYCtIsnmuA==}
     peerDependencies:
-      typescript: ^3 || ^4 || ^5
+      typescript: 5.2.2
     dependencies:
       esquery: 1.5.0
       typescript: 5.2.2
@@ -5911,7 +6444,6 @@ packages:
 
   /@types/format-util@1.0.1:
     resolution: {integrity: sha512-uqU+S8ZeHlEslQgMzD6fpYhZlCqMfWR8MqoIMHy4uEy6VIkFqtZC25GKhl9n7fGmL0BZ51xrB5Ak8Wkb9oKw3A==}
-    dev: true
 
   /@types/fs-extra@11.0.1:
     resolution: {integrity: sha512-MxObHvNl4A69ofaTRU8DFqvgzzv8s9yRtaPPm5gud9HDNvpB3GPQFvNuTWAI59B9huVGV5jXYJwbCsmBsOGYWA==}
@@ -6054,14 +6586,12 @@ packages:
     deprecated: This is a stub types definition. pg-types provides its own type definitions, so you do not need this installed.
     dependencies:
       pg-types: 4.0.1
-    dev: true
 
   /@types/pg@7.14.7:
     resolution: {integrity: sha512-ZnMOUidTP6Lwsb0bxHL6PVIL1lVC2CYNQWlA79kQ6nn0rK1/ynvkyN1wsR9pVZaP4WcCNioKT/2aU5UuLIQy2w==}
     dependencies:
       '@types/node': 18.11.10
       '@types/pg-types': 2.2.0
-    dev: true
 
   /@types/ps-tree@1.1.2:
     resolution: {integrity: sha512-ZREFYlpUmPQJ0esjxoG1fMvB2HNaD3z+mjqdSosZvd3RalncI9NEur73P8ZJz4YQdL64CmV1w0RuqoRUlhQRBw==}
@@ -6122,7 +6652,6 @@ packages:
 
   /@types/sqlstring@2.2.1:
     resolution: {integrity: sha512-aoPCWl1XeUuVXslgwN06FKhVyJq8rqlKk2czbEnk9+R0OQd+JPJDmOjySnULGTeZzr6YB6+3VyFrEiOlFoMgYA==}
-    dev: true
 
   /@types/stack-utils@2.0.1:
     resolution: {integrity: sha512-Hl219/BT5fLAaz6NDkSuhzasy49dwQS/DSdu4MdggFB8zcXv7vflBI3xp7FEmkmdDkBUI2bPUNeMttp2knYdxw==}
@@ -6139,6 +6668,10 @@ packages:
   /@types/tough-cookie@4.0.2:
     resolution: {integrity: sha512-Q5vtl1W5ue16D+nIaW8JWebSSraJVlK+EthKn7e7UcD4KWsaSJ8BqGPXNaPghgtcn/fhvrN17Tv8ksUsQpiplw==}
     dev: true
+
+  /@types/uuid@8.3.4:
+    resolution: {integrity: sha512-c/I8ZRb51j+pYGAu5CrFMRxqZ2ke4y2grEBO5AUjgSkSk+qT2Ea+OdWElz/OiMf5MNpn2b17kuVBwZLQJXzihw==}
+    dev: false
 
   /@types/uuid@9.0.3:
     resolution: {integrity: sha512-taHQQH/3ZyI3zP8M/puluDEIEvtQHVYcC6y3N8ijFtAd28+Ey/G4sg1u2gB01S8MwybLOKAp9/yCMu/uR5l3Ug==}
@@ -6158,7 +6691,6 @@ packages:
     resolution: {integrity: sha512-lwhs8hktwxSjf9UaZ9tG5M03PGogvFaH8gUgLNbN9HKIg0dvv6q+gkSuJ8HN4/VbyxkuLzCjlN7GquQ0gUJfIg==}
     dependencies:
       '@types/node': 18.11.10
-    dev: true
 
   /@types/yargs-parser@21.0.0:
     resolution: {integrity: sha512-iO9ZQHkZxHn4mSakYV0vFHAVDyEOIJQrV2uZ06HxEPcx+mt8swXoZHIbaaJ2crJYFfErySgktuTZ3BeLz+XmFA==}
@@ -6176,7 +6708,7 @@ packages:
     peerDependencies:
       eslint: ^7.0.0 || ^8.0.0
       tslint: ^5.0.0 || ^6.0.0
-      typescript: '*'
+      typescript: 5.2.2
     dependencies:
       '@typescript-eslint/utils': 6.6.0(eslint@8.46.0)(typescript@5.2.2)
       eslint: 8.46.0
@@ -6498,7 +7030,6 @@ packages:
       debug: 4.3.4
     transitivePeerDependencies:
       - supports-color
-    dev: false
 
   /@vitejs/plugin-basic-ssl@1.0.1(vite@4.4.7):
     resolution: {integrity: sha512-pcub+YbFtFhaGRTo1832FQHQSHvMrlb43974e2eS8EKleR3p1cDdkJFPci1UhwkEf1J9Bz+wKBSzqpKp7nNj2A==}
@@ -6605,7 +7136,7 @@ packages:
     engines: {node: '>=10.1.0'}
     deprecated: this package has been renamed to ts-evaluator. Please install ts-evaluator instead
     peerDependencies:
-      typescript: '>=3.2.x || >= 4.x'
+      typescript: 5.2.2
     dependencies:
       chalk: 4.1.2
       jsdom: 16.7.0
@@ -7080,7 +7611,6 @@ packages:
   /at-least-node@1.0.0:
     resolution: {integrity: sha512-+q/t7Ekv1EDY2l6Gda6LLiX14rU9TV20Wa3ofeQmwPFZbOMo9DXrLbOjFaaclkXKWidIaopwAObQDqwWtGUjqg==}
     engines: {node: '>= 4.0.0'}
-    dev: false
 
   /autoprefixer@10.4.14(postcss@8.4.27):
     resolution: {integrity: sha512-FQzyfOsTlwVzjHxKEqRIAdJx9niO6VCBCoEwax/VLSoQF29ggECcPuBqUMZ+u8jCZOPSy8b8/8KnuFbp0SaFZQ==}
@@ -7906,11 +8436,10 @@ packages:
     resolution: {integrity: sha512-hR9u0HSZTKDNNchPtMHg6myeNx0XO+av7UZIJPsi4rPALJBHi/W5Mbwi19hC/xm6y3JkYpxVYjTqnSGsU5X/iw==}
     engines: {node: '>=14.9.0'}
     peerDependencies:
-      typescript: '>=3.x || >= 4.x'
+      typescript: 5.2.2
     dependencies:
       helpertypes: 0.0.18
       typescript: 5.2.2
-    dev: false
 
   /compressible@2.0.18:
     resolution: {integrity: sha512-AF3r7P5dWxL8MxyITRMlORQNaOA2IkAFaTr4k7BUumjPtRpGDTZpl0Pb1XCO6JeDCBdp126Cgs9sMxqSjgYyRg==}
@@ -8078,7 +8607,7 @@ packages:
     resolution: {integrity: sha512-A5Xry3xfS96wy2qbiLkQLAg4JUrR2wvfybxj6yqLmrUfMAvhS3MZxIP2oQn0grgYIvJqzpeTEWu4vK0t+12NNw==}
     engines: {node: '>=14'}
     peerDependencies:
-      typescript: '>=4.9.5'
+      typescript: 5.2.2
     peerDependenciesMeta:
       typescript:
         optional: true
@@ -8844,6 +9373,13 @@ packages:
   /date-fns@2.16.1:
     resolution: {integrity: sha512-sAJVKx/FqrLYHAQeN7VpJrPhagZc9R4ImZIWYRFZaaohR3KzmuK88touwsSwSVT8Qcbd4zoDsnGfX4GFB4imyQ==}
     engines: {node: '>=0.11'}
+    dev: false
+
+  /date-fns@2.30.0:
+    resolution: {integrity: sha512-fnULvOpxnC5/Vg3NCiWelDsLiUc9bRwAPs/+LfTLNvetFCtCTN+yQz15C/fs4AwX1R9K5GLtLfn8QW+dWisaAw==}
+    engines: {node: '>=0.11'}
+    dependencies:
+      '@babel/runtime': 7.22.15
     dev: false
 
   /dayjs@1.11.9:
@@ -10420,7 +10956,7 @@ packages:
     resolution: {integrity: sha512-fR3WRkOb4bQdWB/y7ssDUlVdrclvwtyCUIHCfivAoYxq9dF7XfrDKbMdZIfwJ7hxIAqkYSGeU7lLJE6xrxIBdg==}
     engines: {node: '>=12.13.0', yarn: '>=1.0.0'}
     peerDependencies:
-      typescript: '>3.6.0'
+      typescript: 5.2.2
       vue-template-compiler: '*'
       webpack: ^5.11.0
     peerDependenciesMeta:
@@ -10545,6 +11081,15 @@ packages:
       jsonfile: 6.1.0
       universalify: 1.0.0
     dev: false
+
+  /fs-extra@9.1.0:
+    resolution: {integrity: sha512-hcg3ZmepS30/7BSFqRvoo3DOMQu7IjqxO5nCDt+zM9XWjb33Wg7ziNT+Qvqbuc3+gWpzO02JubVyk2G4Zvo1OQ==}
+    engines: {node: '>=10'}
+    dependencies:
+      at-least-node: 1.0.0
+      graceful-fs: 4.2.11
+      jsonfile: 6.1.0
+      universalify: 2.0.0
 
   /fs-minipass@2.1.0:
     resolution: {integrity: sha512-V/JgOLFCS+R6Vcq0slCuaeWEdNC3ouDlJMNIsacH2VtALiu9mV4LPrHc5cDl8k5aw6J8jwgWWpiTo5RYhmIzvg==}
@@ -10683,7 +11228,6 @@ packages:
 
   /get-tsconfig@4.5.0:
     resolution: {integrity: sha512-MjhiaIWCJ1sAU4pIQ5i5OfOuHHxVo1oYeNsWTON7jxYkod8pHocXeh+SSbmu5OZZZK73B6cbJ2XADzXehLyovQ==}
-    dev: false
 
   /getpass@0.1.7:
     resolution: {integrity: sha512-0fzj9JxOLfJ+XGLhR8ze3unN0KZCgZwiSSDz168VERjK8Wl8kVSdcu2kspd4s4wtAa1y/qrVRiAA0WclVsu0ng==}
@@ -10859,7 +11403,7 @@ packages:
   /guess-parser@0.4.22(typescript@5.2.2):
     resolution: {integrity: sha512-KcUWZ5ACGaBM69SbqwVIuWGoSAgD+9iJnchR9j/IarVI1jHVeXv+bUXBIMeqVMSKt3zrn0Dgf9UpcOEpPBLbSg==}
     peerDependencies:
-      typescript: '>=3.7.5'
+      typescript: 5.2.2
     dependencies:
       '@wessberg/ts-evaluator': 0.0.27(typescript@5.2.2)
       typescript: 5.2.2
@@ -10961,7 +11505,6 @@ packages:
   /helpertypes@0.0.18:
     resolution: {integrity: sha512-XRhfbSEmR+poXUC5/8AbmYNJb2riOT6qPzjGJZr0S9YedHiaY+/tzPYzWMUclYMEdCYo/1l8PDYrQFCj02v97w==}
     engines: {node: '>=10.0.0'}
-    dev: false
 
   /hexoid@1.0.0:
     resolution: {integrity: sha512-QFLV0taWQOZtvIRIAdBChesmogZrtuXvVWsFHZTk2SU+anspqZ2vMnoLg7IE1+Uk16N19APic1BuF8bC8c2m5g==}
@@ -11970,7 +12513,7 @@ packages:
       '@angular/core': '>=13.0.0 <16.0.0'
       '@angular/platform-browser-dynamic': '>=13.0.0 <16.0.0'
       jest: ^29.0.0
-      typescript: '>=4.4'
+      typescript: 5.2.2
     dependencies:
       '@angular-devkit/build-angular': 16.2.1(@angular/compiler-cli@16.2.4)(@types/node@18.11.10)(debug@4.3.4)(jest-environment-jsdom@29.4.1)(jest@29.4.1)(ng-packagr@16.2.3)(typescript@5.2.2)
       '@angular/compiler-cli': 16.2.4(@angular/compiler@16.2.4)(typescript@5.2.2)
@@ -12671,7 +13214,6 @@ packages:
   /lz-string@1.4.4:
     resolution: {integrity: sha512-0ckx7ZHRPqb0oUm8zNr+90mtf9DQB60H1wMCjBtfi62Kl3a7JbHob6gA2bC+xRvZoOL+1hzUK8jeuEIQE8svEQ==}
     hasBin: true
-    dev: false
 
   /madge@4.0.1:
     resolution: {integrity: sha512-bcZDGa+cweRJ0XFCWaVlPTJKw2lB+EBBhUsBOqGv84jvlC6G1syKxCiS15+KBarwsVXNEtEEAs30r7EYn4ccNw==}
@@ -13206,7 +13748,7 @@ packages:
       '@angular/compiler-cli': ^16.0.0 || ^16.2.0-next.0
       tailwindcss: ^2.0.0 || ^3.0.0
       tslib: ^2.3.0
-      typescript: '>=4.9.3 <5.2'
+      typescript: 5.2.2
     peerDependenciesMeta:
       tailwindcss:
         optional: true
@@ -13442,6 +13984,16 @@ packages:
       semver: 7.5.4
     dev: true
 
+  /npm-local-development@0.4.0:
+    resolution: {integrity: sha512-rIsdEHRtsUYbN+WZnlnJI/3D17kozLKI5maER4FSS7ZJoEnqfheCpDwj1pLOchUr52YaAwhpzLulivVUWwSaYQ==}
+    hasBin: true
+    dependencies:
+      chalk: 4.1.2
+      chokidar: 3.5.3
+      fs-extra: 9.1.0
+      glob: 7.2.3
+    dev: true
+
   /npm-normalize-package-bin@3.0.1:
     resolution: {integrity: sha512-dMxCf+zZ+3zeQZXKxmyuCKlIDPGuv8EF940xbkC4kQVDTtqoh6rJFO+JTKSA6/Rwi0getWmtuy4Itup0AMcaDQ==}
     engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
@@ -13662,7 +14214,6 @@ packages:
 
   /obuf@1.1.2:
     resolution: {integrity: sha512-PX1wu0AmAdPqOL1mWhqmlOd8kOIZQwGZw6rh7uby9fTc5lhaOWFLX3I6R1hrF9k3zUY40e6igsLGkDXK92LJNg==}
-    dev: true
 
   /on-change@4.0.2:
     resolution: {integrity: sha512-cMtCyuJmTx/bg2HCpHo3ZLeF7FZnBOapLqZHr2AlLeJ5Ul0Zu2mUJJz051Fdwu/Et2YW04ZD+TtU+gVy0ACNCA==}
@@ -14002,7 +14553,6 @@ packages:
   /pg-numeric@1.0.2:
     resolution: {integrity: sha512-BM/Thnrw5jm2kKLE5uJkXqqExRUY/toLHda65XgFTBTFYZyopbKjBe29Ii3RbkvlsMoFwD+tHeGaCjjv0gHlyw==}
     engines: {node: '>=4'}
-    dev: true
 
   /pg-pool@3.6.1(pg@8.5.1):
     resolution: {integrity: sha512-jizsIzhkIitxCGfPRzJn1ZdcosIt3pz9Sh3V01fm1vZnbnCMgmGl5wvGGdNN2EL9Rmb0EcFoCkixH4Pu+sP9Og==}
@@ -14048,7 +14598,6 @@ packages:
       postgres-date: 2.0.1
       postgres-interval: 3.0.0
       postgres-range: 1.1.3
-    dev: true
 
   /pg@8.5.1(pg-native@3.0.1):
     resolution: {integrity: sha512-9wm3yX9lCfjvA98ybCyw2pADUivyNWT/yIP4ZcDVpMN0og70BUWYEGXPCTAQdGTAqnytfRADb7NERrY1qxhIqw==}
@@ -14109,7 +14658,6 @@ packages:
   /pirates@4.0.6:
     resolution: {integrity: sha512-saLsH7WeYYPiD25LDuLRRY/i+6HaPYr6G1OUlN39otzkSTxKnubR9RTxS3/Kk50s1g2JTgFwWQDQyplC5/SHZg==}
     engines: {node: '>= 6'}
-    dev: true
 
   /piscina@4.0.0:
     resolution: {integrity: sha512-641nAmJS4k4iqpNUqfggqUBUMmlw0ZoM5VZKdQkV2e970Inn3Tk9kroCc1wpsYLD07vCwpys5iY0d3xI/9WkTg==}
@@ -15264,7 +15812,6 @@ packages:
   /postgres-array@3.0.2:
     resolution: {integrity: sha512-6faShkdFugNQCLwucjPcY5ARoW1SlbnrZjmGl0IrrqewpvxvhSLHimCVzqeuULCbG0fQv7Dtk1yDbG3xv7Veog==}
     engines: {node: '>=12'}
-    dev: true
 
   /postgres-bytea@1.0.0:
     resolution: {integrity: sha512-xy3pmLuQqRBZBXDULy7KbaitYqLcmxigw14Q5sj8QBVLqEwXfeybIKVWiqAXTlcvdvb0+xkOtDbfQMOf4lST1w==}
@@ -15276,7 +15823,6 @@ packages:
     engines: {node: '>= 6'}
     dependencies:
       obuf: 1.1.2
-    dev: true
 
   /postgres-date@1.0.7:
     resolution: {integrity: sha512-suDmjLVQg78nMK2UZ454hAG+OAW+HQPZ6n++TNDUX+L0+uUlLywnoxJKDou51Zm+zTCjrCl0Nq6J9C5hP9vK/Q==}
@@ -15286,7 +15832,6 @@ packages:
   /postgres-date@2.0.1:
     resolution: {integrity: sha512-YtMKdsDt5Ojv1wQRvUhnyDJNSr2dGIC96mQVKz7xufp07nfuFONzdaowrMHjlAzY6GDLd4f+LUHHAAM1h4MdUw==}
     engines: {node: '>=12'}
-    dev: true
 
   /postgres-interval@1.2.0:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
@@ -15298,11 +15843,9 @@ packages:
   /postgres-interval@3.0.0:
     resolution: {integrity: sha512-BSNDnbyZCXSxgA+1f5UU2GmwhoI0aU5yMxRGO8CdFEcY2BQF9xm/7MqKnYoM1nJDk8nONNWDk9WeSmePFhQdlw==}
     engines: {node: '>=12'}
-    dev: true
 
   /postgres-range@1.1.3:
     resolution: {integrity: sha512-VdlZoocy5lCP0c/t66xAfclglEapXPCIVhqqJRncYpvbCgImF0w67aPKfbqUMr72tO2k5q0TdTZwCLjPTI6C9g==}
-    dev: true
 
   /prebuild-install@6.1.4:
     resolution: {integrity: sha512-Z4vpywnK1lBg+zdPCVCsKq0xO66eEV9rWo2zrROGGiRS4JtueBOdlB1FnY8lcy7JsUud/Q3ijUxyWN26Ika0vQ==}
@@ -15669,7 +16212,6 @@ packages:
 
   /regenerator-runtime@0.14.0:
     resolution: {integrity: sha512-srw17NI0TUWHuGa5CFGGmhfNIeja30WMBfbslPNhf6JrqQlLN5gcrvig1oqPxiVaXb0oW0XRKtH6Nngs5lKCIA==}
-    dev: true
 
   /regenerator-transform@0.15.2:
     resolution: {integrity: sha512-hfMp2BoF0qOk3uc5V20ALGDS2ddjQaLrdl7xrGXvAIow7qeWRM2VA2HuCHkUKk9slq3VwEwLNK3DFBqDfPGYtg==}
@@ -15937,7 +16479,7 @@ packages:
     resolution: {integrity: sha512-P4cHLtGikESmqi1CA+tdMDUv8WbQV48mzPYt77TSTOPJpERyZ9TXdDgjSDix8Fkqce6soYz3+fa4lrC93IEkcw==}
     peerDependencies:
       rollup: '>=1.26.3'
-      typescript: '>=2.4.0'
+      typescript: 5.2.2
     dependencies:
       '@rollup/pluginutils': 4.2.1
       find-cache-dir: 3.3.2
@@ -17189,7 +17731,7 @@ packages:
     resolution: {integrity: sha512-wNMeqtMz5NtwpT/UZGY5alT+VoKdSsOOP/kqHFcUW1P/VRhH2wJ48+DN2WwUliNbQ976ETwDL0Ifd2VVvgonvg==}
     engines: {node: '>=16.13.0'}
     peerDependencies:
-      typescript: '>=4.2.0'
+      typescript: 5.2.2
     dependencies:
       typescript: 5.2.2
     dev: true
@@ -17211,7 +17753,7 @@ packages:
       babel-jest: ^29.0.0
       esbuild: '*'
       jest: ^29.0.0
-      typescript: '>=4.3 <6'
+      typescript: 5.2.2
     peerDependenciesMeta:
       '@babel/core':
         optional: true
@@ -17239,7 +17781,7 @@ packages:
     resolution: {integrity: sha512-MLukxDHBl8OJ5Dk3y69IsKVFRA/6MwzEqBgh+OXMPB/OD01KQuWPFd1WAQP8a5PeSCAxfnkhiuWqfmFJzJQt9w==}
     engines: {node: '>=12.0.0'}
     peerDependencies:
-      typescript: '*'
+      typescript: 5.2.2
       webpack: ^5.0.0
     dependencies:
       chalk: 4.1.2
@@ -17255,7 +17797,7 @@ packages:
     hasBin: true
     peerDependencies:
       node-notifier: '*'
-      typescript: '*'
+      typescript: 5.2.2
     peerDependenciesMeta:
       node-notifier:
         optional: true
@@ -17284,7 +17826,7 @@ packages:
       '@swc/core': '>=1.2.50'
       '@swc/wasm': '>=1.2.50'
       '@types/node': '*'
-      typescript: '>=2.7'
+      typescript: 5.2.2
     peerDependenciesMeta:
       '@swc/core':
         optional: true
@@ -17358,7 +17900,7 @@ packages:
     resolution: {integrity: sha512-mHKK3iUXL+3UF6xL5k0PEhKRUBKPBCv/+RkEOpjRWxxx27KKRBmmA60A9pgOUvMi8GKhRMPEmjBRPzs2W7O1OA==}
     engines: {node: '>= 6'}
     peerDependencies:
-      typescript: '>=2.8.0 || >= 3.2.0-dev || >= 3.3.0-dev || >= 3.4.0-dev || >= 3.5.0-dev || >= 3.6.0-dev || >= 3.6.0-beta || >= 3.7.0-dev || >= 3.7.0-beta'
+      typescript: 5.2.2
     dependencies:
       tslib: 1.14.1
       typescript: 5.2.2
@@ -17461,7 +18003,7 @@ packages:
     engines: {node: '>= 14.14'}
     hasBin: true
     peerDependencies:
-      typescript: 4.6.x || 4.7.x || 4.8.x
+      typescript: 5.2.2
     dependencies:
       lunr: 2.3.9
       marked: 4.3.0
@@ -17606,7 +18148,6 @@ packages:
   /uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
     hasBin: true
-    dev: true
 
   /uuid@9.0.0:
     resolution: {integrity: sha512-MXcSTerfPa4uqyzStbRoTgt5XIe3x5+42+q1sDuy3R5MDk66URdLMOZe5aPX/SQd+kuYAh0FdP/pO28IkQyTeg==}
@@ -18199,7 +18740,6 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
-    dev: true
 
   /ws@8.14.1:
     resolution: {integrity: sha512-4OOseMUq8AzRBI/7SLMUwO+FEDnguetSk7KMb1sHwvF2w2Wv5Hoj0nlifx8vtGsftE/jWHojPy8sMMzYLJ2G/A==}
@@ -18212,7 +18752,6 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
-    dev: true
 
   /ws@8.6.0:
     resolution: {integrity: sha512-AzmM3aH3gk0aX7/rZLYvjdvZooofDu3fFOzGqcSnQ1tOcTWwhM/o+q++E8mAyVVIyUdajrkzWUGftaVSDLn1bw==}
@@ -18331,7 +18870,3 @@ packages:
       which: 3.0.1
       yaml: 2.3.2
     dev: true
-
-settings:
-  autoInstallPeers: false
-  excludeLinksFromLockfile: false

@@ -1,0 +1,79 @@
+{
+  "name": "node-modules-linking",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "examples/node-modules-linking/src",
+  "projectType": "application",
+  "implicitDependencies": ["framework"],
+  "targets": {
+    "link": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm-local-development . --no-watcher",
+        "cwd": "examples/node-modules-linking"
+      },
+      "configurations": {
+        "serve": {
+          "command": "npm-local-development .",
+          "cwd": "examples/node-modules-linking"
+        }
+      }
+    },
+    "build": {
+      "executor": "@nx/webpack:webpack",
+      "dependsOn": ["link"],
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "target": "node",
+        "compiler": "tsc",
+        "outputPath": "dist/examples/node-modules-linking",
+        "main": "examples/node-modules-linking/src/main.ts",
+        "tsConfig": "examples/node-modules-linking/tsconfig.app.json",
+        "isolatedConfig": true,
+        "webpackConfig": "examples/node-modules-linking/webpack.config.ts"
+      },
+      "configurations": {
+        "development": {},
+        "production": {}
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "node-modules-linking:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "node-modules-linking:build:development"
+        },
+        "production": {
+          "buildTarget": "node-modules-linking:build:production"
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nx/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["examples/node-modules-linking/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "dependsOn": ["link"],
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "examples/node-modules-linking/jest.config.ts",
+        "passWithNoTests": true
+      },
+      "configurations": {
+        "ci": {
+          "ci": true,
+          "codeCoverage": true
+        }
+      }
+    }
+  },
+  "tags": []
+}

@@ -1,5 +1,6 @@
 # Only use this for Angular packages that should have their own TypeScript installation
-packages: []
+packages:
+    - examples/node-modules-linking
 #    - packages/api-console-gui
 #    - packages/desktop-ui
 #    - packages/framework-debug-gui
