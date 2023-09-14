@@ -9,6 +9,5 @@
     "jest.config.ts",
     "src/**/*.spec.ts",
     "src/**/*.d.ts"
-  ],
-  "reflection": true
+  ]
 }
