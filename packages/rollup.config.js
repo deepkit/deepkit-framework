@@ -67,6 +67,13 @@ module.exports = (config) => {
         config.makeAbsoluteExternalsRelative = false;
     }
 
+    config.onwarn = (warning, handler) =>
+        (
+            warning.code !== 'FILE_NAME_CONFLICT' &&
+            warning.code !== 'DEPRECATED_FEATURE' &&
+            warning.code !== 'THIS_IS_UNDEFINED'
+        ) && handler(warning);
+
     config.plugins.push(preserveShebang());
 
     return config
