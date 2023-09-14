@@ -6,15 +6,22 @@
   "targets": {
     "rollup": {
       "executor": "@nx/rollup:rollup",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/{projectRoot}",
         "main": "{projectRoot}/src/index.ts",
         "tsConfig": "{projectRoot}/tsconfig.build.json",
         "rollupConfig": "packages/rollup.config.js",
         "project": "{projectRoot}/package.json",
-        "additionalEntryPoints": ["{projectRoot}/src/jsx-runtime.ts"],
-        "format": ["esm", "cjs"],
+        "additionalEntryPoints": [
+          "{projectRoot}/src/jsx-runtime.ts"
+        ],
+        "format": [
+          "esm",
+          "cjs"
+        ],
         "generateExportsField": true,
         "external": "all",
         "compiler": "tsc"
@@ -22,11 +29,12 @@
     },
     "build": {
       "executor": "nx:run-commands",
-      "outputs": ["dist/packages/template/jsx-runtime.js"],
+      "outputs": [
+        "dist/packages/template/jsx-runtime.js"
+      ],
       "options": {
         "commands": [
           "nx run template:rollup",
-          // tsconfig jsxImportSource doesn't support package.json exports
           "cp {projectRoot}/src/jsx-runtime.js dist/{projectRoot}/jsx-runtime.js"
         ],
         "parallel": false
@@ -37,7 +45,9 @@
     },
     "lint": {
       "executor": "@nx/linter:eslint",
-      "outputs": ["{options.outputFile}"],
+      "outputs": [
+        "{options.outputFile}"
+      ],
       "options": {
         "lintFilePatterns": [
           "packages/template/**/*.ts",
@@ -47,8 +57,12 @@
     },
     "test": {
       "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
-      "dependsOn": ["build"],
+      "outputs": [
+        "{workspaceRoot}/coverage/{projectRoot}"
+      ],
+      "dependsOn": [
+        "build"
+      ],
       "options": {
         "jestConfig": "packages/template/jest.config.ts",
         "passWithNoTests": true
@@ -61,5 +75,10 @@
       }
     }
   },
-  "tags": ["template"]
+  "tags": [
+    "template"
+  ],
+  "implicitDependencies": [
+    "type-compiler"
+  ]
 }

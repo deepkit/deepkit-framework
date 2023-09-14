@@ -6,14 +6,19 @@
   "targets": {
     "build": {
       "executor": "@nx/rollup:rollup",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/{projectRoot}",
         "main": "{projectRoot}/src/index.ts",
         "tsConfig": "{projectRoot}/tsconfig.lib.json",
         "rollupConfig": "packages/rollup.config.js",
         "project": "{projectRoot}/package.json",
-        "format": ["esm", "cjs"],
+        "format": [
+          "esm",
+          "cjs"
+        ],
         "generateExportsField": true,
         "external": "all",
         "compiler": "tsc"
@@ -24,7 +29,9 @@
     },
     "lint": {
       "executor": "@nx/linter:eslint",
-      "outputs": ["{options.outputFile}"],
+      "outputs": [
+        "{options.outputFile}"
+      ],
       "options": {
         "lintFilePatterns": [
           "packages/orm-browser/**/*.ts",
@@ -34,7 +41,9 @@
     },
     "test": {
       "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "outputs": [
+        "{workspaceRoot}/coverage/{projectRoot}"
+      ],
       "options": {
         "jestConfig": "packages/orm-browser/jest.config.ts",
         "passWithNoTests": true
@@ -47,5 +56,10 @@
       }
     }
   },
-  "tags": ["orm-browser"]
+  "tags": [
+    "orm-browser"
+  ],
+  "implicitDependencies": [
+    "type-compiler"
+  ]
 }

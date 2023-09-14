@@ -22,7 +22,7 @@
     "typescript": "^4.8.2 || ^5.0.0"
   },
   "dependencies": {
-    "@deepkit/type-spec": "^1.0.1-alpha.93",
+    "@deepkit/type-spec": "1.0.1-alpha.93",
     "@marcj/ts-clone-node": "^2.0.0",
     "@typescript/vfs": "^1.4.0",
     "get-tsconfig": "^4.5.0",
@@ -44,6 +44,5 @@
       "module": "./install-transformer.js",
       "import": "./install-transformer.js"
     }
-  },
-  "reflection": true
+  }
 }

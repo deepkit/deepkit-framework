@@ -17,8 +17,5 @@
             "path": "./tsconfig.editor.json"
         }
     ],
-    "extends": "../../tsconfig.base.json",
-    "reflection": [
-        "src/app/store.ts"
-    ]
+    "extends": "../../tsconfig.base.json"
 }

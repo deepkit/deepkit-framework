@@ -3,11 +3,16 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/framework/src",
   "projectType": "library",
-  "implicitDependencies": ["framework-debug-gui"],
+  "implicitDependencies": [
+    "framework-debug-gui",
+    "type-compiler"
+  ],
   "targets": {
     "build": {
       "executor": "@nx/rollup:rollup",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/{projectRoot}",
         "main": "{projectRoot}/src/index.ts",
@@ -18,7 +23,10 @@
           "{projectRoot}/src/loader.ts",
           "{projectRoot}/src/resolve.js"
         ],
-        "format": ["esm", "cjs"],
+        "format": [
+          "esm",
+          "cjs"
+        ],
         "generateExportsField": true,
         "external": "all",
         "compiler": "tsc"
@@ -29,7 +37,9 @@
     },
     "lint": {
       "executor": "@nx/linter:eslint",
-      "outputs": ["{options.outputFile}"],
+      "outputs": [
+        "{options.outputFile}"
+      ],
       "options": {
         "lintFilePatterns": [
           "packages/framework/**/*.ts",
@@ -41,15 +51,21 @@
       "executor": "@nx/jest:jest",
       "dependsOn": [
         {
-          "projects": ["sql"],
+          "projects": [
+            "sql"
+          ],
           "target": "build"
         },
         {
-          "projects": ["framework-debug-gui"],
+          "projects": [
+            "framework-debug-gui"
+          ],
           "target": "build"
         }
       ],
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "outputs": [
+        "{workspaceRoot}/coverage/{projectRoot}"
+      ],
       "options": {
         "jestConfig": "packages/framework/jest.config.ts",
         "passWithNoTests": true
@@ -62,5 +78,7 @@
       }
     }
   },
-  "tags": ["framework"]
+  "tags": [
+    "framework"
+  ]
 }

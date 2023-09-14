@@ -18,7 +18,5 @@
         }
     ],
     "extends": "../../tsconfig.base.json",
-    "reflection": [
-        "src/app/store.ts"
-    ]
+  "reflection": false
 }
