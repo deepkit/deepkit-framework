@@ -15,7 +15,9 @@
     "@deepkit/app": "^1.0.1-alpha.98",
     "@deepkit/core": "^1.0.1-alpha.97",
     "@deepkit/sql": "^1.0.1-alpha.97",
+    "@deepkit/http": "^1.0.1-alpha.97",
     "@deepkit/framework": "^1.0.1-alpha.97",
+    "@deepkit/rpc": "^1.0.1-alpha.97",
     "@deepkit/logger": "^1.0.1-alpha.97",
     "@deepkit/type": "^1.0.1-alpha.97",
     "fs-extra": "^9.1.0"

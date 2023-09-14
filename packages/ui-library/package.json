@@ -1,5 +1,5 @@
 {
-  "name": "ui-library",
+  "name": "@deepkit/ui-library",
   "version": "1.0.1-alpha.56",
   "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
