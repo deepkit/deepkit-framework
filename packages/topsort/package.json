@@ -7,5 +7,6 @@
   "publishConfig": {
     "access": "public"
   },
-  "types": "./src/index.d.ts"
+  "types": "./src/index.d.ts",
+  "reflection": true
 }

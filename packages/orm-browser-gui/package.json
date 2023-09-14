@@ -21,5 +21,6 @@
     "@deepkit/rpc": "^1.0.1-alpha.97",
     "@deepkit/stopwatch": "^1.0.1-alpha.97",
     "@deepkit/type": "^1.0.1-alpha.97"
-  }
+  },
+  "reflection": true
 }

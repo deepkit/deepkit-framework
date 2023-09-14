@@ -67,14 +67,6 @@ module.exports = (config) => {
         config.makeAbsoluteExternalsRelative = false;
     }
 
-    /*return {
-        ...config,
-        output: {
-            ...config.output,
-            sourcemap: true,
-        }
-    };*/
-
     config.plugins.push(preserveShebang());
 
     return config

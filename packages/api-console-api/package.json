@@ -17,5 +17,6 @@
     "@deepkit/rpc": "^1.0.1-alpha.43",
     "@deepkit/type": "^1.0.1-alpha.63"
   },
-  "types": "./src/index.d.ts"
+  "types": "./src/index.d.ts",
+  "reflection": true
 }

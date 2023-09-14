@@ -47,6 +47,9 @@
     "sharedGlobals": [
       {
         "env": "NODE_ENV"
+      },
+      {
+        "env": "DEBUG"
       }
     ]
   },

@@ -25,5 +25,6 @@
     "@deepkit/type": "^1.0.1-alpha.97",
     "@deepkit/type-compiler": "^1.0.1-alpha.97",
     "@deepkit/ui-library": "^1.0.1-alpha.56"
-  }
+  },
+  "reflection": true
 }

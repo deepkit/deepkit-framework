@@ -53,5 +53,6 @@
     "sift": "^7.0.1",
     "ws": "^7.4.2"
   },
-  "types": "./src/index.d.ts"
+  "types": "./src/index.d.ts",
+  "reflection": true
 }

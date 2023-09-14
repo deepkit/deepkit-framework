@@ -21,5 +21,6 @@
     "better-sqlite3": "^7.1.1",
     "sqlstring-sqlite": "^0.1.1"
   },
-  "types": "./dist/cjs/index.d.ts"
+  "types": "./dist/cjs/index.d.ts",
+  "reflection": true
 }

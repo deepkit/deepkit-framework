@@ -19,5 +19,6 @@
   "dependencies": {
     "mariadb": "^2.5.2"
   },
-  "types": "./src/index.d.ts"
+  "types": "./src/index.d.ts",
+  "reflection": true
 }

@@ -16,5 +16,6 @@
   },
   "dependencies": {
     "@deepkit/crypto": "^1.0.1-alpha.89"
-  }
+  },
+  "reflection": true
 }

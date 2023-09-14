@@ -21,5 +21,6 @@
     "@deepkit/logger": "^1.0.1-alpha.97",
     "@deepkit/type": "^1.0.1-alpha.97",
     "fs-extra": "^9.1.0"
-  }
+  },
+  "reflection": true
 }

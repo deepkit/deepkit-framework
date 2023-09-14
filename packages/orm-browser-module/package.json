@@ -26,5 +26,6 @@
   "dependencies": {
     "@deepkit/orm-browser-gui": "^1.0.1-alpha.98"
   },
-  "types": "./src/index.d.ts"
+  "types": "./src/index.d.ts",
+  "reflection": true
 }

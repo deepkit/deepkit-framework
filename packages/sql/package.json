@@ -28,5 +28,6 @@
     "sqlstring-sqlite": "^0.1.1"
   },
   "browser": "./browser.esm.js",
-  "types": "./src/index.d.ts"
+  "types": "./src/index.d.ts",
+  "reflection": true
 }

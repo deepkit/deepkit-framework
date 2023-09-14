@@ -44,5 +44,6 @@
       "module": "./install-transformer.js",
       "import": "./install-transformer.js"
     }
-  }
+  },
+  "reflection": true
 }

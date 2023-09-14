@@ -13,5 +13,6 @@
   "dependencies": {
     "dot-prop": "^5.1.1",
     "to-fast-properties": "^3.0.1"
-  }
+  },
+  "reflection": true
 }

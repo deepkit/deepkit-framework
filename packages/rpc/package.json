@@ -20,5 +20,6 @@
   "dependencies": {
     "dot-prop": "^5.1.1"
   },
-  "types": "./src/index.d.ts"
+  "types": "./src/index.d.ts",
+  "reflection": true
 }

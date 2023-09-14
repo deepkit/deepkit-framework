@@ -13,5 +13,6 @@
   "peerDependencies": {
     "@deepkit/core": "^1.0.1-alpha.0",
     "rxjs": "*"
-  }
+  },
+  "reflection": true
 }

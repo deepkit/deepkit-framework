@@ -1,7 +1,7 @@
 {
-  "name": "@deepkit/crypto",
-  "version": "1.0.1-alpha.89",
-  "description": "Deepkit crypto library",
+  "name": "@deepkit/test-me",
+  "version": "1.0.1-alpha.97",
+  "description": "Deepkit test-me library",
   "types": "./src/index.d.ts",
   "sideEffects": false,
   "publishConfig": {
@@ -10,8 +10,9 @@
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
-  "browser": {
-    "crypto": false
+  "peerDependencies": {
+    "@deepkit/logger": "*",
+    "@deepkit/type": "*"
   },
   "reflection": true
 }

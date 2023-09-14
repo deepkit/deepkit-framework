@@ -1,25 +1,34 @@
 {
-  "name": "type-compiler",
+  "name": "test-me",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "packages/type-compiler/src",
+  "sourceRoot": "packages/test-me/src",
   "projectType": "library",
   "targets": {
     "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/{projectRoot}",
+        "main": "{projectRoot}/src/index.ts",
+        "tsConfig": "{projectRoot}/tsconfig.lib.json",
+        "assets": ["{projectRoot}/*.md"]
+      }
+    },
+    /*"build": {
       "executor": "@nx/rollup:rollup",
       "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/{projectRoot}",
         "main": "{projectRoot}/src/index.ts",
-        "project": "{projectRoot}/package.json",
-        "rollupConfig": "packages/rollup.config.js",
         "tsConfig": "{projectRoot}/tsconfig.lib.json",
-        "additionalEntryPoints": ["{projectRoot}/src/install-transformer.ts"],
+        "rollupConfig": "packages/rollup.config.js",
+        "project": "{projectRoot}/package.json",
         "format": ["esm", "cjs"],
-        "external": "all",
         "generateExportsField": true,
+        "external": "all",
         "compiler": "tsc"
       }
-    },
+    },*/
     "release": {
       "command": "release-it --config={projectRoot}/.release-it.json"
     },
@@ -28,8 +37,8 @@
       "outputs": ["{options.outputFile}"],
       "options": {
         "lintFilePatterns": [
-          "packages/type-compiler/**/*.ts",
-          "packages/type-compiler/package.json"
+          "packages/test-me/**/*.ts",
+          "packages/test-me/package.json"
         ]
       }
     },
@@ -37,7 +46,7 @@
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
       "options": {
-        "jestConfig": "packages/type-compiler/jest.config.ts",
+        "jestConfig": "packages/test-me/jest.config.ts",
         "passWithNoTests": true
       },
       "configurations": {
@@ -48,5 +57,5 @@
       }
     }
   },
-  "tags": ["type-compiler"]
+  "tags": ["test-me"]
 }

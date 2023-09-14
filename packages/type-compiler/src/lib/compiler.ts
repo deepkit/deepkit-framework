@@ -1724,6 +1724,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 // }
                 if (isIdentifier(narrowed.exprName)) {
                     const resolved = this.resolveDeclaration(narrowed.exprName);
+                    console.log('SyntaxKind.TypeQuery', resolved);
                     if (resolved && findSourceFile(resolved.declaration) !== this.sourceFile && resolved.importDeclaration) {
                         ensureImportIsEmitted(resolved.importDeclaration, narrowed.exprName);
                     }
@@ -1887,6 +1888,8 @@ export class ReflectionTransformer implements CustomTransformer {
             declaration = this.resolveImportSpecifier(typeName.escapedText, importDeclaration, this.sourceFile);
         }
 
+        console.log(typeName.escapedText, declaration);
+
         if (declaration && declaration.kind === SyntaxKind.TypeParameter && declaration.parent.kind === SyntaxKind.TypeAliasDeclaration) {
             //for alias like `type MyAlias<T> = T`, `T` is returned from `typeChecker.getDeclaredTypeOfSymbol(symbol)`.
             declaration = declaration.parent as TypeAliasDeclaration;
@@ -2023,6 +2026,7 @@ export class ReflectionTransformer implements CustomTransformer {
             }
 
             let declaration: Node = resolved.declaration;
+            console.log('extractPackStructOfTypeReference', 'declaration', resolved);
             if (isVariableDeclaration(declaration)) {
                 if (declaration.type) {
                     declaration = declaration.type;
@@ -2094,6 +2098,7 @@ export class ReflectionTransformer implements CustomTransformer {
                             sourceFile: declarationSourceFile
                         });
                     } else if (isFromImport) {
+                        console.log('isFromImport', resolved);
                         if (resolved.importDeclaration) {
                             //if explicit `import {type T}`, we do not emit an import and instead push any
                             if (resolved.typeOnly) {
@@ -2378,7 +2383,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
     protected resolveImportSpecifier(declarationName: __String, importOrExport: ExportDeclaration | ImportDeclaration, sourceFile: SourceFile): Declaration | undefined {
         if (!importOrExport.moduleSpecifier) return;
-        if (!isStringLiteral(importOrExport.moduleSpecifier)) return;
+        // if (!isStringLiteral(importOrExport.moduleSpecifier)) return;
 
         let source: SourceFile | ModuleDeclaration | undefined = this.resolver.resolve(sourceFile, importOrExport);
 

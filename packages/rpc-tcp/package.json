@@ -15,5 +15,6 @@
     "@types/ws": "^8.5.3",
     "ws": "^8.6.0"
   },
-  "types": "./dist/cjs/index.d.ts"
+  "types": "./dist/cjs/index.d.ts",
+  "reflection": true
 }

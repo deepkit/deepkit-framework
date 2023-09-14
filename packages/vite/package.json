@@ -15,5 +15,6 @@
     "@rollup/pluginutils": "^5.0.2",
     "vite": "^4.0.0"
   },
-  "types": "./src/index.d.ts"
+  "types": "./src/index.d.ts",
+  "reflection": true
 }

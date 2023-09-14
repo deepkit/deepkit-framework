@@ -14,5 +14,6 @@
     "tslib": "^2.3.0",
     "prismjs": "^1.24.1"
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "reflection": true
 }

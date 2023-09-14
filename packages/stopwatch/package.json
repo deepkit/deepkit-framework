@@ -12,5 +12,6 @@
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13"
   },
-  "types": "./dist/cjs/index.d.ts"
+  "types": "./dist/cjs/index.d.ts",
+  "reflection": true
 }

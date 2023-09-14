@@ -15,5 +15,6 @@
     "@deepkit/type": "^1.0.1-alpha.40",
     "rxjs": "*"
   },
-  "types": "./src/index.d.ts"
+  "types": "./src/index.d.ts",
+  "reflection": true
 }
