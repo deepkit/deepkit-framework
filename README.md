@@ -40,6 +40,7 @@ npm init @deepkit/app my-deepkit-app
 - [Deepkit GraphQL](https://github.com/marcus-sa/deepkit-modules/tree/main/packages/graphql): Create GraphQL servers using Deepkit
 - [Deepkit Apollo Server](https://github.com/marcus-sa/deepkit-modules/tree/main/packages/apollo-graphql): Run your Deepkit GraphQL server using Apollo 
 - [Deepkit Remix](https://github.com/marcus-sa/deepkit-modules/tree/main/packages/remix): Create Remix apps using Deepkit as the server
+- [Deepkit Remix Validated Form](https://github.com/marcus-sa/deepkit-modules/tree/main/packages/remix-validated-form): Use Deepkit Type as form validator for Remix
 - [Deepkit Nx Webpack Plugin](https://github.com/marcus-sa/deepkit-modules/tree/main/packages/nx-webpack-plugin): Nx Webpack plugin for Deepkit
 
 ## Examples
