@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { join } from 'node:path';
 import { promises as fs } from 'node:fs';
 import { parse } from 'yaml';
