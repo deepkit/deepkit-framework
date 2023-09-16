@@ -1,9 +1,9 @@
 import { arg, cli } from '@deepkit/app';
 import { Logger } from '@deepkit/logger';
 import { existsSync, copySync } from 'fs-extra';
-import { join } from 'path';
+import { join } from 'node:path';
 import { findParentPath } from '@deepkit/app';
-import { spawn } from 'child_process';
+import { spawn } from 'node:child_process';
 
 async function exec(command: string, cwd: string): Promise<void> {
     const child = spawn(command, { cwd: cwd, shell: true, stdio: 'inherit' });
@@ -36,7 +36,8 @@ export class CreateController {
         const varDir = join(filesPath, 'var');
 
         copySync(filesPath, localPath, {
-            recursive: true, filter: (src, dest) => {
+            overwrite: true,
+            filter: (src, dest)    => {
                 if (src.startsWith(node_modules) || src.startsWith(package_json) || src.startsWith(dist) || src.startsWith(varDir)) return false;
                 return true;
             }
