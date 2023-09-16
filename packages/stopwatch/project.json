@@ -57,7 +57,8 @@
     }
   },
   "tags": [
-    "stopwatch"
+    "stopwatch",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

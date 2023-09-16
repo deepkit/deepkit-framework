@@ -57,7 +57,8 @@
     }
   },
   "tags": [
-    "orm-browser-api"
+    "orm-browser-api",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

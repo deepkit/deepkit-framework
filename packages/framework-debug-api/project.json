@@ -57,7 +57,8 @@
     }
   },
   "tags": [
-    "framework-debug-api"
+    "framework-debug-api",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

@@ -69,6 +69,7 @@
     }
   },
   "tags": [
-    "orm-browser-module"
+    "orm-browser-module",
+    "package"
   ]
 }

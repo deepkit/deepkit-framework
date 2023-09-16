@@ -57,7 +57,8 @@
     }
   },
   "tags": [
-    "app"
+    "app",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

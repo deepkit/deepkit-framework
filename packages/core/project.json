@@ -57,7 +57,8 @@
     }
   },
   "tags": [
-    "core"
+    "core",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

@@ -57,6 +57,7 @@
     }
   },
   "tags": [
-    "type-spec"
+    "type-spec",
+    "package"
   ]
 }

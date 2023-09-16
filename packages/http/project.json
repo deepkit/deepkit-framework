@@ -57,7 +57,8 @@
     }
   },
   "tags": [
-    "http"
+    "http",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

@@ -4,7 +4,8 @@
   "sourceRoot": "packages/ui-library/src",
   "prefix": "lib",
   "tags": [
-    "ui"
+    "ui",
+    "package"
   ],
   "projectType": "library",
   "targets": {

@@ -62,6 +62,7 @@
     "type-compiler"
   ],
   "tags": [
-    "type"
+    "type",
+    "package"
   ]
 }

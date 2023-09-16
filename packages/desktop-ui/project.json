@@ -4,7 +4,8 @@
   "sourceRoot": "packages/desktop-ui/src",
   "prefix": "lib",
   "tags": [
-    "ui"
+    "ui",
+    "package"
   ],
   "projectType": "library",
   "implicitDependencies": [

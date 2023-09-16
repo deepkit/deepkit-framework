@@ -4,7 +4,8 @@
   "sourceRoot": "packages/broker/src",
   "projectType": "library",
   "tags": [
-    "broker"
+    "broker",
+    "package"
   ],
   "implicitDependencies": [
     "core-rxjs",

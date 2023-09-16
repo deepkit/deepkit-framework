@@ -57,7 +57,8 @@
     }
   },
   "tags": [
-    "sqlite"
+    "sqlite",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

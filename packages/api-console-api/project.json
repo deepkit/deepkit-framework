@@ -57,7 +57,8 @@
     }
   },
   "tags": [
-    "api-console-api"
+    "api-console-api",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

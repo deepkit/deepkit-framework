@@ -5,7 +5,8 @@
   "prefix": "app",
   "sourceRoot": "packages/orm-browser-gui/src",
   "tags": [
-    "gui"
+    "gui",
+    "package"
   ],
   "targets": {
     "build": {

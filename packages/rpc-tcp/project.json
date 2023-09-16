@@ -57,7 +57,8 @@
     }
   },
   "tags": [
-    "rpc-tcp"
+    "rpc-tcp",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

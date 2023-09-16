@@ -61,6 +61,7 @@
     }
   },
   "tags": [
-    "type-compiler"
+    "type-compiler",
+    "package"
   ]
 }

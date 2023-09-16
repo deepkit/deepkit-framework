@@ -57,7 +57,8 @@
     }
   },
   "tags": [
-    "event"
+    "event",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

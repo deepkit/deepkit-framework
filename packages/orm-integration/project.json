@@ -57,7 +57,8 @@
     }
   },
   "tags": [
-    "orm-integration"
+    "orm-integration",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

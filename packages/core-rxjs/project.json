@@ -57,7 +57,8 @@
     }
   },
   "tags": [
-    "core-rxjs"
+    "core-rxjs",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

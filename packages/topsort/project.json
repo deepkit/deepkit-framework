@@ -56,7 +56,8 @@
     }
   },
   "tags": [
-    "topsort"
+    "topsort",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

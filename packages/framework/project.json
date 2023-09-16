@@ -79,6 +79,7 @@
     }
   },
   "tags": [
-    "framework"
+    "framework",
+    "package"
   ]
 }

@@ -29,9 +29,6 @@
     },
     "build": {
       "executor": "nx:run-commands",
-      "outputs": [
-        "dist/packages/template/jsx-runtime.js"
-      ],
       "options": {
         "commands": [
           "nx run template:rollup",
@@ -76,7 +73,8 @@
     }
   },
   "tags": [
-    "template"
+    "template",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

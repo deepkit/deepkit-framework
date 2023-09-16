@@ -60,7 +60,8 @@
     }
   },
   "tags": [
-    "create-app"
+    "create-app",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

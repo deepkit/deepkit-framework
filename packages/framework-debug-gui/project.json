@@ -5,7 +5,8 @@
   "prefix": "app",
   "sourceRoot": "packages/framework-debug-gui/src",
   "tags": [
-    "gui"
+    "gui",
+    "package"
   ],
   "targets": {
     "build": {

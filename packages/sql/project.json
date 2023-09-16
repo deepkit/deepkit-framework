@@ -62,7 +62,8 @@
     }
   },
   "tags": [
-    "sql"
+    "sql",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

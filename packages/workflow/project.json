@@ -57,7 +57,8 @@
     }
   },
   "tags": [
-    "workflow"
+    "workflow",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

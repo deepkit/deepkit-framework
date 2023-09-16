@@ -8,7 +8,8 @@
     "type-compiler"
   ],
   "tags": [
-    "rpc"
+    "rpc",
+    "package"
   ],
   "targets": {
     "build": {

@@ -5,7 +5,8 @@
   "prefix": "app",
   "sourceRoot": "packages/api-console-gui/src",
   "tags": [
-    "gui"
+    "gui",
+    "package"
   ],
   "targets": {
     "build": {

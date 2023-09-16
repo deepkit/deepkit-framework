@@ -57,7 +57,8 @@
     }
   },
   "tags": [
-    "vite"
+    "vite",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"

@@ -57,7 +57,8 @@
     }
   },
   "tags": [
-    "bson"
+    "bson",
+    "package"
   ],
   "implicitDependencies": [
     "type-compiler"
