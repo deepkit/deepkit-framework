@@ -9,7 +9,7 @@
  */
 
 import { asyncOperation, ClassType, CustomError, getClassName, getClassTypeFromInstance, isArray, isClassInstance } from '@deepkit/core';
-import { OutgoingHttpHeaders, ServerResponse } from 'http';
+import { OutgoingHttpHeaders, ServerResponse } from 'node:http';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpRequest, HttpRequestPositionedParameters, HttpResponse } from './model.js';
 import { InjectorContext } from '@deepkit/injector';
@@ -31,7 +31,7 @@ import {
     UnpopulatedCheck,
     ValidationError
 } from '@deepkit/type';
-import stream from 'stream';
+import stream from 'node:stream';
 
 export function isElementStruct(v: any): v is ElementStruct {
     return 'object' === typeof v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes') && !v.slice;
@@ -39,9 +39,9 @@ export function isElementStruct(v: any): v is ElementStruct {
 
 let templateRender: typeof render;
 
-function getTemplateRender(): typeof render {
+async function getTemplateRender(): Promise<typeof render> {
     if (!templateRender) {
-        const template = require('@deepkit/template');
+        const template = await import('@deepkit/template');
         templateRender = template.render;
     }
 
@@ -701,7 +701,8 @@ export class HttpListener {
             }
 
             if (isElementStruct(result)) {
-                const html = await getTemplateRender()(event.injectorContext.getRootInjector(), result, this.stopwatch ? this.stopwatch : undefined);
+                const renderTemplate = await getTemplateRender();
+                const html = await renderTemplate(event.injectorContext.getRootInjector(), result, this.stopwatch ? this.stopwatch : undefined);
                 result = new HtmlResponse(html, 200).header('Content-Type', 'text/html; charset=utf-8');
             }
             if (result instanceof stream.Readable) {
