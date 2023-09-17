@@ -10,6 +10,8 @@
   "@deepkit/rpc-tcp": "../../dist/packages/rpc-tcp",
   "@deepkit/crypto": "../../dist/packages/crypto",
   "@deepkit/workflow": "../../dist/packages/workflow",
+  "@deepkit/template": "../../dist/packages/template",
+  "@deepkit/nx-webpack-plugin": "../../dist/packages/nx-webpack-plugin",
   "@deepkit/http": "../../dist/packages/http",
   "@deepkit/event": "../../dist/packages/event",
   "@deepkit/logger": "../../dist/packages/logger",

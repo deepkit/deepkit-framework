@@ -1,0 +1,16 @@
+diff --git a/dist/index.js b/dist/index.js
+index 1e82e2f1a42cc57075549bbd0606131423d4d8cd..dd957806571b00667e35b10a3cb022f7f2379971 100755
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -240,8 +240,9 @@ function config(cwd, watching, foundPackageFolders, linkedPackages) {
+     for (const packageFolder of foundPackageFolders) {
+         const pkgConfig = fs.readJSONSync(path_1.join(packageFolder, 'package.json'));
+         const dependencies = pkgConfig['dependencies'] || {};
+-        const devDependencies = pkgConfig['devDependencies'] || {};
+-        const allDependencies = Object.assign(Object.assign({}, dependencies), devDependencies);
++        const peerDependencies = pkgConfig['peerDependencies'] || {};
++	const devDependencies = pkgConfig['devDependencies'] || {};
++        const allDependencies = { ...dependencies, ...peerDependencies, ...devDependencies };
+         for (const packageName in syncConfig) {
+             if (allDependencies[packageName]) {
+                 promises.push(sync(packageFolder, packageName, syncConfig[packageName], watching));

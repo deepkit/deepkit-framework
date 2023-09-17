@@ -64,21 +64,40 @@ jobs:
             run: pnpm run build:affected:examples
 
   test-packages:
-    runs-on: buildjet-2vcpu-ubuntu-2004
-    if: contains(inputs.skip, 'test') == false
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+      runs-on: buildjet-2vcpu-ubuntu-2004
+      if: contains(inputs.skip, 'test') == false
+      steps:
+          - uses: actions/checkout@v3
+            with:
+                fetch-depth: 0
 
-      - name: Setup
-        id: setup
-        uses: ./.github/actions/setup
+          - name: Setup
+            id: setup
+            uses: ./.github/actions/setup
 
-      - run: pnpm run install-compiler
+          - run: pnpm run install-compiler
 
-      - name: Run affected tests for packages
-        run: pnpm nx affected:test --configuration=ci --exclude='*,!tag:package,postgres,sqlite,mysql,mongo'
+          - name: Run affected tests for packages
+            run: pnpm nx affected:test --configuration=ci --exclude='*,!tag:package,postgres,sqlite,mysql,mongo'
+
+  test-examples:
+      runs-on: buildjet-2vcpu-ubuntu-2004
+      if: contains(inputs.skip, 'test') == false
+      needs:
+          - test-packages
+      steps:
+          - uses: actions/checkout@v3
+            with:
+                fetch-depth: 0
+
+          - name: Setup
+            id: setup
+            uses: ./.github/actions/setup
+
+          - run: pnpm run install-compiler
+
+          - name: Run affected tests for examples
+            run: pnpm run test:affected:examples
 
   test-sqlite:
       if: contains(needs.print-affected.outputs.projects, 'sqlite')

@@ -3,16 +3,26 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "examples/node-modules-linking/src",
   "projectType": "application",
-  "implicitDependencies": ["framework"],
   "targets": {
     "link": {
       "executor": "nx:run-commands",
+      "inputs": [
+        "{projectRoot}/.links.json"
+      ],
+      "dependsOn": [
+        {
+          "projects": [
+            "framework"
+          ],
+          "target": "build"
+        }
+      ],
       "options": {
         "command": "npm-local-development . --no-watcher",
         "cwd": "examples/node-modules-linking"
       },
       "configurations": {
-        "serve": {
+        "watch": {
           "command": "npm-local-development .",
           "cwd": "examples/node-modules-linking"
         }
@@ -20,8 +30,16 @@
     },
     "build": {
       "executor": "@nx/webpack:webpack",
-      "dependsOn": ["link"],
-      "outputs": ["{options.outputPath}"],
+      "dependsOn": [
+        "link",
+        {
+          "projects": ["nx-webpack-plugin"],
+          "target": "build"
+        }
+      ],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "defaultConfiguration": "production",
       "options": {
         "target": "node",
@@ -40,6 +58,13 @@
     "serve": {
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
+      "dependsOn": [
+        "link",
+        {
+          "projects": ["nx-webpack-plugin"],
+          "target": "build"
+        }
+      ],
       "options": {
         "buildTarget": "node-modules-linking:build"
       },
@@ -54,15 +79,23 @@
     },
     "lint": {
       "executor": "@nx/linter:eslint",
-      "outputs": ["{options.outputFile}"],
+      "outputs": [
+        "{options.outputFile}"
+      ],
       "options": {
-        "lintFilePatterns": ["examples/node-modules-linking/**/*.ts"]
+        "lintFilePatterns": [
+          "examples/node-modules-linking/**/*.ts"
+        ]
       }
     },
     "test": {
       "executor": "@nx/jest:jest",
-      "dependsOn": ["link"],
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "dependsOn": [
+        "link"
+      ],
+      "outputs": [
+        "{workspaceRoot}/coverage/{projectRoot}"
+      ],
       "options": {
         "jestConfig": "examples/node-modules-linking/jest.config.ts",
         "passWithNoTests": true
