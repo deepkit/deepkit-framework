@@ -71,7 +71,8 @@ module.exports = (config) => {
         (
             warning.code !== 'FILE_NAME_CONFLICT' &&
             warning.code !== 'DEPRECATED_FEATURE' &&
-            warning.code !== 'THIS_IS_UNDEFINED'
+            warning.code !== 'THIS_IS_UNDEFINED' &&
+            warning.code !== 'CIRCULAR_DEPENDENCY'
         ) && handler(warning);
 
     config.plugins.push(preserveShebang());
