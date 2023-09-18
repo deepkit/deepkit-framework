@@ -58,7 +58,8 @@
   },
   "tags": [
     "postgres",
-    "package"
+    "package",
+    "database"
   ],
   "implicitDependencies": [
     "type-compiler"

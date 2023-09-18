@@ -58,7 +58,8 @@
   },
   "tags": [
     "mysql",
-    "package"
+    "package",
+    "database"
   ],
   "implicitDependencies": [
     "type-compiler"

@@ -58,7 +58,8 @@
   },
   "tags": [
     "mongo",
-    "package"
+    "package",
+    "database"
   ],
   "implicitDependencies": [
     "type-compiler"
