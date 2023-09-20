@@ -96,6 +96,20 @@ function propertyParameterNotFound(ofName: string, name: string, position: numbe
     );
 }
 
+function transientInjectionTargetUnavailable(ofName: string, name: string, position: number, token: any) {
+    throw new DependenciesUnmetError(
+        `${TransientInjectionTarget.name} is not available for ${name} of ${ofName}. ${TransientInjectionTarget.name} is only available when injecting ${ofName} into other providers`
+    );
+}
+
+function createTransientInjectionTargetForProvider(provider: NormalizedProvider | undefined) {
+    if (!provider) {
+        return undefined;
+    }
+
+    return new TransientInjectionTarget(provider.provide);
+}
+
 
 let CircularDetector: any[] = [];
 let CircularDetectorResets: (() => void)[] = [];
@@ -199,6 +213,18 @@ function getPickArguments(type: Type): Type[] | undefined {
 }
 
 /**
+ * Class describing where a transient provider will be injected.
+ *
+ * @reflection never
+ */
+export class TransientInjectionTarget {
+    constructor (
+        public readonly token: Token,
+    ) {
+    }
+}
+
+/**
  * This is the actual dependency injection container.
  * Every module has its own injector.
  *
@@ -267,6 +293,8 @@ export class Injector implements InjectorInterface {
         resolverCompiler.context.set('constructorParameterNotFound', constructorParameterNotFound);
         resolverCompiler.context.set('propertyParameterNotFound', propertyParameterNotFound);
         resolverCompiler.context.set('factoryDependencyNotFound', factoryDependencyNotFound);
+        resolverCompiler.context.set('transientInjectionTargetUnavailable', transientInjectionTargetUnavailable);
+        resolverCompiler.context.set('createTransientInjectionTargetForProvider', createTransientInjectionTargetForProvider);
         resolverCompiler.context.set('injector', this);
 
         const lines: string[] = [];
@@ -355,7 +383,7 @@ export class Injector implements InjectorInterface {
                 ${resets.join('\n')};
             });
 
-            return function(token, scope) {
+            return function(token, scope, destinationProvider) {
                 switch (true) {
                     ${lines.join('\n')}
                 }
@@ -552,6 +580,16 @@ export class Injector implements InjectorInterface {
             }
         }
 
+        if (options.type.kind === ReflectionKind.class && options.type.classType === TransientInjectionTarget) {
+            if (fromProvider.transient === true) {
+                const tokenVar = compiler.reserveVariable('token', options.type.classType);
+                const orThrow = options.optional ? '' : `?? transientInjectionTargetUnavailable(${JSON.stringify(ofName)}, ${JSON.stringify(options.name)}, ${argPosition}, ${tokenVar})`;
+                return `createTransientInjectionTargetForProvider(destinationProvider) ${orThrow}`;
+            } else {
+                throw new Error(`Cannot inject ${TransientInjectionTarget.name} into ${JSON.stringify(ofName)}.${JSON.stringify(options.name)}, as ${JSON.stringify(ofName)} is not transient`);
+            }
+        }
+
         if (options.type.kind === ReflectionKind.class && options.type.classType === TagRegistry) {
             return compiler.reserveVariable('tagRegistry', this.buildContext.tagRegistry);
         }
@@ -683,10 +721,11 @@ export class Injector implements InjectorInterface {
         const orThrow = options.optional ? '' : `?? ${notFoundFunction}(${JSON.stringify(ofName)}, ${JSON.stringify(options.name)}, ${argPosition}, ${tokenVar})`;
 
         const resolveFromModule = foundPreparedProvider.resolveFrom || foundPreparedProvider.modules[0];
+        const destinationProvider = compiler.reserveConst(fromProvider);
         if (resolveFromModule === this.module) {
-            return `injector.resolver(${tokenVar}, scope)`;
+            return `injector.resolver(${tokenVar}, scope, ${destinationProvider})`;
         }
-        return `${compiler.reserveConst(resolveFromModule)}.injector.resolver(${tokenVar}, scope) ${orThrow}`;
+        return `${compiler.reserveConst(resolveFromModule)}.injector.resolver(${tokenVar}, scope, ${destinationProvider}) ${orThrow}`;
     }
 
     createResolver(type: Type, scope?: Scope, label?: string): Resolver<any> {

@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { CircularDependencyError, injectedFunction, Injector, InjectorContext } from '../src/injector.js';
+import { CircularDependencyError, DependenciesUnmetError, injectedFunction, Injector, InjectorContext, TransientInjectionTarget } from '../src/injector.js';
 import { InjectorModule } from '../src/module.js';
-import { ReflectionClass, ReflectionKind } from '@deepkit/type';
+import { ReflectionClass, ReflectionKind, ReflectionParameter, ReflectionProperty } from '@deepkit/type';
 import { Inject } from '../src/types.js';
 import { provide } from '../src/provider.js';
 
@@ -711,4 +711,101 @@ test('injectedFunction skip 2', () => {
     const wrapped = injectedFunction(render, injector, 2);
 
     expect(wrapped(undefined, 'abc', new A)).toBe('abc');
+});
+
+test('TransientInjectionTarget', () => {
+    {
+        class A {
+            constructor (public readonly b: B) {
+            }
+        }
+
+        class B {
+            constructor (
+                public readonly target: TransientInjectionTarget
+            ) {
+            }
+        }
+
+        const injector = Injector.from([A, { provide: B, transient: true }]);
+        const a = injector.get(A);
+        expect(a.b.target).toBeInstanceOf(TransientInjectionTarget);
+        expect(a.b.target.token).toBe(A);
+    }
+
+    {
+        class A {
+            constructor (public readonly b: B) {
+            }
+        }
+
+        class B {
+            constructor (
+                public readonly target: TransientInjectionTarget
+            ) {
+            }
+        }
+
+        const injector = Injector.from([
+            A,
+            { provide: B, useFactory: (target: TransientInjectionTarget) => new B(target), transient: true }
+        ]);
+        const a = injector.get(A);
+        expect(a.b.target).toBeInstanceOf(TransientInjectionTarget);
+        expect(a.b.target.token).toBe(A);
+    }
+
+    {
+        class A {
+            constructor (public readonly b: B) {
+            }
+        }
+
+        class B {
+            constructor (
+                public readonly target: TransientInjectionTarget
+            ) {
+            }
+        }
+
+        expect(() =>  Injector.from([A, B])).toThrow();
+    }
+
+    {
+        class A {
+            constructor (
+                public readonly target: TransientInjectionTarget
+            ) {
+            }
+        }
+
+        const injector = Injector.from([{ provide: A, transient: true }]);
+        expect(() => injector.get(A)).toThrow(DependenciesUnmetError);
+    }
+
+    {
+        class A {
+            constructor (
+                public readonly target: TransientInjectionTarget
+            ) {
+            }
+        }
+
+        const injector = Injector.from([
+            { provide: A, transient: true, useFactory: (target: TransientInjectionTarget) => new A(target) }
+        ]);
+        expect(() => injector.get(A)).toThrow(DependenciesUnmetError);
+    }
+
+    {
+        class A {
+            constructor (
+                public readonly target?: TransientInjectionTarget
+            ) {
+            }
+        }
+
+        const injector = Injector.from([{ provide: A, transient: true }]);
+        expect(() => injector.get(A)).not.toThrow();
+    }
 });
