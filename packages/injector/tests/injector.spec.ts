@@ -808,4 +808,50 @@ test('TransientInjectionTarget', () => {
         const injector = Injector.from([{ provide: A, transient: true }]);
         expect(() => injector.get(A)).not.toThrow();
     }
+
+    {
+        class A {
+            constructor (public b: C) {
+            }
+        }
+
+        class B {
+            constructor (public target: TransientInjectionTarget) {
+            }
+        }
+
+        class C {
+            constructor (public target: TransientInjectionTarget) {
+            }
+        }
+
+        const injector = Injector.from([
+            A,
+            { provide: B, transient: true },
+            { provide: C, transient: true, useExisting: B },
+        ]);
+        const a = injector.get(A);
+        expect(a.b).toBeInstanceOf(B);
+        expect(a.b.target.token).toBe(A);
+    }
+
+    {
+        class A {
+            constructor (public b: B) {
+            }
+        }
+
+        interface B {
+            target: TransientInjectionTarget;
+        }
+
+        const injector = Injector.from([
+            A,
+            provide<B>({ transient: true, useFactory: (target: TransientInjectionTarget): B => ({ target }) }),
+        ]);
+
+        const a = injector.get(A);
+        expect(a.b).toBeDefined();
+        expect(a.b.target.token).toBe(A);
+    }
 });
