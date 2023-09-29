@@ -78,7 +78,7 @@ jobs:
           - run: pnpm run install-compiler
 
           - name: Run affected tests for packages
-            run: pnpm nx affected:test --configuration=ci --exclude='*,!tag:package,tag:database'
+            run: pnpm nx affected:test --configuration=ci --exclude='tag:example,tag:database'
 
   test-examples:
       runs-on: buildjet-2vcpu-ubuntu-2004
