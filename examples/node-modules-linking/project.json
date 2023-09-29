@@ -12,7 +12,26 @@
       "dependsOn": [
         {
           "projects": [
-            "framework"
+            "core",
+            "core-rxjs",
+            "bson",
+            "type",
+            "type-compiler",
+            "sql",
+            "injector",
+            "rpc",
+            "rpc-tcp",
+            "crypto",
+            "workflow",
+            "template",
+            "http",
+            "event",
+            "logger",
+            "framework",
+            "app",
+            "postgres",
+            "stopwatch",
+            "orm"
           ],
           "target": "build"
         }
