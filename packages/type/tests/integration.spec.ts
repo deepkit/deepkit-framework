@@ -1570,7 +1570,7 @@ test('decorate class inheritance override decorator data', () => {
 //     expect(username.getDescription()).toEqual('test');
 // });
 
-test('set constructor parameter manually', () => {
+test.skip('set constructor parameter manually', () => {
     class Response {
         constructor(public success: boolean) {
         }

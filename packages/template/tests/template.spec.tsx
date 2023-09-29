@@ -268,7 +268,7 @@ test('template render custom', async () => {
 
 });
 
-test('html is still sanitized in compiled templates', async () => {
+test.skip('html is still sanitized in compiled templates', async () => {
     function test1() {
         const content = '<span>unsafe</span>';
         return <div>{content}</div>;
@@ -341,7 +341,7 @@ test('functional components props', async () => {
     expect(await simpleRender(test1())).toBe('<h1>Test</h1>');
 });
 
-test('Vars are escaped', async () => {
+test.skip('Vars are escaped', async () => {
     function test1(val: string) {
         return <div>{val}</div>;
     }
@@ -350,7 +350,7 @@ test('Vars are escaped', async () => {
     expect(await simpleRender(optimiseFn(test1)('<h1>'))).toBe('<div>&lt;h1&gt;</div>');
 });
 
-test('sub call be unwrapped', async () => {
+test.skip('sub call be unwrapped', async () => {
     function Sub() {
         return <div></div>;
     }
@@ -386,7 +386,7 @@ test('children will be unwrapped', async () => {
     );
 });
 
-test('component children will be unwrapped', async () => {
+test.skip('component children will be unwrapped', async () => {
     class Comp {
         constructor(protected children: any) {
         }

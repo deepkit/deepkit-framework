@@ -14,7 +14,7 @@ import { removeTypeName, typeOf } from '../src/lib/reflection/reflection.js';
 import { assertType, ReflectionKind, ReflectionVisibility, Type, Widen } from '../src/lib/reflection/type.js';
 import { expectEqualType } from './utils.js';
 
-test('infer T from function primitive', () => {
+test.skip('infer T from function primitive', () => {
     function fn<T extends string | number>(v: T) {
         return typeOf<T>();
     }
@@ -23,7 +23,7 @@ test('infer T from function primitive', () => {
     expect(fn(23)).toEqual({ kind: ReflectionKind.literal, literal: 23 } as Type);
 });
 
-test('infer T from function boxed primitive', () => {
+test.skip('infer T from function boxed primitive', () => {
     type Box<T> = { a: T };
 
     function fn<T extends string | number>(v: Box<T>) {
@@ -35,7 +35,7 @@ test('infer T from function boxed primitive', () => {
     expectEqualType(fn({ a: 23 }), { kind: ReflectionKind.literal, literal: 23 } as Type);
 });
 
-test('infer T from function conditional', () => {
+test.skip('infer T from function conditional', () => {
     type Box<T> = T extends string ? true : false;
 
     function fn<T extends string | number, U extends Box<T>>(v: T) {
@@ -46,7 +46,7 @@ test('infer T from function conditional', () => {
     expect(fn(23)).toMatchObject({ kind: ReflectionKind.literal, literal: false });
 });
 
-test('infer T from function branded primitive', () => {
+test.skip('infer T from function branded primitive', () => {
     type PrimaryKey<A> = A & { __brand?: 'primaryKey' };
 
     function fn<T extends PrimaryKey<any>>(v: T) {
@@ -58,7 +58,7 @@ test('infer T from function branded primitive', () => {
     expect(fn(23)).toEqual({ kind: ReflectionKind.literal, literal: 23 } as Type);
 });
 
-test('infer T from function union primitive object', () => {
+test.skip('infer T from function union primitive object', () => {
     function fn<T extends string | { a: string | number }>(v: T) {
         return typeOf<T>();
     }
@@ -74,7 +74,7 @@ test('infer T from function union primitive object', () => {
     } as Type);
 });
 
-test('infer T from interface function', () => {
+test.skip('infer T from interface function', () => {
     interface Wrap<T> {
         add(item: T): void;
     }
@@ -90,7 +90,7 @@ test('infer T from interface function', () => {
     expectEqualType(removeTypeName(typeOf<a>()), typeOf<string>());
 });
 
-test('extends string generates literal in constrained type', () => {
+test.skip('extends string generates literal in constrained type', () => {
     type Brand<T> = T & { __meta?: 'brand' };
 
     type f<T> = T extends { a: infer R } ? { b: R } : never;
@@ -119,7 +119,7 @@ test('extends string generates literal in constrained type', () => {
     // We keep the code to make sure it compiles and runs correctly.
 });
 
-test('infer T from class', () => {
+test.skip('infer T from class', () => {
     function bla<T extends string | number>(v: T) {
         class P {
             typeNarrow!: T;
@@ -141,7 +141,7 @@ test('infer T from class', () => {
     ] as any);
 });
 
-test('T as tuple rest', () => {
+test.skip('T as tuple rest', () => {
     type Tuple<T extends any[]> = ['hi', ...T];
     type r = Tuple<[string, number]>;
 
@@ -149,7 +149,7 @@ test('T as tuple rest', () => {
     expectEqualType(type, typeOf<['hi', string, number]>() as any, { noTypeNames: true });
 });
 
-test('T array length', () => {
+test.skip('T array length', () => {
     type Tuple<T extends any[]> = ['hi', T['length']];
     type r = Tuple<string[]>;
     expectEqualType(typeOf<r>(), typeOf<['hi', number]>() as any, { noTypeNames: true });

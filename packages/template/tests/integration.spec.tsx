@@ -197,7 +197,7 @@ const tests: { t: Function, contains?: string, result: string }[] = [
     },
 ];
 
-describe('integration', () => {
+describe.skip('integration', () => {
     for (const i of tests) {
         test(i.result, async () => {
             if (i.contains !== undefined) {

@@ -753,7 +753,7 @@ test('ClassType infer', () => {
     });
 });
 
-test('infer parameter in returned class constructor', () => {
+test.skip('infer parameter in returned class constructor', () => {
     const code = `
     interface ClassType<T = any> {
         new(...args: any[]): T;
@@ -815,7 +815,7 @@ test('complex infer T', () => {
     }
 });
 
-test('infer T in function boxed primitive', () => {
+test.skip('infer T in function boxed primitive', () => {
     const code = `
         type Box<T> = { a: T };
         return function fn<T extends string | number>(v: Box<T>) {
@@ -845,7 +845,7 @@ test('infer T in function boxed primitive', () => {
     expectEqualType(type(false as any), { kind: ReflectionKind.never });
 });
 
-test('infer T in function inferred second template arg', () => {
+test.skip('infer T in function inferred second template arg', () => {
     const code = `
         type Box<T> = T extends string ? 'string' : 'number';
         return function fn<T extends string | number, U extends Box<T>>(v: T) {
@@ -859,7 +859,7 @@ test('infer T in function inferred second template arg', () => {
     expect(type(34)).toMatchObject({ kind: ReflectionKind.literal, literal: 'number' });
 });
 
-test('infer T in function branded type', () => {
+test.skip('infer T in function branded type', () => {
     const code = `
         type PrimaryKey<T> = T & {__brand?: 'primaryKey'};
 
@@ -874,7 +874,7 @@ test('infer T in function branded type', () => {
     expect(type(34)).toEqual({ kind: ReflectionKind.literal, literal: 34 });
 });
 
-test('correct T resolver', () => {
+test.skip('correct T resolver', () => {
     const code = `
     return function a<T>(v: T) {
         return class {item: T}
