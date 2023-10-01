@@ -760,3 +760,42 @@ export function zip<T extends (readonly unknown[])[]>(
     //@ts-ignore
     return Array.from({ length: minLength }).map((_, i) => args.map((arr) => arr[i]));
 }
+
+/**
+ * Forwards the runtime type arguments from function x to function y.
+ * This is necessary when a generic function is overridden and forwarded to something else.
+ *
+ * ```typescript
+ * let generic = <T>(type?: ReceiveType<T>) => undefined;
+ *
+ * let forwarded<T> = () => {
+ *     forwardTypeArguments(forwarded, generic); //all type arguments are forwarded to generic()
+ *     generic(); //call as usual
+ * }
+ *
+ * forwarded<any>(); //generic receives any in runtime.
+ * ```
+ *
+ * Note that generic.bind(this) will not work, as bind() creates a new function and forwarded type arguments can not
+ * reach the original function anymore.
+ *
+ * ```typescript
+ * let forwarded<T> = () => {
+ *     const bound = generic.bind(this);
+ *     forwardTypeArguments(forwarded, bound); //can not be forwarded anymore
+ *     bound(); //fails
+ * }
+ * ```
+ *
+ *  This is a limitation of JavaScript. In this case you have to manually forward type arguments.
+ *
+ *  ```typescript
+ *  let forwarded<T> = (type?: ReceiveType<T>) => {
+ *     const bound = generic.bind(this);
+ *     bound(type);
+ *  }
+ *  ```
+ */
+export function forwardTypeArguments(x: any, y: any): void {
+    y.Ω = x.Ω;
+}
