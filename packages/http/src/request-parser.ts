@@ -16,7 +16,7 @@ import {
     ValidationError
 } from '@deepkit/type';
 import { BodyValidationError, createRequestWithCachedBody, getRegExp, HttpRequest, ValidatedBody } from './model.js';
-import { RouteConfig, UploadedFile } from './router.js';
+import { RouteConfig, UploadedFile, UploadedFileSymbol } from './router.js';
 
 //@ts-ignore
 import qs from 'qs';
@@ -40,6 +40,7 @@ function parseBody(
                 for (const [name, file] of Object.entries(files) as any) {
                     if (file.size === 0) continue;
                     foundFiles[name] = {
+                        validator: UploadedFileSymbol,
                         size: file.size,
                         path: file.filepath,
                         name: file.originalFilename,

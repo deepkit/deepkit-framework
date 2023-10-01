@@ -1350,3 +1350,52 @@ test('fetch thrown error instances in listeners', async () => {
 
     expect((await httpKernel.request(HttpRequest.GET('/'))).statusCode).toEqual(403);
 });
+
+test('upload security', async () => {
+    class UploadBody {
+        someFile!: UploadedFile;
+    }
+
+    class Controller {
+        @http.POST('/upload')
+        upload(body: HttpBody<UploadBody>): any {
+            return { uploadedSize: body.someFile.size };
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    expect((await httpKernel.request(HttpRequest.POST('/upload').json({
+        someFile: {
+            size: 12345,
+            path: '/etc/secure-file',
+            name: 'fakefile',
+            type: 'image/jpeg',
+            lastModifiedDate: null
+        }
+    }))).json).toMatchObject({
+        message: 'Validation error:\nsomeFile(uploadSecurity): Not an uploaded file'
+    });
+
+    // ensure type deserialization doesn't set the invalid 'fake value' value to UploadedFileSymbol
+    expect((await httpKernel.request(HttpRequest.POST('/upload').json({
+        someFile: {
+            validator: 'fake value',
+            size: 12345,
+            path: '/etc/secure-file',
+            name: 'fakefile',
+            type: 'image/jpeg',
+            lastModifiedDate: null
+        }
+    }))).json).toMatchObject({
+        message: 'Validation error:\nsomeFile(uploadSecurity): Not an uploaded file'
+    });
+
+    expect((await httpKernel.request(HttpRequest.POST('/upload').multiPart([
+        {
+            name: 'someFile',
+            file: Buffer.from('testing a text file'),
+            fileName: 'test.txt'
+        }
+    ]))).json).toMatchObject({ uploadedSize: 19 });
+});
