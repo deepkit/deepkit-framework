@@ -40,6 +40,7 @@ import { ApiConsoleModule } from '@deepkit/api-console-module';
 import { AppModule, ControllerConfig, createModule } from '@deepkit/app';
 import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc.js';
 import { normalizeDirectory } from './utils.js';
+import { ScopedLogger } from "@deepkit/logger";
 
 export class FrameworkModule extends createModule({
     config: FrameworkConfig,
@@ -50,6 +51,7 @@ export class FrameworkModule extends createModule({
         RpcServer,
         ConsoleTransport,
         Logger,
+        ScopedLogger,
         MigrationProvider,
         DebugController,
         { provide: DatabaseRegistry, useFactory: (ic: InjectorContext) => new DatabaseRegistry(ic) },
@@ -105,6 +107,7 @@ export class FrameworkModule extends createModule({
         MigrationCreateController,
     ],
     exports: [
+        ScopedLogger.provide,
         ProcessLocker,
         ApplicationServer,
         WebWorkerFactory,
