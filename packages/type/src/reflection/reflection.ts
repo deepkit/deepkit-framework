@@ -1178,7 +1178,7 @@ export class ReflectionClass<T> {
                 if (jit.reflectionClass) return jit.reflectionClass;
                 return jit.reflectionClass = new ReflectionClass<T>(classTypeIn);
             }
-            if (classTypeIn.kind !== ReflectionKind.class) throw new Error(`TypeClass or TypeObjectLiteral expected, not ${classTypeIn.kind}`);
+            if (classTypeIn.kind !== ReflectionKind.class) throw new Error(`TypeClass or TypeObjectLiteral expected, not ${ReflectionKind[classTypeIn.kind]}`);
         }
 
         const classType = isType(classTypeIn) ? (classTypeIn as TypeClass).classType : (classTypeIn as any)['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
