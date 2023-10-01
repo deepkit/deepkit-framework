@@ -29,7 +29,7 @@ interface ResolvedController {
     parameters: RouteParameterResolverForInjector;
     routeConfig: RouteConfig;
     uploadedFiles: { [name: string]: UploadedFile };
-    middlewares?: (injector: InjectorContext) => { fn: HttpMiddlewareFn, timeout: number }[];
+    middlewares?: (injector: InjectorContext) => { fn: HttpMiddlewareFn, timeout?: number }[];
 }
 
 @entity.name('@deepkit/UploadedFile')
