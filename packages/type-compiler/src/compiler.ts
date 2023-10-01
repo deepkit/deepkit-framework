@@ -2322,8 +2322,8 @@ export class ReflectionTransformer implements CustomTransformer {
                         return node;
                     };
 
-                    const updatedParameterType = visitEachChild(parameter.type, searchArgument, this.context);
                     if (found && isIdentifier(parameter.name)) {
+                        const updatedParameterType = visitEachChild(parameter.type, searchArgument, this.context);
                         foundUsers.push({ type: updatedParameterType, parameterName: parameter.name });
                     }
                 }
