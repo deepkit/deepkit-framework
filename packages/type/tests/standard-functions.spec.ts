@@ -9,9 +9,9 @@
  */
 
 import { test, expect } from '@jest/globals';
-import { ReceiveType, removeTypeName, resolveReceiveType } from '../src/reflection/reflection.js';
+import { ReceiveType, removeTypeName, resolveReceiveType, typeOf } from '../src/reflection/reflection.js';
 import { expectEqualType } from './utils.js';
-import { stringifyResolvedType } from '../src/reflection/type.js';
+import { stringifyResolvedType, stringifyType } from '../src/reflection/type.js';
 
 function equalType<A, B>(a?: ReceiveType<A>, b?: ReceiveType<B>) {
     const aType = removeTypeName(resolveReceiveType(a));
@@ -42,6 +42,16 @@ test('Pick', () => {
 test('Omit', () => {
     equalType<Omit<{ a: string, b: number, c: boolean }, 'b' | 'c'>, { a: string }>();
     equalType<Omit<{ a: string, b: number, c: boolean }, 'a'>, { b: number, c: boolean }>();
+});
+
+test('Omit 2', () => {
+    interface A {
+        readonly a: string;
+        readonly value: string;
+    }
+
+    type B = Omit<A, 'value'>;
+    equalType<B, { a: string }>();
 });
 
 test('intersection object', () => {
