@@ -258,7 +258,7 @@ export class App<T extends RootModuleDefinition> {
         return this;
     }
 
-    public async dispatch<T extends EventToken<any>>(eventToken: T, event: EventOfEventToken<T>, injector?: InjectorContext): Promise<void> {
+    public async dispatch<T extends EventToken<any>>(eventToken: T, event?: EventOfEventToken<T>, injector?: InjectorContext): Promise<void> {
         return await this.get(EventDispatcher).dispatch(eventToken, event, injector);
     }
 
