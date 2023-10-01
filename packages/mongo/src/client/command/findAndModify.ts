@@ -47,7 +47,7 @@ export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Comman
         for (const name of this.fields) fields[name] = 1;
 
         const cmd: any = {
-            findAndModify: this.schema.collectionName || this.schema.name || 'unknown',
+            findAndModify: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             query: this.query,
             update: this.update,

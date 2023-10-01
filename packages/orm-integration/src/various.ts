@@ -22,29 +22,30 @@ export const variousTests = {
         await database.persist(cast<user>({ username: 'peter' }));
         await database.persist(cast<user>({ username: 'marie' }));
 
+        type Count = {count: number};
+
         {
-            const result = await database.raw(sql`SELECT count(*) as count
+            const result = await database.raw<Count>(sql`SELECT count(*) as count
                                                   FROM ${user}`).findOne();
             expect(result.count).toBe(2);
         }
 
         {
-            const result = await database.createSession().raw(sql`SELECT count(*) as count
+            const result = await database.createSession().raw<Count>(sql`SELECT count(*) as count
                                                                   FROM ${user}`).findOne();
             expect(result.count).toBe(2);
         }
 
         {
             const id = 1;
-            const result = await database.createSession().raw(sql`SELECT count(*) as count
+            const result = await database.createSession().raw<Count>(sql`SELECT count(*) as count
                                                                   FROM ${user}
                                                                   WHERE id > ${id}`).findOne();
             expect(result.count).toBe(1);
         }
 
         {
-            const result = await database.raw(sql`SELECT *
-                                                  FROM ${user}`).find();
+            const result = await database.raw<user>(sql`SELECT * FROM ${user}`).find();
             expect(result).toEqual([
                 { id: 1, username: 'peter' },
                 { id: 2, username: 'marie' },
@@ -52,20 +53,17 @@ export const variousTests = {
         }
 
         {
-            const result = await database.createSession().raw(sql`SELECT *
-                                                                  FROM ${user}`).find();
+            const result = await database.createSession().raw<user>(sql`SELECT * FROM ${user}`).find();
             expect(result).toEqual([
                 { id: 1, username: 'peter' },
                 { id: 2, username: 'marie' },
             ]);
         }
 
-        await database.raw(sql`DELETE
-                               FROM ${user}`).execute();
+        await database.raw(sql`DELETE FROM ${user}`).execute();
 
         {
-            const result = await database.raw(sql`SELECT count(*) as count
-                                                  FROM ${user}`).findOne();
+            const result = await database.raw<Count>(sql`SELECT count(*) as count FROM ${user}`).findOne();
             expect(result.count).toBe(0);
         }
         database.disconnect();

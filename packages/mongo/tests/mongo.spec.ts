@@ -565,3 +565,55 @@ test('aggregation without accumulators', async () => {
         { downloadsSum: 0, category: 'pdfs' },
     ]);
 });
+
+test('raw', async () => {
+    class Model {
+        public _id: MongoId & PrimaryKey = '';
+
+        constructor(public id: number) {
+        }
+    }
+
+    const db = await createDatabase('raw');
+
+    {
+        const session = db.createSession();
+        for (let i = 0; i < 1000; i++) session.add(new Model(i));
+        await session.commit();
+    }
+
+    const result = await db.raw<Model, { count: number }>([{ $match: { id: { $gt: 500 } } }, { $count: 'count' }]).findOne();
+    expect(result.count).toBe(499);
+
+    const items = await db.raw<Model>([{ $match: { id: { $lt: 500 } } }]).find();
+    expect(items.length).toBe(500);
+    expect(items[0]).toBeInstanceOf(Model);
+});
+
+test('batch', async () => {
+    class Model {
+        public _id: MongoId & PrimaryKey = '';
+
+        constructor(public id: number) {
+        }
+    }
+
+    const db = await createDatabase('batch');
+    {
+        const session = db.createSession();
+        for (let i = 0; i < 1000; i++) session.add(new Model(i));
+        await session.commit();
+    }
+
+    {
+        const items = await db.query(Model).withBatchSize(10).find();
+        expect(items.length).toBe(1000);
+    }
+
+    {
+        const session = db.createSession();
+        session.useTransaction();
+        const items = await session.query(Model).withBatchSize(10).find();
+        expect(items.length).toBe(1000);
+    }
+});

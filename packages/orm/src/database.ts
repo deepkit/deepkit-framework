@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AbstractClassType, ClassType, getClassName, getClassTypeFromInstance } from '@deepkit/core';
+import { AbstractClassType, ClassType, forwardTypeArguments, getClassName, getClassTypeFromInstance } from '@deepkit/core';
 import {
     entityAnnotation,
     EntityOptions,
@@ -163,6 +163,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
             const session = this.createSession();
             session.withIdentityMap = false;
             if (!session.raw) throw new Error('Adapter has no raw mode');
+            forwardTypeArguments(this.raw, session.raw);
             return session.raw(...args);
         };
 

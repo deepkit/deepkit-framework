@@ -39,7 +39,7 @@ export class CountCommand<T extends ReflectionClass<any>> extends Command {
 
     async execute(config, host, transaction): Promise<number> {
         const cmd: any = {
-            count: this.schema.collectionName || this.schema.name || 'unknown',
+            count: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             query: this.query,
             limit: this.limit,

@@ -13,6 +13,7 @@ import { toFastProperties } from '@deepkit/core';
 import { DEEP_SORT } from '../../query.model.js';
 import { InlineRuntimeType, ReflectionClass, ReflectionKind, typeOf, TypeUnion, UUID } from '@deepkit/type';
 import { MongoError } from '../error.js';
+import { GetMoreMessage } from './getMore.js';
 
 interface FindSchema {
     find: string;
@@ -30,6 +31,8 @@ interface FindSchema {
 }
 
 export class FindCommand<T> extends Command {
+    batchSize: number = 1_000_000;
+
     constructor(
         public schema: ReflectionClass<T>,
         public filter: { [name: string]: any } = {},
@@ -43,12 +46,12 @@ export class FindCommand<T> extends Command {
 
     async execute(config, host, transaction): Promise<T[]> {
         const cmd: FindSchema = {
-            find: this.schema.collectionName || this.schema.name || 'unknown',
+            find: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             filter: this.filter,
             limit: this.limit,
             skip: this.skip,
-            batchSize: 1_000_000, //todo make configurable
+            batchSize: this.batchSize,
         };
 
         if (transaction) transaction.applyTransaction(cmd);
@@ -119,14 +122,32 @@ export class FindCommand<T> extends Command {
         }
 
         interface Response extends BaseResponse {
-            cursor: { id: BigInt, firstBatch?: any[], nextBatch?: any[] };
+            cursor: { id: bigint, firstBatch?: any[], nextBatch?: any[] };
         }
 
         const res = await this.sendAndWait<FindSchema, Response>(cmd, undefined, specialisedResponse);
         if (!res.cursor.firstBatch) throw new MongoError(`No firstBatch received`);
 
-        //todo: implement fetchMore and decrease batchSize
-        return res.cursor.firstBatch;
+        const result: T[] = res.cursor.firstBatch;
+
+        let cursorId = res.cursor.id;
+        while (cursorId) {
+            const nextCommand = {
+                getMore: cursorId,
+                $db: cmd.$db,
+                collection: cmd.find,
+                batchSize: cmd.batchSize,
+            };
+            if (transaction) transaction.applyTransaction(nextCommand);
+            const next = await this.sendAndWait<GetMoreMessage, Response>(nextCommand, undefined, specialisedResponse);
+
+            if (next.cursor.nextBatch) {
+                result.push(...next.cursor.nextBatch);
+            }
+            cursorId = next.cursor.id;
+        }
+
+        return result;
     }
 
     needsWritableHost(): boolean {

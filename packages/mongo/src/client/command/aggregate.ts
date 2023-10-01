@@ -10,8 +10,9 @@
 
 import { toFastProperties } from '@deepkit/core';
 import { BaseResponse, Command } from './command.js';
-import { InlineRuntimeType, ReflectionClass, Type, typeOf, UUID } from '@deepkit/type';
+import { getTypeJitContainer, InlineRuntimeType, isType, ReflectionClass, Type, typeOf, UUID } from '@deepkit/type';
 import { MongoError } from '../error.js';
+import { GetMoreMessage } from './getMore.js';
 
 interface AggregateMessage {
     aggregate: string;
@@ -28,29 +29,31 @@ interface AggregateMessage {
 
 export class AggregateCommand<T, R = BaseResponse> extends Command {
     partial: boolean = false;
+    batchSize: number = 1_000_000;
 
     constructor(
         public schema: ReflectionClass<T>,
         public pipeline: any[] = [],
-        public resultSchema?: ReflectionClass<R>,
+        public resultSchema?: ReflectionClass<R> | Type,
     ) {
         super();
     }
 
     async execute(config, host, transaction): Promise<R[]> {
         const cmd = {
-            aggregate: this.schema.collectionName || this.schema.name || 'unknown',
+            aggregate: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             pipeline: this.pipeline,
             cursor: {
-                batchSize: 1_000_000, //todo make configurable
+                batchSize: this.batchSize
             }
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        const resultSchema = this.resultSchema || this.schema;
+        let resultSchema = this.resultSchema || this.schema;
+        if (resultSchema && !isType(resultSchema)) resultSchema = resultSchema.type;
 
-        const jit = resultSchema.getJitContainer();
+        const jit = getTypeJitContainer(resultSchema);
         let specialisedResponse: Type | undefined = this.partial ? jit.mdbAggregatePartial : jit.mdbAggregate;
 
         if (!specialisedResponse) {
@@ -82,14 +85,32 @@ export class AggregateCommand<T, R = BaseResponse> extends Command {
         }
 
         interface Response extends BaseResponse {
-            cursor: { id: BigInt, firstBatch?: any[], nextBatch?: any[] };
+            cursor: { id: bigint, firstBatch?: any[], nextBatch?: any[] };
         }
 
         const res = await this.sendAndWait<AggregateMessage, Response>(cmd, undefined, specialisedResponse);
         if (!res.cursor.firstBatch) throw new MongoError(`No firstBatch received`);
 
-        //todo: implement fetchMore and decrease batchSize
-        return res.cursor.firstBatch;
+        const result: R[] = res.cursor.firstBatch;
+
+        let cursorId = res.cursor.id;
+        while (cursorId) {
+            const nextCommand = {
+                getMore: cursorId,
+                $db: cmd.$db,
+                collection: cmd.aggregate,
+                batchSize: cmd.cursor.batchSize,
+            };
+            if (transaction) transaction.applyTransaction(nextCommand);
+            const next = await this.sendAndWait<GetMoreMessage, Response>(nextCommand, undefined, specialisedResponse);
+
+            if (next.cursor.nextBatch) {
+                result.push(...next.cursor.nextBatch);
+            }
+            cursorId = next.cursor.id;
+        }
+
+        return result;
     }
 
     needsWritableHost(): boolean {

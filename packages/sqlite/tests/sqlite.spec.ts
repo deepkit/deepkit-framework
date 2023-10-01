@@ -6,6 +6,7 @@ import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-
 import { sleep } from '@deepkit/core';
 import { AutoIncrement, BackReference, cast, Entity, entity, isReferenceInstance, PrimaryKey, Reference, ReflectionClass, serialize, typeOf, UUID, uuid } from '@deepkit/type';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
+import { sql } from '@deepkit/sql';
 
 test('reflection circular reference', () => {
     const user = ReflectionClass.from(User);
@@ -263,6 +264,31 @@ test('connection pool', async () => {
         c2.release();
         await sleep(0.01);
         expect(c12).toBe(c2);
+    }
+});
+
+test('raw', async () => {
+    class User {
+        id!: number & PrimaryKey;
+        name!: string;
+    }
+
+    const database = await databaseFactory([ReflectionClass.from<User>()]);
+
+    await database.persist({ id: 1, name: 'Peter' });
+    await database.persist({ id: 2, name: 'Marie' });
+
+    {
+        const row = await database.raw<{ count: bigint }>(sql`SELECT count(*) as count FROM user`).findOne();
+        expect(row.count).toBe(2n);
+    }
+
+    {
+        const rows = await database.raw<User>(sql`SELECT * FROM user`).find();
+        expect(rows.length).toBe(2);
+        expect(rows[0]).toEqual({ id: 1, name: 'Peter' });
+        expect(rows[1]).toEqual({ id: 2, name: 'Marie' });
+        expect(rows[0]).toBeInstanceOf(User);
     }
 });
 

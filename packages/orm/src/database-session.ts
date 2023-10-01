@@ -11,7 +11,7 @@
 import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter.js';
 import { DatabaseEntityRegistry } from './database-adapter.js';
 import { DatabaseValidationError, OrmEntity } from './type.js';
-import { AbstractClassType, ClassType, CustomError } from '@deepkit/core';
+import { AbstractClassType, ClassType, CustomError, forwardTypeArguments } from '@deepkit/core';
 import {
     getPrimaryKeyExtractor,
     isReferenceInstance,
@@ -322,7 +322,10 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
         this.query = query as any;
 
         const factory = this.adapter.rawFactory(this);
-        this.raw = factory.create.bind(factory);
+        this.raw = (...args: any[]) => {
+            forwardTypeArguments(this.raw, factory.create);
+            return factory.create(...args);
+        };
     }
 
     /**

@@ -36,7 +36,7 @@ export class CreateIndexesCommand<T extends ReflectionClass<any>> extends Comman
 
     async execute(config, host, transaction): Promise<BaseResponse> {
         const cmd: any = {
-            createIndexes: this.schema.collectionName || this.schema.name || 'unknown',
+            createIndexes: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             indexes: this.indexes,
         };

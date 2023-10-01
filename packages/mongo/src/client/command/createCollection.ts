@@ -25,7 +25,7 @@ export class CreateCollectionCommand<T extends ReflectionClass<any>> extends Com
 
     async execute(config, host, transaction): Promise<BaseResponse> {
         const cmd: any = {
-            create: this.schema.collectionName || this.schema.name || 'unknown',
+            create: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
         };
 
