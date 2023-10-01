@@ -545,7 +545,6 @@ export class HttpRouter {
     constructor(
         controllers: HttpControllers,
         private logger: LoggerInterface,
-        tagRegistry: TagRegistry,
         private config: HttpConfig,
         private middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry,
         private registry: HttpRouterRegistry = new HttpRouterRegistry,
@@ -561,14 +560,13 @@ export class HttpRouter {
 
     static forControllers(
         controllers: (ClassType | { module: InjectorModule<any>, controller: ClassType })[],
-        tagRegistry: TagRegistry = new TagRegistry(),
         middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry(),
         module: InjectorModule<any> = new InjectorModule(),
         config: HttpConfig = new HttpConfig()
     ): HttpRouter {
         return new this(new HttpControllers(controllers.map(v => {
             return isClass(v) ? { controller: v, module } : v;
-        })), new Logger([], []), tagRegistry, config, middlewareRegistry);
+        })), new Logger([], []), config, middlewareRegistry);
     }
 
     protected getRouteCode(compiler: CompilerContext, routeConfig: RouteConfig): string {

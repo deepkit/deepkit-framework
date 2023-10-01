@@ -16,7 +16,7 @@ class Controller {
 test('middleware empty', async () => {
     const httpKernel = createHttpKernel([Controller], [], [], [httpMiddleware.for((req, res, next) => {
         next();
-    })]);
+    }).timeout(100)]);
 
     const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
     expect(response.statusCode).toEqual(200);

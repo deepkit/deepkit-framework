@@ -591,7 +591,6 @@ export class HttpListener {
 
                             async function next() {
                                 i++;
-                                const timeout = middlewares[i].timeout;
 
                                 if (i >= middlewares.length) {
                                     event.response.off('finish', finish);
@@ -599,6 +598,7 @@ export class HttpListener {
                                     return;
                                 }
 
+                                const timeout = middlewares[i].timeout;
                                 if (timeout !== undefined && timeout > 0) {
                                     lastTimer = setTimeout(() => {
                                         logger.warning(`Middleware timed out. Increase the timeout or fix the middleware. (${middlewares[i].fn})`);
