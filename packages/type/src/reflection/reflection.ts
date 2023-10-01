@@ -332,6 +332,7 @@ export class ReflectionParameter {
 
 export class ReflectionFunction {
     parameters: ReflectionParameter[] = [];
+    description: string = '';
 
     constructor(
         public readonly type: TypeMethod | TypeMethodSignature | TypeFunction,
@@ -339,6 +340,7 @@ export class ReflectionFunction {
         for (const p of this.type.parameters) {
             this.parameters.push(new ReflectionParameter(p, this));
         }
+        if (this.type.description) this.description = this.type.description;
     }
 
     static from(fn: Function): ReflectionFunction {
@@ -393,6 +395,10 @@ export class ReflectionFunction {
 
     getName(): number | string | symbol {
         return this.type.name || 'anonymous';
+    }
+
+    getDescription(): string {
+        return this.description;
     }
 
     get name(): string {
@@ -858,6 +864,7 @@ export class ReflectionClass<T> {
             this.name = parent.name;
             this.collectionName = parent.collectionName;
             this.databaseSchemaName = parent.databaseSchemaName;
+            this.description = parent.description;
 
             for (const member of parent.getProperties()) {
                 this.registerProperty(member.clone(this));
@@ -875,6 +882,7 @@ export class ReflectionClass<T> {
         if (entityOptions) {
             applyEntityOptions(this, entityOptions);
         }
+        this.description = this.type.description || this.description;
 
         //apply decorators
         if (type.kind === ReflectionKind.class && isWithDeferredDecorators(type.classType)) {
@@ -911,6 +919,7 @@ export class ReflectionClass<T> {
         reflection.indexes = this.indexes.slice();
         reflection.subClasses = this.subClasses.slice();
         reflection.data = { ...this.data };
+        reflection.description = this.description;
 
         return reflection;
     }
@@ -952,6 +961,10 @@ export class ReflectionClass<T> {
 
     getName(): string {
         return this.name || this.getClassName();
+    }
+
+    getDescription(): string {
+        return this.description;
     }
 
     getCollectionName(): string {
