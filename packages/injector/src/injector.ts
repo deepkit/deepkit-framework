@@ -10,8 +10,19 @@ import {
     TagRegistry,
     Token
 } from './provider.js';
-import { AbstractClassType, ClassType, CompilerContext, CustomError, getClassName, getPathValue, isArray, isClass, isFunction, isPrototypeOfBase } from '@deepkit/core';
-import { findModuleForConfig, getScope, InjectorModule, PreparedProvider } from './module.js';
+import {
+    AbstractClassType,
+    ClassType,
+    CompilerContext,
+    CustomError,
+    getClassName,
+    getPathValue,
+    isArray,
+    isClass,
+    isFunction,
+    isPrototypeOfBase
+} from '@deepkit/core';
+import {findModuleForConfig, getScope, InjectorModule, PreparedProvider} from './module.js';
 import {
     hasTypeInformation,
     isExtendable,
@@ -110,7 +121,6 @@ function createTransientInjectionTarget(destination: Destination | undefined) {
 
     return new TransientInjectionTarget(destination.token);
 }
-
 
 let CircularDetector: any[] = [];
 let CircularDetectorResets: (() => void)[] = [];
@@ -226,13 +236,19 @@ export class TransientInjectionTarget {
 }
 
 /**
+ * A factory function for some class.
+ * All properties that are not provided will be resolved using the injector that was used to create the factory.
+ */
+export type PartialFactory<C> = (args: Partial<{ [K in keyof C]: C[K] }>) => C;
+
+/**
  * This is the actual dependency injection container.
  * Every module has its own injector.
  *
  * @reflection never
  */
 export class Injector implements InjectorInterface {
-    private resolver?: (token: any, scope?: Scope) => any;
+    private resolver?: (token: any, scope?: Scope, destination?: Destination) => any;
     private setter?: (token: any, value: any, scope?: Scope) => any;
     private instantiations?: (token: any, scope?: string) => number;
 
@@ -612,6 +628,13 @@ export class Injector implements InjectorInterface {
             return `new ${tokenVar}(${resolvedVar} || (${resolvedVar} = [${args.join(', ')}]))`;
         }
 
+        if (options.type.kind === ReflectionKind.function && options.type.typeName === 'PartialFactory') {
+            const type = options.type.typeArguments?.[0];
+            const factory = partialFactory(type, this);
+            const factoryVar = compiler.reserveConst(factory, 'factory');
+            return `${factoryVar}(scope)`;
+        }
+
         if (options.type.kind === ReflectionKind.objectLiteral) {
             const pickArguments = getPickArguments(options.type);
             if (pickArguments) {
@@ -763,6 +786,12 @@ export class Injector implements InjectorInterface {
             return new type.classType(args);
         }
 
+        if (type.kind === ReflectionKind.function && type.typeName === 'PartialFactory') {
+            const factoryType = type.typeArguments?.[0];
+            const factory = partialFactory(factoryType, this);
+            return (scopeIn?: Scope) => factory(scopeIn);
+        }
+
         if (isWithAnnotations(type)) {
             if (type.kind === ReflectionKind.objectLiteral) {
                 const pickArguments = getPickArguments(type);
@@ -808,7 +837,8 @@ export class Injector implements InjectorInterface {
                     }
                     current = current.indexAccessOrigin.container;
                 }
-                return () => config;
+
+                if (config) return () => config;
             }
         }
 
@@ -972,4 +1002,72 @@ export function injectedFunction<T extends (...args: any) => any>(fn: T, injecto
         }
     }
     return fn;
+}
+
+export function partialFactory(
+    type: Type | undefined,
+    injector: Injector,
+) {
+    if (!type) throw new Error('Can not create partial factory for undefined type');
+
+    // must be lazy because creating resolvers for types that are never resolved & unresolvable will throw
+    function createLazyResolver(type: Type, label?: string): Resolver<any> {
+        let resolver: Resolver<any> | undefined = undefined;
+        return (scope?: Scope) => {
+            if (!resolver) {
+                resolver = injector.createResolver(type, scope, label);
+            }
+            return resolver(scope);
+        };
+    }
+
+    if (type.kind === ReflectionKind.class) {
+        const classType = type.classType;
+        const reflectionClass = ReflectionClass.from(classType);
+
+        const args: { name: string; resolve: (scope?: Scope) => ReturnType<Resolver<any>> }[] = [];
+        const constructor = reflectionClass.getMethodOrUndefined('constructor');
+        if (constructor) {
+            for (const parameter of constructor.getParameters()) {
+                args.push({
+                    name: parameter.name,
+                    resolve: createLazyResolver(parameter.getType() as Type, parameter.name),
+                });
+            }
+        }
+
+        const properties = new Map<keyof any, (scope?: Scope) => ReturnType<Resolver<any>>>();
+        for (const property of reflectionClass.getProperties()) {
+            const tokenType = getInjectOptions(property.type);
+            if (!tokenType) continue;
+
+            properties.set(property.getName(), createLazyResolver(tokenType, property.name));
+        }
+
+        return (scope?: Scope) => <T>(partial: Partial<{ [K in keyof T]: T[K] }>) => {
+            const instance = new classType(...(args.map((v) => partial[v.name as keyof T] ?? v.resolve(scope))));
+            for (const [property, resolve] of properties.entries()) {
+                instance[property] ??= partial[property as keyof T] ?? resolve(scope);
+            }
+            return instance as T;
+        };
+    }
+
+    if (type.kind === ReflectionKind.objectLiteral) {
+        const properties = new Map<keyof any, (scope?: Scope) => ReturnType<Resolver<any>>>();
+        for (const property of type.types) {
+            if (property.kind !== ReflectionKind.propertySignature) continue;
+            properties.set(property.name, createLazyResolver(property, String(property.name)));
+        }
+
+        return (scope?: Scope) => <T>(partial: Partial<{ [K in keyof T]: T[K] }>) => {
+            const obj: any = {};
+            for (const [property, resolve] of properties.entries()) {
+                obj[property] = partial[property as keyof T] ?? resolve(scope);
+            }
+            return obj as T;
+        };
+    }
+
+    throw new Error(`Can not create partial factory for ${stringifyType(type, { showFullDefinition: false })}`);
 }

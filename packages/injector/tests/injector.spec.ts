@@ -1,5 +1,13 @@
 import { expect, test } from '@jest/globals';
-import { CircularDependencyError, DependenciesUnmetError, injectedFunction, Injector, InjectorContext, TransientInjectionTarget } from '../src/injector.js';
+import {
+    CircularDependencyError,
+    DependenciesUnmetError,
+    injectedFunction,
+    Injector,
+    InjectorContext,
+    TransientInjectionTarget,
+    PartialFactory,
+} from '../src/injector.js';
 import { InjectorModule } from '../src/module.js';
 import { ReflectionClass, ReflectionKind, ReflectionParameter, ReflectionProperty } from '@deepkit/type';
 import { Inject } from '../src/types.js';
@@ -853,5 +861,102 @@ test('TransientInjectionTarget', () => {
         const a = injector.get(A);
         expect(a.b).toBeDefined();
         expect(a.b.target.token).toBe(A);
+    }
+});
+
+test('PartialFactory', () => {
+    {
+        class A {
+            constructor (public b: B, public num: number) {
+            }
+        }
+
+        class B {
+            public b = 'b';
+
+            constructor() {
+            }
+        }
+
+        const injector = Injector.from([B]);
+        const factory = injector.get<PartialFactory<A>>();
+
+        const a = factory({
+            num: 5,
+        });
+
+        expect(a.b).toBeInstanceOf(B);
+        expect(a.num).toBe(5);
+    }
+
+    {
+        class A {
+            public num!: Inject<number>;
+            public b!: Inject<B>;
+        }
+
+        class B {
+            public b = 'b';
+        }
+
+        const injector = Injector.from([B]);
+        const factory = injector.get<PartialFactory<A>>();
+
+        const a = factory({
+            num: 6,
+        });
+
+        expect(a.b).toBeInstanceOf(B);
+        expect(a.num).toBe(6);
+    }
+
+    {
+        class A {
+            constructor(public factory: PartialFactory<B>) {
+            }
+        }
+
+        class B {
+            constructor(public num: number, public c: C) {
+            }
+        }
+
+        class C {
+            public c = 'c';
+        }
+
+        const injector = Injector.from([A, C]);
+
+        const a = injector.get(A);
+        const b = a.factory({ num: 5 });
+
+        expect(a.factory).toBeInstanceOf(Function);
+        expect(b).toBeInstanceOf(B);
+        expect(b.num).toBe(5);
+        expect(b.c).toBeInstanceOf(C);
+    }
+
+    {
+        class A {
+            public b: B;
+            public num: number;
+
+            constructor(public factory: PartialFactory<{ b: B; num: number }>) {
+                const { b, num } = factory({ num: 5 });
+                this.b = b;
+                this.num = num;
+            }
+        }
+
+        class B {
+            public b = 'b';
+        }
+
+        const injector = Injector.from([A, B]);
+        const a = injector.get(A);
+
+        expect(injector.get(B)).toBeInstanceOf(B);
+        expect(a.b).toBeInstanceOf(B);
+        expect(a.num).toBe(5);
     }
 });
