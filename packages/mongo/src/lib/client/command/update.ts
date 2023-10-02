@@ -40,7 +40,7 @@ export class UpdateCommand<T extends ReflectionClass<any>> extends Command {
 
     async execute(config, host, transaction): Promise<number> {
         const cmd = {
-            update: this.schema.collectionName || this.schema.name || 'unknown',
+            update: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             updates: this.updates
         };

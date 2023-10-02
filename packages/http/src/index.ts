@@ -1,5 +1,6 @@
 export * from './lib/decorator.js';
 export * from './lib/http.js';
+export * from './lib/http-app.js';
 export * from './lib/model.js';
 export * from './lib/logger.js';
 export * from './lib/router.js';

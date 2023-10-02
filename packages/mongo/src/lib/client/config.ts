@@ -138,7 +138,7 @@ export class MongoClientConfig {
     }
 
     resolveCollectionName(schema: ReflectionClass<any>): string {
-        return schema.collectionName || schema.name || 'unknown';
+        return schema.getCollectionName() || 'unknown';
     }
 
     @singleStack()

@@ -220,6 +220,7 @@ export class MongoDatabaseTransaction extends DatabaseTransaction {
 
     async begin() {
         if (!this.connection) return;
+        // see https://github.com/mongodb/specifications/blob/master/source/sessions/driver-sessions.rst
         this.lsid = { id: uuid() };
         this.txnNumber = MongoDatabaseTransaction.txnNumber++;
         // const res = await this.connection.execute(new StartSessionCommand());

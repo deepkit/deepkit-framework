@@ -103,6 +103,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
     public sort?: SORT;
     public readonly change = new Subject<void>();
     public returning: (keyof T & string)[] = [];
+    public batchSize?: number;
 
     isLazyLoaded(field: string): boolean {
         return this.lazyLoad.has(field);
@@ -139,6 +140,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
         m.groupBy = new Set(this.groupBy);
         m.lazyLoad = new Set(this.lazyLoad);
         m.for = this.for;
+        m.batchSize = this.batchSize;
         m.aggregate = new Map(this.aggregate);
         m.parameters = { ...this.parameters };
 
@@ -271,6 +273,12 @@ export class BaseQuery<T extends OrmEntity> {
     forUpdate(): this {
         const c = this.clone();
         c.model.for = 'update';
+        return c as any;
+    }
+
+    withBatchSize(batchSize: number): this {
+        const c = this.clone();
+        c.model.batchSize = batchSize;
         return c as any;
     }
 
@@ -628,6 +636,14 @@ export abstract class GenericQueryResolver<T extends object, ADAPTER extends Dat
     abstract patch(model: MODEL, value: Changes<T>, patchResult: PatchResult<T>): Promise<void>;
 }
 
+export interface FindQuery<T> {
+    findOneOrUndefined(): Promise<T | undefined>;
+
+    findOne(): Promise<T>;
+
+    find(): Promise<T[]>;
+}
+
 export type Methods<T> = { [K in keyof T]: K extends keyof Query<any> ? never : T[K] extends ((...args: any[]) => any) ? K : never }[keyof T];
 
 /**
@@ -660,7 +676,9 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
         this.model.withIdentityMap = session.withIdentityMap;
     }
 
-    static from<Q extends Query<any> & { _: () => T }, T extends ReturnType<InstanceType<B>['_']>, B extends ClassType<Query<any>>>(this: B, query: Q): Replace<InstanceType<B>, Resolve<Q>> {
+    static from<Q extends Query<any> & {
+        _: () => T
+    }, T extends ReturnType<InstanceType<B>['_']>, B extends ClassType<Query<any>>>(this: B, query: Q): Replace<InstanceType<B>, Resolve<Q>> {
         const result = (new this(query.classSchema, query.session, query.resolver));
         result.model = query.model.clone(result);
         return result as any;

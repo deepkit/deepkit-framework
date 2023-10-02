@@ -591,20 +591,24 @@ export class HttpListener {
 
                             async function next() {
                                 i++;
+
                                 if (i >= middlewares.length) {
                                     event.response.off('finish', finish);
                                     resolve(undefined);
                                     return;
                                 }
 
-                                lastTimer = setTimeout(() => {
-                                    logger.warning(`Middleware timed out. Increase the timeout or fix the middleware. (${middlewares[i].fn})`);
-                                    next();
-                                }, middlewares[i].timeout);
+                                const timeout = middlewares[i].timeout;
+                                if (timeout !== undefined && timeout > 0) {
+                                    lastTimer = setTimeout(() => {
+                                        logger.warning(`Middleware timed out. Increase the timeout or fix the middleware. (${middlewares[i].fn})`);
+                                        next();
+                                    }, timeout);
+                                }
 
                                 try {
                                     await middlewares[i].fn(event.request, event.response, (error?: any) => {
-                                        clearTimeout(lastTimer);
+                                        if (lastTimer) clearTimeout(lastTimer);
                                         if (error) {
                                             event.response.off('finish', finish);
                                             reject(error);

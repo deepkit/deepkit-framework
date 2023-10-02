@@ -142,6 +142,7 @@ const {
     isSourceFile,
     isStringLiteral,
     isTypeAliasDeclaration,
+    isTypeLiteralNode,
     isTypeParameterDeclaration,
     isTypeQueryNode,
     isTypeReferenceNode,
@@ -1165,7 +1166,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
         //when its commonJS, the `variable` would be exported as `exports.$name = $value`, but all references point just to $name.
         //so the idea is, that we create a normal variable and export it via `export {$name}`.
-        if (hasModifier(node as NodeWithModifiers, SyntaxKind.ExportKeyword)) {
+        if (hasModifier(node, SyntaxKind.ExportKeyword)) {
             //propertyName in ExportSpecifier is set to avoid a TS compile error:
             // TypeError: Cannot read properties of undefined (reading 'escapedText')
             //   at Object.idText (/Users/marc/bude/deepkit-framework/packages/benchmark/node_modules/typescript/lib/typescript.js:11875:67)
@@ -1246,6 +1247,8 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 if (node) {
                     const members: ClassElement[] = [];
+                    const description = extractJSDocAttribute(narrowed, 'description');
+                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
 
                     if (narrowed.typeParameters) {
                         for (const typeParameter of narrowed.typeParameters) {
@@ -1288,6 +1291,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     }
 
                     program.pushOp(ReflectionOp.class);
+                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
 
                     if (narrowed.heritageClauses && narrowed.heritageClauses[0] && narrowed.heritageClauses[0].types[0]) {
                         const first = narrowed.heritageClauses[0].types[0];
@@ -1375,6 +1379,7 @@ export class ReflectionTransformer implements CustomTransformer {
             case SyntaxKind.InterfaceDeclaration: {
                 //TypeScript does not narrow types down
                 const narrowed = node as TypeLiteralNode | InterfaceDeclaration;
+                let descriptionNode: Node = narrowed;
                 program.pushFrame();
 
                 //first all extend expressions
@@ -1392,6 +1397,11 @@ export class ReflectionTransformer implements CustomTransformer {
                     this.extractPackStructOfType(member, program);
                 }
                 program.pushOp(ReflectionOp.objectLiteral);
+                if (isTypeLiteralNode(narrowed)) {
+                    descriptionNode = narrowed.parent;
+                }
+                const description = extractJSDocAttribute(descriptionNode, 'description');
+                if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
                 program.popFrameImplicit();
                 break;
             }
@@ -1622,6 +1632,8 @@ export class ReflectionTransformer implements CustomTransformer {
                     if (hasModifier(narrowed, SyntaxKind.AbstractKeyword)) program.pushOp(ReflectionOp.abstract);
                     if (hasModifier(narrowed, SyntaxKind.StaticKeyword)) program.pushOp(ReflectionOp.static);
                 }
+                const description = extractJSDocAttribute(narrowed, 'description');
+                if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
                 program.popFrameImplicit();
                 break;
             }
@@ -1691,6 +1703,8 @@ export class ReflectionTransformer implements CustomTransformer {
                     }
                 }
                 program.pushOp(ReflectionOp.enum);
+                const description = extractJSDocAttribute(narrowed, 'description');
+                if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
                 program.popFrameImplicit();
                 break;
             }
@@ -2378,7 +2392,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
     protected resolveImportSpecifier(declarationName: __String, importOrExport: ExportDeclaration | ImportDeclaration, sourceFile: SourceFile): Declaration | undefined {
         if (!importOrExport.moduleSpecifier) return;
-        // if (!isStringLiteral(importOrExport.moduleSpecifier)) return;
+        if (!isStringLiteral(importOrExport.moduleSpecifier)) return;
 
         let source: SourceFile | ModuleDeclaration | undefined = this.resolver.resolve(sourceFile, importOrExport);
 

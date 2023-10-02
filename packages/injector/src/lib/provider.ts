@@ -22,7 +22,18 @@ export interface ProviderBase {
 /** @reflection never */
 export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | AbstractClassType<T> | Type | T;
 
-export function provide<T>(provider: { useValue: T } | { useClass: ClassType } | { useExisting: any } | { useFactory: (...args: any[]) => T } | ClassType, type?: ReceiveType<T>): NormalizedProvider {
+export function provide<T>(
+    provider:
+        | (ProviderBase &
+        (
+            | { useValue: T }
+            | { useClass: ClassType }
+            | { useExisting: any }
+            | { useFactory: (...args: any[]) => T }
+            ))
+        | ClassType,
+    type?: ReceiveType<T>,
+): NormalizedProvider {
     if (isClass(provider)) return { provide: resolveReceiveType(type), useClass: provider };
     return { ...provider, provide: resolveReceiveType(type) };
 }

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { ClassType, CompilerContext, getClassName, isArray, isClass, urlJoin } from '@deepkit/core';
-import { entity, ReflectionClass, ReflectionFunction, ReflectionKind, ReflectionParameter, SerializationOptions, Serializer, Type, ValidationError } from '@deepkit/type';
+import { entity, ReflectionClass, ReflectionFunction, ReflectionKind, ReflectionParameter, SerializationOptions, serializer, Serializer, Type, ValidationError } from '@deepkit/type';
 import { HttpAction, httpClass, HttpController, HttpDecorator } from './decorator.js';
 import { HttpRequest, HttpRequestPositionedParameters, HttpRequestQuery, HttpRequestResolvedParameters } from './model.js';
 import { InjectorContext, InjectorModule, TagRegistry } from '@deepkit/injector';
@@ -29,11 +29,18 @@ interface ResolvedController {
     parameters: RouteParameterResolverForInjector;
     routeConfig: RouteConfig;
     uploadedFiles: { [name: string]: UploadedFile };
-    middlewares?: (injector: InjectorContext) => { fn: HttpMiddlewareFn, timeout: number }[];
+    middlewares?: (injector: InjectorContext) => { fn: HttpMiddlewareFn, timeout?: number }[];
 }
+
+export const UploadedFileSymbol = Symbol('UploadedFile');
 
 @entity.name('@deepkit/UploadedFile')
 export class UploadedFile {
+    /**
+     * Validator to ensure the file was provided by the framework, and not the user spoofing it.
+     */
+    validator!: typeof UploadedFileSymbol | null;
+
     /**
      * The size of the uploaded file in bytes.
      */
@@ -65,6 +72,11 @@ export class UploadedFile {
     //  */
     // hash!: string | 'sha1' | 'md5' | 'sha256' | null;
 }
+
+serializer.typeGuards.getRegistry(1).registerClass(UploadedFile, (type, state) => {
+    state.setContext({ UploadedFileSymbol });
+    state.addSetterAndReportErrorIfInvalid('uploadSecurity', 'Not an uploaded file', `typeof ${state.accessor} === 'object' && ${state.accessor} !== null && ${state.accessor}.validator === UploadedFileSymbol`);
+});
 
 export interface RouteFunctionControllerAction {
     type: 'function';
@@ -533,7 +545,6 @@ export class HttpRouter {
     constructor(
         controllers: HttpControllers,
         private logger: LoggerInterface,
-        tagRegistry: TagRegistry,
         private config: HttpConfig,
         private middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry,
         private registry: HttpRouterRegistry = new HttpRouterRegistry,
@@ -549,14 +560,13 @@ export class HttpRouter {
 
     static forControllers(
         controllers: (ClassType | { module: InjectorModule<any>, controller: ClassType })[],
-        tagRegistry: TagRegistry = new TagRegistry(),
         middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry(),
         module: InjectorModule<any> = new InjectorModule(),
         config: HttpConfig = new HttpConfig()
     ): HttpRouter {
         return new this(new HttpControllers(controllers.map(v => {
             return isClass(v) ? { controller: v, module } : v;
-        })), new Logger([], []), tagRegistry, config, middlewareRegistry);
+        })), new Logger([], []), config, middlewareRegistry);
     }
 
     protected getRouteCode(compiler: CompilerContext, routeConfig: RouteConfig): string {

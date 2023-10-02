@@ -8,8 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseEntityRegistry, DatabaseSession, OrmEntity } from '@deepkit/orm';
-import { AbstractClassType, ClassType } from '@deepkit/core';
+import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseEntityRegistry, DatabaseSession, FindQuery, ItemNotFound, OrmEntity, RawFactory } from '@deepkit/orm';
+import { AbstractClassType, ClassType, isArray } from '@deepkit/core';
 import { MongoDatabaseQuery } from './query.js';
 import { MongoPersistence } from './persistence.js';
 import { MongoClient } from './client/client.js';
@@ -19,7 +19,9 @@ import { MongoDatabaseTransaction } from './client/connection.js';
 import { CreateIndex, CreateIndexesCommand } from './client/command/createIndexes.js';
 import { DropIndexesCommand } from './client/command/dropIndexes.js';
 import { CreateCollectionCommand } from './client/command/createCollection.js';
-import { entity, ReceiveType, ReflectionClass } from '@deepkit/type';
+import { entity, ReceiveType, ReflectionClass, resolveReceiveType } from '@deepkit/type';
+import { Command } from './client/command/command.js';
+import { AggregateCommand } from './client/command/aggregate.js';
 
 export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     constructor(
@@ -32,6 +34,52 @@ export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): MongoDatabaseQuery<T> {
         const schema = ReflectionClass.from(type);
         return new MongoDatabaseQuery(schema, this.databaseSession, new MongoQueryResolver(schema, this.databaseSession, this.client));
+    }
+}
+
+class MongoRawCommandQuery<T> implements FindQuery<T> {
+    constructor(
+        protected session: DatabaseSession<MongoDatabaseAdapter>,
+        protected client: MongoClient,
+        protected command: Command,
+    ) {
+    }
+
+    async find(): Promise<T[]> {
+        const res = await this.client.execute(this.command);
+        return res as any;
+    }
+
+    async findOneOrUndefined(): Promise<T> {
+        const res = await this.client.execute(this.command);
+        if (isArray(res)) return res[0];
+        return res;
+    }
+
+    async findOne(): Promise<T> {
+        const item = await this.findOneOrUndefined();
+        if (!item) throw new ItemNotFound('Could not find item');
+        return item;
+    }
+}
+
+export class MongoRawFactory implements RawFactory<[Command]> {
+    constructor(
+        protected session: DatabaseSession<MongoDatabaseAdapter>,
+        protected client: MongoClient,
+    ) {
+    }
+
+    create<Entity = any, ResultSchema = Entity>(
+        commandOrPipeline: Command | any[],
+        type?: ReceiveType<Entity>,
+        resultType?: ReceiveType<ResultSchema>,
+    ): MongoRawCommandQuery<ResultSchema> {
+        type = resolveReceiveType(type);
+        const resultSchema = resultType ? resolveReceiveType(resultType) : undefined;
+
+        const command = isArray(commandOrPipeline) ? new AggregateCommand(ReflectionClass.from(type), commandOrPipeline, resultSchema) : commandOrPipeline;
+        return new MongoRawCommandQuery<ResultSchema>(this.session, this.client, command);
     }
 }
 
@@ -53,6 +101,10 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
         }
 
         this.ormSequences = ReflectionClass.from(OrmSequence);
+    }
+
+    rawFactory(session: DatabaseSession<this>): MongoRawFactory {
+        return new MongoRawFactory(session, this.client);
     }
 
     getName(): string {

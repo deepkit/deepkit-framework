@@ -23,7 +23,9 @@ import {
     DatabaseTransaction,
     DeleteResult,
     FilterQuery,
+    FindQuery,
     GenericQueryResolver,
+    ItemNotFound,
     OrmEntity,
     PatchResult,
     Query,
@@ -33,11 +35,23 @@ import {
     SORT_ORDER
 } from '@deepkit/orm';
 import { AbstractClassType, ClassType, isArray, isClass } from '@deepkit/core';
-import { Changes, entity, getPartialSerializeFunction, getSerializeFunction, PrimaryKey, ReceiveType, ReflectionClass } from '@deepkit/type';
+import {
+    castFunction,
+    Changes,
+    entity,
+    getPartialSerializeFunction,
+    getSerializeFunction,
+    PrimaryKey,
+    ReceiveType,
+    ReflectionClass,
+    ReflectionKind,
+    resolveReceiveType,
+    Type
+} from '@deepkit/type';
 import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform.js';
 import { Sql, SqlBuilder } from './sql-builder.js';
 import { SqlFormatter } from './sql-formatter.js';
-import { DatabaseComparator, DatabaseModel, Table } from './schema/table.js';
+import { DatabaseComparator, DatabaseModel } from './schema/table.js';
 import { Stopwatch } from '@deepkit/stopwatch';
 
 export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
@@ -329,6 +343,8 @@ export function identifier(id: string) {
     return new SQLQueryIdentifier(id);
 }
 
+export type SqlStatement = { sql: string, params: any[] };
+
 export class SqlQuery {
     constructor(public parts: ReadonlyArray<QueryPart>) {
     }
@@ -341,7 +357,7 @@ export class SqlQuery {
         platform: DefaultPlatform,
         placeholderStrategy: SqlPlaceholderStrategy,
         tableName?: string
-    ): { sql: string, params: any[] } {
+    ): SqlStatement {
         let sql = '';
         const params: any[] = [];
 
@@ -488,12 +504,13 @@ export class SqlMigrationHandler {
     }
 }
 
-export class RawQuery {
+export class RawQuery<T> implements FindQuery<T> {
     constructor(
         protected session: DatabaseSession<SQLDatabaseAdapter>,
         protected connectionPool: SQLConnectionPool,
         protected platform: DefaultPlatform,
         protected sql: SqlQuery,
+        protected type: Type,
     ) {
     }
 
@@ -512,22 +529,43 @@ export class RawQuery {
     }
 
     /**
-     * Returns the raw result of a single row.
+     * Returns the SQL statement with placeholders replaced with the actual values.
      */
-    async findOne(): Promise<any> {
+    getSql(): SqlStatement {
+        return this.sql.convertToSQL(this.platform, new this.platform.placeholderStrategy);
+    }
+
+    /**
+     * Returns the raw result of a single row.
+     *
+     * Note that this does not resolve/map joins. Use the regular database.query() for that.
+     */
+    async findOneOrUndefined(): Promise<T> {
         return (await this.find())[0];
     }
 
     /**
-     * Returns the full result of a raw query.
+     * Note that this does not resolve/map joins. Use the regular database.query() for that.
      */
-    async find(): Promise<any[]> {
+    async findOne(): Promise<T> {
+        const item = await this.findOneOrUndefined();
+        if (!item) throw new ItemNotFound('Item not found');
+        return item;
+    }
+
+    /**
+     * Returns the full result of a raw query.
+     *
+     * Note that this does not resolve/map joins. Use the regular database.query() for that.
+     */
+    async find(): Promise<T[]> {
         const sql = this.sql.convertToSQL(this.platform, new this.platform.placeholderStrategy);
         const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
 
         try {
+            const caster = castFunction(undefined, undefined, undefined, this.type);
             const res = await connection.execAndReturnAll(sql.sql, sql.params);
-            return isArray(res) ? [...res] : [];
+            return (isArray(res) ? [...res] : []).map(v => caster(v)) as T[];
         } finally {
             connection.release();
         }
@@ -542,8 +580,9 @@ export class SqlRawFactory implements RawFactory<[SqlQuery]> {
     ) {
     }
 
-    create(sql: SqlQuery): RawQuery {
-        return new RawQuery(this.session, this.connectionPool, this.platform, sql);
+    create<T>(sql: SqlQuery, type?: ReceiveType<T>): RawQuery<T> {
+        type = type ? resolveReceiveType(type) : { kind: ReflectionKind.any };
+        return new RawQuery(this.session, this.connectionPool, this.platform, sql, type);
     }
 }
 

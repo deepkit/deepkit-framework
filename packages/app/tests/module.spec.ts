@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { Minimum, MinLength } from '@deepkit/type';
-import { injectorReference } from '@deepkit/injector';
+import { injectorReference, provide } from '@deepkit/injector';
 import { ServiceContainer } from '../src/lib/service-container.js';
 import { ClassType } from '@deepkit/core';
 import { AppModule, createModule } from '../src/lib/module.js';
@@ -246,6 +246,22 @@ test('same module loaded twice', () => {
         expect(serviceContainer.getInjector(a).get(Service).path).toBe('/a');
         expect(serviceContainer.getInjector(b).get(Service).path).toBe('/b');
     }
+});
+
+test('interface provider can be exported', () => {
+   interface Test {}
+
+   const TEST = {};
+
+   const Test = provide<Test>({ useValue: TEST });
+
+   const test = new AppModule({ providers: [Test], exports: [Test] });
+
+   const app = new AppModule({ imports: [test] });
+
+    const serviceContainer = new ServiceContainer(app);
+
+   expect(serviceContainer.getInjector(app).get<Test>()).toBe(TEST);
 });
 
 test('non-exported providers can not be overwritten', () => {

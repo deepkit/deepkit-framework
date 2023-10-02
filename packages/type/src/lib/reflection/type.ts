@@ -269,6 +269,7 @@ export interface TypeMethod extends TypeBaseMember {
     kind: ReflectionKind.method,
     parent: TypeClass;
     name: number | string | symbol;
+    description?: string;
     parameters: TypeParameter[];
     return: Type;
 }
@@ -291,6 +292,7 @@ export interface TypeFunction extends TypeAnnotations {
     kind: ReflectionKind.function,
     parent?: Type;
     name?: number | string | symbol,
+    description?: string;
     function?: Function; //reference to the real function if available
     parameters: TypeParameter[];
     return: Type;
@@ -313,6 +315,7 @@ export interface TypeClass extends TypeAnnotations {
     kind: ReflectionKind.class,
     parent?: Type;
     classType: ClassType;
+    description?: string;
 
     /**
      * When the class extends another class and uses on it generic type arguments, then those arguments
@@ -339,6 +342,7 @@ export interface TypeEnum extends TypeAnnotations {
     enum: { [name: string]: string | number | undefined | null };
     values: (string | number | undefined | null)[];
     indexType: Type;
+    description?: string;
 }
 
 export interface TypeEnumMember extends TypeAnnotations {
@@ -387,6 +391,7 @@ export interface TypeMethodSignature extends TypeAnnotations {
     parent: TypeObjectLiteral;
     name: number | string | symbol;
     optional?: true;
+    description?: string;
     parameters: TypeParameter[];
     return: Type;
 }
@@ -397,6 +402,7 @@ export interface TypeMethodSignature extends TypeAnnotations {
 export interface TypeObjectLiteral extends TypeAnnotations {
     kind: ReflectionKind.objectLiteral,
     parent?: Type;
+    description?: string;
     types: (TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeCallSignature)[];
 }
 

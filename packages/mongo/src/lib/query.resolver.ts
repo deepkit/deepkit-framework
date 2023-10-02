@@ -310,6 +310,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                 const pipeline = this.buildAggregationPipeline(model);
                 const resultsSchema = model.isAggregate() ? this.getCachedAggregationSchema(model) : this.getSchemaWithJoins();
                 const command = new AggregateCommand(this.classSchema, pipeline, resultsSchema);
+                if (model.batchSize) command.batchSize = model.batchSize;
                 command.partial = model.isPartial();
                 const items = await connection.execute(command);
                 if (model.isAggregate()) {
@@ -318,14 +319,16 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
 
                 return items.map(v => formatter.hydrate(model, v));
             } else {
-                const items = await connection.execute(new FindCommand(
+                const command = new FindCommand(
                     this.classSchema,
                     getMongoFilter(this.classSchema, model),
                     this.getProjection(this.classSchema, model.select),
                     this.getSortFromModel(model.sort),
                     model.limit,
                     model.skip,
-                ));
+                );
+                if (model.batchSize) command.batchSize = model.batchSize;
+                const items = await connection.execute(command);
                 return items.map(v => formatter.hydrate(model, v));
             }
         } finally {

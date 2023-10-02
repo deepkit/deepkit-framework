@@ -39,7 +39,7 @@ export abstract class DatabasePersistence {
 }
 
 export class RawFactory<A extends Array<any>> {
-    create(...args: A): any {
+    create<T = any>(...args: A): any {
         throw new Error(`Current database adapter does not support raw mode.`);
     }
 }

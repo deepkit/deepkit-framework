@@ -27,7 +27,7 @@ export class DropIndexesCommand<T extends ReflectionClass<any>> extends Command 
 
     async execute(config, host, transaction): Promise<BaseResponse> {
         const cmd: any = {
-            dropIndexes: this.schema.collectionName || this.schema.name || 'unknown',
+            dropIndexes: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             index: this.names
         };

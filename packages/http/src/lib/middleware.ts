@@ -35,7 +35,7 @@ export class HttpMiddlewareConfig {
     routeNames: string[] = [];
     excludeRouteNames: string[] = [];
 
-    timeout: number = 4_000;
+    timeout?: number;
 
     modules: InjectorModule<any>[] = [];
 

@@ -35,7 +35,7 @@ export class InsertCommand<T> extends Command {
 
     async execute(config, host, transaction): Promise<number> {
         const cmd: any = {
-            insert: this.schema.collectionName || this.schema.name || 'unknown',
+            insert: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             documents: this.documents,
         };

@@ -44,6 +44,16 @@ test('Omit', () => {
     equalType<Omit<{ a: string, b: number, c: boolean }, 'a'>, { b: number, c: boolean }>();
 });
 
+test('Omit 2', () => {
+    interface A {
+        readonly a: string;
+        readonly value: string;
+    }
+
+    type B = Omit<A, 'value'>;
+    equalType<B, { a: string }>();
+});
+
 test('intersection object', () => {
     type a1 = string & {}
     type a2 = null & {}
