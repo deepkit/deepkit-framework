@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { TypeEnum } from '../src/reflection/type.js';
-import { ReflectionClass, ReflectionMethod, ReflectionFunction, typeOf } from '../src/reflection/reflection.js';
+import { TypeEnum } from '../src/lib/reflection/type.js';
+import { ReflectionClass, ReflectionMethod, ReflectionFunction, typeOf } from '../src/lib/reflection/reflection.js';
 
 test('description available on Interface and Type alias', () => {
   /** @description user interface */
