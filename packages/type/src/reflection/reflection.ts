@@ -524,6 +524,14 @@ export class ReflectionProperty {
         return isBackReferenceType(this.getType());
     }
 
+    isDatabaseSkipped(database: string): boolean {
+        return databaseAnnotation.getDatabase(this.getType(), database)?.skip === true;
+    }
+
+    isDatabaseMigrationSkipped(database: string): boolean {
+        return this.isDatabaseSkipped(database) || databaseAnnotation.getDatabase(this.getType(), database)?.skipMigration === true;
+    }
+
     getBackReference(): BackReferenceOptionsResolved {
         return getBackReferenceType(this.getType());
     }

@@ -105,6 +105,11 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
     public returning: (keyof T & string)[] = [];
     public batchSize?: number;
 
+    /**
+     * The adapter name is set by the database adapter when the query is created.
+     */
+    public adapterName: string = '';
+
     isLazyLoaded(field: string): boolean {
         return this.lazyLoad.has(field);
     }
@@ -141,6 +146,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
         m.lazyLoad = new Set(this.lazyLoad);
         m.for = this.for;
         m.batchSize = this.batchSize;
+        m.adapterName = this.adapterName;
         m.aggregate = new Map(this.aggregate);
         m.parameters = { ...this.parameters };
 

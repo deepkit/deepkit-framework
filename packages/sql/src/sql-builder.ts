@@ -118,6 +118,7 @@ export class SqlBuilder {
         } else {
             for (const property of properties) {
                 if (property.isBackReference()) continue;
+                if (property.isDatabaseSkipped(model.adapterName)) continue;
                 if (model.isLazyLoaded(property.name)) continue;
 
                 this.sqlSelect.push(tableName + '.' + this.platform.quoteIdentifier(property.name));
@@ -135,6 +136,7 @@ export class SqlBuilder {
         for (const property of properties) {
             if (property.isBackReference()) continue;
             if (model.isLazyLoaded(property.name)) continue;
+            if (property.isDatabaseSkipped(model.adapterName)) continue;
 
             result.fields.push(property);
             const as = this.platform.quoteIdentifier(this.sqlSelect.length + '');

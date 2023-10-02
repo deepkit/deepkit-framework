@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { entity, ReflectionClass, ReflectionKind, serializer } from '@deepkit/type';
+import { DatabaseField, entity, PrimaryKey, ReflectionClass, ReflectionKind, serializer } from '@deepkit/type';
 import { SQLFilterBuilder } from '../src/sql-filter-builder.js';
 import { escape } from 'sqlstring';
 import { splitDotPath, sql, SQLQueryModel } from '../src/sql-adapter.js';
@@ -13,7 +13,7 @@ function quoteId(value: string): string {
 }
 
 class MySchemaParser extends SchemaParser {
-    parse(database: DatabaseModel, limitTableNames?: string[]): void {
+    async parse(database: DatabaseModel, limitTableNames?: string[]) {
     }
 }
 
@@ -67,6 +67,21 @@ test('select', () => {
         expect(builtSQL.sql).toBe(`SELECT count(*) as count FROM "user-select"`);
         expect(model.isPartial()).toBe(true);
     }
+});
+
+test('skip property', () => {
+    class Entity {
+        id: PrimaryKey & number = 0;
+        firstName?: string;
+        firstName_tsvector: any & DatabaseField<{ skip: true }> = '';
+        anotherone: any & DatabaseField<{ skipMigration: true }> = '';
+    }
+
+    const builder = new SqlBuilder(new MyPlatform());
+    const model = new SQLQueryModel();
+    model.adapterName = 'mongo';
+    const builtSQL = builder.select(ReflectionClass.from(Entity), model);
+    expect(builtSQL.sql).toBe(`SELECT "Entity"."id", "Entity"."firstName", "Entity"."anotherone" FROM "Entity"`);
 });
 
 test('QueryToSql', () => {

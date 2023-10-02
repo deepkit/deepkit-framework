@@ -18,6 +18,7 @@ import { DatabaseComparator, DatabaseModel } from '../schema/table.js';
 import { MigrationProvider } from '../migration/migration-provider.js';
 import { BaseCommand } from './base-command.js';
 import { ReflectionClass } from '@deepkit/type';
+import { MigrateOptions } from '@deepkit/orm';
 
 function serializeSQLLine(sql: string): string {
     return '`' + sql.replace(/`/g, '\\`') + '`';
@@ -40,9 +41,9 @@ export class MigrationCreateController extends BaseCommand implements Command {
          */
         @flag database?: string,
         /**
-         * @description Do not drop any table that is not available anymore as entity
+         * @description Do drop any table that is not available anymore as entity. CAUTION: this might wipe your whole database.
          */
-        @flag noDrop: boolean = false,
+        @flag drop: boolean = false,
         /**
          * @description Create an empty migration file
          */
@@ -55,6 +56,9 @@ export class MigrationCreateController extends BaseCommand implements Command {
             this.logger.error('No databases detected. Use --path path/to/database.ts');
         }
 
+        const options = new MigrateOptions();
+        options.drop = drop;
+
         for (const db of this.provider.databases.getDatabases()) {
             if (database && db.name !== database) continue;
             if (db.name === 'debug') continue;
@@ -64,14 +68,14 @@ export class MigrationCreateController extends BaseCommand implements Command {
             let downSql: string[] = [];
 
             if (!empty) {
-                const databaseModel = new DatabaseModel();
+                const databaseModel = new DatabaseModel([], db.adapter.getName());
                 databaseModel.schemaName = db.adapter.getSchemaName();
                 db.adapter.platform.createTables(db.entityRegistry, databaseModel);
 
                 const connection = await db.adapter.connectionPool.getConnection();
                 const schemaParser = new db.adapter.platform.schemaParserType(connection, db.adapter.platform);
 
-                const parsedDatabaseModel = new DatabaseModel();
+                const parsedDatabaseModel = new DatabaseModel([], db.adapter.getName());
                 parsedDatabaseModel.schemaName = db.adapter.getSchemaName();
                 await schemaParser.parse(parsedDatabaseModel);
                 parsedDatabaseModel.removeUnknownTables(databaseModel);
@@ -86,19 +90,15 @@ export class MigrationCreateController extends BaseCommand implements Command {
                     continue;
                 }
 
-                if (noDrop) {
-                    databaseDiff.removedTables = [];
-                }
-
                 if (databaseDiff) {
-                    upSql = db.adapter.platform.getModifyDatabaseDDL(databaseDiff);
+                    upSql = db.adapter.platform.getModifyDatabaseDDL(databaseDiff, options);
                     if (!empty && !upSql.length) {
                         this.logger.error(db.name, `No generated sql for ${db.name} found.`);
                         continue;
                     }
 
                     const reverseDatabaseDiff = DatabaseComparator.computeDiff(databaseModel, parsedDatabaseModel);
-                    downSql = reverseDatabaseDiff ? db.adapter.platform.getModifyDatabaseDDL(reverseDatabaseDiff) : [];
+                    downSql = reverseDatabaseDiff ? db.adapter.platform.getModifyDatabaseDDL(reverseDatabaseDiff, options) : [];
                 }
             }
 

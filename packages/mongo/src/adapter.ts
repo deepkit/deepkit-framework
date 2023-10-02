@@ -8,7 +8,17 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseEntityRegistry, DatabaseSession, FindQuery, ItemNotFound, OrmEntity, RawFactory } from '@deepkit/orm';
+import {
+    DatabaseAdapter,
+    DatabaseAdapterQueryFactory,
+    DatabaseEntityRegistry,
+    DatabaseSession,
+    FindQuery,
+    ItemNotFound,
+    MigrateOptions,
+    OrmEntity,
+    RawFactory
+} from '@deepkit/orm';
 import { AbstractClassType, ClassType, isArray } from '@deepkit/core';
 import { MongoDatabaseQuery } from './query.js';
 import { MongoPersistence } from './persistence.js';
@@ -143,22 +153,22 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
         await this.client.execute(new DeleteCommand(this.ormSequences));
     }
 
-    async migrate(entityRegistry: DatabaseEntityRegistry) {
+    async migrate(options: MigrateOptions, entityRegistry: DatabaseEntityRegistry) {
         await this.client.connect(); //manually connect to catch connection errors
         let withOrmSequences = true;
         for (const schema of entityRegistry.forMigration()) {
-            await this.migrateClassSchema(schema);
+            await this.migrateClassSchema(options, schema);
             for (const property of schema.getProperties()) {
                 if (property.isAutoIncrement()) withOrmSequences = true;
             }
         }
 
         if (withOrmSequences) {
-            await this.migrateClassSchema(this.ormSequences);
+            await this.migrateClassSchema(options, this.ormSequences);
         }
     };
 
-    async migrateClassSchema(schema: ReflectionClass<any>) {
+    async migrateClassSchema(options: MigrateOptions, schema: ReflectionClass<any>) {
         try {
             await this.client.execute(new CreateCollectionCommand(schema));
         } catch (error) {

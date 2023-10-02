@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
-import { AutoIncrement, entity, Index, PrimaryKey, Reference, ReflectionClass, ReflectionKind, Unique } from '@deepkit/type';
-import { DatabaseModel, IndexModel, TableComparator } from '../src/schema/table.js';
+import { AutoIncrement, DatabaseField, entity, Index, PrimaryKey, Reference, ReflectionClass, ReflectionKind, Unique } from '@deepkit/type';
+import { DatabaseComparator, DatabaseModel, IndexModel, TableComparator } from '../src/schema/table.js';
 import { DefaultPlatform } from '../src/platform/default-platform.js';
 import { SchemaParser } from '../src/reverse/schema-parser.js';
-import { DatabaseEntityRegistry } from '@deepkit/orm';
+import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
 
 @entity.name('user')
     .index(['deleted'], {unique: true})
@@ -27,7 +27,7 @@ class Post {
 }
 
 class MySchemaParser extends SchemaParser {
-    parse(database: DatabaseModel, limitTableNames?: string[]): void {
+    async parse(database: DatabaseModel, limitTableNames?: string[]) {
     }
 }
 
@@ -96,6 +96,87 @@ test('add and remove column', async () => {
     const db2 = platform.createTables(DatabaseEntityRegistry.from([Leagues2, Organisation]));
     const diff = TableComparator.computeDiff(db1[0], db2[0]);
 
-    const sql = platform.getModifyTableDDL(diff!);
+    const sql = platform.getModifyTableDDL(diff!, new MigrateOptions());
     expect(sql).toContain('ALTER TABLE "leagues" ADD "organisation" integer NULL, DROP COLUMN "dayOfWeek"');
+});
+
+test('skip index', async () => {
+    const platform = new MyPlatform();
+
+    @entity.name('leagues')
+    class Leagues1 {
+        id!: number & PrimaryKey;
+        dayOfWeek!: number & Index<{name: 'dayindex'}>;
+    }
+
+    const db = new DatabaseModel();
+    platform.createTables(DatabaseEntityRegistry.from([Leagues1]), db);
+    const diff = DatabaseComparator.computeDiff(new DatabaseModel(), db);
+
+    {
+        const options = new MigrateOptions();
+        const sql = platform.getModifyDatabaseDDL(diff!, options);
+        expect(sql).toEqual([`CREATE TABLE "leagues" (
+    "id" integer NOT NULL,
+    "dayOfWeek" integer NOT NULL,
+    PRIMARY KEY ("id")
+)`, `CREATE INDEX "dayindex" ON "leagues" ("dayOfWeek")`]);
+    }
+
+    {
+        const options = new MigrateOptions();
+        options.skipIndex = true;
+        const sql = platform.getModifyDatabaseDDL(diff!, options);
+        expect(sql).toEqual([`CREATE TABLE "leagues" (
+    "id" integer NOT NULL,
+    "dayOfWeek" integer NOT NULL,
+    PRIMARY KEY ("id")
+)`]);
+    }
+});
+
+test('no drop per default', () => {
+    const platform = new MyPlatform();
+
+    @entity.name('leagues')
+    class Leagues1 {
+        id!: number & PrimaryKey;
+        dayOfWeek!: number & Index<{name: 'dayindex'}>;
+    }
+
+    const db = new DatabaseModel();
+    platform.createTables(DatabaseEntityRegistry.from([Leagues1]), db);
+    const diff = DatabaseComparator.computeDiff(db, new DatabaseModel());
+
+    {
+        const options = new MigrateOptions();
+        const sql = platform.getModifyDatabaseDDL(diff!, options);
+        expect(sql).toEqual([]);
+    }
+
+    {
+        const options = new MigrateOptions();
+        options.drop = true;
+        const sql = platform.getModifyDatabaseDDL(diff!, options);
+        expect(sql).toEqual([`DROP TABLE IF EXISTS "leagues"`]);
+    }
+});
+
+test('skip property', () => {
+    class Entity {
+        id: PrimaryKey & number = 0;
+        firstName?: string;
+        firstName_tsvector: any & DatabaseField<{ skip: true }> = '';
+        anotherone: any & DatabaseField<{ skipMigration: true }> = '';
+    }
+
+    const platform = new MyPlatform();
+    const tables = platform.createTables(DatabaseEntityRegistry.from([Entity]));
+
+    expect(tables.length).toBe(1);
+    const table = tables[0];
+
+    expect(table.columns.map(v => v.name)).toEqual([
+        'id', 'firstName'
+    ]);
 });

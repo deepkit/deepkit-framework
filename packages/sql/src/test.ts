@@ -5,7 +5,7 @@ import { Database, DatabaseEntityRegistry } from '@deepkit/orm';
 import { ReflectionClass, Type } from '@deepkit/type';
 
 export async function schemaMigrationRoundTrip(types: (Type | ClassType | ReflectionClass<any>)[], adapter: SQLDatabaseAdapter) {
-    const originDatabaseModel = new DatabaseModel;
+    const originDatabaseModel = new DatabaseModel([], adapter.getName());
     adapter.platform.createTables(DatabaseEntityRegistry.from(types), originDatabaseModel);
 
     const db = new Database(adapter, types);
@@ -20,7 +20,7 @@ export async function schemaMigrationRoundTrip(types: (Type | ClassType | Reflec
         result = adapter.platform.getAddTablesDDL(originDatabaseModel).join('\n');
         // console.log(result);
 
-        const readDatabaseModel = new DatabaseModel();
+        const readDatabaseModel = new DatabaseModel([], adapter.getName());
         await schemaParser.parse(readDatabaseModel, originDatabaseModel.getTableNames());
         if (readDatabaseModel.tables.length !== types.length) throw new Error(`Read wrong table count, ${readDatabaseModel.tables.length} !== ${types.length}`);
 

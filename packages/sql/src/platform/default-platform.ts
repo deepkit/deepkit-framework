@@ -28,7 +28,7 @@ import {
     Serializer,
     Type
 } from '@deepkit/type';
-import { DatabaseEntityRegistry } from '@deepkit/orm';
+import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
 import { splitDotPath } from '../sql-adapter.js';
 
 export function isSet(v: any): boolean {
@@ -246,20 +246,25 @@ export abstract class DefaultPlatform {
         return `${table ? table + '.' : ''}${this.quoteIdentifier(path)}`;
     }
 
-    getModifyDatabaseDDL(databaseDiff: DatabaseDiff): string[] {
+    getModifyDatabaseDDL(databaseDiff: DatabaseDiff, options: MigrateOptions): string[] {
         const lines: string[] = [];
 
-        for (const table of databaseDiff.removedTables) lines.push(this.getDropTableDDL(table));
+        if (options.isDropSchema()) {
+            for (const table of databaseDiff.removedTables) lines.push(this.getDropTableDDL(table));
+        }
+
         for (const [from, to] of databaseDiff.renamedTables) lines.push(this.getRenameTableDDL(from, to));
 
         for (const table of databaseDiff.addedTables) {
             lines.push(...this.getAddTableDDL(table));
-            lines.push(...this.getAddIndicesDDL(table));
+            if (options.isIndex()) {
+                lines.push(...this.getAddIndicesDDL(table));
+            }
         }
 
-        for (const tableDiff of databaseDiff.modifiedTables) lines.push(...this.getModifyTableDDL(tableDiff));
+        for (const tableDiff of databaseDiff.modifiedTables) lines.push(...this.getModifyTableDDL(tableDiff, options));
 
-        if (!this.supportsInlineForeignKey()) {
+        if (!this.supportsInlineForeignKey() && options.isForeignKey()) {
             for (const table of databaseDiff.addedTables) lines.push(...this.getAddForeignKeysDDL(table));
         }
 
@@ -318,6 +323,7 @@ export abstract class DefaultPlatform {
 
             for (const property of this.getEntityFields(schema)) {
                 if (property.isBackReference()) continue;
+                if (property.isDatabaseMigrationSkipped(database.adapterName)) continue;
 
                 const column = table.addColumn(this.namingStrategy.getColumnName(property), property);
                 const dbOptions = databaseAnnotation.getDatabase(property.type, this.annotationId) || {};
@@ -503,14 +509,22 @@ export abstract class DefaultPlatform {
         return true;
     }
 
-    getModifyTableDDL(diff: TableDiff): string[] {
+    getModifyTableDDL(diff: TableDiff, options: MigrateOptions): string[] {
         const ddl: string[] = [];
 
         // drop indices, foreign keys
-        for (const foreignKey of diff.removedFKs.values()) ddl.push(this.getDropForeignKeyDDL(foreignKey));
-        for (const [from] of diff.modifiedFKs.values()) ddl.push(this.getDropForeignKeyDDL(from));
-        for (const index of diff.removedIndices.values()) ddl.push(this.getDropIndexDDL(index));
-        for (const [from] of diff.modifiedIndices.values()) ddl.push(this.getDropIndexDDL(from));
+        if (options.isForeignKey()) {
+            for (const foreignKey of diff.removedFKs.values()) ddl.push(this.getDropForeignKeyDDL(foreignKey));
+            for (const [from] of diff.modifiedFKs.values()) ddl.push(this.getDropForeignKeyDDL(from));
+        }
+
+        if (options.isDropIndex()) {
+            for (const index of diff.removedIndices.values()) ddl.push(this.getDropIndexDDL(index));
+        }
+
+        if (options.isIndex()) {
+            for (const [from] of diff.modifiedIndices.values()) ddl.push(this.getDropIndexDDL(from));
+        }
 
         //merge field changes into one command. This is more compatible especially with PK constraints.
         const alterTableLines: string[] = [];
@@ -539,31 +553,38 @@ export abstract class DefaultPlatform {
         }
 
         // create indices, foreign keys
-        for (const [, to] of diff.modifiedIndices.values()) ddl.push(this.getAddIndexDDL(to));
-        for (const index of diff.addedIndices.values()) ddl.push(this.getAddIndexDDL(index));
-        for (const [, to] of diff.modifiedFKs.values()) ddl.push(this.getAddForeignKeyDDL(to));
-        for (const foreignKey of diff.addedFKs.values()) ddl.push(this.getAddForeignKeyDDL(foreignKey));
+        if (options.isIndex()) {
+            for (const [, to] of diff.modifiedIndices.values()) ddl.push(this.getAddIndexDDL(to));
+            for (const index of diff.addedIndices.values()) ddl.push(this.getAddIndexDDL(index));
+        }
+
+        if (options.isForeignKey()) {
+            for (const [, to] of diff.modifiedFKs.values()) ddl.push(this.getAddForeignKeyDDL(to));
+            for (const foreignKey of diff.addedFKs.values()) ddl.push(this.getAddForeignKeyDDL(foreignKey));
+        }
 
         return ddl.filter(isSet);
     }
 
-    getAddTableDDL(table: Table): string[] {
+    getAddTableDDL(table: Table, withForeignKey: boolean = true): string[] {
         const lines: string[] = [];
 
         lines.push(this.getUseSchemaDDL(table));
 
-        lines.push(this.getCreateTableDDL(table));
+        lines.push(this.getCreateTableDDL(table, withForeignKey));
 
         lines.push(this.getResetSchemaDDL(table));
 
         return lines.filter(isSet);
     }
 
-    getCreateTableDDL(table: Table): string {
+    getCreateTableDDL(table: Table, withForeignKey: boolean = true): string {
         const lines: string[] = [];
         for (const column of table.columns) lines.push(this.getColumnDDL(column));
         if (this.supportsInlinePrimaryKey() && table.hasPrimaryKey()) lines.push(this.getPrimaryKeyDDL(table));
-        if (this.supportsInlineForeignKey()) for (const foreignKey of table.foreignKeys) lines.push(this.getForeignKeyDDL(foreignKey));
+        if (withForeignKey) {
+            if (this.supportsInlineForeignKey()) for (const foreignKey of table.foreignKeys) lines.push(this.getForeignKeyDDL(foreignKey));
+        }
 
         return `CREATE TABLE ${this.getIdentifier(table)} (\n    ${lines.join(',\n    ')}\n)`;
     }
@@ -596,7 +617,7 @@ export abstract class DefaultPlatform {
     }
 
     getAddIndexDDL(index: IndexModel): string {
-        const u = index.isUnique ? 'UNIQUE' : '';
+        const u = index.isUnique ? ' UNIQUE' : '';
 
         const columns: string[] = [];
         for (const column of index.columns) {
@@ -614,7 +635,7 @@ export abstract class DefaultPlatform {
             columns.push(`${this.getIdentifier(column)}`);
         }
 
-        return `CREATE ${u} INDEX ${this.getIdentifier(index)} ON ${this.getIdentifier(index.table)} (${columns.join(', ')})`;
+        return `CREATE${u} INDEX ${this.getIdentifier(index)} ON ${this.getIdentifier(index.table)} (${columns.join(', ')})`;
     }
 
     getDropTableDDL(table: Table): string {

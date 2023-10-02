@@ -15,6 +15,7 @@ import { sqliteSerializer } from './sqlite-serializer.js';
 import { SQLiteFilterBuilder } from './sql-filter-builder.sqlite.js';
 import { isArray, isObject } from '@deepkit/core';
 import sqlstring from 'sqlstring-sqlite';
+import { MigrateOptions } from '@deepkit/orm';
 
 export function isJsonLike(type: Type): boolean {
     if (isSetType(type) || isMapType(type) || isDateType(type)) return false;
@@ -69,7 +70,7 @@ export class SQLitePlatform extends DefaultPlatform {
         return `${table ? table + '.' : ''}${this.quoteIdentifier(column)}->${this.quoteValue(path)}`;
     }
 
-    getModifyTableDDL(diff: TableDiff): string[] {
+    getModifyTableDDL(diff: TableDiff, options: MigrateOptions): string[] {
         let changeViaMigrationTableNeeded =
             false
             || diff.modifiedFKs.length > 0
@@ -107,13 +108,13 @@ export class SQLitePlatform extends DefaultPlatform {
         }
 
         if (changeViaMigrationTableNeeded) {
-            return this.getMigrationTableDDL(diff);
+            return this.getMigrationTableDDL(diff, options);
         }
 
-        return super.getModifyTableDDL(diff);
+        return super.getModifyTableDDL(diff, options);
     }
 
-    protected getMigrationTableDDL(diff: TableDiff): string[] {
+    protected getMigrationTableDDL(diff: TableDiff, options: MigrateOptions): string[] {
         const lines: string[] = [];
 
         // const tempName = diff.to.getName() + '__temp__' + (Math.floor(Math.random() * 10000));
@@ -123,7 +124,7 @@ export class SQLitePlatform extends DefaultPlatform {
         const tempToName = oldToName + '__temp_new__' + (Math.floor(Math.random() * 10000));
         diff.to.name = tempToName;
         lines.push(this.getDropTableDDL(diff.to));
-        lines.push(...this.getAddTableDDL(diff.to));
+        lines.push(...this.getAddTableDDL(diff.to, options.isForeignKey()));
         diff.to.name = oldToName;
 
         // lines.push(`CREATE TABLE ${this.quoteIdentifier(tempName)} AS SELECT ${select.join(',')} FROM ${this.getIdentifier(diff.to)}`);
@@ -151,7 +152,9 @@ export class SQLitePlatform extends DefaultPlatform {
         lines.push(`DROP TABLE ${this.getIdentifier(diff.from)}`);
         lines.push(`ALTER TABLE ${this.quoteIdentifier(tempToName)} RENAME TO ${this.getIdentifier(diff.to)}`);
 
-        lines.push(...this.getAddIndicesDDL(diff.to));
+        if (options.isIndex()) {
+            lines.push(...this.getAddIndicesDDL(diff.to));
+        }
 
         return lines.filter(isSet);
     }

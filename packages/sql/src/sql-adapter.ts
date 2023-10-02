@@ -25,7 +25,7 @@ import {
     FilterQuery,
     FindQuery,
     GenericQueryResolver,
-    ItemNotFound,
+    ItemNotFound, MigrateOptions,
     OrmEntity,
     PatchResult,
     Query,
@@ -626,7 +626,7 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
     public async createTables(entityRegistry: DatabaseEntityRegistry): Promise<void> {
         const connection = await this.connectionPool.getConnection();
         try {
-            const database = new DatabaseModel();
+            const database = new DatabaseModel([], this.getName());
             database.schemaName = this.getSchemaName();
             this.platform.createTables(entityRegistry, database);
             const DDLs = this.platform.getAddTablesDDL(database);
@@ -638,18 +638,18 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
         }
     }
 
-    public async getMigrations(entityRegistry: DatabaseEntityRegistry): Promise<{ [name: string]: { sql: string[], diff: string } }> {
+    public async getMigrations(options: MigrateOptions, entityRegistry: DatabaseEntityRegistry): Promise<{ [name: string]: { sql: string[], diff: string } }> {
         const migrations: { [name: string]: { sql: string[], diff: string } } = {};
 
         const connection = await this.connectionPool.getConnection();
 
         try {
-            const databaseModel = new DatabaseModel();
+            const databaseModel = new DatabaseModel([], this.getName());
             databaseModel.schemaName = this.getSchemaName();
             this.platform.createTables(entityRegistry, databaseModel);
             const schemaParser = new this.platform.schemaParserType(connection, this.platform);
 
-            const parsedDatabaseModel = new DatabaseModel();
+            const parsedDatabaseModel = new DatabaseModel([], this.getName());
             parsedDatabaseModel.schemaName = this.getSchemaName();
             await schemaParser.parse(parsedDatabaseModel);
             parsedDatabaseModel.removeUnknownTables(databaseModel);
@@ -662,7 +662,7 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
                     databaseDiff.forTable(table);
                     const diff = databaseDiff.getDiff(table);
 
-                    const upSql = this.platform.getModifyDatabaseDDL(databaseDiff);
+                    const upSql = this.platform.getModifyDatabaseDDL(databaseDiff, options);
                     if (upSql.length) {
                         migrations[entity.getName()] = { sql: upSql, diff: diff ? diff.toString() : '' };
                     }
@@ -675,17 +675,17 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
         return migrations;
     }
 
-    public async migrate(entityRegistry: DatabaseEntityRegistry): Promise<void> {
-        const migrations = await this.getMigrations(entityRegistry);
+    public async migrate(options: MigrateOptions, entityRegistry: DatabaseEntityRegistry): Promise<void> {
+        const migrations = await this.getMigrations(options, entityRegistry);
         const connection = await this.connectionPool.getConnection();
 
         try {
-            const databaseModel = new DatabaseModel();
+            const databaseModel = new DatabaseModel([], this.getName());
             databaseModel.schemaName = this.getSchemaName();
             this.platform.createTables(entityRegistry, databaseModel);
             const schemaParser = new this.platform.schemaParserType(connection, this.platform);
 
-            const parsedDatabaseModel = new DatabaseModel();
+            const parsedDatabaseModel = new DatabaseModel([], this.getName());
             parsedDatabaseModel.schemaName = this.getSchemaName();
             await schemaParser.parse(parsedDatabaseModel);
             parsedDatabaseModel.removeUnknownTables(databaseModel);

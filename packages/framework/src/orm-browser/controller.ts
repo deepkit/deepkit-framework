@@ -1,5 +1,5 @@
 import { isArray, isObject } from '@deepkit/core';
-import { Database, DatabaseAdapter } from '@deepkit/orm';
+import { Database, DatabaseAdapter, MigrateOptions } from '@deepkit/orm';
 import {
     BrowserControllerInterface,
     DatabaseCommit,
@@ -114,7 +114,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
     async getMigrations(name: string): Promise<{ [name: string]: { sql: string[], diff: string } }> {
         const db = this.findDatabase(name);
         if (db.adapter instanceof SQLDatabaseAdapter) {
-            return db.adapter.getMigrations(db.entityRegistry);
+            return db.adapter.getMigrations(new MigrateOptions(), db.entityRegistry);
         }
         return {};
     }

@@ -1768,6 +1768,17 @@ export interface DatabaseFieldOptions {
      * e.g. `field: string & MySQL<{noDefault: true}> = ''`
      */
     noDefault?: true;
+
+    /**
+     * Skip this property in all queries and database migration files.
+     */
+    skip?: true;
+
+    /**
+     * Skip this property in database migration files. This excludes the property from the database, but
+     * keeps it in the queries.
+     */
+    skipMigration?: true;
 }
 
 export interface MySQLOptions extends DatabaseFieldOptions {

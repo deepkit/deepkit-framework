@@ -21,7 +21,7 @@ import {
     resolveReceiveType,
     Type
 } from '@deepkit/type';
-import { DatabaseAdapter, DatabaseEntityRegistry } from './database-adapter.js';
+import { DatabaseAdapter, DatabaseEntityRegistry, MigrateOptions } from './database-adapter.js';
 import { DatabaseSession } from './database-session.js';
 import { DatabaseLogger } from './logger.js';
 import { Query } from './query.js';
@@ -332,8 +332,10 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * WARNING: DON'T USE THIS IN PRODUCTION AS THIS CAN CAUSE EASILY DATA LOSS.
      * SEE THE MIGRATION DOCUMENTATION TO UNDERSTAND ITS IMPLICATIONS.
      */
-    async migrate() {
-        await this.adapter.migrate(this.entityRegistry);
+    async migrate(options: Partial<MigrateOptions> = {}) {
+        const o = new MigrateOptions();
+        Object.assign(o, options);
+        await this.adapter.migrate(o, this.entityRegistry);
     }
 
     /**

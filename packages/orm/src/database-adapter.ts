@@ -44,6 +44,47 @@ export class RawFactory<A extends Array<any>> {
     }
 }
 
+export class MigrateOptions {
+    /**
+     * Whether drop statements should be issued, like DROP TABLE, DROP INDEX, etc.
+     *
+     * Default false.
+     */
+    drop: boolean = false;
+
+    /**
+     * Whether drop statements should be issued for indexes/uniques, like DROP INDEX.
+     */
+    dropIndex: boolean = false;
+
+    /**
+     * Whether create/drop statements should be issued for indexes/uniques, like CREATE/ INDEX/DROP INDEX.
+     */
+    skipIndex: boolean = false;
+
+    /**
+     * Whether foreign key constraints should be created/dropped.
+     */
+    skipForeignKey: boolean = false;
+
+    isDropIndex() {
+        if (this.skipIndex) return false;
+        return this.skipIndex || this.dropIndex || this.drop;
+    }
+
+    isIndex() {
+        return !this.skipIndex;
+    }
+
+    isForeignKey() {
+        return !this.skipForeignKey;
+    }
+
+    isDropSchema() {
+        return this.drop;
+    }
+}
+
 /**
  * A generic database adapter you can use if the API of `Query` is sufficient.
  *
@@ -62,8 +103,11 @@ export abstract class DatabaseAdapter {
 
     abstract disconnect(force?: boolean): void;
 
-    abstract migrate(entityRegistry: DatabaseEntityRegistry): Promise<void>;
+    abstract migrate(options: MigrateOptions, entityRegistry: DatabaseEntityRegistry): Promise<void>;
 
+    /**
+     * Unique adapter name to be used in DatabaseField to apply certain adapter specific behavior per field.
+     */
     abstract getName(): string;
 
     abstract getSchemaName(): string;

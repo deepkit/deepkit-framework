@@ -17,7 +17,10 @@ export class DatabaseModel {
 
     public schemaMap = new Map<ReflectionClass<any>, Table>();
 
-    constructor(public tables: Table[] = []) {
+    constructor(
+        public tables: Table[] = [],
+        public adapterName: string = ''
+    ) {
     }
 
     getTableForClass(schema: ReflectionClass<any>): Table {

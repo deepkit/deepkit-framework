@@ -45,5 +45,5 @@ export abstract class SchemaParser {
     ) {
     }
 
-    abstract parse(database: DatabaseModel, limitTableNames?: string[]): void;
+    abstract parse(database: DatabaseModel, limitTableNames?: string[]): Promise<void>;
 }
