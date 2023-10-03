@@ -1719,11 +1719,11 @@ export type Data<Name extends string, Value> = { __meta?: ['data', never & Name,
  * type Password = string & MinLength<6> & Excluded;
  *
  * interface UserCreationPayload {
- *     password: Password & ResetDecorator<'excluded'>
+ *     password: Password & ResetAnnotation<'excluded'>
  * }
  * ```
  */
-export type ResetDecorator<Name extends string> = { __meta?: ['reset', Name] };
+export type ResetAnnotation<Name extends string> = { __meta?: ['reset', Name] };
 
 export type IndexOptions = {
     name?: string;

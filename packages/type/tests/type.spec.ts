@@ -15,7 +15,7 @@ import {
     PrimaryKey,
     primaryKeyAnnotation,
     ReflectionKind,
-    ResetDecorator,
+    ResetAnnotation,
     resolveTypeMembers,
     stringifyResolvedType,
     stringifyType,
@@ -141,7 +141,7 @@ test('reset primary decorator', () => {
     }
 
     interface UserCreationPayload {
-        id: User['id'] & ResetDecorator<'primaryKey'>;
+        id: User['id'] & ResetAnnotation<'primaryKey'>;
     }
 
     const type = typeOf<UserCreationPayload>();
@@ -158,7 +158,7 @@ test('reset type decorator', () => {
     }
 
     interface UserCreationPayload {
-        password: User['password'] & Group<'a'> & ResetDecorator<'excluded'>;
+        password: User['password'] & Group<'a'> & ResetAnnotation<'excluded'>;
     }
 
     {

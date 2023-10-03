@@ -12,7 +12,7 @@ import { ClassType } from '@deepkit/core';
 import { DatabaseSession } from '../database-session.js';
 import { Database } from '../database.js';
 import { Query } from '../query.js';
-import { AutoIncrement, entity, InlineRuntimeType, PrimaryKey, PrimaryKeyFields, ReflectionClass, ResetDecorator } from '@deepkit/type';
+import { AutoIncrement, entity, InlineRuntimeType, PrimaryKey, PrimaryKeyFields, ReflectionClass, ResetAnnotation } from '@deepkit/type';
 import { DatabasePlugin } from './plugin.js';
 import { OrmEntity } from '../type.js';
 
@@ -128,7 +128,7 @@ export class LogPlugin implements DatabasePlugin {
             @entity.collection(this.getLogEntityCollectionName(schema))
             class LogEntityForSchema extends this.options.entity {
                 //we can not work with references since that would mean we can not delete the parent without deleting the log entry.
-                reference: InlineRuntimeType<typeof primaryKey> & ResetDecorator<'primaryKey'> & ResetDecorator<'autoIncrement'>;
+                reference: InlineRuntimeType<typeof primaryKey> & ResetAnnotation<'primaryKey'> & ResetAnnotation<'autoIncrement'>;
             }
 
             entry = ReflectionClass.from(LogEntityForSchema);
