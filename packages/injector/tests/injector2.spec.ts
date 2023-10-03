@@ -1485,3 +1485,31 @@ test('split configuration into multiple types', () => {
     const service = injector.get(Service);
     expect(service.dbConfig.host).toBe('localhost');
 });
+
+test('empty interface provider', () => {
+    interface Test {
+    }
+
+    const TEST = {};
+
+    const Test = provide<Test>({ useValue: TEST });
+    const rootModule = new InjectorModule([Test]);
+    const injector = new InjectorContext(rootModule);
+    const service = injector.get<Test>();
+    expect(service).toBe(TEST);
+});
+
+test('export provider', () => {
+    interface Test {
+    }
+
+    const TEST = {};
+
+    const Test = provide<Test>({ useValue: TEST });
+    const module = new InjectorModule([Test]).addExport(Test);
+
+    const rootModule = new InjectorModule().addImport(module);
+    const injector = new InjectorContext(rootModule);
+    const service = injector.get<Test>();
+    expect(service).toBe(TEST);
+});

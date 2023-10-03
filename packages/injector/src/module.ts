@@ -60,7 +60,7 @@ export interface PreparedProvider {
 function lookupPreparedProviders(preparedProviders: PreparedProvider[], token: Token): PreparedProvider | undefined {
     let last: PreparedProvider | undefined;
     for (const preparedProvider of preparedProviders) {
-        if (token === preparedProvider.token) {
+        if (token === preparedProvider.token || preparedProvider.providers.includes(token)) {
             last = preparedProvider;
         } else if (isType(token)) {
             if (token.kind === ReflectionKind.any || token.kind === ReflectionKind.unknown) continue;
@@ -417,7 +417,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
     }
 
     /**
-     * Prepared the module for a injector tree build.
+     * Prepared the module for an injector tree build.
      *
      *  - Index providers by token so that last known provider is picked (so they can be overwritten).
      *  - Register TagProvider in TagRegistry
@@ -496,7 +496,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
                 //we add our module as additional source for potential dependencies
                 registerPreparedProvider(parentProviders, preparedProvider.modules, preparedProvider.providers, false);
             } else {
-                parentProviders.push({ token, modules: [this], providers: preparedProvider.providers.slice() });
+                parentProviders.push({ token: preparedProvider.token, modules: [this], providers: preparedProvider.providers.slice() });
             }
         };
 
