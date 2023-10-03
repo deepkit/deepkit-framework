@@ -261,7 +261,7 @@ test('interface provider can be exported', () => {
 
     const serviceContainer = new ServiceContainer(app);
 
-   serviceContainer.getInjector(app).get<Test>().toBe(TEST);
+   expect(serviceContainer.getInjector(app).get<Test>()).toBe(TEST);
 });
 
 test('non-exported providers can not be overwritten', () => {
