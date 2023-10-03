@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/vite",
-  "version": "1.0.1-alpha.97",
+  "version": "1.0.1-alpha.100",
   "description": "Deepkit Vite Plugin for type compiler support",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -30,7 +30,7 @@
     "@rollup/pluginutils": "^5.0.2"
   },
   "devDependencies": {
-    "@deepkit/type-compiler": "^1.0.1-alpha.97",
+    "@deepkit/type-compiler": "^1.0.1-alpha.100",
     "vite": "^4.0.0"
   },
   "jest": {
