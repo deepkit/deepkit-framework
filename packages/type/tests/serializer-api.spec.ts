@@ -69,5 +69,25 @@ test('new serializer', () => {
     });
 
     const user = deserialize<User>({ name: 'Peter', created: 0 }, undefined, mySerializer);
-    console.log('empty serializer', user);
+    expect(user.created).toBeInstanceOf(Date);
+});
+
+test('new serializer easy mode', () => {
+    class User {
+        name: string = '';
+        created: Date = new Date;
+    }
+
+    const mySerializer = new EmptySerializer('mySerializer');
+
+    mySerializer.deserializeRegistry.registerClass(Date, (type, state) => {
+        state.convert((v) => new Date(v));
+    });
+
+    mySerializer.serializeRegistry.registerClass(Date, (type, state) => {
+        state.convert((v) => v.toJSON());
+    });
+
+    const user = deserialize<User>({ name: 'Peter', created: 0 }, undefined, mySerializer);
+    expect(user.created).toBeInstanceOf(Date);
 });

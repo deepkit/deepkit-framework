@@ -499,6 +499,21 @@ export class TemplateState {
     }
 
     /**
+     * Adds a converter function that is executed on the current `this.accessor` value.
+     *
+     * @example
+     * ```typescript
+     * serializer.deserializeRegistry.registerClass(Date, (type, state) => {
+     *     state.convert((v) => new Date(v));
+     * });
+     * ```
+     */
+    convert(callback: (value: any) => any) {
+        const converter = this.setVariable('convert', callback);
+        this.addSetter(`${converter}(${this.accessor})`);
+    }
+
+    /**
      * Stop executing next templates.
      */
     stop() {
