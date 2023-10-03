@@ -1,4 +1,4 @@
-import { ParsedHost, parseHost } from '@deepkit/core';
+import { parseHost } from '@deepkit/core';
 import { ClientTransportAdapter, TransportConnectionHooks } from '@deepkit/rpc';
 import { connect } from 'net';
 

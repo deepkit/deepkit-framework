@@ -54,7 +54,7 @@ export function createRpcWebSocketClientProvider(baseUrl: string = typeof locati
     };
 }
 
-declare var require: (module: string) => any;
+let webSocketConstructor: typeof WebSocket | undefined = undefined;
 
 export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
     constructor(public url: string) {
@@ -62,9 +62,11 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
 
     public async connect(connection: TransportConnectionHooks) {
         const wsPackage = 'ws';
-        const webSocketConstructor = 'undefined' === typeof WebSocket && 'undefined' !== typeof require ? require(wsPackage) : WebSocket;
+        if (!webSocketConstructor) {
+            webSocketConstructor = 'undefined' === typeof WebSocket ? (await import(wsPackage)).WebSocket : WebSocket;
+        }
 
-        const socket = new webSocketConstructor(this.url);
+        const socket = new webSocketConstructor!(this.url);
         socket.binaryType = 'arraybuffer';
 
         socket.onmessage = (event: MessageEvent) => {

@@ -2,6 +2,9 @@ import { asyncOperation, ParsedHost, parseHost } from '@deepkit/core';
 import { RpcKernel } from '@deepkit/rpc';
 import { existsSync, unlinkSync } from 'fs';
 import { createServer, Server, Socket } from 'net';
+import type { ServerOptions as WebSocketServerOptions } from 'ws';
+import { WebSocketServer } from 'ws';
+import { IncomingMessage } from 'http';
 
 /**
  * Uses the node `net` module to create a server. Supports unix sockets.
@@ -74,12 +77,8 @@ export class RpcTcpServer {
     }
 }
 
-import * as ws from 'ws';
-import type { ServerOptions as WebSocketServerOptions } from 'ws';
-import { IncomingMessage } from 'http';
-
 export class RpcWebSocketServer {
-    protected server?: ws.Server;
+    protected server?: WebSocketServer;
     protected host: ParsedHost;
 
     constructor(
@@ -98,7 +97,7 @@ export class RpcWebSocketServer {
 
     start(options: WebSocketServerOptions): void {
         const defaultOptions = { host: this.host.host, port: this.host.port };
-        this.server = new ws.Server({ ...defaultOptions, ...options });
+        this.server = new WebSocketServer({ ...defaultOptions, ...options });
 
         this.server.on('connection', (ws, req: IncomingMessage) => {
             const connection = this.kernel?.createConnection({
