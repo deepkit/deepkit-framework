@@ -10,7 +10,7 @@
 <br/>
 <br/>
 
-![CI](https://github.com/deepkit/deepkit-framework/workflows/CI/badge.svg)
+[![CI](https://github.com/deepkit/deepkit-framework/actions/workflows/main.yml/badge.svg)](https://github.com/deepkit/deepkit-framework/actions/workflows/main.yml)
 
 Deepkit Framework is a new high-performance and real-time TypeScript framework for enterprise TypeScript applications.
 Standalone TypeScript libraries and a framework that brings everything together.
