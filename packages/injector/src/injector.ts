@@ -822,8 +822,7 @@ export class Injector implements InjectorInterface {
 
             if (type.indexAccessOrigin) {
                 let current = type;
-                let module: InjectorModule | undefined;
-                let config: { [name: string]: any } = {};
+                let config: { [name: string]: any } | undefined = undefined;
 
                 while (current && current.indexAccessOrigin) {
                     if (current.indexAccessOrigin.container.kind === ReflectionKind.class) {
@@ -831,14 +830,14 @@ export class Injector implements InjectorInterface {
                         if (!found) return () => undefined;
                         config = getPathValue(found.module.getConfig(), found.path);
                     }
-                    if (current.indexAccessOrigin.index.kind === ReflectionKind.literal) {
+                    if (config !== undefined && current.indexAccessOrigin.index.kind === ReflectionKind.literal) {
                         const index = current.indexAccessOrigin.index.literal;
                         config = config[String(index)];
                     }
                     current = current.indexAccessOrigin.container;
                 }
 
-                if (config) return () => config;
+                if (config !== undefined) return () => config;
             }
         }
 

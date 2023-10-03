@@ -593,23 +593,23 @@ test('events', async () => {
     let shutdownEvent: AppEvent | undefined = undefined;
 
     const app = new App({
-        providers: [MyService],
-    })
-        .command('test', (id: number, check: boolean & Flag = false) => {
-            if (id === 404) throw new Error('error');
+            providers: [MyService],
         })
-        .listen(onAppExecute, (event) => {
-            executeEvent = event.data;
-        })
-        .listen(onAppExecuted, (event) => {
-            executedEvent = event.data;
-        })
-        .listen(onAppError, (event) => {
-            errorEvent = event.data;
-        })
-        .listen(onAppShutdown, (event) => {
-            shutdownEvent = event.data;
-        })
+            .command('test', (id: number, check: boolean & Flag = false) => {
+                if (id === 404) throw new Error('error');
+            })
+            .listen(onAppExecute, (event) => {
+                executeEvent = event.data;
+            })
+            .listen(onAppExecuted, (event) => {
+                executedEvent = event.data;
+            })
+            .listen(onAppError, (event) => {
+                errorEvent = event.data;
+            })
+            .listen(onAppShutdown, (event) => {
+                shutdownEvent = event.data;
+            })
     ;
 
     {
@@ -650,4 +650,50 @@ test('events', async () => {
         expect(shutdownEvent!.command).toBe('test');
         expect(shutdownEvent!.parameters).toEqual({ id: 404, check: true });
     }
+});
+
+test('config injection into listener empty', async () => {
+    class Config {
+        host: string = '';
+    }
+
+    function registerHost(event: any, host: Config['host']) {
+        expect(host).toBe('');
+    }
+
+    const app = new App({
+        config: Config,
+    });
+
+    app.listen(onAppExecute, registerHost);
+
+    app.command('test', () => {
+        return 1;
+    });
+
+    const res = await app.execute(['test']);
+    expect(res).toBe(1);
+});
+
+test('config injection into listener configured', async () => {
+    class Config {
+        host: string = '';
+    }
+
+    function registerHost(event: any, host: Config['host']) {
+        expect(host).toBe('localhost');
+    }
+
+    const app = new App({
+        config: Config,
+    }).configure({ host: 'localhost' });
+
+    app.listen(onAppExecute, registerHost);
+
+    app.command('test', () => {
+        return 1;
+    });
+
+    const res = await app.execute(['test']);
+    expect(res).toBe(1);
 });
