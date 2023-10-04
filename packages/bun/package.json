@@ -28,7 +28,6 @@
     "typescript": "*"
   },
   "dependencies": {
-    "@rollup/pluginutils": "^5.0.2"
   },
   "devDependencies": {
     "@deepkit/type-compiler": "^1.0.1-alpha.100"
