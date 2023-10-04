@@ -30,6 +30,7 @@ jobs:
             --ignore @deepkit/example-app \
             --ignore @deepkit/fs \
             --ignore @deepkit/vite \
+            --ignore @deepkit/bun \
             --ignore @deepkit/framework-examples \
             --ignore @deepkit/benchmark \
             --ignore @deepkit/mysql \
