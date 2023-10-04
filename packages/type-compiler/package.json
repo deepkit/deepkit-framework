@@ -28,7 +28,7 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "typescript": "^4.8.2 || ^5.0.0"
+    "typescript": "*"
   },
   "devDependencies": {
     "@types/lz-string": "^1.3.34",
