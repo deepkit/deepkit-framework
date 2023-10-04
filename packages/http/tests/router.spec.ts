@@ -1399,3 +1399,17 @@ test('upload security', async () => {
         }
     ]))).json).toMatchObject({ uploadedSize: 19 });
 });
+
+test('any http body', async () => {
+    class Controller {
+        @http.PUT('/test')
+        upload(body: HttpBody<any>): any {
+            return { test: body.test };
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    const response = await httpKernel.request(HttpRequest.PUT('/test').json({ test: 'test' }));
+    expect(response.json).toMatchObject({ test: 'test' });
+});
