@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/postgres",
-  "version": "1.0.1-alpha.101",
+  "version": "1.0.1-alpha.102",
   "description": "deepkit/orm PostgreSQL adapter",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -38,11 +38,11 @@
   },
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.100",
-    "@deepkit/orm": "^1.0.1-alpha.101",
+    "@deepkit/orm": "^1.0.1-alpha.102",
     "@deepkit/orm-integration": "^1.0.1-alpha.13",
-    "@deepkit/sql": "^1.0.1-alpha.101",
-    "@deepkit/stopwatch": "^1.0.1-alpha.101",
-    "@deepkit/type": "^1.0.1-alpha.101",
+    "@deepkit/sql": "^1.0.1-alpha.102",
+    "@deepkit/stopwatch": "^1.0.1-alpha.102",
+    "@deepkit/type": "^1.0.1-alpha.102",
     "@types/sqlstring": "^2.2.1"
   },
   "jest": {

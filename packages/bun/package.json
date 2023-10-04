@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/bun",
-  "version": "1.0.1-alpha.100",
+  "version": "1.0.1-alpha.102",
   "description": "Deepkit Bun Plugin for Deepkit Runtime Types support",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -27,10 +27,8 @@
     "@deepkit/type-compiler": "^1.0.1-alpha.93",
     "typescript": "*"
   },
-  "dependencies": {
-  },
   "devDependencies": {
-    "@deepkit/type-compiler": "^1.0.1-alpha.100"
+    "@deepkit/type-compiler": "^1.0.1-alpha.102"
   },
   "jest": {
     "transform": {
