@@ -90,6 +90,9 @@
     },
     {
       "path": "packages/vite/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/bun/tsconfig.esm.json"
     }
   ]
 }

@@ -108,6 +108,9 @@
     },
     {
       "path": "packages/vite/tsconfig.json"
+    },
+    {
+      "path": "packages/bun/tsconfig.json"
     }
   ]
 }

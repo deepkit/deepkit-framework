@@ -1,7 +1,7 @@
 {
-  "name": "@deepkit/vite",
+  "name": "@deepkit/bun",
   "version": "1.0.1-alpha.100",
-  "description": "Deepkit Vite Plugin for Deepkit Runtime Types support",
+  "description": "Deepkit Bun Plugin for Deepkit Runtime Types support",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -24,14 +24,14 @@
     "install": "rm -rf node_modules/typescript || exit 0"
   },
   "peerDependencies": {
-    "@deepkit/type-compiler": "^1.0.1-alpha.93"
+    "@deepkit/type-compiler": "^1.0.1-alpha.93",
+    "typescript": "*"
   },
   "dependencies": {
     "@rollup/pluginutils": "^5.0.2"
   },
   "devDependencies": {
-    "@deepkit/type-compiler": "^1.0.1-alpha.100",
-    "vite": "^4.0.0"
+    "@deepkit/type-compiler": "^1.0.1-alpha.100"
   },
   "jest": {
     "transform": {

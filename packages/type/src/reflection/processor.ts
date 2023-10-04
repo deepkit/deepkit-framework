@@ -118,7 +118,8 @@ function isPack(o: any): o is Packed {
 
 function extractTypeNameFromFunction(fn: Function): string {
     const str = fn.toString();
-    const match = str.match(/__Ω([\w]+)/);
+    //either it starts with __Ω* or __\u{3a9}* (bun.js)
+    const match = str.match(/(?:__Ω|__\\u\{3a9\})([\w]+)/);
     if (match) {
         return match[1];
     }
