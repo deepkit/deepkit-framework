@@ -3,7 +3,7 @@
 ## Install
 
 ```sh
-bun install @deepkit/type @deepkit/type-compiler @deepkit/core @deepkit/bun typescript
+bun init
 ```
 
 `bunfig.toml`:
@@ -12,6 +12,10 @@ preload = ["@deepkit/bun"]
 
 [install]
 peer = true
+```
+
+```sh
+bun install @deepkit/type @deepkit/type-compiler @deepkit/core @deepkit/bun typescript
 ```
 
 `tsconfig.json`:
