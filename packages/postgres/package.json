@@ -33,7 +33,6 @@
   "dependencies": {
     "@types/pg": "^7.14.7",
     "pg": "^8.5.1",
-    "pg-native": "^3.0.0",
     "sqlstring": "^2.3.2"
   },
   "devDependencies": {

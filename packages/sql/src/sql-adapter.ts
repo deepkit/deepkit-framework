@@ -25,7 +25,8 @@ import {
     FilterQuery,
     FindQuery,
     GenericQueryResolver,
-    ItemNotFound, MigrateOptions,
+    ItemNotFound,
+    MigrateOptions,
     OrmEntity,
     PatchResult,
     Query,
@@ -45,6 +46,7 @@ import {
     ReceiveType,
     ReflectionClass,
     ReflectionKind,
+    ReflectionProperty,
     resolveReceiveType,
     Type
 } from '@deepkit/type';
@@ -822,7 +824,7 @@ export class SQLPersistence extends DatabasePersistence {
 
                 const v = converted[property.name];
                 params.push(v === undefined ? null : v);
-                row.push(this.getPlaceholderSymbol());
+                row.push(this.getPlaceholderSymbol(property));
             }
 
             insert.push(row.join(', '));
@@ -842,7 +844,7 @@ export class SQLPersistence extends DatabasePersistence {
     protected resetPlaceholderSymbol() {
     }
 
-    protected getPlaceholderSymbol() {
+    protected getPlaceholderSymbol(property: ReflectionProperty) {
         return '?';
     }
 
@@ -854,12 +856,13 @@ export class SQLPersistence extends DatabasePersistence {
     async remove<T extends OrmEntity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
         const scopeSerializer = getSerializeFunction(classSchema.type, this.platform.serializer.serializeRegistry);
         const pks: any[] = [];
-        const pkName = classSchema.getPrimary().name;
+        const primary = classSchema.getPrimary();
+        const pkName = primary.name;
         const params: any[] = [];
 
         for (const item of items) {
             const converted = scopeSerializer(item);
-            pks.push(this.getPlaceholderSymbol());
+            pks.push(this.getPlaceholderSymbol(primary));
             params.push(converted[pkName]);
         }
 

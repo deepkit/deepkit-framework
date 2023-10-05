@@ -134,6 +134,9 @@ export abstract class DefaultPlatform {
         }, sqlType, size, scale);
     }
 
+    /**
+     * Last matching check wins.
+     */
     addType(kind: ReflectionKind | TypeMappingChecker, sqlType: string, size?: number, scale?: number, unsigned?: boolean) {
         this.typeMapping.set(kind, { sqlType, size, scale, unsigned });
     }

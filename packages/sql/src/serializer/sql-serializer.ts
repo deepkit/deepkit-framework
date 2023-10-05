@@ -97,7 +97,6 @@ function deserializeSqlArray(type: TypeArray, state: TemplateState) {
  */
 function serializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state: TemplateState) {
     if (undefined !== referenceAnnotation.getFirst(type)) return;
-
     if (!isDirectPropertyOfEntity(type)) return;
 
     //TypeClass|TypeObjectLiteral properties are serialized as JSON
