@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/framework",
-  "version": "1.0.1-alpha.102",
+  "version": "1.0.1-alpha.103",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -83,7 +83,7 @@
     "@deepkit/orm": "^1.0.1-alpha.102",
     "@deepkit/rpc": "^1.0.1-alpha.102",
     "@deepkit/rpc-tcp": "^1.0.1-alpha.102",
-    "@deepkit/sql": "^1.0.1-alpha.102",
+    "@deepkit/sql": "^1.0.1-alpha.103",
     "@deepkit/stopwatch": "^1.0.1-alpha.102",
     "@deepkit/template": "^1.0.1-alpha.102",
     "@deepkit/type": "^1.0.1-alpha.102",
