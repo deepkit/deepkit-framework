@@ -1,4 +1,4 @@
-import { File, FileType, pathDirectory, pathNormalize, Reporter, StorageAdapter } from './storage.js';
+import { FileType, pathDirectory, pathNormalize, Reporter, StorageAdapter, StorageFile } from './storage.js';
 import type * as fs from 'fs/promises';
 
 export class StorageNodeLocalAdapter implements StorageAdapter {
@@ -30,6 +30,11 @@ export class StorageNodeLocalAdapter implements StorageAdapter {
         await fs.rm(path);
     }
 
+    async makeDirectory(path: string): Promise<void> {
+        const fs = await this.getFs();
+        await fs.mkdir(this.getPath(path), { recursive: true });
+    }
+
     async deleteDirectory(path: string, reporter: Reporter): Promise<void> {
         path = this.getPath(path);
         const fs = await this.getFs();
@@ -47,13 +52,13 @@ export class StorageNodeLocalAdapter implements StorageAdapter {
         }
     }
 
-    async files(path: string): Promise<File[]> {
+    async files(path: string): Promise<StorageFile[]> {
         const localPath = this.getPath(path);
-        const files: File[] = [];
+        const files: StorageFile[] = [];
         const fs = await this.getFs();
 
         for (const name of await fs.readdir(localPath)) {
-            const file = new File(path + '/' + name);
+            const file = new StorageFile(path + '/' + name);
             const stat = await fs.stat(localPath + '/' + name);
             file.size = stat.size;
             file.lastModified = new Date(stat.mtime);
@@ -64,10 +69,61 @@ export class StorageNodeLocalAdapter implements StorageAdapter {
         return files;
     }
 
-    async get(path: string): Promise<File | undefined> {
+    async allFiles(path: string, reporter: Reporter): Promise<StorageFile[]> {
+        const files: StorageFile[] = [];
+        const fs = await this.getFs();
+
+        const queue: string[] = [path];
+        while (!reporter.aborted && queue.length) {
+            const currentPath = queue.shift()!;
+            for (const name of await fs.readdir(this.getPath(currentPath))) {
+                if (reporter.aborted) return files;
+                const file = new StorageFile(currentPath + '/' + name);
+                const stat = await fs.stat(this.getPath(currentPath + '/' + name));
+                file.size = stat.size;
+                file.lastModified = new Date(stat.mtime);
+                file.type = stat.isFile() ? FileType.File : FileType.Directory;
+                files.push(file);
+                reporter.progress(files.length, 0);
+                if (file.isDirectory()) queue.push(file.path);
+            }
+        }
+
+        return files;
+    }
+
+    async directories(path: string): Promise<StorageFile[]> {
+        return (await this.files(path)).filter(file => file.isDirectory());
+    }
+
+    async allDirectories(path: string, reporter: Reporter): Promise<StorageFile[]> {
+        const files: StorageFile[] = [];
+        const fs = await this.getFs();
+
+        const queue: string[] = [path];
+        while (!reporter.aborted && queue.length) {
+            const currentPath = queue.shift()!;
+            for (const name of await fs.readdir(this.getPath(currentPath))) {
+                if (reporter.aborted) return files;
+                const file = new StorageFile(currentPath + '/' + name);
+                const stat = await fs.stat(this.getPath(currentPath + '/' + name));
+                if (!stat.isDirectory()) continue;
+                file.size = stat.size;
+                file.lastModified = new Date(stat.mtime);
+                file.type = stat.isFile() ? FileType.File : FileType.Directory;
+                files.push(file);
+                reporter.progress(files.length, 0);
+                if (file.isDirectory()) queue.push(file.path);
+            }
+        }
+
+        return files;
+    }
+
+    async get(path: string): Promise<StorageFile | undefined> {
         const localPath = this.getPath(path);
         const fs = await this.getFs();
-        const file = new File(path);
+        const file = new StorageFile(path);
         try {
             const stat = await fs.stat(localPath);
             file.size = stat.size;
