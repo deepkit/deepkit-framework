@@ -68,6 +68,7 @@
       "packages/template",
       "packages/injector",
       "packages/mongo",
+      "packages/storage",
       "packages/sql",
       "packages/mysql",
       "packages/postgres",

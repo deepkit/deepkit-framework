@@ -93,6 +93,9 @@
     },
     {
       "path": "packages/bun/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/storage/tsconfig.esm.json"
     }
   ]
 }

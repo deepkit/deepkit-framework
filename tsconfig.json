@@ -111,6 +111,9 @@
     },
     {
       "path": "packages/bun/tsconfig.json"
+    },
+    {
+      "path": "packages/storage/tsconfig.json"
     }
   ]
 }
