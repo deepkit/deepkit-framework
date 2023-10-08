@@ -15,7 +15,7 @@ import { Injector, InjectorContext, InjectorModule, isProvided, ProviderWithScop
 import { cli } from './command.js';
 import { WorkflowDefinition } from '@deepkit/workflow';
 import { deserialize, ReflectionClass, ReflectionFunction, validate } from '@deepkit/type';
-import { ConsoleTransport, Logger } from '@deepkit/logger';
+import { ConsoleTransport, Logger, ScopedLogger } from '@deepkit/logger';
 
 export interface ControllerConfig {
     controller?: ClassType,
@@ -87,15 +87,19 @@ export class ServiceContainer {
     public process() {
         if (this.injectorContext) return;
 
-        this.setupHook(this.appModule);
-        this.findModules(this.appModule);
-
         this.appModule.addProvider({ provide: ServiceContainer, useValue: this });
         this.appModule.addProvider({ provide: EventDispatcher, useValue: this.eventDispatcher });
         this.appModule.addProvider({ provide: CliControllerRegistry, useValue: this.cliControllerRegistry });
         this.appModule.addProvider({ provide: MiddlewareRegistry, useValue: this.middlewareRegistry });
         this.appModule.addProvider({ provide: InjectorContext, useFactory: () => this.injectorContext! });
-        this.appModule.addProvider({ provide: Logger, useFactory: () => new Logger([new ConsoleTransport()]) });
+        this.appModule.addProvider(ConsoleTransport);
+        if (!this.appModule.isProvided(Logger)) {
+            this.appModule.addProvider({ provide: Logger, useFactory: (t: ConsoleTransport) => new Logger([t]) });
+        }
+        this.appModule.addProvider(ScopedLogger);
+
+        this.setupHook(this.appModule);
+        this.findModules(this.appModule);
 
         this.processModule(this.appModule);
 

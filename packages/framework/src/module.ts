@@ -22,7 +22,7 @@ import { registerDebugHttpController } from './debug/http-debug.controller.js';
 import { HttpLogger, HttpModule, HttpRequest, serveStaticListener } from '@deepkit/http';
 import { InjectorContext, injectorReference, ProviderWithScope, Token } from '@deepkit/injector';
 import { FrameworkConfig } from './module.config.js';
-import { ConsoleTransport, Logger, LoggerInterface } from '@deepkit/logger';
+import { LoggerInterface } from '@deepkit/logger';
 import { SessionHandler } from './session.js';
 import { RpcServer, WebWorkerFactory } from './worker.js';
 import { Stopwatch } from '@deepkit/stopwatch';
@@ -40,7 +40,6 @@ import { ApiConsoleModule } from '@deepkit/api-console-module';
 import { AppModule, ControllerConfig, createModule } from '@deepkit/app';
 import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc.js';
 import { normalizeDirectory } from './utils.js';
-import { ScopedLogger } from "@deepkit/logger";
 
 export class FrameworkModule extends createModule({
     config: FrameworkConfig,
@@ -49,9 +48,6 @@ export class FrameworkModule extends createModule({
         ApplicationServer,
         WebWorkerFactory,
         RpcServer,
-        ConsoleTransport,
-        Logger,
-        ScopedLogger,
         MigrationProvider,
         DebugController,
         { provide: DatabaseRegistry, useFactory: (ic: InjectorContext) => new DatabaseRegistry(ic) },
@@ -107,12 +103,10 @@ export class FrameworkModule extends createModule({
         MigrationCreateController,
     ],
     exports: [
-        ScopedLogger.provide,
         ProcessLocker,
         ApplicationServer,
         WebWorkerFactory,
         RpcServer,
-        ConsoleTransport,
         RpcKernelSecurity,
         RpcKernel,
         MigrationProvider,

@@ -311,7 +311,7 @@ export class Logger implements LoggerInterface {
     }
 }
 
-export type ScopedLogger = Inject<Logger, 'scoped-logger'>;
+export type ScopedLogger = Inject<LoggerInterface, 'scoped-logger'>;
 export const ScopedLogger = {
     provide: 'scoped-logger',
     transient: true,
