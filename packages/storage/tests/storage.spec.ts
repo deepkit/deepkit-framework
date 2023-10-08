@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { compareFileSorting, FileType, pathDirectories, Storage, StorageAdapter, StorageFile } from '../src/storage.js';
+import { FileType, pathDirectories, Storage, StorageAdapter, StorageFile } from '../src/storage.js';
 import { StorageMemoryAdapter } from '../src/memory-adapter.js';
 
 export let adapterFactory: () => Promise<StorageAdapter> = async () => new StorageMemoryAdapter;

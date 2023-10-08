@@ -1,7 +1,7 @@
 {
-  "name": "@deepkit/storage",
+  "name": "@deepkit/storage-aws-s3",
   "version": "1.0.1-alpha.13",
-  "description": "Fileystem abstraction Deepkit",
+  "description": "Deepkit storage adapter for AWS S3",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -11,11 +11,6 @@
       "types": "./dist/cjs/index.d.ts",
       "require": "./dist/cjs/index.js",
       "default": "./dist/esm/index.js"
-    },
-    "./test": {
-      "types": "./dist/cjs/tests/storage.spec.d.ts",
-      "require": "./dist/cjs/tests/storage.spec.js",
-      "default": "./dist/esm/tests/storage.spec.js"
     }
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
@@ -28,12 +23,13 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.13"
+    "@deepkit/storage": "^1.0.1-alpha.13"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.13"
+    "@deepkit/storage": "^1.0.1-alpha.13"
   },
   "jest": {
     "testEnvironment": "node",

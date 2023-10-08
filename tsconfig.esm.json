@@ -96,6 +96,9 @@
     },
     {
       "path": "packages/storage/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/storage-aws-s3/tsconfig.esm.json"
     }
   ]
 }

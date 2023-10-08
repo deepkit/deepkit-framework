@@ -69,6 +69,7 @@
       "packages/injector",
       "packages/mongo",
       "packages/storage",
+      "packages/storage-aws-s3",
       "packages/sql",
       "packages/mysql",
       "packages/postgres",

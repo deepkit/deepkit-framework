@@ -15,5 +15,6 @@ setAdapterFactory(async () => {
 // also necessary to have at least once test in this file, so that WebStorm
 // detects the file as a test file.
 test('basic', () => undefined);
+test('recursive', () => undefined);
 test('copy', () => undefined);
 test('move', () => undefined);

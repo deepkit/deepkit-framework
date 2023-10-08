@@ -113,12 +113,12 @@ export interface StorageAdapter {
     /**
      * Returns all directories directly in the given folder.
      */
-    directories(path: string, reporter: Reporter): Promise<StorageFile[]>;
+    directories?(path: string, reporter: Reporter): Promise<StorageFile[]>;
 
     /**
      * Returns all directories in the given folder and all subfolders.
      */
-    allDirectories(path: string, reporter: Reporter): Promise<StorageFile[]>;
+    allDirectories?(path: string, reporter: Reporter): Promise<StorageFile[]>;
 
     /**
      * Creates a new directory and all parent directories if not existing.
@@ -302,7 +302,12 @@ export class Storage {
     directories(path: string): Operation<StorageFile[]> {
         path = this.normalizePath(path);
         return createProgress<StorageFile[]>(async (reporter) => {
-            return await this.adapter.directories(path, reporter);
+            if (this.adapter.directories) {
+                return await this.adapter.directories(path, reporter);
+            } else {
+                const files = await this.adapter.files(path, reporter);
+                return files.filter(v => v.isDirectory());
+            }
         });
     }
 
@@ -314,7 +319,12 @@ export class Storage {
     allDirectories(path: string): Operation<StorageFile[]> {
         path = this.normalizePath(path);
         return createProgress<StorageFile[]>(async (reporter) => {
-            return await this.adapter.allDirectories(path, reporter);
+            if (this.adapter.allDirectories) {
+                return await this.adapter.allDirectories(path, reporter);
+            } else {
+                const files = await this.adapter.allFiles(path, reporter);
+                return files.filter(v => v.isDirectory());
+            }
         });
     }
 

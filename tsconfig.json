@@ -114,6 +114,9 @@
     },
     {
       "path": "packages/storage/tsconfig.json"
+    },
+    {
+      "path": "packages/storage-aws-s3/tsconfig.json"
     }
   ]
 }
